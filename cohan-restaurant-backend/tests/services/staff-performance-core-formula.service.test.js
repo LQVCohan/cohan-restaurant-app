@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+const endOfLocalDay = (value) => {
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
 
 const mocks = vi.hoisted(() => ({
   staffFindById: vi.fn(),
@@ -30,10 +35,13 @@ vi.mock("../../models/index.js", () => ({
   PerformanceIncident: { find: mocks.performanceIncidentFind },
   StaffPerformanceScoreAdjustment: { find: mocks.scoreAdjustmentFind },
   StaffPerformanceScoreReversal: { find: mocks.scoreReversalFind },
-  StaffPerformanceSnapshot: { findOneAndUpdate: mocks.snapshotFindOneAndUpdate },
+  StaffPerformanceSnapshot: {
+    findOneAndUpdate: mocks.snapshotFindOneAndUpdate,
+  },
 }));
 vi.mock("../../src/services/kitchen/kitchenOrderWorkItem.service.js", () => ({
-  markUnacceptedKitchenOrderWorkItems: mocks.markUnacceptedKitchenOrderWorkItems,
+  markUnacceptedKitchenOrderWorkItems:
+    mocks.markUnacceptedKitchenOrderWorkItems,
 }));
 
 import { recalculateStaffPerformanceSnapshots } from "../../src/services/staffPerformance/staffPerformance.service.js";
@@ -72,8 +80,12 @@ describe("staffPerformance core formula", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.staffFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([{ _id: employeeId }])) });
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null }));
+    mocks.staffFind.mockReturnValue({
+      select: vi.fn().mockReturnValue(chainLean([{ _id: employeeId }])),
+    });
+    mocks.staffFindById.mockReturnValue(
+      chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null }),
+    );
     mocks.timesheetFind.mockReturnValue(chainLean([]));
     mocks.shiftFind.mockReturnValue(chainLean([]));
     mocks.acrCountDocuments.mockResolvedValue(0);
@@ -82,32 +94,92 @@ describe("staffPerformance core formula", () => {
     mocks.orderFind.mockReturnValue(chainLean([]));
     mocks.customerReviewAggregate.mockResolvedValue([]);
     mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([]));
-    mocks.performanceIncidentFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
-    mocks.scoreAdjustmentFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
-    mocks.scoreReversalFind.mockReturnValue({ select: vi.fn().mockReturnValue(chainLean([])) });
-    mocks.snapshotFindOneAndUpdate.mockReturnValue({ populate: vi.fn().mockReturnValue(chainLean(snapshotDoc())) });
-    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+    mocks.performanceIncidentFind.mockReturnValue({
+      select: vi.fn().mockReturnValue(chainLean([])),
+    });
+    mocks.scoreAdjustmentFind.mockReturnValue({
+      select: vi.fn().mockReturnValue(chainLean([])),
+    });
+    mocks.scoreReversalFind.mockReturnValue({
+      select: vi.fn().mockReturnValue(chainLean([])),
+    });
+    mocks.snapshotFindOneAndUpdate.mockReturnValue({
+      populate: vi.fn().mockReturnValue(chainLean(snapshotDoc())),
+    });
+    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValue({
+      matchedCount: 0,
+      modifiedCount: 0,
+    });
   });
 
   it("scores productivity at 100 for 8h scheduled and 480 worked", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
 
     const set = await runCalc();
     expect(set.productivity.score).toBe(100);
   });
 
   it("scores productivity near 50 for 8h scheduled and 240 worked", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 240, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 240,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
 
     const set = await runCalc();
     expect(set.productivity.score).toBe(50);
   });
 
   it("does not fallback productivity to 75 when scheduled exists but no worked minutes", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 0, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: null, actualCheckOutAt: null }]));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 0,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: null,
+          actualCheckOutAt: null,
+        },
+      ]),
+    );
 
     const set = await runCalc();
     expect(set.productivity.score).toBe(0);
@@ -121,51 +193,151 @@ describe("staffPerformance core formula", () => {
   });
 
   it("keeps productivity unchanged when only orderCount changes", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 240, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.orderAggregate.mockResolvedValueOnce([{ _id: "u1", orderCount: 5 }]).mockResolvedValueOnce([{ _id: employeeId, orderCount: 50 }]);
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 240,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.orderAggregate
+      .mockResolvedValueOnce([{ _id: "u1", orderCount: 5 }])
+      .mockResolvedValueOnce([{ _id: employeeId, orderCount: 50 }]);
     const first = await runCalc();
 
-    mocks.orderAggregate.mockResolvedValueOnce([{ _id: "u1", orderCount: 999 }, { _id: employeeId, orderCount: 1 }]);
+    mocks.orderAggregate.mockResolvedValueOnce([
+      { _id: "u1", orderCount: 999 },
+      { _id: employeeId, orderCount: 1 },
+    ]);
     const second = await runCalc();
     expect(first.productivity.score).toBe(second.productivity.score);
   });
 
   it("aggregates kitchen metrics and records role-aware evidence", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
     const baseline = await runCalc();
 
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
-      { headChefId: employeeId, station: "kitchen", status: "served", servedAt: new Date(), timeLevel: "very_late", actualPrepMinutes: 20, targetPrepMinutes: 15, noRoster: true },
-      { headChefId: employeeId, station: "kitchen", status: "ready", readyAt: new Date(), timeLevel: "on_time", actualPrepMinutes: 10, targetPrepMinutes: 10 },
-      { headChefId: employeeId, station: "kitchen", status: "cancelled", cancelledAt: new Date(), issueReasonKitchenRelated: true },
-      { headChefId: employeeId, station: "kitchen", status: "cancelled", cancelledAt: new Date(), issueReasonKitchenRelated: false },
-      { headChefId: employeeId, station: "kitchen", status: "returned", returnedAt: new Date(), issueReasonKitchenRelated: true },
-      { headChefId: employeeId, station: "kitchen", status: "returned", returnedAt: new Date(), issueReasonKitchenRelated: false },
-    ]));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(
+      chainLean([
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "served",
+          servedAt: new Date(),
+          timeLevel: "very_late",
+          actualPrepMinutes: 20,
+          targetPrepMinutes: 15,
+          noRoster: true,
+        },
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "ready",
+          readyAt: new Date(),
+          timeLevel: "on_time",
+          actualPrepMinutes: 10,
+          targetPrepMinutes: 10,
+        },
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "cancelled",
+          cancelledAt: new Date(),
+          issueReasonKitchenRelated: true,
+        },
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "cancelled",
+          cancelledAt: new Date(),
+          issueReasonKitchenRelated: false,
+        },
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "returned",
+          returnedAt: new Date(),
+          issueReasonKitchenRelated: true,
+        },
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "returned",
+          returnedAt: new Date(),
+          issueReasonKitchenRelated: false,
+        },
+      ]),
+    );
 
     const withKitchen = await runCalc();
     expect(withKitchen.factors.kitchenMetrics.totalItems).toBe(6);
     expect(withKitchen.factors.kitchenMetrics.headChefItems).toBe(6);
     expect(withKitchen.factors.kitchenMetrics.veryLateItems).toBe(1);
     expect(withKitchen.factors.kitchenMetrics.noRosterItems).toBe(1);
-    expect(withKitchen.factors.kitchenMetrics.kitchenRelatedCancelledItems).toBe(1);
+    expect(
+      withKitchen.factors.kitchenMetrics.kitchenRelatedCancelledItems,
+    ).toBe(1);
     expect(withKitchen.factors.kitchenMetrics.nonKitchenCancelledItems).toBe(1);
-    expect(withKitchen.factors.kitchenMetrics.kitchenRelatedReturnedItems).toBe(1);
+    expect(withKitchen.factors.kitchenMetrics.kitchenRelatedReturnedItems).toBe(
+      1,
+    );
     expect(withKitchen.factors.kitchenMetrics.nonKitchenReturnedItems).toBe(1);
     expect(withKitchen.factors.kitchenMetrics.avgPrepMinutes).toBe(15);
     expect(withKitchen.factors.kitchenMetrics.affectsScore).toBe(false);
     expect(withKitchen.factors.qualityEvidence.roleGroup).toBe("head_chef");
-    expect(withKitchen.factors.qualityEvidence.kitchenPenalty).toBeGreaterThan(0);
-    expect(withKitchen.finalPerformanceScore).toBeLessThanOrEqual(baseline.finalPerformanceScore);
+    expect(withKitchen.factors.qualityEvidence.kitchenPenalty).toBeGreaterThan(
+      0,
+    );
+    expect(withKitchen.finalPerformanceScore).toBeLessThanOrEqual(
+      baseline.finalPerformanceScore,
+    );
   });
 
   it("counts assistant/unaccepted and bar staff role mappings", async () => {
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
-      { assistantChefIds: [employeeId], unacceptedResponsibleEmployeeIds: [employeeId], unaccepted: true, station: "kitchen", kitchenEnteredAt: new Date() },
-      { barStaffIds: [employeeId], station: "bar", kitchenEnteredAt: new Date() },
-    ]));
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(
+      chainLean([
+        {
+          assistantChefIds: [employeeId],
+          unacceptedResponsibleEmployeeIds: [employeeId],
+          unaccepted: true,
+          station: "kitchen",
+          kitchenEnteredAt: new Date(),
+        },
+        {
+          barStaffIds: [employeeId],
+          station: "bar",
+          kitchenEnteredAt: new Date(),
+        },
+      ]),
+    );
 
     const set = await runCalc();
     const km = set.factors.kitchenMetrics;
@@ -179,13 +351,38 @@ describe("staffPerformance core formula", () => {
   it("returns empty kitchen metrics note when no related work items", async () => {
     const set = await runCalc();
     expect(set.factors.kitchenMetrics.totalItems).toBe(0);
-    expect(set.factors.kitchenMetrics.note).toContain("Không có dữ liệu bếp/bar");
+    expect(set.factors.kitchenMetrics.note).toContain(
+      "Không có dữ liệu bếp/bar",
+    );
   });
 
   it("uses skillScore for quality and managerRatingScore for managerReview only", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 61, attitudeScore: 10, teamworkScore: 20 }));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({
+        managerRatingScore: 92,
+        skillScore: 61,
+        attitudeScore: 10,
+        teamworkScore: 20,
+      }),
+    );
 
     const set = await runCalc();
     expect(set.quality.score).toBe(61);
@@ -193,11 +390,47 @@ describe("staffPerformance core formula", () => {
   });
 
   it("applies head chef kitchen penalty using kitchen-related returned metrics", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Bếp chính" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([{ headChefId: employeeId, status: "served", timeLevel: "very_late", kitchenEnteredAt: new Date(), issueReasonKitchenRelated: true, returnedAt: new Date() }]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Bếp chính",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(
+      chainLean([
+        {
+          headChefId: employeeId,
+          status: "served",
+          timeLevel: "very_late",
+          kitchenEnteredAt: new Date(),
+          issueReasonKitchenRelated: true,
+          returnedAt: new Date(),
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.quality.score).toBeLessThan(90);
     expect(set.factors.qualityEvidence.roleGroup).toBe("head_chef");
@@ -206,91 +439,361 @@ describe("staffPerformance core formula", () => {
   });
 
   it("applies customer penalty for order_staff and cashier with cashier lower", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
-    mocks.customerReviewAggregate.mockResolvedValue([{ _id: null, averageRating: 3, totalReviews: 4 }]);
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
+    mocks.customerReviewAggregate.mockResolvedValue([
+      { _id: null, averageRating: 3, totalReviews: 4 },
+    ]);
 
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Phục vụ" }));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Phục vụ",
+      }),
+    );
     const orderSet = await runCalc();
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
     const cashierSet = await runCalc();
     expect(orderSet.factors.qualityEvidence.roleGroup).toBe("order_staff");
     expect(cashierSet.factors.qualityEvidence.roleGroup).toBe("cashier");
     expect(orderSet.factors.qualityEvidence.customerPenalty).toBeGreaterThan(0);
-    expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeGreaterThan(0);
-    expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeLessThan(orderSet.factors.qualityEvidence.customerPenalty);
+    expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeGreaterThan(
+      0,
+    );
+    expect(cashierSet.factors.qualityEvidence.customerPenalty).toBeLessThan(
+      orderSet.factors.qualityEvidence.customerPenalty,
+    );
   });
 
   it("keeps assistant_chef role from explicit text even when both assistant/head metrics exist", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Phụ bếp" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([
-      { assistantChefIds: [employeeId], headChefId: employeeId, station: "kitchen", status: "served", kitchenEnteredAt: new Date() },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Phụ bếp",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(
+      chainLean([
+        {
+          assistantChefIds: [employeeId],
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "served",
+          kitchenEnteredAt: new Date(),
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.qualityEvidence.roleGroup).toBe("assistant_chef");
   });
 
   it("keeps head_chef role from explicit text", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Bếp chính" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Bếp chính",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
     const set = await runCalc();
     expect(set.factors.qualityEvidence.roleGroup).toBe("head_chef");
   });
 
   it("keeps cashier role priority even when kitchen metrics exist", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([{ headChefId: employeeId, station: "kitchen", status: "served", kitchenEnteredAt: new Date() }]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(
+      chainLean([
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "served",
+          kitchenEnteredAt: new Date(),
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.qualityEvidence.roleGroup).toBe("cashier");
   });
 
   it("keeps order_staff role priority even when kitchen metrics exist", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Phục vụ" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
-    mocks.kitchenOrderWorkItemFind.mockReturnValue(chainLean([{ headChefId: employeeId, station: "kitchen", status: "served", kitchenEnteredAt: new Date() }]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Phục vụ",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
+    mocks.kitchenOrderWorkItemFind.mockReturnValue(
+      chainLean([
+        {
+          headChefId: employeeId,
+          station: "kitchen",
+          status: "served",
+          kitchenEnteredAt: new Date(),
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.qualityEvidence.roleGroup).toBe("order_staff");
   });
 
-
-
   it("applies cashier operational penalty with attribution-aware reasons and caps at 15", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 90 }));
-    mocks.customerReviewAggregate.mockResolvedValue([{ _id: null, averageRating: 3, totalReviews: 4 }]);
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "failed", requestClearReason: "xac nhan thanh toan sai" }, totals: { discount: 10000, discountReason: "sai discount" }, customerRequests: [{ type: "PAYMENT_REQUEST", createdAt: new Date("2026-05-02T08:00:00Z"), acknowledgedAt: new Date("2026-05-02T08:06:00Z"), acknowledgedBy: employeeId }], items: [{ voidRequests: [{ status: "approved", reason: "sai hoa don" }], returnRequests: [{ status: "approved", reason: "thu nham" }] }] },
-      { payment: { status: "refunded", requestClearReason: "tinh nham" }, totals: { discount: 0 }, customerRequests: [], items: [{ returnRequests: [{ status: "approved", reason: "sai discount" }] }] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 90 }),
+    );
+    mocks.customerReviewAggregate.mockResolvedValue([
+      { _id: null, averageRating: 3, totalReviews: 4 },
+    ]);
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: {
+            status: "failed",
+            requestClearReason: "xac nhan thanh toan sai",
+          },
+          totals: { discount: 10000, discountReason: "sai discount" },
+          customerRequests: [
+            {
+              type: "PAYMENT_REQUEST",
+              createdAt: new Date("2026-05-02T08:00:00Z"),
+              acknowledgedAt: new Date("2026-05-02T08:06:00Z"),
+              acknowledgedBy: employeeId,
+            },
+          ],
+          items: [
+            {
+              voidRequests: [{ status: "approved", reason: "sai hoa don" }],
+              returnRequests: [{ status: "approved", reason: "thu nham" }],
+            },
+          ],
+        },
+        {
+          payment: { status: "refunded", requestClearReason: "tinh nham" },
+          totals: { discount: 0 },
+          customerRequests: [],
+          items: [
+            {
+              returnRequests: [{ status: "approved", reason: "sai discount" }],
+            },
+          ],
+        },
+      ]),
+    );
 
     const set = await runCalc();
-    expect(set.factors.qualityEvidence.cashierOperationalPenalty).toBeGreaterThan(0);
-    expect(set.factors.qualityEvidence.cashierOperationalPenalty).toBeLessThanOrEqual(15);
-    expect(set.factors.cashierMetrics.operationalPenalty).toBe(set.factors.qualityEvidence.cashierOperationalPenalty);
+    expect(
+      set.factors.qualityEvidence.cashierOperationalPenalty,
+    ).toBeGreaterThan(0);
+    expect(
+      set.factors.qualityEvidence.cashierOperationalPenalty,
+    ).toBeLessThanOrEqual(15);
+    expect(set.factors.cashierMetrics.operationalPenalty).toBe(
+      set.factors.qualityEvidence.cashierOperationalPenalty,
+    );
     expect(set.quality.score).toBeGreaterThanOrEqual(50);
   });
 
   it("does not penalize cashier for non-attributable kitchen/customer/system reasons", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 80 }));
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "failed", requestClearReason: "provider callback" }, totals: { discount: 10000, discountReason: "khach doi y" }, customerRequests: [{ type: "PAYMENT_REQUEST", createdAt: new Date("2026-05-02T08:00:00Z"), acknowledgedAt: new Date("2026-05-02T08:01:00Z"), acknowledgedBy: employeeId }], items: [{ voidRequests: [{ status: "approved", reason: "mon sai" }] }] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 80 }),
+    );
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: {
+            status: "failed",
+            requestClearReason: "provider callback",
+          },
+          totals: { discount: 10000, discountReason: "khach doi y" },
+          customerRequests: [
+            {
+              type: "PAYMENT_REQUEST",
+              createdAt: new Date("2026-05-02T08:00:00Z"),
+              acknowledgedAt: new Date("2026-05-02T08:01:00Z"),
+              acknowledgedBy: employeeId,
+            },
+          ],
+          items: [
+            { voidRequests: [{ status: "approved", reason: "mon sai" }] },
+          ],
+        },
+      ]),
+    );
 
     const set = await runCalc();
     expect(set.factors.qualityEvidence.cashierOperationalPenalty).toBe(0);
@@ -298,76 +801,303 @@ describe("staffPerformance core formula", () => {
   });
 
   it("does not count valid voucher/promotion as unauthorized discount but counts manual discount without reason", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 92, skillScore: 85 }));
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "success" }, totals: { discount: 5000, voucherCode: "VC001", promotionId: "promo1" }, customerRequests: [], items: [] },
-      { payment: { status: "success" }, totals: { discount: 7000, discountReason: "" }, customerRequests: [], items: [] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 92, skillScore: 85 }),
+    );
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: { status: "success" },
+          totals: {
+            discount: 5000,
+            voucherCode: "VC001",
+            promotionId: "promo1",
+          },
+          customerRequests: [],
+          items: [],
+        },
+        {
+          payment: { status: "success" },
+          totals: { discount: 7000, discountReason: "" },
+          customerRequests: [],
+          items: [],
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.cashierMetrics.unauthorizedDiscounts).toBe(1);
   });
 
   it("reduces cashier quality with operational evidence even without manager review/customer rating", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
     mocks.reviewFindOne.mockReturnValue(chainLean(null));
     mocks.customerReviewAggregate.mockResolvedValue([]);
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "success", requestClearReason: "sai hoa don", paidBy: employeeId, paidAt: new Date("2026-05-02T08:00:00Z") }, totals: { discount: 0 }, customerRequests: [], items: [{ voidRequests: [{ status: "approved", reason: "sai hoa don" }] }] },
-    ]));
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: {
+            status: "success",
+            requestClearReason: "sai hoa don",
+            paidBy: employeeId,
+            paidAt: new Date("2026-05-02T08:00:00Z"),
+          },
+          totals: { discount: 0 },
+          customerRequests: [],
+          items: [
+            { voidRequests: [{ status: "approved", reason: "sai hoa don" }] },
+          ],
+        },
+      ]),
+    );
     const set = await runCalc();
-    expect(set.factors.qualityEvidence.cashierOperationalPenalty).toBeGreaterThan(0);
-    expect(set.factors.qualityEvidence.hasCashierOperationalEvidence).toBe(true);
+    expect(
+      set.factors.qualityEvidence.cashierOperationalPenalty,
+    ).toBeGreaterThan(0);
+    expect(set.factors.qualityEvidence.hasCashierOperationalEvidence).toBe(
+      true,
+    );
     expect(set.quality.score).toBeLessThan(75);
     expect(set.quality.score).toBeGreaterThanOrEqual(50);
-    expect(set.factors.qualityEvidence.evidenceSource).toBe("neutral_skill+cashier_operational_metrics");
+    expect(set.factors.qualityEvidence.evidenceSource).toBe(
+      "neutral_skill+cashier_operational_metrics",
+    );
   });
 
   it("does not count late ack if cashier only resolves and another user acknowledged late", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "success" }, totals: { discount: 0 }, customerRequests: [{ type: "PAYMENT_REQUEST", createdAt: new Date("2026-05-02T08:00:00Z"), acknowledgedAt: new Date("2026-05-02T08:07:00Z"), acknowledgedBy: "another-user", resolvedAt: new Date("2026-05-02T08:06:00Z"), resolvedBy: employeeId }], items: [] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: { status: "success" },
+          totals: { discount: 0 },
+          customerRequests: [
+            {
+              type: "PAYMENT_REQUEST",
+              createdAt: new Date("2026-05-02T08:00:00Z"),
+              acknowledgedAt: new Date("2026-05-02T08:07:00Z"),
+              acknowledgedBy: "another-user",
+              resolvedAt: new Date("2026-05-02T08:06:00Z"),
+              resolvedBy: employeeId,
+            },
+          ],
+          items: [],
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.cashierMetrics.latePaymentRequests).toBe(0);
   });
 
   it("counts late PAYMENT_REQUEST when cashier acknowledged late", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "success" }, totals: { discount: 0 }, customerRequests: [{ type: "PAYMENT_REQUEST", createdAt: new Date("2026-05-02T08:00:00Z"), acknowledgedAt: new Date("2026-05-02T08:06:00Z"), acknowledgedBy: employeeId }], items: [] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: { status: "success" },
+          totals: { discount: 0 },
+          customerRequests: [
+            {
+              type: "PAYMENT_REQUEST",
+              createdAt: new Date("2026-05-02T08:00:00Z"),
+              acknowledgedAt: new Date("2026-05-02T08:06:00Z"),
+              acknowledgedBy: employeeId,
+            },
+          ],
+          items: [],
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.cashierMetrics.latePaymentRequests).toBe(1);
   });
 
   it("counts refunded attributable as cashierRefunds and not paymentErrors", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "refunded", requestClearReason: "tinh nham" }, totals: { discount: 0 }, customerRequests: [], items: [{ returnRequests: [{ status: "approved", reason: "sai discount" }] }] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: { status: "refunded", requestClearReason: "tinh nham" },
+          totals: { discount: 0 },
+          customerRequests: [],
+          items: [
+            {
+              returnRequests: [{ status: "approved", reason: "sai discount" }],
+            },
+          ],
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.cashierMetrics.cashierRefunds).toBe(1);
     expect(set.factors.cashierMetrics.paymentErrors).toBe(0);
   });
 
   it("counts failed attributable payment as paymentErrors", async () => {
-    mocks.staffFindById.mockReturnValue(chainLean({ _id: employeeId, userType: "STAFF", deletedAt: null, positionTitle: "Thu ngân" }));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
-    mocks.orderFind.mockReturnValue(chainLean([
-      { payment: { status: "failed", requestClearReason: "xac nhan thanh toan sai" }, totals: { discount: 0 }, customerRequests: [], items: [] },
-    ]));
+    mocks.staffFindById.mockReturnValue(
+      chainLean({
+        _id: employeeId,
+        userType: "STAFF",
+        deletedAt: null,
+        positionTitle: "Thu ngân",
+      }),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
+    mocks.orderFind.mockReturnValue(
+      chainLean([
+        {
+          payment: {
+            status: "failed",
+            requestClearReason: "xac nhan thanh toan sai",
+          },
+          totals: { discount: 0 },
+          customerRequests: [],
+          items: [],
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.cashierMetrics.paymentErrors).toBe(1);
   });
@@ -379,7 +1109,7 @@ describe("staffPerformance core formula", () => {
     expect(mocks.markUnacceptedKitchenOrderWorkItems).toHaveBeenCalledTimes(1);
     const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
     expect(String(args.restaurantId)).toBe(restaurantId);
-    expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
+    expect(args.now).toEqual(endOfLocalDay("2026-05-15"));
     expect(args).not.toHaveProperty("graceMinutes");
   });
 
@@ -387,7 +1117,12 @@ describe("staffPerformance core formula", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-10T12:00:00.000Z"));
     await recalculateStaffPerformanceSnapshots({
-      input: { employeeId, restaurantId, periodStart: "2026-05-01", periodEnd: "2026-05-31" },
+      input: {
+        employeeId,
+        restaurantId,
+        periodStart: "2026-05-01",
+        periodEnd: "2026-05-31",
+      },
       ctx: { user: { id: "m1", roleName: "manager", fullName: "Manager" } },
     });
 
@@ -400,7 +1135,7 @@ describe("staffPerformance core formula", () => {
 
     const set = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
     expect(set.factors.unacceptedAuditEffectiveAt).toEqual(
-      new Date("2026-05-10T12:00:00.000Z"),
+      endOfLocalDay("2026-05-15"),
     );
   });
 
@@ -411,23 +1146,45 @@ describe("staffPerformance core formula", () => {
 
     expect(mocks.markUnacceptedKitchenOrderWorkItems).toHaveBeenCalledTimes(1);
     const args = mocks.markUnacceptedKitchenOrderWorkItems.mock.calls[0][0];
-    expect(args.now).toEqual(new Date("2026-05-15T23:59:59.999Z"));
+    expect(args.now).toEqual(endOfLocalDay("2026-05-15"));
     expect(args).not.toHaveProperty("graceMinutes");
 
     const set = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
     expect(set.factors.unacceptedAuditEffectiveAt).toEqual(
-      new Date("2026-05-15T23:59:59.999Z"),
+      endOfLocalDay("2026-05-15"),
     );
   });
 
   it("persists unaccepted audit metadata in factors without affecting final score", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
 
-    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValueOnce({ matchedCount: 0, modifiedCount: 0 });
+    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValueOnce({
+      matchedCount: 0,
+      modifiedCount: 0,
+    });
     const baseline = await runCalc();
 
-    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValueOnce({ matchedCount: 2, modifiedCount: 1 });
+    mocks.markUnacceptedKitchenOrderWorkItems.mockResolvedValueOnce({
+      matchedCount: 2,
+      modifiedCount: 1,
+    });
     const next = await runCalc();
 
     expect(next.factors.unacceptedAuditRefreshed).toBe(true);
@@ -440,26 +1197,68 @@ describe("staffPerformance core formula", () => {
   });
 
   it("recalculate without adjustments keeps baseFormulaScore equal finalPerformanceScore", async () => {
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T16:00:00Z") }]));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 480, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T16:00:00Z"),
+        },
+      ]),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 480,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
     const set = await runCalc();
     expect(set.factors.baseFormulaScore).toBe(set.finalPerformanceScore);
     expect(set.factors.finalAdjustmentDelta).toBe(0);
   });
 
   it("recalculate reapplies applied incident adjustments and accepted appeal reversals without double apply", async () => {
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 85, skillScore: 85 }));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 0, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: null }]));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 85, skillScore: 85 }),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 0,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: null,
+        },
+      ]),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
 
     mocks.performanceIncidentFind.mockReturnValue({
       select: vi.fn().mockReturnValue(chainLean([{ _id: "inc-1" }])),
     });
     mocks.scoreAdjustmentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "adj-1", incidentId: "inc-1", scoreDelta: -5 }])),
+      select: vi
+        .fn()
+        .mockReturnValue(
+          chainLean([{ _id: "adj-1", incidentId: "inc-1", scoreDelta: -5 }]),
+        ),
     });
     mocks.scoreReversalFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "rev-1", incidentId: "inc-1", reversalDelta: 3 }])),
+      select: vi
+        .fn()
+        .mockReturnValue(
+          chainLean([{ _id: "rev-1", incidentId: "inc-1", reversalDelta: 3 }]),
+        ),
     });
 
     const first = await runCalc();
@@ -474,14 +1273,38 @@ describe("staffPerformance core formula", () => {
   });
 
   it("only uses applied incidents from same employee/restaurant/period set", async () => {
-    mocks.reviewFindOne.mockReturnValue(chainLean({ managerRatingScore: 85, skillScore: 85 }));
-    mocks.timesheetFind.mockReturnValue(chainLean([{ workedMinutes: 0, latenessMinutes: 0, earlyLeaveMinutes: 0, actualCheckInAt: null }]));
-    mocks.shiftFind.mockReturnValue(chainLean([{ startTime: new Date("2026-05-02T08:00:00Z"), endTime: new Date("2026-05-02T08:00:00Z") }]));
+    mocks.reviewFindOne.mockReturnValue(
+      chainLean({ managerRatingScore: 85, skillScore: 85 }),
+    );
+    mocks.timesheetFind.mockReturnValue(
+      chainLean([
+        {
+          workedMinutes: 0,
+          latenessMinutes: 0,
+          earlyLeaveMinutes: 0,
+          actualCheckInAt: null,
+        },
+      ]),
+    );
+    mocks.shiftFind.mockReturnValue(
+      chainLean([
+        {
+          startTime: new Date("2026-05-02T08:00:00Z"),
+          endTime: new Date("2026-05-02T08:00:00Z"),
+        },
+      ]),
+    );
     mocks.performanceIncidentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "inc-1" }, { _id: "inc-2" }])),
+      select: vi
+        .fn()
+        .mockReturnValue(chainLean([{ _id: "inc-1" }, { _id: "inc-2" }])),
     });
     mocks.scoreAdjustmentFind.mockReturnValue({
-      select: vi.fn().mockReturnValue(chainLean([{ _id: "adj-1", incidentId: "inc-1", scoreDelta: -5 }])),
+      select: vi
+        .fn()
+        .mockReturnValue(
+          chainLean([{ _id: "adj-1", incidentId: "inc-1", scoreDelta: -5 }]),
+        ),
     });
     mocks.scoreReversalFind.mockReturnValue({
       select: vi.fn().mockReturnValue(chainLean([])),

@@ -1,6 +1,21 @@
 // src/hooks/useAvatarUploadLocal.js
 import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+import { getToken, setAuth } from "@/lib/authStorage";
+import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
+const getAuthHeader = async () => {
+  let token = getToken();
+
+  if (!token) {
+    const payload = await refreshAccessTokenOnce();
+    if (payload?.token) {
+      setAuth({ token: payload.token });
+      token = payload.token;
+    }
+  }
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 const getUploadApiBase = () => {
   const graphqlUrl = getGraphqlUrl();
   return graphqlUrl.replace(/\/graphql\/?$/, "").replace(/\/$/, "");
@@ -8,10 +23,15 @@ const getUploadApiBase = () => {
 
 export function useAvatarUploadLocal() {
   const uploadViaSignedUrl = async (file, onProgress) => {
+    const authHeader = await getAuthHeader();
+
     const signRes = await fetch(`${getUploadApiBase()}/upload/sign`, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeader,
+      },
       body: JSON.stringify({
         mimeType: file.type,
         extension: file.name.split(".").pop()?.toLowerCase(),
@@ -53,7 +73,10 @@ export function useAvatarUploadLocal() {
     const completeRes = await fetch(`${getUploadApiBase()}/upload/complete`, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeader,
+      },
       body: JSON.stringify({ key: signData.key }),
     });
     const completeData = await completeRes.json().catch(() => ({}));
@@ -66,6 +89,8 @@ export function useAvatarUploadLocal() {
   };
 
   const uploadViaLocalApi = async (file, onProgress) => {
+    const authHeader = await getAuthHeader();
+
     const form = new FormData();
     form.append("file", file, file.name);
 
@@ -73,11 +98,17 @@ export function useAvatarUploadLocal() {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${getUploadApiBase()}/upload`);
       xhr.withCredentials = true;
+
+      Object.entries(authHeader).forEach(([key, value]) => {
+        xhr.setRequestHeader(key, value);
+      });
+
       xhr.upload.onprogress = (evt) => {
         if (evt.lengthComputable && typeof onProgress === "function") {
           onProgress(Math.round((evt.loaded / evt.total) * 100));
         }
       };
+
       xhr.onload = () => {
         const status = xhr.status;
         let res;
@@ -88,6 +119,7 @@ export function useAvatarUploadLocal() {
             new Error(`Invalid server response (status ${status})`),
           );
         }
+
         if (status >= 200 && status < 300 && res?.ok && res?.url) {
           resolve(res.url);
         } else {
@@ -98,6 +130,7 @@ export function useAvatarUploadLocal() {
           );
         }
       };
+
       xhr.onerror = () => reject(new Error("Network error"));
       xhr.send(form);
     });
@@ -105,6 +138,10 @@ export function useAvatarUploadLocal() {
 
   const upload = async (file, onProgress) => {
     if (!file) throw new Error("No file selected");
+
+    if (import.meta.env.VITE_UPLOAD_MODE === "local") {
+      return uploadViaLocalApi(file, onProgress);
+    }
 
     try {
       return await uploadViaSignedUrl(file, onProgress);

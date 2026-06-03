@@ -412,7 +412,9 @@ describe("auto-created shift publish and staff visibility regression", () => {
       modifiedCount: 0,
     });
     modelMocks.KitchenShiftRosterSnapshot.insertMany.mockResolvedValue([]);
-    modelMocks.Staff.findById.mockImplementation((id) => queryResult(db.staff.find((row) => idOf(row._id) === idOf(id)) || null));
+    modelMocks.Staff.findById.mockImplementation((id) =>
+      queryResult(db.staff.find((row) => idOf(row._id) === idOf(id)) || null),
+    );
     modelMocks.Staff.find.mockImplementation((filter = {}) => {
       const ids = Array.isArray(filter?._id?.$in)
         ? filter._id.$in.map(idOf)
@@ -427,24 +429,57 @@ describe("auto-created shift publish and staff visibility regression", () => {
 
       return queryResult(rows);
     });
-    modelMocks.SchedulePublication.findOne.mockImplementation((filter) => queryResult(publicationForFilter(filter)));
-    modelMocks.SchedulePublication.find.mockImplementation((filter) => queryResult(db.publications.filter((publication) => {
-      if (filter?.restaurantId && idOf(filter.restaurantId) !== idOf(publication.restaurantId)) return false;
-      if (filter?.status?.$in && !filter.status.$in.includes(publication.status)) return false;
-      return true;
-    })));
-    modelMocks.SchedulePublication.findById.mockImplementation((id) => queryResult(db.publications.find((publication) => idOf(publication._id) === idOf(id)) || null));
-    modelMocks.SchedulePublication.findOneAndUpdate.mockImplementation((filter, update = {}) => {
-      let publication = publicationForFilter(filter);
-      if (!publication) {
-        publication = { _id: `pub-${db.publications.length + 1}`, restaurantId: idOf(filter.restaurantId), periodStart: filter.periodStart || weekStart, periodEnd: filter.periodEnd || weekEnd };
-        db.publications.push(publication);
-      }
-      Object.assign(publication, update.$setOnInsert || {}, update.$set || {});
-      if (publication.status && !publication.effectiveStatus) publication.effectiveStatus = publication.status;
-      if (publication.status === "published") publication.effectiveStatus = "published";
-      return queryResult(publication);
-    });
+    modelMocks.SchedulePublication.findOne.mockImplementation((filter) =>
+      queryResult(publicationForFilter(filter)),
+    );
+    modelMocks.SchedulePublication.find.mockImplementation((filter) =>
+      queryResult(
+        db.publications.filter((publication) => {
+          if (
+            filter?.restaurantId &&
+            idOf(filter.restaurantId) !== idOf(publication.restaurantId)
+          )
+            return false;
+          if (
+            filter?.status?.$in &&
+            !filter.status.$in.includes(publication.status)
+          )
+            return false;
+          return true;
+        }),
+      ),
+    );
+    modelMocks.SchedulePublication.findById.mockImplementation((id) =>
+      queryResult(
+        db.publications.find(
+          (publication) => idOf(publication._id) === idOf(id),
+        ) || null,
+      ),
+    );
+    modelMocks.SchedulePublication.findOneAndUpdate.mockImplementation(
+      (filter, update = {}) => {
+        let publication = publicationForFilter(filter);
+        if (!publication) {
+          publication = {
+            _id: `pub-${db.publications.length + 1}`,
+            restaurantId: idOf(filter.restaurantId),
+            periodStart: filter.periodStart || weekStart,
+            periodEnd: filter.periodEnd || weekEnd,
+          };
+          db.publications.push(publication);
+        }
+        Object.assign(
+          publication,
+          update.$setOnInsert || {},
+          update.$set || {},
+        );
+        if (publication.status && !publication.effectiveStatus)
+          publication.effectiveStatus = publication.status;
+        if (publication.status === "published")
+          publication.effectiveStatus = "published";
+        return queryResult(publication);
+      },
+    );
     modelMocks.SchedulePublication.findOne.mockImplementation((filter) =>
       queryResult(publicationForFilter(filter)),
     );
@@ -694,7 +729,9 @@ describe("auto-created shift publish and staff visibility regression", () => {
       publication.effectiveStatus || publication.status,
     );
     expect(db.publications[0].status).toBe("published");
-    expect(modelMocks.AvailabilityRegistrationWindow.updateOne).toHaveBeenCalledWith(
+    expect(
+      modelMocks.AvailabilityRegistrationWindow.updateOne,
+    ).toHaveBeenCalledWith(
       {
         restaurantId: expect.objectContaining({ value: "rest-1" }),
         periodStart: weekStart,
