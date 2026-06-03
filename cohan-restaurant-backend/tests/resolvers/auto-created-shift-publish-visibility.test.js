@@ -232,8 +232,18 @@ vi.mock("mongoose", () => ({
   },
 }));
 
-const weekStart = new Date("2026-06-01T00:00:00.000Z");
-const weekEnd = new Date("2026-06-07T23:59:59.999Z");
+const localStartOfDay = (value) => {
+  const [year, month, day] = String(value).split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+};
+
+const localEndOfDay = (value) => {
+  const [year, month, day] = String(value).split("-").map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999);
+};
+
+const weekStart = localStartOfDay("2026-06-01");
+const weekEnd = localEndOfDay("2026-06-07");
 const managerCtx = {
   user: { id: "manager-1", roles: ["manager"], refRestaurants: ["rest-1"] },
 };
@@ -718,8 +728,8 @@ describe("auto-created shift publish and staff visibility regression", () => {
       {
         input: {
           restaurantId: "rest-1",
-          periodStart: weekStart.toISOString(),
-          periodEnd: weekEnd.toISOString(),
+          periodStart: "2026-06-01",
+          periodEnd: "2026-06-07",
         },
       },
       managerCtx,

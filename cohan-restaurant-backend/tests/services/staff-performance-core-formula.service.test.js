@@ -61,7 +61,7 @@ function snapshotDoc() {
     employeeId: { _id: employeeId, fullName: "NV A", employeeCode: "E01" },
     restaurantId,
     periodStart: new Date("2026-05-01T00:00:00.000Z"),
-    periodEnd: new Date("2026-05-15T23:59:59.999Z"),
+    periodEnd: endOfLocalDay("2026-05-15"),
   };
 }
 
@@ -1135,7 +1135,7 @@ describe("staffPerformance core formula", () => {
 
     const set = mocks.snapshotFindOneAndUpdate.mock.calls.at(-1)[1].$set;
     expect(set.factors.unacceptedAuditEffectiveAt).toEqual(
-      endOfLocalDay("2026-05-15"),
+      new Date("2026-05-10T12:00:00.000Z"),
     );
   });
 

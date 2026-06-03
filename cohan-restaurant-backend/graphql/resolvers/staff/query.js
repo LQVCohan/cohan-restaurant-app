@@ -1574,6 +1574,13 @@ export default {
       .sort({ workDate: -1, createdAt: -1 })
       .lean();
 
+    const existingShiftIds = new Set(
+      timesheets
+        .map((ts) => ts.shiftId?._id || ts.shiftId)
+        .filter(Boolean)
+        .map((id) => String(id)),
+    );
+
     const existingKey = new Set(
       timesheets.map((ts) => {
         const day = new Date(ts.workDate).toISOString().slice(0, 10);
@@ -1586,6 +1593,8 @@ export default {
     const records = [...timesheets];
 
     for (const shift of shifts) {
+      if (existingShiftIds.has(String(shift._id))) continue;
+
       const day = new Date(shift.startTime).toISOString().slice(0, 10);
       const key = `${String(shift.employeeId)}|${day}|${String(shift._id)}`;
       if (existingKey.has(key)) continue;
