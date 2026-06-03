@@ -1,9 +1,11 @@
 # Demo scheduling/attendance/performance (PR21)
 
 ## Mục tiêu
+
 Seed dữ liệu demo **idempotent** cho toàn bộ luồng scheduling → attendance → payroll validation → performance → appeal/reversal.
 
 ## Chạy seed
+
 ```bash
 cd cohan-restaurant-backend
 npm run seed:demo:scheduling
@@ -13,25 +15,30 @@ npm run verify:demo:performance
 ```
 
 ### Recommended flow
+
 ```bash
 npm run seed:demo:scheduling -- --reset
 npm run verify:demo:performance
 ```
 
 ### Gán seed vào nhà hàng hiện có (không sửa profile nhà hàng)
+
 > Khi truyền `DEMO_RESTAURANT_ID`, script chỉ dùng `_id` của nhà hàng để gắn dữ liệu demo và **không sửa** `name/address/description` của nhà hàng đó.
 
 **Windows PowerShell**
+
 ```powershell
 $env:DEMO_RESTAURANT_ID="69ce9e2e8d8d711f12e251b1"; npm run seed:demo:scheduling
 ```
 
 **Windows CMD**
+
 ```cmd
 set DEMO_RESTAURANT_ID=69ce9e2e8d8d711f12e251b1 && npm run seed:demo:scheduling
 ```
 
 **macOS/Linux**
+
 ```bash
 DEMO_RESTAURANT_ID=69ce9e2e8d8d711f12e251b1 npm run seed:demo:scheduling
 ```
@@ -39,6 +46,7 @@ DEMO_RESTAURANT_ID=69ce9e2e8d8d711f12e251b1 npm run seed:demo:scheduling
 > Chỉ dùng local/dev. Không dùng production.
 
 ## Demo accounts
+
 - admin.demo@cohan.local (ADMIN)
 - manager.demo@cohan.local (MANAGER)
 - hr.demo@cohan.local (HR)
@@ -50,6 +58,7 @@ DEMO_RESTAURANT_ID=69ce9e2e8d8d711f12e251b1 npm run seed:demo:scheduling
 Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 
 ## Dữ liệu demo
+
 - Restaurant:
   - Nếu có `DEMO_RESTAURANT_ID`: dùng nhà hàng hiện có theo `_id` và không chỉnh sửa profile.
   - Nếu không có `DEMO_RESTAURANT_ID`: tạo/reuse demo restaurant riêng với tên **Cohan Demo Restaurant - District 1** và description chứa `DEMO_TAG`.
@@ -58,6 +67,7 @@ Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 - Schedule status: published.
 
 ## Kịch bản demo E2E
+
 1. Manager vào `/manager` kiểm tra schedule đã publish.
 2. Staff vào route schedule/attendance để xem ca và chấm công.
 3. Manager kiểm tra off-schedule pending.
@@ -71,6 +81,7 @@ Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 11. Kiểm tra notifications (unread/read).
 
 ## Expected results chính
+
 - Có ca hợp lệ, ca unavailable-warning, acknowledgement accepted/declined.
 - Có timesheet đúng lịch, đi trễ, về sớm, off-schedule pending.
 - Có correction pending + applied.
@@ -79,15 +90,16 @@ Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 - Có incidents ở các trạng thái pending/eligible/applied/waived/reversed.
 - Có appeal accepted và score reversal.
 
-
 ## Pre-release commands
 
 From repo root:
+
 ```bash
 npm run test:performance
 ```
 
 From backend:
+
 ```bash
 cd cohan-restaurant-backend
 npm run seed:demo:scheduling -- --reset
@@ -95,9 +107,9 @@ npm run verify:demo:performance
 ```
 
 ## Ghi chú
+
 - PR21 không thay payroll runtime, scoring rule, lifecycle core.
 - Nếu thiếu biến môi trường DB (`MONGO_URI`/`MONGO_DB`) thì script không thể seed dữ liệu thật; vẫn có thể check syntax/import bằng lệnh node.
-
 
 ## Demo script safety
 
