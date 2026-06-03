@@ -16,6 +16,7 @@ const modelMocks = vi.hoisted(() => ({
   Promotion: { countDocuments: vi.fn() },
   Staff: { countDocuments: vi.fn(), find: vi.fn() },
   Review: { find: vi.fn() },
+  KitchenOrderWorkItem: { find: vi.fn() },
 }));
 
 const guardMocks = vi.hoisted(() => ({
@@ -46,6 +47,13 @@ vi.mock("mongoose", () => ({
   },
 }));
 
+function buildLeanSelectChain(rows = []) {
+  return {
+    select: vi.fn().mockReturnThis(),
+    lean: vi.fn().mockResolvedValue(rows),
+  };
+}
+
 function buildFindChain(rows = []) {
   return {
     sort: vi.fn().mockReturnThis(),
@@ -65,6 +73,7 @@ describe("OrderQuery restaurant access guard", () => {
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
     guardMocks.requireRoles.mockImplementation(() => undefined);
     modelMocks.Order.findOne.mockReset();
+    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(buildLeanSelectChain([]));
   });
 
   it("order(id) returns null for invalid id without querying", async () => {
@@ -169,6 +178,83 @@ describe("OrderQuery restaurant access guard", () => {
       ],
     });
     expect(result.edges).toHaveLength(1);
+  });
+
+
+  it("enriches ordersByRestaurantNow work items only within the requested restaurant", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    const chain = buildFindChain([
+      {
+        _id: "valid-order-tenant",
+        restaurantId: "valid-r1",
+        items: [{ _id: "item-1", name: "Phở bò", status: "pending" }],
+      },
+    ]);
+    modelMocks.Order.find.mockReturnValue(chain);
+    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(
+      buildLeanSelectChain([
+        {
+          restaurantId: "valid-other-restaurant",
+          orderId: "valid-order-tenant",
+          orderItemId: "item-1",
+          station: "bar",
+          timeLevel: "very_late",
+          unaccepted: true,
+        },
+      ]),
+    );
+
+    const result = await OrderQuery.ordersByRestaurantNow(
+      null,
+      { restaurantId: "valid-r1", limit: 1 },
+      { user: { id: "manager-1", roleName: "manager" } },
+    );
+
+    expect(modelMocks.KitchenOrderWorkItem.find).toHaveBeenCalledWith({
+      restaurantId: expect.objectContaining({ value: "valid-r1" }),
+      orderId: { $in: ["valid-order-tenant"] },
+    });
+    expect(result.edges[0].node.items[0]).not.toHaveProperty("station", "bar");
+    expect(result.edges[0].node.items[0]).not.toHaveProperty("timeLevel", "very_late");
+    expect(result.edges[0].node.items[0]).not.toHaveProperty("unaccepted", true);
+  });
+
+  it("enriches ordersByRestaurantNow items with same-restaurant KitchenOrderWorkItem metadata", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    const chain = buildFindChain([
+      {
+        _id: "valid-order-tenant",
+        restaurantId: "valid-r1",
+        items: [{ _id: "item-1", name: "Trà đào", status: "preparing" }],
+      },
+    ]);
+    modelMocks.Order.find.mockReturnValue(chain);
+    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(
+      buildLeanSelectChain([
+        {
+          restaurantId: "valid-r1",
+          orderId: "valid-order-tenant",
+          orderItemId: "item-1",
+          station: "bar",
+          targetPrepMinutes: 10,
+          timeLevel: "late",
+          unaccepted: false,
+        },
+      ]),
+    );
+
+    const result = await OrderQuery.ordersByRestaurantNow(
+      null,
+      { restaurantId: "valid-r1", limit: 1 },
+      { user: { id: "manager-1", roleName: "manager" } },
+    );
+
+    expect(result.edges[0].node.items[0]).toMatchObject({
+      station: "bar",
+      targetPrepMinutes: 10,
+      timeLevel: "late",
+      unaccepted: false,
+    });
   });
 
   it("blocks ordersByRestaurantNow when access is denied", async () => {

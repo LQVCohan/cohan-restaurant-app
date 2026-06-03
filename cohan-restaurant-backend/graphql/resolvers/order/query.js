@@ -182,15 +182,23 @@ function buildWorkItemKey(orderId, orderItemId) {
   return `${String(orderId)}:${String(orderItemId)}`;
 }
 
-async function attachKitchenWorkItemInfoToOrders({ orders }) {
+function sameId(left, right) {
+  return Boolean(left && right && String(left) === String(right));
+}
+
+async function attachKitchenWorkItemInfoToOrders({ rid, orders }) {
   const slice = orders || [];
-  if (!slice.length) return slice;
+  if (!rid || !slice.length) return slice;
 
   const orderIds = slice.map((order) => order?._id).filter(Boolean);
   if (!orderIds.length) return slice;
 
-  const workItems = await KitchenOrderWorkItem.find({ orderId: { $in: orderIds } })
+  const workItems = await KitchenOrderWorkItem.find({
+    restaurantId: rid,
+    orderId: { $in: orderIds },
+  })
     .select({
+      restaurantId: 1,
       orderId: 1,
       orderItemId: 1,
       station: 1,
@@ -208,6 +216,7 @@ async function attachKitchenWorkItemInfoToOrders({ orders }) {
 
   const byOrderItem = new Map(
     workItems
+      .filter((workItem) => sameId(workItem?.restaurantId, rid))
       .map((workItem) => [buildWorkItemKey(workItem.orderId, workItem.orderItemId), workItem])
       .filter(([key]) => Boolean(key)),
   );
@@ -308,6 +317,7 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
   const lastCursor = slice.length ? String(slice[slice.length - 1]._id) : null;
 
   const withKitchenWorkItems = await attachKitchenWorkItemInfoToOrders({
+    rid,
     orders: slice,
   });
 

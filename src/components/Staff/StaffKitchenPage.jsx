@@ -338,8 +338,8 @@ const StaffKitchenPage = () => {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Temporary staff kitchen wrapper: reuse the existing order-management hook only,
-          without rendering the manager OrderManagement screen or its admin/cashier actions. */}
+      {/* Staff kitchen/bar dispatch board reuses the order-management hook
+          without rendering manager/cashier order actions. */}
       <div className="mb-5 flex flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
