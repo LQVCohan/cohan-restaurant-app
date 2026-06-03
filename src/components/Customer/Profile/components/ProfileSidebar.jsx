@@ -1,11 +1,56 @@
-import React, { useRef } from "react";
-import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
+import React, { useEffect, useRef, useState } from "react";
+import { validateAvatarFile } from "@/utils/compressAvatar";
 import "./ProfileSidebar.scss";
 
-const ProfileSidebar = ({ user, activeTab, setActiveTab, isEditMode }) => {
+const ProfileSidebar = ({
+  user,
+  activeTab,
+  setActiveTab,
+  isEditMode,
+  onAvatarChange,
+}) => {
   const fileInputRef = useRef(null);
+  const [preview, setPreview] = useState(null);
 
-  const { preview, handleFileChange } = useAvatarUploadLocal();
+  useEffect(() => {
+    if (isEditMode) return undefined;
+
+    setPreview((currentPreview) => {
+      if (currentPreview) URL.revokeObjectURL(currentPreview);
+      return null;
+    });
+    onAvatarChange?.(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    return undefined;
+  }, [isEditMode, onAvatarChange]);
+
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview]
+  );
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      validateAvatarFile(file);
+    } catch (error) {
+      alert(error.message);
+      event.target.value = "";
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreview((currentPreview) => {
+      if (currentPreview) URL.revokeObjectURL(currentPreview);
+      return objectUrl;
+    });
+    onAvatarChange?.(file);
+  };
 
   const displayAvatar =
     preview ||
@@ -26,7 +71,14 @@ const ProfileSidebar = ({ user, activeTab, setActiveTab, isEditMode }) => {
         <div className="card-content">
           <div className="avatar-area">
             <div className="avatar-ring">
-              <img src={displayAvatar} alt="Avatar" className="user-avatar" />
+              <img
+                src={displayAvatar}
+                alt="Avatar"
+                className="user-avatar"
+                width="120"
+                height="120"
+                decoding="async"
+              />
             </div>
             {isEditMode && (
               <button

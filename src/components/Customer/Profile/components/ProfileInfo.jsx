@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQuery, gql } from "@apollo/client";
 import { useVnAddressLazy } from "@/hooks/useVnAddressLazy"; // Đảm bảo đường dẫn đúng
+import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
+import { compressAvatar } from "@/utils/compressAvatar";
 import "./ProfileInfo.scss";
 
 // --- GRAPHQL MUTATION ---
@@ -56,8 +58,16 @@ const MY_WALLET_TRANSACTIONS = gql`
   }
 `;
 
-const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
+const ProfileInfo = ({
+  user,
+  isEditMode,
+  setIsEditMode,
+  refetchUser,
+  newAvatarFile,
+}) => {
   const [updateUser, { loading: updating }] = useMutation(UPDATE_USER);
+  const { upload } = useAvatarUploadLocal();
+  const [savingProfile, setSavingProfile] = useState(false);
   const [createWallet, { loading: creatingWallet }] =
     useMutation(CREATE_WALLET);
   const { data: txData, refetch: refetchTx } = useQuery(MY_WALLET_TRANSACTIONS, {
@@ -159,13 +169,30 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
   };
 
   const handleSave = async () => {
+    if (savingProfile || updating) return;
+
+    setSavingProfile(true);
     try {
+      let avatarUrl = user.avatarUrl || "";
+
+      if (newAvatarFile) {
+        try {
+          const compressedAvatar = await compressAvatar(newAvatarFile);
+          avatarUrl = await upload(compressedAvatar);
+        } catch (uploadError) {
+          throw new Error(
+            uploadError?.message ||
+              "Không thể tải ảnh đại diện. Vui lòng thử lại sau."
+          );
+        }
+      }
+
       await updateUser({
         variables: {
           input: {
             fullName: formData.fullName,
             phone: formData.phone,
-            avatarUrl: user.avatarUrl, // Giữ nguyên avatar cũ (Sidebar xử lý upload riêng)
+            avatarUrl,
             address: {
               line1: formData.line1,
               city: formData.city,
@@ -177,11 +204,13 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
         },
       });
       alert("Cập nhật hồ sơ thành công!");
+      await refetchUser?.();
       setIsEditMode(false);
-      refetchUser();
     } catch (err) {
       console.error(err);
       alert("Lỗi cập nhật: " + err.message);
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -223,9 +252,9 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
             <button
               className="btn-save"
               onClick={handleSave}
-              disabled={updating}
+              disabled={updating || savingProfile}
             >
-              {updating ? "Đang lưu..." : "Lưu thay đổi"}
+              {updating || savingProfile ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
         )}

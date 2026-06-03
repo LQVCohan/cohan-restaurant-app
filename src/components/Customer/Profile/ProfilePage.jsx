@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileInfo from "./components/ProfileInfo";
@@ -65,6 +65,16 @@ const ProfilePage = () => {
 
   const user = useMemo(() => data?.me, [data]);
 
+  const handleAvatarChange = useCallback((file) => {
+    setTempAvatarFile(file);
+  }, []);
+
+  const handleRefetchUser = useCallback(async () => {
+    const result = await refetch();
+    setTempAvatarFile(null);
+    return result;
+  }, [refetch]);
+
   if (loading)
     return (
       <div className="profile-loading">
@@ -86,7 +96,7 @@ const ProfilePage = () => {
             setIsEditMode(false);
           }}
           isEditMode={isEditMode}
-          onAvatarChange={(file) => setTempAvatarFile(file)}
+          onAvatarChange={handleAvatarChange}
         />
 
         {/* Content Area */}
@@ -96,7 +106,7 @@ const ProfilePage = () => {
               user={user}
               isEditMode={isEditMode}
               setIsEditMode={setIsEditMode}
-              refetchUser={refetch}
+              refetchUser={handleRefetchUser}
               newAvatarFile={tempAvatarFile}
             />
           )}
