@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { buildCartLineIdentity } from "./useCart";
 import {
   formatHoldCountdown,
@@ -44,5 +44,80 @@ describe("cart hold helpers", () => {
       { holdExpiresAt: "2026-05-27T10:03:00.000Z", holdStatus: "active" },
     ];
     expect(hasExpiredHoldItems(cart, now)).toBe(false);
+  });
+});
+
+import { act, renderHook } from "@testing-library/react";
+import { useCart, isHoldExpired } from "./useCart";
+
+afterEach(() => {
+  window.sessionStorage.clear();
+});
+
+describe("useCart operations", () => {
+  it("adds items, merges identical variant/modifier/note lines, and totals cart", () => {
+    const { result } = renderHook(() => useCart());
+    const item = {
+      id: "dish-1",
+      restaurantId: "restaurant-1",
+      servingVariantKey: "large",
+      modifiers: [{ groupId: "spice", optionId: "medium" }],
+      note: "ít hành",
+      price: 50000,
+      quantity: 1,
+    };
+
+    act(() => {
+      result.current.addToCart(item);
+      result.current.addToCart({ ...item, quantity: 2 });
+    });
+
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.cart[0].quantity).toBe(3);
+    expect(result.current.getTotalItems()).toBe(3);
+    expect(result.current.getTotalPrice()).toBe(150000);
+  });
+
+  it("keeps different modifiers as separate cart lines and removes by line identity", () => {
+    const { result } = renderHook(() => useCart());
+    const base = { id: "dish-1", restaurantId: "restaurant-1", servingVariantKey: "portion", price: 40000 };
+
+    act(() => {
+      result.current.addToCart({ ...base, modifiers: [{ groupId: "sauce", optionId: "a" }] });
+      result.current.addToCart({ ...base, modifiers: [{ groupId: "sauce", optionId: "b" }] });
+    });
+
+    expect(result.current.cart).toHaveLength(2);
+
+    act(() => {
+      result.current.removeFromCart(result.current.cart[0]);
+    });
+
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.cart[0].modifiers[0].optionId).toBe("b");
+  });
+
+  it("updates quantity and removes a line when quantity reaches zero", () => {
+    const { result } = renderHook(() => useCart());
+
+    act(() => {
+      result.current.addToCart({ id: "dish-1", restaurantId: "restaurant-1", price: 30000, quantity: 2 });
+    });
+    act(() => {
+      result.current.updateQuantity(result.current.cart[0], -1);
+    });
+    expect(result.current.cart[0].quantity).toBe(1);
+
+    act(() => {
+      result.current.updateQuantity(result.current.cart[0], -1);
+    });
+    expect(result.current.cart).toHaveLength(0);
+  });
+
+  it("detects expired backend holds deterministically", () => {
+    const now = new Date("2026-06-03T12:00:00.000Z").getTime();
+    expect(isHoldExpired({ holdExpiresAt: "2026-06-03T11:59:59.000Z" }, now)).toBe(true);
+    expect(isHoldExpired({ holdExpiresAt: "2026-06-03T12:00:01.000Z" }, now)).toBe(false);
+    expect(isHoldExpired({ holdExpiresAt: null }, now)).toBe(false);
   });
 });

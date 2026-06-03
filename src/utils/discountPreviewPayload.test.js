@@ -98,3 +98,49 @@ describe("discountPreviewPayload", () => {
     expect(getDiscountBreakdownTotal(null, 100000)).toBe(100000);
   });
 });
+
+describe("checkout/order payload safety", () => {
+  it("does not leak analytics, FOR YOU local data, or hold refs unless explicitly requested", () => {
+    const item = mapCartItemToOrderItemInput({
+      id: "dish-1",
+      name: "Phở bò",
+      price: 70000,
+      quantity: 1,
+      backendCartId: "cart-1",
+      backendCartItemId: "cart-item-1",
+      analytics: { source: "for_you" },
+      forYouReason: "preference",
+      behaviorScore: 100,
+      selectedModifiers: [{ groupId: "g1", optionId: "o1", label: "extra" }],
+    });
+
+    expect(item).toEqual(
+      expect.objectContaining({
+        dishId: "dish-1",
+        menuId: "dish-1",
+        selectedModifiers: [{ groupId: "g1", optionId: "o1" }],
+      }),
+    );
+    expect(item).not.toHaveProperty("analytics");
+    expect(item).not.toHaveProperty("forYouReason");
+    expect(item).not.toHaveProperty("behaviorScore");
+    expect(item).not.toHaveProperty("cartId");
+    expect(item).not.toHaveProperty("cartItemId");
+  });
+
+  it("includes backend cart hold references only for checkout calls that opt in", () => {
+    const item = mapCartItemToOrderItemInput(
+      {
+        id: "dish-1",
+        name: "Phở bò",
+        price: 70000,
+        backendCartId: "cart-1",
+        backendCartItemId: "cart-item-1",
+      },
+      { includeCartHoldRef: true },
+    );
+
+    expect(item.cartId).toBe("cart-1");
+    expect(item.cartItemId).toBe("cart-item-1");
+  });
+});

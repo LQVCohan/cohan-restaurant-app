@@ -1,0 +1,54 @@
+{
+  "accounts": [
+    {
+      "roleName": "customer",
+      "email": "customer.test@cohan.local",
+      "password": "Use local test secret manager; do not commit real password",
+      "foodPreferences": {
+        "diet": ["balanced"],
+        "allergies": [],
+        "habits": { "noOnion": false, "noCilantro": false, "sugar": 50, "spice": "Vừa", "ice": "normal" }
+      }
+    },
+    {
+      "roleName": "customer",
+      "email": "allergy.customer.test@cohan.local",
+      "password": "Use local test secret manager; do not commit real password",
+      "foodPreferences": {
+        "diet": ["balanced"],
+        "allergies": ["seafood", "peanut"],
+        "habits": { "noOnion": true, "noCilantro": true, "sugar": 30, "spice": "Không", "ice": "less" }
+      }
+    },
+    { "roleName": "manager", "email": "manager.test@cohan.local", "password": "Use local test secret manager; do not commit real password" },
+    { "roleName": "admin", "email": "admin.test@cohan.local", "password": "Use local test secret manager; do not commit real password" }
+  ],
+  "restaurants": [
+    { "id": "test-restaurant-active", "name": "Cohan Smoke Bistro", "status": "active", "openingHours": "08:00", "closingHours": "22:00" },
+    { "id": "test-restaurant-inactive", "name": "Cohan Inactive Fixture", "status": "inactive", "openingHours": "08:00", "closingHours": "18:00" }
+  ],
+  "menus": [
+    { "id": "test-menu-breakfast", "restaurantId": "test-restaurant-active", "timeSlot": "breakfast" },
+    { "id": "test-menu-lunch", "restaurantId": "test-restaurant-active", "timeSlot": "lunch" },
+    { "id": "test-menu-dinner", "restaurantId": "test-restaurant-active", "timeSlot": "dinner" }
+  ],
+  "categories": [
+    { "id": "test-category-noodle", "name": "Noodle", "restaurantId": "test-restaurant-active" },
+    { "id": "test-category-vegan", "name": "Vegan", "restaurantId": "test-restaurant-active" }
+  ],
+  "menuItems": [
+    { "id": "test-menu-pho", "name": "Smoke Test Phở", "metadataState": "complete", "allergenTags": [], "dietTags": [], "orderCounter": 120, "inventoryStatus": "IN_STOCK" },
+    { "id": "test-menu-missing-meta", "name": "Smoke Test Missing Metadata", "metadataState": "missing", "allergenTags": null, "dietTags": null, "inventoryStatus": "IN_STOCK" },
+    { "id": "test-menu-seafood", "name": "Smoke Test Seafood Soup", "metadataState": "complete", "allergenTags": ["seafood"], "dietTags": [], "inventoryStatus": "IN_STOCK" },
+    { "id": "test-menu-vegan", "name": "Smoke Test Vegan Bowl", "metadataState": "complete", "allergenTags": [], "dietTags": ["vegan"], "inventoryStatus": "LOW_STOCK" },
+    { "id": "test-menu-popular", "name": "Smoke Test Popular Rice", "metadataState": "complete", "allergenTags": [], "dietTags": [], "orderCounter": 250, "inventoryStatus": "IN_STOCK" },
+    { "id": "test-menu-out-of-stock", "name": "Smoke Test Sold Out", "metadataState": "complete", "allergenTags": [], "dietTags": [], "inventoryStatus": "OUT_OF_STOCK" },
+    { "id": "test-menu-breakfast", "name": "Smoke Test Breakfast Bánh Mì", "metadataState": "partial", "allergenTags": ["egg"], "dietTags": [], "inventoryStatus": "IN_STOCK" },
+    { "id": "test-menu-dessert", "name": "Smoke Test Dessert", "metadataState": "partial", "allergenTags": ["milk"], "dietTags": [], "inventoryStatus": "IN_STOCK" }
+  ],
+  "promotions": [
+    { "code": "VALID10", "status": "active", "minOrderValue": 50000, "stackable": false },
+    { "code": "EXPIRED10", "status": "expired", "minOrderValue": 50000, "stackable": false },
+    { "code": "STACK5", "status": "active", "minOrderValue": 0, "stackable": true }
+  ]
+}

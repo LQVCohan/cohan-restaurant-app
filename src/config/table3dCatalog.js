@@ -280,21 +280,37 @@ export const getModelAssetSummary = (model) => {
 export const getModelAssetBadges = (model) => {
   if (!model) return [];
   const badges = [];
+  const hasModel = canOpenModelViewerAr(model);
+  const customKind = String(model.customModelKind || "").toLowerCase();
+  const source = String(model.source || model.sourceType || "").toLowerCase();
+  const isCustom = Boolean(
+    model.customModelSpec ||
+      customKind ||
+      ["user-upload", "ai-generated"].includes(source),
+  );
 
-  if (model.customModelKind === "parametric") {
-    badges.push("Custom");
-  } else if (model.customModelKind === "url") {
-    badges.push("URL model");
-  } else if (model.customModelKind === "upload") {
-    badges.push("Uploaded");
-  } else if (model.customModelKind === "ai") {
-    badges.push("AI");
-  } else if (model.fallbackKind === "placeholder") {
-    badges.push("Preview only");
+  if (isCustom) badges.push("Custom");
+  if (customKind.includes("ai") || source.includes("ai")) badges.push("AI");
+  if (customKind === "upload" || source.includes("upload")) badges.push("Upload");
+
+  if (hasModel) {
+    badges.push("3D", "AR", "Online");
   } else {
-    badges.push("3D/AR");
+    badges.push("Placeholder");
   }
 
   if (model.licenseLabel) badges.push(model.licenseLabel);
-  return badges;
+  return [...new Set(badges)];
+};
+
+export const getModelAssetSummary = (model) => {
+  const has3DModel = canOpenModelViewerAr(model);
+  return {
+    has3DModel,
+    arReady: has3DModel,
+    source: model?.source || model?.sourceLabel || "",
+    modelKey: model?.key || "",
+    badges: getModelAssetBadges(model),
+    dimensionsLabel: formatDimensionsCm(model?.dimensionsCm),
+  };
 };
