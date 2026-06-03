@@ -82,8 +82,15 @@ const RecentOrders = ({
 
       <div className={bodyClass}>
         {loading ? (
-          <div className="empty-state">
-            <p>Đang tải dữ liệu...</p>
+          <div className="orders-skeleton" role="status" aria-live="polite">
+            {[0, 1, 2, 3].map((item) => (
+              <div className="orders-skeleton__row" key={item}>
+                <span />
+                <span />
+                <span />
+              </div>
+            ))}
+            <p className="sr-only">Đang tải dữ liệu đơn hàng</p>
           </div>
         ) : null}
 
@@ -147,22 +154,20 @@ const RecentOrders = ({
           visibleOrders.map((order) => {
             const statusRaw = String(order?.status || "").toLowerCase();
             const statusClass = STATUS_CLASS[statusRaw] || "unknown";
+            const displayCode = order?.orderCode ? `#${order.orderCode}` : "Đơn chưa có mã";
+            const tableOrType = order?.tableCode || order?.tableName || order?.orderType || "Tại quầy";
 
             return (
               <div
                 className={`order-row order-row--${statusClass}`}
-                key={order.id}
+                key={order.id || order.orderCode}
               >
                 <div className="order-row__main">
-                  <p
-                    className="order-code"
-                    title={`#${order.orderCode || order.id}`}
-                  >
-                    #{order.orderCode || order.id}
+                  <p className="order-code" title={displayCode}>
+                    {displayCode}
                   </p>
                   <p className="order-meta">
-                    {order.customerName || "Khách"} •{" "}
-                    {order.tableCode || order.orderType || "Tại quầy"}
+                    {order.customerName || "Khách"} • {tableOrType}
                   </p>
                 </div>
 
