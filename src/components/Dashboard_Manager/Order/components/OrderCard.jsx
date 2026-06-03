@@ -155,6 +155,15 @@ const OrderCard = ({
 
   const statusLabel = getOrderStatusLabel(order?.currentStatus);
   const batchTitle = getBatchTitle(order);
+  const progressStep = Math.max(0, Math.min(100, Math.round(progress / 10) * 10));
+  const orderDisplayCode = order?.orderCode || order?.id || "Chưa có mã";
+
+  const handleCardKeyDown = (e) => {
+    if (["Enter", " "].includes(e.key)) {
+      e.preventDefault();
+      onViewOrder?.(order);
+    }
+  };
 
   const handleAction = async (e, status) => {
     e.stopPropagation();
@@ -184,6 +193,7 @@ const OrderCard = ({
           return (
             <div className="oc-actions-grid">
               <button
+                type="button"
                 className="oc-btn secondary"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -193,6 +203,7 @@ const OrderCard = ({
                 Xem chi tiết khách
               </button>
               <button
+                type="button"
                 className="oc-btn secondary"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -202,6 +213,7 @@ const OrderCard = ({
                 Xem ghi chú/món
               </button>
               <button
+                type="button"
                 className="oc-btn secondary cancel"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -211,12 +223,14 @@ const OrderCard = ({
                 Từ chối đơn
               </button>
               <button
+                type="button"
                 className="oc-btn primary"
                 onClick={(e) => handleAction(e, "confirmed")}
               >
                 <Check size={16} /> Xác nhận đơn
               </button>
               <button
+                type="button"
                 className="oc-btn secondary"
                 disabled={!order?.clientMeta?.chatThreadId}
                 onClick={(e) => {
@@ -232,12 +246,14 @@ const OrderCard = ({
         return (
           <div className="oc-actions-grid">
             <button
+              type="button"
               className="oc-btn secondary cancel"
               onClick={(e) => handleAction(e, "cancelled")}
             >
               Hủy
             </button>
             <button
+              type="button"
               className="oc-btn primary"
               onClick={(e) => handleAction(e, "preparing")}
             >
@@ -248,6 +264,7 @@ const OrderCard = ({
       case "preparing":
         return (
           <button
+            type="button"
             className="oc-btn success"
             onClick={(e) => handleAction(e, "ready")}
           >
@@ -257,6 +274,7 @@ const OrderCard = ({
       case "ready":
         return (
           <button
+            type="button"
             className="oc-btn primary-outline"
             onClick={(e) => handleAction(e, "served")}
           >
@@ -286,6 +304,10 @@ const OrderCard = ({
         isFocusMode ? "mode-focus" : ""
       } ${statusColorClass} ${order?.currentStatus}`}
       onClick={() => onViewOrder?.(order)}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Mở chi tiết đơn ${orderDisplayCode}`}
     >
       <div className="oc-status-strip"></div>
 
@@ -298,6 +320,8 @@ const OrderCard = ({
           >
             {orderLocationLabel}
           </div>
+
+          <span className="oc-order-code">{orderDisplayCode}</span>
 
           <span
             className={`oc-status-pill oc-status-pill--${order?.currentStatus || "unknown"}`}
@@ -332,26 +356,17 @@ const OrderCard = ({
           <span className="name">{customerName}</span>
         </div>
         {isPaymentRequested && (
-          <div
-            className="oc-note-badge"
-            style={{ marginBottom: 6, color: "#15803d" }}
-          >
+          <div className="oc-note-badge oc-note-badge--payment">
             Khách gọi thanh toán
           </div>
         )}
         {hasPendingVoidRequest && (
-          <div
-            className="oc-note-badge"
-            style={{ marginBottom: 6, color: "#b45309" }}
-          >
+          <div className="oc-note-badge oc-note-badge--void">
             Có yêu cầu hủy món
           </div>
         )}
         {hasPendingReturnRequest && (
-          <div
-            className="oc-note-badge"
-            style={{ marginBottom: 6, color: "#0369a1" }}
-          >
+          <div className="oc-note-badge oc-note-badge--return">
             Có yêu cầu trả lại món
           </div>
         )}
@@ -366,8 +381,11 @@ const OrderCard = ({
       {order?.currentStatus === "preparing" && (
         <div className="oc-progress-track">
           <div
-            className="oc-progress-fill"
-            style={{ width: `${progress}%` }}
+            className={`oc-progress-fill oc-progress-fill--${progressStep}`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
           ></div>
         </div>
       )}

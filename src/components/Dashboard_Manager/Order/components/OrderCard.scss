@@ -526,3 +526,141 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     left: 100%;
   }
 }
+
+/* --- Manager operations polish --- */
+.oc-card {
+  border-color: rgba(128, 97, 61, 0.16);
+  border-radius: 18px;
+  background: #fffaf3;
+  box-shadow: 0 12px 26px rgba(71, 52, 33, 0.08);
+  color: #2b221b;
+
+  &:hover {
+    border-color: rgba(184, 147, 101, 0.52);
+    box-shadow: 0 18px 36px rgba(71, 52, 33, 0.13);
+  }
+
+  &:focus-visible,
+  &:focus-within {
+    outline: 3px solid rgba(184, 147, 101, 0.35);
+    outline-offset: 3px;
+  }
+}
+
+.oc-status-strip {
+  width: 6px;
+}
+
+.oc-card.pending .oc-status-strip { background: #d98624; }
+.oc-card.confirmed .oc-status-strip { background: #9a5f33; }
+.oc-card.preparing .oc-status-strip { background: #c0712c; }
+.oc-card.ready .oc-status-strip { background: #2f855a; }
+.oc-card.completed,
+.oc-card.served {
+  .oc-status-strip { background: #2f855a; }
+}
+.oc-card.cancelled .oc-status-strip { background: #af3f30; }
+
+.oc-header {
+  align-items: flex-start;
+  background: rgba(247, 237, 223, 0.5);
+}
+
+.oc-header-left {
+  flex-wrap: wrap;
+}
+
+.oc-order-code {
+  max-width: 10rem;
+  overflow: hidden;
+  color: #4d3725;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-table-tag {
+  background: #f2e7d8;
+  color: #4d3725;
+
+  &.takeaway {
+    background: #fff3d6;
+    color: #9a5a00;
+  }
+}
+
+.oc-status-pill {
+  border-radius: 10px;
+  font-weight: 850;
+}
+
+.oc-status-pill--pending {
+  background: #fff3d6;
+  border-color: #f0c37b;
+  color: #9a5a00;
+}
+
+.oc-status-pill--confirmed,
+.oc-status-pill--preparing {
+  background: #f4e1cb;
+  border-color: #d9a36e;
+  color: #7d431d;
+}
+
+.oc-status-pill--ready,
+.oc-status-pill--served,
+.oc-status-pill--completed {
+  background: #e7f6e8;
+  border-color: #a8d9b5;
+  color: #247443;
+}
+
+.oc-status-pill--cancelled,
+.oc-status-pill--failed {
+  background: #fde9e4;
+  border-color: #efb4aa;
+  color: #af3f30;
+}
+
+.oc-note-badge {
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+
+  &--payment { color: #247443; }
+  &--void { color: #9a5a00; }
+  &--return { color: #0f6a85; }
+}
+
+.oc-progress-fill {
+  width: 0;
+}
+@for $i from 0 through 10 {
+  .oc-progress-fill--#{$i * 10} {
+    width: #{$i * 10%};
+  }
+}
+
+.oc-btn {
+  &:focus-visible {
+    outline: 3px solid rgba(184, 147, 101, 0.4);
+    outline-offset: 2px;
+  }
+
+  &.primary {
+    background: #9a5f33;
+  }
+
+  &.success {
+    background: #2f855a;
+  }
+
+  &.secondary.cancel {
+    border-color: #efb4aa;
+    background: #fff7f5;
+    color: #af3f30;
+  }
+}
