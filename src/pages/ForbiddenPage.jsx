@@ -1,18 +1,18 @@
 // src/pages/ForbiddenPage.jsx
 import React from "react";
 import { useRouter } from "../hooks/useRouter";
-import "./ForbiddenPage.scss"; // nếu bạn muốn style riêng
+import "./ForbiddenPage.scss";
+import "./ForbiddenPage.product.css";
 
 const ForbiddenPage = () => {
   const { goBack } = useRouter();
 
   return (
-    <div className="forbidden-page flex flex-col items-center justify-center min-h-screen bg-gray-50 text-center p-6">
-      <div className="max-w-md">
-        <div className="icon text-red-500 mb-4">
+    <main className="forbidden-page-product">
+      <section className="forbidden-page-product__card">
+        <div className="forbidden-page-product__icon" aria-hidden="true">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="mx-auto h-24 w-24"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -25,23 +25,17 @@ const ForbiddenPage = () => {
             />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          403 - Truy cập bị từ chối
-        </h1>
-        <p className="text-gray-600 mb-6">
-          Bạn không có quyền truy cập vào trang này.
-          <br />
-          Vui lòng liên hệ quản trị viên hoặc quay lại trang trước.
+        <h1 className="forbidden-page-product__title">Truy cập bị từ chối</h1>
+        <p className="forbidden-page-product__text">
+          Tài khoản hiện không có quyền mở trang này. Bạn có thể quay lại trang trước hoặc liên hệ quản trị viên nếu cần hỗ trợ.
         </p>
-
-        <button
-          onClick={goBack}
-          className="px-5 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors"
-        >
-          Quay lại trang trước
-        </button>
-      </div>
-    </div>
+        <div className="forbidden-page-product__actions">
+          <button onClick={goBack} className="forbidden-page-product__button">
+            Quay lại trang trước
+          </button>
+        </div>
+      </section>
+    </main>
   );
 };
 
