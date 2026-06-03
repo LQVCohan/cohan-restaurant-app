@@ -1,0 +1,136 @@
+/* Product-ready polish for the 403/blocked access page. */
+.forbidden-page-product {
+  min-height: 100dvh;
+  padding: 96px 20px 72px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(255, 185, 115, 0.22), transparent 30rem),
+    radial-gradient(circle at 92% 2%, rgba(255, 235, 214, 0.72), transparent 34rem),
+    linear-gradient(180deg, #fffaf4 0%, #fff7ee 48%, #ffffff 100%);
+  color: #1e1915;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+}
+
+.forbidden-page-product__card {
+  width: min(560px, 100%);
+  position: relative;
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 44px);
+  border: 1px solid rgba(92, 64, 51, 0.12);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 185, 115, 0.14), transparent 22rem),
+    rgba(255, 255, 255, 0.96);
+  box-shadow: 0 30px 92px rgba(83, 46, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(18px);
+}
+
+.forbidden-page-product__card::before {
+  content: "FOODHUB ACCESS";
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 auto 14px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 102, 0, 0.16);
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #ff6600;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.forbidden-page-product__icon {
+  width: 86px;
+  height: 86px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(220, 38, 38, 0.16);
+  border-radius: 28px;
+  background: #fff1f2;
+  color: #be123c;
+  box-shadow: 0 14px 32px rgba(83, 46, 20, 0.08);
+}
+
+.forbidden-page-product__icon svg {
+  width: 44px;
+  height: 44px;
+  filter: none;
+}
+
+.forbidden-page-product__title {
+  margin: 0 0 10px;
+  color: #1e1915;
+  font-size: clamp(1.75rem, 4vw, 2.7rem);
+  line-height: 0.98;
+  letter-spacing: -0.06em;
+  font-weight: 950;
+}
+
+.forbidden-page-product__text {
+  max-width: 46ch;
+  margin: 0 auto 22px;
+  color: #766b61;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.62;
+}
+
+.forbidden-page-product__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.forbidden-page-product__button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 102, 0, 0.18);
+  border-radius: 15px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #ff6600, #ff8a3d);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 950;
+  cursor: pointer;
+  box-shadow: 0 16px 32px rgba(255, 102, 0, 0.24);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.forbidden-page-product__button:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #e65c00, #ff6600);
+  box-shadow: 0 20px 42px rgba(255, 102, 0, 0.32);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .forbidden-page-product__card {
+    animation: forbiddenProductIn 0.56s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@media (max-width: 560px) {
+  .forbidden-page-product {
+    padding: 86px 14px 48px;
+  }
+
+  .forbidden-page-product__card {
+    border-radius: 26px;
+  }
+
+  .forbidden-page-product__button {
+    width: 100%;
+  }
+}
+
+@keyframes forbiddenProductIn {
+  from { opacity: 0; transform: translateY(22px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
