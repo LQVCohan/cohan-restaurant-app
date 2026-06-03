@@ -16,7 +16,7 @@ vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
-    Types: { ObjectId: vi.fn((id) => ({ _mockObjectId: String(id) })) },
+    Types: { ObjectId: function ObjectId(id) { return { _mockObjectId: String(id) }; } },
   },
 }));
 

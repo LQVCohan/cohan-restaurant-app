@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const modelMocks = vi.hoisted(() => {
-  const TimesheetCtor = vi.fn((doc) => ({
-    ...doc,
-    _id: doc._id || '507f1f77bcf86cd799439031',
-    save: vi.fn().mockResolvedValue(undefined),
-    toObject() { return this; },
-  }));
+  const TimesheetCtor = vi.fn(function Timesheet(doc) {
+    return {
+      ...doc,
+      _id: doc._id || '507f1f77bcf86cd799439031',
+      save: vi.fn().mockResolvedValue(undefined),
+      toObject() { return this; },
+    };
+  });
 
   return {
     Staff: { findById: vi.fn(), find: vi.fn() },

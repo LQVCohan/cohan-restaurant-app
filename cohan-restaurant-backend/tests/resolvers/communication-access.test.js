@@ -9,7 +9,7 @@ const modelMocks = vi.hoisted(() => ({
 const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
 const mongooseMocks = vi.hoisted(() => ({
   isValidObjectId: vi.fn((v) => String(v).startsWith("valid-")),
-  Types: { ObjectId: vi.fn((v) => v) },
+  Types: { ObjectId: function ObjectId(v) { this.value = v; this.toString = () => String(v); } },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);

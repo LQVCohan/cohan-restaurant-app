@@ -17,7 +17,7 @@ vi.mock("../../utils/authz.js", () => ({
   hasRole: vi.fn((user, roles) => roles.includes(String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase())),
 }));
 vi.mock("mongoose", () => ({
-  default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: vi.fn((value) => value) } },
+  default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: function ObjectId(value) { this.value = value; this.toString = () => String(value); } } },
 }));
 
 const adminCtx = { user: { id: "admin-1", roleName: "admin" } };
