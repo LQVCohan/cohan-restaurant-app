@@ -150,7 +150,7 @@ async function main(){
       OvertimeRequest.deleteMany({restaurantId:restaurant._id, note:{$regex:DEMO_TAG}}),
       PerformanceIncident.deleteMany({restaurantId:restaurant._id, note:{$regex:DEMO_TAG}}),
       Notification.deleteMany({restaurantId:restaurant._id, type:{$regex:'demo_|appeal|off_schedule|correction|overtime|incident'}}),
-      ShiftAcknowledgement.deleteMany({restaurantId:restaurant._id, reason:{$regex:DEMO_TAG}}),
+      ShiftAcknowledgement.deleteMany({restaurantId:restaurant._id, $or:[{reason:{$regex:DEMO_TAG}},{note:{$regex:DEMO_TAG}}]}),
     ]);
   }
 
