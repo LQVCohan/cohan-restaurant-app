@@ -5,6 +5,7 @@
 @import "./components/Customer/OrderTracking/orderTracking.product.css";
 @import "./components/Customer/OrderTracking/publicOrderTracking.product.css";
 @import "./components/common/AiChatbotWidget.product.css";
+@import "./components/Customer/BookingTableModal/BookingModal.product.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
