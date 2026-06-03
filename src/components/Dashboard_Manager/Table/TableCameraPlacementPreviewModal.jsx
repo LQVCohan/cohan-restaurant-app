@@ -6,24 +6,17 @@ import { mapTable3DTypeToArea } from "@/config/table3dCatalog";
 import { getTableAreaLabel } from "@/utils/tableManagementOptions";
 import {
   DEFAULT_CAMERA_PLACEMENT,
-  deleteCameraPlacement,
-  hasCameraPlacement,
-  loadCameraPlacement,
   normalizeCameraPlacement,
-  saveCameraPlacement,
 } from "@/config/table3dCameraPlacementStorage";
 import "./TableCameraPlacementPreviewModal.scss";
 
-const CAMERA_ERROR_MESSAGE =
-  "Vui lòng cấp quyền camera hoặc mở bằng HTTPS.";
-
-const CAMERA_UNSUPPORTED_MESSAGE =
-  "Thiết bị/trình duyệt chưa hỗ trợ camera preview.";
+const CAMERA_ERROR_MESSAGE = "Vui lòng cấp quyền camera hoặc mở bằng HTTPS.";
+const CAMERA_UNSUPPORTED_MESSAGE = "Thiết bị/trình duyệt chưa hỗ trợ camera preview.";
 
 const CAMERA_FALLBACK_TIPS = [
   "Thử Chrome/Safari mobile nếu thiết bị hiện tại không mở được camera.",
   "Nếu model hỗ trợ, bạn vẫn có thể thử AR native từ màn mô phỏng 3D.",
-  "Bạn có thể đóng modal này và dùng preview 3D thường để kiểm tra mẫu bàn.",
+  "Bạn có thể dùng preview 3D thường để kiểm tra hình dáng mẫu bàn.",
 ];
 
 const SCALE_PRESETS = [
@@ -51,9 +44,7 @@ const formatDimensions = (dimensions) => {
   if (!dimensions || typeof dimensions !== "object") return "";
   const diameter = dimensions.diameterCm ?? dimensions.diameter;
   const height = dimensions.heightCm ?? dimensions.height;
-  if (diameter) {
-    return `Ø ${diameter} cm${height ? ` x cao ${height} cm` : ""}`;
-  }
+  if (diameter) return `Ø ${diameter} cm${height ? ` x cao ${height} cm` : ""}`;
 
   const parts = [
     dimensions.widthCm ?? dimensions.width,
@@ -62,16 +53,13 @@ const formatDimensions = (dimensions) => {
   ].filter(Boolean);
   return parts.length ? `${parts.join(" x ")} cm` : "";
 };
+
 const TableCameraPlacementPreviewModal = ({
   open,
   onClose,
   modelItem,
   initialPlacement = null,
   overrideModelSummary = null,
-  confirmLabel = "Xác nhận vị trí",
-  onConfirmPlacement,
-  placementScope = "default",
-  isConfirming = false,
   backendConfigNote = "",
 }) => {
   const videoRef = useRef(null);
@@ -80,10 +68,7 @@ const TableCameraPlacementPreviewModal = ({
   const dragRef = useRef(null);
   const [cameraError, setCameraError] = useState("");
   const [placement, setPlacement] = useState(DEFAULT_CAMERA_PLACEMENT);
-  const [placementMessage, setPlacementMessage] = useState("");
-  const [savedPlacement, setSavedPlacement] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const modelKey = modelItem?.key || "preview";
 
   const modelSummary = useMemo(() => {
     if (overrideModelSummary) {
@@ -98,6 +83,7 @@ const TableCameraPlacementPreviewModal = ({
         hasModelUrl: Boolean(overrideModelSummary.modelUrl),
       };
     }
+
     const shape = getShapeFromModel(modelItem);
     const area = modelItem?.customModelSpec?.area || mapTable3DTypeToArea(modelItem?.tableType);
     return {
@@ -116,20 +102,14 @@ const TableCameraPlacementPreviewModal = ({
   }, [modelItem, overrideModelSummary]);
 
   useEffect(() => {
-    if (!open) return;
-    setPlacement(
-      initialPlacement
-        ? normalizeCameraPlacement(initialPlacement)
-        : loadCameraPlacement(modelKey, placementScope)
-    );
-    setSavedPlacement(hasCameraPlacement(modelKey, placementScope));
-    setPlacementMessage("");
+    if (!open) return undefined;
+    setPlacement(normalizeCameraPlacement(initialPlacement || DEFAULT_CAMERA_PLACEMENT));
     setCameraError("");
     setThumbnailFailed(false);
 
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setCameraError(CAMERA_UNSUPPORTED_MESSAGE);
-      return;
+      return undefined;
     }
 
     const videoNode = videoRef.current;
@@ -157,14 +137,12 @@ const TableCameraPlacementPreviewModal = ({
     return () => {
       stopped = true;
       const stream = streamRef.current;
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      if (stream) stream.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       const currentVideoNode = videoRef.current || videoNode;
       if (currentVideoNode) currentVideoNode.srcObject = null;
     };
-  }, [open, modelKey, placementScope, initialPlacement]);
+  }, [open, initialPlacement]);
 
   const handlePointerDown = (event) => {
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -199,28 +177,29 @@ const TableCameraPlacementPreviewModal = ({
 
   const updatePlacement = (updater) => {
     setPlacement((current) =>
-      normalizeCameraPlacement(typeof updater === "function" ? updater(current) : updater)
+      normalizeCameraPlacement(typeof updater === "function" ? updater(current) : updater),
     );
   };
 
   const overlayHasThumbnail = Boolean(modelSummary.thumbnailUrl && !thumbnailFailed);
-  const confirmedPlacement = normalizeCameraPlacement(placement);
 
   return (
     <Modal isOpen={open} onClose={onClose} size="xl">
       <div className="camera-placement-modal">
         <div className="camera-placement-modal__header">
-          <h3>📷 Xem thử bằng camera</h3>
+          <h3>📷 Xem thử bàn trong không gian</h3>
           <p>
-            Đây là bản xem thử overlay thủ công để manager tự căn chỉnh mẫu bàn trong khung camera.
+            Chức năng này chỉ hiển thị mẫu bàn lên camera để ước lượng xem có hợp
+            không gian thực tế hay không. Không lưu vị trí vào sơ đồ bàn.
           </p>
           <ol className="camera-placement-modal__steps">
-            <li>Đưa camera tới vị trí thực tế muốn đặt bàn.</li>
-            <li>Kéo / xoay / phóng to mẫu bàn cho khớp không gian.</li>
-            <li>Bấm xác nhận để lưu placement.</li>
+            <li>Đưa camera tới khu vực muốn thử đặt bàn.</li>
+            <li>Kéo, xoay, phóng to/thu nhỏ mẫu bàn để tự căn chỉnh.</li>
+            <li>Đóng cửa sổ khi đã xem xong; vị trí này không liên kết với sơ đồ bàn.</li>
           </ol>
           <div className="camera-placement-modal__warning">
-            Lưu ý: đây chưa phải AR nhận diện mặt phẳng; độ chính xác phụ thuộc vào việc bạn căn chỉnh thủ công.
+            Đây là overlay thủ công, chưa phải AR nhận diện mặt phẳng và không tạo tọa độ
+            không gian thật để lưu vào hệ thống.
           </div>
         </div>
 
@@ -238,7 +217,7 @@ const TableCameraPlacementPreviewModal = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            aria-label="Overlay mô hình bàn để ước lượng vị trí"
+            aria-label="Overlay mô hình bàn để xem thử trong camera"
           >
             {overlayHasThumbnail ? (
               <img
@@ -270,7 +249,9 @@ const TableCameraPlacementPreviewModal = ({
               </ul>
             </div>
           )}
-          <div className="camera-placement-modal__hint">Kéo mẫu bàn để đặt vị trí. Dùng nút để xoay/phóng to; overlay chỉ là lớp căn chỉnh thủ công.</div>
+          <div className="camera-placement-modal__hint">
+            Kéo mẫu bàn để đặt thử. Các nút xoay/phóng to chỉ giúp căn overlay bằng mắt.
+          </div>
         </div>
 
         <div className="camera-placement-modal__controls">
@@ -314,45 +295,17 @@ const TableCameraPlacementPreviewModal = ({
               onChange={(event) => updatePlacement((p) => ({ ...p, opacity: Number(event.target.value) }))}
             />
           </label>
-          <div className="camera-placement-modal__control-group" aria-label="Lưu placement">
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement({ ...DEFAULT_CAMERA_PLACEMENT })}>Reset toàn bộ</Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                saveCameraPlacement(modelKey, placement, placementScope);
-                setSavedPlacement(true);
-                setPlacementMessage("Đã lưu vị trí xem thử trên trình duyệt này.");
-              }}
-            >
-              Lưu vị trí xem thử
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={!savedPlacement || isConfirming}
-              onClick={() => {
-                deleteCameraPlacement(modelKey, placementScope);
-                setSavedPlacement(false);
-                updatePlacement(DEFAULT_CAMERA_PLACEMENT);
-                setPlacementMessage("Đã xóa vị trí đã lưu trên trình duyệt này.");
-              }}
-            >
-              Xóa vị trí đã lưu
-            </Button>
+          <div className="camera-placement-modal__control-group" aria-label="Reset overlay">
+            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement({ ...DEFAULT_CAMERA_PLACEMENT })}>Reset overlay</Button>
           </div>
         </div>
+
         <p className="camera-placement-modal__stats">
           x: {placement.x.toFixed(1)}% • y: {placement.y.toFixed(1)}% • scale: {placement.scale.toFixed(2)} • rotation: {placement.rotation.toFixed(0)}° • opacity: {placement.opacity.toFixed(2)}
         </p>
-
         <p className="camera-placement-modal__note">
-          Bản xem trước này chưa lưu vào sơ đồ, chỉ dùng để ước lượng vị trí thực tế.
-          Vị trí lưu trên trình duyệt chỉ áp dụng cho lần xem thử tiếp theo; bấm xác nhận để đưa placement vào visualConfig của bàn.
+          Thông số trên chỉ là vị trí overlay trong khung hình hiện tại, không phải tọa độ thực tế và không dùng để cập nhật sơ đồ bàn.
         </p>
-        {placementMessage && <p className="camera-placement-modal__note">{placementMessage}</p>}
         {modelSummary.hasModelUrl && (
           <p className="camera-placement-modal__note">
             Model này có thể thử AR native từ màn mô phỏng 3D nếu thiết bị hỗ trợ.
@@ -361,30 +314,7 @@ const TableCameraPlacementPreviewModal = ({
         {backendConfigNote && <p className="camera-placement-modal__note">{backendConfigNote}</p>}
 
         <div className="camera-placement-modal__actions">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isConfirming}>Đóng</Button>
-          <Button
-            type="button"
-            variant="primary"
-            disabled={isConfirming}
-            onClick={() =>
-              onConfirmPlacement?.({
-                modelKey: modelItem?.key || "preview",
-                modelLabel: modelSummary.name,
-                placement: confirmedPlacement,
-                dimensions: modelItem?.customModelSpec
-                  ? {
-                      widthCm: modelItem.customModelSpec.widthCm,
-                      depthCm: modelItem.customModelSpec.depthCm,
-                      heightCm: modelItem.customModelSpec.heightCm,
-                    }
-                  : null,
-                tableType: modelItem?.tableType || null,
-                capacity: modelSummary.seats,
-              })
-            }
-          >
-            {isConfirming ? "Đang lưu..." : confirmLabel}
-          </Button>
+          <Button type="button" variant="primary" onClick={onClose}>Đóng xem thử</Button>
         </div>
       </div>
     </Modal>
