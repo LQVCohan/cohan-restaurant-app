@@ -96,3 +96,29 @@ export function buildVerifyMail({ to, link, user, reason, ttlHours = 24 }) {
     `,
   };
 }
+
+export function buildContactChangeOtpMail({ to, otp, user, target, ttlMinutes = 10 }) {
+  const name = user?.fullName || user?.username || "bạn";
+  const targetLabel = target === "phone" ? "số điện thoại" : "email";
+  const text = [
+    `Chào ${name},`,
+    `Bạn vừa yêu cầu đổi ${targetLabel} đăng nhập FoodHub.`,
+    `Mã OTP ${String(otp).length} số của bạn là: ${otp}`,
+    `Mã sẽ hết hạn sau ${ttlMinutes} phút. Không chia sẻ mã này với người khác.`,
+    "Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này hoặc đổi mật khẩu để bảo vệ tài khoản.",
+  ].join("\n\n");
+  return {
+    to,
+    subject: target === "phone" ? "Mã xác minh đổi số điện thoại FoodHub" : "Mã xác minh đổi email FoodHub",
+    text,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto;">
+        <h2>Chào ${name},</h2>
+        <p>Bạn vừa yêu cầu đổi ${targetLabel} đăng nhập FoodHub.</p>
+        <p style="font-size:28px;font-weight:800;letter-spacing:6px;background:#f3f4f6;padding:14px 18px;border-radius:10px;text-align:center;">${otp}</p>
+        <p>Mã sẽ hết hạn sau ${ttlMinutes} phút. Không chia sẻ mã này với người khác.</p>
+        <p style="color:#6b7280;font-size:13px;">Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này hoặc đổi mật khẩu để bảo vệ tài khoản.</p>
+      </div>
+    `,
+  };
+}

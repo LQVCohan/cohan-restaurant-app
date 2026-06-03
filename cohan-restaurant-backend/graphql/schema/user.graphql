@@ -118,6 +118,11 @@ enum VerificationDeliveryStatus {
   VERIFIED
 }
 
+enum ContactChangeTarget {
+  EMAIL
+  PHONE
+}
+
 # =========================
 # Core Types
 # =========================
@@ -272,6 +277,25 @@ type AccountVerificationDispatchResult {
   email: VerificationDeliveryResult
   sms: VerificationDeliveryResult
   errors: [String!]!
+}
+
+input RequestContactChangeOtpInput {
+  target: ContactChangeTarget!
+  value: String!
+}
+
+input ConfirmContactChangeOtpInput {
+  target: ContactChangeTarget!
+  otp: String!
+}
+
+type ContactChangeOtpResult {
+  ok: Boolean!
+  target: ContactChangeTarget!
+  maskedDestination: String
+  status: VerificationDeliveryStatus!
+  message: String
+  cooldownUntil: DateTime
 }
 
 type Restaurant {
@@ -3170,6 +3194,9 @@ type Mutation {
   resendUserVerification(userId: ID!, channel: VerificationChannel = AUTO): AccountVerificationDispatchResult!
   verifyPhone(token: String!): Boolean!
   verifyAccountToken(token: String!, channel: VerificationChannel!): Boolean!
+  requestContactChangeOtp(input: RequestContactChangeOtpInput!): ContactChangeOtpResult!
+  confirmContactChangeOtp(input: ConfirmContactChangeOtpInput!): User!
+  cancelContactChangeOtp(target: ContactChangeTarget!): Boolean!
 
   assignRoleToUser(input: AssignRoleToUserInput!): User!
   adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User!
