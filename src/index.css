@@ -2,6 +2,7 @@
 @import "./components/Customer/Food/FoodDetail.ux10.css";
 @import "./components/Customer/Food/FoodDetail.product.css";
 @import "./components/Customer/OrdersManagement/OrdersPage.product.css";
+@import "./components/Customer/OrderTracking/orderTracking.product.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
