@@ -1,9 +1,15 @@
 // src/hooks/useAvatarUploadLocal.js
-const API_BASE = "http://localhost:4000";
+import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+
+const getUploadApiBase = () => {
+  const graphqlUrl = getGraphqlUrl();
+  const base = graphqlUrl.replace(/\/graphql\/?$/, "").replace(/\/$/, "");
+  return `${base}/api`;
+};
 
 export function useAvatarUploadLocal() {
   const uploadViaSignedUrl = async (file, onProgress) => {
-    const signRes = await fetch(`${API_BASE}/upload/sign`, {
+    const signRes = await fetch(`${getUploadApiBase()}/upload/sign`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -45,7 +51,7 @@ export function useAvatarUploadLocal() {
       xhr.send(file);
     });
 
-    const completeRes = await fetch(`${API_BASE}/upload/complete`, {
+    const completeRes = await fetch(`${getUploadApiBase()}/upload/complete`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -66,7 +72,7 @@ export function useAvatarUploadLocal() {
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${API_BASE}/upload`);
+      xhr.open("POST", `${getUploadApiBase()}/upload`);
       xhr.withCredentials = true;
       xhr.upload.onprogress = (evt) => {
         if (evt.lengthComputable && typeof onProgress === "function") {
@@ -102,10 +108,8 @@ export function useAvatarUploadLocal() {
     try {
       return await uploadViaSignedUrl(file, onProgress);
     } catch (error) {
-      if (String(error?.message || "").includes("Cannot create signed upload URL")) {
-        return uploadViaLocalApi(file, onProgress);
-      }
-      throw error;
+      console.warn("Signed avatar upload failed; falling back to local upload.", error);
+      return uploadViaLocalApi(file, onProgress);
     }
   };
 

@@ -598,7 +598,15 @@ export default fp(
 
           const outName = randomName();
           const target = path.join(uploadRoot, outName);
-          await sharp(buffer).rotate().webp({ quality: 80 }).toFile(target);
+          await sharp(buffer)
+            .rotate()
+            .resize(512, 512, {
+              fit: "cover",
+              position: "center",
+              withoutEnlargement: true,
+            })
+            .webp({ quality: 80 })
+            .toFile(target);
 
           return reply.send({
             ok: true,
