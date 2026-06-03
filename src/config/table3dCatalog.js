@@ -302,15 +302,3 @@ export const getModelAssetBadges = (model) => {
   if (model.licenseLabel) badges.push(model.licenseLabel);
   return [...new Set(badges)];
 };
-
-export const getModelAssetSummary = (model) => {
-  const has3DModel = canOpenModelViewerAr(model);
-  return {
-    has3DModel,
-    arReady: has3DModel,
-    source: model?.source || model?.sourceLabel || "",
-    modelKey: model?.key || "",
-    badges: getModelAssetBadges(model),
-    dimensionsLabel: formatDimensionsCm(model?.dimensionsCm),
-  };
-};
