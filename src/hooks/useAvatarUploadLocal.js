@@ -3,8 +3,7 @@ import { getGraphqlUrl } from "@/lib/apiBaseUrl";
 
 const getUploadApiBase = () => {
   const graphqlUrl = getGraphqlUrl();
-  const base = graphqlUrl.replace(/\/graphql\/?$/, "").replace(/\/$/, "");
-  return `${base}/api`;
+  return graphqlUrl.replace(/\/graphql\/?$/, "").replace(/\/$/, "");
 };
 
 export function useAvatarUploadLocal() {
@@ -85,15 +84,17 @@ export function useAvatarUploadLocal() {
         try {
           res = JSON.parse(xhr.responseText);
         } catch {
-          return reject(new Error(`Invalid server response (status ${status})`));
+          return reject(
+            new Error(`Invalid server response (status ${status})`),
+          );
         }
         if (status >= 200 && status < 300 && res?.ok && res?.url) {
           resolve(res.url);
         } else {
           reject(
             new Error(
-              res?.error || res?.message || `Upload failed (status ${status})`
-            )
+              res?.error || res?.message || `Upload failed (status ${status})`,
+            ),
           );
         }
       };
@@ -108,7 +109,10 @@ export function useAvatarUploadLocal() {
     try {
       return await uploadViaSignedUrl(file, onProgress);
     } catch (error) {
-      console.warn("Signed avatar upload failed; falling back to local upload.", error);
+      console.warn(
+        "Signed avatar upload failed; falling back to local upload.",
+        error,
+      );
       return uploadViaLocalApi(file, onProgress);
     }
   };
