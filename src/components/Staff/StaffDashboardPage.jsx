@@ -107,7 +107,7 @@ const StaffDashboardPage = () => {
   }, [normalizedRole]);
 
   return (
-    <main className="staff-dashboard-page" aria-labelledby="staff-dashboard-title">
+    <div className="staff-dashboard-page" aria-labelledby="staff-dashboard-title">
       <section className="staff-dashboard-hero">
         <div className="staff-dashboard-hero__copy">
           <StaffStatusBadge tone="accent">Khu vực nhân viên</StaffStatusBadge>
@@ -128,11 +128,11 @@ const StaffDashboardPage = () => {
         <article className="staff-shift-command-card">
           <div className="staff-shift-command-card__header">
             <StaffStatusBadge tone="muted">Ca hôm nay</StaffStatusBadge>
-            <span className="staff-shift-command-card__time">--:--</span>
+            <span className="staff-shift-command-card__time">Lịch</span>
           </div>
-          <h2>Bạn chưa có ca hôm nay</h2>
+          <h2>Kiểm tra ca hôm nay</h2>
           <p>
-            Khi có ca sắp tới, thông tin giờ bắt đầu, trạng thái check-in/check-out và cảnh báo trễ sẽ hiển thị nổi bật ở đây.
+            Mở lịch cá nhân để xem ca hiện tại, check-in/check-out và cảnh báo chấm công theo dữ liệu đã công bố.
           </p>
           <div className="staff-shift-command-card__actions">
             <Link className="staff-primary-dashboard-button" to="/staff/schedule">
@@ -167,9 +167,9 @@ const StaffDashboardPage = () => {
       </section>
 
       <section className="staff-metric-row" aria-label="Trạng thái vận hành cá nhân">
-        <StaffMetricTile label="Trạng thái" value="Ngoài ca" hint="Sẽ đổi khi check-in" tone="muted" />
-        <StaffMetricTile label="Chấm công" value="--" hint="Theo dữ liệu ca" tone="success" />
-        <StaffMetricTile label="Yêu cầu" value="Chờ lịch" hint="Nghỉ phép / tăng ca / chỉnh công" tone="warning" />
+        <StaffMetricTile label="Trạng thái" value="Xem lịch" hint="Theo ca đã công bố" tone="muted" />
+        <StaffMetricTile label="Chấm công" value="Trong lịch" hint="Check-in / check-out" tone="success" />
+        <StaffMetricTile label="Yêu cầu" value="Theo dõi" hint="Nghỉ phép / tăng ca / chỉnh công" tone="warning" />
       </section>
 
       <section className="staff-dashboard-section" aria-labelledby="staff-fast-actions-title">
@@ -258,7 +258,7 @@ const StaffDashboardPage = () => {
           />
         )}
       </section>
-    </main>
+    </div>
   );
 };
 

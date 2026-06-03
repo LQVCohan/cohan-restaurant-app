@@ -1095,7 +1095,7 @@ export default function StaffSchedulePage() {
     }
   };
   return (
-    <main className="staff-schedule-page">
+    <div className="staff-schedule-page">
       <section className="staff-schedule-hero">
         <div className="staff-schedule-hero__glow" />
 
@@ -2096,6 +2096,6 @@ export default function StaffSchedulePage() {
           </section>
         </aside>
       </section>
-    </main>
+    </div>
   );
 }

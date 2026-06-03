@@ -14,13 +14,13 @@ const getGraphQLErrorMessage = (error, fallback = "Không thể gửi phản h�
   fallback;
 
 const StaffPerformanceState = ({ tone = "muted", title, description }) => (
-  <main className="staff-performance-page">
+  <div className="staff-performance-page">
     <section className={`staff-performance-state staff-performance-state--${tone}`} role={tone === "error" ? "alert" : "status"}>
       <span className="staff-performance-state__mark" />
       <h1>{title}</h1>
       <p>{description}</p>
     </section>
-  </main>
+  </div>
 );
 
 const StaffPerformancePage = () => {
@@ -88,14 +88,14 @@ const StaffPerformancePage = () => {
 
   if (loading) {
     return (
-      <main className="staff-performance-page">
+      <div className="staff-performance-page">
         <section className="staff-performance-skeleton" aria-live="polite">
           <span className="staff-performance-skeleton__line staff-performance-skeleton__line--wide" />
           <span className="staff-performance-skeleton__line" />
           <span className="staff-performance-skeleton__line" />
           <p>Đang tải phản hồi hiệu suất của bạn...</p>
         </section>
-      </main>
+      </div>
     );
   }
 
@@ -110,7 +110,7 @@ const StaffPerformancePage = () => {
   }
 
   return (
-    <main className="staff-performance-page" aria-labelledby="staff-performance-title">
+    <div className="staff-performance-page" aria-labelledby="staff-performance-title">
       <section className="staff-performance-hero">
         <div>
           <span className="staff-performance-eyebrow">Phản hồi cá nhân</span>
@@ -197,7 +197,7 @@ const StaffPerformancePage = () => {
           </section>
         </aside>
       </section>
-    </main>
+    </div>
   );
 };
 
