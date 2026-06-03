@@ -17,7 +17,7 @@ vi.mock("mongoose", async () => {
   const fn = (v) => typeof v === "string" && v.startsWith("valid-");
   return {
     ...actual,
-    default: { ...actual.default, isValidObjectId: fn, Types: { ...actual.default.Types, ObjectId: vi.fn((v) => v) } },
+    default: { ...actual.default, isValidObjectId: fn, Types: { ...actual.default.Types, ObjectId: function ObjectId(v) { this.value = v; this.toString = () => String(v); } } },
     isValidObjectId: fn,
   };
 });
