@@ -33,6 +33,23 @@ const KITCHEN_FILTER_OPTIONS = [
   { value: "all", label: "Tất cả" },
 ];
 
+const STATION_FILTER_OPTIONS = [
+  { value: "all", label: "Tất cả khu vực" },
+  { value: "kitchen", label: "Bếp" },
+  { value: "bar", label: "Bar" },
+];
+
+const STATION_LABELS = {
+  kitchen: "Bếp",
+  bar: "Bar",
+  unassigned: "Chưa phân khu",
+};
+
+const TIME_LEVEL_LABELS = {
+  late: "Trễ",
+  very_late: "Rất trễ",
+};
+
 const PENDING_KITCHEN_ITEM_STATUSES = ["pending", "confirmed", "customer_attached"];
 const HIDDEN_KITCHEN_ITEM_STATUSES = ["cancelled", "returned", "served"];
 
@@ -94,10 +111,10 @@ const isRemoteStaffPendingOrder = (order) => {
 const getNextKitchenStatus = (status) => {
   const normalized = normalizeStatus(status);
   if (["pending", "confirmed", "customer_attached"].includes(normalized)) {
-    return { value: "preparing", label: "Nhận món" };
+    return { value: "preparing", label: "Nhận món vào chế biến" };
   }
   if (normalized === "preparing") {
-    return { value: "ready", label: "Báo xong" };
+    return { value: "ready", label: "Báo món đã sẵn sàng" };
   }
   return null;
 };
@@ -108,11 +125,67 @@ const formatQuantity = (value) => {
   return Number.isInteger(number) ? String(number) : String(number).replace(/\.0+$/, "");
 };
 
-const getOrderAgeMinutes = (createdAt) => {
-  if (!createdAt) return 0;
-  const created = new Date(createdAt);
-  if (Number.isNaN(created.getTime())) return 0;
-  return Math.max(0, Math.floor((Date.now() - created.getTime()) / 60000));
+const getElapsedMinutes = (value) => {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+};
+
+const getOrderAgeMinutes = (createdAt) => getElapsedMinutes(createdAt);
+
+const normalizeStation = (station) => {
+  const normalized = String(station || "").toLowerCase();
+  if (["kitchen", "bar"].includes(normalized)) return normalized;
+  return "unassigned";
+};
+
+const getItemStation = (item) => normalizeStation(item?.station || item?.workItemStation);
+
+const matchesStationFilter = (item, stationFilter) => {
+  if (stationFilter === "all") return true;
+  return getItemStation(item) === stationFilter;
+};
+
+const matchesKitchenAndStationFilters = (item, statusFilter, stationFilter) => {
+  return matchesKitchenFilter(item, statusFilter) && matchesStationFilter(item, stationFilter);
+};
+
+const hasLateOrUnacceptedSignal = (item) => {
+  const timeLevel = String(item?.timeLevel || "").toLowerCase();
+  return item?.unaccepted === true || ["late", "very_late"].includes(timeLevel);
+};
+
+const getTimingBadges = (item) => {
+  const badges = [];
+  const timeLevel = String(item?.timeLevel || "").toLowerCase();
+  if (item?.unaccepted === true) {
+    badges.push({
+      key: "unaccepted",
+      label: "Chưa nhận quá hạn",
+      className: "bg-red-50 text-red-700",
+    });
+  }
+  if (TIME_LEVEL_LABELS[timeLevel]) {
+    badges.push({
+      key: `time-${timeLevel}`,
+      label: TIME_LEVEL_LABELS[timeLevel],
+      className:
+        timeLevel === "very_late" ? "bg-red-100 text-red-800" : "bg-orange-50 text-orange-700",
+    });
+  }
+  return badges;
+};
+
+const formatItemWaitTime = (item, order) => {
+  const explicitActual = Number(item?.actualPrepMinutes);
+  if (Number.isFinite(explicitActual) && explicitActual >= 0) {
+    return `Thời gian chuẩn bị: ${explicitActual} phút`;
+  }
+
+  const startedAt = item?.preparingAt || item?.kitchenEnteredAt || order?.createdAt;
+  const minutes = getElapsedMinutes(startedAt);
+  return minutes > 0 ? `Đã chờ ${minutes} phút` : "Mới vào bếp/bar";
 };
 
 const StaffKitchenPage = () => {
@@ -122,6 +195,7 @@ const StaffKitchenPage = () => {
   const restaurantName = getRestaurantForStaffName(restaurantForStaff);
   const [savingKey, setSavingKey] = useState(null);
   const [statusFilter, setStatusFilter] = useState("active");
+  const [stationFilter, setStationFilter] = useState("all");
   const { showNotification } = useNotification?.() || {
     showNotification: () => {},
   };
@@ -177,7 +251,7 @@ const StaffKitchenPage = () => {
 
     for (const order of activeKitchenOrders) {
       for (const item of order.items || []) {
-        if (!isKitchenVisibleItem(item)) continue;
+        if (!isKitchenVisibleItem(item) || !matchesStationFilter(item, stationFilter)) continue;
         const bucket = getKitchenItemBucket(item.status);
         if (bucket === "pending") pending += 1;
         if (bucket === "preparing") preparing += 1;
@@ -186,8 +260,20 @@ const StaffKitchenPage = () => {
       }
     }
 
-    return { pending, preparing, ready, totalActive };
-  }, [activeKitchenOrders]);
+    const late = activeKitchenOrders.reduce((count, order) => {
+      return (
+        count +
+        (order.items || []).filter(
+          (item) =>
+            isKitchenVisibleItem(item) &&
+            matchesStationFilter(item, stationFilter) &&
+            hasLateOrUnacceptedSignal(item),
+        ).length
+      );
+    }, 0);
+
+    return { pending, preparing, ready, totalActive, late };
+  }, [activeKitchenOrders, stationFilter]);
 
   const kitchenOrderRows = useMemo(() => {
     return activeKitchenOrders
@@ -196,7 +282,7 @@ const StaffKitchenPage = () => {
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => isKitchenVisibleItem(item));
         const filteredItems = visibleItems.filter(({ item }) =>
-          matchesKitchenFilter(item, statusFilter),
+          matchesKitchenAndStationFilters(item, statusFilter, stationFilter),
         );
 
         return {
@@ -206,7 +292,7 @@ const StaffKitchenPage = () => {
         };
       })
       .filter((row) => row.filteredItems.length > 0);
-  }, [activeKitchenOrders, statusFilter]);
+  }, [activeKitchenOrders, statusFilter, stationFilter]);
 
   const handleUpdateItemStatus = useCallback(
     async (order, item, index, nextStatus) => {
@@ -243,7 +329,7 @@ const StaffKitchenPage = () => {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 shadow-sm">
           <h1 className="text-lg font-semibold">Tài khoản chưa được gán nhà hàng.</h1>
           <p className="mt-1 text-sm">
-            Vui lòng liên hệ quản lý để gán nhà hàng trước khi mở khu vực bếp.
+            Vui lòng liên hệ quản lý để gán nhà hàng trước khi mở bảng điều phối bếp / bar.
           </p>
         </div>
       </div>
@@ -257,10 +343,10 @@ const StaffKitchenPage = () => {
       <div className="mb-5 flex flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-blue-600">KITCHEN DISPLAY</p>
-            <h1 className="text-2xl font-semibold text-gray-900">Khu vực bếp</h1>
+            <p className="text-sm font-medium uppercase tracking-wide text-blue-600">KITCHEN / BAR DISPATCH</p>
+            <h1 className="text-2xl font-semibold text-gray-900">Bảng điều phối bếp / bar</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Xem món cần chuẩn bị và cập nhật trạng thái chế biến cho nhà hàng được gán.
+              Xem món cần chuẩn bị theo khu vực bếp/bar và cập nhật trạng thái chế biến cho nhà hàng được gán.
             </p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm">
@@ -269,7 +355,7 @@ const StaffKitchenPage = () => {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Cần xử lý</p>
             <p className="mt-2 text-2xl font-semibold text-amber-900">{kitchenSummary.totalActive}</p>
@@ -286,9 +372,16 @@ const StaffKitchenPage = () => {
             <p className="text-xs font-medium uppercase tracking-wide text-green-700">Sẵn sàng</p>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.ready}</p>
           </div>
+          <div className="rounded-xl border border-red-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-red-700">Món trễ / quá thời gian chuẩn bị</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.late}</p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Trạng thái bếp</p>
+            <div className="flex flex-wrap gap-2">
           {KITCHEN_FILTER_OPTIONS.map((option) => {
             const isActive = statusFilter === option.value;
             return (
@@ -306,6 +399,30 @@ const StaffKitchenPage = () => {
               </button>
             );
           })}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Khu vực bếp / bar</p>
+            <div className="flex flex-wrap gap-2">
+              {STATION_FILTER_OPTIONS.map((option) => {
+                const isActive = stationFilter === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                      isActive
+                        ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:text-indigo-700"
+                    }`}
+                    onClick={() => setStationFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -323,7 +440,7 @@ const StaffKitchenPage = () => {
         </div>
       ) : kitchenOrderRows.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow-sm">
-          Không có món nào trong bộ lọc hiện tại.
+          Không có món nào trong bộ lọc trạng thái và khu vực hiện tại.
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -364,6 +481,8 @@ const StaffKitchenPage = () => {
                     const next = getNextKitchenStatus(status);
                     const itemKey = item?._lineId || item?._id || index;
                     const saveKey = `${order.id}:${itemKey}`;
+                    const station = getItemStation(item);
+                    const timingBadges = getTimingBadges(item);
                     return (
                       <div key={itemKey} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                         <div className="flex items-start justify-between gap-3">
@@ -375,6 +494,14 @@ const StaffKitchenPage = () => {
                               <span className={`rounded-full px-2.5 py-1 font-medium ${getKitchenItemBadgeClassName(status)}`}>
                                 {ITEM_STATUS_LABELS[status] || status}
                               </span>
+                              <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700">
+                                {STATION_LABELS[station] || STATION_LABELS.unassigned}
+                              </span>
+                              {timingBadges.map((badge) => (
+                                <span key={badge.key} className={`rounded-full px-2.5 py-1 font-medium ${badge.className}`}>
+                                  {badge.label}
+                                </span>
+                              ))}
                               {item.unit ? <span className="text-gray-500">{item.unit}</span> : null}
                             </div>
                           </div>
@@ -393,6 +520,13 @@ const StaffKitchenPage = () => {
                             </span>
                           )}
                         </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          {formatItemWaitTime(item, order)}
+                          {Number(item?.targetPrepMinutes) > 0 ? ` · Mục tiêu ${item.targetPrepMinutes} phút` : ""}
+                        </div>
+                        {item?.unacceptedReason ? (
+                          <div className="mt-1 text-xs text-red-700">{item.unacceptedReason}</div>
+                        ) : null}
                         {item.note ? (
                           <div className="mt-2 text-xs text-gray-600">Ghi chú món: {item.note}</div>
                         ) : null}

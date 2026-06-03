@@ -398,6 +398,16 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             }
             weightGrams
             status
+            station
+            kitchenEnteredAt
+            preparingAt
+            readyAt
+            actualPrepMinutes
+            targetPrepMinutes
+            timeLevel
+            unaccepted
+            unacceptedAfterMinutes
+            unacceptedReason
             ingredientsSnapshot {
               ingredientId
               name
