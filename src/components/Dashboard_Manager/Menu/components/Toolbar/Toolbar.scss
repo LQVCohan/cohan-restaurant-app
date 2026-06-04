@@ -562,3 +562,34 @@ $tb-radius: 16px;
   color: #475569;
   margin-right: 2px;
 }
+
+.toolbar-container {
+  .toolbar-sr-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .toolbar-metric-pill__value,
+  .result-count strong,
+  .inventory-chip .count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .select-icon--muted {
+    opacity: 0.5;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 3px solid rgba(184, 147, 101, 0.32);
+    outline-offset: 2px;
+  }
+}

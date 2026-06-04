@@ -454,3 +454,61 @@ $radius: 16px;
     border-color: #fdba74;
   }
 }
+
+.menu-item-card {
+  cursor: default;
+
+  .menu-item-card__meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .menu-item-card__price {
+    color: #2d2118;
+    font-size: 16px;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .menu-item-card__quick-note {
+    display: inline-flex;
+    align-items: center;
+    max-width: 55%;
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: #047857;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .menu-item-card__quick-note--out_of_stock,
+  .menu-item-card__quick-note--unavailable {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+  }
+
+  .menu-item-card__quick-note--hidden {
+    color: #475569;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+}
+
+.menu-item-card .card-select-checkbox {
+  cursor: pointer;
+}
+
+.menu-item-card .card-select-checkbox input:focus-visible {
+  outline: 2px solid #b89365;
+  outline-offset: 2px;
+}
