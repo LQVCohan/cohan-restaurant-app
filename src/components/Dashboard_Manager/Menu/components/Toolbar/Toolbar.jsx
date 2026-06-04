@@ -61,6 +61,7 @@ const Toolbar = ({
   forYouMetadataFilter = "all",
   onForYouMetadataFilterChange,
   forYouMetadataCounts = {},
+  operationStats = null,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({
@@ -105,18 +106,18 @@ const Toolbar = ({
     return `${formatCurrency(minPrice) || "0"} - ${formatCurrency(maxPrice) || "∞"}`;
   };
 
-  const overviewCards = [
+  const defaultOverviewCards = [
     {
       key: "items",
       icon: <FiBarChart2 />,
-      label: "Món đang hiển thị",
+      label: "Tổng món",
       value: itemCount,
       hint: hasActiveFilters ? "Theo bộ lọc hiện tại" : "Tất cả kết quả",
     },
     {
       key: "categories",
       icon: <FiLayers />,
-      label: "Danh mục món",
+      label: "Danh mục",
       value: categories.length,
       hint: currentCategory ? getSelectedCategoryName() : "Có thể phân loại món",
     },
@@ -136,6 +137,17 @@ const Toolbar = ({
     },
   ];
 
+  const overviewCards = Array.isArray(operationStats) && operationStats.length
+    ? operationStats.map((card) => ({
+        ...card,
+        icon:
+          card.key === "selling" ? <FiCheck /> :
+          card.key === "paused" ? <FiPauseCircle /> :
+          card.key === "categories" ? <FiLayers /> :
+          <FiBarChart2 />,
+      }))
+    : defaultOverviewCards;
+
   const renderStatusIcon = () => {
     switch (statusFilter) {
       case "available":
@@ -147,7 +159,7 @@ const Toolbar = ({
       case "out_of_stock":
         return <FiAlertCircle className="select-icon" />;
       default:
-        return <FiCheck className="select-icon" style={{ opacity: 0.5 }} />;
+        return <FiCheck className="select-icon select-icon--muted" />;
     }
   };
 
@@ -155,19 +167,22 @@ const Toolbar = ({
   const handleAddMenuGroup = onAddMenuGroup || onAddCategory;
 
   return (
-    <div className="toolbar-container">
+    <section className="toolbar-container" aria-label="Bộ lọc quản lý món ăn">
       <div className="toolbar-top">
         <div className="search-wrapper">
           <FiSearch className="search-icon" />
+          <label className="toolbar-sr-label" htmlFor="menu-search-input">Tìm món</label>
           <input
+            id="menu-search-input"
             type="text"
             className="search-input"
-            placeholder="Tìm kiếm món ăn..."
+            placeholder="Tìm món theo tên hoặc mô tả..."
+            aria-label="Tìm món"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
           />
           {searchTerm && (
-            <button className="clear-btn" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm" onClick={() => onSearchChange("")}>
+            <button type="button" className="clear-btn" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm" onClick={() => onSearchChange("")}>
               <FiX />
             </button>
           )}
@@ -176,6 +191,7 @@ const Toolbar = ({
         <div className="actions-group">
           <div className="view-toggle">
             <button
+              type="button"
               className={`toggle-btn ${currentView === "grid" ? "active" : ""}`}
               onClick={() => onViewChange("grid")}
               aria-label="Hiển thị dạng lưới"
@@ -184,6 +200,7 @@ const Toolbar = ({
               <FiGrid />
             </button>
             <button
+              type="button"
               className={`toggle-btn ${currentView === "list" ? "active" : ""}`}
               onClick={() => onViewChange("list")}
               aria-label="Hiển thị dạng danh sách"
@@ -194,17 +211,18 @@ const Toolbar = ({
           </div>
 
           {onBulkPriceEdit && (
-            <button className="btn btn-secondary" onClick={onBulkPriceEdit}>
+            <button type="button" className="btn btn-secondary" onClick={onBulkPriceEdit}>
               <FiDollarSign /> <span className="hide-mobile">Sửa giá</span>
             </button>
           )}
           {onCreatePromotion && (
-            <button className="btn btn-secondary" onClick={onCreatePromotion}>
+            <button type="button" className="btn btn-secondary" onClick={onCreatePromotion}>
               <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
             </button>
           )}
           {handleAddDishCategory && (
             <button
+              type="button"
               className="btn btn-secondary"
               onClick={handleAddDishCategory}
             >
@@ -212,7 +230,7 @@ const Toolbar = ({
             </button>
           )}
           {handleAddMenuGroup && (
-            <button className="btn btn-primary" onClick={handleAddMenuGroup}>
+            <button type="button" className="btn btn-primary" onClick={handleAddMenuGroup}>
               <FiFolderPlus />{" "}
               <span className="hide-mobile">Nhóm thực đơn</span>
             </button>
@@ -237,7 +255,10 @@ const Toolbar = ({
         <div className="filter-row">
           <div className="select-wrapper">
             <FiSliders className="select-icon" />
+            <label className="toolbar-sr-label" htmlFor="menu-sort-select">Sắp xếp món</label>
             <select
+              id="menu-sort-select"
+              aria-label="Sắp xếp món"
               className={`custom-select ${sortOption !== "default" ? "active" : ""}`}
               value={sortOption}
               onChange={(e) => onSortChange && onSortChange(e.target.value)}
@@ -253,7 +274,10 @@ const Toolbar = ({
 
           <div className="select-wrapper">
             <FiTag className="select-icon" />
+            <label className="toolbar-sr-label" htmlFor="menu-category-select">Danh mục</label>
             <select
+              id="menu-category-select"
+              aria-label="Lọc theo danh mục"
               className={`custom-select ${currentCategory ? "active" : ""}`}
               value={currentCategory}
               onChange={(e) => onCategoryChange(e.target.value)}
@@ -270,7 +294,10 @@ const Toolbar = ({
 
           <div className="select-wrapper">
             {renderStatusIcon()}
+            <label className="toolbar-sr-label" htmlFor="menu-status-select">Trạng thái bán</label>
             <select
+              id="menu-status-select"
+              aria-label="Lọc theo trạng thái bán hoặc hiển thị"
               className={`custom-select ${statusFilter ? "active" : ""}`}
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value)}
@@ -286,8 +313,10 @@ const Toolbar = ({
           </div>
 
           <button
+            type="button"
             className={`btn-filter-toggle ${showFilters || minPrice || maxPrice ? "active" : ""}`}
             onClick={() => setShowFilters(!showFilters)}
+            aria-expanded={showFilters}
           >
             <FiFilter /> Lọc giá
           </button>
@@ -336,7 +365,9 @@ const Toolbar = ({
         <div className="price-inputs">
           <label>Khoảng giá (VNĐ):</label>
           <input
+            id="menu-min-price"
             type="number"
+            aria-label="Giá thấp nhất"
             placeholder="Thấp nhất"
             value={priceRange.min}
             onChange={(e) =>
@@ -345,14 +376,16 @@ const Toolbar = ({
           />
           <span className="separator">-</span>
           <input
+            id="menu-max-price"
             type="number"
+            aria-label="Giá cao nhất"
             placeholder="Cao nhất"
             value={priceRange.max}
             onChange={(e) =>
               setPriceRange((p) => ({ ...p, max: e.target.value }))
             }
           />
-          <button className="btn-apply" onClick={handlePriceRangeSubmit}>
+          <button type="button" className="btn-apply" onClick={handlePriceRangeSubmit}>
             Áp dụng
           </button>
         </div>
@@ -386,12 +419,12 @@ const Toolbar = ({
                 }}><FiX /></button>
             </span>
           )}
-          <button className="clear-all-text" onClick={clearFilters}>
+          <button type="button" className="clear-all-text" onClick={clearFilters}>
             Xóa bộ lọc
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

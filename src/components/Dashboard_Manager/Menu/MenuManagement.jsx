@@ -235,8 +235,8 @@ const getMenuEmptyState = ({
 
     return {
       icon: "🔎",
-      title: "Không tìm thấy món phù hợp",
-      description: "Thử đổi từ khóa tìm kiếm hoặc xóa bớt bộ lọc.",
+      title: "Không có món phù hợp với bộ lọc hiện tại.",
+      description: "Thử đổi từ khóa tìm kiếm, danh mục hoặc trạng thái bán rồi kiểm tra lại.",
       action: "clear_filters",
     };
   }
@@ -1046,6 +1046,30 @@ const MenuManagement = () => {
     [items, categories],
   );
 
+
+  const menuOperationKpis = useMemo(() => {
+    const sourceItems = Array.isArray(enrichedItems) ? enrichedItems : [];
+    const sellingCount = sourceItems.filter(
+      (item) => String(item?.status || "available") === "available",
+    ).length;
+    const pausedCount = sourceItems.filter((item) => {
+      const status = String(item?.status || "").toLowerCase();
+      const inventoryStatus = String(item?.inventoryStatus || "").toLowerCase();
+      return (
+        status === "unavailable" ||
+        status === "out_of_stock" ||
+        inventoryStatus === MENU_ITEM_INVENTORY_STATUS.OUT_OF_STOCK
+      );
+    }).length;
+
+    return [
+      { key: "total", label: "Tổng món", value: sourceItems.length, hint: "Trong khung giờ hiện tại" },
+      { key: "selling", label: "Đang bán", value: sellingCount, hint: "Sẵn sàng hiển thị và nhận order" },
+      { key: "paused", label: "Tạm ngưng/hết món", value: pausedCount, hint: "Cần kiểm tra trước khi mở bán" },
+      { key: "categories", label: "Danh mục", value: categories.length, hint: "Đang dùng để phân nhóm món" },
+    ];
+  }, [categories.length, enrichedItems]);
+
   const displayItems = useMemo(
     () => {
       let filtered = enrichedItems;
@@ -1347,7 +1371,7 @@ const MenuManagement = () => {
         showTimeWidget={false}
         eyebrow="MENU MANAGER"
         title="Quản lý Thực Đơn"
-        subtitle="Thiết lập món ăn, danh mục món và nhóm thực đơn"
+        subtitle="Quản lý món, danh mục, trạng thái bán và hiển thị trên app khách hàng."
         icon="📋"
         selectedRestaurant={currentRestaurant || ""}
         onRestaurantChange={setCurrentRestaurant}
@@ -1355,6 +1379,7 @@ const MenuManagement = () => {
         customFilters={(
           <select
             className="mph-select"
+            aria-label="Chọn khung giờ thực đơn"
             value={selectedTimeSlot || "breakfast"}
             onChange={(e) => setSelectedTimeSlot(e.target.value)}
           >
@@ -1371,6 +1396,16 @@ const MenuManagement = () => {
         ]}
         primaryAction={canCreateMenuItem ? { icon: "➕", label: "Thêm món", onClick: () => toggleModal("menuItem", true) } : null}
       />
+
+      <section className="mm-ops-kpi" aria-label="Tổng quan vận hành thực đơn">
+        {menuOperationKpis.map((kpi) => (
+          <article key={kpi.key} className={`mm-ops-kpi__card mm-ops-kpi__card--${kpi.key}`}>
+            <span className="mm-ops-kpi__label">{kpi.label}</span>
+            <strong className="mm-ops-kpi__value">{kpi.value}</strong>
+            <span className="mm-ops-kpi__hint">{kpi.hint}</span>
+          </article>
+        ))}
+      </section>
 
       <section className="mm-stats-section">
         <CompactMenuStrip
@@ -1399,7 +1434,7 @@ const MenuManagement = () => {
         />
       </section>
 
-      <main className="mm-body">
+      <section className="mm-body" aria-label="Danh sách và bộ lọc món ăn">
         <Toolbar
           searchTerm={search}
           onSearchChange={setSearch}
@@ -1435,6 +1470,7 @@ const MenuManagement = () => {
           forYouMetadataFilter={forYouMetadataFilter}
           onForYouMetadataFilterChange={setForYouMetadataFilter}
           forYouMetadataCounts={forYouMetadataCounts}
+          operationStats={menuOperationKpis}
         />
 
         {!itemsLoading && enrichedItems.length > 0 && (
@@ -1461,18 +1497,32 @@ const MenuManagement = () => {
           )}
 
           {itemsError && (
-            <div className="mm-state-box error">
+            <div className="mm-state-box error" role="alert">
               <FiAlertCircle size={32} />
               <p className="mm-state-box__message">
                 Lỗi tải dữ liệu: {itemsError.message}
               </p>
+              {refetchItems && (
+                <button type="button" className="mm-btn mm-btn--secondary" onClick={() => refetchItems?.()}>
+                  Tải lại dữ liệu
+                </button>
+              )}
             </div>
           )}
 
           {itemsLoading && items.length === 0 && (
-            <div className="mm-state-box">
-              <div className="spinner-dots"></div>
-              <p>Đang đồng bộ dữ liệu món ăn...</p>
+            <div className="mm-skeleton-grid" aria-label="Đang tải món ăn">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <article className="mm-skeleton-card" key={`menu_item_skeleton_${index}`}>
+                  <div className="mm-skeleton-card__image" />
+                  <div className="mm-skeleton-card__body">
+                    <span className="mm-skeleton-card__line mm-skeleton-card__line--short" />
+                    <span className="mm-skeleton-card__line mm-skeleton-card__line--title" />
+                    <span className="mm-skeleton-card__line" />
+                    <span className="mm-skeleton-card__line mm-skeleton-card__line--price" />
+                  </div>
+                </article>
+              ))}
             </div>
           )}
 
@@ -1483,17 +1533,17 @@ const MenuManagement = () => {
               <p className="mm-empty-state__description">{emptyState.description}</p>
               <div className="mm-empty-state__actions">
                 {emptyState.action === "create_menu" && canCreateMenu && (
-                  <button className="mm-btn mm-btn--primary" onClick={() => toggleModal("menu", true)}>
+                  <button type="button" className="mm-btn mm-btn--primary" onClick={() => toggleModal("menu", true)}>
                     Tạo menu
                   </button>
                 )}
                 {emptyState.action === "add_item" && canCreateMenuItem && (
-                  <button className="mm-btn mm-btn--primary" onClick={() => { setModalFocusSection(null); toggleModal("menuItem", true); }}>
-                    Thêm món mới
+                  <button type="button" className="mm-btn mm-btn--primary" onClick={() => { setModalFocusSection(null); toggleModal("menuItem", true); }}>
+                    Thêm món đầu tiên
                   </button>
                 )}
                 {emptyState.action === "clear_filters" && (
-                  <button className="mm-btn mm-btn--secondary" onClick={handleClearFilters}>
+                  <button type="button" className="mm-btn mm-btn--secondary" onClick={handleClearFilters}>
                     Xóa lọc
                   </button>
                 )}
@@ -1561,6 +1611,7 @@ const MenuManagement = () => {
               {pageInfo?.hasNextPage && (
                 <div className="mm-pagination">
                   <button
+                    type="button"
                     className="mm-btn-load-more"
                     onClick={fetchMoreItems}
                     disabled={itemsLoading}
@@ -1572,7 +1623,7 @@ const MenuManagement = () => {
             </>
           )}
         </div>
-      </main>
+      </section>
 
       <MenuModal
         isOpen={modals.menu.isOpen}

@@ -148,6 +148,18 @@ const MenuItemCard = ({
     : [];
   const visibleMethods = variants.slice(0, 3);
   const remainingCount = Math.max(0, variants.length - 3);
+  const displayCategoryName = item.categoryName || "Chưa phân loại";
+  const baseDisplayPrice = variants[0]?.price ?? item.basePrice ?? 0;
+  const quickNote =
+    item?.status === "hidden"
+      ? "Đang ẩn trên app khách"
+      : item?.status === "out_of_stock"
+        ? "Hết món trong ca"
+        : item?.status === "unavailable"
+          ? "Tạm ngưng bán"
+          : availability.orderability === "orderable"
+            ? "Còn hàng"
+            : availability.label;
 
   const renderFallbackImage = () => (
     <div className="placeholder-img">
@@ -209,7 +221,7 @@ const MenuItemCard = ({
 
   return (
     <>
-      <div className="menu-item-card" onClick={onEdit || undefined}>
+      <article className="menu-item-card">
         {typeof onSelectToggle === "function" && (
           <label
             className="card-select-checkbox"
@@ -245,31 +257,39 @@ const MenuItemCard = ({
 
         <div className="card-body">
           <div className="info-top">
-            <span className="category-name">
-              {item.categoryName || item.categoryId || "Danh mục món"}
-            </span>
+            <span className="category-name">{displayCategoryName}</span>
             <h3 className="item-name" title={item.name}>
               {item.name}
             </h3>
+            <div className="menu-item-card__meta-row">
+              <strong className="menu-item-card__price">{formatPrice(baseDisplayPrice)}</strong>
+              <span className={`menu-item-card__quick-note menu-item-card__quick-note--${item?.status || "available"}`}>
+                {quickNote}
+              </span>
+            </div>
           </div>
 
-
           {forYouMetadata?.status && (
-            <button
-              type="button"
-              className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status} ${forYouMetadata.status === "missing" && canUpdateItem ? "menu-item-card__for-you-badge--actionable" : ""}`}
-              title={forYouMetadata.status === "missing" && canUpdateItem
-                ? "Bấm để bổ sung nhanh thông tin khẩu vị và dị ứng."
-                : forYouMetadata.label}
-              disabled={!(forYouMetadata.status === "missing" && canUpdateItem)}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (forYouMetadata.status !== "missing" || !canUpdateItem) return;
-                onEditForYou?.(item);
-              }}
-            >
-              {forYouMetadata.status === "ready" ? "✨ Đã khai báo khẩu vị" : "⚠ Chưa khai báo khẩu vị"}
-            </button>
+            forYouMetadata.status === "missing" && canUpdateItem ? (
+              <button
+                type="button"
+                className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status} menu-item-card__for-you-badge--actionable`}
+                title="Bấm để bổ sung nhanh thông tin khẩu vị và dị ứng."
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditForYou?.(item);
+                }}
+              >
+                ⚠ Chưa khai báo khẩu vị
+              </button>
+            ) : (
+              <span
+                className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
+                title={forYouMetadata.label}
+              >
+                {forYouMetadata.status === "ready" ? "✨ Đã khai báo khẩu vị" : "⚠ Chưa khai báo khẩu vị"}
+              </span>
+            )
           )}
 
           {primaryWarning && (
@@ -335,6 +355,7 @@ const MenuItemCard = ({
           <div className="card-actions">
             {onEdit && (
               <button
+                type="button"
                 className="action-btn edit"
                 aria-label="Chỉnh sửa món"
                 onClick={(e) => {
@@ -343,7 +364,7 @@ const MenuItemCard = ({
                 }}
                 title="Chỉnh sửa món & biến thể"
               >
-                <Edit3 size={16} /> <span>Chỉnh sửa</span>
+                <Edit3 size={16} /> <span>Chi tiết / sửa</span>
               </button>
             )}
 
@@ -351,6 +372,7 @@ const MenuItemCard = ({
               <>
                 {(onEdit || onDelete) && <div className="divider"></div>}
                 <button
+                  type="button"
                   className="action-btn history"
                   aria-label="Xem lịch sử món"
                   onClick={(e) => {
@@ -382,7 +404,7 @@ const MenuItemCard = ({
                     }}
                     title="Cập nhật trạng thái nhanh"
                   >
-                    <MoreHorizontal size={16} /> <span>Trạng thái</span>
+                    <MoreHorizontal size={16} /> <span>Bật/tắt bán</span>
                   </button>
 
                   {isStatusMenuOpen && (
@@ -419,6 +441,7 @@ const MenuItemCard = ({
               <>
                 {(onEdit || canViewHistory) && <div className="divider"></div>}
                 <button
+                  type="button"
                   className="action-btn delete"
                   aria-label="Xóa món"
                   onClick={(e) => {
@@ -433,7 +456,7 @@ const MenuItemCard = ({
             )}
           </div>
         )}
-      </div>
+      </article>
 
       <AuditLogModal
         isOpen={isHistoryOpen}
