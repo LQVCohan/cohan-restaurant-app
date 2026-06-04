@@ -10,6 +10,7 @@ import {
   Twitter,
 } from "lucide-react";
 import "./ContactPage.scss";
+import "./ContactPage.product.css";
 // Giả sử bạn có component Toast, nếu chưa có thì dùng alert tạm
 
 const ContactPage = () => {
