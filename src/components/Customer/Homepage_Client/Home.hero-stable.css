@@ -1,0 +1,56 @@
+/* Keep Homepage hero stable. The visual upgrade starts from categories downward. */
+.home .hero,
+.home .hero.hero--location-open {
+  padding-bottom: 96px !important;
+}
+
+.home .hero.hero--location-open .hero__container {
+  align-items: center !important;
+}
+
+.home .hero.hero--location-open .hero__image-area {
+  min-height: 560px !important;
+  transform: none !important;
+}
+
+.home .hero.hero--location-open .hero__stats {
+  margin-top: 28px !important;
+}
+
+.home .hero__content,
+.home .hero__image-area,
+.home .hero__badge,
+.home .hero__image-bg,
+.home .hero__slider,
+.home .hero__float-card,
+.home .hero__main-img.active,
+.home .hero__stats {
+  animation: none !important;
+}
+
+.home .hero__slider::after,
+.home .hero__btn-search::after,
+.home .hero__btn-location::after {
+  display: none !important;
+}
+
+.home .hero__slider:hover {
+  transform: rotate(-2deg) !important;
+}
+
+.home .hero__search-box:hover,
+.home .hero__search-box:focus-within {
+  transform: none !important;
+}
+
+.home .hero__float-card:hover {
+  transform: none !important;
+}
+
+.home .location-picker {
+  display: none !important;
+}
+
+.home .categories {
+  padding-top: clamp(44px, 5vw, 68px) !important;
+}
