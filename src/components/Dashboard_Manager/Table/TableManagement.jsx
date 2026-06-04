@@ -77,6 +77,8 @@ const TableManagement = () => {
   // --- Hooks ---
   const {
     floors: floorsRaw,
+    floorsLoading,
+    floorsError,
     setActiveLevel,
     getIdFromLevel,
     getLevelFromId,
@@ -85,6 +87,8 @@ const TableManagement = () => {
 
   const {
     tables: tablesRaw,
+    tablesLoading,
+    tablesError,
     setTableStatus,
     createTable,
     updateTable,
@@ -335,6 +339,7 @@ const TableManagement = () => {
     const reason = getQuickActionBlockReason(targetTable?.status, nextStatus);
     return (
       <button
+        type="button"
         className={className}
         onClick={(event) => {
           event.stopPropagation();
@@ -375,6 +380,14 @@ const TableManagement = () => {
   const allFloorsCount = baseFilteredTables.length;
   const getFloorTableCount = (floorId) =>
     filterTablesByFloor(baseFilteredTables, floorId).length;
+  const getFloorName = (floorId) =>
+    floors.find((floor) => String(floor.id) === String(floorId))?.name ||
+    "Chưa gán tầng";
+  const selectedFloorName = isAllFloorsSelected
+    ? "Tất cả tầng"
+    : getFloorName(currentFloor);
+  const isLoadingTables = !!tablesLoading || !!floorsLoading;
+  const tableLoadError = tablesError || floorsError;
 
   // --- Handlers ---
   const handleTableStatusChange = async (table, nextStatus) => {
@@ -430,13 +443,6 @@ const TableManagement = () => {
     const rawTable = getRawTableById(tablesRaw, tableRow.id);
     setLiteTable(rawTable || tableRow);
     setShowLiteModal(true);
-  };
-
-  const handleTableCardKeyDown = (event, tableRow) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    handleOpenTableDetail(tableRow);
   };
 
   const handleOpenAddTableModal = () => {
@@ -604,6 +610,7 @@ const TableManagement = () => {
           { id: "free", icon: "🟢", label: "Trống", value: tablesMapped.filter((t) => t.status === "available").length },
           { id: "floors", icon: "🏢", label: "Số tầng", value: floors.length },
         ]}
+        loading={isLoadingTables}
         secondaryActions={[
           { label: "Thiết kế sơ đồ", icon: "🗺️", onClick: handleOpenFloorDesigner },
           { label: "VR toàn quán", icon: "🕶️", onClick: () => setShowVrModal(true) },
@@ -615,91 +622,168 @@ const TableManagement = () => {
       {/* --- Main Layout --- */}
       <div className="tm-layout">
         {/* Sidebar: Floors */}
-        <aside className="tm-sidebar">
-          <h3>Khu vực / Tầng</h3>
-          <div className="tm-floor-list">
-            <div
+        <aside className="tm-sidebar" aria-label="Chọn tầng và lọc bàn">
+          <div className="tm-panel-heading">
+            <span className="tm-panel-kicker">Điều hướng tầng</span>
+            <h2>Khu vực / Tầng</h2>
+          </div>
+          <nav className="tm-floor-list" aria-label="Danh sách tầng">
+            <button
+              type="button"
               className={`tm-floor-item ${isAllFloorsSelected ? "active" : ""}`}
               onClick={selectAllFloors}
+              aria-pressed={isAllFloorsSelected}
             >
-              <span className="icon">🏬</span>
+              <span className="icon" aria-hidden="true">🏬</span>
               <span className="name">Tất cả tầng</span>
-              <span className="count">{allFloorsCount}</span>
-            </div>
-            {floors.map((f) => (
-              <div
-                key={f.id}
-                className={`tm-floor-item ${
-                  !isAllFloorsSelected && String(currentFloor) === String(f.id)
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() => selectFloor(f.id)}
-              >
-                <span className="icon">{f.icon}</span>
-                <span className="name">{f.name}</span>
-                <span className="count">
-                  {getFloorTableCount(f.id)}
-                </span>
-              </div>
-            ))}
+              <span className="count" aria-label={`${allFloorsCount} bàn`}>{allFloorsCount}</span>
+            </button>
+            {floors.map((f) => {
+              const isActiveFloor =
+                !isAllFloorsSelected && String(currentFloor) === String(f.id);
+              return (
+                <button
+                  type="button"
+                  key={f.id}
+                  className={`tm-floor-item ${isActiveFloor ? "active" : ""}`}
+                  onClick={() => selectFloor(f.id)}
+                  aria-pressed={isActiveFloor}
+                >
+                  <span className="icon" aria-hidden="true">{f.icon}</span>
+                  <span className="name">{f.name}</span>
+                  <span className="count" aria-label={`${getFloorTableCount(f.id)} bàn`}>
+                    {getFloorTableCount(f.id)}
+                  </span>
+                </button>
+              );
+            })}
             <button
+              type="button"
               className="tm-add-floor-btn"
               onClick={() => setShowFloorModal(true)}
             >
               + Thêm tầng
             </button>
-          </div>
+          </nav>
 
-          <div className="tm-filter-box">
-            <input
-              type="text"
-              placeholder="🔍 Tìm mã/số bàn..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select
-              value={currentFilters.status}
-              onChange={(e) =>
-                setCurrentFilters({ ...currentFilters, status: e.target.value })
-              }
-            >
-              <option value="">Tất cả trạng thái</option>
-              {TABLE_STATUS_OPTIONS.map((statusOption) => (
-                <option key={statusOption.value} value={statusOption.value}>
-                  {statusOption.icon} {statusOption.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={currentFilters.area}
-              onChange={(e) =>
-                setCurrentFilters({ ...currentFilters, area: e.target.value })
-              }
-            >
-              <option value="">Tất cả khu vực</option>
-              {TABLE_AREA_OPTIONS.map((areaOption) => (
-                <option key={areaOption.value} value={areaOption.value}>
-                  {areaOption.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isAllFloorsSelected && (
+            <section className="tm-floor-design-card" aria-label="Thiết kế sơ đồ tầng đang chọn">
+              <div>
+                <span>Đang chọn</span>
+                <strong>{selectedFloorName}</strong>
+              </div>
+              <button type="button" onClick={handleOpenFloorDesigner}>
+                Thiết kế sơ đồ tầng
+              </button>
+            </section>
+          )}
+
+          <section className="tm-filter-box" aria-label="Bộ lọc bàn">
+            <div className="tm-filter-heading">
+              <span>Bộ lọc bàn</span>
+              {hasActiveFilters && (
+                <button type="button" onClick={handleResetFilters}>
+                  Reset
+                </button>
+              )}
+            </div>
+            <label className="tm-filter-field" htmlFor="tm-table-search">
+              <span>Tìm bàn</span>
+              <input
+                id="tm-table-search"
+                type="text"
+                placeholder="Nhập mã hoặc số bàn"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Tìm bàn theo mã hoặc số bàn"
+              />
+            </label>
+            <label className="tm-filter-field" htmlFor="tm-status-filter">
+              <span>Trạng thái</span>
+              <select
+                id="tm-status-filter"
+                value={currentFilters.status}
+                onChange={(e) =>
+                  setCurrentFilters({ ...currentFilters, status: e.target.value })
+                }
+                aria-label="Lọc theo trạng thái bàn"
+              >
+                <option value="">Tất cả trạng thái</option>
+                {TABLE_STATUS_OPTIONS.map((statusOption) => (
+                  <option key={statusOption.value} value={statusOption.value}>
+                    {statusOption.icon} {statusOption.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="tm-filter-field" htmlFor="tm-area-filter">
+              <span>Khu vực</span>
+              <select
+                id="tm-area-filter"
+                value={currentFilters.area}
+                onChange={(e) =>
+                  setCurrentFilters({ ...currentFilters, area: e.target.value })
+                }
+                aria-label="Lọc theo khu vực bàn"
+              >
+                <option value="">Tất cả khu vực</option>
+                {TABLE_AREA_OPTIONS.map((areaOption) => (
+                  <option key={areaOption.value} value={areaOption.value}>
+                    {areaOption.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
         </aside>
 
         {/* Main: Grid Tables */}
-        <main className="tm-grid-area">
-          {filteredTables.length === 0 ? (
+        <section className="tm-grid-area" aria-label="Danh sách bàn vận hành">
+          <div className="tm-grid-toolbar">
+            <div>
+              <span className="tm-panel-kicker">Danh sách bàn</span>
+              <h2>{selectedFloorName}</h2>
+            </div>
+            <span className="tm-result-count">{filteredTables.length} bàn</span>
+          </div>
+          {tableLoadError ? (
+            <div className="tm-empty tm-empty--error" role="alert">
+              <span aria-hidden="true">⚠️</span>
+              <p>Không thể tải dữ liệu bàn/tầng. Vui lòng thử lại sau.</p>
+            </div>
+          ) : isLoadingTables ? (
+            <div className="tm-table-grid" aria-label="Đang tải bàn">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <article key={index} className="tm-table-card tm-table-card--skeleton" aria-hidden="true">
+                  <div className="skeleton-line skeleton-line--title" />
+                  <div className="skeleton-line" />
+                  <div className="skeleton-line" />
+                  <div className="skeleton-actions">
+                    <span />
+                    <span />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : filteredTables.length === 0 ? (
             <div className="tm-empty">
-              <span>🪑</span>
+              <span aria-hidden="true">🪑</span>
               <p>
                 {hasActiveFilters
-                  ? "Không tìm thấy bàn phù hợp với bộ lọc hiện tại."
-                  : "Không có bàn nào hiển thị."}
+                  ? "Không có bàn phù hợp với bộ lọc hiện tại."
+                  : floors.length === 0
+                    ? "Chưa có tầng để gán bàn."
+                    : tablesMapped.length === 0
+                      ? "Chưa có bàn nào trong nhà hàng."
+                      : "Không có bàn nào hiển thị."}
               </p>
               {hasActiveFilters ? (
                 <Button variant="secondary" size="sm" onClick={handleResetFilters}>
                   Xóa bộ lọc
+                </Button>
+              ) : floors.length === 0 ? (
+                <Button variant="primary" size="sm" onClick={() => setShowFloorModal(true)}>
+                  Thêm tầng
                 </Button>
               ) : (
                 <Button variant="primary" size="sm" onClick={handleOpenAddTableModal}>
@@ -715,17 +799,12 @@ const TableManagement = () => {
                 const hasVisualConfig = !!t.visualConfig;
                 const guardState = getTableGuardState(t);
                 return (
-                  <div
+                  <article
                     key={t.id}
                     className={`tm-table-card ${t.status}`}
-                    onDoubleClick={() => handleOpenTableDetail(t)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
-                    onKeyDown={(event) => handleTableCardKeyDown(event, t)}
                   >
                     <div className="card-top">
-                      <span className="table-no">{t.number}</span>
+                      <span className="table-no">{t.number || "Bàn chưa mã"}</span>
                       <div className="card-top-right">
                         {hasVr && <span className="vr-badge">360°</span>}
                         {hasVisualConfig && (
@@ -748,18 +827,23 @@ const TableManagement = () => {
                     </div>
                     <div className="card-body">
                       <div className="info-row">
-                        <span>👥</span> {t.seats} chỗ
+                        <span aria-hidden="true">👥</span> {t.seats} chỗ
                       </div>
                       <div className="info-row">
-                        <span>🏷️</span> {getAreaText(t.area)}
+                        <span aria-hidden="true">🏢</span> {getFloorName(t.floorId)}
                       </div>
                       <div className="info-row">
-                        <span>💰</span> {formatCurrency(t.deposit)}
+                        <span aria-hidden="true">🏷️</span> {getAreaText(t.area)}
+                      </div>
+                      <div className="info-row">
+                        <span aria-hidden="true">💰</span> {formatCurrency(t.deposit)}
                       </div>
                     </div>
                     <div className="card-actions">
                       <button
+                        type="button"
                         className="btn-mini secondary"
+                        aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           handleOpenTableDetail(t);
@@ -783,12 +867,12 @@ const TableManagement = () => {
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
                       )}
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
           )}
-        </main>
+        </section>
       </div>
 
       {/* --- MODALS SECTION --- */}
@@ -838,8 +922,9 @@ const TableManagement = () => {
             <div className="tm-form-section-title">Thông tin cơ bản</div>
             <div className="tm-form-grid">
               <div className={`tm-field ${tableErrors.number ? "is-invalid" : ""}`}>
-                <label>Số bàn *</label>
+                <label htmlFor="tm-add-table-number">Số bàn *</label>
                 <input
+                  id="tm-add-table-number"
                   value={tableForm.number}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -859,8 +944,9 @@ const TableManagement = () => {
                 </div>
               </div>
               <div className={`tm-field ${tableErrors.seats ? "is-invalid" : ""}`}>
-                <label>Số ghế *</label>
+                <label htmlFor="tm-add-table-seats">Số ghế *</label>
                 <input
+                  id="tm-add-table-seats"
                   type="number"
                   min={1}
                   step={1}
@@ -887,8 +973,9 @@ const TableManagement = () => {
             <div className="tm-form-section-title">Vị trí phục vụ</div>
             <div className="tm-form-grid">
               <div className={`tm-field ${tableErrors.floorId ? "is-invalid" : ""}`}>
-                <label>Tầng *</label>
+                <label htmlFor="tm-add-table-floor">Tầng *</label>
                 <select
+                  id="tm-add-table-floor"
                   value={tableForm.floorId}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -914,8 +1001,9 @@ const TableManagement = () => {
                 </div>
               </div>
               <div className="tm-field">
-                <label>Khu vực</label>
+                <label htmlFor="tm-add-table-area">Khu vực</label>
                 <select
+                  id="tm-add-table-area"
                   value={tableForm.area}
                   onChange={(e) =>
                     setTableForm({ ...tableForm, area: e.target.value })
@@ -993,8 +1081,9 @@ const TableManagement = () => {
           <div className="tm-form-section">
             <div className="tm-form-section-title">Thông tin tầng</div>
             <div className={`tm-field ${floorErrors.name ? "is-invalid" : ""}`}>
-              <label>Tên tầng *</label>
+              <label htmlFor="tm-add-floor-name">Tên tầng *</label>
               <input
+                id="tm-add-floor-name"
                 value={floorForm.name}
                 onChange={(e) => {
                   const value = e.target.value;
