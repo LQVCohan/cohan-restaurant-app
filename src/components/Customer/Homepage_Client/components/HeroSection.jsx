@@ -416,7 +416,7 @@ const HeroSection = ({ onSearch }) => {
   };
 
   return (
-    <section id="home" className="hero">
+    <section id="home" className={`hero ${isLocationPickerOpen ? "hero--location-open" : ""}`}>
       <div className="hero__container">
         {/* --- LEFT CONTENT (Giữ nguyên) --- */}
         <div className="hero__content">
