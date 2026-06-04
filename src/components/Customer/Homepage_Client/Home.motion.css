@@ -1,171 +1,5 @@
-/* Premium motion layer for Homepage. Visual-only: no data or flow changes. */
-.home {
-  position: relative;
-}
-
-.home::before,
-.home::after {
-  content: "";
-  position: fixed;
-  width: 420px;
-  height: 420px;
-  border-radius: 999px;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(18px);
-  opacity: 0.42;
-}
-
-.home::before {
-  top: 100px;
-  left: -160px;
-  background: radial-gradient(circle, rgba(255, 138, 61, 0.18), transparent 68%);
-}
-
-.home::after {
-  right: -180px;
-  bottom: 12vh;
-  background: radial-gradient(circle, rgba(255, 185, 115, 0.22), transparent 70%);
-}
-
-.home .home__main-content,
-.home .hero,
-.home .categories,
-.home .dish-grid,
-.home .restaurant-grid,
-.home .home__section-wrapper {
-  position: relative;
-  z-index: 1;
-}
-
-.home .hero__content {
-  animation: homeHeroCopyIn 0.76s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.home .hero__image-area {
-  animation: homeHeroArtIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
-}
-
-.home .hero__badge {
-  animation: homeSoftFloat 4.8s ease-in-out infinite;
-}
-
-.home .hero__image-bg {
-  transform-origin: center;
-  animation: homeBlobBreathe 8.5s ease-in-out infinite !important;
-  box-shadow:
-    0 24px 70px rgba(255, 102, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
-}
-
-.home .hero__slider {
-  isolation: isolate;
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.45s ease;
-}
-
-.home .hero__slider:hover {
-  transform: translateY(-4px) rotate(-1deg) scale(1.012) !important;
-  box-shadow: 0 34px 82px rgba(83, 46, 20, 0.24) !important;
-}
-
-.home .hero__slider::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 7;
-  pointer-events: none;
-  background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.0) 38%, rgba(255,255,255,0.26) 48%, rgba(255,255,255,0.0) 58%, transparent 100%);
-  transform: translateX(-120%);
-  animation: homeImageSheen 5.4s ease-in-out infinite;
-}
-
-.home .hero__main-img.active {
-  animation: homeImageFocus 5s ease-in-out both;
-}
-
-.home .hero__float-card {
-  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.32s ease;
-}
-
-.home .hero__float-card.float-review {
-  animation: homeCardFloatA 5.2s ease-in-out infinite;
-}
-
-.home .hero__float-card.float-delivery {
-  animation: homeCardFloatB 5.8s ease-in-out infinite;
-}
-
-.home .hero__float-card:hover {
-  transform: translateY(-5px) rotate(0deg) scale(1.03) !important;
-  box-shadow: 0 24px 54px rgba(83, 46, 20, 0.18) !important;
-}
-
-.home .hero__search-box {
-  transition: transform 0.32s ease, box-shadow 0.32s ease, border-color 0.32s ease;
-}
-
-.home .hero__search-box:focus-within,
-.home .hero__search-box:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 102, 0, 0.22) !important;
-  box-shadow: 0 26px 64px rgba(83, 46, 20, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
-}
-
-.home .hero__btn-search,
-.home .hero__btn-location,
-.home .restaurant-grid__view-all,
-.home .dish-card__btn-add,
-.home .res-card__btn--primary,
-.home .res-card__btn--outline {
-  position: relative;
-  overflow: hidden;
-}
-
-.home .hero__btn-search::after,
-.home .restaurant-grid__view-all::after,
-.home .dish-card__btn-add::after,
-.home .res-card__btn--primary::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.3) 45%, transparent 70%);
-  transform: translateX(-120%);
-  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.home .hero__btn-search:hover::after,
-.home .restaurant-grid__view-all:hover::after,
-.home .dish-card__btn-add:hover::after,
-.home .res-card__btn--primary:hover::after {
-  transform: translateX(120%);
-}
-
-.home .hero__stats {
-  animation: homeStatsIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
-}
-
-.home .location-picker {
-  transform-origin: top left;
-  animation: homePickerIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.home .location-picker__map {
-  position: relative;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
-}
-
-.home .location-picker__confirm {
-  box-shadow: 0 12px 24px rgba(255, 102, 0, 0.2) !important;
-}
-
-.home .location-picker__confirm:active,
-.home .hero__btn-search:active,
-.home .restaurant-grid__view-all:active,
-.home .res-card__btn--primary:active,
-.home .dish-card__btn-add:active {
-  transform: translateY(0) scale(0.985) !important;
-}
-
+/* Section-only motion layer for Homepage.
+   Hero and current-location controls are intentionally left untouched. */
 .home .categories__card,
 .home .dish-card,
 .home .res-card,
@@ -211,15 +45,15 @@
 }
 
 .home .dish-grid__empty {
-  animation: homeEmptyPulse 4.8s ease-in-out infinite;
+  animation: homeSectionEmptyPulse 4.8s ease-in-out infinite;
 }
 
 .home .dish-grid__empty::before {
-  animation: homeSoftFloat 4.2s ease-in-out infinite;
+  animation: homeSectionSoftFloat 4.2s ease-in-out infinite;
 }
 
 .home .cart-floating-btn {
-  animation: homeCartPulse 3.2s ease-in-out infinite;
+  animation: homeSectionCartPulse 3.2s ease-in-out infinite;
 }
 
 .home .cart-floating-btn:hover {
@@ -228,6 +62,36 @@
 
 .home .home__section-wrapper > * {
   animation: homeSectionLift 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.home .restaurant-grid__view-all,
+.home .dish-card__btn-add,
+.home .res-card__btn--primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.home .restaurant-grid__view-all::after,
+.home .dish-card__btn-add::after,
+.home .res-card__btn--primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.3) 45%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home .restaurant-grid__view-all:hover::after,
+.home .dish-card__btn-add:hover::after,
+.home .res-card__btn--primary:hover::after {
+  transform: translateX(120%);
+}
+
+.home .restaurant-grid__view-all:active,
+.home .res-card__btn--primary:active,
+.home .dish-card__btn-add:active {
+  transform: translateY(0) scale(0.985) !important;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -246,12 +110,6 @@
 }
 
 @media (max-width: 760px) {
-  .home::before,
-  .home::after {
-    display: none;
-  }
-
-  .home .hero__slider:hover,
   .home .categories__card:hover,
   .home .dish-card:hover,
   .home .res-card:hover {
@@ -260,76 +118,32 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home *,
-  .home *::before,
-  .home *::after {
+  .home .categories__card,
+  .home .dish-card,
+  .home .res-card,
+  .home .home__section-wrapper > *,
+  .home .dish-grid__empty,
+  .home .dish-grid__empty::before,
+  .home .cart-floating-btn {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-@keyframes homeHeroCopyIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes homeHeroArtIn {
-  from { opacity: 0; transform: translateY(28px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes homeBlobBreathe {
-  0%, 100% { transform: translate(-50%, -50%) rotate(45deg) scale(1); }
-  35% { transform: translate(-50%, -52%) rotate(48deg) scale(1.035); }
-  70% { transform: translate(-50%, -49%) rotate(42deg) scale(0.985); }
-}
-
-@keyframes homeImageSheen {
-  0%, 52% { transform: translateX(-120%); opacity: 0; }
-  58% { opacity: 1; }
-  72%, 100% { transform: translateX(120%); opacity: 0; }
-}
-
-@keyframes homeImageFocus {
-  0% { transform: scale(1.04); }
-  100% { transform: scale(1.01); }
-}
-
-@keyframes homeCardFloatA {
-  0%, 100% { transform: translateY(0) rotate(-4deg); }
-  50% { transform: translateY(-8px) rotate(-2deg); }
-}
-
-@keyframes homeCardFloatB {
-  0%, 100% { transform: translateY(0) rotate(4deg); }
-  50% { transform: translateY(7px) rotate(2deg); }
-}
-
-@keyframes homeSoftFloat {
+@keyframes homeSectionSoftFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
 }
 
-@keyframes homeStatsIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes homePickerIn {
-  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes homeEmptyPulse {
+@keyframes homeSectionEmptyPulse {
   0%, 100% { box-shadow: 0 12px 30px rgba(83, 46, 20, 0.045); }
   50% { box-shadow: 0 18px 42px rgba(255, 102, 0, 0.08); }
 }
 
-@keyframes homeCartPulse {
-  0%, 100% { box-shadow: 0 20px 44px rgba(255, 102, 0, 0.34) !important; }
-  50% { box-shadow: 0 22px 58px rgba(255, 102, 0, 0.46) !important; }
+@keyframes homeSectionCartPulse {
+  0%, 100% { box-shadow: 0 20px 44px rgba(255, 102, 0, 0.34); }
+  50% { box-shadow: 0 22px 58px rgba(255, 102, 0, 0.46); }
 }
 
 @keyframes homeSectionLift {
