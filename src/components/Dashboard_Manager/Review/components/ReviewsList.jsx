@@ -260,7 +260,7 @@ const ReviewsList = ({
                 {review.staff_name || "Không gắn nhân viên"}
               </p>
               <p className="reviews-review-card__text reviews-review-card__text--note">
-                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
+                Đánh giá công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
                 tính lại tiếp theo.
               </p>
 
@@ -270,7 +270,7 @@ const ReviewsList = ({
                     <img
                       key={img}
                       src={img}
-                      alt="Review"
+                      alt="Ảnh đánh giá"
                       className="reviews-review-card__image"
                     />
                   ))}

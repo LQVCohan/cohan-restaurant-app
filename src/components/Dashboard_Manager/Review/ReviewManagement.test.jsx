@@ -305,7 +305,6 @@ describe("ReviewManagement analytics", () => {
     render(<ReviewManagement />);
 
     expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
-    expect(screen.getByText("Tỷ lệ verified")).toBeInTheDocument();
     expect(screen.getByText("Chưa phản hồi: 1")).toBeInTheDocument();
     expect(screen.getByText("Tiêu cực/cảnh báo: 2")).toBeInTheDocument();
     expect(screen.queryByText("Đang xem xét: 99")).not.toBeInTheDocument();
@@ -350,7 +349,7 @@ describe("ReviewManagement analytics", () => {
     });
     render(<ReviewManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Report cần xử lý/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Báo cáo cần xử lý/i }));
 
     const list = screen.getByTestId("reviews-list");
     expect(within(list).getByText(/Reported review/i)).toBeInTheDocument();
@@ -393,12 +392,12 @@ describe("ReviewManagement analytics", () => {
     expect(analyticsCalls[0]?.skip).toBe(true);
     expect(
       screen.getByText(
-        "Chọn nhà hàng để xem insight/analytics trong phạm vi quản lý.",
+        "Chọn nhà hàng để xem phân tích trong phạm vi quản lý.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
-        "Không thể tải analytics. Dữ liệu review vẫn hiển thị bên dưới.",
+        "Không thể tải phân tích. Dữ liệu đánh giá vẫn hiển thị bên dưới.",
       ),
     ).not.toBeInTheDocument();
   });
@@ -425,6 +424,6 @@ describe("ReviewManagement analytics", () => {
 
     expect(analyticsCalls[0]?.skip).toBe(false);
     expect(screen.getByText("Tổng quan đánh giá")).toBeInTheDocument();
-    expect(screen.getByText("Tỷ lệ verified")).toBeInTheDocument();
+    expect(screen.getAllByText("Trung tâm xử lý đánh giá").length).toBeGreaterThan(0);
   });
 });

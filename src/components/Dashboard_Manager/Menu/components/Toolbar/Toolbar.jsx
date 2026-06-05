@@ -62,6 +62,7 @@ const Toolbar = ({
   onForYouMetadataFilterChange,
   forYouMetadataCounts = {},
   operationStats = null,
+  showMetrics = true,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({
@@ -238,18 +239,20 @@ const Toolbar = ({
         </div>
       </div>
 
-      <div className="toolbar-metric-strip">
-        {overviewCards.map((card) => (
-          <div key={card.key} className="toolbar-metric-pill">
-            <span className="toolbar-metric-pill__icon">{card.icon}</span>
-            <span className="toolbar-metric-pill__content">
-              <span className="toolbar-metric-pill__label">{card.label}</span>
-              <strong className="toolbar-metric-pill__value">{card.value}</strong>
-              <small className="toolbar-metric-pill__hint">{card.hint}</small>
-            </span>
-          </div>
-        ))}
-      </div>
+      {showMetrics && (
+        <div className="toolbar-metric-strip">
+          {overviewCards.map((card) => (
+            <div key={card.key} className="toolbar-metric-pill">
+              <span className="toolbar-metric-pill__icon">{card.icon}</span>
+              <span className="toolbar-metric-pill__content">
+                <span className="toolbar-metric-pill__label">{card.label}</span>
+                <strong className="toolbar-metric-pill__value">{card.value}</strong>
+                <small className="toolbar-metric-pill__hint">{card.hint}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="toolbar-filters">
         <div className="filter-row">

@@ -1370,12 +1370,13 @@ const MenuManagement = () => {
         density="compact"
         showTimeWidget={false}
         eyebrow="MENU MANAGER"
-        title="Quản lý Thực Đơn"
+        title="Quản lý thực đơn"
         subtitle="Quản lý món, danh mục, trạng thái bán và hiển thị trên app khách hàng."
         icon="📋"
         selectedRestaurant={currentRestaurant || ""}
         onRestaurantChange={setCurrentRestaurant}
         restaurantList={managerRestaurants}
+        restaurantPlaceholder="Chọn nhà hàng"
         customFilters={(
           <select
             className="mph-select"
@@ -1471,6 +1472,7 @@ const MenuManagement = () => {
           onForYouMetadataFilterChange={setForYouMetadataFilter}
           forYouMetadataCounts={forYouMetadataCounts}
           operationStats={menuOperationKpis}
+          showMetrics={false}
         />
 
         {!itemsLoading && enrichedItems.length > 0 && (
@@ -1534,7 +1536,7 @@ const MenuManagement = () => {
               <div className="mm-empty-state__actions">
                 {emptyState.action === "create_menu" && canCreateMenu && (
                   <button type="button" className="mm-btn mm-btn--primary" onClick={() => toggleModal("menu", true)}>
-                    Tạo menu
+                    Tạo menu theo khung giờ
                   </button>
                 )}
                 {emptyState.action === "add_item" && canCreateMenuItem && (

@@ -20,7 +20,7 @@ const EmptyState = ({ type = "default" }) => {
     },
     reported: {
       title: "Không có đánh giá đang được xem xét",
-      desc: "Hiện không có report hoặc review rủi ro cao cần hậu kiểm.",
+      desc: "Hiện không có báo cáo hoặc đánh giá rủi ro cao cần hậu kiểm.",
       icon: "✨",
     },
   };
