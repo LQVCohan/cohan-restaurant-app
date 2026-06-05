@@ -5,7 +5,6 @@ import "../styles/ProductModal.scss";
 
 const ProductModal = ({ product, onClose, onAddToCart }) => {
   // Legacy note: hiện chưa được render trong luồng customer chính; không dùng làm đường add cart production.
-  // --- 1. KHAI BÁO HOOKS (Luôn để trên cùng, không được nằm trong if) ---
 
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
@@ -13,7 +12,6 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
   const [selectedToppings, setSelectedToppings] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState(null);
 
-  // --- 2. EFFECT: Reset dữ liệu khi product thay đổi ---
   useEffect(() => {
     if (product) {
       setQuantity(1);
@@ -21,7 +19,6 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
       setSelectedSize(product.variants ? product.variants[0] : null);
       setSelectedToppings([]);
 
-      // Logic chọn mặc định Cách chế biến
       const methods = product.cookingMethods || [
         { id: "m1", name: "Chiên nước mắm", price: 0 },
         { id: "m2", name: "Xào chua ngọt", price: 0 },
@@ -34,10 +31,8 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
     }
   }, [product]);
 
-  // --- 3. KIỂM TRA NULL (Chỉ return SAU KHI đã gọi xong Hooks) ---
+  if (!product) return null;
 
-  // --- 4. DATA HELPER (Lấy dữ liệu để render) ---
-  // Định nghĩa lại mảng này ở đây để dùng cho render và tính toán
   const cookingMethods = product.cookingMethods || [
     { id: "m1", name: "Chiên nước mắm", price: 0 },
     { id: "m2", name: "Xào chua ngọt", price: 0 },
@@ -45,7 +40,6 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
     { id: "m4", name: "Sốt bơ tỏi", price: 5000 },
   ];
 
-  // --- 5. HANDLERS ---
   const handleQuantityChange = (delta) => {
     const newQty = quantity + delta;
     if (newQty >= 1) setQuantity(newQty);
@@ -88,34 +82,31 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
     onClose();
   };
 
-  // --- 6. RENDER ---
   return (
-    <div className="modal-menu-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        {/* Ảnh sản phẩm */}
+    <div className="modal-menu-overlay" onClick={onClose} role="presentation">
+      <section className="modal-content" onClick={(e) => e.stopPropagation()} aria-modal="true" role="dialog" aria-labelledby="product-modal-title">
         <div className="modal-img">
           <img src={product.image} alt={product.name} />
-          <button className="close-btn mobile-only" onClick={onClose}>
+          <button type="button" className="close-btn mobile-only" onClick={onClose} aria-label="Đóng chi tiết món">
             <X size={20} />
           </button>
         </div>
 
-        {/* Thông tin chi tiết */}
         <div className="modal-info">
-          <button className="close-btn desktop-only" onClick={onClose}>
+          <button type="button" className="close-btn desktop-only" onClick={onClose} aria-label="Đóng chi tiết món">
             <X size={20} />
           </button>
 
-          <h2>{product.name}</h2>
+          <h2 id="product-modal-title">{product.name}</h2>
           <p className="desc">{product.description}</p>
 
-          {/* Chọn Size */}
           {product.variants && (
             <div className="option-section">
               <h3>Kích thước</h3>
               <div className="options-grid">
                 {product.variants.map((variant) => (
                   <button
+                    type="button"
                     key={variant.id}
                     className={
                       selectedSize?.id === variant.id ? "selected" : ""
@@ -129,13 +120,13 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
             </div>
           )}
 
-          {/* Chọn Cách Chế Biến */}
           {cookingMethods && cookingMethods.length > 0 && (
             <div className="option-section">
               <h3>Bạn muốn chế biến kiểu nào?</h3>
               <div className="options-grid">
                 {cookingMethods.map((method) => (
                   <button
+                    type="button"
                     key={method.id}
                     className={
                       selectedMethod?.id === method.id ? "selected" : ""
@@ -152,7 +143,6 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
             </div>
           )}
 
-          {/* Chọn Topping */}
           <div className="option-section">
             <h3>Topping thêm</h3>
             <div className="options-grid">
@@ -161,6 +151,7 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
                 { id: 2, name: "Thạch dừa", price: 5000 },
               ].map((topping) => (
                 <button
+                  type="button"
                   key={topping.id}
                   className={
                     selectedToppings.find((t) => t.id === topping.id)
@@ -185,20 +176,20 @@ const ProductModal = ({ product, onClose, onAddToCart }) => {
 
           <div className="modal-footer">
             <div className="qty-control">
-              <button onClick={() => handleQuantityChange(-1)}>
+              <button type="button" onClick={() => handleQuantityChange(-1)} aria-label="Giảm số lượng">
                 <Minus size={16} />
               </button>
               <span>{quantity}</span>
-              <button onClick={() => handleQuantityChange(1)}>
+              <button type="button" onClick={() => handleQuantityChange(1)} aria-label="Tăng số lượng">
                 <Plus size={16} />
               </button>
             </div>
-            <button className="add-cart-btn" onClick={handleAddToCart}>
+            <button type="button" className="add-cart-btn" onClick={handleAddToCart}>
               <span>Thêm {calculateTotal().toLocaleString()}đ</span>
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

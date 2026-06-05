@@ -1,18 +1,44 @@
 // src/components/Customer/RestaurantMenu/styles/_variables.scss
 
-// --- VARIABLES ---
-$primary: #f97316;
-$primary-dark: #c2410c;
-$primary-light: #fff7ed;
-$text-main: #111827;
-$text-sub: #6b7280;
-$bg-body: #f8fafc;
-$bg-card: #ffffff;
-$border-color: #e5e7eb;
-$radius: 12px;
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-$shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+$font-family: "Outfit", "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+$font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+$bg-body: #fbf4e8;
+$bg-body-deep: #f4e7d3;
+$bg-card: #fffaf2;
+$surface: #fffaf2;
+$surface-elevated: rgba(255, 252, 246, 0.88);
+$surface-muted: #f5eadb;
+$text-main: #241a13;
+$text-sub: #66584c;
+$text-muted: #907d6c;
+$border-color: rgba(104, 79, 54, 0.16);
+$border-strong: rgba(104, 79, 54, 0.28);
+$primary: #d97706;
+$primary-dark: #9a4f08;
+$primary-soft: #fff0d2;
+$primary-softer: #fff8eb;
+$success: #28785a;
+$danger: #b23b2e;
+$warning: #a16207;
+
+$radius-sm: 10px;
+$radius-md: 16px;
+$radius-lg: 22px;
+$radius-xl: 30px;
+$radius-pill: 999px;
+$radius: $radius-md;
+
+$shadow-xs: 0 1px 2px rgba(80, 52, 24, 0.06);
+$shadow-sm: 0 10px 30px rgba(92, 63, 32, 0.08);
+$shadow-md: 0 18px 48px rgba(91, 61, 31, 0.14);
+$shadow-hover: 0 24px 70px rgba(127, 78, 23, 0.18);
+$shadow-amber: 0 18px 46px rgba(217, 119, 6, 0.22);
+$inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 -1px 0 rgba(104, 79, 54, 0.06);
+
+$z-sticky: 40;
+$z-floating: 900;
+$z-modal: 1200;
 
 @mixin flex-center {
   display: flex;
@@ -20,37 +46,49 @@ $shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   justify-content: center;
 }
 
-// --- KEYFRAMES ---
+@mixin focus-ring {
+  outline: 3px solid rgba(217, 119, 6, 0.24);
+  outline-offset: 3px;
+}
+
+@mixin glass-surface {
+  background: $surface-elevated;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: $shadow-sm, $inner-glow;
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 @keyframes fadeOverlay {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+
 @keyframes zoomIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(12px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
-// Class tiện ích chung
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
 .fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }

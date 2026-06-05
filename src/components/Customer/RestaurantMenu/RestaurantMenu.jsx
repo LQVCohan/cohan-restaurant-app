@@ -189,22 +189,58 @@ const RestaurantMenu = () => {
     clearCart();
   };
 
+  const renderRestaurantSkeletons = () => (
+    <>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <article className="res-card-skeleton" aria-hidden="true" key={index}>
+          <div className="skeleton-media" />
+          <div className="skeleton-body">
+            <span className="skeleton-line skeleton-line--wide" />
+            <span className="skeleton-line" />
+            <span className="skeleton-line skeleton-line--short" />
+          </div>
+        </article>
+      ))}
+    </>
+  );
+
   return (
-    <div className="restaurant-app">
+    <main className="restaurant-app">
       {!selectedRes && (
-        <div className="hero-section fade-in">
-          <h1>
-            Khám phá <span>Ẩm thực đỉnh cao</span>
-          </h1>
-          <p>Lựa chọn nhà hàng yêu thích và tận hưởng hương vị tuyệt vời.</p>
-        </div>
+        <section className="hero-section fade-in" aria-labelledby="restaurant-menu-title">
+          <div className="hero-copy">
+            <p className="hero-eyebrow">Cohan marketplace</p>
+            <h1 id="restaurant-menu-title">
+              Chọn nhà hàng hợp gu, đặt món đúng khoảnh khắc.
+            </h1>
+            <p>
+              Duyệt thực đơn theo bữa, ưu tiên khẩu vị cá nhân và mở chi tiết món
+              nhanh mà khách vãng lai vẫn xem được trước khi đăng nhập checkout.
+            </p>
+            <div className="hero-chips" aria-label="Điểm nổi bật của trang đặt món">
+              <span>Đặt món nhanh</span>
+              <span>Theo khẩu vị</span>
+              <span>Theo nhà hàng gần bạn</span>
+            </div>
+          </div>
+          <aside className="hero-visual" aria-label="Trải nghiệm đặt món nổi bật">
+            <span className="hero-visual__label">Bữa trưa đề xuất</span>
+            <strong>12:30</strong>
+            <p>Ưu tiên món đang mở bán, có khuyến mãi và phù hợp khẩu vị.</p>
+            <div className="hero-visual__stack">
+              <span>★ Nhà hàng được đánh giá cao</span>
+              <span>• Lọc theo khung giờ</span>
+              <span>• Xem chi tiết từng món</span>
+            </div>
+          </aside>
+        </section>
       )}
 
       {selectedRes ? (
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 12px" }}>
+        <section className="menu-assistant-bar" aria-label="Trợ lý gợi ý món">
           <button
             type="button"
-            style={{ border: "1px solid #d1d5db", background: "#fff", color: "#111827", borderRadius: 999, padding: "8px 14px", fontWeight: 600, cursor: "pointer" }}
+            className="menu-assistant-btn"
             onClick={() =>
               openAiMenuAssistant(
                 selectedRes?.id
@@ -213,9 +249,9 @@ const RestaurantMenu = () => {
               )
             }
           >
-            Không biết chọn gì? Hỏi AI gợi ý món
+            <span>Không biết chọn gì?</span> Hỏi AI gợi ý món
           </button>
-        </div>
+        </section>
       ) : null}
 
       {selectedRes ? (
@@ -226,18 +262,20 @@ const RestaurantMenu = () => {
           onOpenFoodDetail={handleOpenFoodDetail}
         />
       ) : (
-        <div className="grid-container res-grid">
+        <section className="grid-container res-grid" aria-busy={restaurantsLoading}>
           {restaurantsLoading ? (
-            <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
-              Đang tải nhà hàng...
-            </div>
+            renderRestaurantSkeletons()
           ) : restaurantsError ? (
-            <div style={{ textAlign: "center", padding: "3rem", color: "#d32f2f" }}>
-              Không thể tải danh sách nhà hàng. Vui lòng thử lại.
+            <div className="restaurant-state restaurant-state--error" role="alert">
+              <span className="restaurant-state__icon">!</span>
+              <h2>Không thể tải danh sách nhà hàng</h2>
+              <p>Vui lòng kiểm tra kết nối hoặc tải lại trang để tiếp tục chọn món.</p>
             </div>
           ) : normalizedRestaurants.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
-              Hiện chưa có nhà hàng nào.
+            <div className="restaurant-state">
+              <span className="restaurant-state__icon">🍽️</span>
+              <h2>Chưa có nhà hàng sẵn sàng</h2>
+              <p>Hãy quay lại sau, đội ngũ Cohan đang cập nhật thêm thực đơn mới.</p>
             </div>
           ) : (
             normalizedRestaurants.map((res) => (
@@ -254,20 +292,22 @@ const RestaurantMenu = () => {
             restaurantParam &&
             !selectedRes &&
             !restaurantByIdLoading && (
-              <div style={{ textAlign: "center", padding: "0.5rem", color: "#d97706" }}>
-                Không tìm thấy nhà hàng.
+              <div className="restaurant-state restaurant-state--compact" role="status">
+                Không tìm thấy nhà hàng trong liên kết này.
               </div>
             )}
-        </div>
+        </section>
       )}
 
       {/* FLOATING CART BUTTON */}
       {cart.length > 0 && (
         <button
+          type="button"
           className="floating-cart-btn fade-in"
           onClick={() => setIsCartOpen(true)}
+          aria-label={`Mở giỏ hàng, ${totalCount} món, tổng ${formatCurrency(totalPrice)}`}
         >
-          <span className="cart-icon">🛒</span>
+          <span className="cart-icon" aria-hidden="true">🛒</span>
           <span className="cart-count">{totalCount}</span>
           <span className="cart-total">{formatCurrency(totalPrice)}</span>
         </button>
@@ -289,7 +329,7 @@ const RestaurantMenu = () => {
         busyRestaurantIds={busyRestaurantIds}
         isClearing={isClearing}
       />
-    </div>
+    </main>
   );
 };
 

@@ -78,6 +78,13 @@ export const GET_MENU_ITEMS_FOR_CUSTOMER_MENU = gql`
 
 const ITEMS_PER_PAGE = 8;
 
+const TIME_SLOTS = [
+  { id: "breakfast", label: "Bữa sáng", icon: "🍳" },
+  { id: "lunch", label: "Bữa trưa", icon: "☀️" },
+  { id: "dinner", label: "Bữa tối", icon: "🌙" },
+  { id: "late_night", label: "Ăn đêm", icon: "🦉" },
+];
+
 const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
@@ -239,57 +246,82 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
   };
 
   const isLoading = menuLoading || (categoriesLoading && activeCat !== "all");
+  const renderMenuSkeletons = () => (
+    <div className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`} aria-hidden="true">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <article className="menu-item-skeleton" key={index}>
+          <div className="skeleton-thumb" />
+          <div className="skeleton-content">
+            <span />
+            <span />
+            <span />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="fade-in">
+    <div className="menu-detail-view fade-in">
       <header className="menu-header">
         <div className="header-content">
           <div className="top-row">
             <button type="button" onClick={onBack} className="back-btn">
-              ⬅ Quay lại
+              <span aria-hidden="true">←</span> Quay lại
             </button>
-            <h2>{restaurant?.name || "Thực đơn"}</h2>
-            <div className="search-box">
-              <input
-                placeholder="Tìm món..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <span>🔍</span>
-            </div>
-            <div className="view-toggle">
-              <button
-                type="button"
-                className={viewMode === "grid" ? "active" : ""}
-                onClick={() => setViewMode("grid")}
-              >
-                ⊞
-              </button>
-              <button
-                type="button"
-                className={viewMode === "list" ? "active" : ""}
-                onClick={() => setViewMode("list")}
-              >
-                ☰
-              </button>
-            </div>
-          </div>
-          <div className="tabs-row">
-            {[
-              { id: "breakfast", label: "🍳 Bữa Sáng" },
-              { id: "lunch", label: "☀️ Bữa Trưa" },
-              { id: "dinner", label: "🌙 Bữa Tối" },
-              { id: "late_night", label: "🦉 Ăn Đêm" },
-            ].map((s) => (
-              <div
-                key={s.id}
-                className={`tab ${timeSlot === s.id ? "active" : ""}`}
-                onClick={() => setTimeSlot(s.id)}
-              >
-                {s.label}
+            <div className="restaurant-title-block">
+              <p className="restaurant-kicker">Thực đơn theo khung giờ</p>
+              <h2>{restaurant?.name || "Thực đơn"}</h2>
+              <div className="restaurant-meta">
+                {restaurant?.rating && <span>★ {restaurant.rating}</span>}
+                <span>{canOrder ? "Đang nhận đơn" : "Tạm dừng nhận đơn"}</span>
+                {restaurant?.address && <span>{restaurant.address}</span>}
               </div>
-            ))}
+            </div>
+            <div className="header-actions">
+              <label className="search-box">
+                <span aria-hidden="true">🔍</span>
+                <input
+                  placeholder="Tìm món trong thực đơn"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </label>
+              <div className="view-toggle" aria-label="Chọn kiểu hiển thị món">
+                <button
+                  type="button"
+                  aria-label="Hiển thị dạng lưới"
+                  className={viewMode === "grid" ? "active" : ""}
+                  aria-pressed={viewMode === "grid"}
+                  onClick={() => setViewMode("grid")}
+                >
+                  ⊞
+                </button>
+                <button
+                  type="button"
+                  aria-label="Hiển thị dạng danh sách"
+                  className={viewMode === "list" ? "active" : ""}
+                  aria-pressed={viewMode === "list"}
+                  onClick={() => setViewMode("list")}
+                >
+                  ☰
+                </button>
+              </div>
+            </div>
           </div>
+          <nav className="tabs-row" aria-label="Chọn bữa ăn">
+            {TIME_SLOTS.map((slot) => (
+              <button
+                type="button"
+                key={slot.id}
+                className={`tab ${timeSlot === slot.id ? "active" : ""}`}
+                aria-pressed={timeSlot === slot.id}
+                onClick={() => setTimeSlot(slot.id)}
+              >
+                <span aria-hidden="true">{slot.icon}</span>{slot.label}
+              </button>
+            ))}
+          </nav>
           {isAuthenticated && hasFoodPreferences && (
             <label className="food-preference-toggle">
               <input
@@ -303,23 +335,24 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
         </div>
       </header>
 
-      <div className="grid-container">
-        <div className="category-filter">
+      <section className="grid-container menu-detail-container">
+        <nav className="category-filter" aria-label="Danh mục món ăn">
           <div className="pills">
             {categoriesError && (
-              <div style={{ color: "#d97706", fontSize: "0.9rem", padding: "0.25rem 0.5rem" }}>
+              <div className="category-warning" role="status">
                 Không tải được danh mục. Đang hiển thị theo "Tất cả".
               </div>
             )}
             <button
+              type="button"
               className={activeCat === "all" ? "active" : ""}
               onClick={() => setActiveCat("all")}
-
             >
               Tất cả
             </button>
             {categories.map((cat) => (
               <button
+                type="button"
                 key={cat.id}
                 className={activeCat === cat.id ? "active" : ""}
                 onClick={() => setActiveCat(cat.id)}
@@ -328,8 +361,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
               </button>
             ))}
           </div>
-        </div>
-
+        </nav>
 
         {!canOrder && (
           <div className="menu-inline-note">
@@ -337,16 +369,18 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
           </div>
         )}
         {isLoading ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
-            Đang tải thực đơn...
-          </div>
+          renderMenuSkeletons()
         ) : menuError ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#d32f2f" }}>
-            Không thể tải thực đơn. Vui lòng thử lại.
+          <div className="menu-state menu-state--error" role="alert">
+            <span>!</span>
+            <h3>Không thể tải thực đơn</h3>
+            <p>Vui lòng thử lại sau ít phút hoặc chọn khung giờ khác.</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#999" }}>
-            {search.trim() ? "Không tìm thấy món phù hợp trong danh sách đã tải." : "Không tìm thấy món nào."}
+          <div className="menu-state">
+            <span>🍜</span>
+            <h3>{search.trim() ? "Chưa tìm thấy món phù hợp" : "Chưa có món trong mục này"}</h3>
+            <p>{search.trim() ? "Thử từ khóa ngắn hơn hoặc đổi danh mục để xem thêm món đã tải." : "Đổi bữa ăn hoặc danh mục khác để khám phá các lựa chọn đang mở bán."}</p>
           </div>
         ) : (
           <>
@@ -355,8 +389,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
             )}
             {loadMoreError && <div className="menu-inline-error">{loadMoreError}</div>}
             <div
-              className={`grid-container menu-grid ${viewMode === "list" ? "list-view" : ""}`}
-              style={{ padding: 0 }}
+              className={`menu-grid ${viewMode === "list" ? "list-view" : ""}`}
             >
               {currentItems.map((item) => (
                 <MenuItemCard
@@ -379,19 +412,21 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
             </div>
             {totalPages > 1 && (
               <div className="pagination">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} aria-label="Trang trước">
                   &lt;
                 </button>
                 {Array.from({ length: totalPages }).map((_, idx) => (
                   <button
+                    type="button"
                     key={idx}
                     className={currentPage === idx + 1 ? "active" : ""}
+                    aria-current={currentPage === idx + 1 ? "page" : undefined}
                     onClick={() => setCurrentPage(idx + 1)}
                   >
                     {idx + 1}
                   </button>
                 ))}
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
+                <button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} aria-label="Trang sau">
                   &gt;
                 </button>
               </div>
@@ -402,6 +437,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
                   type="button"
                   onClick={handleLoadMore}
                   disabled={isLoadingMore}
+                  aria-busy={isLoadingMore}
                 >
                   {isLoadingMore ? "Đang tải thêm..." : "Tải thêm món"}
                 </button>
@@ -409,7 +445,7 @@ const MenuDetailView = ({ restaurant, canOrder = true, onBack, onOpenFoodDetail 
             )}
           </>
         )}
-      </div>
+      </section>
     </div>
   );
 };

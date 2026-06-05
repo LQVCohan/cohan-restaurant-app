@@ -3,17 +3,33 @@ import React from "react";
 import { formatCurrency } from "../../../../utils/formatters";
 import { canCustomerOrderMenuItem, getMenuItemAvailability } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
-const MenuItemCard = ({ item, onClick }) => {
+const MenuItemCard = ({ item, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
-  const isOrderable = canCustomerOrderMenuItem(item);
+  const isOrderable = canCustomerOrderMenuItem(item) && !disabled;
   const handleImageError = (e) => {
     e.target.src = "https://placehold.co/600x400/e2e8f0/94a3b8?text=Food+Image";
   };
+  const handleOpen = () => {
+    if (!isOrderable) return;
+    onClick(item);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleOpen();
+    }
+  };
+
   return (
-    <div
+    <article
       className={`item-card ${!isOrderable ? "inactive" : ""}`}
-      onClick={() => onClick(item)}
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={isOrderable ? 0 : -1}
+      aria-disabled={!isOrderable}
     >
       <div className="thumb">
         <img
@@ -63,17 +79,20 @@ const MenuItemCard = ({ item, onClick }) => {
         <div className="bottom">
           <span className="price">{formatCurrency(item.basePrice)}</span>
           <button
+            type="button"
             className="add-btn"
+            disabled={!isOrderable}
+            aria-label={`Xem chi tiết ${item.name}`}
             onClick={(e) => {
               e.stopPropagation();
-              onClick(item);
+              handleOpen();
             }}
           >
             Xem
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 };
 
