@@ -204,14 +204,14 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                   "Không gắn nhân viên"}
               </p>
               <p className="reviews-modal__performance-note">
-                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
+                Đánh giá công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
                 tính lại tiếp theo.
               </p>
 
               {!!images?.length && (
                 <div className="reviews-modal__image-preview">
                   {images.map((img) => (
-                    <img key={img} src={img} alt="Review" />
+                    <img key={img} src={img} alt="Ảnh đánh giá" />
                   ))}
                 </div>
               )}
@@ -255,9 +255,9 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
               </div>
 
               <div className="reviews-modal__timeline">
-                <h4>Audit timeline</h4>
+                <h4>Lịch sử xử lý</h4>
                 {timelineLoading ? (
-                  <div className="reviews-empty-note">Đang tải timeline...</div>
+                  <div className="reviews-empty-note">Đang tải lịch sử...</div>
                 ) : timeline.length ? (
                   <ol>
                     {timeline.map((event) => (
@@ -275,7 +275,7 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                   </ol>
                 ) : (
                   <div className="reviews-empty-note">
-                    Chưa có event audit cho review này.
+                    Chưa có lịch sử xử lý cho đánh giá này.
                   </div>
                 )}
               </div>

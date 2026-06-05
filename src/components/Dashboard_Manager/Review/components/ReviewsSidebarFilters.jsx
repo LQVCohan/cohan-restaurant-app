@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "./ReviewsSidebarFilters.scss";
 
 const ratingOptions = [
@@ -15,6 +15,8 @@ const ReviewsSidebarFilters = ({
   onReset,
   restaurantOptions = [],
 }) => {
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
   const handleRatingToggle = (value) => {
     const current = filters.ratings || [];
     const exists = current.includes(value);
@@ -42,7 +44,6 @@ const ReviewsSidebarFilters = ({
         </button>
       </div>
 
-      {/* Rating */}
       <div className="reviews-sidebar__group">
         <span className="reviews-sidebar__label">Đánh giá</span>
         <div className="reviews-sidebar__rating-list">
@@ -67,7 +68,6 @@ const ReviewsSidebarFilters = ({
         </div>
       </div>
 
-      {/* Status */}
       <div className="reviews-sidebar__group">
         <label className="reviews-sidebar__label">Trạng thái</label>
         <select
@@ -83,39 +83,6 @@ const ReviewsSidebarFilters = ({
         </select>
       </div>
 
-      {/* Time */}
-      <div className="reviews-sidebar__group">
-        <label className="reviews-sidebar__label">Thời gian</label>
-        <select
-          className="reviews-sidebar__select"
-          aria-label="Lọc theo thời gian đánh giá"
-          value={filters.time || ""}
-          onChange={handleSelectChange("time")}
-        >
-          <option value="">Tất cả thời gian</option>
-          <option value="today">Hôm nay</option>
-          <option value="week">Tuần này</option>
-          <option value="month">Tháng này</option>
-          <option value="quarter">Quý này</option>
-        </select>
-      </div>
-
-      {/* Images */}
-      <div className="reviews-sidebar__group">
-        <label className="reviews-sidebar__label">Có hình ảnh</label>
-        <select
-          className="reviews-sidebar__select"
-          aria-label="Lọc đánh giá có hình ảnh"
-          value={filters.image || ""}
-          onChange={handleSelectChange("image")}
-        >
-          <option value="">Tất cả</option>
-          <option value="with-images">Có hình ảnh</option>
-          <option value="no-images">Không có hình ảnh</option>
-        </select>
-      </div>
-
-      {/* Restaurant */}
       <div className="reviews-sidebar__group">
         <label className="reviews-sidebar__label">Nhà hàng</label>
         <select
@@ -148,33 +115,78 @@ const ReviewsSidebarFilters = ({
         </select>
       </div>
 
-      {/* Verified */}
-      <div className="reviews-sidebar__group">
-        <label className="reviews-sidebar__label">Khách hàng xác thực</label>
-        <select
-          className="reviews-sidebar__select"
-          aria-label="Lọc khách hàng xác thực"
-          value={filters.verified || ""}
-          onChange={handleSelectChange("verified")}
+      <div className="reviews-sidebar__advanced">
+        <button
+          type="button"
+          className="reviews-sidebar__advanced-toggle"
+          aria-expanded={showAdvancedFilters}
+          onClick={() => setShowAdvancedFilters((value) => !value)}
         >
-          <option value="">Tất cả</option>
-          <option value="verified">Đã xác thực</option>
-          <option value="unverified">Chưa xác thực</option>
-        </select>
-      </div>
+          Bộ lọc nâng cao
+          <span aria-hidden="true">{showAdvancedFilters ? "−" : "+"}</span>
+        </button>
 
-      <div className="reviews-sidebar__group">
-        <label className="reviews-sidebar__label">Gắn nhân viên</label>
-        <select
-          className="reviews-sidebar__select"
-          aria-label="Lọc đánh giá có gắn nhân viên"
-          value={filters.staffAssigned || ""}
-          onChange={handleSelectChange("staffAssigned")}
-        >
-          <option value="">Tất cả</option>
-          <option value="with-staff">Có gắn nhân viên</option>
-          <option value="without-staff">Không gắn nhân viên</option>
-        </select>
+        {showAdvancedFilters && (
+          <div className="reviews-sidebar__advanced-panel">
+            <div className="reviews-sidebar__group">
+              <label className="reviews-sidebar__label">Thời gian</label>
+              <select
+                className="reviews-sidebar__select"
+                aria-label="Lọc theo thời gian đánh giá"
+                value={filters.time || ""}
+                onChange={handleSelectChange("time")}
+              >
+                <option value="">Tất cả thời gian</option>
+                <option value="today">Hôm nay</option>
+                <option value="week">Tuần này</option>
+                <option value="month">Tháng này</option>
+                <option value="quarter">Quý này</option>
+              </select>
+            </div>
+
+            <div className="reviews-sidebar__group">
+              <label className="reviews-sidebar__label">Có hình ảnh</label>
+              <select
+                className="reviews-sidebar__select"
+                aria-label="Lọc đánh giá có hình ảnh"
+                value={filters.image || ""}
+                onChange={handleSelectChange("image")}
+              >
+                <option value="">Tất cả</option>
+                <option value="with-images">Có hình ảnh</option>
+                <option value="no-images">Không có hình ảnh</option>
+              </select>
+            </div>
+
+            <div className="reviews-sidebar__group">
+              <label className="reviews-sidebar__label">Khách hàng xác thực</label>
+              <select
+                className="reviews-sidebar__select"
+                aria-label="Lọc khách hàng xác thực"
+                value={filters.verified || ""}
+                onChange={handleSelectChange("verified")}
+              >
+                <option value="">Tất cả</option>
+                <option value="verified">Đã xác thực</option>
+                <option value="unverified">Chưa xác thực</option>
+              </select>
+            </div>
+
+            <div className="reviews-sidebar__group">
+              <label className="reviews-sidebar__label">Gắn nhân viên</label>
+              <select
+                className="reviews-sidebar__select"
+                aria-label="Lọc đánh giá có gắn nhân viên"
+                value={filters.staffAssigned || ""}
+                onChange={handleSelectChange("staffAssigned")}
+              >
+                <option value="">Tất cả</option>
+                <option value="with-staff">Có gắn nhân viên</option>
+                <option value="without-staff">Không gắn nhân viên</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );

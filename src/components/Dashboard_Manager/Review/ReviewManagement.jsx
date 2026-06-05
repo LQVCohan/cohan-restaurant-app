@@ -300,10 +300,19 @@ const normalizeReview = (review) => ({
 });
 
 function getInsightSourceLabel(source) {
-  if (source === "gemini") return "Gemini AI";
+  if (source === "gemini") return "AI Gemini";
   if (source === "ai") return "AI";
-  if (source === "heuristic_fallback") return "Heuristic fallback";
-  return "Heuristic summary";
+  if (source === "heuristic_fallback") return "Phân tích dự phòng";
+  return "Tóm tắt tự động";
+}
+
+function getReportStatusLabel(status) {
+  const labels = {
+    pending: "Báo cáo chờ xử lý",
+    resolved: "Đã xử lý",
+    rejected: "Đã từ chối",
+  };
+  return labels[status] || status || "Chưa rõ";
 }
 
 function asList(value) {
@@ -631,71 +640,37 @@ const ReviewManagement = () => {
   );
   const reviewsById = new Map(reviews.map((review) => [review.id, review]));
 
-  const analyticsCards = [
-    {
-      label: "Tổng review",
-      value: analytics?.totalReviews ?? reviews.length,
-      icon: "🧾",
-    },
-    {
-      label: "Điểm TB",
-      value: Number(analytics?.avgRating || stats.avg || 0).toFixed(1),
-      icon: "⭐",
-    },
-    {
-      label: "Tỷ lệ verified",
-      value: `${Math.round(Number(analytics?.verifiedRate || 0) * 100)}%`,
-      icon: "✅",
-    },
-    { label: "Review tiêu cực", value: negativeCount, icon: "⚠️" },
-    { label: "Đang xem xét", value: underReviewCount, icon: "🚩" },
-    { label: "Chưa phản hồi", value: needsReplyCount, icon: "💬" },
-    {
-      label: "Report pending",
-      value:
-        reportStats?.pending ??
-        reportRows.filter((r) => r.status === "pending").length,
-      icon: "🚩",
-    },
-    { label: "High risk", value: highRiskCount, icon: "🔥" },
-  ];
+  const pendingReportCount =
+    reportStats?.pending ??
+    reportRows.filter((report) => report.status === "pending").length;
 
   const queueTiles = [
     {
-      id: "needsModeration",
+      id: "reports",
       label: "Báo cáo cần xử lý",
-      value: underReviewCount,
-      hint: "hậu kiểm, không ẩn tự động",
+      value: pendingReportCount || underReviewCount,
+      hint: "Hậu kiểm báo cáo và đánh giá bị báo cáo",
       tone: "warning",
     },
     {
       id: "needsReply",
       label: "Đánh giá cần phản hồi",
       value: needsReplyCount,
-      hint: "1–2 sao chưa có reply",
-      tone: "danger",
-    },
-    {
-      id: "reports",
-      label: "Report cần xử lý",
-      value: reviews.filter(
-        (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
-      ).length,
-      hint: "report queue",
+      hint: "1–2 sao chưa có phản hồi chính thức",
       tone: "danger",
     },
     {
       id: "highRisk",
       label: "Review rủi ro cao",
       value: highRiskCount,
-      hint: "report >= 3 hoặc 1 sao",
+      hint: "Nhiều báo cáo hoặc điểm rất thấp",
       tone: "critical",
     },
     {
       id: "recentlyDone",
       label: "Đã xử lý gần đây",
       value: doneCount,
-      hint: "đã reply/đóng report",
+      hint: "Đã phản hồi hoặc đóng báo cáo",
       tone: "success",
     },
   ];
@@ -712,7 +687,7 @@ const ReviewManagement = () => {
 
   const actionCenterItems = useMemo(
     () => ({
-      needsModeration: reviews
+      reports: reviews
         .filter(
           (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
         )
@@ -736,6 +711,14 @@ const ReviewManagement = () => {
           (a, b) => Number(b.reports_count || 0) - Number(a.reports_count || 0),
         )
         .slice(0, 5),
+      recentlyDone: reviews
+        .filter(
+          (r) =>
+            ["published", "hidden", "rejected"].includes(r.status) &&
+            (r.first_official_reply || Number(r.reports_count || 0) === 0),
+        )
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5),
     }),
     [reviews],
   );
@@ -744,8 +727,8 @@ const ReviewManagement = () => {
     async (report, status = "resolved") => {
       const resolutionNote =
         status === "resolved"
-          ? "Manager đã xử lý report từ Review Report Center."
-          : "Manager từ chối report từ Review Report Center.";
+          ? "Manager đã xử lý báo cáo từ trung tâm báo cáo vi phạm."
+          : "Manager từ chối báo cáo từ trung tâm báo cáo vi phạm.";
       try {
         await resolveReviewReport({
           variables: { id: report.id, input: { status, resolutionNote } },
@@ -753,7 +736,7 @@ const ReviewManagement = () => {
         await refetchReports?.();
         await refetch();
         notify(
-          status === "resolved" ? "Đã resolve report" : "Đã reject report",
+          status === "resolved" ? "Đã xử lý báo cáo" : "Đã từ chối báo cáo",
         );
       } catch (err) {
         notify(err?.message || "Không thể xử lý report.", "error");
@@ -764,7 +747,7 @@ const ReviewManagement = () => {
 
   const handleReportReviewAction = useCallback(
     async (report, reviewStatus) => {
-      const reason = "Admin xử lý review từ report center.";
+      const reason = "Admin xử lý đánh giá từ trung tâm báo cáo.";
       try {
         await setReviewStatus({
           variables: {
@@ -776,7 +759,7 @@ const ReviewManagement = () => {
         });
         await refetchReports?.();
         await refetch();
-        notify("Đã cập nhật review từ report center");
+        notify("Đã cập nhật đánh giá từ trung tâm báo cáo");
       } catch (err) {
         notify(err?.message || "Không thể cập nhật review từ report.", "error");
       }
@@ -1012,15 +995,15 @@ const ReviewManagement = () => {
 
         <div className="reviews-notification-row">
           <div>
-            <strong>Thông báo review gần đây</strong>
+            <strong>Thông báo đánh giá gần đây</strong>
             <span>
-              Manager/customer có thể xem notification in-app và đánh dấu đã
-              đọc.
+              Quản lý và khách hàng có thể xem thông báo trong ứng dụng và
+              đánh dấu đã đọc.
             </span>
           </div>
           <NotificationBell
             restaurantId={filters.restaurant || null}
-            title="Thông báo review"
+            title="Thông báo đánh giá"
           />
         </div>
 
@@ -1071,14 +1054,14 @@ const ReviewManagement = () => {
                       className="reviews-btn reviews-btn-secondary"
                       onClick={() => refetchAnalytics()}
                     >
-                      Thử lại analytics
+                      Thử lại phân tích
                     </button>
                   )}
                 </div>
 
                 {shouldSkipAnalytics ? (
                   <div className="reviews-analytics-loading">
-                    Chọn nhà hàng để xem insight/analytics trong phạm vi quản
+                    Chọn nhà hàng để xem phân tích trong phạm vi quản
                     lý.
                   </div>
                 ) : analyticsLoading ? (
@@ -1087,7 +1070,7 @@ const ReviewManagement = () => {
                   </div>
                 ) : analyticsError ? (
                   <div className="reviews-error-box">
-                    Không thể tải analytics. Dữ liệu review vẫn hiển thị bên
+                    Không thể tải phân tích. Dữ liệu đánh giá vẫn hiển thị bên
                     dưới.
                   </div>
                 ) : (
@@ -1095,7 +1078,7 @@ const ReviewManagement = () => {
                     {analytics?.reviewInsightSummary ? (
                       <div className="reviews-insight-card">
                         <div>
-                          <p>Tóm tắt insight</p>
+                          <p>Tóm tắt phân tích</p>
                           <div className="reviews-insight-card__meta">
                             <span>
                               Nguồn:{" "}
@@ -1122,7 +1105,7 @@ const ReviewManagement = () => {
                             "heuristic_fallback" && (
                             <small className="reviews-insight-card__fallback-note">
                               AI không khả dụng, hệ thống dùng phân tích
-                              heuristic.
+                              dự phòng.
                             </small>
                           )}
                         </div>
@@ -1157,22 +1140,9 @@ const ReviewManagement = () => {
                       </div>
                     ) : (
                       <div className="reviews-insight-card reviews-insight-card--empty">
-                        Chưa đủ dữ liệu để tạo insight.
+                        Chưa đủ dữ liệu để tạo phân tích.
                       </div>
                     )}
-
-                    <div className="reviews-analytics-cards">
-                      {analyticsCards.map((card) => (
-                        <div
-                          className="reviews-analytics-card"
-                          key={card.label}
-                        >
-                          <span>{card.icon}</span>
-                          <strong>{card.value}</strong>
-                          <small>{card.label}</small>
-                        </div>
-                      ))}
-                    </div>
 
                     <div className="reviews-queue-grid">
                       {queueTiles.map((tile) => (
@@ -1192,8 +1162,8 @@ const ReviewManagement = () => {
                     <div className="reviews-action-center">
                       <div className="reviews-action-center__header">
                         <div>
-                          <p>Review Action Center</p>
-                          <h3>Hàng đợi ưu tiên xử lý</h3>
+                          <p>Trung tâm xử lý đánh giá</p>
+                          <h3>Trung tâm xử lý đánh giá</h3>
                         </div>
                         {filters.actionQueue && (
                           <button
@@ -1212,9 +1182,10 @@ const ReviewManagement = () => {
                       </div>
                       <div className="reviews-action-center__grid">
                         {[
-                          ["needsModeration", "Báo cáo cần xử lý"],
+                          ["reports", "Báo cáo cần xử lý"],
                           ["needsReply", "Đánh giá cần phản hồi"],
                           ["highRisk", "Review rủi ro cao"],
+                          ["recentlyDone", "Đã xử lý gần đây"],
                         ].map(([key, label]) => (
                           <div
                             className="reviews-action-center__lane"
@@ -1234,7 +1205,7 @@ const ReviewManagement = () => {
                                   </strong>
                                   <span>{item.title}</span>
                                   <small>
-                                    {item.reports_count || 0} report ·{" "}
+                                    {item.reports_count || 0} báo cáo ·{" "}
                                     {new Date(
                                       item.created_at,
                                     ).toLocaleDateString("vi-VN")}
@@ -1242,7 +1213,7 @@ const ReviewManagement = () => {
                                 </button>
                               ))
                             ) : (
-                              <p>Không có item cần xử lý.</p>
+                              <p>Không có mục cần xử lý.</p>
                             )}
                           </div>
                         ))}
@@ -1252,13 +1223,13 @@ const ReviewManagement = () => {
                     <div className="reviews-report-center">
                       <div className="reviews-report-center__header">
                         <div>
-                          <p>Review Report Center</p>
-                          <h3>Báo cáo cần xử lý</h3>
+                          <p>Trung tâm báo cáo vi phạm</p>
+                          <h3>Trung tâm báo cáo vi phạm</h3>
                         </div>
                         <div className="reviews-report-center__stats">
-                          <span>Cần xử lý: {reportStats?.pending || 0}</span>
-                          <span>Resolved: {reportStats?.resolved || 0}</span>
-                          <span>Rejected: {reportStats?.rejected || 0}</span>
+                          <span>Báo cáo chờ xử lý: {reportStats?.pending || 0}</span>
+                          <span>Đã xử lý: {reportStats?.resolved || 0}</span>
+                          <span>Đã từ chối: {reportStats?.rejected || 0}</span>
                         </div>
                       </div>
                       {reportRows.length ? (
@@ -1271,7 +1242,7 @@ const ReviewManagement = () => {
                               <article key={report.id}>
                                 <header>
                                   <strong>{report.reason}</strong>
-                                  <span>{report.status}</span>
+                                  <span>{getReportStatusLabel(report.status)}</span>
                                 </header>
                                 <p>{report.detail || "Không có mô tả thêm"}</p>
                                 <small>
@@ -1313,7 +1284,7 @@ const ReviewManagement = () => {
                                           )
                                         }
                                       >
-                                        Từ chối report
+                                        Từ chối báo cáo
                                       </button>
                                     </>
                                   )}
@@ -1328,7 +1299,7 @@ const ReviewManagement = () => {
                                           )
                                         }
                                       >
-                                        Ẩn review vi phạm
+                                        Ẩn đánh giá vi phạm
                                       </button>
                                       <button
                                         type="button"
@@ -1339,14 +1310,14 @@ const ReviewManagement = () => {
                                           )
                                         }
                                       >
-                                        Từ chối review vi phạm
+                                        Từ chối đánh giá vi phạm
                                       </button>
                                     </>
                                   )}
                                   {!permissions.canResolveReports &&
                                     !permissions.canAdminModerate && (
                                       <small>
-                                        Bạn không có quyền xử lý report.
+                                        Bạn không có quyền xử lý báo cáo.
                                       </small>
                                     )}
                                 </div>
@@ -1356,7 +1327,7 @@ const ReviewManagement = () => {
                         </div>
                       ) : (
                         <p className="reviews-report-center__empty">
-                          Chưa có report trong scope hiện tại.
+                          Chưa có báo cáo trong phạm vi hiện tại.
                         </p>
                       )}
                     </div>
@@ -1394,12 +1365,12 @@ const ReviewManagement = () => {
                           ))
                         ) : (
                           <p className="reviews-mini-table__empty">
-                            Chưa có review gắn nhân viên.
+                            Chưa có đánh giá gắn nhân viên.
                           </p>
                         )}
                       </div>
                       <div className="reviews-mini-table">
-                        <h3>Target điểm thấp</h3>
+                        <h3>Đối tượng điểm thấp</h3>
                         {(analytics?.lowRatedTargets || []).length ? (
                           (analytics.lowRatedTargets || []).map((item) => (
                             <div
@@ -1417,7 +1388,7 @@ const ReviewManagement = () => {
                         )}
                       </div>
                       <div className="reviews-mini-table">
-                        <h3>Rating trend</h3>
+                        <h3>Xu hướng điểm đánh giá</h3>
                         {(analytics?.ratingTrend || []).length ? (
                           (analytics.ratingTrend || [])
                             .slice(-6)

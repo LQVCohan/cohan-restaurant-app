@@ -617,3 +617,27 @@ $cms-radius: 12px;
     flex-direction: column-reverse;
   }
 }
+
+.cms-card-select {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.cms-card-select:focus-visible {
+  outline: 3px solid rgba(184, 147, 101, 0.28);
+  outline-offset: -3px;
+}
+
+.cms-card.cms-ghost {
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}

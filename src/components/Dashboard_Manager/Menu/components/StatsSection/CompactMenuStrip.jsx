@@ -165,11 +165,11 @@ const CompactMenuStrip = ({
               <FiLayers size={22} />
             </div>
             <div className="cms-title-box">
-              <h3>Quản Lý Thực Đơn</h3>
+              <h3>Khung giờ thực đơn</h3>
               {!isCollapsed && (
                 <p>
                   Đã tạo <strong>{menus.length}</strong> thực đơn theo khung giờ
-                  và nhóm thực đơn
+                  và nhóm menu
                 </p>
               )}
             </div>
@@ -179,6 +179,7 @@ const CompactMenuStrip = ({
               <>
                 <div className="cms-nav-group">
                   <button
+                    type="button"
                     className="cms-nav-btn"
                     aria-label="Cuộn menu sang trái"
                     onClick={() => scroll("left")}
@@ -187,6 +188,7 @@ const CompactMenuStrip = ({
                     <FiChevronLeft />
                   </button>
                   <button
+                    type="button"
                     className="cms-nav-btn"
                     aria-label="Cuộn menu sang phải"
                     onClick={() => scroll("right")}
@@ -197,6 +199,7 @@ const CompactMenuStrip = ({
                 </div>
                 {canSyncInventory && (
                   <button
+                    type="button"
                     className="cms-btn-add"
                     aria-label="Đồng bộ tồn kho thực đơn"
                     onClick={handleSyncInventory}
@@ -210,13 +213,14 @@ const CompactMenuStrip = ({
                   </button>
                 )}
                 {canAddMenu && (
-                  <button className="cms-btn-add" aria-label="Tạo thực đơn mới" onClick={() => onAddMenu()}>
-                    <FiPlus /> <span className="text">Tạo thực đơn</span>
+                  <button className="cms-btn-add" type="button" aria-label="Tạo menu theo khung giờ" onClick={() => onAddMenu()}>
+                    <FiPlus /> <span className="text">Tạo menu theo khung giờ</span>
                   </button>
                 )}
               </>
             )}
             <button
+              type="button"
               className="cms-btn-toggle"
               onClick={() => onToggleCollapse?.()}
               aria-label={isCollapsed ? "Mở rộng danh sách thực đơn" : "Thu gọn danh sách thực đơn"}
@@ -251,10 +255,14 @@ const CompactMenuStrip = ({
                     <div
                       key={menu.id}
                       className={`cms-card ${active ? "cms-active" : ""} ${menu.isActive === false ? "cms-disabled" : ""}`}
-                      onClick={() => selectMenu(menu)}
                     >
                       {active && <div className="cms-indicator" />}
-                      <div className="cms-card-top">
+                      <button
+                        type="button"
+                        className="cms-card-select"
+                        onClick={() => selectMenu(menu)}
+                      >
+                        <div className="cms-card-top">
                         <div className="cms-img-box">
                           {menu.coverImage ? (
                             <LocalImageView
@@ -306,10 +314,12 @@ const CompactMenuStrip = ({
                           </div>
                         </div>
                       </div>
+                      </button>
                       <div className="cms-toolbar">
                         {canEditMenu && (
                           <>
                             <button
+                              type="button"
                               className="cms-tool-btn is-edit"
                               aria-label={`Chỉnh sửa thực đơn ${menu.name}`}
                               title="Chỉnh sửa thực đơn"
@@ -325,6 +335,7 @@ const CompactMenuStrip = ({
                         )}
                         {canToggleMenuActive && (
                           <button
+                            type="button"
                             className={`cms-tool-btn ${menu.isActive === false ? "is-show" : "is-hide"}`}
                             aria-label={menu.isActive === false ? `Bật lại thực đơn ${menu.name}` : `Ẩn thực đơn ${menu.name}`}
                             title={menu.isActive === false ? "Bật lại thực đơn" : "Ẩn thực đơn"}
@@ -339,6 +350,7 @@ const CompactMenuStrip = ({
                         )}
                         {canCopyMenu && (
                           <button
+                            type="button"
                             className="cms-tool-btn"
                             aria-label={`Sao chép thực đơn ${menu.name}`}
                             title="Sao chép thực đơn kèm món và recipe"
@@ -353,6 +365,7 @@ const CompactMenuStrip = ({
                         )}
                         {canViewHistory && (
                           <button
+                            type="button"
                             className="cms-tool-btn is-history"
                             aria-label={`Xem lịch sử thực đơn ${menu.name}`}
                             title="Xem lịch sử thay đổi"
@@ -366,6 +379,7 @@ const CompactMenuStrip = ({
                         )}
                         {canDeleteMenu && (
                           <button
+                            type="button"
                             className="cms-tool-btn is-delete"
                             aria-label={`Xóa thực đơn ${menu.name}`}
                             title="Xóa thực đơn"
@@ -383,14 +397,14 @@ const CompactMenuStrip = ({
                   );
                 })}
               {!menusLoading && canAddMenu && (
-                <div className="cms-card cms-ghost" onClick={() => onAddMenu()}>
+                <button type="button" className="cms-card cms-ghost" onClick={() => onAddMenu()}>
                   <div className="cms-ghost-inner">
                     <div className="cms-ghost-circle">
                       <FiPlus size={24} />
                     </div>
-                    <h4>Thêm thực đơn</h4>
+                    <h4>Tạo menu theo khung giờ</h4>
                   </div>
-                </div>
+                </button>
               )}
               <div className="cms-spacer" />
             </div>
