@@ -97,31 +97,41 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
   const [replyText, setReplyText] = useState("");
 
   const reviewId = review?.id;
-  const { data: detailData, loading: detailLoading } = useQuery(GET_REVIEW_DETAIL, {
-    variables: { id: reviewId },
+  const { data: detailData, loading: detailLoading } = useQuery(
+    GET_REVIEW_DETAIL,
+    {
+      variables: { id: reviewId },
+      skip: !visible || !reviewId,
+      fetchPolicy: "network-only",
+    },
+  );
+  const {
+    data: commentData,
+    loading: commentLoading,
+    refetch: refetchComments,
+  } = useQuery(GET_REVIEW_COMMENTS, {
+    variables: { reviewId },
     skip: !visible || !reviewId,
     fetchPolicy: "network-only",
   });
-  const { data: commentData, loading: commentLoading, refetch: refetchComments } = useQuery(
-    GET_REVIEW_COMMENTS,
+  const { data: timelineData, loading: timelineLoading } = useQuery(
+    GET_REVIEW_TIMELINE,
     {
       variables: { reviewId },
       skip: !visible || !reviewId,
       fetchPolicy: "network-only",
     },
   );
-  const { data: timelineData, loading: timelineLoading } = useQuery(GET_REVIEW_TIMELINE, {
-    variables: { reviewId },
-    skip: !visible || !reviewId,
-    fetchPolicy: "network-only",
-  });
   const [createReviewComment, { loading: creatingReply }] = useMutation(
     CREATE_REVIEW_COMMENT,
   );
 
   const detail = detailData?.review || review;
   const comments = useMemo(
-    () => (commentData?.reviewComments?.items || []).filter((item) => !item.parentId),
+    () =>
+      (commentData?.reviewComments?.items || []).filter(
+        (item) => !item.parentId,
+      ),
     [commentData],
   );
   const timeline = timelineData?.reviewTimeline || [];
@@ -151,7 +161,11 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
       <div className="reviews-modal">
         <div className="reviews-modal__header">
           <h3 className="reviews-modal__title">Chi tiết đánh giá</h3>
-          <button type="button" className="reviews-modal__close" onClick={onClose}>
+          <button
+            type="button"
+            className="reviews-modal__close"
+            onClick={onClose}
+          >
             ×
           </button>
         </div>
@@ -161,26 +175,37 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
             <div>Đang tải chi tiết...</div>
           ) : (
             <>
-              <div style={{ marginBottom: 16 }}>
+              <div className="reviews-modal__summary">
                 <div className="reviews-review-card__meta">
-                  <span>Khách hàng: {detail?.customerName || review?.customer_name}</span>
+                  <span>
+                    Khách hàng: {detail?.customerName || review?.customer_name}
+                  </span>
                   <span>•</span>
-                  <span>{formatDate(detail?.createdAt || review?.created_at)}</span>
+                  <span>
+                    {formatDate(detail?.createdAt || review?.created_at)}
+                  </span>
                 </div>
-                <div style={{ marginTop: 6, color: "#f59e0b", fontSize: "1rem" }}>
+                <div className="reviews-modal__rating">
                   {getStarRating(detail?.rating || review?.rating)}{" "}
                   <strong>{detail?.rating || review?.rating}/5</strong>
                 </div>
               </div>
 
-              <h4 style={{ marginBottom: 6 }}>{detail?.title || review?.title}</h4>
-              <p style={{ marginBottom: 10 }}>{detail?.content || review?.content}</p>
-              <p style={{ marginBottom: 8 }}>
-                <strong>Nhân viên được khách đánh giá:</strong>{" "}
-                {detail?.staffName || review?.staff_name || "Không gắn nhân viên"}
+              <h4 className="reviews-modal__review-title">
+                {detail?.title || review?.title}
+              </h4>
+              <p className="reviews-modal__review-content">
+                {detail?.content || review?.content}
               </p>
-              <p style={{ marginBottom: 12, fontStyle: "italic", color: "#4b5563" }}>
-                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
+              <p className="reviews-modal__staff-line">
+                <strong>Nhân viên được khách đánh giá:</strong>{" "}
+                {detail?.staffName ||
+                  review?.staff_name ||
+                  "Không gắn nhân viên"}
+              </p>
+              <p className="reviews-modal__performance-note">
+                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
+                tính lại tiếp theo.
               </p>
 
               {!!images?.length && (
@@ -191,26 +216,35 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                 </div>
               )}
 
-              <div style={{ marginTop: 18 }}>
+              <div className="reviews-modal__reply-section">
                 <h4>Phản hồi của nhà hàng</h4>
                 {commentLoading ? (
                   <div>Đang tải phản hồi...</div>
                 ) : comments.length === 0 ? (
-                  <div className="reviews-empty-note">Chưa có phản hồi nào.</div>
+                  <div className="reviews-empty-note">
+                    Chưa có phản hồi nào.
+                  </div>
                 ) : (
                   <div className="reviews-comments">
                     {comments.map((comment) => (
                       <div key={comment.id} className="reviews-comment-item">
                         <div className="reviews-comment-item__avatar">
                           {comment.authorAvatar ? (
-                            <img src={comment.authorAvatar} alt={comment.authorName} />
+                            <img
+                              src={comment.authorAvatar}
+                              alt={comment.authorName}
+                            />
                           ) : (
                             getInitials(comment.authorName)
                           )}
                         </div>
                         <div className="reviews-comment-item__content">
                           <strong>{comment.authorName}</strong>
-                          {comment.officialReply && <span className="reviews-official-badge">Phản hồi từ nhà hàng</span>}
+                          {comment.officialReply && (
+                            <span className="reviews-official-badge">
+                              Phản hồi từ nhà hàng
+                            </span>
+                          )}
                           <div>{comment.content}</div>
                           <small>{formatDate(comment.createdAt)}</small>
                         </div>
@@ -219,7 +253,6 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                   </div>
                 )}
               </div>
-
 
               <div className="reviews-modal__timeline">
                 <h4>Audit timeline</h4>
@@ -231,32 +264,43 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
                       <li key={event.id}>
                         <strong>{event.verb}</strong>
                         <span>{formatDate(event.at || event.createdAt)}</span>
-                        {event.meta?.reason && <small>Lý do: {event.meta.reason}</small>}
-                        {event.diff && <small>{JSON.stringify(event.diff)}</small>}
+                        {event.meta?.reason && (
+                          <small>Lý do: {event.meta.reason}</small>
+                        )}
+                        {event.diff && (
+                          <small>{JSON.stringify(event.diff)}</small>
+                        )}
                       </li>
                     ))}
                   </ol>
                 ) : (
-                  <div className="reviews-empty-note">Chưa có event audit cho review này.</div>
+                  <div className="reviews-empty-note">
+                    Chưa có event audit cho review này.
+                  </div>
                 )}
               </div>
 
               {canReply && (
-                <div style={{ marginTop: 14 }}>
-                <textarea
-                  rows={3}
-                  placeholder="Nhập phản hồi từ nhà hàng..."
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                />
-              </div>
+                <div className="reviews-modal__reply-box">
+                  <textarea
+                    rows={3}
+                    aria-label="Nhập phản hồi từ nhà hàng"
+                    placeholder="Nhập phản hồi từ nhà hàng..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                  />
+                </div>
               )}
             </>
           )}
         </div>
 
         <div className="reviews-modal__footer">
-          <button className="reviews-btn reviews-btn-secondary" type="button" onClick={onClose}>
+          <button
+            className="reviews-btn reviews-btn-secondary"
+            type="button"
+            onClick={onClose}
+          >
             Đóng
           </button>
           <button
@@ -265,7 +309,11 @@ const ReviewModal = ({ visible, review, me, canReply = false, onClose }) => {
             disabled={!canReply || creatingReply || !replyText.trim()}
             onClick={handleCreateReply}
           >
-            {!canReply ? "Không có quyền phản hồi" : creatingReply ? "Đang gửi..." : "Gửi phản hồi"}
+            {!canReply
+              ? "Không có quyền phản hồi"
+              : creatingReply
+                ? "Đang gửi..."
+                : "Gửi phản hồi"}
           </button>
         </div>
       </div>

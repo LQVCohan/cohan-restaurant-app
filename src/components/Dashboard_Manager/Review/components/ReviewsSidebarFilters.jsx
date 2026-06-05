@@ -9,7 +9,12 @@ const ratingOptions = [
   { value: 1, label: "(1 sao)" },
 ];
 
-const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) => {
+const ReviewsSidebarFilters = ({
+  filters,
+  onChange,
+  onReset,
+  restaurantOptions = [],
+}) => {
   const handleRatingToggle = (value) => {
     const current = filters.ratings || [];
     const exists = current.includes(value);
@@ -25,8 +30,17 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
   };
 
   return (
-    <aside className="reviews-sidebar">
-      <h3 className="reviews-sidebar__title">🔍 Bộ lọc</h3>
+    <aside className="reviews-sidebar" aria-label="Bộ lọc đánh giá">
+      <div className="reviews-sidebar__header">
+        <h3 className="reviews-sidebar__title">Bộ lọc vận hành</h3>
+        <button
+          type="button"
+          className="reviews-sidebar__reset"
+          onClick={onReset}
+        >
+          Reset
+        </button>
+      </div>
 
       {/* Rating */}
       <div className="reviews-sidebar__group">
@@ -36,6 +50,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
             <label key={opt.value} className="reviews-sidebar__rating-item">
               <input
                 type="checkbox"
+                aria-label={`Lọc ${opt.value} sao`}
                 checked={(filters.ratings || []).includes(opt.value)}
                 onChange={() => handleRatingToggle(opt.value)}
               />
@@ -57,12 +72,13 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Trạng thái</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Lọc theo trạng thái đánh giá"
           value={filters.status || ""}
           onChange={handleSelectChange("status")}
         >
           <option value="">Tất cả trạng thái</option>
           <option value="published">Đã xuất bản</option>
-                    <option value="reported">Đang được xem xét</option>
+          <option value="reported">Đang được xem xét</option>
           <option value="hidden">Đã ẩn</option>
         </select>
       </div>
@@ -72,6 +88,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Thời gian</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Lọc theo thời gian đánh giá"
           value={filters.time || ""}
           onChange={handleSelectChange("time")}
         >
@@ -88,6 +105,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Có hình ảnh</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Lọc đánh giá có hình ảnh"
           value={filters.image || ""}
           onChange={handleSelectChange("image")}
         >
@@ -102,6 +120,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Nhà hàng</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Lọc theo nhà hàng"
           value={filters.restaurant || ""}
           onChange={handleSelectChange("restaurant")}
         >
@@ -118,6 +137,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Sắp xếp</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Sắp xếp đánh giá"
           value={filters.sort || "newest"}
           onChange={handleSelectChange("sort")}
         >
@@ -133,6 +153,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Khách hàng xác thực</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Lọc khách hàng xác thực"
           value={filters.verified || ""}
           onChange={handleSelectChange("verified")}
         >
@@ -146,6 +167,7 @@ const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) =>
         <label className="reviews-sidebar__label">Gắn nhân viên</label>
         <select
           className="reviews-sidebar__select"
+          aria-label="Lọc đánh giá có gắn nhân viên"
           value={filters.staffAssigned || ""}
           onChange={handleSelectChange("staffAssigned")}
         >

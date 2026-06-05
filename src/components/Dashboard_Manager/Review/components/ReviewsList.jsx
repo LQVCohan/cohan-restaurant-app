@@ -63,13 +63,33 @@ const serviceTargetLabels = {
   delivery: "Giao hàng",
 };
 
-const getTargetLabel = (review) => serviceTargetLabels[review.target_name] || serviceTargetLabels[review.target_id] || review.target_name || review.target_id;
+const getTargetLabel = (review) =>
+  serviceTargetLabels[review.target_name] ||
+  serviceTargetLabels[review.target_id] ||
+  review.target_name ||
+  "Chưa phân loại";
 
-const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit, permissions = {} }) => {
+const ReviewsList = ({
+  isLoading,
+  reviews,
+  currentTab,
+  onView,
+  onDelete,
+  onEdit,
+  permissions = {},
+  emptyType,
+}) => {
   if (isLoading) {
     return (
-      <div className="reviews-loading">
-        <div className="reviews-loading__spinner" />
+      <div className="reviews-loading" aria-label="Đang tải đánh giá">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div className="reviews-loading__skeleton" key={index}>
+            <span />
+            <strong />
+            <p />
+            <p />
+          </div>
+        ))}
       </div>
     );
   }
@@ -78,7 +98,12 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
     return (
       <EmptyState
         type={
-          currentTab === "service" ? "service" : currentTab === "reported" ? "reported" : "default"
+          emptyType ||
+          (currentTab === "service"
+            ? "service"
+            : currentTab === "reported"
+              ? "reported"
+              : "default")
         }
       />
     );
@@ -89,55 +114,107 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
       {reviews.map((review) => {
         const images = parseImages(review.images);
         const tags = parseTags(review.tags);
-        const activeReactions = reactionMeta.filter(([key]) => Number(review.reactions?.[key] || 0) > 0);
+        const activeReactions = reactionMeta.filter(
+          ([key]) => Number(review.reactions?.[key] || 0) > 0,
+        );
 
         const statusClass =
           review.status === "published"
             ? "reviews-review-card__status--published"
             : review.status === "pending"
-            ? "reviews-review-card__status--pending"
-            : review.status === "hidden"
-            ? "reviews-review-card__status--hidden"
-            : review.status === "reported"
-            ? "reviews-review-card__status--reported"
-            : review.status === "rejected"
-            ? "reviews-review-card__status--rejected"
-            : "";
+              ? "reviews-review-card__status--pending"
+              : review.status === "hidden"
+                ? "reviews-review-card__status--hidden"
+                : review.status === "reported"
+                  ? "reviews-review-card__status--reported"
+                  : review.status === "rejected"
+                    ? "reviews-review-card__status--rejected"
+                    : "";
 
-        const needsReply = review.status === "published" && Number(review.rating || 0) <= 2 && !review.first_official_reply;
-        const isHighRisk = Number(review.reports_count || 0) >= 3 || (Number(review.rating || 0) <= 2 && Number(review.reports_count || 0) > 0);
+        const numericRating = Number(review.rating || 0);
+        const needsReply =
+          ["published", "reported"].includes(review.status) &&
+          numericRating <= 2 &&
+          !review.first_official_reply;
+        const isHighRisk =
+          Number(review.reports_count || 0) >= 3 ||
+          (numericRating <= 2 && Number(review.reports_count || 0) > 0);
+        const sentimentTone =
+          numericRating >= 4
+            ? "Tốt"
+            : numericRating === 3
+              ? "Trung bình"
+              : "Tiêu cực";
 
         return (
-          <article key={review.id} className={`reviews-review-card ${Number(review.rating || 0) <= 2 ? "reviews-review-card--negative" : ""} ${isHighRisk ? "reviews-review-card--high-risk" : ""}`}>
+          <article
+            key={review.id}
+            className={`reviews-review-card ${numericRating <= 2 ? "reviews-review-card--negative" : ""} ${isHighRisk ? "reviews-review-card--high-risk" : ""}`}
+          >
             <div className="reviews-review-card__header">
               <div className="reviews-review-card__reviewer">
                 <div className="reviews-review-card__avatar">
-                  {review.customer_avatar ? <img src={review.customer_avatar} alt={review.customer_name} /> : getInitials(review.customer_name)}
+                  {review.customer_avatar ? (
+                    <img
+                      src={review.customer_avatar}
+                      alt={review.customer_name}
+                    />
+                  ) : (
+                    getInitials(review.customer_name)
+                  )}
                 </div>
                 <div>
-                  <div className="reviews-review-card__name">{review.customer_name}</div>
+                  <div className="reviews-review-card__name">
+                    {review.customer_name}
+                  </div>
                   <div className="reviews-review-card__meta">
                     <span>📍 {review.location}</span>
                     <span>•</span>
                     <span>🕒 {formatDate(review.created_at)}</span>
-                    {review.verified_purchase && <span className="reviews-review-card__verified">✓ Đã xác thực</span>}
+                    {review.verified_purchase && (
+                      <span className="reviews-review-card__verified">
+                        ✓ Đã xác thực
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="reviews-review-card__actions">
-                <button type="button" className="reviews-review-card__action-btn" title="Xem chi tiết" onClick={() => onView(review)}>
-                  👁️
+                <button
+                  type="button"
+                  className="reviews-review-card__action-btn"
+                  onClick={() => onView(review)}
+                >
+                  Xem chi tiết
                 </button>
-                {permissions.canModerate && review.status !== "reported" && Number(review.reports_count || 0) > 0 && (
-                  <button type="button" className="reviews-review-card__action-btn" title="Đánh dấu đang được xem xét" onClick={() => onEdit(review, "reported")}>🚩</button>
-                )}
+                {permissions.canModerate &&
+                  review.status !== "reported" &&
+                  Number(review.reports_count || 0) > 0 && (
+                    <button
+                      type="button"
+                      className="reviews-review-card__action-btn"
+                      onClick={() => onEdit(review, "reported")}
+                    >
+                      Đánh dấu xử lý
+                    </button>
+                  )}
                 {permissions.canAdminModerate && review.status !== "hidden" && (
-                  <button type="button" className="reviews-review-card__action-btn" title="Admin ẩn do vi phạm chính sách" onClick={() => onEdit(review, "hidden")}>🙈</button>
+                  <button
+                    type="button"
+                    className="reviews-review-card__action-btn"
+                    onClick={() => onEdit(review, "hidden")}
+                  >
+                    Ẩn vi phạm
+                  </button>
                 )}
                 {permissions.canDelete && (
-                  <button type="button" className="reviews-review-card__action-btn" title="Xóa" onClick={() => onDelete(review)}>
-                    🗑️
+                  <button
+                    type="button"
+                    className="reviews-review-card__action-btn reviews-review-card__action-btn--danger"
+                    onClick={() => onDelete(review)}
+                  >
+                    Xóa
                   </button>
                 )}
               </div>
@@ -147,11 +224,32 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
               <div className="reviews-review-card__stars">
                 <span className="star">{getStarRating(review.rating)}</span>
               </div>
-              <span className="reviews-review-card__rating-number">{review.rating}/5</span>
-              <span className="reviews-review-card__target">{getTargetLabel(review)}</span>
-              {review.restaurant_name && <span className="reviews-review-card__restaurant">🏪 {review.restaurant_name}</span>}
-              {needsReply && <span className="reviews-review-card__needs-reply">Chưa phản hồi</span>}
-              {isHighRisk && <span className="reviews-review-card__high-risk">Rủi ro cao</span>}
+              <span className="reviews-review-card__rating-number">
+                {review.rating}/5
+              </span>
+              <span className="reviews-review-card__target">
+                {getTargetLabel(review)}
+              </span>
+              <span
+                className={`reviews-review-card__sentiment reviews-review-card__sentiment--${numericRating >= 4 ? "positive" : numericRating === 3 ? "neutral" : "negative"}`}
+              >
+                {sentimentTone}
+              </span>
+              {review.restaurant_name && (
+                <span className="reviews-review-card__restaurant">
+                  🏪 {review.restaurant_name}
+                </span>
+              )}
+              {needsReply && (
+                <span className="reviews-review-card__needs-reply">
+                  Cần phản hồi
+                </span>
+              )}
+              {isHighRisk && (
+                <span className="reviews-review-card__high-risk">
+                  Rủi ro cao
+                </span>
+              )}
             </div>
 
             <div className="reviews-review-card__content">
@@ -161,14 +259,20 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                 <strong>Nhân viên được đánh giá:</strong>{" "}
                 {review.staff_name || "Không gắn nhân viên"}
               </p>
-              <p className="reviews-review-card__text" style={{ fontStyle: "italic" }}>
-                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần tính lại tiếp theo.
+              <p className="reviews-review-card__text reviews-review-card__text--note">
+                Review công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
+                tính lại tiếp theo.
               </p>
 
               {images.length > 0 && (
                 <div className="reviews-review-card__images">
                   {images.map((img) => (
-                    <img key={img} src={img} alt="Review" className="reviews-review-card__image" />
+                    <img
+                      key={img}
+                      src={img}
+                      alt="Review"
+                      className="reviews-review-card__image"
+                    />
                   ))}
                 </div>
               )}
@@ -208,19 +312,19 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit,
                 {review.status === "published"
                   ? "✅ Đã xuất bản"
                   : review.status === "pending"
-                  ? "⏳ Không công khai (legacy)"
-                  : review.status === "hidden"
-                  ? "🚫 Đã ẩn"
-                  : review.status === "reported"
-                  ? "🚩 Đang được xem xét"
-                  : review.status === "rejected"
-                  ? "⛔ Từ chối"
-                  : review.status}
+                    ? "⏳ Không công khai (legacy)"
+                    : review.status === "hidden"
+                      ? "🚫 Đã ẩn"
+                      : review.status === "reported"
+                        ? "🚩 Đang được xem xét"
+                        : review.status === "rejected"
+                          ? "⛔ Từ chối"
+                          : review.status}
               </div>
             </footer>
 
             {!!activeReactions.length && (
-              <div className="reviews-review-card__meta" style={{ marginTop: 8 }}>
+              <div className="reviews-review-card__meta reviews-review-card__meta--reactions">
                 {activeReactions.map(([key, emoji]) => (
                   <span key={key}>
                     {emoji} {review.reactions?.[key]}

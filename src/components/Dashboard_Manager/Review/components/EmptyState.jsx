@@ -4,9 +4,14 @@ import "./EmptyState.scss";
 const EmptyState = ({ type = "default" }) => {
   const contentMap = {
     default: {
-      title: "Không có đánh giá nào",
-      desc: "Không tìm thấy đánh giá nào phù hợp với bộ lọc hiện tại.",
+      title: "Chưa có đánh giá",
+      desc: "Khi khách hàng gửi đánh giá, phản hồi sẽ xuất hiện tại đây để manager theo dõi và xử lý.",
       icon: "📭",
+    },
+    filtered: {
+      title: "Không có đánh giá phù hợp",
+      desc: "Không có đánh giá phù hợp với bộ lọc hiện tại.",
+      icon: "🔎",
     },
     service: {
       title: "Chưa có đánh giá dịch vụ",

@@ -64,7 +64,9 @@
 .reviews-review-card {
   border-bottom: 2px solid var(--reviews-border-color);
   padding: 18px 20px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 
   &:hover {
     background: #f8fafc;
@@ -221,7 +223,9 @@
     border-radius: 10px;
     object-fit: cover;
     cursor: pointer;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    transition:
+      transform 0.1s ease,
+      box-shadow 0.1s ease;
 
     &:hover {
       transform: scale(1.03);
@@ -347,4 +351,116 @@
 .reviews-review-card__status--rejected {
   background: #f3f4f6;
   color: #374151;
+}
+
+.reviews-loading {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.reviews-loading__skeleton {
+  border: 1px solid var(--reviews-border-color);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  overflow: hidden;
+  position: relative;
+}
+
+.reviews-loading__skeleton::after {
+  animation: reviews-skeleton-shimmer 1.35s infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.72),
+    transparent
+  );
+  content: "";
+  inset: 0;
+  position: absolute;
+  transform: translateX(-100%);
+}
+
+.reviews-loading__skeleton span,
+.reviews-loading__skeleton strong,
+.reviews-loading__skeleton p {
+  background: #e2e8f0;
+  border-radius: 999px;
+  display: block;
+  margin: 0;
+}
+
+.reviews-loading__skeleton span {
+  height: 38px;
+  width: 38px;
+}
+
+.reviews-loading__skeleton strong {
+  height: 16px;
+  width: 46%;
+}
+
+.reviews-loading__skeleton p {
+  height: 12px;
+  width: 72%;
+}
+
+.reviews-loading__skeleton p:last-child {
+  width: 54%;
+}
+
+@keyframes reviews-skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.reviews-review-card__action-btn {
+  min-height: 34px;
+  padding: 7px 11px;
+  width: auto;
+}
+
+.reviews-review-card__action-btn--danger {
+  color: #b91c1c;
+}
+
+.reviews-review-card__action-btn:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.32);
+  outline-offset: 2px;
+}
+
+.reviews-review-card__sentiment {
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 9px;
+}
+
+.reviews-review-card__sentiment--positive {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reviews-review-card__sentiment--neutral {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.reviews-review-card__sentiment--negative {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.reviews-review-card__text--note {
+  color: #64748b;
+  font-style: italic;
+}
+
+.reviews-review-card__meta--reactions {
+  margin-top: 8px;
 }

@@ -21,9 +21,18 @@ const ME_QUERY = gql`
       role {
         slug
         name
-        permissions { code }
-        directPermissions { code }
-        parentRole { slug permissions { code } }
+        permissions {
+          code
+        }
+        directPermissions {
+          code
+        }
+        parentRole {
+          slug
+          permissions {
+            code
+          }
+        }
       }
     }
   }
@@ -116,12 +125,16 @@ const GET_REVIEWS = gql`
           total
         }
         createdAt
-        firstOfficialReply { id authorName content createdAt }
+        firstOfficialReply {
+          id
+          authorName
+          content
+          createdAt
+        }
       }
     }
   }
 `;
-
 
 const GET_REVIEW_ANALYTICS = gql`
   query GetReviewAnalytics($restaurantId: ID, $targetType: String) {
@@ -132,13 +145,45 @@ const GET_REVIEW_ANALYTICS = gql`
       pendingCount
       negativeCount
       reportedCount
-      ratingTrend { date total avgRating }
-      topTags { name count }
-      topStaffMentioned { id name count }
-      lowRatedTargets { id name targetType count avgRating }
-      reportBreakdown { name count }
-      actionQueueCounts { needsModeration needsReply highRisk }
-      reviewInsightSummary { summary positives negatives recommendedActions topPriorities confidence source }
+      ratingTrend {
+        date
+        total
+        avgRating
+      }
+      topTags {
+        name
+        count
+      }
+      topStaffMentioned {
+        id
+        name
+        count
+      }
+      lowRatedTargets {
+        id
+        name
+        targetType
+        count
+        avgRating
+      }
+      reportBreakdown {
+        name
+        count
+      }
+      actionQueueCounts {
+        needsModeration
+        needsReply
+        highRisk
+      }
+      reviewInsightSummary {
+        summary
+        positives
+        negatives
+        recommendedActions
+        topPriorities
+        confidence
+        source
+      }
       recommendedActions
       insightSource
     }
@@ -149,15 +194,37 @@ const GET_REVIEW_REPORTS = gql`
   query GetReviewReports($restaurantId: ID, $status: String, $limit: Int = 10) {
     reviewReports(restaurantId: $restaurantId, status: $status, limit: $limit) {
       total
-      items { id reviewId restaurantId reporterUserId reason detail status resolutionNote createdAt resolvedAt }
+      items {
+        id
+        reviewId
+        restaurantId
+        reporterUserId
+        reason
+        detail
+        status
+        resolutionNote
+        createdAt
+        resolvedAt
+      }
     }
-    reviewReportStats(restaurantId: $restaurantId) { total pending resolved rejected byReason }
+    reviewReportStats(restaurantId: $restaurantId) {
+      total
+      pending
+      resolved
+      rejected
+      byReason
+    }
   }
 `;
 
 const RESOLVE_REVIEW_REPORT = gql`
   mutation ResolveReviewReport($id: ID!, $input: ReviewReportResolveInput!) {
-    resolveReviewReport(id: $id, input: $input) { id status resolutionNote resolvedAt }
+    resolveReviewReport(id: $id, input: $input) {
+      id
+      status
+      resolutionNote
+      resolvedAt
+    }
   }
 `;
 
@@ -179,8 +246,18 @@ const DELETE_REVIEW = gql`
 `;
 
 const SET_REVIEW_STATUS = gql`
-  mutation SetReviewStatus($id: ID!, $status: String!, $reason: String, $moderationNote: String) {
-    setReviewStatus(id: $id, status: $status, reason: $reason, moderationNote: $moderationNote) {
+  mutation SetReviewStatus(
+    $id: ID!
+    $status: String!
+    $reason: String
+    $moderationNote: String
+  ) {
+    setReviewStatus(
+      id: $id
+      status: $status
+      reason: $reason
+      moderationNote: $moderationNote
+    ) {
       id
       status
       moderationNote
@@ -215,12 +292,12 @@ const normalizeReview = (review) => ({
   verified_source: review.verifiedSource || "",
   sentiment: review.sentiment || "",
   topic_tags: review.topicTags || [],
-  first_official_reply_at: review.firstOfficialReplyAt || review.firstOfficialReply?.createdAt || "",
+  first_official_reply_at:
+    review.firstOfficialReplyAt || review.firstOfficialReply?.createdAt || "",
   reactions: review.reactions || {},
   created_at: review.createdAt,
   first_official_reply: review.firstOfficialReply || null,
 });
-
 
 function getInsightSourceLabel(source) {
   if (source === "gemini") return "Gemini AI";
@@ -239,23 +316,26 @@ function getRoleText(user) {
 }
 
 function getModerationSuccessMessage(_review, status) {
-  if (status === "reported") return "Đã đánh dấu review đang được xem xét từ report hợp lệ.";
+  if (status === "reported")
+    return "Đã đánh dấu review đang được xem xét từ report hợp lệ.";
   return "Đã lưu ghi chú hậu kiểm nội bộ.";
 }
 
+const defaultReviewFilters = {
+  ratings: [5, 4, 3, 2, 1],
+  status: "",
+  time: "",
+  image: "",
+  restaurant: "",
+  verified: "",
+  staffAssigned: "",
+  sort: "newest",
+  actionQueue: "",
+};
+
 const ReviewManagement = () => {
   const [currentTab, setCurrentTab] = useState("all");
-  const [filters, setFilters] = useState({
-    ratings: [5, 4, 3, 2, 1],
-    status: "",
-    time: "",
-    image: "",
-    restaurant: "",
-    verified: "",
-    staffAssigned: "",
-    sort: "newest",
-    actionQueue: "",
-  });
+  const [filters, setFilters] = useState(defaultReviewFilters);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReview, setSelectedReview] = useState(null);
@@ -277,7 +357,8 @@ const ReviewManagement = () => {
   const me = meData?.me;
   const roleText = getRoleText(me);
   const isAdminUser = roleText.includes("admin");
-  const isManagerOrStaffUser = roleText.includes("manager") || roleText.includes("staff");
+  const isManagerOrStaffUser =
+    roleText.includes("manager") || roleText.includes("staff");
   const canReadAnalytics = hasPermission(me, "review.analytics.read");
 
   const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
@@ -294,7 +375,9 @@ const ReviewManagement = () => {
 
   const restaurantOptions = useMemo(() => {
     if (isAdminUser) {
-      return (allRestaurantsData?.restaurants?.edges || []).map((edge) => edge.node);
+      return (allRestaurantsData?.restaurants?.edges || []).map(
+        (edge) => edge.node,
+      );
     }
     return (managerRestaurantsData?.restaurantsByManager?.edges || []).map(
       (edge) => edge.node,
@@ -302,22 +385,32 @@ const ReviewManagement = () => {
   }, [allRestaurantsData, isAdminUser, managerRestaurantsData]);
 
   useEffect(() => {
-    if (!me || isAdminUser || filters.restaurant || !restaurantOptions.length) return;
-    setFilters((prev) => (prev.restaurant ? prev : { ...prev, restaurant: restaurantOptions[0].id }));
+    if (!me || isAdminUser || filters.restaurant || !restaurantOptions.length)
+      return;
+    setFilters((prev) =>
+      prev.restaurant ? prev : { ...prev, restaurant: restaurantOptions[0].id },
+    );
   }, [filters.restaurant, isAdminUser, me, restaurantOptions]);
 
-  const gqlTargetType = ["all", "reported", "hidden", "rejected"].includes(currentTab)
+  const gqlTargetType = ["all", "reported", "hidden", "rejected"].includes(
+    currentTab,
+  )
     ? undefined
     : currentTab;
-  const gqlStatus = currentTab === "reported"
-    ? "reported"
-    : currentTab === "hidden"
-      ? "hidden"
-      : currentTab === "rejected"
-        ? "rejected"
-        : filters.status || undefined;
-  const gqlMinRating = filters.ratings?.length ? Math.min(...filters.ratings) : undefined;
-  const gqlMaxRating = filters.ratings?.length ? Math.max(...filters.ratings) : undefined;
+  const gqlStatus =
+    currentTab === "reported"
+      ? "reported"
+      : currentTab === "hidden"
+        ? "hidden"
+        : currentTab === "rejected"
+          ? "rejected"
+          : filters.status || undefined;
+  const gqlMinRating = filters.ratings?.length
+    ? Math.min(...filters.ratings)
+    : undefined;
+  const gqlMaxRating = filters.ratings?.length
+    ? Math.max(...filters.ratings)
+    : undefined;
 
   const { data, loading, error, refetch } = useQuery(GET_REVIEWS, {
     variables: {
@@ -337,9 +430,15 @@ const ReviewManagement = () => {
     },
   });
 
-  const shouldSkipAnalytics = !canReadAnalytics || (!isAdminUser && !filters.restaurant);
+  const shouldSkipAnalytics =
+    !canReadAnalytics || (!isAdminUser && !filters.restaurant);
 
-  const { data: analyticsData, loading: analyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery(GET_REVIEW_ANALYTICS, {
+  const {
+    data: analyticsData,
+    loading: analyticsLoading,
+    error: analyticsError,
+    refetch: refetchAnalytics,
+  } = useQuery(GET_REVIEW_ANALYTICS, {
     variables: {
       restaurantId: filters.restaurant || undefined,
       targetType: gqlTargetType,
@@ -348,11 +447,18 @@ const ReviewManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  const { data: reportsData, refetch: refetchReports } = useQuery(GET_REVIEW_REPORTS, {
-    variables: { restaurantId: filters.restaurant || undefined, status: undefined, limit: 12 },
-    skip: shouldSkipAnalytics,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data: reportsData, refetch: refetchReports } = useQuery(
+    GET_REVIEW_REPORTS,
+    {
+      variables: {
+        restaurantId: filters.restaurant || undefined,
+        status: undefined,
+        limit: 12,
+      },
+      skip: shouldSkipAnalytics,
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
   const [deleteReview] = useMutation(DELETE_REVIEW);
   const [setReviewStatus] = useMutation(SET_REVIEW_STATUS);
@@ -404,19 +510,34 @@ const ReviewManagement = () => {
     }
 
     if (filters.actionQueue === "needsModeration") {
-      list = list.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0);
+      list = list.filter(
+        (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+      );
     }
     if (filters.actionQueue === "needsReply") {
-      list = list.filter((r) => ["published", "reported"].includes(r.status) && Number(r.rating || 0) <= 2 && !r.first_official_reply);
+      list = list.filter(
+        (r) =>
+          ["published", "reported"].includes(r.status) &&
+          Number(r.rating || 0) <= 2 &&
+          !r.first_official_reply,
+      );
     }
     if (filters.actionQueue === "reports") {
-      list = list.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0);
+      list = list.filter(
+        (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+      );
     }
     if (filters.actionQueue === "highRisk") {
-      list = list.filter((r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1);
+      list = list.filter(
+        (r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1,
+      );
     }
     if (filters.actionQueue === "recentlyDone") {
-      list = list.filter((r) => ["published", "hidden", "rejected"].includes(r.status) && (r.first_official_reply || r.reports_count === 0));
+      list = list.filter(
+        (r) =>
+          ["published", "hidden", "rejected"].includes(r.status) &&
+          (r.first_official_reply || r.reports_count === 0),
+      );
     }
 
     if (searchTerm.trim()) {
@@ -455,38 +576,128 @@ const ReviewManagement = () => {
     }
 
     const total = reviews.length;
-    const avg = total ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1) : "0.0";
+    const avg = total
+      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1)
+      : "0.0";
     return { total, avg };
   }, [reviews, statsData]);
-
 
   const analytics = analyticsData?.reviewAnalytics;
   const queueCounts = analytics?.actionQueueCounts || {};
   const reportRows = reportsData?.reviewReports?.items || [];
   const reportStats = reportsData?.reviewReportStats;
-  const localUnderReviewCount = reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length;
-  const underReviewCount = analytics?.reportedCount ?? queueCounts.needsModeration ?? reportStats?.pending ?? localUnderReviewCount;
-  const needsReplyCount = queueCounts.needsReply ?? reviews.filter((r) => ["published", "reported"].includes(r.status) && Number(r.rating || 0) <= 2 && !r.first_official_reply).length;
-  const highRiskCount = queueCounts.highRisk ?? reviews.filter((r) => Number(r.reports_count || 0) >= 3 || (Number(r.rating || 0) <= 2 && Number(r.reports_count || 0) > 0)).length;
-  const doneCount = reviews.filter((r) => (r.status === "published" && r.first_official_reply) || (r.status === "reported" && Number(r.reports_count || 0) === 0)).length;
+  const localUnderReviewCount = reviews.filter(
+    (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+  ).length;
+  const underReviewCount =
+    analytics?.reportedCount ??
+    queueCounts.needsModeration ??
+    reportStats?.pending ??
+    localUnderReviewCount;
+  const needsReplyCount =
+    queueCounts.needsReply ??
+    reviews.filter(
+      (r) =>
+        ["published", "reported"].includes(r.status) &&
+        Number(r.rating || 0) <= 2 &&
+        !r.first_official_reply,
+    ).length;
+  const highRiskCount =
+    queueCounts.highRisk ??
+    reviews.filter(
+      (r) =>
+        Number(r.reports_count || 0) >= 3 ||
+        (Number(r.rating || 0) <= 2 && Number(r.reports_count || 0) > 0),
+    ).length;
+  const negativeCount =
+    analytics?.negativeCount ??
+    reviews.filter((r) => Number(r.rating || 0) <= 2).length;
+  const doneCount = reviews.filter(
+    (r) =>
+      (r.status === "published" && r.first_official_reply) ||
+      (r.status === "reported" && Number(r.reports_count || 0) === 0),
+  ).length;
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() ||
+    filters.status ||
+    filters.time ||
+    filters.image ||
+    filters.verified ||
+    filters.staffAssigned ||
+    filters.actionQueue ||
+    filters.sort !== defaultReviewFilters.sort ||
+    (isAdminUser && filters.restaurant) ||
+    (filters.ratings || []).length !== defaultReviewFilters.ratings.length,
+  );
+  const reviewsById = new Map(reviews.map((review) => [review.id, review]));
 
   const analyticsCards = [
-    { label: "Tổng review", value: analytics?.totalReviews ?? reviews.length, icon: "🧾" },
-    { label: "Điểm TB", value: Number(analytics?.avgRating || stats.avg || 0).toFixed(1), icon: "⭐" },
-    { label: "Tỷ lệ verified", value: `${Math.round(Number(analytics?.verifiedRate || 0) * 100)}%`, icon: "✅" },
-    { label: "Review tiêu cực", value: analytics?.negativeCount ?? reviews.filter((r) => Number(r.rating || 0) <= 2).length, icon: "⚠️" },
+    {
+      label: "Tổng review",
+      value: analytics?.totalReviews ?? reviews.length,
+      icon: "🧾",
+    },
+    {
+      label: "Điểm TB",
+      value: Number(analytics?.avgRating || stats.avg || 0).toFixed(1),
+      icon: "⭐",
+    },
+    {
+      label: "Tỷ lệ verified",
+      value: `${Math.round(Number(analytics?.verifiedRate || 0) * 100)}%`,
+      icon: "✅",
+    },
+    { label: "Review tiêu cực", value: negativeCount, icon: "⚠️" },
     { label: "Đang xem xét", value: underReviewCount, icon: "🚩" },
     { label: "Chưa phản hồi", value: needsReplyCount, icon: "💬" },
-    { label: "Report pending", value: reportStats?.pending ?? reportRows.filter((r) => r.status === "pending").length, icon: "🚩" },
+    {
+      label: "Report pending",
+      value:
+        reportStats?.pending ??
+        reportRows.filter((r) => r.status === "pending").length,
+      icon: "🚩",
+    },
     { label: "High risk", value: highRiskCount, icon: "🔥" },
   ];
 
   const queueTiles = [
-    { id: "needsModeration", label: "Báo cáo cần xử lý", value: underReviewCount, hint: "hậu kiểm, không ẩn tự động", tone: "warning" },
-    { id: "needsReply", label: "Đánh giá cần phản hồi", value: needsReplyCount, hint: "1–2 sao chưa có reply", tone: "danger" },
-    { id: "reports", label: "Report cần xử lý", value: reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).length, hint: "report queue", tone: "danger" },
-    { id: "highRisk", label: "Review rủi ro cao", value: highRiskCount, hint: "report >= 3 hoặc 1 sao", tone: "critical" },
-    { id: "recentlyDone", label: "Đã xử lý gần đây", value: doneCount, hint: "đã reply/đóng report", tone: "success" },
+    {
+      id: "needsModeration",
+      label: "Báo cáo cần xử lý",
+      value: underReviewCount,
+      hint: "hậu kiểm, không ẩn tự động",
+      tone: "warning",
+    },
+    {
+      id: "needsReply",
+      label: "Đánh giá cần phản hồi",
+      value: needsReplyCount,
+      hint: "1–2 sao chưa có reply",
+      tone: "danger",
+    },
+    {
+      id: "reports",
+      label: "Report cần xử lý",
+      value: reviews.filter(
+        (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+      ).length,
+      hint: "report queue",
+      tone: "danger",
+    },
+    {
+      id: "highRisk",
+      label: "Review rủi ro cao",
+      value: highRiskCount,
+      hint: "report >= 3 hoặc 1 sao",
+      tone: "critical",
+    },
+    {
+      id: "recentlyDone",
+      label: "Đã xử lý gần đây",
+      value: doneCount,
+      hint: "đã reply/đóng report",
+      tone: "success",
+    },
   ];
 
   const handleQueueClick = useCallback((tile) => {
@@ -499,35 +710,79 @@ const ReviewManagement = () => {
     else setCurrentTab("all");
   }, []);
 
-  const actionCenterItems = useMemo(() => ({
-    needsModeration: reviews.filter((r) => r.status === "reported" || Number(r.reports_count || 0) > 0).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 5),
-    needsReply: reviews.filter((r) => ["published", "reported"].includes(r.status) && Number(r.rating || 0) <= 2 && !r.first_official_reply).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).slice(0, 5),
-    highRisk: reviews.filter((r) => Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1).sort((a, b) => Number(b.reports_count || 0) - Number(a.reports_count || 0)).slice(0, 5),
-  }), [reviews]);
+  const actionCenterItems = useMemo(
+    () => ({
+      needsModeration: reviews
+        .filter(
+          (r) => r.status === "reported" || Number(r.reports_count || 0) > 0,
+        )
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .slice(0, 5),
+      needsReply: reviews
+        .filter(
+          (r) =>
+            ["published", "reported"].includes(r.status) &&
+            Number(r.rating || 0) <= 2 &&
+            !r.first_official_reply,
+        )
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .slice(0, 5),
+      highRisk: reviews
+        .filter(
+          (r) =>
+            Number(r.reports_count || 0) >= 3 || Number(r.rating || 0) <= 1,
+        )
+        .sort(
+          (a, b) => Number(b.reports_count || 0) - Number(a.reports_count || 0),
+        )
+        .slice(0, 5),
+    }),
+    [reviews],
+  );
 
-  const handleResolveReport = useCallback(async (report, status = "resolved") => {
-    const resolutionNote = window.prompt(status === "resolved" ? "Ghi chú resolve report:" : "Lý do reject report:", "") || "";
-    try {
-      await resolveReviewReport({ variables: { id: report.id, input: { status, resolutionNote } } });
-      await refetchReports?.();
-      await refetch();
-      notify(status === "resolved" ? "Đã resolve report" : "Đã reject report");
-    } catch (err) {
-      notify(err?.message || "Không thể xử lý report.", "error");
-    }
-  }, [notify, refetch, refetchReports, resolveReviewReport]);
+  const handleResolveReport = useCallback(
+    async (report, status = "resolved") => {
+      const resolutionNote =
+        status === "resolved"
+          ? "Manager đã xử lý report từ Review Report Center."
+          : "Manager từ chối report từ Review Report Center.";
+      try {
+        await resolveReviewReport({
+          variables: { id: report.id, input: { status, resolutionNote } },
+        });
+        await refetchReports?.();
+        await refetch();
+        notify(
+          status === "resolved" ? "Đã resolve report" : "Đã reject report",
+        );
+      } catch (err) {
+        notify(err?.message || "Không thể xử lý report.", "error");
+      }
+    },
+    [notify, refetch, refetchReports, resolveReviewReport],
+  );
 
-  const handleReportReviewAction = useCallback(async (report, reviewStatus) => {
-    const reason = window.prompt("Ghi chú xử lý review từ report:", "") || "";
-    try {
-      await setReviewStatus({ variables: { id: report.reviewId, status: reviewStatus, reason, moderationNote: reason } });
-      await refetchReports?.();
-      await refetch();
-      notify("Đã cập nhật review từ report center");
-    } catch (err) {
-      notify(err?.message || "Không thể cập nhật review từ report.", "error");
-    }
-  }, [notify, refetch, refetchReports, setReviewStatus]);
+  const handleReportReviewAction = useCallback(
+    async (report, reviewStatus) => {
+      const reason = "Admin xử lý review từ report center.";
+      try {
+        await setReviewStatus({
+          variables: {
+            id: report.reviewId,
+            status: reviewStatus,
+            reason,
+            moderationNote: reason,
+          },
+        });
+        await refetchReports?.();
+        await refetch();
+        notify("Đã cập nhật review từ report center");
+      } catch (err) {
+        notify(err?.message || "Không thể cập nhật review từ report.", "error");
+      }
+    },
+    [notify, refetch, refetchReports, setReviewStatus],
+  );
 
   const handleViewReview = useCallback((review) => {
     setSelectedReview(review);
@@ -552,7 +807,10 @@ const ReviewManagement = () => {
       setReviewPendingDelete(null);
       notify("Đã xóa đánh giá");
     } catch (err) {
-      notify(err?.message || "Không thể xóa đánh giá. Vui lòng thử lại.", "error");
+      notify(
+        err?.message || "Không thể xóa đánh giá. Vui lòng thử lại.",
+        "error",
+      );
     } finally {
       setIsDeletingReview(false);
     }
@@ -561,12 +819,20 @@ const ReviewManagement = () => {
   const handleModerate = useCallback(
     async (review, status) => {
       try {
-        const reason = status === "reported" ? window.prompt("Ghi chú hậu kiểm/report (không bắt buộc):", "") || "" : window.prompt("Lý do vi phạm chính sách rõ ràng (bắt buộc với Admin):", "") || "";
-        await setReviewStatus({ variables: { id: review.id, status, reason, moderationNote: reason } });
+        const reason =
+          status === "reported"
+            ? "Manager đánh dấu review cần hậu kiểm từ trang quản lý đánh giá."
+            : "Admin xử lý review theo chính sách từ trang quản lý đánh giá.";
+        await setReviewStatus({
+          variables: { id: review.id, status, reason, moderationNote: reason },
+        });
         await refetch();
         notify(getModerationSuccessMessage(review, status));
       } catch (err) {
-        notify(err?.message || "Không thể cập nhật trạng thái đánh giá.", "error");
+        notify(
+          err?.message || "Không thể cập nhật trạng thái đánh giá.",
+          "error",
+        );
       }
     },
     [notify, refetch, setReviewStatus],
@@ -612,7 +878,11 @@ const ReviewManagement = () => {
         escapeCsv(r.sentiment),
         escapeCsv((r.topic_tags || []).join("; ")),
         r.first_official_reply ? "replied" : "unreplied",
-        escapeCsv(r.first_official_reply_at ? new Date(r.first_official_reply_at).toLocaleString("vi-VN") : ""),
+        escapeCsv(
+          r.first_official_reply_at
+            ? new Date(r.first_official_reply_at).toLocaleString("vi-VN")
+            : "",
+        ),
         r.reports_count || 0,
         escapeCsv(r.target_name),
         escapeCsv(new Date(r.created_at).toLocaleString("vi-VN")),
@@ -630,17 +900,26 @@ const ReviewManagement = () => {
     URL.revokeObjectURL(url);
 
     if (analytics) {
-      const summaryBlob = new Blob([JSON.stringify({
-        totalReviews: analytics.totalReviews,
-        avgRating: analytics.avgRating,
-        negativeCount: analytics.negativeCount,
-        verifiedRate: analytics.verifiedRate,
-        replyRate: analytics.replyRate,
-        topTags: analytics.topTags,
-        ratingTrend: analytics.ratingTrend,
-        actionQueueCounts: analytics.actionQueueCounts,
-        reviewInsightSummary: analytics.reviewInsightSummary,
-      }, null, 2)], { type: "application/json;charset=utf-8" });
+      const summaryBlob = new Blob(
+        [
+          JSON.stringify(
+            {
+              totalReviews: analytics.totalReviews,
+              avgRating: analytics.avgRating,
+              negativeCount: analytics.negativeCount,
+              verifiedRate: analytics.verifiedRate,
+              replyRate: analytics.replyRate,
+              topTags: analytics.topTags,
+              ratingTrend: analytics.ratingTrend,
+              actionQueueCounts: analytics.actionQueueCounts,
+              reviewInsightSummary: analytics.reviewInsightSummary,
+            },
+            null,
+            2,
+          ),
+        ],
+        { type: "application/json;charset=utf-8" },
+      );
       const summaryUrl = URL.createObjectURL(summaryBlob);
       const summaryLink = document.createElement("a");
       summaryLink.href = summaryUrl;
@@ -649,6 +928,15 @@ const ReviewManagement = () => {
       URL.revokeObjectURL(summaryUrl);
     }
   };
+
+  const handleResetFilters = useCallback(() => {
+    setSearchTerm("");
+    setCurrentTab("all");
+    setFilters((prev) => ({
+      ...defaultReviewFilters,
+      restaurant: isAdminUser ? "" : prev.restaurant,
+    }));
+  }, [isAdminUser]);
 
   const permissions = {
     canModerate: hasPermission(me, "review.moderate"),
@@ -673,7 +961,10 @@ const ReviewManagement = () => {
   return (
     <div className="reviews-page">
       {notification && (
-        <div className={`reviews-toast reviews-toast--${notification.type}`} role="status">
+        <div
+          className={`reviews-toast reviews-toast--${notification.type}`}
+          role="status"
+        >
           {notification.message}
         </div>
       )}
@@ -683,24 +974,54 @@ const ReviewManagement = () => {
           density="compact"
           showTimeWidget={false}
           eyebrow="REVIEW MANAGER"
-          title="Đánh giá khách hàng"
-          subtitle="Review được công khai ngay; quản lý tập trung phản hồi, xử lý báo cáo và hậu kiểm minh bạch."
+          title="Quản lý đánh giá"
+          subtitle="Theo dõi phản hồi, điểm đánh giá và trạng thái xử lý của khách hàng theo từng nhà hàng."
           icon="⭐"
           stats={[
-            { id: "total", icon: "🧾", label: "Tổng đánh giá", value: stats.total },
-            { id: "avg", icon: "⭐", label: "Điểm trung bình", value: stats.avg },
-            { id: "reported", icon: "🚩", label: "Đang xem xét", value: underReviewCount },
-            { id: "bad", icon: "⚠️", label: "Tiêu cực", value: filteredReviews.filter((r) => Number(r.rating || 0) <= 2).length },
+            {
+              id: "total",
+              icon: "🧾",
+              label: "Tổng đánh giá",
+              value: stats.total,
+            },
+            {
+              id: "avg",
+              icon: "⭐",
+              label: "Điểm trung bình",
+              value: stats.avg,
+            },
+            {
+              id: "needsReply",
+              icon: "💬",
+              label: "Chưa phản hồi",
+              value: needsReplyCount,
+            },
+            {
+              id: "bad",
+              icon: "⚠️",
+              label: "Tiêu cực/cảnh báo",
+              value: negativeCount || highRiskCount,
+            },
           ]}
-          secondaryActions={permissions.canExport ? [{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }] : []}
+          secondaryActions={
+            permissions.canExport
+              ? [{ label: "Xuất báo cáo", icon: "📊", onClick: handleExport }]
+              : []
+          }
         />
 
         <div className="reviews-notification-row">
           <div>
             <strong>Thông báo review gần đây</strong>
-            <span>Manager/customer có thể xem notification in-app và đánh dấu đã đọc.</span>
+            <span>
+              Manager/customer có thể xem notification in-app và đánh dấu đã
+              đọc.
+            </span>
           </div>
-          <NotificationBell restaurantId={filters.restaurant || null} title="Thông báo review" />
+          <NotificationBell
+            restaurantId={filters.restaurant || null}
+            title="Thông báo review"
+          />
         </div>
 
         <ManagerCommandBar
@@ -720,63 +1041,132 @@ const ReviewManagement = () => {
           searchPlaceholder="Tìm khách hàng, nhân viên, tiêu đề, nội dung..."
         />
 
-
-        <main className="reviews-main-content">
+        <section
+          className="reviews-main-content"
+          aria-label="Nội dung quản lý đánh giá"
+        >
           <div className="reviews-content-grid">
             <ReviewsSidebarFilters
               filters={filters}
               onChange={setFilters}
               restaurantOptions={restaurantOptions}
+              onReset={handleResetFilters}
             />
 
             <section className="reviews-content-area">
-
-              <section className="reviews-analytics-panel" aria-label="Tổng quan đánh giá">
+              <section
+                className="reviews-analytics-panel"
+                aria-label="Tổng quan đánh giá"
+              >
                 <div className="reviews-analytics-panel__header">
                   <div>
-                    <p className="reviews-analytics-panel__eyebrow">Phân tích</p>
+                    <p className="reviews-analytics-panel__eyebrow">
+                      Phân tích
+                    </p>
                     <h2>Tổng quan đánh giá</h2>
                   </div>
-                  {!shouldSkipAnalytics && analyticsError && <button type="button" className="reviews-btn reviews-btn-secondary" onClick={() => refetchAnalytics()}>Thử lại analytics</button>}
+                  {!shouldSkipAnalytics && analyticsError && (
+                    <button
+                      type="button"
+                      className="reviews-btn reviews-btn-secondary"
+                      onClick={() => refetchAnalytics()}
+                    >
+                      Thử lại analytics
+                    </button>
+                  )}
                 </div>
 
                 {shouldSkipAnalytics ? (
-                  <div className="reviews-analytics-loading">Đang chuẩn bị dữ liệu phân tích...</div>
+                  <div className="reviews-analytics-loading">
+                    Chọn nhà hàng để xem insight/analytics trong phạm vi quản
+                    lý.
+                  </div>
                 ) : analyticsLoading ? (
-                  <div className="reviews-analytics-loading">Đang tải dữ liệu phân tích...</div>
+                  <div className="reviews-analytics-loading">
+                    Đang tải dữ liệu phân tích...
+                  </div>
                 ) : analyticsError ? (
-                  <div className="reviews-error-box">Không thể tải analytics. Dữ liệu review vẫn hiển thị bên dưới.</div>
+                  <div className="reviews-error-box">
+                    Không thể tải analytics. Dữ liệu review vẫn hiển thị bên
+                    dưới.
+                  </div>
                 ) : (
                   <>
-
                     {analytics?.reviewInsightSummary ? (
                       <div className="reviews-insight-card">
                         <div>
                           <p>Tóm tắt insight</p>
                           <div className="reviews-insight-card__meta">
-                            <span>{getInsightSourceLabel(analytics.reviewInsightSummary.source)}</span>
-                            {Number.isFinite(Number(analytics.reviewInsightSummary.confidence)) && (
-                              <span>Độ tin cậy {Math.round(Number(analytics.reviewInsightSummary.confidence) * 100)}%</span>
+                            <span>
+                              Nguồn:{" "}
+                              {getInsightSourceLabel(
+                                analytics.reviewInsightSummary.source,
+                              )}
+                            </span>
+                            {Number.isFinite(
+                              Number(analytics.reviewInsightSummary.confidence),
+                            ) && (
+                              <span>
+                                Độ tin cậy{" "}
+                                {Math.round(
+                                  Number(
+                                    analytics.reviewInsightSummary.confidence,
+                                  ) * 100,
+                                )}
+                                %
+                              </span>
                             )}
                           </div>
                           <h3>{analytics.reviewInsightSummary.summary}</h3>
-                          {analytics.reviewInsightSummary.source === "heuristic_fallback" && (
-                            <small className="reviews-insight-card__fallback-note">AI không khả dụng, hệ thống dùng phân tích heuristic.</small>
+                          {analytics.reviewInsightSummary.source ===
+                            "heuristic_fallback" && (
+                            <small className="reviews-insight-card__fallback-note">
+                              AI không khả dụng, hệ thống dùng phân tích
+                              heuristic.
+                            </small>
                           )}
                         </div>
                         <div className="reviews-insight-card__columns">
-                          <section><strong>Khách khen</strong>{asList(analytics.reviewInsightSummary.positives).map((item) => <span key={item}>{item}</span>)}</section>
-                          <section><strong>Khách chê</strong>{asList(analytics.reviewInsightSummary.negatives).map((item) => <span key={item}>{item}</span>)}</section>
-                          <section><strong>Hành động đề xuất</strong>{asList(analytics.reviewInsightSummary.recommendedActions).slice(0, 3).map((item) => <span key={item}>{item}</span>)}</section>
+                          <section>
+                            <strong>Khách khen</strong>
+                            {asList(
+                              analytics.reviewInsightSummary.positives,
+                            ).map((item) => (
+                              <span key={item}>{item}</span>
+                            ))}
+                          </section>
+                          <section>
+                            <strong>Khách chê</strong>
+                            {asList(
+                              analytics.reviewInsightSummary.negatives,
+                            ).map((item) => (
+                              <span key={item}>{item}</span>
+                            ))}
+                          </section>
+                          <section>
+                            <strong>Hành động đề xuất</strong>
+                            {asList(
+                              analytics.reviewInsightSummary.recommendedActions,
+                            )
+                              .slice(0, 3)
+                              .map((item) => (
+                                <span key={item}>{item}</span>
+                              ))}
+                          </section>
                         </div>
                       </div>
                     ) : (
-                      <div className="reviews-insight-card reviews-insight-card--empty">Chưa đủ dữ liệu để tạo insight.</div>
+                      <div className="reviews-insight-card reviews-insight-card--empty">
+                        Chưa đủ dữ liệu để tạo insight.
+                      </div>
                     )}
 
                     <div className="reviews-analytics-cards">
                       {analyticsCards.map((card) => (
-                        <div className="reviews-analytics-card" key={card.label}>
+                        <div
+                          className="reviews-analytics-card"
+                          key={card.label}
+                        >
                           <span>{card.icon}</span>
                           <strong>{card.value}</strong>
                           <small>{card.label}</small>
@@ -786,7 +1176,12 @@ const ReviewManagement = () => {
 
                     <div className="reviews-queue-grid">
                       {queueTiles.map((tile) => (
-                        <button type="button" key={tile.label} className={`reviews-queue-tile reviews-queue-tile--${tile.tone} ${filters.actionQueue === tile.id ? "is-active" : ""}`} onClick={() => handleQueueClick(tile)}>
+                        <button
+                          type="button"
+                          key={tile.label}
+                          className={`reviews-queue-tile reviews-queue-tile--${tile.tone} ${filters.actionQueue === tile.id ? "is-active" : ""}`}
+                          onClick={() => handleQueueClick(tile)}
+                        >
                           <strong>{tile.value}</strong>
                           <span>{tile.label}</span>
                           <small>{tile.hint}</small>
@@ -794,14 +1189,26 @@ const ReviewManagement = () => {
                       ))}
                     </div>
 
-
                     <div className="reviews-action-center">
                       <div className="reviews-action-center__header">
                         <div>
                           <p>Review Action Center</p>
                           <h3>Hàng đợi ưu tiên xử lý</h3>
                         </div>
-                        {filters.actionQueue && <button type="button" className="reviews-btn reviews-btn-secondary" onClick={() => setFilters((prev) => ({ ...prev, actionQueue: "" }))}>Xem tất cả</button>}
+                        {filters.actionQueue && (
+                          <button
+                            type="button"
+                            className="reviews-btn reviews-btn-secondary"
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                actionQueue: "",
+                              }))
+                            }
+                          >
+                            Xem tất cả
+                          </button>
+                        )}
                       </div>
                       <div className="reviews-action-center__grid">
                         {[
@@ -809,20 +1216,38 @@ const ReviewManagement = () => {
                           ["needsReply", "Đánh giá cần phản hồi"],
                           ["highRisk", "Review rủi ro cao"],
                         ].map(([key, label]) => (
-                          <div className="reviews-action-center__lane" key={key}>
+                          <div
+                            className="reviews-action-center__lane"
+                            key={key}
+                          >
                             <h4>{label}</h4>
-                            {actionCenterItems[key].length ? actionCenterItems[key].map((item) => (
-                              <button type="button" key={item.id} onClick={() => handleViewReview(item)}>
-                                <strong>{item.rating}/5 · {item.customer_name || "Khách hàng"}</strong>
-                                <span>{item.title}</span>
-                                <small>{item.reports_count || 0} report · {new Date(item.created_at).toLocaleDateString("vi-VN")}</small>
-                              </button>
-                            )) : <p>Không có item cần xử lý.</p>}
+                            {actionCenterItems[key].length ? (
+                              actionCenterItems[key].map((item) => (
+                                <button
+                                  type="button"
+                                  key={item.id}
+                                  onClick={() => handleViewReview(item)}
+                                >
+                                  <strong>
+                                    {item.rating}/5 ·{" "}
+                                    {item.customer_name || "Khách hàng"}
+                                  </strong>
+                                  <span>{item.title}</span>
+                                  <small>
+                                    {item.reports_count || 0} report ·{" "}
+                                    {new Date(
+                                      item.created_at,
+                                    ).toLocaleDateString("vi-VN")}
+                                  </small>
+                                </button>
+                              ))
+                            ) : (
+                              <p>Không có item cần xử lý.</p>
+                            )}
                           </div>
                         ))}
                       </div>
                     </div>
-
 
                     <div className="reviews-report-center">
                       <div className="reviews-report-center__header">
@@ -838,59 +1263,180 @@ const ReviewManagement = () => {
                       </div>
                       {reportRows.length ? (
                         <div className="reviews-report-center__list">
-                          {reportRows.slice(0, 6).map((report) => (
-                            <article key={report.id}>
-                              <header><strong>{report.reason}</strong><span>{report.status}</span></header>
-                              <p>{report.detail || "Không có mô tả thêm"}</p>
-                              <small>Review #{report.reviewId} · Reporter #{report.reporterUserId} · {new Date(report.createdAt).toLocaleString("vi-VN")}</small>
-                              {report.resolutionNote && <small>Ghi chú: {report.resolutionNote}</small>}
-                              <div>
-                                {permissions.canResolveReports && (
-                                  <>
-                                    <button type="button" onClick={() => handleResolveReport(report, "resolved")}>Resolve</button>
-                                    <button type="button" onClick={() => handleResolveReport(report, "rejected")}>Reject report</button>
-                                  </>
+                          {reportRows.slice(0, 6).map((report) => {
+                            const reportedReview = reviewsById.get(
+                              report.reviewId,
+                            );
+                            return (
+                              <article key={report.id}>
+                                <header>
+                                  <strong>{report.reason}</strong>
+                                  <span>{report.status}</span>
+                                </header>
+                                <p>{report.detail || "Không có mô tả thêm"}</p>
+                                <small>
+                                  {reportedReview?.title ||
+                                    "Đánh giá được báo cáo"}{" "}
+                                  ·{" "}
+                                  {reportedReview?.customer_name ||
+                                    "Người báo cáo đã gửi thông tin"}{" "}
+                                  ·{" "}
+                                  {new Date(report.createdAt).toLocaleString(
+                                    "vi-VN",
+                                  )}
+                                </small>
+                                {report.resolutionNote && (
+                                  <small>
+                                    Ghi chú: {report.resolutionNote}
+                                  </small>
                                 )}
-                                {permissions.canAdminModerate && (
-                                  <>
-                                    <button type="button" onClick={() => handleReportReviewAction(report, "hidden")}>Admin hide policy violation</button>
-                                    <button type="button" onClick={() => handleReportReviewAction(report, "rejected")}>Admin reject policy violation</button>
-                                  </>
-                                )}
-                                {!permissions.canResolveReports && !permissions.canAdminModerate && (
-                                  <small>Bạn không có quyền xử lý report.</small>
-                                )}
-                              </div>
-                            </article>
-                          ))}
+                                <div>
+                                  {permissions.canResolveReports && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleResolveReport(
+                                            report,
+                                            "resolved",
+                                          )
+                                        }
+                                      >
+                                        Đánh dấu đã xử lý
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleResolveReport(
+                                            report,
+                                            "rejected",
+                                          )
+                                        }
+                                      >
+                                        Từ chối report
+                                      </button>
+                                    </>
+                                  )}
+                                  {permissions.canAdminModerate && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleReportReviewAction(
+                                            report,
+                                            "hidden",
+                                          )
+                                        }
+                                      >
+                                        Ẩn review vi phạm
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleReportReviewAction(
+                                            report,
+                                            "rejected",
+                                          )
+                                        }
+                                      >
+                                        Từ chối review vi phạm
+                                      </button>
+                                    </>
+                                  )}
+                                  {!permissions.canResolveReports &&
+                                    !permissions.canAdminModerate && (
+                                      <small>
+                                        Bạn không có quyền xử lý report.
+                                      </small>
+                                    )}
+                                </div>
+                              </article>
+                            );
+                          })}
                         </div>
-                      ) : <p className="reviews-report-center__empty">Chưa có report trong scope hiện tại.</p>}
+                      ) : (
+                        <p className="reviews-report-center__empty">
+                          Chưa có report trong scope hiện tại.
+                        </p>
+                      )}
                     </div>
 
                     <div className="reviews-analytics-tables">
                       <div className="reviews-mini-table">
                         <h3>Top vấn đề khách phàn nàn</h3>
-                        {(analytics?.topTags || []).length ? (analytics.topTags || []).slice(0, 7).map((item) => (
-                          <div key={item.name} className="reviews-mini-table__row"><span>{item.name}</span><strong>{item.count}</strong></div>
-                        )) : <p className="reviews-mini-table__empty">Chưa có tag/vấn đề nổi bật.</p>}
+                        {(analytics?.topTags || []).length ? (
+                          (analytics.topTags || []).slice(0, 7).map((item) => (
+                            <div
+                              key={item.name}
+                              className="reviews-mini-table__row"
+                            >
+                              <span>{item.name}</span>
+                              <strong>{item.count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="reviews-mini-table__empty">
+                            Chưa có tag/vấn đề nổi bật.
+                          </p>
+                        )}
                       </div>
                       <div className="reviews-mini-table">
                         <h3>Nhân viên được nhắc nhiều</h3>
-                        {(analytics?.topStaffMentioned || []).length ? (analytics.topStaffMentioned || []).map((item) => (
-                          <div key={item.id || item.name} className="reviews-mini-table__row"><span>{item.name || "Chưa đặt tên"}</span><strong>{item.count}</strong></div>
-                        )) : <p className="reviews-mini-table__empty">Chưa có review gắn nhân viên.</p>}
+                        {(analytics?.topStaffMentioned || []).length ? (
+                          (analytics.topStaffMentioned || []).map((item) => (
+                            <div
+                              key={item.id || item.name}
+                              className="reviews-mini-table__row"
+                            >
+                              <span>{item.name || "Chưa đặt tên"}</span>
+                              <strong>{item.count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="reviews-mini-table__empty">
+                            Chưa có review gắn nhân viên.
+                          </p>
+                        )}
                       </div>
                       <div className="reviews-mini-table">
                         <h3>Target điểm thấp</h3>
-                        {(analytics?.lowRatedTargets || []).length ? (analytics.lowRatedTargets || []).map((item) => (
-                          <div key={`${item.targetType}-${item.id}`} className="reviews-mini-table__row"><span>{item.name || item.id}</span><strong>{item.count}</strong></div>
-                        )) : <p className="reviews-mini-table__empty">Chưa có món/dịch vụ điểm thấp.</p>}
+                        {(analytics?.lowRatedTargets || []).length ? (
+                          (analytics.lowRatedTargets || []).map((item) => (
+                            <div
+                              key={`${item.targetType}-${item.id}`}
+                              className="reviews-mini-table__row"
+                            >
+                              <span>{item.name || "Mục chưa có tên"}</span>
+                              <strong>{item.count}</strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="reviews-mini-table__empty">
+                            Chưa có món/dịch vụ điểm thấp.
+                          </p>
+                        )}
                       </div>
                       <div className="reviews-mini-table">
                         <h3>Rating trend</h3>
-                        {(analytics?.ratingTrend || []).length ? (analytics.ratingTrend || []).slice(-6).map((item) => (
-                          <div key={item.date} className="reviews-mini-table__row"><span>{item.date}</span><strong>{item.avgRating}/5 · {item.total}</strong></div>
-                        )) : <p className="reviews-mini-table__empty">Chưa có dữ liệu xu hướng.</p>}
+                        {(analytics?.ratingTrend || []).length ? (
+                          (analytics.ratingTrend || [])
+                            .slice(-6)
+                            .map((item) => (
+                              <div
+                                key={item.date}
+                                className="reviews-mini-table__row"
+                              >
+                                <span>{item.date}</span>
+                                <strong>
+                                  {item.avgRating}/5 · {item.total}
+                                </strong>
+                              </div>
+                            ))
+                        ) : (
+                          <p className="reviews-mini-table__empty">
+                            Chưa có dữ liệu xu hướng.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </>
@@ -898,16 +1444,26 @@ const ReviewManagement = () => {
               </section>
 
               <div className="reviews-content-header">
-                <h2 className="reviews-content-header__title">{titleMap[currentTab]}</h2>
+                <h2 className="reviews-content-header__title">
+                  {titleMap[currentTab]}
+                </h2>
                 <div className="reviews-content-header__meta">
-                  Hiển thị {reviews.length} / {reviewsTotal} đánh giá
-                  {isPartialReviewList && " · Đang hiển thị 100 đánh giá mới nhất, hãy dùng bộ lọc để thu hẹp kết quả."}
+                  Hiển thị {filteredReviews.length} / {reviewsTotal} đánh giá
+                  {isPartialReviewList &&
+                    " · Đang hiển thị 100 đánh giá mới nhất, hãy dùng bộ lọc để thu hẹp kết quả."}
                 </div>
               </div>
 
               {error ? (
                 <div className="reviews-error-box">
-                  Không thể tải dữ liệu đánh giá. Vui lòng thử lại.
+                  <span>Không thể tải dữ liệu đánh giá. Vui lòng thử lại.</span>
+                  <button
+                    type="button"
+                    className="reviews-btn reviews-btn-secondary"
+                    onClick={() => refetch()}
+                  >
+                    Thử lại
+                  </button>
                 </div>
               ) : (
                 <ReviewsList
@@ -918,20 +1474,29 @@ const ReviewManagement = () => {
                   onDelete={handleDeleteReview}
                   onEdit={handleModerate}
                   permissions={permissions}
+                  emptyType={hasActiveFilters ? "filtered" : undefined}
                 />
               )}
             </section>
           </div>
-        </main>
+        </section>
       </div>
 
       {reviewPendingDelete && (
         <div className="reviews-confirm-overlay" role="presentation">
-          <div className="reviews-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="review-delete-title">
+          <div
+            className="reviews-confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="review-delete-title"
+          >
             <h3 id="review-delete-title">Xóa đánh giá?</h3>
             <p>
-              Bạn đang xóa đánh giá của <strong>{reviewPendingDelete.customer_name || "khách hàng"}</strong>.
-              Hành động này không thể hoàn tác.
+              Bạn đang xóa đánh giá của{" "}
+              <strong>
+                {reviewPendingDelete.customer_name || "khách hàng"}
+              </strong>
+              . Hành động này không thể hoàn tác.
             </p>
             <div className="reviews-confirm-dialog__actions">
               <button
