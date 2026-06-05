@@ -17,8 +17,30 @@ import {
 } from "react-icons/fi";
 import "./Styles/Header.scss";
 import { AuthContext } from "@/context/AuthContext";
+import { toApiAssetUrl } from "@/lib/apiBaseUrl";
 
 // Hàm-tiện-ích-để-lấy-icon-thông-báo
+const isImageAvatar = (value) =>
+  typeof value === "string" &&
+  (/^https?:\/\//.test(value) ||
+    value.startsWith("/") ||
+    value.startsWith("data:image") ||
+    value.startsWith("blob:"));
+
+const getInitials = (name) => {
+  const words = String(name || "Người dùng")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 0) return "ND";
+
+  return words
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+};
+
 const getNotificationIcon = (type) => {
   switch (type) {
     case "success":
@@ -45,6 +67,7 @@ const Header = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [localNotifications, setLocalNotifications] = useState(notifications);
+  const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("manager.darkMode") === "1";
@@ -73,7 +96,7 @@ const Header = ({
         fullName: "Người dùng",
         roleName: "Đang tải...",
         email: "",
-        avatar: "👤",
+        avatar: "",
         status: "INACTIVE",
       };
     }
@@ -82,10 +105,41 @@ const Header = ({
       fullName: user.fullName || user.name || "Người dùng",
       roleName: user.role?.name || user.roleName || "Nhân viên",
       email: user.email || "",
-      avatar: user.avatarIcon || user.avatar || "👨‍💼",
+      avatar: user.avatarUrl || user.avatar || user.avatarIcon || "",
       status: user.status || "ACTIVE",
     };
   }, [user]);
+
+  const avatarSrc = useMemo(() => {
+    if (!isImageAvatar(normalizeUser.avatar)) return "";
+    return toApiAssetUrl(normalizeUser.avatar);
+  }, [normalizeUser.avatar]);
+
+  const avatarFallback = useMemo(
+    () => getInitials(normalizeUser.fullName),
+    [normalizeUser.fullName]
+  );
+
+  useEffect(() => {
+    setAvatarImageFailed(false);
+  }, [avatarSrc]);
+
+  const renderUserAvatar = (className, showStatus = false) => (
+    <div className={className}>
+      {avatarSrc && !avatarImageFailed ? (
+        <img
+          src={avatarSrc}
+          alt={normalizeUser.fullName}
+          onError={() => setAvatarImageFailed(true)}
+        />
+      ) : (
+        <span className="user-avatar-initials" aria-hidden="true">
+          {avatarFallback}
+        </span>
+      )}
+      {showStatus ? <div className="user-status"></div> : null}
+    </div>
+  );
 
   // Cập nhật thời gian mỗi giây
   useEffect(() => {
@@ -298,10 +352,7 @@ const Header = ({
               aria-label="Mở menu tài khoản"
               aria-expanded={showUserMenu}
             >
-              <div className="user-avatar">
-                {normalizeUser.avatar}
-                <div className="user-status"></div>
-              </div>
+              {renderUserAvatar("user-avatar", true)}
               <div
                 className={`user-info ${
                   sidebarOpen ? "hide-compact" : "hide-mobile"
@@ -320,9 +371,7 @@ const Header = ({
             {showUserMenu && (
               <div className="user-dropdown">
                 <div className="user-dropdown-header">
-                  <div className="user-avatar-large">
-                    {normalizeUser.avatar}
-                  </div>
+                  {renderUserAvatar("user-avatar-large")}
                   <div className="user-details">
                     <h3>{normalizeUser.fullName}</h3>
                     <p>{normalizeUser.email}</p>

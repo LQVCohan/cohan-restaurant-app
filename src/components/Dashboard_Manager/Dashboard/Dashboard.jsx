@@ -90,9 +90,11 @@ const Dashboard = () => {
     promotions: Number(stats?.promotions || 0),
     staff: Number(stats?.staff || 0),
   };
+  const hasRestaurants = (restaurants || []).length > 0;
   const hasRestaurantContext =
-    Boolean(selectedRestaurantId || selectedRestaurant?.id) ||
-    (restaurants || []).length > 0;
+    Boolean(selectedRestaurantId || selectedRestaurant?.id) || hasRestaurants;
+  const viewingRestaurantLabel = selectedRestaurant?.name ||
+    (hasRestaurants ? "Chưa chọn nhà hàng" : "Không có nhà hàng");
   const isResourceSetupEmpty =
     !loading &&
     hasRestaurantContext &&
@@ -177,12 +179,19 @@ const Dashboard = () => {
               aria-label="Chọn nhà hàng"
               value={selectedRestaurantId || ""}
               onChange={(e) => handleRestaurantChange?.(e.target.value)}
+              disabled={loading || !hasRestaurants}
             >
-              {(restaurants || []).map((restaurant) => (
-                <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name}
+              {hasRestaurants ? (
+                (restaurants || []).map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id}>
+                    {restaurant.name}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>
+                  Không có nhà hàng được gán
                 </option>
-              ))}
+              )}
             </select>
           </div>
         </label>
@@ -204,7 +213,7 @@ const Dashboard = () => {
 
         <div className="dashboard-filterbar__context" aria-live="polite">
           <span>Đang xem</span>
-          <strong>{selectedRestaurant?.name || "Toàn hệ thống"}</strong>
+          <strong>{viewingRestaurantLabel}</strong>
         </div>
       </section>
 

@@ -11,3 +11,20 @@ export function toApiAuthUrl(pathname: "/refresh" | "/logout") {
 
 export const getRefreshUrl = () => toApiAuthUrl("/refresh");
 export const getLogoutUrl = () => toApiAuthUrl("/logout");
+
+export function toApiAssetUrl(path: string | null | undefined) {
+  if (!path) return "";
+  if (/^(https?:)?\/\//.test(path) || path.startsWith("data:image") || path.startsWith("blob:")) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const gqlUrl = getGraphqlUrl();
+  if (gqlUrl.startsWith("/")) return normalizedPath;
+
+  const base = gqlUrl.endsWith("/graphql")
+    ? gqlUrl.slice(0, -"/graphql".length)
+    : gqlUrl.replace(/\/$/, "");
+
+  return `${base}${normalizedPath}`;
+}
