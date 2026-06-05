@@ -104,13 +104,25 @@ const formatMoney = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
+const getRestaurantId = (restaurant) =>
+  String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
+
 export const useDashboard = () => {
   const navigate = useNavigate();
-  const { restaurants = [] } = useContext(AuthContext) || {};
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState(
-    restaurants?.[0]?.id || ""
-  );
+  const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [range, setRange] = useState("week");
+
+  const restaurantOptions = useMemo(
+    () =>
+      (Array.isArray(restaurants) ? restaurants : [])
+        .map((restaurant) => ({
+          ...restaurant,
+          id: getRestaurantId(restaurant),
+        }))
+        .filter((restaurant) => restaurant.id),
+    [restaurants]
+  );
 
   const { data, loading, error, refetch } = useQuery(GET_MANAGER_DASHBOARD, {
     skip: !selectedRestaurantId,
@@ -120,7 +132,32 @@ export const useDashboard = () => {
     pollInterval: selectedRestaurantId && process.env.NODE_ENV !== "test" ? 30000 : 0,
   });
 
-  const dashboard = data?.managerDashboard;
+  useEffect(() => {
+    if (restaurantsLoading) return;
+
+    setSelectedRestaurantId((currentId) => {
+      if (restaurantOptions.length === 0) return "";
+
+      const normalizedCurrentId = String(currentId || "");
+      const hasCurrentRestaurant = restaurantOptions.some(
+        (restaurant) => restaurant.id === normalizedCurrentId
+      );
+
+      if (normalizedCurrentId && hasCurrentRestaurant) {
+        return normalizedCurrentId;
+      }
+
+      return restaurantOptions[0].id;
+    });
+  }, [restaurantOptions, restaurantsLoading]);
+
+  const rawDashboard = data?.managerDashboard;
+  const hasStaleDashboard = Boolean(
+    rawDashboard &&
+      String(rawDashboard.restaurantId ?? "") !== selectedRestaurantId
+  );
+  const dashboard = hasStaleDashboard ? null : rawDashboard;
+  const dashboardLoading = loading || hasStaleDashboard;
 
   const stats = useMemo(() => {
     return {
@@ -141,20 +178,30 @@ export const useDashboard = () => {
   }, [dashboard]);
 
   const selectedRestaurant = useMemo(
-    () => restaurants.find((x) => x.id === selectedRestaurantId) || null,
-    [restaurants, selectedRestaurantId]
+    () => restaurantOptions.find((x) => x.id === selectedRestaurantId) || null,
+    [restaurantOptions, selectedRestaurantId]
   );
 
   useEffect(() => {
     if (!selectedRestaurantId || typeof window === "undefined") return undefined;
-    const handleFocus = () => refetch({ restaurantId: selectedRestaurantId, range });
+    const handleFocus = () => {
+      if (selectedRestaurantId) {
+        refetch({ restaurantId: selectedRestaurantId, range });
+      }
+    };
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [refetch, selectedRestaurantId, range]);
 
-  const handleRestaurantChange = useCallback((restaurantId) => {
-    setSelectedRestaurantId(restaurantId);
-  }, []);
+  const handleRestaurantChange = useCallback(
+    (restaurantId) => {
+      const nextRestaurantId = String(restaurantId ?? "");
+      if (restaurantOptions.some((restaurant) => restaurant.id === nextRestaurantId)) {
+        setSelectedRestaurantId(nextRestaurantId);
+      }
+    },
+    [restaurantOptions]
+  );
 
   const handleSwitchToPOS = useCallback(() => {
     navigate("/manager/dashboard/POS");
@@ -168,10 +215,11 @@ export const useDashboard = () => {
 
   return {
     selectedRestaurant,
-    restaurants,
+    restaurants: restaurantOptions,
     selectedRestaurantId,
     stats,
-    loading,
+    loading: dashboardLoading,
+    restaurantsLoading,
     error,
     range,
     setRange,
@@ -186,7 +234,10 @@ export const useDashboard = () => {
     pendingOrderCount: dashboard?.pendingOrderCount || 0,
     pendingReservationCount: dashboard?.pendingReservationCount || 0,
     pendingSupportRequestCount: dashboard?.pendingSupportRequestCount || 0,
-    refetchDashboard: () => refetch({ restaurantId: selectedRestaurantId, range }),
+    refetchDashboard: () => {
+      if (!selectedRestaurantId) return Promise.resolve(null);
+      return refetch({ restaurantId: selectedRestaurantId, range });
+    },
     handleRestaurantChange,
     handleSwitchToPOS,
     handleGenerateReport,
