@@ -42,6 +42,7 @@ const baseDashboard = {
   handleSwitchToPOS: vi.fn(),
   handleGenerateReport: vi.fn(),
   loading: false,
+  restaurantsLoading: false,
   error: null,
   range: "week",
   setRange: vi.fn(),
@@ -123,6 +124,22 @@ describe("Dashboard manager command center", () => {
     expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeInTheDocument();
     expect(screen.getByText("Đang tải dữ liệu doanh thu...")).toBeInTheDocument();
     expect(screen.getByText("Đang tải dữ liệu đơn hàng")).toBeInTheDocument();
+  });
+
+
+
+  it("shows restaurant loading copy before empty assigned state", () => {
+    renderDashboard({
+      restaurants: [],
+      selectedRestaurant: null,
+      selectedRestaurantId: "",
+      restaurantsLoading: true,
+    });
+
+    const restaurantSelect = screen.getByLabelText("Chọn nhà hàng");
+    expect(restaurantSelect).toBeDisabled();
+    expect(screen.getAllByText("Đang tải nhà hàng...").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Không có nhà hàng được gán")).not.toBeInTheDocument();
   });
 
   it("renders error state with retry action", () => {

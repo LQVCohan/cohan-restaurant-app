@@ -40,6 +40,7 @@ const Dashboard = () => {
     handleSwitchToPOS,
     handleGenerateReport,
     loading,
+    restaurantsLoading,
     error,
     range,
     setRange,
@@ -93,8 +94,13 @@ const Dashboard = () => {
   const hasRestaurants = (restaurants || []).length > 0;
   const hasRestaurantContext =
     Boolean(selectedRestaurantId || selectedRestaurant?.id) || hasRestaurants;
-  const viewingRestaurantLabel = selectedRestaurant?.name ||
-    (hasRestaurants ? "Chưa chọn nhà hàng" : "Không có nhà hàng");
+  const viewingRestaurantLabel =
+    selectedRestaurant?.name ||
+    (restaurantsLoading
+      ? "Đang tải nhà hàng..."
+      : hasRestaurants
+        ? "Chưa chọn nhà hàng"
+        : "Không có nhà hàng");
   const isResourceSetupEmpty =
     !loading &&
     hasRestaurantContext &&
@@ -179,7 +185,7 @@ const Dashboard = () => {
               aria-label="Chọn nhà hàng"
               value={selectedRestaurantId || ""}
               onChange={(e) => handleRestaurantChange?.(e.target.value)}
-              disabled={loading || !hasRestaurants}
+              disabled={loading || restaurantsLoading || !hasRestaurants}
             >
               {hasRestaurants ? (
                 (restaurants || []).map((restaurant) => (
@@ -187,6 +193,10 @@ const Dashboard = () => {
                     {restaurant.name}
                   </option>
                 ))
+              ) : restaurantsLoading ? (
+                <option value="" disabled>
+                  Đang tải nhà hàng...
+                </option>
               ) : (
                 <option value="" disabled>
                   Không có nhà hàng được gán

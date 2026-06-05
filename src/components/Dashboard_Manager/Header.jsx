@@ -20,12 +20,15 @@ import { AuthContext } from "@/context/AuthContext";
 import { toApiAssetUrl } from "@/lib/apiBaseUrl";
 
 // Hàm-tiện-ích-để-lấy-icon-thông-báo
+const IMAGE_AVATAR_EXTENSION = /\.(png|jpe?g|webp|gif|svg|avif)(?:[?#].*)?$/i;
+
 const isImageAvatar = (value) =>
   typeof value === "string" &&
   (/^https?:\/\//.test(value) ||
     value.startsWith("/") ||
     value.startsWith("data:image") ||
-    value.startsWith("blob:"));
+    value.startsWith("blob:") ||
+    IMAGE_AVATAR_EXTENSION.test(value));
 
 const getInitials = (name) => {
   const words = String(name || "Người dùng")

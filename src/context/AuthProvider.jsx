@@ -41,6 +41,28 @@ const GET_USER_REFRESTAURANTS = gql`
     }
   }
 `;
+const GET_ADMIN_RESTAURANTS = gql`
+  query AdminRestaurants($limit: Int = 100, $cursor: ID) {
+    restaurants(limit: $limit, cursor: $cursor) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          avatar
+          address {
+            city
+          }
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
 const GET_MANAGER_RESTAURANTS = gql`
   query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
     restaurantsByManager(
@@ -236,9 +258,19 @@ export const AuthProvider = ({ children }) => {
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
   const managerId = user?.id;
-  const { data: mgrData } = useQuery(GET_MANAGER_RESTAURANTS, {
+  const { data: adminRestaurantsData, loading: adminRestaurantsLoading } = useQuery(
+    GET_ADMIN_RESTAURANTS,
+    {
+      variables: { limit: 100 },
+      skip: roleName !== "admin",
+    }
+  );
+  const { data: mgrData, loading: managerRestaurantsLoading } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
-    skip: !managerId || !["manager", "admin", "hr", "accountant"].includes(roleName),
+    skip:
+      !managerId ||
+      roleName === "admin" ||
+      !["manager", "hr", "accountant"].includes(roleName),
   });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
@@ -313,6 +345,10 @@ export const AuthProvider = ({ children }) => {
     };
   }, [token, sessionState, refetchMe]);
 
+  const restaurantsLoading =
+    (roleName === "admin" && adminRestaurantsLoading) ||
+    (["manager", "hr", "accountant"].includes(roleName) && managerRestaurantsLoading);
+
   useEffect(() => {
     if (isStaffAccessRole(roleName)) {
       const staffRestaurantId = user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
@@ -324,14 +360,35 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    if (mgrData?.restaurantsByManager) {
-      setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
+    if (roleName === "admin") {
+      if (adminRestaurantsData?.restaurants) {
+        setRestaurants(adminRestaurantsData.restaurants.edges.map((e) => e.node));
+        return;
+      }
+      if (!adminRestaurantsLoading) setRestaurants([]);
       return;
     }
+
+    if (["manager", "hr", "accountant"].includes(roleName)) {
+      if (mgrData?.restaurantsByManager) {
+        setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
+        return;
+      }
+      if (!managerRestaurantsLoading) setRestaurants([]);
+      return;
+    }
+
     if (roleName !== "customer") {
       setRestaurants([]);
     }
-  }, [mgrData, roleName, user?.restaurantForStaff]);
+  }, [
+    adminRestaurantsData,
+    adminRestaurantsLoading,
+    managerRestaurantsLoading,
+    mgrData,
+    roleName,
+    user?.restaurantForStaff,
+  ]);
 
   useEffect(() => {
     if (roleName !== "customer") {
@@ -435,6 +492,7 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       restaurants,
+      restaurantsLoading,
       refRestaurant,
       rememberedLoginIdentifier: readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
     }),
@@ -449,6 +507,7 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       restaurants,
+      restaurantsLoading,
       refRestaurant,
     ]
   );

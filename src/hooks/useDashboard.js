@@ -109,7 +109,7 @@ const getRestaurantId = (restaurant) =>
 
 export const useDashboard = () => {
   const navigate = useNavigate();
-  const { restaurants = [] } = useContext(AuthContext) || {};
+  const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [range, setRange] = useState("week");
 
@@ -133,6 +133,8 @@ export const useDashboard = () => {
   });
 
   useEffect(() => {
+    if (restaurantsLoading) return;
+
     setSelectedRestaurantId((currentId) => {
       if (restaurantOptions.length === 0) return "";
 
@@ -147,9 +149,15 @@ export const useDashboard = () => {
 
       return restaurantOptions[0].id;
     });
-  }, [restaurantOptions]);
+  }, [restaurantOptions, restaurantsLoading]);
 
-  const dashboard = data?.managerDashboard;
+  const rawDashboard = data?.managerDashboard;
+  const hasStaleDashboard = Boolean(
+    rawDashboard &&
+      String(rawDashboard.restaurantId ?? "") !== selectedRestaurantId
+  );
+  const dashboard = hasStaleDashboard ? null : rawDashboard;
+  const dashboardLoading = loading || hasStaleDashboard;
 
   const stats = useMemo(() => {
     return {
@@ -210,7 +218,8 @@ export const useDashboard = () => {
     restaurants: restaurantOptions,
     selectedRestaurantId,
     stats,
-    loading,
+    loading: dashboardLoading,
+    restaurantsLoading,
     error,
     range,
     setRange,
