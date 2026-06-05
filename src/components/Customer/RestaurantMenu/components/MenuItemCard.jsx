@@ -30,6 +30,7 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
       role="button"
       tabIndex={isOrderable ? 0 : -1}
       aria-disabled={!isOrderable}
+      aria-label={`Xem chi tiết ${item.name}`}
     >
       <div className="thumb">
         <img
@@ -78,18 +79,9 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
         )}
         <div className="bottom">
           <span className="price">{formatCurrency(item.basePrice)}</span>
-          <button
-            type="button"
-            className="add-btn"
-            disabled={!isOrderable}
-            aria-label={`Xem chi tiết ${item.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpen();
-            }}
-          >
+          <span className="add-btn" aria-hidden="true">
             Xem
-          </button>
+          </span>
         </div>
       </div>
     </article>
