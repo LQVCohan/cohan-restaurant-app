@@ -289,6 +289,7 @@ const BackupManagement = () => {
     const current = conflictResolutions[conflict.id] || { resolution: conflict.defaultResolution, renameTo: "" };
     return !conflict.allowedResolutions.includes(current.resolution) || (current.resolution === "rename_source" && !current.renameTo?.trim()) || (conflict.severity === "blocking" && current.resolution === "skip");
   });
+  const statusType = statusMessage.toLowerCase().includes("thất bại") || statusMessage.toLowerCase().includes("lỗi") ? "error" : statusMessage.toLowerCase().includes("checksum") || statusMessage.toLowerCase().includes("đã tạo") ? "success" : "warning";
   const importCanRun = Boolean(importPreview?.valid && !(importPreview?.errors || []).length && confirmedImport && fileContentBase64 && !invalidConflictResolution);
 
   const importInput = (dryRun = true) => ({
@@ -332,13 +333,17 @@ const BackupManagement = () => {
         showTimeWidget={false}
       />
 
-      <section className="backup-management__alert" role="note">
-        Tính năng này backup cấu hình nhà hàng, không thay thế database backup vận hành. Snapshot không bao gồm orders, payments, reviews, chat history, passwordHash, refresh token hoặc payment secrets.
+      <section className="backup-management__hero" aria-label="Giới thiệu backup command center">
+        <div><span>Backup & restore command center</span><h2>Snapshot JSON cho cấu hình, không thay thế database backup</h2><p>Tính năng này backup cấu hình nhà hàng. Snapshot không bao gồm orders, payments, reviews, chat history, passwordHash, refresh token hoặc payment secrets.</p></div>
       </section>
-      {warning ? <section className="backup-management__alert" role="note">{warning}</section> : null}
-      {statusMessage ? <section className="backup-management__alert" role="status">{statusMessage}</section> : null}
+      <section className={`backup-management__readiness ${readiness.ready ? "is-ready" : "is-risk"}`} aria-label="Readiness strip">
+        <article><strong>{readiness.ready ? "Ready" : "Risk"}</strong><span>Trạng thái</span></article><article><strong>{completedChecklistCount}/{checklistItems.length}</strong><span>Checklist</span></article><article><strong>{unresolvedRisks.length}</strong><span>Rủi ro mở</span></article><article><strong>{lastRunDate ? formatDate(lastRunDate) : "Chưa có"}</strong><span>Lần chạy gần nhất</span></article>
+      </section>
+      {warning ? <section className="backup-management__alert is-warning" role="note">{warning}</section> : null}
+      {statusMessage ? <section className={`backup-management__alert is-${statusType}`} role={statusType === "error" ? "alert" : "status"}>{statusMessage}</section> : null}
 
-      <section className="backup-management__config-panel" aria-label="Export cấu hình">
+      <section className="backup-management__flow" aria-label="Export và import cấu hình">
+      <section className="backup-management__config-panel backup-management__config-panel--export" aria-label="Export cấu hình">
         <div>
           <h3>Export cấu hình</h3>
           <p>Chọn nhà hàng và section để tạo file JSON UTF-8 tải về máy.</p>
@@ -358,15 +363,21 @@ const BackupManagement = () => {
         {exportPreview ? <div className="backup-management__result"><h4>{exportPreview.fileName}</h4><p>Schema v{exportPreview.schemaVersion} • {formatDate(exportPreview.createdAt)}</p><ul>{exportPreview.counts.map((item) => <li key={item.key}>{item.label}: {item.enabled ? item.count : "Tắt"}</li>)}</ul>{exportPreview.warnings.map((item) => <p key={item}>{item}</p>)}</div> : null}
       </section>
 
-      <section className="backup-management__config-panel" aria-label="Import / Khôi phục">
+      <section className="backup-management__config-panel backup-management__config-panel--import" aria-label="Import / Khôi phục">
         <div>
           <h3>Import / Khôi phục</h3>
-          <p>Chọn file JSON, preview dry-run trước, sau đó xác nhận mới chạy import thật.</p>
+          <p>Wizard nhẹ: chọn file → preview dry-run → xử lý conflict → xác nhận import thật.</p>
         </div>
+        <ol className="backup-management__wizard" aria-label="Các bước import">
+          <li className={selectedFile ? "is-done" : ""}>1. Chọn file</li>
+          <li className={importPreview ? "is-done" : ""}>2. Preview dry-run</li>
+          <li className={!importConflicts.length && importPreview ? "is-done" : ""}>3. Resolve conflicts</li>
+          <li className={confirmedImport ? "is-done" : ""}>4. Confirm import</li>
+        </ol>
         <label>File snapshot JSON
           <input type="file" accept=".json,application/json" onChange={handleFileChange} />
         </label>
-        {selectedFile ? <p className="backup-management__note">Đã chọn: {selectedFile.name}</p> : null}
+        {selectedFile ? <p className="backup-management__note">Đã chọn: {selectedFile.name}</p> : <div className="backup-management__empty" role="status">Chưa chọn file snapshot JSON. Hãy chọn file để bật preview dry-run.</div>}
         <label>Nhà hàng đích
           <select value={targetRestaurantId} onChange={(event) => setTargetRestaurantId(event.target.value)}>
             {restaurants.map((restaurant) => <option key={restaurantOptionId(restaurant)} value={restaurantOptionId(restaurant)}>{restaurantOptionName(restaurant)}</option>)}
@@ -416,11 +427,11 @@ const BackupManagement = () => {
               <input aria-label="Tìm conflict" value={conflictFilter.search} onChange={(event) => setConflictFilter((prev) => ({ ...prev, search: event.target.value }))} placeholder="Tìm key/label" />
             </div>
             <div className="backup-management__actions">
-              <button type="button" onClick={() => setConflictResolutions(Object.fromEntries(importConflicts.map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }]))) }>Apply default</button>
-              <button type="button" onClick={() => applyBulkResolution("keep_target")}>Keep all target</button>
-              <button type="button" onClick={() => applyBulkResolution("use_source")}>Use all source</button>
-              <button type="button" onClick={() => applyBulkResolution("merge", (conflict) => conflict.severity !== "blocking")}>Merge all safe conflicts</button>
-              <button type="button" onClick={() => applyBulkResolution("skip", (conflict) => conflict.severity === "warning")}>Skip all warning conflicts</button>
+              <button type="button" onClick={() => setConflictResolutions(Object.fromEntries(importConflicts.map((conflict) => [conflict.id, { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "", fieldOverridesJson: "" }]))) }>Áp dụng mặc định</button>
+              <button type="button" onClick={() => applyBulkResolution("keep_target")}>Giữ toàn bộ hiện tại</button>
+              <button type="button" onClick={() => applyBulkResolution("use_source")}>Dùng toàn bộ từ file</button>
+              <button type="button" onClick={() => applyBulkResolution("merge", (conflict) => conflict.severity !== "blocking")}>Gộp conflict an toàn</button>
+              <button type="button" onClick={() => applyBulkResolution("skip", (conflict) => conflict.severity === "warning")}>Bỏ qua cảnh báo</button>
             </div>
             {invalidConflictResolution ? <p className="backup-management__error">Cần xử lý blocking conflict hoặc nhập renameTo trước khi import thật.</p> : null}
             <div className="backup-management__conflict-list">
@@ -428,18 +439,18 @@ const BackupManagement = () => {
                 const current = conflictResolutions[conflict.id] || { conflictId: conflict.id, resolution: conflict.defaultResolution, renameTo: "" };
                 return (
                   <article key={conflict.id}>
-                    <header><strong>{conflict.section} • {conflict.entityType}</strong><span>{conflict.severity}</span></header>
+                    <header><strong>{conflict.section} • {conflict.entityType}</strong><span className={`backup-management__severity is-${conflict.severity}`}>{conflict.severity}</span></header>
                     <p>{conflict.entityKey} {conflict.label ? `• ${conflict.label}` : ""}</p>
                     <p>{conflict.reason}</p>
-                    <p>Default: {conflict.defaultResolution}</p>
-                    <label>Resolution
-                      <select aria-label={`Resolution ${conflict.entityKey}`} value={current.resolution} onChange={(event) => updateConflictResolution(conflict.id, { resolution: event.target.value })}>
+                    <p>Mặc định: {RESOLUTION_LABELS[conflict.defaultResolution] || conflict.defaultResolution}</p>
+                    <label>Cách xử lý
+                      <select aria-label={`Cách xử lý ${conflict.entityKey}`} value={current.resolution} onChange={(event) => updateConflictResolution(conflict.id, { resolution: event.target.value })}>
                         {conflict.allowedResolutions.map((resolution) => <option key={resolution} value={resolution}>{RESOLUTION_LABELS[resolution] || resolution}</option>)}
                       </select>
                     </label>
-                    {current.resolution === "rename_source" ? <label>Rename to<input aria-label={`Rename ${conflict.entityKey}`} value={current.renameTo || ""} onChange={(event) => updateConflictResolution(conflict.id, { renameTo: event.target.value })} /></label> : null}
+                    {current.resolution === "rename_source" ? <label>Tên mới<input aria-label={`Tên mới ${conflict.entityKey}`} value={current.renameTo || ""} onChange={(event) => updateConflictResolution(conflict.id, { renameTo: event.target.value })} /></label> : null}
                     <details>
-                      <summary>Field diffs</summary>
+                      <summary>Khác biệt trường</summary>
                       <ul>{conflict.fieldDiffs.map((diff) => <li key={`${conflict.id}-${diff.field}`}>{diff.field}: file={diff.sourceValuePreview || "-"} / hiện tại={diff.targetValuePreview || "-"}</li>)}</ul>
                     </details>
                   </article>
@@ -451,12 +462,13 @@ const BackupManagement = () => {
         {importResult ? (
           <div className="backup-management__result">
             <h4>Import {importResult.success ? "thành công" : "không thành công"}</h4>
-            <p>BackupRun: {importResult.backupRun?.id || "-"}</p>
-            {(importResult.appliedResolutions || []).length ? <p>Applied resolutions: {(importResult.appliedResolutions || []).map((item) => `${item.conflictId}:${item.resolution}${item.renameTo ? `→${item.renameTo}` : ""}`).join(", ")}</p> : null}
+            <p>Mã backup run: {importResult.backupRun?.id || "-"}</p>
+            {(importResult.appliedResolutions || []).length ? <p>Cách xử lý đã áp dụng: {(importResult.appliedResolutions || []).map((item) => `${item.conflictId}:${item.resolution}${item.renameTo ? `→${item.renameTo}` : ""}`).join(", ")}</p> : null}
             {(importResult.warnings || []).map((item) => <p key={`import-warning-${item}`}>{item}</p>)}
             {(importResult.errors || []).map((item) => <p key={`import-error-${item}`} className="backup-management__error">{item}</p>)}
           </div>
         ) : null}
+      </section>
       </section>
 
       <section className="backup-management__summary" aria-label="Tổng quan trước sao lưu">
@@ -464,8 +476,8 @@ const BackupManagement = () => {
         {summaryItems.map((item) => <article key={item.title}><h3>{item.title}</h3><p>{item.description}</p></article>)}
       </section>
 
-      <section className="backup-management__timeline" aria-label="Checklist readiness">
-        <h3>Checklist readiness</h3>
+      <section className="backup-management__timeline" aria-label="Checklist sẵn sàng">
+        <h3>Checklist sẵn sàng</h3>
         <ol>{checklistItems.map((item) => <li key={item.key}><div><h4>{item.label}</h4><p>{item.done ? "Hoàn tất" : "Chưa xong"}</p></div></li>)}</ol>
       </section>
 
