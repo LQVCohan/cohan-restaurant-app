@@ -101,10 +101,10 @@ export const hasStaffKitchenAccess = (role) =>
 
 export const getDefaultPathForRole = (userOrRole) => {
   const normalized = resolveUserRoleName(userOrRole);
-  if (isAdminRole(normalized)) return "/admin/dashboard";
+  if (isAdminRole(normalized)) return "/manager";
   if (isManagerRole(normalized)) return "/manager";
-  if (isHrRole(normalized)) return "/manager#staff";
-  if (isAccountantRole(normalized)) return "/manager#payroll";
+  if (isHrRole(normalized)) return "/manager";
+  if (isAccountantRole(normalized)) return "/manager";
   if (isStaffOperationalRole(normalized)) return "/staff/dashboard";
   return "/";
 };

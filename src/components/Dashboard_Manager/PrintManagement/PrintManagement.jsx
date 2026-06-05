@@ -152,6 +152,8 @@ export default function PrintManagement() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
   const [saveError, setSaveError] = useState("");
+  const [notice, setNotice] = useState(null);
+  const [pendingDeletePrinterId, setPendingDeletePrinterId] = useState("");
   const hydrateRef = useRef(false);
   const debounceRef = useRef(null);
 
@@ -321,13 +323,14 @@ export default function PrintManagement() {
   };
 
   const handleRemovePrinter = (printerId) => {
-    if (!window.confirm("Xóa thiết bị này khỏi hệ thống?")) return;
     setPrinters((prev) => prev.filter((p) => p.id !== printerId));
     setStationMap((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)));
       return next;
     });
+    setPendingDeletePrinterId("");
+    setNotice({ type: "success", message: "Đã xóa thiết bị khỏi cấu hình cục bộ. Hệ thống sẽ tự lưu thay đổi." });
   };
 
   const toggleStationPrinter = (stationId, printerId) => {
@@ -352,14 +355,15 @@ export default function PrintManagement() {
         },
       });
       await refetch();
-      alert("✅ Đã gửi lại print job.");
+      setNotice({ type: "success", message: "Đã gửi lại print job vào hàng đợi xử lý." });
     } catch (err) {
-      alert(
-        getPrintSettingActionErrorMessage(
+      setNotice({
+        type: "error",
+        message: getPrintSettingActionErrorMessage(
           err,
           `Không thể retry print job: ${err?.message || "Lỗi không xác định"}`,
         ),
-      );
+      });
     }
   };
 
@@ -377,7 +381,10 @@ export default function PrintManagement() {
 
   const handleSendTemplateTest = async (templateKey) => {
     const targetPrinter = printers.find((p) => p.status === "online") || printers[0];
-    if (!targetPrinter || !selectedRestaurantId) return;
+    if (!targetPrinter || !selectedRestaurantId) {
+      setNotice({ type: "warning", message: "Cần chọn nhà hàng và có ít nhất một máy in trước khi gửi test print." });
+      return;
+    }
     try {
       await enqueuePrintJob({
         variables: {
@@ -392,16 +399,26 @@ export default function PrintManagement() {
         },
       });
       await refetch();
-      alert("✅ Đã enqueue test print job.");
+      setNotice({ type: "success", message: "Đã đưa lệnh test print vào hàng đợi." });
     } catch (err) {
-      alert(
-        getPrintSettingActionErrorMessage(
+      setNotice({
+        type: "error",
+        message: getPrintSettingActionErrorMessage(
           err,
           `Không thể gửi test print: ${err?.message || "Lỗi không xác định"}`,
         ),
-      );
+      });
     }
   };
+
+  const printerStats = useMemo(() => ({
+    total: printers.length,
+    online: printers.filter((printer) => printer.status === "online").length,
+    offline: printers.filter((printer) => printer.status !== "online").length,
+    failed: jobs.filter((job) => job.status === "failed").length,
+    pending: jobs.filter((job) => !["completed", "failed"].includes(job.status)).length,
+    completed: jobs.filter((job) => job.status === "completed").length,
+  }), [jobs, printers]);
 
   const statusText = (status) => {
     if (status === "completed") return "Hoàn tất";
@@ -411,36 +428,66 @@ export default function PrintManagement() {
   };
 
   return (
-    <div className="print-ui">
-      <div className="print-ui__bg-circle"></div>
+    <main className="print-ui">
+      <div className="print-ui__bg-circle" aria-hidden="true"></div>
 
       <ManagementPageHeader
-        eyebrow="PRINT MANAGER"
-        title="Print Hub"
-        subtitle="Trung tâm kiểm soát thiết bị in"
+        eyebrow="PRINT OPERATIONS"
+        title="Bảng điều phối in ấn"
+        subtitle="Điều phối thiết bị, ma trận luồng in, mẫu phiếu và hàng đợi print job."
         icon="🖨️"
         stats={[
-          { id: "printers", icon: "🧩", label: "Thiết bị", value: printers.length },
-          { id: "jobs", icon: "📄", label: "Print jobs", value: jobs.length },
+          { id: "printers", icon: "🧩", label: "Thiết bị", value: printerStats.total },
+          { id: "online", icon: "📡", label: "Online", value: printerStats.online },
+          { id: "failed", icon: "⚠️", label: "Jobs lỗi", value: printerStats.failed },
         ]}
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
-        restaurantList={restaurantList.map((r)=>({id:String(r.id), name:r.name}))}
+        restaurantList={restaurantList.map((restaurant) => ({
+          id: String(restaurant.id),
+          name: restaurant.name,
+        }))}
         primaryAction={{ icon: "➕", label: "Thiết bị mới", onClick: openAddPrinter }}
       />
 
-      {loading && <div className="ui-card">Đang tải cấu hình in...</div>}
-      {error && <div className="ui-card">Không thể tải dữ liệu in ấn. Vui lòng thử lại.</div>}
+      <section className="print-ui__hero" aria-label="Tổng quan vận hành in">
+        {[
+          ["Thiết bị", printerStats.total, `${printerStats.online} online / ${printerStats.offline} offline`],
+          ["Jobs đang chờ", printerStats.pending, "Cần theo dõi trong ca"],
+          ["Jobs lỗi", printerStats.failed, "Có thể retry thủ công"],
+          ["Hoàn tất", printerStats.completed, "Đã xử lý thành công"],
+        ].map(([label, value, hint]) => (
+          <article key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <small>{hint}</small>
+          </article>
+        ))}
+      </section>
+
+      {notice ? (
+        <section
+          className={`print-ui__notice is-${notice.type}`}
+          role={notice.type === "error" ? "alert" : "status"}
+        >
+          <span>{notice.message}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo">
+            Đóng
+          </button>
+        </section>
+      ) : null}
+      {loading && <div className="ui-card print-ui__skeleton" role="status">Đang tải cấu hình in...</div>}
+      {error && <div className="ui-card print-ui__notice is-error" role="alert">Không thể tải dữ liệu in ấn. Vui lòng thử lại.</div>}
 
       {!loading && !error && (
         <>
           <div className="print-ui__grid">
-            <section className="ui-card devices-section">
+            <section className="ui-card devices-section" aria-label="Thiết bị đã kết nối">
               <div className="card-header">
                 <h3>
                   <Server size={18} /> Thiết bị đã kết nối
                 </h3>
-                <span className="badge">{printers.length} Active</span>
+                <span className="badge">{printers.length} thiết bị</span>
               </div>
 
               <div className="device-list">
@@ -450,7 +497,9 @@ export default function PrintManagement() {
                       <Wifi size={32} />
                     </div>
                     <p>Chưa có máy in nào</p>
-                    <button onClick={openAddPrinter}>Thêm ngay</button>
+                    <button type="button" onClick={openAddPrinter}>
+                      Thêm thiết bị
+                    </button>
                   </div>
                 ) : (
                   printers.map((printer) => (
@@ -470,16 +519,49 @@ export default function PrintManagement() {
                       </div>
 
                       <div className="device-actions">
-                        <button onClick={() => handleTestConfig(printer)} title="Test cấu hình (simulated)">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const result = await handleTestConfig(printer);
+                            setNotice({
+                              type: result.ok ? "success" : "error",
+                              message: result.message,
+                            });
+                          }}
+                          aria-label={`Test cấu hình ${printer.name}`}
+                          title="Test cấu hình mô phỏng"
+                        >
                           <Send size={16} />
                         </button>
-                        <button onClick={() => openEditPrinter(printer)} title="Cấu hình">
+                        <button
+                          type="button"
+                          onClick={() => openEditPrinter(printer)}
+                          aria-label={`Cấu hình ${printer.name}`}
+                          title="Cấu hình"
+                        >
                           <Settings size={16} />
                         </button>
-                        <button onClick={() => handleRemovePrinter(printer.id)} className="danger" title="Xóa">
+                        <button
+                          type="button"
+                          onClick={() => setPendingDeletePrinterId(printer.id)}
+                          className="danger"
+                          aria-label={`Xóa ${printer.name}`}
+                          title="Xóa"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
+                      {pendingDeletePrinterId === printer.id ? (
+                        <div className="device-confirm" role="alert">
+                          <span>Xóa thiết bị này?</span>
+                          <button type="button" onClick={() => handleRemovePrinter(printer.id)}>
+                            Xác nhận
+                          </button>
+                          <button type="button" onClick={() => setPendingDeletePrinterId("")}>
+                            Hủy
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   ))
                 )}
@@ -509,19 +591,21 @@ export default function PrintManagement() {
                       {printers.map((printer) => {
                         const isActive = (stationMap[station.id] || []).includes(printer.id);
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={`${station.id}-${printer.id}`}
                             className={`toggle-pill ${isActive ? "active" : ""}`}
                             onClick={() => toggleStationPrinter(station.id, printer.id)}
+                            aria-pressed={isActive}
                           >
                             <div className="check-icon">
                               {isActive ? <Check size={12} strokeWidth={4} /> : <Power size={12} />}
                             </div>
                             <span>{printer.name}</span>
-                          </div>
+                          </button>
                         );
                       })}
-                      {printers.length === 0 && <span className="no-data">Cần thêm máy in</span>}
+                      {printers.length === 0 && <span className="no-data">Chưa có máy in để gán luồng</span>}
                     </div>
                   </div>
                 ))}
@@ -542,15 +626,25 @@ export default function PrintManagement() {
                   <div key={template.key} className={`template-card ${template.enabled ? "active" : ""}`}>
                     <div className="template-head">
                       <strong>{template.name}</strong>
-                      <button className="template-toggle" onClick={() => handleTemplateToggle(template.key)}>
+                      <button
+                        type="button"
+                        className="template-toggle"
+                        onClick={() => handleTemplateToggle(template.key)}
+                      >
                         {template.enabled ? "Bật" : "Tắt"}
                       </button>
                     </div>
                     <textarea
+                      aria-label={`Nội dung mẫu ${template.name}`}
                       value={template.content || ""}
                       onChange={(e) => handleTemplateContent(template.key, e.target.value)}
                     />
-                    <button className="template-test" onClick={() => handleSendTemplateTest(template.key)}>
+                    <button
+                      type="button"
+                      className="template-test"
+                      onClick={() => handleSendTemplateTest(template.key)}
+                      disabled={!selectedRestaurantId || printers.length === 0}
+                    >
                       Gửi test print
                     </button>
                   </div>
@@ -561,7 +655,7 @@ export default function PrintManagement() {
             <section className="ui-card">
               <div className="card-header">
                 <h3>
-                  <Printer size={18} /> Print Queue / Jobs
+                  <Printer size={18} /> Hàng đợi in / Jobs
                 </h3>
                 <span className="badge">{jobs.length} jobs</span>
               </div>
@@ -582,8 +676,8 @@ export default function PrintManagement() {
                         {job.error && <div className="job-error">Lỗi: {job.error}</div>}
                       </div>
                       {job.status === "failed" && (
-                        <button className="retry-btn" onClick={() => handleRetryJob(job.id)}>
-                          <RotateCcw size={14} /> Retry
+                        <button type="button" className="retry-btn" onClick={() => handleRetryJob(job.id)}>
+                          <RotateCcw size={14} /> Gửi lại
                         </button>
                       )}
                     </div>
@@ -605,6 +699,6 @@ export default function PrintManagement() {
         onClose={() => setSettingsModalOpen(false)}
         onTest={handleTestConfig}
       />
-    </div>
+    </main>
   );
 }

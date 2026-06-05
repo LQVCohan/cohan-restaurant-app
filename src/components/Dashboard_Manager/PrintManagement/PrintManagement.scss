@@ -1,600 +1,318 @@
 @use "sass:color";
 
-// --- VARIABLES & THEME ---
-$primary: #4f46e5; // Indigo 600 - Màu chủ đạo hiện đại
-$primary-glow: rgba(79, 70, 229, 0.4);
-$secondary: #64748b;
-$bg-app: #f3f4f6; // Nền xám nhạt tinh tế
-$card-bg: #ffffff;
-$success: #10b981;
-$danger: #ef4444;
-$text-dark: #1e293b;
-$border-radius: 16px; // Bo góc lớn theo trend Apple/iOS
+$ink: #1f2926;
+$muted: #6a746f;
+$surface: rgba(255, 255, 255, 0.82);
+$line: rgba(45, 55, 50, 0.14);
+$accent: #69583e;
+$success: #2f6b4f;
+$warning: #a36a1f;
+$danger: #a3483f;
 
-// --- ANIMATIONS ---
 @keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
+  from { transform: scale(0.8); opacity: 0.45; }
+  to { transform: scale(2.25); opacity: 0; }
 }
 
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+@keyframes print-shimmer { to { background-position: -220% 0; } }
 
 .print-ui {
-  font-family:
-    "Inter",
-    -apple-system,
-    sans-serif;
-  background-color: $bg-app;
-  min-height: 100vh;
-  padding: 32px;
+  min-height: 100dvh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: clamp(18px, 2.4vw, 34px);
   position: relative;
   overflow: hidden;
+  color: $ink;
+  background:
+    radial-gradient(circle at 92% -6%, rgba(105, 88, 62, 0.13), transparent 28rem),
+    linear-gradient(180deg, #fbfaf7 0%, #f1eee7 100%);
 
-  // Background decoration (Vòng tròn mờ phía sau)
   &__bg-circle {
     position: absolute;
-    top: -100px;
-    right: -100px;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(
-      circle,
-      rgba($primary, 0.1) 0%,
-      rgba(255, 255, 255, 0) 70%
-    );
-    z-index: 0;
+    inset: -180px -120px auto auto;
+    width: 520px;
+    height: 520px;
+    background: radial-gradient(circle, rgba(105, 88, 62, 0.12), transparent 68%);
     pointer-events: none;
   }
-}
 
-// --- HEADER ---
-.print-ui__header {
-  position: relative;
-  z-index: 2;
-  margin-bottom: 40px;
+  &__hero,
+  &__grid,
+  &__stack {
+    position: relative;
+    z-index: 1;
+  }
 
-  .header-content {
+  &__hero {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0 22px;
+
+    article {
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid $line;
+      background: rgba(255,255,255,0.68);
+      box-shadow: 0 18px 50px rgba(67, 57, 42, 0.08);
+    }
+
+    span, small { color: $muted; }
+    span { display: block; font-weight: 800; font-size: 13px; }
+    strong { display: block; margin: 8px 0 4px; font-size: 34px; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+    small { line-height: 1.45; }
+  }
+
+  &__notice {
+    position: relative;
+    z-index: 2;
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(105, 88, 62, 0.18);
+    background: #f8f4ec;
+    color: #574530;
+    font-weight: 700;
+
+    &.is-success { background: #edf6f0; border-color: rgba($success, 0.24); color: $success; }
+    &.is-warning { background: #fff7e8; border-color: rgba($warning, 0.24); color: $warning; }
+    &.is-error { background: #fff0ee; border-color: rgba($danger, 0.26); color: $danger; }
+
+    button { margin: 0; padding: 7px 10px; }
   }
 
-  .header-title {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-
-    .icon-box {
-      width: 52px;
-      height: 52px;
-      background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
-      color: white;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 8px 16px $primary-glow;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 800;
-      color: $text-dark;
-      letter-spacing: -0.5px;
-    }
-    p {
-      margin: 4px 0 0;
-      color: $secondary;
-      font-size: 14px;
-    }
+  &__grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.4fr);
+    gap: 24px;
   }
 
-  .header-controls {
-    display: flex;
-    gap: 16px;
+  &__stack {
+    display: grid;
+    gap: 24px;
+    margin-top: 24px;
+  }
 
-    select {
-      padding: 12px 20px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      background: white;
-      font-weight: 600;
-      color: $text-dark;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-      transition: all 0.2s;
-      &:hover {
-        border-color: $primary;
-      }
-      &:focus {
-        outline: none;
-        border-color: $primary;
-        box-shadow: 0 0 0 3px $primary-glow;
-      }
-    }
-
-    .btn-primary {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: $text-dark; // Đen tạo sự sang trọng
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-
-      &:hover {
-        background: color.adjust($text-dark, $lightness: 10%);
-        transform: translateY(-2px);
-      }
-    }
+  &__skeleton {
+    min-height: 220px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.55), rgba(232,224,211,0.8), rgba(255,255,255,0.55));
+    background-size: 220% 100%;
+    animation: print-shimmer 1.2s ease-in-out infinite;
   }
 }
 
-// --- GRID LAYOUT ---
-.print-ui__grid {
-  display: grid;
-  grid-template-columns: 380px 1fr; // Cột trái cố định
-  gap: 32px;
-  position: relative;
-  z-index: 1;
-
-  @media (max-width: 1100px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-// --- CARD GENERAL STYLE ---
 .ui-card {
-  background: $card-bg;
-  border-radius: $border-radius;
-  padding: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04); // Bóng mờ rất nhẹ
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  animation: slide-up 0.5s ease-out;
+  border-radius: 26px;
+  padding: clamp(18px, 2vw, 26px);
+  background: $surface;
+  border: 1px solid $line;
+  box-shadow: 0 24px 70px rgba(67, 57, 42, 0.1);
+  backdrop-filter: blur(10px);
 
   .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f1f5f9;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 20px;
 
     h3 {
       margin: 0;
-      font-size: 18px;
-      font-weight: 700;
-      color: $text-dark;
       display: flex;
       align-items: center;
       gap: 10px;
+      font-size: 20px;
+      letter-spacing: -0.025em;
     }
 
-    p {
-      margin: 4px 0 0;
-      font-size: 13px;
-      color: $secondary;
-      font-weight: normal;
-    }
+    p { margin: 5px 0 0; color: $muted; }
 
     .badge {
-      background: #eff6ff;
-      color: $primary;
-      padding: 4px 10px;
-      border-radius: 20px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(105, 88, 62, 0.1);
+      color: $accent;
+      font-weight: 900;
       font-size: 12px;
-      font-weight: 700;
     }
   }
 }
 
-// --- DEVICE LIST (Left Column) ---
-.device-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.print-ui button,
+.print-ui select,
+.print-ui textarea,
+.print-ui input {
+  &:focus-visible {
+    outline: 3px solid rgba(105, 88, 62, 0.28);
+    outline-offset: 3px;
+  }
 }
+
+.print-ui button {
+  border: 1px solid rgba(105, 88, 62, 0.2);
+  border-radius: 13px;
+  background: #2b302d;
+  color: #fff;
+  padding: 9px 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+
+  &:hover:not(:disabled) { transform: translateY(-1px); background: #3b413d; box-shadow: 0 12px 26px rgba(43, 48, 45, 0.16); }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { cursor: not-allowed; opacity: 0.48; }
+}
+
+.device-list { display: grid; gap: 14px; }
 
 .device-item {
   position: relative;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  gap: 16px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(45, 55, 50, 0.12);
+  transition: transform 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
 
-  &:hover {
-    border-color: $primary;
-    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
-  }
+  &:hover { transform: translateY(-2px); border-color: rgba($accent, 0.28); box-shadow: 0 16px 42px rgba(67, 57, 42, 0.12); }
 
-  // Thanh màu bên trái
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: #e2e8f0;
-    transition: background 0.2s;
-  }
-  &:hover::before {
-    background: $primary;
-  }
-
-  // Status Pulse
   .status-indicator {
     position: relative;
-    width: 12px;
-    height: 12px;
-    margin-left: 8px; // Cách thanh màu
+    width: 13px;
+    height: 13px;
 
-    .dot {
-      width: 100%;
-      height: 100%;
-      background: #cbd5e1;
-      border-radius: 50%;
-      position: relative;
-      z-index: 2;
-    }
-    .pulse {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      z-index: 1;
-    }
-
-    &.online {
-      .dot {
-        background: $success;
-        box-shadow: 0 0 0 2px rgba($success, 0.2);
-      }
-      .pulse {
-        border: 3px solid $success;
-        animation: pulse-ring 2s infinite;
-      }
-    }
+    .dot, .pulse { position: absolute; inset: 0; border-radius: 50%; }
+    .dot { background: #b8c0bb; z-index: 1; }
+    &.online .dot { background: $success; box-shadow: 0 0 0 4px rgba($success, 0.14); }
+    &.online .pulse { border: 2px solid $success; animation: pulse-ring 2s infinite; }
   }
 
-  .device-info {
-    flex: 1;
-    h4 {
-      margin: 0 0 6px;
-      font-size: 15px;
-      font-weight: 600;
-    }
-    .meta {
-      display: flex;
-      gap: 8px;
-
-      .tag-ip {
-        font-family: "JetBrains Mono", monospace;
-        font-size: 11px;
-        background: #f1f5f9;
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: $secondary;
-      }
-      .type {
-        font-size: 11px;
-        color: $secondary;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-    }
+  .device-info h4 { margin: 0 0 7px; font-size: 16px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 7px; }
+  .tag-ip,
+  .type {
+    padding: 5px 8px;
+    border-radius: 9px;
+    background: #f3efe7;
+    color: #5c5143;
+    font-size: 12px;
+    font-weight: 800;
   }
-
-  .device-actions {
-    display: flex;
-    gap: 8px;
-    opacity: 0.5; // Ẩn nhẹ
-    transition: opacity 0.2s;
-
-    button {
-      background: transparent;
-      border: 1px solid #e2e8f0;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      color: $secondary;
-      transition: all 0.2s;
-
-      &:hover {
-        background: $primary;
-        color: white;
-        border-color: $primary;
-      }
-      &.danger:hover {
-        background: $danger;
-        color: white;
-        border-color: $danger;
-      }
-    }
-  }
-
-  &:hover .device-actions {
-    opacity: 1;
-  } // Hiện rõ khi hover
+  .tag-ip { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .status-online { background: rgba($success, 0.1); color: $success; }
+  .status-offline { background: rgba($danger, 0.08); color: $danger; }
+  .device-actions { display: flex; gap: 7px; }
+  .device-actions button { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; background: #fff; color: $ink; }
+  .device-actions .danger { color: $danger; }
 }
 
-// --- ROUTING MATRIX (Right Column) ---
-.routing-section {
-  .routing-row {
-    display: flex;
-    align-items: center; // Căn giữa theo chiều dọc
-    justify-content: space-between;
-    padding: 20px;
-    margin-bottom: 12px;
-    background: #f8fafc;
-    border-radius: 12px;
-    transition: background 0.2s;
+.device-confirm {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(105, 88, 62, 0.22);
 
-    &:hover {
-      background: #f1f5f9;
-    }
-  }
-
-  .station-info {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    width: 200px; // Cố định chiều rộng title
-    flex-shrink: 0;
-
-    .station-icon {
-      width: 40px;
-      height: 40px;
-      background: white;
-      border-radius: 10px;
-      color: $primary;
-      font-weight: 800;
-      font-size: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    }
-
-    .text {
-      h4 {
-        margin: 0;
-        font-size: 15px;
-        color: $text-dark;
-      }
-      span {
-        font-size: 12px;
-        color: $secondary;
-      }
-    }
-  }
-
-  .printer-toggles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    flex: 1;
-    justify-content: flex-end;
-  }
-
-  // Nút Toggle dạng "Viên thuốc" cao cấp
-  .toggle-pill {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px 8px 12px;
-    background: white;
-    border: 2px solid #e2e8f0; // Viền dày hơn
-    border-radius: 30px;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.5, 1, 0.89, 1);
-    user-select: none;
-
-    .check-icon {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #e2e8f0;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.25s;
-    }
-
-    span {
-      font-size: 13px;
-      font-weight: 500;
-      color: $secondary;
-    }
-
-    &:hover {
-      border-color: color.adjust(#e2e8f0, $lightness: -10%);
-    }
-
-    // State: ACTIVE
-    &.active {
-      border-color: $primary;
-      background: rgba($primary, 0.05);
-
-      .check-icon {
-        background: $primary;
-        transform: scale(1.1);
-      }
-
-      span {
-        color: $primary;
-        font-weight: 600;
-      }
-    }
-  }
+  span { margin-right: auto; color: $danger; font-weight: 800; }
+  button:last-child { background: #fff; color: $ink; }
 }
 
-.print-ui__stack {
-  margin-top: 24px;
+.empty-state,
+.no-data {
   display: grid;
-  gap: 24px;
+  place-items: center;
+  gap: 12px;
+  min-height: 180px;
+  border: 1px dashed rgba(105, 88, 62, 0.28);
+  border-radius: 22px;
+  background: rgba(255,255,255,0.52);
+  color: $muted;
+  text-align: center;
 }
 
-.template-grid {
+.empty-icon { color: $accent; }
+
+.routing-matrix { display: grid; gap: 12px; }
+.routing-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(45, 55, 50, 0.1);
+}
+.station-info { display: flex; gap: 12px; align-items: center; h4 { margin: 0 0 4px; } span { color: $muted; line-height: 1.45; } }
+.station-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: #ece4d6; color: $accent; font-weight: 900; }
+.printer-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle-pill { background: #fff !important; color: $ink !important; display: inline-flex; align-items: center; gap: 8px; }
+.toggle-pill.active { background: #eaf4ee !important; border-color: rgba($success, 0.22) !important; color: $success !important; }
+
+.template-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.template-card {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.66);
+  border: 1px solid rgba(45,55,50,0.12);
 
-.template-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
-
-  &.active {
-    border-color: $primary;
-  }
-
-  .template-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
+  &.active { box-shadow: inset 0 0 0 1px rgba($success, 0.16); }
+  .template-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .template-toggle { background: #fff; color: $ink; }
   textarea {
-    width: 100%;
-    min-height: 80px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 8px;
+    min-height: 130px;
     resize: vertical;
-    margin-bottom: 8px;
-  }
-
-  .template-toggle,
-  .template-test {
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    border-radius: 8px;
-    padding: 6px 10px;
-    cursor: pointer;
+    border: 1px solid rgba(45,55,50,0.14);
+    border-radius: 16px;
+    padding: 12px;
+    background: #fcfbf8;
+    color: $ink;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    line-height: 1.55;
   }
 }
 
-.jobs-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
+.jobs-list { display: grid; gap: 12px; }
 .job-item {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: flex-start;
-
-  &.job-failed {
-    border-color: rgba($danger, 0.5);
-    background: rgba($danger, 0.04);
-  }
-  &.job-completed {
-    border-color: rgba($success, 0.45);
-    background: rgba($success, 0.04);
-  }
-}
-
-.job-meta {
-  margin-top: 4px;
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  color: $secondary;
-}
-
-.job-error {
-  color: $danger;
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-.retry-btn {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 10px;
-  display: inline-flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  cursor: pointer;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(45,55,50,0.11);
+  background: rgba(255,255,255,0.66);
+
+  .job-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; color: $muted; font-size: 13px; }
+  .job-meta span { padding: 4px 8px; border-radius: 999px; background: #f3efe7; font-variant-numeric: tabular-nums; }
+  .job-error { margin-top: 8px; color: $danger; font-weight: 700; }
+  &.job-failed { border-color: rgba($danger, 0.24); background: #fff5f3; }
+  &.job-completed { border-color: rgba($success, 0.18); }
 }
 
-.save-hint {
-  margin-top: 10px;
-  color: $secondary;
-  font-size: 12px;
+.retry-btn { display: inline-flex; align-items: center; gap: 7px; }
+.save-hint { position: sticky; bottom: 16px; z-index: 3; width: fit-content; margin-left: auto; padding: 10px 14px; border-radius: 999px; background: #2b302d; color: #fff; box-shadow: 0 14px 32px rgba(43,48,45,0.2); }
+
+@media (max-width: 1120px) {
+  .print-ui { &__grid, &__hero { grid-template-columns: 1fr 1fr; } }
+  .template-grid { grid-template-columns: 1fr; }
+  .routing-row { grid-template-columns: 1fr; }
 }
 
-.no-data {
-  color: $secondary;
-  font-size: 13px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .print-ui {
-    background: #0f172a;
-    color: #e2e8f0;
-  }
-
-  .ui-card,
-  .template-card,
-  .job-item,
-  .routing-section .routing-row,
-  .device-item {
-    background: #111827;
-    border-color: #334155;
-    color: #e2e8f0;
-  }
-
-  .template-card textarea,
-  .template-toggle,
-  .template-test,
-  .retry-btn {
-    background: #0b1220;
-    color: #e2e8f0;
-    border-color: #334155;
-  }
+@media (max-width: 720px) {
+  .print-ui { padding: 14px; &__grid, &__hero { grid-template-columns: 1fr; } }
+  .device-item, .job-item { grid-template-columns: 1fr; }
+  .device-actions { justify-content: flex-start; }
 }

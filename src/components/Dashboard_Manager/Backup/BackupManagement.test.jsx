@@ -186,7 +186,7 @@ describe("BackupManagement conflict resolver UI", () => {
     expect(await screen.findByText("Xử lý xung đột import")).toBeInTheDocument();
     expect(screen.getByText("Tổng conflicts")).toBeInTheDocument();
     expect(screen.getByText("Warning")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Field diffs"));
+    fireEvent.click(screen.getByText("Khác biệt trường"));
     expect(screen.getByText(/basePrice: file=50000/)).toBeInTheDocument();
   });
 
@@ -194,7 +194,7 @@ describe("BackupManagement conflict resolver UI", () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    fireEvent.change(screen.getByLabelText("Resolution PHO"), { target: { value: "use_source" } });
+    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
     fireEvent.click(screen.getByLabelText(/Tôi hiểu import/));
     fireEvent.click(screen.getByText("Import thật"));
     await waitFor(() => expect(importBackup).toHaveBeenCalled());
@@ -205,10 +205,10 @@ describe("BackupManagement conflict resolver UI", () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    fireEvent.change(screen.getByLabelText("Resolution PHO"), { target: { value: "rename_source" } });
+    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "rename_source" } });
     fireEvent.click(screen.getByLabelText(/Tôi hiểu import/));
     expect(screen.getByText("Import thật")).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Rename PHO"), { target: { value: "PHO-NEW" } });
+    fireEvent.change(screen.getByLabelText("Tên mới PHO"), { target: { value: "PHO-NEW" } });
     expect(screen.getByText("Import thật")).not.toBeDisabled();
   });
 
@@ -216,9 +216,9 @@ describe("BackupManagement conflict resolver UI", () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    fireEvent.change(screen.getByLabelText("Resolution PHO"), { target: { value: "use_source" } });
-    fireEvent.click(screen.getByText("Keep all target"));
-    expect(screen.getByLabelText("Resolution PHO")).toHaveValue("keep_target");
+    fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
+    fireEvent.click(screen.getByText("Giữ toàn bộ hiện tại"));
+    expect(screen.getByLabelText("Cách xử lý PHO")).toHaveValue("keep_target");
   });
 
   it("import button disabled for unresolved blocking conflict", async () => {
