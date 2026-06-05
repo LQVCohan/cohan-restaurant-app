@@ -1,0 +1,144 @@
+/* Scoped hotfixes for manager polish screens.
+   This file intentionally avoids data/business logic changes. */
+
+/* Menu: remove the duplicated operations header/KPI block introduced by stacked polish layers. */
+.mm-page-container {
+  .mm-ops-kpi,
+  .mm-stats-section {
+    display: none !important;
+  }
+
+  .mm-body {
+    margin-top: 16px;
+  }
+
+  .toolbar-container {
+    margin-top: 0;
+  }
+}
+
+/* Review: streamline the operations layout without touching query/mutation logic. */
+.reviews-page {
+  .reviews-container {
+    max-width: min(1180px, calc(100vw - 280px));
+  }
+
+  .reviews-content-grid {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .reviews-sidebar {
+    position: sticky;
+    top: 92px;
+    max-height: calc(100vh - 120px);
+    overflow: auto;
+  }
+
+  .reviews-analytics-panel {
+    padding: 14px;
+  }
+
+  /* These cards duplicated the same meaning as the main KPI/header + queue tiles. */
+  .reviews-analytics-cards {
+    display: none !important;
+  }
+
+  .reviews-insight-card {
+    margin-bottom: 12px;
+  }
+
+  .reviews-insight-card__columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .reviews-queue-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .reviews-queue-tile {
+    padding: 12px;
+    min-height: 104px;
+  }
+
+  .reviews-action-center,
+  .reviews-report-center,
+  .reviews-analytics-tables {
+    margin-top: 12px;
+  }
+
+  .reviews-action-center__header p,
+  .reviews-report-center__header p {
+    font-size: 0;
+  }
+
+  .reviews-action-center__header p::after {
+    content: "TRUNG TÂM XỬ LÝ ĐÁNH GIÁ";
+    font-size: 0.78rem;
+  }
+
+  .reviews-report-center__header p::after {
+    content: "TRUNG TÂM BÁO CÁO VI PHẠM";
+    font-size: 0.78rem;
+  }
+
+  .reviews-action-center__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .reviews-action-center__lane {
+    padding: 12px;
+  }
+
+  .reviews-report-center__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reviews-analytics-tables {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .reviews-content-header {
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .reviews-page {
+    .reviews-container {
+      max-width: calc(100vw - 32px);
+    }
+
+    .reviews-content-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .reviews-sidebar {
+      position: static;
+      max-height: none;
+    }
+
+    .reviews-queue-grid,
+    .reviews-action-center__grid,
+    .reviews-analytics-tables,
+    .reviews-report-center__list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 680px) {
+  .reviews-page {
+    .reviews-queue-grid,
+    .reviews-action-center__grid,
+    .reviews-analytics-tables,
+    .reviews-report-center__list,
+    .reviews-insight-card__columns {
+      grid-template-columns: 1fr;
+    }
+  }
+}
