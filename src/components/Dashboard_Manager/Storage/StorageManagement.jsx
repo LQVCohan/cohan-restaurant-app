@@ -129,8 +129,8 @@ const StorageManagement = () => {
   const warehouseFilterId = selectedWarehouseId ? selectedWarehouseId : null;
 
   // ==== 4) StockItems/Movements ====
-  const shouldFetchStock =
-    restaurantReady && ["ingredients", "inventory"].includes(activeTab);
+  const shouldFetchStockForKpi = restaurantReady;
+  const shouldFetchMovementsForAudit = restaurantReady && activeTab === "inventory";
 
   const {
     data: stockData,
@@ -143,7 +143,7 @@ const StorageManagement = () => {
       warehouseId: warehouseFilterId,
       limit: 200,
     },
-    skip: !shouldFetchStock,
+    skip: !shouldFetchStockForKpi,
     fetchPolicy: "cache-and-network",
   });
 
@@ -161,7 +161,7 @@ const StorageManagement = () => {
       limit: 100,
       sort: -1,
     },
-    skip: !restaurantReady || activeTab !== "inventory",
+    skip: !shouldFetchMovementsForAudit,
     fetchPolicy: "cache-and-network",
   });
 
@@ -216,7 +216,7 @@ const StorageManagement = () => {
   }, [refetchIngredients, refetchStock]);
 
   const lowStockItems = useMemo(() => {
-    if (!restaurantReady || !shouldFetchStock) return [];
+    if (!restaurantReady) return [];
     if (!ingredients.length) return [];
 
     const availableByIngredient = new Map();
@@ -244,7 +244,7 @@ const StorageManagement = () => {
         };
       })
       .filter((it) => it.currentStock <= it.minStock);
-  }, [ingredients, restaurantReady, shouldFetchStock, stockItems]);
+  }, [ingredients, restaurantReady, stockItems]);
 
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
   const [poOpen, setPoOpen] = useState(false);
