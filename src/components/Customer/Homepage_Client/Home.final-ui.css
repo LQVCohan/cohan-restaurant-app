@@ -1,0 +1,288 @@
+/* Final homepage design pass: compact map, cleaner search, stronger visual hierarchy. */
+.home .hero {
+  isolation: isolate;
+}
+
+.home .hero__content {
+  position: relative;
+  z-index: 14;
+}
+
+.home .hero__search-stack {
+  position: relative;
+  width: min(700px, 100%);
+  z-index: 30;
+}
+
+.home .hero__search-box {
+  width: 100% !important;
+  max-width: none !important;
+  gap: 8px !important;
+  border: 1px solid rgba(255, 102, 0, 0.14) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(16px);
+}
+
+.home .hero__input-wrapper {
+  min-width: 0;
+}
+
+.home .hero__input-wrapper input {
+  font-weight: 600;
+  color: #1f2937 !important;
+}
+
+.home .hero__btn-location,
+.home .hero__btn-search {
+  min-height: 48px;
+}
+
+.home .hero__suggestions {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: min(520px, 100%);
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid rgba(255, 102, 0, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 60px rgba(83, 46, 20, 0.16);
+  z-index: 40;
+}
+
+.home .hero__suggestion-item {
+  display: -webkit-box;
+  width: 100%;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #374151;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.home .hero__suggestion-item:hover {
+  background: #fff7ed;
+  color: #ff6600;
+  transform: translateX(2px);
+}
+
+.home .hero__suggestion-state {
+  padding: 12px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.home .hero__location-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  width: min(520px, calc(100vw - 32px));
+  z-index: 45;
+  animation: homeMapPopoverIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.home .hero__location-popover .location-picker {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  border: 1px solid rgba(255, 102, 0, 0.16) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  box-shadow: 0 28px 70px rgba(83, 46, 20, 0.18) !important;
+  backdrop-filter: blur(18px);
+}
+
+.home .hero__location-popover .location-picker__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.home .hero__location-popover .location-picker__eyebrow {
+  margin: 0 0 2px;
+  color: #ff6600;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home .hero__location-popover .location-picker__title {
+  margin: 0;
+  color: #111827;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.home .hero__location-popover .location-picker__close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+.home .hero__location-popover .location-picker__map {
+  height: 185px !important;
+  overflow: hidden;
+  border-radius: 18px !important;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.home .hero__location-popover .location-picker__summary {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 8px !important;
+  padding: 9px 10px !important;
+  border: 1px solid rgba(255, 102, 0, 0.12);
+  border-radius: 16px;
+  background: #fff7ed;
+}
+
+.home .hero__location-popover .location-picker__pin {
+  flex: 0 0 auto;
+}
+
+.home .hero__location-popover .location-picker__address {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: #374151;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.home .hero__location-popover .location-picker__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 9px !important;
+}
+
+.home .hero__location-popover .location-picker__confirm,
+.home .hero__location-popover .location-picker__cancel {
+  min-height: 40px !important;
+  border-radius: 14px !important;
+  font-weight: 800;
+}
+
+.home .hero__location-popover .location-picker__confirm {
+  border: 0;
+  background: linear-gradient(135deg, #ff6600, #ff8a3d);
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(255, 102, 0, 0.22);
+}
+
+.home .hero__location-popover .location-picker__cancel {
+  padding-inline: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  color: #475569;
+}
+
+.home .hero--map-open .hero__stats {
+  margin-top: 240px !important;
+}
+
+.home .hero__image-area::after {
+  content: "";
+  position: absolute;
+  inset: 14% 8% 10% 8%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 102, 0, 0.12), transparent 62%);
+  filter: blur(18px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.home .hero__float-card.float-review {
+  transform: rotate(-4deg);
+}
+
+.home .hero__float-card.float-delivery {
+  transform: rotate(4deg);
+}
+
+.home .categories,
+.home .dish-grid,
+.home .restaurant-grid {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 102, 0, 0.055), transparent 34rem),
+    linear-gradient(180deg, rgba(255, 250, 245, 0.9), rgba(255, 255, 255, 0.94));
+}
+
+.home .categories__card,
+.home .res-card,
+.home .dish-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(12px);
+}
+
+.home .restaurant-grid__view-all {
+  min-height: 48px;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 34px rgba(255, 102, 0, 0.2) !important;
+}
+
+@media (max-width: 1040px) {
+  .home .hero__search-stack {
+    margin-inline: auto;
+  }
+
+  .home .hero__location-popover {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .home .hero--map-open .hero__stats {
+    margin-top: 232px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .home .hero__search-box {
+    border-radius: 26px !important;
+  }
+
+  .home .hero__location-popover,
+  .home .hero__suggestions {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    margin-top: 10px;
+    transform: none;
+  }
+
+  .home .hero--map-open .hero__stats {
+    margin-top: 18px !important;
+  }
+
+  .home .hero__location-popover .location-picker__map {
+    height: 170px !important;
+  }
+}
+
+@keyframes homeMapPopoverIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
