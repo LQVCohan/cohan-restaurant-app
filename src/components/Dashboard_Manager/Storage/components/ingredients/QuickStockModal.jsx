@@ -157,24 +157,24 @@ const QuickStockModal = ({
     formRows.forEach((row, idx) => {
       const qtyNum = Number(row.qty);
       if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
-        nextErrors[idx] = "Số lượng phải > 0";
+        nextErrors[idx] = { qty: "Số lượng phải > 0" };
         return;
       }
       const priceNum = Number(row.unitPrice);
       if (!Number.isFinite(priceNum) || priceNum <= 0) {
-        nextErrors[idx] = "Giá nhập là bắt buộc và phải > 0";
+        nextErrors[idx] = { unitPrice: "Giá nhập là bắt buộc và phải > 0" };
         return;
       }
       if (row.expiry) {
         const expiryDate = parseLocalDateOnly(row.expiry);
         if (!expiryDate) {
-          nextErrors[idx] = "Hạn dùng không hợp lệ. Vui lòng chọn đúng ngày.";
+          nextErrors[idx] = { expiry: "Hạn dùng không hợp lệ. Vui lòng chọn đúng ngày." };
           return;
         }
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         if (expiryDate.getTime() < todayStart.getTime()) {
-          nextErrors[idx] = "Hạn dùng không được ở trong quá khứ.";
+          nextErrors[idx] = { expiry: "Hạn dùng không được ở trong quá khứ." };
           return;
         }
       }
@@ -284,11 +284,11 @@ const QuickStockModal = ({
                     step="1"
                     value={row.qty}
                     onChange={(e) => updateRow(idx, { qty: e.target.value })}
-                    className={errors[idx] ? "error" : ""}
+                    className={errors[idx]?.qty ? "error" : ""}
                     placeholder="0"
                   />
-                  {errors[idx] && (
-                    <small className="qsm-error">{errors[idx]}</small>
+                  {errors[idx]?.qty && (
+                    <small className="qsm-error">{errors[idx].qty}</small>
                   )}
                 </label>
 
@@ -318,9 +318,12 @@ const QuickStockModal = ({
                     onChange={(e) =>
                       updateRow(idx, { unitPrice: e.target.value })
                     }
-                    className={errors[idx] ? "error" : ""}
+                    className={errors[idx]?.unitPrice ? "error" : ""}
                     placeholder="0"
                   />
+                  {errors[idx]?.unitPrice && (
+                    <small className="qsm-error">{errors[idx].unitPrice}</small>
+                  )}
                 </label>
 
                 <label className="qsm-field">
@@ -363,7 +366,11 @@ const QuickStockModal = ({
                     value={row.expiry}
                     min={todayDate}
                     onChange={(e) => updateRow(idx, { expiry: e.target.value })}
+                    className={errors[idx]?.expiry ? "error" : ""}
                   />
+                  {errors[idx]?.expiry && (
+                    <small className="qsm-error">{errors[idx].expiry}</small>
+                  )}
                 </label>
               </div>
 
@@ -371,7 +378,7 @@ const QuickStockModal = ({
                 const hint = priceHintsByIngredient[String(row.id)];
                 const d = getDerivedPricing(row);
                 return (
-                  <div style={{ marginTop: "8px", display: "grid", gap: "8px" }}>
+                  <div className="qsm-derived">
                     {d && (
                       <div className="qsm-meta">
                         Quy đổi: {Number(d.qtyBase).toLocaleString("vi-VN")}{" "}
@@ -392,7 +399,7 @@ const QuickStockModal = ({
                       </div>
                     )}
                     {hint && (
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <div className="qsm-hints">
                         {hint.latestCostPerBaseUnit > 0 && (
                           <button
                             type="button"
@@ -466,10 +473,11 @@ const QuickStockModal = ({
       </div>
 
       <Modal.Footer>
-        <button className="qsm-btn qsm-btn--secondary" onClick={onClose}>
+        <button type="button" className="qsm-btn qsm-btn--secondary" onClick={onClose}>
           Huỷ
         </button>
         <button
+          type="button"
           className="qsm-btn qsm-btn--primary"
           onClick={submit}
           disabled={submitting}

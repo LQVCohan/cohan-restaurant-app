@@ -97,11 +97,16 @@ const Header = ({
           <div className="icon-box">
             <Package size={24} color="#c5a47e" />
           </div>
-          <h1 className="page-title">Quản lý Kho</h1>
+          <div>
+            <p className="page-eyebrow">Vận hành kho</p>
+            <h1 className="page-title">Quản lý kho</h1>
+            <p className="page-subtitle">Theo dõi nguyên liệu, vật tư, công thức và kiểm kê kho.</p>
+          </div>
         </div>
 
         <div className="actions-wrapper">
           <button
+            type="button"
             className="sm-btn ghost"
             onClick={handleExportSample}
             title="Xuất mẫu Excel"
@@ -112,6 +117,7 @@ const Header = ({
           </button>
           <div className="divider-vertical"></div>
           <button
+            type="button"
             className="sm-btn secondary"
             onClick={handleImportData}
             disabled={!isIngredientTab || ingredientActions?.busy || !canWriteInventory}
@@ -120,6 +126,7 @@ const Header = ({
             <Upload size={18} /> <span className="hide-on-mobile">Nhập</span>
           </button>
           <button
+            type="button"
             className="sm-btn secondary"
             onClick={handleExportData}
             disabled={!isIngredientTab || ingredientActions?.busy}
@@ -127,6 +134,7 @@ const Header = ({
             <Download size={18} /> <span className="hide-on-mobile">Xuất</span>
           </button>
           <button
+            type="button"
             className="sm-btn primary"
             onClick={handleGenerateReport}
             disabled={!isIngredientTab || ingredientActions?.busy}

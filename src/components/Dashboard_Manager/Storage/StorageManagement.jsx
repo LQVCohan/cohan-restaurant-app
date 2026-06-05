@@ -30,6 +30,8 @@ import {
   BookOpen,
   ClipboardList,
   AlertCircle,
+  Boxes,
+  Warehouse as WarehouseIcon,
 } from "lucide-react";
 
 // Styles
@@ -127,8 +129,8 @@ const StorageManagement = () => {
   const warehouseFilterId = selectedWarehouseId ? selectedWarehouseId : null;
 
   // ==== 4) StockItems/Movements ====
-  const shouldFetchStock =
-    restaurantReady && ["ingredients", "inventory"].includes(activeTab);
+  const shouldFetchStockForKpi = restaurantReady;
+  const shouldFetchMovementsForAudit = restaurantReady && activeTab === "inventory";
 
   const {
     data: stockData,
@@ -141,7 +143,7 @@ const StorageManagement = () => {
       warehouseId: warehouseFilterId,
       limit: 200,
     },
-    skip: !shouldFetchStock,
+    skip: !shouldFetchStockForKpi,
     fetchPolicy: "cache-and-network",
   });
 
@@ -159,7 +161,7 @@ const StorageManagement = () => {
       limit: 100,
       sort: -1,
     },
-    skip: !restaurantReady || activeTab !== "inventory",
+    skip: !shouldFetchMovementsForAudit,
     fetchPolicy: "cache-and-network",
   });
 
@@ -214,7 +216,7 @@ const StorageManagement = () => {
   }, [refetchIngredients, refetchStock]);
 
   const lowStockItems = useMemo(() => {
-    if (!restaurantReady || !shouldFetchStock) return [];
+    if (!restaurantReady) return [];
     if (!ingredients.length) return [];
 
     const availableByIngredient = new Map();
@@ -242,11 +244,49 @@ const StorageManagement = () => {
         };
       })
       .filter((it) => it.currentStock <= it.minStock);
-  }, [ingredients, restaurantReady, shouldFetchStock, stockItems]);
+  }, [ingredients, restaurantReady, stockItems]);
 
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
   const [poOpen, setPoOpen] = useState(false);
   const [poEntries, setPoEntries] = useState([]);
+
+  const storageKpis = useMemo(() => {
+    const outStockItems = lowStockItems.filter((item) => Number(item.currentStock) <= 0);
+    return [
+      {
+        id: "total-ingredients",
+        label: "Tổng nguyên liệu",
+        value: ingredients.length,
+        helper: "đang theo dõi trong nhà hàng",
+        icon: <Carrot size={18} />,
+        tone: "neutral",
+      },
+      {
+        id: "low-stock",
+        label: "Sắp hết",
+        value: lowStockItems.length,
+        helper: "dưới hoặc bằng ngưỡng cảnh báo",
+        icon: <AlertCircle size={18} />,
+        tone: lowStockItems.length ? "warning" : "good",
+      },
+      {
+        id: "out-stock",
+        label: "Hết hàng",
+        value: outStockItems.length,
+        helper: "cần kiểm kho hoặc nhập bổ sung",
+        icon: <Boxes size={18} />,
+        tone: outStockItems.length ? "danger" : "good",
+      },
+      {
+        id: "warehouses",
+        label: "Kho đang có",
+        value: warehouses.length || stockItems.length,
+        helper: warehouses.length ? "kho khả dụng" : "dòng tồn kho đã tải",
+        icon: <WarehouseIcon size={18} />,
+        tone: "neutral",
+      },
+    ];
+  }, [ingredients.length, lowStockItems, stockItems.length, warehouses.length]);
 
   // Define Tabs
   const tabs = [
@@ -392,8 +432,23 @@ const StorageManagement = () => {
           />
         </section>
 
+        <section className="sm-kpi-section" aria-label="Chỉ số vận hành kho">
+          {storageKpis.map((item) => (
+            <article className={`sm-kpi-card sm-kpi-card--${item.tone}`} key={item.id}>
+              <div className="sm-kpi-card__icon">{item.icon}</div>
+              <div>
+                <p className="sm-kpi-card__label">{item.label}</p>
+                <strong className="sm-kpi-card__value">
+                  {Number(item.value || 0).toLocaleString("vi-VN")}
+                </strong>
+                <span className="sm-kpi-card__helper">{item.helper}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+
         {/* --- Content Section --- */}
-        <div className="sm-main-content">
+        <section className="sm-main-content" aria-label="Nội dung quản lý kho">
           {/* TOOLBAR: Tabs (Left) - Status (Right) */}
           <div className="sm-toolbar-wrapper">
             <div className="toolbar-left">
@@ -446,7 +501,7 @@ const StorageManagement = () => {
               <AlertCircle size={16} /> Lỗi tải kho: {whError.message}
             </div>
           )}
-        </div>
+        </section>
       </div>
 
       <QuickStockModal

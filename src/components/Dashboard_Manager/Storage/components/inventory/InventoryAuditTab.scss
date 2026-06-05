@@ -189,3 +189,48 @@
     }
   }
 }
+
+.inventory-audit-tab {
+  gap: 16px;
+
+  .inv-summary-card,
+  .inv-movement-block,
+  .inv-table-wrap {
+    border-radius: 16px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+  }
+
+  .inv-summary-card {
+    padding: 14px 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .inv-toolbar {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #f8fafc;
+  }
+
+  .inv-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .inv-toolbar input:focus-visible,
+  .inv-toolbar select:focus-visible,
+  .inv-sort-btn:focus-visible,
+  .inv-pagination button:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.26);
+    outline-offset: 2px;
+  }
+
+  .inv-movement-item {
+    grid-template-columns: minmax(160px, 1.5fr) minmax(90px, 0.8fr) minmax(80px, 0.7fr) minmax(120px, 1fr) repeat(4, minmax(90px, 1fr));
+    align-items: center;
+    border: 1px solid #edf2f7;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+}

@@ -42,6 +42,7 @@ const IngredientList = ({
   activeCurrency = "VND",
   usdToVndRate = 26000,
   onRegisterActions,
+  onReload,
 }) => {
   const { showNotification } = useNotification();
   const {
@@ -523,7 +524,7 @@ const IngredientList = ({
         ref={fileInputRef}
         type="file"
         accept=".xlsx,.xls,.csv"
-        style={{ display: "none" }}
+        className="il-file-input"
         onChange={handleImportFile}
       />
       {/* 1. Header Section */}
@@ -559,6 +560,7 @@ const IngredientList = ({
           <div className="il-input-group">
             <Search size={18} className="il-icon-left" />
             <input
+              aria-label="Tìm kiếm nguyên liệu"
               type="text"
               className="il-input-search"
               placeholder="Tìm tên, mã nguyên liệu..."
@@ -567,6 +569,7 @@ const IngredientList = ({
             />
             {filters.search && (
               <button
+                type="button"
                 className="il-btn-clear"
                 onClick={() => setFilters({ ...filters, search: "" })}
               >
@@ -614,6 +617,7 @@ const IngredientList = ({
           {/* Reset Button */}
           {hasActiveFilters && (
             <button
+              type="button"
               className="il-btn-icon"
               onClick={clearFilters}
               title="Xóa bộ lọc"
@@ -625,6 +629,7 @@ const IngredientList = ({
 
         <div className="il-toolbar__actions">
           <button
+            type="button"
             className="il-btn-icon"
             onClick={() =>
               setViewMode((prev) => (prev === "active" ? "trash" : "active"))
@@ -635,6 +640,7 @@ const IngredientList = ({
             {viewMode === "active" ? "Thùng rác" : "Danh sách chính"}
           </button>
           <button
+            type="button"
             className="il-btn-icon"
             onClick={() => setCategoryModalOpen(true)}
             title="Quản lý danh mục"
@@ -643,6 +649,7 @@ const IngredientList = ({
             Danh mục
           </button>
           <button
+            type="button"
             className="il-btn-primary"
             onClick={openCreate}
             disabled={!restaurantId || saving || viewMode !== "active"}
@@ -658,23 +665,15 @@ const IngredientList = ({
           <div className="il-error">
             <AlertCircle size={20} />
             <span>{error.message}</span>
+            {onReload ? (
+              <button type="button" onClick={onReload}>Tải lại</button>
+            ) : null}
           </div>
         )}
 
         {loading ? (
           <div className="il-empty">
-            <div
-              className="spinner"
-              style={{
-                display: "inline-block",
-                width: 30,
-                height: 30,
-                border: "3px solid #ccc",
-                borderTopColor: "#333",
-                borderRadius: "50%",
-                animation: "spin 1s infinite",
-              }}
-            ></div>
+            <div className="il-spinner" aria-hidden="true"></div>
             <p>Đang tải dữ liệu...</p>
           </div>
         ) : viewMode === "active" && filteredIngredients.length > 0 ? (
@@ -711,6 +710,7 @@ const IngredientList = ({
                   </div>
                   <div className="il-trash-actions">
                     <button
+                      type="button"
                       className="il-btn-icon"
                       disabled={Boolean(trashBusyId)}
                       onClick={() => handleRestoreFromTrash(row.id)}
@@ -718,6 +718,7 @@ const IngredientList = ({
                       Khôi phục
                     </button>
                     <button
+                      type="button"
                       className="il-btn-icon danger"
                       disabled={Boolean(trashBusyId)}
                       onClick={() => handlePermanentDelete(row.id)}
@@ -745,11 +746,15 @@ const IngredientList = ({
             <h3>Không tìm thấy nguyên liệu</h3>
             <p>
               {hasActiveFilters
-                ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."
-                : "Danh sách trống. Hãy thêm nguyên liệu đầu tiên!"}
+                ? "Không có nguyên liệu phù hợp với bộ lọc hiện tại."
+                : "Chưa có nguyên liệu nào. Hãy thêm nguyên liệu đầu tiên để bắt đầu theo dõi tồn kho."}
             </p>
-            {hasActiveFilters && (
-              <button onClick={clearFilters}>Xóa tất cả bộ lọc</button>
+            {hasActiveFilters ? (
+              <button type="button" onClick={clearFilters}>Xóa tất cả bộ lọc</button>
+            ) : (
+              <button type="button" onClick={openCreate} disabled={!restaurantId || saving}>
+                Thêm nguyên liệu
+              </button>
             )}
           </div>
         )}
@@ -851,6 +856,7 @@ const IngredientList = ({
             </div>
             <div className="il-report-actions">
               <button
+                type="button"
                 className="il-btn-primary"
                 onClick={() => setBlockedDeleteModal(null)}
               >
@@ -866,9 +872,9 @@ const IngredientList = ({
           <div className="il-report-modal">
             <h3>Xuất báo cáo nguyên liệu</h3>
             <div className="il-report-preset">
-              <button onClick={() => applyPreset("7d")}>7 ngày</button>
-              <button onClick={() => applyPreset("30d")}>30 ngày</button>
-              <button onClick={() => applyPreset("month")}>Tháng này</button>
+              <button type="button" onClick={() => applyPreset("7d")}>7 ngày</button>
+              <button type="button" onClick={() => applyPreset("30d")}>30 ngày</button>
+              <button type="button" onClick={() => applyPreset("month")}>Tháng này</button>
             </div>
             <div className="il-report-range">
               <label>Từ ngày</label>
@@ -885,10 +891,11 @@ const IngredientList = ({
               />
             </div>
             <div className="il-report-actions">
-              <button className="il-btn-icon" onClick={() => setReportModalOpen(false)}>
+              <button type="button" className="il-btn-icon" onClick={() => setReportModalOpen(false)}>
                 Huỷ
               </button>
               <button
+                type="button"
                 className="il-btn-primary"
                 disabled={busyAction === "report"}
                 onClick={handleGenerateReport}

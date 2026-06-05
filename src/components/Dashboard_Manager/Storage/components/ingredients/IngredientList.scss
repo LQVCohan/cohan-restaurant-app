@@ -453,3 +453,41 @@ $il-radius: 8px;
   background: #f8fafc;
   border-radius: 6px;
 }
+
+.ing-storage-wrapper {
+  .il-file-input {
+    display: none;
+  }
+
+  .il-spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #8a683f;
+    border-radius: 50%;
+    animation: spin 1s infinite linear;
+  }
+
+  .il-error {
+    justify-content: space-between;
+
+    button {
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      background: #fff;
+      color: #b91c1c;
+      padding: 6px 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.26);
+    outline-offset: 2px;
+  }
+}

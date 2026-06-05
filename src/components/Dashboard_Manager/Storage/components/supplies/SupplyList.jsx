@@ -270,6 +270,7 @@ const SupplyList = ({
           <div className="sl-input-group sl-search-box">
             <Search size={18} className="sl-icon" />
             <input
+              aria-label="Tìm kiếm vật tư"
               type="text"
               placeholder="Tìm kiếm vật tư..."
               value={searchInput}
@@ -325,7 +326,6 @@ const SupplyList = ({
             <RefreshCw
               size={18}
               className={loading ? "spin" : ""}
-              style={{ color: "inherit" }}
             />
           </button>
 

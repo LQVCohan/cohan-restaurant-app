@@ -232,3 +232,28 @@ $gold: #c5a47e;
     transform: rotate(2deg);
   }
 }
+
+.warehouse-status-wrapper {
+  margin-left: 0;
+  z-index: 5;
+
+  &.warning .status-badge {
+    background: #fffbeb;
+    color: #92400e;
+    border-color: rgba(217, 119, 6, 0.24);
+  }
+
+  &.warning .warning-icon {
+    color: #d97706;
+    animation: none;
+  }
+
+  &.warning .pulse-ring {
+    background: rgba(217, 119, 6, 0.28);
+  }
+
+  .dropdown-footer button:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.28);
+    outline-offset: 2px;
+  }
+}
