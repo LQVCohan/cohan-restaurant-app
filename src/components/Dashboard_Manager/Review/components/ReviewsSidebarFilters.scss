@@ -90,3 +90,40 @@
     position: static;
   }
 }
+
+.reviews-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.reviews-sidebar__header .reviews-sidebar__title {
+  margin-bottom: 0;
+}
+
+.reviews-sidebar__reset {
+  border: 1px solid var(--reviews-border-color);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--reviews-text-main);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 7px 11px;
+  transition: var(--reviews-transition);
+}
+
+.reviews-sidebar__reset:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #075985;
+}
+
+.reviews-sidebar__reset:focus-visible,
+.reviews-sidebar__rating-item input:focus-visible,
+.reviews-sidebar__select:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.28);
+  outline-offset: 2px;
+}

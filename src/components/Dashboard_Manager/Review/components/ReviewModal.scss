@@ -188,9 +188,77 @@
   border: 1px solid #e5e7eb;
   background: #f9fafb;
 
-  h4 { margin: 0 0 10px; color: #111827; }
-  ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
-  li { color: #111827; }
-  span, small { display: block; color: #6b7280; margin-top: 2px; }
-  strong { color: #ea580c; }
+  h4 {
+    margin: 0 0 10px;
+    color: #111827;
+  }
+  ol {
+    margin: 0;
+    padding-left: 20px;
+    display: grid;
+    gap: 10px;
+  }
+  li {
+    color: #111827;
+  }
+  span,
+  small {
+    display: block;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+  strong {
+    color: #ea580c;
+  }
+}
+
+.reviews-modal__summary {
+  margin-bottom: 16px;
+}
+
+.reviews-modal__rating {
+  color: #f59e0b;
+  font-size: 1rem;
+  margin-top: 6px;
+}
+
+.reviews-modal__review-title {
+  margin-bottom: 6px;
+}
+
+.reviews-modal__review-content {
+  margin-bottom: 10px;
+}
+
+.reviews-modal__staff-line {
+  margin-bottom: 8px;
+}
+
+.reviews-modal__performance-note {
+  color: #4b5563;
+  font-style: italic;
+  margin-bottom: 12px;
+}
+
+.reviews-modal__reply-section {
+  margin-top: 18px;
+}
+
+.reviews-modal__reply-box {
+  margin-top: 14px;
+}
+
+.reviews-modal__reply-box textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  min-height: 92px;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.reviews-modal__reply-box textarea:focus-visible,
+.reviews-modal__close:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.3);
+  outline-offset: 2px;
 }
