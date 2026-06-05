@@ -287,6 +287,7 @@ const RecipeList = ({
           <div className="rl-input-group">
             <Search className="rl-icon-left" size={18} />
             <input
+              aria-label="Tìm kiếm công thức"
               type="text"
               className="rl-input-search"
               placeholder="Tìm món ăn..."
@@ -295,6 +296,7 @@ const RecipeList = ({
             />
             {search && (
               <button
+                type="button"
                 className="rl-btn-clear"
                 onClick={() => {
                   setSearch("");
@@ -341,6 +343,7 @@ const RecipeList = ({
 
           {hasActiveFilters && (
             <button
+              type="button"
               className="rl-btn-reset"
               onClick={clearFilters}
               title="Xóa bộ lọc"
@@ -352,6 +355,7 @@ const RecipeList = ({
 
         <div className="rl-toolbar-actions">
           <button
+            type="button"
             className="rl-btn-primary"
             onClick={handleAdd}
             disabled={!restaurantId}
@@ -393,6 +397,7 @@ const RecipeList = ({
             {pageInfo?.hasNextPage && (
               <div className="rl-load-more">
                 <button
+                  type="button"
                   className="rl-btn-secondary"
                   onClick={loadMore}
                   disabled={loading}
@@ -417,7 +422,7 @@ const RecipeList = ({
                 : "Danh sách trống. Hãy thêm công thức đầu tiên!"}
             </p>
             {hasActiveFilters && (
-              <button className="rl-link-btn" onClick={clearFilters}>
+              <button type="button" className="rl-link-btn" onClick={clearFilters}>
                 Xóa bộ lọc
               </button>
             )}

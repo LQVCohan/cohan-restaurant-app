@@ -171,6 +171,7 @@ function InventoryAuditTab({
         <label className="inv-search">
           <Search size={16} />
           <input
+            aria-label="Tìm kiếm kiểm kê theo tên hoặc SKU"
             value={search}
             onChange={(e) => {
               setPage(1);
@@ -181,6 +182,7 @@ function InventoryAuditTab({
         </label>
 
         <select
+          aria-label="Lọc trạng thái tồn kho"
           value={stockFilter}
           onChange={(e) => {
             setPage(1);

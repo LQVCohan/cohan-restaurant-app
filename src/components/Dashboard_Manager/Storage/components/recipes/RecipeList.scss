@@ -356,3 +356,28 @@ $rl-danger: #ef4444;
     }
   }
 }
+
+.rl-container {
+  .rl-toolbar,
+  .rl-error-box,
+  .rl-empty-state,
+  .rl-loading-state {
+    border-radius: 16px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+  }
+
+  .rl-toolbar {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfaf7 100%);
+  }
+
+  .rl-title {
+    letter-spacing: -0.03em;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.26);
+    outline-offset: 2px;
+  }
+}

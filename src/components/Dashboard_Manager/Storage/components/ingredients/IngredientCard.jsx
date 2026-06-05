@@ -108,14 +108,14 @@ const IngredientCard = ({
 
   return (
     <>
-      <div className="il-card" onClick={() => onShowUsage?.(ingredient.id)}>
+      <article className="il-card">
         {/* Header Section */}
         <div className="il-card__header">
           <div className="il-card__icon-wrapper">
             {/* Fallback icon nếu ingredient.icon là emoji hoặc string không hợp lệ */}
             {typeof ingredient.icon === "string" &&
             ingredient.icon.length < 5 ? (
-              <span style={{ fontSize: "1.5rem" }}>{ingredient.icon}</span>
+              <span className="il-card__emoji-icon">{ingredient.icon}</span>
             ) : (
               <Box size={24} color="#c5a47e" />
             )}
@@ -146,18 +146,25 @@ const IngredientCard = ({
               </div>
             </div>
 
+            <div className="il-stat-box">
+              <span className="il-stat-label">Ngưỡng cảnh báo</span>
+              <div className="il-stat-value-group">
+                <span className="il-stat-value">{ingredient.minStock ?? 0}</span>
+                <span className="il-stat-unit">{baseUnit}</span>
+              </div>
+            </div>
+
             {/* Cost Price (Clickable) */}
-            <div
+            <button
+              type="button"
               className={`il-stat-box ${canUpdateCost ? "il-stat-box--interactive" : ""}`}
               onClick={openPriceModal}
               title={canUpdateCost ? "Nhấp để cập nhật giá nhập" : NO_PERMISSION_MESSAGE}
-              aria-disabled={!canUpdateCost}
+              disabled={!canUpdateCost}
             >
               <div className="il-stat-label">
                 Giá nhập{" "}
-                {canUpdateCost && (
-                  <Pencil size={10} style={{ marginLeft: 4, opacity: 0.5 }} />
-                )}
+                {canUpdateCost && <Pencil size={10} className="il-stat-label__edit-icon" />}
               </div>
               <div className="il-stat-value-group">
                 <span className="il-stat-value il-text-price">
@@ -173,12 +180,13 @@ const IngredientCard = ({
                 </span>
                 <span className="il-stat-unit">/{baseUnit}</span>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Action Toolbar */}
           <div className="il-card__actions">
             <button
+              type="button"
               className="il-action-btn il-btn-edit"
               onClick={(e) => {
                 e.stopPropagation();
@@ -192,6 +200,7 @@ const IngredientCard = ({
             </button>
 
             <button
+              type="button"
               className="il-action-btn il-btn-stock"
               onClick={(e) => {
                 e.stopPropagation();
@@ -205,6 +214,7 @@ const IngredientCard = ({
             </button>
 
             <button
+              type="button"
               className="il-action-btn il-btn-view"
               onClick={(e) => {
                 e.stopPropagation();
@@ -220,6 +230,7 @@ const IngredientCard = ({
             <div className="il-divider-vertical"></div>
 
             <button
+              type="button"
               className="il-action-btn il-btn-delete"
               onClick={(e) => {
                 e.stopPropagation();
@@ -233,7 +244,7 @@ const IngredientCard = ({
             </button>
           </div>
         </div>
-      </div>
+      </article>
 
       {/* Price Update Modal */}
       <Modal
@@ -263,12 +274,14 @@ const IngredientCard = ({
 
           <Modal.Footer>
             <button
+              type="button"
               className="il-btn-secondary"
               onClick={() => setIsPriceModalOpen(false)}
             >
               Hủy
             </button>
             <button
+              type="button"
               className="il-btn-primary"
               onClick={handleSavePrice}
               disabled={!canUpdateCost}

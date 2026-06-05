@@ -271,3 +271,41 @@ $bg-input: #f8fafc;
     align-items: stretch;
   }
 }
+
+.sm-header-card {
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 251, 245, 0.92)),
+    radial-gradient(circle at 12% 10%, rgba(197, 164, 126, 0.2), transparent 22rem);
+  box-shadow: 0 20px 55px rgba(30, 41, 59, 0.09);
+}
+
+.title-wrapper {
+  align-items: flex-start;
+
+  .page-eyebrow {
+    margin: 0 0 4px;
+    color: #8a683f;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .page-subtitle {
+    max-width: 46rem;
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+}
+
+.sm-btn:focus-visible,
+.custom-select-wrapper select:focus-visible,
+.inline-rate input:focus-visible,
+.inline-rate button:focus-visible {
+  outline: 3px solid rgba(197, 164, 126, 0.28);
+  outline-offset: 2px;
+}

@@ -124,3 +124,23 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.qsm-derived {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.qsm-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qsm-btn:focus-visible,
+.qsm-field input:focus-visible,
+.qsm-field select:focus-visible,
+.qsm-field textarea:focus-visible {
+  outline: 3px solid rgba(197, 164, 126, 0.28);
+  outline-offset: 2px;
+}

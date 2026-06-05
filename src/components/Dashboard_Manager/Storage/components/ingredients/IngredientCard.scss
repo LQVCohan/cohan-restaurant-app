@@ -410,3 +410,36 @@ $il-info: #3b82f6;
     }
   }
 }
+
+.il-card {
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+
+  &__emoji-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .il-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .il-stat-box {
+    appearance: none;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+  }
+
+  .il-stat-label__edit-icon {
+    margin-left: 4px;
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 720px) {
+  .il-card .il-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

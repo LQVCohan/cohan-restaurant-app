@@ -288,3 +288,25 @@ $sl-radius: 8px;
     transform: translateX(100%);
   }
 }
+
+.supply-list-container {
+  .sl-toolbar,
+  .sl-state-box,
+  .sl-skeleton-card {
+    border-radius: 16px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+  }
+
+  .sl-toolbar {
+    padding: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfaf7 100%);
+  }
+
+  .sl-btn-icon:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  button:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.26);
+    outline-offset: 2px;
+  }
+}

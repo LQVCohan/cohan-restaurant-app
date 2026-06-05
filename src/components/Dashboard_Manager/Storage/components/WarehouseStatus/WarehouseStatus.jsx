@@ -62,6 +62,7 @@ const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
               <p className="text-xs text-secondary">{NO_PERMISSION_MESSAGE}</p>
             ) : null}
             <button
+              type="button"
               onClick={() => {
                 if (!canWriteStock) return;
                 onCreatePO?.();
