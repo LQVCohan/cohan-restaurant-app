@@ -6,8 +6,8 @@ import "../../../../styles/Homepage/HeroSection.scss";
 const HERO_IMAGES = [
   {
     id: 1,
-    src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=768&q=80",
-    alt: "Món ngon 1",
+    src: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=1100&q=88",
+    alt: "Mâm món Việt giao nhanh",
   },
   {
     id: 2,
@@ -426,13 +426,12 @@ const HeroSection = ({ onSearch }) => {
           </div>
 
           <h1 className="hero__title">
-            Thưởng thức món ngon <br />
-            <span className="text-highlight">Giao tận nơi</span> cho bạn
+            Món ngon <span className="text-highlight">giao nhanh</span>
+            <br /> đến bạn
           </h1>
 
           <p className="hero__subtitle">
-            Khám phá hàng nghìn món ăn từ các nhà hàng uy tín. Đặt hàng dễ dàng,
-            theo dõi lộ trình và nhận món nóng hổi ngay tại nhà!
+            Khám phá nhà hàng uy tín, đặt món dễ dàng và nhận món nóng hổi tại nhà.
           </p>
 
           <div className="hero__search-box">
@@ -506,21 +505,6 @@ const HeroSection = ({ onSearch }) => {
               </div>
             )}
 
-          {isLocationPickerOpen && selectedLocation && (
-            <LocationPickerMap
-              lat={selectedLocation.lat}
-              lng={selectedLocation.lng}
-              label={
-                isReverseGeocoding
-                  ? "Đang cập nhật địa chỉ..."
-                  : selectedLocation.shortLabel || selectedLocation.label
-              }
-              onChangeLocation={handleChangePickerLocation}
-              onConfirm={handleConfirmPickerLocation}
-              onClose={handleClosePicker}
-            />
-          )}
-
           <div className="hero__stats">
             <div className="hero__stat-item">
               <strong className="stat-num">500+</strong>
@@ -580,6 +564,14 @@ const HeroSection = ({ onSearch }) => {
           </div>
 
           {/* Floating Card 2 */}
+          <div className="hero__float-card float-time">
+            <div className="float-icon">⏱</div>
+            <div className="float-content">
+              <span className="float-title">30 phút</span>
+              <span className="float-desc">Giao siêu tốc</span>
+            </div>
+          </div>
+
           <div className="hero__float-card float-delivery">
             <div className="float-icon">🛵</div>
             <div className="float-content">
@@ -589,6 +581,25 @@ const HeroSection = ({ onSearch }) => {
           </div>
         </div>
       </div>
+
+      {isLocationPickerOpen && selectedLocation && (
+        <div className="hero__modal-backdrop" role="dialog" aria-modal="true">
+          <div className="hero__modal-card">
+            <LocationPickerMap
+              lat={selectedLocation.lat}
+              lng={selectedLocation.lng}
+              label={
+                isReverseGeocoding
+                  ? "Đang cập nhật địa chỉ..."
+                  : selectedLocation.shortLabel || selectedLocation.label
+              }
+              onChangeLocation={handleChangePickerLocation}
+              onConfirm={handleConfirmPickerLocation}
+              onClose={handleClosePicker}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="hero__wave-container">
         <svg

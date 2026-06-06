@@ -290,11 +290,7 @@ const DishGrid = ({
       <div className="dish-grid__container">
         {/* Header */}
         <div className="dish-grid__header">
-          <span className="dish-grid__badge">🔥 Hot Trend</span>
-          <h3 className="dish-grid__title">Thực Đơn Nổi Bật</h3>
-          <p className="dish-grid__subtitle">
-            Những món ăn được yêu thích nhất tuần qua, hương vị tuyệt hảo.
-          </p>
+          <h3 className="dish-grid__title">Thực đơn nổi bật</h3>
         </div>
 
         {/* Content */}
@@ -311,6 +307,10 @@ const DishGrid = ({
                   const availability = getMenuItemAvailability(dish);
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
+                  const restaurantName =
+                    dish.restaurantName ||
+                    dish.restaurant?.name ||
+                    (dish.restaurantId ? `Nhà hàng #${String(dish.restaurantId).slice(-4)}` : "FoodHub Kitchen");
                   const hasVariants = dish.servingVariants?.length > 0;
                   const isAdding = addingDishId === dish.id;
 
@@ -367,10 +367,11 @@ const DishGrid = ({
                         <h4 className="dish-card__name" title={dish.name}>
                           {dish.name}
                         </h4>
-                        <p className="dish-card__desc">
-                          {dish.description ||
-                            "Hương vị tuyệt hảo, nguyên liệu tươi ngon."}
-                        </p>
+                        <p className="dish-card__restaurant">{restaurantName}</p>
+                        <div className="dish-card__meta">
+                          <span>⭐ {dish.point || dish.rate || "4.8"}</span>
+                          {dish.avgPrepTimeMin && <span>{dish.avgPrepTimeMin} phút</span>}
+                        </div>
 
                         {/* Dropdown chọn biến thể */}
                         <div className="dish-card__variant-area">
@@ -413,7 +414,6 @@ const DishGrid = ({
                         {/* Footer: Price + Button */}
                         <div className="dish-card__footer">
                           <div className="dish-card__price-box">
-                            <span className="label">Giá:</span>
                             <span className="price">
                               {price.toLocaleString("vi-VN")} <small>đ</small>
                             </span>
@@ -440,7 +440,8 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               (selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
-                  Không có món ăn thuộc danh mục này.
+                  <strong>Chưa có món phù hợp</strong>
+                  <span>Hãy thử danh mục khác hoặc xem nhà hàng nổi bật bên dưới.</span>
                 </div>
               )}
 
@@ -448,7 +449,8 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               !(selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
-                  Không có món ăn để hiển thị.
+                  <strong>Chưa có món nổi bật</strong>
+                  <span>Thực đơn đang được cập nhật.</span>
                 </div>
               )}
           </div>
