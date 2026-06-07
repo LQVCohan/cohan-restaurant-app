@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import {
   SESSION_ACCESS_TOKEN_KEY,
-  setAuth,
-  getToken,
   clearAuth,
+  getToken,
+  setAuth,
 } from "./authStorage";
 
 describe("authStorage", () => {
@@ -13,12 +13,17 @@ describe("authStorage", () => {
     clearAuth();
   });
 
-  it("stores token in memory and sessionStorage, but not legacy localStorage", () => {
+  it("restores token from sessionStorage after memory token is empty", () => {
     setAuth({ token: "abc" });
     expect(getToken()).toBe("abc");
     expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBe("abc");
-    expect(localStorage.getItem("auth_token")).toBeNull();
-    expect(sessionStorage.getItem("token")).toBeNull();
+
+    vi.resetModules();
+    return import("./authStorage").then((freshStorage) => {
+      expect(freshStorage.getToken()).toBe("abc");
+      expect(localStorage.getItem("auth_token")).toBeNull();
+      expect(sessionStorage.getItem("token")).toBeNull();
+    });
   });
 
   it("clearAuth removes sessionStorage token and legacy keys", () => {
@@ -28,7 +33,9 @@ describe("authStorage", () => {
     localStorage.setItem("auth_remember", "x");
     sessionStorage.setItem("token", "x");
     sessionStorage.setItem("auth_remember_until", "x");
+
     clearAuth();
+
     expect(getToken()).toBeNull();
     expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBeNull();
     expect(localStorage.getItem("auth_token")).toBeNull();
@@ -36,5 +43,13 @@ describe("authStorage", () => {
     expect(localStorage.getItem("auth_remember")).toBeNull();
     expect(sessionStorage.getItem("token")).toBeNull();
     expect(sessionStorage.getItem("auth_remember_until")).toBeNull();
+  });
+
+  it("does not store refresh tokens or new access tokens in localStorage", () => {
+    setAuth({ token: "access-only" });
+
+    expect(localStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBeNull();
+    expect(sessionStorage.getItem("refresh_token")).toBeNull();
+    expect(localStorage.getItem("refresh_token")).toBeNull();
   });
 });

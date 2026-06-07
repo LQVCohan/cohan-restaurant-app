@@ -33,7 +33,7 @@ interface AuthContextValue {
       persistSession?: boolean;
       rememberIdentifier?: boolean;
       identifier?: string;
-    }
+    },
   ) => void;
   logout: () => void;
 }
@@ -58,11 +58,7 @@ function LoadingScreen(): JSX.Element {
   );
 }
 
-function SessionNetworkWarning({
-  message,
-}: {
-  message?: string;
-}): JSX.Element {
+function SessionNetworkWarning({ message }: { message?: string }): JSX.Element {
   return (
     <div className="min-h-[40vh] w-full flex flex-col items-center justify-center px-4 text-center">
       <p className="text-sm font-medium text-amber-700">
@@ -84,6 +80,28 @@ const shouldBlockForNetworkRecovery = ({
   sessionState?: string;
   user: UserLike | null;
 }) => Boolean(token && sessionState === "network_unstable" && !user);
+
+const shouldWaitForSessionRestore = ({
+  token,
+  sessionState,
+  user,
+}: {
+  token: string | null;
+  sessionState?: string;
+  user: UserLike | null;
+}) => Boolean(sessionState === "restoring" || (token && !user));
+
+const shouldRedirectToLogin = ({
+  loading,
+  token,
+  sessionState,
+  isAuthenticated,
+}: {
+  loading: boolean;
+  token: string | null;
+  sessionState?: string;
+  isAuthenticated: boolean;
+}) => !loading && !token && sessionState === "anonymous" && !isAuthenticated;
 
 /** ---- ProtectedRoute ----
  * - Yêu cầu đã đăng nhập
@@ -112,7 +130,13 @@ export default function ProtectedRoute(): JSX.Element {
     return <SessionNetworkWarning message={sessionWarning} />;
   }
 
-  if (!isAuthenticated) {
+  if (shouldWaitForSessionRestore({ token, sessionState, user })) {
+    return <LoadingScreen />;
+  }
+
+  if (
+    shouldRedirectToLogin({ loading, token, sessionState, isAuthenticated })
+  ) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
@@ -149,7 +173,13 @@ export function RequireRole({
     return <SessionNetworkWarning message={sessionWarning} />;
   }
 
-  if (!isAuthenticated) {
+  if (shouldWaitForSessionRestore({ token, sessionState, user })) {
+    return <LoadingScreen />;
+  }
+
+  if (
+    shouldRedirectToLogin({ loading, token, sessionState, isAuthenticated })
+  ) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
@@ -163,8 +193,8 @@ export function RequireRole({
   const allowedList: string[] = Array.isArray(allowed)
     ? allowed.map((r) => String(r).toLowerCase())
     : typeof allowed === "string"
-    ? [String(allowed).toLowerCase()]
-    : [];
+      ? [String(allowed).toLowerCase()]
+      : [];
 
   if (allowedList.length > 0 && !allowedList.includes(roleVal)) {
     return <Navigate to="/403" replace state={{ from: location }} />;

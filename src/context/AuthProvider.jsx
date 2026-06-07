@@ -4,11 +4,14 @@ import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
-import {
-  readStorageValue,
-} from "@/lib/browserStorage";
+import { readStorageValue } from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
-import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
+import {
+  clearAuth,
+  clearLegacyAuthStorage,
+  getToken,
+  setAuth,
+} from "@/lib/authStorage";
 import { getLogoutUrl } from "@/lib/apiBaseUrl";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
@@ -135,9 +138,11 @@ function getNetworkStatusCode(error) {
 }
 
 function isAuthFailure(error) {
-  const gqlErrors = Array.isArray(error?.graphQLErrors) ? error.graphQLErrors : [];
+  const gqlErrors = Array.isArray(error?.graphQLErrors)
+    ? error.graphQLErrors
+    : [];
   const hasAuthCode = gqlErrors.some((item) =>
-    AUTH_ERROR_CODES.has(String(item?.extensions?.code || "").toUpperCase())
+    AUTH_ERROR_CODES.has(String(item?.extensions?.code || "").toUpperCase()),
   );
   if (hasAuthCode) return true;
 
@@ -191,17 +196,9 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     status: rawUser?.status || fallbackUser?.status || "active",
     restaurantForStaff,
     employmentType:
-      rawUser?.employmentType ||
-      fallbackUser?.employmentType ||
-      "",
-    department:
-      rawUser?.department ||
-      fallbackUser?.department ||
-      "",
-    positionTitle:
-      rawUser?.positionTitle ||
-      fallbackUser?.positionTitle ||
-      "",
+      rawUser?.employmentType || fallbackUser?.employmentType || "",
+    department: rawUser?.department || fallbackUser?.department || "",
+    positionTitle: rawUser?.positionTitle || fallbackUser?.positionTitle || "",
     refRestaurants: customerRefRestaurants,
   };
 
@@ -229,6 +226,34 @@ export const AuthProvider = ({ children }) => {
   const [refRestaurant, setRefRestaurant] = useState([]);
   const refreshRecoveryAttemptedRef = React.useRef(false);
   const refreshTimerRef = React.useRef(null);
+  const tokenRef = React.useRef(token);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
+  const clearSessionState = useCallback(() => {
+    clearAuth();
+    clearPersistedCart();
+    setToken(null);
+    setUser(null);
+    setRestaurants([]);
+    setRefRestaurant([]);
+    setSessionState("anonymous");
+    setSessionWarning("");
+    setLoading(false);
+  }, []);
+
+  const applyMeSession = useCallback((me) => {
+    if (!me) return false;
+    setSessionState("authenticated");
+    setSessionWarning("");
+    setUser((prev) => normalizeUserModel(me, prev));
+    setLoading(false);
+    refreshRecoveryAttemptedRef.current = false;
+    return true;
+  }, []);
+
   const applyRefreshedSession = useCallback((payload) => {
     if (!payload?.token) return false;
     setAuth({ token: payload.token });
@@ -236,42 +261,71 @@ export const AuthProvider = ({ children }) => {
     if (payload.user) setUser((prev) => normalizeUserModel(payload.user, prev));
     setSessionState("authenticated");
     setSessionWarning("");
+    setLoading(false);
+    refreshRecoveryAttemptedRef.current = false;
     return true;
   }, []);
 
   useEffect(() => {
     let alive = true;
     clearLegacyAuthStorage();
+
+    const existingToken = getToken();
+    if (existingToken) {
+      setAuth({ token: existingToken });
+      setToken(existingToken);
+      setSessionState("restoring");
+      setLoading(true);
+    }
+
     refreshAccessTokenOnce()
       .then((payload) => {
         if (!alive) return;
-        if (!applyRefreshedSession(payload)) setSessionState("anonymous");
+        if (applyRefreshedSession(payload)) return;
+
+        if (!existingToken) {
+          setSessionState("anonymous");
+          setLoading(false);
+          return;
+        }
+
+        setSessionState("restoring");
       })
-      .finally(() => {
-        if (alive) setLoading(false);
+      .catch(() => {
+        if (!alive) return;
+        if (!existingToken) {
+          setSessionState("anonymous");
+          setLoading(false);
+          return;
+        }
+        setSessionState("restoring");
       });
+
     return () => {
       alive = false;
     };
   }, [applyRefreshedSession]);
 
   const isAuthenticated = !!token;
-  const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
+  const roleName = String(
+    user?.roleName || user?.role?.slug || "",
+  ).toLowerCase();
   const managerId = user?.id;
-  const { data: adminRestaurantsData, loading: adminRestaurantsLoading } = useQuery(
-    GET_ADMIN_RESTAURANTS,
-    {
+  const { data: adminRestaurantsData, loading: adminRestaurantsLoading } =
+    useQuery(GET_ADMIN_RESTAURANTS, {
       variables: { limit: 100 },
       skip: roleName !== "admin",
-    }
+    });
+  const { data: mgrData, loading: managerRestaurantsLoading } = useQuery(
+    GET_MANAGER_RESTAURANTS,
+    {
+      variables: { managerId, limit: 50 },
+      skip:
+        !managerId ||
+        roleName === "admin" ||
+        !["manager", "hr", "accountant"].includes(roleName),
+    },
   );
-  const { data: mgrData, loading: managerRestaurantsLoading } = useQuery(GET_MANAGER_RESTAURANTS, {
-    variables: { managerId, limit: 50 },
-    skip:
-      !managerId ||
-      roleName === "admin" ||
-      !["manager", "hr", "accountant"].includes(roleName),
-  });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
     skip: !token,
@@ -279,49 +333,38 @@ export const AuthProvider = ({ children }) => {
     notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
       const me = data?.me;
-      if (!me) return;
-      setSessionState("authenticated");
-      setSessionWarning("");
-      setUser((prev) => {
-        const merged = normalizeUserModel(me, prev);
-        return merged;
-      });
+      if (!me) {
+        if (token) setLoading(false);
+        return;
+      }
+      applyMeSession(me);
     },
     onError: (error) => {
       if (isAuthFailure(error)) {
         if (!token || refreshRecoveryAttemptedRef.current) {
-          clearLegacyAuthStorage();
-          clearPersistedCart();
-          setToken(null);
-          setUser(null);
-          setRestaurants([]);
-          setRefRestaurant([]);
-          setSessionState("anonymous");
-          setSessionWarning("");
+          clearSessionState();
           return;
         }
 
         refreshRecoveryAttemptedRef.current = true;
         refreshAccessTokenOnce().then((payload) => {
           if (!applyRefreshedSession(payload)) {
-            clearLegacyAuthStorage();
-            clearPersistedCart();
-            setToken(null);
-            setUser(null);
-            setRestaurants([]);
-            setRefRestaurant([]);
-            setSessionState("anonymous");
-            setSessionWarning("");
+            clearSessionState();
             return;
           }
-          refetchMe().finally(() => {
-            refreshRecoveryAttemptedRef.current = false;
-          });
+          refetchMe()
+            .then((result) => applyMeSession(result?.data?.me))
+            .finally(() => {
+              refreshRecoveryAttemptedRef.current = false;
+              setLoading(false);
+            });
         });
         return;
       }
       setSessionState("network_unstable");
-      setSessionWarning("Mạng không ổn định. Đang cố khôi phục phiên đăng nhập...");
+      setSessionWarning(
+        "Mạng không ổn định. Đang cố khôi phục phiên đăng nhập...",
+      );
     },
   });
 
@@ -331,10 +374,15 @@ export const AuthProvider = ({ children }) => {
 
     const handleOnline = () => {
       setSessionState("restoring");
-      refetchMe().catch(() => {
-        setSessionState("network_unstable");
-        setSessionWarning("Mạng chưa ổn định. Vui lòng kiểm tra kết nối và thử lại.");
-      });
+      refetchMe()
+        .then((result) => applyMeSession(result?.data?.me))
+        .catch(() => {
+          setSessionState("network_unstable");
+          setSessionWarning(
+            "Mạng chưa ổn định. Vui lòng kiểm tra kết nối và thử lại.",
+          );
+        })
+        .finally(() => setLoading(false));
     };
 
     window.addEventListener("online", handleOnline);
@@ -343,15 +391,49 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener("online", handleOnline);
       window.clearTimeout(retryTimer);
     };
-  }, [token, sessionState, refetchMe]);
+  }, [token, sessionState, refetchMe, applyMeSession]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handlePageShow = (event) => {
+      if (!event?.persisted) return;
+
+      const restoredToken = getToken();
+      if (!restoredToken || tokenRef.current) return;
+
+      setAuth({ token: restoredToken });
+      setToken(restoredToken);
+      setSessionState("restoring");
+      setSessionWarning("");
+      setLoading(true);
+
+      if (typeof refetchMe === "function") {
+        refetchMe()
+          .then((result) => applyMeSession(result?.data?.me))
+          .catch(() => {
+            setSessionState("network_unstable");
+            setSessionWarning(
+              "Mạng chưa ổn định. Vui lòng kiểm tra kết nối và thử lại.",
+            );
+          })
+          .finally(() => setLoading(false));
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [refetchMe, applyMeSession]);
 
   const restaurantsLoading =
     (roleName === "admin" && adminRestaurantsLoading) ||
-    (["manager", "hr", "accountant"].includes(roleName) && managerRestaurantsLoading);
+    (["manager", "hr", "accountant"].includes(roleName) &&
+      managerRestaurantsLoading);
 
   useEffect(() => {
     if (isStaffAccessRole(roleName)) {
-      const staffRestaurantId = user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
+      const staffRestaurantId =
+        user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
       if (staffRestaurantId) {
         setRestaurants([{ id: staffRestaurantId }]);
         return;
@@ -362,7 +444,9 @@ export const AuthProvider = ({ children }) => {
 
     if (roleName === "admin") {
       if (adminRestaurantsData?.restaurants) {
-        setRestaurants(adminRestaurantsData.restaurants.edges.map((e) => e.node));
+        setRestaurants(
+          adminRestaurantsData.restaurants.edges.map((e) => e.node),
+        );
         return;
       }
       if (!adminRestaurantsLoading) setRestaurants([]);
@@ -462,14 +546,16 @@ export const AuthProvider = ({ children }) => {
       setSessionState("authenticated");
       setSessionWarning("");
     },
-    [user]
+    [user],
   );
 
   // ✅ Lấy danh sách nhà hàng mà khách hàng có thể truy cập
 
   // ✅ Logout
   const logout = useCallback(() => {
-    fetch(getLogoutUrl(), { method: "POST", credentials: "include" }).catch(() => {});
+    fetch(getLogoutUrl(), { method: "POST", credentials: "include" }).catch(
+      () => {},
+    );
     setToken(null);
     setUser(null);
     setRestaurants([]);
@@ -485,7 +571,8 @@ export const AuthProvider = ({ children }) => {
     () => ({
       token,
       user,
-      loading: loading || (!!token && sessionState === "restoring" && meLoading),
+      loading:
+        loading || (!!token && sessionState === "restoring" && meLoading),
       sessionState,
       sessionWarning,
       isAuthenticated,
@@ -494,7 +581,8 @@ export const AuthProvider = ({ children }) => {
       restaurants,
       restaurantsLoading,
       refRestaurant,
-      rememberedLoginIdentifier: readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
+      rememberedLoginIdentifier:
+        readStorageValue(TOKEN_KEYS.rememberedIdentifier) || "",
     }),
     [
       token,
@@ -509,7 +597,7 @@ export const AuthProvider = ({ children }) => {
       restaurants,
       restaurantsLoading,
       refRestaurant,
-    ]
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
