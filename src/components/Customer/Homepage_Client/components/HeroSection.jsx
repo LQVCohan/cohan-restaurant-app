@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Clock, LocateFixed, Smile, Sparkles, Star, Truck, Users, Utensils } from "lucide-react";
 import LocationPickerMap from "./LocationPickerMap";
 import "../../../../styles/Homepage/HeroSection.scss";
 
@@ -421,7 +422,7 @@ const HeroSection = ({ onSearch }) => {
         {/* --- LEFT CONTENT (Giữ nguyên) --- */}
         <div className="hero__content">
           <div className="hero__badge">
-            <span className="hero__badge-icon">🚀</span>
+            <Sparkles className="hero__badge-icon" aria-hidden="true" />
             <span>Giao hàng nhanh trong 30 phút</span>
           </div>
 
@@ -470,6 +471,7 @@ const HeroSection = ({ onSearch }) => {
               className="hero__btn-location"
               type="button"
             >
+              <LocateFixed className="hero__btn-icon" aria-hidden="true" />
               Vị trí hiện tại
             </button>
             <button onClick={handleSearch} className="hero__btn-search" type="button">
@@ -507,16 +509,19 @@ const HeroSection = ({ onSearch }) => {
 
           <div className="hero__stats">
             <div className="hero__stat-item">
+              <Users className="stat-icon" aria-hidden="true" />
               <strong className="stat-num">500+</strong>
               <span className="stat-label">Đối tác</span>
             </div>
             <div className="hero__stat-divider"></div>
             <div className="hero__stat-item">
+              <Utensils className="stat-icon" aria-hidden="true" />
               <strong className="stat-num">10k+</strong>
               <span className="stat-label">Món ăn</span>
             </div>
             <div className="hero__stat-divider"></div>
             <div className="hero__stat-item">
+              <Smile className="stat-icon" aria-hidden="true" />
               <strong className="stat-num">50k+</strong>
               <span className="stat-label">Khách hàng</span>
             </div>
@@ -556,7 +561,7 @@ const HeroSection = ({ onSearch }) => {
 
           {/* Floating Card 1 */}
           <div className="hero__float-card float-review">
-            <div className="float-icon">⭐️</div>
+            <div className="float-icon"><Star aria-hidden="true" /></div>
             <div className="float-content">
               <span className="float-title">4.9/5</span>
               <span className="float-desc">Đánh giá tốt</span>
@@ -565,7 +570,7 @@ const HeroSection = ({ onSearch }) => {
 
           {/* Floating Card 2 */}
           <div className="hero__float-card float-time">
-            <div className="float-icon">⏱</div>
+            <div className="float-icon"><Clock aria-hidden="true" /></div>
             <div className="float-content">
               <span className="float-title">30 phút</span>
               <span className="float-desc">Giao siêu tốc</span>
@@ -573,7 +578,7 @@ const HeroSection = ({ onSearch }) => {
           </div>
 
           <div className="hero__float-card float-delivery">
-            <div className="float-icon">🛵</div>
+            <div className="float-icon"><Truck aria-hidden="true" /></div>
             <div className="float-content">
               <span className="float-title">Freeship</span>
               <span className="float-desc">Đơn từ 0đ</span>

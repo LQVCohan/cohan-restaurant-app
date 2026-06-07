@@ -1,32 +1,33 @@
 import React from "react";
+import { CalendarCheck, CreditCard, Store, UtensilsCrossed } from "lucide-react";
 import "../../../../styles/Homepage/HowItWorks.scss";
 
 const HowItWorks = () => {
   const steps = [
     {
       id: 1,
-      icon: "🏪",
+      Icon: Store,
       title: "Chọn nhà hàng",
       description:
         "Khám phá hàng ngàn món ăn ngon từ các nhà hàng uy tín quanh bạn.",
     },
     {
       id: 2,
-      icon: "📅",
+      Icon: CalendarCheck,
       title: "Đặt bàn / Đặt món",
       description:
         "Chọn thời gian giữ chỗ hoặc thêm món ăn yêu thích vào giỏ hàng.",
     },
     {
       id: 3,
-      icon: "💳",
+      Icon: CreditCard,
       title: "Thanh toán an toàn",
       description:
         "Thanh toán nhanh chóng, bảo mật qua ví điện tử hoặc thẻ ngân hàng.",
     },
     {
       id: 4,
-      icon: "😋",
+      Icon: UtensilsCrossed,
       title: "Thưởng thức",
       description:
         "Nhận món ăn giao tận nơi hoặc đến nhà hàng thưởng thức ngay!",
@@ -61,16 +62,19 @@ const HowItWorks = () => {
         </div>
 
         <div className="how-it-works__grid">
-          {steps.map((step) => (
+          {steps.map((step) => {
+            const StepIcon = step.Icon;
+            return (
             <div key={step.id} className="how-it-works__card">
               <div className="how-it-works__step-number">{step.id}</div>
               <div className="how-it-works__icon-wrapper">
-                <span className="how-it-works__icon">{step.icon}</span>
+                <StepIcon className="how-it-works__icon" aria-hidden="true" />
               </div>
               <h4 className="how-it-works__step-title">{step.title}</h4>
               <p className="how-it-works__step-desc">{step.description}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

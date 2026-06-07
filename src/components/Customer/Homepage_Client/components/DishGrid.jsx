@@ -1,6 +1,7 @@
 import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
+import { Star, UtensilsCrossed } from "lucide-react";
 import {
   buildFoodDetailPath,
   buildFoodDetailState,
@@ -179,6 +180,14 @@ const DishGrid = ({
     setSelectedVariantKeyByDish((prev) => ({ ...prev, [dishId]: variantKey }));
   };
 
+
+  const scrollToRestaurants = () => {
+    document.getElementById("restaurants")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   const handleOpenFoodDetail = (dish) => {
     if (!dish?.id) return;
     const selectedVariantKey = getSelectedVariantKey(dish);
@@ -316,7 +325,7 @@ const DishGrid = ({
 
         {/* Content */}
         {error ? (
-          <div className="dish-grid__error">⚠️ Có lỗi khi tải món ăn.</div>
+          <div className="dish-grid__error">Có lỗi khi tải món ăn.</div>
         ) : (
           <div className="dish-grid__list">
             {loading
@@ -331,7 +340,7 @@ const DishGrid = ({
                   const restaurantName =
                     dish.restaurantName ||
                     dish.restaurant?.name ||
-                    (dish.restaurantId ? `Nhà hàng #${String(dish.restaurantId).slice(-4)}` : "FoodHub Kitchen");
+                    "Nhà hàng đang cập nhật";
                   const hasVariants = dish.servingVariants?.length > 0;
                   const isAdding = addingDishId === dish.id;
 
@@ -373,7 +382,7 @@ const DishGrid = ({
                         />
                         {dish.point && (
                           <div className="dish-card__rating">
-                            ⭐ {dish.point}
+                            <Star aria-hidden="true" /> {dish.point}
                           </div>
                         )}
                         {availability?.label && (
@@ -390,7 +399,7 @@ const DishGrid = ({
                         </h4>
                         <p className="dish-card__restaurant">{restaurantName}</p>
                         <div className="dish-card__meta">
-                          <span>⭐ {dish.point || dish.rate || "4.8"}</span>
+                          <span className="dish-card__meta-item"><Star aria-hidden="true" /> {dish.point || dish.rate || "4.8"}</span>
                           {dish.avgPrepTimeMin && <span>{dish.avgPrepTimeMin} phút</span>}
                         </div>
 
@@ -467,8 +476,12 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               (selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
+                  <span className="dish-grid__empty-icon" aria-hidden="true"><UtensilsCrossed /></span>
                   <strong>Chưa có món phù hợp</strong>
                   <span>Hãy thử danh mục khác hoặc xem nhà hàng nổi bật bên dưới.</span>
+                  <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>
+                    Xem nhà hàng nổi bật
+                  </button>
                 </div>
               )}
 
@@ -476,8 +489,12 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               !(selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
+                  <span className="dish-grid__empty-icon" aria-hidden="true"><UtensilsCrossed /></span>
                   <strong>Chưa có món nổi bật</strong>
                   <span>Thực đơn đang được cập nhật.</span>
+                  <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>
+                    Xem nhà hàng nổi bật
+                  </button>
                 </div>
               )}
           </div>

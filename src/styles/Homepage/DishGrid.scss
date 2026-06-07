@@ -11,10 +11,10 @@ $cream: #fff8ef;
   width: 100%;
   overflow: hidden;
   background: #ffffff;
-  padding: 8px 0 22px;
+  padding: 6px 0 8px;
 
   &__container {
-    max-width: 1440px;
+    max-width: 1360px;
     margin: 0 auto;
     padding: 0 32px;
     @media (max-width: 768px) { padding: 0 20px; }
@@ -57,19 +57,58 @@ $cream: #fff8ef;
 
   &__empty {
     grid-column: 1 / -1;
-    min-height: 96px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 5px;
-    padding: 18px 22px;
+    width: min(100%, 640px);
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-areas: "icon title cta" "icon subtitle cta";
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 3px;
+    justify-self: center;
+    padding: 14px 16px;
     border-radius: 20px;
     color: $text-sub;
-    background: linear-gradient(135deg, #fff7ed, #fff);
-    border: 1px dashed rgba(255, 102, 0, 0.25);
+    background: linear-gradient(135deg, rgba(255, 250, 245, 0.98), #fff);
+    border: 1px solid rgba(92, 64, 51, 0.11);
+    box-shadow: 0 14px 32px rgba(92, 45, 12, 0.07);
 
-    strong { color: $text-main; font-size: 1rem; }
-    span { font-size: 0.92rem; }
+    strong { grid-area: title; color: $text-main; font-size: 1rem; line-height: 1.2; }
+    > span:not(.dish-grid__empty-icon) { grid-area: subtitle; font-size: 0.9rem; line-height: 1.35; }
+  }
+
+  &__empty-icon {
+    grid-area: icon;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: #fff1e6;
+    color: $primary;
+    font-size: 1.1rem;
+
+    svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 2.2;
+    }
+  }
+
+  &__empty-cta {
+    grid-area: cta;
+    border: 0;
+    border-radius: 13px;
+    padding: 10px 14px;
+    background: $primary;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 900;
+    white-space: nowrap;
+    box-shadow: 0 12px 24px rgba(255, 102, 0, 0.22);
+
+    &:hover { background: $primary-hover; }
   }
 
   &__wave-bottom { display: none; }
@@ -122,7 +161,14 @@ $cream: #fff8ef;
       backdrop-filter: blur(10px);
     }
 
-    &__rating { bottom: 9px; }
+    &__rating {
+      bottom: 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+
+      svg { width: 12px; height: 12px; color: $primary; fill: rgba(255, 102, 0, 0.16); }
+    }
     &__availability { top: 9px; color: #9a3412; }
 
     &__body {
@@ -163,6 +209,14 @@ $cream: #fff8ef;
       font-size: 0.78rem;
       font-weight: 800;
       margin-bottom: 6px;
+    }
+
+    &__meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+
+      svg { width: 12px; height: 12px; fill: rgba(255, 102, 0, 0.16); }
     }
 
     &__variant-area {
@@ -259,6 +313,15 @@ $cream: #fff8ef;
     .w-1-3 { width: 36%; }
   }
 
+  @media (max-width: 620px) {
+    &__empty {
+      grid-template-columns: 42px minmax(0, 1fr);
+      grid-template-areas: "icon title" "icon subtitle" "cta cta";
+    }
+
+    &__empty-cta { width: 100%; }
+  }
+
   @media (max-width: 430px) {
     .dish-card {
       grid-template-columns: 128px minmax(0, 1fr);
@@ -269,3 +332,11 @@ $cream: #fff8ef;
 }
 
 @keyframes pulse { to { background-position: -220% 50%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dish-grid .dish-card,
+  .dish-grid .dish-card__img,
+  .dish-grid__empty-cta {
+    transition: none;
+  }
+}
