@@ -1,200 +1,99 @@
 @use "../styles/variables.scss" as *;
 @use "../styles/mixins.scss" as *;
 
-$manager-sidebar-width: 280px;
+$manager-sidebar-collapsed: 72px;
+$manager-sidebar-expanded: 272px;
 $manager-header-height: 64px;
-$manager-bg: #f6efe5;
-$manager-bg-deep: #efe1cd;
-$manager-paper: #fffaf3;
-$manager-border: #eadfce;
-$manager-text: #2f2418;
-$manager-muted: #766755;
-$manager-accent: #9a5b16;
-$manager-accent-dark: #6f3f0f;
+$manager-bg: #fff7ed;
+$manager-bg-soft: #f8fafc;
+$manager-paper: #ffffff;
+$manager-border: #e2e8f0;
+$manager-text: #0f172a;
+$manager-muted: #64748b;
+$manager-accent: #f97316;
+$manager-accent-dark: #c2410c;
 
 .manager-layout {
+  --sidebar-width: #{$manager-sidebar-collapsed};
+  --manager-header-height: #{$manager-header-height};
+
   position: relative;
+  display: flex;
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: hidden;
   background:
-    radial-gradient(circle at 12% 5%, rgba(194, 123, 34, 0.14), transparent 28rem),
-    radial-gradient(circle at 90% 0%, rgba(111, 63, 15, 0.09), transparent 26rem),
-    linear-gradient(180deg, $manager-paper 0%, $manager-bg 48%, $manager-bg-deep 100%);
-  overflow: hidden;
+    radial-gradient(circle at 10% 0%, rgba(249, 115, 22, 0.13), transparent 28rem),
+    radial-gradient(circle at 95% 0%, rgba(251, 146, 60, 0.1), transparent 26rem),
+    linear-gradient(180deg, $manager-bg 0%, $manager-bg-soft 52%, #eef6ff 100%);
 
   &.sidebar-open {
-    .manager-layout__main {
-      @include desktop {
-        margin-left: $manager-sidebar-width;
-      }
-    }
-
-    .manager-layout__header,
-    .header {
-      @include desktop {
-        left: $manager-sidebar-width;
-        width: calc(100% - #{$manager-sidebar-width});
-      }
-    }
-
-    .manager-layout__content {
-      @include desktop {
-        left: $manager-sidebar-width;
-        width: calc(100vw - #{$manager-sidebar-width});
-      }
-    }
-
-    .sidebar {
-      transform: translateX(0);
-      visibility: visible;
-    }
+    --sidebar-width: #{$manager-sidebar-expanded};
   }
 
   .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    height: 100dvh;
-    width: $manager-sidebar-width;
-    z-index: 1001;
-    transform: translateX(-100%);
-    visibility: hidden;
+    flex: 0 0 var(--sidebar-width);
+    width: var(--sidebar-width);
     transition:
+      width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
       transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
       visibility 0.24s ease;
-
-    @include mobile {
-      transform: translateX(-100%);
-      visibility: hidden;
-    }
   }
 
   &__main {
     position: relative;
-    width: 100%;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: calc(100% - var(--sidebar-width));
+    min-width: 0;
     min-height: 100vh;
     min-height: 100dvh;
-    @include flex-column;
-    transition: margin-left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
     overflow: hidden;
   }
 
   &__header {
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 0;
-    right: 0;
     z-index: 999;
+    flex: 0 0 $manager-header-height;
+    width: 100%;
+    min-width: 0;
     height: $manager-header-height;
-    transition:
-      left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-      width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   &__content {
-    position: fixed;
-    top: $manager-header-height;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100vw;
-    min-height: calc(100vh - #{$manager-header-height});
-    min-height: calc(100dvh - #{$manager-header-height});
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     background:
-      radial-gradient(circle at 18% 0%, rgba(247, 223, 189, 0.36), transparent 28rem),
-      linear-gradient(180deg, rgba(255, 250, 243, 0.92), rgba(246, 239, 229, 0.98));
+      radial-gradient(circle at 18% 0%, rgba(255, 237, 213, 0.72), transparent 28rem),
+      linear-gradient(180deg, rgba(255, 247, 237, 0.94), rgba(248, 250, 252, 0.98));
     @include custom-scrollbar;
-    padding: clamp(1rem, 2vw, 1.65rem);
-    transition:
-      left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-      width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+    padding: clamp(1rem, 2vw, 1.5rem);
 
     .manager-page-shell {
       --manager-accent-a: #{$manager-accent};
       --manager-accent-b: #{$manager-accent-dark};
-      --manager-soft-accent: rgba(154, 91, 22, 0.13);
+      --manager-soft-accent: rgba(249, 115, 22, 0.12);
       display: flex;
       flex-direction: column;
       gap: 1rem;
       width: min(100%, 1500px);
+      min-width: 0;
       margin: 0 auto;
 
-      &__hero {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: 14px;
-        padding: 18px 22px;
-        border-radius: 22px;
-        border: 1px solid rgba(218, 199, 173, 0.88);
-        background:
-          radial-gradient(circle at top right, rgba(247, 223, 189, 0.72), transparent 42%),
-          linear-gradient(135deg, rgba(255, 252, 247, 0.98), rgba(249, 240, 228, 0.96));
-        box-shadow: 0 18px 38px rgba(75, 56, 32, 0.1);
-      }
-
-      .hero-badge {
-        display: grid;
-        place-items: center;
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
-        color: #fff;
-        font-size: 20px;
-        background: linear-gradient(135deg, var(--manager-accent-a) 0%, var(--manager-accent-b) 100%);
-        box-shadow: 0 10px 20px rgba(154, 91, 22, 0.24);
-      }
-
-      .hero-text {
-        h1 {
-          margin: 0;
-          color: $manager-text;
-          font-size: clamp(1.15rem, 2vw, 1.6rem);
-          letter-spacing: -0.03em;
-          text-wrap: balance;
-        }
-
-        p {
-          margin: 0.25rem 0 0;
-          color: $manager-muted;
-          font-size: 0.92rem;
-          line-height: 1.55;
-          text-wrap: pretty;
-        }
-      }
-
-      .hero-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: flex-end;
-
-        span {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 10px;
-          border: 1px solid rgba(154, 91, 22, 0.18);
-          border-radius: 999px;
-          color: $manager-accent-dark;
-          background: var(--manager-soft-accent);
-          font-size: 0.76rem;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-      }
-
       &__body {
-        --manager-radius: 16px;
+        min-width: 0;
 
         .ant-card {
           border-color: $manager-border;
-          border-radius: var(--manager-radius);
-          box-shadow: 0 12px 26px rgba(75, 56, 32, 0.08);
+          border-radius: 16px;
+          box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
         }
 
         .ant-table-wrapper,
@@ -203,21 +102,40 @@ $manager-accent-dark: #6f3f0f;
         }
       }
     }
+  }
 
-    @include mobile {
+  @media (max-width: 768px) {
+    --sidebar-width: 0px;
+
+    &.sidebar-open {
+      --sidebar-width: 0px;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(100%, 22rem);
+      height: 100vh;
+      height: 100dvh;
+      transform: translate3d(-100%, 0, 0);
+      visibility: hidden;
+      z-index: 1001;
+    }
+
+    &.sidebar-open .sidebar {
+      transform: translate3d(0, 0, 0);
+      visibility: visible;
+    }
+
+    &__main,
+    &__header,
+    &__content {
+      width: 100%;
+    }
+
+    &__content {
       padding: 0.85rem;
-
-      .manager-page-shell {
-        &__hero {
-          grid-template-columns: 1fr;
-          align-items: flex-start;
-          padding: 14px;
-        }
-
-        .hero-chips {
-          justify-content: flex-start;
-        }
-      }
     }
   }
 }
@@ -226,8 +144,8 @@ $manager-accent-dark: #6f3f0f;
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at 12% 20%, rgba(154, 91, 22, 0.18), transparent 34%),
-    rgba(47, 36, 24, 0.46);
+    radial-gradient(circle at 12% 20%, rgba(249, 115, 22, 0.18), transparent 34%),
+    rgba(15, 23, 42, 0.46);
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
@@ -241,7 +159,7 @@ $manager-accent-dark: #6f3f0f;
     visibility: visible;
   }
 
-  @include desktop {
+  @media (min-width: 769px) {
     display: none;
   }
 }

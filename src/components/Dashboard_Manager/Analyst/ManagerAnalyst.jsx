@@ -1,10 +1,22 @@
 import React, { useMemo } from "react";
-import { Download, Calendar, RefreshCw, Store } from "lucide-react";
-import { DollarSign, Users, ShoppingBag, Star } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Calendar,
+  Clock3,
+  Download,
+  DollarSign,
+  Megaphone,
+  RefreshCw,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Store,
+  Users,
+} from "lucide-react";
 import { useAnalyst } from "../../../hooks/useAnalyst";
 import KPIInsightCard from "./components/KPIInsightCard";
 import RevenueAnalyticsChart from "./components/RevenueAnalyticsChart";
-import StrategyAIRecommendation from "./components/StrategyAIRecommendation";
 import MenuEngineeringMatrix from "./components/MenuEngineeringMatrix";
 import SmartFeedbackAnalysis from "./components/SmartFeedbackAnalysis";
 import SmartOccupancyHeatmap from "./components/SmartOccupancyHeatmap";
@@ -13,7 +25,6 @@ import DemandForecastWidget from "./components/DemandForecastWidget";
 import StaffSchedulingAssistantWidget from "./components/StaffSchedulingAssistantWidget";
 import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistantWidget";
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
-import BusinessOperationsOverview from "./components/BusinessOperationsOverview";
 import "./ManagerAnalyst.scss";
 
 const formatVnd = (value) =>
@@ -31,6 +42,140 @@ const calculateTrendProgress = (trend = []) => {
 
   if (!totals.previous) return null;
   return clamp((totals.current / totals.previous) * 100);
+};
+
+
+const REQUEST_STATUS_LABELS = {
+  PENDING: "Chờ xử lý",
+  ACKNOWLEDGED: "Đã nhận",
+};
+
+const REQUEST_TYPE_LABELS = {
+  PAYMENT_REQUEST: "Yêu cầu thanh toán",
+  STAFF_CALL: "Gọi nhân viên",
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
+const navigateManager = (page, query = {}, source = "manager-analytics") => {
+  window.dispatchEvent(new CustomEvent("manager:navigate", {
+    detail: { page, query, source },
+  }));
+};
+
+const EmptyState = ({ icon: Icon = Sparkles, title, description, actionLabel, onAction }) => (
+  <div className="analytics-empty-state">
+    <span className="analytics-empty-state__icon"><Icon size={16} /></span>
+    <div>
+      <strong>{title}</strong>
+      <p>{description}</p>
+      {actionLabel && onAction ? (
+        <button type="button" onClick={onAction}>{actionLabel}</button>
+      ) : null}
+    </div>
+  </div>
+);
+
+const ActionCenter = ({ actions, serviceRequests, recentOrders, loading, error, onRefreshRequests }) => {
+  const queue = serviceRequests?.length ? serviceRequests.slice(0, 5) : [];
+  const orderQueue = !queue.length ? recentOrders?.slice(0, 4) || [] : [];
+
+  return (
+    <div className="action-center-grid">
+      <div className="action-center-panel action-center-panel--primary">
+        <div className="compact-card-header">
+          <div>
+            <h3>Trung tâm hành động hôm nay</h3>
+            <p>Các việc cần xử lý trước dựa trên đơn hàng, nhân sự, tồn kho và khuyến mãi.</p>
+          </div>
+          <span className="action-center-count">{actions.length} ưu tiên</span>
+        </div>
+
+        <div className="action-list">
+          {actions.map((action) => (
+            <article key={action.title} className={`action-card action-card--${action.level}`}>
+              <span className="action-card__icon"><action.icon size={18} /></span>
+              <div className="action-card__body">
+                <div className="action-card__topline">
+                  <span className={`priority-badge priority-badge--${action.level}`}>{action.badge}</span>
+                  <small>{action.source}</small>
+                </div>
+                <h4>{action.title}</h4>
+                <p>{action.description}</p>
+                <button type="button" onClick={action.onClick}>
+                  {action.cta} <ArrowRight size={14} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="action-center-panel action-center-panel--queue">
+        <div className="compact-card-header compact-card-header--inline">
+          <div>
+            <h3>{queue.length ? "Hàng đợi yêu cầu khách" : "Đơn mới gần đây"}</h3>
+            <p>{queue.length ? "Yêu cầu từ bàn cần phản hồi nhanh." : "Theo dõi các đơn mới để giữ nhịp vận hành."}</p>
+          </div>
+          <button type="button" className="ghost-refresh" onClick={onRefreshRequests} disabled={loading}>
+            <RefreshCw size={14} />
+          </button>
+        </div>
+
+        {loading ? <EmptyState icon={Clock3} title="Đang tải hàng đợi" description="Hệ thống đang cập nhật yêu cầu khách mới nhất." /> : null}
+        {!loading && error ? <EmptyState icon={AlertTriangle} title="Chưa tải được hàng đợi" description="Kiểm tra kết nối hoặc thử làm mới lại dữ liệu yêu cầu khách." actionLabel="Thử lại" onAction={onRefreshRequests} /> : null}
+        {!loading && !error && !queue.length && !orderQueue.length ? (
+          <EmptyState icon={ShoppingBag} title="Chưa có việc cần xử lý" description="Không có yêu cầu khách hoặc đơn mới trong hàng đợi hiện tại." actionLabel="Xem đơn hàng" onAction={() => navigateManager("orders")} />
+        ) : null}
+
+        {!loading && !error && queue.length ? (
+          <ul className="queue-list" data-testid="customer-request-list">
+            {queue.map((request, idx) => (
+              <li key={`${request.requestId || request.orderCode || idx}-${request.status || "unknown"}`}>
+                <div className="queue-list__top">
+                  <strong>{REQUEST_TYPE_LABELS[request.type] || "Yêu cầu khách"}</strong>
+                  <span className={`queue-badge ${String(request.status || "").toLowerCase()}`}>{REQUEST_STATUS_LABELS[request.status] || request.status || "-"}</span>
+                </div>
+                <p>Bàn {request.tableCode || "Chưa rõ bàn"} • #{request.orderCode || "Chưa có mã đơn"}</p>
+                {request.message ? <small>{request.message}</small> : null}
+                {request.createdAt ? <time>{formatDateTime(request.createdAt)}</time> : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {!loading && !error && orderQueue.length ? (
+          <ul className="queue-list">
+            {orderQueue.map((order, idx) => (
+              <li key={order.id || `${order.orderCode || "order"}-${idx}`}>
+                <div className="queue-list__top">
+                  <strong>{order.orderCode ? `#${order.orderCode}` : "Đơn chưa có mã"}</strong>
+                  <span className="queue-badge acknowledged">{order.status || "Mới"}</span>
+                </div>
+                <p>{order.customerName || "Khách lẻ"}</p>
+                <small>{[formatVnd(order.total), formatDateTime(order.createdAt)].filter(Boolean).join(" • ")}</small>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="queue-actions">
+          <button type="button" onClick={() => navigateManager("orders", { view: "pos" })}>Mở POS</button>
+          <button type="button" onClick={() => navigateManager("orders")}>Xem đơn hàng</button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const calculateTrendDelta = (trend = []) => {
@@ -174,6 +319,83 @@ const ManagerAnalyst = () => {
   const getRestaurantLabel = (restaurant) =>
     restaurant?.name || restaurant?.restaurantName || "Nhà hàng chưa đặt tên";
 
+
+  const actionItems = useMemo(() => {
+    const processingOrders = Number(statusCounts?.pending || 0) + Number(statusCounts?.preparing || 0);
+    const underStaffed = Number(staffSchedulingAssistant?.summary?.underStaffedShifts || 0);
+    const peakSlot = demandForecast?.summary?.busiestPeriods?.[0] || demandForecast?.hourlyForecast?.[0] || demandForecast?.dailyForecast?.[0];
+    const campaign = smartPromotionEngine?.campaigns?.[0] || smartPromotionEngine?.recommendations?.[0];
+    const items = [];
+
+    if (underStaffed > 0) {
+      items.push({
+        level: "critical",
+        badge: "Critical",
+        source: "Nhân sự",
+        icon: Users,
+        title: `${underStaffed} ca thiếu người`,
+        description: "Có ca cần bổ sung nhân sự trước giờ cao điểm để giảm rủi ro chậm phục vụ.",
+        cta: "Kiểm tra phân ca",
+        onClick: () => navigateManager("schedules"),
+      });
+    }
+
+    if (peakSlot) {
+      const label = typeof peakSlot === "string" ? peakSlot : peakSlot.label || peakSlot.timeRange || peakSlot.hourLabel || peakSlot.peakWindow || peakSlot.hour || "khung giờ cao điểm";
+      items.push({
+        level: "warning",
+        badge: "Warning",
+        source: "Dự báo nhu cầu",
+        icon: Clock3,
+        title: `Chuẩn bị cao điểm ${label}`,
+        description: "Rà soát prep-list, bàn trống và tốc độ ra món cho khung giờ dự báo đông nhất.",
+        cta: "Xem dự báo nhu cầu",
+        onClick: () => document.getElementById("demand-forecast-section")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      });
+    }
+
+    if (campaign) {
+      items.push({
+        level: "info",
+        badge: "Info",
+        source: "Tăng trưởng",
+        icon: Megaphone,
+        title: "Campaign cần review",
+        description: "Có gợi ý khuyến mãi thông minh cần quản lý xác nhận trước khi triển khai.",
+        cta: "Mở Smart Promotion",
+        onClick: () => document.getElementById("smart-growth-section")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      });
+    }
+
+    if (processingOrders > 0) {
+      items.push({
+        level: processingOrders > 6 ? "critical" : "warning",
+        badge: processingOrders > 6 ? "Critical" : "Warning",
+        source: "Đơn hàng",
+        icon: ShoppingBag,
+        title: `${processingOrders} đơn đang xử lý`,
+        description: "Ưu tiên kiểm tra các đơn đang chờ xác nhận hoặc đang chuẩn bị để tránh nghẽn bếp.",
+        cta: "Xem đơn hàng",
+        onClick: () => navigateManager("orders"),
+      });
+    }
+
+    if (!items.length) {
+      items.push({
+        level: "info",
+        badge: "Info",
+        source: "Vận hành",
+        icon: Sparkles,
+        title: "Chưa có cảnh báo ưu tiên",
+        description: "Dữ liệu hiện tại chưa ghi nhận đơn, nhân sự, tồn kho hoặc campaign cần xử lý gấp.",
+        cta: "Xem đơn hàng",
+        onClick: () => navigateManager("orders"),
+      });
+    }
+
+    return items.slice(0, 4);
+  }, [demandForecast, smartPromotionEngine, staffSchedulingAssistant, statusCounts]);
+
   if (error) {
     return (
       <div className="manager-analyst-page">
@@ -315,69 +537,34 @@ const ManagerAnalyst = () => {
             </div>
           </section>
 
-          <section className="analytics-section">
-            <div className="analytics-section__header">
-              <h3 className="analytics-section__title">Vận hành hôm nay</h3>
-              <p className="analytics-section__subtitle">
-                Theo dõi đơn hàng, yêu cầu từ khách và cảnh báo tồn kho cần xử lý.
-              </p>
-            </div>
-            <div className="analytics-section__body">
-              <BusinessOperationsOverview
-                requestLoading={operationsRequestsLoading}
-                requestError={operationsRequestsError}
-                statusCounts={statusCounts}
-                serviceRequests={serviceRequests}
-                pendingRequestsCount={operationsSummary?.pendingRequestsCount}
-                acknowledgedRequestsCount={operationsSummary?.acknowledgedRequestsCount}
-                recentOrders={recentOrders}
-                lowStockItems={lowStockItems}
-                onRefreshRequests={() => refetchOperationsRequests?.()}
-                onOpenPOS={() => {
-                  window.dispatchEvent(new CustomEvent("manager:navigate", {
-                    detail: { page: "orders", source: "business-operations-overview", query: { view: "pos" } },
-                  }));
-                }}
-                onOpenOrders={() => {
-                  window.dispatchEvent(new CustomEvent("manager:navigate", {
-                    detail: { page: "orders", source: "business-operations-overview" },
-                  }));
-                }}
-              />
-            </div>
+          <section className="analytics-section analytics-section--action-center">
+            <ActionCenter
+              actions={actionItems}
+              serviceRequests={serviceRequests}
+              recentOrders={recentOrders}
+              loading={operationsRequestsLoading}
+              error={operationsRequestsError}
+              onRefreshRequests={() => refetchOperationsRequests?.()}
+            />
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section analytics-section--revenue">
             <div className="analytics-section__header">
-              <h3 className="analytics-section__title">Ưu tiên hôm nay</h3>
+              <h3 className="analytics-section__title">Nhịp doanh thu</h3>
               <p className="analytics-section__subtitle">
-                Việc cần xử lý trước dựa trên doanh thu, nhu cầu, nhân sự và
-                khuyến mãi.
+                Đường xu hướng doanh thu theo khoảng thời gian đã chọn.
               </p>
             </div>
-            <div className="analytics-section__body strategy-grid">
-              <div className="grid-item ai-assistant">
-                <StrategyAIRecommendation
-                  topDish={topDishes[0]}
-                  feedbackSummary={feedbackSummary}
-                  demandForecast={demandForecast}
-                  staffSchedulingAssistant={staffSchedulingAssistant}
-                  menuEngineeringAssistant={menuEngineeringAssistant}
-                  smartPromotionEngine={smartPromotionEngine}
-                />
-              </div>
+            <div className="analytics-section__body revenue-focus-grid">
               <div className="grid-item revenue-chart">
-                <RevenueAnalyticsChart
-                  data={revenueTrend}
-                  loading={loading}
-                />
+                <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
               </div>
             </div>
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section" id="demand-forecast-section">
             <div className="analytics-section__header">
-              <h3 className="analytics-section__title">Ưu tiên vận hành</h3>
+              <h3 className="analytics-section__title">Dự báo nhu cầu và phân ca</h3>
               <p className="analytics-section__subtitle">
                 Dự báo nhu cầu và gợi ý phân ca theo khung giờ.
               </p>
@@ -398,7 +585,7 @@ const ManagerAnalyst = () => {
             </div>
           </section>
 
-          <section className="analytics-section">
+          <section className="analytics-section" id="smart-growth-section">
             <div className="analytics-section__header">
               <h3 className="analytics-section__title">Tăng trưởng doanh thu</h3>
               <p className="analytics-section__subtitle">
