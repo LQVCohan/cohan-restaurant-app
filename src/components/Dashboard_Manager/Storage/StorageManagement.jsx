@@ -2,12 +2,11 @@
 import React, {
   useState,
   useEffect,
-  useContext,
   useMemo,
   useCallback,
 } from "react";
 import { useQuery, useMutation } from "@apollo/client";
-import { AuthContext } from "../../../context/AuthContext";
+import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 
 // Components
 import Header from "./layout/Header/Header";
@@ -39,7 +38,6 @@ import "./StorageManagement.scss";
 
 // GraphQL
 import {
-  GET_MANAGER_RESTAURANTS,
   INGREDIENTS_QUERY,
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
@@ -49,37 +47,21 @@ import {
 
 const StorageManagement = () => {
   const { showNotification } = useNotification();
-  const { user } = useContext(AuthContext);
-  const managerId = user?.id;
-
   const [activeTab, setActiveTab] = useState("ingredients");
-  const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [ingredientActions, setIngredientActions] = useState(null);
 
-  // ==== 1) Nhà hàng theo Manager ====
   const {
-    data: mgrData,
-    loading: mgrLoading,
-    error: mgrError,
-  } = useQuery(GET_MANAGER_RESTAURANTS, {
-    variables: { managerId, limit: 50 },
-    skip: !managerId,
-    fetchPolicy: "cache-and-network",
-  });
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+    hasRestaurants,
+  } = useManagerRestaurantSelection();
 
-  const managerRestaurants = useMemo(() => {
-    return mgrData?.restaurantsByManager?.edges?.map((e) => e.node) || [];
-  }, [mgrData]);
-
-  useEffect(() => {
-    if (!currentRestaurant && managerRestaurants.length) {
-      setCurrentRestaurant(managerRestaurants[0].id);
-    }
-  }, [currentRestaurant, managerRestaurants]);
-
-  const restaurantReady = Boolean(currentRestaurant);
+  const currentRestaurant = selectedRestaurantId;
+  const restaurantReady = Boolean(selectedRestaurantId);
   const {
     loading: currencyLoading,
     activeCurrency,
@@ -368,22 +350,24 @@ const StorageManagement = () => {
     },
   ];
 
-  if (mgrError) {
-    return (
-      <div className="sm-error-state">
-        <AlertCircle size={40} />
-        <h3>Không thể tải dữ liệu</h3>
-        <p>{mgrError.message}</p>
-      </div>
-    );
-  }
-
-  if (mgrLoading) {
+  if (restaurantsLoading) {
     return (
       <div className="storage-management">
         <div className="sm-loading-state">
           <div className="spinner"></div>
           <p>Đang tải dữ liệu nhà hàng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasRestaurants) {
+    return (
+      <div className="storage-management">
+        <div className="sm-error-state">
+          <WarehouseIcon size={40} />
+          <h3>Chưa có nhà hàng để quản lý kho</h3>
+          <p>Vui lòng kiểm tra danh sách nhà hàng được gán cho tài khoản.</p>
         </div>
       </div>
     );
@@ -395,10 +379,10 @@ const StorageManagement = () => {
         {/* --- Header Section --- */}
         <section className="sm-header-section">
           <Header
-            restaurantList={managerRestaurants}
-            currentRestaurantId={currentRestaurant}
+            restaurantList={restaurantOptions}
+            currentRestaurantId={selectedRestaurantId}
             onRestaurantChange={(id) => {
-              setCurrentRestaurant(id);
+              setSelectedRestaurantId(id);
               setSelectedWarehouseId(undefined);
               setRecipeTimeSlot(null);
               setRecipeSearch(null);
@@ -407,7 +391,7 @@ const StorageManagement = () => {
             warehouses={warehouses}
             selectedWarehouseId={warehouseFilterId}
             onWarehouseChange={setSelectedWarehouseId}
-            restaurantsLoading={mgrLoading}
+            restaurantsLoading={restaurantsLoading}
             warehousesLoading={whLoading}
             activeCurrency={activeCurrency}
             onCurrencyChange={async (currency) => {

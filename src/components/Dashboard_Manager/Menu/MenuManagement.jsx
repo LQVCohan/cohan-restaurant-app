@@ -36,8 +36,8 @@ import MenuToast from "./components/common/MenuToast";
 
 // Logic
 import { AuthContext } from "../../../context/AuthContext";
-import { gql, useQuery } from "@apollo/client";
 import useMenuManagement from "../../../hooks/useMenuManagement";
+import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import { useCategoryManagement } from "../../../hooks/useCategoryManagement";
 import { useRecipes } from "../../../hooks/useRecipes";
 import {
@@ -50,33 +50,6 @@ import {
   getForYouMetadataSummary,
   getForYouMetadataSummaryByRestaurant,
 } from "../../../utils/forYouMenuMetadata";
-/* ========== QUERY ========== */
-const GET_MANAGER_RESTAURANTS = gql`
-  query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
-      limit: $limit
-      cursor: $cursor
-    ) {
-      edges {
-        cursor
-        node {
-          id
-          name
-          avatar
-          address {
-            city
-          }
-        }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-      }
-    }
-  }
-`;
-
 const TIME_SLOT_LABELS = {
   breakfast: "Bữa Sáng (Breakfast)",
   lunch: "Bữa Trưa (Lunch)",
@@ -271,6 +244,14 @@ const MenuManagement = () => {
   const auth = useContext(AuthContext);
   const managerId = auth?.user?.id;
   const currentUser = auth?.user;
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+    hasRestaurants,
+  } = useManagerRestaurantSelection();
+  const currentRestaurant = selectedRestaurantId;
 
   const canViewMenu = canAccessMenuManagementAction(
     currentUser,
@@ -330,7 +311,6 @@ const MenuManagement = () => {
     MENU_MANAGEMENT_ACTIONS.DELETE_MENU,
   );
   // --- LOCAL STATE ---
-  const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentView, setCurrentView] = useState("grid");
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
   const [sortOption, setSortOption] = useState("default");
@@ -376,27 +356,6 @@ const MenuManagement = () => {
   const deleteItemSubmitRef = useRef(false);
 
   /* --- DATA FETCHING --- */
-  const {
-    data: mgrData,
-    loading: mgrLoading,
-    error: mgrError,
-  } = useQuery(GET_MANAGER_RESTAURANTS, {
-    variables: { managerId, limit: 50 },
-    skip: !managerId,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const managerRestaurants = useMemo(
-    () => mgrData?.restaurantsByManager?.edges?.map((e) => e.node) || [],
-    [mgrData],
-  );
-
-  useEffect(() => {
-    if (!currentRestaurant && managerRestaurants.length > 0) {
-      setCurrentRestaurant(managerRestaurants[0].id);
-    }
-  }, [managerRestaurants, currentRestaurant]);
-
   const {
     menus,
     menusLoading,
@@ -1345,16 +1304,10 @@ const MenuManagement = () => {
         <div className="spinner-dots"></div>Đang xác thực...
       </div>
     );
-  if (mgrLoading)
+  if (restaurantsLoading)
     return (
       <div className="mm-state-box">
-        <div className="spinner-dots"></div>
-      </div>
-    );
-  if (mgrError)
-    return (
-      <div className="mm-state-box error">
-        <FiAlertCircle /> {mgrError.message}
+        <div className="spinner-dots"></div>Đang tải nhà hàng...
       </div>
     );
   if (!canViewMenu) {
@@ -1373,10 +1326,20 @@ const MenuManagement = () => {
         title="Quản lý thực đơn"
         subtitle="Quản lý món, danh mục, trạng thái bán và hiển thị trên app khách hàng."
         icon="📋"
-        selectedRestaurant={currentRestaurant || ""}
-        onRestaurantChange={setCurrentRestaurant}
-        restaurantList={managerRestaurants}
-        restaurantPlaceholder="Chọn nhà hàng"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={(id) => {
+          setSelectedRestaurantId(id);
+          setSelectedItemIds(new Set());
+          setDeleteError("");
+          setDeleteListRefreshError("");
+          setMenuSubmitError("");
+          setBulkErrors([]);
+          setInventorySyncPreview(null);
+          setPendingSyncPayload(null);
+        }}
+        restaurantList={restaurantOptions}
+        restaurantDisabled={restaurantsLoading || !hasRestaurants}
+        restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
         customFilters={(
           <select
             className="mph-select"

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import usePayroll from "@/hooks/usePayroll";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
 import PayrollPayslipModal, {
   getPayrollPaymentErrorMessage,
@@ -543,6 +544,22 @@ const PayrollManagement = () => {
   const [adjustmentType, setAdjustmentType] = useState("bonus");
   const [adjustmentNote, setAdjustmentNote] = useState("");
   const [showValidationPanel, setShowValidationPanel] = useState(false);
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+    hasRestaurants,
+  } = useManagerRestaurantSelection();
+
+  const handleRestaurantChange = (restaurantId) => {
+    setSelectedRestaurantId(restaurantId);
+    setSelectedPeriodId("");
+    setSelectedIds([]);
+    setEmployeeFilterId("");
+    setSelectedPayslipEmployeeId("");
+    setShowBatchPayment(false);
+  };
 
   const {
     periods,
@@ -581,6 +598,7 @@ const PayrollManagement = () => {
     refetchPayrollPeriods,
     refetchSettings,
   } = usePayroll({
+    restaurantId: selectedRestaurantId || undefined,
     periodId: selectedPeriodId || undefined,
     startDate: dateRange.start
       ? new Date(dateRange.start).toISOString()
@@ -712,15 +730,11 @@ const PayrollManagement = () => {
       null,
     [periods, currentPeriodId],
   );
-  const settingsRestaurantId = useMemo(
-    () =>
-      getSettingsRestaurantId({
-        settings: payrollSettings,
-        periodDetail,
-        periods,
-      }) || resolvedRestaurantId,
-    [payrollSettings, periodDetail, periods, resolvedRestaurantId],
-  );
+  const settingsRestaurantId = selectedRestaurantId || resolvedRestaurantId || getSettingsRestaurantId({
+    settings: payrollSettings,
+    periodDetail,
+    periods,
+  });
 
   useEffect(() => {
     if (!displayedPeriod) return;
@@ -768,6 +782,7 @@ const PayrollManagement = () => {
   };
 
   const handleCreatePeriod = async () => {
+    if (!selectedRestaurantId) return;
     const isDifferentFromCurrentApplied =
       currentAppliedPeriod &&
       (toInputDate(currentAppliedPeriod.startDate) !== dateRange.start ||
@@ -789,6 +804,7 @@ const PayrollManagement = () => {
           input: {
             startDate: dateRange.start,
             endDate: dateRange.end,
+            restaurantId: selectedRestaurantId,
             name: `Kỳ ${dateRange.start} - ${dateRange.end}`,
           },
         },
@@ -853,7 +869,7 @@ const PayrollManagement = () => {
   };
 
   const handleExportCsv = async () => {
-    if (!selectedPeriodId) return;
+    if (!selectedRestaurantId || !selectedPeriodId) return;
     try {
       const result = await refetchPayrollExportRows?.({
         periodId: selectedPeriodId,
@@ -875,7 +891,7 @@ const PayrollManagement = () => {
   };
 
   const openBatchPaymentModal = () => {
-    if (!hasBatchPayableSelection) return;
+    if (!selectedRestaurantId || !selectedPeriodId || !hasBatchPayableSelection) return;
     setBatchPaymentError("");
     setBatchPaymentResult(null);
     setBatchPaymentForm({
@@ -887,6 +903,7 @@ const PayrollManagement = () => {
   };
 
   const handleBatchPaymentSubmit = async () => {
+    if (!selectedRestaurantId || !selectedPeriodId) return;
     setBatchPaymentLoading(true);
     setBatchPaymentError("");
     setBatchPaymentResult(null);
@@ -917,6 +934,7 @@ const PayrollManagement = () => {
   };
 
   const handleExportExcel = () => {
+    if (!selectedRestaurantId || !selectedPeriodId) return;
     const header = [
       "Nhân viên",
       "Mã NV",
@@ -962,6 +980,7 @@ const PayrollManagement = () => {
   };
 
   const handleOpenSettings = () => {
+    if (!selectedRestaurantId) return;
     setSettingsSaveError("");
     setShowSettings(true);
   };
@@ -977,9 +996,9 @@ const PayrollManagement = () => {
     setSettingsSaving(true);
 
     try {
-      const input = settingsRestaurantId
-        ? { ...formData, restaurantId: settingsRestaurantId }
-        : formData;
+      const input = selectedRestaurantId
+        ? { ...formData, restaurantId: selectedRestaurantId }
+        : { ...formData, restaurantId: settingsRestaurantId };
 
       await updateSettings({ variables: { input } });
 
@@ -1004,6 +1023,7 @@ const PayrollManagement = () => {
   };
 
   const handleOpenReadinessPanel = async () => {
+    if (!selectedRestaurantId || !selectedPeriodId) return;
     setShowValidationPanel(true);
 
     const tasks = [];
@@ -1070,6 +1090,25 @@ const PayrollManagement = () => {
           <h2 className="page-title">Quản lý lương</h2>
           <div className="cycle-picker-compact">
             <div className="input-group">
+              <span className="label">Nhà hàng:</span>
+              <select
+                className="filter-select"
+                data-testid="payroll-restaurant-select"
+                value={selectedRestaurantId}
+                onChange={(event) => handleRestaurantChange(event.target.value)}
+                disabled={restaurantsLoading || !hasRestaurants}
+              >
+                <option value="">
+                  {restaurantsLoading ? "Đang tải nhà hàng..." : "Chọn nhà hàng"}
+                </option>
+                {restaurantOptions.map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id}>
+                    {restaurant.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="input-group">
               <span className="label">Từ:</span>
               <input
                 type="date"
@@ -1092,6 +1131,7 @@ const PayrollManagement = () => {
               className="btn btn-white"
               data-testid="payroll-period-setup"
               onClick={handleCreatePeriod}
+              disabled={!selectedRestaurantId}
             >
               Thiết lập kỳ lương
             </button>
@@ -1116,23 +1156,25 @@ const PayrollManagement = () => {
             className="btn btn-white"
             data-testid="payroll-settings-open"
             onClick={handleOpenSettings}
+            disabled={!selectedRestaurantId}
           >
             ⚙️ Cấu hình
           </button>
-          <button className="btn btn-white" onClick={handleExportExcel}>
+          <button className="btn btn-white" onClick={handleExportExcel} disabled={!selectedRestaurantId || !selectedPeriodId}>
             📥 Xuất Excel
           </button>
           <button
             className="btn btn-white"
             onClick={handleExportCsv}
-            disabled={!selectedPeriodId || periodStatus === "draft"}
+            disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus === "draft"}
           >
             Xuất CSV
           </button>
           <button
             className="btn btn-primary"
-            disabled={periodStatus !== "draft"}
+            disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus !== "draft"}
             onClick={async () => {
+              if (!selectedRestaurantId || !selectedPeriodId) return;
               try {
                 await recalculatePeriod({
                   variables: { periodId: selectedPeriodId },
@@ -1152,6 +1194,12 @@ const PayrollManagement = () => {
           </button>
         </div>
       </div>
+
+      {!selectedRestaurantId && !restaurantsLoading ? (
+        <div className="settings-modal-state" style={{ margin: "16px 0" }}>
+          Chọn nhà hàng để xem bảng lương
+        </div>
+      ) : null}
 
       {periodDetail?.period && (
         <div className="metrics-strip" style={{ marginBottom: 12 }}>
@@ -1175,17 +1223,21 @@ const PayrollManagement = () => {
             <button
               className="btn btn-white"
               onClick={handleOpenReadinessPanel}
+              disabled={!selectedRestaurantId || !selectedPeriodId}
             >
               Kiểm tra trước khi chốt
             </button>
             <button
               className="btn btn-white"
               disabled={
+                !selectedRestaurantId ||
+                !selectedPeriodId ||
                 periodStatus !== "draft" ||
                 Number(validationResult?.errorCount || 0) > 0 ||
                 readinessBlocksFinalize
               }
               onClick={async () => {
+                if (!selectedRestaurantId || !selectedPeriodId) return;
                 try {
                   await finalizePeriod({
                     variables: { periodId: selectedPeriodId },
@@ -1216,8 +1268,9 @@ const PayrollManagement = () => {
             </button>
             <button
               className="btn btn-white"
-              disabled={periodStatus !== "finalized"}
+              disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus !== "finalized"}
               onClick={async () => {
+                if (!selectedRestaurantId || !selectedPeriodId) return;
                 try {
                   await lockPeriod({
                     variables: { periodId: selectedPeriodId },
@@ -1238,7 +1291,7 @@ const PayrollManagement = () => {
             <button
               className="btn btn-primary"
               data-testid="batch-payroll-paid-open"
-              disabled={!hasBatchPayableSelection}
+              disabled={!selectedRestaurantId || !selectedPeriodId || !hasBatchPayableSelection}
               onClick={openBatchPaymentModal}
             >
               Thanh toán đã chọn ({selectedPayableItems.length})

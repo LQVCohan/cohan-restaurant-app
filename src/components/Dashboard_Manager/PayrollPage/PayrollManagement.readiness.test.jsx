@@ -16,6 +16,17 @@ vi.mock("@/hooks/usePayroll", () => ({
   default: vi.fn(),
 }));
 
+vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
+  default: () => ({
+    restaurantOptions: [{ id: "restaurant-1", name: "Cohan" }],
+    selectedRestaurantId: "restaurant-1",
+    setSelectedRestaurantId: vi.fn(),
+    selectedRestaurant: { id: "restaurant-1", name: "Cohan" },
+    restaurantsLoading: false,
+    hasRestaurants: true,
+  }),
+}));
+
 const emptySection = {
   status: "ready",
   blockingCount: 0,
@@ -210,7 +221,7 @@ describe("PayrollManagement readiness panel", () => {
 
     render(<PayrollManagement />);
 
-    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "period-2" } });
+    fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: "period-2" } });
     fireEvent.click(screen.getByText("Chốt kỳ"));
 
     await waitFor(() => {
