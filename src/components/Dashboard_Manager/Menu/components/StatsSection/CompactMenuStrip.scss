@@ -155,13 +155,23 @@ $cms-radius: 12px;
     }
   }
 
-  .cms-error-msg {
-    background: #fef2f2;
-    color: $cms-danger;
+  .cms-action-msg {
     padding: 10px;
+    border: 1px solid transparent;
     border-radius: 8px;
     font-size: 13px;
-    border: 1px solid #fecaca;
+
+    &--error {
+      background: #fef2f2;
+      color: $cms-danger;
+      border-color: #fecaca;
+    }
+
+    &--success {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
   }
 
   // --- CARDS VIEWPORT ---
@@ -314,13 +324,38 @@ $cms-radius: 12px;
         align-items: flex-end;
         gap: 4px;
         .cms-slot-tag {
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 8px;
-          border-radius: 12px;
-          border: 1px solid;
           display: flex;
           align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border: 1px solid;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .cms-slot-tag--breakfast {
+          color: #d97706;
+          background: #fffbeb;
+          border-color: #fde68a;
+        }
+
+        .cms-slot-tag--lunch {
+          color: #059669;
+          background: #ecfdf5;
+          border-color: #a7f3d0;
+        }
+
+        .cms-slot-tag--dinner {
+          color: #8f6a42;
+          background: #fdf8f3;
+          border-color: #f1e5d5;
+        }
+
+        .cms-slot-tag--late-night {
+          color: #9d5c1b;
+          background: #fff7ed;
+          border-color: #fed7aa;
         }
         .cms-status-off {
           font-size: 10px;
@@ -551,12 +586,12 @@ $cms-radius: 12px;
   }
 
   &__warning {
-    margin-top: 10px !important;
+    margin-top: 10px;
     padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid #fecaca;
     background: #fef2f2;
-    color: #b91c1c !important;
+    color: #b91c1c;
   }
 }
 
@@ -640,4 +675,96 @@ $cms-radius: 12px;
   color: inherit;
   font: inherit;
   text-align: center;
+}
+
+/* Schedule/timeline polish for menu operations console. */
+.cms-container {
+  border-color: #e7dccf;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 244, 0.86));
+  box-shadow: 0 12px 32px rgba(99, 72, 43, 0.075);
+}
+
+.cms-container .cms-header {
+  align-items: center;
+}
+
+.cms-container .cms-icon-box {
+  color: #76532e;
+  background: #f5eadc;
+  border: 1px solid #e7dccf;
+}
+
+.cms-container .cms-title-box h3 {
+  color: #241f1a;
+  letter-spacing: -0.02em;
+}
+
+.cms-container .cms-title-box p {
+  color: #756a5d;
+}
+
+.cms-container .cms-track {
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.cms-container .cms-card {
+  border-color: #e7dccf;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(99, 72, 43, 0.06);
+}
+
+.cms-container .cms-card::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 0;
+  height: 3px;
+  border-radius: 0 0 999px 999px;
+  background: #e7dccf;
+}
+
+.cms-container .cms-card.cms-active {
+  border-color: #c8a77b;
+  box-shadow: 0 0 0 2px rgba(184, 147, 101, 0.14), 0 16px 34px rgba(99, 72, 43, 0.1);
+}
+
+.cms-container .cms-card.cms-active::before {
+  background: #b89365;
+}
+
+.cms-container .cms-btn-add,
+.cms-container .cms-nav-btn,
+.cms-container .cms-btn-toggle {
+  border-color: #e7dccf;
+  border-radius: 12px;
+}
+
+.cms-container .cms-btn-add {
+  background: #fffaf5;
+  color: #76532e;
+}
+
+.cms-container .cms-btn-add:hover,
+.cms-container .cms-nav-btn:hover:not(:disabled),
+.cms-container .cms-btn-toggle:hover {
+  border-color: #c8a77b;
+  box-shadow: 0 10px 22px rgba(99, 72, 43, 0.1);
+}
+
+.cms-container .cms-ghost {
+  border-color: #d5bea4;
+  background:
+    radial-gradient(circle at 80% 12%, rgba(184, 147, 101, 0.16), transparent 8rem),
+    #fffaf5;
+}
+
+
+.cms-container button:focus-visible,
+.cms-container .cms-card-select:focus-visible {
+  outline: 3px solid rgba(184, 147, 101, 0.34);
+  outline-offset: 2px;
 }

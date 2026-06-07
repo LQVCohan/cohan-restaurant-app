@@ -8,6 +8,12 @@ const StatCard = ({ label, value, variant = "default" }) => (
   </article>
 );
 
+const clampPercent = (value) => {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.min(100, Math.max(0, numeric));
+};
+
 const ForYouReadinessPanel = ({
   summary,
   restaurantSummaries = [],
@@ -32,38 +38,36 @@ const ForYouReadinessPanel = ({
     missingTaste: 0,
     readyPercent: 0,
   };
+  const readyPercent = clampPercent(safeSummary.readyPercent);
   const shouldShowRestaurantGroups = Array.isArray(restaurantSummaries) && restaurantSummaries.length > 1;
 
   return (
     <section className="for-you-readiness-panel" aria-label="Chất lượng dữ liệu gợi ý khẩu vị">
       <div className="for-you-readiness-panel__header">
-        <span className="for-you-readiness-panel__eyebrow">FOR YOU metadata</span>
+        <span className="for-you-readiness-panel__eyebrow">Dữ liệu gợi ý khẩu vị</span>
         <h3 className="for-you-readiness-panel__title">Chất lượng dữ liệu gợi ý khẩu vị</h3>
         <p className="for-you-readiness-panel__subtitle">
-          Món đủ dữ liệu sẽ được dùng để gợi ý chính xác hơn cho khách.
-        </p>
-        <p className="for-you-readiness-panel__subtitle for-you-readiness-panel__subtitle--warning">
-          Thiếu dữ liệu dị ứng có thể làm hệ thống chỉ nhắc khách kiểm tra thay vì tự tin gợi ý.
+          Bổ sung khẩu vị, dị ứng và diet tags để AI gợi ý món chính xác hơn.
         </p>
       </div>
 
       <div className="for-you-readiness-panel__progress">
         <div className="for-you-readiness-panel__progress-meta">
-          <strong>{safeSummary.readyPercent}%</strong>
-          <span>{safeSummary.ready}/{safeSummary.total} món có ít nhất một nhóm metadata</span>
+          <strong>{readyPercent}%</strong>
+          <span>{safeSummary.ready}/{safeSummary.total} món có ít nhất một nhóm dữ liệu gợi ý</span>
         </div>
-        <div className="for-you-readiness-panel__progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeSummary.readyPercent}>
-          <div className="for-you-readiness-panel__progress-fill" style={{ width: `${safeSummary.readyPercent}%` }} />
+        <div className="for-you-readiness-panel__progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={readyPercent}>
+          <div className="for-you-readiness-panel__progress-fill" style={{ "--ready-percent": `${readyPercent}%` }} />
         </div>
       </div>
 
       <div className="for-you-readiness-panel__stats for-you-readiness-panel__stats--quality">
         <StatCard label="Tổng món" value={safeSummary.total} />
-        <StatCard label="Đủ metadata" value={safeSummary.complete || 0} variant="complete" />
-        <StatCard label="Thiếu metadata" value={safeSummary.missing} variant="missing" />
-        <StatCard label="Thiếu dietTags" value={safeSummary.missingDiet || 0} variant="missing-soft" />
-        <StatCard label="Thiếu allergenTags" value={safeSummary.missingAllergen || 0} variant="missing-soft" />
-        <StatCard label="Thiếu tasteProfile" value={safeSummary.missingTaste || 0} variant="missing-soft" />
+        <StatCard label="Đủ dữ liệu" value={safeSummary.complete || 0} variant="complete" />
+        <StatCard label="Thiếu dữ liệu" value={safeSummary.missing} variant="missing" />
+        <StatCard label="Thiếu diet" value={safeSummary.missingDiet || 0} variant="missing-soft" />
+        <StatCard label="Thiếu dị ứng" value={safeSummary.missingAllergen || 0} variant="missing-soft" />
+        <StatCard label="Thiếu khẩu vị" value={safeSummary.missingTaste || 0} variant="missing-soft" />
       </div>
 
       {shouldShowRestaurantGroups && (
@@ -83,7 +87,7 @@ const ForYouReadinessPanel = ({
           <button type="button" className="mm-btn mm-btn--primary" onClick={onShowMissing}>Xem món thiếu khẩu vị</button>
         )}
         {safeSummary.missing > 0 && canUpdateItem && firstMissingItem && (
-          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu tiên</button>
+          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu</button>
         )}
         {canBulkEdit && bulkTargetCount > 0 && (
           <button type="button" className="mm-btn mm-btn--secondary" onClick={onOpenBulkEdit}>

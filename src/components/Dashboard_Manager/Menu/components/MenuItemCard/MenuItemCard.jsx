@@ -221,7 +221,7 @@ const MenuItemCard = ({
 
   return (
     <>
-      <article className="menu-item-card">
+      <article className={`menu-item-card ${selected ? "is-selected" : ""}`.trim()}>
         {typeof onSelectToggle === "function" && (
           <label
             className="card-select-checkbox"
