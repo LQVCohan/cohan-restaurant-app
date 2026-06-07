@@ -38,6 +38,7 @@ const GET_TOP_MENU_ITEMS = gql`
       menuId
       categoryId
       restaurantId
+      defaultServingKey
       status
       inventoryStatus
       stockWarnings
@@ -45,7 +46,11 @@ const GET_TOP_MENU_ITEMS = gql`
       servingVariants {
         key
         name
+        mode
+        sellQty
+        sellUnit
         price
+        isDefault
       }
     }
   }
@@ -124,16 +129,32 @@ const DishGrid = ({
   const getVariantKey = (variant, fallbackIndex = 0) =>
     variant?.key || `variant-${fallbackIndex}`;
 
-  const getSelectedMethod = (dish) => {
-    const selectedKey = selectedVariantKeyByDish[dish.id];
-    if (!selectedKey && dish.servingVariants?.length > 0) {
-      return dish.servingVariants[0];
+  const getDefaultMethod = (dish) => {
+    const variants = dish.servingVariants || [];
+    if (!variants.length) return null;
+
+    if (dish.defaultServingKey) {
+      const byDefaultKey = variants.find(
+        (variant) => String(variant?.key || "") === String(dish.defaultServingKey),
+      );
+      if (byDefaultKey) return byDefaultKey;
     }
-    return (
-      dish.servingVariants?.find(
+
+    return variants.find((variant) => variant?.isDefault) || variants[0];
+  };
+
+  const getSelectedMethod = (dish) => {
+    const variants = dish.servingVariants || [];
+    const selectedKey = selectedVariantKeyByDish[dish.id];
+
+    if (selectedKey) {
+      const selectedVariant = variants.find(
         (variant, index) => getVariantKey(variant, index) === selectedKey,
-      ) || null
-    );
+      );
+      if (selectedVariant) return selectedVariant;
+    }
+
+    return getDefaultMethod(dish);
   };
 
   const getSelectedVariantKey = (dish) => {
@@ -388,7 +409,7 @@ const DishGrid = ({
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => e.stopPropagation()}
                                 className="dish-card__select"
-                                value={method ? getVariantKey(method) : ""}
+                                value={getSelectedVariantKey(dish)}
                                 onChange={(e) => {
                                   e.stopPropagation();
                                   handleMethodChange(dish.id, e.target.value);
