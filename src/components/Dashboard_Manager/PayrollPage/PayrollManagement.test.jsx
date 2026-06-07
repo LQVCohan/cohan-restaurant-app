@@ -16,6 +16,17 @@ vi.mock("@/hooks/usePayroll", () => ({
   default: vi.fn(),
 }));
 
+vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
+  default: () => ({
+    restaurantOptions: [{ id: "restaurant-1", name: "Cohan" }],
+    selectedRestaurantId: "restaurant-1",
+    setSelectedRestaurantId: vi.fn(),
+    selectedRestaurant: { id: "restaurant-1", name: "Cohan" },
+    restaurantsLoading: false,
+    hasRestaurants: true,
+  }),
+}));
+
 const buildHookValue = (overrides = {}) => ({
   periods: [
     {

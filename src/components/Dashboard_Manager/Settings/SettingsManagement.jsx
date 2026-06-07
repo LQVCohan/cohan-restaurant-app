@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { AuthContext } from "../../../context/AuthContext";
+import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import "./SettingsManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
@@ -158,8 +158,6 @@ const buildSummaryCards = (setting) => [
   },
 ];
 
-const getRestaurantId = (restaurant) => String(restaurant?.id || restaurant?.restaurantId || "");
-
 const SettingsSkeleton = () => (
   <section className="settings-management__skeleton-grid" aria-label="Đang tải cấu hình">
     {Array.from({ length: 4 }).map((_, index) => (
@@ -171,7 +169,7 @@ const SettingsSkeleton = () => (
 const SettingsEmptyState = () => (
   <section className="settings-management__empty" role="status">
     <span className="settings-management__empty-kicker">Cần ngữ cảnh nhà hàng</span>
-    <h2>Chưa có restaurantId để đọc cấu hình</h2>
+    <h2>Chưa có nhà hàng để đọc cấu hình</h2>
     <p>
       Hãy chọn hoặc gán nhà hàng cho tài khoản quản lý. Sau đó trang sẽ tải lại cấu hình
       vận hành, phân quyền, in ấn và sao lưu.
@@ -180,16 +178,17 @@ const SettingsEmptyState = () => (
 );
 
 const SettingsManagement = () => {
-  const { restaurants = [] } = useContext(AuthContext) || {};
-  const [restaurantId, setRestaurantId] = useState("");
-
-  useEffect(() => {
-    if (!restaurantId && restaurants.length > 0) setRestaurantId(getRestaurantId(restaurants[0]));
-  }, [restaurantId, restaurants]);
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+    hasRestaurants,
+  } = useManagerRestaurantSelection();
 
   const { data, loading, error, refetch } = useQuery(Q_SYSTEM_SETTING, {
-    variables: { restaurantId },
-    skip: !restaurantId,
+    variables: { restaurantId: selectedRestaurantId },
+    skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
 
@@ -222,9 +221,14 @@ const SettingsManagement = () => {
         subtitle="Trung tâm kiểm soát cấu hình vận hành, phân quyền và module nền tảng của nhà hàng."
         icon="⚙️"
         stats={[
-          { label: "Nhà hàng", value: restaurants.length, icon: "🏬" },
+          { label: "Nhà hàng", value: restaurantOptions.length, icon: "🏬" },
           { label: "Module bật", value: `${enabledModules}/4`, icon: "📡" },
         ]}
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={setSelectedRestaurantId}
+        restaurantList={restaurantOptions}
+        restaurantDisabled={restaurantsLoading || !hasRestaurants}
+        restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
         customControls={(
           <div className="settings-management__badges" aria-label="Trạng thái trang">
             <span>Backend foundation</span>
@@ -246,7 +250,7 @@ const SettingsManagement = () => {
         </div>
         <div className="settings-management__hero-metrics">
           <article>
-            <strong>{restaurants.length}</strong>
+            <strong>{restaurantOptions.length}</strong>
             <span>Nhà hàng</span>
           </article>
           <article>
@@ -260,7 +264,7 @@ const SettingsManagement = () => {
         </div>
       </section>
 
-      {!restaurantId ? <SettingsEmptyState /> : null}
+      {!restaurantsLoading && !hasRestaurants ? <SettingsEmptyState /> : null}
       {error ? (
         <section className="settings-management__alert" role="alert">
           <div>
@@ -272,9 +276,9 @@ const SettingsManagement = () => {
           </button>
         </section>
       ) : null}
-      {loading ? <SettingsSkeleton /> : null}
+      {(restaurantsLoading || loading) ? <SettingsSkeleton /> : null}
 
-      {restaurantId && !loading ? (
+      {selectedRestaurantId && !loading ? (
         <section className="settings-management__workspace" aria-label="Không gian cấu hình">
           <div className="settings-management__primary-column">
             <section className="settings-management__summary" aria-label="Tổng quan cấu hình">

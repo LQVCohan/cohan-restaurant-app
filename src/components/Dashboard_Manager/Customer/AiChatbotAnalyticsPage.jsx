@@ -1,6 +1,6 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { AuthContext } from "@/context/AuthContext";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./CustomerAnalyticsPage.scss";
 
 const GET_AI_CHATBOT_ANALYTICS = gql`
@@ -34,12 +34,16 @@ const formatPct = (v) => `${(Number(v || 0) * 100).toFixed(1)}%`;
 const formatNum = (v) => new Intl.NumberFormat("vi-VN").format(Number(v || 0));
 
 export default function AiChatbotAnalyticsPage() {
-  const { restaurants = [] } = useContext(AuthContext) || {};
   const [range, setRange] = useState("7");
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+    hasRestaurants,
+  } = useManagerRestaurantSelection();
 
-  const restaurantOptions = Array.isArray(restaurants) ? restaurants : [];
-  const effectiveRestaurantId = selectedRestaurantId || restaurantOptions?.[0]?.id || "";
+  const effectiveRestaurantId = selectedRestaurantId;
 
   const variables = useMemo(() => ({
     input: {
@@ -70,7 +74,8 @@ export default function AiChatbotAnalyticsPage() {
         <div className="customer-analytics-toolbar">
           <label className="customer-analytics-field">
             <span>Nhà hàng</span>
-            <select value={effectiveRestaurantId} onChange={(e) => setSelectedRestaurantId(e.target.value)}>
+            <select value={effectiveRestaurantId} onChange={(e) => setSelectedRestaurantId(e.target.value)} disabled={restaurantsLoading || !hasRestaurants}>
+              <option value="">{restaurantsLoading ? "Đang tải nhà hàng..." : "Chọn nhà hàng"}</option>
               {restaurantOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
@@ -81,12 +86,13 @@ export default function AiChatbotAnalyticsPage() {
               <option value="30">30 ngày</option>
             </select>
           </label>
-          <button type="button" className="customer-analytics-refresh" onClick={() => refetch?.()} disabled={loading}>Làm mới</button>
+          <button type="button" className="customer-analytics-refresh" onClick={() => refetch?.()} disabled={loading || !effectiveRestaurantId}>Làm mới</button>
         </div>
       </section>
 
-      {loading ? <section className="customer-empty-state customer-empty-state--page"><h3>Đang tải dữ liệu AI chatbot...</h3></section> : null}
-      {error ? <section className="customer-analytics-error"><span>{error.message || "Không thể tải thống kê"}</span></section> : null}
+      {!effectiveRestaurantId && !restaurantsLoading ? <section className="customer-empty-state customer-empty-state--page"><h3>Chọn nhà hàng để xem thống kê AI chatbot</h3></section> : null}
+      {(restaurantsLoading || loading) ? <section className="customer-empty-state customer-empty-state--page"><h3>Đang tải dữ liệu AI chatbot...</h3></section> : null}
+      {error ? <section className="customer-analytics-error"><span>{error.message || "Không thể tải thống kê AI chatbot"}</span><button type="button" onClick={() => refetch?.()}>Thử lại</button></section> : null}
 
       {!loading && !error && m ? (
         <>

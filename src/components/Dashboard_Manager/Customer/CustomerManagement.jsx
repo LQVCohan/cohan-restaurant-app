@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { Star, Sparkles, UserCheck } from "lucide-react";
+import { Star, Sparkles, UserCheck, Users } from "lucide-react";
 
 // Components
 import CustomerList from "./CustomerList";
@@ -16,7 +16,7 @@ import ManagerCommandBar from "../shared/ManagerCommandBar";
 
 // Hooks & Context
 import useUserManagement from "../../../hooks/useUserManagement";
-import { AuthContext } from "../../../context/AuthContext";
+import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 
 // Styles
 import "./CustomerManagement.scss";
@@ -166,7 +166,13 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
 
 const CustomerManagement = () => {
   // --- 1. Hooks & State ---
-  const { restaurants = [] } = useContext(AuthContext) || {};
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+    hasRestaurants,
+  } = useManagerRestaurantSelection();
 
   const {
     customerPageItems,
@@ -177,10 +183,6 @@ const CustomerManagement = () => {
     getCustomersPage,
     getCustomerExportRows,
   } = useUserManagement();
-
-  const defaultRestaurantId = restaurants?.[0]?.id || "";
-  const [selectedRestaurantId, setSelectedRestaurantId] =
-    useState(defaultRestaurantId);
 
   // UI States
   const [showRightSidebar, setShowRightSidebar] = useState(false);
@@ -209,15 +211,12 @@ const CustomerManagement = () => {
   const [saveRankSettings, { loading: savingRank }] = useMutation(
     UPSERT_CUSTOMER_RANK_SETTINGS,
   );
+  const rankSettings = useMemo(
+    () => normalizeRanks(rankSettingsData?.customerRankSettings?.ranks || []),
+    [rankSettingsData],
+  );
 
   // --- 2. Effects ---
-
-  // Sync default restaurant ID khi load trang
-  useEffect(() => {
-    if (!selectedRestaurantId && restaurants?.length) {
-      setSelectedRestaurantId(restaurants[0].id);
-    }
-  }, [restaurants, selectedRestaurantId]);
 
   const summaryUserIds = useMemo(
     () => [...new Set((customerPageItems || []).map((c) => c?.id).filter(Boolean))],
@@ -264,7 +263,13 @@ const CustomerManagement = () => {
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurantId(restaurantId);
+    setActiveFilter("all");
+    setSelectedCustomer(null);
     switchRestaurant(restaurantId);
+    if (restaurantId) {
+      getCustomersPage({ restaurantId, includeGuests: true, search: searchDebounced, limit: 30 });
+      refetchRankSettings?.({ restaurantId });
+    }
   };
 
   const handleCustomerClick = (customer) => {
@@ -337,11 +342,6 @@ const CustomerManagement = () => {
     });
     return map;
   }, [summaryData]);
-  const rankSettings = useMemo(
-    () => normalizeRanks(rankSettingsData?.customerRankSettings?.ranks || []),
-    [rankSettingsData],
-  );
-
   // Decorate: Gắn đơn hàng gần đây vào thông tin khách hàng
   const customersDecorated = useMemo(() => {
     return (customerPageItems || []).map((c) => {
@@ -532,7 +532,9 @@ const CustomerManagement = () => {
         icon="👥"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={handleRestaurantChange}
-        restaurantList={(restaurants || []).map((r) => ({ id: r.id, name: r.name }))}
+        restaurantList={restaurantOptions}
+        restaurantDisabled={restaurantsLoading || !hasRestaurants}
+        restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
         stats={[
           { id: "total", icon: "👤", label: "Tổng khách", value: customersDecorated.length },
           { id: "online", icon: "🟢", label: "Online", value: onlineCount },
@@ -687,6 +689,7 @@ const CustomerManagement = () => {
         <AddCustomerModal
           onClose={() => setShowAddModal(false)}
           onCreated={refreshCustomerListAfterCreate}
+          restaurantId={selectedRestaurantId}
         />
       )}
 

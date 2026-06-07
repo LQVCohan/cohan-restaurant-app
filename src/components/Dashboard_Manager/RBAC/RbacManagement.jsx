@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import { useRbacManagement } from "@/hooks/useRbacManagement";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import RbacAuditLogPanel from "./RbacAuditLogPanel";
 import { hasAnyPermission, hasPermission, NO_PERMISSION_MESSAGE } from "@/utils/frontendPermissionAccess";
 import "./RbacManagement.scss";
@@ -224,7 +225,7 @@ function StaffRoleAssignment({ restaurants, roles, staff, selectedRestaurantId, 
 }
 
 export default function RbacManagement() {
-  const { user, restaurants = [] } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const canViewRbac = hasAnyPermission(user, auditPermissions);
   const canViewAuditLogs = hasAnyPermission(user, auditPermissions);
   const canWriteRoles = hasAnyPermission(user, ["role.write", "permission.write"]);
@@ -232,24 +233,13 @@ export default function RbacManagement() {
   const canSeeAllRestaurants = hasPermission(user, "*") || hasPermission(user, "system.manage");
   const canViewGlobalAuditLogs = canSeeAllRestaurants;
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState(restaurants?.[0]?.id || "");
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+  } = useManagerRestaurantSelection();
   const rbac = useRbacManagement(selectedRestaurantId, { includeAllRestaurants: canSeeAllRestaurants, canViewGlobalAuditLogs, skipAuditLogs: !canViewAuditLogs });
-
-  const restaurantOptions = useMemo(() => {
-    const source = canSeeAllRestaurants && rbac.allRestaurants.length ? rbac.allRestaurants : restaurants;
-    const map = new Map();
-    for (const restaurant of source || []) {
-      const id = String(restaurant?.id || restaurant?._id || "");
-      if (id) map.set(id, { id, name: restaurant?.name || "Nhà hàng chưa đặt tên" });
-    }
-    return Array.from(map.values());
-  }, [canSeeAllRestaurants, rbac.allRestaurants, restaurants]);
-
-  useEffect(() => { if (!selectedRestaurantId && restaurantOptions.length) setSelectedRestaurantId(restaurantOptions[0].id); }, [restaurantOptions, selectedRestaurantId]);
-  useEffect(() => {
-    if (!selectedRestaurantId) return;
-    if (!restaurantOptions.some((restaurant) => restaurant.id === selectedRestaurantId)) setSelectedRestaurantId(restaurantOptions[0]?.id || "");
-  }, [restaurantOptions, selectedRestaurantId]);
   useEffect(() => { if (activeTab === "audit" && !canViewAuditLogs) setActiveTab("overview"); }, [activeTab, canViewAuditLogs]);
 
   if (!canViewRbac) return <div className="rbac-page"><p className="rbac-empty">Bạn không có quyền xem màn hình phân quyền nhân viên.</p></div>;
@@ -262,6 +252,11 @@ export default function RbacManagement() {
         title="Phân quyền nhân viên"
         subtitle="Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng."
         icon="🛡️"
+        selectedRestaurant={selectedRestaurantId}
+        onRestaurantChange={setSelectedRestaurantId}
+        restaurantList={restaurantOptions}
+        restaurantDisabled={restaurantsLoading || !restaurantOptions.length}
+        restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chọn nhà hàng"}
         stats={[
           {
             label: "Vai trò",

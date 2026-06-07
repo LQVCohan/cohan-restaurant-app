@@ -1,0 +1,59 @@
+import React from "react";
+import { renderHook, waitFor } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import useManagerRestaurantSelection from "./useManagerRestaurantSelection";
+import { AuthContext } from "../context/AuthContext";
+
+const createMutableWrapper = (initialValue) => {
+  const state = { value: initialValue };
+  const Wrapper = ({ children }) => (
+    <AuthContext.Provider value={state.value}>{children}</AuthContext.Provider>
+  );
+  return { state, Wrapper };
+};
+
+describe("useManagerRestaurantSelection", () => {
+  it("auto chọn nhà hàng đầu tiên sau khi restaurants load async", async () => {
+    const { state, Wrapper } = createMutableWrapper({ restaurants: [], restaurantsLoading: true });
+    const { result, rerender } = renderHook(() => useManagerRestaurantSelection(), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.selectedRestaurantId).toBe("");
+
+    state.value = {
+      restaurants: [{ _id: "r1", name: "Cohan 1" }, { id: "r2", name: "Cohan 2" }],
+      restaurantsLoading: false,
+    };
+    rerender();
+
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe("r1"));
+    expect(result.current.restaurantOptions[0]).toMatchObject({ id: "r1", name: "Cohan 1" });
+  });
+
+  it("đổi selectedRestaurantId nếu id cũ không còn trong list", async () => {
+    const { state, Wrapper } = createMutableWrapper({ restaurants: [{ id: "r1" }, { id: "r2" }], restaurantsLoading: false });
+    const { result, rerender } = renderHook(() => useManagerRestaurantSelection(), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe("r1"));
+    result.current.setSelectedRestaurantId("r2");
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe("r2"));
+
+    state.value = { restaurants: [{ id: "r3", name: "Cohan 3" }], restaurantsLoading: false };
+    rerender();
+
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe("r3"));
+  });
+
+  it("không select khi list rỗng", async () => {
+    const { Wrapper } = createMutableWrapper({ restaurants: [], restaurantsLoading: false });
+    const { result } = renderHook(() => useManagerRestaurantSelection(), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe(""));
+    expect(result.current.hasRestaurants).toBe(false);
+  });
+});
