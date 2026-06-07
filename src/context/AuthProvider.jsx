@@ -8,7 +8,7 @@ import {
   readStorageValue,
 } from "@/lib/browserStorage";
 import { clearPersistedCart } from "@/hooks/useCart";
-import { clearAuth, clearLegacyAuthStorage, setAuth } from "@/lib/authStorage";
+import { clearAuth, clearLegacyAuthStorage, getToken, setAuth } from "@/lib/authStorage";
 import { getLogoutUrl } from "@/lib/apiBaseUrl";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
@@ -225,6 +225,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [sessionState, setSessionState] = useState("anonymous");
   const [sessionWarning, setSessionWarning] = useState("");
+  const [restoreNeedsMeValidation, setRestoreNeedsMeValidation] = useState(false);
   const [restaurants, setRestaurants] = useState([]);
   const [refRestaurant, setRefRestaurant] = useState([]);
   const refreshRecoveryAttemptedRef = React.useRef(false);
@@ -242,13 +243,44 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let alive = true;
     clearLegacyAuthStorage();
+
+    const existingToken = getToken();
+    if (existingToken) {
+      setAuth({ token: existingToken });
+      setToken(existingToken);
+      setSessionState("restoring");
+      setRestoreNeedsMeValidation(true);
+    } else {
+      setSessionState("restoring");
+    }
+
     refreshAccessTokenOnce()
       .then((payload) => {
         if (!alive) return;
-        if (!applyRefreshedSession(payload)) setSessionState("anonymous");
+        if (applyRefreshedSession(payload)) {
+          setRestoreNeedsMeValidation(false);
+          setLoading(false);
+          return;
+        }
+
+        if (existingToken) {
+          setSessionState("restoring");
+          setRestoreNeedsMeValidation(true);
+          return;
+        }
+
+        setSessionState("anonymous");
+        setLoading(false);
       })
-      .finally(() => {
-        if (alive) setLoading(false);
+      .catch(() => {
+        if (!alive) return;
+        if (existingToken) {
+          setSessionState("restoring");
+          setRestoreNeedsMeValidation(true);
+          return;
+        }
+        setSessionState("anonymous");
+        setLoading(false);
       });
     return () => {
       alive = false;
@@ -279,7 +311,15 @@ export const AuthProvider = ({ children }) => {
     notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
       const me = data?.me;
-      if (!me) return;
+      setRestoreNeedsMeValidation(false);
+      setLoading(false);
+      if (!me) {
+        if (token) {
+          setSessionState("network_unstable");
+          setSessionWarning("Đang chờ khôi phục thông tin người dùng từ phiên hiện tại...");
+        }
+        return;
+      }
       setSessionState("authenticated");
       setSessionWarning("");
       setUser((prev) => {
@@ -290,7 +330,7 @@ export const AuthProvider = ({ children }) => {
     onError: (error) => {
       if (isAuthFailure(error)) {
         if (!token || refreshRecoveryAttemptedRef.current) {
-          clearLegacyAuthStorage();
+          clearAuth();
           clearPersistedCart();
           setToken(null);
           setUser(null);
@@ -298,13 +338,33 @@ export const AuthProvider = ({ children }) => {
           setRefRestaurant([]);
           setSessionState("anonymous");
           setSessionWarning("");
+          setRestoreNeedsMeValidation(false);
+          setLoading(false);
           return;
         }
 
         refreshRecoveryAttemptedRef.current = true;
-        refreshAccessTokenOnce().then((payload) => {
-          if (!applyRefreshedSession(payload)) {
-            clearLegacyAuthStorage();
+        refreshAccessTokenOnce()
+          .then((payload) => {
+            if (!applyRefreshedSession(payload)) {
+              clearAuth();
+              clearPersistedCart();
+              setToken(null);
+              setUser(null);
+              setRestaurants([]);
+              setRefRestaurant([]);
+              setSessionState("anonymous");
+              setSessionWarning("");
+              setRestoreNeedsMeValidation(false);
+              setLoading(false);
+              return;
+            }
+            refetchMe().finally(() => {
+              refreshRecoveryAttemptedRef.current = false;
+            });
+          })
+          .catch(() => {
+            clearAuth();
             clearPersistedCart();
             setToken(null);
             setUser(null);
@@ -312,14 +372,14 @@ export const AuthProvider = ({ children }) => {
             setRefRestaurant([]);
             setSessionState("anonymous");
             setSessionWarning("");
-            return;
-          }
-          refetchMe().finally(() => {
+            setRestoreNeedsMeValidation(false);
+            setLoading(false);
             refreshRecoveryAttemptedRef.current = false;
           });
-        });
         return;
       }
+      setRestoreNeedsMeValidation(false);
+      setLoading(false);
       setSessionState("network_unstable");
       setSessionWarning("Mạng không ổn định. Đang cố khôi phục phiên đăng nhập...");
     },
@@ -344,6 +404,34 @@ export const AuthProvider = ({ children }) => {
       window.clearTimeout(retryTimer);
     };
   }, [token, sessionState, refetchMe]);
+
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handlePageShow = (event) => {
+      if (!event.persisted) return;
+
+      const restoredToken = getToken();
+      if (!restoredToken) return;
+
+      setAuth({ token: restoredToken });
+      setSessionState("restoring");
+      setSessionWarning("");
+      setRestoreNeedsMeValidation(true);
+      setToken((currentToken) => currentToken || restoredToken);
+
+      if (typeof refetchMe === "function") {
+        refetchMe().catch(() => {
+          setSessionState("network_unstable");
+          setSessionWarning("Mạng chưa ổn định. Vui lòng kiểm tra kết nối và thử lại.");
+        });
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [refetchMe]);
 
   const restaurantsLoading =
     (roleName === "admin" && adminRestaurantsLoading) ||
@@ -485,7 +573,7 @@ export const AuthProvider = ({ children }) => {
     () => ({
       token,
       user,
-      loading: loading || (!!token && sessionState === "restoring" && meLoading),
+      loading: loading || (!!token && sessionState === "restoring" && (meLoading || restoreNeedsMeValidation)),
       sessionState,
       sessionWarning,
       isAuthenticated,
@@ -501,6 +589,7 @@ export const AuthProvider = ({ children }) => {
       user,
       loading,
       meLoading,
+      restoreNeedsMeValidation,
       sessionState,
       sessionWarning,
       isAuthenticated,

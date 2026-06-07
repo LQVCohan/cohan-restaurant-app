@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import { AuthProvider } from "../AuthProvider";
 import { AuthContext } from "../AuthContext";
 import { clearRefreshPromise } from "@/lib/authRefresh";
+import { SESSION_ACCESS_TOKEN_KEY, setAuth } from "@/lib/authStorage";
 
 const navigateMock = vi.fn();
 const useQueryMock = vi.hoisted(() => vi.fn());
@@ -26,6 +27,10 @@ function Consumer() {
       <div data-testid="is-auth">{String(ctx?.isAuthenticated)}</div>
       <div data-testid="email-verified">{String(ctx?.user?.emailVerified)}</div>
       <div data-testid="restaurants-loading">{String(ctx?.restaurantsLoading)}</div>
+      <div data-testid="token">{ctx?.token || ""}</div>
+      <div data-testid="session-state">{ctx?.sessionState || ""}</div>
+      <div data-testid="loading">{String(ctx?.loading)}</div>
+      <div data-testid="user-id">{ctx?.user?.id || ""}</div>
       <div data-testid="restaurants">{(ctx?.restaurants || []).map((item) => item.name).join(",")}</div>
       <button onClick={() => ctx.login("abc", { roleName: "manager", emailVerified: true })}>login</button>
       <button onClick={() => ctx.login("admin-token", { id: "admin-1", roleName: "admin", emailVerified: true })}>login-admin</button>
@@ -38,6 +43,7 @@ describe("AuthProvider", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    setAuth({ token: null });
     navigateMock.mockReset();
     clearRefreshPromise();
     useQueryMock.mockImplementation(() => defaultQueryResult());
@@ -87,7 +93,7 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(screen.getByTestId("is-auth")).toHaveTextContent("true"));
   });
 
-  it("login does not write token to storage and preserves emailVerified", async () => {
+  it("login writes only the session-restorable access token and preserves emailVerified", async () => {
     render(
       <AuthProvider>
         <Consumer />
@@ -99,8 +105,85 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("email-verified")).toHaveTextContent("true");
     expect(localStorage.getItem("auth_token")).toBeNull();
     expect(sessionStorage.getItem("token")).toBeNull();
+    expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBe("abc");
   });
 
+  it("applies token and user from a successful refresh response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ token: "refresh-token", user: { id: "u1", roleName: "admin", emailVerified: true } }),
+    });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("refresh-token"));
+    expect(screen.getByTestId("user-id")).toHaveTextContent("u1");
+    expect(screen.getByTestId("session-state")).toHaveTextContent("authenticated");
+    expect(screen.getByTestId("is-auth")).toHaveTextContent("true");
+    expect(sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY)).toBe("refresh-token");
+  });
+
+  it("does not set anonymous after successful refresh", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ token: "refresh-token", user: { id: "u1", roleName: "manager" } }),
+    });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("session-state")).toHaveTextContent("authenticated"));
+    expect(screen.getByTestId("session-state")).not.toHaveTextContent("anonymous");
+  });
+
+  it("keeps token while user is temporarily null during restore validation", async () => {
+    sessionStorage.setItem(SESSION_ACCESS_TOKEN_KEY, "stored-token");
+    global.fetch = vi.fn().mockResolvedValue({ ok: false });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("stored-token"));
+    expect(screen.getByTestId("user-id")).toHaveTextContent("");
+    expect(screen.getByTestId("session-state")).toHaveTextContent("restoring");
+    expect(screen.getByTestId("is-auth")).toHaveTextContent("true");
+  });
+
+  it("pageshow persisted restores token and triggers session restore", async () => {
+    const meRefetch = vi.fn().mockResolvedValue({ data: { me: { id: "u2", roleName: "admin" } } });
+    useQueryMock.mockImplementation((query, options = {}) => {
+      if (getQueryText(query).includes("query Me")) {
+        return { ...defaultQueryResult(), refetch: meRefetch };
+      }
+      return defaultQueryResult();
+    });
+    global.fetch = vi.fn().mockResolvedValue({ ok: false });
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("session-state")).toHaveTextContent("anonymous"));
+    sessionStorage.setItem(SESSION_ACCESS_TOKEN_KEY, "pageshow-token");
+
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+
+    await waitFor(() => expect(screen.getByTestId("token")).toHaveTextContent("pageshow-token"));
+    expect(screen.getByTestId("session-state")).toHaveTextContent("restoring");
+    expect(meRefetch).toHaveBeenCalled();
+  });
 
 
   it("loads all restaurants for admin from the restaurants query instead of restaurantsByManager", async () => {
