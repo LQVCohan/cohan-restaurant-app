@@ -1154,9 +1154,16 @@ const OrderManagement = () => {
           />
         ) : (
           <header className="om-header">
-            <div className="om-header__focus-title">
-              <span className="om-badge-live">LIVE</span>
-              <h1>KITCHEN DISPLAY</h1>
+            <div>
+              <div className="om-header__focus-title">
+                <span className="om-badge-live">LIVE</span>
+                <h1>KITCHEN DISPLAY</h1>
+              </div>
+              <div className="om-header__meta">
+                <span>{displayOrders.length.toLocaleString("vi-VN")} đơn đang lọc</span>
+                <span>•</span>
+                <span>Ưu tiên đơn cũ nhất trước</span>
+              </div>
             </div>
             <div className="om-header__actions">
               <button
