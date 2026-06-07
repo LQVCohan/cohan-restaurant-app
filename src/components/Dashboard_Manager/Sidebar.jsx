@@ -198,6 +198,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
                   type="button"
                   aria-current={activeItem === item.id ? "page" : undefined}
                   aria-label={item.label}
+                  data-tooltip={item.label}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>

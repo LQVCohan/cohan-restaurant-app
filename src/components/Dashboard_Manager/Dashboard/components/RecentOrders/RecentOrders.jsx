@@ -65,9 +65,14 @@ const RecentOrders = ({
     typeof onOpenPOS === "function" ||
     typeof onGoToMenu === "function" ||
     typeof onGoToTables === "function";
+  const orderDensityClass =
+    !loading && safeOrders.length > 0 && safeOrders.length <= 3
+      ? "order-list-body--compact"
+      : "order-list-body--scrollable";
   const bodyClass = [
     "order-list-body",
     "custom-scrollbar",
+    orderDensityClass,
     loading ? "order-list-body--loading" : "",
     isEmpty ? "order-list-body--empty" : "",
   ]
