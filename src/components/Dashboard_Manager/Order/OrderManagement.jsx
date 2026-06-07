@@ -1162,7 +1162,9 @@ const OrderManagement = () => {
               <div className="om-header__meta">
                 <span>{displayOrders.length.toLocaleString("vi-VN")} đơn đang lọc</span>
                 <span>•</span>
-                <span>Ưu tiên đơn cũ nhất trước</span>
+                <span>
+                  {sortBy === "oldest" ? "Ưu tiên đơn cũ nhất trước" : "Ưu tiên đơn mới nhất trước"}
+                </span>
               </div>
             </div>
             <div className="om-header__actions">
