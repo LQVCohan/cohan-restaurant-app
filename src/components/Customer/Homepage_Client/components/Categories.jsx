@@ -59,9 +59,10 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
   ];
 
   const displayCategories = hasData ? dataFromBackend : fallbackCategories;
+  const isCompact = displayCategories.length > 0 && displayCategories.length < 5;
 
   return (
-    <section className="categories">
+    <section className={`categories ${isCompact ? "categories--compact" : ""}`}>
       <div className="categories__container">
         {/* Header */}
         <div className="categories__header">
@@ -85,7 +86,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
         )}
 
         {/* Grid List */}
-        <div className="categories__grid">
+        <div className={`categories__grid ${isCompact ? "categories__grid--compact" : ""}`}>
           {loading && !hasData
             ? Array.from({ length: 8 }).map((_, idx) => (
                 <div

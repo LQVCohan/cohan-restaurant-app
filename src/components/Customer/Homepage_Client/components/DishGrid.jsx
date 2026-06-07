@@ -179,6 +179,14 @@ const DishGrid = ({
     setSelectedVariantKeyByDish((prev) => ({ ...prev, [dishId]: variantKey }));
   };
 
+
+  const scrollToRestaurants = () => {
+    document.getElementById("restaurants")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   const handleOpenFoodDetail = (dish) => {
     if (!dish?.id) return;
     const selectedVariantKey = getSelectedVariantKey(dish);
@@ -467,8 +475,12 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               (selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
+                  <span className="dish-grid__empty-icon" aria-hidden="true">🍽️</span>
                   <strong>Chưa có món phù hợp</strong>
                   <span>Hãy thử danh mục khác hoặc xem nhà hàng nổi bật bên dưới.</span>
+                  <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>
+                    Xem nhà hàng nổi bật
+                  </button>
                 </div>
               )}
 
@@ -476,8 +488,12 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               !(selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
+                  <span className="dish-grid__empty-icon" aria-hidden="true">🍽️</span>
                   <strong>Chưa có món nổi bật</strong>
                   <span>Thực đơn đang được cập nhật.</span>
+                  <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>
+                    Xem nhà hàng nổi bật
+                  </button>
                 </div>
               )}
           </div>

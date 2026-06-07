@@ -168,6 +168,45 @@ const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
 ];
 
+
+const TECHNICAL_TEXT_PATTERNS = [
+  /\[[^\]]*(?:demo|pr\d+|scheduling)[^\]]*\]/gi,
+  /\bPR\s*\d+\s*demo\b/gi,
+  /\bdemo[-_\s]*(?:scheduling|restaurant|data|pr\d+)\b/gi,
+  /\b(?:scheduling|seed|placeholder|test)[-_\s]*pr\d+\b/gi,
+];
+
+const cleanTechnicalText = (value = "") => {
+  let normalized = String(value || "").trim();
+
+  TECHNICAL_TEXT_PATTERNS.forEach((pattern) => {
+    normalized = normalized.replace(pattern, " ");
+  });
+
+  return normalized.replace(/\s{2,}/g, " ").trim();
+};
+
+const hasTechnicalPlaceholderText = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return true;
+
+  return (
+    /\[[^\]]*(?:demo|pr\d+|scheduling)[^\]]*\]/i.test(normalized) ||
+    /\bpr\s*\d+\s*demo\b/i.test(normalized) ||
+    /\bdemo[-_\s]*(?:scheduling|restaurant|data|pr\d+)\b/i.test(normalized) ||
+    /\b(?:placeholder|test address|địa chỉ test|dia chi test)\b/i.test(normalized)
+  );
+};
+
+const toCustomerText = (value, fallback, { allowEmpty = false } = {}) => {
+  const cleaned = cleanTechnicalText(value);
+  if (!cleaned || hasTechnicalPlaceholderText(value)) {
+    return allowEmpty ? "" : fallback;
+  }
+
+  return cleaned;
+};
+
 const isPlaceholderRestaurantImage = (url = "") => {
   if (!url) return true;
   const normalizedUrl = url.toLowerCase();
@@ -186,12 +225,12 @@ const normalizeRestaurant = (node, index) => {
 
   return {
     id: node.id,
-    name: node.name ?? "Nhà hàng",
-    description: node.description ?? "Mô tả đang cập nhật...",
+    name: toCustomerText(node.name, "Nhà hàng đang cập nhật"),
+    description: toCustomerText(node.description, "Mô tả đang được cập nhật."),
     image: isPlaceholderRestaurantImage(candidateImage) ? fallbackImage : candidateImage,
     priceRange: node.priceRange ?? "",
     hours: formatHours(node.openingHours, node.closingHours),
-    addressText: formatAddress(node.address),
+    addressText: toCustomerText(formatAddress(node.address), "", { allowEmpty: true }),
     avgRating: nullableNumber(node.avgRating),
     lat,
     lng,

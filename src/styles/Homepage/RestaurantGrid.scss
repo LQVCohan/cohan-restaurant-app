@@ -20,7 +20,7 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
   width: 100%;
   overflow: hidden;
   margin-top: -2px;
-  padding: 76px 0 96px;
+  padding: 54px 0 84px;
 
   &::before {
     content: "";
@@ -184,7 +184,7 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
   &__list {
     display: grid;
     grid-template-columns: repeat(1, minmax(0, 1fr));
-    gap: 26px;
+    gap: 22px;
 
     @media (min-width: 760px) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -192,7 +192,7 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
 
     @media (min-width: 1120px) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 30px;
+      gap: 24px;
     }
   }
 
@@ -272,11 +272,8 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
     cursor: pointer;
     position: relative;
     min-height: 100%;
+    height: 100%;
     box-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
-
-    &:nth-child(2n) {
-      transform: translateY(14px);
-    }
 
     &:hover {
       transform: translateY(-8px);
@@ -288,10 +285,6 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
       }
     }
 
-    &:nth-child(2n):hover {
-      transform: translateY(4px);
-    }
-
     &:focus-visible {
       outline: 3px solid rgba(232, 93, 4, 0.3);
       outline-offset: 4px;
@@ -300,7 +293,7 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
     &__image-wrapper {
       position: relative;
       width: 100%;
-      height: 235px;
+      height: 220px;
       overflow: hidden;
       background: #f4e9dd;
     }
@@ -362,14 +355,14 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
     }
 
     &__body {
-      padding: 24px;
+      padding: 22px;
       display: flex;
       flex-direction: column;
       flex: 1;
     }
 
     &__main-info {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     &__name-row {
@@ -433,7 +426,7 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      margin: 0 0 18px;
+      margin: 0 0 16px;
       flex: 1;
     }
 
@@ -513,7 +506,7 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
 
     .skeleton-img {
       width: 100%;
-      height: 235px;
+      height: 220px;
     }
 
     .skeleton-text {

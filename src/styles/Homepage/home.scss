@@ -185,8 +185,8 @@ body {
 
 // Bridge giữa Thực đơn và Nhà hàng: che mép thẳng của RestaurantGrid.
 .home .restaurant-grid {
-  margin-top: -56px;
-  padding-top: 108px;
+  margin-top: -24px;
+  padding-top: 70px;
   border-top: 0;
 }
 
@@ -196,7 +196,7 @@ body {
   top: -2px;
   left: 0;
   right: 0;
-  height: 66px;
+  height: 42px;
   pointer-events: none;
   z-index: 1;
   background: linear-gradient(
@@ -214,11 +214,11 @@ body {
 
 @media (max-width: 760px) {
   .home .restaurant-grid {
-    margin-top: -40px;
-    padding-top: 90px;
+    margin-top: -18px;
+    padding-top: 64px;
   }
 
   .home .restaurant-grid::after {
-    height: 52px;
+    height: 34px;
   }
 }
