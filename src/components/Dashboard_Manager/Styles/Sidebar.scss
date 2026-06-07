@@ -478,3 +478,83 @@ $manager-white: #ffffff;
     }
   }
 }
+
+@media (min-width: 769px) {
+  .manager-layout:not(.sidebar-open) .sidebar {
+    max-width: 72px;
+    overflow: visible;
+
+    .sidebar-nav {
+      overflow: visible;
+    }
+
+    .nav-item {
+      isolation: isolate;
+
+      &::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: calc(100% + 12px);
+        top: 50%;
+        z-index: 20;
+        max-width: 240px;
+        padding: 0.5rem 0.7rem;
+        border: 1px solid rgba($manager-accent, 0.24);
+        border-radius: 12px;
+        background: rgba(47, 36, 24, 0.96);
+        color: #fffaf3;
+        box-shadow: 0 14px 30px rgba(47, 36, 24, 0.22);
+        font-size: 0.78rem;
+        font-weight: 750;
+        letter-spacing: 0.01em;
+        line-height: 1.25;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-4px, -50%) scale(0.96);
+        transition: opacity 0.16s ease, transform 0.16s ease;
+        white-space: nowrap;
+      }
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: calc(100% + 5px);
+        top: 50%;
+        z-index: 21;
+        width: 10px;
+        height: 10px;
+        border-left: 1px solid rgba($manager-accent, 0.24);
+        border-bottom: 1px solid rgba($manager-accent, 0.24);
+        background: rgba(47, 36, 24, 0.96);
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-4px, -50%) rotate(45deg) scale(0.96);
+        transition: opacity 0.16s ease, transform 0.16s ease;
+      }
+
+      &:hover::after,
+      &:focus-visible::after,
+      &:hover::before,
+      &:focus-visible::before {
+        opacity: 1;
+        transform: translate(0, -50%) scale(1);
+      }
+
+      &:hover::before,
+      &:focus-visible::before {
+        transform: translate(0, -50%) rotate(45deg) scale(1);
+      }
+
+      &.active {
+        border-color: rgba($manager-accent, 0.5);
+        box-shadow: 0 10px 22px rgba(154, 91, 22, 0.2), inset 0 0 0 1px rgba($manager-accent, 0.18);
+
+        .nav-icon {
+          color: #5d3209;
+          background: linear-gradient(145deg, #fff7ed, #f7dfbd);
+          box-shadow: inset 0 0 0 1px rgba($manager-accent, 0.34), 0 8px 16px rgba(154, 91, 22, 0.16);
+        }
+      }
+    }
+  }
+}

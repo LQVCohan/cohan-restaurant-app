@@ -266,6 +266,14 @@ const Dashboard = () => {
         onOpenTables={handleGoToTables}
       />
 
+      <section className="dashboard-system-overview" aria-labelledby="dashboard-system-overview-title">
+        <div className="dashboard-section-title">
+          <h2 id="dashboard-system-overview-title">Tổng quan hệ thống</h2>
+          <p>Dữ liệu nền giúp đánh giá mức sẵn sàng vận hành của nhà hàng.</p>
+        </div>
+        <StatsGrid stats={stats} isLoading={loading} variant="compact" />
+      </section>
+
       <section className="dashboard-operations-grid" aria-label="Khu vực vận hành chính">
         <article className="dashboard-card dashboard-card--primary-orders">
           <div className="dashboard-card__head">
@@ -444,8 +452,6 @@ const Dashboard = () => {
           </div>
         </section>
       ) : null}
-
-      <StatsGrid stats={stats} isLoading={loading} variant="compact" />
     </div>
   );
 };

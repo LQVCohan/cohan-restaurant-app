@@ -75,6 +75,7 @@ $manager-accent-dark: #c2410c;
       linear-gradient(180deg, rgba(255, 247, 237, 0.94), rgba(248, 250, 252, 0.98));
     @include custom-scrollbar;
     padding: clamp(1rem, 2vw, 1.5rem);
+    padding-bottom: max(96px, clamp(1rem, 2vw, 1.5rem));
 
     .manager-page-shell {
       --manager-accent-a: #{$manager-accent};
@@ -136,6 +137,7 @@ $manager-accent-dark: #c2410c;
 
     &__content {
       padding: 0.85rem;
+      padding-bottom: max(96px, 0.85rem);
     }
   }
 }
