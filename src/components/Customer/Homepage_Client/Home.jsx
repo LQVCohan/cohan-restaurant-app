@@ -11,12 +11,6 @@ import TableBooking from "./components/TableBooking";
 
 import { useCart } from "../../../context/CartProvider";
 import "../../../styles/Homepage/home.scss";
-import "./Home.product.css";
-import "./Home.ux10.css";
-import "./Home.finalfix.css";
-import "./Home.motion.css";
-import "./Home.hero-stable.css";
-import "./Home.final-ui.css";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 
 // Hàm tiện ích lấy khung giờ (để lọc Category nếu cần)

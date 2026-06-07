@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 
+const EMPTY_ARRAY = [];
+
 const ROLE_FIELDS = gql`
   fragment RbacRoleFields on Role {
     id
@@ -186,13 +188,23 @@ export function useRbacManagement(restaurantId, options = {}) {
   }, [auditLogFilters, auditRestaurantId, canViewGlobalAuditLogs]);
   const shouldSkipAuditLogs = Boolean(options.skipAuditLogs) || (!canViewGlobalAuditLogs && !auditRestaurantId);
 
+  const managementVariables = useMemo(() => ({
+    restaurantId: restaurantId || null,
+    includeStaffList,
+    includeAllRestaurants,
+  }), [restaurantId, includeStaffList, includeAllRestaurants]);
+
+  const auditVariables = useMemo(() => ({
+    filter: auditFilter,
+    limit: auditLogLimit,
+    offset: 0,
+  }), [auditFilter, auditLogLimit]);
+
   const { data, loading, error, refetch } = useQuery(RBAC_MANAGEMENT_QUERY, {
-    variables: {
-      restaurantId: restaurantId || null,
-      includeStaffList,
-      includeAllRestaurants,
-    },
-    fetchPolicy: "cache-and-network",
+    variables: managementVariables,
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: true,
   });
 
   const {
@@ -201,13 +213,11 @@ export function useRbacManagement(restaurantId, options = {}) {
     error: auditLogsError,
     refetch: refetchAuditLogs,
   } = useQuery(RBAC_AUDIT_LOGS_QUERY, {
-    variables: {
-      filter: auditFilter,
-      limit: auditLogLimit,
-      offset: 0,
-    },
+    variables: auditVariables,
     skip: shouldSkipAuditLogs,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
+    notifyOnNetworkStatusChange: true,
   });
 
   const [assignStaffRole, assignState] = useMutation(ASSIGN_STAFF_ROLE_MUTATION, {
@@ -231,11 +241,14 @@ export function useRbacManagement(restaurantId, options = {}) {
     },
   });
 
-  const roles = data?.role || [];
-  const permissions = data?.permissions || [];
-  const parentRoles = data?.parentRoles || [];
-  const staff = data?.staffList || [];
-  const allRestaurants = (data?.restaurants?.edges || []).map((edge) => edge.node).filter(Boolean);
+  const roles = useMemo(() => data?.role || EMPTY_ARRAY, [data?.role]);
+  const permissions = useMemo(() => data?.permissions || EMPTY_ARRAY, [data?.permissions]);
+  const parentRoles = useMemo(() => data?.parentRoles || EMPTY_ARRAY, [data?.parentRoles]);
+  const staff = useMemo(() => data?.staffList || EMPTY_ARRAY, [data?.staffList]);
+  const allRestaurants = useMemo(
+    () => (data?.restaurants?.edges || EMPTY_ARRAY).map((edge) => edge.node).filter(Boolean),
+    [data?.restaurants?.edges],
+  );
 
   const selectedRole = useMemo(() => {
     if (selectedRoleId) return roles.find((role) => role.id === selectedRoleId) || null;
@@ -274,7 +287,7 @@ export function useRbacManagement(restaurantId, options = {}) {
     updateRole,
     updatingRole: updateRoleState.loading,
     updateRoleError: updateRoleState.error,
-    auditLogs: auditLogsData?.rbacAuditLogs || [],
+    auditLogs: auditLogsData?.rbacAuditLogs || EMPTY_ARRAY,
     auditLogsLoading,
     auditLogsError,
     auditLogFilters,
