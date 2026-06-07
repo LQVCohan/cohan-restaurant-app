@@ -318,13 +318,13 @@ const DishGrid = ({
                     <div
                       key={dish.id}
                       className="dish-card"
-                      onClick={() => handleAddDishToCart(dish)}
+                      onClick={() => handleOpenFoodDetail(dish)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleAddDishToCart(dish);
+                          handleOpenFoodDetail(dish);
                         }
                       }}
                     >
@@ -376,17 +376,23 @@ const DishGrid = ({
                         {/* Dropdown chọn biến thể */}
                         <div className="dish-card__variant-area">
                           {hasVariants ? (
-                            <div className="dish-card__select-wrapper">
+                            <div
+                              className="dish-card__select-wrapper"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
                               <label className="dish-card__label">
                                 Tùy chọn:
                               </label>
                               <select
                                 onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
                                 className="dish-card__select"
                                 value={method ? getVariantKey(method) : ""}
-                                onChange={(e) =>
-                                  handleMethodChange(dish.id, e.target.value)
-                                }
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleMethodChange(dish.id, e.target.value);
+                                }}
                               >
                                 {dish.servingVariants.map((m, idx) => (
                                   <option

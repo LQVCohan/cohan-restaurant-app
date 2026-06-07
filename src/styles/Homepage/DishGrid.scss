@@ -165,7 +165,44 @@ $cream: #fff8ef;
       margin-bottom: 6px;
     }
 
-    &__variant-area { display: none; }
+    &__variant-area {
+      margin: 0 0 8px;
+    }
+
+    &__select-wrapper {
+      display: grid;
+      gap: 3px;
+    }
+
+    &__label {
+      color: $text-sub;
+      font-size: 0.68rem;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    &__select {
+      width: 100%;
+      min-height: 28px;
+      border: 1px solid rgba(92, 64, 51, 0.13);
+      border-radius: 9px;
+      background: #fff8ef;
+      color: $text-main;
+      cursor: pointer;
+      font-size: 0.76rem;
+      font-weight: 750;
+      outline: none;
+      padding: 0 8px;
+
+      &:focus {
+        border-color: rgba(255, 102, 0, 0.42);
+        box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.11);
+      }
+    }
+
+    &__variant-spacer {
+      display: none;
+    }
 
     &__footer {
       margin-top: auto;

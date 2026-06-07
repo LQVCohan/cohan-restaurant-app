@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import "../../../../styles/Homepage/Categories.scss";
 import { useCategoryManagement } from "../../../../hooks/useCategoryManagement";
 const CATEGORY_IMAGE_MAP = [
@@ -24,6 +25,7 @@ const getCategoryImage = (category) => {
 };
 
 const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
+  const navigate = useNavigate();
   const {
     categories,
     categoriesLoading,
@@ -66,7 +68,11 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
           <h3 className="categories__title">
             {isGlobal ? "Danh mục phổ biến" : "Thực đơn nhà hàng"}
           </h3>
-          <button type="button" className="categories__view-all">
+          <button
+            type="button"
+            className="categories__view-all"
+            onClick={() => navigate("/restaurants")}
+          >
             Xem tất cả <span>›</span>
           </button>
         </div>
