@@ -155,13 +155,23 @@ $cms-radius: 12px;
     }
   }
 
-  .cms-error-msg {
-    background: #fef2f2;
-    color: $cms-danger;
+  .cms-action-msg {
     padding: 10px;
+    border: 1px solid transparent;
     border-radius: 8px;
     font-size: 13px;
-    border: 1px solid #fecaca;
+
+    &--error {
+      background: #fef2f2;
+      color: $cms-danger;
+      border-color: #fecaca;
+    }
+
+    &--success {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
   }
 
   // --- CARDS VIEWPORT ---
@@ -314,13 +324,38 @@ $cms-radius: 12px;
         align-items: flex-end;
         gap: 4px;
         .cms-slot-tag {
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 8px;
-          border-radius: 12px;
-          border: 1px solid;
           display: flex;
           align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border: 1px solid;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .cms-slot-tag--breakfast {
+          color: #d97706;
+          background: #fffbeb;
+          border-color: #fde68a;
+        }
+
+        .cms-slot-tag--lunch {
+          color: #059669;
+          background: #ecfdf5;
+          border-color: #a7f3d0;
+        }
+
+        .cms-slot-tag--dinner {
+          color: #8f6a42;
+          background: #fdf8f3;
+          border-color: #f1e5d5;
+        }
+
+        .cms-slot-tag--late-night {
+          color: #9d5c1b;
+          background: #fff7ed;
+          border-color: #fed7aa;
         }
         .cms-status-off {
           font-size: 10px;
@@ -551,12 +586,12 @@ $cms-radius: 12px;
   }
 
   &__warning {
-    margin-top: 10px !important;
+    margin-top: 10px;
     padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid #fecaca;
     background: #fef2f2;
-    color: #b91c1c !important;
+    color: #b91c1c;
   }
 }
 
@@ -727,11 +762,6 @@ $cms-radius: 12px;
     #fffaf5;
 }
 
-.cms-success-msg {
-  color: #047857;
-  border-color: #a7f3d0;
-  background: #ecfdf5;
-}
 
 .cms-container button:focus-visible,
 .cms-container .cms-card-select:focus-visible {

@@ -29,30 +29,10 @@ import "./CompactMenuStrip.scss";
 import "./CompactMenuStripPolish.scss";
 
 const SLOT_CONFIG = {
-  breakfast: {
-    label: "Sáng",
-    color: "#d97706",
-    bg: "#fffbeb",
-    border: "#fde68a",
-  },
-  lunch: {
-    label: "Trưa",
-    color: "#059669",
-    bg: "#ecfdf5",
-    border: "#a7f3d0",
-  },
-  dinner: {
-    label: "Tối",
-    color: "#b89365",
-    bg: "#fdf8f3",
-    border: "#f1e5d5",
-  },
-  late_night: {
-    label: "Khuya",
-    color: "#db2777",
-    bg: "#fdf2f8",
-    border: "#fbcfe8",
-  },
+  breakfast: { label: "Sáng" },
+  lunch: { label: "Trưa" },
+  dinner: { label: "Tối" },
+  late_night: { label: "Khuya" },
 };
 
 const formatCompactRevenue = (value) => {
@@ -232,13 +212,13 @@ const CompactMenuStrip = ({
         </div>
 
         {!isCollapsed && menusError && (
-          <div className="cms-error-msg">Lỗi: {menusError.message}</div>
+          <div className="cms-action-msg cms-action-msg--error">Lỗi: {menusError.message}</div>
         )}
         {!isCollapsed && actionError && (
-          <div className="cms-error-msg">Lỗi: {actionError}</div>
+          <div className="cms-action-msg cms-action-msg--error">Lỗi: {actionError}</div>
         )}
         {!isCollapsed && actionMessage && (
-          <div className="cms-error-msg cms-success-msg">
+          <div className="cms-action-msg cms-action-msg--success">
             {actionMessage}
           </div>
         )}
@@ -281,15 +261,8 @@ const CompactMenuStrip = ({
                           )}
                         </div>
                         <div className="cms-badges">
-                          <span
-                            className="cms-slot-tag"
-                            style={{
-                              color: slot.color,
-                              background: slot.bg,
-                              borderColor: slot.border,
-                            }}
-                          >
-                            <FiClock size={10} style={{ marginRight: 4 }} /> {slot.label}
+                          <span className={`cms-slot-tag cms-slot-tag--${String(menu.timeSlot || "breakfast").replace(/_/g, "-")}`}>
+                            <FiClock size={10} className="cms-slot-tag__icon" /> {slot.label}
                           </span>
                           {menu.isActive === false && (
                             <span className="cms-status-off">Đang ẩn</span>

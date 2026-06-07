@@ -1,76 +1,11 @@
 .for-you-readiness-panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-
-  &__header { margin-bottom: 12px; }
-  &__title { margin: 0; font-size: 1.05rem; font-weight: 700; color: #111827; }
-  &__subtitle { margin: 6px 0 0; color: #6b7280; font-size: 0.92rem; }
-
-  &__progress-meta {
-    display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
-    margin-bottom: 8px;
-    strong { font-size: 1.1rem; color: #0f766e; }
-    span { color: #4b5563; font-size: 0.9rem; }
-  }
-
-  &__progress-bar { background: #e5e7eb; height: 10px; border-radius: 999px; overflow: hidden; }
-  &__progress-fill { height: 100%; background: linear-gradient(90deg, #14b8a6 0%, #0ea5e9 100%); }
-
-  &__stats {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px;
-  }
-
-  &__stat {
-    border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px;
-    span { display: block; font-size: 0.8rem; color: #6b7280; }
-    strong { font-size: 1.05rem; color: #111827; }
-
-    &--missing { border-color: #fcd34d; background: #fffbeb; }
-  }
-
-  &__actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-  &__success { margin: 0; color: #047857; font-weight: 600; }
-}
-
-@media (max-width: 900px) {
-  .for-you-readiness-panel {
-    &__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    &__actions { flex-direction: column; }
-  }
-}
-
-.for-you-readiness-panel__bulk-helper{display:block;font-size:.78rem;color:#6b7280;font-weight:400;}
-
-.for-you-readiness-panel {
-  &__eyebrow { display: inline-block; margin-bottom: 4px; color: #0f766e; font-size: .76rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-  &__subtitle--warning { color: #92400e; }
-  &__stats--quality { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  &__stat--complete { border-color: #99f6e4; background: #f0fdfa; }
-  &__stat--missing-soft { border-color: #fed7aa; background: #fff7ed; }
-  &__restaurants { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-top: 12px; }
-  &__restaurant { border: 1px dashed #cbd5e1; border-radius: 12px; padding: 10px; display: grid; gap: 2px; span { color: #334155; font-weight: 700; } strong { color: #0f766e; } small { color: #92400e; } }
-}
-
-@media (max-width: 1100px) {
-  .for-you-readiness-panel { &__stats--quality { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-}
-
-@media (max-width: 640px) {
-  .for-you-readiness-panel { &__stats--quality { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-}
-
-/* Compact Vietnamese readiness panel for the menu operations flow. */
-.for-you-readiness-panel {
   display: grid;
   grid-template-columns: minmax(220px, 0.95fr) minmax(260px, 1.05fr);
   gap: 14px 18px;
   align-items: center;
   padding: 14px 16px;
   margin: 0 0 12px;
-  border-color: #e7dccf;
+  border: 1px solid #e7dccf;
   border-radius: 20px;
   background:
     radial-gradient(circle at 100% 0%, rgba(184, 147, 101, 0.12), transparent 12rem),
@@ -82,19 +17,26 @@
   }
 
   &__eyebrow {
+    display: inline-block;
+    margin-bottom: 4px;
     color: #76532e;
     font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   &__title {
-    margin-top: 4px;
+    margin: 4px 0 0;
     color: #241f1a;
     font-size: 1rem;
+    font-weight: 800;
     letter-spacing: -0.02em;
   }
 
   &__subtitle {
     max-width: 52ch;
+    margin: 6px 0 0;
     color: #756a5d;
     font-size: 0.86rem;
     line-height: 1.45;
@@ -105,8 +47,15 @@
   }
 
   &__progress-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+
     strong {
       color: #76532e;
+      font-size: 1.1rem;
       font-variant-numeric: tabular-nums;
     }
 
@@ -118,32 +67,36 @@
 
   &__progress-bar {
     height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
     background: #eee4d8;
   }
 
   &__progress-fill {
+    width: var(--ready-percent, 0%);
+    height: 100%;
     background: linear-gradient(90deg, #c8a77b 0%, #8f6a42 100%);
+    transition: width 0.24s ease;
   }
 
   &__stats {
+    display: grid;
     grid-column: 1 / -1;
-    margin-top: 0;
-  }
-
-  &__stats--quality {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 8px;
+    margin-top: 0;
   }
 
   &__stat {
     padding: 8px 10px;
-    border-color: #e7dccf;
+    border: 1px solid #e7dccf;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.78);
 
     span {
-      font-size: 0.72rem;
+      display: block;
       color: #756a5d;
+      font-size: 0.72rem;
       white-space: nowrap;
     }
 
@@ -165,21 +118,64 @@
     }
   }
 
-  &__actions {
+  &__restaurants {
+    display: grid;
     grid-column: 1 / -1;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
     margin-top: 0;
-    align-items: center;
   }
 
-  &__actions .mm-btn {
-    min-height: 34px;
-    padding: 7px 12px;
+  &__restaurant {
+    display: grid;
+    gap: 2px;
+    padding: 10px;
+    border: 1px dashed #d7c7b5;
     border-radius: 12px;
+    background: rgba(255, 255, 255, 0.64);
+
+    span {
+      color: #334155;
+      font-weight: 750;
+    }
+
+    strong {
+      color: #76532e;
+      font-variant-numeric: tabular-nums;
+    }
+
+    small {
+      color: #92400e;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 0;
+
+    .mm-btn {
+      min-height: 34px;
+      padding: 7px 12px;
+      border-radius: 12px;
+    }
+  }
+
+  &__bulk-helper {
+    display: block;
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 400;
   }
 
   &__success {
+    margin: 0;
     color: #047857;
     font-size: 0.9rem;
+    font-weight: 650;
   }
 }
 
@@ -187,15 +183,20 @@
   .for-you-readiness-panel {
     grid-template-columns: 1fr;
 
-    &__stats--quality {
+    &__stats {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    &__actions {
+      flex-direction: column;
+      align-items: stretch;
     }
   }
 }
 
 @media (max-width: 640px) {
   .for-you-readiness-panel {
-    &__stats--quality {
+    &__stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }

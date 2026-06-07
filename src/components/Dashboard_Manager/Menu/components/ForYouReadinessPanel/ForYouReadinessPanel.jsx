@@ -8,6 +8,12 @@ const StatCard = ({ label, value, variant = "default" }) => (
   </article>
 );
 
+const clampPercent = (value) => {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.min(100, Math.max(0, numeric));
+};
+
 const ForYouReadinessPanel = ({
   summary,
   restaurantSummaries = [],
@@ -32,6 +38,7 @@ const ForYouReadinessPanel = ({
     missingTaste: 0,
     readyPercent: 0,
   };
+  const readyPercent = clampPercent(safeSummary.readyPercent);
   const shouldShowRestaurantGroups = Array.isArray(restaurantSummaries) && restaurantSummaries.length > 1;
 
   return (
@@ -46,11 +53,11 @@ const ForYouReadinessPanel = ({
 
       <div className="for-you-readiness-panel__progress">
         <div className="for-you-readiness-panel__progress-meta">
-          <strong>{safeSummary.readyPercent}%</strong>
-          <span>{safeSummary.ready}/{safeSummary.total} món có ít nhất một nhóm metadata</span>
+          <strong>{readyPercent}%</strong>
+          <span>{safeSummary.ready}/{safeSummary.total} món có ít nhất một nhóm dữ liệu gợi ý</span>
         </div>
-        <div className="for-you-readiness-panel__progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeSummary.readyPercent}>
-          <div className="for-you-readiness-panel__progress-fill" style={{ width: `${safeSummary.readyPercent}%` }} />
+        <div className="for-you-readiness-panel__progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={readyPercent}>
+          <div className="for-you-readiness-panel__progress-fill" style={{ "--ready-percent": `${readyPercent}%` }} />
         </div>
       </div>
 
