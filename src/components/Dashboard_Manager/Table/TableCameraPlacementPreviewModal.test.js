@@ -141,7 +141,7 @@ describe("TableCameraPlacementPreviewModal", () => {
 
     expect(await screen.findByText("Thiết bị/trình duyệt chưa hỗ trợ camera preview.")).toBeInTheDocument();
     expect(screen.getByText("Thử Chrome/Safari mobile nếu thiết bị hiện tại không mở được camera.")).toBeInTheDocument();
-    expect(screen.getByText("Bạn có thể đóng modal này và dùng preview 3D thường để kiểm tra mẫu bàn.")).toBeInTheDocument();
+    expect(screen.getByText("Bạn có thể dùng preview 3D thường để kiểm tra hình dáng mẫu bàn.")).toBeInTheDocument();
   });
 
   it("renders thumbnail overlay and falls back when thumbnail fails", async () => {
@@ -155,22 +155,17 @@ describe("TableCameraPlacementPreviewModal", () => {
     await waitFor(() => {
       expect(screen.queryByAltText("Thumbnail Bàn thumbnail")).not.toBeInTheDocument();
     });
-    expect(screen.getByLabelText("Overlay mô hình bàn để ước lượng vị trí")).toBeInTheDocument();
+    expect(screen.getByLabelText("Overlay mô hình bàn để xem thử trong camera")).toBeInTheDocument();
   });
 
-  it("sends confirmed placement with opacity", async () => {
-    const onConfirmPlacement = vi.fn();
+  it("updates the manual preview opacity", async () => {
     renderCameraModal({
       initialPlacement: { x: 40, y: 60, scale: 1.1, rotation: 30, opacity: 0.5 },
-      onConfirmPlacement,
     });
 
     fireEvent.change(await screen.findByRole("slider"), { target: { value: "0.42" } });
-    fireEvent.click(screen.getByText("Xác nhận vị trí"));
 
-    expect(onConfirmPlacement).toHaveBeenCalledWith(expect.objectContaining({
-      placement: expect.objectContaining({ opacity: 0.42 }),
-    }));
+    expect(screen.getByText(/opacity: 0.42/)).toBeInTheDocument();
   });
 });
 
