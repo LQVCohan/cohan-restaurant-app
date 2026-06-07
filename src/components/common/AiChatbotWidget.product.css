@@ -1,9 +1,9 @@
 /* Product-ready polish for the customer AI chatbot.
    This keeps GraphQL, socket handoff, cart, and routing logic unchanged. */
 .ai-chatbot-widget {
-  right: 26px !important;
-  bottom: 26px !important;
-  z-index: 1300 !important;
+  right: 24px !important;
+  bottom: 24px !important;
+  z-index: 900 !important;
 }
 
 .ai-chatbot-toggle {
