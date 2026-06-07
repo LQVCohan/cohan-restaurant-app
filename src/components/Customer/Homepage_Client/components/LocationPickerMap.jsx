@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import L from "leaflet";
+import { MapPin } from "lucide-react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -87,7 +88,7 @@ const LocationPickerMap = ({
 
       <div className="location-picker__summary">
         <span className="location-picker__pin" aria-hidden="true">
-          📍
+          <MapPin />
         </span>
         <p className="location-picker__address" title={displayLabel}>
           {displayLabel}

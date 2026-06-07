@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { CheckCircle2, LocateFixed, MapPin, Navigation, Star } from "lucide-react";
 import "../../../../styles/Homepage/RestaurantGrid.scss";
 import { hasIconInCategoryName, resolveCategoryIcon } from "../../../../utils/categoryIconMap";
 
@@ -153,10 +154,10 @@ const formatDistanceMeta = ({ distanceSource, distanceKm, estimatedTravelMinutes
 
 const formatRating = (rating) => {
   if (typeof rating !== "number" || !Number.isFinite(rating) || rating <= 0) {
-    return { label: "Chưa có đánh giá", ariaLabel: "Nhà hàng chưa có đánh giá" };
+    return { value: null, ariaLabel: "Nhà hàng chưa có đánh giá" };
   }
 
-  return { label: `★ ${rating.toFixed(1)}`, ariaLabel: `Điểm đánh giá ${rating.toFixed(1)}` };
+  return { value: rating.toFixed(1), ariaLabel: `Điểm đánh giá ${rating.toFixed(1)}` };
 };
 
 const RESTAURANT_FALLBACK_IMAGES = [
@@ -342,14 +343,14 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
 
         {nearbyMode && !loading && (
           <div className="restaurant-grid__nearby-note">
-            <span className="restaurant-grid__nearby-icon" aria-hidden="true">⌖</span>
+            <span className="restaurant-grid__nearby-icon" aria-hidden="true"><LocateFixed /></span>
             <span>Đang hiển thị nhà hàng gần vị trí hiện tại trong bán kính {DEFAULT_NEARBY_RADIUS_KM} km.</span>
           </div>
         )}
 
         {!nearbyMode && hasCategoryFilter && !loading && (
           <div className="restaurant-grid__nearby-note restaurant-grid__nearby-note--success">
-            <span className="restaurant-grid__nearby-icon" aria-hidden="true">✓</span>
+            <span className="restaurant-grid__nearby-icon" aria-hidden="true"><CheckCircle2 /></span>
             <span>Đây là những nhà hàng có danh mục {displayCategoryName} trong khung giờ hiện tại.</span>
           </div>
         )}
@@ -376,7 +377,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
                       <img src={r.image} alt={`Không gian của ${r.name}`} className="res-card__img" loading="lazy" />
                       <div className="res-card__scrim" aria-hidden="true" />
                       <div className="res-card__overlay">
-                        <div className="res-card__rating" aria-label={rating.ariaLabel}>{rating.label}</div>
+                        <div className="res-card__rating" aria-label={rating.ariaLabel}><Star aria-hidden="true" /> {rating.value || "Chưa có đánh giá"}</div>
                         {r.hours && <div className="res-card__status">{r.hours}</div>}
                       </div>
                     </div>
@@ -387,8 +388,8 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
                           <h4 className="res-card__name" title={r.name}>{r.name}</h4>
                           {r.priceRange && <span className="res-card__price">{r.priceRange}</span>}
                         </div>
-                        <p className="res-card__address" title={r.addressText}>⌁ {r.addressText || "Chưa cập nhật địa chỉ"}</p>
-                        {distanceMetaText && <p className="res-card__distance">{r.distanceSource === "road" ? "↳" : "⌖"} {distanceMetaText}</p>}
+                        <p className="res-card__address" title={r.addressText}><MapPin aria-hidden="true" /> {r.addressText || "Chưa cập nhật địa chỉ"}</p>
+                        {distanceMetaText && <p className="res-card__distance">{r.distanceSource === "road" ? <Navigation aria-hidden="true" /> : <LocateFixed aria-hidden="true" />} {distanceMetaText}</p>}
                       </div>
 
                       <p className="res-card__desc">{r.description}</p>
