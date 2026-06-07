@@ -75,6 +75,16 @@ function SessionNetworkWarning({
   );
 }
 
+const hasRestorableSession = ({
+  token,
+  sessionState,
+  user,
+}: {
+  token: string | null;
+  sessionState?: string;
+  user: UserLike | null;
+}) => Boolean(token && (sessionState === "restoring" || !user));
+
 const shouldBlockForNetworkRecovery = ({
   token,
   sessionState,
@@ -84,6 +94,18 @@ const shouldBlockForNetworkRecovery = ({
   sessionState?: string;
   user: UserLike | null;
 }) => Boolean(token && sessionState === "network_unstable" && !user);
+
+const shouldRedirectToLogin = ({
+  loading,
+  token,
+  sessionState,
+  isAuthenticated,
+}: {
+  loading: boolean;
+  token: string | null;
+  sessionState?: string;
+  isAuthenticated: boolean;
+}) => !loading && !token && sessionState === "anonymous" && !isAuthenticated;
 
 /** ---- ProtectedRoute ----
  * - Yêu cầu đã đăng nhập
@@ -106,13 +128,15 @@ export default function ProtectedRoute(): JSX.Element {
 
   const location = useLocation();
 
-  if (loading) return <LoadingScreen />;
+  if (loading || sessionState === "restoring" || hasRestorableSession({ token, sessionState, user })) {
+    return <LoadingScreen />;
+  }
 
   if (shouldBlockForNetworkRecovery({ token, sessionState, user })) {
     return <SessionNetworkWarning message={sessionWarning} />;
   }
 
-  if (!isAuthenticated) {
+  if (shouldRedirectToLogin({ loading, token, sessionState, isAuthenticated })) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
@@ -143,13 +167,15 @@ export function RequireRole({
 
   const location = useLocation();
 
-  if (loading) return <LoadingScreen />;
+  if (loading || sessionState === "restoring" || hasRestorableSession({ token, sessionState, user })) {
+    return <LoadingScreen />;
+  }
 
   if (shouldBlockForNetworkRecovery({ token, sessionState, user })) {
     return <SessionNetworkWarning message={sessionWarning} />;
   }
 
-  if (!isAuthenticated) {
+  if (shouldRedirectToLogin({ loading, token, sessionState, isAuthenticated })) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
