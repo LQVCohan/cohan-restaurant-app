@@ -16,6 +16,17 @@ vi.mock("@/hooks/usePayroll", () => ({
   default: vi.fn(),
 }));
 
+vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
+  default: () => ({
+    restaurantOptions: [{ id: "restaurant-1", name: "Cohan" }],
+    selectedRestaurantId: "restaurant-1",
+    setSelectedRestaurantId: vi.fn(),
+    selectedRestaurant: { id: "restaurant-1", name: "Cohan" },
+    restaurantsLoading: false,
+    hasRestaurants: true,
+  }),
+}));
+
 const buildHookValue = (overrides = {}) => ({
   periods: [
     {
@@ -284,6 +295,7 @@ describe("PayrollManagement payroll period setup", () => {
       expect(createPeriod).toHaveBeenCalledWith({
         variables: {
           input: expect.objectContaining({
+            restaurantId: "restaurant-1",
             startDate: "2026-05-01",
             endDate: "2026-05-31",
           }),

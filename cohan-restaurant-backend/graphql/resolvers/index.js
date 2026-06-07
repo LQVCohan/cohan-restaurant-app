@@ -75,6 +75,7 @@ export default {
     ...(tableEvent.Query || {}),
     ...(printSetting.Query || {}),
     ...(communication.Query || {}),
+    ...(aiChatbot.Query || {}),
     ...(availability.Query || {}),
     ...(auditLog.Query || {}),
     ...(systemSetting.Query || {}),

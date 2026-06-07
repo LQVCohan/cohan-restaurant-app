@@ -123,6 +123,8 @@ const renderPage = () =>
           id: "manager-1",
           permissions: ["inventory.write", "stock.write"],
         },
+        restaurants: [{ id: "res-1", name: "Cơm nhà Cohan" }],
+        restaurantsLoading: false,
       }}
     >
       <StorageManagement />

@@ -3,7 +3,6 @@ import React, {
   useState,
   useEffect,
   useMemo,
-  useContext,
   useCallback,
 } from "react";
 import { gql, useQuery } from "@apollo/client";
@@ -24,8 +23,7 @@ import {
 
 import useStaffManagement from "../../../hooks/useStaffManagement";
 import { useTime } from "../../../hooks/useTime";
-import { useRestaurant } from "../../../hooks/useRestaurant";
-import { AuthContext } from "@/context/AuthContext";
+import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import { useNotification } from "@/hooks/useNotification";
 import { matchesEmployeeSearch } from "../../../utils/employeeSearch";
 import {
@@ -75,7 +73,6 @@ const STAFF_SUB_PAGES = new Set([
 const StaffManagement = () => {
   // --- STATE ---
   const [currentPage, setCurrentPage] = useState("dashboard");
-  const [selectedRestaurant, setSelectedRestaurant] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -118,51 +115,17 @@ const StaffManagement = () => {
   });
 
   // --- HOOKS & CONTEXT ---
-  const { user } = useContext(AuthContext);
   const { showNotification } = useNotification();
-  const managerId = user?.id || user?._id || null;
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+  } = useManagerRestaurantSelection();
+  const selectedRestaurant = selectedRestaurantId;
   const { currentTime, currentDate } = useTime();
 
   // --- DATA FETCHING ---
-  const {
-    getManagedRestaurants,
-    getManagedRestaurantIds,
-    loading: restaurantLoading,
-  } = useRestaurant();
-
-  const [restaurantList, setRestaurantList] = useState([]);
-  const [managedRestaurantIds, setManagedRestaurantIds] = useState([]);
-
-  useEffect(() => {
-    if (!managerId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const [restaurants, ids] = await Promise.all([
-          getManagedRestaurants(managerId),
-          getManagedRestaurantIds(managerId),
-        ]);
-        if (!cancelled) {
-          setRestaurantList(restaurants || []);
-          setManagedRestaurantIds(ids || []);
-        }
-      } catch (err) {
-        console.error("Load restaurants failed:", err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [managerId, getManagedRestaurantIds, getManagedRestaurants]);
-  useEffect(() => {
-    if (selectedRestaurant) return;
-    if (!restaurantList.length) return;
-
-    const firstRestaurantId = restaurantList[0]?.id || restaurantList[0]?._id;
-    if (firstRestaurantId) {
-      setSelectedRestaurant(firstRestaurantId);
-    }
-  }, [restaurantList, selectedRestaurant]);
   const {
     staffList,
     roleList,
@@ -212,12 +175,11 @@ const StaffManagement = () => {
   useEffect(() => {
     if (!selectedRestaurant) return;
 
-    setFilters((prev) => ({
-      ...prev,
+    setFilters({
       restaurantId: selectedRestaurant,
       search: undefined,
-    }));
-  }, [selectedRestaurant, debouncedSearchQuery, setFilters]);
+    });
+  }, [selectedRestaurant, setFilters]);
   // Client-side filtering (nếu cần filter thêm ở client)
   const filteredStaff = useMemo(() => {
     if (!staffList) return [];
@@ -244,7 +206,7 @@ const StaffManagement = () => {
       result = result.filter((s) => matchesEmployeeSearch(s, searchQuery));
     }
     return result;
-  }, [staffList, selectedRestaurant, managedRestaurantIds, searchQuery]);
+  }, [staffList, selectedRestaurant, searchQuery]);
 
   // Map Data Model
   const mappedStaff = useMemo(
@@ -429,8 +391,8 @@ const StaffManagement = () => {
     [openModal],
   );
 
-  const isLoading = staffListLoading || restaurantLoading;
-  const isHeaderLoading = isLoading || pendingLeaveLoading;
+  const isLoading = staffListLoading || restaurantsLoading;
+  const isHeaderLoading = restaurantsLoading || staffListLoading || pendingLeaveLoading;
 
   useEffect(() => {
     if (!selectedEmployee) return;
@@ -505,7 +467,7 @@ const StaffManagement = () => {
         <StaffPerformancePage
           employees={mappedStaff}
           selectedRestaurant={selectedRestaurant}
-          restaurantList={restaurantList}
+          restaurantList={restaurantOptions}
           searchQuery={searchQuery}
         />
       );
@@ -513,7 +475,7 @@ const StaffManagement = () => {
     if (currentPage === "reports") return <StaffReportsPage />;
     return null;
   }, [
-    restaurantList,
+    restaurantOptions,
     searchQuery,
     selectedRestaurant,
     currentDate,
@@ -545,10 +507,10 @@ const StaffManagement = () => {
         <header className="page-header-wrapper">
           <StaffHeader
             selectedRestaurant={selectedRestaurant}
-            onRestaurantChange={setSelectedRestaurant}
+            onRestaurantChange={setSelectedRestaurantId}
             onAddEmployee={() => openModal("addEmployee")}
             onExportData={() => console.log("Export")}
-            restaurantList={restaurantList}
+            restaurantList={restaurantOptions}
             stats={stats}
             loading={isHeaderLoading}
             pendingLeaveCount={pendingLeaveCount}
@@ -579,7 +541,7 @@ const StaffManagement = () => {
         isOpen={modals.addEmployee}
         onClose={() => closeModal("addEmployee")}
         onSubmit={handleAddEmployee}
-        restaurantList={restaurantList}
+        restaurantList={restaurantOptions}
         defaultRestaurantId={selectedRestaurant}
         roleList={roleList}
         roleListLoading={roleListLoading}
@@ -590,7 +552,7 @@ const StaffManagement = () => {
         employee={selectedEmployee}
         onClose={() => closeModal("editEmployee")}
         onSubmit={handleEditEmployee}
-        restaurantList={restaurantList}
+        restaurantList={restaurantOptions}
         defaultRestaurantId={selectedRestaurant}
         roleList={roleList}
         roleListLoading={roleListLoading}
