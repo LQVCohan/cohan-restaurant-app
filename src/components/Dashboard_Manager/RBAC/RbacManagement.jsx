@@ -99,16 +99,19 @@ function RoleManagement({ roles, parentRoles, permissionsByGroup, selectedRole, 
 
   useEffect(() => {
     if (mode !== "edit" || !selectedRole) return;
-    setForm({
-      name: selectedRole.name || "",
-      slug: selectedRole.slug || "",
-      description: selectedRole.description || "",
-      department: selectedRole.department || "",
-      parentRoleId: selectedRole.parentRole?.id || "",
-      permissionIds: (selectedRole.directPermissions || []).map((permission) => permission.id),
+    setForm((current) => {
+      const next = {
+        name: selectedRole.name || "",
+        slug: selectedRole.slug || "",
+        description: selectedRole.description || "",
+        department: selectedRole.department || "",
+        parentRoleId: selectedRole.parentRole?.id || "",
+        permissionIds: (selectedRole.directPermissions || []).map((permission) => permission.id),
+      };
+      return JSON.stringify(current) === JSON.stringify(next) ? current : next;
     });
-    setStatus(null);
-  }, [mode, selectedRole]);
+    setStatus((current) => (current === null ? current : null));
+  }, [mode, selectedRole?.id, selectedRole?.name, selectedRole?.slug, selectedRole?.description, selectedRole?.department, selectedRole?.parentRole?.id, selectedRole?.directPermissions]);
 
   const directPermissions = useMemo(() => {
     const directIds = new Set(form.permissionIds);
@@ -191,7 +194,11 @@ function StaffRoleAssignment({ restaurants, roles, staff, selectedRestaurantId, 
   const [roleId, setRoleId] = useState("");
   const [status, setStatus] = useState(null);
   const assignableRoles = useMemo(() => roles.filter((role) => !protectedRoleSlugs.has(String(role.slug || "").toLowerCase())), [roles]);
-  useEffect(() => { setStaffUserId(""); setRoleId(""); setStatus(null); }, [selectedRestaurantId]);
+  useEffect(() => {
+    setStaffUserId((current) => (current ? "" : current));
+    setRoleId((current) => (current ? "" : current));
+    setStatus((current) => (current === null ? current : null));
+  }, [selectedRestaurantId]);
   const formDisabled = assigning || !canAssignRole || !selectedRestaurantId || !staff.length || !assignableRoles.length;
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -245,12 +252,20 @@ export default function RbacManagement() {
     return Array.from(map.values());
   }, [canSeeAllRestaurants, rbac.allRestaurants, restaurants]);
 
-  useEffect(() => { if (!selectedRestaurantId && restaurantOptions.length) setSelectedRestaurantId(restaurantOptions[0].id); }, [restaurantOptions, selectedRestaurantId]);
   useEffect(() => {
-    if (!selectedRestaurantId) return;
-    if (!restaurantOptions.some((restaurant) => restaurant.id === selectedRestaurantId)) setSelectedRestaurantId(restaurantOptions[0]?.id || "");
-  }, [restaurantOptions, selectedRestaurantId]);
-  useEffect(() => { if (activeTab === "audit" && !canViewAuditLogs) setActiveTab("overview"); }, [activeTab, canViewAuditLogs]);
+    if (!restaurantOptions.length) {
+      setSelectedRestaurantId((current) => (current ? "" : current));
+      return;
+    }
+    setSelectedRestaurantId((current) => {
+      if (current && restaurantOptions.some((restaurant) => restaurant.id === current)) return current;
+      return restaurantOptions[0].id;
+    });
+  }, [restaurantOptions]);
+
+  useEffect(() => {
+    if (activeTab === "audit" && !canViewAuditLogs) setActiveTab("overview");
+  }, [activeTab, canViewAuditLogs]);
 
   if (!canViewRbac) return <div className="rbac-page"><p className="rbac-empty">Bạn không có quyền xem màn hình phân quyền nhân viên.</p></div>;
 
@@ -263,25 +278,10 @@ export default function RbacManagement() {
         subtitle="Xem danh sách vai trò, quyền hạn, gán vai trò và nhật ký phân quyền theo từng nhà hàng."
         icon="🛡️"
         stats={[
-          {
-            label: "Vai trò",
-            value: rbac.roles.length,
-            icon: "👥",
-          },
-          {
-            label: "Nhân viên",
-            value: rbac.staff.length,
-            icon: "🧑‍🍳",
-          },
+          { label: "Vai trò", value: rbac.roles.length, icon: "👥" },
+          { label: "Nhân viên", value: rbac.staff.length, icon: "🧑‍🍳" },
         ]}
-        secondaryActions={[
-          {
-            label: "Làm mới",
-            onClick: () => rbac.refetch(),
-            disabled: rbac.loading,
-            loading: rbac.loading,
-          },
-        ]}
+        secondaryActions={[{ label: "Làm mới", onClick: () => rbac.refetch(), disabled: rbac.loading, loading: rbac.loading }]}
         footerLeft={<small>Backend vẫn kiểm tra quyền bắt buộc.</small>}
         showTimeWidget={false}
       />
