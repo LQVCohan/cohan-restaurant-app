@@ -38,6 +38,7 @@ const GET_TOP_MENU_ITEMS = gql`
       menuId
       categoryId
       restaurantId
+      defaultServingKey
       status
       inventoryStatus
       stockWarnings
@@ -45,7 +46,11 @@ const GET_TOP_MENU_ITEMS = gql`
       servingVariants {
         key
         name
+        mode
+        sellQty
+        sellUnit
         price
+        isDefault
       }
     }
   }
@@ -124,16 +129,32 @@ const DishGrid = ({
   const getVariantKey = (variant, fallbackIndex = 0) =>
     variant?.key || `variant-${fallbackIndex}`;
 
-  const getSelectedMethod = (dish) => {
-    const selectedKey = selectedVariantKeyByDish[dish.id];
-    if (!selectedKey && dish.servingVariants?.length > 0) {
-      return dish.servingVariants[0];
+  const getDefaultMethod = (dish) => {
+    const variants = dish.servingVariants || [];
+    if (!variants.length) return null;
+
+    if (dish.defaultServingKey) {
+      const byDefaultKey = variants.find(
+        (variant) => String(variant?.key || "") === String(dish.defaultServingKey),
+      );
+      if (byDefaultKey) return byDefaultKey;
     }
-    return (
-      dish.servingVariants?.find(
+
+    return variants.find((variant) => variant?.isDefault) || variants[0];
+  };
+
+  const getSelectedMethod = (dish) => {
+    const variants = dish.servingVariants || [];
+    const selectedKey = selectedVariantKeyByDish[dish.id];
+
+    if (selectedKey) {
+      const selectedVariant = variants.find(
         (variant, index) => getVariantKey(variant, index) === selectedKey,
-      ) || null
-    );
+      );
+      if (selectedVariant) return selectedVariant;
+    }
+
+    return getDefaultMethod(dish);
   };
 
   const getSelectedVariantKey = (dish) => {
@@ -290,11 +311,7 @@ const DishGrid = ({
       <div className="dish-grid__container">
         {/* Header */}
         <div className="dish-grid__header">
-          <span className="dish-grid__badge">🔥 Hot Trend</span>
-          <h3 className="dish-grid__title">Thực Đơn Nổi Bật</h3>
-          <p className="dish-grid__subtitle">
-            Những món ăn được yêu thích nhất tuần qua, hương vị tuyệt hảo.
-          </p>
+          <h3 className="dish-grid__title">Thực đơn nổi bật</h3>
         </div>
 
         {/* Content */}
@@ -311,6 +328,10 @@ const DishGrid = ({
                   const availability = getMenuItemAvailability(dish);
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
+                  const restaurantName =
+                    dish.restaurantName ||
+                    dish.restaurant?.name ||
+                    (dish.restaurantId ? `Nhà hàng #${String(dish.restaurantId).slice(-4)}` : "FoodHub Kitchen");
                   const hasVariants = dish.servingVariants?.length > 0;
                   const isAdding = addingDishId === dish.id;
 
@@ -318,13 +339,13 @@ const DishGrid = ({
                     <div
                       key={dish.id}
                       className="dish-card"
-                      onClick={() => handleAddDishToCart(dish)}
+                      onClick={() => handleOpenFoodDetail(dish)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleAddDishToCart(dish);
+                          handleOpenFoodDetail(dish);
                         }
                       }}
                     >
@@ -367,25 +388,32 @@ const DishGrid = ({
                         <h4 className="dish-card__name" title={dish.name}>
                           {dish.name}
                         </h4>
-                        <p className="dish-card__desc">
-                          {dish.description ||
-                            "Hương vị tuyệt hảo, nguyên liệu tươi ngon."}
-                        </p>
+                        <p className="dish-card__restaurant">{restaurantName}</p>
+                        <div className="dish-card__meta">
+                          <span>⭐ {dish.point || dish.rate || "4.8"}</span>
+                          {dish.avgPrepTimeMin && <span>{dish.avgPrepTimeMin} phút</span>}
+                        </div>
 
                         {/* Dropdown chọn biến thể */}
                         <div className="dish-card__variant-area">
                           {hasVariants ? (
-                            <div className="dish-card__select-wrapper">
+                            <div
+                              className="dish-card__select-wrapper"
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
                               <label className="dish-card__label">
                                 Tùy chọn:
                               </label>
                               <select
                                 onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
                                 className="dish-card__select"
-                                value={method ? getVariantKey(method) : ""}
-                                onChange={(e) =>
-                                  handleMethodChange(dish.id, e.target.value)
-                                }
+                                value={getSelectedVariantKey(dish)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleMethodChange(dish.id, e.target.value);
+                                }}
                               >
                                 {dish.servingVariants.map((m, idx) => (
                                   <option
@@ -413,7 +441,6 @@ const DishGrid = ({
                         {/* Footer: Price + Button */}
                         <div className="dish-card__footer">
                           <div className="dish-card__price-box">
-                            <span className="label">Giá:</span>
                             <span className="price">
                               {price.toLocaleString("vi-VN")} <small>đ</small>
                             </span>
@@ -440,7 +467,8 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               (selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
-                  Không có món ăn thuộc danh mục này.
+                  <strong>Chưa có món phù hợp</strong>
+                  <span>Hãy thử danh mục khác hoặc xem nhà hàng nổi bật bên dưới.</span>
                 </div>
               )}
 
@@ -448,7 +476,8 @@ const DishGrid = ({
               visibleDishes.length === 0 &&
               !(selectedCategoryId || selectedCategoryName) && (
                 <div className="dish-grid__empty">
-                  Không có món ăn để hiển thị.
+                  <strong>Chưa có món nổi bật</strong>
+                  <span>Thực đơn đang được cập nhật.</span>
                 </div>
               )}
           </div>

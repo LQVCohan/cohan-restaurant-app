@@ -1,12 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import LocationPickerMap from "./LocationPickerMap";
 import "../../../../styles/Homepage/HeroSection.scss";
 
+// Danh sách ảnh món ăn demo
 const HERO_IMAGES = [
   {
     id: 1,
-    src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=768&q=80",
-    alt: "Món ngon 1",
+    src: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=1100&q=88",
+    alt: "Mâm món Việt giao nhanh",
   },
   {
     id: 2,
@@ -61,9 +62,10 @@ const HeroSection = ({ onSearch }) => {
   const [suggestionMessage, setSuggestionMessage] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
-  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
+  // --- SLIDER LOGIC ---
   const [currentSlide, setCurrentSlide] = useState(0);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -73,6 +75,14 @@ const HeroSection = ({ onSearch }) => {
   const debounceRef = useRef(null);
   const reverseDebounceRef = useRef(null);
 
+  // Tự động chuyển ảnh sau 5s
+  useEffect(() => {
+    const timer = setInterval(() => {
+      handleNext();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [currentSlide]);
+
   const handleNext = () => {
     setCurrentSlide((prev) => (prev === HERO_IMAGES.length - 1 ? 0 : prev + 1));
   };
@@ -81,19 +91,7 @@ const HeroSection = ({ onSearch }) => {
     setCurrentSlide((prev) => (prev === 0 ? HERO_IMAGES.length - 1 : prev - 1));
   };
 
-  useEffect(() => {
-    const timer = setInterval(handleNext, 5000);
-    return () => clearInterval(timer);
-  }, [currentSlide]);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
-      if (abortRef.current) abortRef.current.abort();
-    };
-  }, []);
-
+  // Xử lý vuốt tay (Swipe) trên Mobile
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
   };
@@ -103,9 +101,16 @@ const HeroSection = ({ onSearch }) => {
   };
 
   const handleTouchEnd = () => {
-    if (touchStartX.current - touchEndX.current > 50) handleNext();
-    if (touchStartX.current - touchEndX.current < -50) handlePrev();
+    if (touchStartX.current - touchEndX.current > 50) {
+      // Vuốt sang trái -> Next
+      handleNext();
+    }
+    if (touchStartX.current - touchEndX.current < -50) {
+      // Vuốt sang phải -> Prev
+      handlePrev();
+    }
   };
+
 
   useEffect(() => {
     const q = address.trim().toLowerCase();
@@ -114,7 +119,6 @@ const HeroSection = ({ onSearch }) => {
 
     if (isLocationPickerOpen) {
       setAddressSuggestions([]);
-      setSuggestionMessage("");
       return;
     }
 
@@ -124,21 +128,41 @@ const HeroSection = ({ onSearch }) => {
       return;
     }
 
+    // Gợi ý ngay từ cache để UI mượt, không cần request liên tục
     const cachedList = [];
     for (const [key, list] of cacheRef.current.entries()) {
-      if (key.startsWith(q) || key.includes(q)) cachedList.push(...list);
+      if (key.startsWith(q) || key.includes(q)) {
+        cachedList.push(...list);
+      }
     }
 
     const uniqCache = new Map();
     cachedList.forEach((item) => uniqCache.set(item.id, item));
-    const localSuggestions = [...uniqCache.values()].slice(0, 5);
+    const localSuggestions = [...uniqCache.values()].slice(0, 6);
 
     if (localSuggestions.length > 0) {
       setAddressSuggestions(localSuggestions);
       setSuggestionMessage("");
+    } else {
+      const allCached = [];
+      for (const list of cacheRef.current.values()) {
+        allCached.push(...list);
+      }
+
+      if (allCached.length > 0) {
+        const uniq = new Map();
+        allCached.forEach((item) => uniq.set(item.id, item));
+        const fallbackPool = [...uniq.values()]
+          .filter((item) => item.label.toLowerCase().includes(q))
+          .slice(0, 6);
+        setAddressSuggestions(fallbackPool);
+      }
     }
 
-    if (cacheRef.current.has(q)) return;
+    // Nếu đã có cache theo key chính xác thì không request nữa
+    if (cacheRef.current.has(q)) {
+      return;
+    }
 
     debounceRef.current = setTimeout(async () => {
       if (abortRef.current) abortRef.current.abort();
@@ -149,7 +173,7 @@ const HeroSection = ({ onSearch }) => {
       try {
         setIsSuggesting(true);
         const url =
-          `${NOMINATIM_SEARCH}?format=jsonv2&addressdetails=1&limit=5` +
+          `${NOMINATIM_SEARCH}?format=jsonv2&addressdetails=1&limit=6` +
           `&countrycodes=vn&q=${encodeURIComponent(address.trim())}`;
 
         const res = await fetch(url, {
@@ -157,10 +181,14 @@ const HeroSection = ({ onSearch }) => {
           headers: { "Accept-Language": "vi" },
         });
 
-        if (!res.ok) throw new Error("Không thể lấy gợi ý địa chỉ");
+        if (!res.ok) {
+          throw new Error("Không thể lấy gợi ý địa chỉ");
+        }
 
         const data = await res.json();
-        const suggestions = (Array.isArray(data) ? data : []).map(normalizeSuggestion);
+        const suggestions = (Array.isArray(data) ? data : []).map(
+          normalizeSuggestion
+        );
 
         cacheRef.current.set(q, suggestions);
         setAddressSuggestions(suggestions);
@@ -181,6 +209,13 @@ const HeroSection = ({ onSearch }) => {
     };
   }, [address, isLocationPickerOpen]);
 
+
+  useEffect(() => {
+    return () => {
+      if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    };
+  }, []);
+
   const reverseGeocodeLocation = async (
     { lat, lng },
     fallbackLabel = "Vị trí hiện tại của bạn"
@@ -190,9 +225,13 @@ const HeroSection = ({ onSearch }) => {
       const url =
         `${NOMINATIM_REVERSE}?format=jsonv2&addressdetails=1` +
         `&lat=${lat}&lon=${lng}`;
-      const res = await fetch(url, { headers: { "Accept-Language": "vi" } });
+      const res = await fetch(url, {
+        headers: { "Accept-Language": "vi" },
+      });
 
-      if (!res.ok) throw new Error("Không thể lấy địa chỉ từ tọa độ");
+      if (!res.ok) {
+        throw new Error("Không thể lấy địa chỉ từ tọa độ");
+      }
 
       const data = await res.json();
       const label = buildShortAddressLabel(
@@ -233,7 +272,9 @@ const HeroSection = ({ onSearch }) => {
       const url =
         `${NOMINATIM_SEARCH}?format=jsonv2&addressdetails=1&limit=1` +
         `&countrycodes=vn&q=${encodeURIComponent(query.trim())}`;
-      const res = await fetch(url, { headers: { "Accept-Language": "vi" } });
+      const res = await fetch(url, {
+        headers: { "Accept-Language": "vi" },
+      });
       const data = await res.json();
       const first = data?.[0];
       if (!first) return null;
@@ -243,20 +284,6 @@ const HeroSection = ({ onSearch }) => {
     } catch {
       return null;
     }
-  };
-
-  const submitSearch = (searchText, location) => {
-    onSearch({
-      search: searchText || location?.shortLabel || location?.label || "",
-      location:
-        location && Number.isFinite(location.lat) && Number.isFinite(location.lng)
-          ? {
-              lat: location.lat,
-              lng: location.lng,
-              label: location.shortLabel || location.label,
-            }
-          : null,
-    });
   };
 
   const handleSearch = async () => {
@@ -272,16 +299,21 @@ const HeroSection = ({ onSearch }) => {
       location = await resolveLocationByQuery(searchText);
     }
 
-    setIsLocationPickerOpen(false);
-    submitSearch(searchText, location);
-  };
+    if (location) {
+      setIsLocationPickerOpen(false);
+    }
 
-  const openLocationPicker = (location, label) => {
-    setSelectedLocation(location);
-    setAddress(label);
-    setAddressSuggestions([]);
-    setSuggestionMessage("");
-    setIsLocationPickerOpen(true);
+    onSearch({
+      search: searchText || location?.shortLabel || location?.label || "",
+      location:
+        location && Number.isFinite(location.lat) && Number.isFinite(location.lng)
+          ? {
+              lat: location.lat,
+              lng: location.lng,
+              label: location.shortLabel || location.label,
+            }
+          : null,
+    });
   };
 
   const handleUseCurrentLocation = () => {
@@ -294,23 +326,27 @@ const HeroSection = ({ onSearch }) => {
       async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const pendingLocation = {
+
+        setAddressSuggestions([]);
+        setSuggestionMessage("");
+        setSelectedLocation({
           id: `current-${Date.now()}`,
-          label: "Đang cập nhật địa chỉ...",
-          shortLabel: "Đang cập nhật địa chỉ...",
+          label: "Vị trí hiện tại của bạn",
+          shortLabel: "Vị trí hiện tại của bạn",
           lat,
           lng,
           address: {},
-        };
-
-        openLocationPicker(pendingLocation, "Đang cập nhật địa chỉ...");
+        });
+        setAddress("Vị trí hiện tại của bạn");
+        setIsLocationPickerOpen(true);
 
         const location = await reverseGeocodeLocation(
           { lat, lng },
           "Vị trí hiện tại của bạn"
         );
-        const label = location.shortLabel || location.label;
-        openLocationPicker(location, label);
+
+        setAddress(location.shortLabel || location.label);
+        setSelectedLocation(location);
       },
       () => {
         setSuggestionMessage("Không thể lấy vị trí hiện tại. Vui lòng bật GPS.");
@@ -325,13 +361,18 @@ const HeroSection = ({ onSearch }) => {
 
   const handlePickSuggestion = (item) => {
     const label = item.shortLabel || item.label;
-    openLocationPicker({ ...item, label }, label);
+    setAddress(label);
+    setSelectedLocation({ ...item, label });
+    setAddressSuggestions([]);
+    setSuggestionMessage("");
+    setIsLocationPickerOpen(true);
   };
 
   const handleChangePickerLocation = ({ lat, lng }) => {
     const fallbackLabel =
-      selectedLocation?.shortLabel || selectedLocation?.label || "Vị trí hiện tại của bạn";
-
+      selectedLocation?.shortLabel ||
+      selectedLocation?.label ||
+      "Vị trí hiện tại của bạn";
     setSelectedLocation((prev) => ({
       ...(prev || { id: `map-${Date.now()}` }),
       lat,
@@ -352,11 +393,21 @@ const HeroSection = ({ onSearch }) => {
     if (!selectedLocation) return;
 
     const label =
-      selectedLocation.shortLabel || selectedLocation.label || "Vị trí hiện tại của bạn";
+      selectedLocation.shortLabel ||
+      selectedLocation.label ||
+      "Vị trí hiện tại của bạn";
     if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
     setAddress(label);
     setIsLocationPickerOpen(false);
-    submitSearch(label, selectedLocation);
+    setAddressSuggestions([]);
+    onSearch({
+      search: label,
+      location: {
+        lat: selectedLocation.lat,
+        lng: selectedLocation.lng,
+        label,
+      },
+    });
   };
 
   const handleClosePicker = () => {
@@ -365,8 +416,9 @@ const HeroSection = ({ onSearch }) => {
   };
 
   return (
-    <section id="home" className={`hero ${isLocationPickerOpen ? "hero--map-open" : ""}`}>
+    <section id="home" className="hero">
       <div className="hero__container">
+        {/* --- LEFT CONTENT (Giữ nguyên) --- */}
         <div className="hero__content">
           <div className="hero__badge">
             <span className="hero__badge-icon">🚀</span>
@@ -374,99 +426,84 @@ const HeroSection = ({ onSearch }) => {
           </div>
 
           <h1 className="hero__title">
-            Thưởng thức món ngon <br />
-            <span className="text-highlight">Giao tận nơi</span> cho bạn
+            Món ngon <span className="text-highlight">giao nhanh</span>
+            <br /> đến bạn
           </h1>
 
           <p className="hero__subtitle">
-            Khám phá hàng nghìn món ăn từ các nhà hàng uy tín. Đặt hàng dễ dàng,
-            theo dõi lộ trình và nhận món nóng hổi ngay tại nhà!
+            Khám phá nhà hàng uy tín, đặt món dễ dàng và nhận món nóng hổi tại nhà.
           </p>
 
-          <div className="hero__search-stack">
-            <div className="hero__search-box">
-              <div className="hero__input-wrapper">
-                <span className="hero__icon-location">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder="Nhập địa chỉ giao hàng của bạn..."
-                  value={address}
-                  onChange={(e) => {
-                    setAddress(e.target.value);
-                    setSelectedLocation(null);
-                    setIsLocationPickerOpen(false);
-                  }}
-                  onKeyDown={handleKeyDown}
-                />
-              </div>
-
-              <button
-                onClick={handleUseCurrentLocation}
-                className="hero__btn-location"
-                type="button"
-                disabled={isReverseGeocoding}
-              >
-                {isReverseGeocoding ? "Đang lấy vị trí" : "Vị trí hiện tại"}
-              </button>
-              <button onClick={handleSearch} className="hero__btn-search" type="button">
-                Tìm nhà hàng
-              </button>
+          <div className="hero__search-box">
+            <div className="hero__input-wrapper">
+              <span className="hero__icon-location">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Nhập địa chỉ giao hàng của bạn..."
+                value={address}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  setSelectedLocation(null);
+                  setIsLocationPickerOpen(false);
+                }}
+                onKeyDown={handleKeyDown}
+              />
             </div>
 
-            {!isLocationPickerOpen &&
-              (isSuggesting || addressSuggestions.length > 0 || suggestionMessage) && (
-                <div className="hero__suggestions">
-                  {addressSuggestions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="hero__suggestion-item"
-                      onClick={() => handlePickSuggestion(item)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                  {isSuggesting && (
-                    <div className="hero__suggestion-state">Đang gợi ý địa chỉ...</div>
-                  )}
-                  {!isSuggesting && suggestionMessage && (
-                    <div className="hero__suggestion-state">{suggestionMessage}</div>
-                  )}
-                </div>
-              )}
+            <button
+              onClick={handleUseCurrentLocation}
+              className="hero__btn-location"
+              type="button"
+            >
+              Vị trí hiện tại
+            </button>
+            <button onClick={handleSearch} className="hero__btn-search" type="button">
+              Tìm nhà hàng
+            </button>
+          </div>
 
-            {isLocationPickerOpen && selectedLocation && (
-              <div className="hero__location-popover">
-                <LocationPickerMap
-                  lat={selectedLocation.lat}
-                  lng={selectedLocation.lng}
-                  label={
-                    isReverseGeocoding
-                      ? "Đang cập nhật địa chỉ..."
-                      : selectedLocation.shortLabel || selectedLocation.label
-                  }
-                  onChangeLocation={handleChangePickerLocation}
-                  onConfirm={handleConfirmPickerLocation}
-                  onClose={handleClosePicker}
-                />
+          {!isLocationPickerOpen &&
+            (isSuggesting ||
+              addressSuggestions.length > 0 ||
+              suggestionMessage) && (
+              <div className="hero__suggestions">
+                {addressSuggestions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="hero__suggestion-item"
+                    onClick={() => handlePickSuggestion(item)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                {isSuggesting && (
+                  <div className="hero__suggestion-state">
+                    Đang gợi ý địa chỉ...
+                  </div>
+                )}
+                {!isSuggesting && suggestionMessage && (
+                  <div className="hero__suggestion-state">
+                    {suggestionMessage}
+                  </div>
+                )}
               </div>
             )}
-          </div>
 
           <div className="hero__stats">
             <div className="hero__stat-item">
@@ -486,9 +523,11 @@ const HeroSection = ({ onSearch }) => {
           </div>
         </div>
 
+        {/* --- RIGHT IMAGE AREA (UPDATED SLIDER) --- */}
         <div className="hero__image-area">
           <div className="hero__image-bg"></div>
 
+          {/* Slider Wrapper */}
           <div
             className="hero__slider"
             onTouchStart={handleTouchStart}
@@ -500,11 +539,14 @@ const HeroSection = ({ onSearch }) => {
                 key={img.id}
                 src={img.src}
                 alt={img.alt}
-                className={`hero__main-img ${index === currentSlide ? "active" : ""}`}
+                className={`hero__main-img ${
+                  index === currentSlide ? "active" : ""
+                }`}
               />
             ))}
           </div>
 
+          {/* Navigation Buttons */}
           <button className="hero__slider-btn prev" onClick={handlePrev}>
             ‹
           </button>
@@ -512,11 +554,21 @@ const HeroSection = ({ onSearch }) => {
             ›
           </button>
 
+          {/* Floating Card 1 */}
           <div className="hero__float-card float-review">
             <div className="float-icon">⭐️</div>
             <div className="float-content">
               <span className="float-title">4.9/5</span>
               <span className="float-desc">Đánh giá tốt</span>
+            </div>
+          </div>
+
+          {/* Floating Card 2 */}
+          <div className="hero__float-card float-time">
+            <div className="float-icon">⏱</div>
+            <div className="float-content">
+              <span className="float-title">30 phút</span>
+              <span className="float-desc">Giao siêu tốc</span>
             </div>
           </div>
 
@@ -529,6 +581,25 @@ const HeroSection = ({ onSearch }) => {
           </div>
         </div>
       </div>
+
+      {isLocationPickerOpen && selectedLocation && (
+        <div className="hero__modal-backdrop" role="dialog" aria-modal="true">
+          <div className="hero__modal-card">
+            <LocationPickerMap
+              lat={selectedLocation.lat}
+              lng={selectedLocation.lng}
+              label={
+                isReverseGeocoding
+                  ? "Đang cập nhật địa chỉ..."
+                  : selectedLocation.shortLabel || selectedLocation.label
+              }
+              onChangeLocation={handleChangePickerLocation}
+              onConfirm={handleConfirmPickerLocation}
+              onClose={handleClosePicker}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="hero__wave-container">
         <svg

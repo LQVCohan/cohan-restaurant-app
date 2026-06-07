@@ -6,7 +6,7 @@ import "../../../../styles/Homepage/RestaurantGrid.scss";
 import { hasIconInCategoryName, resolveCategoryIcon } from "../../../../utils/categoryIconMap";
 
 const DEFAULT_NEARBY_RADIUS_KM = 20;
-const DEFAULT_RESTAURANT_LIMIT = 6;
+const DEFAULT_RESTAURANT_LIMIT = 3;
 
 // --- GRAPHQL QUERY ---
 const GET_TOP_RESTAURANTS = gql`
@@ -203,7 +203,7 @@ const normalizeRestaurant = (node, index) => {
   };
 };
 
-const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefined, title = "Nhà Hàng Nổi Bật", showViewAll = true }) => {
+const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefined, title = "Nhà hàng nổi bật", showViewAll = true }) => {
   const navigate = useNavigate();
 
   const effectiveFilter = restaurantFilter || addressFilter || {};
@@ -282,7 +282,7 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
     }
   };
 
-  const headerBadge = nearbyMode ? "Gần bạn" : hasCategoryFilter ? "Đúng nhu cầu" : "Top Rated";
+  const headerBadge = nearbyMode ? "Gần bạn" : hasCategoryFilter ? "Đúng nhu cầu" : "Nổi bật";
   const subtitle = nearbyMode
     ? "Ưu tiên các nhà hàng có khoảng cách rõ ràng để bạn ra quyết định nhanh hơn."
     : hasCategoryFilter

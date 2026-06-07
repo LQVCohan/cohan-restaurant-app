@@ -601,3 +601,45 @@ $shadow-warm: 0 24px 70px rgba(96, 51, 20, 0.12);
     background-position: -220% 50%;
   }
 }
+
+/* Home mockup compact overrides */
+.restaurant-grid {
+  padding: 24px 0 28px;
+  background: #ffffff;
+
+  &::before { display: none; }
+
+  &__header { margin-bottom: 12px; }
+  &__badge, &__subtitle { display: none; }
+
+  &__title {
+    font-size: clamp(1.45rem, 2.5vw, 2rem);
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+  }
+
+  &__list { gap: 18px; }
+
+  .res-card {
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(92, 45, 12, 0.08);
+
+    &:nth-child(2n) { transform: none; }
+    &:hover, &:nth-child(2n):hover { transform: translateY(-3px); }
+
+    &__image-wrapper { height: 170px; }
+    &__body { padding: 14px; }
+    &__main-info { margin-bottom: 8px; }
+    &__name { font-size: 1.08rem; }
+    &__desc { -webkit-line-clamp: 1; margin-bottom: 10px; }
+    &__divider { margin-bottom: 10px; }
+    &__btn { padding: 10px 8px; border-radius: 11px; }
+  }
+
+  &__empty { min-height: 150px; }
+
+  @media (max-width: 760px) {
+    padding: 22px 0 28px;
+    .res-card__image-wrapper { height: 180px; }
+  }
+}

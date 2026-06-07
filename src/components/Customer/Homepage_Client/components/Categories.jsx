@@ -1,10 +1,31 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import "../../../../styles/Homepage/Categories.scss";
 import { useCategoryManagement } from "../../../../hooks/useCategoryManagement";
-import { resolveCategoryIcon } from "../../../../utils/categoryIconMap";
+const CATEGORY_IMAGE_MAP = [
+  { keys: ["hải", "seafood"], src: "https://images.unsplash.com/photo-1559737558-2f5a35f4523b?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["cơm", "bún", "việt"], src: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["gà", "fast", "fried"], src: "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["pizza", "pasta"], src: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["trà", "đồ uống", "drink"], src: "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["mì", "ramen"], src: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["lẩu", "nướng"], src: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=360&q=80" },
+  { keys: ["chay", "salad"], src: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=360&q=80" },
+];
 
+const DEFAULT_CATEGORY_IMAGE =
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=360&q=80";
+
+const getCategoryImage = (category) => {
+  const explicitImage = category?.coverImage || category?.image || category?.thumbImage || category?.iconUrl;
+  if (explicitImage && !String(explicitImage).includes("emoji")) return explicitImage;
+
+  const name = String(category?.name || "").toLowerCase();
+  return CATEGORY_IMAGE_MAP.find((item) => item.keys.some((key) => name.includes(key)))?.src || DEFAULT_CATEGORY_IMAGE;
+};
 
 const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
+  const navigate = useNavigate();
   const {
     categories,
     categoriesLoading,
@@ -47,9 +68,13 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
           <h3 className="categories__title">
             {isGlobal ? "Danh mục phổ biến" : "Thực đơn nhà hàng"}
           </h3>
-          <p className="categories__subtitle">
-            Khám phá các món ăn ngon theo sở thích của bạn
-          </p>
+          <button
+            type="button"
+            className="categories__view-all"
+            onClick={() => navigate("/restaurants")}
+          >
+            Xem tất cả <span>›</span>
+          </button>
         </div>
 
         {/* Error State */}
@@ -73,17 +98,21 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                 </div>
               ))
             : displayCategories.map((category) => (
-                <div
+                <button
                   key={category.id}
+                  type="button"
                   className="categories__card"
                   onClick={() =>
                     onCategorySelect?.({ id: category.id, name: category.name })
                   }
                 >
-                  <div className="categories__icon-wrapper">
-                    <span className="categories__icon">
-                      {resolveCategoryIcon(category.name)}
-                    </span>
+                  <div className="categories__image-wrapper">
+                    <img
+                      src={getCategoryImage(category)}
+                      alt={`Danh mục ${category.name}`}
+                      className="categories__image"
+                      loading="lazy"
+                    />
                   </div>
                   <div className="categories__info">
                     <h4 className="categories__name">{category.name}</h4>
@@ -93,7 +122,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
         </div>
       </div>
