@@ -45,21 +45,27 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
   const error = isGlobal ? topCategoriesError : categoriesError;
 
   const hasData = Array.isArray(dataFromBackend) && dataFromBackend.length > 0;
+  const realCategories = hasData ? dataFromBackend : [];
 
-  // Dữ liệu mẫu khi chưa có API hoặc lỗi
-  const fallbackCategories = [
-    { id: "fb-1", name: "Món Việt", menuItemCount: 120 },
-    { id: "fb-2", name: "Fast Food", menuItemCount: 85 },
-    { id: "fb-3", name: "Pizza & Pasta", menuItemCount: 45 },
-    { id: "fb-4", name: "Cơm & Bún", menuItemCount: 90 },
-    { id: "fb-5", name: "Đồ uống", menuItemCount: 60 },
-    { id: "fb-6", name: "Tráng miệng", menuItemCount: 30 },
-    { id: "fb-7", name: "Lẩu & Nướng", menuItemCount: 25 },
-    { id: "fb-8", name: "Món Chay", menuItemCount: 15 },
+  const suggestedCategories = [
+    { key: "suggestion-vietnamese", name: "Món Việt", helperText: "Khám phá món ăn", __isSuggestion: true },
+    { key: "suggestion-rice-noodle", name: "Cơm & Bún", helperText: "Khám phá món ăn", __isSuggestion: true },
+    { key: "suggestion-hotpot-grill", name: "Lẩu & Nướng", helperText: "Khám phá món ăn", __isSuggestion: true },
+    { key: "suggestion-drinks", name: "Đồ uống", helperText: "Khám phá món ăn", __isSuggestion: true },
   ];
 
-  const displayCategories = hasData ? dataFromBackend : fallbackCategories;
+  const displayCategories = hasData ? realCategories : suggestedCategories;
   const isCompact = displayCategories.length > 0 && displayCategories.length < 5;
+  const showSuggestionHint = !loading && !hasData;
+
+  const handleCategoryClick = (category) => {
+    if (category.__isSuggestion) {
+      navigate("/restaurants");
+      return;
+    }
+
+    onCategorySelect?.({ id: category.id, name: category.name });
+  };
 
   return (
     <section className={`categories ${isCompact ? "categories--compact" : ""}`}>
@@ -81,7 +87,13 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
         {/* Error State */}
         {error && (
           <div className="categories__error">
-            ⚠️ Không tải được dữ liệu, hiển thị danh mục mẫu.
+            Không tải được danh mục. Bạn vẫn có thể khám phá nhà hàng bên dưới.
+          </div>
+        )}
+
+        {showSuggestionHint && (
+          <div className="categories__hint">
+            Danh mục đang được cập nhật. Gợi ý bên dưới sẽ đưa bạn đến danh sách nhà hàng.
           </div>
         )}
 
@@ -100,12 +112,10 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
               ))
             : displayCategories.map((category) => (
                 <button
-                  key={category.id}
+                  key={category.id || category.key}
                   type="button"
-                  className="categories__card"
-                  onClick={() =>
-                    onCategorySelect?.({ id: category.id, name: category.name })
-                  }
+                  className={`categories__card ${category.__isSuggestion ? "categories__card--suggestion" : ""}`}
+                  onClick={() => handleCategoryClick(category)}
                 >
                   <div className="categories__image-wrapper">
                     <img
@@ -117,10 +127,14 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                   </div>
                   <div className="categories__info">
                     <h4 className="categories__name">{category.name}</h4>
-                    {category.menuItemCount !== undefined && (
-                      <span className="categories__count">
-                        {category.menuItemCount} món ăn
-                      </span>
+                    {category.__isSuggestion ? (
+                      <span className="categories__count">{category.helperText}</span>
+                    ) : (
+                      category.menuItemCount !== undefined && (
+                        <span className="categories__count">
+                          {category.menuItemCount} món ăn
+                        </span>
+                      )
                     )}
                   </div>
                 </button>

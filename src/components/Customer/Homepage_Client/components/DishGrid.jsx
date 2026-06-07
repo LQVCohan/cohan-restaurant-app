@@ -325,7 +325,7 @@ const DishGrid = ({
 
         {/* Content */}
         {error ? (
-          <div className="dish-grid__error">⚠️ Có lỗi khi tải món ăn.</div>
+          <div className="dish-grid__error">Có lỗi khi tải món ăn.</div>
         ) : (
           <div className="dish-grid__list">
             {loading
@@ -340,7 +340,7 @@ const DishGrid = ({
                   const restaurantName =
                     dish.restaurantName ||
                     dish.restaurant?.name ||
-                    (dish.restaurantId ? `Nhà hàng #${String(dish.restaurantId).slice(-4)}` : "FoodHub Kitchen");
+                    "Nhà hàng đang cập nhật";
                   const hasVariants = dish.servingVariants?.length > 0;
                   const isAdding = addingDishId === dish.id;
 
