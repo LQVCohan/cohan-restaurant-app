@@ -238,7 +238,7 @@ const CompactMenuStrip = ({
           <div className="cms-error-msg">Lỗi: {actionError}</div>
         )}
         {!isCollapsed && actionMessage && (
-          <div className="cms-error-msg" style={{ color: "#047857", borderColor: "#a7f3d0", background: "#ecfdf5" }}>
+          <div className="cms-error-msg cms-success-msg">
             {actionMessage}
           </div>
         )}

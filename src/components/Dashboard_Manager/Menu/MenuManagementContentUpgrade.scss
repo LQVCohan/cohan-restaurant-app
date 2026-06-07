@@ -249,3 +249,332 @@
   0% { background-position: 120% 0; }
   100% { background-position: -120% 0; }
 }
+
+/* Menu operations console refinement (post-PR #1011): warm neutral shell, centered grid, sparse state. */
+.mm-page-container {
+  --mm-console-bg: #f7f3ee;
+  --mm-console-surface: rgba(255, 255, 255, 0.94);
+  --mm-console-surface-soft: #fffaf4;
+  --mm-console-border: #e7dccf;
+  --mm-console-border-strong: #d5bea4;
+  --mm-console-accent: #b89365;
+  --mm-console-accent-soft: #f5eadc;
+  --mm-console-text: #241f1a;
+  --mm-console-muted: #756a5d;
+  --mm-console-shadow: 0 18px 44px rgba(99, 72, 43, 0.1);
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 8% -8%, rgba(184, 147, 101, 0.14), transparent 24rem),
+    linear-gradient(180deg, #fffaf4 0%, var(--mm-console-bg) 48%, #f6f2ec 100%);
+}
+
+.mm-page-container > .management-page-header,
+.mm-page-container > .mm-ops-kpi,
+.mm-page-container > .mm-stats-section,
+.mm-page-container > .mm-body {
+  width: min(100% - 48px, 1240px);
+  margin-inline: auto;
+}
+
+.mm-page-container > .management-page-header {
+  margin-top: 18px;
+  margin-bottom: 12px;
+  border-color: var(--mm-console-border);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(255, 250, 244, 0.92));
+  box-shadow: var(--mm-console-shadow);
+}
+
+.mm-page-container .management-page-header.density-compact {
+  padding: 18px;
+  align-items: stretch;
+}
+
+.mm-page-container .management-page-header .mph-left {
+  flex-basis: 300px;
+  border-right-color: rgba(184, 147, 101, 0.28);
+}
+
+.mm-page-container .management-page-header .mph-eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 9px;
+  border: 1px solid var(--mm-console-border);
+  border-radius: 999px;
+  background: var(--mm-console-accent-soft);
+  color: #76532e;
+  letter-spacing: 0.055em;
+}
+
+.mm-page-container .management-page-header .mph-title {
+  color: var(--mm-console-text);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.mm-page-container .management-page-header .mph-title__icon {
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  background: #f1e4d3;
+  border: 1px solid rgba(184, 147, 101, 0.22);
+}
+
+.mm-page-container .management-page-header .mph-subtitle {
+  max-width: 48ch;
+  color: var(--mm-console-muted);
+  line-height: 1.5;
+}
+
+.mm-page-container .management-page-header .mph-controls-row {
+  min-height: 100%;
+  align-content: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(231, 220, 207, 0.85);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.mm-page-container .management-page-header .mph-select,
+.mm-page-container .management-page-header .mph-btn,
+.mm-page-container .management-page-header .mph-icon-btn {
+  height: 40px;
+  border-color: var(--mm-console-border);
+  border-radius: 12px;
+  color: var(--mm-console-text);
+}
+
+.mm-page-container .management-page-header .mph-icon-btn {
+  width: auto;
+  min-width: 40px;
+  padding-inline: 11px;
+  color: #76532e;
+  background: #fffaf5;
+}
+
+.mm-page-container .management-page-header .mph-icon-btn svg,
+.mm-page-container .management-page-header .mph-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mm-page-container .management-page-header .mph-btn--primary {
+  background: #c6a47a;
+  border-color: #c6a47a;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(184, 147, 101, 0.2);
+}
+
+.mm-page-container .management-page-header .mph-btn--primary:hover,
+.mm-page-container .management-page-header .mph-icon-btn:hover,
+.mm-page-container .management-page-header .mph-btn--secondary:hover {
+  transform: translateY(-1px);
+  border-color: var(--mm-console-border-strong);
+  box-shadow: 0 10px 24px rgba(99, 72, 43, 0.12);
+}
+
+.mm-page-container .mm-ops-kpi {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+.mm-page-container .mm-ops-kpi__card {
+  min-height: 88px;
+  padding: 13px 14px;
+  border-radius: 18px;
+  border-color: var(--mm-console-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 244, 0.86));
+  box-shadow: 0 10px 26px rgba(99, 72, 43, 0.065);
+}
+
+.mm-page-container .mm-ops-kpi__card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(184, 147, 101, 0.46);
+  box-shadow: 0 16px 34px rgba(99, 72, 43, 0.1);
+}
+
+.mm-page-container .mm-ops-kpi__label {
+  color: var(--mm-console-muted);
+  font-size: 0.71rem;
+}
+
+.mm-page-container .mm-ops-kpi__value {
+  margin-top: 6px;
+  color: var(--mm-console-text);
+  font-size: clamp(1.45rem, 2.35vw, 2rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.mm-page-container .mm-ops-kpi__hint {
+  margin-top: 6px;
+  color: var(--mm-console-muted);
+  font-size: 0.74rem;
+}
+
+.mm-page-container .mm-stats-section {
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+.mm-page-container .mm-body {
+  padding: 0 0 44px;
+  gap: 12px;
+}
+
+.mm-page-container .mm-body__content {
+  min-height: 380px;
+}
+
+.mm-menu-results-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.mm-menu-results-shell--sparse {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+}
+
+.mm-page-container .mm-grid--grid {
+  grid-template-columns: repeat(auto-fit, minmax(278px, 1fr));
+  justify-content: center;
+  gap: 18px;
+}
+
+.mm-page-container .mm-grid--grid.mm-grid--sparse {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+  max-width: none;
+  justify-content: center;
+}
+
+.mm-sparse-guidance {
+  position: sticky;
+  top: 18px;
+  padding: 18px;
+  border: 1px solid var(--mm-console-border);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(184, 147, 101, 0.15), transparent 9rem),
+    var(--mm-console-surface);
+  box-shadow: 0 14px 34px rgba(99, 72, 43, 0.08);
+}
+
+.mm-sparse-guidance__eyebrow {
+  color: #76532e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mm-sparse-guidance h3 {
+  margin: 8px 0 7px;
+  color: var(--mm-console-text);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.mm-sparse-guidance p {
+  margin: 0;
+  color: var(--mm-console-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.mm-sparse-guidance__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.mm-sparse-guidance__chips span {
+  padding: 6px 9px;
+  border: 1px solid var(--mm-console-border);
+  border-radius: 999px;
+  background: #fffaf5;
+  color: #76532e;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.mm-page-container .mm-skeleton-grid {
+  grid-template-columns: repeat(auto-fit, minmax(278px, 1fr));
+  gap: 18px;
+}
+
+.mm-page-container .mm-skeleton-card {
+  min-height: 360px;
+  border-color: var(--mm-console-border);
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(99, 72, 43, 0.07);
+}
+
+.mm-page-container .mm-skeleton-card__image {
+  height: 168px;
+}
+
+.mm-page-container .mm-empty-state,
+.mm-page-container .mm-state-box {
+  border-color: var(--mm-console-border);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 14px 34px rgba(99, 72, 43, 0.07);
+}
+
+.mm-page-container button:focus-visible,
+.mm-page-container select:focus-visible,
+.mm-page-container input:focus-visible,
+.mm-page-container .action-btn:focus-visible,
+.mm-page-container .card-select-checkbox input:focus-visible {
+  outline: 3px solid rgba(184, 147, 101, 0.34);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1080px) {
+  .mm-menu-results-shell--sparse {
+    grid-template-columns: 1fr;
+  }
+
+  .mm-sparse-guidance {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .mm-page-container > .management-page-header,
+  .mm-page-container > .mm-ops-kpi,
+  .mm-page-container > .mm-stats-section,
+  .mm-page-container > .mm-body {
+    width: min(100% - 32px, 1240px);
+  }
+
+  .mm-page-container .mm-ops-kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .mm-page-container > .management-page-header,
+  .mm-page-container > .mm-ops-kpi,
+  .mm-page-container > .mm-stats-section,
+  .mm-page-container > .mm-body {
+    width: min(100% - 24px, 1240px);
+  }
+
+  .mm-page-container .management-page-header .mph-controls-row {
+    padding: 10px;
+  }
+
+  .mm-page-container .mm-ops-kpi {
+    grid-template-columns: 1fr;
+  }
+
+  .mm-page-container .mm-grid--grid,
+  .mm-page-container .mm-grid--grid.mm-grid--sparse {
+    grid-template-columns: 1fr;
+  }
+}

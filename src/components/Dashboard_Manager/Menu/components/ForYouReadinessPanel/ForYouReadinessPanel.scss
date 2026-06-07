@@ -61,3 +61,142 @@
 @media (max-width: 640px) {
   .for-you-readiness-panel { &__stats--quality { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 }
+
+/* Compact Vietnamese readiness panel for the menu operations flow. */
+.for-you-readiness-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.95fr) minmax(260px, 1.05fr);
+  gap: 14px 18px;
+  align-items: center;
+  padding: 14px 16px;
+  margin: 0 0 12px;
+  border-color: #e7dccf;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(184, 147, 101, 0.12), transparent 12rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 244, 0.9));
+  box-shadow: 0 12px 30px rgba(99, 72, 43, 0.07);
+
+  &__header {
+    margin: 0;
+  }
+
+  &__eyebrow {
+    color: #76532e;
+    font-size: 0.7rem;
+  }
+
+  &__title {
+    margin-top: 4px;
+    color: #241f1a;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  &__subtitle {
+    max-width: 52ch;
+    color: #756a5d;
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  &__progress {
+    min-width: 0;
+  }
+
+  &__progress-meta {
+    strong {
+      color: #76532e;
+      font-variant-numeric: tabular-nums;
+    }
+
+    span {
+      color: #756a5d;
+      font-size: 0.84rem;
+    }
+  }
+
+  &__progress-bar {
+    height: 8px;
+    background: #eee4d8;
+  }
+
+  &__progress-fill {
+    background: linear-gradient(90deg, #c8a77b 0%, #8f6a42 100%);
+  }
+
+  &__stats {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+
+  &__stats--quality {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  &__stat {
+    padding: 8px 10px;
+    border-color: #e7dccf;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+
+    span {
+      font-size: 0.72rem;
+      color: #756a5d;
+      white-space: nowrap;
+    }
+
+    strong {
+      color: #241f1a;
+      font-size: 0.98rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &--complete {
+      border-color: rgba(22, 163, 74, 0.24);
+      background: rgba(240, 253, 244, 0.72);
+    }
+
+    &--missing,
+    &--missing-soft {
+      border-color: rgba(184, 147, 101, 0.32);
+      background: #fff7ed;
+    }
+  }
+
+  &__actions {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    align-items: center;
+  }
+
+  &__actions .mm-btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 12px;
+  }
+
+  &__success {
+    color: #047857;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .for-you-readiness-panel {
+    grid-template-columns: 1fr;
+
+    &__stats--quality {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .for-you-readiness-panel {
+    &__stats--quality {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}

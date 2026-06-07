@@ -593,3 +593,99 @@ $tb-radius: 16px;
     outline-offset: 2px;
   }
 }
+
+/* Filter dock refinement for menu operations. */
+.toolbar-container {
+  border-color: #e7dccf;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 32px rgba(99, 72, 43, 0.07);
+}
+
+.toolbar-container .toolbar-top {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto;
+  align-items: center;
+}
+
+.toolbar-container .search-wrapper {
+  max-width: none;
+}
+
+.toolbar-container .search-input,
+.toolbar-container .custom-select,
+.toolbar-container .btn-filter-toggle,
+.toolbar-container .inventory-chip,
+.toolbar-container .btn,
+.toolbar-container .toggle-btn {
+  border-color: #e7dccf;
+}
+
+.toolbar-container .toolbar-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.toolbar-container .filter-row,
+.toolbar-container .toolbar-for-you-filter,
+.toolbar-container .inventory-filter-row {
+  padding: 10px;
+  border: 1px solid #eee4d8;
+  border-radius: 16px;
+  background: #fffaf5;
+}
+
+.toolbar-container .toolbar-for-you-filter__label {
+  min-width: 72px;
+  color: #76532e;
+}
+
+.toolbar-container .inventory-chip {
+  min-height: 32px;
+  background: #fff;
+  color: #5f5549;
+}
+
+.toolbar-container .inventory-chip .count {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-container .inventory-chip.active {
+  border-color: #c8a77b;
+  background: #f5eadc;
+  color: #5f3f22;
+  box-shadow: 0 8px 18px rgba(99, 72, 43, 0.08);
+}
+
+.toolbar-container .result-count {
+  justify-self: start;
+  margin-left: 0;
+  color: #756a5d;
+}
+
+.toolbar-container .advanced-panel.open {
+  border-color: #e7dccf;
+  background: #fffaf5;
+}
+
+.toolbar-container button:focus-visible,
+.toolbar-container select:focus-visible,
+.toolbar-container input:focus-visible {
+  outline: 3px solid rgba(184, 147, 101, 0.34);
+  outline-offset: 2px;
+}
+
+@media (max-width: 860px) {
+  .toolbar-container .toolbar-top {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-container .actions-group {
+    justify-content: flex-start;
+  }
+}

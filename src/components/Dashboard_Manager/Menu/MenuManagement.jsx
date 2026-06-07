@@ -51,10 +51,10 @@ import {
   getForYouMetadataSummaryByRestaurant,
 } from "../../../utils/forYouMenuMetadata";
 const TIME_SLOT_LABELS = {
-  breakfast: "Bữa Sáng (Breakfast)",
-  lunch: "Bữa Trưa (Lunch)",
-  dinner: "Bữa Tối (Dinner)",
-  late_night: "Ăn Khuya (Late Night)",
+  breakfast: "Bữa sáng",
+  lunch: "Bữa trưa",
+  dinner: "Bữa tối",
+  late_night: "Khuya",
 };
 const TIME_SLOT_ORDER = ["breakfast", "lunch", "dinner", "late_night"];
 const getGraphQLErrorMessage = (
@@ -1322,9 +1322,9 @@ const MenuManagement = () => {
       <ManagementPageHeader
         density="compact"
         showTimeWidget={false}
-        eyebrow="MENU MANAGER"
+        eyebrow="Vận hành thực đơn"
         title="Quản lý thực đơn"
-        subtitle="Quản lý món, danh mục, trạng thái bán và hiển thị trên app khách hàng."
+        subtitle="Theo dõi khung giờ, trạng thái bán và dữ liệu món trong một bảng điều phối."
         icon="📋"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={(id) => {
@@ -1355,10 +1355,10 @@ const MenuManagement = () => {
           </select>
         )}
         quickActions={[
-          ...(canManageDishCategory ? [{ icon: "🏷️", label: "Danh mục món", onClick: () => toggleModal("dishCategory", true) }] : []),
-          ...(canManageMenuGroup ? [{ icon: "📁", label: "Nhóm thực đơn", onClick: () => toggleModal("menuGroup", true) }] : []),
+          ...(canManageDishCategory ? [{ icon: <FiTag />, label: "Danh mục món", onClick: () => toggleModal("dishCategory", true) }] : []),
+          ...(canManageMenuGroup ? [{ icon: <FiFolderPlus />, label: "Nhóm thực đơn", onClick: () => toggleModal("menuGroup", true) }] : []),
         ]}
-        primaryAction={canCreateMenuItem ? { icon: "➕", label: "Thêm món", onClick: () => toggleModal("menuItem", true) } : null}
+        primaryAction={canCreateMenuItem ? { icon: <FiPlus />, label: "Thêm món", onClick: () => toggleModal("menuItem", true) } : null}
       />
 
       <section className="mm-ops-kpi" aria-label="Tổng quan vận hành thực đơn">
@@ -1528,49 +1528,62 @@ const MenuManagement = () => {
                   <button type="button" className="mm-btn mm-btn--secondary" onClick={() => handleBulkUpdateStatus("hidden")} disabled={isBulkUpdatingStatus}>Ẩn</button>
                 </div>
               )}
-              <div className={`mm-grid mm-grid--${currentView} ${isSparseGrid ? "mm-grid--sparse" : ""}`}>
-                {displayItems.map((item) => (
-                  <MenuItemCard
-                    key={item.id}
-                    item={item}
-                    onEdit={
-                      canUpdateMenuItem
-                        ? () => {
-                            setModalFocusSection(null);
-                            toggleModal("menuItem", true, item.id);
-                          }
-                        : undefined
-                    }
-                    onDelete={
-                      canDeleteMenuItem
-                        ? () => handleRequestDeleteItem(item)
-                        : undefined
-                    }
-                    viewMode={currentView}
-                    onStatusChange={
-                      canUpdateMenuItem && !isBulkUpdatingStatus
-                        ? handleChangeItemStatus
-                        : undefined
-                    }
-                    updatingStatus={
-                      isBulkUpdatingStatus ||
-                      updatingStatusItemIds.has(String(item.id))
-                    }
-                    selected={selectedItemIds.has(String(item.id))}
-                    onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
-                    onOpenRecipeIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
-                    onOpenInventoryIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
-                    onEditForYou={
-                      canUpdateMenuItem
-                        ? (menuItem) => {
-                            setModalFocusSection("for-you");
-                            toggleModal("menuItem", true, menuItem?.id);
-                          }
-                        : undefined
-                    }
-                    canUpdateItem={canUpdateMenuItem}
-                  />
-                ))}
+              <div className={`mm-menu-results-shell ${isSparseGrid ? "mm-menu-results-shell--sparse" : ""}`}>
+                <div className={`mm-grid mm-grid--${currentView} ${isSparseGrid ? "mm-grid--sparse" : ""}`}>
+                  {displayItems.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      item={item}
+                      onEdit={
+                        canUpdateMenuItem
+                          ? () => {
+                              setModalFocusSection(null);
+                              toggleModal("menuItem", true, item.id);
+                            }
+                          : undefined
+                      }
+                      onDelete={
+                        canDeleteMenuItem
+                          ? () => handleRequestDeleteItem(item)
+                          : undefined
+                      }
+                      viewMode={currentView}
+                      onStatusChange={
+                        canUpdateMenuItem && !isBulkUpdatingStatus
+                          ? handleChangeItemStatus
+                          : undefined
+                      }
+                      updatingStatus={
+                        isBulkUpdatingStatus ||
+                        updatingStatusItemIds.has(String(item.id))
+                      }
+                      selected={selectedItemIds.has(String(item.id))}
+                      onSelectToggle={canUpdateMenuItem ? handleSelectToggle : undefined}
+                      onOpenRecipeIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
+                      onOpenInventoryIssue={canUpdateMenuItem ? handleOpenRecipeIssue : undefined}
+                      onEditForYou={
+                        canUpdateMenuItem
+                          ? (menuItem) => {
+                              setModalFocusSection("for-you");
+                              toggleModal("menuItem", true, menuItem?.id);
+                            }
+                          : undefined
+                      }
+                      canUpdateItem={canUpdateMenuItem}
+                    />
+                  ))}
+                </div>
+                {isSparseGrid && (
+                  <aside className="mm-sparse-guidance" aria-label="Việc cần xử lý cho danh sách ít món">
+                    <span className="mm-sparse-guidance__eyebrow">Việc cần xử lý</span>
+                    <h3>Hoàn thiện khung giờ {TIME_SLOT_LABELS[selectedTimeSlot] || "đã chọn"}</h3>
+                    <p>Danh sách đang ít món. Hãy kiểm tra ảnh, giá bán, trạng thái tồn kho và dữ liệu khẩu vị để menu sẵn sàng hiển thị.</p>
+                    <div className="mm-sparse-guidance__chips">
+                      <span>{missingForYouItems.length} món thiếu khẩu vị</span>
+                      <span>{inventoryFilterCounts.needs_check || 0} cần kiểm kho</span>
+                    </div>
+                  </aside>
+                )}
               </div>
 
               {pageInfo?.hasNextPage && (

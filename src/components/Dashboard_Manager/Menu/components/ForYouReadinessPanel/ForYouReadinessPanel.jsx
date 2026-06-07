@@ -37,13 +37,10 @@ const ForYouReadinessPanel = ({
   return (
     <section className="for-you-readiness-panel" aria-label="Chất lượng dữ liệu gợi ý khẩu vị">
       <div className="for-you-readiness-panel__header">
-        <span className="for-you-readiness-panel__eyebrow">FOR YOU metadata</span>
+        <span className="for-you-readiness-panel__eyebrow">Dữ liệu gợi ý khẩu vị</span>
         <h3 className="for-you-readiness-panel__title">Chất lượng dữ liệu gợi ý khẩu vị</h3>
         <p className="for-you-readiness-panel__subtitle">
-          Món đủ dữ liệu sẽ được dùng để gợi ý chính xác hơn cho khách.
-        </p>
-        <p className="for-you-readiness-panel__subtitle for-you-readiness-panel__subtitle--warning">
-          Thiếu dữ liệu dị ứng có thể làm hệ thống chỉ nhắc khách kiểm tra thay vì tự tin gợi ý.
+          Bổ sung khẩu vị, dị ứng và diet tags để AI gợi ý món chính xác hơn.
         </p>
       </div>
 
@@ -59,11 +56,11 @@ const ForYouReadinessPanel = ({
 
       <div className="for-you-readiness-panel__stats for-you-readiness-panel__stats--quality">
         <StatCard label="Tổng món" value={safeSummary.total} />
-        <StatCard label="Đủ metadata" value={safeSummary.complete || 0} variant="complete" />
-        <StatCard label="Thiếu metadata" value={safeSummary.missing} variant="missing" />
-        <StatCard label="Thiếu dietTags" value={safeSummary.missingDiet || 0} variant="missing-soft" />
-        <StatCard label="Thiếu allergenTags" value={safeSummary.missingAllergen || 0} variant="missing-soft" />
-        <StatCard label="Thiếu tasteProfile" value={safeSummary.missingTaste || 0} variant="missing-soft" />
+        <StatCard label="Đủ dữ liệu" value={safeSummary.complete || 0} variant="complete" />
+        <StatCard label="Thiếu dữ liệu" value={safeSummary.missing} variant="missing" />
+        <StatCard label="Thiếu diet" value={safeSummary.missingDiet || 0} variant="missing-soft" />
+        <StatCard label="Thiếu dị ứng" value={safeSummary.missingAllergen || 0} variant="missing-soft" />
+        <StatCard label="Thiếu khẩu vị" value={safeSummary.missingTaste || 0} variant="missing-soft" />
       </div>
 
       {shouldShowRestaurantGroups && (
@@ -83,7 +80,7 @@ const ForYouReadinessPanel = ({
           <button type="button" className="mm-btn mm-btn--primary" onClick={onShowMissing}>Xem món thiếu khẩu vị</button>
         )}
         {safeSummary.missing > 0 && canUpdateItem && firstMissingItem && (
-          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu tiên</button>
+          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu</button>
         )}
         {canBulkEdit && bulkTargetCount > 0 && (
           <button type="button" className="mm-btn mm-btn--secondary" onClick={onOpenBulkEdit}>
