@@ -49,7 +49,7 @@ export default function MainLayout({ children }) {
   return (
     <>
       <Header onCartToggle={() => setIsCartOpen(true)} cartItemCount={getTotalItems()} />
-      <main style={{ minHeight: "80vh", width: "100vw" }}>{children}</main>
+      <main style={{ minHeight: "80vh", width: "100%" }}>{children}</main>
       <Cart
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
