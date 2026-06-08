@@ -128,3 +128,31 @@ $z-index-header: 40;
     top: 12px;
   }
 }
+
+// Warm premium dashboard layer: keeps existing component structure intact.
+.staff-page-container {
+  background:
+    radial-gradient(circle at 82% -10%, rgba(184, 147, 101, 0.18), transparent 32%),
+    radial-gradient(circle at 0% 100%, rgba(143, 106, 66, 0.1), transparent 34%),
+    #fbf6ee;
+  padding: 18px 24px 28px;
+  color: #33261a;
+
+  .page-bg-blob.blob-2 {
+    background: rgba(212, 186, 150, 0.34);
+  }
+
+  .staff-page-content {
+    gap: 16px;
+  }
+
+  .page-main-view {
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .staff-page-container {
+    padding: 14px;
+  }
+}

@@ -371,3 +371,223 @@ $danger: #ef4444;
     }
   }
 }
+
+// Premium warm table polish and complete data states.
+.employee-list-card {
+  border: 1px solid rgba(154, 119, 78, 0.22);
+  border-radius: 22px;
+  background: #fffdf8;
+  box-shadow: 0 22px 48px rgba(84, 55, 30, 0.12);
+
+  .list-header-wrapper {
+    padding: 16px 20px;
+    background: linear-gradient(180deg, #fffdf8 0%, #fbf3e8 100%);
+    border-bottom-color: #eadfce;
+
+    .header-title-box .icon-box {
+      background: #f0dfc7;
+      color: #7f5731;
+      border-radius: 14px;
+    }
+
+    .title {
+      color: #33261a;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: #7b6a58;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .search-box input {
+      background: #fffaf3;
+      border-color: #e4d6c2;
+      border-radius: 13px;
+
+      &:hover {
+        border-color: #cdb895;
+      }
+
+      &:focus {
+        border-color: #b89365;
+        box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.16);
+      }
+    }
+  }
+
+  .filters-toolbar {
+    background: #f8efe2;
+    border-bottom-color: #eadfce;
+    flex-wrap: wrap;
+
+    .status-tabs {
+      background: rgba(143, 106, 66, 0.11);
+      border: 1px solid rgba(143, 106, 66, 0.12);
+      border-radius: 14px;
+
+      .tab-btn {
+        border-radius: 10px;
+
+        &:focus-visible {
+          outline: 3px solid rgba(184, 147, 101, 0.22);
+          outline-offset: 2px;
+        }
+
+        &.active {
+          color: #6f4b2a;
+          background: #fffdf8;
+          box-shadow: 0 6px 14px rgba(84, 55, 30, 0.1);
+        }
+      }
+    }
+
+    .filter-select-wrapper .custom-select {
+      border-color: #e4d6c2;
+      border-radius: 12px;
+      background-color: #fffdf8;
+
+      &:focus {
+        border-color: #b89365;
+        box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.14);
+      }
+    }
+  }
+
+  .table-header-row {
+    background: #fff8ee;
+    border-bottom-color: #eadfce;
+
+    .th {
+      color: #7b6a58;
+      letter-spacing: 0.07em;
+    }
+  }
+
+  .list-body {
+    background: #fffdf8;
+  }
+
+  .empty-state {
+    background:
+      radial-gradient(circle at center top, rgba(184, 147, 101, 0.14), transparent 42%),
+      #fffdf8;
+
+    .icon-wrapper {
+      width: 72px;
+      height: 72px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9d7449;
+      background: #f3e5d1;
+      box-shadow: inset 0 0 0 1px rgba(143, 106, 66, 0.12);
+    }
+
+    h4 {
+      color: #33261a;
+      font-size: 1.15rem;
+    }
+
+    p {
+      max-width: 34ch;
+      color: #7b6a58;
+      line-height: 1.55;
+    }
+
+    .retry-btn {
+      margin-top: 14px;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #9d7449, #7f5731);
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(84, 55, 30, 0.16);
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+
+      &:focus-visible {
+        outline: 4px solid rgba(184, 147, 101, 0.22);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  .list-skeleton {
+    padding: 12px 16px;
+  }
+
+  .skeleton-row {
+    display: grid;
+    grid-template-columns: 42px 1.4fr 1fr 80px;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0e3d2;
+  }
+
+  .skeleton-avatar,
+  .skeleton-line,
+  .skeleton-pill {
+    display: block;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f2e6d5 0%, #fff8ee 48%, #f2e6d5 100%);
+    background-size: 200% 100%;
+    animation: staffSkeleton 1.2s ease-in-out infinite;
+  }
+
+  .skeleton-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .skeleton-line {
+    height: 12px;
+
+    &.secondary {
+      width: 72%;
+    }
+  }
+
+  .skeleton-pill {
+    height: 26px;
+  }
+
+  .list-footer {
+    background: #fffaf3;
+    border-top-color: #eadfce;
+    font-variant-numeric: tabular-nums;
+
+    .pagi-btn:focus-visible {
+      outline: 3px solid rgba(184, 147, 101, 0.2);
+      outline-offset: 2px;
+    }
+  }
+}
+
+@keyframes staffSkeleton {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .employee-list-card {
+    border-radius: 18px;
+    border: 1px solid rgba(154, 119, 78, 0.22);
+
+    .skeleton-row {
+      grid-template-columns: 42px 1fr;
+
+      .skeleton-line.secondary,
+      .skeleton-pill {
+        display: none;
+      }
+    }
+  }
+}

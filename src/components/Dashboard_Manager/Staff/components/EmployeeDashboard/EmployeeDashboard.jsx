@@ -20,6 +20,8 @@ const EmployeeDashboard = ({
   onResendVerification,
   roleList = [],
   loading = false,
+  error = null,
+  onRetry,
 }) => {
   return (
     <div className="employee-dashboard">
@@ -32,6 +34,8 @@ const EmployeeDashboard = ({
           onEmployeeSelect={onEmployeeSelect}
           roleList={roleList}
           loading={loading}
+          error={error}
+          onRetry={onRetry}
         />
       </div>
 
