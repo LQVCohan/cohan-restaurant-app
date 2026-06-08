@@ -575,6 +575,17 @@ const OrderManagement = () => {
   }, [refetchOrders]);
 
   useEffect(() => {
+    if (!focusMode) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [focusMode]);
+
+  useEffect(() => {
     const onKey = (e) => {
       if (
         ["input", "textarea", "select"].includes(
@@ -584,11 +595,17 @@ const OrderManagement = () => {
       ) {
         return;
       }
+
+      if (e.key === "Escape" && focusMode) {
+        setFocusMode(false);
+        return;
+      }
+
       if (e.key.toLowerCase() === "f") setFocusMode((s) => !s);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [focusMode]);
 
   const activeOrders = useMemo(
     () =>
@@ -1157,7 +1174,7 @@ const OrderManagement = () => {
             <div>
               <div className="om-header__focus-title">
                 <span className="om-badge-live">LIVE</span>
-                <h1>KITCHEN DISPLAY</h1>
+                <h1>MÀN HÌNH BẾP</h1>
               </div>
               <div className="om-header__meta">
                 <span>{displayOrders.length.toLocaleString("vi-VN")} đơn đang lọc</span>
