@@ -13,14 +13,46 @@ import "./WarehouseStatus.scss";
  * - lowStockItems: Array [{ id, name, currentStock, minStock, unit }]
  * (Danh sách các mặt hàng dưới định mức)
  */
+const DROPDOWN_ID = "warehouse-status-dropdown";
+
 const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
   const { user } = useContext(AuthContext);
   const warnings = Array.isArray(lowStockItems) ? lowStockItems : [];
   const isSafe = warnings.length === 0;
   const canWriteStock = hasAnyPermission(user, ["stock.write", "inventory.write"]);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isSafe) setIsOpen(false);
+  }, [isSafe]);
+
+  const openDropdown = () => {
+    if (!isSafe) setIsOpen(true);
+  };
+
+  const closeDropdown = () => setIsOpen(false);
+
+  const handleWrapperKeyDown = (event) => {
+    if (event.key === "Escape") {
+      closeDropdown();
+      event.stopPropagation();
+    }
+  };
+
+  const handleWrapperBlur = (event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      closeDropdown();
+    }
+  };
 
   return (
-    <div className={`warehouse-status-wrapper ${isSafe ? "safe" : "warning"}`}>
+    <div
+      className={`warehouse-status-wrapper ${isSafe ? "safe" : "warning"} ${isOpen ? "open" : ""}`}
+      onMouseEnter={openDropdown}
+      onMouseLeave={closeDropdown}
+      onBlurCapture={handleWrapperBlur}
+      onKeyDown={handleWrapperKeyDown}
+    >
       {/* --- Main Badge --- */}
       {isSafe ? (
         <div className="status-badge" aria-label="Kho ổn định">
@@ -32,7 +64,10 @@ const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
           type="button"
           className="status-badge"
           aria-haspopup="true"
+          aria-expanded={isOpen}
+          aria-controls={DROPDOWN_ID}
           aria-label={`${warnings.length} nguyên liệu sắp hết`}
+          onClick={() => setIsOpen((value) => !value)}
         >
           <span className="pulse-ring" aria-hidden="true"></span>
           <AlertTriangle size={18} className="icon warning-icon" />
@@ -45,7 +80,7 @@ const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
 
       {/* --- Tooltip Dropdown (Chỉ hiện khi có cảnh báo) --- */}
       {!isSafe && (
-        <div className="status-dropdown">
+        <div id={DROPDOWN_ID} className="status-dropdown">
           <div className="dropdown-header">
             <span>Cần nhập gấp</span>
             <span className="count-badge">{warnings.length}</span>
@@ -68,6 +103,7 @@ const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
               type="button"
               onClick={() => {
                 if (!canWriteStock) return;
+                closeDropdown();
                 onCreatePO?.();
               }}
               disabled={!canWriteStock}

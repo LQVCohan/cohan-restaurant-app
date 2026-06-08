@@ -521,7 +521,8 @@ $il-radius: 8px;
   }
 
   .il-grid:has(> :nth-child(2):last-child) {
-    grid-template-columns: repeat(2, minmax(270px, 390px));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 390px));
+    justify-content: start;
   }
 
   .il-empty,
@@ -609,5 +610,12 @@ $il-radius: 8px;
   button:focus-visible {
     outline: 3px solid rgba(197, 164, 126, 0.28);
     outline-offset: 2px;
+  }
+}
+
+
+@media (max-width: 640px) {
+  .ing-storage-wrapper .il-grid:has(> :nth-child(2):last-child) {
+    grid-template-columns: 1fr;
   }
 }

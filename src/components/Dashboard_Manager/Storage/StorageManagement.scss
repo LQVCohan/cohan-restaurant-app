@@ -335,7 +335,7 @@ $text-sub: #64748b;
 
   .sm-toolbar-wrapper {
     position: sticky;
-    top: 10px;
+    top: calc(var(--manager-header-height, 72px) + 12px);
     z-index: 8;
     padding: 10px;
     border: 1px solid rgba(122, 95, 61, 0.14);

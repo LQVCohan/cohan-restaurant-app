@@ -305,8 +305,7 @@ $gold: #c5a47e;
     }
   }
 
-  &.warning:hover .status-dropdown,
-  &.warning:focus-within .status-dropdown {
+  &.warning.open .status-dropdown {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);

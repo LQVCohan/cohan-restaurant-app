@@ -326,7 +326,8 @@ $sl-radius: 8px;
   }
 
   .sl-grid:has(> :nth-child(2):last-child) {
-    grid-template-columns: repeat(2, minmax(260px, 380px));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 380px));
+    justify-content: start;
   }
 
   .sl-state-box,
@@ -344,5 +345,12 @@ $sl-radius: 8px;
   .sl-btn-icon:hover:not(:disabled),
   .sl-btn-add:hover:not(:disabled) {
     transform: translateY(-1px);
+  }
+}
+
+
+@media (max-width: 640px) {
+  .supply-list-container .sl-grid:has(> :nth-child(2):last-child) {
+    grid-template-columns: 1fr;
   }
 }
