@@ -8,11 +8,9 @@ import { CASHFLOW_CATEGORIES, CASHFLOW_STATUSES, CASHFLOW_SUBCATEGORIES, PAYMENT
 
 const fmt = (num) => `${Number(num || 0).toLocaleString("vi-VN")}đ`;
 const todayInput = () => new Date().toISOString().slice(0, 10);
-const maskBankAccount = (value) => {
-  const raw = String(value || "").replace(/\s+/g, "");
-  if (!raw) return "-";
-  return `****${raw.slice(-4)}`;
-};
+const safeBankAccountLabel = (bankTransaction = {}) =>
+  bankTransaction.bankAccountNumberMasked ||
+  (bankTransaction.bankAccountNumberLast4 ? `****${bankTransaction.bankAccountNumberLast4}` : "-");
 const asDate = (value) => value ? new Date(value).toLocaleString("vi-VN") : "-";
 
 function readNavigationQuery() {
@@ -27,7 +25,7 @@ function exportCsv({ transactions, cashflows, refunds, reconciliations, bankTran
     ...cashflows.map((c) => ["cashflow", c.occurredAt, c.note, `${c.category}/${c.subcategory}/${c.status}`, c.amount, c.source || "", c.reference?.kind || "", c.method || ""]),
     ...refunds.map((r) => ["refund", r.createdAt, r.reason, r.status, r.amount, "refund", r.paymentTransactionId || r.invoiceId || r.orderId || "", r.method]),
     ...reconciliations.map((r) => ["reconciliation", r.createdAt, r.note || r.paymentReference, `${r.status}/${r.matchConfidence || 0}`, r.receivedAmount, "bank", r.bankTransactionId || r.paymentSessionId || "", r.matchReason || ""]),
-    ...bankTransactions.map((b) => ["bank", b.occurredAt || b.createdAt, b.transferContent || b.description, b.matchStatus, b.amount, b.provider, b.transactionId || "", maskBankAccount(b.bankAccountNumber)]),
+    ...bankTransactions.map((b) => ["bank", b.occurredAt || b.createdAt, b.transferContent || b.description, b.matchStatus, b.amount, b.provider, b.transactionId || "", safeBankAccountLabel(b)]),
     ...supplierPayables.map((p) => ["supplier_payable", p.dueDate || p.createdAt, p.supplierName, p.status, p.remainingAmount, p.sourceKind, p.id, ""]),
   ];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -134,6 +132,90 @@ function ManualMatchModal({ bankTransaction, reconciliation, onMatch, onClose })
   );
 }
 
+
+function SupplierPayableModal({ payable, onSubmit, onClose }) {
+  const [form, setForm] = useState(payable || {
+    supplierName: "",
+    supplierId: "",
+    sourceKind: "manual",
+    sourceId: "",
+    amount: "",
+    paidAmount: "0",
+    dueDate: todayInput(),
+    note: "",
+  });
+  const amount = Number(form.amount || 0);
+  const paidAmount = Number(form.paidAmount || 0);
+  const valid = form.supplierName?.trim() && amount > 0 && paidAmount <= amount;
+  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  return (
+    <div className="tx-modal-backdrop" role="dialog" aria-modal="true">
+      <div className="tx-modal-card tx-modal-card--wide">
+        <button className="drawer-close" onClick={onClose}><X size={16} /></button>
+        <h3>{payable ? "Sửa khoản phải trả" : "Tạo khoản phải trả"}</h3>
+        <div className="tx-form-grid">
+          <Field label="Nhà cung cấp"><input aria-label="supplierName" value={form.supplierName || ""} onChange={(e) => update("supplierName", e.target.value)} /></Field>
+          <Field label="Supplier ID (optional)"><input value={form.supplierId || ""} onChange={(e) => update("supplierId", e.target.value)} /></Field>
+          <Field label="Nguồn"><select value={form.sourceKind || "manual"} onChange={(e) => update("sourceKind", e.target.value)}><option value="inventory">inventory</option><option value="manual">manual</option><option value="supplier_invoice">supplier_invoice</option><option value="other">other</option></select></Field>
+          <Field label="Source ID (optional)"><input value={form.sourceId || ""} onChange={(e) => update("sourceId", e.target.value)} /></Field>
+          <Field label="Tổng phải trả"><input aria-label="amount" type="number" min="1" value={form.amount || ""} onChange={(e) => update("amount", e.target.value)} /></Field>
+          <Field label="Đã trả"><input type="number" min="0" value={form.paidAmount || "0"} onChange={(e) => update("paidAmount", e.target.value)} /></Field>
+          <Field label="Hạn thanh toán"><input type="date" value={String(form.dueDate || "").slice(0, 10)} onChange={(e) => update("dueDate", e.target.value)} /></Field>
+          <Field label="Ghi chú"><textarea value={form.note || ""} onChange={(e) => update("note", e.target.value)} /></Field>
+        </div>
+        {paidAmount > amount && <div className="finance-error">Số đã trả không được vượt tổng phải trả.</div>}
+        <button className="btn-primary tx-submit" disabled={!valid} onClick={() => onSubmit({
+          supplierName: form.supplierName.trim(),
+          supplierId: form.supplierId || null,
+          sourceKind: form.sourceKind || "manual",
+          sourceId: form.sourceId || null,
+          amount,
+          paidAmount,
+          dueDate: form.dueDate || null,
+          note: form.note || "",
+        })}>{payable ? "Lưu khoản phải trả" : "Tạo khoản phải trả"}</button>
+      </div>
+    </div>
+  );
+}
+
+function SupplierPaymentModal({ payable, onSubmit, onClose }) {
+  const remaining = Number(payable?.remainingAmount || 0);
+  const [form, setForm] = useState({ amount: remaining, method: "bank_transfer", paidAt: todayInput(), note: "" });
+  const amount = Number(form.amount || 0);
+  const valid = amount > 0 && amount <= remaining && String(form.note || "").trim();
+  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  return (
+    <div className="tx-modal-backdrop" role="dialog" aria-modal="true">
+      <div className="tx-modal-card">
+        <button className="drawer-close" onClick={onClose}><X size={16} /></button>
+        <h3>Ghi nhận thanh toán NCC</h3>
+        <div className="tx-readonly-summary"><strong>{payable?.supplierName}</strong><small>Còn phải trả {fmt(remaining)}</small></div>
+        <Field label="Số tiền"><input aria-label="paymentAmount" type="number" min="1" max={remaining} value={form.amount} onChange={(e) => update("amount", e.target.value)} /></Field>
+        <Field label="Phương thức"><select value={form.method} onChange={(e) => update("method", e.target.value)}>{PAYMENT_METHODS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+        <Field label="Ngày thanh toán"><input type="date" value={form.paidAt} onChange={(e) => update("paidAt", e.target.value)} /></Field>
+        <Field label="Ghi chú bắt buộc"><textarea value={form.note} onChange={(e) => update("note", e.target.value)} /></Field>
+        <button className="btn-primary tx-submit" disabled={!valid} onClick={() => onSubmit({ ...form, amount })}>Ghi nhận thanh toán</button>
+      </div>
+    </div>
+  );
+}
+
+function SupplierPayableDetailDrawer({ payable, onClose }) {
+  if (!payable) return null;
+  return (
+    <aside className="tx-detail-drawer">
+      <button className="drawer-close" onClick={onClose}>×</button>
+      <h3>Chi tiết khoản phải trả</h3>
+      <section><h4>Nhà cung cấp</h4><p>{payable.supplierName}</p><small>{payable.sourceKind} · {payable.status}</small></section>
+      <section><h4>Số tiền</h4><p>{fmt(payable.paidAmount)} đã trả / {fmt(payable.amount)}</p><strong>Còn {fmt(payable.remainingAmount)}</strong></section>
+      <section><h4>Hạn thanh toán</h4><p>{asDate(payable.dueDate)}</p></section>
+      <section><h4>Cashflow</h4>{(payable.cashflowIds || []).length ? payable.cashflowIds.map((id) => <p key={id}>{id}</p>) : <p>-</p>}</section>
+      <section><h4>Audit trail</h4>{(payable.auditTrail || []).length ? payable.auditTrail.map((log, idx) => <p key={idx}>{log.action} · {log.nextStatus || "-"} · {asDate(log.at)}</p>) : <p>-</p>}</section>
+    </aside>
+  );
+}
+
 function TransactionDetailDrawer({ item, onClose, onRefund, onEditCashflow, onVoidCashflow, canRefund, canFinanceWrite }) {
   if (!item) return null;
   return (
@@ -181,6 +263,9 @@ const TransactionManagement = () => {
   const [selected, setSelected] = useState(null);
   const [selectedRefund, setSelectedRefund] = useState(null);
   const [selectedReconciliation, setSelectedReconciliation] = useState(null);
+  const [selectedPayable, setSelectedPayable] = useState(null);
+  const [supplierPayableModal, setSupplierPayableModal] = useState(null);
+  const [supplierPaymentModal, setSupplierPaymentModal] = useState(null);
   const [cashflowModal, setCashflowModal] = useState(null);
   const [refundSource, setRefundSource] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -241,15 +326,18 @@ const TransactionManagement = () => {
       {activeTab === "cashflow" && <section className="card-container"><div className="card-header"><h3>Cashflow thu / chi</h3></div><TransactionTable transactions={tx.cashflows.map((c) => ({ ...c, description: c.note || c.reference?.kind || "Cashflow", category: `${c.category || "other"}/${c.subcategory || "other"}`, referenceType: c.reference?.kind, referenceId: c.reference?.id }))} onSelect={setSelected} /></section>}
       {activeTab === "refund" && <section className="card-container"><div className="card-header"><h3>Lịch sử hoàn tiền</h3></div><div className="tx-cards-grid">{tx.refunds.map((r) => <article key={r.id} className="tx-record-card" onClick={() => setSelectedRefund(r)}><div><strong>{fmt(r.amount)}</strong><span className={`badge ${r.status === "success" ? "success" : "warning"}`}>{r.status}</span></div><p>{r.reason}</p><small>{r.method} · cashflow {r.cashflowId || "-"}</small></article>)}</div></section>}
       {activeTab === "reconciliation" && <section className="card-container"><div className="card-header"><h3>Queue đối soát</h3><select value={tx.reconciliationStatus} onChange={(e) => tx.setReconciliationStatus(e.target.value)}><option value="all">Tất cả</option><option value="matched">matched</option><option value="amount_mismatch">amount_mismatch</option><option value="unmatched">unmatched</option><option value="duplicate">duplicate</option><option value="resolved">resolved</option><option value="ignored">ignored</option></select></div><div className="tx-cards-grid">{tx.reconciliations.map((r) => <article key={r.id} className="tx-record-card" onClick={() => setSelectedReconciliation(r)}><div><strong>{r.paymentReference || r.id}</strong><span className={`badge ${r.status === "matched" ? "success" : "warning"}`}>{r.status}</span></div><p>Expected {fmt(r.expectedAmount)} · Received {fmt(r.receivedAmount)} · Δ {fmt(r.varianceAmount)}</p><small>Confidence {r.matchConfidence || 0} · {r.matchReason || "-"}</small><div className="tx-card-actions">{permissions.reconciliationWrite && <button onClick={(e) => { e.stopPropagation(); setConfirmAction({ title: "Resolve đối soát", message: "Ghi chú xử lý là bắt buộc để đóng ngoại lệ.", onConfirm: (note) => tx.resolveReconciliation({ reconciliationId: r.id, resolution: r.status === "amount_mismatch" ? "accept_mismatch" : "accept_match", note }).then(() => setConfirmAction(null)) }); }}><ShieldCheck size={14} /> Đóng</button>}</div></article>)}</div></section>}
-      {activeTab === "bank" && <section className="card-container"><div className="card-header"><h3>Giao dịch ngân hàng</h3><select value={tx.bankStatus} onChange={(e) => tx.setBankStatus(e.target.value)}><option value="">Tất cả</option><option value="unmatched">unmatched</option><option value="matched">matched</option><option value="amount_mismatch">amount_mismatch</option><option value="ignored">ignored</option></select></div><div className="tx-cards-grid">{tx.bankTransactions.map((b) => { const recon = tx.reconciliations.find((r) => r.bankTransactionId === b.id); return <article key={b.id} className="tx-record-card"><div><strong>{fmt(b.amount)}</strong><span className="badge warning">{b.matchStatus}</span></div><p>{b.transferContent || b.description || b.transactionId}</p><small>{b.provider} · {maskBankAccount(b.bankAccountNumber)}</small><div className="tx-card-actions">{permissions.reconciliationWrite && <><button onClick={() => tx.reconcileBankTransaction(b.id)}>Auto match</button><button onClick={() => setManualMatchContext({ bankTransaction: b, reconciliation: recon })}>Manual match</button><button onClick={() => setConfirmAction({ title: "Bỏ qua giao dịch ngân hàng", message: "Giao dịch sẽ không còn nằm trong queue cần xử lý. Nhập lý do để audit.", onConfirm: (reason) => tx.ignoreBankTransaction(b.id, reason).then(() => setConfirmAction(null)) })}>Bỏ qua</button></>}</div></article>; })}</div></section>}
-      {activeTab === "debt" && <section className="card-container"><div className="card-header warning-bg"><h3>Công nợ phải thu / phải trả</h3></div><div className="tx-cards-grid"><article className="tx-record-card"><strong>Khoản phải thu</strong><p>{receivables.length ? `${receivables.length} hóa đơn cần xử lý` : "Theo dõi từ Invoice UNPAID/PARTIAL trong dashboard"}</p></article>{tx.supplierPayables.map((p) => <article key={p.id} className="tx-record-card"><div><strong>{p.supplierName}</strong><span className="badge warning">{p.status}</span></div><p>Còn phải trả {fmt(p.remainingAmount)} / {fmt(p.amount)}</p><small>Due {asDate(p.dueDate)} · {p.sourceKind}</small>{permissions.financeWrite && !["paid", "voided"].includes(p.status) && <div className="tx-card-actions"><button onClick={() => setConfirmAction({ title: "Ghi nhận thanh toán NCC", message: `Nhập ghi chú để thanh toán toàn bộ phần còn lại ${fmt(p.remainingAmount)}.`, reasonLabel: "Ghi chú", confirmLabel: "Thanh toán", onConfirm: (note) => tx.recordSupplierPayment(p.id, { amount: Number(p.remainingAmount || 0), method: "bank_transfer", note }).then(() => setConfirmAction(null)) })}>Thanh toán</button></div>}</article>)}</div></section>}
+      {activeTab === "bank" && <section className="card-container"><div className="card-header"><h3>Giao dịch ngân hàng</h3><select value={tx.bankStatus} onChange={(e) => tx.setBankStatus(e.target.value)}><option value="">Tất cả</option><option value="unmatched">unmatched</option><option value="matched">matched</option><option value="amount_mismatch">amount_mismatch</option><option value="ignored">ignored</option></select></div><div className="tx-cards-grid">{tx.bankTransactions.map((b) => { const recon = tx.reconciliations.find((r) => r.bankTransactionId === b.id); return <article key={b.id} className="tx-record-card"><div><strong>{fmt(b.amount)}</strong><span className="badge warning">{b.matchStatus}</span></div><p>{b.transferContent || b.description || b.transactionId}</p><small>{b.provider} · {safeBankAccountLabel(b)}</small><div className="tx-card-actions">{permissions.reconciliationWrite && <><button onClick={() => tx.reconcileBankTransaction(b.id)}>Auto match</button><button onClick={() => setManualMatchContext({ bankTransaction: b, reconciliation: recon })}>Manual match</button><button onClick={() => setConfirmAction({ title: "Bỏ qua giao dịch ngân hàng", message: "Giao dịch sẽ không còn nằm trong queue cần xử lý. Nhập lý do để audit.", onConfirm: (reason) => tx.ignoreBankTransaction(b.id, reason).then(() => setConfirmAction(null)) })}>Bỏ qua</button></>}</div></article>; })}</div></section>}
+      {activeTab === "debt" && <section className="card-container"><div className="card-header warning-bg"><h3>Công nợ phải thu / phải trả</h3>{permissions.financeWrite && <button className="text-btn" onClick={() => setSupplierPayableModal({ mode: "create" })}>Tạo khoản phải trả</button>}</div><div className="debt-split-grid"><div className="debt-column"><h4>Khoản phải thu</h4><article className="tx-record-card"><strong>Hóa đơn UNPAID/PARTIAL</strong><p>{receivables.length ? `${receivables.length} hóa đơn cần xử lý` : "Theo dõi từ Invoice UNPAID/PARTIAL trong dashboard"}</p></article></div><div className="debt-column"><h4>Khoản phải trả nhà cung cấp</h4><div className="tx-cards-grid tx-cards-grid--single">{tx.supplierPayables.map((p) => <article key={p.id} className="tx-record-card"><div><strong>{p.supplierName}</strong><span className={`badge ${p.status === "paid" ? "success" : "warning"}`}>{p.status}</span></div><p>Còn phải trả {fmt(p.remainingAmount)} / {fmt(p.amount)} · đã trả {fmt(p.paidAmount)}</p><small>Due {asDate(p.dueDate)} · {p.sourceKind} · cashflows {(p.cashflowIds || []).length}</small><div className="tx-card-actions"><button onClick={() => setSelectedPayable(p)}>Chi tiết</button>{permissions.financeWrite && !["paid", "voided"].includes(p.status) && <><button onClick={() => setSupplierPayableModal({ mode: "edit", payable: p })}>Sửa</button><button onClick={() => setSupplierPaymentModal(p)}>Thanh toán</button><button onClick={() => setConfirmAction({ title: "Void khoản phải trả", message: "Nhập lý do void khoản phải trả. Thao tác này được audit.", onConfirm: (reason) => tx.voidSupplierPayable(p.id, reason).then(() => setConfirmAction(null)) })}>Void</button></>}</div></article>)}</div></div></div></section>}
 
+      {supplierPayableModal && <SupplierPayableModal payable={supplierPayableModal.payable} onClose={() => setSupplierPayableModal(null)} onSubmit={async (input) => { supplierPayableModal.payable ? await tx.updateSupplierPayable(supplierPayableModal.payable.id, input) : await tx.createSupplierPayable(input); setSupplierPayableModal(null); }} />}
+      {supplierPaymentModal && <SupplierPaymentModal payable={supplierPaymentModal} onClose={() => setSupplierPaymentModal(null)} onSubmit={async (input) => { await tx.recordSupplierPayment(supplierPaymentModal.id, input); setSupplierPaymentModal(null); }} />}
       {cashflowModal && <ManualCashflowModal initial={cashflowModal.item} onClose={() => setCashflowModal(null)} onSubmit={async (input) => { cashflowModal.item ? await tx.updateManualCashflow(cashflowModal.item.id, input) : await tx.createManualCashflow(input); setCashflowModal(null); }} onVoid={(item) => setConfirmAction({ title: "Void cashflow", message: "Void cashflow bắt buộc lý do và được audit.", onConfirm: (reason) => tx.voidManualCashflow(item.id, reason).then(() => { setConfirmAction(null); setCashflowModal(null); }) })} />}
       {refundSource && <RefundRequestModal transaction={refundSource} onClose={() => setRefundSource(null)} onSubmit={async (input) => { await tx.createRefundRequest(input); setRefundSource(null); setActiveTab("refund"); }} />}
       {manualMatchContext && <ManualMatchModal {...manualMatchContext} onClose={() => setManualMatchContext(null)} onMatch={(input) => tx.manualMatchBankTransaction(input).then(() => setManualMatchContext(null))} />}
       {confirmAction && <ConfirmFinancialActionModal {...confirmAction} onClose={() => setConfirmAction(null)} />}
       <TransactionDetailDrawer item={selected} onClose={() => setSelected(null)} onRefund={setRefundSource} onEditCashflow={(item) => setCashflowModal({ mode: "edit", item })} onVoidCashflow={(item) => setConfirmAction({ title: "Void cashflow", message: "Nhập lý do void cashflow.", onConfirm: (reason) => tx.voidManualCashflow(item.id, reason).then(() => setConfirmAction(null)) })} canRefund={permissions.refundWrite} canFinanceWrite={permissions.financeWrite} />
       <RefundDetailDrawer refund={selectedRefund} onClose={() => setSelectedRefund(null)} actions={permissions.refundWrite && selectedRefund ? <>{selectedRefund.status === "pending" && <><button onClick={() => tx.approveRefundRequest(selectedRefund.id)}>Duyệt</button><button onClick={() => setConfirmAction({ title: "Từ chối refund", message: "Nhập lý do từ chối.", onConfirm: (reason) => tx.rejectRefundRequest(selectedRefund.id, reason).then(() => setConfirmAction(null)) })}>Từ chối</button></>}{selectedRefund.status === "approved" && <><button onClick={() => tx.processRefundRequest(selectedRefund.id, { note: "processed from UI" })}>Xử lý</button><button onClick={() => setConfirmAction({ title: "Hủy refund", message: "Nhập lý do hủy refund.", onConfirm: (reason) => tx.cancelRefundRequest(selectedRefund.id, reason).then(() => setConfirmAction(null)) })}>Hủy</button></>}{selectedRefund.status === "failed" && <button onClick={() => tx.retryRefundRequest(selectedRefund.id, { note: "retry from UI" })}>Thử lại</button>}</> : null} />
+      <SupplierPayableDetailDrawer payable={selectedPayable} onClose={() => setSelectedPayable(null)} />
       <ReconciliationDetailDrawer item={selectedReconciliation} onClose={() => setSelectedReconciliation(null)} />
     </div>
   );

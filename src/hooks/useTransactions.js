@@ -67,7 +67,8 @@ const BANK_FIELDS = `
   provider
   restaurantId
   transactionId
-  bankAccountNumber
+  bankAccountNumberMasked
+  bankAccountNumberLast4
   amount
   currency
   description
@@ -193,6 +194,12 @@ const CREATE_SUPPLIER_PAYABLE = gql`
   }
 `;
 
+const UPDATE_SUPPLIER_PAYABLE = gql`
+  mutation UpdateSupplierPayable($id: ID!, $input: UpdateSupplierPayableInput!) {
+    updateSupplierPayable(id: $id, input: $input) { ${SUPPLIER_PAYABLE_FIELDS} }
+  }
+`;
+
 const RECORD_SUPPLIER_PAYMENT = gql`
   mutation RecordSupplierPayment($id: ID!, $input: RecordSupplierPaymentInput!) {
     recordSupplierPayment(id: $id, input: $input) { ${SUPPLIER_PAYABLE_FIELDS} }
@@ -306,6 +313,7 @@ export function useTransactions() {
   const [resolveReconciliationMutation] = useMutation(RESOLVE_RECONCILIATION, mutationOptions);
   const [ignoreBankTransactionMutation] = useMutation(IGNORE_BANK_TRANSACTION, mutationOptions);
   const [createSupplierPayableMutation] = useMutation(CREATE_SUPPLIER_PAYABLE, mutationOptions);
+  const [updateSupplierPayableMutation] = useMutation(UPDATE_SUPPLIER_PAYABLE, mutationOptions);
   const [recordSupplierPaymentMutation] = useMutation(RECORD_SUPPLIER_PAYMENT, mutationOptions);
   const [voidSupplierPayableMutation] = useMutation(VOID_SUPPLIER_PAYABLE, mutationOptions);
 
@@ -342,6 +350,7 @@ export function useTransactions() {
     resolveReconciliation: (input) => resolveReconciliationMutation({ variables: { input } }),
     ignoreBankTransaction: (id, reason) => ignoreBankTransactionMutation({ variables: { id, reason } }),
     createSupplierPayable: (input) => createSupplierPayableMutation({ variables: { input: { ...input, restaurantId } } }),
+    updateSupplierPayable: (id, input) => updateSupplierPayableMutation({ variables: { id, input } }),
     recordSupplierPayment: (id, input) => recordSupplierPaymentMutation({ variables: { id, input } }),
     voidSupplierPayable: (id, reason) => voidSupplierPayableMutation({ variables: { id, reason } }),
   };

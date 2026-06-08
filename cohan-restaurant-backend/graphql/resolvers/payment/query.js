@@ -102,15 +102,26 @@ function cashflowCategory(cashflow = {}) {
 
 function buildBuckets({ from, to, mode, format }) {
   const labels = [];
-  const cursor = dayjs(from);
+  let cursor = dayjs(from);
   const end = dayjs(to);
   while (cursor.isBefore(end) || cursor.isSame(end, mode)) {
     labels.push(cursor.format(format));
-    if (mode === "month") cursor.add(1, "month");
-    else if (mode === "week") cursor.add(1, "week");
-    else cursor.add(1, "day");
+    if (mode === "month") cursor = cursor.add(1, "month");
+    else if (mode === "week") cursor = cursor.add(1, "week");
+    else cursor = cursor.add(1, "day");
   }
   return labels;
+}
+
+
+function bankAccountLast4(value) {
+  const digits = String(value || "").replace(/\s+/g, "");
+  return digits ? digits.slice(-4) : null;
+}
+
+function maskBankAccountNumber(value) {
+  const last4 = bankAccountLast4(value);
+  return last4 ? `****${last4}` : null;
 }
 
 function toFinanceTransactionFromCashflow(cf) {
@@ -388,7 +399,20 @@ export const PaymentQuery = {
     const filter = { restaurantId: rid };
     if (matchStatus) filter.matchStatus = normalize(matchStatus);
     const docs = await BankTransaction.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
-    return docs.map((doc) => ({ ...doc, id: String(doc._id), restaurantId: doc.restaurantId ? String(doc.restaurantId) : null, matchedPaymentSessionId: doc.matchedPaymentSessionId ? String(doc.matchedPaymentSessionId) : null }));
+    return docs.map((doc) => {
+      const { bankAccountNumber, ...safeDoc } = doc;
+      const bankAccountNumberMasked = maskBankAccountNumber(bankAccountNumber);
+      return {
+        ...safeDoc,
+        id: String(doc._id),
+        restaurantId: doc.restaurantId ? String(doc.restaurantId) : null,
+        matchedPaymentSessionId: doc.matchedPaymentSessionId ? String(doc.matchedPaymentSessionId) : null,
+        // Deprecated field intentionally returns masked value for backward compatibility.
+        bankAccountNumber: bankAccountNumberMasked,
+        bankAccountNumberMasked,
+        bankAccountNumberLast4: bankAccountLast4(bankAccountNumber),
+      };
+    });
   },
 
   async reconciliationQueue(_, { restaurantId, status, limit = 50 }, ctx) {

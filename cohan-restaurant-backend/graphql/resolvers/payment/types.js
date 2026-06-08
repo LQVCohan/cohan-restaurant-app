@@ -60,6 +60,14 @@ export const PaymentResolvers = {
     approvedBy(parent) { return parent.approvedBy ? String(parent.approvedBy) : null; },
     voidedBy(parent) { return parent.voidedBy ? String(parent.voidedBy) : null; },
   },
+  BankTransaction: {
+    id(parent) { return String(parent._id || parent.id); },
+    restaurantId(parent) { return parent.restaurantId ? String(parent.restaurantId) : null; },
+    matchedPaymentSessionId(parent) { return parent.matchedPaymentSessionId ? String(parent.matchedPaymentSessionId) : null; },
+    bankAccountNumber(parent) { return parent.bankAccountNumberMasked || null; },
+    bankAccountNumberMasked(parent) { return parent.bankAccountNumberMasked || null; },
+    bankAccountNumberLast4(parent) { return parent.bankAccountNumberLast4 || null; },
+  },
   PaymentReconciliation: {
     id(parent) { return String(parent._id || parent.id); },
     restaurantId(parent) { return parent.restaurantId ? String(parent.restaurantId) : null; },

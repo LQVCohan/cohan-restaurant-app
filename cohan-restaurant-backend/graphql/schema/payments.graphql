@@ -206,7 +206,9 @@ type BankTransaction {
   provider: String
   restaurantId: ID
   transactionId: String
-  bankAccountNumber: String
+  bankAccountNumber: String @deprecated(reason: "Masked only; use bankAccountNumberMasked or bankAccountNumberLast4")
+  bankAccountNumberMasked: String
+  bankAccountNumberLast4: String
   amount: Float!
   currency: String
   description: String

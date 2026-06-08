@@ -1181,3 +1181,37 @@ $border: #e2e8f0;
     }
   }
 }
+
+.transactions-page {
+  .debt-split-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.4fr);
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .debt-column {
+    display: grid;
+    align-content: start;
+    gap: 0.8rem;
+
+    > h4 {
+      margin: 0;
+      color: $text-sec;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+  }
+
+  .tx-cards-grid--single {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+}
+
+@media (max-width: 920px) {
+  .transactions-page .debt-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
