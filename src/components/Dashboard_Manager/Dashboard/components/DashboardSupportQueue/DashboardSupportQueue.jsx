@@ -11,7 +11,7 @@ const formatDateTime = (value) => {
 export default function DashboardSupportQueue({ requests = [], count = 0, loading, error, busyKey, onAcknowledge, onResolve, onOpenHandoff }) {
   return (
     <article className="dashboard-card dashboard-card--support-queue">
-      <div className="dashboard-card__head">
+      <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
           <h3>Hỗ trợ khách hàng</h3>
           <p>Tóm tắt yêu cầu hỗ trợ / handoff AI mới nhất.</p>
