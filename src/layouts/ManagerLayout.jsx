@@ -20,6 +20,7 @@ import "./ManagerLayout.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
+import TransactionManagement from "@/components/Dashboard_Manager/Transactions/TransactionManagement";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
 import SettingsManagement from "@/components/Dashboard_Manager/Settings/SettingsManagement";
@@ -276,7 +277,7 @@ const ManagerLayout = () => {
       case "analytics": return <ManagerAnalyst />;
       case "reports": return <ReportsManagement />;
       case "finance": return <FinanceDashboard />;
-      case "transactions": return <FinanceDashboard />;
+      case "transactions": return <TransactionManagement />;
       case "settings":
       case "rates":
       case "setting": return <SettingsManagement />;

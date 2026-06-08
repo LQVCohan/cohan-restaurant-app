@@ -7,13 +7,17 @@ const paymentReconciliationSchema = new mongoose.Schema({
   expectedAmount: { type: Number },
   receivedAmount: { type: Number },
   varianceAmount: { type: Number },
-  status: { type: String, enum: ["matched", "amount_mismatch", "unmatched", "duplicate", "ignored"], required: true },
+  status: { type: String, enum: ["matched", "amount_mismatch", "unmatched", "duplicate", "resolved", "ignored"], required: true },
   bankTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: "bank_transaction" },
   paymentReference: { type: String },
   matchedBy: { type: String, default: "webhook" },
   matchedAt: { type: Date },
   raw: { type: mongoose.Schema.Types.Mixed },
   note: { type: String },
+  resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  resolvedAt: { type: Date },
+  resolution: { type: String },
+  auditTrail: { type: [mongoose.Schema.Types.Mixed], default: [] },
 }, { timestamps: true });
 paymentReconciliationSchema.index(
   { bankTransactionId: 1, paymentSessionId: 1, status: 1 },

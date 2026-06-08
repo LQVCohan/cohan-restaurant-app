@@ -30,6 +30,7 @@ export { default as PaymentTransaction } from "./payment-transaction.model.js";
 export { default as PaymentSession } from "./payment-session.model.js";
 export { default as BankTransaction } from "./bank-transaction.model.js";
 export { default as PaymentReconciliation } from "./payment-reconciliation.model.js";
+export { default as PaymentRefund } from "./payment-refund.model.js";
 export { default as Invoice } from "./invoice.model.js";
 export { default as Review } from "./review.model.js";
 export { default as AuthProviderLink } from "./auth-provider-link.model.js";

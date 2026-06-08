@@ -63,6 +63,11 @@ enum CashflowType {
 enum CashflowCategory {
   SALE
   REFUND
+  PAYROLL
+  INVENTORY
+  OPERATIONS
+  SUPPLIER_PAYMENT
+  ADJUSTMENT
   OTHER
 }
 
@@ -104,17 +109,34 @@ type CashflowReference {
   kind: String
   id: ID
   orderId: ID
+  invoiceId: ID
+  paymentTransactionId: ID
+  payrollPaymentId: ID
+  stockMovementId: ID
+  reconciliationId: ID
+  refundId: ID
 }
 
 type Cashflow {
   id: ID!
+  restaurantId: ID
   type: CashflowType!
   amount: Float!
   occurredAt: DateTime!
   currency: String
+  category: String
+  subcategory: String
+  method: String
+  status: String
+  source: String
   reference: CashflowReference
   note: String
+  evidenceAttachments: JSON
   createdBy: ID
+  approvedBy: ID
+  voidedBy: ID
+  voidedAt: DateTime
+  voidReason: String
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -190,6 +212,7 @@ type BankTransaction {
   matchedPaymentSessionId: ID
   matchStatus: String
   createdAt: DateTime
+  updatedAt: DateTime
 }
 type PaymentReconciliation {
   id: ID!
@@ -205,7 +228,35 @@ type PaymentReconciliation {
   matchedBy: String
   matchedAt: DateTime
   note: String
+  resolvedBy: ID
+  resolvedAt: DateTime
+  resolution: String
+  auditTrail: JSON
   createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PaymentRefund {
+  id: ID!
+  restaurantId: ID!
+  orderId: ID
+  invoiceId: ID
+  paymentTransactionId: ID
+  amount: Float!
+  currency: String
+  reason: String!
+  method: String!
+  status: String!
+  providerRefundId: String
+  createdBy: ID
+  approvedBy: ID
+  approvedAt: DateTime
+  processedBy: ID
+  processedAt: DateTime
+  cashflowId: ID
+  auditTrail: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 input CreateOrderPaymentInput {
@@ -258,11 +309,15 @@ type FinanceSummary {
   expense: Float!
   profit: Float!
   debt: Float!
+  receivable: Float!
+  payable: Float!
+  overdue: Float!
   payment: Float!
   refund: Float!
   settlement: Float!
   cashIn: Float!
   cashOut: Float!
+  primeCostRate: Float!
 }
 
 type FinanceTrendPoint {
@@ -329,6 +384,84 @@ input FinanceDashboardInput {
   range: FinanceRange = MONTH
   dateFrom: DateTime
   dateTo: DateTime
+  currency: String
+}
+
+input FinanceTransactionFilterInput {
+  restaurantId: ID!
+  dateFrom: DateTime
+  dateTo: DateTime
+  type: String
+  category: String
+  subcategory: String
+  method: String
+  status: String
+  source: String
+  referenceId: String
+  search: String
+  limit: Int
+}
+
+input ManualCashflowInput {
+  restaurantId: ID!
+  type: CashflowType!
+  amount: Float!
+  currency: String
+  category: String!
+  subcategory: String
+  method: String
+  status: String
+  occurredAt: DateTime
+  note: String
+  evidenceAttachments: JSON
+}
+
+input UpdateManualCashflowInput {
+  type: CashflowType
+  amount: Float
+  currency: String
+  category: String
+  subcategory: String
+  method: String
+  status: String
+  occurredAt: DateTime
+  note: String
+  evidenceAttachments: JSON
+}
+
+input RefundRequestFilterInput {
+  restaurantId: ID!
+  status: String
+  limit: Int
+}
+
+input CreateRefundRequestInput {
+  restaurantId: ID!
+  orderId: ID
+  invoiceId: ID
+  paymentTransactionId: ID
+  amount: Float!
+  reason: String!
+  method: String!
+}
+
+input ProcessRefundInput {
+  providerRefundId: String
+  note: String
+}
+
+input ManualMatchBankTransactionInput {
+  bankTransactionId: ID!
+  paymentSessionId: ID
+  paymentTransactionId: ID
+  note: String
+  forceMatch: Boolean
+}
+
+input ResolveReconciliationInput {
+  reconciliationId: ID!
+  resolution: String!
+  note: String
 }
 
 extend type Query {
@@ -339,8 +472,14 @@ extend type Query {
   paymentTransactionsByOrder(orderId: ID!): [PaymentTransaction!]!
   invoicesByOrder(orderId: ID!): [Invoice!]!
   financeDashboard(input: FinanceDashboardInput!): FinanceDashboard!
+  financeTransactions(input: FinanceTransactionFilterInput!): [FinanceTransaction!]!
+  cashflows(input: FinanceTransactionFilterInput!): [Cashflow!]!
+  cashflow(id: ID!): Cashflow
+  refundRequests(input: RefundRequestFilterInput!): [PaymentRefund!]!
+  refundRequest(id: ID!): PaymentRefund
   paymentReconciliations(restaurantId: ID!, status: String, limit: Int): [PaymentReconciliation!]!
   bankTransactions(restaurantId: ID!, matchStatus: String, limit: Int): [BankTransaction!]!
+  reconciliationQueue(restaurantId: ID!, status: String, limit: Int): [PaymentReconciliation!]!
 }
 
 extend type Mutation {
@@ -354,4 +493,18 @@ extend type Mutation {
   clearTablePaymentRequest(input: ClearTablePaymentRequestInput!): ClearTablePaymentRequestResult!
   payOrdersByTableId(input: PayOrdersByTableIdInput!): PayOrdersByTableResult!
   payOrdersByOrderIds(input: PayOrdersByOrderIdsInput!): PayOrdersByTableResult!
+
+  createManualCashflow(input: ManualCashflowInput!): Cashflow!
+  updateManualCashflow(id: ID!, input: UpdateManualCashflowInput!): Cashflow!
+  voidManualCashflow(id: ID!, reason: String!): Cashflow!
+
+  createRefundRequest(input: CreateRefundRequestInput!): PaymentRefund!
+  approveRefundRequest(id: ID!): PaymentRefund!
+  rejectRefundRequest(id: ID!, reason: String!): PaymentRefund!
+  processRefundRequest(id: ID!, input: ProcessRefundInput): PaymentRefund!
+
+  reconcileBankTransaction(bankTransactionId: ID!): PaymentReconciliation!
+  manuallyMatchBankTransaction(input: ManualMatchBankTransactionInput!): PaymentReconciliation!
+  resolveReconciliation(input: ResolveReconciliationInput!): PaymentReconciliation!
+  ignoreBankTransaction(id: ID!, reason: String!): BankTransaction!
 }

@@ -11,6 +11,10 @@ import {
   Table,
   Restaurant,
   PaymentSession,
+  BankTransaction,
+  PaymentReconciliation,
+  PaymentRefund,
+  AuditLog,
   Coupon,
   CouponRedemption,
   Promotion,
@@ -1093,6 +1097,11 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
           type: "INFLOW",
           amount: amountToPay,
           currency: "VND",
+          category: "sale",
+          subcategory: "other",
+          method: method || "cash",
+          status: "completed",
+          source: "order",
           ref: {
             kind: "Invoice",
             id: invoice._id,
@@ -1466,6 +1475,11 @@ export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
           type: "INFLOW",
           amount: amountToPay,
           currency: "VND",
+          category: "sale",
+          subcategory: "other",
+          method: method || "cash",
+          status: "completed",
+          source: "order",
           ref: {
             kind: "Invoice",
             id: invoice._id,
@@ -1703,6 +1717,351 @@ export const updateRestaurantPaymentSettings = async (
   return restaurant;
 };
 
+const normalizeFinanceToken = (value, fallback = "other") =>
+  String(value || fallback).trim().toLowerCase();
+
+const FINANCE_CASHFLOW_CATEGORIES = new Set([
+  "sale", "refund", "payroll", "inventory", "operations", "supplier_payment", "adjustment", "other",
+]);
+const FINANCE_CASHFLOW_SUBCATEGORIES = new Set([
+  "labor", "cogs", "rent", "utility", "maintenance", "marketing", "bank_fee", "tax", "etc", "other",
+]);
+const FINANCE_PAYMENT_METHODS = new Set([
+  "cash", "card", "bank_transfer", "e_wallet", "transfer", "provider", "other",
+]);
+const FINANCE_CASHFLOW_STATUSES = new Set(["draft", "pending", "completed", "voided"]);
+
+function normalizeManualCashflow(input = {}) {
+  const category = normalizeFinanceToken(input.category);
+  const subcategory = normalizeFinanceToken(input.subcategory);
+  const method = normalizeFinanceToken(input.method, "cash");
+  const status = normalizeFinanceToken(input.status, "completed");
+  const type = String(input.type || "").toUpperCase();
+  if (!["INFLOW", "OUTFLOW"].includes(type)) throw new Error("Invalid cashflow type");
+  const amount = Number(input.amount || 0);
+  if (!(amount > 0)) throw new Error("Amount must be greater than zero");
+  if (!FINANCE_CASHFLOW_CATEGORIES.has(category)) throw new Error("Invalid cashflow category");
+  if (!FINANCE_CASHFLOW_SUBCATEGORIES.has(subcategory)) throw new Error("Invalid cashflow subcategory");
+  if (!FINANCE_PAYMENT_METHODS.has(method)) throw new Error("Invalid payment method");
+  if (!FINANCE_CASHFLOW_STATUSES.has(status) || status === "voided") throw new Error("Invalid cashflow status");
+  return {
+    type,
+    amount,
+    currency: String(input.currency || "VND").toUpperCase(),
+    category,
+    subcategory,
+    method,
+    status,
+    source: "manual",
+    note: input.note || "",
+    occurredAt: input.occurredAt ? new Date(input.occurredAt) : new Date(),
+    evidenceAttachments: input.evidenceAttachments || [],
+  };
+}
+
+async function writeFinanceAudit(ctx, payload = {}) {
+  await AuditLog.create({
+    module: "finance",
+    restaurantId: payload.restaurantId || null,
+    action: payload.action,
+    actorId: toId(ctx?.user?.id),
+    actorName: ctx?.user?.name || ctx?.user?.email || null,
+    actorRole: ctx?.user?.roleName || ctx?.user?.userType || null,
+    targetType: payload.targetType,
+    targetId: payload.targetId || null,
+    before: payload.before || null,
+    after: payload.after || null,
+    metadata: payload.metadata || {},
+  }).catch(() => {});
+}
+
+async function requireFinanceWrite(ctx, restaurantId) {
+  return requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.PAYMENT_WRITE);
+}
+
+async function paidAndRefundedFor({ restaurantId, paymentTransactionId, invoiceId, orderId }) {
+  const paymentFilter = { restaurantId, status: "SUCCESS" };
+  if (paymentTransactionId) paymentFilter._id = paymentTransactionId;
+  else if (invoiceId) paymentFilter.invoiceId = invoiceId;
+  else if (orderId) paymentFilter.$or = [{ orderId }, { orderIds: orderId }];
+  const payments = await PaymentTransaction.find(paymentFilter).lean();
+  const paid = payments.reduce((sum, p) => sum + Number(p.paidAmount || 0), 0);
+  const refundFilter = { restaurantId, status: { $in: ["pending", "approved", "processing", "success"] } };
+  if (paymentTransactionId) refundFilter.paymentTransactionId = paymentTransactionId;
+  else if (invoiceId) refundFilter.invoiceId = invoiceId;
+  else if (orderId) refundFilter.orderId = orderId;
+  const refunds = await PaymentRefund.find(refundFilter).lean();
+  const refunded = refunds.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  return { paid, refunded };
+}
+
+async function buildReconciliationForBankTransaction(bankTransaction, { ctx, paymentSessionId = null, paymentTransactionId = null, note = "", forceMatch = false, matchedBy = "manual" } = {}) {
+  const rid = toId(bankTransaction.restaurantId);
+  let expectedAmount = null;
+  let session = null;
+  let paymentTransaction = null;
+  if (paymentSessionId) {
+    session = await PaymentSession.findOne({ _id: paymentSessionId, restaurantId: rid }).lean();
+    expectedAmount = Number(session?.amount || 0);
+  }
+  if (!session && paymentTransactionId) {
+    paymentTransaction = await PaymentTransaction.findOne({ _id: paymentTransactionId, restaurantId: rid }).lean();
+    expectedAmount = Number(paymentTransaction?.paidAmount || 0);
+  }
+  if (!session && !paymentTransaction && !forceMatch) {
+    const content = `${bankTransaction.transferContent || ""} ${bankTransaction.description || ""}`;
+    session = await PaymentSession.findOne({ restaurantId: rid, reference: { $regex: content.split(/\s+/).filter(Boolean).join("|"), $options: "i" } }).lean();
+    expectedAmount = Number(session?.amount || 0);
+  }
+  const receivedAmount = Number(bankTransaction.amount || 0);
+  const status = expectedAmount > 0
+    ? Math.abs(expectedAmount - receivedAmount) < 1 ? "matched" : "amount_mismatch"
+    : "unmatched";
+  const reconciliation = await PaymentReconciliation.findOneAndUpdate(
+    { bankTransactionId: bankTransaction._id, paymentSessionId: session?._id || paymentSessionId || null },
+    {
+      $set: {
+        restaurantId: rid,
+        paymentSessionId: session?._id || paymentSessionId || null,
+        provider: bankTransaction.provider,
+        expectedAmount: expectedAmount || null,
+        receivedAmount,
+        varianceAmount: expectedAmount ? receivedAmount - expectedAmount : null,
+        status,
+        bankTransactionId: bankTransaction._id,
+        paymentReference: session?.reference || paymentTransaction?.txnRef || bankTransaction.transactionId || "",
+        matchedBy,
+        matchedAt: status === "unmatched" ? null : new Date(),
+        note,
+      },
+      $push: {
+        auditTrail: {
+          action: matchedBy === "manual" ? "reconciliation.manual_match" : "reconciliation.auto_match",
+          actorId: toId(ctx?.user?.id),
+          nextStatus: status,
+          note,
+          at: new Date(),
+        },
+      },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  );
+  bankTransaction.matchStatus = status;
+  bankTransaction.matchedPaymentSessionId = session?._id || paymentSessionId || null;
+  await bankTransaction.save();
+  await writeFinanceAudit(ctx, {
+    restaurantId: rid,
+    action: matchedBy === "manual" ? "reconciliation.manual_match" : "reconciliation.auto_match",
+    targetType: "PaymentReconciliation",
+    targetId: reconciliation._id,
+    metadata: { bankTransactionId: String(bankTransaction._id), expectedAmount, receivedAmount, status, note },
+  });
+  return reconciliation;
+}
+
+const createManualCashflow = async (_, { input }, ctx) => {
+  const rid = toId(input?.restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+  await requireFinanceWrite(ctx, rid);
+  const payload = normalizeManualCashflow(input);
+  const cashflow = await Cashflow.create({
+    restaurantId: rid,
+    ...payload,
+    ref: { kind: "ManualCashflow" },
+    createdBy: toId(ctx?.user?.id),
+  });
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "finance.cashflow.create", targetType: "Cashflow", targetId: cashflow._id, after: cashflow.toObject(), metadata: { amount: cashflow.amount, status: cashflow.status } });
+  return cashflow;
+};
+
+const updateManualCashflow = async (_, { id, input }, ctx) => {
+  const cashflow = toId(id) ? await Cashflow.findById(id) : null;
+  if (!cashflow) throw new Error("Cashflow not found");
+  const rid = toId(cashflow.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  if (cashflow.source !== "manual" && String(cashflow.ref?.kind || "") !== "ManualCashflow") throw new Error("Only manual cashflow can be edited");
+  if (!["draft", "pending"].includes(String(cashflow.status || "completed"))) throw new Error("Only draft/pending cashflow can be edited");
+  const before = cashflow.toObject();
+  const payload = normalizeManualCashflow({ ...cashflow.toObject(), ...input, restaurantId: rid });
+  Object.assign(cashflow, payload);
+  await cashflow.save();
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "finance.cashflow.update", targetType: "Cashflow", targetId: cashflow._id, before, after: cashflow.toObject(), metadata: { amount: cashflow.amount, status: cashflow.status } });
+  return cashflow;
+};
+
+const voidManualCashflow = async (_, { id, reason }, ctx) => {
+  const cashflow = toId(id) ? await Cashflow.findById(id) : null;
+  if (!cashflow) throw new Error("Cashflow not found");
+  const rid = toId(cashflow.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  if (cashflow.source !== "manual" && String(cashflow.ref?.kind || "") !== "ManualCashflow") throw new Error("Only manual cashflow can be voided directly");
+  const before = cashflow.toObject();
+  cashflow.status = "voided";
+  cashflow.voidReason = reason;
+  cashflow.voidedBy = toId(ctx?.user?.id);
+  cashflow.voidedAt = new Date();
+  await cashflow.save();
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "finance.cashflow.void", targetType: "Cashflow", targetId: cashflow._id, before, after: cashflow.toObject(), metadata: { reason, amount: cashflow.amount } });
+  return cashflow;
+};
+
+const createRefundRequest = async (_, { input }, ctx) => {
+  const rid = toId(input?.restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+  await requireFinanceWrite(ctx, rid);
+  const paymentTransactionId = toId(input?.paymentTransactionId);
+  const invoiceId = toId(input?.invoiceId);
+  const orderId = toId(input?.orderId);
+  const amount = Number(input?.amount || 0);
+  if (!(amount > 0)) throw new Error("Refund amount must be greater than zero");
+  const { paid, refunded } = await paidAndRefundedFor({ restaurantId: rid, paymentTransactionId, invoiceId, orderId });
+  if (paid <= 0) throw new Error("No successful payment found for refund");
+  if (refunded + amount > paid + 1e-6) throw new Error("Refund amount exceeds paid amount");
+  const refund = await PaymentRefund.create({
+    restaurantId: rid,
+    orderId,
+    invoiceId,
+    paymentTransactionId,
+    amount,
+    reason: input.reason,
+    method: normalizeFinanceToken(input.method, "cash"),
+    createdBy: toId(ctx?.user?.id),
+    auditTrail: [{ action: "refund.create", actorId: toId(ctx?.user?.id), nextStatus: "pending", reason: input.reason, at: new Date() }],
+  });
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "refund.create", targetType: "PaymentRefund", targetId: refund._id, after: refund.toObject(), metadata: { amount, reason: input.reason } });
+  return refund;
+};
+
+const approveRefundRequest = async (_, { id }, ctx) => {
+  const refund = toId(id) ? await PaymentRefund.findById(id) : null;
+  if (!refund) throw new Error("Refund not found");
+  const rid = toId(refund.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  const previousStatus = refund.status;
+  if (refund.status !== "pending") throw new Error("Only pending refund can be approved");
+  refund.status = "approved";
+  refund.approvedBy = toId(ctx?.user?.id);
+  refund.approvedAt = new Date();
+  refund.auditTrail.push({ action: "refund.approve", actorId: refund.approvedBy, previousStatus, nextStatus: refund.status, at: new Date() });
+  await refund.save();
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "refund.approve", targetType: "PaymentRefund", targetId: refund._id, metadata: { previousStatus, nextStatus: refund.status, amount: refund.amount } });
+  return refund;
+};
+
+const rejectRefundRequest = async (_, { id, reason }, ctx) => {
+  const refund = toId(id) ? await PaymentRefund.findById(id) : null;
+  if (!refund) throw new Error("Refund not found");
+  const rid = toId(refund.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  const previousStatus = refund.status;
+  if (!["pending", "approved"].includes(refund.status)) throw new Error("Refund cannot be rejected");
+  refund.status = "rejected";
+  refund.auditTrail.push({ action: "refund.reject", actorId: toId(ctx?.user?.id), previousStatus, nextStatus: refund.status, reason, at: new Date() });
+  await refund.save();
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "refund.reject", targetType: "PaymentRefund", targetId: refund._id, metadata: { previousStatus, nextStatus: refund.status, reason, amount: refund.amount } });
+  return refund;
+};
+
+const processRefundRequest = async (_, { id, input = {} }, ctx) => {
+  const refund = toId(id) ? await PaymentRefund.findById(id) : null;
+  if (!refund) throw new Error("Refund not found");
+  const rid = toId(refund.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  if (!["pending", "approved", "processing"].includes(refund.status)) throw new Error("Refund cannot be processed");
+  const { paid } = await paidAndRefundedFor({ restaurantId: rid, paymentTransactionId: refund.paymentTransactionId, invoiceId: refund.invoiceId, orderId: refund.orderId });
+  const successfulFilter = { _id: { $ne: refund._id }, restaurantId: rid, status: "success" };
+  if (refund.paymentTransactionId) successfulFilter.paymentTransactionId = refund.paymentTransactionId;
+  else if (refund.invoiceId) successfulFilter.invoiceId = refund.invoiceId;
+  else if (refund.orderId) successfulFilter.orderId = refund.orderId;
+  const alreadySuccessful = await PaymentRefund.find(successfulFilter).lean();
+  const successfulAmount = alreadySuccessful.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  if (successfulAmount + Number(refund.amount || 0) > paid + 1e-6) throw new Error("Refund amount exceeds paid amount");
+  const previousStatus = refund.status;
+  const cashflow = await Cashflow.create({
+    restaurantId: rid,
+    type: "OUTFLOW",
+    amount: refund.amount,
+    currency: refund.currency || "VND",
+    category: "refund",
+    subcategory: "other",
+    method: refund.method === "provider" ? "provider" : refund.method,
+    status: "completed",
+    source: "refund",
+    ref: { kind: "PaymentRefund", id: refund._id, refundId: refund._id, invoiceId: refund.invoiceId, paymentTransactionId: refund.paymentTransactionId, orderId: refund.orderId },
+    note: `Hoàn tiền: ${refund.reason}`,
+    occurredAt: new Date(),
+    createdBy: toId(ctx?.user?.id),
+  });
+  refund.status = "success";
+  refund.providerRefundId = input.providerRefundId || refund.providerRefundId || `mock_refund_${refund._id}`;
+  refund.processedBy = toId(ctx?.user?.id);
+  refund.processedAt = new Date();
+  refund.cashflowId = cashflow._id;
+  refund.auditTrail.push({ action: "refund.process", actorId: refund.processedBy, previousStatus, nextStatus: refund.status, note: input.note, at: new Date() });
+  await refund.save();
+  if (refund.invoiceId) {
+    const invoice = await Invoice.findById(refund.invoiceId);
+    if (invoice) {
+      invoice.paid = Math.max(0, Number(invoice.paid || 0) - Number(refund.amount || 0));
+      invoice.status = invoice.paid <= 0 ? "UNPAID" : invoice.paid + 1e-6 >= Number(invoice.totals?.grandTotal || 0) ? "PAID" : "PARTIAL";
+      await invoice.save();
+    }
+  }
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "refund.process", targetType: "PaymentRefund", targetId: refund._id, metadata: { previousStatus, nextStatus: refund.status, amount: refund.amount, cashflowId: String(cashflow._id) } });
+  return refund;
+};
+
+const reconcileBankTransaction = async (_, { bankTransactionId }, ctx) => {
+  const bankTransaction = toId(bankTransactionId) ? await BankTransaction.findById(bankTransactionId) : null;
+  if (!bankTransaction) throw new Error("Bank transaction not found");
+  const rid = toId(bankTransaction.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  return buildReconciliationForBankTransaction(bankTransaction, { ctx, matchedBy: "auto" });
+};
+
+const manuallyMatchBankTransaction = async (_, { input }, ctx) => {
+  const bankTransaction = toId(input?.bankTransactionId) ? await BankTransaction.findById(input.bankTransactionId) : null;
+  if (!bankTransaction) throw new Error("Bank transaction not found");
+  const rid = toId(bankTransaction.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  if (!input.forceMatch && !input.paymentSessionId && !input.paymentTransactionId) throw new Error("Select a payment to match or enable force match");
+  return buildReconciliationForBankTransaction(bankTransaction, { ctx, paymentSessionId: toId(input.paymentSessionId), paymentTransactionId: toId(input.paymentTransactionId), note: input.note || "", forceMatch: Boolean(input.forceMatch), matchedBy: "manual" });
+};
+
+const resolveReconciliation = async (_, { input }, ctx) => {
+  const reconciliation = toId(input?.reconciliationId) ? await PaymentReconciliation.findById(input.reconciliationId) : null;
+  if (!reconciliation) throw new Error("Reconciliation not found");
+  const rid = toId(reconciliation.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  const previousStatus = reconciliation.status;
+  reconciliation.status = input.resolution === "ignore" ? "ignored" : "resolved";
+  reconciliation.resolution = input.resolution;
+  reconciliation.resolvedBy = toId(ctx?.user?.id);
+  reconciliation.resolvedAt = new Date();
+  reconciliation.note = [reconciliation.note, input.note].filter(Boolean).join("\n");
+  reconciliation.auditTrail.push({ action: "reconciliation.resolve", actorId: reconciliation.resolvedBy, previousStatus, nextStatus: reconciliation.status, resolution: input.resolution, note: input.note, at: new Date() });
+  await reconciliation.save();
+  if (reconciliation.bankTransactionId) await BankTransaction.findByIdAndUpdate(reconciliation.bankTransactionId, { $set: { matchStatus: reconciliation.status } });
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "reconciliation.resolve", targetType: "PaymentReconciliation", targetId: reconciliation._id, metadata: { previousStatus, nextStatus: reconciliation.status, resolution: input.resolution, note: input.note } });
+  return reconciliation;
+};
+
+const ignoreBankTransaction = async (_, { id, reason }, ctx) => {
+  const bankTransaction = toId(id) ? await BankTransaction.findById(id) : null;
+  if (!bankTransaction) throw new Error("Bank transaction not found");
+  const rid = toId(bankTransaction.restaurantId);
+  await requireFinanceWrite(ctx, rid);
+  bankTransaction.matchStatus = "ignored";
+  await bankTransaction.save();
+  await PaymentReconciliation.findOneAndUpdate(
+    { bankTransactionId: bankTransaction._id },
+    { $set: { restaurantId: rid, provider: bankTransaction.provider, receivedAmount: bankTransaction.amount, varianceAmount: null, status: "ignored", bankTransactionId: bankTransaction._id, note: reason, resolvedBy: toId(ctx?.user?.id), resolvedAt: new Date() }, $push: { auditTrail: { action: "bank_transaction.ignore", actorId: toId(ctx?.user?.id), nextStatus: "ignored", reason, at: new Date() } } },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  );
+  await writeFinanceAudit(ctx, { restaurantId: rid, action: "bank_transaction.ignore", targetType: "BankTransaction", targetId: bankTransaction._id, metadata: { reason, amount: bankTransaction.amount } });
+  return bankTransaction;
+};
+
 export default {
   requestTablePayment,
   clearTablePaymentRequest,
@@ -1713,4 +2072,15 @@ export default {
   cancelPaymentSession: cancelPaymentSessionMutation,
   syncPaymentStatus,
   updateRestaurantPaymentSettings,
+  createManualCashflow,
+  updateManualCashflow,
+  voidManualCashflow,
+  createRefundRequest,
+  approveRefundRequest,
+  rejectRefundRequest,
+  processRefundRequest,
+  reconcileBankTransaction,
+  manuallyMatchBankTransaction,
+  resolveReconciliation,
+  ignoreBankTransaction,
 };
