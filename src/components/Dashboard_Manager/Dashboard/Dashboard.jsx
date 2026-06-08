@@ -275,27 +275,57 @@ const Dashboard = () => {
       </section>
 
       <section className="dashboard-operations-grid" aria-label="Khu vực vận hành chính">
-        <article className="dashboard-card dashboard-card--primary-orders">
-          <div className="dashboard-card__head">
-            <div>
-              <h3>Đơn hàng gần đây</h3>
-              <p>Theo dõi trạng thái xử lý các đơn gần nhất.</p>
+        <div className="dashboard-main-stack">
+          <article className="dashboard-card dashboard-card--primary-orders">
+            <div className="dashboard-card__head dashboard-card__head--compact">
+              <div>
+                <h3>Đơn hàng gần đây</h3>
+                <p>Theo dõi trạng thái xử lý các đơn gần nhất.</p>
+              </div>
+              {safeRecentOrders.length > 0 ? (
+                <span className="orders-pill">
+                  {Math.min(safeRecentOrders.length, 6)} đơn gần nhất
+                </span>
+              ) : null}
             </div>
-            {safeRecentOrders.length > 0 ? (
-              <span className="orders-pill">
-                Hiển thị {Math.min(safeRecentOrders.length, 6)} đơn gần nhất
-              </span>
-            ) : null}
+            <RecentOrders
+              orders={safeRecentOrders}
+              loading={loading}
+              variant="bare"
+              onOpenPOS={handleSwitchToPOS}
+              onGoToMenu={handleGoToMenu}
+              onGoToTables={handleGoToTables}
+            />
+          </article>
+
+          <div className="dashboard-main-secondary">
+            <article className="dashboard-card dashboard-card--dense">
+              <div className="dashboard-card__head dashboard-card__head--compact">
+                <div>
+                  <h3>Món bán chạy</h3>
+                  <p>Top món theo đơn hoàn thành trong kỳ.</p>
+                </div>
+              </div>
+              <TopDishes
+                data={safeTopDishes}
+                loading={loading}
+                variant="bare"
+                compactWhenEmpty
+                hasCompletedOrders={hasCompletedOrders}
+              />
+            </article>
+
+            <article className="dashboard-card dashboard-card--dense">
+              <ManagerPerformancePanel
+                restaurantId={effectiveRestaurantId}
+                restaurantLoading={loading}
+                summaryOnly
+                showViewAll
+                compactWhenHealthy
+              />
+            </article>
           </div>
-          <RecentOrders
-            orders={safeRecentOrders}
-            loading={loading}
-            variant="bare"
-            onOpenPOS={handleSwitchToPOS}
-            onGoToMenu={handleGoToMenu}
-            onGoToTables={handleGoToTables}
-          />
-        </article>
+        </div>
 
         <aside className="dashboard-side-stack" aria-label="Trạng thái vận hành và cảnh báo">
           <DashboardSupportQueue
@@ -310,7 +340,7 @@ const Dashboard = () => {
           />
 
           <article className={`dashboard-card dashboard-card--side dashboard-card--alerts dashboard-card--alerts-${alertsCardState}`}>
-            <div className="dashboard-card__head">
+            <div className="dashboard-card__head dashboard-card__head--compact">
               <div>
                 <h3>Cảnh báo vận hành</h3>
                 <p>Tồn kho và tín hiệu cần chú ý trong ca.</p>
@@ -322,7 +352,7 @@ const Dashboard = () => {
             {loading ? (
               <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
                 <h4>Đang tải cảnh báo</h4>
-                <p>Đang kiểm tra tồn kho và các cảnh báo vận hành.</p>
+                <p>Đang kiểm tra tồn kho và vận hành.</p>
               </div>
             ) : safeLowStockItems.length > 0 ? (
               <div className="operational-alerts">
@@ -355,7 +385,7 @@ const Dashboard = () => {
           </article>
 
           <article className="dashboard-card dashboard-card--side dashboard-card--revenue">
-            <div className="dashboard-card__head">
+            <div className="dashboard-card__head dashboard-card__head--compact">
               <div>
                 <h3>Doanh thu</h3>
                 <p>{rangeLabel}</p>
@@ -386,29 +416,6 @@ const Dashboard = () => {
                 </p>
               </div>
             )}
-          </article>
-
-          <article className="dashboard-card dashboard-card--side">
-            <ManagerPerformancePanel
-              restaurantId={effectiveRestaurantId}
-              restaurantLoading={loading}
-              summaryOnly
-              showViewAll
-              compactWhenHealthy
-            />
-          </article>
-
-          <article className="dashboard-card dashboard-card--side">
-            <div className="dashboard-card__head">
-              <h3>Món bán chạy</h3>
-            </div>
-            <TopDishes
-              data={safeTopDishes}
-              loading={loading}
-              variant="bare"
-              compactWhenEmpty
-              hasCompletedOrders={hasCompletedOrders}
-            />
           </article>
         </aside>
       </section>

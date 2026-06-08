@@ -86,6 +86,14 @@ const RecentOrders = ({
       ) : null}
 
       <div className={bodyClass}>
+        {!loading && visibleOrders.length > 0 ? (
+          <div className="order-table-head" aria-hidden="true">
+            <span>Đơn / khách</span>
+            <span>Trạng thái</span>
+            <span>Giá trị / giờ</span>
+          </div>
+        ) : null}
+
         {loading ? (
           <div className="orders-skeleton" role="status" aria-live="polite">
             {[0, 1, 2, 3].map((item) => (
@@ -102,7 +110,7 @@ const RecentOrders = ({
         {!loading && safeOrders.length === 0 ? (
           <div className="empty-state empty-state--operation">
             <div className="empty-icon empty-icon--operation">
-              <ShoppingBag size={28} />
+              <ShoppingBag size={20} />
             </div>
 
             <div className="empty-state__content">
