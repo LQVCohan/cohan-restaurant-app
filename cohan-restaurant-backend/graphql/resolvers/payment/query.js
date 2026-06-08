@@ -9,10 +9,17 @@ import {
   BankTransaction,
   PaymentReconciliation,
   PaymentRefund,
+  SupplierPayable,
 } from "../../../models/index.js";
 import { getProviderPublicConfig, sanitizePaymentSessionForClient } from "../../../src/services/payment/paymentSession.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import {
+  requireFinanceRead,
+  requireTransactionRead,
+  requireReconciliationRead,
+  requireRefundRead,
+} from "../../../src/services/finance/financePermission.service.js";
 
 const toObjectId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -203,7 +210,7 @@ export const PaymentQuery = {
     const { restaurantId, range, dateFrom, dateTo } = input || {};
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireFinanceRead(ctx, rid);
 
     const { from, to, mode, format } = resolveDateRange({ range, dateFrom, dateTo });
     const dateMatch = {};
@@ -217,10 +224,11 @@ export const PaymentQuery = {
     const transactionFilter = { restaurantId: rid };
     if (Object.keys(dateMatch).length) transactionFilter.paidAt = dateMatch;
 
-    const [cashflows, invoices, debtInvoices, payments, recentReconciliations, reconciliationAgg, unmatchedAgg] = await Promise.all([
+    const [cashflows, invoices, debtInvoices, supplierPayables, payments, recentReconciliations, reconciliationAgg, unmatchedAgg] = await Promise.all([
       Cashflow.find(cashflowFilter).sort({ occurredAt: -1 }).lean(),
       Invoice.find(invoiceFilter).sort({ issuedAt: -1 }).lean(),
       Invoice.find({ restaurantId: rid, status: { $in: ["UNPAID", "PARTIAL"] } }).lean(),
+      SupplierPayable.find({ restaurantId: rid, status: { $in: ["unpaid", "partial", "overdue"] } }).lean(),
       PaymentTransaction.find(transactionFilter).sort({ paidAt: -1 }).lean(),
       PaymentReconciliation.find({ restaurantId: rid }).sort({ createdAt: -1 }).limit(10).lean(),
       PaymentReconciliation.aggregate([
@@ -235,6 +243,15 @@ export const PaymentQuery = {
     const payment = payments.filter((x) => x.status === "SUCCESS").reduce((s, x) => s + Number(x.paidAmount || 0), 0);
     const refund = cashflows.filter((x) => x.type === "OUTFLOW" && isRefundCashflow(x)).reduce((s, x) => s + Number(x.amount || 0), 0);
     const receivable = debtInvoices.reduce((s, inv) => s + Math.max(Number(inv?.totals?.grandTotal || 0) - Number(inv?.paid || 0), 0), 0);
+    const payable = supplierPayables.reduce((s, item) => s + Math.max(Number(item.remainingAmount ?? (Number(item.amount || 0) - Number(item.paidAmount || 0))), 0), 0);
+    const now = Date.now();
+    const overdueReceivable = debtInvoices
+      .filter((inv) => inv.dueDate && new Date(inv.dueDate).getTime() < now)
+      .reduce((s, inv) => s + Math.max(Number(inv?.totals?.grandTotal || 0) - Number(inv?.paid || 0), 0), 0);
+    const overduePayable = supplierPayables
+      .filter((item) => item.status === "overdue" || (item.dueDate && new Date(item.dueDate).getTime() < now))
+      .reduce((s, item) => s + Math.max(Number(item.remainingAmount ?? (Number(item.amount || 0) - Number(item.paidAmount || 0))), 0), 0);
+    const overdue = overdueReceivable + overduePayable;
     const settlement = invoices.filter((inv) => inv.status === "PAID").reduce((s, inv) => s + Number(inv.paid || 0), 0);
 
     const costBreakdown = cashflows.filter((x) => x.type === "OUTFLOW").reduce((acc, x) => {
@@ -268,10 +285,10 @@ export const PaymentQuery = {
         revenue,
         expense,
         profit: revenue - expense,
-        debt: receivable,
+        debt: receivable + payable,
         receivable,
-        payable: 0,
-        overdue: 0,
+        payable,
+        overdue,
         payment,
         refund,
         settlement,
@@ -301,7 +318,7 @@ export const PaymentQuery = {
 
   async financeTransactions(_, { input }, ctx) {
     const { rid, filter } = buildCashflowFilter(input);
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireTransactionRead(ctx, rid);
     const limit = Math.min(250, Math.max(1, Number(input?.limit || 100)));
     const rows = await Cashflow.find(filter).sort({ occurredAt: -1 }).limit(limit).lean();
     return rows.map(toFinanceTransactionFromCashflow);
@@ -309,7 +326,7 @@ export const PaymentQuery = {
 
   async cashflows(_, { input }, ctx) {
     const { rid, filter } = buildCashflowFilter(input);
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireFinanceRead(ctx, rid);
     const limit = Math.min(250, Math.max(1, Number(input?.limit || 100)));
     return Cashflow.find(filter).sort({ occurredAt: -1 }).limit(limit).lean();
   },
@@ -317,14 +334,14 @@ export const PaymentQuery = {
   async cashflow(_, { id }, ctx) {
     const cf = mongoose.isValidObjectId(id) ? await Cashflow.findById(id).lean() : null;
     if (!cf) return null;
-    await requireRestaurantPermission(ctx, toObjectId(cf.restaurantId), PERMISSIONS.PAYMENT_READ);
+    await requireFinanceRead(ctx, toObjectId(cf.restaurantId));
     return cf;
   },
 
   async refundRequests(_, { input }, ctx) {
     const rid = toObjectId(input?.restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireRefundRead(ctx, rid);
     const filter = { restaurantId: rid };
     if (input?.status) filter.status = normalize(input.status);
     return PaymentRefund.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(input?.limit || 50)))).lean();
@@ -333,14 +350,31 @@ export const PaymentQuery = {
   async refundRequest(_, { id }, ctx) {
     const refund = mongoose.isValidObjectId(id) ? await PaymentRefund.findById(id).lean() : null;
     if (!refund) return null;
-    await requireRestaurantPermission(ctx, toObjectId(refund.restaurantId), PERMISSIONS.PAYMENT_READ);
+    await requireRefundRead(ctx, toObjectId(refund.restaurantId));
     return refund;
+  },
+
+  async supplierPayables(_, { input }, ctx) {
+    const rid = toObjectId(input?.restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+    await requireFinanceRead(ctx, rid);
+    const filter = { restaurantId: rid };
+    if (input?.status && input.status !== "all") filter.status = normalize(input.status);
+    if (input?.sourceKind) filter.sourceKind = normalize(input.sourceKind);
+    if (input?.search) {
+      const escaped = String(input.search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$or = [{ supplierName: new RegExp(escaped, "i") }, { note: new RegExp(escaped, "i") }];
+    }
+    return SupplierPayable.find(filter)
+      .sort({ dueDate: 1, createdAt: -1 })
+      .limit(Math.min(100, Math.max(1, Number(input?.limit || 50))))
+      .lean();
   },
 
   async paymentReconciliations(_, { restaurantId, status, limit = 10 }, ctx) {
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireReconciliationRead(ctx, rid);
     const filter = { restaurantId: rid };
     if (status) filter.status = normalize(status);
     const docs = await PaymentReconciliation.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
@@ -350,7 +384,7 @@ export const PaymentQuery = {
   async bankTransactions(_, { restaurantId, matchStatus, limit = 10 }, ctx) {
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireReconciliationRead(ctx, rid);
     const filter = { restaurantId: rid };
     if (matchStatus) filter.matchStatus = normalize(matchStatus);
     const docs = await BankTransaction.find(filter).sort({ createdAt: -1 }).limit(Math.min(100, Math.max(1, Number(limit || 10)))).lean();
@@ -360,7 +394,7 @@ export const PaymentQuery = {
   async reconciliationQueue(_, { restaurantId, status, limit = 50 }, ctx) {
     const rid = toObjectId(restaurantId);
     if (!rid) throw new Error("Invalid restaurantId");
-    await requireRestaurantPermission(ctx, rid, PERMISSIONS.PAYMENT_READ);
+    await requireReconciliationRead(ctx, rid);
     const filter = { restaurantId: rid };
     if (status && status !== "all") filter.status = normalize(status);
     else filter.status = { $in: ["unmatched", "amount_mismatch", "duplicate", "matched", "resolved", "ignored"] };

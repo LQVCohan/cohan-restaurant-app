@@ -164,6 +164,9 @@ type PaymentTransaction {
   paidAt: DateTime!
   note: String
   externalRef: String
+  refundedAmount: Float
+  refundStatus: String
+  refundIds: [ID!]
   createdBy: ID
   meta: JSON
   createdAt: DateTime
@@ -228,6 +231,11 @@ type PaymentReconciliation {
   matchedBy: String
   matchedAt: DateTime
   note: String
+  matchConfidence: Float
+  matchReason: String
+  candidatePaymentSessionIds: [ID!]
+  candidatePaymentTransactionIds: [ID!]
+  candidateMatches: JSON
   resolvedBy: ID
   resolvedAt: DateTime
   resolution: String
@@ -302,6 +310,29 @@ type PaymentProviderPublicConfig {
 type RestaurantPaymentPublicConfig {
   defaultProvider: String!
   providers: [PaymentProviderPublicConfig!]!
+}
+
+
+type SupplierPayable {
+  id: ID!
+  restaurantId: ID!
+  supplierName: String!
+  supplierId: ID
+  sourceKind: String
+  sourceId: ID
+  amount: Float!
+  paidAmount: Float!
+  remainingAmount: Float!
+  dueDate: DateTime
+  status: String!
+  note: String
+  createdBy: ID
+  paidBy: ID
+  paidAt: DateTime
+  cashflowIds: [ID!]
+  auditTrail: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 type FinanceSummary {
@@ -429,6 +460,45 @@ input UpdateManualCashflowInput {
   evidenceAttachments: JSON
 }
 
+
+input SupplierPayableFilterInput {
+  restaurantId: ID!
+  status: String
+  sourceKind: String
+  search: String
+  limit: Int
+}
+
+input SupplierPayableInput {
+  restaurantId: ID!
+  supplierName: String!
+  supplierId: ID
+  sourceKind: String
+  sourceId: ID
+  amount: Float!
+  paidAmount: Float
+  dueDate: DateTime
+  note: String
+}
+
+input UpdateSupplierPayableInput {
+  supplierName: String
+  supplierId: ID
+  sourceKind: String
+  sourceId: ID
+  amount: Float
+  paidAmount: Float
+  dueDate: DateTime
+  note: String
+}
+
+input RecordSupplierPaymentInput {
+  amount: Float!
+  method: String
+  paidAt: DateTime
+  note: String
+}
+
 input RefundRequestFilterInput {
   restaurantId: ID!
   status: String
@@ -448,6 +518,8 @@ input CreateRefundRequestInput {
 input ProcessRefundInput {
   providerRefundId: String
   note: String
+  skipApproval: Boolean
+  reason: String
 }
 
 input ManualMatchBankTransactionInput {
@@ -477,6 +549,7 @@ extend type Query {
   cashflow(id: ID!): Cashflow
   refundRequests(input: RefundRequestFilterInput!): [PaymentRefund!]!
   refundRequest(id: ID!): PaymentRefund
+  supplierPayables(input: SupplierPayableFilterInput!): [SupplierPayable!]!
   paymentReconciliations(restaurantId: ID!, status: String, limit: Int): [PaymentReconciliation!]!
   bankTransactions(restaurantId: ID!, matchStatus: String, limit: Int): [BankTransaction!]!
   reconciliationQueue(restaurantId: ID!, status: String, limit: Int): [PaymentReconciliation!]!
@@ -498,9 +571,16 @@ extend type Mutation {
   updateManualCashflow(id: ID!, input: UpdateManualCashflowInput!): Cashflow!
   voidManualCashflow(id: ID!, reason: String!): Cashflow!
 
+  createSupplierPayable(input: SupplierPayableInput!): SupplierPayable!
+  updateSupplierPayable(id: ID!, input: UpdateSupplierPayableInput!): SupplierPayable!
+  recordSupplierPayment(id: ID!, input: RecordSupplierPaymentInput!): SupplierPayable!
+  voidSupplierPayable(id: ID!, reason: String!): SupplierPayable!
+
   createRefundRequest(input: CreateRefundRequestInput!): PaymentRefund!
   approveRefundRequest(id: ID!): PaymentRefund!
   rejectRefundRequest(id: ID!, reason: String!): PaymentRefund!
+  cancelRefundRequest(id: ID!, reason: String!): PaymentRefund!
+  retryRefundRequest(id: ID!, input: ProcessRefundInput): PaymentRefund!
   processRefundRequest(id: ID!, input: ProcessRefundInput): PaymentRefund!
 
   reconcileBankTransaction(bankTransactionId: ID!): PaymentReconciliation!

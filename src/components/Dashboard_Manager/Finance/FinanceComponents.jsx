@@ -6,13 +6,13 @@ const fmt = (num) => `${Number(num || 0).toLocaleString("vi-VN")}đ`;
 export const FinanceStats = ({ summary = {}, onNavigate = () => {} }) => {
   const primeCostRate = Number(summary.primeCostRate ?? (summary.revenue > 0 ? (summary.expense / summary.revenue) * 100 : 0)).toFixed(1);
   const cards = [
-    { key: "revenue", label: "Doanh thu", value: fmt(summary.revenue), sub: `Đã nhận: ${fmt(summary.payment)}`, icon: DollarSign, route: { tab: "journal", type: "INFLOW" } },
+    { key: "revenue", label: "Doanh thu", value: fmt(summary.revenue), sub: `Đã nhận: ${fmt(summary.payment)}`, icon: DollarSign, route: { tab: "journal", type: "INFLOW", category: "sale" } },
     { key: "expense", label: "Chi phí", value: fmt(summary.expense), sub: `Dòng tiền ra: ${fmt(summary.cashOut)}`, icon: TrendingDown, route: { tab: "journal", type: "OUTFLOW" } },
     { key: "profit", label: "Lợi nhuận", value: fmt(summary.profit), sub: `Thuần sau hoàn: ${fmt(Number(summary.revenue || 0) - Number(summary.refund || 0))}`, icon: Wallet, route: { tab: "journal" } },
     { key: "cash", label: "Dòng tiền ròng", value: fmt(Number(summary.cashIn || 0) - Number(summary.cashOut || 0)), sub: `Vào ${fmt(summary.cashIn)} · Ra ${fmt(summary.cashOut)}`, icon: CreditCard, route: { tab: "journal" } },
     { key: "refund", label: "Hoàn tiền", value: fmt(summary.refund), sub: "Cashflow category=refund", icon: AlertCircle, route: { tab: "refund" } },
     { key: "debt", label: "Khoản phải thu", value: fmt(summary.receivable ?? summary.debt), sub: `Phải trả NCC: ${fmt(summary.payable || 0)}`, icon: HandCoins, route: { tab: "debt" } },
-    { key: "prime-cost", label: "Prime cost", value: `${primeCostRate}%`, sub: "COGS + Labor / Revenue", icon: AlertCircle, route: { tab: "journal", category: "payroll" } },
+    { key: "prime-cost", label: "Prime cost", value: `${primeCostRate}%`, sub: "COGS + Labor / Revenue", icon: AlertCircle, route: { tab: "journal", category: "payroll", subcategory: "labor" } },
     { key: "settlement", label: "Đối soát", value: fmt(summary.settlement), sub: "Invoice paid settlement", icon: CreditCard, route: { tab: "reconciliation" } },
   ];
 

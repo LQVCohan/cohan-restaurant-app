@@ -19,6 +19,7 @@ const navigateTransactions = (query = {}) => {
 const exportDashboardCsv = ({ summary, trend, costBreakdown, debts, reconciliationSummary }) => {
   const rows = [
     ["Section", "Metric", "Value"],
+    ["Meta", "Currency", "Base VND; UI may convert using manual rate"],
     ["KPI", "Revenue", summary.revenue],
     ["KPI", "Expense", summary.expense],
     ["KPI", "Profit", summary.profit],
@@ -149,12 +150,12 @@ const FinanceDashboard = () => {
           <div className="card-header"><h3>Cấu trúc chi phí</h3><Route size={18} /></div>
           <div className="card-body cost-structure">
             {[
-              ["COGS / nguyên liệu", "cogs", "red", "inventory"],
-              ["Labor / nhân sự", "labor", "orange", "payroll"],
-              ["Operations / vận hành", "operations", "blue", "operations"],
-              ["Other / khác", "other", "slate", "other"],
-            ].map(([label, key, color, source]) => (
-              <button key={key} type="button" className="cost-row cost-drilldown" onClick={() => navigateTransactions({ tab: "journal", category: source })}>
+              ["COGS / nguyên liệu", "cogs", "red", "inventory", "cogs"],
+              ["Labor / nhân sự", "labor", "orange", "payroll", "labor"],
+              ["Operations / vận hành", "operations", "blue", "operations", ""],
+              ["Other / khác", "other", "slate", "other", ""],
+            ].map(([label, key, color, source, subcategory]) => (
+              <button key={key} type="button" className="cost-row cost-drilldown" onClick={() => navigateTransactions({ tab: "journal", category: source, subcategory })}>
                 <div className="label"><span>{label}</span><strong>{formatVnd(safeCostBreakdown[key])}</strong></div>
                 <div className="progress"><div className={`fill ${color}`} style={{ width: percent(safeCostBreakdown[key]) }} /></div>
                 <div className="value">{percent(safeCostBreakdown[key])}</div>

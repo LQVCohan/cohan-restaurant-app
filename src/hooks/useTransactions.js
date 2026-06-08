@@ -51,6 +51,11 @@ const RECON_FIELDS = `
   matchedBy
   matchedAt
   note
+  matchConfidence
+  matchReason
+  candidatePaymentSessionIds
+  candidatePaymentTransactionIds
+  candidateMatches
   resolvedBy
   resolvedAt
   resolution
@@ -73,6 +78,25 @@ const BANK_FIELDS = `
   createdAt
 `;
 
+const SUPPLIER_PAYABLE_FIELDS = `
+  id
+  restaurantId
+  supplierName
+  supplierId
+  sourceKind
+  sourceId
+  amount
+  paidAmount
+  remainingAmount
+  dueDate
+  status
+  note
+  cashflowIds
+  auditTrail
+  createdAt
+  updatedAt
+`;
+
 const REFUND_FIELDS = `
   id
   restaurantId
@@ -86,6 +110,7 @@ const REFUND_FIELDS = `
   status
   providerRefundId
   cashflowId
+  auditTrail
   createdAt
   updatedAt
 `;
@@ -102,6 +127,7 @@ const GET_TRANSACTIONS = gql`
     financeTransactions(input: $transactionsInput) { ${TX_FIELDS} }
     cashflows(input: $cashflowsInput) { ${CASHFLOW_FIELDS} }
     refundRequests(input: $refundInput) { ${REFUND_FIELDS} }
+    supplierPayables(input: { restaurantId: $restaurantId, limit: 100 }) { ${SUPPLIER_PAYABLE_FIELDS} }
     reconciliationQueue(restaurantId: $restaurantId, status: $reconciliationStatus, limit: 50) { ${RECON_FIELDS} }
     bankTransactions(restaurantId: $restaurantId, matchStatus: $bankStatus, limit: 50) { ${BANK_FIELDS} }
   }
@@ -137,6 +163,18 @@ const APPROVE_REFUND_REQUEST = gql`
   }
 `;
 
+const CANCEL_REFUND_REQUEST = gql`
+  mutation CancelRefundRequest($id: ID!, $reason: String!) {
+    cancelRefundRequest(id: $id, reason: $reason) { ${REFUND_FIELDS} }
+  }
+`;
+
+const RETRY_REFUND_REQUEST = gql`
+  mutation RetryRefundRequest($id: ID!, $input: ProcessRefundInput) {
+    retryRefundRequest(id: $id, input: $input) { ${REFUND_FIELDS} }
+  }
+`;
+
 const PROCESS_REFUND_REQUEST = gql`
   mutation ProcessRefundRequest($id: ID!, $input: ProcessRefundInput) {
     processRefundRequest(id: $id, input: $input) { ${REFUND_FIELDS} }
@@ -146,6 +184,24 @@ const PROCESS_REFUND_REQUEST = gql`
 const REJECT_REFUND_REQUEST = gql`
   mutation RejectRefundRequest($id: ID!, $reason: String!) {
     rejectRefundRequest(id: $id, reason: $reason) { ${REFUND_FIELDS} }
+  }
+`;
+
+const CREATE_SUPPLIER_PAYABLE = gql`
+  mutation CreateSupplierPayable($input: SupplierPayableInput!) {
+    createSupplierPayable(input: $input) { ${SUPPLIER_PAYABLE_FIELDS} }
+  }
+`;
+
+const RECORD_SUPPLIER_PAYMENT = gql`
+  mutation RecordSupplierPayment($id: ID!, $input: RecordSupplierPaymentInput!) {
+    recordSupplierPayment(id: $id, input: $input) { ${SUPPLIER_PAYABLE_FIELDS} }
+  }
+`;
+
+const VOID_SUPPLIER_PAYABLE = gql`
+  mutation VoidSupplierPayable($id: ID!, $reason: String!) {
+    voidSupplierPayable(id: $id, reason: $reason) { ${SUPPLIER_PAYABLE_FIELDS} }
   }
 `;
 
@@ -242,11 +298,16 @@ export function useTransactions() {
   const [createRefundRequestMutation] = useMutation(CREATE_REFUND_REQUEST, mutationOptions);
   const [approveRefundRequestMutation] = useMutation(APPROVE_REFUND_REQUEST, mutationOptions);
   const [processRefundRequestMutation] = useMutation(PROCESS_REFUND_REQUEST, mutationOptions);
+  const [cancelRefundRequestMutation] = useMutation(CANCEL_REFUND_REQUEST, mutationOptions);
+  const [retryRefundRequestMutation] = useMutation(RETRY_REFUND_REQUEST, mutationOptions);
   const [rejectRefundRequestMutation] = useMutation(REJECT_REFUND_REQUEST, mutationOptions);
   const [reconcileBankTransactionMutation] = useMutation(RECONCILE_BANK_TRANSACTION, mutationOptions);
   const [manualMatchBankTransactionMutation] = useMutation(MANUAL_MATCH_BANK_TRANSACTION, mutationOptions);
   const [resolveReconciliationMutation] = useMutation(RESOLVE_RECONCILIATION, mutationOptions);
   const [ignoreBankTransactionMutation] = useMutation(IGNORE_BANK_TRANSACTION, mutationOptions);
+  const [createSupplierPayableMutation] = useMutation(CREATE_SUPPLIER_PAYABLE, mutationOptions);
+  const [recordSupplierPaymentMutation] = useMutation(RECORD_SUPPLIER_PAYMENT, mutationOptions);
+  const [voidSupplierPayableMutation] = useMutation(VOID_SUPPLIER_PAYABLE, mutationOptions);
 
   return {
     restaurants,
@@ -265,6 +326,7 @@ export function useTransactions() {
     cashflows: query.data?.cashflows || [],
     refunds: query.data?.refundRequests || [],
     reconciliations: query.data?.reconciliationQueue || [],
+    supplierPayables: query.data?.supplierPayables || [],
     bankTransactions: query.data?.bankTransactions || [],
     createManualCashflow: (input) => createManualCashflowMutation({ variables: { input: { ...input, restaurantId } } }),
     updateManualCashflow: (id, input) => updateManualCashflowMutation({ variables: { id, input } }),
@@ -272,10 +334,15 @@ export function useTransactions() {
     createRefundRequest: (input) => createRefundRequestMutation({ variables: { input: { ...input, restaurantId } } }),
     approveRefundRequest: (id) => approveRefundRequestMutation({ variables: { id } }),
     processRefundRequest: (id, input = {}) => processRefundRequestMutation({ variables: { id, input } }),
+    cancelRefundRequest: (id, reason) => cancelRefundRequestMutation({ variables: { id, reason } }),
+    retryRefundRequest: (id, input = {}) => retryRefundRequestMutation({ variables: { id, input } }),
     rejectRefundRequest: (id, reason) => rejectRefundRequestMutation({ variables: { id, reason } }),
     reconcileBankTransaction: (bankTransactionId) => reconcileBankTransactionMutation({ variables: { bankTransactionId } }),
     manualMatchBankTransaction: (input) => manualMatchBankTransactionMutation({ variables: { input } }),
     resolveReconciliation: (input) => resolveReconciliationMutation({ variables: { input } }),
     ignoreBankTransaction: (id, reason) => ignoreBankTransactionMutation({ variables: { id, reason } }),
+    createSupplierPayable: (input) => createSupplierPayableMutation({ variables: { input: { ...input, restaurantId } } }),
+    recordSupplierPayment: (id, input) => recordSupplierPaymentMutation({ variables: { id, input } }),
+    voidSupplierPayable: (id, reason) => voidSupplierPayableMutation({ variables: { id, reason } }),
   };
 }
