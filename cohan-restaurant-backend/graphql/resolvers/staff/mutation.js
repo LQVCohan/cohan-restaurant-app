@@ -21,6 +21,8 @@ import {
   AvailabilityRegistrationWindow,
   AttendanceCorrectionRequest,
   OvertimeRequest,
+  EmployeeBankAccount,
+  RestaurantPayoutAccount,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import { issueVerificationForUser } from "../../../src/services/auth/accountVerification.service.js";
@@ -80,6 +82,13 @@ import {
   hasBlockingPayrollIssues,
 } from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
+import {
+  createPayrollBatchPayout as createPayrollBatchPayoutService,
+  createPayrollPayout as createPayrollPayoutService,
+  upsertEmployeeBankAccount as upsertEmployeeBankAccountService,
+  upsertRestaurantPayoutAccount as upsertRestaurantPayoutAccountService,
+  verifyEmployeeBankAccount as verifyEmployeeBankAccountService,
+} from "../../../src/services/payroll/payrollPayout.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import {
   batchMarkPayrollPaid as batchMarkPayrollPaidService,
@@ -3284,13 +3293,13 @@ const mutationResolvers = {
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
     await requireRestaurantAccess(ctx, period.restaurantId);
-    if (period.status !== "finalized")
-      throw new Error("Chỉ có thể khóa kỳ lương đã chốt.");
+    if (period.status !== "paid")
+      throw new Error("Chỉ có thể khóa kỳ lương sau khi đã thanh toán đủ toàn bộ kỳ.");
     period.status = "locked";
     period.lockedAt = new Date();
     period.lockedBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
     await PayrollItem.updateMany(
-      { periodId: period._id, status: { $ne: "paid" } },
+      { periodId: period._id },
       { $set: { status: "locked" } },
     );
     await period.save();
@@ -3328,6 +3337,7 @@ const mutationResolvers = {
     await requireRestaurantAccess(ctx, period.restaurantId);
     if (period.status === "draft") throw new Error("PAYROLL_PERIOD_NOT_FINALIZED");
     if (period.status === "locked") throw new Error("PAYROLL_PERIOD_LOCKED");
+    if (period.status === "paid") throw new Error("PAYROLL_PERIOD_ALREADY_PAID");
 
     let targetEmployeeIds = Array.isArray(employeeIds) ? employeeIds.filter(Boolean) : [];
     if (!targetEmployeeIds.length) {
@@ -3346,9 +3356,7 @@ const mutationResolvers = {
     });
     if (result.failedCount > 0) {
       const firstError = result.errors?.[0];
-      throw new Error(
-        firstError?.code || "PAYROLL_BATCH_MARK_PAID_PARTIAL_FAILED",
-      );
+      throw new Error(firstError?.code || "PAYROLL_BATCH_MARK_PAID_PARTIAL_FAILED");
     }
     const detail = await getPeriodDetail(periodId);
     await logPayrollEvent({
@@ -3406,6 +3414,60 @@ const mutationResolvers = {
       },
     });
     return result;
+  },
+
+
+  createPayrollPayout: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    const period = await PayrollPeriod.findById(input.periodId);
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    const payout = await createPayrollPayoutService({
+      input,
+      actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
+    });
+    await logPayrollEvent({ ctx, restaurantId: period.restaurantId, verb: "payroll.payout.create", objectKind: "PayrollPeriod", objectId: period._id, meta: { employeeId: input.employeeId, amount: input.amount, status: payout.status } });
+    return payout;
+  },
+
+  createPayrollBatchPayout: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    const period = await PayrollPeriod.findById(input.periodId);
+    if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    const result = await createPayrollBatchPayoutService({
+      input,
+      actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
+    });
+    await logPayrollEvent({ ctx, restaurantId: period.restaurantId, verb: "payroll.payout.create", objectKind: "PayrollPeriod", objectId: period._id, meta: { batchId: result.batch?.id, successCount: result.successCount, failedCount: result.failedCount } });
+    return result;
+  },
+
+  upsertEmployeeBankAccount: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    await requireRestaurantAccess(ctx, input.restaurantId);
+    const row = await upsertEmployeeBankAccountService({ input, actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id) });
+    await logPayrollEvent({ ctx, restaurantId: input.restaurantId, verb: "payroll.employeeBankAccount.update", objectKind: "User", objectId: input.employeeId, meta: { verificationStatus: row.verificationStatus } });
+    return row;
+  },
+
+  verifyEmployeeBankAccount: async (_, { employeeId, restaurantId, verificationStatus }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    await requireRestaurantAccess(ctx, restaurantId);
+    return verifyEmployeeBankAccountService({ employeeId, restaurantId, verificationStatus, actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id) });
+  },
+
+  upsertRestaurantPayoutAccount: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    await requireRestaurantAccess(ctx, input.restaurantId);
+    const row = await upsertRestaurantPayoutAccountService({ input, actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id) });
+    await logPayrollEvent({ ctx, restaurantId: input.restaurantId, verb: "payroll.restaurantPayoutAccount.update", objectKind: "Restaurant", objectId: input.restaurantId, meta: { status: row.status, payoutEnabled: row.payoutEnabled } });
+    return row;
   },
 
   updatePayrollSettings: async (_, { input }, ctx) => {

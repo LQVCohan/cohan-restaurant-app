@@ -10,7 +10,7 @@ export async function findPayrollPeriodOverlap({
   restaurantId,
   startDate,
   endDate,
-  statuses = ["finalized", "locked", "paid"],
+  statuses = ["finalized", "paying", "paid", "locked"],
 }) {
   const rid = toObjectId(restaurantId);
   if (!rid || !startDate || !endDate) return null;
@@ -37,7 +37,7 @@ export async function assertNoLockedPayrollPeriodOverlap({
     employeeId,
     startDate,
     endDate,
-    statuses: ["finalized", "locked", "paid"],
+    statuses: ["finalized", "paying", "paid", "locked"],
   });
 
   if (overlap) {
@@ -61,14 +61,15 @@ export function assertPayrollPeriodCanMarkPaid(period) {
   const status = String(period.status || "draft");
   if (status === "draft") throw new Error("PAYROLL_PERIOD_NOT_FINALIZED");
   if (status === "locked") throw new Error("PAYROLL_PERIOD_LOCKED");
-  if (!["finalized", "paid"].includes(status)) {
+  if (status === "paid") throw new Error("PAYROLL_PERIOD_ALREADY_PAID");
+  if (!["finalized", "paying"].includes(status)) {
     throw new Error("PAYROLL_PERIOD_NOT_PAYABLE");
   }
 }
 
 export function assertPayrollPeriodAllowsManualItemEdit(period) {
   if (!period) throw new Error("PAYROLL_PERIOD_NOT_FOUND");
-  if (["paid", "locked"].includes(String(period.status || ""))) {
+  if (String(period.status || "") !== "draft") {
     throw new Error("PAYROLL_ITEM_EDIT_LOCKED");
   }
 }

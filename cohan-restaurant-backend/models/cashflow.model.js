@@ -14,12 +14,17 @@ const CashflowSchema = BaseSchemaModel(
       orderIds: [{ type: Types.ObjectId }],
     },
     note: String,
+    category: { type: String, default: "" },
+    subcategory: { type: String, default: "" },
+    meta: { type: Object, default: {} },
     occurredAt: { type: Date, default: Date.now },
   },
   {} // Options bổ sung (nếu có)
 );
 
 CashflowSchema.index({ restaurantId: 1, at: -1 });
+CashflowSchema.index({ "ref.kind": 1, "ref.id": 1 }, { unique: true, sparse: true });
+CashflowSchema.index({ restaurantId: 1, category: 1, subcategory: 1, occurredAt: -1 });
 
 export default mongoose.models.Cashflow ||
   mongoose.model("Cashflow", CashflowSchema);

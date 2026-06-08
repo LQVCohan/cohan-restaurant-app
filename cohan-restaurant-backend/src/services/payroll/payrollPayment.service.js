@@ -3,6 +3,8 @@ import {
   PayrollPeriod,
   PayrollItem,
   PayrollPayment,
+  PayrollPayout,
+  Cashflow,
   Staff,
 } from "../../../models/index.js";
 import { mapPayrollDocToGql, summarize } from "./payrollRuntime.service.js";
@@ -27,6 +29,12 @@ function roundMoney(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
 
+function normalizePaymentMethod(method) {
+  return ["cash", "bank_transfer", "card", "e_wallet", "other"].includes(String(method || ""))
+    ? String(method)
+    : "cash";
+}
+
 function getNetSalary(item) {
   return roundMoney(item?.breakdown?.netSalary || 0);
 }
@@ -43,6 +51,8 @@ export function mapPayrollPaymentToGql(row) {
     paidAt: row.paidAt || null,
     note: row.note || "",
     referenceCode: row.referenceCode || "",
+    idempotencyKey: row.idempotencyKey || "",
+    payoutId: row.payoutId ? String(row.payoutId) : null,
     createdBy: row.createdBy ? String(row.createdBy) : null,
     createdAt: row.createdAt || null,
   };
@@ -54,6 +64,33 @@ async function getPaidAmount(periodId, employeeId) {
     { $group: { _id: null, amount: { $sum: "$amount" } } },
   ]);
   return roundMoney(rows?.[0]?.amount || 0);
+}
+
+
+async function createPayrollCashflow({ payment, period, note = "" }) {
+  if (!payment?._id) return null;
+  const existing = await Cashflow.findOne({
+    "ref.kind": "PayrollPayment",
+    "ref.id": payment._id,
+  }).lean();
+  if (existing) return existing;
+  return Cashflow.create({
+    restaurantId: payment.restaurantId,
+    type: "OUTFLOW",
+    amount: payment.amount,
+    currency: "VND",
+    occurredAt: payment.paidAt || new Date(),
+    note: note || `Chi lương kỳ ${period?.name || period?._id || ""}`.trim(),
+    ref: { kind: "PayrollPayment", id: payment._id },
+    category: "payroll",
+    subcategory: "labor",
+    meta: {
+      payrollPeriodId: String(payment.periodId),
+      payrollItemId: String(payment.payrollItemId),
+      employeeId: String(payment.employeeId),
+      method: payment.method || "cash",
+    },
+  });
 }
 
 async function refreshPeriodPaymentState(period, actorId) {
@@ -69,10 +106,12 @@ async function refreshPeriodPaymentState(period, actorId) {
   stats.progress = stats.totalPayroll > 0 ? Math.min(100, Math.round((stats.paidAmount / stats.totalPayroll) * 100)) : 0;
   const allPaid = docs.length > 0 && docs.every((item) => item.status === "paid");
   const update = { statsSnapshot: stats };
-  if (allPaid && period.status !== "paid") {
+  if (allPaid && !["paid", "locked"].includes(String(period.status))) {
     update.status = "paid";
     update.paidAt = new Date();
     update.paidBy = actorId || null;
+  } else if (!allPaid && String(period.status) === "finalized" && stats.paidAmount > 0) {
+    update.status = "paying";
   }
   await PayrollPeriod.findByIdAndUpdate(period._id, { $set: update });
   return { stats, allPaid };
@@ -161,7 +200,7 @@ export async function getPayrollPayslip({ periodId, employeeId }) {
     breakdown: gqlItem,
     payments,
     remainingAmount,
-    canMarkPaid: ["finalized", "paid"].includes(String(period.status)) && remainingAmount > 0,
+    canMarkPaid: ["finalized", "paying"].includes(String(period.status)) && remainingAmount > 0,
     canEdit: String(period.status) === "draft",
   };
 }
@@ -186,28 +225,48 @@ export async function markPayrollItemPaid({
   if (amount > remainingAmount) throw new Error("PAYROLL_PAYMENT_OVERPAY");
 
   const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
-  await PayrollPayment.create({
+  const idempotencyKey = String(input.idempotencyKey || input.requestId || "").trim();
+  if (idempotencyKey) {
+    const existingPayment = await PayrollPayment.findOne({ idempotencyKey }).lean();
+    if (existingPayment) return mapPayrollDocToGql(await PayrollItem.findById(item._id).lean());
+  }
+  if (String(period.status) === "finalized") {
+    await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { status: "paying" } });
+    period.status = "paying";
+  }
+  const payment = await PayrollPayment.create({
     periodId: period._id,
     restaurantId: period.restaurantId,
     employeeId: item.employeeId,
     payrollItemId: item._id,
     amount,
-    method: input.method || "",
+    method: normalizePaymentMethod(input.method),
     paidAt,
     note: input.note || "",
     referenceCode: input.referenceCode || "",
     createdBy: actorId,
+    idempotencyKey,
+  });
+
+  await createPayrollCashflow({
+    payment,
+    period,
+    note: `Chi lương kỳ ${period.name || ""} - ${item.employeeName || "Nhân viên"}`.trim(),
   });
 
   const nextPaidAmount = roundMoney(paidAmount + amount);
   const update = {
-    paymentMethod: input.method || item.paymentMethod || "",
+    paymentMethod: normalizePaymentMethod(input.method) || item.paymentMethod || "",
     paymentNote: input.note || item.paymentNote || "",
+    "breakdown.paidAmount": nextPaidAmount,
+    "breakdown.remainingAmount": Math.max(roundMoney(getNetSalary(item) - nextPaidAmount), 0),
   };
   if (nextPaidAmount >= getNetSalary(item)) {
     update.status = "paid";
     update.paidAt = paidAt;
     update.paidBy = actorId || null;
+  } else {
+    update.status = "pending_payment";
   }
   const updated = await PayrollItem.findByIdAndUpdate(item._id, { $set: update }, { new: true });
   if (refreshPeriod) {
@@ -219,7 +278,12 @@ export async function markPayrollItemPaid({
 export async function batchMarkPayrollPaid({ input, actorId = null }) {
   const period = await getPeriodInScope(input.periodId);
   assertPayrollPeriodCanMarkPaid(period);
-  const employeeIds = Array.from(new Set((input.employeeIds || []).map(String))).filter(Boolean);
+  let employeeIds = Array.from(new Set((input.employeeIds || []).map(String))).filter(Boolean);
+  if (!employeeIds.length) {
+    const unpaidItems = await PayrollItem.find({ periodId: period._id, status: { $nin: ["paid", "locked"] } }).select({ employeeId: 1 }).lean();
+    employeeIds = unpaidItems.map((row) => String(row.employeeId));
+  }
+  if (!employeeIds.length) throw new Error("PAYROLL_NO_UNPAID_ITEMS");
   const items = [];
   const errors = [];
 
@@ -232,6 +296,7 @@ export async function batchMarkPayrollPaid({ input, actorId = null }) {
           method: input.method,
           paidAt: input.paidAt,
           note: input.note,
+          referenceCode: input.referenceCode,
         },
         actorId,
         refreshPeriod: false,

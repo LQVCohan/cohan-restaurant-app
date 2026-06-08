@@ -103,6 +103,16 @@ const StaffDashboardPage = () => {
       });
     }
 
+
+    actions.push({
+      to: "/staff/payslips",
+      title: "Phiếu lương của tôi",
+      label: "Xem phiếu lương cá nhân",
+      description: "Theo dõi thực lĩnh, số đã thanh toán và chi tiết breakdown lương của các kỳ đã công bố.",
+      cta: "Xem phiếu lương",
+      tone: "neutral",
+    });
+
     return actions;
   }, [normalizedRole]);
 

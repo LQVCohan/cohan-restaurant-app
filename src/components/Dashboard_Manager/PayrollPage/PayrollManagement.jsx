@@ -1,5 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { AuthContext } from "@/context/AuthContext";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
+import { resolveUserRoleName } from "@/utils/frontendRoleAccess";
 import usePayroll from "@/hooks/usePayroll";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
@@ -529,6 +532,7 @@ const PayrollManagement = () => {
   const [payslipLoading, setPayslipLoading] = useState(false);
   const [paymentMutationLoading, setPaymentMutationLoading] = useState(false);
   const [showBatchPayment, setShowBatchPayment] = useState(false);
+  const [paymentMode, setPaymentMode] = useState("selected");
   const [batchPaymentLoading, setBatchPaymentLoading] = useState(false);
   const [batchPaymentError, setBatchPaymentError] = useState("");
   const [batchPaymentResult, setBatchPaymentResult] = useState(null);
@@ -544,6 +548,22 @@ const PayrollManagement = () => {
   const [adjustmentType, setAdjustmentType] = useState("bonus");
   const [adjustmentNote, setAdjustmentNote] = useState("");
   const [showValidationPanel, setShowValidationPanel] = useState(false);
+  const { user } = useContext(AuthContext);
+
+  const role = resolveUserRoleName(user) || "admin";
+  const isAdminOrAccountant = ["admin", "accountant"].includes(role);
+  const payrollUiPermissions = {
+    canConfigure: isAdminOrAccountant || hasAnyPermission(user, ["payroll.settings.update"]),
+    canCreate: isAdminOrAccountant || hasAnyPermission(user, ["payroll.period.create"]),
+    canRecalculate: isAdminOrAccountant || hasAnyPermission(user, ["payroll.period.recalculate"]),
+    canFinalize: isAdminOrAccountant || hasAnyPermission(user, ["payroll.period.finalize"]),
+    canLock: isAdminOrAccountant || hasAnyPermission(user, ["payroll.period.lock"]),
+    canAdjust: isAdminOrAccountant || hasAnyPermission(user, ["payroll.adjustment.write"]),
+    canPay: ["admin", "accountant", "hr", "manager"].includes(role) || hasAnyPermission(user, ["payroll.payment.record"]),
+    canPayout: isAdminOrAccountant || hasAnyPermission(user, ["payroll.payout.execute"]),
+    canExport: ["admin", "accountant", "hr", "manager"].includes(role) || hasAnyPermission(user, ["payroll.export"]),
+  };
+
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -577,6 +597,7 @@ const PayrollManagement = () => {
     recalculatePeriod,
     finalizePeriod,
     lockPeriod,
+    markPaid,
     markPayrollItemPaid,
     batchMarkPayrollPaid,
     payrollPayslip,
@@ -641,8 +662,9 @@ const PayrollManagement = () => {
     const map = {
       draft: { label: "Nháp", class: "draft" },
       finalized: { label: "Đã chốt", class: "info" },
+      paying: { label: "Đang chi trả", class: "info" },
+      paid: { label: "Đã thanh toán", class: "success" },
       locked: { label: "Đã khóa", class: "warning" },
-      paid: { label: "Đã trả", class: "success" },
     };
     const s = map[status] || map.draft;
     return <span className={`status-dot ${s.class}`}>{s.label}</span>;
@@ -698,7 +720,7 @@ const PayrollManagement = () => {
   const periodStatus = displayedPeriod?.status || "draft";
   const readinessBlocksFinalize =
     payrollReadiness?.readyToFinalize === false;
-  const canPayInPeriod = ["finalized", "paid"].includes(periodStatus);
+  const canPayInPeriod = ["finalized", "paying"].includes(periodStatus) && payrollUiPermissions.canPay;
   const isPeriodLocked = periodStatus === "locked";
   const selectedPayableItems = useMemo(
     () =>
@@ -707,8 +729,10 @@ const PayrollManagement = () => {
       ),
     [payrollItems, selectedIds],
   );
+  const unpaidItems = useMemo(() => payrollItems.filter((item) => item.status !== "paid" && item.status !== "locked" && Number(item.remainingAmount ?? item.netSalary ?? 0) > 0), [payrollItems]);
   const hasBatchPayableSelection =
     selectedPayableItems.length > 0 && canPayInPeriod && !isPeriodLocked;
+  const canPayFullPeriod = canPayInPeriod && Number(stats.remaining || 0) > 0 && unpaidItems.length > 0;
   const modalPayslip =
     String(payrollPayslip?.employee?.id || payrollPayslip?.item?.id || "") ===
     String(selectedPayslipEmployeeId)
@@ -892,6 +916,7 @@ const PayrollManagement = () => {
 
   const openBatchPaymentModal = () => {
     if (!selectedRestaurantId || !selectedPeriodId || !hasBatchPayableSelection) return;
+    setPaymentMode("selected");
     setBatchPaymentError("");
     setBatchPaymentResult(null);
     setBatchPaymentForm({
@@ -902,22 +927,35 @@ const PayrollManagement = () => {
     setShowBatchPayment(true);
   };
 
+  const handleOpenFullPeriodPayment = () => {
+    if (!selectedRestaurantId || !selectedPeriodId || !canPayFullPeriod) return;
+    setPaymentMode("full");
+    setBatchPaymentError("");
+    setBatchPaymentResult(null);
+    setShowBatchPayment(true);
+  };
+
   const handleBatchPaymentSubmit = async () => {
     if (!selectedRestaurantId || !selectedPeriodId) return;
     setBatchPaymentLoading(true);
     setBatchPaymentError("");
     setBatchPaymentResult(null);
     try {
-      const result = await batchMarkPayrollPaid({
+      const targetItems = paymentMode === "full" ? unpaidItems : selectedPayableItems;
+      const result = paymentMode === "full"
+        ? await markPaid({ variables: { periodId: selectedPeriodId, employeeIds: [] } })
+        : await batchMarkPayrollPaid({
         periodId: selectedPeriodId,
-        employeeIds: selectedPayableItems.map((item) => item.id),
+        employeeIds: targetItems.map((item) => item.id),
         method: batchPaymentForm.method || "cash",
         paidAt: batchPaymentForm.paidAt
           ? new Date(batchPaymentForm.paidAt).toISOString()
           : new Date().toISOString(),
         note: batchPaymentForm.note,
       });
-      const payload = result?.data?.batchMarkPayrollPaid || {};
+      const payload = paymentMode === "full"
+        ? { successCount: targetItems.length, failedCount: 0, items: targetItems, errors: [] }
+        : result?.data?.batchMarkPayrollPaid || {};
       setBatchPaymentResult(payload);
       await Promise.all(
         [
@@ -1131,7 +1169,7 @@ const PayrollManagement = () => {
               className="btn btn-white"
               data-testid="payroll-period-setup"
               onClick={handleCreatePeriod}
-              disabled={!selectedRestaurantId}
+              disabled={!selectedRestaurantId || !payrollUiPermissions.canCreate}
             >
               Thiết lập kỳ lương
             </button>
@@ -1156,23 +1194,23 @@ const PayrollManagement = () => {
             className="btn btn-white"
             data-testid="payroll-settings-open"
             onClick={handleOpenSettings}
-            disabled={!selectedRestaurantId}
+            disabled={!selectedRestaurantId || !payrollUiPermissions.canConfigure}
           >
             ⚙️ Cấu hình
           </button>
-          <button className="btn btn-white" onClick={handleExportExcel} disabled={!selectedRestaurantId || !selectedPeriodId}>
+          <button className="btn btn-white" onClick={handleExportExcel} disabled={!selectedRestaurantId || !selectedPeriodId || !payrollUiPermissions.canExport}>
             📥 Xuất Excel
           </button>
           <button
             className="btn btn-white"
             onClick={handleExportCsv}
-            disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus === "draft"}
+            disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus === "draft" || !payrollUiPermissions.canExport}
           >
             Xuất CSV
           </button>
           <button
             className="btn btn-primary"
-            disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus !== "draft"}
+            disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus !== "draft" || !payrollUiPermissions.canRecalculate}
             onClick={async () => {
               if (!selectedRestaurantId || !selectedPeriodId) return;
               try {
@@ -1233,6 +1271,7 @@ const PayrollManagement = () => {
                 !selectedRestaurantId ||
                 !selectedPeriodId ||
                 periodStatus !== "draft" ||
+                !payrollUiPermissions.canFinalize ||
                 Number(validationResult?.errorCount || 0) > 0 ||
                 readinessBlocksFinalize
               }
@@ -1268,7 +1307,7 @@ const PayrollManagement = () => {
             </button>
             <button
               className="btn btn-white"
-              disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus !== "finalized"}
+              disabled={!selectedRestaurantId || !selectedPeriodId || periodStatus !== "paid" || !payrollUiPermissions.canLock}
               onClick={async () => {
                 if (!selectedRestaurantId || !selectedPeriodId) return;
                 try {
@@ -1287,6 +1326,14 @@ const PayrollManagement = () => {
               }}
             >
               Khóa kỳ
+            </button>
+            <button
+              className="btn btn-success"
+              data-testid="full-period-payroll-paid-open"
+              disabled={!selectedRestaurantId || !selectedPeriodId || !canPayFullPeriod}
+              onClick={handleOpenFullPeriodPayment}
+            >
+              Thanh toán toàn bộ kỳ
             </button>
             <button
               className="btn btn-primary"
@@ -1358,7 +1405,7 @@ const PayrollManagement = () => {
         <div className="table-controls">
           <div className="left-controls">
             <div className="workflow-tabs">
-              {["all", "draft", "finalized", "locked", "paid"].map((tab) => (
+              {["all", "draft", "finalized", "paying", "pending_payment", "processing_payment", "payment_failed", "paid", "locked"].map((tab) => (
                 <button
                   key={tab}
                   className={`tab-btn ${activeTab === tab ? "active" : ""}`}
@@ -1441,6 +1488,8 @@ const PayrollManagement = () => {
                 <th className="text-right">Thu Nhập (+)</th>
                 <th className="text-right">Khấu Trừ (-)</th>
                 <th className="text-right">Thực Lĩnh</th>
+                <th className="text-right">Đã trả</th>
+                <th className="text-right">Còn lại</th>
                 <th className="center">Trạng thái</th>
                 <th className="center">Thao tác</th>
               </tr>
@@ -1448,14 +1497,14 @@ const PayrollManagement = () => {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={12} className="table-empty">
+                  <td colSpan={14} className="table-empty">
                     Đang tải dữ liệu bảng lương...
                   </td>
                 </tr>
               )}
               {!loading && filteredData.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="table-empty">
+                  <td colSpan={14} className="table-empty">
                     {!currentPeriodId && !hasRealItems
                       ? "Chưa có kỳ lương đang áp dụng. Hãy thiết lập kỳ lương để bắt đầu."
                       : "Không có dữ liệu phù hợp."}
@@ -1519,6 +1568,8 @@ const PayrollManagement = () => {
                       <td className="text-right net-cell">
                         <strong>{formatCurrency(item.netSalary)}</strong>
                       </td>
+                      <td className="text-right">{formatCurrency(item.paidAmount || 0)}</td>
+                      <td className="text-right">{formatCurrency(item.remainingAmount ?? Math.max(Number(item.netSalary || 0) - Number(item.paidAmount || 0), 0))}</td>
                       <td className="center">
                         <div className="status-badge-wrapper">
                           {getStatusBadge(item.status)}
@@ -1563,7 +1614,7 @@ const PayrollManagement = () => {
         >
           <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Thanh toán đã chọn</h3>
+              <h3>{paymentMode === "full" ? "Thanh toán toàn bộ kỳ lương" : "Thanh toán đã chọn"}</h3>
               <button
                 className="close-btn"
                 type="button"
@@ -1575,7 +1626,7 @@ const PayrollManagement = () => {
             <div className="modal-body">
               <p>
                 Bạn đang thanh toán{" "}
-                <strong>{selectedPayableItems.length}</strong> nhân viên.
+                <strong>{paymentMode === "full" ? unpaidItems.length : selectedPayableItems.length}</strong> nhân viên. Tổng còn lại: <strong>{formatCurrency(paymentMode === "full" ? stats.remaining : selectedPayableItems.reduce((sum, item) => sum + Number(item.remainingAmount ?? item.netSalary ?? 0), 0))}</strong>.
               </p>
               {batchPaymentError && (
                 <div className="settings-modal-state settings-modal-state--error">
@@ -1616,6 +1667,8 @@ const PayrollManagement = () => {
                     <option value="cash">cash</option>
                     <option value="bank_transfer">bank_transfer</option>
                     <option value="card">card</option>
+                    <option value="e_wallet">e_wallet</option>
+                    <option value="other">other</option>
                   </select>
                 </label>
                 <label className="settings-field">
@@ -1659,7 +1712,7 @@ const PayrollManagement = () => {
                 data-testid="batch-payroll-paid-submit"
                 type="button"
                 disabled={
-                  batchPaymentLoading || selectedPayableItems.length === 0
+                  batchPaymentLoading || (paymentMode === "full" ? unpaidItems.length === 0 : selectedPayableItems.length === 0)
                 }
                 onClick={handleBatchPaymentSubmit}
               >

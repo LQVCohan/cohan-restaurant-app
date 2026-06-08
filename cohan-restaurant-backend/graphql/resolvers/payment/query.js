@@ -76,8 +76,14 @@ function safeNote(note) {
   return String(note || "").toLowerCase();
 }
 
-function classifyCost(note = "") {
-  const n = safeNote(note);
+function classifyCost(cashflowOrNote = "") {
+  if (cashflowOrNote && typeof cashflowOrNote === "object") {
+    const category = safeNote(cashflowOrNote.category);
+    const subcategory = safeNote(cashflowOrNote.subcategory);
+    const refKind = safeNote(cashflowOrNote.ref?.kind);
+    if (category === "payroll" || subcategory === "labor" || refKind === "payrollpayment" || refKind === "payrollpayout") return "labor";
+  }
+  const n = safeNote(typeof cashflowOrNote === "object" ? cashflowOrNote.note : cashflowOrNote);
   if (
     n.includes("nguyên liệu") ||
     n.includes("ingredient") ||
@@ -263,7 +269,7 @@ export const PaymentQuery = {
       .filter((x) => x.type === "OUTFLOW")
       .reduce(
         (acc, x) => {
-          const bucket = classifyCost(x.note);
+          const bucket = classifyCost(x);
           acc[bucket] += Number(x.amount || 0);
           return acc;
         },

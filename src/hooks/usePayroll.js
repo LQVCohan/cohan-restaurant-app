@@ -124,6 +124,8 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
         insuranceEligible
         warningMessages
         status
+        paidAmount
+        remainingAmount
         paidAt
         lateMinutes
         earlyLeaveMinutes
@@ -264,11 +266,21 @@ export const QUERY_MY_PAYSLIPS = gql`
     myPayslips(limit: $limit) {
       id
       payrollItemId
+      periodId
+      periodName
+      periodStartDate
+      periodEndDate
+      periodStatus
+      periodFinalizedAt
       name
       code
+      role
+      department
       totalIncome
       totalDeduction
       netSalary
+      paidAmount
+      remainingAmount
       status
       paidAt
       warningMessages
@@ -281,121 +293,16 @@ export const QUERY_MY_PAYSLIP = gql`
     myPayslip(periodId: $periodId) {
       id
       payrollItemId
+      periodId
+      periodName
+      periodStartDate
+      periodEndDate
+      periodStatus
+      periodFinalizedAt
       name
       code
-      totalIncome
-      totalDeduction
-      netSalary
-      status
-      paidAt
-      warningMessages
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_PAYSLIP = gql`
-  query PayrollPayslip($periodId: ID!, $employeeId: ID!) {
-    payrollPayslip(periodId: $periodId, employeeId: $employeeId) {
-      remainingAmount
-      canMarkPaid
-      canEdit
-      period {
-        id
-        name
-        status
-        startDate
-        endDate
-        paidAt
-      }
-      employee {
-        id
-        name
-        code
-        role
-        department
-        avatar
-      }
-      item {
-        id
-        payrollItemId
-        name
-        code
-        role
-        department
-        netSalary
-        totalIncome
-        totalDeduction
-        status
-        paidAt
-        baseSalary
-        actualWorkDays
-        totalHours
-        overtimeNormalHours
-        overtimeWeekendHours
-        overtimeHolidayHours
-        nightHours
-        grossIncome
-        allowance
-        bonus
-        deduction
-        insuranceTotal
-        personalIncomeTax
-        warningMessages
-      }
-      breakdown {
-        baseSalary
-        actualWorkDays
-        totalHours
-        overtimeNormalHours
-        overtimeWeekendHours
-        overtimeHolidayHours
-        nightHours
-        grossIncome
-        allowance
-        bonus
-        deduction
-        insuranceTotal
-        personalIncomeTax
-        netSalary
-      }
-      payments {
-        id
-        amount
-        method
-        paidAt
-        note
-        referenceCode
-      }
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_PAYMENTS = gql`
-  query PayrollPayments($periodId: ID!, $employeeId: ID) {
-    payrollPayments(periodId: $periodId, employeeId: $employeeId) {
-      id
-      periodId
-      employeeId
-      payrollItemId
-      amount
-      method
-      paidAt
-      note
-      referenceCode
-      createdBy
-      createdAt
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_EXPORT_ROWS = gql`
-  query PayrollExportRows($periodId: ID!) {
-    payrollExportRows(periodId: $periodId) {
-      employeeId
-      employeeCode
-      employeeName
-      department
       role
+      department
       baseSalary
       actualWorkDays
       totalHours
@@ -403,106 +310,20 @@ export const QUERY_PAYROLL_EXPORT_ROWS = gql`
       overtimeWeekendHours
       overtimeHolidayHours
       nightHours
-      grossIncome
       allowance
       bonus
       deduction
+      advance
       insuranceTotal
       personalIncomeTax
+      totalIncome
+      totalDeduction
       netSalary
       paidAmount
       remainingAmount
       status
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_CONTEXT = gql`
-  query PayrollContextMe {
-    me {
-      id
-      restaurantForStaff
-    }
-  }
-`;
-
-export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
-  query StaffPayrollOverview(
-    $startDate: DateTime!
-    $endDate: DateTime!
-    $restaurantId: ID
-    $periodId: ID
-  ) {
-    staffPayrollOverview(
-      startDate: $startDate
-      endDate: $endDate
-      restaurantId: $restaurantId
-      periodId: $periodId
-    ) {
-      stats {
-        totalPayroll
-        paidAmount
-        remaining
-        progress
-      }
-      items {
-        id
-        payrollItemId
-        name
-        code
-        role
-        department
-        avatar
-        baseSalary
-        workDays
-        actualWorkDays
-        totalHours
-        hourlyRate
-        allowance
-        bonus
-        otherAddition
-        overtime
-        overtimeNormal
-        overtimeWeekend
-        overtimeHoliday
-        nightShiftExtra
-        overtimeHours
-        overtimeNormalHours
-        overtimeWeekendHours
-        overtimeHolidayHours
-        nightHours
-        overtimeNightHours
-        deduction
-        otherDeduction
-        advance
-        insuranceSocial
-        insuranceHealth
-        insuranceUnemployment
-        insuranceTotal
-        insuranceEmployerTotal
-        personalIncomeTax
-        grossIncome
-        coefficient
-        totalIncome
-        totalDeduction
-        netSalary
-        policyCode
-        policyEffectiveFrom
-        regionCode
-        minimumWageMonthly
-        minimumWageHourly
-        minimumWageViolation
-        insuranceEligible
-        warningMessages
-        status
-        paidAt
-        lateMinutes
-        earlyLeaveMinutes
-        unpaidLeaveDays
-        paidLeaveDays
-        scheduleShiftCount
-        manualAdjustmentTotal
-      }
+      paidAt
+      warningMessages
     }
   }
 `;
@@ -566,6 +387,8 @@ export const MUT_MARK_PAYROLL_ITEM_PAID = gql`
       id
       payrollItemId
       status
+      paidAmount
+      remainingAmount
       paidAt
       netSalary
     }
@@ -581,6 +404,8 @@ export const MUT_BATCH_MARK_PAYROLL_PAID = gql`
         id
         payrollItemId
         status
+        paidAmount
+        remainingAmount
         paidAt
         netSalary
       }
@@ -620,6 +445,66 @@ export const MUT_UPDATE_SETTINGS = gql`
       personalIncomeTaxFreeThreshold
       notes
       updatedAt
+    }
+  }
+`;
+
+
+export const QUERY_PAYROLL_CONTEXT = gql`
+  query PayrollContext {
+    me {
+      id
+      restaurantForStaff
+      roleName
+      userType
+    }
+  }
+`;
+
+
+
+export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
+  query StaffPayrollOverview($startDate: DateTime!, $endDate: DateTime!, $restaurantId: ID, $periodId: ID) {
+    staffPayrollOverview(startDate: $startDate, endDate: $endDate, restaurantId: $restaurantId, periodId: $periodId) {
+      stats { totalPayroll paidAmount remaining progress }
+      items {
+        id payrollItemId name code role department avatar baseSalary workDays actualWorkDays totalHours hourlyRate allowance bonus otherAddition overtime overtimeNormal overtimeWeekend overtimeHoliday nightShiftExtra overtimeHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours overtimeNightHours deduction otherDeduction advance insuranceSocial insuranceHealth insuranceUnemployment insuranceTotal insuranceEmployerTotal personalIncomeTax grossIncome coefficient totalIncome totalDeduction netSalary policyCode policyEffectiveFrom regionCode minimumWageMonthly minimumWageHourly minimumWageViolation insuranceEligible warningMessages status paidAmount remainingAmount paidAt lateMinutes earlyLeaveMinutes unpaidLeaveDays paidLeaveDays scheduleShiftCount manualAdjustmentTotal
+      }
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_PAYSLIP = gql`
+  query PayrollPayslip($periodId: ID!, $employeeId: ID!) {
+    payrollPayslip(periodId: $periodId, employeeId: $employeeId) {
+      period { id name startDate endDate status finalizedAt lockedAt paidAt stats { totalPayroll paidAmount remaining progress } }
+      employee { id name code role department avatar }
+      item {
+        id payrollItemId name code role department baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary paidAmount remainingAmount status paidAt
+      }
+      breakdown {
+        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary
+      }
+      payments { id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode createdBy createdAt }
+      remainingAmount
+      canMarkPaid
+      canEdit
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_PAYMENTS = gql`
+  query PayrollPayments($periodId: ID!, $employeeId: ID) {
+    payrollPayments(periodId: $periodId, employeeId: $employeeId) {
+      id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode createdBy createdAt
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_EXPORT_ROWS = gql`
+  query PayrollExportRows($periodId: ID!) {
+    payrollExportRows(periodId: $periodId) {
+      employeeId employeeCode employeeName department role baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours grossIncome allowance bonus deduction insuranceTotal personalIncomeTax netSalary paidAmount remainingAmount status
     }
   }
 `;
@@ -667,15 +552,15 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const periodsQuery = useQuery(QUERY_PAYROLL_PERIODS, {
     variables: { restaurantId: restaurantId || undefined, limit: 24 },
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
 
   const settingsQuery = useQuery(QUERY_PAYROLL_SETTINGS, {
     variables: { restaurantId: restaurantId || undefined },
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const meQuery = useQuery(QUERY_PAYROLL_CONTEXT, {
     fetchPolicy: "cache-first",
-  });
+  }) || {};
 
   const appliedPeriodId =
     settingsQuery.data?.payrollSettings?.currentPayrollPeriodId ||
@@ -687,32 +572,32 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const validationQuery = useQuery(QUERY_VALIDATE_PAYROLL_PERIOD, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "network-only",
-  });
+  }) || {};
   const readinessQuery = useQuery(QUERY_PAYROLL_READINESS, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "network-only",
-  });
+  }) || {};
   const payslipQuery = useQuery(QUERY_PAYROLL_PAYSLIP, {
     variables: { periodId: effectivePeriodId, employeeId: undefined },
     skip: true,
     fetchPolicy: "network-only",
-  });
+  }) || {};
   const paymentsQuery = useQuery(QUERY_PAYROLL_PAYMENTS, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const exportRowsQuery = useQuery(QUERY_PAYROLL_EXPORT_ROWS, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const hasSnapshotItems = Boolean(
     detailQuery.data?.payrollPeriodDetail?.items?.length,
   );
@@ -726,7 +611,7 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     },
     skip: !(effectivePeriodId || canQueryOverviewByRange) || hasSnapshotItems,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
 
   const [createPeriod] = useMutation(MUT_CREATE_PERIOD, {
     refetchQueries: [

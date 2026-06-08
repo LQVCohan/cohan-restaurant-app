@@ -7,6 +7,8 @@ const ACTION_ROLE_MAP = {
   "payroll.period.finalize": ["ADMIN", "ACCOUNTANT"],
   "payroll.period.lock": ["ADMIN", "ACCOUNTANT"],
   "payroll.period.markPaid": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
+  "payroll.payment.record": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
+  "payroll.payout.execute": ["ADMIN", "ACCOUNTANT"],
   "payroll.adjustment.write": ["ADMIN", "ACCOUNTANT"],
   "payroll.payslip.self": ["STAFF", "ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
   "payroll.export": ["ADMIN", "ACCOUNTANT", "HR", "MANAGER"],
