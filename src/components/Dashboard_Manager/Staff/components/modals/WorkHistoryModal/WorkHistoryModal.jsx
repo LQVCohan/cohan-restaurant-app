@@ -91,12 +91,24 @@ const WorkHistoryModal = ({ isOpen, onClose, employee }) => {
             minute: "2-digit",
           })}`
         : row.plannedStartTime && row.plannedEndTime
-          ? `${row.plannedStartTime} - ${row.plannedEndTime}`
+          ? `${new Date(row.plannedStartTime).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })} - ${new Date(row.plannedEndTime).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}`
           : "--",
       description: row.note || `Chấm công ca ${row.shiftType || "không xác định"}`,
       status: row.status || "completed",
       duration: row.workedMinutes ? `${Math.round(Number(row.workedMinutes) / 60)}h` : null,
       overtime: Number(row.overtimeMinutes || 0),
+      warnings: [
+        Number(row.latenessMinutes || 0) > 0 ? `Đi muộn ${row.latenessMinutes} phút` : null,
+        Number(row.earlyLeaveMinutes || 0) > 0 ? `Về sớm ${row.earlyLeaveMinutes} phút` : null,
+        ["scheduled_absent", "absent"].includes(row.status) ? "Vắng ca" : null,
+        row.status === "late_early_leave" ? "Đi muộn / về sớm" : null,
+      ].filter(Boolean),
     }));
 
     const shiftRows = (data?.staffShiftHistory || []).map((row) => ({
@@ -122,6 +134,7 @@ const WorkHistoryModal = ({ isOpen, onClose, employee }) => {
       status: row.status || "completed",
       duration: null,
       overtime: 0,
+      warnings: row.status === "cancelled" ? ["Ca đã hủy"] : [],
     }));
 
     return [...attendanceRows, ...shiftRows];
@@ -272,7 +285,15 @@ const WorkHistoryModal = ({ isOpen, onClose, employee }) => {
                 <div className="item-details">
                   <span className="detail-item">🕐 {item.time}</span>
                   {item.duration && <span className="detail-item">⏱️ {item.duration}</span>}
+                  {item.overtime > 0 && <span className="detail-item">⚡ Tăng ca {item.overtime} phút</span>}
                 </div>
+                {item.warnings?.length ? (
+                  <div className="item-warnings">
+                    {item.warnings.map((warning) => (
+                      <span key={warning} className="warning-chip">⚠️ {warning}</span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}

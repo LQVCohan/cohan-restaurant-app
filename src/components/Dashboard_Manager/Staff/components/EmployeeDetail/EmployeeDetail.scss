@@ -355,3 +355,66 @@ $warning: #f59e0b;
     background: #94a3b8;
   }
 }
+
+.employee-detail-card {
+  .account-status-panel {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 36%),
+      #f8fafc;
+
+    .widget-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+
+      .title-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+    }
+  }
+
+  .status-chip {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    background: #e0f2fe;
+    color: #0369a1;
+
+    &.success { background: #dcfce7; color: #166534; }
+    &.warning { background: #fef3c7; color: #92400e; }
+    &.danger { background: #fee2e2; color: #991b1b; }
+  }
+
+  .account-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .verification-action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+
+    select {
+      flex: 1;
+      border: 1px solid #dbe3ef;
+      border-radius: 12px;
+      padding: 9px 12px;
+      color: #334155;
+      background: #fff;
+      font-weight: 600;
+    }
+  }
+}
