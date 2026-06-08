@@ -292,3 +292,38 @@ $danger: #ef4444;
     }
   }
 }
+
+.smart-heatmap-widget {
+  padding: 18px !important;
+
+  .widget-header h4 {
+    margin: 0;
+    color: #1f160f;
+    font-size: 1rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .heatmap-scroll-wrapper {
+    min-height: 0 !important;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .heatmap-grid {
+    min-width: min(100%, 620px);
+  }
+
+  .empty-state,
+  .empty-state.compact {
+    min-height: 160px !important;
+    border: 1px solid rgba(214, 196, 170, 0.72) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 247, 237, 0.52) !important;
+    color: #7a6b5b !important;
+  }
+
+  .data-cell .cell-bg {
+    background: rgba(249, 115, 22, var(--bg-opacity)) !important;
+  }
+}

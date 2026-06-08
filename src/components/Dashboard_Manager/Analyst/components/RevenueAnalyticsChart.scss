@@ -1,109 +1,200 @@
-$gold: #c5a47e;
-$gold-dark: #b08d66;
-$charcoal: #1a1a1a;
-$bg-light: #f8fafc;
-$text-secondary: #64748b;
+$primary-orange: #f97316;
+$primary-orange-dark: #c2410c;
+$text-primary: #1f160f;
+$text-secondary: #7a6b5b;
+$border: rgba(214, 196, 170, 0.72);
 
 .revenue-analytics-card {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); // Shadow nhẹ nhàng
-  border: 1px solid #e2e8f0;
-  height: 100%; // Fill chiều cao
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 18px;
 
   .chart-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
+    align-items: flex-start;
+    gap: 14px;
     flex-wrap: wrap;
-    gap: 16px;
 
     .header-info {
       h3 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: $charcoal;
-        margin: 0 0 4px 0;
+        margin: 0;
+        color: $text-primary;
+        font-size: 1.02rem;
+        font-weight: 900;
+        letter-spacing: -0.02em;
       }
 
-      .growth-indicator {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #10b981; // Màu xanh lá cây tăng trưởng
-
-        svg {
-          stroke-width: 2.5px;
-        }
+      p {
+        max-width: 58ch;
+        margin: 3px 0 0;
+        color: $text-secondary;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        text-wrap: pretty;
       }
     }
 
-    .chart-filters {
-      display: flex;
-      background: $bg-light;
-      padding: 4px;
-      border-radius: 8px;
+    .growth-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 900;
 
-      .filter-btn {
-        border: none;
-        background: transparent;
-        padding: 6px 12px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: $text-secondary;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-
-        &:hover {
-          color: $gold;
-        }
-
-        &.active {
-          background: white;
-          color: $gold-dark;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
+      &.up {
+        color: #166534;
+        background: #dcfce7;
       }
+
+      &.down {
+        color: #991b1b;
+        background: #fee2e2;
+      }
+    }
+  }
+
+  .revenue-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+
+    div {
+      padding: 10px 12px;
+      border: 1px solid $border;
+      border-radius: 15px;
+      background: rgba(255, 247, 237, 0.54);
+    }
+
+    span {
+      display: block;
+      color: $text-secondary;
+      font-size: 0.73rem;
+      font-weight: 800;
+    }
+
+    strong {
+      display: block;
+      margin-top: 3px;
+      color: $text-primary;
+      font-size: 1rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
     }
   }
 
   .chart-container {
-    flex-grow: 1;
     position: relative;
-    min-height: 240px; // Chiều cao tối thiểu
     width: 100%;
+    border-radius: 16px;
 
-    .empty-state-inline {
-      height: 100%;
-      min-height: 170px;
-      display: flex;
-      flex-direction: column;
+    &.has-data {
+      min-height: 320px;
+    }
+
+    &.is-empty {
+      min-height: 224px;
+    }
+  }
+
+  .empty-state-inline {
+    min-height: 224px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 18px;
+    text-align: center;
+    color: $text-secondary;
+    border: 1px solid rgba(214, 196, 170, 0.72);
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 50% 0, rgba(249, 115, 22, 0.09), transparent 14rem),
+      rgba(255, 253, 248, 0.74);
+
+    .empty-icon {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      color: #64748b;
-      border: 1px dashed #cbd5e1;
-      border-radius: 10px;
-      background: #f8fafc;
-      padding: 16px;
-      gap: 6px;
+      width: 36px;
+      height: 36px;
+      color: $primary-orange-dark;
+      background: #ffedd5;
+      border-radius: 13px;
+    }
 
-      p {
-        margin: 0;
-        color: #334155;
-        font-weight: 600;
-      }
+    strong {
+      color: $text-primary;
+      font-size: 0.94rem;
+      font-weight: 900;
+    }
 
-      span {
-        font-size: 0.83rem;
+    p {
+      max-width: 46ch;
+      margin: 0;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    button {
+      margin-top: 2px;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid rgba(249, 115, 22, 0.24);
+      border-radius: 999px;
+      color: $primary-orange-dark;
+      background: #fff7ed;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease;
+
+      &:hover {
+        background: #ffedd5;
+        transform: translateY(-1px);
       }
     }
   }
+
+  .chart-skeleton {
+    min-height: 224px;
+    display: grid;
+    align-items: end;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid $border;
+    border-radius: 16px;
+
+    span {
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(255, 237, 213, 0.7), rgba(255, 247, 237, 0.45), rgba(255, 237, 213, 0.7));
+      animation: revenue-skeleton 1.3s ease-in-out infinite;
+
+      &:nth-child(1) { height: 52%; }
+      &:nth-child(2) { height: 74%; }
+      &:nth-child(3) { height: 44%; }
+    }
+  }
+
+  @media (max-width: 700px) {
+    padding: 14px;
+
+    .revenue-summary-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-container.has-data {
+      min-height: 260px;
+    }
+  }
+}
+
+@keyframes revenue-skeleton {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 1; }
 }

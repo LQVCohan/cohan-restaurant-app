@@ -1,14 +1,18 @@
 import React, { useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
-import { ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BarChart3 } from "lucide-react";
 import "./RevenueAnalyticsChart.scss";
 
-const RevenueAnalyticsChart = ({ data = [], loading }) => {
+const formatVnd = (value) =>
+  `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
+
+const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ đã chọn", loading }) => {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
   const totalCurrent = data.reduce((sum, x) => sum + Number(x.current || 0), 0);
   const totalPrevious = data.reduce((sum, x) => sum + Number(x.previous || 0), 0);
+  const completedOrders = orderData.reduce((sum, x) => sum + Number(x.current || 0), 0);
   const growth = totalPrevious > 0 ? ((totalCurrent - totalPrevious) / totalPrevious) * 100 : 0;
   const hasRevenueData = data.some((x) => Number(x.current || 0) > 0 || Number(x.previous || 0) > 0);
 
@@ -31,8 +35,12 @@ const RevenueAnalyticsChart = ({ data = [], loading }) => {
           {
             label: "Kỳ này",
             data: data.map((x) => x.current),
-            borderColor: "#c5a47e",
+            borderColor: "#f97316",
+            backgroundColor: "rgba(249, 115, 22, 0.08)",
+            fill: true,
             borderWidth: 3,
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
             tension: 0.35,
           },
           {
@@ -41,11 +49,28 @@ const RevenueAnalyticsChart = ({ data = [], loading }) => {
             borderColor: "#cbd5e1",
             borderWidth: 2,
             borderDash: [5, 5],
+            pointRadius: 0,
             tension: 0.35,
           },
         ],
       },
-      options: { responsive: true, maintainAspectRatio: false },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: "index" },
+        plugins: {
+          legend: { labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${formatVnd(ctx.raw)}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: "#78716c" } },
+          y: { beginAtZero: true, grid: { color: "rgba(120, 113, 108, 0.14)" }, ticks: { color: "#78716c" } },
+        },
+      },
     });
     return () => {
       chartInstance.current?.destroy();
@@ -57,23 +82,41 @@ const RevenueAnalyticsChart = ({ data = [], loading }) => {
     <div className="revenue-analytics-card">
       <div className="chart-header">
         <div className="header-info">
-          <h3>Biểu Đồ Doanh Thu</h3>
-          {hasRevenueData ? (
-            <div className="growth-indicator">
-              {growth >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-              <span>{Math.abs(growth).toFixed(1)}% so với kỳ trước</span>
-            </div>
-          ) : null}
+          <h3>Nhịp doanh thu</h3>
+          <p>Doanh thu kỳ này so với kỳ trước, chỉ tính dữ liệu đã ghi nhận.</p>
+        </div>
+        {hasRevenueData ? (
+          <div className={`growth-indicator ${growth >= 0 ? "up" : "down"}`}>
+            {growth >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+            <span>{Math.abs(growth).toFixed(1)}% so với kỳ trước</span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="revenue-summary-strip">
+        <div>
+          <span>Tổng doanh thu</span>
+          <strong>{formatVnd(totalCurrent)}</strong>
+        </div>
+        <div>
+          <span>Đơn hoàn tất</span>
+          <strong>{new Intl.NumberFormat("vi-VN").format(completedOrders)}</strong>
+        </div>
+        <div>
+          <span>Khoảng thời gian</span>
+          <strong>{rangeLabel}</strong>
         </div>
       </div>
-      <div className="chart-container">
-        {loading ? <div>Đang tải...</div> : null}
+
+      <div className={`chart-container ${hasRevenueData ? "has-data" : "is-empty"}`}>
+        {loading ? <div className="chart-skeleton"><span /><span /><span /></div> : null}
         {!loading && hasRevenueData ? <canvas ref={chartRef}></canvas> : null}
         {!loading && !hasRevenueData ? (
-          <div className="empty-state-inline">
-            <BarChart3 size={18} />
-            <p>Chưa có doanh thu trong kỳ này.</p>
-            <span>Dữ liệu sẽ xuất hiện khi có đơn hoàn tất và thanh toán thành công.</span>
+          <div className="empty-state-inline" data-testid="revenue-empty-compact">
+            <span className="empty-icon"><BarChart3 size={18} /></span>
+            <strong>Chưa có doanh thu trong kỳ</strong>
+            <p>Dữ liệu sẽ xuất hiện khi có đơn hoàn tất và thanh toán thành công.</p>
+            <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "orders", source: "manager-analytics" } }))}>Xem đơn hàng</button>
           </div>
         ) : null}
       </div>
