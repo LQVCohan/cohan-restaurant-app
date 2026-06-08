@@ -1,6 +1,6 @@
 .stats-grid-container {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -51,14 +51,21 @@
 }
 
 .stat-card--compact {
-  min-height: 78px;
-  padding: 12px;
+  min-height: 62px;
+  padding: 10px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas:
+    "icon label"
+    "icon value";
+  align-items: center;
+  align-content: center;
   border-color: #eee7dc;
   box-shadow: none;
   background: rgba(255, 255, 255, 0.78);
 
-  .icon-badge { width: 30px; height: 30px; border-radius: 10px; }
-  .stat-value { font-size: 22px; }
+  .icon-badge { grid-area: icon; width: 30px; height: 30px; border-radius: 10px; }
+  .stat-label { grid-area: label; margin: 0; }
+  .stat-value { grid-area: value; font-size: 20px; }
 }
 
 .stat-card--primary .icon-badge { background: #fff7ed; color: #b45309; }

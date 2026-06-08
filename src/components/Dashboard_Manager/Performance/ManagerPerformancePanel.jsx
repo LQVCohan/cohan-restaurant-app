@@ -42,26 +42,33 @@ const ManagerPerformancePanel = ({
     appealOverview &&
     (appealOverview.pendingCount !== undefined || appealOverview.acceptedCount !== undefined);
 
+  const renderPanelHeader = () => (
+    <div className="performance-panel__header">
+      <h3>Hiệu suất</h3>
+      {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager#staff")}>Xem chi tiết</button> : null}
+    </div>
+  );
+
+  const renderPanelState = (stateClass, message, role) => (
+    <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
+      {renderPanelHeader()}
+      <div className={stateClass} role={role}>{message}</div>
+    </div>
+  );
+
   if (!restaurantId && restaurantLoading) {
-    return <div className="performance-loading" role="status">Đang tải dữ liệu hiệu suất...</div>;
+    return renderPanelState("performance-loading", "Đang tải dữ liệu hiệu suất...", "status");
   }
   if (!restaurantId) {
-    return (
-      <div className="performance-empty">
-        Chưa có nhà hàng được chọn để xem hiệu suất.
-      </div>
-    );
+    return renderPanelState("performance-empty", "Chưa có nhà hàng được chọn để xem hiệu suất.");
   }
-  if (loading) return <div className="performance-loading" role="status">Đang tải dữ liệu hiệu suất...</div>;
-  if (error) return <div className="performance-error">Không thể tải dữ liệu. Vui lòng thử lại.</div>;
-  if (isEmpty) return <div className="performance-empty">Chưa có dữ liệu để hiển thị.</div>;
+  if (loading) return renderPanelState("performance-loading", "Đang tải dữ liệu hiệu suất...", "status");
+  if (error) return renderPanelState("performance-error", "Không thể tải dữ liệu. Vui lòng thử lại.");
+  if (isEmpty) return renderPanelState("performance-empty", "Chưa có dữ liệu để hiển thị.");
 
   return (
     <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
-      <div className="performance-panel__header">
-        <h3>Hiệu suất</h3>
-        {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager#staff")}>Xem chi tiết</button> : null}
-      </div>
+      {renderPanelHeader()}
 
       {isHealthyCompact ? (
         <div className="performance-summary-note performance-summary-note--compact">

@@ -276,7 +276,7 @@ const Dashboard = () => {
 
       <section className="dashboard-operations-grid" aria-label="Khu vực vận hành chính">
         <div className="dashboard-main-stack">
-          <article className="dashboard-card dashboard-card--primary-orders">
+          <article className="dashboard-card dashboard-card--primary-orders dashboard-card--recent-orders">
             <div className="dashboard-card__head dashboard-card__head--compact">
               <div>
                 <h3>Đơn hàng gần đây</h3>
@@ -315,7 +315,7 @@ const Dashboard = () => {
               />
             </article>
 
-            <article className="dashboard-card dashboard-card--dense">
+            <article className="dashboard-card dashboard-card--dense dashboard-card--performance-summary">
               <ManagerPerformancePanel
                 restaurantId={effectiveRestaurantId}
                 restaurantLoading={loading}

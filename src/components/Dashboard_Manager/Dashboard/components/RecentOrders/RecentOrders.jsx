@@ -86,7 +86,7 @@ const RecentOrders = ({
       ) : null}
 
       <div className={bodyClass}>
-        {!loading && visibleOrders.length > 0 ? (
+        {!loading && visibleOrders.length > 1 ? (
           <div className="order-table-head" aria-hidden="true">
             <span>Đơn / khách</span>
             <span>Trạng thái</span>
