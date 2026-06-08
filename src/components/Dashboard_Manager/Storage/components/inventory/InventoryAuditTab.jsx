@@ -144,7 +144,23 @@ function InventoryAuditTab({
     );
   }, [rows]);
 
-  if (loading) return <div className="inv-state">Đang tải kiểm kê...</div>;
+  if (loading) {
+    return (
+      <div className="inventory-audit-tab" aria-label="Đang tải kiểm kê">
+        <div className="inv-summary-grid inv-summary-grid--skeleton">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div className="inv-summary-card inv-skeleton" key={index} aria-hidden="true" />
+          ))}
+        </div>
+        <div className="inv-skeleton inv-skeleton--toolbar" aria-hidden="true" />
+        <div className="inv-table-wrap inv-skeleton-table" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <span key={index} />
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (error) {
     return (
       <div className="inv-state inv-state--error">

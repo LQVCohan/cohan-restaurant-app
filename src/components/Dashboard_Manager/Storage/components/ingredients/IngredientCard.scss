@@ -443,3 +443,61 @@ $il-info: #3b82f6;
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Premium ingredient card polish --- */
+.ingredient-card {
+  border-color: rgba(122, 95, 61, 0.15);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(197, 164, 126, 0.12), transparent 9rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 248, 236, 0.58));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 16px 38px rgba(62, 47, 30, 0.1);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 24px 50px rgba(62, 47, 30, 0.15);
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.28);
+    outline-offset: 2px;
+  }
+}
+
+.il-card {
+  border-color: rgba(122, 95, 61, 0.15);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(197, 164, 126, 0.12), transparent 9rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 248, 236, 0.58));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 16px 38px rgba(62, 47, 30, 0.1);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 24px 50px rgba(62, 47, 30, 0.15);
+  }
+
+  &__header,
+  &__actions {
+    background: transparent;
+  }
+
+  &__icon-wrapper,
+  .il-status-badge,
+  .il-action-btn {
+    border-radius: 14px;
+  }
+
+  .il-stat__value,
+  .price-value,
+  input {
+    font-variant-numeric: tabular-nums;
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.28);
+    outline-offset: 2px;
+  }
+}

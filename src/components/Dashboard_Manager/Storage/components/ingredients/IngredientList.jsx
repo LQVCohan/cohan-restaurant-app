@@ -672,9 +672,15 @@ const IngredientList = ({
         )}
 
         {loading ? (
-          <div className="il-empty">
-            <div className="il-spinner" aria-hidden="true"></div>
-            <p>Đang tải dữ liệu...</p>
+          <div className="il-grid il-grid--skeleton" aria-label="Đang tải dữ liệu nguyên liệu">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div className="il-skeleton-card" key={index} aria-hidden="true">
+                <span className="il-skeleton-card__icon" />
+                <span className="il-skeleton-card__line il-skeleton-card__line--wide" />
+                <span className="il-skeleton-card__line" />
+                <span className="il-skeleton-card__metric" />
+              </div>
+            ))}
           </div>
         ) : viewMode === "active" && filteredIngredients.length > 0 ? (
           <div className="il-grid">
