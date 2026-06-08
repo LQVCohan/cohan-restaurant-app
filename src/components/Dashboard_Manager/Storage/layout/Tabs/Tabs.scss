@@ -147,3 +147,55 @@ $shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
   }
 }
+
+/* --- Premium tab rail --- */
+.sm-tabs-container {
+  padding: 5px;
+  border-color: rgba(122, 95, 61, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 14px 30px rgba(62, 47, 30, 0.08);
+}
+
+.sm-tab-item {
+  padding: 11px 18px;
+  border-radius: 14px;
+  color: #776f65;
+  letter-spacing: -0.01em;
+
+  &:hover:not(.active) {
+    background: rgba(255, 248, 236, 0.82);
+    color: #354150;
+  }
+
+  &.active {
+    color: #e7c896;
+    background: linear-gradient(145deg, #28313c, #161d26);
+    box-shadow: 0 12px 26px rgba(25, 32, 41, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+    .active-dot {
+      bottom: 5px;
+      background: #d9b77f;
+      box-shadow: 0 0 0 3px rgba(217, 183, 127, 0.18);
+    }
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(197, 164, 126, 0.34);
+    outline-offset: 3px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sm-tabs-container {
+    border-radius: 16px;
+    border: 1px solid rgba(122, 95, 61, 0.13);
+    background: rgba(255, 255, 255, 0.54);
+  }
+
+  .sm-tab-item {
+    border-radius: 13px;
+    box-shadow: none;
+  }
+}

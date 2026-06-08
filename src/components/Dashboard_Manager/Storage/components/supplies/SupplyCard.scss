@@ -281,3 +281,41 @@ $sc-state-danger: #ef4444;
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* --- Premium supply card polish --- */
+.supply-card {
+  border-color: rgba(122, 95, 61, 0.15);
+  border-radius: 22px;
+  font-family: inherit;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(197, 164, 126, 0.12), transparent 9rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 248, 236, 0.58));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 16px 38px rgba(62, 47, 30, 0.1);
+
+  &:hover {
+    border-color: rgba(197, 164, 126, 0.36);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 24px 50px rgba(62, 47, 30, 0.15);
+  }
+}
+
+.supply-header,
+.sc-actions {
+  background: transparent;
+}
+
+.sc-icon-box,
+.sc-stock-btn,
+.sc-btn {
+  border-radius: 14px;
+}
+
+.sc-stat-val,
+.sc-stock-btn .val {
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-btn:focus-visible,
+.sc-stock-btn:focus-visible {
+  outline: 3px solid rgba(197, 164, 126, 0.28);
+  outline-offset: 2px;
+}

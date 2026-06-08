@@ -22,23 +22,26 @@ const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
   return (
     <div className={`warehouse-status-wrapper ${isSafe ? "safe" : "warning"}`}>
       {/* --- Main Badge --- */}
-      <div className="status-badge">
-        {isSafe ? (
-          <>
-            <CheckCircle2 size={18} className="icon safe-icon" />
-            <span className="status-text">Kho ổn định</span>
-          </>
-        ) : (
-          <>
-            <div className="pulse-ring"></div>
-            <AlertTriangle size={18} className="icon warning-icon" />
-            <span className="status-text">
-              {warnings.length} Nguyên liệu sắp hết
-            </span>
-            <ChevronDown size={14} className="arrow-down" />
-          </>
-        )}
-      </div>
+      {isSafe ? (
+        <div className="status-badge" aria-label="Kho ổn định">
+          <CheckCircle2 size={18} className="icon safe-icon" />
+          <span className="status-text">Kho ổn định</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="status-badge"
+          aria-haspopup="true"
+          aria-label={`${warnings.length} nguyên liệu sắp hết`}
+        >
+          <span className="pulse-ring" aria-hidden="true"></span>
+          <AlertTriangle size={18} className="icon warning-icon" />
+          <span className="status-text">
+            {warnings.length} Nguyên liệu sắp hết
+          </span>
+          <ChevronDown size={14} className="arrow-down" />
+        </button>
+      )}
 
       {/* --- Tooltip Dropdown (Chỉ hiện khi có cảnh báo) --- */}
       {!isSafe && (

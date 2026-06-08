@@ -4,7 +4,7 @@ import "./Tabs.scss";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
-    <div className="sm-tabs-container">
+    <div className="sm-tabs-container" role="tablist" aria-label="Nhóm chức năng kho">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -13,6 +13,9 @@ const Tabs = ({ tabs, activeTab, onTabChange }) => {
             className={`sm-tab-item ${isActive ? "active" : ""}`}
             onClick={() => onTabChange(tab.id)}
             type="button"
+            role="tab"
+            aria-selected={isActive}
+            aria-current={isActive ? "page" : undefined}
           >
             {/* Render Icon nếu có */}
             {tab.icon && <span className="tab-icon">{tab.icon}</span>}
