@@ -153,4 +153,27 @@ describe("OrderManagement kitchen display", () => {
     expect(screen.queryByRole("heading", { name: /màn hình bếp/i })).not.toBeInTheDocument();
     expect(document.body.style.overflow).toBe("");
   });
+
+  it("keeps the F shortcut for toggling kitchen focus mode", () => {
+    renderOrderManagement();
+
+    fireEvent.keyDown(window, { key: "f" });
+    expect(screen.getByRole("heading", { name: /màn hình bếp/i })).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(window, { key: "F" });
+    expect(screen.queryByRole("heading", { name: /màn hình bếp/i })).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("restores body overflow when unmounting from focus mode", () => {
+    document.body.style.overflow = "auto";
+    const { unmount } = renderOrderManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
+    expect(document.body.style.overflow).toBe("hidden");
+
+    unmount();
+    expect(document.body.style.overflow).toBe("auto");
+  });
 });
