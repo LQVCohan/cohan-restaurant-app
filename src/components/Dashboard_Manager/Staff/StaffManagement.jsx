@@ -19,6 +19,7 @@ import {
   AddEmployeeModal,
   EditEmployeeModal,
   WorkHistoryModal,
+  StaffActionConfirmModal,
 } from "./components/modals";
 
 import useStaffManagement from "../../../hooks/useStaffManagement";
@@ -79,6 +80,7 @@ const StaffManagement = () => {
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [focusedEmployeeId, setFocusedEmployeeId] = useState("");
   const [navigationQueryVersion, setNavigationQueryVersion] = useState(0);
+  const [pendingAction, setPendingAction] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -138,7 +140,14 @@ const StaffManagement = () => {
     setStaffAccountStatus,
     resendStaffVerification,
     setFilters,
+    refetchStaffList,
     staffListLoading,
+    creatingStaff,
+    updatingStaff,
+    softDeletingStaff,
+    changingEmploymentStatus,
+    changingUserStatus,
+    resendingVerification,
   } = useStaffManagement({
     restaurantId: selectedRestaurant || null,
     page: 1,
@@ -178,6 +187,8 @@ const StaffManagement = () => {
     setFilters({
       restaurantId: selectedRestaurant,
       search: undefined,
+      roleId: null,
+      employmentStatus: null,
     });
   }, [selectedRestaurant, setFilters]);
   // Client-side filtering (nếu cần filter thêm ở client)
@@ -202,11 +213,11 @@ const StaffManagement = () => {
     }
 
     // Filter by Search (Local fallback)
-    if (searchQuery) {
-      result = result.filter((s) => matchesEmployeeSearch(s, searchQuery));
+    if (debouncedSearchQuery) {
+      result = result.filter((s) => matchesEmployeeSearch(s, debouncedSearchQuery));
     }
     return result;
-  }, [staffList, selectedRestaurant, searchQuery]);
+  }, [staffList, selectedRestaurant, debouncedSearchQuery]);
 
   // Map Data Model
   const mappedStaff = useMemo(
@@ -221,12 +232,17 @@ const StaffManagement = () => {
           name: staff.fullName,
           code: staff.employeeCode,
           role: staff.positionTitle || staff.role?.name || "N/A",
+          roleId: staff.role?.id || null,
+          roleSlug: staff.role?.slug || "",
+          roleName: staff.role?.name || staff.roleName || "",
+          positionTitle: staff.positionTitle || "",
           department: staff.department,
           status: getStaffListStatus({ accountStatus, employmentStatus }),
           accountStatus,
           employmentStatus,
           email: staff.email,
           phone: staff.phone,
+          username: staff.username,
           avatar: staff.avatarUrl,
           startDate: staff.dateJoined
             ? new Date(staff.dateJoined).toLocaleDateString("vi-VN")
@@ -235,6 +251,13 @@ const StaffManagement = () => {
           baseSalary: staff.baseSalary ?? null,
           salary: staff.baseSalary ?? null,
           restaurantForStaff: staff.restaurantForStaff,
+          address: staff.address ? [staff.address.line1, staff.address.ward, staff.address.district, staff.address.city].filter(Boolean).join(", ") : "",
+          employmentType: staff.employmentType,
+          workingDays: staff.workingDays || [],
+          dateLeft: staff.dateLeft,
+          taxCode: staff.taxCode,
+          emergencyContact: staff.emergencyContact,
+          noteInternal: staff.noteInternal,
           emailVerified: Boolean(staff.emailVerified),
           phoneVerified: Boolean(staff.phoneVerified),
           verificationStatus: staff.emailVerified || staff.phoneVerified ? "verified" : staff.status === "pending" ? "pending" : "unverified",
@@ -293,50 +316,106 @@ const StaffManagement = () => {
   // Handlers CRUD (Giữ nguyên logic cũ)
   const handleAddEmployee = useCallback(
     async (val) => {
-      await createStaff(val);
+      const created = await createStaff(val);
+      await refetchStaffList?.();
+      if (created) setSelectedEmployee(created);
       closeModal("addEmployee");
+      showNotification("Đã thêm nhân viên thành công.", "success");
     },
-    [createStaff, closeModal],
+    [createStaff, closeModal, refetchStaffList, showNotification],
   );
   const handleEditEmployee = useCallback(
     async (val) => {
       if (!selectedEmployee?.id) return;
-      await updateStaff(selectedEmployee.id, val);
+      const updated = await updateStaff(selectedEmployee.id, val);
+      await refetchStaffList?.();
+      if (updated) setSelectedEmployee(updated);
       closeModal("editEmployee");
+      showNotification("Đã cập nhật hồ sơ nhân viên.", "success");
     },
-    [closeModal, selectedEmployee?.id, updateStaff],
+    [closeModal, refetchStaffList, selectedEmployee?.id, showNotification, updateStaff],
   );
-  const handleSetOnLeave = useCallback(
-    async (id) => {
-      const statusChoice = window.prompt(
-        "Chọn trạng thái:\n1 - Tạm nghỉ (ON_LEAVE)\n2 - Nghỉ việc (RESIGNED)",
-        "1",
-      );
-      if (!statusChoice) return;
-      const nextStatus = statusChoice === "2" ? "RESIGNED" : "ON_LEAVE";
-      const statusLabel = nextStatus === "RESIGNED" ? "nghỉ việc" : "tạm nghỉ";
-      if (
-        !window.confirm(
-          `Xác nhận chuyển nhân viên sang trạng thái ${statusLabel}?`,
-        )
-      ) {
+  const requestStaffAction = useCallback((action) => setPendingAction(action), []);
+
+  const handleSetEmploymentStatus = useCallback(
+    (employee, status) => {
+      const id = employee?.id || employee;
+      if (!id) return;
+      const labelMap = { WORKING: "đang làm việc", ON_LEAVE: "tạm nghỉ", RESIGNED: "nghỉ việc" };
+      if (status === "WORKING") {
+        requestStaffAction({
+          type: "employment",
+          id,
+          status,
+          tone: "success",
+          title: "Chuyển trạng thái lao động",
+          message: `Chuyển nhân viên sang trạng thái ${labelMap[status]}?`,
+          description: "Nhân viên sẽ được đưa lại vào danh sách đang làm việc.",
+          confirmText: "Chuyển sang đang làm",
+        });
         return;
       }
-      await setStaffEmploymentStatus(id, nextStatus);
+      requestStaffAction({
+        type: "employment",
+        id,
+        status,
+        tone: status === "RESIGNED" ? "danger" : "warning",
+        title: "Xác nhận đổi trạng thái lao động",
+        message: `Chuyển nhân viên sang trạng thái ${labelMap[status]}?`,
+        description: status === "RESIGNED"
+          ? "Nhân viên nghỉ việc sẽ không còn được xem là đang làm trong hồ sơ quản lý."
+          : "Trạng thái tạm nghỉ dùng cho nhân viên đang nghỉ có thời hạn và có thể chuyển lại đang làm.",
+        confirmText: status === "RESIGNED" ? "Xác nhận nghỉ việc" : "Xác nhận tạm nghỉ",
+      });
     },
-    [setStaffEmploymentStatus],
+    [requestStaffAction],
+  );
+
+  const handleSetOnLeave = useCallback(
+    (employeeOrId) => handleSetEmploymentStatus(employeeOrId, "ON_LEAVE"),
+    [handleSetEmploymentStatus],
   );
   const handleSetWorking = useCallback(
-    (id) => setStaffEmploymentStatus(id, "WORKING"),
-    [setStaffEmploymentStatus],
+    (employeeOrId) => handleSetEmploymentStatus(employeeOrId, "WORKING"),
+    [handleSetEmploymentStatus],
+  );
+  const handleSetResigned = useCallback(
+    (employeeOrId) => handleSetEmploymentStatus(employeeOrId, "RESIGNED"),
+    [handleSetEmploymentStatus],
   );
   const handleLockAccount = useCallback(
-    (id) => setStaffAccountStatus(id, "blocked"),
-    [setStaffAccountStatus],
+    (employeeOrId) => {
+      const id = employeeOrId?.id || employeeOrId;
+      if (!id) return;
+      requestStaffAction({
+        type: "account",
+        id,
+        status: "blocked",
+        tone: "danger",
+        title: "Khóa tài khoản nhân viên",
+        message: "Khóa tài khoản sẽ chặn nhân viên đăng nhập.",
+        description: "Hồ sơ nhân viên vẫn được lưu để quản lý và có thể mở khóa lại khi cần.",
+        confirmText: "Khóa tài khoản",
+      });
+    },
+    [requestStaffAction],
   );
   const handleUnlockAccount = useCallback(
-    (id) => setStaffAccountStatus(id, "active"),
-    [setStaffAccountStatus],
+    (employeeOrId) => {
+      const id = employeeOrId?.id || employeeOrId;
+      if (!id) return;
+      requestStaffAction({
+        type: "account",
+        id,
+        status: "active",
+        tone: "success",
+        title: "Mở khóa tài khoản",
+        message: "Mở khóa cho phép tài khoản hoạt động và đăng nhập lại.",
+        description: "Hãy đảm bảo nhân viên đã đủ điều kiện quay lại sử dụng hệ thống.",
+        confirmText: "Mở khóa",
+      });
+    },
+    [requestStaffAction],
   );
   const handleResendStaffVerification = useCallback(
     async (employee, channel = "AUTO") => {
@@ -366,21 +445,58 @@ const StaffManagement = () => {
     [navigate],
   );
   const handleSoftDeleteAccount = useCallback(
-    async (id) => {
-      if (
-        !window.confirm(
-          "Tài khoản sẽ vào thùng rác trong 30 ngày. Bạn có chắc chắn muốn tiếp tục?",
-        )
-      ) {
-        return;
-      }
-      await softDeleteStaff(id);
-      if (selectedEmployee?.id === id) {
-        setSelectedEmployee(null);
-      }
+    (employeeOrId) => {
+      const id = employeeOrId?.id || employeeOrId;
+      if (!id) return;
+      requestStaffAction({
+        type: "softDelete",
+        id,
+        tone: "danger",
+        title: "Xóa mềm nhân viên",
+        message: "Tài khoản sẽ vào thùng rác hoặc không còn hoạt động trong danh sách quản lý.",
+        description: "Đây là xóa mềm, không xóa vĩnh viễn dữ liệu nhân viên.",
+        confirmText: "Xóa mềm",
+      });
     },
-    [selectedEmployee?.id, softDeleteStaff],
+    [requestStaffAction],
   );
+
+
+  const handleConfirmPendingAction = useCallback(async () => {
+    if (!pendingAction?.id) return;
+    try {
+      let updated = null;
+      if (pendingAction.type === "employment") {
+        updated = await setStaffEmploymentStatus(pendingAction.id, pendingAction.status);
+        showNotification("Đã cập nhật trạng thái lao động.", "success");
+      } else if (pendingAction.type === "account") {
+        updated = await setStaffAccountStatus(pendingAction.id, pendingAction.status);
+        showNotification(
+          pendingAction.status === "blocked" ? "Đã khóa tài khoản nhân viên." : "Đã mở khóa tài khoản nhân viên.",
+          "success",
+        );
+      } else if (pendingAction.type === "softDelete") {
+        await softDeleteStaff(pendingAction.id);
+        if (selectedEmployee?.id === pendingAction.id) setSelectedEmployee(null);
+        showNotification("Đã xóa mềm nhân viên.", "success");
+      }
+      await refetchStaffList?.();
+      if (updated && selectedEmployee?.id === pendingAction.id) {
+        setSelectedEmployee(updated);
+      }
+      setPendingAction(null);
+    } catch (err) {
+      showNotification(err?.message || "Không thể thực hiện thao tác. Vui lòng thử lại.", "error");
+    }
+  }, [
+    pendingAction,
+    refetchStaffList,
+    selectedEmployee?.id,
+    setStaffAccountStatus,
+    setStaffEmploymentStatus,
+    showNotification,
+    softDeleteStaff,
+  ]);
 
   const handleOpenEditEmployee = useCallback(
     () => openModal("editEmployee"),
@@ -445,10 +561,12 @@ const StaffManagement = () => {
           onDeleteEmployee={handleSoftDeleteAccount}
           onSetOnLeave={handleSetOnLeave}
           onSetWorking={handleSetWorking}
+          onSetResigned={handleSetResigned}
           onLockAccount={handleLockAccount}
           onUnlockAccount={handleUnlockAccount}
           onCalculateSalary={handleCalculateSalary}
           onResendVerification={handleResendStaffVerification}
+          roleList={roleList}
           loading={isLoading}
         />
       );
@@ -488,10 +606,12 @@ const StaffManagement = () => {
     handleOpenWorkHistory,
     handleResendStaffVerification,
     handleSetOnLeave,
+    handleSetResigned,
     handleSetWorking,
     handleUnlockAccount,
     isLoading,
     mappedStaff,
+    roleList,
     selectedEmployee,
     setSelectedEmployee,
   ]);
@@ -509,7 +629,7 @@ const StaffManagement = () => {
             selectedRestaurant={selectedRestaurant}
             onRestaurantChange={setSelectedRestaurantId}
             onAddEmployee={() => openModal("addEmployee")}
-            onExportData={() => console.log("Export")}
+            onExportData={undefined}
             restaurantList={restaurantOptions}
             stats={stats}
             loading={isHeaderLoading}
@@ -562,6 +682,24 @@ const StaffManagement = () => {
         isOpen={modals.workHistory}
         employee={selectedEmployee}
         onClose={() => closeModal("workHistory")}
+      />
+      <StaffActionConfirmModal
+        isOpen={Boolean(pendingAction)}
+        title={pendingAction?.title}
+        message={pendingAction?.message}
+        description={pendingAction?.description}
+        tone={pendingAction?.tone}
+        confirmText={pendingAction?.confirmText}
+        isLoading={
+          changingEmploymentStatus ||
+          changingUserStatus ||
+          softDeletingStaff ||
+          creatingStaff ||
+          updatingStaff ||
+          resendingVerification
+        }
+        onCancel={() => setPendingAction(null)}
+        onConfirm={handleConfirmPendingAction}
       />
     </div>
   );

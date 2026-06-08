@@ -77,6 +77,7 @@ export const getStaffActionAvailability = ({
     accountStatus === "active" && employmentStatus === "WORKING",
   canSetWorking:
     accountStatus === "active" && employmentStatus === "ON_LEAVE",
+  canSetResigned: employmentStatus !== "RESIGNED",
   canLock: accountStatus !== "blocked",
   canUnlock: accountStatus === "blocked",
 });

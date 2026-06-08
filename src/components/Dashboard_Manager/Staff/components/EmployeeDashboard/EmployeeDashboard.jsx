@@ -14,9 +14,11 @@ const EmployeeDashboard = ({
   onCalculateSalary,
   onSetOnLeave,
   onSetWorking,
+  onSetResigned,
   onLockAccount,
   onUnlockAccount,
   onResendVerification,
+  roleList = [],
   loading = false,
 }) => {
   return (
@@ -28,6 +30,7 @@ const EmployeeDashboard = ({
           selectedEmployee={selectedEmployee}
           focusedEmployeeId={focusedEmployeeId}
           onEmployeeSelect={onEmployeeSelect}
+          roleList={roleList}
           loading={loading}
         />
       </div>
@@ -41,6 +44,7 @@ const EmployeeDashboard = ({
           onDelete={onDeleteEmployee}
           onSetOnLeave={onSetOnLeave}
           onSetWorking={onSetWorking}
+          onSetResigned={onSetResigned}
           onLockAccount={onLockAccount}
           onUnlockAccount={onUnlockAccount}
           onCalculateSalary={onCalculateSalary}

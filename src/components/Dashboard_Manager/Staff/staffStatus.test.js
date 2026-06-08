@@ -38,6 +38,7 @@ describe("staffStatus helpers", () => {
     ).toEqual({
       canSetOnLeave: false,
       canSetWorking: false,
+      canSetResigned: true,
       canLock: false,
       canUnlock: true,
     });
@@ -62,6 +63,7 @@ describe("staffStatus helpers", () => {
     ).toEqual({
       canSetOnLeave: false,
       canSetWorking: true,
+      canSetResigned: true,
       canLock: true,
       canUnlock: false,
     });

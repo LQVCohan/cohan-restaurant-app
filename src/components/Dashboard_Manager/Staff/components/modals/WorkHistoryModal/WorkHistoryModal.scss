@@ -261,3 +261,24 @@
     }
   }
 }
+
+.work-history-modal {
+  .item-warnings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .warning-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+}

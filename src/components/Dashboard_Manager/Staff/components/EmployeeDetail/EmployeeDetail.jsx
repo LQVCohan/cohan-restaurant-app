@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   User,
   Phone,
@@ -11,9 +11,12 @@ import {
   Trash2,
   Edit,
   History,
-  Calculator,
-  Award,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  getStaffActionAvailability,
+  getStaffDetailStatusInfo,
+} from "../../staffStatus";
 import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
 import "./EmployeeDetail.scss";
 
@@ -21,10 +24,6 @@ const getDepartmentLabel = (department) => {
   const option = DEPARTMENT_OPTIONS.find((item) => item.value === department);
   return option?.label?.replace(/^\S+\s*/, "") || "Khác";
 };
-import {
-  getStaffActionAvailability,
-  getStaffDetailStatusInfo,
-} from "../../staffStatus";
 
 const EmployeeDetail = ({
   employee,
@@ -34,10 +33,13 @@ const EmployeeDetail = ({
   onDelete,
   onSetOnLeave,
   onSetWorking,
+  onSetResigned,
   onLockAccount,
   onUnlockAccount,
   onResendVerification,
 }) => {
+  const [verificationChannel, setVerificationChannel] = useState("AUTO");
+
   if (!employee) {
     return (
       <div className="employee-detail-card empty">
@@ -58,7 +60,7 @@ const EmployeeDetail = ({
   };
 
   const statusInfo = getStaffDetailStatusInfo(employee);
-  const { canSetOnLeave, canSetWorking, canLock, canUnlock } =
+  const { canSetOnLeave, canSetWorking, canSetResigned, canLock, canUnlock } =
     getStaffActionAvailability(employee);
   const resolvedBaseSalary =
     employee?.raw?.baseSalary ?? employee?.baseSalary ?? employee?.salary ?? null;
@@ -119,8 +121,18 @@ const EmployeeDetail = ({
         <div className="divider" />
 
         <div className="section">
-          <h4 className="section-title">Công việc & Lương</h4>
+          <h4 className="section-title">Vai trò & hồ sơ lao động</h4>
           <div className="info-list">
+            <InfoRow
+              icon={Briefcase}
+              label="Vai trò hệ thống"
+              value={employee.roleName || employee.roleSlug || "Chưa gán"}
+            />
+            <InfoRow
+              icon={Briefcase}
+              label="Chức danh"
+              value={employee.positionTitle || employee.role}
+            />
             <InfoRow
               icon={Briefcase}
               label="Bộ phận"
@@ -133,8 +145,8 @@ const EmployeeDetail = ({
             />
             <InfoRow
               icon={Clock}
-              label="Ca làm việc"
-              value={employee.shift || "Full-time"}
+              label="Loại ca"
+              value={employee.shift || "Ca xoay"}
             />
             <InfoRow
               icon={DollarSign}
@@ -145,18 +157,41 @@ const EmployeeDetail = ({
           </div>
         </div>
 
-        <div className="performance-widget">
+        <div className="account-status-panel">
           <div className="widget-header">
             <div className="title-box">
-              <Award size={18} className="icon-award" />
-              <span>Hiệu suất tháng</span>
+              <ShieldCheck size={18} className="icon-award" />
+              <span>Trạng thái & xác minh tài khoản</span>
             </div>
-            <span className="score">98/100</span>
+            <span className={`status-chip ${statusInfo.color}`}>{statusInfo.label}</span>
           </div>
-          <div className="progress-bar-bg">
-            <div className="progress-bar-fill" style={{ width: "98%" }}></div>
+          <div className="account-status-grid">
+            <InfoRow icon={User} label="Trạng thái lao động" value={employee.employmentStatus || "WORKING"} />
+            <InfoRow icon={User} label="Trạng thái tài khoản" value={employee.accountStatus || "active"} />
+            <InfoRow icon={Mail} label="Email" value={employee.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
+            <InfoRow icon={Phone} label="SĐT" value={employee.phoneVerified ? "Đã xác minh" : "Chưa xác minh"} />
           </div>
-          <p className="widget-note">Hoàn thành xuất sắc nhiệm vụ được giao.</p>
+          <div className="verification-action-row">
+            <select
+              value={verificationChannel}
+              onChange={(event) => setVerificationChannel(event.target.value)}
+              disabled={!employee.canResendVerification}
+              aria-label="Kênh gửi xác minh"
+            >
+              <option value="AUTO">Tự động</option>
+              <option value="EMAIL">Email</option>
+              <option value="SMS">SMS</option>
+            </select>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onResendVerification?.(employee, verificationChannel)}
+              disabled={!employee.canResendVerification}
+            >
+              <Mail size={16} />
+              <span>Gửi lại xác minh</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -177,21 +212,6 @@ const EmployeeDetail = ({
           >
             <History size={18} />
           </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => onCalculateSalary?.(employee)}
-            title="Tính lương"
-          >
-            <Calculator size={18} />
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => onResendVerification?.(employee, "AUTO")}
-            disabled={!employee.canResendVerification}
-            title={employee.canResendVerification ? "Nhắc gửi xác nhận" : "Thiếu email/SĐT hoặc đã xác minh"}
-          >
-            <Mail size={18} />
-          </button>
         </div>
 
         <div className="main-actions">
@@ -199,7 +219,7 @@ const EmployeeDetail = ({
             className="btn btn-secondary"
             onClick={() => onSetOnLeave?.(employee.id)}
             disabled={!canSetOnLeave}
-            title="Chuyển sang nghỉ phép"
+            title="Chuyển sang tạm nghỉ"
           >
             <span>🏖️</span>
           </button>
@@ -210,6 +230,14 @@ const EmployeeDetail = ({
             title="Chuyển sang đang làm việc"
           >
             <span>✅</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onSetResigned?.(employee.id)}
+            disabled={!canSetResigned}
+            title="Chuyển sang nghỉ việc"
+          >
+            <span>🚪</span>
           </button>
           <button
             className="btn btn-secondary"

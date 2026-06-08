@@ -542,6 +542,7 @@ const useStaffManagement = (initialFilters = {}) => {
 
     // loading
     staffListLoading,
+    refetchStaffList,
     selectedStaffLoading,
     creatingStaff,
     updatingStaff,
