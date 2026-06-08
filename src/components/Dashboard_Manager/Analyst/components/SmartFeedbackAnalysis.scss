@@ -374,3 +374,60 @@ $blue-text: #1d4ed8;
     transform: translateY(0);
   }
 }
+
+.feedback-analysis-widget {
+  padding: 18px !important;
+
+  .widget-header .header-top h4 {
+    margin: 0 0 3px;
+    color: #1f160f;
+    font-size: 1rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .widget-header .subtitle,
+  .ai-daily-summary p {
+    color: #7a6b5b;
+    font-size: 0.8rem;
+  }
+
+  .rating-badge {
+    background: linear-gradient(135deg, #f97316, #c2410c) !important;
+    box-shadow: 0 10px 22px rgba(120, 72, 18, 0.14) !important;
+  }
+
+  .filter-tabs button {
+    transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(1px);
+    }
+  }
+
+  .feedback-scroll-area {
+    max-height: 300px;
+  }
+
+  .empty-state {
+    min-height: 150px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(214, 196, 170, 0.72) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 247, 237, 0.52) !important;
+    color: #7a6b5b !important;
+    font-size: 0.84rem;
+  }
+
+  .feedback-item {
+    border-color: rgba(214, 196, 170, 0.72) !important;
+    border-radius: 15px !important;
+    background: rgba(255, 253, 248, 0.72) !important;
+  }
+}

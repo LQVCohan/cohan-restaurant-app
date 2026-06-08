@@ -179,3 +179,44 @@ $dark: #1a1a1a;
     }
   }
 }
+
+.demand-forecast-widget {
+  padding: 18px !important;
+
+  .widget-head h3 {
+    color: #1f160f !important;
+    font-size: 1rem !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em;
+  }
+
+  .widget-head p,
+  .dish-sub {
+    color: #7a6b5b !important;
+  }
+
+  .icon-wrap {
+    background: #ffedd5 !important;
+    color: #c2410c !important;
+  }
+
+  .insight-card,
+  .list-section li {
+    border-color: rgba(214, 196, 170, 0.72) !important;
+    border-radius: 15px !important;
+    background: rgba(255, 253, 248, 0.74) !important;
+  }
+
+  .list-section ul {
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .state-message {
+    min-height: auto !important;
+    border-color: rgba(214, 196, 170, 0.72) !important;
+    border-radius: 15px !important;
+    background: rgba(255, 247, 237, 0.54) !important;
+  }
+}

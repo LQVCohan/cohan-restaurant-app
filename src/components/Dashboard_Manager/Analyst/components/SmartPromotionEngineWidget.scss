@@ -25,3 +25,63 @@
   .promo-item span { margin-left: 8px; font-size: 0.75rem; color: #475569; }
   .promo-item p { margin: 4px 0 0; font-size: 0.78rem; }
 }
+
+.smart-promotion-engine-widget {
+  padding: 18px !important;
+
+  .widget-head h3 {
+    color: #1f160f !important;
+    font-size: 1rem !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.02em;
+  }
+
+  .widget-head p,
+  .item-sub,
+  .group-line,
+  .promo-item p,
+  .promo-item span {
+    color: #7a6b5b !important;
+  }
+
+  .icon-wrap {
+    background: #ffedd5 !important;
+    color: #c2410c !important;
+  }
+
+  .summary-row,
+  .coupon-context {
+    gap: 8px !important;
+  }
+
+  .summary-row span,
+  .coupon-context span,
+  .campaign-item,
+  .promo-item {
+    border-color: rgba(214, 196, 170, 0.72) !important;
+    border-radius: 15px !important;
+    background: rgba(255, 253, 248, 0.74) !important;
+  }
+
+  .summary-row span,
+  .coupon-context span {
+    padding: 7px 9px;
+  }
+
+  .campaign-list {
+    max-height: 340px !important;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .campaign-item {
+    padding: 11px !important;
+  }
+
+  .guardrail {
+    color: #7c2d12 !important;
+    background: #fff7ed;
+    border-radius: 12px;
+    padding: 6px 8px;
+  }
+}
