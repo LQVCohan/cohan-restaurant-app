@@ -142,6 +142,7 @@ const StaffManagement = () => {
     setFilters,
     refetchStaffList,
     staffListLoading,
+    staffListError,
     creatingStaff,
     updatingStaff,
     softDeletingStaff,
@@ -196,13 +197,29 @@ const StaffManagement = () => {
     if (!staffList) return [];
     let result = staffList;
 
+    const normalizeId = (value) => {
+      if (!value) return "";
+      if (typeof value === "object") {
+        return String(value.id ?? value._id ?? value.restaurantId ?? value);
+      }
+      return String(value);
+    };
+
     const hasRestaurantMatch = (staff, restaurantIds) => {
-      const allowedIds = Array.isArray(restaurantIds)
-        ? restaurantIds.filter(Boolean)
-        : [restaurantIds].filter(Boolean);
+      const allowedIds = (Array.isArray(restaurantIds) ? restaurantIds : [restaurantIds])
+        .map(normalizeId)
+        .filter(Boolean);
+
       if (!allowedIds.length) return true;
 
-      const staffRestaurantIds = [staff.restaurantForStaff].filter(Boolean);
+      const staffRestaurantIds = [
+        staff.restaurantForStaff,
+        staff.raw?.restaurantForStaff,
+        ...(Array.isArray(staff.refRestaurants) ? staff.refRestaurants : []),
+        ...(Array.isArray(staff.raw?.refRestaurants) ? staff.raw.refRestaurants : []),
+      ]
+        .map(normalizeId)
+        .filter(Boolean);
 
       return staffRestaurantIds.some((id) => allowedIds.includes(id));
     };
@@ -251,6 +268,7 @@ const StaffManagement = () => {
           baseSalary: staff.baseSalary ?? null,
           salary: staff.baseSalary ?? null,
           restaurantForStaff: staff.restaurantForStaff,
+          refRestaurants: staff.refRestaurants || [],
           address: staff.address ? [staff.address.line1, staff.address.ward, staff.address.district, staff.address.city].filter(Boolean).join(", ") : "",
           employmentType: staff.employmentType,
           workingDays: staff.workingDays || [],
@@ -568,6 +586,8 @@ const StaffManagement = () => {
           onResendVerification={handleResendStaffVerification}
           roleList={roleList}
           loading={isLoading}
+          error={staffListError}
+          onRetry={refetchStaffList}
         />
       );
     }
@@ -599,6 +619,7 @@ const StaffManagement = () => {
     currentDate,
     currentPage,
     currentTime,
+    focusedEmployeeId,
     handleCalculateSalary,
     handleSoftDeleteAccount,
     handleLockAccount,
@@ -613,6 +634,8 @@ const StaffManagement = () => {
     mappedStaff,
     roleList,
     selectedEmployee,
+    staffListError,
+    refetchStaffList,
     setSelectedEmployee,
   ]);
 

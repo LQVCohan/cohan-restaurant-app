@@ -418,3 +418,55 @@ $warning: #f59e0b;
     }
   }
 }
+
+.employee-detail-card {
+  border: 1px solid rgba(154, 119, 78, 0.22);
+  border-radius: 22px;
+  background: #fffdf8;
+  box-shadow: 0 22px 48px rgba(84, 55, 30, 0.12);
+
+  &.empty {
+    border-left: 1px solid rgba(154, 119, 78, 0.22);
+    background:
+      radial-gradient(circle at top, rgba(184, 147, 101, 0.14), transparent 40%),
+      #fffdf8;
+
+    .empty-content .icon-circle {
+      border-radius: 26px;
+      background: #f3e5d1;
+      color: #8f6a42;
+    }
+  }
+
+  .detail-header {
+    border-bottom-color: #eadfce;
+
+    .cover-image {
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.35), transparent 28%),
+        linear-gradient(135deg, #c9a879 0%, #8f6a42 62%, #4b321c 100%);
+    }
+
+    .header-content .avatar-wrapper .avatar-img,
+    .header-content .avatar-wrapper .avatar-placeholder {
+      border-radius: 22px;
+    }
+  }
+
+  .detail-body .section-title {
+    color: #7b6a58;
+  }
+
+  .info-row .info-content .info-value,
+  .detail-body .performance-widget .widget-header .score {
+    font-variant-numeric: tabular-nums;
+  }
+
+  button,
+  select {
+    &:focus-visible {
+      outline: 3px solid rgba(184, 147, 101, 0.22);
+      outline-offset: 2px;
+    }
+  }
+}

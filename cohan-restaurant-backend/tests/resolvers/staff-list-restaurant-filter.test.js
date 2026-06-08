@@ -15,6 +15,10 @@ const modelMocks = vi.hoisted(() => ({
   Restaurant: {},
   PayrollPeriod: {},
   PayrollItem: {},
+  SchedulePublication: {},
+  EventLog: {},
+  ShiftAcknowledgement: {},
+  ScheduleAcknowledgement: {},
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -26,6 +30,9 @@ vi.mock("../../graphql/guards.js", () => ({
 }));
 vi.mock("../../src/services/ai/staffSchedulingAssistant.service.js", () => ({
   buildStaffSchedulingAssistant: vi.fn(),
+}));
+vi.mock("../../src/services/scheduling/aiSchedulePlanner.service.js", () => ({
+  buildAiSchedulePlannerPreview: vi.fn(),
 }));
 vi.mock("../../src/services/payroll/payrollCalculator.service.js", () => ({
   buildStaffSchedulingAssistant: vi.fn(),
@@ -65,7 +72,7 @@ describe("staffList restaurant filter", () => {
     vi.clearAllMocks();
   });
 
-  it("filters by restaurantForStaff only when filtering by restaurant", async () => {
+  it("filters by restaurantForStaff and refRestaurants when filtering by restaurant", async () => {
     const findChain = createFindChain();
     modelMocks.Staff.find.mockReturnValue(findChain);
 
@@ -75,13 +82,20 @@ describe("staffList restaurant filter", () => {
     expect(modelMocks.Staff.find).toHaveBeenCalledWith({
       userType: "STAFF",
       deletedAt: null,
-      $or: [
-        { restaurantForStaff: { __oid: "restaurant-1" } },
-              ],
+      $and: [
+        {
+          $or: [
+            { restaurantForStaff: { __oid: "restaurant-1" } },
+            { refRestaurants: { __oid: "restaurant-1" } },
+            { restaurantForStaff: "restaurant-1" },
+            { refRestaurants: "restaurant-1" },
+          ],
+        },
+      ],
     });
     expect(findChain.populate).toHaveBeenCalledWith("role");
     expect(findChain.populate).toHaveBeenCalledWith("refRestaurants");
-        expect(findChain.sort).toHaveBeenCalledWith({ fullName: 1 });
+    expect(findChain.sort).toHaveBeenCalledWith({ fullName: 1 });
   });
 
   it("keeps restaurant and search filters together", async () => {
@@ -100,7 +114,10 @@ describe("staffList restaurant filter", () => {
     expect(filter.$and[0]).toEqual({
       $or: [
         { restaurantForStaff: { __oid: "restaurant-1" } },
-              ],
+        { refRestaurants: { __oid: "restaurant-1" } },
+        { restaurantForStaff: "restaurant-1" },
+        { refRestaurants: "restaurant-1" },
+      ],
     });
     expect(filter.$and[1].$or).toEqual(
       expect.arrayContaining([
