@@ -5,6 +5,7 @@ import "./index.css";
 import "./components/Customer/Food/FoodDetail.polish.css";
 import "./components/Dashboard_Manager/Order/orderKitchenPolish.css";
 import "./components/Dashboard_Manager/Order/orderKitchenStatusFilter.css";
+import "./components/Dashboard_Manager/Order/orderManagementCompactLayout.css";
 import "./components/Dashboard_Manager/Order/orderKitchenPolish.js";
 import App from "./App.jsx";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
