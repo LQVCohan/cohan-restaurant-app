@@ -126,7 +126,6 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
     },
   ];
 
-
   const visibleSections = filterNavigationByPermissionAccess(navigationSections, user);
 
   // Handle navigation item click
@@ -185,8 +184,24 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
         {/* Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <span className="logo-icon">🍽️</span>
-            <span className="logo-text">Cohan Manager</span>
+            <button
+              className="logo-icon logo-icon-button"
+              type="button"
+              onClick={onToggle}
+              aria-label={isOpen ? "Thu gọn menu quản lý" : "Mở menu quản lý"}
+              aria-expanded={isOpen}
+            >
+              🍽️
+            </button>
+            <button
+              className="logo-text logo-text-button"
+              type="button"
+              onClick={onToggle}
+              aria-label={isOpen ? "Thu gọn menu quản lý" : "Mở menu quản lý"}
+              aria-expanded={isOpen}
+            >
+              Cohan Manager
+            </button>
           </div>
           <button className="sidebar-close" onClick={onClose} type="button" aria-label="Đóng thanh điều hướng">
             ✕
