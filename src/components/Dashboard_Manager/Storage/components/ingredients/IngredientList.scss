@@ -1,574 +1,332 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientList.scss
 
-/* --- 1. Variables (Scoped riêng cho trang này - Prefix $il-) --- */
-$il-bg-surface: #ffffff;
-$il-bg-body: #f8fafc;
-$il-border-color: #e2e8f0;
-$il-text-main: #1e293b;
-$il-text-sub: #64748b;
-$il-primary: #c5a47e; // Màu chủ đạo
-$il-danger: #ef4444;
-$il-focus-ring: rgba(197, 164, 126, 0.25);
-$il-radius: 8px;
+$il-surface: #ffffff;
+$il-surface-soft: #f8f6f1;
+$il-border: #e5ded3;
+$il-ink: #24303f;
+$il-muted: #667085;
+$il-accent: #a8855f;
+$il-accent-hover: #8f704e;
+$il-danger: #b54747;
+$il-warning: #b26b24;
+$il-focus: rgba(168, 133, 95, 0.24);
+$il-radius: 14px;
 
-/* --- 2. Main Wrapper (Namespace .ing-storage-wrapper) --- */
 .ing-storage-wrapper {
-  font-family: inherit; // Kế thừa font của dự án
-  color: $il-text-main;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  box-sizing: border-box;
+  gap: 18px;
+  color: $il-ink;
+  font-family: inherit;
 
-  /* Reset box-sizing cho tất cả con cháu để đảm bảo tính toán kích thước đúng */
   *,
   *::before,
   *::after {
     box-sizing: border-box;
   }
 
-  /* --- HEADER --- */
+  .il-file-input {
+    display: none;
+  }
+
   .il-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 12px;
+  }
 
-    .il-header__left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+  .il-header__left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-      h2 {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin: 0;
-        line-height: 1.2;
-      }
-
-      .il-badge {
-        background: #f1f5f9;
-        color: $il-text-sub;
-        font-size: 0.85rem;
-        font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 20px;
-      }
-    }
-
-    .il-header__alert {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: #b45309;
-      background: #fffbeb;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid #fcd34d;
+    h2 {
+      margin: 0;
+      color: $il-ink;
+      font-size: clamp(1.18rem, 1.6vw, 1.38rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.04em;
     }
   }
 
-  /* --- TOOLBAR (Thanh công cụ) --- */
-  .il-toolbar {
-    background: $il-bg-surface;
-    border: 1px solid $il-border-color;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  .il-badge {
+    display: inline-flex;
+    min-width: 38px;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #eee7dc;
+    color: #6f5f4d;
+    font-size: 0.82rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+  }
 
+  .il-header__alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid rgba($il-warning, 0.24);
+    border-radius: $il-radius;
+    background: #fbf1e3;
+    color: #7c4d1f;
+    font-size: 0.85rem;
+    font-weight: 650;
+  }
+
+  .il-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
-
-    /* Nhóm Filter bên trái */
-    .il-toolbar__filters {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex: 1; /* Chiếm phần dư */
-      flex-wrap: wrap;
-    }
-
-    /* Nhóm Action bên phải */
-    .il-toolbar__actions {
-      flex-shrink: 0; /* Không cho phép co lại */
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid rgba(128, 109, 83, 0.15);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 12px 30px rgba(48, 40, 30, 0.07);
   }
 
-  /* --- INPUTS & SELECTS (Custom Style) --- */
-
-  /* Wrapper cho Search để định vị icon */
-  .il-input-group {
-    position: relative;
-    width: 320px; /* Độ rộng cố định cho Search */
-    max-width: 100%;
-
-    /* Icon chung */
-    .il-icon-left {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: $il-text-sub;
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    /* Input Search */
-    .il-input-search {
-      width: 100%;
-      height: 40px;
-      padding: 0 36px 0 40px; /* Padding trái né icon trái, phải né nút X */
-      border: 1px solid $il-border-color;
-      border-radius: $il-radius;
-      font-size: 0.9rem;
-      color: $il-text-main;
-      background: #fff;
-      transition: border 0.2s, box-shadow 0.2s;
-      outline: none;
-
-      &:focus {
-        border-color: $il-primary;
-        box-shadow: 0 0 0 3px $il-focus-ring;
-      }
-
-      &::placeholder {
-        color: #94a3b8;
-      }
-    }
-
-    /* Nút xóa search (X) */
-    .il-btn-clear {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      border: none;
-      background: transparent;
-      color: $il-text-sub;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px;
-      border-radius: 50%;
-
-      &:hover {
-        background: #f1f5f9;
-        color: $il-danger;
-      }
-    }
-  }
-
-  /* Wrapper cho Select Dropdown */
-  .il-select-group {
-    position: relative;
-    width: 200px; /* Độ rộng cố định cho Select */
-
-    .il-icon-left {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: $il-text-sub;
-      pointer-events: none;
-    }
-
-    .il-select {
-      width: 100%;
-      height: 40px;
-      padding: 0 30px 0 38px;
-      appearance: none; /* Xóa style mặc định */
-      background-color: #fff;
-      border: 1px solid $il-border-color;
-      border-radius: $il-radius;
-      font-size: 0.9rem;
-      color: $il-text-main;
-      cursor: pointer;
-      outline: none;
-
-      /* Mũi tên custom */
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-
-      &:focus {
-        border-color: $il-primary;
-      }
-      &:hover {
-        border-color: #cbd5e1;
-      }
-    }
-  }
-
-  /* --- BUTTONS --- */
-  .il-btn-icon {
-    min-width: 40px;
-    height: 40px;
-    padding: 0 12px;
+  .il-toolbar__filters,
+  .il-toolbar__actions {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: 1px dashed $il-border-color;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .il-toolbar__filters {
+    flex: 1 1 520px;
+  }
+
+  .il-toolbar__actions {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  .il-input-group,
+  .il-select-group {
+    position: relative;
+    min-width: 0;
+  }
+
+  .il-input-group {
+    flex: 1 1 300px;
+    max-width: 430px;
+  }
+
+  .il-select-group {
+    flex: 0 1 210px;
+  }
+
+  .il-icon-left {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    z-index: 2;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #7a746c;
+  }
+
+  .il-input-search,
+  .il-select {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid rgba(128, 109, 83, 0.18);
     border-radius: $il-radius;
-    background: #fff;
-    color: $il-text-sub;
-    cursor: pointer;
-    transition: all 0.2s;
+    background-color: rgba(255, 255, 255, 0.76);
+    color: $il-ink;
+    font-size: 0.92rem;
+    outline: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 
     &:hover {
-      border-color: $il-danger;
+      border-color: rgba($il-accent, 0.4);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    &:focus,
+    &:focus-visible {
+      border-color: rgba($il-accent, 0.72);
+      box-shadow: 0 0 0 4px $il-focus;
+    }
+  }
+
+  .il-input-search {
+    padding: 0 38px 0 40px;
+
+    &::placeholder {
+      color: #989188;
+    }
+  }
+
+  .il-select {
+    padding: 0 34px 0 38px;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a746c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .il-btn-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    z-index: 3;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: $il-muted;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+
+    &:hover {
+      background: #f3ebe0;
       color: $il-danger;
-      background: #fef2f2;
+    }
+  }
+
+  .il-btn-icon,
+  .il-btn-primary {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border-radius: $il-radius;
+    font-size: 0.9rem;
+    font-weight: 720;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      background 0.18s ease,
+      color 0.18s ease,
+      opacity 0.18s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
     }
 
     &:disabled {
-      opacity: 0.55;
+      opacity: 0.5;
       cursor: not-allowed;
+      transform: none;
+    }
+  }
+
+  .il-btn-icon {
+    min-width: 42px;
+    padding: 0 12px;
+    border: 1px solid rgba(128, 109, 83, 0.18);
+    background: rgba(255, 255, 255, 0.7);
+    color: #3f4a57;
+
+    &:hover:not(:disabled) {
+      border-color: rgba($il-accent, 0.4);
+      background: #f8f1e8;
+      color: $il-accent-hover;
+      box-shadow: 0 10px 22px rgba(86, 67, 43, 0.08);
+    }
+
+    &.danger {
+      border-color: rgba($il-danger, 0.24);
+      color: $il-danger;
+
+      &:hover:not(:disabled) {
+        background: #fbefed;
+        border-color: rgba($il-danger, 0.36);
+        color: #8f3636;
+      }
     }
   }
 
   .il-btn-primary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 20px;
-    background-color: $il-text-main; /* Hoặc $il-primary */
-    color: #fff;
-    border: none;
-    border-radius: $il-radius;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap; /* Chống xuống dòng chữ bên trong nút */
-    transition: opacity 0.2s;
+    padding: 0 18px;
+    border: 1px solid rgba(36, 48, 63, 0.1);
+    background: #3e4a56;
+    color: #fffaf2;
+    box-shadow: 0 12px 24px rgba(36, 48, 63, 0.15);
 
-    &:hover {
-      opacity: 0.9;
-    }
-
-    &:disabled {
-      background-color: #cbd5e1;
-      cursor: not-allowed;
+    &:hover:not(:disabled) {
+      background: #34404c;
+      box-shadow: 0 15px 28px rgba(36, 48, 63, 0.2);
     }
   }
 
-  /* --- CONTENT AREA --- */
   .il-content {
     min-height: 400px;
   }
 
   .il-error {
-    background: #fef2f2;
-    color: $il-danger;
-    padding: 12px;
-    border-radius: 8px;
     margin-bottom: 16px;
+    padding: 12px 14px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid rgba($il-danger, 0.22);
+    border-radius: 18px;
+    background: #fbefed;
+    color: #954040;
+
+    button {
+      border: 1px solid rgba($il-danger, 0.24);
+      border-radius: 12px;
+      background: $il-surface;
+      color: #954040;
+      padding: 7px 11px;
+      font-weight: 750;
+      cursor: pointer;
+    }
   }
 
   .il-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 17px;
   }
 
-  .il-trash-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .il-trash-item {
-    background: #fff;
-    border: 1px solid $il-border-color;
-    border-radius: 10px;
-    padding: 14px;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: flex-start;
-
-    p {
-      margin: 6px 0 0;
-      color: $il-text-sub;
-      font-size: 0.9rem;
-    }
-  }
-
-  .il-trash-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-
-    .danger {
-      border-color: #fecaca;
-      color: #b91c1c;
-    }
-  }
-
-  /* Empty State */
-  .il-empty {
-    text-align: center;
-    padding: 60px 20px;
-    background: #fff;
-    border-radius: 12px;
-    border: 1px dashed $il-border-color;
-
-    .il-empty__icon {
-      color: #94a3b8;
-      margin-bottom: 16px;
-    }
-    h3 {
-      margin-bottom: 8px;
-      color: $il-text-main;
-      font-size: 1.1rem;
-    }
-    p {
-      color: $il-text-sub;
-      margin-bottom: 16px;
-    }
-    button {
-      background: none;
-      border: none;
-      color: $il-primary;
-      text-decoration: underline;
-      cursor: pointer;
-      font-weight: 600;
-    }
-  }
-
-  /* --- RESPONSIVE (Mobile fix) --- */
-  @media (max-width: 992px) {
-    .il-toolbar {
-      flex-direction: column;
-      align-items: stretch;
-      padding: 12px;
-
-      .il-toolbar__filters {
-        flex-direction: column;
-        align-items: stretch;
-
-        .il-input-group,
-        .il-select-group {
-          width: 100%; /* Full width trên mobile */
-        }
-      }
-
-      .il-toolbar__actions {
-        display: flex;
-        justify-content: flex-end;
-      }
-    }
-  }
-}
-
-.il-report-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-}
-
-.il-report-modal {
-  width: min(520px, calc(100vw - 32px));
-  background: #fff;
-  border-radius: 14px;
-  padding: 18px;
-  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.25);
-
-  h3 {
-    margin-top: 0;
-  }
-}
-
-.il-report-preset {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-
-  button {
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: #f8fafc;
-    padding: 6px 10px;
-    cursor: pointer;
-  }
-}
-
-.il-report-range {
-  display: grid;
-  grid-template-columns: 88px 1fr;
-  gap: 8px;
-  align-items: center;
-
-  input {
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 7px 10px;
-  }
-}
-
-.il-report-actions {
-  margin-top: 14px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.il-blocked-modal {
-  p {
-    color: #334155;
-  }
-}
-
-.il-blocked-modal__list {
-  max-height: 220px;
-  overflow: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.il-blocked-modal__item {
-  padding: 8px 10px;
-  background: #f8fafc;
-  border-radius: 6px;
-}
-
-.ing-storage-wrapper {
-  .il-file-input {
-    display: none;
-  }
-
-  .il-spinner {
-    display: inline-block;
-    width: 30px;
-    height: 30px;
-    border: 3px solid #e2e8f0;
-    border-top-color: #8a683f;
-    border-radius: 50%;
-    animation: spin 1s infinite linear;
-  }
-
-  .il-error {
-    justify-content: space-between;
-
-    button {
-      border: 1px solid #fecaca;
-      border-radius: 8px;
-      background: #fff;
-      color: #b91c1c;
-      padding: 6px 10px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-  }
-
-  button:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible {
-    outline: 3px solid rgba(197, 164, 126, 0.26);
-    outline-offset: 2px;
-  }
-}
-
-/* --- Premium ingredient list polish --- */
-.ing-storage-wrapper {
-  .il-header h2 {
-    letter-spacing: -0.04em;
-    line-height: 1.05;
-  }
-
-  .il-badge,
-  .il-header__alert,
-  .il-input-search,
-  .il-select,
-  .il-btn-icon,
-  .il-btn-primary {
-    border-radius: 14px;
-  }
-
-  .il-toolbar {
-    border-color: rgba(122, 95, 61, 0.15);
-    border-radius: 20px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 248, 236, 0.58));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 16px 36px rgba(62, 47, 30, 0.08);
-  }
-
-  .il-grid {
-    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-    gap: 18px;
-  }
-
-  .il-grid:has(> :nth-child(2):last-child) {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 390px));
-    justify-content: start;
-  }
-
-  .il-empty,
-  .il-trash-item,
-  .il-error {
-    border-color: rgba(122, 95, 61, 0.15);
-    border-radius: 20px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 248, 236, 0.58));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 16px 36px rgba(62, 47, 30, 0.08);
-  }
-
-  .il-btn-primary {
-    background: linear-gradient(145deg, #28313c, #141b24);
-    box-shadow: 0 12px 24px rgba(25, 32, 41, 0.2);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-
-    &:hover:not(:disabled) {
-      opacity: 1;
-      transform: translateY(-1px);
-      box-shadow: 0 16px 30px rgba(25, 32, 41, 0.24);
-    }
-  }
-
-  .il-btn-icon:hover:not(:disabled) {
-    transform: translateY(-1px);
+  .il-grid--skeleton {
+    align-items: stretch;
   }
 
   .il-skeleton-card {
-    min-height: 186px;
-    border: 1px solid rgba(122, 95, 61, 0.14);
-    border-radius: 22px;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(255, 248, 236, 0.58));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 16px 34px rgba(62, 47, 30, 0.08);
-    padding: 18px;
+    position: relative;
+    min-height: 184px;
+    overflow: hidden;
     display: grid;
     grid-template-columns: 48px 1fr;
     gap: 12px;
-    overflow: hidden;
-    position: relative;
+    padding: 18px;
+    border: 1px solid rgba(128, 109, 83, 0.14);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 12px 30px rgba(48, 40, 30, 0.07);
 
     &::after {
       content: "";
       position: absolute;
       inset: 0;
       transform: translateX(-100%);
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.54), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.58), transparent);
       animation: shimmer 1.45s infinite;
     }
   }
@@ -578,7 +336,7 @@ $il-radius: 8px;
   .il-skeleton-card__metric {
     display: block;
     border-radius: 999px;
-    background: rgba(122, 95, 61, 0.11);
+    background: rgba(128, 109, 83, 0.11);
   }
 
   .il-skeleton-card__icon {
@@ -589,8 +347,8 @@ $il-radius: 8px;
   }
 
   .il-skeleton-card__line {
-    height: 14px;
     width: 62%;
+    height: 14px;
     align-self: center;
   }
 
@@ -599,23 +357,265 @@ $il-radius: 8px;
   }
 
   .il-skeleton-card__metric {
-    height: 42px;
-    width: 100%;
-    margin-top: 18px;
     grid-column: 1 / -1;
+    width: 100%;
+    height: 42px;
+    margin-top: 18px;
   }
 
+  .il-trash-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .il-trash-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 15px;
+    border: 1px solid rgba(128, 109, 83, 0.15);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 10px 26px rgba(48, 40, 30, 0.06);
+
+    strong {
+      color: $il-ink;
+    }
+
+    p {
+      margin: 6px 0 0;
+      color: $il-muted;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+  }
+
+  .il-trash-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .il-empty {
+    padding: 58px 20px;
+    text-align: center;
+    border: 1px dashed rgba(128, 109, 83, 0.2);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+    .il-empty__icon {
+      margin-bottom: 16px;
+      color: #9d968d;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      color: $il-ink;
+      font-size: 1.12rem;
+      letter-spacing: -0.02em;
+    }
+
+    p {
+      max-width: 48ch;
+      margin: 0 auto 16px;
+      color: $il-muted;
+      line-height: 1.55;
+    }
+
+    button {
+      border: 1px solid rgba($il-accent, 0.28);
+      border-radius: 999px;
+      background: #f8f1e8;
+      color: $il-accent-hover;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-weight: 750;
+      text-decoration: none;
+    }
+  }
+
+  .il-spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid #e5ded3;
+    border-top-color: $il-accent;
+    border-radius: 50%;
+    animation: spin 0.9s infinite linear;
+  }
+
+  button:focus-visible,
   input:focus-visible,
   select:focus-visible,
-  button:focus-visible {
-    outline: 3px solid rgba(197, 164, 126, 0.28);
-    outline-offset: 2px;
+  textarea:focus-visible {
+    outline: 3px solid $il-focus;
+    outline-offset: 3px;
   }
 }
 
+.il-report-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(36, 48, 63, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.il-report-modal {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(720px, calc(100dvh - 36px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid rgba(128, 109, 83, 0.16);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 70px rgba(20, 28, 38, 0.24);
+
+  h3 {
+    margin: 0 0 12px;
+    color: $il-ink;
+    letter-spacing: -0.025em;
+  }
+
+  p {
+    color: $il-muted;
+    line-height: 1.55;
+  }
+}
+
+.il-report-preset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+
+  button {
+    border: 1px solid rgba(128, 109, 83, 0.18);
+    border-radius: 999px;
+    background: $il-surface-soft;
+    color: $il-ink;
+    padding: 7px 11px;
+    cursor: pointer;
+    font-weight: 650;
+  }
+}
+
+.il-report-range {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 9px;
+  align-items: center;
+
+  label {
+    color: $il-muted;
+    font-weight: 650;
+  }
+
+  input {
+    border: 1px solid rgba(128, 109, 83, 0.18);
+    border-radius: 12px;
+    padding: 8px 10px;
+    color: $il-ink;
+  }
+}
+
+.il-report-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.il-blocked-modal__list {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid rgba(128, 109, 83, 0.16);
+  border-radius: 14px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: $il-surface-soft;
+}
+
+.il-blocked-modal__item {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: $il-surface;
+  color: $il-ink;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 992px) {
+  .ing-storage-wrapper {
+    .il-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .il-toolbar__filters,
+    .il-toolbar__actions {
+      align-items: stretch;
+    }
+
+    .il-input-group,
+    .il-select-group,
+    .il-toolbar__actions > button {
+      flex: 1 1 100%;
+      max-width: none;
+    }
+  }
+}
 
 @media (max-width: 640px) {
-  .ing-storage-wrapper .il-grid:has(> :nth-child(2):last-child) {
+  .ing-storage-wrapper {
+    gap: 14px;
+
+    .il-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .il-trash-item {
+      flex-direction: column;
+    }
+
+    .il-trash-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .il-report-range {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ing-storage-wrapper,
+  .ing-storage-wrapper *,
+  .il-report-modal-overlay,
+  .il-report-modal-overlay * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
