@@ -3,278 +3,289 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
-/* --- Local Variables --- */
-$sl-primary: #c5a47e;
+$sl-primary: #a8855f;
+$sl-primary-hover: #8f704e;
 $sl-bg-surface: #ffffff;
-$sl-border: #e2e8f0;
-$sl-text-main: #1e293b;
-$sl-text-sub: #64748b;
-$sl-radius: 8px;
+$sl-bg-soft: #f8f6f1;
+$sl-border: #e5ded3;
+$sl-text-main: #24303f;
+$sl-text-sub: #667085;
+$sl-danger: #b54747;
+$sl-radius: 13px;
 
 .supply-list-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 17px;
   width: 100%;
+  color: $sl-text-main;
 
-  /* --- Toolbar Area --- */
   .sl-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: $sl-bg-surface;
-    border: 1px solid $sl-border;
-    border-radius: $sl-radius;
-    padding: 10px 16px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     flex-wrap: wrap;
     gap: 12px;
+    padding: 13px;
+    border: 1px solid rgba(128, 109, 83, 0.15);
+    border-radius: 21px;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 12px 30px rgba(48, 40, 30, 0.07);
 
-    /* --- Left: Search & Filter --- */
     &__left {
       display: flex;
       align-items: center;
       gap: 10px;
-      flex: 1;
+      flex: 1 1 520px;
       flex-wrap: wrap;
       min-width: 0;
     }
 
-    /* --- Right: Stats & Actions --- */
     &__right {
       display: flex;
       align-items: center;
-      gap: 8px; /* Khoảng cách giữa các nút */
-      flex-shrink: 0;
+      justify-content: flex-end;
+      gap: 8px;
+      flex: 0 0 auto;
       margin-left: auto;
     }
 
-    /* Input Groups */
     .sl-input-group {
       position: relative;
       display: flex;
       align-items: center;
+      min-width: 0;
 
       .sl-icon {
         position: absolute;
-        left: 10px;
-        color: $sl-text-sub;
+        left: 12px;
+        color: #7a746c;
         pointer-events: none;
         z-index: 1;
       }
 
       input,
       select {
-        height: 38px;
-        padding: 0 12px 0 34px;
-        border: 1px solid $sl-border;
-        border-radius: 6px;
-        background: $sl-bg-surface;
+        min-height: 40px;
+        padding: 0 12px 0 36px;
+        border: 1px solid rgba(128, 109, 83, 0.18);
+        border-radius: $sl-radius;
+        background: rgba(255, 255, 255, 0.76);
         color: $sl-text-main;
         font-size: 0.9rem;
         outline: none;
-        transition: all 0.2s;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 
-        &:focus {
-          border-color: $sl-primary;
-          box-shadow: 0 0 0 3px rgba($sl-primary, 0.15);
+        &:hover:not(:disabled) {
+          border-color: rgba($sl-primary, 0.4);
+          background: rgba(255, 255, 255, 0.92);
+        }
+
+        &:focus,
+        &:focus-visible {
+          border-color: rgba($sl-primary, 0.72);
+          box-shadow: 0 0 0 4px rgba($sl-primary, 0.22);
         }
       }
 
-      &.sl-search-box input {
-        width: 220px;
-      }
-      &.sl-filter-box select {
-        min-width: 140px;
-        cursor: pointer;
-      }
+      &.sl-search-box {
+        flex: 1 1 260px;
+        max-width: 390px;
 
-      @media (max-width: 768px) {
-        width: 100%;
-        &.sl-search-box input {
+        input {
           width: 100%;
         }
       }
+
+      &.sl-filter-box {
+        flex: 0 1 170px;
+
+        select {
+          width: 100%;
+          min-width: 150px;
+          cursor: pointer;
+        }
+      }
     }
 
-    /* --- Badge: Tổng --- */
     .sl-stats {
-      display: flex;
+      min-height: 40px;
+      display: inline-flex;
       align-items: center;
-      height: 38px;
       padding: 0 12px;
-      background-color: #f8fafc;
-      border: 1px solid $sl-border;
-      border-radius: 6px;
+      border: 1px solid rgba(128, 109, 83, 0.16);
+      border-radius: $sl-radius;
+      background: $sl-bg-soft;
       color: $sl-text-sub;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       white-space: nowrap;
-      margin-right: 4px; /* Tách nhẹ khỏi nút refresh */
+      font-variant-numeric: tabular-nums;
 
       b {
-        color: $sl-text-main;
         margin-left: 5px;
-        font-weight: 700;
-        font-size: 0.95rem;
+        color: $sl-text-main;
+        font-size: 0.94rem;
+        font-weight: 780;
       }
     }
 
-    /* --- Button: Refresh (Fix lỗi mất icon) --- */
-    .sl-btn-icon {
-      width: 38px;
-      height: 38px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ffffff;
-      border: 1px solid $sl-border;
-      border-radius: 6px;
-      color: $sl-text-sub; /* Đảm bảo icon có màu xám, không phải trắng */
-      cursor: pointer;
-      padding: 0;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: $sl-primary;
-        color: $sl-primary;
-        background: #fdfdfd;
-      }
-
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      .spin {
-        animation: spin 1s linear infinite;
-      }
-    }
-
-    /* --- Button: Thêm mới (Fix lỗi vỡ dòng) --- */
+    .sl-btn-icon,
     .sl-btn-add {
-      /* Cưỡng chế hiển thị ngang */
-      display: flex !important;
+      min-height: 40px;
+      display: inline-flex !important;
       flex-direction: row !important;
       align-items: center !important;
       justify-content: center !important;
+      gap: 7px !important;
+      border-radius: $sl-radius;
+      white-space: nowrap !important;
+      cursor: pointer;
+      transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        border-color 0.18s ease,
+        background 0.18s ease,
+        color 0.18s ease;
 
-      /* Cưỡng chế chiều rộng tự động theo nội dung */
+      svg {
+        margin: 0 !important;
+        flex: 0 0 auto;
+      }
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      &:disabled {
+        opacity: 0.56;
+        cursor: not-allowed;
+      }
+    }
+
+    .sl-btn-icon {
+      width: 40px;
+      padding: 0;
+      border: 1px solid rgba(128, 109, 83, 0.18);
+      background: rgba(255, 255, 255, 0.72);
+      color: $sl-text-sub;
+
+      &:hover:not(:disabled) {
+        border-color: rgba($sl-primary, 0.4);
+        color: $sl-primary-hover;
+        background: #f8f1e8;
+        box-shadow: 0 9px 18px rgba(86, 67, 43, 0.08);
+      }
+
+      .spin {
+        animation: spin 0.9s linear infinite;
+      }
+    }
+
+    .sl-btn-add {
       width: auto !important;
       min-width: fit-content !important;
-      height: 38px !important;
-
-      /* Padding và khoảng cách */
-      padding: 0 16px !important;
-      gap: 8px !important;
-
-      /* Chống xuống dòng */
-      white-space: nowrap !important;
+      height: 40px !important;
+      padding: 0 15px !important;
       flex-shrink: 0 !important;
+      border: 1px solid rgba(36, 48, 63, 0.1) !important;
+      background: #3e4a56 !important;
+      color: #fffaf2 !important;
+      box-shadow: 0 10px 20px rgba(36, 48, 63, 0.14);
+      font-weight: 740;
 
-      /* Fix icon bên trong */
-      svg {
-        margin: 0 !important; /* Xóa margin thừa nếu có */
+      &:hover:not(:disabled) {
+        background: #34404c !important;
+        box-shadow: 0 13px 24px rgba(36, 48, 63, 0.18);
       }
     }
   }
 
-  /* --- Content Grid --- */
   .sl-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 17px;
   }
 
-  /* --- States --- */
+  .sl-grid:has(> :nth-child(2):last-child) {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 380px));
+    justify-content: start;
+  }
+
   .sl-state-box {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
-    background: $sl-bg-surface;
-    border: 1px dashed $sl-border;
-    border-radius: $sl-radius;
+    padding: 56px 20px;
+    border: 1px dashed rgba(128, 109, 83, 0.2);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
     text-align: center;
 
     &.error {
-      color: #ef4444;
-      border-color: #fca5a5;
-      background: #fef2f2;
+      color: $sl-danger;
+      border-color: rgba($sl-danger, 0.26);
+      background: #fbefed;
     }
 
     &.empty {
       .icon-circle {
         width: 50px;
         height: 50px;
-        background: #f1f5f9;
-        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: $sl-text-sub;
         margin-bottom: 12px;
-      }
-      h3 {
-        font-size: 1rem;
-        font-weight: 600;
-        margin-bottom: 4px;
-      }
-      p {
-        font-size: 0.9rem;
+        border-radius: 16px;
+        background: $sl-bg-soft;
         color: $sl-text-sub;
-        margin-bottom: 16px;
+      }
+
+      h3 {
+        margin: 0 0 6px;
+        color: $sl-text-main;
+        font-size: 1.05rem;
+        font-weight: 720;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: $sl-text-sub;
+        font-size: 0.9rem;
+        line-height: 1.55;
       }
     }
   }
 
-  /* --- Skeleton --- */
   .sl-skeleton-card {
-    height: 160px;
-    background: #f1f5f9;
-    border-radius: $sl-radius;
     position: relative;
+    height: 184px;
     overflow: hidden;
+    border: 1px solid rgba(128, 109, 83, 0.14);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 12px 30px rgba(48, 40, 30, 0.07);
+
     &::after {
       content: "";
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.6),
-        transparent
-      );
+      inset: 0;
       transform: translateX(-100%);
-      animation: shimmer 1.5s infinite;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.58), transparent);
+      animation: shimmer 1.45s infinite;
     }
   }
 
-  /* --- Mobile --- */
-  @media (max-width: 768px) {
-    .sl-toolbar {
-      flex-direction: column;
-      align-items: stretch;
-      &__left,
-      &__right {
-        width: 100%;
-        justify-content: space-between;
-      }
-      &__right {
-        margin-top: 10px;
-        border-top: 1px solid $sl-border;
-        padding-top: 10px;
-      }
-      .sl-input-group {
-        width: 100%;
-        &.sl-search-box input {
-          width: 100%;
-        }
-      }
-    }
+  .sl-btn-icon:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  button:focus-visible {
+    outline: 3px solid rgba($sl-primary, 0.24);
+    outline-offset: 3px;
   }
 }
 
@@ -283,74 +294,57 @@ $sl-radius: 8px;
     transform: rotate(360deg);
   }
 }
+
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
   }
 }
 
-.supply-list-container {
-  .sl-toolbar,
-  .sl-state-box,
-  .sl-skeleton-card {
-    border-radius: 16px;
-    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
-  }
+@media (max-width: 768px) {
+  .supply-list-container {
+    .sl-toolbar {
+      flex-direction: column;
+      align-items: stretch;
 
-  .sl-toolbar {
-    padding: 14px;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfaf7 100%);
-  }
+      &__left,
+      &__right {
+        width: 100%;
+        justify-content: space-between;
+      }
 
-  .sl-btn-icon:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  button:focus-visible {
-    outline: 3px solid rgba(197, 164, 126, 0.26);
-    outline-offset: 2px;
-  }
-}
+      &__right {
+        margin-left: 0;
+        padding-top: 10px;
+        border-top: 1px solid rgba(128, 109, 83, 0.14);
+      }
 
-/* --- Premium supply list polish --- */
-.supply-list-container {
-  .sl-toolbar {
-    border-color: rgba(122, 95, 61, 0.15);
-    border-radius: 20px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 248, 236, 0.58));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 16px 36px rgba(62, 47, 30, 0.08);
-  }
+      .sl-input-group {
+        width: 100%;
+        max-width: none;
 
-  .sl-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 18px;
-  }
-
-  .sl-grid:has(> :nth-child(2):last-child) {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 380px));
-    justify-content: start;
-  }
-
-  .sl-state-box,
-  .sl-skeleton-card {
-    border-color: rgba(122, 95, 61, 0.15);
-    border-radius: 22px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 248, 236, 0.58));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 16px 36px rgba(62, 47, 30, 0.08);
-  }
-
-  .sl-skeleton-card {
-    height: 186px;
-  }
-
-  .sl-btn-icon:hover:not(:disabled),
-  .sl-btn-add:hover:not(:disabled) {
-    transform: translateY(-1px);
+        &.sl-search-box input,
+        &.sl-filter-box select {
+          width: 100%;
+          min-width: 0;
+        }
+      }
+    }
   }
 }
-
 
 @media (max-width: 640px) {
+  .supply-list-container .sl-grid,
   .supply-list-container .sl-grid:has(> :nth-child(2):last-child) {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supply-list-container,
+  .supply-list-container * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
