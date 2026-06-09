@@ -1,0 +1,259 @@
+/* =========================================================
+   SCHEDULE COMMAND CENTER TIGHTEN PASS
+   Keeps the warm direction from PR #1028, but reduces empty space,
+   keeps schedule panels below the sidebar layer, and connects toolbar/calendar.
+   ========================================================= */
+
+.manager-page-shell--schedules,
+.manager-page-shell--schedules .manager-page-shell__body,
+.manager-page-shell--schedules .schedule-container {
+  position: relative;
+  z-index: var(--z-content, 1);
+}
+
+.manager-page-shell--schedules .schedule-container {
+  max-width: 100%;
+}
+
+.manager-page-shell--schedules .schedule-container,
+.manager-page-shell--schedules .schedule-header,
+.manager-page-shell--schedules .schedule-toolbar,
+.manager-page-shell--schedules .schedule-board,
+.manager-page-shell--schedules .schedule-availability-panel,
+.manager-page-shell--schedules .schedule-quality-panel,
+.manager-page-shell--schedules .schedule-action-center {
+  z-index: auto !important;
+}
+
+.manager-page-shell--schedules .schedule-header {
+  padding: clamp(0.82rem, 1.35vw, 1.05rem) !important;
+  border-radius: 22px 22px 16px 16px !important;
+  box-shadow: 0 10px 28px rgba(120, 72, 18, 0.07), 0 1px 2px rgba(15, 23, 42, 0.035) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .header-top {
+  align-items: flex-start !important;
+  gap: 0.85rem !important;
+  margin-bottom: 0.66rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .eyebrow-row {
+  gap: 0.3rem !important;
+  margin-bottom: 0.32rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .eyebrow {
+  padding: 0.2rem 0.48rem !important;
+  border-radius: 999px !important;
+  font-size: 0.68rem !important;
+  line-height: 1.1 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .title-group h1 {
+  margin-bottom: 0.2rem !important;
+  font-size: clamp(1.42rem, 2vw, 1.72rem) !important;
+  line-height: 1.08 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .title-group .subtitle {
+  font-size: 0.84rem !important;
+  line-height: 1.35 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .header-actions {
+  gap: 0.52rem !important;
+}
+
+.manager-page-shell--schedules .header-actions .primary-action,
+.manager-page-shell--schedules .header-actions .secondary-action,
+.manager-page-shell--schedules .schedule-settings-trigger {
+  min-height: 2.35rem !important;
+  padding: 0.46rem 0.68rem !important;
+  border-radius: 13px !important;
+  font-size: 0.78rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-grid.compact {
+  gap: 0.58rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card {
+  min-height: 4.15rem !important;
+  padding: 0.58rem 0.66rem !important;
+  border-radius: 15px !important;
+  box-shadow: 0 8px 18px rgba(120, 72, 18, 0.055), 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-icon {
+  width: 2.05rem !important;
+  height: 2.05rem !important;
+  border-radius: 12px !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content .label {
+  font-size: 0.62rem !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content .value {
+  font-size: 1rem !important;
+  line-height: 1.05 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-content .hint {
+  margin-top: 0.08rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1.2 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card:not(.action):not(.has-alert) {
+  background: rgba(255, 253, 247, 0.76) !important;
+  box-shadow: none !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert {
+  background: linear-gradient(135deg, rgba(255, 253, 247, 0.96), rgba(255, 237, 213, 0.82)) !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel,
+.manager-page-shell--schedules .schedule-publish-reminder,
+.manager-page-shell--schedules .schedule-feedback {
+  margin-top: 0.62rem !important;
+  border-radius: 17px !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr) !important;
+  gap: 0.8rem !important;
+  padding: 0.82rem !important;
+  min-height: 0 !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__header,
+.manager-page-shell--schedules .schedule-quality-panel__body,
+.manager-page-shell--schedules .schedule-quality-panel__metrics,
+.manager-page-shell--schedules .schedule-action-center__body {
+  min-height: 0 !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__title {
+  font-size: 0.8rem !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__headline {
+  font-size: 0.78rem !important;
+  line-height: 1.35 !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metrics {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.48rem !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metric {
+  padding: 0.55rem 0.62rem !important;
+  border-radius: 13px !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__metric .value {
+  font-size: 0.98rem !important;
+}
+
+.manager-page-shell--schedules .schedule-quality-panel__link {
+  margin-top: 0.4rem !important;
+  width: fit-content !important;
+}
+
+.manager-page-shell--schedules .schedule-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  margin: 0.66rem 0 0 !important;
+  border-radius: 18px 18px 0 0 !important;
+  border-bottom: 0 !important;
+  box-shadow: 0 8px 18px rgba(120, 72, 18, 0.055) !important;
+}
+
+.manager-page-shell--schedules .schedule-toolbar + .schedule-week-card,
+.manager-page-shell--schedules .schedule-toolbar + .schedule-board,
+.manager-page-shell--schedules .schedule-toolbar ~ .schedule-board {
+  margin-top: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.manager-page-shell--schedules .schedule-toolbar .toolbar-group,
+.manager-page-shell--schedules .schedule-toolbar .view-toggles,
+.manager-page-shell--schedules .schedule-toolbar .date-navigation,
+.manager-page-shell--schedules .schedule-toolbar .toolbar-group--filters,
+.manager-page-shell--schedules .schedule-toolbar .toolbar-group--actions {
+  gap: 0.42rem !important;
+}
+
+.manager-page-shell--schedules .schedule-toolbar button,
+.manager-page-shell--schedules .schedule-toolbar select {
+  min-height: 2.22rem !important;
+  font-size: 0.74rem !important;
+}
+
+.manager-page-shell--schedules .schedule-board {
+  padding-top: 0.7rem !important;
+}
+
+.manager-page-shell--schedules .schedule-day-column {
+  min-height: 13.8rem !important;
+}
+
+.manager-page-shell--schedules .day-body {
+  padding: 0.58rem !important;
+}
+
+.manager-page-shell--schedules .add-shift-btn,
+.manager-page-shell--schedules .empty-shift-slot {
+  min-height: 2.45rem !important;
+  border-radius: 13px !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel {
+  margin-top: 0.72rem !important;
+  padding: 0.72rem !important;
+  border-radius: 17px !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__header {
+  gap: 0.4rem 0.7rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary {
+  margin-top: 0.5rem !important;
+  gap: 0.42rem !important;
+}
+
+.manager-page-shell--schedules .schedule-availability-panel__summary > div {
+  min-height: 2.72rem !important;
+  padding: 0.42rem 0.52rem !important;
+}
+
+@media (max-width: 1180px) {
+  .manager-page-shell--schedules .schedule-quality-panel {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-page-shell--schedules .schedule-header .header-top {
+    display: grid !important;
+  }
+
+  .manager-page-shell--schedules .schedule-quality-panel,
+  .manager-page-shell--schedules .schedule-header .kpi-grid.compact {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-page-shell--schedules .schedule-toolbar {
+    position: relative !important;
+    top: auto !important;
+  }
+}
