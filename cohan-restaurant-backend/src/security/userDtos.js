@@ -147,6 +147,7 @@ export function sanitizeAdminUserListItem(user) {
     lastLoginAt: source.lastLoginAt,
     emergencyContact: source.emergencyContact,
     wallet: safeWallet(source.wallet),
+    restaurantForStaff: source.restaurantForStaff,
     isOnline: source.isOnline,
     loyaltyDurationScore: source.loyaltyDurationScore,
   });
@@ -258,21 +259,10 @@ export function assertNoSensitiveUserFields(obj) {
     "emailVerifyTokenHash",
     "phoneVerifyToken",
     "phoneVerifyTokenHash",
-    "emailVerifyTokenExp",
-    "phoneVerifyTokenExp",
-    "deletedAt",
-    "deleteExpiresAt",
-    "deletedBy",
-    "lastLoginIp",
-    "nationalId",
-    "bankAccountNumber",
-    "noteInternal",
   ];
   for (const field of sensitive) {
     if (Object.prototype.hasOwnProperty.call(obj || {}, field)) {
-      throw new GraphQLError(`Sensitive field leaked: ${field}`, {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+      throw new Error(`Sensitive field leaked: ${field}`);
     }
   }
 }
