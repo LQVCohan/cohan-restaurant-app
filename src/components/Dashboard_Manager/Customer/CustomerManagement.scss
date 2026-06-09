@@ -1,35 +1,61 @@
 /* src/pages/CustomerManagement/CustomerManagement.scss */
 
-// --- Variables (Consistent with Modal/Card) ---
-$cm-primary: #2563eb; // Blue 600
-$cm-primary-hover: #1d4ed8; // Blue 700
-$cm-gold: #d97706; // Amber 600
-$cm-gold-bg: #fffbeb; // Amber 50
-$cm-bg-app: #f1f5f9; // Slate 100 (Background chính của Page)
-$cm-bg-surface: #ffffff; // White (Header, Cards)
-$cm-border: #e2e8f0; // Slate 200
-$cm-text-main: #0f172a; // Slate 900
-$cm-text-sub: #64748b; // Slate 500
+// --- Calm customer workspace palette ---
+$cm-primary: #256f75;
+$cm-primary-hover: #16545a;
+$cm-gold: #a96f2d;
+$cm-gold-bg: #fff6e8;
+$cm-bg-app: #f4efe6;
+$cm-bg-surface: #fffdf8;
+$cm-bg-soft: #f8f3ea;
+$cm-border: #ded7c9;
+$cm-border-strong: #cfc3b0;
+$cm-text-main: #1f2a2b;
+$cm-text-sub: #64706e;
+$cm-shadow-soft: 0 18px 48px rgba(66, 56, 38, 0.08),
+  0 2px 8px rgba(66, 56, 38, 0.05);
+$cm-focus: rgba(37, 111, 117, 0.18);
 
 .cm-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: $cm-bg-app; // QUAN TRỌNG: Nền xám để làm nổi bật Card
+  background:
+    radial-gradient(circle at top left, rgba(37, 111, 117, 0.08), transparent 34%),
+    linear-gradient(180deg, #f7f2e9 0%, $cm-bg-app 100%);
   color: $cm-text-main;
   overflow: hidden;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.38;
+    background-image:
+      linear-gradient(rgba(31, 42, 43, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31, 42, 43, 0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 
   /* --- 1. Header Sticky --- */
   .cm-header {
     flex-shrink: 0;
-    height: 72px;
-    background: $cm-bg-surface;
-    border-bottom: 1px solid $cm-border;
+    min-height: 72px;
+    background: rgba($cm-bg-surface, 0.92);
+    border-bottom: 1px solid rgba($cm-border, 0.95);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72), 0 10px 24px rgba(66, 56, 38, 0.05);
+    backdrop-filter: blur(14px);
     z-index: 20;
 
     .cm-header-left {
@@ -38,43 +64,55 @@ $cm-text-sub: #64748b; // Slate 500
       gap: 16px;
 
       .cm-brand-icon {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, $cm-primary, #60a5fa);
-        color: white;
-        border-radius: 10px;
+        width: 42px;
+        height: 42px;
+        background: linear-gradient(135deg, #e9f4f3, #fff4df);
+        color: $cm-primary;
+        border: 1px solid #d6e8e5;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+          0 10px 22px rgba(37, 111, 117, 0.12);
       }
 
       .cm-header-info {
         display: flex;
         flex-direction: column;
+        gap: 3px;
+
         .cm-title {
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 21px;
+          font-weight: 800;
           color: $cm-text-main;
-          line-height: 1.2;
+          line-height: 1.12;
           margin: 0;
+          letter-spacing: -0.025em;
+          text-wrap: balance;
         }
+
         .cm-select-wrapper {
           position: relative;
+
           .cm-select {
             appearance: none;
             background: transparent;
             border: none;
             font-size: 13px;
             color: $cm-text-sub;
-            font-weight: 500;
+            font-weight: 550;
             padding-right: 16px;
             cursor: pointer;
+
             &:hover {
               color: $cm-primary;
             }
-            &:focus {
-              outline: none;
+
+            &:focus-visible {
+              outline: 2px solid $cm-primary;
+              outline-offset: 3px;
+              border-radius: 8px;
             }
           }
         }
@@ -86,46 +124,57 @@ $cm-text-sub: #64748b; // Slate 500
       align-items: center;
       gap: 12px;
 
-      // Online Badge
       .cm-stat-badge {
         display: flex;
         align-items: center;
-        gap: 6px;
-        background: #ecfdf5;
-        color: #059669;
-        padding: 6px 12px;
-        border-radius: 100px;
+        gap: 7px;
+        background: #edf7ef;
+        color: #3f7c5e;
+        padding: 7px 12px;
+        border-radius: 999px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 700;
         margin-right: 12px;
+        border: 1px solid #cde5d4;
+
         .cm-dot-pulse {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: #22c55e;
-          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+          background: #4f9c79;
+          box-shadow: 0 0 0 0 rgba(79, 156, 121, 0.55);
           animation: pulse-green 2s infinite;
         }
       }
 
-      // Buttons
       .cm-btn {
         height: 40px;
         padding: 0 16px;
-        border-radius: 10px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         gap: 8px;
         font-size: 14px;
-        font-weight: 600;
-        transition: all 0.2s;
+        font-weight: 700;
+        transition: background 0.22s ease, border-color 0.22s ease, color 0.22s ease,
+          transform 0.22s ease, box-shadow 0.22s ease;
         cursor: pointer;
-        border: none;
+        border: 1px solid transparent;
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 4px $cm-focus;
+        }
+
+        &:active {
+          transform: translateY(1px) scale(0.99);
+        }
 
         &.cm-btn-primary {
           background: $cm-primary;
           color: white;
-          box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+          box-shadow: 0 8px 18px rgba(37, 111, 117, 0.16);
+
           &:hover {
             background: $cm-primary-hover;
             transform: translateY(-1px);
@@ -136,14 +185,15 @@ $cm-text-sub: #64748b; // Slate 500
           width: 40px;
           padding: 0;
           justify-content: center;
-          background: white;
-          border: 1px solid $cm-border;
+          background: $cm-bg-surface;
+          border-color: $cm-border;
           color: $cm-text-sub;
+
           &:hover,
           &.active {
-            border-color: $cm-primary;
+            border-color: #c8dedc;
             color: $cm-primary;
-            background: #eff6ff;
+            background: #e9f4f3;
           }
         }
       }
@@ -153,43 +203,55 @@ $cm-text-sub: #64748b; // Slate 500
   /* --- 2. Toolbar (Search & Filter) --- */
   .cm-toolbar {
     flex-shrink: 0;
-    padding: 16px 24px;
+    padding: 16px 24px 14px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: $cm-bg-app; // Blend with background
+    gap: 14px;
+    background: transparent;
 
     .cm-toolbar-left {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       flex: 1;
+      min-width: 0;
 
       .cm-search-box {
         position: relative;
-        width: 320px;
+        width: min(360px, 36vw);
+        min-width: 260px;
+
         .cm-search-icon {
           position: absolute;
-          left: 12px;
+          left: 13px;
           top: 50%;
           transform: translateY(-50%);
           color: $cm-text-sub;
         }
+
         input {
           width: 100%;
-          height: 44px;
+          height: 45px;
           padding-left: 40px;
           padding-right: 16px;
-          border-radius: 12px;
+          border-radius: 14px;
           border: 1px solid $cm-border;
-          background: white;
+          background: rgba($cm-bg-surface, 0.96);
           font-size: 14px;
           color: $cm-text-main;
-          transition: all 0.2s;
+          transition: border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+          box-shadow: 0 1px 2px rgba(66, 56, 38, 0.04);
+
+          &::placeholder {
+            color: #8a948f;
+          }
+
           &:focus {
             outline: none;
+            background: #ffffff;
             border-color: $cm-primary;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 4px $cm-focus;
           }
         }
       }
@@ -197,44 +259,66 @@ $cm-text-sub: #64748b; // Slate 500
       .cm-quick-filters {
         display: flex;
         gap: 8px;
+        overflow-x: auto;
+        padding: 2px 2px 4px;
+        scrollbar-width: thin;
+
         .cm-pill {
           height: 44px;
-          padding: 0 16px;
-          border-radius: 12px;
-          border: 1px solid transparent;
-          background: white;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid rgba($cm-border, 0.95);
+          background: rgba($cm-bg-surface, 0.92);
           color: $cm-text-sub;
           display: flex;
           align-items: center;
           gap: 8px;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+          transition: background 0.22s ease, color 0.22s ease, border-color 0.22s ease,
+            transform 0.22s ease, box-shadow 0.22s ease;
+          box-shadow: 0 1px 2px rgba(66, 56, 38, 0.04);
+          white-space: nowrap;
 
           .cm-pill-count {
-            background: $cm-bg-app;
-            padding: 2px 6px;
-            border-radius: 6px;
+            background: $cm-bg-soft;
+            padding: 2px 7px;
+            border-radius: 999px;
             font-size: 11px;
+            font-variant-numeric: tabular-nums;
+            color: $cm-text-sub;
           }
 
           &:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-color: #c8dedc;
+            color: $cm-primary;
+            background: #f9fdfc;
+            box-shadow: 0 8px 18px rgba(66, 56, 38, 0.07);
+          }
+
+          &:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 4px $cm-focus;
+          }
+
+          &:active {
+            transform: translateY(0) scale(0.985);
           }
 
           &.is-active {
-            background: $cm-gold-bg; // Nền vàng nhạt
-            border-color: #fcd34d;
-            color: $cm-gold; // Chữ vàng đậm
+            background: #e9f4f3;
+            border-color: #b9d6d2;
+            color: $cm-primary-hover;
+
             .cm-pill-count {
-              background: white;
-              color: $cm-gold;
+              background: #fffdf8;
+              color: $cm-primary-hover;
             }
+
             .cm-pill-icon {
-              color: $cm-gold;
+              color: $cm-primary-hover;
             }
           }
         }
@@ -244,33 +328,51 @@ $cm-text-sub: #64748b; // Slate 500
     .cm-toolbar-right {
       display: flex;
       gap: 8px;
+      flex-shrink: 0;
+
       .cm-btn {
         height: 44px;
-        padding: 0 16px;
-        border-radius: 12px;
+        padding: 0 15px;
+        border-radius: 13px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
         display: flex;
         align-items: center;
         gap: 8px;
+        transition: background 0.22s ease, color 0.22s ease, border-color 0.22s ease,
+          transform 0.22s ease, box-shadow 0.22s ease;
+
+        &:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 4px $cm-focus;
+        }
+
+        &:active {
+          transform: translateY(1px) scale(0.99);
+        }
 
         &.cm-btn-secondary {
-          background: white;
+          background: rgba($cm-bg-surface, 0.94);
           border: 1px solid $cm-border;
           color: $cm-text-main;
+
           &:hover {
-            border-color: $cm-gold;
-            color: $cm-gold;
-            background: $cm-gold-bg;
+            border-color: #c8dedc;
+            color: $cm-primary;
+            background: #eef8f7;
+            transform: translateY(-1px);
           }
         }
+
         &.cm-btn-text {
           background: transparent;
           color: $cm-text-sub;
           border: none;
+
           &:hover {
-            background: rgba(0, 0, 0, 0.05);
+            background: rgba(37, 111, 117, 0.08);
+            color: $cm-primary;
           }
         }
       }
@@ -283,85 +385,170 @@ $cm-text-sub: #64748b; // Slate 500
     display: flex;
     overflow: hidden;
     position: relative;
-    padding: 0 24px 24px 24px; // Padding xung quanh grid
+    padding: 0 24px 24px;
+    gap: 0;
 
     .cm-main-area {
       flex: 1;
+      min-width: 0;
       overflow-y: auto;
-      // Scrollbar styling
+      padding-right: 2px;
+      scrollbar-gutter: stable;
+
       &::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
       }
       &::-webkit-scrollbar-track {
         background: transparent;
       }
       &::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
+        background: #c9c0b1;
+        border-radius: 999px;
+        border: 2px solid $cm-bg-app;
+      }
+      &::-webkit-scrollbar-thumb:hover {
+        background: #ad9f8d;
       }
     }
 
-    /* Sidebar Animation (Slide in) */
     .cm-sidebar {
       width: 0;
       opacity: 0;
-      background: white;
+      background: rgba($cm-bg-surface, 0.96);
       border-left: 1px solid $cm-border;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: width 0.28s ease, opacity 0.22s ease, margin-left 0.28s ease;
       overflow: hidden;
+      box-shadow: none;
     }
   }
 
-  // State when sidebar is open
   &.is-sidebar-open {
     .cm-layout .cm-sidebar {
-      width: 320px;
+      width: 340px;
       opacity: 1;
-      margin-left: 20px;
-      border-radius: 16px;
-      border: 1px solid $cm-border;
+      margin-left: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba($cm-border, 0.95);
+      box-shadow: $cm-shadow-soft;
     }
   }
 
   .cm-rank-settings {
-    margin-top: 12px;
-    background: #fff;
+    margin: 12px;
+    background: #fffdf8;
     border: 1px solid $cm-border;
-    border-radius: 12px;
-    padding: 12px;
+    border-radius: 16px;
+    padding: 14px;
+
     h4 {
       margin: 0 0 10px;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 800;
+      color: $cm-text-main;
+      letter-spacing: -0.01em;
     }
+
     .cm-rank-row {
       display: grid;
-      grid-template-columns: 1fr 110px;
+      grid-template-columns: 1fr 112px;
       gap: 8px;
       margin-bottom: 8px;
+
       input {
         border: 1px solid $cm-border;
-        border-radius: 8px;
-        padding: 8px;
+        border-radius: 11px;
+        padding: 9px 10px;
         font-size: 13px;
+        background: #fbf8f1;
+        color: $cm-text-main;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+
+        &:focus {
+          outline: none;
+          background: #ffffff;
+          border-color: $cm-primary;
+          box-shadow: 0 0 0 4px $cm-focus;
+        }
       }
     }
+
     .cm-btn {
       width: 100%;
       justify-content: center;
-      margin-top: 4px;
+      margin-top: 6px;
+    }
+  }
+}
+
+@media (max-width: 1180px) {
+  .cm-page {
+    .cm-toolbar {
+      align-items: stretch;
+      flex-direction: column;
+
+      .cm-toolbar-left,
+      .cm-toolbar-right {
+        width: 100%;
+      }
+
+      .cm-toolbar-left {
+        flex-wrap: wrap;
+
+        .cm-search-box {
+          width: 100%;
+          min-width: 0;
+        }
+      }
+
+      .cm-toolbar-right {
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+    }
+
+    &.is-sidebar-open .cm-layout .cm-sidebar {
+      width: 320px;
+    }
+  }
+}
+
+@media (max-width: 860px) {
+  .cm-page {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+
+    .cm-layout {
+      flex-direction: column;
+      overflow: visible;
+      padding: 0 16px 20px;
+
+      .cm-main-area {
+        overflow: visible;
+      }
+
+      .cm-sidebar {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 14px;
+      }
+    }
+
+    &.is-sidebar-open .cm-layout .cm-sidebar {
+      width: 100%;
+      margin-left: 0;
     }
   }
 }
 
 @keyframes pulse-green {
   0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    box-shadow: 0 0 0 0 rgba(79, 156, 121, 0.55);
   }
   70% {
-    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 7px rgba(79, 156, 121, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 0 rgba(79, 156, 121, 0);
   }
 }
