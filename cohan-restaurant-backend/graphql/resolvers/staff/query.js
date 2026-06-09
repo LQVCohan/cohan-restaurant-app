@@ -455,10 +455,17 @@ export default {
     requireAuth(ctx);
     const filter = { userType: "STAFF", deletedAt: null };
 
-    const rid = toObjectId(restaurantId);
     if (restaurantId) {
       await requireRestaurantAccess(ctx, restaurantId);
-      filter.$or = [{ restaurantForStaff: rid || restaurantId }];
+      const rid = toObjectId(restaurantId);
+      const restaurantScopeFilter = {
+        $or: [
+          ...(rid ? [{ restaurantForStaff: rid }, { refRestaurants: rid }] : []),
+          { restaurantForStaff: restaurantId },
+          { refRestaurants: restaurantId },
+        ],
+      };
+      filter.$and = [...(filter.$and || []), restaurantScopeFilter];
     } else {
       requireRoles(ctx, ["ADMIN"]);
     }
@@ -474,7 +481,9 @@ export default {
         { username: regex },
         { employeeCode: regex },
       ];
-      if (filter.$or) {
+      if (filter.$and) {
+        filter.$and = [...filter.$and, { $or: searchFilter }];
+      } else if (filter.$or) {
         filter.$and = [{ $or: filter.$or }, { $or: searchFilter }];
         delete filter.$or;
       } else {

@@ -149,3 +149,36 @@ $nav-shadow:
     }
   }
 }
+
+// Premium segmented navigation polish.
+.page-nav-container {
+  .nav-inner-wrapper {
+    background: rgba(255, 253, 248, 0.88);
+    border: 1px solid rgba(154, 119, 78, 0.2);
+    border-radius: 18px;
+    box-shadow: 0 16px 36px rgba(84, 55, 30, 0.1);
+  }
+
+  .nav-item {
+    color: #7b6a58;
+
+    &:focus-visible {
+      box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.18);
+    }
+
+    &:hover:not(.active) {
+      background: #f6ead9;
+      color: #5b4632;
+    }
+
+    &.active {
+      color: #6f4b2a;
+      background: #f0dfc7;
+      box-shadow: inset 0 0 0 1px rgba(143, 106, 66, 0.15), 0 8px 18px rgba(143, 106, 66, 0.16);
+    }
+
+    .active-bg {
+      background: transparent;
+    }
+  }
+}

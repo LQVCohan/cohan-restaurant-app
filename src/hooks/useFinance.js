@@ -10,11 +10,15 @@ const GET_FINANCE_DASHBOARD = gql`
         expense
         profit
         debt
+        receivable
+        payable
+        overdue
         payment
         refund
         settlement
         cashIn
         cashOut
+        primeCostRate
       }
       trend {
         key
@@ -68,13 +72,21 @@ const RANGE_MAP = {
   month: "MONTH",
   quarter: "QUARTER",
   year: "YEAR",
+  custom: "CUSTOM",
 };
+
+const today = new Date();
+const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
 
 export const useFinance = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
   const [restaurantId, setRestaurantId] = useState(restaurants?.[0]?.id || "");
   const [range, setRange] = useState("month");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState(monthStart);
+  const [dateTo, setDateTo] = useState(monthEnd);
+  const [currency, setCurrency] = useState("VND");
 
   useEffect(() => {
     if (!restaurantId && restaurants?.length) {
@@ -89,6 +101,9 @@ export const useFinance = () => {
       input: {
         restaurantId,
         range: RANGE_MAP[range] || "MONTH",
+        dateFrom: range === "custom" ? dateFrom : null,
+        dateTo: range === "custom" ? dateTo : null,
+        currency,
       },
     },
   });
@@ -107,6 +122,12 @@ export const useFinance = () => {
     setRestaurantId,
     range,
     setRange,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    currency,
+    setCurrency,
     typeFilter,
     setTypeFilter,
     loading,
@@ -117,11 +138,15 @@ export const useFinance = () => {
       expense: 0,
       profit: 0,
       debt: 0,
+      receivable: 0,
+      payable: 0,
+      overdue: 0,
       payment: 0,
       refund: 0,
       settlement: 0,
       cashIn: 0,
       cashOut: 0,
+      primeCostRate: 0,
     },
     trend: dashboard?.trend || [],
     transactions,

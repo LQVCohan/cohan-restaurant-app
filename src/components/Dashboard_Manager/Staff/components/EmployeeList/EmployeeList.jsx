@@ -19,6 +19,8 @@ const EmployeeList = ({
   onEmployeeSelect,
   roleList = [],
   loading = false,
+  error = null,
+  onRetry,
 }) => {
   const dataSource = employees;
 
@@ -68,6 +70,14 @@ const EmployeeList = ({
   ]);
 
   // --- LOGIC PHÂN TRANG ---
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+      departmentFilter !== "all" ||
+      employmentStatusFilter !== "all" ||
+      accountStatusFilter !== "all" ||
+      verificationFilter !== "all" ||
+      roleFilter !== "all",
+  );
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
   const paginatedEmployees = filteredEmployees.slice(
     (currentPage - 1) * itemsPerPage,
@@ -213,12 +223,28 @@ const EmployeeList = ({
       {/* 4. LIST CONTENT */}
       <div className="list-body custom-scrollbar">
         {loading ? (
-          <div className="empty-state">
+          <div className="list-skeleton" aria-label="Đang tải danh sách nhân viên">
+            {[0, 1, 2, 3, 4, 5].map((item) => (
+              <div className="skeleton-row" key={item}>
+                <span className="skeleton-avatar" />
+                <span className="skeleton-line primary" />
+                <span className="skeleton-line secondary" />
+                <span className="skeleton-pill" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="empty-state error-state">
             <div className="icon-wrapper">
-              <Users size={40} />
+              <SearchX size={48} />
             </div>
-            <h4>Đang tải danh sách</h4>
-            <p>Vui lòng chờ trong giây lát...</p>
+            <h4>Không tải được nhân viên</h4>
+            <p>{error?.message || "Vui lòng kiểm tra kết nối hoặc thử lại."}</p>
+            {onRetry && (
+              <button type="button" className="retry-btn" onClick={() => onRetry()}>
+                Thử lại
+              </button>
+            )}
           </div>
         ) : paginatedEmployees.length > 0 ? (
           paginatedEmployees.map((employee) => (
@@ -238,8 +264,12 @@ const EmployeeList = ({
             <div className="icon-wrapper">
               <SearchX size={48} />
             </div>
-            <h4>Không tìm thấy kết quả</h4>
-            <p>Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc.</p>
+            <h4>Không tìm thấy nhân viên</h4>
+            <p>
+              {hasActiveFilters
+                ? "Thử đổi bộ lọc hoặc kiểm tra nhà hàng đang chọn."
+                : "Nhà hàng này chưa có hồ sơ nhân viên đang hiển thị."}
+            </p>
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js"; // Giả định
-const { Types } = mongoose;
+const { Schema, Types } = mongoose;
 
 const CashflowSchema = BaseSchemaModel(
   {
@@ -8,23 +8,71 @@ const CashflowSchema = BaseSchemaModel(
     type: { type: String, enum: ["INFLOW", "OUTFLOW"], required: true },
     amount: { type: Number, required: true },
     currency: { type: String, default: "VND" },
+    category: {
+      type: String,
+      enum: ["sale", "refund", "payroll", "inventory", "operations", "supplier_payment", "adjustment", "other"],
+      default: "other",
+      index: true,
+    },
+    subcategory: {
+      type: String,
+      enum: ["labor", "cogs", "rent", "utility", "maintenance", "marketing", "bank_fee", "tax", "etc", "other"],
+      default: "other",
+      index: true,
+    },
+    method: {
+      type: String,
+      enum: ["cash", "card", "bank_transfer", "e_wallet", "transfer", "provider", "other"],
+      default: "cash",
+    },
+    status: {
+      type: String,
+      enum: ["draft", "pending", "completed", "voided"],
+      default: "completed",
+      index: true,
+    },
+    source: {
+      type: String,
+      enum: ["order", "reservation", "payroll", "inventory", "manual", "bank", "refund", "system"],
+      default: "system",
+      index: true,
+    },
     ref: {
       kind: String,
       id: { type: Types.ObjectId }, // e.g., kind: 'Invoice', id: ...
+      orderId: { type: Types.ObjectId },
       orderIds: [{ type: Types.ObjectId }],
+      invoiceId: { type: Types.ObjectId },
+      payrollPaymentId: { type: Types.ObjectId },
+      stockMovementId: { type: Types.ObjectId },
+      reconciliationId: { type: Types.ObjectId },
+      paymentTransactionId: { type: Types.ObjectId },
+      refundId: { type: Types.ObjectId },
     },
+    evidenceAttachments: { type: [Schema.Types.Mixed], default: [] },
     note: String,
-    category: { type: String, default: "" },
+
+        category: { type: String, default: "" },
     subcategory: { type: String, default: "" },
     meta: { type: Object, default: {} },
+
+    createdBy: { type: Types.ObjectId, ref: "User" },
+    approvedBy: { type: Types.ObjectId, ref: "User" },
+    approvedAt: Date,
+    voidedBy: { type: Types.ObjectId, ref: "User" },
+    voidedAt: Date,
+    voidReason: String,
+
     occurredAt: { type: Date, default: Date.now },
   },
   {} // Options bổ sung (nếu có)
 );
 
-CashflowSchema.index({ restaurantId: 1, at: -1 });
-CashflowSchema.index({ "ref.kind": 1, "ref.id": 1 }, { unique: true, sparse: true });
+CashflowSchema.index({ restaurantId: 1, occurredAt: -1 });
+CashflowSchema.index({ restaurantId: 1, source: 1, status: 1 });
 CashflowSchema.index({ restaurantId: 1, category: 1, subcategory: 1, occurredAt: -1 });
+CashflowSchema.index({ "ref.kind": 1, "ref.id": 1 });
+  
 
 export default mongoose.models.Cashflow ||
   mongoose.model("Cashflow", CashflowSchema);

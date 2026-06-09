@@ -17,6 +17,15 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "order.cancel",
     "payment.read",
     "payment.write",
+    "finance.read",
+    "finance.write",
+    "finance.export",
+    "transaction.read",
+    "transaction.write",
+    "reconciliation.read",
+    "reconciliation.write",
+    "refund.read",
+    "refund.write",
     "staff.read",
     "staff.write",
     "customer.read",
@@ -54,8 +63,50 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "payroll.payment.record",
     "payroll.export",
   ],
-  hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read", "payroll.read", "payroll.validate", "payroll.payment.record", "payroll.export"],
-  accountant: ["payment.read", "payment.write", "report.read", "report.export", "payroll.read", "payroll.validate", "payroll.period.create", "payroll.settings.update", "payroll.period.recalculate", "payroll.period.finalize", "payroll.period.lock", "payroll.adjustment.write", "payroll.payment.record", "payroll.payout.execute", "payroll.export"],
+  hr: [
+    "staff.read",
+    "shift.read",
+    "report.read",
+    "attendance.read",
+    "performance.read",
+    "payroll.read",
+    "payroll.validate",
+    "payroll.payment.record",
+    "payroll.export",
+  ],
+
+  accountant: [
+    "payment.read",
+    "payment.write",
+
+    "finance.read",
+    "finance.write",
+    "finance.export",
+
+    "transaction.read",
+    "transaction.write",
+
+    "reconciliation.read",
+    "reconciliation.write",
+
+    "refund.read",
+    "refund.write",
+
+    "report.read",
+    "report.export",
+
+    "payroll.read",
+    "payroll.validate",
+    "payroll.period.create",
+    "payroll.settings.update",
+    "payroll.period.recalculate",
+    "payroll.period.finalize",
+    "payroll.period.lock",
+    "payroll.adjustment.write",
+    "payroll.payment.record",
+    "payroll.payout.execute",
+    "payroll.export",
+  ],
 });
 
 export const NO_PERMISSION_MESSAGE = "Bạn không có quyền thực hiện thao tác này.";

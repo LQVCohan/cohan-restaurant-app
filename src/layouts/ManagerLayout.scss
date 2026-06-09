@@ -18,11 +18,13 @@ $manager-accent-dark: #c2410c;
   --manager-header-height: #{$manager-header-height};
 
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+  transition: grid-template-columns 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   background:
     radial-gradient(circle at 10% 0%, rgba(249, 115, 22, 0.13), transparent 28rem),
     radial-gradient(circle at 95% 0%, rgba(251, 146, 60, 0.1), transparent 26rem),
@@ -33,20 +35,24 @@ $manager-accent-dark: #c2410c;
   }
 
   .sidebar {
-    flex: 0 0 var(--sidebar-width);
+    grid-column: 1;
     width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    max-width: var(--sidebar-width);
     transition:
       width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+      min-width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+      max-width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
       transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
       visibility 0.24s ease;
   }
 
   &__main {
     position: relative;
+    grid-column: 2;
     display: flex;
-    flex: 1 1 auto;
     flex-direction: column;
-    width: calc(100% - var(--sidebar-width));
+    width: 100%;
     min-width: 0;
     min-height: 100vh;
     min-height: 100dvh;
@@ -107,6 +113,7 @@ $manager-accent-dark: #c2410c;
 
   @media (max-width: 768px) {
     --sidebar-width: 0px;
+    grid-template-columns: minmax(0, 1fr);
 
     &.sidebar-open {
       --sidebar-width: 0px;
@@ -116,7 +123,10 @@ $manager-accent-dark: #c2410c;
       position: fixed;
       top: 0;
       left: 0;
+      grid-column: auto;
       width: min(100%, 22rem);
+      min-width: 0;
+      max-width: min(100%, 22rem);
       height: 100vh;
       height: 100dvh;
       transform: translate3d(-100%, 0, 0);
@@ -129,7 +139,11 @@ $manager-accent-dark: #c2410c;
       visibility: visible;
     }
 
-    &__main,
+    &__main {
+      grid-column: 1;
+      width: 100%;
+    }
+
     &__header,
     &__content {
       width: 100%;
