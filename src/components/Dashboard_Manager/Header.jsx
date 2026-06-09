@@ -16,6 +16,7 @@ import {
   FiAlertTriangle,
 } from "react-icons/fi";
 import "./Styles/Header.scss";
+import "./Styles/HeaderShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { toApiAssetUrl } from "@/lib/apiBaseUrl";
 
