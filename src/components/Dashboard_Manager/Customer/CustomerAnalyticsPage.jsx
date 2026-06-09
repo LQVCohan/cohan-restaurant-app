@@ -1,14 +1,21 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import {
-  Users,
-  Repeat2,
-  Wallet,
-  ReceiptText,
-  Utensils,
+  AlertTriangle,
+  ArrowRight,
   BarChart3,
   ClipboardList,
+  Clock3,
+  Phone,
+  ReceiptText,
+  RefreshCw,
+  Repeat2,
+  Search,
+  Store,
   UserRoundCog,
+  Users,
+  Utensils,
+  Wallet,
 } from "lucide-react";
 import { AuthContext } from "../../../context/AuthContext";
 import "./CustomerAnalyticsPage.scss";
@@ -109,18 +116,63 @@ const getChurnRiskMeta = (daysSinceLastOrder) => {
   return { label: "Thấp", className: "low" };
 };
 
-const navigateManagerPage = (page) => {
+const PRIORITY_LABELS = {
+  HIGH: "Ưu tiên cao",
+  MEDIUM: "Ưu tiên vừa",
+  LOW: "Theo dõi",
+};
+
+const navigateManagerPage = (page, query = {}) => {
   if (!["orders", "customers", "menu"].includes(page)) return;
 
   window.dispatchEvent(
     new CustomEvent("manager:navigate", {
       detail: {
         page,
+        query,
         source: "customer-analytics",
       },
     }),
   );
 };
+
+const getInitials = (name = "") => {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "KH";
+
+  return parts
+    .slice(-2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+};
+
+const ProgressBar = ({ value = 0, variant = "default" }) => (
+  <div className={`customer-progress customer-progress--${variant}`}>
+    <span style={{ width: `${Math.max(0, Math.min(100, Number(value || 0)))}%` }} />
+  </div>
+);
+
+const CustomerAvatar = ({ name }) => (
+  <span className="customer-avatar" aria-hidden="true">
+    {getInitials(name)}
+  </span>
+);
+
+const EmptyState = ({ title, description, actionLabel, onAction }) => (
+  <div className="customer-empty-state">
+    <h4>{title}</h4>
+    {description ? <p>{description}</p> : null}
+    {actionLabel && onAction ? (
+      <button type="button" onClick={onAction}>
+        {actionLabel}
+      </button>
+    ) : null}
+  </div>
+);
 
 const CustomerAnalyticsPage = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
@@ -129,6 +181,9 @@ const CustomerAnalyticsPage = () => {
   const restaurantOptions = Array.isArray(restaurants) ? restaurants : [];
   const effectiveRestaurantId =
     selectedRestaurantId || restaurantOptions?.[0]?.id || "";
+  const selectedRestaurant = restaurantOptions.find(
+    (item) => String(item?.id || "") === String(effectiveRestaurantId),
+  );
 
   const { data, loading, error, refetch } = useQuery(GET_CUSTOMER_ANALYTICS, {
     skip: !effectiveRestaurantId,
@@ -196,21 +251,71 @@ const CustomerAnalyticsPage = () => {
     1,
   );
 
+  const commandItems = useMemo(
+    () => [
+      {
+        label: "Khách cần chăm sóc",
+        value: dormantCustomerCount,
+        help: "Lâu chưa quay lại hoặc cần kiểm tra lịch sử mua",
+        cta: "Mở danh sách khách",
+        icon: AlertTriangle,
+        tone: dormantCustomerCount > 0 ? "warning" : "calm",
+        onClick: () => navigateManagerPage("customers", { segment: "dormant" }),
+      },
+      {
+        label: "Khách giá trị cao",
+        value: highValueCustomerCount,
+        help: "Ưu tiên giữ trải nghiệm ổn định cho nhóm này",
+        cta: "Xem nhóm VIP",
+        icon: Wallet,
+        tone: "premium",
+        onClick: () => navigateManagerPage("customers", { segment: "high-value" }),
+      },
+      {
+        label: "Chu kỳ quay lại",
+        value: formatDays(averageRepeatIntervalDays),
+        help: "Dùng để hẹn chiến dịch nhắc quay lại đúng thời điểm",
+        cta: "Xem đơn gần đây",
+        icon: Clock3,
+        tone: "calm",
+        onClick: () => navigateManagerPage("orders", { view: "recent" }),
+      },
+    ],
+    [averageRepeatIntervalDays, dormantCustomerCount, highValueCustomerCount],
+  );
+
   return (
     <section className="customer-analytics-page">
       <section className="customer-analytics-hero">
-        <div>
+        <div className="customer-analytics-hero__copy">
           <p className="customer-analytics-hero__eyebrow">Phân tích khách hàng</p>
-          <h2>Hiểu hành vi và mức độ quay lại của khách</h2>
+          <h2>Hiểu khách, chọn đúng nhóm cần chăm sóc</h2>
           <p>
-            Theo dõi chi tiêu, phân khúc khách, rủi ro rời bỏ và giữ chân theo cohort để
-            vận hành hiệu quả hơn.
+            Theo dõi chi tiêu, phân khúc khách, rủi ro rời bỏ và cohort quay lại
+            trong một màn hình dễ thao tác cho quản lý ca.
           </p>
+          <div className="customer-analytics-quick-actions" aria-label="Thao tác nhanh">
+            <button type="button" onClick={() => navigateManagerPage("customers")}>
+              <Users size={15} aria-hidden="true" />
+              Danh sách khách
+            </button>
+            <button type="button" onClick={() => navigateManagerPage("orders")}>
+              <ReceiptText size={15} aria-hidden="true" />
+              Lịch sử đơn
+            </button>
+            <button type="button" onClick={() => navigateManagerPage("menu")}>
+              <Utensils size={15} aria-hidden="true" />
+              Kiểm tra menu
+            </button>
+          </div>
         </div>
 
-        <div className="customer-analytics-toolbar">
+        <div className="customer-analytics-toolbar" aria-label="Bộ lọc phân tích khách hàng">
           <label className="customer-analytics-field">
-            <span>Nhà hàng</span>
+            <span>
+              <Store size={14} aria-hidden="true" />
+              Nhà hàng
+            </span>
             <select
               value={effectiveRestaurantId}
               onChange={(e) => setSelectedRestaurantId(e.target.value)}
@@ -233,10 +338,17 @@ const CustomerAnalyticsPage = () => {
             onClick={() => refetch?.()}
             disabled={loading || !effectiveRestaurantId}
           >
+            <RefreshCw size={15} aria-hidden="true" />
             Làm mới
           </button>
         </div>
       </section>
+
+      <div className="customer-analytics-context">
+        <span>{selectedRestaurant?.name || "Chưa chọn nhà hàng"}</span>
+        <span>{loading ? "Đang đồng bộ dữ liệu" : "Dữ liệu khách hàng hiện tại"}</span>
+        <span>{formatNumber(activeCustomerCount)} khách hoạt động</span>
+      </div>
 
       {error ? (
         <section className="customer-analytics-error">
@@ -256,6 +368,9 @@ const CustomerAnalyticsPage = () => {
         <section className="customer-empty-state customer-empty-state--page">
           <h3>Chưa có nhà hàng để phân tích</h3>
           <p>Vui lòng tạo hoặc chọn nhà hàng trước khi xem phân tích khách hàng.</p>
+          <button type="button" onClick={() => navigateManagerPage("customers")}>
+            Quản lý khách hàng
+          </button>
         </section>
       ) : error ? null : (
         <>
@@ -264,14 +379,14 @@ const CustomerAnalyticsPage = () => {
               <span className="customer-kpi__icon"><Users size={18} aria-hidden="true" /></span>
               <span className="customer-kpi__label">Khách hoạt động</span>
               <strong className="customer-kpi__value">{loading ? "..." : formatNumber(activeCustomerCount)}</strong>
-              <p className="customer-kpi__help">Khách có tương tác/đơn hàng được ghi nhận.</p>
+              <p className="customer-kpi__help">Khách có tương tác hoặc đơn hàng được ghi nhận.</p>
             </article>
 
             <article className={`customer-kpi customer-kpi--success ${loading ? "customer-kpi--loading" : ""}`}>
               <span className="customer-kpi__icon"><Repeat2 size={18} aria-hidden="true" /></span>
               <span className="customer-kpi__label">Khách quay lại</span>
               <strong className="customer-kpi__value">{loading ? "..." : formatNumber(returningCustomerCount)}</strong>
-              <p className="customer-kpi__help">Nhóm khách có dấu hiệu quay lại.</p>
+              <p className="customer-kpi__help">Nhóm khách đã có dấu hiệu quay lại.</p>
             </article>
 
             <article className={`customer-kpi customer-kpi--accent ${loading ? "customer-kpi--loading" : ""}`}>
@@ -285,7 +400,7 @@ const CustomerAnalyticsPage = () => {
               <span className="customer-kpi__icon"><ReceiptText size={18} aria-hidden="true" /></span>
               <span className="customer-kpi__label">Giá trị đơn TB</span>
               <strong className="customer-kpi__value customer-kpi__value--compact">{loading ? "..." : formatCurrency(averageOrderValue)}</strong>
-              <p className="customer-kpi__help">Trung bình chi tiêu mỗi đơn.</p>
+              <p className="customer-kpi__help">Trung bình chi tiêu trên mỗi đơn.</p>
             </article>
           </div>
 
@@ -312,6 +427,22 @@ const CustomerAnalyticsPage = () => {
             </div>
           </section>
 
+          <section className="customer-action-deck" aria-label="Bảng thao tác khách hàng">
+            {commandItems.map((item) => (
+              <article className={`customer-command-card customer-command-card--${item.tone}`} key={item.label}>
+                <span className="customer-command-card__icon"><item.icon size={17} aria-hidden="true" /></span>
+                <div>
+                  <span>{item.label}</span>
+                  <strong>{loading ? "..." : typeof item.value === "number" ? formatNumber(item.value) : item.value}</strong>
+                  <p>{item.help}</p>
+                  <button type="button" onClick={item.onClick}>
+                    {item.cta} <ArrowRight size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </section>
+
           <section className="customer-analytics-panels">
             <section className="customer-panel customer-panel--primary">
               <div className="customer-panel__head">
@@ -319,12 +450,15 @@ const CustomerAnalyticsPage = () => {
                   <h3>Món khách quan tâm</h3>
                   <p>Các món được gọi nhiều trong dữ liệu phân tích khách hàng.</p>
                 </div>
+                <button type="button" onClick={() => navigateManagerPage("menu")}>
+                  Menu <ArrowRight size={14} aria-hidden="true" />
+                </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải dữ liệu món...</div> : topDishes.length > 0 ? (
                 <div className="customer-dish-list">
                   {topDishes.map((item, index) => {
                     const quantity = Number(item?.quantity || 0);
-                    const progress = Math.max(0, Math.min(100, (quantity / maxDishQuantity) * 100));
+                    const progress = (quantity / maxDishQuantity) * 100;
                     return (
                       <div className="customer-dish-row" key={`${item.dishName}-${index}`}>
                         <div className="customer-rank">#{index + 1}</div>
@@ -333,44 +467,42 @@ const CustomerAnalyticsPage = () => {
                             <strong>{item?.dishName || "Không rõ tên món"}</strong>
                             <span>{formatNumber(quantity)} lượt</span>
                           </div>
-                          <div className="customer-progress"><span style={{ width: `${progress}%` }} /></div>
+                          <ProgressBar value={progress} />
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có dữ liệu món phổ biến</h4><p>Khi có đơn hoàn thành, các món được khách quan tâm sẽ hiển thị tại đây.</p></div>}
+              ) : <EmptyState title="Chưa có dữ liệu món phổ biến" description="Khi có đơn hoàn thành, các món được khách quan tâm sẽ hiển thị tại đây." actionLabel="Kiểm tra menu" onAction={() => navigateManagerPage("menu")} />}
             </section>
 
             <section className="customer-panel">
               <div className="customer-panel__head">
                 <div>
                   <h3>Mật độ đơn theo ngày</h3>
-                  <p>
-                    Nhận diện ngày có nhiều tương tác/đơn để chuẩn bị nhân sự và tồn
-                    kho.
-                  </p>
+                  <p>Nhận diện ngày có nhiều đơn để chuẩn bị nhân sự và tồn kho.</p>
                 </div>
+                <button type="button" onClick={() => navigateManagerPage("orders")}>
+                  Đơn hàng <ArrowRight size={14} aria-hidden="true" />
+                </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải dữ liệu ngày...</div> : busyDays.length > 0 ? (
                 <div className="customer-day-list">
                   {busyDays.map((item, index) => {
                     const count = Number(item?.orderCount || 0);
-                    const progress = Math.max(0, Math.min(100, (count / maxDayOrders) * 100));
+                    const progress = (count / maxDayOrders) * 100;
                     return (
                       <div className="customer-day-row" key={`${item.date}-${index}`}>
                         <div className="customer-day-row__top">
                           <strong>{formatDate(item?.date)}</strong>
                           <span>{formatNumber(count)} đơn</span>
                         </div>
-                        <div className="customer-progress customer-progress--day">
-                          <span style={{ width: `${progress}%` }} />
-                        </div>
+                        <ProgressBar value={progress} variant="day" />
                       </div>
                     );
                   })}
                 </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có dữ liệu mật độ đơn</h4><p>Dữ liệu sẽ rõ hơn khi nhà hàng có đơn hàng trong nhiều ngày.</p></div>}
+              ) : <EmptyState title="Chưa có dữ liệu mật độ đơn" description="Dữ liệu sẽ rõ hơn khi nhà hàng có đơn hàng trong nhiều ngày." actionLabel="Xem đơn hàng" onAction={() => navigateManagerPage("orders")} />}
             </section>
           </section>
 
@@ -379,75 +511,103 @@ const CustomerAnalyticsPage = () => {
               <div className="customer-panel__head">
                 <div>
                   <h3>Phân khúc khách hàng</h3>
-                  <p>Các nhóm khách hàng theo dữ liệu phân tích hiện tại.</p>
+                  <p>Các nhóm khách theo dữ liệu phân tích hiện tại.</p>
                 </div>
+                <button type="button" onClick={() => navigateManagerPage("customers")}>
+                  Mở khách <ArrowRight size={14} aria-hidden="true" />
+                </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải phân khúc khách hàng...</div> : visibleCustomerSegments.length > 0 ? (
                 <div className="customer-segment-list">
                   {visibleCustomerSegments.map((segment, index) => {
                     const percentage = Number(segment?.percentage || 0);
-                    const progress = Math.max(0, Math.min(100, percentage));
                     return (
-                      <div
-                        className="customer-segment-row"
-                        key={`${segment?.segmentKey || "segment"}-${index}`}
-                      >
+                      <div className="customer-segment-row" key={`${segment?.segmentKey || "segment"}-${index}`}>
                         <div className="customer-segment-row__meta">
                           <strong>{segment?.segmentLabel || "Phân khúc chưa đặt tên"}</strong>
-                          <span>
-                            {formatNumber(segment?.customerCount)} khách •{" "}
-                            {formatPercent(percentage)}
-                          </span>
+                          <span>{formatNumber(segment?.customerCount)} khách • {formatPercent(percentage)}</span>
                         </div>
-                        <div className="customer-progress">
-                          <span style={{ width: `${progress}%` }} />
-                        </div>
+                        <ProgressBar value={percentage} />
                       </div>
                     );
                   })}
                 </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có dữ liệu phân khúc khách hàng.</h4></div>}
+              ) : <EmptyState title="Chưa có dữ liệu phân khúc khách hàng" description="Khi có đủ đơn và hồ sơ khách, hệ thống sẽ chia nhóm tại đây." actionLabel="Mở quản lý khách" onAction={() => navigateManagerPage("customers")} />}
             </section>
 
             <section className="customer-panel">
-              <div className="customer-panel__head"><div><h3>Khách có nguy cơ rời bỏ</h3><p>Theo dõi nhóm khách lâu chưa quay lại để chăm sóc kịp thời.</p></div></div>
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Khách có nguy cơ rời bỏ</h3>
+                  <p>Theo dõi nhóm khách lâu chưa quay lại để chăm sóc kịp thời.</p>
+                </div>
+                <button type="button" onClick={() => navigateManagerPage("customers", { segment: "dormant" })}>
+                  Lọc nhóm này <ArrowRight size={14} aria-hidden="true" />
+                </button>
+              </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách có nguy cơ rời bỏ...</div> : churnRiskCustomers.length > 0 ? (
                 <div className="customer-risk-list">
                   {churnRiskCustomers.map((customer, index) => {
                     const risk = getChurnRiskMeta(customer?.daysSinceLastOrder);
                     return (
-                      <div className="customer-risk-row" key={`${customer?.userId || "risk"}-${index}`}>
-                        <div className="customer-risk-row__top">
-                          <strong>{customer?.fullName || "Khách chưa có tên"}</strong>
-                          <span className={`customer-risk-badge customer-risk-badge--${risk.className}`}>
-                            {risk.label}
-                          </span>
+                      <article className="customer-risk-row" key={`${customer?.userId || "risk"}-${index}`}>
+                        <div className="customer-person-line">
+                          <CustomerAvatar name={customer?.fullName} />
+                          <div>
+                            <div className="customer-risk-row__top">
+                              <strong>{customer?.fullName || "Khách chưa có tên"}</strong>
+                              <span className={`customer-risk-badge customer-risk-badge--${risk.className}`}>{risk.label}</span>
+                            </div>
+                            <p>{customer?.phone || "Chưa có số điện thoại"}</p>
+                          </div>
                         </div>
-                        <p>{customer?.phone || "Chưa có số điện thoại"}</p>
                         <div className="customer-risk-row__meta">
                           <span>{formatNumber(customer?.daysSinceLastOrder)} ngày chưa quay lại</span>
                           <span>{formatNumber(customer?.totalOrders)} đơn</span>
                           <span>{formatCurrency(customer?.totalSpend)}</span>
                         </div>
-                      </div>
+                        <div className="customer-row-actions">
+                          {customer?.phone ? (
+                            <a className="customer-row-action" href={`tel:${customer.phone}`}>
+                              <Phone size={13} aria-hidden="true" />
+                              Gọi khách
+                            </a>
+                          ) : (
+                            <span className="customer-row-action customer-row-action--disabled">Thiếu SĐT</span>
+                          )}
+                          <button type="button" onClick={() => navigateManagerPage("customers", { customerId: customer?.userId })}>
+                            Hồ sơ
+                          </button>
+                        </div>
+                      </article>
                     );
                   })}
                 </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có khách có nguy cơ rời bỏ.</h4></div>}
+              ) : <EmptyState title="Chưa có khách có nguy cơ rời bỏ" description="Hiện chưa có khách nào cần nhắc quay lại trong dữ liệu." />}
             </section>
 
             <section className="customer-panel">
-              <div className="customer-panel__head"><div><h3>Khách giá trị cao</h3><p>Nhóm khách chi tiêu lớn cần duy trì trải nghiệm tốt.</p></div></div>
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Khách giá trị cao</h3>
+                  <p>Nhóm khách chi tiêu lớn cần duy trì trải nghiệm tốt.</p>
+                </div>
+                <button type="button" onClick={() => navigateManagerPage("customers", { segment: "high-value" })}>
+                  Xem VIP <ArrowRight size={14} aria-hidden="true" />
+                </button>
+              </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách giá trị cao...</div> : topValueCustomers.length > 0 ? (
                 <div className="customer-value-list">
                   {topValueCustomers.map((customer, index) => {
                     const spend = Number(customer?.totalSpend || 0);
-                    const progress = Math.max(0, Math.min(100, (spend / maxTopValueSpend) * 100));
+                    const progress = (spend / maxTopValueSpend) * 100;
                     return (
-                      <div className="customer-value-row" key={`${customer?.userId || "value"}-${index}`}>
-                        <div className="customer-value-row__top">
+                      <article className="customer-value-row" key={`${customer?.userId || "value"}-${index}`}>
+                        <div className="customer-person-line">
                           <span className="customer-value-rank">#{index + 1}</span>
-                          <strong>{customer?.fullName || "Khách chưa có tên"}</strong>
+                          <div className="customer-value-row__top">
+                            <strong>{customer?.fullName || "Khách chưa có tên"}</strong>
+                          </div>
                         </div>
                         <div className="customer-value-row__meta">
                           <span>{formatCurrency(spend)}</span>
@@ -455,70 +615,86 @@ const CustomerAnalyticsPage = () => {
                           <span>AOV: {formatCurrency(customer?.averageOrderValue)}</span>
                           <span>Đơn gần nhất: {formatDate(customer?.lastOrderAt)}</span>
                         </div>
-                        <div className="customer-progress">
-                          <span style={{ width: `${progress}%` }} />
+                        <ProgressBar value={progress} />
+                        <div className="customer-row-actions">
+                          {customer?.phone ? (
+                            <a className="customer-row-action" href={`tel:${customer.phone}`}>
+                              <Phone size={13} aria-hidden="true" />
+                              Gọi khách
+                            </a>
+                          ) : (
+                            <span className="customer-row-action customer-row-action--disabled">Thiếu SĐT</span>
+                          )}
+                          <button type="button" onClick={() => navigateManagerPage("orders", { customerId: customer?.userId })}>
+                            Xem đơn
+                          </button>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có khách giá trị cao.</h4></div>}
-            </section>
-
-            <section className="customer-panel">
-              <div className="customer-panel__head"><div><h3>Cohort quay lại</h3><p>Theo dõi hiệu quả giữ chân theo từng cohort tháng.</p></div></div>
-              {loading ? <div className="customer-panel__loading">Đang tải dữ liệu cohort...</div> : cohortRetention.length > 0 ? (
-                <div className="customer-cohort-list">
-                  {cohortRetention.map((cohort, index) => {
-                    const rate = Number(cohort?.retentionRate || 0);
-                    const progress = Math.max(0, Math.min(100, rate));
-                    return (
-                      <div className="customer-cohort-row" key={`${cohort?.cohortMonth || "cohort"}-${index}`}>
-                        <div className="customer-cohort-row__meta">
-                          <strong>{cohort?.cohortMonth || "—"}</strong>
-                          <span>
-                            {formatNumber(cohort?.retainedCount)} / {formatNumber(cohort?.cohortSize)} khách (
-                            {formatPercent(rate)})
-                          </span>
-                        </div>
-                        <div className="customer-progress customer-progress--day">
-                          <span style={{ width: `${progress}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có đủ dữ liệu cohort.</h4></div>}
-            </section>
-
-            <section className="customer-panel customer-panel--full">
-              <div className="customer-panel__head"><div><h3>Gợi ý hành động</h3><p>Các đề xuất từ hệ thống dựa trên dữ liệu hiện có.</p></div></div>
-              {loading ? <div className="customer-panel__loading">Đang tải gợi ý hành động...</div> : recommendations.length > 0 ? (
-                <div className="customer-recommendation-list">
-                  {recommendations.map((item, index) => {
-                    const priority = String(item?.priority || "LOW").toLowerCase();
-                    const priorityClass = ["high", "medium", "low"].includes(priority)
-                      ? priority
-                      : "low";
-                    return (
-                      <article
-                        className={`customer-recommendation-card customer-recommendation-card--${priorityClass}`}
-                        key={`${item?.key || "recommendation"}-${index}`}
-                      >
-                        <h4>{item?.title || "Gợi ý"}</h4>
-                        <p>{item?.description || "—"}</p>
-                        <span>{String(item?.priority || "LOW")}</span>
                       </article>
                     );
                   })}
                 </div>
-              ) : <div className="customer-empty-state"><h4>Chưa có gợi ý hành động.</h4></div>}
+              ) : <EmptyState title="Chưa có khách giá trị cao" description="Khi có đủ dữ liệu chi tiêu, nhóm này sẽ được hiển thị để chăm sóc riêng." />}
+            </section>
+
+            <section className="customer-panel">
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Cohort quay lại</h3>
+                  <p>Theo dõi hiệu quả giữ chân theo từng cohort tháng.</p>
+                </div>
+                <span className="customer-panel__note"><Search size={13} aria-hidden="true" /> Retention</span>
+              </div>
+              {loading ? <div className="customer-panel__loading">Đang tải dữ liệu cohort...</div> : cohortRetention.length > 0 ? (
+                <div className="customer-cohort-list">
+                  {cohortRetention.map((cohort, index) => {
+                    const rate = Number(cohort?.retentionRate || 0);
+                    return (
+                      <div className="customer-cohort-row" key={`${cohort?.cohortMonth || "cohort"}-${index}`}>
+                        <div className="customer-cohort-row__meta">
+                          <strong>{cohort?.cohortMonth || "—"}</strong>
+                          <span>{formatNumber(cohort?.retainedCount)} / {formatNumber(cohort?.cohortSize)} khách ({formatPercent(rate)})</span>
+                        </div>
+                        <ProgressBar value={rate} variant="day" />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : <EmptyState title="Chưa có đủ dữ liệu cohort" description="Cần thêm lịch sử khách theo nhiều tháng để đánh giá giữ chân." />}
+            </section>
+
+            <section className="customer-panel customer-panel--full">
+              <div className="customer-panel__head">
+                <div>
+                  <h3>Gợi ý hành động</h3>
+                  <p>Các đề xuất từ hệ thống dựa trên dữ liệu hiện có.</p>
+                </div>
+                <button type="button" onClick={() => navigateManagerPage("customers")}>
+                  Mở khách hàng <ArrowRight size={14} aria-hidden="true" />
+                </button>
+              </div>
+              {loading ? <div className="customer-panel__loading">Đang tải gợi ý hành động...</div> : recommendations.length > 0 ? (
+                <div className="customer-recommendation-list">
+                  {recommendations.map((item, index) => {
+                    const priority = String(item?.priority || "LOW").toUpperCase();
+                    const priorityClass = ["HIGH", "MEDIUM", "LOW"].includes(priority)
+                      ? priority.toLowerCase()
+                      : "low";
+                    return (
+                      <article className={`customer-recommendation-card customer-recommendation-card--${priorityClass}`} key={`${item?.key || "recommendation"}-${index}`}>
+                        <div>
+                          <h4>{item?.title || "Gợi ý"}</h4>
+                          <p>{item?.description || "—"}</p>
+                        </div>
+                        <span>{PRIORITY_LABELS[priority] || "Theo dõi"}</span>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : <EmptyState title="Chưa có gợi ý hành động" description="Khi có thêm đơn và hành vi khách, hệ thống sẽ đề xuất việc nên làm tiếp theo." />}
             </section>
           </section>
 
-          <section
-            className={`customer-guidance ${!hasActionableInsight ? "customer-guidance--empty customer-guidance--action-center" : ""}`}
-          >
+          <section className={`customer-guidance ${!hasActionableInsight ? "customer-guidance--empty customer-guidance--action-center" : ""}`}>
             {!hasActionableInsight ? (
               <>
                 <div>
@@ -527,41 +703,14 @@ const CustomerAnalyticsPage = () => {
                   <p>Hãy ghi nhận đơn hàng và hoàn thiện dữ liệu khách để hệ thống bắt đầu tạo insight hữu ích.</p>
                 </div>
                 <div className="customer-guidance__steps">
-                  <div>
-                    <ClipboardList size={16} aria-hidden="true" />
-                    <span>Kiểm tra đơn</span>
-                  </div>
-                  <div>
-                    <UserRoundCog size={16} aria-hidden="true" />
-                    <span>Quản lý khách</span>
-                  </div>
-                  <div>
-                    <Utensils size={16} aria-hidden="true" />
-                    <span>Kiểm tra menu</span>
-                  </div>
+                  <div><ClipboardList size={16} aria-hidden="true" /><span>Kiểm tra đơn</span></div>
+                  <div><UserRoundCog size={16} aria-hidden="true" /><span>Quản lý khách</span></div>
+                  <div><Utensils size={16} aria-hidden="true" /><span>Kiểm tra menu</span></div>
                 </div>
                 <div className="customer-guidance__actions">
-                  <button
-                    type="button"
-                    aria-label="Đi tới quản lý đơn hàng"
-                    onClick={() => navigateManagerPage("orders")}
-                  >
-                    Xem đơn hàng
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Đi tới quản lý khách hàng"
-                    onClick={() => navigateManagerPage("customers")}
-                  >
-                    Quản lý khách hàng
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Đi tới quản lý menu"
-                    onClick={() => navigateManagerPage("menu")}
-                  >
-                    Kiểm tra menu
-                  </button>
+                  <button type="button" aria-label="Đi tới quản lý đơn hàng" onClick={() => navigateManagerPage("orders")}>Xem đơn hàng</button>
+                  <button type="button" aria-label="Đi tới quản lý khách hàng" onClick={() => navigateManagerPage("customers")}>Quản lý khách hàng</button>
+                  <button type="button" aria-label="Đi tới quản lý menu" onClick={() => navigateManagerPage("menu")}>Kiểm tra menu</button>
                 </div>
               </>
             ) : (
