@@ -1,201 +1,124 @@
-@use "sass:color";
 /* src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.scss */
 
-// Variables đồng bộ
-$gold: #c5a47e;
-$charcoal: #1e293b;
-$white: #ffffff;
-$slate-100: #f1f5f9; // Màu nền hover
-$slate-400: #94a3b8; // Màu text inactive
-$border-color: #e2e8f0;
-$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+$tab-accent: #a8855f;
+$tab-ink: #24303f;
+$tab-muted: #6f7a86;
+$tab-border: #e5ded3;
 
 .sm-tabs-container {
-  display: inline-flex;
-  background: $white;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid $border-color;
-  box-shadow: $shadow-sm;
-  gap: 6px;
-
-  // Đảm bảo không bị tràn layout cha
   max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid rgba(128, 109, 83, 0.15);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
   overflow-x: auto;
+  scrollbar-width: none;
 
-  // Ẩn thanh cuộn nhưng vẫn cuộn được
-  scrollbar-width: none; // Firefox
   &::-webkit-scrollbar {
     display: none;
-  } // Chrome/Safari
+  }
 }
 
 .sm-tab-item {
   position: relative;
-  display: flex;
+  min-height: 42px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
+  padding: 0 17px;
+  border: 1px solid transparent;
+  border-radius: 14px;
   background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-
-  // Typography
+  color: $tab-muted;
   font-family: inherit;
   font-size: 0.9rem;
-  font-weight: 600;
-  color: $slate-400;
-
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 
   .tab-icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    opacity: 0.7;
-    transition: transform 0.2s ease;
+    opacity: 0.78;
+    transition: transform 0.18s ease, opacity 0.18s ease;
 
-    // Resize icon từ Lucide cho vừa mắt
     svg {
       width: 18px;
       height: 18px;
     }
   }
 
-  /* --- Hover State (Inactive) --- */
   &:hover:not(.active) {
-    background-color: $slate-100;
-    color: color.adjust($slate-400, $lightness: -20%);
+    transform: translateY(-1px);
+    border-color: rgba(128, 109, 83, 0.14);
+    background: #f8f1e8;
+    color: $tab-ink;
 
     .tab-icon {
-      transform: scale(1.1);
       opacity: 1;
+      transform: translateY(-1px);
     }
   }
 
-  /* --- Active State (Gold & Charcoal) --- */
   &.active {
-    background-color: $charcoal;
-    color: $gold;
-    box-shadow: 0 4px 12px rgba(30, 41, 59, 0.25); // Bóng đổ nhẹ màu tối
+    color: #fffaf2;
+    background: #3e4a56;
+    box-shadow: 0 10px 22px rgba(36, 48, 63, 0.15);
 
     .tab-icon {
+      color: #f2dcc0;
       opacity: 1;
-      color: $gold;
     }
 
     .active-dot {
       position: absolute;
-      bottom: 4px;
+      bottom: 5px;
       width: 4px;
       height: 4px;
-      background-color: $gold;
-      border-radius: 50%;
-      animation: fadeIn 0.3s ease-out;
-    }
-  }
-
-  /* --- Focus for Accessibility --- */
-  &:focus-visible {
-    outline: 2px solid $gold;
-    outline-offset: 2px;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* --- Responsive Mobile --- */
-@media (max-width: 768px) {
-  .sm-tabs-container {
-    display: flex; // Cho phép flex item co giãn
-    width: 100%;
-    padding: 4px;
-    border-radius: 0; // Trên mobile có thể bỏ bo góc container nếu muốn full-width
-    border-left: none;
-    border-right: none;
-    background: transparent;
-    box-shadow: none;
-    gap: 8px;
-  }
-
-  .sm-tab-item {
-    flex: 0 0 auto; // Không co nhỏ, giữ nguyên kích thước nội dung
-    padding: 8px 16px;
-    background: $white;
-    border: 1px solid transparent;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-
-    // Trên mobile, tab inactive có nền trắng để nổi trên nền xám body
-    &:not(.active) {
-      border-color: rgba(0, 0, 0, 0.05);
-    }
-
-    &.active {
-      background: $charcoal;
-      border-color: $charcoal;
-    }
-  }
-}
-
-/* --- Premium tab rail --- */
-.sm-tabs-container {
-  padding: 5px;
-  border-color: rgba(122, 95, 61, 0.16);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.58);
-  backdrop-filter: blur(14px) saturate(140%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 14px 30px rgba(62, 47, 30, 0.08);
-}
-
-.sm-tab-item {
-  padding: 11px 18px;
-  border-radius: 14px;
-  color: #776f65;
-  letter-spacing: -0.01em;
-
-  &:hover:not(.active) {
-    background: rgba(255, 248, 236, 0.82);
-    color: #354150;
-  }
-
-  &.active {
-    color: #e7c896;
-    background: linear-gradient(145deg, #28313c, #161d26);
-    box-shadow: 0 12px 26px rgba(25, 32, 41, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-
-    .active-dot {
-      bottom: 5px;
-      background: #d9b77f;
-      box-shadow: 0 0 0 3px rgba(217, 183, 127, 0.18);
+      border-radius: 999px;
+      background: #f2dcc0;
+      box-shadow: 0 0 0 3px rgba(242, 220, 192, 0.18);
     }
   }
 
   &:focus-visible {
-    outline: 3px solid rgba(197, 164, 126, 0.34);
+    outline: 3px solid rgba($tab-accent, 0.28);
     outline-offset: 3px;
   }
 }
 
 @media (max-width: 768px) {
   .sm-tabs-container {
+    width: 100%;
+    display: flex;
     border-radius: 16px;
-    border: 1px solid rgba(122, 95, 61, 0.13);
-    background: rgba(255, 255, 255, 0.54);
+    background: rgba(255, 255, 255, 0.66);
   }
 
   .sm-tab-item {
-    border-radius: 13px;
-    box-shadow: none;
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sm-tabs-container,
+  .sm-tabs-container * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
