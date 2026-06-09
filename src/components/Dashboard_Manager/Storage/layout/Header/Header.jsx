@@ -56,19 +56,16 @@ const Header = ({
     setRateInput(String(manualRate || 26000));
   }, [manualRate, currentRestaurantId]);
 
-  // Handlers giữ nguyên
   const isIngredientTab = activeTab === "ingredients";
+  const actionDisabled = !isIngredientTab || ingredientActions?.busy;
 
   const handleImportData = () => {
     if (!canWriteInventory) return;
     ingredientActions?.import?.();
   };
-  const handleExportData = () => {
+  const handleExportData = (format = "xlsx") => {
     if (!ingredientActions) return;
-    const asCsv = window.confirm(
-      "Nhấn OK để xuất CSV. Nhấn Cancel để xuất XLSX (mặc định)."
-    );
-    if (asCsv) ingredientActions.exportCsv?.();
+    if (format === "csv") ingredientActions.exportCsv?.();
     else ingredientActions.exportXlsx?.();
   };
   const handleGenerateReport = () => ingredientActions?.report?.();
@@ -91,53 +88,72 @@ const Header = ({
 
   return (
     <div className="sm-header-card">
-      {/* --- Top Section: Title & Actions --- */}
       <div className="sm-header-top">
         <div className="title-wrapper">
-          <div className="icon-box">
-            <Package size={24} color="#c5a47e" />
+          <div className="icon-box" aria-hidden="true">
+            <Package size={24} />
           </div>
           <div>
             <p className="page-eyebrow">Vận hành kho</p>
             <h1 className="page-title">Quản lý kho</h1>
-            <p className="page-subtitle">Theo dõi nguyên liệu, vật tư, công thức và kiểm kê kho.</p>
+            <p className="page-subtitle">
+              Tập trung chọn phạm vi dữ liệu, nhập/xuất file và lập báo cáo ngay trên một màn hình.
+            </p>
           </div>
         </div>
 
-        <div className="actions-wrapper">
+        <div className="actions-wrapper" aria-label="Thao tác dữ liệu kho">
           <button
             type="button"
             className="sm-btn ghost"
             onClick={handleExportSample}
-            title="Xuất mẫu Excel"
-            disabled={!isIngredientTab || ingredientActions?.busy}
+            title="Tải file mẫu Excel để nhập nguyên liệu"
+            disabled={actionDisabled}
+            aria-busy={ingredientActions?.busy ? "true" : "false"}
           >
-            <FileSpreadsheet size={18} />{" "}
-            <span className="hide-on-mobile">Mẫu Excel</span>
+            <FileSpreadsheet size={18} />
+            <span className="hide-on-mobile">Mẫu nhập</span>
           </button>
-          <div className="divider-vertical"></div>
+
+          <div className="divider-vertical" aria-hidden="true" />
+
           <button
             type="button"
             className="sm-btn secondary"
             onClick={handleImportData}
-            disabled={!isIngredientTab || ingredientActions?.busy || !canWriteInventory}
-            title={disabledWriteTitle || "Nhập dữ liệu"}
+            disabled={actionDisabled || !canWriteInventory}
+            title={disabledWriteTitle || "Nhập dữ liệu từ Excel hoặc CSV"}
           >
-            <Upload size={18} /> <span className="hide-on-mobile">Nhập</span>
+            <Upload size={18} /> <span className="hide-on-mobile">Nhập file</span>
           </button>
-          <button
-            type="button"
-            className="sm-btn secondary"
-            onClick={handleExportData}
-            disabled={!isIngredientTab || ingredientActions?.busy}
-          >
-            <Download size={18} /> <span className="hide-on-mobile">Xuất</span>
-          </button>
+
+          <div className="sm-action-group" role="group" aria-label="Xuất danh sách nguyên liệu">
+            <button
+              type="button"
+              className="sm-btn secondary"
+              onClick={() => handleExportData("xlsx")}
+              disabled={actionDisabled}
+              title="Xuất danh sách nguyên liệu dạng XLSX"
+            >
+              <Download size={18} /> <span>XLSX</span>
+            </button>
+            <button
+              type="button"
+              className="sm-btn secondary compact"
+              onClick={() => handleExportData("csv")}
+              disabled={actionDisabled}
+              title="Xuất danh sách nguyên liệu dạng CSV"
+            >
+              CSV
+            </button>
+          </div>
+
           <button
             type="button"
             className="sm-btn primary"
             onClick={handleGenerateReport}
-            disabled={!isIngredientTab || ingredientActions?.busy}
+            disabled={actionDisabled}
+            title="Lập báo cáo nguyên liệu theo khoảng thời gian"
           >
             <FileText size={18} /> <span>Báo cáo</span>
           </button>
@@ -145,14 +161,12 @@ const Header = ({
       </div>
 
       {!canWriteInventory ? (
-        <p className="text-xs text-secondary" title={NO_PERMISSION_MESSAGE}>
+        <div className="sm-permission-note" title={NO_PERMISSION_MESSAGE}>
           {NO_PERMISSION_MESSAGE}
-        </p>
+        </div>
       ) : null}
 
-      {/* --- Bottom Section: Filters --- */}
-      <div className="sm-header-filters">
-        {/* Restaurant Select */}
+      <div className="sm-header-filters" aria-label="Bộ lọc phạm vi dữ liệu kho">
         <div className="filter-group">
           <label htmlFor="restaurant-select">
             <Store size={16} /> Nhà hàng
@@ -176,9 +190,9 @@ const Header = ({
             </select>
             <ChevronDown className="arrow-icon" size={16} />
           </div>
+          <span className="filter-hint">Quyết định toàn bộ dữ liệu hiển thị bên dưới.</span>
         </div>
 
-        {/* Warehouse Select */}
         <div className="filter-group">
           <label htmlFor="warehouse-select">
             <Warehouse size={16} /> Kho hàng
@@ -206,9 +220,10 @@ const Header = ({
             </select>
             <ChevronDown className="arrow-icon" size={16} />
           </div>
+          <span className="filter-hint">Chọn kho cụ thể trước khi nhập tồn kho.</span>
         </div>
 
-        <div className="filter-group">
+        <div className="filter-group filter-group--compact">
           <label htmlFor="currency-select">
             <Coins size={16} /> Tiền tệ
             {currencyLoading && <Loader2 size={14} className="spin" />}
@@ -225,9 +240,10 @@ const Header = ({
             </select>
             <ChevronDown className="arrow-icon" size={16} />
           </div>
+          <span className="filter-hint">Áp dụng cho giá vốn và báo cáo.</span>
         </div>
 
-        <div className="filter-group">
+        <div className="filter-group filter-group--rate">
           <label htmlFor="manual-rate-input">Tỷ giá USD→VND</label>
           <div className="inline-rate">
             <input
@@ -235,6 +251,7 @@ const Header = ({
               type="number"
               min="1"
               step="1"
+              inputMode="numeric"
               value={rateInput}
               onChange={(e) => setRateInput(e.target.value)}
               disabled={!currentRestaurantId || currencyLoading}
@@ -248,6 +265,7 @@ const Header = ({
               Lưu
             </button>
           </div>
+          <span className="filter-hint">Chỉ lưu khi cần ghi đè tỷ giá mặc định.</span>
         </div>
       </div>
     </div>
