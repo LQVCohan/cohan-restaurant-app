@@ -301,7 +301,7 @@ const ManagerLayout = () => {
     <div className={`manager-layout manager-layout--${currentPage} ${sidebarOpen ? "sidebar-open" : ""}`}>
       {sidebarOpen && <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={closeSidebar} aria-hidden="true" />}
 
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
 
       <div className="manager-layout__main">
         <div className="manager-layout__header">
