@@ -23,11 +23,17 @@
   }
 
   .manager-layout--schedules .sidebar {
-    transform: translate3d(-100%, 0, 0) !important;
+    transform: none !important;
+    visibility: visible !important;
+    width: var(--sidebar-width, 72px) !important;
+    min-width: var(--sidebar-width, 72px) !important;
+    max-width: var(--sidebar-width, 72px) !important;
   }
 
-  .manager-layout--schedules .sidebar.sidebar-open,
   .manager-layout--schedules.sidebar-open .sidebar {
-    transform: translate3d(0, 0, 0) !important;
+    transform: none !important;
+    width: var(--sidebar-width, 272px) !important;
+    min-width: var(--sidebar-width, 272px) !important;
+    max-width: var(--sidebar-width, 272px) !important;
   }
 }
