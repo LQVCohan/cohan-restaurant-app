@@ -3,7 +3,7 @@ import "./Styles/Sidebar.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
-const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
+const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);
   const sidebarUserName = user?.fullName || user?.name || "Quản lý";
   const sidebarUserRole = user?.role?.name || user?.roleName || "Đang hoạt động";
@@ -171,6 +171,16 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
     <>
       {/* Sidebar */}
       <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`} aria-label="Thanh điều hướng quản lý">
+        <button
+          className="sidebar-rail-toggle"
+          onClick={onToggle}
+          type="button"
+          aria-label={isOpen ? "Thu gọn menu quản lý" : "Mở menu quản lý"}
+          aria-expanded={isOpen}
+        >
+          <span aria-hidden="true">{isOpen ? "‹" : "›"}</span>
+        </button>
+
         {/* Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
