@@ -149,6 +149,7 @@ const ActionCenter = ({ actions, serviceRequests, recentOrders, lowStockItems = 
                 </div>
                 <p>Bàn {request.tableCode || "Chưa rõ bàn"} • #{request.orderCode || "Chưa có mã đơn"}</p>
                 {request.message ? <small>{request.message}</small> : null}
+                <button type="button" className="inline-nav" onClick={() => navigateManager(request.type === "STAFF_CALL" ? "ai-handoff" : "orders", { orderId: request.orderId, requestId: request.requestId })}>Đi tới xử lý</button>
                 {request.createdAt ? <time>{formatDateTime(request.createdAt)}</time> : null}
               </li>
             ))}
@@ -165,6 +166,7 @@ const ActionCenter = ({ actions, serviceRequests, recentOrders, lowStockItems = 
                 </div>
                 <p>{order.customerName || "Khách lẻ"}</p>
                 <small>{[formatVnd(order.total), formatDateTime(order.createdAt)].filter(Boolean).join(" • ")}</small>
+                <button type="button" className="inline-nav" onClick={() => navigateManager("orders", { orderId: order.id })}>Xem đơn</button>
               </li>
             ))}
           </ul>
@@ -410,8 +412,8 @@ const ManagerAnalyst = () => {
         icon: Megaphone,
         title: "Campaign cần review",
         description: "Có gợi ý khuyến mãi thông minh cần quản lý xác nhận trước khi triển khai.",
-        cta: "Mở Smart Promotion",
-        onClick: () => document.getElementById("smart-growth-section")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        cta: "Đi sang khuyến mãi",
+        onClick: () => navigateManager("promotions"),
       });
     }
 
@@ -613,12 +615,14 @@ const ManagerAnalyst = () => {
                 <DemandForecastWidget
                   forecast={demandForecast}
                   loading={loading}
+                  onNavigate={navigateManager}
                 />
               </div>
               <div className="grid-item scheduling-assistant">
                 <StaffSchedulingAssistantWidget
                   assistant={staffSchedulingAssistant}
                   loading={loading}
+                  onNavigate={navigateManager}
                 />
               </div>
             </div>
@@ -637,12 +641,14 @@ const ManagerAnalyst = () => {
                 <SmartPromotionEngineWidget
                   engine={smartPromotionEngine}
                   loading={loading}
+                  onNavigate={navigateManager}
                 />
               </div>
               <div className="grid-item menu-engineering-assistant">
                 <MenuEngineeringAssistantWidget
                   assistant={menuEngineeringAssistant}
                   loading={loading}
+                  onNavigate={navigateManager}
                 />
               </div>
             </div>

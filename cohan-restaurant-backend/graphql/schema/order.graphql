@@ -961,6 +961,8 @@ type DemandPrepPlanItem {
 type DemandForecastMeta {
   method: String!
   fallbackUsed: Boolean!
+  forecastFallbackUsed: Boolean
+  lowDataFallbackUsed: Boolean
   aiEnhanced: Boolean!
   generatedAt: DateTime!
   granularity: String!
@@ -1099,6 +1101,8 @@ type SmartPromotionCouponContext {
 type SmartPromotionEngineMeta {
   method: String!
   fallbackUsed: Boolean!
+  forecastFallbackUsed: Boolean
+  lowDataFallbackUsed: Boolean
   aiEnhanced: Boolean!
   generatedAt: DateTime!
   timezone: String!

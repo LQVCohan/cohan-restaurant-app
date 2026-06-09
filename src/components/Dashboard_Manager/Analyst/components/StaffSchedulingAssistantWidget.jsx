@@ -29,7 +29,17 @@ const normalizeReason = (reason = "") =>
     .replaceAll(/\s{2,}/g, " ")
     .trim();
 
-const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
+const MetaStrip = ({ meta }) => meta ? (
+  <div className="ai-meta-strip">
+    {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
+    <span>method: {meta.method || "-"}</span>
+    <span>basedOnForecast: {meta.basedOnForecast ? "yes" : "no"}</span>
+    <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
+    {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+  </div>
+) : null;
+
+const StaffSchedulingAssistantWidget = ({ assistant, loading, onNavigate }) => {
   const summary = assistant?.summary || {};
   const shifts = assistant?.shifts || [];
 
@@ -48,10 +58,11 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading }) => {
             <p>Đề xuất nhân sự theo nhu cầu từng ca</p>
           </div>
         </div>
-        <span className={`mode-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "forecast"}`}>
-          {assistant?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo"}
-        </span>
+        <button type="button" className={`mode-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "forecast"}`} onClick={() => onNavigate?.("schedules")}>
+          {assistant?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Mở lịch làm"}
+        </button>
       </div>
+      <MetaStrip meta={assistant?.meta} />
 
       {loading ? <div className="state-message">Đang phân tích nhu cầu nhân sự theo ca...</div> : null}
       {!loading && !shifts.length ? (

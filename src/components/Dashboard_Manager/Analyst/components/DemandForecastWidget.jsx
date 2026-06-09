@@ -7,7 +7,23 @@ const toShortNumber = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const DemandForecastWidget = ({ forecast, loading }) => {
+const MetaStrip = ({ meta }) => {
+  if (!meta) return null;
+  const lowData = meta.lowDataFallbackUsed || meta.fallbackUsed || Number(meta.sampleOrders || 0) < 20;
+  return (
+    <div className="ai-meta-strip">
+      {lowData ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
+      <span>method: {meta.method || "-"}</span>
+      <span>sampleOrders: {meta.sampleOrders ?? "-"}</span>
+      <span>sampleDays: {meta.sampleDays ?? "-"}</span>
+      <span>aiEnhanced: {meta.aiEnhanced ? "yes" : "no"}</span>
+      <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
+      {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    </div>
+  );
+};
+
+const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
   const summary = forecast?.summary || {};
   const rising = forecast?.risingDishes || [];
   const prepPlan = forecast?.prepPlan || [];
@@ -30,9 +46,10 @@ const DemandForecastWidget = ({ forecast, loading }) => {
           </div>
         </div>
         <span className={`meta-pill ${forecast?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "AI hỗ trợ"}
+          {forecast?.meta?.aiEnhanced ? "AI hỗ trợ" : forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo định lượng"}
         </span>
       </div>
+      <MetaStrip meta={forecast?.meta} />
 
       {loading ? (
         <div className="state-message">Đang tính forecast từ dữ liệu đơn hàng...</div>
@@ -86,9 +103,9 @@ const DemandForecastWidget = ({ forecast, loading }) => {
                   <div className="dish-sub">
                     Dự báo {toShortNumber(dish.forecastQty)} suất • Chuẩn bị {toShortNumber(dish.suggestedPrepQty)} suất
                     {dish.stockRisk === "high" ? (
-                      <span className="risk high">
+                      <button type="button" className="risk high" onClick={() => onNavigate?.("inventory", { dishId: dish.dishId })}>
                         <AlertTriangle size={14} /> tồn kho rủi ro cao
-                      </span>
+                      </button>
                     ) : null}
                   </div>
                 </li>

@@ -163,6 +163,8 @@ const GET_ANALYST_DASHBOARD = gql`
       meta {
         method
         fallbackUsed
+        forecastFallbackUsed
+        lowDataFallbackUsed
         aiEnhanced
         generatedAt
         granularity
@@ -276,6 +278,8 @@ const GET_ANALYST_DASHBOARD = gql`
       meta {
         method
         fallbackUsed
+        forecastFallbackUsed
+        lowDataFallbackUsed
         aiEnhanced
         generatedAt
         timezone
@@ -451,9 +455,9 @@ export const useAnalyst = () => {
     acknowledgedServiceRequests,
     serviceRequests,
     operationsSummary,
-    demandForecast: demandForecast || { summary: { busiestPeriods: [], topRisingDishes: [], totalRecommendedPrep: 0, notes: [] }, hourlyForecast: [], dailyForecast: [], risingDishes: [], prepPlan: [], meta: { method: "time_series_v1", fallbackUsed: true, aiEnhanced: false, generatedAt: null, granularity: "hourly", timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 0 } },
+    demandForecast: demandForecast || { summary: { busiestPeriods: [], topRisingDishes: [], totalRecommendedPrep: 0, notes: [] }, hourlyForecast: [], dailyForecast: [], risingDishes: [], prepPlan: [], meta: { method: "time_series_v1", fallbackUsed: true, forecastFallbackUsed: true, lowDataFallbackUsed: true, aiEnhanced: false, generatedAt: null, granularity: "hourly", timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 0 } },
     staffSchedulingAssistant: staffSchedulingAssistant || { summary: { totalShiftGroups: 0, underStaffedShifts: 0, overStaffedShifts: 0, highestRiskShift: null, notes: [] }, shifts: [], meta: { method: "staff_scheduling_v1", basedOnForecast: false, fallbackUsed: true, generatedAt: null, timezone: "Asia/Ho_Chi_Minh" } },
     menuEngineeringAssistant: menuEngineeringAssistant || { summary: { totalDishes: 0, starCount: 0, plowhorseCount: 0, puzzleCount: 0, dogCount: 0, avgMarginPct: 0, notes: [] }, dishes: [], recommendations: [], meta: { method: "menu_engineering_v1", fallbackUsed: true, fallbackMarginRate: 0.65, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },
-    smartPromotionEngine: smartPromotionEngine || { summary: { recommendedCampaignCount: 0, topOpportunityWindow: "15:00-17:00", highestPrioritySegment: "NEW", notes: [] }, campaigns: [], autoSelectedPromotions: [], segmentInsights: [], timeWindowInsights: [], couponContext: { activeCouponCount: 0, nearUsageLimitCount: 0 }, meta: { method: "smart_promo_v1", fallbackUsed: true, aiEnhanced: false, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },
+    smartPromotionEngine: smartPromotionEngine || { summary: { recommendedCampaignCount: 0, topOpportunityWindow: "15:00-17:00", highestPrioritySegment: "NEW", notes: [] }, campaigns: [], autoSelectedPromotions: [], segmentInsights: [], timeWindowInsights: [], couponContext: { activeCouponCount: 0, nearUsageLimitCount: 0 }, meta: { method: "smart_promo_v1", fallbackUsed: true, forecastFallbackUsed: true, lowDataFallbackUsed: true, aiEnhanced: false, generatedAt: null, timezone: "Asia/Ho_Chi_Minh", sampleOrders: 0, sampleDays: 30 } },
   };
 };

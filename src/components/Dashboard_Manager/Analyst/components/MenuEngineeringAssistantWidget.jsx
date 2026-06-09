@@ -14,7 +14,18 @@ const quadrantLabel = {
   dog: "DOG • Cần xem lại",
 };
 
-const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
+const MetaStrip = ({ meta }) => meta ? (
+  <div className="ai-meta-strip">
+    {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
+    <span>method: {meta.method || "-"}</span>
+    <span>sampleOrders: {meta.sampleOrders ?? "-"}</span>
+    <span>sampleDays: {meta.sampleDays ?? "-"}</span>
+    <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
+    {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+  </div>
+) : null;
+
+const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
   const summary = assistant?.summary || {};
   const dishes = assistant?.dishes || [];
   const recommendations = assistant?.recommendations || [];
@@ -32,10 +43,11 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading }) => {
             <p>Phân loại STAR / PLOWHORSE / PUZZLE / DOG theo dữ liệu thực tế</p>
           </div>
         </div>
-        <span className={`meta-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {assistant?.meta?.fallbackUsed ? "Ước tính chi phí" : "Dữ liệu món / công thức"}
-        </span>
+        <button type="button" className={`meta-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "data"}`} onClick={() => onNavigate?.("menu")}>
+          {assistant?.meta?.fallbackUsed ? "Ước tính chi phí" : "Mở menu"}
+        </button>
       </div>
+      <MetaStrip meta={assistant?.meta} />
 
       {loading ? <div className="state-message">Đang tổng hợp hiệu suất từng món...</div> : null}
 
