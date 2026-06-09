@@ -12,7 +12,6 @@ import {
   Users,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import ManagementPageHeader from "../shared/ManagementPageHeader";
 import { useRbacManagement } from "@/hooks/useRbacManagement";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import RbacAuditLogPanel from "./RbacAuditLogPanel";
@@ -20,13 +19,41 @@ import { hasAnyPermission, hasPermission, NO_PERMISSION_MESSAGE } from "@/utils/
 import "./RbacManagement.scss";
 
 const roleLabel = (role) => role?.name || role?.slug || "Chưa có vai trò";
-const permissionLabel = (permission) => permission?.code || permission?.name || permission?.id;
+const permissionLabel = (permission) => permission?.name || permission?.description || permission?.code || permission?.id;
+const permissionMeta = (permission) => permission?.code || [permission?.action, permission?.resource].filter(Boolean).join(" · ");
 const protectedRoleSlugs = new Set(["admin", "manager", "hr", "accountant"]);
 const departmentOptions = ["service", "kitchen", "cashier", "management", "cleaning", "delivery", "inventory", "bar"];
 const auditPermissions = ["role.read", "permission.read", "staff.write"];
 
 const emptyRoleForm = { name: "", slug: "", description: "", department: "", parentRoleId: "", permissionIds: [] };
 const normalizeSlug = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, "-");
+
+const groupLabels = {
+  menu: "Thực đơn",
+  order: "Đơn hàng",
+  restaurant: "Nhà hàng",
+  system: "Quản trị hệ thống",
+  user: "Người dùng",
+  staff: "Nhân viên",
+  table: "Bàn & khu vực",
+  promotion: "Khuyến mãi",
+  report: "Báo cáo",
+  inventory: "Kho hàng",
+};
+
+const departmentLabels = {
+  service: "Phục vụ",
+  kitchen: "Bếp",
+  cashier: "Thu ngân",
+  management: "Quản lý",
+  cleaning: "Tạp vụ",
+  delivery: "Giao hàng",
+  inventory: "Kho hàng",
+  bar: "Quầy bar",
+};
+
+const groupLabel = (group) => groupLabels[group] || group;
+const departmentLabel = (department) => departmentLabels[department] || department || "Không giới hạn bộ phận";
 
 const getGraphQLErrorMessage = (error, fallback) => {
   const code = error?.graphQLErrors?.[0]?.extensions?.code || error?.networkError?.result?.errors?.[0]?.extensions?.code;
@@ -40,7 +67,12 @@ function PermissionChipList({ title, permissions = [], tone = "permission" }) {
       <h4>{title}</h4>
       {permissions.length ? (
         <div className="rbac-chip-list">
-          {permissions.map((permission) => <span key={permission.id || permission.code} className={`rbac-chip rbac-chip--${tone}`}>{permissionLabel(permission)}</span>)}
+          {permissions.map((permission) => (
+            <span key={permission.id || permission.code} className={`rbac-chip rbac-chip--${tone}`}>
+              <strong>{permissionLabel(permission)}</strong>
+              {permissionMeta(permission) ? <small>{permissionMeta(permission)}</small> : null}
+            </span>
+          ))}
         </div>
       ) : <p className="rbac-empty">Chưa có quyền hạn.</p>}
     </div>
@@ -55,9 +87,9 @@ function PermissionGroups({ groups }) {
     <section className="rbac-card rbac-permission-catalog">
       <div className="rbac-card__header">
         <div>
-          <span className="rbac-section-kicker">Danh mục hệ thống</span>
+          <span className="rbac-section-kicker">Bảng quyền</span>
           <h3>Danh mục quyền hạn</h3>
-          <p>Quyền được nhóm theo nghiệp vụ để dễ kiểm tra phạm vi truy cập.</p>
+          <p>Các quyền được gom theo nghiệp vụ để quản lý phạm vi truy cập rõ ràng hơn.</p>
         </div>
         <span className="rbac-count-pill">{totalPermissions} quyền hạn</span>
       </div>
@@ -66,13 +98,14 @@ function PermissionGroups({ groups }) {
         {entries.map(([group, permissions]) => (
           <section key={group} className="rbac-permission-group">
             <div className="rbac-permission-group__title">
-              <h4>{group}</h4>
+              <h4>{groupLabel(group)}</h4>
               <span>{permissions.length}</span>
             </div>
             <div className="rbac-chip-list">
               {permissions.map((permission) => (
-                <span key={permission.id} className="rbac-chip" title={permission.description || permission.name}>
-                  <strong>{permission.code}</strong><small>{permission.action} · {permission.resource}</small>
+                <span key={permission.id} className="rbac-chip" title={permission.description || permission.name || permission.code}>
+                  <strong>{permissionLabel(permission)}</strong>
+                  {permissionMeta(permission) ? <small>{permissionMeta(permission)}</small> : null}
                 </span>
               ))}
             </div>
@@ -85,7 +118,7 @@ function PermissionGroups({ groups }) {
 
 function RoleBadge({ role }) {
   const isSystem = Boolean(role?.isSystem);
-  return <span className={`rbac-role-badge ${isSystem ? "is-system" : "is-custom"}`}>{isSystem ? "Hệ thống" : "Tuỳ chỉnh"}</span>;
+  return <span className={`rbac-role-badge ${isSystem ? "is-system" : "is-custom"}`}>{isSystem ? "Vai trò mặc định" : "Vai trò tuỳ chỉnh"}</span>;
 }
 
 function RoleExplorer({ roles, selectedRoleId, onSelectRole, selectedRole }) {
@@ -94,9 +127,9 @@ function RoleExplorer({ roles, selectedRoleId, onSelectRole, selectedRole }) {
       <section className="rbac-card">
         <div className="rbac-card__header">
           <div>
-            <span className="rbac-section-kicker">Role library</span>
+            <span className="rbac-section-kicker">Vai trò</span>
             <h3>Danh sách vai trò</h3>
-            <p>Chọn một vai trò để xem quyền kế thừa và quyền hiệu lực.</p>
+            <p>Chọn vai trò để xem nhân viên sẽ được phép thao tác những gì.</p>
           </div>
           <span className="rbac-count-pill">{roles.length} vai trò</span>
         </div>
@@ -104,8 +137,8 @@ function RoleExplorer({ roles, selectedRoleId, onSelectRole, selectedRole }) {
           {roles.map((role) => (
             <button key={role.id} type="button" className={`rbac-role-row ${selectedRoleId === role.id ? "is-active" : ""}`} onClick={() => onSelectRole(role.id)}>
               <span className="rbac-role-row__top"><strong>{roleLabel(role)}</strong><RoleBadge role={role} /></span>
-              <span className="rbac-role-row__meta">{role.slug}</span>
-              <small>{role.department || "Không giới hạn bộ phận"}</small>
+              <span className="rbac-role-row__meta">Tên rút gọn: {role.slug}</span>
+              <small>{departmentLabel(role.department)}</small>
             </button>
           ))}
         </div>
@@ -113,9 +146,9 @@ function RoleExplorer({ roles, selectedRoleId, onSelectRole, selectedRole }) {
       <section className="rbac-card rbac-card--permission-detail">
         <div className="rbac-card__header">
           <div>
-            <span className="rbac-section-kicker">Effective access</span>
-            <h3>Quyền hiệu lực của vai trò</h3>
-            <p>Tổng hợp quyền kế thừa và quyền gán trực tiếp.</p>
+            <span className="rbac-section-kicker">Quyền đang áp dụng</span>
+            <h3>Chi tiết quyền của vai trò</h3>
+            <p>Hiển thị quyền được kế thừa, quyền gán riêng và kết quả cuối cùng.</p>
           </div>
           <span className="rbac-count-pill">{selectedRole?.permissions?.length || 0} quyền hạn</span>
         </div>
@@ -124,17 +157,17 @@ function RoleExplorer({ roles, selectedRoleId, onSelectRole, selectedRole }) {
             <div className="rbac-selected-role">
               <div>
                 <h4>{roleLabel(selectedRole)}</h4>
-                <p>{selectedRole.description || "Vai trò chưa có mô tả."}</p>
+                <p>{selectedRole.description || "Vai trò này chưa có mô tả."}</p>
               </div>
-              <span>Nhóm vai trò: {selectedRole.parentRole?.name || selectedRole.parentRole?.slug || "Không có"}</span>
+              <span>Nhóm kế thừa: {selectedRole.parentRole?.name || selectedRole.parentRole?.slug || "Không có"}</span>
             </div>
             <div className="rbac-permission-columns">
-              <PermissionChipList title="Quyền kế thừa từ nhóm vai trò" permissions={selectedRole.parentRole?.permissions || []} tone="inherited" />
-              <PermissionChipList title="Quyền gán trực tiếp cho vai trò" permissions={selectedRole.directPermissions || []} tone="direct" />
-              <PermissionChipList title="Quyền hiệu lực cuối cùng" permissions={selectedRole.permissions || []} />
+              <PermissionChipList title="Quyền kế thừa" permissions={selectedRole.parentRole?.permissions || []} tone="inherited" />
+              <PermissionChipList title="Quyền gán riêng" permissions={selectedRole.directPermissions || []} tone="direct" />
+              <PermissionChipList title="Quyền sau cùng" permissions={selectedRole.permissions || []} />
             </div>
           </>
-        ) : <p className="rbac-empty">Chọn vai trò để xem quyền hiệu lực.</p>}
+        ) : <p className="rbac-empty">Chọn vai trò để xem chi tiết quyền.</p>}
       </section>
     </div>
   );
@@ -148,6 +181,7 @@ function RoleManagement({ roles, parentRoles, permissionsByGroup, selectedRole, 
   const selectedRoleSlug = String(selectedRole?.slug || "").toLowerCase();
   const isProtectedSelectedRole = mode === "edit" && selectedRole && (selectedRole.isSystem || protectedRoleSlugs.has(selectedRoleSlug));
   const formLocked = readOnly || Boolean(isProtectedSelectedRole);
+  const selectedPermissionCount = form.permissionIds.length;
 
   useEffect(() => {
     if (mode !== "edit" || !selectedRole) return;
@@ -209,44 +243,65 @@ function RoleManagement({ roles, parentRoles, permissionsByGroup, selectedRole, 
 
   return (
     <div className="rbac-grid rbac-grid--management">
-      <section className="rbac-card">
+      <section className="rbac-card rbac-role-sidebar">
         <div className="rbac-card__header">
           <div>
-            <span className="rbac-section-kicker">Role builder</span>
+            <span className="rbac-section-kicker">Bộ vai trò</span>
             <h3>Quản lý vai trò</h3>
-            <p>Tạo hoặc chỉnh sửa bộ quyền theo từng bộ phận vận hành.</p>
+            <p>Tạo hoặc chỉnh sửa bộ quyền theo từng nhóm nhân viên.</p>
           </div>
-          <span className="rbac-count-pill">{readOnly ? "Chỉ xem" : "Có quyền ghi"}</span>
+          <span className="rbac-count-pill">{readOnly ? "Chỉ xem" : "Có thể chỉnh sửa"}</span>
         </div>
-        {readOnly ? <p className="rbac-status rbac-status--warning">{NO_PERMISSION_MESSAGE}</p> : null}
-        {isProtectedSelectedRole ? <p className="rbac-status rbac-status--warning">Vai trò hệ thống chỉ được xem, không được chỉnh sửa.</p> : null}
+        {readOnly ? <p className="rbac-status rbac-status--warning">Bạn chỉ có quyền xem, chưa thể thay đổi vai trò.</p> : null}
+        {isProtectedSelectedRole ? <p className="rbac-status rbac-status--warning">Vai trò mặc định chỉ được xem, không chỉnh sửa trực tiếp.</p> : null}
         <div className="rbac-action-row">
-          <button type="button" onClick={() => { setMode("edit"); setStatus(null); }} className={mode === "edit" ? "is-active" : ""}>Sửa vai trò đang chọn</button>
+          <button type="button" onClick={() => { setMode("edit"); setStatus(null); }} className={mode === "edit" ? "is-active" : ""}>Chỉnh sửa</button>
           <button type="button" onClick={() => { if (!canWriteRoles) return; setMode("create"); setForm(emptyRoleForm); setStatus(null); }} className={mode === "create" ? "is-active" : ""} disabled={readOnly}>Tạo vai trò mới</button>
         </div>
         <div className="rbac-role-list rbac-role-list--compact">
-          {roles.map((role) => <button key={role.id} type="button" className={`rbac-role-row ${selectedRoleId === role.id ? "is-active" : ""}`} onClick={() => { onSelectRole(role.id); setMode("edit"); }}><span className="rbac-role-row__top"><strong>{roleLabel(role)}</strong><RoleBadge role={role} /></span><span className="rbac-role-row__meta">{role.slug}</span></button>)}
+          {roles.map((role) => <button key={role.id} type="button" className={`rbac-role-row ${selectedRoleId === role.id ? "is-active" : ""}`} onClick={() => { onSelectRole(role.id); setMode("edit"); }}><span className="rbac-role-row__top"><strong>{roleLabel(role)}</strong><RoleBadge role={role} /></span><span className="rbac-role-row__meta">{departmentLabel(role.department)}</span></button>)}
         </div>
       </section>
       <section className="rbac-card rbac-card--form">
         <div className="rbac-card__header">
           <div>
-            <span className="rbac-section-kicker">Role details</span>
-            <h3>{mode === "create" ? "Tạo vai trò mới" : "Sửa vai trò"}</h3>
-            <p>Thiết lập thông tin cơ bản, nhóm kế thừa và quyền gán trực tiếp.</p>
+            <span className="rbac-section-kicker">Thiết lập vai trò</span>
+            <h3>{mode === "create" ? "Tạo vai trò mới" : "Chỉnh sửa vai trò"}</h3>
+            <p>Đặt tên vai trò, chọn nhóm kế thừa và phạm vi thao tác được phép.</p>
           </div>
-          <span className="rbac-count-pill">{selectedRole?.isSystem && mode === "edit" ? "Vai trò hệ thống" : "Vai trò tuỳ chỉnh"}</span>
+          <span className="rbac-count-pill">{selectedRole?.isSystem && mode === "edit" ? "Vai trò mặc định" : `${selectedPermissionCount} quyền đã chọn`}</span>
         </div>
         <form onSubmit={handleSubmit} className="rbac-role-form" aria-disabled={formLocked}>
           <div className="rbac-form-grid">
             <label>Tên vai trò<input value={form.name} onChange={(event) => changeField("name", event.target.value)} disabled={formLocked} required /></label>
-            <label>Mã vai trò<input value={form.slug} onChange={(event) => changeField("slug", event.target.value)} disabled={formLocked || mode === "edit"} required /></label>
-            <label>Bộ phận<select value={form.department} onChange={(event) => changeField("department", event.target.value)} disabled={formLocked}><option value="">Không giới hạn</option>{departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}</select></label>
-            <label>Nhóm vai trò<select value={form.parentRoleId} onChange={(event) => changeField("parentRoleId", event.target.value)} disabled={formLocked} required><option value="">Chọn nhóm vai trò</option>{parentRoles.map((parentRole) => <option key={parentRole.id} value={parentRole.id}>{roleLabel(parentRole)} · {parentRole.slug}</option>)}</select></label>
+            <label>Tên rút gọn<input value={form.slug} onChange={(event) => changeField("slug", event.target.value)} disabled={formLocked || mode === "edit"} required /></label>
+            <label>Bộ phận<select value={form.department} onChange={(event) => changeField("department", event.target.value)} disabled={formLocked}><option value="">Không giới hạn</option>{departmentOptions.map((department) => <option key={department} value={department}>{departmentLabel(department)}</option>)}</select></label>
+            <label>Nhóm kế thừa<select value={form.parentRoleId} onChange={(event) => changeField("parentRoleId", event.target.value)} disabled={formLocked} required><option value="">Chọn nhóm kế thừa</option>{parentRoles.map((parentRole) => <option key={parentRole.id} value={parentRole.id}>{roleLabel(parentRole)}</option>)}</select></label>
           </div>
-          <label>Mô tả<textarea value={form.description} onChange={(event) => changeField("description", event.target.value)} disabled={formLocked} rows={3} /></label>
-          <div className="rbac-permission-checklist"><h4>Quyền hạn gán trực tiếp</h4>{Object.entries(permissionsByGroup || {}).map(([group, permissions]) => <fieldset key={group} disabled={formLocked}><legend>{group}</legend>{permissions.map((permission) => <label key={permission.id} className="rbac-checkbox-row"><input type="checkbox" checked={form.permissionIds.includes(permission.id)} onChange={() => togglePermission(permission.id)} /><span><strong>{permission.code}</strong><small>{permission.name || permission.description}</small></span></label>)}</fieldset>)}</div>
-          <div className="rbac-permission-columns"><PermissionChipList title="Quyền kế thừa từ nhóm vai trò" permissions={selectedParentRole?.permissions || []} tone="inherited" /><PermissionChipList title="Quyền gán trực tiếp cho vai trò" permissions={directPermissions} tone="direct" /><PermissionChipList title="Quyền hiệu lực cuối cùng" permissions={effectivePermissions} /></div>
+          <label>Mô tả<textarea value={form.description} onChange={(event) => changeField("description", event.target.value)} disabled={formLocked} rows={3} placeholder="Ví dụ: Nhân viên phục vụ được nhận đơn, cập nhật bàn và xem thực đơn." /></label>
+          <div className="rbac-permission-checklist">
+            <div className="rbac-permission-checklist__header">
+              <div>
+                <h4>Phạm vi thao tác</h4>
+                <p>Chọn những thao tác nhân viên được phép thực hiện.</p>
+              </div>
+              <span>{selectedPermissionCount} đã chọn</span>
+            </div>
+            <div className="rbac-permission-checklist__groups">
+              {Object.entries(permissionsByGroup || {}).map(([group, permissions]) => (
+                <fieldset key={group} disabled={formLocked}>
+                  <legend>{groupLabel(group)}</legend>
+                  {permissions.map((permission) => (
+                    <label key={permission.id} className="rbac-checkbox-row">
+                      <input type="checkbox" checked={form.permissionIds.includes(permission.id)} onChange={() => togglePermission(permission.id)} />
+                      <span><strong>{permissionLabel(permission)}</strong><small>{permissionMeta(permission)}</small></span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+            </div>
+          </div>
+          <div className="rbac-permission-columns"><PermissionChipList title="Quyền kế thừa" permissions={selectedParentRole?.permissions || []} tone="inherited" /><PermissionChipList title="Quyền gán riêng" permissions={directPermissions} tone="direct" /><PermissionChipList title="Quyền sau cùng" permissions={effectivePermissions} /></div>
           <button type="submit" disabled={formLocked || saving || !form.name || !form.slug || !form.parentRoleId || (mode === "edit" && !selectedRole)}>{saving ? "Đang lưu..." : mode === "create" ? "Tạo vai trò" : "Lưu thay đổi"}</button>
         </form>
         {status ? <p className={`rbac-status rbac-status--${status.type}`} role="status" aria-live="polite">{status.text}</p> : null}
@@ -286,7 +341,7 @@ function StaffRoleAssignment({ restaurants, roles, staff, selectedRestaurantId, 
   const assignmentSteps = [
     { label: "Nhà hàng", done: Boolean(selectedRestaurant), value: selectedRestaurant?.name || "Chưa chọn" },
     { label: "Nhân viên", done: Boolean(selectedStaff), value: selectedStaff?.fullName || "Chưa chọn" },
-    { label: "Vai trò mới", done: Boolean(selectedRole), value: roleLabel(selectedRole) },
+    { label: "Vai trò mới", done: Boolean(selectedRole), value: selectedRole ? roleLabel(selectedRole) : "Chưa chọn" },
   ];
 
   const handleSubmit = async (event) => {
@@ -305,7 +360,7 @@ function StaffRoleAssignment({ restaurants, roles, staff, selectedRestaurantId, 
     <section className="rbac-card rbac-assignment">
       <div className="rbac-card__header">
         <div>
-          <span className="rbac-section-kicker">Staff access</span>
+          <span className="rbac-section-kicker">Cấp quyền nhân viên</span>
           <h3>Gán vai trò cho nhân viên</h3>
           <p>Chọn nhà hàng, nhân viên và vai trò phù hợp để cập nhật quyền truy cập.</p>
         </div>
@@ -320,16 +375,16 @@ function StaffRoleAssignment({ restaurants, roles, staff, selectedRestaurantId, 
       <div className="rbac-assignment__layout">
         <form onSubmit={handleSubmit} className="rbac-form rbac-form--assignment" aria-disabled={formDisabled}>
           <label>Nhà hàng<select value={selectedRestaurantId} onChange={(event) => setSelectedRestaurantId(event.target.value)} required disabled={!restaurants.length}><option value="">Chọn nhà hàng</option>{restaurants.map((restaurant) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}</select></label>
-          <label>Nhân viên<select value={staffUserId} onChange={(event) => setStaffUserId(event.target.value)} required disabled={!canAssignRole || !selectedRestaurantId || !staff.length}><option value="">Chọn nhân viên</option>{staff.map((member) => <option key={member.id} value={member.id}>{member.fullName} {member.role?.slug ? `(${member.role.slug})` : ""}</option>)}</select></label>
-          <label>Vai trò mới<select value={roleId} onChange={(event) => setRoleId(event.target.value)} required disabled={!canAssignRole || !selectedRestaurantId || !assignableRoles.length}><option value="">Chọn vai trò</option>{assignableRoles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role)} · {role.slug}</option>)}</select></label>
+          <label>Nhân viên<select value={staffUserId} onChange={(event) => setStaffUserId(event.target.value)} required disabled={!canAssignRole || !selectedRestaurantId || !staff.length}><option value="">Chọn nhân viên</option>{staff.map((member) => <option key={member.id} value={member.id}>{member.fullName} {member.role?.name ? `(${member.role.name})` : ""}</option>)}</select></label>
+          <label>Vai trò mới<select value={roleId} onChange={(event) => setRoleId(event.target.value)} required disabled={!canAssignRole || !selectedRestaurantId || !assignableRoles.length}><option value="">Chọn vai trò</option>{assignableRoles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role)}</option>)}</select></label>
           <button type="submit" disabled={formDisabled || !staffUserId || !roleId}>{assigning ? "Đang gán vai trò..." : "Gán vai trò"}</button>
-          <small className="rbac-form__hint">{formDisabled || !staffUserId || !roleId ? disabledReason : "Hệ thống sẽ xác thực quyền trước khi lưu thay đổi."}</small>
+          <small className="rbac-form__hint">{formDisabled || !staffUserId || !roleId ? disabledReason : "Hệ thống sẽ kiểm tra quyền trước khi lưu thay đổi."}</small>
         </form>
 
         <aside className="rbac-assignment-preview" aria-label="Tóm tắt thay đổi phân quyền">
           <div className="rbac-assignment-preview__icon"><UserCog size={22} /></div>
           <h4>{selectedStaff && selectedRole ? "Sẵn sàng cập nhật" : "Tóm tắt thay đổi"}</h4>
-          <p>{selectedStaff && selectedRole ? "Kiểm tra lại thông tin trước khi gán vai trò." : "Hoàn tất 3 bước để xem bản xem trước quyền truy cập."}</p>
+          <p>{selectedStaff && selectedRole ? "Kiểm tra lại thông tin trước khi gán vai trò." : "Hoàn tất 3 bước để xem trước thay đổi."}</p>
           <div className="rbac-assignment-steps">
             {assignmentSteps.map((step) => (
               <div key={step.label} className={`rbac-assignment-step ${step.done ? "is-done" : ""}`}>
@@ -348,7 +403,38 @@ function StaffRoleAssignment({ restaurants, roles, staff, selectedRestaurantId, 
       </div>
 
       {status ? <p className={`rbac-status rbac-status--${status.type}`} role="status" aria-live="polite">{status.text}</p> : null}
-      <p className="rbac-note">Quyền truy cập được xác thực lại ở hệ thống trước khi áp dụng.</p>
+      <p className="rbac-note">Quyền truy cập được xác thực lại trước khi áp dụng.</p>
+    </section>
+  );
+}
+
+function RbacPremiumHeader({ restaurants, selectedRestaurantId, setSelectedRestaurantId, restaurantsLoading, loading, onRefresh, roleCount, staffCount, auditEnabled }) {
+  return (
+    <section className="rbac-premium-header">
+      <div className="rbac-premium-header__intro">
+        <div className="rbac-premium-header__icon"><ShieldCheck size={28} /></div>
+        <div>
+          <span className="rbac-section-kicker">An toàn truy cập</span>
+          <h1>Phân quyền nhân viên</h1>
+          <p>Thiết lập vai trò, phạm vi thao tác và lịch sử thay đổi cho từng nhà hàng.</p>
+        </div>
+      </div>
+      <div className="rbac-premium-header__panel">
+        <div className="rbac-premium-metrics">
+          <div className="rbac-premium-metric"><KeyRound size={18} /><span>Vai trò</span><strong>{roleCount.toLocaleString("vi-VN")}</strong></div>
+          <div className="rbac-premium-metric"><Users size={18} /><span>Nhân viên</span><strong>{staffCount.toLocaleString("vi-VN")}</strong></div>
+          <div className="rbac-premium-metric"><FileClock size={18} /><span>Lịch sử</span><strong>{auditEnabled ? "Bật" : "Ẩn"}</strong></div>
+        </div>
+        <div className="rbac-premium-controls">
+          <label><Building2 size={16} /><select value={selectedRestaurantId || ""} onChange={(event) => setSelectedRestaurantId(event.target.value)} disabled={restaurantsLoading || !restaurants.length}>{!restaurants.length && <option value="">{restaurantsLoading ? "Đang tải nhà hàng..." : "Chọn nhà hàng"}</option>}{restaurants.map((restaurant) => <option key={restaurant.id || restaurant._id} value={restaurant.id || restaurant._id}>{restaurant.name}</option>)}</select></label>
+          <button type="button" onClick={onRefresh} disabled={loading}><RefreshCw size={16} />{loading ? "Đang tải..." : "Làm mới"}</button>
+        </div>
+        <div className="rbac-assurance-strip">
+          <span>Phạm vi theo nhà hàng</span>
+          <span>Kiểm tra trước khi lưu</span>
+          <span>Lưu lại lịch sử thay đổi</span>
+        </div>
+      </div>
     </section>
   );
 }
@@ -413,32 +499,24 @@ export default function RbacManagement() {
 
   return (
     <div className="rbac-page">
-      <ManagementPageHeader
-        density="compact"
-        eyebrow="Bảo mật vận hành"
-        title="Phân quyền nhân viên"
-        subtitle="Quản lý vai trò, quyền hạn và phạm vi truy cập của nhân viên theo từng nhà hàng."
-        icon={<ShieldCheck size={24} strokeWidth={2.2} />}
-        selectedRestaurant={selectedRestaurantId}
-        onRestaurantChange={setSelectedRestaurantId}
-        restaurantList={restaurantOptions}
-        restaurantDisabled={restaurantsLoading || !restaurantOptions.length}
-        restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chọn nhà hàng"}
-        stats={[
-          { label: "Vai trò", value: rbac.roles.length, icon: <KeyRound size={18} />, tone: "warning" },
-          { label: "Nhân viên", value: rbac.staff.length, icon: <Users size={18} />, tone: "success" },
-        ]}
-        secondaryActions={[{ label: "Làm mới", icon: <RefreshCw size={16} />, onClick: () => rbac.refetch(), disabled: rbac.loading, loading: rbac.loading }]}
-        footerLeft={<small>Quyền truy cập được xác thực lại ở hệ thống trước khi áp dụng.</small>}
-        showTimeWidget={false}
+      <RbacPremiumHeader
+        restaurants={restaurantOptions}
+        selectedRestaurantId={selectedRestaurantId}
+        setSelectedRestaurantId={setSelectedRestaurantId}
+        restaurantsLoading={restaurantsLoading}
+        loading={rbac.loading}
+        onRefresh={() => rbac.refetch()}
+        roleCount={rbac.roles.length}
+        staffCount={rbac.staff.length}
+        auditEnabled={canViewAuditLogs}
       />
       {rbac.error ? <div className="rbac-status rbac-status--error">{getGraphQLErrorMessage(rbac.error, "Không tải được dữ liệu phân quyền.")}</div> : null}
       {rbac.loading ? <div className="rbac-status">Đang tải dữ liệu phân quyền...</div> : null}
       <nav className="rbac-tabs" aria-label="Quản lý phân quyền">
-        <button type="button" className={activeTab === "overview" ? "is-active" : ""} onClick={() => setActiveTab("overview")}><ListChecks size={16} />Tổng quan phân quyền</button>
-        <button type="button" className={activeTab === "assignment" ? "is-active" : ""} onClick={() => setActiveTab("assignment")}><UserCog size={16} />Gán vai trò nhân viên</button>
-        <button type="button" className={activeTab === "roles" ? "is-active" : ""} onClick={() => setActiveTab("roles")}><Lock size={16} />Quản lý vai trò</button>
-        {canViewAuditLogs ? <button type="button" className={activeTab === "audit" ? "is-active" : ""} onClick={() => setActiveTab("audit")}><FileClock size={16} />Nhật ký phân quyền</button> : null}
+        <button type="button" className={activeTab === "overview" ? "is-active" : ""} onClick={() => setActiveTab("overview")}><ListChecks size={16} />Vai trò & quyền</button>
+        <button type="button" className={activeTab === "assignment" ? "is-active" : ""} onClick={() => setActiveTab("assignment")}><UserCog size={16} />Gán vai trò</button>
+        <button type="button" className={activeTab === "roles" ? "is-active" : ""} onClick={() => setActiveTab("roles")}><Lock size={16} />Tạo vai trò</button>
+        {canViewAuditLogs ? <button type="button" className={activeTab === "audit" ? "is-active" : ""} onClick={() => setActiveTab("audit")}><FileClock size={16} />Lịch sử thay đổi</button> : null}
       </nav>
       {activeTab === "overview" ? <><RoleExplorer roles={rbac.roles} selectedRoleId={rbac.selectedRoleId} onSelectRole={rbac.setSelectedRoleId} selectedRole={rbac.selectedRole} /><PermissionGroups groups={rbac.permissionsByGroup} /></> : null}
       {activeTab === "assignment" ? <StaffRoleAssignment restaurants={restaurantOptions} roles={rbac.roles} staff={rbac.staff} selectedRestaurantId={selectedRestaurantId} setSelectedRestaurantId={setSelectedRestaurantId} assignStaffRole={rbac.assignStaffRole} assigning={rbac.assigning} staffListEnabled={rbac.includeStaffList} canAssignRole={canAssignRole} /> : null}
