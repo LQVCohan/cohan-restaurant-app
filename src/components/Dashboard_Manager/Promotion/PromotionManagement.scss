@@ -1,535 +1,701 @@
 @use "sass:color";
 
-// --- Variables ---
-$primary: #4f46e5; // Indigo 600
-$bg-body: #f3f4f6;
-$bg-white: #ffffff;
-$text-main: #111827;
-$text-sub: #6b7280;
-$border-color: #e5e7eb;
-$danger: #ef4444;
-$radius: 12px;
-$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+// Promotion manager uses a calm warm-neutral palette so the page can stay open
+// for long operating shifts without the hard glare of saturated indigo/blue.
+$accent: #9a7048;
+$accent-dark: #6f5236;
+$accent-soft: #f3eadf;
+$accent-quiet: #fbf7f1;
+$success: #3f7d5a;
+$success-soft: #e9f3ed;
+$info: #5f7693;
+$info-soft: #eaf0f6;
+$danger: #b95a4f;
+$danger-soft: #faece8;
+$warning: #a66d2e;
+$warning-soft: #fff3df;
+$ink: #22201d;
+$text: #3c3833;
+$muted: #756f66;
+$subtle: #9b9388;
+$line: #e6ded3;
+$line-strong: #d7cbbd;
+$surface: #fffdf9;
+$surface-raised: #ffffff;
+$page-bg: #f7f3ed;
+$shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
+$shadow-row: 0 10px 24px rgba(74, 57, 37, 0.06);
+$radius-lg: 22px;
+$radius-md: 14px;
+$radius-sm: 10px;
+$transition: 180ms ease;
 
-// Mixins
-@mixin flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@mixin focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba($accent, 0.16);
+  border-color: rgba($accent, 0.72);
+}
+
+@mixin soft-button {
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid $line;
+  background: rgba($surface-raised, 0.9);
+  color: $text;
+  cursor: pointer;
+  transition:
+    transform $transition,
+    border-color $transition,
+    background $transition,
+    box-shadow $transition,
+    color $transition;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: $line-strong;
+    background: $surface-raised;
+    box-shadow: 0 10px 20px rgba(80, 61, 38, 0.08);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+    box-shadow: none;
+  }
 }
 
 .promotion-manager-page {
-  background-color: $bg-body;
-  min-height: 100vh;
-  padding: 2rem;
-  font-family: "Inter", sans-serif;
-  color: $text-main;
+  min-height: 100dvh;
+  padding: clamp(1rem, 2vw, 2rem);
+  color: $text;
+  font-family: "Outfit", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(184, 147, 101, 0.16), transparent 30rem),
+    radial-gradient(circle at 92% 8%, rgba(99, 115, 98, 0.12), transparent 28rem),
+    linear-gradient(180deg, #fbf8f3 0%, $page-bg 44%, #f4efe8 100%);
+  position: relative;
 
-  // 1. Header
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
+  &::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image:
+      linear-gradient(rgba(82, 65, 42, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(82, 65, 42, 0.028) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(180deg, #000 0%, transparent 82%);
+  }
 
-    .header-title h1 {
-      font-size: 1.75rem;
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .management-page-header {
+    overflow: hidden;
+    border: 1px solid rgba($line-strong, 0.78);
+    border-radius: 28px;
+    background:
+      linear-gradient(135deg, rgba(255, 253, 249, 0.96), rgba(250, 244, 235, 0.92)),
+      radial-gradient(circle at top right, rgba($accent, 0.14), transparent 22rem);
+    box-shadow: $shadow-soft;
+
+    .mph-eyebrow {
+      color: $accent-dark;
+      letter-spacing: 0.14em;
       font-weight: 700;
-      color: $text-main;
-      margin: 0 0 4px;
-    }
-    .header-title p {
-      color: $text-sub;
-      margin: 0;
     }
 
-    .restaurant-selector {
-      background: $bg-white;
-      border: 1px solid $border-color;
-      padding: 8px 16px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: $shadow-sm;
-      &:hover {
-        border-color: $primary;
+    .mph-title {
+      color: $ink;
+      letter-spacing: -0.045em;
+      text-wrap: balance;
+    }
+
+    .mph-greeting,
+    .mph-subtitle {
+      color: $muted;
+      max-width: 64ch;
+      line-height: 1.62;
+    }
+
+    .mph-select,
+    .mph-search {
+      border-color: rgba($line-strong, 0.9);
+      background: rgba($surface-raised, 0.74);
+      color: $text;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+
+      &:focus-within,
+      &:focus {
+        @include focus-ring;
       }
+    }
+
+    .mph-stat-card {
+      border: 1px solid rgba($line, 0.86);
+      background: rgba($surface-raised, 0.72);
+      box-shadow: 0 14px 30px rgba(80, 61, 38, 0.06);
+      backdrop-filter: blur(10px);
 
       &__icon {
-        flex: 0 0 auto;
+        border-radius: 14px;
+        background: $accent-soft;
       }
 
-      select {
-        border: none;
-        outline: none;
-        background: transparent;
-        font-weight: 500;
-        color: $text-main;
-        cursor: pointer;
-        appearance: none;
-        padding-right: 4px;
+      &__label {
+        color: $muted;
       }
 
-      svg:last-child {
-        color: $text-sub;
-        pointer-events: none;
+      &__value {
+        color: $ink;
+        font-variant-numeric: tabular-nums;
       }
     }
   }
 
-  // 2. Stats Section
-  .stats-section {
-    margin-bottom: 2rem;
-  }
+  .manager-command-bar {
+    margin: 1rem 0 1.1rem;
+    padding: 0.9rem;
+    border: 1px solid rgba($line-strong, 0.82);
+    border-radius: 22px;
+    background: rgba($surface-raised, 0.84);
+    box-shadow: 0 16px 36px rgba(74, 57, 37, 0.07);
+    backdrop-filter: blur(14px);
 
-  .section-tabs {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
+    @supports (position: sticky) {
+      position: sticky;
+      top: 0.75rem;
+      z-index: 20;
+    }
 
-    .section-tab {
-      border: 1px solid $border-color;
-      background: $bg-white;
-      padding: 0.6rem 1rem;
-      border-radius: 999px;
-      font-weight: 500;
-      color: $text-sub;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .mcb-tabs {
+      gap: 0.4rem;
+      margin-bottom: 0.8rem;
+    }
 
-      &.active {
-        background: $primary;
-        border-color: $primary;
-        color: $bg-white;
-      }
+    .mcb-tab {
+      min-height: 38px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: $muted;
+      font-weight: 650;
+      padding: 0.45rem 0.8rem;
+      transition:
+        background $transition,
+        color $transition,
+        border-color $transition,
+        transform $transition;
 
       &:hover {
-        border-color: $primary;
-        color: $primary;
+        color: $accent-dark;
+        background: $accent-quiet;
+      }
+
+      &:focus-visible {
+        @include focus-ring;
+      }
+
+      &.is-active {
+        color: $accent-dark;
+        border-color: rgba($accent, 0.2);
+        background: linear-gradient(180deg, #fffaf2, $accent-soft);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+      }
+    }
+
+    .mcb-controls {
+      gap: 0.8rem;
+    }
+
+    .mcb-left,
+    .mcb-right {
+      gap: 0.65rem;
+    }
+
+    .mcb-search,
+    .dropdown-filter,
+    .mcb-view-toggle {
+      border: 1px solid $line;
+      background: rgba(255, 253, 249, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    }
+
+    .mcb-search {
+      height: 42px;
+      min-width: min(320px, 42vw);
+      border-radius: 14px;
+      color: $muted;
+
+      input {
+        width: 100%;
+        min-width: 0;
+        color: $ink;
+        background: transparent;
+        font-weight: 520;
+
+        &::placeholder {
+          color: $subtle;
+        }
+      }
+
+      &:focus-within {
+        @include focus-ring;
+      }
+    }
+
+    .dropdown-filter {
+      min-height: 42px;
+      min-width: 160px;
+      border-radius: 14px;
+      padding: 0 0.75rem;
+      color: $muted;
+      transition: border-color $transition, box-shadow $transition, background $transition;
+
+      select {
+        color: $text;
+        font-weight: 560;
+        background: transparent;
+      }
+
+      &:focus-within {
+        @include focus-ring;
+      }
+    }
+
+    .btn-clear-filter,
+    .mcb-btn,
+    .mcb-view-toggle button {
+      @include soft-button;
+    }
+
+    .btn-clear-filter {
+      padding: 0 0.75rem;
+      gap: 0.35rem;
+      color: $danger;
+      background: $danger-soft;
+      border-color: rgba($danger, 0.18);
+
+      &:hover:not(:disabled) {
+        color: color.adjust($danger, $lightness: -7%);
+        border-color: rgba($danger, 0.32);
+      }
+    }
+
+    .mcb-btn {
+      padding: 0 0.85rem;
+      font-weight: 650;
+
+      &--primary {
+        color: #fffaf2;
+        border-color: $accent;
+        background: linear-gradient(180deg, #a97c50, $accent-dark);
+        box-shadow: 0 14px 28px rgba($accent, 0.22);
+
+        &:hover:not(:disabled) {
+          color: #fffaf2;
+          border-color: $accent-dark;
+          background: linear-gradient(180deg, #9d734a, #64472f);
+        }
+      }
+    }
+
+    .mcb-view-toggle {
+      display: inline-flex;
+      gap: 0.25rem;
+      height: 42px;
+      align-items: center;
+      padding: 0.25rem;
+      border-radius: 14px;
+
+      button {
+        height: 32px;
+        min-height: 32px;
+        padding: 0 0.7rem;
+        box-shadow: none;
+
+        &.is-active {
+          color: $accent-dark;
+          border-color: rgba($accent, 0.24);
+          background: $accent-soft;
+          font-weight: 700;
+        }
       }
     }
   }
 
-  // 3. Main Content Card
-  .main-content-card {
-    background: $bg-white;
-    border-radius: 16px;
-    box-shadow: $shadow-sm;
-    border: 1px solid $border-color;
-    overflow: hidden;
+  .stats-section {
+    margin: 0 0 1.1rem;
+  }
 
-    // Tabs
+  .main-content-card {
+    overflow: clip;
+    border: 1px solid rgba($line-strong, 0.85);
+    border-radius: 26px;
+    background: rgba($surface-raised, 0.9);
+    box-shadow: $shadow-soft;
+
     .tabs-header {
       display: flex;
-      padding: 0 1.5rem;
-      border-bottom: 1px solid $border-color;
-      gap: 24px;
+      gap: 0.35rem;
+      overflow-x: auto;
+      padding: 0.8rem 1rem 0;
+      border-bottom: 1px solid rgba($line, 0.82);
+      scrollbar-width: thin;
+      background: linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(255, 253, 249, 0.74));
 
       .tab-item {
-        background: none;
-        border: none;
-        padding: 1rem 0;
-        font-size: 0.95rem;
-        color: $text-sub;
-        font-weight: 500;
-        cursor: pointer;
         position: relative;
+        border: 0;
+        border-radius: 14px 14px 0 0;
+        background: transparent;
+        color: $muted;
+        cursor: pointer;
+        font-size: 0.92rem;
+        font-weight: 650;
+        padding: 0.82rem 0.95rem;
+        white-space: nowrap;
+        transition: color $transition, background $transition;
 
         &:hover {
-          color: $primary;
+          color: $accent-dark;
+          background: $accent-quiet;
         }
+
+        &:focus-visible {
+          @include focus-ring;
+        }
+
         &.active {
-          color: $primary;
-          font-weight: 600;
+          color: $accent-dark;
+          background: $accent-soft;
+
           &::after {
             content: "";
             position: absolute;
+            right: 0.85rem;
             bottom: -1px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: $primary;
+            left: 0.85rem;
+            height: 3px;
+            border-radius: 999px;
+            background: $accent;
           }
         }
       }
     }
 
-    // Filter Toolbar
-    .filter-toolbar {
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
-      background: #ffffff;
-      border-bottom: 1px dashed $border-color;
-
-      .filter-left,
-      .filter-right {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .search-box {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: $bg-white;
-        border: 1px solid $border-color;
-        padding: 8px 12px;
-        border-radius: 8px;
-        width: 280px;
-        &:focus-within {
-          border-color: $primary;
-          box-shadow: 0 0 0 2px rgba($primary, 0.1);
-        }
-        input {
-          border: none;
-          outline: none;
-          width: 100%;
-          font-size: 0.9rem;
-        }
-        svg {
-          color: $text-sub;
-        }
-      }
-
-      .dropdown-filter {
-        border: 1px solid $border-color;
-        padding: 8px 12px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        min-width: 140px;
-        cursor: pointer;
-        font-size: 0.875rem;
-        &:hover {
-          background: #f9fafb;
-        }
-
-        select {
-          border: none;
-          outline: none;
-          background: transparent;
-          font-size: 0.875rem;
-          color: $text-main;
-          width: 100%;
-          cursor: pointer;
-          appearance: none;
-        }
-      }
-
-      .btn-clear-filter {
-        border: none;
-        background: none;
-        color: $danger;
-        font-size: 0.85rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-
-      // View Toggle
-      .view-toggle {
-        background: #f3f4f6;
-        padding: 4px;
-        border-radius: 8px;
-        display: flex;
-        .toggle-btn {
-          border: none;
-          background: none;
-          padding: 6px;
-          border-radius: 6px;
-          color: $text-sub;
-          cursor: pointer;
-          &.active {
-            background: $bg-white;
-            color: $primary;
-            box-shadow: $shadow-sm;
-          }
-        }
-      }
-
-      .btn-primary,
-      .btn-secondary {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        font-size: 0.875rem;
-        transition: all 0.2s;
-      }
-
-      .btn-secondary {
-        background: $bg-white;
-        border: 1px solid $border-color;
-        color: $text-main;
-        &:hover {
-          background: #f9fafb;
-        }
-      }
-
-      .btn-primary {
-        background: $primary;
-        color: white;
-        border: none;
-        &:hover {
-          background: color.adjust($primary, $lightness: -5%);
-        }
-      }
-    }
-
-    // Content Body
     .content-body {
-      padding: 1.5rem;
-      background: #f9fafb; // Inner bg
-      min-height: 400px;
+      min-height: 420px;
+      padding: clamp(1rem, 1.8vw, 1.6rem);
+      background:
+        linear-gradient(180deg, rgba(251, 247, 241, 0.82), rgba(247, 243, 237, 0.62)),
+        radial-gradient(circle at 100% 0%, rgba($accent, 0.08), transparent 20rem);
     }
 
-    // Empty State
     .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 4rem 0;
-      color: $text-sub;
+      min-height: 340px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 3rem 1rem;
+      color: $muted;
+      border: 1px dashed $line-strong;
+      border-radius: 22px;
+      background: rgba($surface-raised, 0.72);
+
       svg {
-        color: #d1d5db;
-        margin-bottom: 1rem;
+        color: rgba($accent, 0.46);
+        margin-bottom: 0.9rem;
+      }
+
+      h3 {
+        margin: 0 0 0.35rem;
+        color: $ink;
+        font-size: 1.12rem;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        max-width: 44ch;
+        margin: 0;
+        line-height: 1.6;
       }
     }
 
-    // --- Premium Table Styles ---
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba($accent, 0.34) transparent;
+    }
+
     .premium-table {
       width: 100%;
+      min-width: 880px;
       border-collapse: separate;
-      border-spacing: 0 8px; // Tạo khoảng cách giữa các dòng
+      border-spacing: 0 0.65rem;
+      font-variant-numeric: tabular-nums;
 
       thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 0.2rem 1rem 0.45rem;
+        border: 0;
+        color: $muted;
+        font-size: 0.72rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
         text-align: left;
-        padding: 0 1rem;
-        font-size: 0.75rem;
         text-transform: uppercase;
-        color: $text-sub;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        border: none;
+        background: rgba(247, 243, 237, 0.94);
       }
 
       tbody tr {
-        background: $bg-white;
-        box-shadow: $shadow-sm;
-        transition: transform 0.2s;
+        background: $surface-raised;
+        box-shadow: $shadow-row;
+        transition: transform $transition, box-shadow $transition, background $transition;
 
         &:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        td {
-          padding: 1rem;
-          vertical-align: middle;
-          border-top: 1px solid transparent;
-          border-bottom: 1px solid transparent;
-
-          &:first-child {
-            border-top-left-radius: 8px;
-            border-bottom-left-radius: 8px;
-          }
-          &:last-child {
-            border-top-right-radius: 8px;
-            border-bottom-right-radius: 8px;
-          }
+          transform: translateY(-1px);
+          background: #fffefa;
+          box-shadow: 0 14px 30px rgba(74, 57, 37, 0.09);
         }
       }
 
-      // Table Components
+      td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-top: 1px solid rgba($line, 0.82);
+        border-bottom: 1px solid rgba($line, 0.82);
+        color: $text;
+
+        &:first-child {
+          border-left: 1px solid rgba($line, 0.82);
+          border-top-left-radius: 16px;
+          border-bottom-left-radius: 16px;
+        }
+
+        &:last-child {
+          border-right: 1px solid rgba($line, 0.82);
+          border-top-right-radius: 16px;
+          border-bottom-right-radius: 16px;
+        }
+      }
+
       .code-badge {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        background: #f3f4f6;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 0.8rem;
-        color: $text-sub;
+        gap: 0.35rem;
+        border: 1px dashed rgba($accent, 0.34);
+        border-radius: 9px;
+        background: $accent-quiet;
+        color: $accent-dark;
+        font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.035em;
+        padding: 0.28rem 0.55rem;
+        user-select: all;
       }
 
       .usage-bar {
-        width: 100px;
+        width: min(150px, 100%);
+
         .bar-bg {
-          height: 6px;
-          background: #e5e7eb;
-          border-radius: 3px;
+          height: 0.45rem;
           overflow: hidden;
+          border-radius: 999px;
+          background: #ebe4da;
         }
+
         .bar-fill {
           height: 100%;
-          background: $primary;
-          border-radius: 3px;
+          border-radius: inherit;
+          background: linear-gradient(90deg, $accent, #c49a65);
+          transition: width 260ms ease;
         }
       }
 
       .action-buttons {
-        display: flex;
+        display: inline-flex;
         justify-content: flex-end;
-        gap: 8px;
-        button {
-          width: 32px;
-          height: 32px;
-          border-radius: 6px;
-          border: 1px solid #e5e7eb;
-          @include flex-center;
-          background: white;
-          color: $text-sub;
-          cursor: pointer;
-          transition: all 0.2s;
+        gap: 0.45rem;
 
-          &:hover {
-            border-color: $primary;
-            color: $primary;
+        button {
+          @include soft-button;
+          width: 34px;
+          min-height: 34px;
+          height: 34px;
+          padding: 0;
+          display: inline-grid;
+          place-items: center;
+          color: $muted;
+
+          &:hover:not(:disabled) {
+            color: $accent-dark;
+            border-color: rgba($accent, 0.34);
+            background: $accent-quiet;
           }
-          &.text-danger:hover {
-            border-color: $danger;
+
+          &.text-danger:hover:not(:disabled) {
             color: $danger;
+            border-color: rgba($danger, 0.28);
+            background: $danger-soft;
           }
         }
       }
 
+      .coupon-stack-flags,
       .coupon-pack-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 0.4rem;
+        align-items: center;
       }
 
       .coupon-chip {
         display: inline-flex;
         align-items: center;
-        padding: 0.15rem 0.45rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 999px;
-        background: #f9fafb;
-        color: #374151;
-        font-size: 0.75rem;
-        font-weight: 600;
+        border: 1px solid rgba($accent, 0.2);
+        border-radius: 9px;
+        background: #f8f1e8;
+        color: $accent-dark;
+        font-size: 0.74rem;
+        font-weight: 720;
+        padding: 0.22rem 0.5rem;
+      }
+
+      .coupon-chip-danger {
+        border-color: rgba($danger, 0.24);
+        background: $danger-soft;
+        color: $danger;
       }
     }
 
-    // Pagination Footer
     .pagination-footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid $border-color;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      background: $bg-white;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba($line, 0.86);
+      background: rgba($surface-raised, 0.86);
 
       .showing-text {
-        font-size: 0.875rem;
-        color: $text-sub;
+        color: $muted;
+        font-size: 0.88rem;
+
         b {
-          color: $text-main;
+          color: $ink;
+          font-variant-numeric: tabular-nums;
         }
       }
 
       .pagination-controls {
         display: flex;
-        gap: 6px;
+        gap: 0.4rem;
+
         button {
-          min-width: 32px;
-          height: 32px;
-          border: 1px solid $border-color;
-          background: white;
-          border-radius: 6px;
-          font-size: 0.85rem;
-          cursor: pointer;
-          &:hover:not(:disabled) {
-            border-color: $primary;
-            color: $primary;
-          }
+          @include soft-button;
+          min-width: 34px;
+          height: 34px;
+          min-height: 34px;
+          padding: 0 0.55rem;
+
           &.active {
-            background: $primary;
-            color: white;
-            border-color: $primary;
-          }
-          &:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+            color: #fffaf2;
+            border-color: $accent-dark;
+            background: $accent-dark;
           }
         }
       }
     }
   }
-}
 
-// Helpers for Badge Colors (Tailwind-like classes used in JSX)
-.bg-green-100 {
-  background-color: #dcfce7;
-}
-.text-green-700 {
-  color: #15803d;
-}
-.bg-blue-50 {
-  background-color: #eff6ff;
-}
-.text-blue-700 {
-  color: #1d4ed8;
-}
-.bg-red-50 {
-  background-color: #fef2f2;
-}
-.text-red-700 {
-  color: #b91c1c;
-}
-.bg-gray-100 {
-  background-color: #f3f4f6;
-}
-.text-gray-600 {
-  color: #4b5563;
-}
-.text-xs {
-  font-size: 0.75rem;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.rounded-full {
-  border-radius: 9999px;
-}
-.px-2\.5 {
-  padding-left: 0.625rem;
-  padding-right: 0.625rem;
-}
-.py-0\.5 {
-  padding-top: 0.125rem;
-  padding-bottom: 0.125rem;
-}
-.coupon-stack-flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  align-items: center;
-}
+  .bg-green-100 { background-color: $success-soft; }
+  .text-green-700 { color: $success; }
+  .bg-blue-50 { background-color: $info-soft; }
+  .text-blue-700 { color: $info; }
+  .bg-red-50 { background-color: $danger-soft; }
+  .text-red-700 { color: $danger; }
+  .bg-gray-100 { background-color: #efebe4; }
+  .text-gray-600 { color: $muted; }
 
-.coupon-chip-danger {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #b91c1c;
+  .rounded-full { border-radius: 999px; }
+  .px-2\.5 { padding-inline: 0.625rem; }
+  .py-0\.5 { padding-block: 0.125rem; }
+  .font-semibold { font-weight: 650; }
+  .font-bold { font-weight: 760; }
+  .fw-bold { font-weight: 760; }
+  .block { display: block; }
+  .text-xs { font-size: 0.75rem; }
+  .text-sm { font-size: 0.875rem; }
+  .text-right { text-align: right; }
+  .text-dark { color: $ink; }
+  .text-secondary { color: $muted; }
+  .text-muted { color: $subtle; }
+  .text-primary { color: $accent-dark; }
+  .text-danger { color: $danger; }
+  .mb-1 { margin-bottom: 0.25rem; }
+  .mt-1 { margin-top: 0.25rem; }
+  .mt-2 { margin-top: 0.5rem; }
+
+  @media (max-width: 1024px) {
+    .manager-command-bar {
+      position: relative;
+      top: auto;
+
+      .mcb-search {
+        min-width: 240px;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 0.85rem;
+
+    .management-page-header,
+    .manager-command-bar,
+    .main-content-card {
+      border-radius: 20px;
+    }
+
+    .manager-command-bar {
+      .mcb-left,
+      .mcb-right,
+      .mcb-search {
+        width: 100%;
+      }
+
+      .mcb-btn,
+      .dropdown-filter,
+      .mcb-view-toggle {
+        flex: 1 1 auto;
+      }
+    }
+
+    .main-content-card {
+      .tabs-header {
+        padding-inline: 0.75rem;
+      }
+
+      .pagination-footer {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  }
 }
