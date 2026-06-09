@@ -1,0 +1,62 @@
+.om-container--focus .om-field--status-segmented .om-select-wrapper {
+  display: none;
+}
+
+.om-container--focus .om-field--status-segmented {
+  min-width: 0;
+}
+
+.om-status-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.om-status-segmented__btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 850;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.om-status-segmented__btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #ffffff;
+}
+
+.om-status-segmented__btn--active,
+.om-status-segmented__btn[aria-pressed="true"] {
+  background: linear-gradient(180deg, #d7b98a, #9d693d);
+  color: #111827;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.om-status-segmented__btn:focus-visible {
+  outline: 3px solid rgba(215, 185, 138, 0.32);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .om-status-segmented {
+    width: 100%;
+  }
+
+  .om-status-segmented__btn {
+    flex: 1 1 auto;
+  }
+}
