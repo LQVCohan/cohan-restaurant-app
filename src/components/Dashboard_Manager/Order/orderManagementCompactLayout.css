@@ -6,11 +6,5 @@
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header {
-  display: grid;
-  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
-  gap: 12px;
   padding: 12px 14px;
-  border-radius: 20px;
-}
-
-.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page
+  border
