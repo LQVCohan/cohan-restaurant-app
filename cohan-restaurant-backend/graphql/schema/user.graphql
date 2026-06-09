@@ -1104,6 +1104,12 @@ type PayrollStats {
 type StaffPayrollItem {
   id: ID!
   payrollItemId: ID
+  periodId: ID
+  periodName: String
+  periodStartDate: DateTime
+  periodEndDate: DateTime
+  periodStatus: String
+  periodFinalizedAt: DateTime
   name: String!
   code: String
   role: String
@@ -1151,6 +1157,8 @@ type StaffPayrollItem {
   insuranceEligible: Boolean!
   warningMessages: [String!]!
   status: String!
+  paidAmount: Float
+  remainingAmount: Float
   paidAt: DateTime
   lateMinutes: Float!
   earlyLeaveMinutes: Float!
@@ -1301,6 +1309,8 @@ type PayrollPayment {
   paidAt: DateTime
   note: String
   referenceCode: String
+  idempotencyKey: String
+  payoutId: ID
   createdBy: ID
   createdAt: DateTime
 }
@@ -1314,6 +1324,104 @@ type PayrollPayslip {
   remainingAmount: Float!
   canMarkPaid: Boolean!
   canEdit: Boolean!
+}
+
+type PayrollPayout {
+  id: ID!
+  restaurantId: ID!
+  periodId: ID!
+  payrollItemId: ID
+  employeeId: ID
+  payoutBatchId: ID
+  amount: Float!
+  currency: String!
+  sourceAccountId: ID
+  destinationAccountName: String
+  destinationBankName: String
+  destinationBankCode: String
+  destinationAccountNumberMasked: String
+  provider: String
+  providerTransactionId: String
+  requestId: String
+  idempotencyKey: String
+  status: String!
+  failureReason: String
+  method: String
+  note: String
+  referenceCode: String
+  requestedBy: ID
+  approvedBy: ID
+  paidAt: DateTime
+  retryCount: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PayrollPayoutBatch {
+  id: ID!
+  restaurantId: ID!
+  periodId: ID!
+  totalAmount: Float!
+  totalEmployees: Int!
+  successCount: Int!
+  processingCount: Int!
+  failedCount: Int!
+  status: String!
+  method: String
+  provider: String
+  requestedBy: ID
+  approvedBy: ID
+  submittedAt: DateTime
+  completedAt: DateTime
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PayrollPayoutBatchResult {
+  successCount: Int!
+  processingCount: Int!
+  failedCount: Int!
+  payouts: [PayrollPayout!]!
+  errors: [PayrollBatchError!]!
+  batch: PayrollPayoutBatch
+}
+
+type EmployeeBankAccount {
+  id: ID!
+  employeeId: ID!
+  restaurantId: ID!
+  accountHolderName: String!
+  bankName: String!
+  bankCode: String
+  accountNumberLast4: String
+  accountNumberMasked: String
+  branchName: String
+  isDefault: Boolean!
+  verificationStatus: String!
+  verifiedAt: DateTime
+  verifiedBy: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type RestaurantPayoutAccount {
+  id: ID!
+  restaurantId: ID!
+  accountName: String!
+  bankName: String!
+  bankCode: String
+  accountNumberLast4: String
+  accountNumberMasked: String
+  provider: String
+  providerMerchantId: String
+  status: String!
+  payoutEnabled: Boolean!
+  dailyLimit: Float
+  perTransactionLimit: Float
+  currency: String
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 type PayrollExportRow {
@@ -1362,6 +1470,8 @@ input MarkPayrollItemPaidInput {
   paidAt: DateTime
   note: String
   referenceCode: String
+  idempotencyKey: String
+  payoutId: ID
 }
 
 input BatchMarkPayrollPaidInput {
@@ -1370,6 +1480,68 @@ input BatchMarkPayrollPaidInput {
   method: String
   paidAt: DateTime
   note: String
+  referenceCode: String
+}
+
+input PayrollPayoutInput {
+  periodId: ID!
+  employeeId: ID!
+  amount: Float
+  method: String = "bank_transfer"
+  sourceAccountId: ID
+  paidAt: DateTime
+  note: String
+  referenceCode: String
+  requestId: String
+  idempotencyKey: String!
+}
+
+input PayrollBatchPayoutInput {
+  periodId: ID!
+  employeeIds: [ID!]
+  method: String = "bank_transfer"
+  sourceAccountId: ID
+  paidAt: DateTime
+  note: String
+  referenceCode: String
+  idempotencyKey: String!
+}
+
+input PayrollPayoutResultInput {
+  payoutId: ID
+  providerTransactionId: String
+  status: String!
+  failureReason: String
+  rawPayload: JSON
+}
+
+input EmployeeBankAccountInput {
+  id: ID
+  employeeId: ID!
+  restaurantId: ID!
+  accountHolderName: String!
+  bankName: String!
+  bankCode: String
+  accountNumber: String!
+  branchName: String
+  isDefault: Boolean
+  verificationStatus: String
+}
+
+input RestaurantPayoutAccountInput {
+  id: ID
+  restaurantId: ID!
+  accountName: String!
+  bankName: String!
+  bankCode: String
+  accountNumber: String!
+  provider: String
+  providerMerchantId: String
+  status: String
+  payoutEnabled: Boolean
+  dailyLimit: Float
+  perTransactionLimit: Float
+  currency: String
 }
 
 type PayrollPeriodDetail {
@@ -3027,10 +3199,14 @@ type Query {
   payrollSettings(restaurantId: ID): PayrollSettings
   payrollPayslip(periodId: ID!, employeeId: ID!): PayrollPayslip!
   payrollPayments(periodId: ID!, employeeId: ID): [PayrollPayment!]!
+  payrollPayouts(periodId: ID!, employeeId: ID, status: String): [PayrollPayout!]!
+  payrollPayoutBatch(batchId: ID!): PayrollPayoutBatch
+  employeeBankAccount(employeeId: ID!, restaurantId: ID!): EmployeeBankAccount
+  restaurantPayoutAccounts(restaurantId: ID!): [RestaurantPayoutAccount!]!
   payrollExportRows(periodId: ID!): [PayrollExportRow!]!
   validatePayrollPeriod(periodId: ID!): PayrollValidationResult!
   myPayslips(limit: Int = 12): [StaffPayrollItem!]!
-  myPayslip(periodId: ID!): StaffPayrollItem
+  myPayslip(periodId: ID!): PayrollPayslip
   staffShifts(
     restaurantId: ID
     employeeId: ID
@@ -3258,6 +3434,14 @@ type Mutation {
   markPayrollPeriodPaid(periodId: ID!, employeeIds: [ID!]): PayrollPeriod!
   markPayrollItemPaid(input: MarkPayrollItemPaidInput!): StaffPayrollItem!
   batchMarkPayrollPaid(input: BatchMarkPayrollPaidInput!): BatchPayrollPaymentResult!
+  createPayrollPayout(input: PayrollPayoutInput!): PayrollPayout!
+  createPayrollBatchPayout(input: PayrollBatchPayoutInput!): PayrollPayoutBatchResult!
+  retryPayrollPayout(payoutId: ID!, idempotencyKey: String): PayrollPayout!
+  cancelPayrollPayout(payoutId: ID!, reason: String!): PayrollPayout!
+  applyPayrollPayoutResult(input: PayrollPayoutResultInput!): PayrollPayout!
+  upsertEmployeeBankAccount(input: EmployeeBankAccountInput!): EmployeeBankAccount!
+  verifyEmployeeBankAccount(employeeId: ID!, restaurantId: ID!, verificationStatus: String = "verified"): EmployeeBankAccount!
+  upsertRestaurantPayoutAccount(input: RestaurantPayoutAccountInput!): RestaurantPayoutAccount!
   updatePayrollSettings(input: PayrollSettingsInput!): PayrollSettings!
   upsertPayrollAdjustment(input: PayrollAdjustmentInput!): StaffPayrollItem!
   deletePayrollAdjustment(

@@ -10,7 +10,7 @@ const payrollPeriodSchema = new Schema(
     endDate: { type: Date, required: true, index: true },
     status: {
       type: String,
-      enum: ["draft", "finalized", "locked", "paid"],
+      enum: ["draft", "finalized", "paying", "paid", "locked"],
       default: "draft",
       index: true,
     },

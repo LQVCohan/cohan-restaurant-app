@@ -14,11 +14,15 @@ const payrollPaymentSchema = new Schema(
     note: { type: String, default: "" },
     referenceCode: { type: String, default: "" },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    idempotencyKey: { type: String, default: "" },
+    payoutId: { type: Schema.Types.ObjectId, ref: "PayrollPayout", default: null },
   },
   { timestamps: true },
 );
 
 payrollPaymentSchema.index({ periodId: 1, employeeId: 1, paidAt: -1 });
 payrollPaymentSchema.index({ restaurantId: 1, paidAt: -1 });
+payrollPaymentSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true, partialFilterExpression: { idempotencyKey: { $type: "string", $gt: "" } } });
+payrollPaymentSchema.index({ payoutId: 1 }, { unique: true, sparse: true, partialFilterExpression: { payoutId: { $exists: true, $ne: null } } });
 
 export default mongoose.model("PayrollPayment", payrollPaymentSchema);

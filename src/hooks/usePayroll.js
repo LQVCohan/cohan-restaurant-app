@@ -124,6 +124,8 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
         insuranceEligible
         warningMessages
         status
+        paidAmount
+        remainingAmount
         paidAt
         lateMinutes
         earlyLeaveMinutes
@@ -264,11 +266,21 @@ export const QUERY_MY_PAYSLIPS = gql`
     myPayslips(limit: $limit) {
       id
       payrollItemId
+      periodId
+      periodName
+      periodStartDate
+      periodEndDate
+      periodStatus
+      periodFinalizedAt
       name
       code
+      role
+      department
       totalIncome
       totalDeduction
       netSalary
+      paidAmount
+      remainingAmount
       status
       paidAt
       warningMessages
@@ -279,230 +291,18 @@ export const QUERY_MY_PAYSLIPS = gql`
 export const QUERY_MY_PAYSLIP = gql`
   query MyPayslip($periodId: ID!) {
     myPayslip(periodId: $periodId) {
-      id
-      payrollItemId
-      name
-      code
-      totalIncome
-      totalDeduction
-      netSalary
-      status
-      paidAt
-      warningMessages
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_PAYSLIP = gql`
-  query PayrollPayslip($periodId: ID!, $employeeId: ID!) {
-    payrollPayslip(periodId: $periodId, employeeId: $employeeId) {
+      period { id name startDate endDate status finalizedAt lockedAt paidAt stats { totalPayroll paidAmount remaining progress } }
+      employee { id name code role department avatar }
+      item {
+        id payrollItemId name code role department baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary paidAmount remainingAmount status paidAt warningMessages
+      }
+      breakdown {
+        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary
+      }
+      payments { id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode payoutId createdBy createdAt }
       remainingAmount
       canMarkPaid
       canEdit
-      period {
-        id
-        name
-        status
-        startDate
-        endDate
-        paidAt
-      }
-      employee {
-        id
-        name
-        code
-        role
-        department
-        avatar
-      }
-      item {
-        id
-        payrollItemId
-        name
-        code
-        role
-        department
-        netSalary
-        totalIncome
-        totalDeduction
-        status
-        paidAt
-        baseSalary
-        actualWorkDays
-        totalHours
-        overtimeNormalHours
-        overtimeWeekendHours
-        overtimeHolidayHours
-        nightHours
-        grossIncome
-        allowance
-        bonus
-        deduction
-        insuranceTotal
-        personalIncomeTax
-        warningMessages
-      }
-      breakdown {
-        baseSalary
-        actualWorkDays
-        totalHours
-        overtimeNormalHours
-        overtimeWeekendHours
-        overtimeHolidayHours
-        nightHours
-        grossIncome
-        allowance
-        bonus
-        deduction
-        insuranceTotal
-        personalIncomeTax
-        netSalary
-      }
-      payments {
-        id
-        amount
-        method
-        paidAt
-        note
-        referenceCode
-      }
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_PAYMENTS = gql`
-  query PayrollPayments($periodId: ID!, $employeeId: ID) {
-    payrollPayments(periodId: $periodId, employeeId: $employeeId) {
-      id
-      periodId
-      employeeId
-      payrollItemId
-      amount
-      method
-      paidAt
-      note
-      referenceCode
-      createdBy
-      createdAt
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_EXPORT_ROWS = gql`
-  query PayrollExportRows($periodId: ID!) {
-    payrollExportRows(periodId: $periodId) {
-      employeeId
-      employeeCode
-      employeeName
-      department
-      role
-      baseSalary
-      actualWorkDays
-      totalHours
-      overtimeNormalHours
-      overtimeWeekendHours
-      overtimeHolidayHours
-      nightHours
-      grossIncome
-      allowance
-      bonus
-      deduction
-      insuranceTotal
-      personalIncomeTax
-      netSalary
-      paidAmount
-      remainingAmount
-      status
-    }
-  }
-`;
-
-export const QUERY_PAYROLL_CONTEXT = gql`
-  query PayrollContextMe {
-    me {
-      id
-      restaurantForStaff
-    }
-  }
-`;
-
-export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
-  query StaffPayrollOverview(
-    $startDate: DateTime!
-    $endDate: DateTime!
-    $restaurantId: ID
-    $periodId: ID
-  ) {
-    staffPayrollOverview(
-      startDate: $startDate
-      endDate: $endDate
-      restaurantId: $restaurantId
-      periodId: $periodId
-    ) {
-      stats {
-        totalPayroll
-        paidAmount
-        remaining
-        progress
-      }
-      items {
-        id
-        payrollItemId
-        name
-        code
-        role
-        department
-        avatar
-        baseSalary
-        workDays
-        actualWorkDays
-        totalHours
-        hourlyRate
-        allowance
-        bonus
-        otherAddition
-        overtime
-        overtimeNormal
-        overtimeWeekend
-        overtimeHoliday
-        nightShiftExtra
-        overtimeHours
-        overtimeNormalHours
-        overtimeWeekendHours
-        overtimeHolidayHours
-        nightHours
-        overtimeNightHours
-        deduction
-        otherDeduction
-        advance
-        insuranceSocial
-        insuranceHealth
-        insuranceUnemployment
-        insuranceTotal
-        insuranceEmployerTotal
-        personalIncomeTax
-        grossIncome
-        coefficient
-        totalIncome
-        totalDeduction
-        netSalary
-        policyCode
-        policyEffectiveFrom
-        regionCode
-        minimumWageMonthly
-        minimumWageHourly
-        minimumWageViolation
-        insuranceEligible
-        warningMessages
-        status
-        paidAt
-        lateMinutes
-        earlyLeaveMinutes
-        unpaidLeaveDays
-        paidLeaveDays
-        scheduleShiftCount
-        manualAdjustmentTotal
-      }
     }
   }
 `;
@@ -566,6 +366,8 @@ export const MUT_MARK_PAYROLL_ITEM_PAID = gql`
       id
       payrollItemId
       status
+      paidAmount
+      remainingAmount
       paidAt
       netSalary
     }
@@ -581,6 +383,8 @@ export const MUT_BATCH_MARK_PAYROLL_PAID = gql`
         id
         payrollItemId
         status
+        paidAmount
+        remainingAmount
         paidAt
         netSalary
       }
@@ -589,6 +393,114 @@ export const MUT_BATCH_MARK_PAYROLL_PAID = gql`
         code
         message
       }
+    }
+  }
+`;
+
+export const MUT_CREATE_PAYROLL_PAYOUT = gql`
+  mutation CreatePayrollPayout($input: PayrollPayoutInput!) {
+    createPayrollPayout(input: $input) {
+      id
+      status
+      amount
+      provider
+      failureReason
+      providerTransactionId
+      paidAt
+      employeeId
+      payrollItemId
+    }
+  }
+`;
+
+
+export const MUT_CREATE_PAYROLL_BATCH_PAYOUT = gql`
+  mutation CreatePayrollBatchPayout($input: PayrollBatchPayoutInput!) {
+    createPayrollBatchPayout(input: $input) {
+      successCount
+      processingCount
+      failedCount
+      payouts { id status amount employeeId failureReason }
+      errors { employeeId code message }
+      batch { id status successCount processingCount failedCount totalAmount }
+    }
+  }
+`;
+
+export const MUT_RETRY_PAYROLL_PAYOUT = gql`
+  mutation RetryPayrollPayout($payoutId: ID!, $idempotencyKey: String) {
+    retryPayrollPayout(payoutId: $payoutId, idempotencyKey: $idempotencyKey) {
+      id
+      status
+      failureReason
+      retryCount
+    }
+  }
+`;
+
+export const MUT_CANCEL_PAYROLL_PAYOUT = gql`
+  mutation CancelPayrollPayout($payoutId: ID!, $reason: String!) {
+    cancelPayrollPayout(payoutId: $payoutId, reason: $reason) {
+      id
+      status
+      failureReason
+    }
+  }
+`;
+
+export const MUT_APPLY_PAYROLL_PAYOUT_RESULT = gql`
+  mutation ApplyPayrollPayoutResult($input: PayrollPayoutResultInput!) {
+    applyPayrollPayoutResult(input: $input) {
+      id
+      status
+      failureReason
+      providerTransactionId
+      paidAt
+    }
+  }
+`;
+
+export const MUT_UPSERT_EMPLOYEE_BANK_ACCOUNT = gql`
+  mutation UpsertEmployeeBankAccount($input: EmployeeBankAccountInput!) {
+    upsertEmployeeBankAccount(input: $input) {
+      id
+      employeeId
+      accountHolderName
+      bankName
+      bankCode
+      accountNumberMasked
+      accountNumberLast4
+      branchName
+      isDefault
+      verificationStatus
+    }
+  }
+`;
+
+export const MUT_VERIFY_EMPLOYEE_BANK_ACCOUNT = gql`
+  mutation VerifyEmployeeBankAccount($employeeId: ID!, $restaurantId: ID!, $verificationStatus: String = "verified") {
+    verifyEmployeeBankAccount(employeeId: $employeeId, restaurantId: $restaurantId, verificationStatus: $verificationStatus) {
+      id
+      employeeId
+      accountNumberMasked
+      verificationStatus
+    }
+  }
+`;
+
+export const MUT_UPSERT_RESTAURANT_PAYOUT_ACCOUNT = gql`
+  mutation UpsertRestaurantPayoutAccount($input: RestaurantPayoutAccountInput!) {
+    upsertRestaurantPayoutAccount(input: $input) {
+      id
+      accountName
+      bankName
+      bankCode
+      accountNumberMasked
+      status
+      payoutEnabled
+      provider
+      dailyLimit
+      perTransactionLimit
     }
   }
 `;
@@ -620,6 +532,66 @@ export const MUT_UPDATE_SETTINGS = gql`
       personalIncomeTaxFreeThreshold
       notes
       updatedAt
+    }
+  }
+`;
+
+
+export const QUERY_PAYROLL_CONTEXT = gql`
+  query PayrollContext {
+    me {
+      id
+      restaurantForStaff
+      roleName
+      userType
+    }
+  }
+`;
+
+
+
+export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
+  query StaffPayrollOverview($startDate: DateTime!, $endDate: DateTime!, $restaurantId: ID, $periodId: ID) {
+    staffPayrollOverview(startDate: $startDate, endDate: $endDate, restaurantId: $restaurantId, periodId: $periodId) {
+      stats { totalPayroll paidAmount remaining progress }
+      items {
+        id payrollItemId name code role department avatar baseSalary workDays actualWorkDays totalHours hourlyRate allowance bonus otherAddition overtime overtimeNormal overtimeWeekend overtimeHoliday nightShiftExtra overtimeHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours overtimeNightHours deduction otherDeduction advance insuranceSocial insuranceHealth insuranceUnemployment insuranceTotal insuranceEmployerTotal personalIncomeTax grossIncome coefficient totalIncome totalDeduction netSalary policyCode policyEffectiveFrom regionCode minimumWageMonthly minimumWageHourly minimumWageViolation insuranceEligible warningMessages status paidAmount remainingAmount paidAt lateMinutes earlyLeaveMinutes unpaidLeaveDays paidLeaveDays scheduleShiftCount manualAdjustmentTotal
+      }
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_PAYSLIP = gql`
+  query PayrollPayslip($periodId: ID!, $employeeId: ID!) {
+    payrollPayslip(periodId: $periodId, employeeId: $employeeId) {
+      period { id name startDate endDate status finalizedAt lockedAt paidAt stats { totalPayroll paidAmount remaining progress } }
+      employee { id name code role department avatar }
+      item {
+        id payrollItemId name code role department baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary paidAmount remainingAmount status paidAt
+      }
+      breakdown {
+        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary
+      }
+      payments { id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode payoutId createdBy createdAt }
+      remainingAmount
+      canMarkPaid
+      canEdit
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_PAYMENTS = gql`
+  query PayrollPayments($periodId: ID!, $employeeId: ID) {
+    payrollPayments(periodId: $periodId, employeeId: $employeeId) {
+      id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode createdBy createdAt
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_EXPORT_ROWS = gql`
+  query PayrollExportRows($periodId: ID!) {
+    payrollExportRows(periodId: $periodId) {
+      employeeId employeeCode employeeName department role baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours grossIncome allowance bonus deduction insuranceTotal personalIncomeTax netSalary paidAmount remainingAmount status
     }
   }
 `;
@@ -657,6 +629,9 @@ export const MUT_DELETE_ADJUSTMENT = gql`
   }
 `;
 
+const noopPayrollMutation = () => Promise.resolve({});
+const safeUseMutation = (...args) => useMutation(...args) || [noopPayrollMutation];
+
 const createPayrollNotReadyError = () => {
   const error = new Error("PAYROLL_PERIOD_NOT_READY");
   error.code = "PAYROLL_PERIOD_NOT_READY";
@@ -667,15 +642,15 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const periodsQuery = useQuery(QUERY_PAYROLL_PERIODS, {
     variables: { restaurantId: restaurantId || undefined, limit: 24 },
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
 
   const settingsQuery = useQuery(QUERY_PAYROLL_SETTINGS, {
     variables: { restaurantId: restaurantId || undefined },
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const meQuery = useQuery(QUERY_PAYROLL_CONTEXT, {
     fetchPolicy: "cache-first",
-  });
+  }) || {};
 
   const appliedPeriodId =
     settingsQuery.data?.payrollSettings?.currentPayrollPeriodId ||
@@ -687,32 +662,32 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const validationQuery = useQuery(QUERY_VALIDATE_PAYROLL_PERIOD, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "network-only",
-  });
+  }) || {};
   const readinessQuery = useQuery(QUERY_PAYROLL_READINESS, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "network-only",
-  });
+  }) || {};
   const payslipQuery = useQuery(QUERY_PAYROLL_PAYSLIP, {
     variables: { periodId: effectivePeriodId, employeeId: undefined },
     skip: true,
     fetchPolicy: "network-only",
-  });
+  }) || {};
   const paymentsQuery = useQuery(QUERY_PAYROLL_PAYMENTS, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const exportRowsQuery = useQuery(QUERY_PAYROLL_EXPORT_ROWS, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
   const hasSnapshotItems = Boolean(
     detailQuery.data?.payrollPeriodDetail?.items?.length,
   );
@@ -726,9 +701,9 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     },
     skip: !(effectivePeriodId || canQueryOverviewByRange) || hasSnapshotItems,
     fetchPolicy: "cache-and-network",
-  });
+  }) || {};
 
-  const [createPeriod] = useMutation(MUT_CREATE_PERIOD, {
+  const [createPeriod] = safeUseMutation(MUT_CREATE_PERIOD, {
     refetchQueries: [
       {
         query: QUERY_PAYROLL_PERIODS,
@@ -736,17 +711,25 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
       },
     ],
   });
-  const [recalculatePeriod] = useMutation(MUT_RECALC_PERIOD);
-  const [finalizePeriodMutation] = useMutation(MUT_FINALIZE_PERIOD);
-  const [lockPeriod] = useMutation(MUT_LOCK_PERIOD);
-  const [markPaid] = useMutation(MUT_MARK_PAID);
-  const [markPayrollItemPaidMutation] = useMutation(MUT_MARK_PAYROLL_ITEM_PAID);
-  const [batchMarkPayrollPaidMutation] = useMutation(
+  const [recalculatePeriod] = safeUseMutation(MUT_RECALC_PERIOD);
+  const [finalizePeriodMutation] = safeUseMutation(MUT_FINALIZE_PERIOD);
+  const [lockPeriod] = safeUseMutation(MUT_LOCK_PERIOD);
+  const [markPaid] = safeUseMutation(MUT_MARK_PAID);
+  const [markPayrollItemPaidMutation] = safeUseMutation(MUT_MARK_PAYROLL_ITEM_PAID);
+  const [batchMarkPayrollPaidMutation] = safeUseMutation(
     MUT_BATCH_MARK_PAYROLL_PAID,
   );
-  const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
-  const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
-  const [deleteAdjustment] = useMutation(MUT_DELETE_ADJUSTMENT);
+  const [createPayrollPayoutMutation] = safeUseMutation(MUT_CREATE_PAYROLL_PAYOUT);
+  const [createPayrollBatchPayoutMutation] = safeUseMutation(MUT_CREATE_PAYROLL_BATCH_PAYOUT);
+  const [retryPayrollPayoutMutation] = safeUseMutation(MUT_RETRY_PAYROLL_PAYOUT);
+  const [cancelPayrollPayoutMutation] = safeUseMutation(MUT_CANCEL_PAYROLL_PAYOUT);
+  const [applyPayrollPayoutResultMutation] = safeUseMutation(MUT_APPLY_PAYROLL_PAYOUT_RESULT);
+  const [upsertEmployeeBankAccountMutation] = safeUseMutation(MUT_UPSERT_EMPLOYEE_BANK_ACCOUNT);
+  const [verifyEmployeeBankAccountMutation] = safeUseMutation(MUT_VERIFY_EMPLOYEE_BANK_ACCOUNT);
+  const [upsertRestaurantPayoutAccountMutation] = safeUseMutation(MUT_UPSERT_RESTAURANT_PAYOUT_ACCOUNT);
+  const [updateSettings] = safeUseMutation(MUT_UPDATE_SETTINGS);
+  const [upsertAdjustment] = safeUseMutation(MUT_UPSERT_ADJUSTMENT);
+  const [deleteAdjustment] = safeUseMutation(MUT_DELETE_ADJUSTMENT);
 
   const finalizePeriod = async (options = {}) => {
     const requestedPeriodId = options?.variables?.periodId || effectivePeriodId;
@@ -776,6 +759,47 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     return batchMarkPayrollPaidMutation({
       variables: { input: inputOrOptions },
     });
+  };
+
+
+  const createPayrollPayout = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return createPayrollPayoutMutation(inputOrOptions);
+    return createPayrollPayoutMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const createPayrollBatchPayout = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return createPayrollBatchPayoutMutation(inputOrOptions);
+    return createPayrollBatchPayoutMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const retryPayrollPayout = (variablesOrOptions) => {
+    if (variablesOrOptions?.variables) return retryPayrollPayoutMutation(variablesOrOptions);
+    return retryPayrollPayoutMutation({ variables: variablesOrOptions });
+  };
+
+  const cancelPayrollPayout = (variablesOrOptions) => {
+    if (variablesOrOptions?.variables) return cancelPayrollPayoutMutation(variablesOrOptions);
+    return cancelPayrollPayoutMutation({ variables: variablesOrOptions });
+  };
+
+  const applyPayrollPayoutResult = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return applyPayrollPayoutResultMutation(inputOrOptions);
+    return applyPayrollPayoutResultMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const upsertEmployeeBankAccount = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return upsertEmployeeBankAccountMutation(inputOrOptions);
+    return upsertEmployeeBankAccountMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const verifyEmployeeBankAccount = (variablesOrOptions) => {
+    if (variablesOrOptions?.variables) return verifyEmployeeBankAccountMutation(variablesOrOptions);
+    return verifyEmployeeBankAccountMutation({ variables: variablesOrOptions });
+  };
+
+  const upsertRestaurantPayoutAccount = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return upsertRestaurantPayoutAccountMutation(inputOrOptions);
+    return upsertRestaurantPayoutAccountMutation({ variables: { input: inputOrOptions } });
   };
 
   return {
@@ -829,6 +853,14 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     markPaid,
     markPayrollItemPaid,
     batchMarkPayrollPaid,
+    createPayrollPayout,
+    createPayrollBatchPayout,
+    retryPayrollPayout,
+    cancelPayrollPayout,
+    applyPayrollPayoutResult,
+    upsertEmployeeBankAccount,
+    verifyEmployeeBankAccount,
+    upsertRestaurantPayoutAccount,
     updateSettings,
     upsertAdjustment,
     deleteAdjustment,

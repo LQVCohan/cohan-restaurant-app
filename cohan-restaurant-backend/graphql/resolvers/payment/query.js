@@ -62,20 +62,67 @@ function safeNote(note) {
   return String(note || "").toLowerCase();
 }
 
-export function classifyCost(cashflow = {}) {
-  const category = normalize(cashflow.category);
-  const subcategory = normalize(cashflow.subcategory);
-  const refKind = normalize(cashflow.ref?.kind);
+export function classifyCost(cashflowOrNote = {}) {
+  const isObject = cashflowOrNote && typeof cashflowOrNote === "object";
 
-  if (subcategory === "cogs" || category === "inventory" || refKind.includes("stock")) return "cogs";
-  if (subcategory === "labor" || category === "payroll" || refKind.includes("payroll")) return "labor";
-  if (["operations", "supplier_payment"].includes(category)) return "operations";
-  if (["rent", "utility", "maintenance", "marketing", "bank_fee", "tax"].includes(subcategory)) return "operations";
+  const category = isObject ? normalize(cashflowOrNote.category) : "";
+  const subcategory = isObject ? normalize(cashflowOrNote.subcategory) : "";
+  const refKind = isObject ? normalize(cashflowOrNote.ref?.kind) : "";
 
-  const n = safeNote(cashflow.note);
-  if (n.includes("nguyên liệu") || n.includes("ingredient") || n.includes("supply")) return "cogs";
-  if (n.includes("lương") || n.includes("nhân sự") || n.includes("salary")) return "labor";
-  if (n.includes("điện") || n.includes("nước") || n.includes("gas") || n.includes("vận hành") || n.includes("mặt bằng")) return "operations";
+  // UC18: ưu tiên dữ liệu chuẩn hóa category/subcategory/ref.kind
+  if (
+    subcategory === "cogs" ||
+    category === "inventory" ||
+    refKind.includes("stock")
+  ) {
+    return "cogs";
+  }
+
+  // UC17: payroll/payment/payout phải vào nhóm labor
+  if (
+    subcategory === "labor" ||
+    category === "payroll" ||
+    refKind.includes("payroll")
+  ) {
+    return "labor";
+  }
+
+  if (
+    ["operations", "supplier_payment"].includes(category) ||
+    ["rent", "utility", "maintenance", "marketing", "bank_fee", "tax"].includes(subcategory)
+  ) {
+    return "operations";
+  }
+
+  // Fallback cho dữ liệu cũ chưa có category/subcategory
+  const n = safeNote(isObject ? cashflowOrNote.note : cashflowOrNote);
+
+  if (
+    n.includes("nguyên liệu") ||
+    n.includes("ingredient") ||
+    n.includes("supply")
+  ) {
+    return "cogs";
+  }
+
+  if (
+    n.includes("lương") ||
+    n.includes("nhân sự") ||
+    n.includes("salary")
+  ) {
+    return "labor";
+  }
+
+  if (
+    n.includes("điện") ||
+    n.includes("nước") ||
+    n.includes("gas") ||
+    n.includes("vận hành") ||
+    n.includes("mặt bằng")
+  ) {
+    return "operations";
+  }
+
   return "other";
 }
 
@@ -249,27 +296,76 @@ export const PaymentQuery = {
       BankTransaction.aggregate([{ $match: { restaurantId: rid, matchStatus: "unmatched" } }, { $count: "count" }]),
     ]);
 
-    const revenue = cashflows.filter((x) => x.type === "INFLOW").reduce((s, x) => s + Number(x.amount || 0), 0);
-    const expense = cashflows.filter((x) => x.type === "OUTFLOW").reduce((s, x) => s + Number(x.amount || 0), 0);
-    const payment = payments.filter((x) => x.status === "SUCCESS").reduce((s, x) => s + Number(x.paidAmount || 0), 0);
-    const refund = cashflows.filter((x) => x.type === "OUTFLOW" && isRefundCashflow(x)).reduce((s, x) => s + Number(x.amount || 0), 0);
-    const receivable = debtInvoices.reduce((s, inv) => s + Math.max(Number(inv?.totals?.grandTotal || 0) - Number(inv?.paid || 0), 0), 0);
-    const payable = supplierPayables.reduce((s, item) => s + Math.max(Number(item.remainingAmount ?? (Number(item.amount || 0) - Number(item.paidAmount || 0))), 0), 0);
+    const revenue = cashflows
+      .filter((x) => x.type === "INFLOW")
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
+
+    const expense = cashflows
+      .filter((x) => x.type === "OUTFLOW")
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
+
+    const payment = payments
+      .filter((x) => x.status === "SUCCESS")
+      .reduce((s, x) => s + Number(x.paidAmount || 0), 0);
+
+    const refund = cashflows
+      .filter((x) => x.type === "OUTFLOW" && isRefundCashflow(x))
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
+
+    const receivable = debtInvoices.reduce((s, inv) => {
+      const total = Number(inv?.totals?.grandTotal || 0);
+      const paid = Number(inv?.paid || 0);
+      return s + Math.max(total - paid, 0);
+    }, 0);
+
+    const payable = supplierPayables.reduce((s, item) => {
+      const amount = Number(item.amount || 0);
+      const paidAmount = Number(item.paidAmount || 0);
+      const remainingAmount = Number(item.remainingAmount ?? amount - paidAmount);
+      return s + Math.max(remainingAmount, 0);
+    }, 0);
+
+    const debt = receivable + payable;
+
     const now = Date.now();
+
     const overdueReceivable = debtInvoices
       .filter((inv) => inv.dueDate && new Date(inv.dueDate).getTime() < now)
-      .reduce((s, inv) => s + Math.max(Number(inv?.totals?.grandTotal || 0) - Number(inv?.paid || 0), 0), 0);
-    const overduePayable = supplierPayables
-      .filter((item) => item.status === "overdue" || (item.dueDate && new Date(item.dueDate).getTime() < now))
-      .reduce((s, item) => s + Math.max(Number(item.remainingAmount ?? (Number(item.amount || 0) - Number(item.paidAmount || 0))), 0), 0);
-    const overdue = overdueReceivable + overduePayable;
-    const settlement = invoices.filter((inv) => inv.status === "PAID").reduce((s, inv) => s + Number(inv.paid || 0), 0);
+      .reduce((s, inv) => {
+        const total = Number(inv?.totals?.grandTotal || 0);
+        const paid = Number(inv?.paid || 0);
+        return s + Math.max(total - paid, 0);
+      }, 0);
 
-    const costBreakdown = cashflows.filter((x) => x.type === "OUTFLOW").reduce((acc, x) => {
-      const bucket = classifyCost(x);
-      acc[bucket] += Number(x.amount || 0);
-      return acc;
-    }, { cogs: 0, labor: 0, operations: 0, other: 0 });
+    const overduePayable = supplierPayables
+      .filter(
+        (item) =>
+          item.status === "overdue" ||
+          (item.dueDate && new Date(item.dueDate).getTime() < now)
+      )
+      .reduce((s, item) => {
+        const amount = Number(item.amount || 0);
+        const paidAmount = Number(item.paidAmount || 0);
+        const remainingAmount = Number(item.remainingAmount ?? amount - paidAmount);
+        return s + Math.max(remainingAmount, 0);
+      }, 0);
+
+    const overdue = overdueReceivable + overduePayable;
+
+    const settlement = invoices
+      .filter((inv) => inv.status === "PAID")
+      .reduce((s, inv) => s + Number(inv.paid || 0), 0);
+
+    const costBreakdown = cashflows
+      .filter((x) => x.type === "OUTFLOW")
+      .reduce(
+        (acc, x) => {
+          const bucket = classifyCost(x);
+          acc[bucket] += Number(x.amount || 0);
+          return acc;
+        },
+        { cogs: 0, labor: 0, operations: 0, other: 0 }
+      );
 
     const labels = buildBuckets({ from, to, mode, format });
     const trendMap = new Map(labels.map((label) => [label, { key: label, revenue: 0, expense: 0, profit: 0 }]));

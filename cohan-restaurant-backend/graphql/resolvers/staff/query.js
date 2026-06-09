@@ -17,6 +17,8 @@ import {
   EventLog,
   ShiftAcknowledgement,
   ScheduleAcknowledgement,
+  EmployeeBankAccount,
+  RestaurantPayoutAccount,
 } from "../../../models/index.js";
 import { listStaffPerformanceSnapshots } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
@@ -60,6 +62,12 @@ import {
 } from "../../../src/services/payroll/payrollRuntime.service.js";
 import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
+import {
+  getPayrollPayoutBatch as getPayrollPayoutBatchService,
+  listPayrollPayouts as listPayrollPayoutsService,
+  mapEmployeeBankAccount,
+  mapRestaurantPayoutAccount,
+} from "../../../src/services/payroll/payrollPayout.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import {
   buildPayrollExportRows,
@@ -1139,7 +1147,7 @@ export default {
 
     if (isSelf) {
       assertPayrollPermission(ctx, "payroll.payslip.self");
-      if (!["finalized", "locked", "paid"].includes(period.status)) {
+      if (!["finalized", "paying", "locked", "paid"].includes(period.status)) {
         throw new Error("PAYROLL_PERIOD_NOT_AVAILABLE");
       }
     } else {
@@ -1172,6 +1180,40 @@ export default {
       if (!item) throw new Error("PAYROLL_ITEM_NOT_FOUND");
     }
     return listPayrollPayments({ periodId, employeeId });
+  },
+
+
+  payrollPayouts: async (_, { periodId, employeeId, status }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, employeeId ? "payroll.view" : "payroll.export");
+    const period = await resolvePayrollPeriodRestaurantOrThrow(periodId);
+    await requireRestaurantAccess(ctx, period.restaurantId);
+    return listPayrollPayoutsService({ periodId, employeeId, status });
+  },
+
+  payrollPayoutBatch: async (_, { batchId }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.view");
+    const batch = await getPayrollPayoutBatchService(batchId);
+    if (!batch) return null;
+    await requireRestaurantAccess(ctx, batch.restaurantId);
+    return batch;
+  },
+
+  employeeBankAccount: async (_, { employeeId, restaurantId }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.view");
+    await requireRestaurantAccess(ctx, restaurantId);
+    const row = await EmployeeBankAccount.findOne({ employeeId: payrollToObjectId(employeeId), restaurantId: payrollToObjectId(restaurantId), isDefault: true }).lean();
+    return mapEmployeeBankAccount(row);
+  },
+
+  restaurantPayoutAccounts: async (_, { restaurantId }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.view");
+    await requireRestaurantAccess(ctx, restaurantId);
+    const rows = await RestaurantPayoutAccount.find({ restaurantId: payrollToObjectId(restaurantId) }).sort({ createdAt: -1 }).lean();
+    return rows.map(mapRestaurantPayoutAccount);
   },
 
   payrollExportRows: async (_, { periodId }, ctx) => {
@@ -1227,14 +1269,24 @@ export default {
     const periodIds = items.map((i) => i.periodId);
     const periods = await PayrollPeriod.find({
       _id: { $in: periodIds },
-      status: { $in: ["finalized", "locked", "paid"] },
+      status: { $in: ["finalized", "paying", "locked", "paid"] },
     })
-      .select({ _id: 1 })
+      .select({ _id: 1, name: 1, startDate: 1, endDate: 1, status: 1, finalizedAt: 1, paidAt: 1 })
       .lean();
-    const allowed = new Set(periods.map((p) => String(p._id)));
+    const periodById = new Map(periods.map((p) => [String(p._id), p]));
     return items
-      .filter((i) => allowed.has(String(i.periodId)))
-      .map(mapPayrollDocToGql);
+      .filter((i) => periodById.has(String(i.periodId)))
+      .map((item) => {
+        const period = periodById.get(String(item.periodId));
+        return mapPayrollDocToGql({
+          ...item,
+          periodName: period?.name || "",
+          periodStartDate: period?.startDate || null,
+          periodEndDate: period?.endDate || null,
+          periodStatus: period?.status || null,
+          periodFinalizedAt: period?.finalizedAt || null,
+        });
+      });
   },
 
   myPayslip: async (_, { periodId }, ctx) => {
@@ -1243,7 +1295,7 @@ export default {
     if (!actorId) return null;
 
     const period = await PayrollPeriod.findById(periodId).lean();
-    if (!period || !["finalized", "locked", "paid"].includes(period.status))
+    if (!period || !["finalized", "paying", "locked", "paid"].includes(period.status))
       return null;
 
     const item = await PayrollItem.findOne({
@@ -1259,7 +1311,8 @@ export default {
       status: item ? "success" : "info",
       meta: { employeeId: String(actorId) },
     });
-    return item ? mapPayrollDocToGql(item) : null;
+    if (!item) return null;
+    return getPayrollPayslip({ periodId: period._id, employeeId: actorId });
   },
 
   staffSchedulingAssistant: async (

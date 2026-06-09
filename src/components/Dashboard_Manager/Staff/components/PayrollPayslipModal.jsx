@@ -5,6 +5,9 @@ export const PAYROLL_PAYMENT_ERROR_MESSAGES = {
   PAYROLL_PAYMENT_OVERPAY: "Số tiền vượt quá số còn lại.",
   PAYROLL_PERIOD_NOT_FINALIZED: "Cần chốt kỳ lương trước khi thanh toán.",
   PAYROLL_PERIOD_LOCKED: "Kỳ lương đã khóa, không thể thanh toán.",
+  PAYROLL_PERIOD_ALREADY_PAID: "Kỳ lương đã thanh toán đủ.",
+  PAYROLL_PAYMENT_AMOUNT_INVALID: "Số tiền thanh toán phải lớn hơn 0.",
+  FORBIDDEN: "Bạn không có quyền thực hiện thao tác bảng lương này.",
 };
 
 export const getPayrollPaymentErrorMessage = (error) => {
@@ -136,7 +139,7 @@ const PayrollPayslipModal = ({
       await markPayrollItemPaid({
         periodId,
         employeeId,
-        amount: Number(form.amount || 0),
+        amount: form.amount === "" ? undefined : Number(form.amount || 0),
         method: form.method || "cash",
         paidAt: form.paidAt ? new Date(form.paidAt).toISOString() : new Date().toISOString(),
         note: form.note,
@@ -205,7 +208,7 @@ const PayrollPayslipModal = ({
               <div className="section payroll-payment-history">
                 <h5 className="section-title income">Lịch sử thanh toán</h5>
                 {payments.length === 0 ? (
-                  <div className="table-empty" data-testid="payroll-payment-empty">Chưa có thanh toán nào.</div>
+                  <div className="table-empty" data-testid="payroll-payment-empty">Chưa có thanh toán nào. Chưa có lịch sử thanh toán.</div>
                 ) : (
                   <div className="table-responsive">
                     <table className="payroll-table payroll-payment-table">
@@ -249,6 +252,8 @@ const PayrollPayslipModal = ({
                         <option value="cash">cash</option>
                         <option value="bank_transfer">bank_transfer</option>
                         <option value="card">card</option>
+                        <option value="e_wallet">e_wallet</option>
+                        <option value="other">other</option>
                       </select>
                     </label>
                     <label className="settings-field">

@@ -14,7 +14,12 @@ const payrollItemSchema = new Schema(
     avatar: { type: String, default: null },
     breakdown: { type: Schema.Types.Mixed, default: {} },
     warningMessages: { type: [String], default: [] },
-    status: { type: String, enum: ["draft", "finalized", "locked", "paid"], default: "draft" },
+    status: {
+      type: String,
+      enum: ["draft", "finalized", "pending_payment", "processing_payment", "paid", "payment_failed", "locked"],
+      default: "draft",
+      index: true,
+    },
     finalizedSnapshot: { type: Schema.Types.Mixed, default: null },
     paidBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     paymentMethod: { type: String, default: "" },
