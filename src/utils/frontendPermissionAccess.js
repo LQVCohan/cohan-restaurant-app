@@ -17,6 +17,15 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "order.cancel",
     "payment.read",
     "payment.write",
+    "finance.read",
+    "finance.write",
+    "finance.export",
+    "transaction.read",
+    "transaction.write",
+    "reconciliation.read",
+    "reconciliation.write",
+    "refund.read",
+    "refund.write",
     "staff.read",
     "staff.write",
     "customer.read",
@@ -51,7 +60,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "review.analytics.read",
   ],
   hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"],
-  accountant: ["payment.read", "report.read", "report.export", "payroll.read"],
+  accountant: ["payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "report.read", "report.export", "payroll.read"],
 });
 
 export const NO_PERMISSION_MESSAGE = "Bạn không có quyền thực hiện thao tác này.";

@@ -27,6 +27,16 @@ export const PERMISSIONS = {
   PAYMENT_READ: "payment.read",
   PAYMENT_WRITE: "payment.write",
 
+  FINANCE_READ: "finance.read",
+  FINANCE_WRITE: "finance.write",
+  FINANCE_EXPORT: "finance.export",
+  TRANSACTION_READ: "transaction.read",
+  TRANSACTION_WRITE: "transaction.write",
+  RECONCILIATION_READ: "reconciliation.read",
+  RECONCILIATION_WRITE: "reconciliation.write",
+  REFUND_READ: "refund.read",
+  REFUND_WRITE: "refund.write",
+
   INVENTORY_READ: "inventory.read",
   INVENTORY_WRITE: "inventory.write",
   STOCK_READ: "stock.read",

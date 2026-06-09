@@ -1,34 +1,65 @@
-import React from "react";
-import { Download, Calendar, AlertCircle } from "lucide-react";
+import React, { useMemo } from "react";
+import { Calendar, Download, RefreshCw, Route } from "lucide-react";
 import "./FinanceDashboard.scss";
-import {
-  FinanceStats,
-  RevenueChart,
-  TransactionTable,
-  SupplierDebts,
-} from "./FinanceComponents";
+import { FinanceStats, RevenueChart, ReceivableDebts } from "./FinanceComponents";
 import { useFinance } from "@/hooks/useFinance";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 
+const formatVnd = (value) =>
+  Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+
+const navigateTransactions = (query = {}) => {
+  window.dispatchEvent(
+    new CustomEvent("manager:navigate", {
+      detail: { page: "transactions", query, source: "finance-dashboard" },
+    }),
+  );
+};
+
+const exportDashboardCsv = ({ summary, trend, costBreakdown, debts, reconciliationSummary }) => {
+  const rows = [
+    ["Section", "Metric", "Value"],
+    ["Meta", "Currency", "Base VND; UI may convert using manual rate"],
+    ["KPI", "Revenue", summary.revenue],
+    ["KPI", "Expense", summary.expense],
+    ["KPI", "Profit", summary.profit],
+    ["KPI", "Cash In", summary.cashIn],
+    ["KPI", "Cash Out", summary.cashOut],
+    ["KPI", "Payments", summary.payment],
+    ["KPI", "Refunds", summary.refund],
+    ["KPI", "Receivable", summary.receivable ?? summary.debt],
+    ["KPI", "Payable", summary.payable || 0],
+    ["KPI", "Prime Cost Rate", summary.primeCostRate || 0],
+    ["Cost", "COGS", costBreakdown.cogs],
+    ["Cost", "Labor", costBreakdown.labor],
+    ["Cost", "Operations", costBreakdown.operations],
+    ["Cost", "Other", costBreakdown.other],
+    ["Reconciliation", "Matched", reconciliationSummary.matched],
+    ["Reconciliation", "Amount mismatch", reconciliationSummary.amountMismatch],
+    ["Reconciliation", "Unmatched", reconciliationSummary.unmatched],
+    ...trend.map((p) => ["Trend", p.key, `revenue=${p.revenue};expense=${p.expense};profit=${p.profit}`]),
+    ...debts.map((d) => ["Receivable", d.supplier, d.amount]),
+  ];
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `finance-dashboard-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 const FinanceDashboard = () => {
-  const formatVnd = (value) =>
-    Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
-  const reconciliationStatusLabel = (status) => {
-    const key = String(status || "").toLowerCase();
-    if (key === "matched") return "Khớp";
-    if (key === "amount_mismatch") return "Lệch tiền";
-    if (key === "unmatched") return "Chưa khớp";
-    if (key === "duplicate") return "Trùng giao dịch";
-    return status || "-";
-  };
   const {
     range,
     setRange,
-    typeFilter,
-    setTypeFilter,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
     summary,
     trend,
-    transactions,
     debts,
     reconciliations,
     reconciliationSummary,
@@ -39,198 +70,125 @@ const FinanceDashboard = () => {
     restaurantId,
     setRestaurantId,
     restaurants,
+    setCurrency,
   } = useFinance();
-  const {
-    activeCurrency,
-    setActiveCurrency,
-    manualUsdToVndRate,
-    persistSettings,
-  } = useRestaurantCurrency(restaurantId);
+  const { activeCurrency, setActiveCurrency, manualUsdToVndRate, persistSettings } = useRestaurantCurrency(restaurantId);
 
-  const safeCostBreakdown = {
+  const safeCostBreakdown = useMemo(() => ({
     cogs: Number(costBreakdown?.cogs || 0),
     labor: Number(costBreakdown?.labor || 0),
     operations: Number(costBreakdown?.operations || 0),
     other: Number(costBreakdown?.other || 0),
-  };
-  const safeReconciliationSummary = {
-    matched: Number(reconciliationSummary?.matched || 0),
-    amountMismatch: Number(reconciliationSummary?.amountMismatch || 0),
-    unmatched: Number(reconciliationSummary?.unmatched || 0),
-  };
-  const totalCost =
-    safeCostBreakdown.cogs +
-    safeCostBreakdown.labor +
-    safeCostBreakdown.operations +
-    safeCostBreakdown.other;
+  }), [costBreakdown]);
+  const totalCost = Object.values(safeCostBreakdown).reduce((sum, value) => sum + value, 0);
+  const percent = (value) => (totalCost > 0 ? `${Math.round((Number(value || 0) / totalCost) * 100)}%` : "0%");
 
-  const percent = (value) =>
-    totalCost > 0 ? `${Math.round((Number(value || 0) / totalCost) * 100)}%` : "0%";
+  const handleCurrencyChange = async (value) => {
+    setActiveCurrency(value);
+    setCurrency(value);
+    await persistSettings({ defaultCurrency: value });
+  };
 
   return (
     <div className="finance-dashboard">
-      <header className="page-header">
+      <header className="page-header finance-hero">
         <div className="header-left">
-          <h1>Quản Trị Tài Chính Nhà Hàng</h1>
-          <p>Theo dõi doanh thu, chi phí, lợi nhuận, công nợ và đối soát theo kỳ</p>
+          <span className="eyebrow">UC18 · Finance command center</span>
+          <h1>Tổng quan tài chính & dòng tiền</h1>
+          <p>Dashboard chỉ tập trung KPI, lợi nhuận, cost structure, công nợ tổng quan và tín hiệu đối soát.</p>
         </div>
-        <div className="header-actions">
-          <select
-            className="btn-secondary"
-            value={restaurantId || ""}
-            onChange={(e) => setRestaurantId(e.target.value)}
-          >
+        <div className="header-actions finance-toolbar">
+          <select className="btn-secondary" value={restaurantId || ""} onChange={(e) => setRestaurantId(e.target.value)}>
             <option value="">Chọn nhà hàng</option>
-            {(restaurants || []).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
+            {(restaurants || []).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
-          <select
-            className="btn-secondary"
-            value={activeCurrency}
-            onChange={async (e) => {
-              setActiveCurrency(e.target.value);
-              await persistSettings({ defaultCurrency: e.target.value });
-            }}
-          >
+          <select className="btn-secondary" value={range} onChange={(e) => setRange(e.target.value)}>
+            <option value="week">Tuần</option>
+            <option value="month">Tháng</option>
+            <option value="quarter">Quý</option>
+            <option value="year">Năm</option>
+            <option value="custom">Khoảng ngày</option>
+          </select>
+          {range === "custom" && (
+            <>
+              <input className="btn-secondary" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <input className="btn-secondary" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </>
+          )}
+          <select className="btn-secondary" value={activeCurrency} onChange={(e) => handleCurrencyChange(e.target.value)}>
             <option value="VND">VND</option>
             <option value="USD">USD</option>
           </select>
-          <input
-            className="btn-secondary"
-            type="number"
-            min="1"
-            defaultValue={manualUsdToVndRate}
-            onBlur={async (e) => {
-              const v = Number(e.target.value);
-              if (v > 0) {
-                await persistSettings({ manualUsdToVndRate: v });
-              }
-            }}
-            title="Tỷ giá USD -> VND"
-          />
-          <button className="btn-secondary" onClick={() => setRange("week")}>
-            <Calendar size={16} /> <span>Tuần</span>
-          </button>
-          <button className="btn-secondary" onClick={() => setRange("month")}>
-            <Calendar size={16} /> <span>Tháng</span>
-          </button>
-          <button className="btn-secondary" onClick={() => setRange("quarter")}>
-            <Calendar size={16} /> <span>Quý</span>
-          </button>
-          <button className="btn-secondary" onClick={() => refetch()}>
-            <Download size={16} /> <span>Làm mới ({range})</span>
-          </button>
+          <input className="btn-secondary rate-input" type="number" min="1" defaultValue={manualUsdToVndRate} onBlur={async (e) => {
+            const v = Number(e.target.value);
+            if (v > 0) await persistSettings({ manualUsdToVndRate: v });
+          }} title="Tỷ giá USD -> VND" />
+          <button className="btn-secondary" onClick={() => refetch()}><RefreshCw size={16} /> Làm mới</button>
+          <button className="btn-primary" onClick={() => exportDashboardCsv({ summary, trend, costBreakdown: safeCostBreakdown, debts, reconciliationSummary })}><Download size={16} /> Export CSV</button>
         </div>
       </header>
 
-      {error && <div className="finance-error">Không thể tải dữ liệu. Vui lòng thử lại.</div>}
+      {error && <div className="finance-error">Không thể tải dữ liệu tài chính. Vui lòng thử lại.</div>}
 
       <section className="stats-section">
-        <FinanceStats summary={summary} />
+        <FinanceStats summary={summary} onNavigate={navigateTransactions} />
       </section>
 
-      <div className="main-layout-grid-v2">
-        <div className="col-main">
-          <div className="card-container chart-card">
-            <div className="card-header">
-              <h3>Biểu đồ Thu / Chi / Lợi nhuận</h3>
+      <div className="finance-focus-grid">
+        <section className="card-container chart-card span-2">
+          <div className="card-header">
+            <div>
+              <h3>Thu / chi / lợi nhuận theo thời gian</h3>
+              <p>Dữ liệu đến từ Cashflow đã chuẩn hóa, loại trừ dòng voided để tránh double count.</p>
             </div>
-            <div className="card-body">{loading ? <div>Đang tải dữ liệu...</div> : <RevenueChart trend={trend || []} />}</div>
+            <Calendar size={18} />
           </div>
+          <div className="card-body">{loading ? <div>Đang tải dữ liệu...</div> : <RevenueChart trend={trend || []} />}</div>
+        </section>
 
-          <div className="card-container transactions-card">
-            <div className="card-header">
-              <h3>Nhật ký giao dịch</h3>
-              <div className="simple-filter">
-                <button onClick={() => setTypeFilter("all")} className={typeFilter === "all" ? "active" : ""}>
-                  Tất cả
-                </button>
-                <button onClick={() => setTypeFilter("inflow")} className={typeFilter === "inflow" ? "active" : ""}>
-                  Thu
-                </button>
-                <button onClick={() => setTypeFilter("outflow")} className={typeFilter === "outflow" ? "active" : ""}>
-                  Chi
-                </button>
-              </div>
-            </div>
-            {loading ? <div className="card-body">Đang tải dữ liệu...</div> : <TransactionTable transactions={transactions || []} />}
+        <section className="card-container cost-card">
+          <div className="card-header"><h3>Cấu trúc chi phí</h3><Route size={18} /></div>
+          <div className="card-body cost-structure">
+            {[
+              ["COGS / nguyên liệu", "cogs", "red", "inventory", "cogs"],
+              ["Labor / nhân sự", "labor", "orange", "payroll", "labor"],
+              ["Operations / vận hành", "operations", "blue", "operations", ""],
+              ["Other / khác", "other", "slate", "other", ""],
+            ].map(([label, key, color, source, subcategory]) => (
+              <button key={key} type="button" className="cost-row cost-drilldown" onClick={() => navigateTransactions({ tab: "journal", category: source, subcategory })}>
+                <div className="label"><span>{label}</span><strong>{formatVnd(safeCostBreakdown[key])}</strong></div>
+                <div className="progress"><div className={`fill ${color}`} style={{ width: percent(safeCostBreakdown[key]) }} /></div>
+                <div className="value">{percent(safeCostBreakdown[key])}</div>
+              </button>
+            ))}
+            <div className="insight-text">Prime cost = COGS + Labor. Drill-down từng nhóm sẽ mở Transactions theo nguồn phát sinh để truy vết.</div>
           </div>
-          <div className="card-container transactions-card">
-            <div className="card-header"><h3>Đối soát chuyển khoản</h3></div>
-            <div className="card-body">
-              <div>Khớp: <b>{safeReconciliationSummary.matched}</b> | Lệch tiền: <b>{safeReconciliationSummary.amountMismatch}</b> | Chưa khớp: <b>{safeReconciliationSummary.unmatched}</b></div>
-              <table className="clean-table">
-                <thead><tr><th>Thời gian</th><th>Số tiền</th><th>Mã tham chiếu</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
-                <tbody>
-                  {(reconciliations || []).length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="text-center text-muted" style={{ padding: "1rem" }}>
-                        Chưa có dữ liệu đối soát chuyển khoản.
-                      </td>
-                    </tr>
-                  ) : (
-                    (reconciliations || []).slice(0, 10).map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.time ? new Date(r.time).toLocaleString("vi-VN") : "-"}</td>
-                        <td>{formatVnd(r.amount)}</td>
-                        <td>{r.reference || "-"}</td>
-                        <td>{reconciliationStatusLabel(r.status)}</td>
-                        <td>{r.note || "-"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        </section>
 
-        <div className="col-side">
-          <div className="card-container debt-card">
-            <div className="card-header warning-bg">
-              <h3>
-                <AlertCircle size={16} /> Công nợ phải xử lý
-              </h3>
-            </div>
-            <div className="card-body no-padding">{loading ? <div className="p-3">Đang tải dữ liệu...</div> : <SupplierDebts debts={debts || []} />}</div>
-          </div>
-
-          <div className="card-container cost-structure">
-            <div className="card-header">
-              <h3>Cấu trúc chi phí</h3>
-            </div>
-            <div className="card-body">
-              <div className="cost-row">
-                <div className="label">COGS (Nguyên liệu)</div>
-                <div className="progress">
-                  <div className="fill red" style={{ width: percent(safeCostBreakdown.cogs) }}></div>
+        <section className="card-container reconciliation-card">
+          <div className="card-header"><h3>Tình trạng đối soát</h3><button className="text-btn" onClick={() => navigateTransactions({ tab: "reconciliation" })}>Xử lý</button></div>
+          <div className="card-body recon-summary">
+            <div className="recon-tile matched"><span>Khớp</span><strong>{reconciliationSummary?.matched || 0}</strong></div>
+            <div className="recon-tile mismatch"><span>Lệch tiền</span><strong>{reconciliationSummary?.amountMismatch || 0}</strong></div>
+            <div className="recon-tile unmatched"><span>Chưa khớp</span><strong>{reconciliationSummary?.unmatched || 0}</strong></div>
+            <div className="mini-list">
+              {(reconciliations || []).slice(0, 5).map((item) => (
+                <div key={item.id} className="mini-list-row">
+                  <span>{item.reference || item.id}</span>
+                  <b>{item.status}</b>
                 </div>
-                <div className="value">{percent(safeCostBreakdown.cogs)}</div>
-              </div>
-              <div className="cost-row">
-                <div className="label">Nhân sự (Labor)</div>
-                <div className="progress">
-                  <div className="fill orange" style={{ width: percent(safeCostBreakdown.labor) }}></div>
-                </div>
-                <div className="value">{percent(safeCostBreakdown.labor)}</div>
-              </div>
-              <div className="cost-row">
-                <div className="label">Vận hành</div>
-                <div className="progress">
-                  <div className="fill blue" style={{ width: percent(safeCostBreakdown.operations) }}></div>
-                </div>
-                <div className="value">{percent(safeCostBreakdown.operations)}</div>
-              </div>
-
-              <div className="insight-text">
-                💡 <b>Gợi ý:</b> Theo dõi tỷ trọng COGS/Labor so với doanh thu để giữ lợi nhuận ổn định.
-              </div>
+              ))}
             </div>
           </div>
-        </div>
+        </section>
+
+        <section className="card-container span-2">
+          <div className="card-header warning-bg">
+            <h3>Công nợ hóa đơn / khoản phải thu</h3>
+            <button className="text-btn" onClick={() => navigateTransactions({ tab: "debt" })}>Xem chi tiết</button>
+          </div>
+          <ReceivableDebts debts={debts || []} />
+        </section>
       </div>
     </div>
   );

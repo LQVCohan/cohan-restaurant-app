@@ -14,6 +14,15 @@ export const MANAGER_STAFF_PERMISSION_WHITELIST = Object.freeze([
   "order.cancel",
   "payment.read",
   "payment.write",
+  "finance.read",
+  "finance.write",
+  "finance.export",
+  "transaction.read",
+  "transaction.write",
+  "reconciliation.read",
+  "reconciliation.write",
+  "refund.read",
+  "refund.write",
   "table.read",
   "kitchen.read",
   "kitchen.write",
@@ -40,7 +49,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
     "restaurant.read", "restaurant.write", "menu.read", "menu.write",
     "order.read", "order.create", "order.update", "order.cancel",
-    "payment.read", "payment.write", "staff.read", "staff.write",
+    "payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "staff.read", "staff.write",
     "shift.read", "shift.manage", "table.read", "table.write",
     "report.read", "dashboard.read", "inventory.read", "inventory.write",
     "stock.read", "stock.write", "reservation.read", "reservation.create",
@@ -48,7 +57,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "coupon.read", "coupon.write", "customer.read", "customer.update", "role.read", "permission.read",
   ],
   hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"],
-  accountant: ["payment.read", "report.read", "report.export", "payroll.read"],
+  accountant: ["payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "report.read", "report.export", "payroll.read"],
 });
 
 function getLegacyRolePermissionCodes(user) {
