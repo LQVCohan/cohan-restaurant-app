@@ -83,4 +83,27 @@ export const STAFF_ROLE_LABEL_BY_SLUG = STAFF_ROLE_OPTIONS.reduce((acc, role) =>
   return acc;
 }, {});
 
+const STAFF_ROLE_LABEL_BY_NAME = STAFF_ROLE_OPTIONS.reduce((acc, role) => {
+  acc[normalizeKey(role.name)] = role.label;
+  acc[normalizeKey(role.label)] = role.label;
+  acc[normalizeKey(role.slug)] = role.label;
+  return acc;
+}, {});
+
+export const getStaffRoleDisplayLabel = (role) => {
+  if (!role) return "";
+  if (typeof role === "object") {
+    return (
+      role.label ||
+      STAFF_ROLE_LABEL_BY_SLUG[role.slug] ||
+      STAFF_ROLE_LABEL_BY_NAME[normalizeKey(role.name)] ||
+      role.name ||
+      role.slug ||
+      ""
+    );
+  }
+  const normalizedRole = normalizeKey(role);
+  return STAFF_ROLE_LABEL_BY_NAME[normalizedRole] || String(role);
+};
+
 export const STAFF_ROLE_SLUGS = STAFF_ROLE_OPTIONS.map((role) => role.slug);
