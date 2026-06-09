@@ -28,7 +28,6 @@ import {
   Clock3,
   Settings,
   Sparkles,
-  Wallet,
   X,
   Edit3,
   ClipboardList,
@@ -2175,6 +2174,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ),
     [staff],
   );
+  const availabilityMissingCount = useMemo(() => {
+    const registeredStaffIds = new Set(
+      managerAvailabilitySubmissions
+        .map((item) => String(item?.employeeId || item?.employee?.id || ""))
+        .filter(Boolean),
+    );
+
+    return Math.max(0, partTimeStaff.length - registeredStaffIds.size);
+  }, [managerAvailabilitySubmissions, partTimeStaff]);
 
   const totalAssignmentsForPublish = useMemo(
     () =>
@@ -4470,21 +4478,48 @@ const ScheduleManagement = ({ readOnly = false }) => {
         <div className="header-top">
           <div className="title-group">
             <div className="eyebrow-row">
+              <span className="eyebrow eyebrow--command">Lịch vận hành</span>
+              <span className="dot-divider">•</span>
               <span className="eyebrow">{selectedRestaurantName}</span>
               <span className="dot-divider">•</span>
               <span className="eyebrow">{dateLabel}</span>
             </div>
-            <h1>
-              {readOnly ? "Thông Tin Ca Làm Việc" : "Quản Lý Lịch Làm Việc"}
-            </h1>
+            <h1>{readOnly ? "Thông tin ca làm việc" : "Lịch làm việc"}</h1>
             <p className="subtitle">
               {readOnly
                 ? "Xem lịch ca theo dữ liệu thật từ backend."
-                : "Theo dõi ca thiếu người, chi phí dự kiến và xuất bản lịch làm việc."}
+                : "Lập ca, kiểm tra thiếu người và xuất lịch theo tuần."}
             </p>
           </div>
 
           <div className="header-actions">
+            {!readOnly ? (
+              <button
+                type="button"
+                className="primary-action"
+                onClick={() =>
+                  openAddShiftModal(
+                    currentDate,
+                    configuredShiftKeys[0] || "morning",
+                  )
+                }
+              >
+                <CalendarCheck2 size={17} />
+                Tạo ca
+              </button>
+            ) : null}
+
+            {!readOnly ? (
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => setIsAutoScheduleOpen(true)}
+              >
+                <Sparkles size={17} />
+                Tự động xếp ca
+              </button>
+            ) : null}
+
             <button
               type="button"
               className="secondary-action"
@@ -4523,9 +4558,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <AlertTriangle size={20} />
             </div>
             <div className="kpi-content">
-              <span className="label">Cần xử lý</span>
+              <span className="label">Ca thiếu người</span>
               <span className="value">{scheduleInsights.actionCount}</span>
-              <span className="hint">Cảnh báo trong kỳ hiển thị</span>
+              <span className="hint">Xung đột và ca cần bổ sung</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="kpi-card shifts"
+            onClick={() => setIsStatsPanelOpen(true)}
+          >
+            <div className="kpi-icon">
+              <CalendarCheck2 size={20} />
+            </div>
+            <div className="kpi-content">
+              <span className="label">Ca trong tuần</span>
+              <span className="value">{scheduleInsights.totalShiftGroups}</span>
+              <span className="hint">
+                Hôm nay {todayScheduleSummary.totalShiftsToday} ca
+              </span>
             </div>
           </button>
 
@@ -4538,7 +4590,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <Clock3 size={20} />
             </div>
             <div className="kpi-content">
-              <span className="label">Tổng giờ dự kiến</span>
+              <span className="label">Tổng giờ đã xếp</span>
               <span className="value">
                 {compactNumber(scheduleInsights.totalHours)}h
               </span>
@@ -4550,18 +4602,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
           <button
             type="button"
-            className="kpi-card money"
-            onClick={() => setIsStatsPanelOpen(true)}
+            className="kpi-card availability"
+            onClick={() => setIsAvailabilityPanelCollapsed(false)}
           >
             <div className="kpi-icon">
-              <Wallet size={20} />
+              <ClipboardList size={20} />
             </div>
             <div className="kpi-content">
-              <span className="label">Chi phí dự kiến</span>
-              <span className="value">
-                {formatCurrency(scheduleInsights.totalCost)}
-              </span>
-              <span className="hint">Tính theo giờ ca thực tế</span>
+              <span className="label">Nhân sự chưa đăng ký</span>
+              <span className="value">{availabilityMissingCount}</span>
+              <span className="hint">Availability tuần mục tiêu</span>
             </div>
           </button>
 
@@ -4806,12 +4856,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
           <div className="schedule-quality-panel__header">
             <div>
               <p className="schedule-quality-panel__title">
-                Chất lượng lịch tuần
+                Việc cần xử lý
+                <span className="schedule-sr-only">Chất lượng lịch tuần</span>
               </p>
               <p className="schedule-quality-panel__headline">
                 {scheduleQualitySummary.hasTopIssues
                   ? `${scheduleQualitySummary.actionCount || 0} cảnh báo cần kiểm tra · ${scheduleQualitySummary.unacknowledgedCount || 0} nhân sự chưa xác nhận`
-                  : "Lịch tuần đang ổn định"}
+                  : "Lịch tuần đang sẵn sàng để vận hành"}
               </p>
             </div>
             <div className="schedule-quality-panel__score-wrap">
@@ -4880,6 +4931,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className={viewMode === "week" ? "active" : ""}
+              aria-pressed={viewMode === "week"}
               onClick={() => setViewMode("week")}
             >
               Theo tuần
@@ -4887,6 +4939,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className={viewMode === "day" ? "active" : ""}
+              aria-pressed={viewMode === "day"}
               onClick={() => setViewMode("day")}
             >
               Theo ngày
@@ -4894,6 +4947,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className={viewMode === "month" ? "active" : ""}
+              aria-pressed={viewMode === "month"}
               onClick={() => setViewMode("month")}
             >
               Theo tháng
@@ -4905,14 +4959,23 @@ const ScheduleManagement = ({ readOnly = false }) => {
               type="button"
               onClick={() => handleNavigate("prev")}
               className="nav-btn"
+              aria-label="Xem kỳ trước"
             >
               <ChevronLeft size={18} /> Trước
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentDate(new Date())}
+              className="nav-btn nav-btn--today"
+            >
+              Hôm nay
             </button>
             <span className="week-label">{dateLabel}</span>
             <button
               type="button"
               onClick={() => handleNavigate("next")}
               className="nav-btn"
+              aria-label="Xem kỳ sau"
             >
               Sau <ChevronRight size={18} />
             </button>

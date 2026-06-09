@@ -21,6 +21,7 @@
 @import "./schedule-hydration-polish.css";
 @import "./schedule-quality-polish.css";
 @import "./schedule-print-polish.css";
+@import "./schedule-command-center-warm.css";
 
 .schedule-readiness-focus-banner {
   position: relative;
