@@ -17,6 +17,29 @@ const GUIDE_MARKUP = `
 
 const isKitchenMode = () => Boolean(document.querySelector(".om-container--focus"));
 
+const setNativeSelectValue = (select, value) => {
+  const setter = Object.getOwnPropertyDescriptor(
+    window.HTMLSelectElement.prototype,
+    "value",
+  )?.set;
+
+  if (setter) setter.call(select, value);
+  else select.value = value;
+
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+};
+
+const updateSegmentedState = (control) => {
+  const select = control.querySelector("select");
+  if (!select) return;
+
+  control.querySelectorAll(".om-size-segmented__btn").forEach((button) => {
+    const active = button.dataset.value === select.value;
+    button.classList.toggle("om-size-segmented__btn--active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+};
+
 const enhanceSizeControl = () => {
   const control = document.querySelector(".om-container--focus .om-size-control");
   if (!control) return;
@@ -37,25 +60,30 @@ const enhanceSizeControl = () => {
     control.appendChild(segmented);
   }
 
-  segmented.innerHTML = "";
+  if (segmented.dataset.ready !== "true") {
+    segmented.innerHTML = "";
 
-  CHIP_SIZE_OPTIONS.forEach((option) => {
-    const button = document.createElement("button");
-    const active = select.value === option.value;
-    button.type = "button";
-    button.className = `om-size-segmented__btn${active ? " om-size-segmented__btn--active" : ""}`;
-    button.setAttribute("aria-pressed", active ? "true" : "false");
-    button.dataset.value = option.value;
-    button.textContent = option.label;
-    button.addEventListener("click", () => {
-      if (select.value === option.value) return;
-      select.value = option.value;
-      select.dispatchEvent(new Event("input", { bubbles: true }));
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      window.requestAnimationFrame(enhanceSizeControl);
+    CHIP_SIZE_OPTIONS.forEach((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "om-size-segmented__btn";
+      button.dataset.value = option.value;
+      button.textContent = option.label;
+      button.addEventListener("click", () => {
+        setNativeSelectValue(select, option.value);
+        updateSegmentedState(control);
+        window.requestAnimationFrame(() => {
+          enhanceSizeControl();
+          enhanceSparseKitchenLayout();
+        });
+      });
+      segmented.appendChild(button);
     });
-    segmented.appendChild(button);
-  });
+
+    segmented.dataset.ready = "true";
+  }
+
+  updateSegmentedState(control);
 };
 
 const enhanceSparseKitchenLayout = () => {
