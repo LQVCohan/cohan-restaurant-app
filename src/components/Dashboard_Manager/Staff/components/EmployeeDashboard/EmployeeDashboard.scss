@@ -2,67 +2,54 @@
 @use "../../../../../styles/mixins" as *;
 
 .employee-dashboard {
-  height: calc(100vh - 190px);
-  min-height: 500px;
-  display: flex;
-  gap: 1.5rem;
-
-  .dashboard-left {
-    // 🔥 Cập nhật: Tăng chiều rộng cột danh sách
-    flex: 5; // Chiếm 50%
-    height: 100%;
-    min-width: 400px; // Đảm bảo tối thiểu
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .dashboard-right {
-    // 🔥 Cập nhật: Giảm chiều rộng cột chi tiết
-    flex: 5; // Chiếm 50%
-    height: 100%;
-    min-width: 450px; // Vẫn đảm bảo đủ chỗ cho nội dung
-    overflow: hidden;
-  }
-}
-
-@media (max-width: 1024px) {
-  .employee-dashboard {
-    flex-direction: column;
-    height: auto;
-
-    .dashboard-left,
-    .dashboard-right {
-      flex: none;
-      width: 100%;
-      min-width: 0;
-      height: 600px;
-    }
-  }
-}
-
-.employee-dashboard {
-  height: calc(100vh - 172px);
   display: grid;
-  grid-template-columns: minmax(420px, 0.95fr) minmax(460px, 1.05fr);
-  gap: 20px;
+  grid-template-columns: minmax(440px, 0.95fr) minmax(460px, 1.05fr);
+  gap: 18px;
+  min-height: 620px;
+  height: auto;
+  align-items: stretch;
 
   .dashboard-left,
   .dashboard-right {
     min-width: 0;
-    height: 100%;
+    min-height: 620px;
+    height: auto;
+    overflow: hidden;
+  }
+
+  .dashboard-right {
+    border-radius: 22px;
+    background: rgba(255, 253, 248, 0.72);
+    box-shadow: 0 20px 50px rgba(84, 55, 30, 0.08);
+  }
+}
+
+@media (min-width: 1280px) {
+  .employee-dashboard {
+    grid-template-columns: minmax(460px, 0.9fr) minmax(520px, 1.1fr);
   }
 }
 
 @media (max-width: 1100px) {
   .employee-dashboard {
     grid-template-columns: 1fr;
-    height: auto;
+    min-height: auto;
 
     .dashboard-left,
     .dashboard-right {
       height: auto;
       min-height: 520px;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .employee-dashboard {
+    gap: 12px;
+
+    .dashboard-left,
+    .dashboard-right {
+      min-height: 440px;
     }
   }
 }

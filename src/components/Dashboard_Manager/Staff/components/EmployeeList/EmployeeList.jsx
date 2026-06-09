@@ -31,7 +31,7 @@ const EmployeeList = ({
   const [verificationFilter, setVerificationFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 8;
 
   // --- LOGIC LỌC ---
   const filteredEmployees = useMemo(() => {
