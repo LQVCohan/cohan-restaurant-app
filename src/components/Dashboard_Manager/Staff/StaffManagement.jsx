@@ -1,13 +1,7 @@
 // src/pages/StaffManagement/index.jsx
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { useNavigate } from "react-router-dom";
-import StaffHeader from "./components/Header"; // Giả sử đã đổi tên file component Header mới
+import StaffHeader from "./components/Header";
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import AttendancePage from "./components/Attendance";
@@ -19,7 +13,6 @@ import {
   AddEmployeeModal,
   EditEmployeeModal,
   WorkHistoryModal,
-  StaffActionConfirmModal,
 } from "./components/modals";
 
 import useStaffManagement from "../../../hooks/useStaffManagement";
@@ -34,7 +27,6 @@ import {
   normalizeEmploymentStatus,
 } from "./staffStatus";
 
-// Import styles
 import "./StaffManagement.scss";
 import "./StaffPremiumBoard.scss";
 
@@ -47,22 +39,6 @@ const QUERY_PENDING_LEAVE_REQUESTS = gql`
     }
   }
 `;
-const getStaffFocusParams = () => {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    employeeId: params.get("employeeId") || "",
-    employeeName: params.get("employeeName") || "",
-  };
-};
-
-const getStaffNavigationQuery = () => {
-  const params = new URLSearchParams(window.location.search || "");
-  return {
-    staffPage: params.get("staffPage") || "",
-    employeeId: params.get("employeeId") || "",
-    employeeName: params.get("employeeName") || "",
-  };
-};
 
 const STAFF_SUB_PAGES = new Set([
   "dashboard",
@@ -73,52 +49,55 @@ const STAFF_SUB_PAGES = new Set([
   "reports",
 ]);
 
+const getStaffNavigationQuery = () => {
+  const params = new URLSearchParams(window.location.search || "");
+  return {
+    staffPage: params.get("staffPage") || "",
+    employeeId: params.get("employeeId") || "",
+    employeeName: params.get("employeeName") || "",
+  };
+};
+
+const normalizeId = (value) => {
+  if (!value) return "";
+  if (typeof value === "object") {
+    return String(value.id ?? value._id ?? value.restaurantId ?? value);
+  }
+  return String(value);
+};
+
+const hasRestaurantMatch = (staff, restaurantIds) => {
+  const allowedIds = (Array.isArray(restaurantIds) ? restaurantIds : [restaurantIds])
+    .map(normalizeId)
+    .filter(Boolean);
+  if (!allowedIds.length) return true;
+
+  const staffRestaurantIds = [
+    staff.restaurantForStaff,
+    ...(Array.isArray(staff.refRestaurants) ? staff.refRestaurants : []),
+  ]
+    .map(normalizeId)
+    .filter(Boolean);
+
+  if (!staffRestaurantIds.length) return true;
+  return staffRestaurantIds.some((id) => allowedIds.includes(id));
+};
+
+const noop = () => {};
+
 const StaffManagement = () => {
-  // --- STATE ---
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [focusedEmployeeId, setFocusedEmployeeId] = useState("");
-  const [navigationQueryVersion, setNavigationQueryVersion] = useState(0);
-  const [pendingAction, setPendingAction] = useState(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleNavigationQuery = (event) => {
-      if (event?.detail?.page !== "staff") return;
-
-      const nextStaffPage =
-        event?.detail?.query?.staffPage || getStaffNavigationQuery().staffPage;
-
-      if (nextStaffPage && STAFF_SUB_PAGES.has(nextStaffPage)) {
-        setCurrentPage(nextStaffPage);
-      }
-
-      setNavigationQueryVersion((value) => value + 1);
-    };
-
-    window.addEventListener("manager:navigation-query", handleNavigationQuery);
-    return () =>
-      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
-  }, []);
-
-  useEffect(() => {
-    const { staffPage } = getStaffNavigationQuery();
-
-    if (staffPage && STAFF_SUB_PAGES.has(staffPage)) {
-      setCurrentPage(staffPage);
-    }
-  }, [navigationQueryVersion]);
-
   const [modals, setModals] = useState({
     addEmployee: false,
     editEmployee: false,
     workHistory: false,
   });
 
-  // --- HOOKS & CONTEXT ---
   const { showNotification } = useNotification();
   const {
     restaurantOptions,
@@ -129,7 +108,6 @@ const StaffManagement = () => {
   const selectedRestaurant = selectedRestaurantId;
   const { currentTime, currentDate } = useTime();
 
-  // --- DATA FETCHING ---
   const {
     staffList,
     roleList,
@@ -137,26 +115,51 @@ const StaffManagement = () => {
     roleListError,
     createStaff,
     updateStaff,
-    softDeleteStaff,
-    setStaffEmploymentStatus,
-    setStaffAccountStatus,
-    resendStaffVerification,
     setFilters,
     refetchStaffList,
     staffListLoading,
     staffListError,
-    creatingStaff,
-    updatingStaff,
-    softDeletingStaff,
-    changingEmploymentStatus,
-    changingUserStatus,
-    resendingVerification,
   } = useStaffManagement({
     restaurantId: selectedRestaurant || null,
     page: 1,
     pageSize: 50,
     pollInterval: selectedRestaurant ? 15000 : 0,
-  }); // Tăng pageSize để demo mượt
+  });
+
+  useEffect(() => {
+    const handleNavigationQuery = (event) => {
+      if (event?.detail?.page !== "staff") return;
+      const nextStaffPage = event?.detail?.query?.staffPage || getStaffNavigationQuery().staffPage;
+      if (nextStaffPage && STAFF_SUB_PAGES.has(nextStaffPage)) {
+        setCurrentPage(nextStaffPage);
+      }
+    };
+
+    window.addEventListener("manager:navigation-query", handleNavigationQuery);
+    return () => window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+  }, []);
+
+  useEffect(() => {
+    const { staffPage } = getStaffNavigationQuery();
+    if (staffPage && STAFF_SUB_PAGES.has(staffPage)) {
+      setCurrentPage(staffPage);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!selectedRestaurant) return;
+    setFilters({
+      restaurantId: selectedRestaurant,
+      search: undefined,
+      roleId: null,
+      employmentStatus: null,
+    });
+  }, [selectedRestaurant, setFilters]);
 
   const leaveFilter = useMemo(
     () => ({
@@ -165,6 +168,7 @@ const StaffManagement = () => {
     }),
     [selectedRestaurant],
   );
+
   const { data: pendingLeaveData, loading: pendingLeaveLoading } = useQuery(
     QUERY_PENDING_LEAVE_REQUESTS,
     {
@@ -176,77 +180,29 @@ const StaffManagement = () => {
     },
   );
 
-  // --- FILTER & LOGIC ---
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  useEffect(() => {
-    if (!selectedRestaurant) return;
-
-    setFilters({
-      restaurantId: selectedRestaurant,
-      search: undefined,
-      roleId: null,
-      employmentStatus: null,
-    });
-  }, [selectedRestaurant, setFilters]);
-  // Client-side filtering (nếu cần filter thêm ở client)
   const filteredStaff = useMemo(() => {
     if (!staffList) return [];
     let result = staffList;
 
-    const normalizeId = (value) => {
-      if (!value) return "";
-      if (typeof value === "object") {
-        return String(value.id ?? value._id ?? value.restaurantId ?? value);
-      }
-      return String(value);
-    };
-
-    const hasRestaurantMatch = (staff, restaurantIds) => {
-      const allowedIds = (Array.isArray(restaurantIds) ? restaurantIds : [restaurantIds])
-        .map(normalizeId)
-        .filter(Boolean);
-
-      if (!allowedIds.length) return true;
-
-      const staffRestaurantIds = [
-        staff.restaurantForStaff,
-        staff.raw?.restaurantForStaff,
-        ...(Array.isArray(staff.refRestaurants) ? staff.refRestaurants : []),
-        ...(Array.isArray(staff.raw?.refRestaurants) ? staff.raw.refRestaurants : []),
-      ]
-        .map(normalizeId)
-        .filter(Boolean);
-
-      return staffRestaurantIds.some((id) => allowedIds.includes(id));
-    };
-
-    // Filter by Restaurant
     if (selectedRestaurant) {
-      result = result.filter((s) => hasRestaurantMatch(s, selectedRestaurant));
+      result = result.filter((staff) => hasRestaurantMatch(staff, selectedRestaurant));
     }
-
-    // Filter by Search (Local fallback)
     if (debouncedSearchQuery) {
-      result = result.filter((s) => matchesEmployeeSearch(s, debouncedSearchQuery));
+      result = result.filter((staff) => matchesEmployeeSearch(staff, debouncedSearchQuery));
     }
     return result;
   }, [staffList, selectedRestaurant, debouncedSearchQuery]);
 
-  // Map Data Model
   const mappedStaff = useMemo(
     () =>
       filteredStaff.map((staff) => {
         const accountStatus = normalizeAccountStatus(staff.status);
-        const employmentStatus = normalizeEmploymentStatus(
-          staff.employmentStatus,
-        );
-        const roleLabel = getStaffRoleDisplayLabel(staff.role) || getStaffRoleDisplayLabel(staff.roleName);
+        const employmentStatus = normalizeEmploymentStatus(staff.employmentStatus);
+        const roleLabel =
+          getStaffRoleDisplayLabel(staff.role) ||
+          getStaffRoleDisplayLabel(staff.roleName) ||
+          getStaffRoleDisplayLabel(staff.role?.slug);
+
         return {
           id: staff.id,
           name: staff.fullName,
@@ -272,7 +228,11 @@ const StaffManagement = () => {
           salary: staff.baseSalary ?? null,
           restaurantForStaff: staff.restaurantForStaff,
           refRestaurants: staff.refRestaurants || [],
-          address: staff.address ? [staff.address.line1, staff.address.ward, staff.address.district, staff.address.city].filter(Boolean).join(", ") : "",
+          address: staff.address
+            ? [staff.address.line1, staff.address.ward, staff.address.district, staff.address.city]
+                .filter(Boolean)
+                .join(", ")
+            : "",
           employmentType: staff.employmentType,
           workingDays: staff.workingDays || [],
           dateLeft: staff.dateLeft,
@@ -281,7 +241,12 @@ const StaffManagement = () => {
           noteInternal: staff.noteInternal,
           emailVerified: Boolean(staff.emailVerified),
           phoneVerified: Boolean(staff.phoneVerified),
-          verificationStatus: staff.emailVerified || staff.phoneVerified ? "verified" : staff.status === "pending" ? "pending" : "unverified",
+          verificationStatus:
+            staff.emailVerified || staff.phoneVerified
+              ? "verified"
+              : staff.status === "pending"
+                ? "pending"
+                : "unverified",
           verificationLabel: staff.emailVerified
             ? "Đã xác minh email"
             : staff.phoneVerified
@@ -289,21 +254,20 @@ const StaffManagement = () => {
               : staff.status === "pending"
                 ? "Chờ xác minh"
                 : "Chưa xác minh",
-          canResendVerification: Boolean((staff.email && !staff.emailVerified) || (staff.phone && !staff.phoneVerified)),
+          canResendVerification: Boolean(
+            (staff.email && !staff.emailVerified) || (staff.phone && !staff.phoneVerified),
+          ),
           raw: staff,
         };
       }),
     [filteredStaff],
   );
 
-  // Calculate Stats
   const stats = useMemo(
     () => ({
       totalStaff: filteredStaff.length,
-      activeStaff: filteredStaff.filter((s) => s.isOnline).length,
-      onLeaveStaff: filteredStaff.filter(
-        (s) => s.employmentStatus === "ON_LEAVE",
-      ).length,
+      activeStaff: filteredStaff.filter((staff) => staff.isOnline).length,
+      onLeaveStaff: filteredStaff.filter((staff) => staff.employmentStatus === "ON_LEAVE").length,
       avgRate: 0,
     }),
     [filteredStaff],
@@ -311,20 +275,13 @@ const StaffManagement = () => {
 
   const pendingLeaveCount = useMemo(() => {
     const requests = pendingLeaveData?.leaveRequests || [];
-    if (!requests.length) return 0;
-    if (selectedRestaurant) {
-      return requests.filter(
-        (request) => request.restaurantId === selectedRestaurant,
-      ).length;
-    }
-    return 0;
+    if (!requests.length || !selectedRestaurant) return 0;
+    return requests.filter((request) => request.restaurantId === selectedRestaurant).length;
   }, [pendingLeaveData?.leaveRequests, selectedRestaurant]);
 
-  // --- HANDLERS ---
-  const toggleHeader = useCallback(
-    () => setIsHeaderCollapsed((prev) => !prev),
-    [],
-  );
+  const isLoading = staffListLoading || restaurantsLoading;
+  const isHeaderLoading = restaurantsLoading || staffListLoading || pendingLeaveLoading;
+
   const openModal = useCallback(
     (name) => setModals((prev) => ({ ...prev, [name]: true })),
     [],
@@ -334,21 +291,21 @@ const StaffManagement = () => {
     [],
   );
 
-  // Handlers CRUD (Giữ nguyên logic cũ)
   const handleAddEmployee = useCallback(
-    async (val) => {
-      const created = await createStaff(val);
+    async (values) => {
+      const created = await createStaff(values);
       await refetchStaffList?.();
       if (created) setSelectedEmployee(created);
       closeModal("addEmployee");
       showNotification("Đã thêm nhân viên thành công.", "success");
     },
-    [createStaff, closeModal, refetchStaffList, showNotification],
+    [closeModal, createStaff, refetchStaffList, showNotification],
   );
+
   const handleEditEmployee = useCallback(
-    async (val) => {
+    async (values) => {
       if (!selectedEmployee?.id) return;
-      const updated = await updateStaff(selectedEmployee.id, val);
+      const updated = await updateStaff(selectedEmployee.id, values);
       await refetchStaffList?.();
       if (updated) setSelectedEmployee(updated);
       closeModal("editEmployee");
@@ -356,51 +313,149 @@ const StaffManagement = () => {
     },
     [closeModal, refetchStaffList, selectedEmployee?.id, showNotification, updateStaff],
   );
-  const requestStaffAction = useCallback((action) => setPendingAction(action), []);
 
-  const handleSetEmploymentStatus = useCallback(
-    (employee, status) => {
-      const id = employee?.id || employee;
-      if (!id) return;
-      const labelMap = { WORKING: "đang làm việc", ON_LEAVE: "tạm nghỉ", RESIGNED: "nghỉ việc" };
-      if (status === "WORKING") {
-        requestStaffAction({
-          type: "employment",
-          id,
-          status,
-          tone: "success",
-          title: "Chuyển trạng thái lao động",
-          message: `Chuyển nhân viên sang trạng thái ${labelMap[status]}?`,
-          description: "Nhân viên sẽ được đưa lại vào danh sách đang làm việc.",
-          confirmText: "Chuyển sang đang làm",
-        });
-        return;
-      }
-      requestStaffAction({
-        type: "employment",
-        id,
-        status,
-        tone: status === "RESIGNED" ? "danger" : "warning",
-        title: "Xác nhận đổi trạng thái lao động",
-        message: `Chuyển nhân viên sang trạng thái ${labelMap[status]}?`,
-        description: status === "RESIGNED"
-          ? "Nhân viên nghỉ việc sẽ không còn được xem là đang làm trong hồ sơ quản lý."
-          : "Trạng thái tạm nghỉ dùng cho nhân viên đang nghỉ có thời hạn và có thể chuyển lại đang làm.",
-        confirmText: status === "RESIGNED" ? "Xác nhận nghỉ việc" : "Xác nhận tạm nghỉ",
-      });
-    },
-    [requestStaffAction],
-  );
+  useEffect(() => {
+    if (!selectedEmployee) return;
+    const nextSelectedEmployee = mappedStaff.find((item) => item.id === selectedEmployee.id);
+    if (nextSelectedEmployee) {
+      if (nextSelectedEmployee !== selectedEmployee) setSelectedEmployee(nextSelectedEmployee);
+      return;
+    }
+    if (!isLoading) setSelectedEmployee(null);
+  }, [isLoading, mappedStaff, selectedEmployee]);
 
-  const handleSetOnLeave = useCallback(
-    (employeeOrId) => handleSetEmploymentStatus(employeeOrId, "ON_LEAVE"),
-    [handleSetEmploymentStatus],
+  useEffect(() => {
+    const { employeeId, employeeName } = getStaffNavigationQuery();
+    if (!employeeId && !employeeName) return;
+    if (employeeName) setSearchQuery(employeeName);
+
+    const targetStaff = mappedStaff.find((staff) => String(staff.id) === String(employeeId));
+    if (targetStaff) {
+      setCurrentPage("dashboard");
+      setSelectedEmployee(targetStaff);
+      setFocusedEmployeeId(String(targetStaff.id));
+      window.setTimeout(() => setFocusedEmployeeId(""), 3000);
+    }
+  }, [mappedStaff]);
+
+  const mainContent = useMemo(() => {
+    if (currentPage === "dashboard") {
+      return (
+        <EmployeeDashboard
+          employees={mappedStaff}
+          selectedEmployee={selectedEmployee}
+          focusedEmployeeId={focusedEmployeeId}
+          onEmployeeSelect={setSelectedEmployee}
+          onEditEmployee={() => openModal("editEmployee")}
+          onViewHistory={() => openModal("workHistory")}
+          onDeleteEmployee={noop}
+          onSetOnLeave={noop}
+          onSetWorking={noop}
+          onSetResigned={noop}
+          onLockAccount={noop}
+          onUnlockAccount={noop}
+          onCalculateSalary={noop}
+          onResendVerification={noop}
+          roleList={roleList}
+          loading={isLoading}
+          error={staffListError}
+          onRetry={refetchStaffList}
+        />
+      );
+    }
+    if (currentPage === "attendance") {
+      return <AttendancePage currentTime={currentTime} currentDate={currentDate} />;
+    }
+    if (currentPage === "leave") return <LeaveManagement restaurantId={selectedRestaurant} />;
+    if (currentPage === "schedule") return <SchedulePage />;
+    if (currentPage === "performance") {
+      return (
+        <StaffPerformancePage
+          employees={mappedStaff}
+          selectedRestaurant={selectedRestaurant}
+          restaurantList={restaurantOptions}
+          searchQuery={searchQuery}
+        />
+      );
+    }
+    if (currentPage === "reports") return <StaffReportsPage />;
+    return null;
+  }, [
+    currentDate,
+    currentPage,
+    currentTime,
+    focusedEmployeeId,
+    isLoading,
+    mappedStaff,
+    openModal,
+    refetchStaffList,
+    restaurantOptions,
+    roleList,
+    searchQuery,
+    selectedEmployee,
+    selectedRestaurant,
+    staffListError,
+  ]);
+
+  return (
+    <div className="staff-page-container">
+      <div className="page-bg-blob blob-1" />
+      <div className="page-bg-blob blob-2" />
+
+      <div className="staff-page-content">
+        <header className="page-header-wrapper">
+          <StaffHeader
+            selectedRestaurant={selectedRestaurant}
+            onRestaurantChange={setSelectedRestaurantId}
+            onAddEmployee={() => openModal("addEmployee")}
+            onExportData={undefined}
+            restaurantList={restaurantOptions}
+            stats={stats}
+            loading={isHeaderLoading}
+            pendingLeaveCount={pendingLeaveCount}
+            onPageChange={setCurrentPage}
+            isCollapsed={isHeaderCollapsed}
+            onToggle={() => setIsHeaderCollapsed((prev) => !prev)}
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        </header>
+
+        <nav className={`page-nav-wrapper ${isHeaderCollapsed ? "sticky" : ""}`}>
+          <PageNavigation currentPage={currentPage} onPageChange={setCurrentPage} />
+        </nav>
+
+        <main className="page-main-view fade-in-up">{mainContent}</main>
+      </div>
+
+      <AddEmployeeModal
+        isOpen={modals.addEmployee}
+        onClose={() => closeModal("addEmployee")}
+        onSubmit={handleAddEmployee}
+        restaurantList={restaurantOptions}
+        defaultRestaurantId={selectedRestaurant}
+        roleList={roleList}
+        roleListLoading={roleListLoading}
+        roleListError={roleListError}
+      />
+      <EditEmployeeModal
+        isOpen={modals.editEmployee}
+        employee={selectedEmployee}
+        onClose={() => closeModal("editEmployee")}
+        onSubmit={handleEditEmployee}
+        restaurantList={restaurantOptions}
+        defaultRestaurantId={selectedRestaurant}
+        roleList={roleList}
+        roleListLoading={roleListLoading}
+        roleListError={roleListError}
+      />
+      <WorkHistoryModal
+        isOpen={modals.workHistory}
+        employee={selectedEmployee}
+        onClose={() => closeModal("workHistory")}
+      />
+    </div>
   );
-  const handleSetWorking = useCallback(
-    (employeeOrId) => handleSetEmploymentStatus(employeeOrId, "WORKING"),
-    [handleSetEmploymentStatus],
-  );
-  const handleSetResigned = useCallback(
-    (employeeOrId) => handleSetEmploymentStatus(employeeOrId, "RESIGNED"),
-    [handleSetEmploymentStatus],
-  );
+};
+
+export default StaffManagement;
