@@ -587,10 +587,10 @@ const OrderManagement = () => {
 
   useEffect(() => {
     const onKey = (e) => {
+      const tagName = (e.target?.tagName || "").toLowerCase();
+
       if (
-        ["input", "textarea", "select"].includes(
-          (e.target?.tagName || "").toLowerCase(),
-        ) ||
+        ["input", "textarea", "select"].includes(tagName) ||
         e.target?.isContentEditable
       ) {
         return;
