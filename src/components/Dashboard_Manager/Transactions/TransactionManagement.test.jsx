@@ -50,9 +50,11 @@ function buildTx(overrides = {}) {
     refunds: [
       { id: "rf-pending", amount: 100000, status: "pending", reason: "Khách đổi món", method: "cash", auditTrail: [], createdAt: "2026-06-02T00:00:00Z" },
       { id: "rf-approved", amount: 50000, status: "approved", reason: "Trừ voucher", method: "cash", auditTrail: [], createdAt: "2026-06-02T00:00:00Z" },
+      { id: "rf-failed", amount: 25000, status: "failed", reason: "Provider lỗi", method: "provider", auditTrail: [], createdAt: "2026-06-02T00:00:00Z" },
+      { id: "rf-success", amount: 20000, status: "success", reason: "Đã hoàn", method: "cash", cashflowId: "cf-refund", auditTrail: [], createdAt: "2026-06-02T00:00:00Z" },
     ],
     reconciliations: [{ id: "rec-1", bankTransactionId: "bank-1", status: "unmatched", receivedAmount: 500000, expectedAmount: 0, varianceAmount: 0, matchConfidence: 0, matchReason: "no_reliable_reference_token", candidateMatches: [{ kind: "PaymentSession", id: "ps-1", paymentSessionId: "ps-1", reference: "PAYREF123456", confidence: 100, expectedAmount: 500000 }] }],
-    bankTransactions: [{ id: "bank-1", provider: "VCB", transactionId: "BTX-1", bankAccountNumberMasked: "****6789", bankAccountNumberLast4: "6789", amount: 500000, transferContent: "PAYREF123456", matchStatus: "unmatched" }],
+    bankTransactions: [{ id: "bank-1", provider: "VCB", transactionId: "BTX-1", bankAccountNumber: "123456789012", bankAccountNumberMasked: "****9012", bankAccountNumberLast4: "9012", amount: 500000, transferContent: "PAYREF123456", matchStatus: "unmatched" }],
     supplierPayables: [{ id: "sp-1", supplierName: "Công ty Rau Sạch", amount: 900000, paidAmount: 200000, remainingAmount: 700000, dueDate: "2026-06-20T00:00:00Z", status: "partial", sourceKind: "inventory", cashflowIds: ["cf-1"], auditTrail: [] }],
     ...txSpies,
     ...overrides,
@@ -87,12 +89,12 @@ describe("TransactionManagement UC18", () => {
     const blobSpy = vi.spyOn(global, "Blob");
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
-    expect(screen.getByText(/\*\*\*\*6789/)).toBeInTheDocument();
-    expect(screen.queryByText(/123456789/)).not.toBeInTheDocument();
+    expect(screen.getByText(/\*\*\*\*9012/)).toBeInTheDocument();
+    expect(screen.queryByText(/123456789012/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Export CSV/i }));
     const csv = blobSpy.mock.calls[0][0][0];
-    expect(csv).toContain("****6789");
-    expect(csv).not.toContain("123456789");
+    expect(csv).toContain("****9012");
+    expect(csv).not.toContain("123456789012");
     blobSpy.mockRestore();
   });
 
@@ -125,6 +127,75 @@ describe("TransactionManagement UC18", () => {
     fireEvent.change(screen.getByLabelText("Lý do"), { target: { value: "Nhập trùng" } });
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
     await waitFor(() => expect(txSpies.voidSupplierPayable).toHaveBeenCalledWith("sp-1", "Nhập trùng"));
+  });
+
+
+  it("creates refund from a transaction without raw ID entry and gates lifecycle actions by status", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Refund từ giao dịch/i }));
+    expect(screen.getByText("Tạo yêu cầu hoàn tiền")).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog")).queryByPlaceholderText(/ObjectId|raw/i)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Số tiền hoàn"), { target: { value: "999999" } });
+    fireEvent.change(screen.getByLabelText("Lý do"), { target: { value: "Hoàn món" } });
+    expect(screen.getByRole("button", { name: "Tạo refund request" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Số tiền hoàn"), { target: { value: "300000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo refund request" }));
+    await waitFor(() => expect(txSpies.createRefundRequest).toHaveBeenCalledWith(expect.objectContaining({ paymentTransactionId: "pay-1", amount: 300000, reason: "Hoàn món" })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Hoàn tiền" }));
+    fireEvent.click(screen.getByText("Khách đổi món"));
+    expect(screen.getByRole("button", { name: "Duyệt" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Từ chối" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "×" }));
+
+    fireEvent.click(screen.getByText("Trừ voucher"));
+    expect(screen.getByRole("button", { name: "Xử lý" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "×" }));
+
+    fireEvent.click(screen.getByText("Provider lỗi"));
+    expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "×" }));
+
+    fireEvent.click(screen.getByText("Đã hoàn"));
+    expect(screen.queryByRole("button", { name: "Thử lại" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Xử lý" })).not.toBeInTheDocument();
+  });
+
+  it("handles reconciliation candidates, force-match note validation, resolve note and ignore reason modal", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm");
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Đối soát" }));
+    expect(screen.getByText(/Confidence 0/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("rec-1"));
+    expect(screen.getByText(/PAYREF123456/)).toBeInTheDocument();
+    expect(screen.getByText(/PaymentSession · 100/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "×" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Đóng/ }));
+    expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Lý do"), { target: { value: "Chấp nhận xử lý" } });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
+    await waitFor(() => expect(txSpies.resolveReconciliation).toHaveBeenCalledWith(expect.objectContaining({ reconciliationId: "rec-1", note: "Chấp nhận xử lý" })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Manual match" }));
+    expect(screen.getByText(/confidence 100/)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/Force match/i));
+    expect(screen.getByRole("button", { name: "Xác nhận match" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Ghi chú/lý do"), { target: { value: "Force có lý do" } });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận match" }));
+    await waitFor(() => expect(txSpies.manualMatchBankTransaction).toHaveBeenCalledWith(expect.objectContaining({ bankTransactionId: "bank-1", forceMatch: true, note: "Force có lý do" })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ qua" }));
+    expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Lý do"), { target: { value: "Không liên quan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
+    await waitFor(() => expect(txSpies.ignoreBankTransaction).toHaveBeenCalledWith("bank-1", "Không liên quan"));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
   it("hides write actions without finance/refund/reconciliation permissions", () => {

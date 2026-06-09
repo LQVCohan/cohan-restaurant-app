@@ -1958,6 +1958,7 @@ const updateManualCashflow = async (_, { id, input }, ctx) => {
 };
 
 const voidManualCashflow = async (_, { id, reason }, ctx) => {
+  if (!String(reason || "").trim()) throw new Error("Void reason is required");
   const cashflow = toId(id) ? await Cashflow.findById(id) : null;
   if (!cashflow) throw new Error("Cashflow not found");
   const rid = toId(cashflow.restaurantId);
@@ -2152,7 +2153,9 @@ const createSupplierPayable = async (_, { input }, ctx) => {
   await requireFinanceWrite(ctx, rid);
   const amount = Number(input?.amount || 0);
   if (!(amount > 0)) throw new Error("Payable amount must be greater than zero");
-  const paidAmount = Math.min(Number(input?.paidAmount || 0), amount);
+  const paidAmount = Number(input?.paidAmount || 0);
+  if (paidAmount > amount + 1e-6) throw new Error("Paid amount cannot exceed payable amount");
+  const initialStatus = normalizePayableStatus({ amount, paidAmount, dueDate: input.dueDate ? new Date(input.dueDate) : null });
   const payable = await SupplierPayable.create({
     restaurantId: rid,
     supplierName: String(input.supplierName || "").trim(),
@@ -2163,9 +2166,10 @@ const createSupplierPayable = async (_, { input }, ctx) => {
     paidAmount,
     remainingAmount: Math.max(amount - paidAmount, 0),
     dueDate: input.dueDate ? new Date(input.dueDate) : null,
+    status: initialStatus,
     note: input.note || "",
     createdBy: toId(ctx?.user?.id),
-    auditTrail: [{ action: "supplier_payable.create", actorId: toId(ctx?.user?.id), amount, nextStatus: paidAmount > 0 ? "partial" : "unpaid", note: input.note, at: new Date() }],
+    auditTrail: [{ action: "supplier_payable.create", actorId: toId(ctx?.user?.id), amount, nextStatus: initialStatus, note: input.note, at: new Date() }],
   });
   await writeFinanceAudit(ctx, { restaurantId: rid, action: "supplier_payable.create", targetType: "SupplierPayable", targetId: payable._id, after: payable.toObject(), metadata: { amount, paidAmount } });
   return payable;
@@ -2183,7 +2187,9 @@ const updateSupplierPayable = async (_, { id, input }, ctx) => {
   if (input.sourceKind !== undefined) payable.sourceKind = normalizeFinanceToken(input.sourceKind, "manual");
   if (input.sourceId !== undefined) payable.sourceId = toId(input.sourceId);
   if (input.amount !== undefined) payable.amount = Number(input.amount || 0);
+  if (!(Number(payable.amount || 0) > 0)) throw new Error("Payable amount must be greater than zero");
   if (input.paidAmount !== undefined) payable.paidAmount = Number(input.paidAmount || 0);
+  if (Number(payable.paidAmount || 0) > Number(payable.amount || 0) + 1e-6) throw new Error("Paid amount cannot exceed payable amount");
   if (input.dueDate !== undefined) payable.dueDate = input.dueDate ? new Date(input.dueDate) : null;
   if (input.note !== undefined) payable.note = input.note || "";
   payable.remainingAmount = Math.max(Number(payable.amount || 0) - Number(payable.paidAmount || 0), 0);
