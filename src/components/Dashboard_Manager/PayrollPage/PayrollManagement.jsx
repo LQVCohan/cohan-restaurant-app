@@ -53,6 +53,23 @@ export function downloadCsv(filename, rows, columns) {
   URL.revokeObjectURL(url);
 }
 
+
+const PAYROLL_STATUS_TAB_LABELS = {
+  all: "Tất cả",
+  draft: "Nháp",
+  finalized: "Đã chốt",
+  paying: "Đang chi",
+  pending_payment: "Chờ chi",
+  processing_payment: "Đang xử lý",
+  payment_failed: "Lỗi chi",
+  paid: "Đã trả",
+  locked: "Đã khóa",
+};
+
+const PAYROLL_STATUS_TABS = Object.keys(PAYROLL_STATUS_TAB_LABELS);
+
+const PAYROLL_LOADING_ROWS = Array.from({ length: 6 }, (_, index) => index);
+
 const PAYROLL_EXPORT_COLUMNS = [
   "employeeCode",
   "employeeName",
@@ -676,13 +693,13 @@ const PayrollManagement = () => {
   const getStatusBadge = (status) => {
     const map = {
       draft: { label: "Nháp", class: "draft" },
-      finalized: { label: "Đã chốt", class: "info" },
-      paying: { label: "Đang chi trả", class: "info" },
-      pending_payment: { label: "Chờ thanh toán", class: "info" },
-      processing_payment: { label: "Đang xử lý", class: "info" },
-      payment_failed: { label: "Thanh toán lỗi", class: "danger" },
-      paid: { label: "Đã thanh toán", class: "success" },
-      locked: { label: "Đã khóa", class: "warning" },
+      finalized: { label: "Đã chốt", class: "finalized" },
+      paying: { label: "Đang chi", class: "paying" },
+      pending_payment: { label: "Chờ chi", class: "pending-payment" },
+      processing_payment: { label: "Đang xử lý", class: "processing-payment" },
+      payment_failed: { label: "Lỗi chi", class: "danger" },
+      paid: { label: "Đã trả", class: "success" },
+      locked: { label: "Đã khóa", class: "locked" },
     };
     const s = map[status] || map.draft;
     return <span className={`status-dot ${s.class}`}>{s.label}</span>;
@@ -1268,7 +1285,12 @@ const PayrollManagement = () => {
     <div className="payroll-page-compact">
       <div className="header-toolbar">
         <div className="left-section">
-          <h2 className="page-title">Quản lý lương</h2>
+          <div className="page-heading">
+            <h2 className="page-title">Quản lý lương</h2>
+            <p className="page-subtitle">
+              Tổng hợp kỳ lương, chi trả, payout và kiểm tra trước khi chốt.
+            </p>
+          </div>
           <div className="cycle-picker-compact">
             <div className="input-group">
               <span className="label">Nhà hàng:</span>
@@ -1339,7 +1361,7 @@ const PayrollManagement = () => {
             onClick={handleOpenSettings}
             disabled={!selectedRestaurantId || !payrollUiPermissions.canConfigure}
           >
-            ⚙️ Cấu hình
+            Cấu hình
           </button>
           <button
             className="btn btn-white"
@@ -1347,10 +1369,10 @@ const PayrollManagement = () => {
             onClick={() => setSourceAccountModal(true)}
             disabled={!selectedRestaurantId || !payrollUiPermissions.canPayout}
           >
-            🏦 Tài khoản nguồn
+            Tài khoản nguồn
           </button>
           <button className="btn btn-white" onClick={handleExportExcel} disabled={!selectedRestaurantId || !selectedPeriodId || !payrollUiPermissions.canExport}>
-            📥 Xuất Excel
+            Xuất Excel
           </button>
           <button
             className="btn btn-white"
@@ -1379,19 +1401,19 @@ const PayrollManagement = () => {
               }
             }}
           >
-            🔄 Tính lại
+            Tính lại
           </button>
         </div>
       </div>
 
       {!selectedRestaurantId && !restaurantsLoading ? (
-        <div className="settings-modal-state" style={{ margin: "16px 0" }}>
+        <div className="settings-modal-state payroll-page-state">
           Chọn nhà hàng để xem bảng lương
         </div>
       ) : null}
 
       {periodDetail?.period && (
-        <div className="metrics-strip" style={{ marginBottom: 12 }}>
+        <div className="metrics-strip metrics-strip--period">
           <div className="metric-group">
             <div className="metric-item">
               <span className="label">Kỳ đang áp dụng</span>
@@ -1408,7 +1430,7 @@ const PayrollManagement = () => {
               </span>
             </div>
           </div>
-          <div className="right-actions" style={{ display: "flex", gap: 8 }}>
+          <div className="right-actions right-actions--period">
             <button
               className="btn btn-white"
               onClick={handleOpenReadinessPanel}
@@ -1555,14 +1577,17 @@ const PayrollManagement = () => {
       <div className="table-card">
         <div className="table-controls">
           <div className="left-controls">
-            <div className="workflow-tabs">
-              {["all", "draft", "finalized", "paying", "pending_payment", "processing_payment", "payment_failed", "paid", "locked"].map((tab) => (
+            <div className="workflow-tabs" role="tablist" aria-label="Lọc trạng thái bảng lương">
+              {PAYROLL_STATUS_TABS.map((tab) => (
                 <button
                   key={tab}
                   className={`tab-btn ${activeTab === tab ? "active" : ""}`}
                   onClick={() => setActiveTab(tab)}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab}
                 >
-                  {tab === "all" ? "Tất cả" : tab}
+                  {PAYROLL_STATUS_TAB_LABELS[tab]}
                 </button>
               ))}
             </div>
@@ -1648,17 +1673,40 @@ const PayrollManagement = () => {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={14} className="table-empty">
-                    Đang tải dữ liệu bảng lương...
+                  <td colSpan={14} className="table-empty table-empty--loading">
+                    <div className="payroll-table-skeleton" aria-label="Đang tải dữ liệu bảng lương">
+                      {PAYROLL_LOADING_ROWS.map((row) => (
+                        <span className="payroll-table-skeleton__row" key={row} />
+                      ))}
+                    </div>
                   </td>
                 </tr>
               )}
               {!loading && filteredData.length === 0 && (
                 <tr>
-                  <td colSpan={14} className="table-empty">
-                    {!currentPeriodId && !hasRealItems
-                      ? "Chưa có kỳ lương đang áp dụng. Hãy thiết lập kỳ lương để bắt đầu."
-                      : "Không có dữ liệu phù hợp."}
+                  <td colSpan={14} className="table-empty table-empty--rich">
+                    <div className="table-empty__content">
+                      <strong>
+                        {!currentPeriodId && !hasRealItems
+                          ? "Chưa có kỳ lương đang áp dụng"
+                          : "Không có dữ liệu phù hợp"}
+                      </strong>
+                      <span>
+                        {!currentPeriodId && !hasRealItems
+                          ? "Thiết lập kỳ lương để bắt đầu tổng hợp công, thu nhập và chi trả."
+                          : "Thử đổi bộ lọc, trạng thái hoặc từ khóa tìm kiếm."}
+                      </span>
+                      {!currentPeriodId && !hasRealItems && (
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          onClick={handleCreatePeriod}
+                          disabled={!selectedRestaurantId || !payrollUiPermissions.canCreate}
+                        >
+                          Thiết lập kỳ lương
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -2105,15 +2153,7 @@ const PayslipModal = ({
           Điều chỉnh thủ công: {formatCurrency(data.manualAdjustmentTotal || 0)}
         </div>
 
-        <div
-          className="formula-note"
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="formula-note formula-note--adjustment">
           <select
             value={adjustmentType}
             onChange={(e) => setAdjustmentType(e.target.value)}

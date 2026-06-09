@@ -83,8 +83,13 @@ const PayrollReadinessPanel = ({ readiness, loading = false, error = null, onRef
   if (loading) {
     return (
       <section className="payroll-readiness-panel" role="status" aria-live="polite">
-        <div className="payroll-readiness-panel__state-card">
+        <div className="payroll-readiness-panel__state-card payroll-readiness-panel__state-card--loading">
           <p className="payroll-readiness-panel__state-text">Đang kiểm tra điều kiện chốt lương...</p>
+          <div className="payroll-readiness-skeleton" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
         </div>
       </section>
     );
