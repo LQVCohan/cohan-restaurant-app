@@ -49,6 +49,35 @@
   right: -15px;
 }
 
+.logo-icon-button,
+.logo-text-button {
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.logo-icon-button.logo-icon {
+  color: #fffaf3;
+}
+
+.logo-text-button.logo-text {
+  text-align: left;
+}
+
+.logo-icon-button:hover,
+.logo-text-button:hover {
+  color: #6f3f0f;
+}
+
+.logo-icon-button:focus-visible,
+.logo-text-button:focus-visible {
+  outline: 3px solid rgba(154, 91, 22, 0.28);
+  outline-offset: 2px;
+}
+
 @media (min-width: 769px) {
   .manager-layout .sidebar {
     overflow: visible;
@@ -65,6 +94,10 @@
   }
 
   .manager-layout:not(.sidebar-open) .sidebar-nav {
+    overflow: visible;
+  }
+
+  .manager-layout:not(.sidebar-open) .sidebar-header {
     overflow: visible;
   }
 }
