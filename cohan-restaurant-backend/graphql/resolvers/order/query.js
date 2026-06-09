@@ -114,12 +114,15 @@ async function requireQueryRestaurantAccess(ctx, restaurantId) {
   return rid;
 }
 
-async function requireAnalyticsRestaurantAccess(ctx, restaurantId) {
+async function requireReportRestaurantAccess(ctx, restaurantId) {
   if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
   const rid = toId(restaurantId);
-  const analyticsPermission = PERMISSIONS.REPORT_READ || PERMISSIONS.ORDER_READ;
-  await requireRestaurantPermission(ctx, rid, analyticsPermission);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.REPORT_READ);
   return rid;
+}
+
+async function requireAnalyticsRestaurantAccess(ctx, restaurantId) {
+  return requireReportRestaurantAccess(ctx, restaurantId);
 }
 
 const NON_OPERATIONAL_ORDER_STATUSES = new Set(["draft", "cancelled", "failed"]);
@@ -1287,24 +1290,43 @@ export const OrderQuery = {
     };
   },
 
-  async reportsOverview(_, { restaurantId, startAt, endAt, limit = 500 }, ctx) {
-    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
-    const safeLimit = Math.max(1, Math.min(Number(limit || 500), 2000));
-    const query = { restaurantId: rid };
-    if (startAt || endAt) {
-      query.createdAt = {};
-      if (startAt) query.createdAt.$gte = new Date(startAt);
-      if (endAt) query.createdAt.$lte = new Date(endAt);
+  async reportsOverview(_, { restaurantId, startAt, endAt }, ctx) {
+    const rid = await requireReportRestaurantAccess(ctx, restaurantId);
+    // The GraphQL `limit` argument is kept for backwards-compatible query variables, but summary
+    // aggregation must cover the full filtered period and must not silently
+    // sample/truncate operational metrics.
+
+    const parseReportDate = (value, label) => {
+      if (!value) return null;
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) {
+        throw new Error(`REPORT_INVALID_${label.toUpperCase()}`);
+      }
+      return date;
+    };
+
+    const start = parseReportDate(startAt, "startAt");
+    const end = parseReportDate(endAt, "endAt");
+    if (start && end && end.getTime() < start.getTime()) {
+      throw new Error("REPORT_INVALID_DATE_RANGE");
     }
 
-    const rows = await Order.find(query)
+    const query = { restaurantId: rid };
+    if (start || end) {
+      query.createdAt = {};
+      if (start) query.createdAt.$gte = start;
+      if (end) query.createdAt.$lte = end;
+    }
+
+    const rows = await Order.find(withOrderBatchOrLegacyFilter(query))
       .sort({ createdAt: -1, _id: -1 })
-      .limit(safeLimit)
       .select({
         currentStatus: 1,
         orderType: 1,
         createdAt: 1,
         totals: 1,
+        payment: 1,
+        orderPaymentStatus: 1,
         items: 1,
       })
       .lean({ virtuals: true });
@@ -1314,16 +1336,20 @@ export const OrderQuery = {
     const byOrderType = new Map();
     const dishMap = new Map();
     const byDay = new Map();
+    let totalOrders = 0;
 
     for (const order of rows) {
-      const status = String(order?.currentStatus || "pending");
-      const orderType = String(order?.orderType || "dine_in");
+      if (!isOperationalOrder(order)) continue;
+      totalOrders += 1;
+
+      const status = String(order?.currentStatus || "pending").toLowerCase();
+      const orderType = String(order?.orderType || "dine_in").toLowerCase();
       byStatus.set(status, (byStatus.get(status) || 0) + 1);
       byOrderType.set(orderType, (byOrderType.get(orderType) || 0) + 1);
 
-      const isCancelled = ["cancelled", "failed"].includes(status);
-      const grandTotal = Number(order?.totals?.grandTotal || 0);
-      if (!isCancelled) grossRevenue += grandTotal;
+      const revenueEligible = isRevenueEligibleOrder(order);
+      const grandTotal = revenueEligible ? getSafeGrandTotal(order) : 0;
+      if (revenueEligible) grossRevenue += grandTotal;
 
       const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
       if (createdAt && Number.isFinite(createdAt.getTime())) {
@@ -1334,24 +1360,25 @@ export const OrderQuery = {
           orders: 0,
         };
         prev.orders += 1;
-        if (!isCancelled) prev.grossRevenue += grandTotal;
+        prev.grossRevenue += grandTotal;
         byDay.set(dayKey, prev);
       }
 
       for (const item of order?.items || []) {
-        if (["cancelled", "returned"].includes(item?.status)) continue;
-        const name = item?.name || "Món không tên";
+        if (!isValidSoldItem(item)) continue;
+        const name = String(item?.name || "Món không tên").trim() || "Món không tên";
+        const key = item?.dishId ? `dish:${String(item.dishId)}` : `name:${name.toLowerCase()}`;
         const quantity = Number(item?.quantity || 0);
         const lineSubtotal = Number(item?.lineSubtotal || 0);
-        const prev = dishMap.get(name) || { name, quantity: 0, revenue: 0 };
-        prev.quantity += quantity;
-        prev.revenue += lineSubtotal;
-        dishMap.set(name, prev);
+        const prev = dishMap.get(key) || { name, quantity: 0, revenue: 0 };
+        prev.quantity += Number.isFinite(quantity) ? quantity : 0;
+        prev.revenue += Number.isFinite(lineSubtotal) ? lineSubtotal : 0;
+        dishMap.set(key, prev);
       }
     }
 
     return {
-      totalOrders: rows.length,
+      totalOrders,
       grossRevenue,
       byStatus: [...byStatus.entries()].map(([key, count]) => ({
         key,
@@ -1364,7 +1391,7 @@ export const OrderQuery = {
         count,
       })),
       topDishes: [...dishMap.values()]
-        .sort((a, b) => b.quantity - a.quantity)
+        .sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue)
         .slice(0, 10),
       revenueByDay: [...byDay.values()].sort((a, b) =>
         a.date.localeCompare(b.date),

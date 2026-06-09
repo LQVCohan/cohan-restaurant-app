@@ -522,6 +522,9 @@ export function computeDemandForecastFromData({
     meta: {
       method: "time_series_v1",
       fallbackUsed: totalOrders < 20,
+      forecastFallbackUsed: totalOrders < 20,
+      lowDataFallbackUsed: totalOrders < 20,
+      aiEnhanced: false,
       generatedAt: new Date().toISOString(),
       granularity: "hourly",
       timezone,
@@ -585,11 +588,9 @@ export async function buildDemandForecast({
       ...ai.payload.summary,
       notes: [...(forecast.summary?.notes || []), ...(Array.isArray(ai.payload?.notes) ? ai.payload.notes : [])],
     };
-    forecast.meta.fallbackUsed = false;
     forecast.meta.aiEnhanced = true;
   } else {
     forecast.meta.aiEnhanced = false;
-    forecast.meta.fallbackUsed = true;
   }
 
   if (!forecast.risingDishes.length) {
@@ -624,6 +625,9 @@ export async function buildDemandForecast({
       (sum, row) => sum + Number(row.suggestedPrepQty || 0),
       0
     );
+    forecast.meta.fallbackUsed = true;
+    forecast.meta.forecastFallbackUsed = true;
+    forecast.meta.lowDataFallbackUsed = true;
   }
 
   return forecast;

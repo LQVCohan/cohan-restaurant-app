@@ -448,7 +448,9 @@ export async function buildSmartPromotionEngine({
     },
     meta: {
       method: "smart_promo_v1",
-      fallbackUsed: forecastFallback || !aiEnhanced,
+      fallbackUsed: forecastFallback || totalOrders < 20,
+      forecastFallbackUsed: forecastFallback,
+      lowDataFallbackUsed: totalOrders < 20,
       aiEnhanced,
       generatedAt: now,
       timezone,
