@@ -1,14 +1,28 @@
-@use "sass:map";
+.stats-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 1rem;
+}
 
-$surface: #fffdf9;
-$white: #ffffff;
-$ink: #22201d;
-$muted: #756f66;
-$line: #e6ded3;
-$line-strong: #d7cbbd;
-$shadow: 0 16px 34px rgba(74, 57, 37, 0.08);
-$shadow-hover: 0 22px 44px rgba(74, 57, 37, 0.11);
+.stat-card-premium {
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #d7cbbd;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fffdf9, #fbf7f1);
+  box-shadow: 0 16px 34px rgba(74, 57, 37, 0.08);
+  padding: 1.15rem;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
 
-$colors: (
-  "green": (bg: #e9f3ed, text: #3f7d5a, line: #b8d4c1),
-  "blue": (bg: #eaf0f6, text: #5f7693, line: #c1cfdd
+.stat-card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px rgba(74, 57, 37, 0.11);
+}
+
+.stat-card-prem
