@@ -41,7 +41,12 @@ const Q_REPORTS_OVERVIEW = gql`
   }
 `;
 
-const padDate = (date) => date.toISOString().slice(0, 10);
+const padDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 const toStartDateTime = (d) => (d ? `${d}T00:00:00.000Z` : null);
 const toEndDateTime = (d) => (d ? `${d}T23:59:59.999Z` : null);
 const formatMoney = (value) => `${Math.round(Number(value || 0)).toLocaleString("vi-VN")}đ`;

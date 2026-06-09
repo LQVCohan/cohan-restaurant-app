@@ -82,4 +82,25 @@ describe("reportsOverview", () => {
     expect(result.grossRevenue).toBe(0);
     expect(result.revenueByDay[0]).toMatchObject({ orders: 1, grossRevenue: 0 });
   });
+
+  it("aggregates the full filtered set and does not truncate summary by limit", async () => {
+    const rows = Array.from({ length: 2005 }, (_, idx) => ({
+      currentStatus: "completed",
+      orderType: idx % 2 === 0 ? "dine_in" : "takeaway",
+      createdAt: `2026-01-${String((idx % 9) + 1).padStart(2, "0")}T10:00:00Z`,
+      payment: { status: "paid" },
+      totals: { grandTotal: 1000 },
+      items: [{ dishId: "dish-full", name: "Món đủ kỳ", quantity: 1, lineSubtotal: 1000 }],
+    }));
+    const chain = makeQuery(rows);
+    mocks.find.mockReturnValue(chain);
+
+    const result = await resolver.OrderQuery.reportsOverview(null, { restaurantId: rid, limit: 2000 }, {});
+
+    expect(chain.limit).not.toHaveBeenCalled();
+    expect(result.totalOrders).toBe(2005);
+    expect(result.grossRevenue).toBe(2005000);
+    expect(result.topDishes[0]).toMatchObject({ name: "Món đủ kỳ", quantity: 2005, revenue: 2005000 });
+    expect(result.revenueByDay.reduce((sum, row) => sum + row.orders, 0)).toBe(2005);
+  });
 });

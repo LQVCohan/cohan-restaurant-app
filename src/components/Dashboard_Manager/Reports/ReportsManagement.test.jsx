@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import ReportsManagement, { buildReportsCsv } from "./ReportsManagement";
 
@@ -21,7 +21,13 @@ const overview = {
 const wrapper = (ui) => render(<AuthContext.Provider value={{ restaurants: [{ id: "r1", name: "Cohan" }] }}>{ui}</AuthContext.Provider>);
 
 describe("ReportsManagement", () => {
+  const originalTz = process.env.TZ;
+
   beforeEach(() => { vi.clearAllMocks(); useQuery.mockReturnValue({ data: { reportsOverview: overview }, loading: false, error: null }); });
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = originalTz;
+  });
 
   it("renders cards from reportsOverview and section rows", () => {
     wrapper(<ReportsManagement />);
@@ -29,6 +35,27 @@ describe("ReportsManagement", () => {
     expect(screen.getByText("450.000đ")).toBeInTheDocument();
     expect(screen.getAllByText("Phở bò").length).toBeGreaterThan(0);
     expect(screen.getByText("Phân bổ trạng thái")).toBeInTheDocument();
+  });
+
+
+  it("uses local calendar dates for quick ranges without UTC drift", async () => {
+    process.env.TZ = "Asia/Ho_Chi_Minh";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-09T01:30:00+07:00"));
+
+    wrapper(<ReportsManagement />);
+
+    let variables = useQuery.mock.calls.at(-1)?.[1]?.variables;
+    expect(variables?.startAt).toBe("2026-05-11T00:00:00.000Z");
+    expect(variables?.endAt).toBe("2026-06-09T23:59:59.999Z");
+
+    fireEvent.click(screen.getByRole("button", { name: "Hôm nay" }));
+
+    variables = useQuery.mock.calls.at(-1)[1].variables;
+    expect(screen.getByLabelText("Ngày bắt đầu")).toHaveValue("2026-06-09");
+    expect(screen.getByLabelText("Ngày kết thúc")).toHaveValue("2026-06-09");
+    expect(variables.startAt).toBe("2026-06-09T00:00:00.000Z");
+    expect(variables.endAt).toBe("2026-06-09T23:59:59.999Z");
   });
 
   it("quick range and custom date update query variables", () => {

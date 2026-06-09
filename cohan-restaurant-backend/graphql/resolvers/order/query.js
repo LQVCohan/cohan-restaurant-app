@@ -1290,10 +1290,11 @@ export const OrderQuery = {
     };
   },
 
-  async reportsOverview(_, { restaurantId, startAt, endAt, limit = 500 }, ctx) {
+  async reportsOverview(_, { restaurantId, startAt, endAt }, ctx) {
     const rid = await requireReportRestaurantAccess(ctx, restaurantId);
-    const parsedLimit = Number(limit ?? 500);
-    const safeLimit = Math.max(1, Math.min(Number.isFinite(parsedLimit) ? parsedLimit : 500, 2000));
+    // The GraphQL `limit` argument is kept for backwards-compatible query variables, but summary
+    // aggregation must cover the full filtered period and must not silently
+    // sample/truncate operational metrics.
 
     const parseReportDate = (value, label) => {
       if (!value) return null;
@@ -1319,7 +1320,6 @@ export const OrderQuery = {
 
     const rows = await Order.find(withOrderBatchOrLegacyFilter(query))
       .sort({ createdAt: -1, _id: -1 })
-      .limit(safeLimit)
       .select({
         currentStatus: 1,
         orderType: 1,
