@@ -54,14 +54,14 @@
   width: min(calc(100% - clamp(24px, 4vw, 56px)), 1240px);
   max-width: 1240px;
   margin: 0 auto;
-  padding: clamp(18px, 2.2vw, 28px) 0 clamp(40px, 5vw, 72px);
-  gap: 14px;
+  padding: clamp(16px, 2vw, 24px) 0 clamp(40px, 5vw, 72px);
+  gap: 12px;
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header {
   min-height: auto;
-  padding: clamp(16px, 1.8vw, 22px);
-  border-radius: 24px;
+  padding: 14px 16px;
+  border-radius: 22px;
   background:
     linear-gradient(135deg, rgba(255, 250, 243, 0.94), rgba(247, 237, 223, 0.88)),
     rgba(255, 250, 243, 0.9);
@@ -71,24 +71,36 @@
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-left {
-  flex-basis: 228px;
-  padding-right: 0.75rem;
+  flex-basis: 210px;
+  padding-right: 0.65rem;
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-title {
-  font-size: clamp(1.42rem, 2vw, 1.92rem);
-  line-height: 1.05;
+  font-size: clamp(1.3rem, 1.75vw, 1.72rem);
+  line-height: 1.02;
+  margin: 0.18rem 0 0.28rem;
   text-wrap: balance;
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-subtitle {
-  max-width: 34rem;
+  max-width: 31rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-time-widget {
-  min-height: auto;
-  margin-top: 0.45rem;
-  padding: 0.45rem 0.55rem;
+  display: none;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-controls-row {
+  align-items: flex-start;
+  padding-top: 0.05rem;
+  border-top: 0;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-search {
+  flex: 1 1 380px;
+  min-width: min(100%, 320px);
 }
 
 .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-panel,
@@ -102,6 +114,35 @@
   box-shadow:
     0 16px 36px rgba(75, 50, 27, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.om-container--focus {
+  --om-kitchen-header-height: 52px;
+  --om-kitchen-toolbar-height: 52px;
+}
+
+.om-container--focus .om-header {
+  min-height: var(--om-kitchen-header-height);
+  padding: 8px 16px;
+}
+
+.om-container--focus .om-header__focus-title {
+  gap: 10px;
+}
+
+.om-container--focus .om-header__focus-title h1 {
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  letter-spacing: 0.05em;
+}
+
+.om-container--focus .om-header__meta {
+  margin-top: 3px;
+  font-size: 0.76rem;
+}
+
+.om-container--focus .om-toolbar--focus {
+  min-height: var(--om-kitchen-toolbar-height);
+  padding: 8px 16px;
 }
 
 .om-container--focus .om-toolbar__actions .om-btn-primary {
