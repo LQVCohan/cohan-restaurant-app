@@ -167,6 +167,9 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
 
   .right-actions--period {
     flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-end;
   }
 
   .payroll-page-state {
@@ -183,7 +186,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
     min-height: 94px;
 
     &--period {
-      grid-template-columns: minmax(260px, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .metric-group {
@@ -1040,16 +1043,34 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
   100% { background-position: -120% 0; }
 }
 
-@media (max-width: 1180px) {
+@media (min-width: 1321px) {
   .payroll-page-compact {
-    .header-toolbar,
-    .metrics-strip,
+    .metrics-strip--period {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
+    }
+  }
+}
+
+@media (max-width: 1320px) {
+  .payroll-page-compact {
     .metrics-strip--period {
       grid-template-columns: 1fr;
     }
 
+    .right-actions--period {
+      justify-content: flex-start;
+    }
+  }
+}
+
+@media (max-width: 1180px) {
+  .payroll-page-compact {
+    .header-toolbar,
+    .metrics-strip {
+      grid-template-columns: 1fr;
+    }
+
     .header-toolbar .right-actions,
-    .right-actions--period,
     .table-controls .right-controls {
       justify-content: flex-start;
     }
@@ -1100,9 +1121,34 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .payroll-page-compact,
+  .payroll-page-compact *,
+  .payroll-page-compact *::before,
+  .payroll-page-compact *::after,
+  .modal-overlay[data-testid="payroll-settings-modal"],
+  .modal-overlay[data-testid="payroll-settings-modal"] *,
+  .modal-overlay[data-testid="payroll-settings-modal"] *::before,
+  .modal-overlay[data-testid="payroll-settings-modal"] *::after,
+  .modal-overlay[data-testid="batch-payroll-paid-modal"],
+  .modal-overlay[data-testid="batch-payroll-paid-modal"] *,
+  .modal-overlay[data-testid="batch-payroll-paid-modal"] *::before,
+  .modal-overlay[data-testid="batch-payroll-paid-modal"] *::after,
+  .modal-overlay[data-testid="employee-bank-account-modal"],
+  .modal-overlay[data-testid="employee-bank-account-modal"] *,
+  .modal-overlay[data-testid="employee-bank-account-modal"] *::before,
+  .modal-overlay[data-testid="employee-bank-account-modal"] *::after,
+  .modal-overlay[data-testid="restaurant-payout-account-modal"],
+  .modal-overlay[data-testid="restaurant-payout-account-modal"] *,
+  .modal-overlay[data-testid="restaurant-payout-account-modal"] *::before,
+  .modal-overlay[data-testid="restaurant-payout-account-modal"] *::after,
+  .modal-overlay[data-testid="payroll-payout-modal"],
+  .modal-overlay[data-testid="payroll-payout-modal"] *,
+  .modal-overlay[data-testid="payroll-payout-modal"] *::before,
+  .modal-overlay[data-testid="payroll-payout-modal"] *::after,
+  .modal-overlay[data-testid="payroll-payslip-modal"],
+  .modal-overlay[data-testid="payroll-payslip-modal"] *,
+  .modal-overlay[data-testid="payroll-payslip-modal"] *::before,
+  .modal-overlay[data-testid="payroll-payslip-modal"] *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
