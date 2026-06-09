@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import "./PayrollPayslipModal.scss";
 
 export const PAYROLL_PAYMENT_ERROR_MESSAGES = {
   ALREADY_PAID: "Nhân viên này đã được thanh toán đủ.",

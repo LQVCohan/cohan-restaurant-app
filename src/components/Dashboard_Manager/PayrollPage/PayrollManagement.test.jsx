@@ -519,12 +519,12 @@ describe("PayrollManagement UC17 payout and lifecycle coverage", () => {
 
     render(<PayrollManagement />);
 
-    expect(screen.getByText("Đang chi trả")).toBeInTheDocument();
-    expect(screen.getByText("Chờ thanh toán")).toBeInTheDocument();
-    expect(screen.getByText("Đang xử lý")).toBeInTheDocument();
-    expect(screen.getByText("Thanh toán lỗi")).toBeInTheDocument();
-    expect(screen.getAllByText("Đã thanh toán").length).toBeGreaterThan(0);
-    expect(screen.getByText("Đã khóa")).toBeInTheDocument();
+    expect(screen.getAllByText("Đang chi").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Chờ chi").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Đang xử lý").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Lỗi chi").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Đã trả").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Đã khóa").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/1.000.000/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/4.500.000/).length).toBeGreaterThan(0);
   });
@@ -580,7 +580,7 @@ describe("PayrollManagement UC17 payout and lifecycle coverage", () => {
     await waitFor(() => expect(screen.queryByTestId("employee-bank-account-modal")).not.toBeInTheDocument());
     expect(screen.queryByDisplayValue("123456789")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("🏦 Tài khoản nguồn"));
+    fireEvent.click(screen.getByText("Tài khoản nguồn"));
     expect(screen.getByTestId("restaurant-payout-account-modal")).toBeInTheDocument();
     const accountInputs = screen.getByTestId("restaurant-payout-account-modal").querySelectorAll("input");
     fireEvent.change(accountInputs[3], { target: { value: "9999000011112222" } });
