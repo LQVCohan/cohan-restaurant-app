@@ -237,7 +237,7 @@ const Header = ({
             onClick={handleToggleSidebar}
             title="Mở/đóng thanh điều hướng"
             type="button"
-            aria-label={sidebarOpen ? "Đóng thanh điều hướng" : "Mở thanh điều hướng"}
+            aria-label={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
             aria-expanded={sidebarOpen}
           >
             <div className="hamburger">

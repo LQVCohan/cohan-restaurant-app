@@ -40,26 +40,13 @@ $manager-white: #ffffff;
   }
 }
 
-.sidebar-overlay {
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(circle at 12% 20%, rgba(154, 91, 22, 0.18), transparent 34%),
-    rgba(47, 36, 24, 0.46);
-  z-index: 1000;
-  display: block;
-  backdrop-filter: blur(3px);
-
-  @media (min-width: 769px) {
-    display: none;
-  }
-}
-
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 280px;
+  width: min(100%, 22rem);
+  min-width: 0;
+  max-width: min(100%, 22rem);
   height: 100vh;
   height: 100dvh;
   background:
@@ -70,6 +57,9 @@ $manager-white: #ffffff;
   z-index: 1001;
   transform: translate3d(-100%, 0, 0);
   transition:
+    width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    min-width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    max-width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
     transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
     visibility 0.24s ease;
   will-change: transform;
@@ -94,9 +84,6 @@ $manager-white: #ffffff;
     transform: translate3d(0, 0, 0);
   }
 
-  @media (max-width: 480px) {
-    width: min(100%, 22rem);
-  }
 }
 
 .sidebar-header,
@@ -404,8 +391,13 @@ $manager-white: #ffffff;
     top: 0;
     flex-shrink: 0;
     width: var(--sidebar-width, 72px);
+    min-width: var(--sidebar-width, 72px);
+    max-width: var(--sidebar-width, 72px);
+    height: 100vh;
+    height: 100dvh;
     transform: none;
     visibility: visible;
+    overflow: hidden;
     box-shadow: 14px 0 34px rgba(15, 23, 42, 0.08);
   }
 
@@ -481,11 +473,18 @@ $manager-white: #ffffff;
 
 @media (min-width: 769px) {
   .manager-layout:not(.sidebar-open) .sidebar {
-    max-width: 72px;
+    width: var(--sidebar-width, 72px);
+    min-width: var(--sidebar-width, 72px);
+    max-width: var(--sidebar-width, 72px);
     overflow: visible;
 
     .sidebar-nav {
       overflow: visible;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
 
     .nav-item {

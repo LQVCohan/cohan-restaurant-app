@@ -1,7 +1,74 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { useState } from "react";
-import { RejectOrderDialog } from "./OrderManagement";
+import OrderManagement, { RejectOrderDialog } from "./OrderManagement";
+import { AuthContext } from "@/context/AuthContext";
+
+vi.mock("@apollo/client", () => ({
+  gql: (strings) => strings.join(""),
+  useLazyQuery: () => [
+    vi.fn(() => Promise.resolve()),
+    {
+      data: {
+        ordersByRestaurantNow: {
+          edges: [],
+          pageInfo: { endCursor: null, hasNextPage: false },
+        },
+      },
+      loading: false,
+      error: null,
+    },
+  ],
+  useMutation: () => [vi.fn(() => Promise.resolve({ data: {} }))],
+}));
+
+vi.mock("../../../hooks/useOrderManagement", () => ({
+  default: () => ({
+    updateItemStatus: vi.fn(),
+    reviewOrderItemVoid: vi.fn(),
+    requestOrderItemReturn: vi.fn(),
+    reviewOrderItemReturn: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/useNotification", () => ({
+  useNotification: () => ({ showNotification: vi.fn() }),
+}));
+
+vi.mock("@/hooks/useSocketOrder", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("./components/OrderCard", () => ({
+  default: () => <article>Order card</article>,
+}));
+vi.mock("./components/OrderModal", () => ({
+  default: () => <div>Order modal</div>,
+}));
+vi.mock("./components/ItemModal", () => ({
+  default: () => <div>Item modal</div>,
+}));
+vi.mock("./components/HistoryModal", () => ({
+  default: () => <div>History modal</div>,
+}));
+vi.mock("./components/NewOrderModal", () => ({
+  default: () => <div>New order modal</div>,
+}));
+vi.mock("./components/OrderSettingsModal", () => ({
+  default: () => <div>Order settings modal</div>,
+}));
+vi.mock("../shared/ManagementPageHeader", () => ({
+  default: ({ title, primaryAction }) => (
+    <section>
+      <h1>{title}</h1>
+      {primaryAction ? (
+        <button type="button" onClick={primaryAction.onClick}>
+          {primaryAction.label}
+        </button>
+      ) : null}
+    </section>
+  ),
+}));
 
 const RejectDialogHarness = ({ onConfirm = vi.fn() }) => {
   const [reason, setReason] = useState("");
@@ -29,6 +96,22 @@ const RejectDialogHarness = ({ onConfirm = vi.fn() }) => {
   );
 };
 
+const renderOrderManagement = () =>
+  render(
+    <AuthContext.Provider
+      value={{
+        restaurants: [{ id: "restaurant-1", name: "Cohan Test" }],
+        user: { id: "manager-1", role: { name: "Manager" } },
+      }}
+    >
+      <OrderManagement />
+    </AuthContext.Provider>,
+  );
+
+afterEach(() => {
+  document.body.style.overflow = "";
+});
+
 describe("RejectOrderDialog", () => {
   it("shows validation when the reject reason is empty", () => {
     render(<RejectDialogHarness />);
@@ -48,5 +131,49 @@ describe("RejectOrderDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /xác nhận từ chối/i }));
 
     expect(onConfirm).toHaveBeenCalledWith("Món đã hết");
+  });
+});
+
+describe("OrderManagement kitchen display", () => {
+  it("renders fullscreen kitchen display and locks body scroll when focus mode is enabled", () => {
+    renderOrderManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
+
+    expect(screen.getByRole("heading", { name: /màn hình bếp/i })).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+  });
+
+  it("exits focus mode with Escape and restores body overflow", () => {
+    renderOrderManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("heading", { name: /màn hình bếp/i })).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("keeps the F shortcut for toggling kitchen focus mode", () => {
+    renderOrderManagement();
+
+    fireEvent.keyDown(window, { key: "f" });
+    expect(screen.getByRole("heading", { name: /màn hình bếp/i })).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    fireEvent.keyDown(window, { key: "F" });
+    expect(screen.queryByRole("heading", { name: /màn hình bếp/i })).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("restores body overflow when unmounting from focus mode", () => {
+    document.body.style.overflow = "auto";
+    const { unmount } = renderOrderManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
+    expect(document.body.style.overflow).toBe("hidden");
+
+    unmount();
+    expect(document.body.style.overflow).toBe("auto");
   });
 });
