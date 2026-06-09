@@ -19,7 +19,7 @@ $premium-gold: #b89365;
   .employee-dashboard {
     width: 100%;
     padding: 0;
-    grid-template-columns: minmax(520px, 0.92fr) minmax(560px, 1.08fr);
+    grid-template-columns: minmax(550px, 0.96fr) minmax(560px, 1.04fr);
     gap: 14px;
     align-items: stretch;
   }
@@ -73,7 +73,7 @@ $premium-gold: #b89365;
       }
 
       .search-box {
-        width: clamp(220px, 44%, 310px);
+        width: clamp(210px, 42%, 285px);
       }
 
       .search-box input {
@@ -94,7 +94,7 @@ $premium-gold: #b89365;
 
     .filters-toolbar {
       display: grid;
-      grid-template-columns: minmax(260px, max-content) repeat(2, minmax(145px, 1fr));
+      grid-template-columns: minmax(260px, max-content) repeat(2, minmax(128px, 1fr));
       gap: 10px;
       align-items: center;
       padding: 12px 18px;
@@ -133,8 +133,12 @@ $premium-gold: #b89365;
       }
     }
 
+    .table-header-row,
+    .employee-row-item {
+      grid-template-columns: minmax(185px, 1.35fr) minmax(110px, 0.72fr) minmax(185px, 1.25fr) 34px;
+    }
+
     .table-header-row {
-      grid-template-columns: minmax(170px, 1.25fr) minmax(110px, 0.76fr) minmax(180px, 1.25fr) 24px;
       padding: 10px 16px;
       background: rgba(255, 248, 238, 0.9);
       border-bottom: 1px solid rgba(154, 119, 78, 0.16);
@@ -143,6 +147,28 @@ $premium-gold: #b89365;
         color: $premium-muted;
         font-size: 0.68rem;
         letter-spacing: 0.08em;
+      }
+    }
+
+    .employee-row-item {
+      .col-main .info-content .name,
+      .col-role .role-text span,
+      .col-contact .contact-row span {
+        min-width: 0;
+      }
+
+      .col-main .info-content .code.is-missing,
+      .col-contact .contact-row.is-missing {
+        color: rgba(123, 106, 88, 0.72);
+        font-style: italic;
+      }
+
+      .col-contact .contact-row {
+        max-width: 100%;
+      }
+
+      .col-actions {
+        min-width: 34px;
       }
     }
 
@@ -159,8 +185,13 @@ $premium-gold: #b89365;
       background: rgba(255, 250, 243, 0.94);
 
       .page-info {
+        display: inline-flex;
+        align-items: center;
+        min-width: max-content;
+        white-space: nowrap;
         color: $premium-muted;
         font-variant-numeric: tabular-nums;
+        font-weight: 650;
       }
 
       .pagi-btn {
@@ -235,7 +266,7 @@ $premium-gold: #b89365;
 
 @media (min-width: 1280px) {
   .staff-page-container .employee-dashboard {
-    grid-template-columns: minmax(560px, 0.9fr) minmax(610px, 1.1fr);
+    grid-template-columns: minmax(580px, 0.94fr) minmax(600px, 1.06fr);
   }
 }
 
