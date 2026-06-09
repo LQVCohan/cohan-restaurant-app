@@ -53,6 +53,11 @@ const EmployeeItem = ({
 
   const deptInfo = getDeptConfig(employee.department);
   const isInactive = employee.status === "inactive";
+  const employeeName = employee.name || "Chưa có tên";
+  const employeeCode = employee.code || "Chưa có mã";
+  const employeeRole = employee.role || "Chưa gán vị trí";
+  const employeeEmail = employee.email || "Chưa có email";
+  const employeePhone = employee.phone || "Chưa có SĐT";
 
   return (
     <div
@@ -61,6 +66,7 @@ const EmployeeItem = ({
       onClick={onClick}
       role="button"
       tabIndex={0}
+      title={employeeName}
     >
       {/* 1. INFO COLUMN */}
       <div className="col-main">
@@ -68,15 +74,15 @@ const EmployeeItem = ({
           {employee.avatar ? (
             <img
               src={employee.avatar}
-              alt={employee.name}
+              alt={employeeName}
               className="avatar-img"
             />
           ) : (
             <div
               className="avatar-placeholder"
-              style={{ backgroundColor: getAvatarColor(employee.name) }}
+              style={{ backgroundColor: getAvatarColor(employeeName) }}
             >
-              {employee.name.charAt(0).toUpperCase()}
+              {employeeName.charAt(0).toUpperCase()}
             </div>
           )}
           {/* Status Indicator Dot */}
@@ -84,29 +90,29 @@ const EmployeeItem = ({
         </div>
 
         <div className="info-content">
-          <h4 className="name">{employee.name}</h4>
-          <span className="code">{employee.code || "---"}</span>
+          <h4 className="name" title={employeeName}>{employeeName}</h4>
+          <span className={`code ${employee.code ? "" : "is-missing"}`}>{employeeCode}</span>
         </div>
       </div>
 
       {/* 2. ROLE & DEPT COLUMN */}
       <div className="col-role">
-        <div className="role-text">
+        <div className="role-text" title={employeeRole}>
           <Briefcase size={12} className="icon" />
-          <span>{employee.role}</span>
+          <span>{employeeRole}</span>
         </div>
         <span className={`dept-badge ${deptInfo.color}`}>{deptInfo.label}</span>
       </div>
 
       {/* 3. CONTACT COLUMN (Desktop mostly) */}
       <div className="col-contact">
-        <div className="contact-row" title={employee.email}>
+        <div className={`contact-row ${employee.email ? "" : "is-missing"}`} title={employeeEmail}>
           <Mail size={12} />
-          <span>{employee.email}</span>
+          <span>{employeeEmail}</span>
         </div>
-        <div className="contact-row">
+        <div className={`contact-row ${employee.phone ? "" : "is-missing"}`} title={employeePhone}>
           <Phone size={12} />
-          <span>{employee.phone}</span>
+          <span>{employeePhone}</span>
         </div>
       </div>
 
@@ -116,20 +122,24 @@ const EmployeeItem = ({
           <button
             className="btn-icon edit"
             onClick={(e) => handleActionClick(e, "edit")}
-            title="Chỉnh sửa"
+            title="Chỉnh sửa nhân viên"
+            aria-label="Chỉnh sửa nhân viên"
+            type="button"
           >
             <Edit size={16} />
           </button>
           <button
             className="btn-icon delete"
             onClick={(e) => handleActionClick(e, "delete")}
-            title="Xóa"
+            title="Xóa nhân viên"
+            aria-label="Xóa nhân viên"
+            type="button"
           >
             <Trash2 size={16} />
           </button>
         </div>
         {/* Mobile menu trigger (optional) */}
-        <button className="btn-icon mobile-menu">
+        <button className="btn-icon mobile-menu" title="Mở thao tác" aria-label="Mở thao tác" type="button">
           <MoreHorizontal size={18} />
         </button>
       </div>
