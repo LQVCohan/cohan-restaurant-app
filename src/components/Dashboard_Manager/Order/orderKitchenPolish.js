@@ -4,6 +4,15 @@ const CHIP_SIZE_OPTIONS = [
   { value: "l", label: "Lớn" },
 ];
 
+const KITCHEN_STATUS_FILTER_OPTIONS = [
+  { value: "", label: "Tất cả" },
+  { value: "pending", label: "Chờ xác nhận" },
+  { value: "remote_staff_pending", label: "Từ xa" },
+  { value: "confirmed", label: "Đã xác nhận" },
+  { value: "preparing", label: "Đang chuẩn bị" },
+  { value: "ready", label: "Sẵn sàng" },
+];
+
 const GUIDE_MARKUP = `
   <span class="om-kitchen-guide__eyebrow">Ca bếp đang nhẹ</span>
   <h2>Ít đơn đang chờ xử lý</h2>
@@ -26,18 +35,74 @@ const setNativeSelectValue = (select, value) => {
   if (setter) setter.call(select, value);
   else select.value = value;
 
+  select.dispatchEvent(new Event("input", { bubbles: true }));
   select.dispatchEvent(new Event("change", { bubbles: true }));
 };
 
-const updateSegmentedState = (control) => {
+const updateSegmentedState = (control, buttonSelector, activeClass) => {
   const select = control.querySelector("select");
   if (!select) return;
 
-  control.querySelectorAll(".om-size-segmented__btn").forEach((button) => {
+  control.querySelectorAll(buttonSelector).forEach((button) => {
     const active = button.dataset.value === select.value;
-    button.classList.toggle("om-size-segmented__btn--active", active);
+    button.classList.toggle(activeClass, active);
     button.setAttribute("aria-pressed", active ? "true" : "false");
   });
+};
+
+const enhanceStatusControl = () => {
+  const select = document.querySelector(
+    '.om-container--focus .om-toolbar__filters select[aria-label="Trạng thái đơn"]',
+  );
+  if (!select) return;
+
+  const control = select.closest(".om-field");
+  if (!control) return;
+
+  control.classList.add("om-field--status-segmented");
+  select.setAttribute("tabindex", "-1");
+
+  let segmented = control.querySelector(".om-status-segmented");
+  if (!segmented) {
+    segmented = document.createElement("div");
+    segmented.className = "om-status-segmented";
+    segmented.setAttribute("role", "group");
+    segmented.setAttribute("aria-label", "Trạng thái đơn");
+    control.appendChild(segmented);
+  }
+
+  if (segmented.dataset.ready !== "true") {
+    segmented.innerHTML = "";
+
+    KITCHEN_STATUS_FILTER_OPTIONS.forEach((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "om-status-segmented__btn";
+      button.dataset.value = option.value;
+      button.textContent = option.label;
+      button.addEventListener("click", () => {
+        setNativeSelectValue(select, option.value);
+        updateSegmentedState(
+          control,
+          ".om-status-segmented__btn",
+          "om-status-segmented__btn--active",
+        );
+        window.requestAnimationFrame(() => {
+          enhanceStatusControl();
+          enhanceSparseKitchenLayout();
+        });
+      });
+      segmented.appendChild(button);
+    });
+
+    segmented.dataset.ready = "true";
+  }
+
+  updateSegmentedState(
+    control,
+    ".om-status-segmented__btn",
+    "om-status-segmented__btn--active",
+  );
 };
 
 const enhanceSizeControl = () => {
@@ -71,7 +136,11 @@ const enhanceSizeControl = () => {
       button.textContent = option.label;
       button.addEventListener("click", () => {
         setNativeSelectValue(select, option.value);
-        updateSegmentedState(control);
+        updateSegmentedState(
+          control,
+          ".om-size-segmented__btn",
+          "om-size-segmented__btn--active",
+        );
         window.requestAnimationFrame(() => {
           enhanceSizeControl();
           enhanceSparseKitchenLayout();
@@ -83,7 +152,11 @@ const enhanceSizeControl = () => {
     segmented.dataset.ready = "true";
   }
 
-  updateSegmentedState(control);
+  updateSegmentedState(
+    control,
+    ".om-size-segmented__btn",
+    "om-size-segmented__btn--active",
+  );
 };
 
 const enhanceSparseKitchenLayout = () => {
@@ -124,6 +197,11 @@ const cleanupWhenLeavingKitchen = () => {
     control.querySelector(".om-size-segmented")?.remove();
   });
 
+  document.querySelectorAll(".om-field--status-segmented").forEach((control) => {
+    control.classList.remove("om-field--status-segmented");
+    control.querySelector(".om-status-segmented")?.remove();
+  });
+
   document.querySelectorAll(".om-grid--sparse").forEach((grid) => {
     grid.classList.remove("om-grid--sparse");
   });
@@ -141,6 +219,7 @@ const enhanceKitchenDisplay = () => {
     return;
   }
 
+  enhanceStatusControl();
   enhanceSizeControl();
   enhanceSparseKitchenLayout();
 };
