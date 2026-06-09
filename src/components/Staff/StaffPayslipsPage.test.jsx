@@ -13,8 +13,10 @@ vi.mock("@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal", (
   default: ({ open, payrollPayslip, payrollPayments }) => open ? (
     <div data-testid="staff-payslip-detail">
       <span>{payrollPayslip?.employee?.name}</span>
-      <span>{payrollPayments?.[0]?.referenceCode}</span>
-      <span>{payrollPayments?.[0]?.amount}</span>
+      {payrollPayments?.length ? <>
+        <span>{payrollPayments[0].referenceCode}</span>
+        <span>{payrollPayments[0].amount}</span>
+      </> : <span>Chưa có lịch sử thanh toán</span>}
     </div>
   ) : null,
 }));
@@ -63,5 +65,18 @@ describe("StaffPayslipsPage", () => {
     expect(screen.getByTestId("staff-payslip-detail")).toHaveTextContent("Nguyen A");
     expect(screen.getByTestId("staff-payslip-detail")).toHaveTextContent("PAY-001");
     expect(screen.getByTestId("staff-payslip-detail")).toHaveTextContent("1000000");
+  });
+
+  it("passes an empty real payment history to the modal instead of hard-coded placeholder data", () => {
+    const noPaymentDetail = {
+      ...detailResult,
+      data: { myPayslip: { ...detailResult.data.myPayslip, payments: [] } },
+    };
+    useQuery.mockImplementation((_, options = {}) => (options.variables?.limit ? listResult : noPaymentDetail));
+
+    render(<StaffPayslipsPage />);
+    fireEvent.click(screen.getByText("Xem chi tiết"));
+
+    expect(screen.getByTestId("staff-payslip-detail")).toHaveTextContent("Chưa có lịch sử thanh toán");
   });
 });

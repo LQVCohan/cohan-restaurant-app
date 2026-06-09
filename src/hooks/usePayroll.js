@@ -413,6 +413,20 @@ export const MUT_CREATE_PAYROLL_PAYOUT = gql`
   }
 `;
 
+
+export const MUT_CREATE_PAYROLL_BATCH_PAYOUT = gql`
+  mutation CreatePayrollBatchPayout($input: PayrollBatchPayoutInput!) {
+    createPayrollBatchPayout(input: $input) {
+      successCount
+      processingCount
+      failedCount
+      payouts { id status amount employeeId failureReason }
+      errors { employeeId code message }
+      batch { id status successCount processingCount failedCount totalAmount }
+    }
+  }
+`;
+
 export const MUT_RETRY_PAYROLL_PAYOUT = gql`
   mutation RetryPayrollPayout($payoutId: ID!, $idempotencyKey: String) {
     retryPayrollPayout(payoutId: $payoutId, idempotencyKey: $idempotencyKey) {
@@ -430,6 +444,18 @@ export const MUT_CANCEL_PAYROLL_PAYOUT = gql`
       id
       status
       failureReason
+    }
+  }
+`;
+
+export const MUT_APPLY_PAYROLL_PAYOUT_RESULT = gql`
+  mutation ApplyPayrollPayoutResult($input: PayrollPayoutResultInput!) {
+    applyPayrollPayoutResult(input: $input) {
+      id
+      status
+      failureReason
+      providerTransactionId
+      paidAt
     }
   }
 `;
@@ -694,8 +720,10 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     MUT_BATCH_MARK_PAYROLL_PAID,
   );
   const [createPayrollPayoutMutation] = safeUseMutation(MUT_CREATE_PAYROLL_PAYOUT);
+  const [createPayrollBatchPayoutMutation] = safeUseMutation(MUT_CREATE_PAYROLL_BATCH_PAYOUT);
   const [retryPayrollPayoutMutation] = safeUseMutation(MUT_RETRY_PAYROLL_PAYOUT);
   const [cancelPayrollPayoutMutation] = safeUseMutation(MUT_CANCEL_PAYROLL_PAYOUT);
+  const [applyPayrollPayoutResultMutation] = safeUseMutation(MUT_APPLY_PAYROLL_PAYOUT_RESULT);
   const [upsertEmployeeBankAccountMutation] = safeUseMutation(MUT_UPSERT_EMPLOYEE_BANK_ACCOUNT);
   const [verifyEmployeeBankAccountMutation] = safeUseMutation(MUT_VERIFY_EMPLOYEE_BANK_ACCOUNT);
   const [upsertRestaurantPayoutAccountMutation] = safeUseMutation(MUT_UPSERT_RESTAURANT_PAYOUT_ACCOUNT);
@@ -739,6 +767,11 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     return createPayrollPayoutMutation({ variables: { input: inputOrOptions } });
   };
 
+  const createPayrollBatchPayout = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return createPayrollBatchPayoutMutation(inputOrOptions);
+    return createPayrollBatchPayoutMutation({ variables: { input: inputOrOptions } });
+  };
+
   const retryPayrollPayout = (variablesOrOptions) => {
     if (variablesOrOptions?.variables) return retryPayrollPayoutMutation(variablesOrOptions);
     return retryPayrollPayoutMutation({ variables: variablesOrOptions });
@@ -747,6 +780,11 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const cancelPayrollPayout = (variablesOrOptions) => {
     if (variablesOrOptions?.variables) return cancelPayrollPayoutMutation(variablesOrOptions);
     return cancelPayrollPayoutMutation({ variables: variablesOrOptions });
+  };
+
+  const applyPayrollPayoutResult = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return applyPayrollPayoutResultMutation(inputOrOptions);
+    return applyPayrollPayoutResultMutation({ variables: { input: inputOrOptions } });
   };
 
   const upsertEmployeeBankAccount = (inputOrOptions) => {
@@ -816,8 +854,10 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     markPayrollItemPaid,
     batchMarkPayrollPaid,
     createPayrollPayout,
+    createPayrollBatchPayout,
     retryPayrollPayout,
     cancelPayrollPayout,
+    applyPayrollPayoutResult,
     upsertEmployeeBankAccount,
     verifyEmployeeBankAccount,
     upsertRestaurantPayoutAccount,

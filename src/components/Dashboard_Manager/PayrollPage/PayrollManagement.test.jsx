@@ -77,6 +77,14 @@ const buildHookValue = (overrides = {}) => ({
   finalizePeriod: vi.fn(),
   lockPeriod: vi.fn(),
   markPaid: vi.fn(),
+  markPayrollItemPaid: vi.fn().mockResolvedValue({}),
+  batchMarkPayrollPaid: vi.fn().mockResolvedValue({ data: { batchMarkPayrollPaid: { successCount: 1, processingCount: 0, failedCount: 0, errors: [] } } }),
+  createPayrollPayout: vi.fn().mockResolvedValue({ data: { createPayrollPayout: { id: "payout-1", status: "success" } } }),
+  retryPayrollPayout: vi.fn().mockResolvedValue({ data: { retryPayrollPayout: { id: "payout-1", status: "success" } } }),
+  cancelPayrollPayout: vi.fn().mockResolvedValue({ data: { cancelPayrollPayout: { id: "payout-1", status: "cancelled" } } }),
+  upsertEmployeeBankAccount: vi.fn().mockResolvedValue({}),
+  verifyEmployeeBankAccount: vi.fn().mockResolvedValue({}),
+  upsertRestaurantPayoutAccount: vi.fn().mockResolvedValue({}),
   updateSettings: vi.fn().mockResolvedValue({ data: { updatePayrollSettings: { restaurantId: "restaurant-1" } } }),
   upsertAdjustment: vi.fn(),
   refetchDetail: vi.fn().mockResolvedValue({}),
@@ -456,5 +464,189 @@ describe("PayrollManagement payroll payment UI", () => {
 
     expect(screen.getByTestId("batch-payroll-paid-open")).toBeDisabled();
     expect(screen.getAllByRole("checkbox")[1]).toBeDisabled();
+  });
+});
+
+describe("PayrollManagement UC17 payout and lifecycle coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    global.URL.createObjectURL = vi.fn(() => "blob:payroll");
+    global.URL.revokeObjectURL = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const payrollItemWithStatus = (status, overrides = {}) => ({
+    id: `emp-${status}`,
+    name: `Nhan vien ${status}`,
+    code: `NV-${status}`,
+    department: "Kitchen",
+    role: "Chef",
+    baseSalary: 6000000,
+    actualWorkDays: 24,
+    workDays: 26,
+    totalHours: 192,
+    overtime: 0,
+    totalIncome: 6000000,
+    totalDeduction: 500000,
+    netSalary: 5500000,
+    paidAmount: status === "paid" || status === "locked" ? 5500000 : 1000000,
+    remainingAmount: status === "paid" || status === "locked" ? 0 : 4500000,
+    status,
+    ...overrides,
+  });
+
+  const hookForPeriodStatus = (status, overrides = {}) => buildHookValue({
+    periods: [{ id: "period-1", name: "Ky 1", restaurantId: "restaurant-1", status, startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" }],
+    periodDetail: { period: { id: "period-1", name: "Ky 1", restaurantId: "restaurant-1", status, startDate: "2026-04-01T00:00:00.000Z", endDate: "2026-04-30T00:00:00.000Z" } },
+    payrollStats: { totalPayroll: 5500000, paidAmount: status === "paid" ? 5500000 : 1000000, remaining: status === "paid" ? 0 : 4500000, progress: status === "paid" ? 100 : 18 },
+    payrollItems: [payrollItemWithStatus(status === "paid" ? "paid" : status === "locked" ? "locked" : "pending_payment")],
+    ...overrides,
+  });
+
+  it("renders period/item lifecycle statuses and paid/remaining columns", () => {
+    usePayroll.mockReturnValue(hookForPeriodStatus("paying", {
+      payrollItems: [
+        payrollItemWithStatus("pending_payment"),
+        payrollItemWithStatus("processing_payment"),
+        payrollItemWithStatus("payment_failed"),
+        payrollItemWithStatus("paid"),
+        payrollItemWithStatus("locked"),
+      ],
+    }));
+
+    render(<PayrollManagement />);
+
+    expect(screen.getByText("Đang chi trả")).toBeInTheDocument();
+    expect(screen.getByText("Chờ thanh toán")).toBeInTheDocument();
+    expect(screen.getByText("Đang xử lý")).toBeInTheDocument();
+    expect(screen.getByText("Thanh toán lỗi")).toBeInTheDocument();
+    expect(screen.getAllByText("Đã thanh toán").length).toBeGreaterThan(0);
+    expect(screen.getByText("Đã khóa")).toBeInTheDocument();
+    expect(screen.getAllByText(/1.000.000/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/4.500.000/).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ["draft", { payDisabled: true, payoutVisible: false, lockDisabled: true }],
+    ["finalized", { payDisabled: false, payoutVisible: true, lockDisabled: true }],
+    ["paying", { payDisabled: false, payoutVisible: true, lockDisabled: true }],
+    ["paid", { payDisabled: true, payoutVisible: false, lockDisabled: false }],
+    ["locked", { payDisabled: true, payoutVisible: false, lockDisabled: true }],
+  ])("enables actions according to period status %s", (status, expected) => {
+    usePayroll.mockReturnValue(hookForPeriodStatus(status));
+
+    render(<PayrollManagement />);
+
+    expect(screen.getAllByRole("checkbox")[1].disabled).toBe(expected.payDisabled);
+    expect(screen.getByTestId("full-period-payroll-paid-open").disabled).toBe(expected.payDisabled);
+    expect(screen.getByText("Khóa kỳ").disabled).toBe(expected.lockDisabled);
+    if (expected.payoutVisible) expect(screen.getByText("Tạo payout")).toBeInTheDocument();
+    else expect(screen.queryByText("Tạo payout")).not.toBeInTheDocument();
+  });
+
+  it("submits full-period payment with backend batch result including processingCount", async () => {
+    const batchMarkPayrollPaid = vi.fn().mockResolvedValue({
+      data: { batchMarkPayrollPaid: { successCount: 1, processingCount: 2, failedCount: 1, errors: [{ employeeId: "emp-2", code: "EMPLOYEE_BANK_ACCOUNT_NOT_VERIFIED", message: "Need verified bank" }] } },
+    });
+    usePayroll.mockReturnValue(hookForPeriodStatus("finalized", { batchMarkPayrollPaid }));
+
+    render(<PayrollManagement />);
+    fireEvent.click(screen.getByText("Thanh toán toàn bộ kỳ"));
+    fireEvent.click(screen.getByTestId("batch-payroll-paid-submit"));
+
+    await waitFor(() => expect(batchMarkPayrollPaid).toHaveBeenCalledWith(expect.objectContaining({ employeeIds: [] })));
+    expect(screen.getByTestId("batch-payroll-paid-result")).toHaveTextContent("Thành công: 1");
+    expect(screen.getByTestId("batch-payroll-paid-result")).toHaveTextContent("Đang xử lý: 2");
+    expect(screen.getByTestId("batch-payroll-paid-result")).toHaveTextContent("Lỗi: 1");
+    expect(screen.getByText(/EMPLOYEE_BANK_ACCOUNT_NOT_VERIFIED/)).toBeInTheDocument();
+  });
+
+  it("opens bank account/source account modals and does not render raw account after save", async () => {
+    const upsertEmployeeBankAccount = vi.fn().mockResolvedValue({ data: { upsertEmployeeBankAccount: { accountNumberMasked: "****6789" } } });
+    const verifyEmployeeBankAccount = vi.fn().mockResolvedValue({});
+    const upsertRestaurantPayoutAccount = vi.fn().mockResolvedValue({ data: { upsertRestaurantPayoutAccount: { accountNumberMasked: "****2222" } } });
+    usePayroll.mockReturnValue(hookForPeriodStatus("finalized", { upsertEmployeeBankAccount, verifyEmployeeBankAccount, upsertRestaurantPayoutAccount }));
+
+    render(<PayrollManagement />);
+    fireEvent.click(screen.getByText("Tài khoản NH"));
+    expect(screen.getByTestId("employee-bank-account-modal")).toBeInTheDocument();
+    fireEvent.change(screen.getByText("Số tài khoản").parentElement.querySelector("input"), { target: { value: "123456789" } });
+    fireEvent.click(screen.getByText("Lưu & xác minh"));
+    await waitFor(() => expect(upsertEmployeeBankAccount).toHaveBeenCalledWith(expect.objectContaining({ accountNumber: "123456789" })));
+    expect(verifyEmployeeBankAccount).toHaveBeenCalledWith(expect.objectContaining({ verificationStatus: "verified" }));
+    await waitFor(() => expect(screen.queryByTestId("employee-bank-account-modal")).not.toBeInTheDocument());
+    expect(screen.queryByDisplayValue("123456789")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("🏦 Tài khoản nguồn"));
+    expect(screen.getByTestId("restaurant-payout-account-modal")).toBeInTheDocument();
+    const accountInputs = screen.getByTestId("restaurant-payout-account-modal").querySelectorAll("input");
+    fireEvent.change(accountInputs[3], { target: { value: "9999000011112222" } });
+    fireEvent.click(screen.getByText("Lưu tài khoản nguồn"));
+    await waitFor(() => expect(upsertRestaurantPayoutAccount).toHaveBeenCalledWith(expect.objectContaining({ accountNumber: "9999000011112222", payoutEnabled: true })));
+    await waitFor(() => expect(screen.queryByTestId("restaurant-payout-account-modal")).not.toBeInTheDocument());
+    expect(screen.queryByDisplayValue("9999000011112222")).not.toBeInTheDocument();
+  });
+
+  it("creates payout, displays processing/failed states, and supports retry/cancel controls", async () => {
+    const createPayrollPayout = vi.fn().mockResolvedValueOnce({ data: { createPayrollPayout: { id: "payout-1", status: "processing", failureReason: "" } } })
+      .mockResolvedValueOnce({ data: { createPayrollPayout: { id: "payout-2", status: "failed", failureReason: "Mock payout failed" } } });
+    const retryPayrollPayout = vi.fn().mockResolvedValue({ data: { retryPayrollPayout: { id: "payout-2", status: "success" } } });
+    const cancelPayrollPayout = vi.fn().mockResolvedValue({ data: { cancelPayrollPayout: { id: "payout-1", status: "cancelled" } } });
+    usePayroll.mockReturnValue(hookForPeriodStatus("finalized", { createPayrollPayout, retryPayrollPayout, cancelPayrollPayout }));
+
+    render(<PayrollManagement />);
+    fireEvent.click(screen.getByText("Tạo payout"));
+    fireEvent.click(screen.getByText("Xác nhận payout"));
+    await waitFor(() => expect(createPayrollPayout).toHaveBeenCalled());
+    expect(screen.getByText(/Trạng thái payout:/)).toHaveTextContent("processing");
+    fireEvent.click(screen.getByText("Hủy payout"));
+    await waitFor(() => expect(cancelPayrollPayout).toHaveBeenCalledWith(expect.objectContaining({ payoutId: "payout-1", reason: "Hủy theo yêu cầu" })));
+
+    fireEvent.click(screen.getByText("Xác nhận payout"));
+    await waitFor(() => expect(screen.getByText(/Trạng thái payout:/)).toHaveTextContent("failed"));
+    fireEvent.click(screen.getByText("Retry payout"));
+    await waitFor(() => expect(retryPayrollPayout).toHaveBeenCalledWith(expect.objectContaining({ payoutId: "payout-2" })));
+  });
+
+  it("disables payout action for unverified bank accounts and shows provider-not-configured error", async () => {
+    const createPayrollPayout = vi.fn().mockRejectedValue(new Error("PAYROLL_PAYOUT_PROVIDER_NOT_CONFIGURED"));
+    usePayroll.mockReturnValue(hookForPeriodStatus("finalized", {
+      createPayrollPayout,
+      payrollItems: [payrollItemWithStatus("pending_payment", { bankAccountVerificationStatus: "pending" })],
+    }));
+
+    const { rerender } = render(<PayrollManagement />);
+    expect(screen.getByText("Tạo payout")).toBeDisabled();
+
+    usePayroll.mockReturnValue(hookForPeriodStatus("finalized", { createPayrollPayout }));
+    rerender(<PayrollManagement />);
+    fireEvent.click(screen.getByText("Tạo payout"));
+    fireEvent.click(screen.getByText("Xác nhận payout"));
+    expect(await screen.findByText(/Nhà cung cấp payout\/chuyển khoản chưa được cấu hình/)).toBeInTheDocument();
+  });
+
+  it("renders row-level retry/cancel payout actions from latest payout status", async () => {
+    const retryPayrollPayout = vi.fn().mockResolvedValue({ data: { retryPayrollPayout: { id: "payout-failed", status: "success" } } });
+    const cancelPayrollPayout = vi.fn().mockResolvedValue({ data: { cancelPayrollPayout: { id: "payout-processing", status: "cancelled" } } });
+    usePayroll.mockReturnValue(hookForPeriodStatus("finalized", {
+      retryPayrollPayout,
+      cancelPayrollPayout,
+      payrollItems: [
+        payrollItemWithStatus("payment_failed", { id: "emp-failed", latestPayout: { id: "payout-failed", status: "failed" } }),
+        payrollItemWithStatus("processing_payment", { id: "emp-processing", latestPayout: { id: "payout-processing", status: "processing" } }),
+        payrollItemWithStatus("paid", { id: "emp-success", latestPayout: { id: "payout-success", status: "success" } }),
+      ],
+    }));
+
+    render(<PayrollManagement />);
+    fireEvent.click(screen.getByText("Retry payout"));
+    fireEvent.click(screen.getByText("Hủy payout"));
+
+    await waitFor(() => expect(retryPayrollPayout).toHaveBeenCalledWith(expect.objectContaining({ payoutId: "payout-failed" })));
+    await waitFor(() => expect(cancelPayrollPayout).toHaveBeenCalledWith(expect.objectContaining({ payoutId: "payout-processing" })));
+    expect(screen.queryByText("payout-success")).not.toBeInTheDocument();
   });
 });

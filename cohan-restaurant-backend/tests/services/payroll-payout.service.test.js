@@ -60,6 +60,7 @@ beforeEach(() => {
   modelMocks.PayrollPayoutBatch.findByIdAndUpdate.mockResolvedValue({});
   paymentService.markPayrollItemPaid.mockResolvedValue({ id: ids.employeeId, status: "paid" });
 
+
 });
 
 describe("payroll payout service", () => {
@@ -142,6 +143,54 @@ describe("payroll payout service", () => {
     expect(cancelled.status).toBe("cancelled");
     expect(saveCancel).toHaveBeenCalled();
     expect(modelMocks.PayrollItem.findByIdAndUpdate).toHaveBeenCalledWith(ids.itemId, { $set: { status: "pending_payment" } });
+  });
+
+
+  it("decrypts legacy base64 account values and declares unique default account index", async () => {
+    const { decryptAccountNumber } = await import("../../src/services/payroll/payrollPayout.service.js");
+    const legacy = Buffer.from("1234567890", "utf8").toString("base64");
+    expect(decryptAccountNumber(legacy)).toBe("1234567890");
+
+    const EmployeeBankAccountModel = (await import("../../models/employee-bank-account.model.js")).default;
+    expect(EmployeeBankAccountModel.schema.indexes()).toEqual(expect.arrayContaining([
+      [{ employeeId: 1, restaurantId: 1, isDefault: 1 }, expect.objectContaining({ unique: true, partialFilterExpression: { isDefault: true } })],
+    ]));
+  });
+
+  it("marks failed/cancelled apply results without creating payment and never reverts success", async () => {
+    const failedSave = vi.fn(async function save() { return this; });
+    modelMocks.PayrollPayout.findOne.mockReturnValueOnce({ ...payoutDoc({ status: "processing" }), save: failedSave });
+    modelMocks.PayrollPayout.findById.mockReturnValueOnce(leanChain(payoutDoc({ status: "failed", failureReason: "bank rejected" })));
+    const { applyPayrollPayoutResult } = await import("../../src/services/payroll/payrollPayout.service.js");
+    const failed = await applyPayrollPayoutResult({ payoutId: ids.payoutId, status: "failed", failureReason: "bank rejected", actorId: ids.actorId });
+    expect(failed.status).toBe("failed");
+    expect(paymentService.markPayrollItemPaid).not.toHaveBeenCalled();
+    expect(modelMocks.PayrollItem.findByIdAndUpdate).toHaveBeenCalledWith(ids.itemId, { $set: { status: "payment_failed" } });
+
+    const cancelSave = vi.fn(async function save() { return this; });
+    modelMocks.PayrollPayout.findOne.mockReturnValueOnce({ ...payoutDoc({ status: "processing" }), save: cancelSave });
+    modelMocks.PayrollPayout.findById.mockReturnValueOnce(leanChain(payoutDoc({ status: "cancelled", failureReason: "cancelled" })));
+    const cancelled = await applyPayrollPayoutResult({ payoutId: ids.payoutId, status: "cancelled", failureReason: "cancelled", actorId: ids.actorId });
+    expect(cancelled.status).toBe("cancelled");
+    expect(modelMocks.PayrollItem.findByIdAndUpdate).toHaveBeenCalledWith(ids.itemId, { $set: { status: "pending_payment" } });
+
+    const successDoc = { ...payoutDoc({ status: "success" }), save: vi.fn() };
+    modelMocks.PayrollPayout.findOne.mockReturnValueOnce(successDoc);
+    const stillSuccess = await applyPayrollPayoutResult({ payoutId: ids.payoutId, status: "failed", failureReason: "late webhook" });
+    expect(stillSuccess.status).toBe("success");
+    expect(successDoc.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects retry/cancel for success payout and provider-mode cancel", async () => {
+    const { retryPayrollPayout, cancelPayrollPayout } = await import("../../src/services/payroll/payrollPayout.service.js");
+    modelMocks.PayrollPayout.findById.mockReturnValueOnce(leanChain(payoutDoc({ status: "success" })));
+    await expect(retryPayrollPayout({ payoutId: ids.payoutId, idempotencyKey: "retry-success" })).rejects.toThrow("PAYROLL_PAYOUT_RETRY_NOT_ALLOWED");
+
+    modelMocks.PayrollPayout.findById.mockReturnValueOnce({ ...payoutDoc({ status: "success" }), save: vi.fn() });
+    await expect(cancelPayrollPayout({ payoutId: ids.payoutId, reason: "nope" })).rejects.toThrow("PAYROLL_PAYOUT_CANCEL_NOT_ALLOWED");
+
+    process.env.PAYROLL_PAYOUT_MODE = "provider";
+    await expect(cancelPayrollPayout({ payoutId: ids.payoutId, reason: "provider cancel" })).rejects.toThrow("PAYROLL_PAYOUT_CANCEL_NOT_SUPPORTED");
   });
 
 });

@@ -547,6 +547,7 @@ const PayrollManagement = () => {
   const [sourceAccountForm, setSourceAccountForm] = useState({ accountName: "", bankName: "", bankCode: "", accountNumber: "", provider: "manual", status: "active", payoutEnabled: true, dailyLimit: "", perTransactionLimit: "" });
   const [payoutModal, setPayoutModal] = useState(null);
   const [payoutForm, setPayoutForm] = useState({ method: "bank_transfer", note: "", referenceCode: "" });
+  const [payoutCancelReason, setPayoutCancelReason] = useState("Hủy theo yêu cầu");
   const [payoutResult, setPayoutResult] = useState(null);
   const [financialSetupLoading, setFinancialSetupLoading] = useState(false);
   const [financialSetupError, setFinancialSetupError] = useState("");
@@ -609,6 +610,8 @@ const PayrollManagement = () => {
     markPayrollItemPaid,
     batchMarkPayrollPaid,
     createPayrollPayout,
+    retryPayrollPayout,
+    cancelPayrollPayout,
     upsertEmployeeBankAccount,
     verifyEmployeeBankAccount,
     upsertRestaurantPayoutAccount,
@@ -675,6 +678,9 @@ const PayrollManagement = () => {
       draft: { label: "Nháp", class: "draft" },
       finalized: { label: "Đã chốt", class: "info" },
       paying: { label: "Đang chi trả", class: "info" },
+      pending_payment: { label: "Chờ thanh toán", class: "info" },
+      processing_payment: { label: "Đang xử lý", class: "info" },
+      payment_failed: { label: "Thanh toán lỗi", class: "danger" },
       paid: { label: "Đã thanh toán", class: "success" },
       locked: { label: "Đã khóa", class: "warning" },
     };
@@ -1039,8 +1045,49 @@ const PayrollManagement = () => {
   const openPayoutModal = (item) => {
     setPayoutResult(null);
     setFinancialSetupError("");
+    setPayoutCancelReason("Hủy theo yêu cầu");
     setPayoutModal(item);
     setPayoutForm({ method: "bank_transfer", note: "", referenceCode: "" });
+  };
+
+  const isEmployeeBankVerifiedForPayout = (item) => {
+    const status = item?.bankAccountVerificationStatus || item?.employeeBankAccount?.verificationStatus || item?.bankAccount?.verificationStatus || "verified";
+    return status === "verified";
+  };
+
+  const handleRetryPayout = async (payout = payoutResult) => {
+    if (!payout?.id) return;
+    setFinancialSetupLoading(true);
+    setFinancialSetupError("");
+    try {
+      const result = await retryPayrollPayout({ payoutId: payout.id, idempotencyKey: `ui-retry-payout:${payout.id}:${Date.now()}` });
+      setPayoutResult(result?.data?.retryPayrollPayout || result);
+      await Promise.all([refetchPayrollPeriodDetail?.() || refetchDetail?.(), refetchPayrollPeriods?.() || refetchPeriods?.()].filter(Boolean));
+    } catch (err) {
+      setFinancialSetupError(getPayrollActionErrorMessage(err, "Không thể retry payout."));
+    } finally {
+      setFinancialSetupLoading(false);
+    }
+  };
+
+  const handleCancelPayout = async (payout = payoutResult) => {
+    if (!payout?.id) return;
+    const reason = payoutCancelReason.trim();
+    if (!reason) {
+      setFinancialSetupError("Vui lòng nhập lý do hủy payout.");
+      return;
+    }
+    setFinancialSetupLoading(true);
+    setFinancialSetupError("");
+    try {
+      const result = await cancelPayrollPayout({ payoutId: payout.id, reason });
+      setPayoutResult(result?.data?.cancelPayrollPayout || result);
+      await Promise.all([refetchPayrollPeriodDetail?.() || refetchDetail?.(), refetchPayrollPeriods?.() || refetchPeriods?.()].filter(Boolean));
+    } catch (err) {
+      setFinancialSetupError(getPayrollActionErrorMessage(err, "Không thể hủy payout."));
+    } finally {
+      setFinancialSetupLoading(false);
+    }
   };
 
   const submitPayrollPayout = async () => {
@@ -1700,10 +1747,18 @@ const PayrollManagement = () => {
                           <button
                             className="btn btn-primary"
                             type="button"
+                            disabled={!isEmployeeBankVerifiedForPayout(item)}
+                            title={!isEmployeeBankVerifiedForPayout(item) ? "Tài khoản nhận lương chưa được xác minh" : ""}
                             onClick={() => openPayoutModal(item)}
                           >
                             Tạo payout
                           </button>
+                        )}
+                        {payrollUiPermissions.canPayout && item.latestPayout?.status === "failed" && (
+                          <button className="btn btn-white" type="button" onClick={() => handleRetryPayout(item.latestPayout)}>Retry payout</button>
+                        )}
+                        {payrollUiPermissions.canPayout && ["pending", "processing"].includes(item.latestPayout?.status) && (
+                          <button className="btn btn-white" type="button" onClick={() => handleCancelPayout(item.latestPayout)}>Hủy payout</button>
                         )}
                       </td>
                     </tr>
@@ -1761,7 +1816,8 @@ const PayrollManagement = () => {
                   data-testid="batch-payroll-paid-result"
                 >
                   Thành công:{" "}
-                  <strong>{batchPaymentResult.successCount || 0}</strong> | Lỗi:{" "}
+                  <strong>{batchPaymentResult.successCount || 0}</strong> | Đang xử lý:{" "}
+                  <strong>{batchPaymentResult.processingCount || 0}</strong> | Lỗi:{" "}
                   <strong>{batchPaymentResult.failedCount || 0}</strong>
                   {!!batchPaymentResult.errors?.length && (
                     <ul>
@@ -1906,7 +1962,18 @@ const PayrollManagement = () => {
             <div className="modal-body">
               <p>Nhân viên: <strong>{payoutModal.name}</strong>. Số tiền còn lại: <strong>{formatCurrency(payoutModal.remainingAmount ?? payoutModal.netSalary)}</strong>.</p>
               {financialSetupError && <div className="settings-modal-state settings-modal-state--error">{financialSetupError}</div>}
-              {payoutResult && <div className="settings-modal-state">Trạng thái payout: <strong>{payoutResult.status}</strong>{payoutResult.failureReason ? ` - ${payoutResult.failureReason}` : ""}</div>}
+              {payoutResult && (
+                <div className="settings-modal-state">
+                  Trạng thái payout: <strong>{payoutResult.status}</strong>{payoutResult.failureReason ? ` - ${payoutResult.failureReason}` : ""}
+                  {payoutResult.status === "failed" && <button className="btn btn-white" type="button" disabled={financialSetupLoading} onClick={() => handleRetryPayout()}>Retry payout</button>}
+                  {["pending", "processing"].includes(payoutResult.status) && (
+                    <div className="settings-form-grid">
+                      <label className="settings-field"><span>Lý do hủy</span><input value={payoutCancelReason} onChange={(e) => setPayoutCancelReason(e.target.value)} /></label>
+                      <button className="btn btn-white" type="button" disabled={financialSetupLoading} onClick={() => handleCancelPayout()}>Hủy payout</button>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="settings-form-grid">
                 <label className="settings-field"><span>Phương thức</span><select value={payoutForm.method} onChange={(e) => setPayoutForm((prev) => ({ ...prev, method: e.target.value }))}><option value="bank_transfer">Chuyển khoản qua provider</option><option value="other">Ghi nhận thanh toán thủ công</option></select></label>
                 <label className="settings-field"><span>Mã tham chiếu</span><input value={payoutForm.referenceCode} onChange={(e) => setPayoutForm((prev) => ({ ...prev, referenceCode: e.target.value }))} /></label>
