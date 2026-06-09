@@ -1,139 +1,20 @@
 @use "sass:map";
-@use "sass:color";
 
-// --- Variables ---
-$bg-white: #ffffff;
-$text-main: #111827;
-$text-sub: #6b7280;
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-  0 2px 4px -1px rgba(0, 0, 0, 0.06);
-$radius-lg: 16px;
+$surface: #fffdf9;
+$white: #ffffff;
+$ink: #22201d;
+$text: #3c3833;
+$muted: #756f66;
+$line: #e6ded3;
+$line-strong: #d7cbbd;
+$accent: #9a7048;
+$shadow: 0 16px 34px rgba(74, 57, 37, 0.08);
+$shadow-hover: 0 22px 44px rgba(74, 57, 37, 0.11);
 
-// Define Color Schemes (Background & Text)
 $colors: (
   "green": (
-    bg: #dcfce7,
-    text: #166534,
+    bg: #e9f3ed,
+    text: #3f7d5a,
+    line: #b8d4c1,
   ),
-  // Emerald
-  "blue":
-    (
-      bg: #dbeafe,
-      text: #1e40af,
-    ),
-  // Blue
-  "purple":
-    (
-      bg: #f3e8ff,
-      text: #6b21a8,
-    ),
-  // Purple
-  "orange":
-    (
-      bg: #ffedd5,
-      text: #9a3412,
-    )
-    // Orange,,
-);
-
-.stats-overview-grid {
-  display: grid;
-  // Grid 4 cột trên desktop, tự động xuống dòng
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  width: 100%;
-
-  // Tablet: 2 cột
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  // Mobile: 1 cột (hoặc 2 cột nhỏ tùy sở thích, ở đây để 2 cho gọn)
-  @media (max-width: 640px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-}
-
-.stat-card-premium {
-  background: $bg-white;
-  border-radius: $radius-lg;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: $shadow-sm;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(0, 0, 0, 0.03); // Viền siêu mỏng
-
-  // Hiệu ứng Hover: Nổi lên nhẹ
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: $shadow-md;
-  }
-
-  // --- Phần Text ---
-  .stat-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    .stat-label {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: $text-sub;
-    }
-
-    .stat-value {
-      font-family: "Inter", sans-serif; // Hoặc font số đẹp
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: $text-main;
-      margin: 0;
-      line-height: 1.2;
-
-      // Mobile font size nhỏ hơn chút
-      @media (max-width: 640px) {
-        font-size: 1.25rem;
-      }
-    }
-  }
-
-  // --- Phần Icon ---
-  .stat-icon-wrapper {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0; // Không bị co lại khi màn hình nhỏ
-
-    // Mobile icon nhỏ hơn
-    @media (max-width: 640px) {
-      width: 40px;
-      height: 40px;
-
-      svg {
-        width: 20px;
-        height: 20px;
-      }
-    }
-  }
-
-  // --- Generate Color Classes ---
-  // Vòng lặp tạo ra các class .green, .blue...
-  @each $name, $map in $colors {
-    &.#{$name} {
-      .stat-icon-wrapper {
-        background-color: map.get($map, bg);
-        color: map.get($map, text);
-      }
-
-      // Optional: Border trái màu highlight để nhấn mạnh
-      border-left: 4px solid map.get($map, bg);
-    }
-  }
-}
+  "
