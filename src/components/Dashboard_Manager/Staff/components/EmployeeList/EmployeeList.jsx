@@ -121,9 +121,10 @@ const EmployeeList = ({
           <Search className="search-icon" size={18} />
           <input
             type="text"
-            placeholder="Tìm theo tên, SĐT, email, mã, chức vụ..."
+            placeholder="Tìm tên, SĐT, email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Tìm nhân viên theo tên, số điện thoại hoặc email"
           />
         </div>
       </div>
@@ -131,7 +132,7 @@ const EmployeeList = ({
       {/* 2. FILTERS TOOLBAR */}
       <div className="filters-toolbar">
         {/* Tabs Status */}
-        <div className="status-tabs">
+        <div className="status-tabs" aria-label="Lọc theo trạng thái lao động">
           {[
             { key: "all", label: "Tất cả" },
             { key: "WORKING", label: "Đang làm" },
@@ -142,6 +143,7 @@ const EmployeeList = ({
               key={tab.key}
               className={`tab-btn ${employmentStatusFilter === tab.key ? "active" : ""}`}
               onClick={() => setEmploymentStatusFilter(tab.key)}
+              type="button"
             >
               {tab.label}
             </button>
@@ -155,8 +157,9 @@ const EmployeeList = ({
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
             className="custom-select"
+            aria-label="Lọc theo bộ phận"
           >
-            <option value="all">Tất cả bộ phận</option>
+            <option value="all">Bộ phận</option>
             {DEPARTMENT_OPTIONS.map((department) => (
               <option key={department.value} value={department.value}>
                 {department.label}
@@ -172,7 +175,7 @@ const EmployeeList = ({
             className="custom-select"
             aria-label="Lọc theo vai trò"
           >
-            <option value="all">Tất cả vai trò</option>
+            <option value="all">Vai trò</option>
             {roleList.map((role) => (
               <option key={role.id || role.slug} value={role.id || role.slug}>
                 {role.name || role.slug}
@@ -189,7 +192,7 @@ const EmployeeList = ({
             className="custom-select"
             aria-label="Lọc theo trạng thái tài khoản"
           >
-            <option value="all">Tất cả tài khoản</option>
+            <option value="all">Tài khoản</option>
             <option value="active">Đang hoạt động</option>
             <option value="blocked">Bị khóa</option>
             <option value="pending">Chờ xác minh</option>
@@ -204,7 +207,7 @@ const EmployeeList = ({
             className="custom-select"
             aria-label="Lọc theo xác minh"
           >
-            <option value="all">Tất cả xác minh</option>
+            <option value="all">Xác minh</option>
             <option value="verified">Đã xác minh</option>
             <option value="pending">Chờ xác minh</option>
             <option value="unverified">Chưa xác minh</option>
@@ -278,13 +281,15 @@ const EmployeeList = ({
       {totalPages > 1 && (
         <div className="list-footer">
           <span className="page-info">
-            Trang <strong>{currentPage}</strong> / {totalPages}
+            Trang {currentPage} / {totalPages}
           </span>
-          <div className="pagination-controls">
+          <div className="pagination-controls" aria-label="Chuyển trang danh sách nhân viên">
             <button
               className="pagi-btn"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              type="button"
+              aria-label="Trang trước"
             >
               <ChevronLeft size={18} />
             </button>
@@ -292,6 +297,8 @@ const EmployeeList = ({
               className="pagi-btn"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              type="button"
+              aria-label="Trang sau"
             >
               <ChevronRight size={18} />
             </button>
