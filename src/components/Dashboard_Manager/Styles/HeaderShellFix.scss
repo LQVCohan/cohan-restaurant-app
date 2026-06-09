@@ -1,22 +1,28 @@
 .header {
-  --manager-header-inline-padding: clamp(0.72rem, 1.05vw, 1rem);
+  --manager-header-inline-padding: clamp(0.95rem, 1.18vw, 1.15rem);
 }
 
+.manager-layout__header .header .header__content,
 .header .header__content {
-  position: relative;
-  max-width: none;
-  margin: 0;
-  padding-inline: var(--manager-header-inline-padding);
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-inline: var(--manager-header-inline-padding) !important;
 }
 
+.manager-layout__header .header .header__left,
 .header .header__left {
   min-width: min(34vw, 21rem);
   max-width: min(38vw, 26rem);
   flex: 0 1 auto;
+  margin-inline-start: 0 !important;
 }
 
 .header .page-info {
   min-width: 0;
+  padding-inline-start: 0.12rem;
 }
 
 .header .page-title,
@@ -33,7 +39,7 @@
   top: 50%;
   width: clamp(18rem, 28vw, 31.25rem);
   max-width: calc(100% - 40rem);
-  margin: 0;
+  margin: 0 !important;
   transform: translate(-50%, -50%);
 }
 
@@ -42,12 +48,23 @@
   min-width: max-content;
 }
 
+@media (min-width: 769px) {
+  .manager-layout:not(.sidebar-open) .manager-layout__header .header .header__content {
+    /* Collapsed rail handle sits near the sidebar edge; keep a small natural gap to the title. */
+    padding-left: clamp(1rem, 1.25vw, 1.2rem) !important;
+  }
+
+  .manager-layout.sidebar-open .manager-layout__header .header .header__content {
+    padding-left: clamp(1.05rem, 1.3vw, 1.25rem) !important;
+  }
+}
+
 @media (max-width: 1180px) {
   .header .header__center {
     position: static;
     width: min(34vw, 24rem);
     max-width: 24rem;
-    margin: 0 1rem;
+    margin: 0 1rem !important;
     transform: none;
   }
 
@@ -59,7 +76,7 @@
 
 @media (max-width: 768px) {
   .header .header__content {
-    padding-inline: 0.85rem;
+    padding-inline: 0.85rem !important;
   }
 
   .header .header__left {
@@ -70,6 +87,6 @@
   .header .header__center {
     width: min(38vw, 18rem);
     max-width: 18rem;
-    margin: 0 0.65rem;
+    margin: 0 0.65rem !important;
   }
 }
