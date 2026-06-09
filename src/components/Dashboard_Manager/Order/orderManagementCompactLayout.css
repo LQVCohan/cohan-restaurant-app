@@ -1,0 +1,200 @@
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-wrapper {
+  width: min(calc(100% - clamp(32px, 6vw, 96px)), 980px);
+  max-width: 980px;
+  padding-top: 12px;
+  gap: 10px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header {
+  display: grid;
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-left {
+  min-width: 0;
+  padding-right: 12px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-right {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-controls-row {
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-search {
+  height: 38px;
+  min-width: 260px;
+  flex: 1 1 360px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-select,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-icon-btn,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-btn {
+  height: 38px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-select {
+  min-width: 150px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .mph-eyebrow {
+  font-size: 0.64rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-title {
+  margin: 2px 0 4px;
+  font-size: clamp(1.18rem, 1.45vw, 1.55rem);
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-title__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-subtitle {
+  max-width: 18rem;
+  font-size: 0.74rem;
+  line-height: 1.32;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-panel {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-card {
+  min-height: 48px;
+  padding: 8px 10px;
+  border-radius: 16px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-card__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-card__label {
+  font-size: 0.68rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-card__value {
+  font-size: 1.25rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar {
+  padding: 10px;
+  border-radius: 18px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar__filters {
+  min-width: 0;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-filter-group {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(125px, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-field__label {
+  margin-bottom: 4px;
+  font-size: 0.64rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-select-input,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-btn-outline,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-btn-primary {
+  min-height: 36px;
+  height: 36px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar__actions {
+  align-items: end;
+  gap: 7px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-content {
+  padding-top: 2px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-grid {
+  grid-template-columns: repeat(auto-fit, minmax(340px, 390px));
+  justify-content: center;
+  gap: 12px;
+  padding-bottom: 32px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-card-wrapper {
+  width: 100%;
+}
+
+@media (max-width: 1180px) {
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-wrapper {
+    width: min(calc(100% - 28px), 980px);
+  }
+}
+
+@media (max-width: 980px) {
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-left {
+    border-right: 0;
+    padding-right: 0;
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-filter-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-wrapper {
+    width: min(calc(100% - 20px), 980px);
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-panel,
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-filter-group,
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar__actions {
+    justify-content: stretch;
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar__actions > * {
+    flex: 1 1 auto;
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
