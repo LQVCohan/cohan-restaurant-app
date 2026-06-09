@@ -22,6 +22,7 @@ import {
   AttendanceCorrectionRequest,
   OvertimeRequest,
   EmployeeBankAccount,
+  PayrollPayout,
   RestaurantPayoutAccount,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
@@ -83,8 +84,11 @@ import {
 } from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import {
+  applyPayrollPayoutResult as applyPayrollPayoutResultService,
+  cancelPayrollPayout as cancelPayrollPayoutService,
   createPayrollBatchPayout as createPayrollBatchPayoutService,
   createPayrollPayout as createPayrollPayoutService,
+  retryPayrollPayout as retryPayrollPayoutService,
   upsertEmployeeBankAccount as upsertEmployeeBankAccountService,
   upsertRestaurantPayoutAccount as upsertRestaurantPayoutAccountService,
   verifyEmployeeBankAccount as verifyEmployeeBankAccountService,
@@ -3443,6 +3447,41 @@ const mutationResolvers = {
     });
     await logPayrollEvent({ ctx, restaurantId: period.restaurantId, verb: "payroll.payout.create", objectKind: "PayrollPeriod", objectId: period._id, meta: { batchId: result.batch?.id, successCount: result.successCount, failedCount: result.failedCount } });
     return result;
+  },
+
+  retryPayrollPayout: async (_, { payoutId, idempotencyKey }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    const existing = await PayrollPayout.findById(payoutId).lean();
+    if (!existing) throw new Error("PAYROLL_PAYOUT_NOT_FOUND");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+    const payout = await retryPayrollPayoutService({ payoutId, idempotencyKey, actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id) });
+    await logPayrollEvent({ ctx, restaurantId: payout.restaurantId, verb: "payroll.payout.retry", objectKind: "PayrollPayout", objectId: payout.id, meta: { status: payout.status, idempotencyKey } });
+    return payout;
+  },
+
+  cancelPayrollPayout: async (_, { payoutId, reason }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    const existing = await PayrollPayout.findById(payoutId).lean();
+    if (!existing) throw new Error("PAYROLL_PAYOUT_NOT_FOUND");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+    const payout = await cancelPayrollPayoutService({ payoutId, reason, actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id) });
+    await logPayrollEvent({ ctx, restaurantId: payout.restaurantId, verb: "payroll.payout.cancel", objectKind: "PayrollPayout", objectId: payout.id, meta: { reason } });
+    return payout;
+  },
+
+  applyPayrollPayoutResult: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    assertPayrollPermission(ctx, "payroll.payout.execute");
+    const existing = input.payoutId
+      ? await PayrollPayout.findById(input.payoutId).lean()
+      : await PayrollPayout.findOne({ providerTransactionId: input.providerTransactionId }).lean();
+    if (!existing) throw new Error("PAYROLL_PAYOUT_NOT_FOUND");
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+    const payout = await applyPayrollPayoutResultService({ ...input, rawPayload: input.rawPayload || null, actorId: payrollToObjectId(ctx?.user?.id || ctx?.user?._id) });
+    await logPayrollEvent({ ctx, restaurantId: payout.restaurantId, verb: payout.status === "success" ? "payroll.payout.success" : payout.status === "failed" ? "payroll.payout.failed" : "payroll.payout.update", objectKind: "PayrollPayout", objectId: payout.id, meta: { status: payout.status, providerTransactionId: payout.providerTransactionId } });
+    return payout;
   },
 
   upsertEmployeeBankAccount: async (_, { input }, ctx) => {

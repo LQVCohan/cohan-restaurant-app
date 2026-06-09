@@ -230,6 +230,11 @@ export async function markPayrollItemPaid({
     const existingPayment = await PayrollPayment.findOne({ idempotencyKey }).lean();
     if (existingPayment) return mapPayrollDocToGql(await PayrollItem.findById(item._id).lean());
   }
+  const payoutId = toObjectId(input.payoutId);
+  if (payoutId) {
+    const existingPayoutPayment = await PayrollPayment.findOne({ payoutId }).lean();
+    if (existingPayoutPayment) return mapPayrollDocToGql(await PayrollItem.findById(item._id).lean());
+  }
   if (String(period.status) === "finalized") {
     await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { status: "paying" } });
     period.status = "paying";
@@ -246,6 +251,7 @@ export async function markPayrollItemPaid({
     referenceCode: input.referenceCode || "",
     createdBy: actorId,
     idempotencyKey,
+    payoutId,
   });
 
   await createPayrollCashflow({

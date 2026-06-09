@@ -291,39 +291,18 @@ export const QUERY_MY_PAYSLIPS = gql`
 export const QUERY_MY_PAYSLIP = gql`
   query MyPayslip($periodId: ID!) {
     myPayslip(periodId: $periodId) {
-      id
-      payrollItemId
-      periodId
-      periodName
-      periodStartDate
-      periodEndDate
-      periodStatus
-      periodFinalizedAt
-      name
-      code
-      role
-      department
-      baseSalary
-      actualWorkDays
-      totalHours
-      overtimeNormalHours
-      overtimeWeekendHours
-      overtimeHolidayHours
-      nightHours
-      allowance
-      bonus
-      deduction
-      advance
-      insuranceTotal
-      personalIncomeTax
-      totalIncome
-      totalDeduction
-      netSalary
-      paidAmount
+      period { id name startDate endDate status finalizedAt lockedAt paidAt stats { totalPayroll paidAmount remaining progress } }
+      employee { id name code role department avatar }
+      item {
+        id payrollItemId name code role department baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary paidAmount remainingAmount status paidAt warningMessages
+      }
+      breakdown {
+        baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary
+      }
+      payments { id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode payoutId createdBy createdAt }
       remainingAmount
-      status
-      paidAt
-      warningMessages
+      canMarkPaid
+      canEdit
     }
   }
 `;
@@ -418,6 +397,88 @@ export const MUT_BATCH_MARK_PAYROLL_PAID = gql`
   }
 `;
 
+export const MUT_CREATE_PAYROLL_PAYOUT = gql`
+  mutation CreatePayrollPayout($input: PayrollPayoutInput!) {
+    createPayrollPayout(input: $input) {
+      id
+      status
+      amount
+      provider
+      failureReason
+      providerTransactionId
+      paidAt
+      employeeId
+      payrollItemId
+    }
+  }
+`;
+
+export const MUT_RETRY_PAYROLL_PAYOUT = gql`
+  mutation RetryPayrollPayout($payoutId: ID!, $idempotencyKey: String) {
+    retryPayrollPayout(payoutId: $payoutId, idempotencyKey: $idempotencyKey) {
+      id
+      status
+      failureReason
+      retryCount
+    }
+  }
+`;
+
+export const MUT_CANCEL_PAYROLL_PAYOUT = gql`
+  mutation CancelPayrollPayout($payoutId: ID!, $reason: String!) {
+    cancelPayrollPayout(payoutId: $payoutId, reason: $reason) {
+      id
+      status
+      failureReason
+    }
+  }
+`;
+
+export const MUT_UPSERT_EMPLOYEE_BANK_ACCOUNT = gql`
+  mutation UpsertEmployeeBankAccount($input: EmployeeBankAccountInput!) {
+    upsertEmployeeBankAccount(input: $input) {
+      id
+      employeeId
+      accountHolderName
+      bankName
+      bankCode
+      accountNumberMasked
+      accountNumberLast4
+      branchName
+      isDefault
+      verificationStatus
+    }
+  }
+`;
+
+export const MUT_VERIFY_EMPLOYEE_BANK_ACCOUNT = gql`
+  mutation VerifyEmployeeBankAccount($employeeId: ID!, $restaurantId: ID!, $verificationStatus: String = "verified") {
+    verifyEmployeeBankAccount(employeeId: $employeeId, restaurantId: $restaurantId, verificationStatus: $verificationStatus) {
+      id
+      employeeId
+      accountNumberMasked
+      verificationStatus
+    }
+  }
+`;
+
+export const MUT_UPSERT_RESTAURANT_PAYOUT_ACCOUNT = gql`
+  mutation UpsertRestaurantPayoutAccount($input: RestaurantPayoutAccountInput!) {
+    upsertRestaurantPayoutAccount(input: $input) {
+      id
+      accountName
+      bankName
+      bankCode
+      accountNumberMasked
+      status
+      payoutEnabled
+      provider
+      dailyLimit
+      perTransactionLimit
+    }
+  }
+`;
+
 export const MUT_UPDATE_SETTINGS = gql`
   mutation UpdatePayrollSettings($input: PayrollSettingsInput!) {
     updatePayrollSettings(input: $input) {
@@ -485,7 +546,7 @@ export const QUERY_PAYROLL_PAYSLIP = gql`
       breakdown {
         baseSalary actualWorkDays totalHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours allowance bonus deduction advance insuranceTotal personalIncomeTax totalIncome totalDeduction netSalary
       }
-      payments { id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode createdBy createdAt }
+      payments { id periodId restaurantId employeeId payrollItemId amount method paidAt note referenceCode payoutId createdBy createdAt }
       remainingAmount
       canMarkPaid
       canEdit
@@ -541,6 +602,9 @@ export const MUT_DELETE_ADJUSTMENT = gql`
     }
   }
 `;
+
+const noopPayrollMutation = () => Promise.resolve({});
+const safeUseMutation = (...args) => useMutation(...args) || [noopPayrollMutation];
 
 const createPayrollNotReadyError = () => {
   const error = new Error("PAYROLL_PERIOD_NOT_READY");
@@ -613,7 +677,7 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     fetchPolicy: "cache-and-network",
   }) || {};
 
-  const [createPeriod] = useMutation(MUT_CREATE_PERIOD, {
+  const [createPeriod] = safeUseMutation(MUT_CREATE_PERIOD, {
     refetchQueries: [
       {
         query: QUERY_PAYROLL_PERIODS,
@@ -621,17 +685,23 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
       },
     ],
   });
-  const [recalculatePeriod] = useMutation(MUT_RECALC_PERIOD);
-  const [finalizePeriodMutation] = useMutation(MUT_FINALIZE_PERIOD);
-  const [lockPeriod] = useMutation(MUT_LOCK_PERIOD);
-  const [markPaid] = useMutation(MUT_MARK_PAID);
-  const [markPayrollItemPaidMutation] = useMutation(MUT_MARK_PAYROLL_ITEM_PAID);
-  const [batchMarkPayrollPaidMutation] = useMutation(
+  const [recalculatePeriod] = safeUseMutation(MUT_RECALC_PERIOD);
+  const [finalizePeriodMutation] = safeUseMutation(MUT_FINALIZE_PERIOD);
+  const [lockPeriod] = safeUseMutation(MUT_LOCK_PERIOD);
+  const [markPaid] = safeUseMutation(MUT_MARK_PAID);
+  const [markPayrollItemPaidMutation] = safeUseMutation(MUT_MARK_PAYROLL_ITEM_PAID);
+  const [batchMarkPayrollPaidMutation] = safeUseMutation(
     MUT_BATCH_MARK_PAYROLL_PAID,
   );
-  const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
-  const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
-  const [deleteAdjustment] = useMutation(MUT_DELETE_ADJUSTMENT);
+  const [createPayrollPayoutMutation] = safeUseMutation(MUT_CREATE_PAYROLL_PAYOUT);
+  const [retryPayrollPayoutMutation] = safeUseMutation(MUT_RETRY_PAYROLL_PAYOUT);
+  const [cancelPayrollPayoutMutation] = safeUseMutation(MUT_CANCEL_PAYROLL_PAYOUT);
+  const [upsertEmployeeBankAccountMutation] = safeUseMutation(MUT_UPSERT_EMPLOYEE_BANK_ACCOUNT);
+  const [verifyEmployeeBankAccountMutation] = safeUseMutation(MUT_VERIFY_EMPLOYEE_BANK_ACCOUNT);
+  const [upsertRestaurantPayoutAccountMutation] = safeUseMutation(MUT_UPSERT_RESTAURANT_PAYOUT_ACCOUNT);
+  const [updateSettings] = safeUseMutation(MUT_UPDATE_SETTINGS);
+  const [upsertAdjustment] = safeUseMutation(MUT_UPSERT_ADJUSTMENT);
+  const [deleteAdjustment] = safeUseMutation(MUT_DELETE_ADJUSTMENT);
 
   const finalizePeriod = async (options = {}) => {
     const requestedPeriodId = options?.variables?.periodId || effectivePeriodId;
@@ -661,6 +731,37 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     return batchMarkPayrollPaidMutation({
       variables: { input: inputOrOptions },
     });
+  };
+
+
+  const createPayrollPayout = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return createPayrollPayoutMutation(inputOrOptions);
+    return createPayrollPayoutMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const retryPayrollPayout = (variablesOrOptions) => {
+    if (variablesOrOptions?.variables) return retryPayrollPayoutMutation(variablesOrOptions);
+    return retryPayrollPayoutMutation({ variables: variablesOrOptions });
+  };
+
+  const cancelPayrollPayout = (variablesOrOptions) => {
+    if (variablesOrOptions?.variables) return cancelPayrollPayoutMutation(variablesOrOptions);
+    return cancelPayrollPayoutMutation({ variables: variablesOrOptions });
+  };
+
+  const upsertEmployeeBankAccount = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return upsertEmployeeBankAccountMutation(inputOrOptions);
+    return upsertEmployeeBankAccountMutation({ variables: { input: inputOrOptions } });
+  };
+
+  const verifyEmployeeBankAccount = (variablesOrOptions) => {
+    if (variablesOrOptions?.variables) return verifyEmployeeBankAccountMutation(variablesOrOptions);
+    return verifyEmployeeBankAccountMutation({ variables: variablesOrOptions });
+  };
+
+  const upsertRestaurantPayoutAccount = (inputOrOptions) => {
+    if (inputOrOptions?.variables) return upsertRestaurantPayoutAccountMutation(inputOrOptions);
+    return upsertRestaurantPayoutAccountMutation({ variables: { input: inputOrOptions } });
   };
 
   return {
@@ -714,6 +815,12 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     markPaid,
     markPayrollItemPaid,
     batchMarkPayrollPaid,
+    createPayrollPayout,
+    retryPayrollPayout,
+    cancelPayrollPayout,
+    upsertEmployeeBankAccount,
+    verifyEmployeeBankAccount,
+    upsertRestaurantPayoutAccount,
     updateSettings,
     upsertAdjustment,
     deleteAdjustment,

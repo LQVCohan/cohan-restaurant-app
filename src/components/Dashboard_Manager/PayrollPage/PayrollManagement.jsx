@@ -541,6 +541,15 @@ const PayrollManagement = () => {
     paidAt: new Date().toISOString().slice(0, 16),
     note: "",
   });
+  const [bankAccountModal, setBankAccountModal] = useState(null);
+  const [bankAccountForm, setBankAccountForm] = useState({ accountHolderName: "", bankName: "", bankCode: "", accountNumber: "", branchName: "", verificationStatus: "verified", isDefault: true });
+  const [sourceAccountModal, setSourceAccountModal] = useState(false);
+  const [sourceAccountForm, setSourceAccountForm] = useState({ accountName: "", bankName: "", bankCode: "", accountNumber: "", provider: "manual", status: "active", payoutEnabled: true, dailyLimit: "", perTransactionLimit: "" });
+  const [payoutModal, setPayoutModal] = useState(null);
+  const [payoutForm, setPayoutForm] = useState({ method: "bank_transfer", note: "", referenceCode: "" });
+  const [payoutResult, setPayoutResult] = useState(null);
+  const [financialSetupLoading, setFinancialSetupLoading] = useState(false);
+  const [financialSetupError, setFinancialSetupError] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -597,9 +606,12 @@ const PayrollManagement = () => {
     recalculatePeriod,
     finalizePeriod,
     lockPeriod,
-    markPaid,
     markPayrollItemPaid,
     batchMarkPayrollPaid,
+    createPayrollPayout,
+    upsertEmployeeBankAccount,
+    verifyEmployeeBankAccount,
+    upsertRestaurantPayoutAccount,
     payrollPayslip,
     payrollPayments,
     refetchPayrollPayslip,
@@ -941,10 +953,8 @@ const PayrollManagement = () => {
     setBatchPaymentError("");
     setBatchPaymentResult(null);
     try {
-      const targetItems = paymentMode === "full" ? unpaidItems : selectedPayableItems;
-      const result = paymentMode === "full"
-        ? await markPaid({ variables: { periodId: selectedPeriodId, employeeIds: [] } })
-        : await batchMarkPayrollPaid({
+      const targetItems = paymentMode === "full" ? [] : selectedPayableItems;
+      const result = await batchMarkPayrollPaid({
         periodId: selectedPeriodId,
         employeeIds: targetItems.map((item) => item.id),
         method: batchPaymentForm.method || "cash",
@@ -953,9 +963,7 @@ const PayrollManagement = () => {
           : new Date().toISOString(),
         note: batchPaymentForm.note,
       });
-      const payload = paymentMode === "full"
-        ? { successCount: targetItems.length, failedCount: 0, items: targetItems, errors: [] }
-        : result?.data?.batchMarkPayrollPaid || {};
+      const payload = result?.data?.batchMarkPayrollPaid || {};
       setBatchPaymentResult(payload);
       await Promise.all(
         [
@@ -968,6 +976,94 @@ const PayrollManagement = () => {
       setBatchPaymentError(getPayrollPaymentErrorMessage(err));
     } finally {
       setBatchPaymentLoading(false);
+    }
+  };
+
+
+  const openEmployeeBankAccountModal = (item) => {
+    setFinancialSetupError("");
+    setBankAccountModal(item);
+    setBankAccountForm({
+      accountHolderName: item?.name || "",
+      bankName: "",
+      bankCode: "",
+      accountNumber: "",
+      branchName: "",
+      verificationStatus: "verified",
+      isDefault: true,
+    });
+  };
+
+  const submitEmployeeBankAccount = async () => {
+    if (!bankAccountModal || !selectedRestaurantId) return;
+    setFinancialSetupLoading(true);
+    setFinancialSetupError("");
+    try {
+      await upsertEmployeeBankAccount({
+        employeeId: bankAccountModal.id,
+        restaurantId: selectedRestaurantId,
+        ...bankAccountForm,
+        isDefault: Boolean(bankAccountForm.isDefault),
+      });
+      if (bankAccountForm.verificationStatus === "verified") {
+        await verifyEmployeeBankAccount({ employeeId: bankAccountModal.id, restaurantId: selectedRestaurantId, verificationStatus: "verified" });
+      }
+      setBankAccountModal(null);
+    } catch (err) {
+      setFinancialSetupError(getPayrollActionErrorMessage(err, "Không thể lưu tài khoản nhận lương."));
+    } finally {
+      setFinancialSetupLoading(false);
+    }
+  };
+
+  const submitRestaurantPayoutAccount = async () => {
+    if (!selectedRestaurantId) return;
+    setFinancialSetupLoading(true);
+    setFinancialSetupError("");
+    try {
+      await upsertRestaurantPayoutAccount({
+        restaurantId: selectedRestaurantId,
+        ...sourceAccountForm,
+        payoutEnabled: Boolean(sourceAccountForm.payoutEnabled),
+        dailyLimit: Number(sourceAccountForm.dailyLimit || 0),
+        perTransactionLimit: Number(sourceAccountForm.perTransactionLimit || 0),
+      });
+      setSourceAccountModal(false);
+    } catch (err) {
+      setFinancialSetupError(getPayrollActionErrorMessage(err, "Không thể lưu tài khoản nguồn chi lương."));
+    } finally {
+      setFinancialSetupLoading(false);
+    }
+  };
+
+  const openPayoutModal = (item) => {
+    setPayoutResult(null);
+    setFinancialSetupError("");
+    setPayoutModal(item);
+    setPayoutForm({ method: "bank_transfer", note: "", referenceCode: "" });
+  };
+
+  const submitPayrollPayout = async () => {
+    if (!payoutModal || !selectedPeriodId) return;
+    setFinancialSetupLoading(true);
+    setFinancialSetupError("");
+    setPayoutResult(null);
+    try {
+      const result = await createPayrollPayout({
+        periodId: selectedPeriodId,
+        employeeId: payoutModal.id,
+        method: payoutForm.method,
+        note: payoutForm.note,
+        referenceCode: payoutForm.referenceCode,
+        idempotencyKey: `ui-payout:${selectedPeriodId}:${payoutModal.id}:${Date.now()}`,
+      });
+      const payout = result?.data?.createPayrollPayout || result;
+      setPayoutResult(payout);
+      await Promise.all([refetchPayrollPeriodDetail?.() || refetchDetail?.(), refetchPayrollPeriods?.() || refetchPeriods?.()].filter(Boolean));
+    } catch (err) {
+      setFinancialSetupError(getPayrollActionErrorMessage(err, "Không thể tạo payout/chuyển khoản."));
+    } finally {
+      setFinancialSetupLoading(false);
     }
   };
 
@@ -1197,6 +1293,14 @@ const PayrollManagement = () => {
             disabled={!selectedRestaurantId || !payrollUiPermissions.canConfigure}
           >
             ⚙️ Cấu hình
+          </button>
+          <button
+            className="btn btn-white"
+            type="button"
+            onClick={() => setSourceAccountModal(true)}
+            disabled={!selectedRestaurantId || !payrollUiPermissions.canPayout}
+          >
+            🏦 Tài khoản nguồn
           </button>
           <button className="btn btn-white" onClick={handleExportExcel} disabled={!selectedRestaurantId || !selectedPeriodId || !payrollUiPermissions.canExport}>
             📥 Xuất Excel
@@ -1583,6 +1687,24 @@ const PayrollManagement = () => {
                         >
                           Xem phiếu lương
                         </button>
+                        {payrollUiPermissions.canPayout && (
+                          <button
+                            className="btn btn-white"
+                            type="button"
+                            onClick={() => openEmployeeBankAccountModal(item)}
+                          >
+                            Tài khoản NH
+                          </button>
+                        )}
+                        {payrollUiPermissions.canPayout && canPayInPeriod && Number(item.remainingAmount ?? item.netSalary ?? 0) > 0 && (
+                          <button
+                            className="btn btn-primary"
+                            type="button"
+                            onClick={() => openPayoutModal(item)}
+                          >
+                            Tạo payout
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1721,6 +1843,78 @@ const PayrollManagement = () => {
                   : "Xác nhận thanh toán"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+
+      {bankAccountModal && (
+        <div className="modal-overlay" data-testid="employee-bank-account-modal" onClick={() => !financialSetupLoading && setBankAccountModal(null)}>
+          <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header"><h3>Tài khoản nhận lương - {bankAccountModal.name}</h3><button className="close-btn" type="button" onClick={() => setBankAccountModal(null)}>x</button></div>
+            <div className="modal-body">
+              {financialSetupError && <div className="settings-modal-state settings-modal-state--error">{financialSetupError}</div>}
+              <div className="settings-form-grid">
+                {[
+                  ["accountHolderName", "Chủ tài khoản"],
+                  ["bankName", "Ngân hàng"],
+                  ["bankCode", "Mã ngân hàng"],
+                  ["accountNumber", "Số tài khoản"],
+                  ["branchName", "Chi nhánh"],
+                ].map(([key, label]) => (
+                  <label className="settings-field" key={key}><span>{label}</span><input value={bankAccountForm[key]} onChange={(e) => setBankAccountForm((prev) => ({ ...prev, [key]: e.target.value }))} /></label>
+                ))}
+                <label className="settings-field"><span>Trạng thái xác minh</span><select value={bankAccountForm.verificationStatus} onChange={(e) => setBankAccountForm((prev) => ({ ...prev, verificationStatus: e.target.value }))}><option value="verified">Đã xác minh</option><option value="pending">Chờ xác minh</option><option value="rejected">Bị từ chối</option></select></label>
+              </div>
+              <p className="payroll-action-hint">Số tài khoản sẽ được mã hóa AES-GCM ở backend và UI chỉ hiển thị dạng mask.</p>
+            </div>
+            <div className="modal-footer"><button className="btn btn-secondary" type="button" onClick={() => setBankAccountModal(null)}>Đóng</button><button className="btn btn-primary" type="button" disabled={financialSetupLoading} onClick={submitEmployeeBankAccount}>{financialSetupLoading ? "Đang lưu..." : "Lưu & xác minh"}</button></div>
+          </div>
+        </div>
+      )}
+
+      {sourceAccountModal && (
+        <div className="modal-overlay" data-testid="restaurant-payout-account-modal" onClick={() => !financialSetupLoading && setSourceAccountModal(false)}>
+          <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header"><h3>Tài khoản nguồn chi lương</h3><button className="close-btn" type="button" onClick={() => setSourceAccountModal(false)}>x</button></div>
+            <div className="modal-body">
+              {financialSetupError && <div className="settings-modal-state settings-modal-state--error">{financialSetupError}</div>}
+              <div className="settings-form-grid">
+                {[
+                  ["accountName", "Tên tài khoản"],
+                  ["bankName", "Ngân hàng"],
+                  ["bankCode", "Mã ngân hàng"],
+                  ["accountNumber", "Số tài khoản"],
+                  ["provider", "Provider"],
+                  ["dailyLimit", "Hạn mức/ngày"],
+                  ["perTransactionLimit", "Hạn mức/giao dịch"],
+                ].map(([key, label]) => (
+                  <label className="settings-field" key={key}><span>{label}</span><input value={sourceAccountForm[key]} onChange={(e) => setSourceAccountForm((prev) => ({ ...prev, [key]: e.target.value }))} /></label>
+                ))}
+                <label className="settings-field"><span>Trạng thái</span><select value={sourceAccountForm.status} onChange={(e) => setSourceAccountForm((prev) => ({ ...prev, status: e.target.value }))}><option value="active">active</option><option value="inactive">inactive</option><option value="pending_verification">pending_verification</option></select></label>
+              </div>
+            </div>
+            <div className="modal-footer"><button className="btn btn-secondary" type="button" onClick={() => setSourceAccountModal(false)}>Đóng</button><button className="btn btn-primary" type="button" disabled={financialSetupLoading} onClick={submitRestaurantPayoutAccount}>{financialSetupLoading ? "Đang lưu..." : "Lưu tài khoản nguồn"}</button></div>
+          </div>
+        </div>
+      )}
+
+      {payoutModal && (
+        <div className="modal-overlay" data-testid="payroll-payout-modal" onClick={() => !financialSetupLoading && setPayoutModal(null)}>
+          <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header"><h3>{payoutForm.method === "bank_transfer" ? "Chuyển khoản qua provider" : "Ghi nhận payout"}</h3><button className="close-btn" type="button" onClick={() => setPayoutModal(null)}>x</button></div>
+            <div className="modal-body">
+              <p>Nhân viên: <strong>{payoutModal.name}</strong>. Số tiền còn lại: <strong>{formatCurrency(payoutModal.remainingAmount ?? payoutModal.netSalary)}</strong>.</p>
+              {financialSetupError && <div className="settings-modal-state settings-modal-state--error">{financialSetupError}</div>}
+              {payoutResult && <div className="settings-modal-state">Trạng thái payout: <strong>{payoutResult.status}</strong>{payoutResult.failureReason ? ` - ${payoutResult.failureReason}` : ""}</div>}
+              <div className="settings-form-grid">
+                <label className="settings-field"><span>Phương thức</span><select value={payoutForm.method} onChange={(e) => setPayoutForm((prev) => ({ ...prev, method: e.target.value }))}><option value="bank_transfer">Chuyển khoản qua provider</option><option value="other">Ghi nhận thanh toán thủ công</option></select></label>
+                <label className="settings-field"><span>Mã tham chiếu</span><input value={payoutForm.referenceCode} onChange={(e) => setPayoutForm((prev) => ({ ...prev, referenceCode: e.target.value }))} /></label>
+                <label className="settings-field"><span>Ghi chú</span><textarea rows={2} value={payoutForm.note} onChange={(e) => setPayoutForm((prev) => ({ ...prev, note: e.target.value }))} /></label>
+              </div>
+              <p className="payroll-action-hint">Manual mode ghi nhận thanh toán thủ công; mock/provider mode theo dõi success/processing/failed và không báo thành công trước khi có kết quả.</p>
+            </div>
+            <div className="modal-footer"><button className="btn btn-secondary" type="button" onClick={() => setPayoutModal(null)}>Đóng</button><button className="btn btn-primary" type="button" disabled={financialSetupLoading} onClick={submitPayrollPayout}>{financialSetupLoading ? "Đang xử lý..." : "Xác nhận payout"}</button></div>
           </div>
         </div>
       )}

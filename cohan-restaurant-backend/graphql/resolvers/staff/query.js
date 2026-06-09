@@ -1302,7 +1302,8 @@ export default {
       status: item ? "success" : "info",
       meta: { employeeId: String(actorId) },
     });
-    return item ? mapPayrollDocToGql({ ...item, periodName: period.name || "", periodStartDate: period.startDate, periodEndDate: period.endDate, periodStatus: period.status, periodFinalizedAt: period.finalizedAt || null }) : null;
+    if (!item) return null;
+    return getPayrollPayslip({ periodId: period._id, employeeId: actorId });
   },
 
   staffSchedulingAssistant: async (

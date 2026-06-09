@@ -9,6 +9,7 @@ const payrollPayoutBatchSchema = new Schema(
     totalAmount: { type: Number, default: 0 },
     totalEmployees: { type: Number, default: 0 },
     successCount: { type: Number, default: 0 },
+    processingCount: { type: Number, default: 0 },
     failedCount: { type: Number, default: 0 },
     status: { type: String, enum: ["draft", "pending", "processing", "success", "partial_success", "failed", "cancelled"], default: "pending", index: true },
     method: { type: String, default: "bank_transfer" },

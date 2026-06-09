@@ -1352,6 +1352,7 @@ type PayrollPayout {
   requestedBy: ID
   approvedBy: ID
   paidAt: DateTime
+  retryCount: Int
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -1363,6 +1364,7 @@ type PayrollPayoutBatch {
   totalAmount: Float!
   totalEmployees: Int!
   successCount: Int!
+  processingCount: Int!
   failedCount: Int!
   status: String!
   method: String
@@ -1378,6 +1380,7 @@ type PayrollPayoutBatch {
 
 type PayrollPayoutBatchResult {
   successCount: Int!
+  processingCount: Int!
   failedCount: Int!
   payouts: [PayrollPayout!]!
   errors: [PayrollBatchError!]!
@@ -1468,6 +1471,7 @@ input MarkPayrollItemPaidInput {
   note: String
   referenceCode: String
   idempotencyKey: String
+  payoutId: ID
 }
 
 input BatchMarkPayrollPaidInput {
@@ -1503,7 +1507,16 @@ input PayrollBatchPayoutInput {
   idempotencyKey: String!
 }
 
+input PayrollPayoutResultInput {
+  payoutId: ID
+  providerTransactionId: String
+  status: String!
+  failureReason: String
+  rawPayload: JSON
+}
+
 input EmployeeBankAccountInput {
+  id: ID
   employeeId: ID!
   restaurantId: ID!
   accountHolderName: String!
@@ -3193,7 +3206,7 @@ type Query {
   payrollExportRows(periodId: ID!): [PayrollExportRow!]!
   validatePayrollPeriod(periodId: ID!): PayrollValidationResult!
   myPayslips(limit: Int = 12): [StaffPayrollItem!]!
-  myPayslip(periodId: ID!): StaffPayrollItem
+  myPayslip(periodId: ID!): PayrollPayslip
   staffShifts(
     restaurantId: ID
     employeeId: ID
@@ -3423,6 +3436,9 @@ type Mutation {
   batchMarkPayrollPaid(input: BatchMarkPayrollPaidInput!): BatchPayrollPaymentResult!
   createPayrollPayout(input: PayrollPayoutInput!): PayrollPayout!
   createPayrollBatchPayout(input: PayrollBatchPayoutInput!): PayrollPayoutBatchResult!
+  retryPayrollPayout(payoutId: ID!, idempotencyKey: String): PayrollPayout!
+  cancelPayrollPayout(payoutId: ID!, reason: String!): PayrollPayout!
+  applyPayrollPayoutResult(input: PayrollPayoutResultInput!): PayrollPayout!
   upsertEmployeeBankAccount(input: EmployeeBankAccountInput!): EmployeeBankAccount!
   verifyEmployeeBankAccount(employeeId: ID!, restaurantId: ID!, verificationStatus: String = "verified"): EmployeeBankAccount!
   upsertRestaurantPayoutAccount(input: RestaurantPayoutAccountInput!): RestaurantPayoutAccount!

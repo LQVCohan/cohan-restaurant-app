@@ -14,32 +14,14 @@ const statusLabel = (status) => ({ finalized: "Đã chốt", paying: "Đang chi 
 
 const StaffPayslipsPage = () => {
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
-  const listQuery = useQuery(QUERY_MY_PAYSLIPS, { variables: { limit: 24 }, fetchPolicy: "cache-and-network" });
-  const detailQuery = useQuery(QUERY_MY_PAYSLIP, { variables: { periodId: selectedPeriodId }, skip: !selectedPeriodId, fetchPolicy: "cache-and-network" });
+  const listQuery = useQuery(QUERY_MY_PAYSLIPS, { variables: { limit: 24 }, fetchPolicy: "cache-and-network" }) || {};
+  const detailQuery = useQuery(QUERY_MY_PAYSLIP, { variables: { periodId: selectedPeriodId }, skip: !selectedPeriodId, fetchPolicy: "cache-and-network" }) || {};
 
   const rows = listQuery.data?.myPayslips || [];
-  const selectedItem = detailQuery.data?.myPayslip || null;
   const modalPayslip = useMemo(() => {
-    if (!selectedItem) return null;
-    return {
-      period: {
-        id: selectedItem.periodId,
-        name: selectedItem.periodName,
-        startDate: selectedItem.periodStartDate,
-        endDate: selectedItem.periodEndDate,
-        status: selectedItem.periodStatus,
-        finalizedAt: selectedItem.periodFinalizedAt,
-        stats: { totalPayroll: selectedItem.netSalary || 0, paidAmount: selectedItem.paidAmount || 0, remaining: selectedItem.remainingAmount || 0, progress: selectedItem.netSalary ? Math.round(((selectedItem.paidAmount || 0) / selectedItem.netSalary) * 100) : 0 },
-      },
-      employee: { id: selectedItem.id, name: selectedItem.name, code: selectedItem.code, role: selectedItem.role, department: selectedItem.department },
-      item: selectedItem,
-      breakdown: selectedItem,
-      payments: [],
-      remainingAmount: selectedItem.remainingAmount || 0,
-      canMarkPaid: false,
-      canEdit: false,
-    };
-  }, [selectedItem]);
+    const payslip = detailQuery.data?.myPayslip || null;
+    return payslip ? { ...payslip, canMarkPaid: false, canEdit: false } : null;
+  }, [detailQuery.data]);
 
   return (
     <div className="staff-dashboard-page" aria-labelledby="staff-payslips-title">
@@ -96,9 +78,9 @@ const StaffPayslipsPage = () => {
         open={Boolean(selectedPeriodId)}
         onClose={() => setSelectedPeriodId("")}
         periodId={selectedPeriodId}
-        employeeId={selectedItem?.id}
+        employeeId={modalPayslip?.employee?.id}
         payrollPayslip={modalPayslip}
-        payrollPayments={[]}
+        payrollPayments={modalPayslip?.payments || []}
         loading={detailQuery.loading}
       />
     </div>

@@ -208,7 +208,7 @@ const PayrollPayslipModal = ({
               <div className="section payroll-payment-history">
                 <h5 className="section-title income">Lịch sử thanh toán</h5>
                 {payments.length === 0 ? (
-                  <div className="table-empty" data-testid="payroll-payment-empty">Chưa có thanh toán nào.</div>
+                  <div className="table-empty" data-testid="payroll-payment-empty">Chưa có thanh toán nào. Chưa có lịch sử thanh toán.</div>
                 ) : (
                   <div className="table-responsive">
                     <table className="payroll-table payroll-payment-table">

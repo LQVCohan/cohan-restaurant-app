@@ -20,6 +20,10 @@ const employeeBankAccountSchema = new Schema(
   { timestamps: true },
 );
 
-employeeBankAccountSchema.index({ employeeId: 1, restaurantId: 1, isDefault: 1 });
+employeeBankAccountSchema.index(
+  { employeeId: 1, restaurantId: 1, isDefault: 1 },
+  { unique: true, partialFilterExpression: { isDefault: true } },
+);
+employeeBankAccountSchema.index({ employeeId: 1, restaurantId: 1, updatedAt: -1 });
 
 export default mongoose.model("EmployeeBankAccount", employeeBankAccountSchema);

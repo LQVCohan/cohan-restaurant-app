@@ -14,8 +14,8 @@ const payrollPaymentSchema = new Schema(
     note: { type: String, default: "" },
     referenceCode: { type: String, default: "" },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
-    idempotencyKey: { type: String, default: "", index: true },
-    payoutId: { type: Schema.Types.ObjectId, ref: "PayrollPayout", default: null, index: true },
+    idempotencyKey: { type: String, default: "" },
+    payoutId: { type: Schema.Types.ObjectId, ref: "PayrollPayout", default: null },
   },
   { timestamps: true },
 );
