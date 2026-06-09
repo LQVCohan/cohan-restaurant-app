@@ -1,127 +1,124 @@
 @use "sass:color";
 
-// --- Variables (Đồng bộ với hệ thống) ---
-$primary: #4f46e5;
-$bg-body: #f9fafb;
-$white: #ffffff;
-$text-main: #111827;
-$text-sub: #6b7280;
-$border-dashed: #cbd5e1;
-$radius-lg: 16px;
+$accent: #9a7048;
+$accent-dark: #6f5236;
+$accent-soft: #f3eadf;
+$surface: #fffdf9;
+$line: #e6ded3;
+$line-strong: #d7cbbd;
+$ink: #22201d;
+$muted: #756f66;
+$subtle: #9b9388;
+$shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
 
-// --- 1. GRID CONTAINER ---
 .promotions-grid-container {
   display: grid;
-  // Tự động tính toán cột: tối thiểu 340px, nếu còn chỗ thì dãn ra
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 20px; // Khoảng cách giữa các card
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  gap: clamp(1rem, 1.6vw, 1.35rem);
   width: 100%;
-  padding-bottom: 40px; // Khoảng thở dưới cùng
-
-  // Responsive cho mobile
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr; // 1 cột duy nhất
-    gap: 16px;
-  }
+  padding-bottom: 1.5rem;
 }
 
-// --- 2. EMPTY STATE (Giao diện chờ) ---
 .promotions-empty-state {
-  background: $white;
-  border: 2px dashed $border-dashed; // Viền nét đứt
-  border-radius: $radius-lg;
-  padding: 4rem 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px; // Chiều cao tối thiểu để đẹp mắt
+  min-height: 400px;
+  display: grid;
+  place-items: center;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem;
   text-align: center;
-  transition: all 0.3s ease;
+  border: 1px dashed $line-strong;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 249, 0.96), rgba(250, 244, 235, 0.78)),
+    radial-gradient(circle at 50% 0%, rgba($accent, 0.1), transparent 20rem);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 
   &:hover {
-    border-color: color.change($primary, $alpha: 0.4);
-    background: color.change($primary, $alpha: 0.02);
+    border-color: rgba($accent, 0.42);
+    box-shadow: $shadow-soft;
   }
 
   .empty-content {
-    max-width: 400px;
+    max-width: 420px;
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
 
-    .icon-wrapper {
-      position: relative;
-      width: 80px;
-      height: 80px;
-      background: #eff6ff; // Blue soft
-      color: $primary;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1.5rem;
+  .icon-wrapper {
+    position: relative;
+    width: 78px;
+    height: 78px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 1.35rem;
+    border-radius: 22px;
+    color: $accent-dark;
+    background: linear-gradient(180deg, #fff8ee, $accent-soft);
+    box-shadow: 0 18px 32px rgba($accent, 0.16);
 
-      .sparkle-icon {
-        position: absolute;
-        top: 0;
-        right: -5px;
-        color: #f59e0b; // Yellow/Gold
-        animation: float 3s ease-in-out infinite;
-      }
+    .sparkle-icon {
+      position: absolute;
+      top: -0.25rem;
+      right: -0.3rem;
+      color: #b27c37;
+      animation: promoFloat 3s ease-in-out infinite;
+    }
+  }
+
+  .empty-title {
+    margin: 0 0 0.65rem;
+    color: $ink;
+    font-size: clamp(1.18rem, 2vw, 1.45rem);
+    font-weight: 760;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  .empty-desc {
+    margin: 0 0 1.7rem;
+    color: $muted;
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .btn-create-first {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    border: 1px solid $accent;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #a97c50, $accent-dark);
+    color: #fffaf2;
+    cursor: pointer;
+    font-weight: 720;
+    padding: 0 1rem;
+    box-shadow: 0 14px 26px rgba($accent, 0.22);
+    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 34px rgba($accent, 0.28);
     }
 
-    .empty-title {
-      font-family: "Inter", sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: $text-main;
-      margin-bottom: 0.75rem;
+    &:active {
+      transform: translateY(0) scale(0.98);
     }
 
-    .empty-desc {
-      font-size: 0.95rem;
-      color: $text-sub;
-      margin-bottom: 2rem;
-      line-height: 1.5;
-    }
-
-    .btn-create-first {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: $primary;
-      color: $white;
-      padding: 12px 24px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
-      transition: all 0.2s;
-
-      &:hover {
-        background: color.adjust($primary, $lightness: -5%);
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba($accent, 0.18), 0 14px 26px rgba($accent, 0.22);
     }
   }
 }
 
-// Animation nhỏ cho icon ngôi sao
-@keyframes float {
-  0% {
-    transform: translateY(0px) rotate(0deg);
+@keyframes promoFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-5px) rotate(10deg);
-  }
-  100% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translateY(-5px) rotate(8deg);
   }
 }
