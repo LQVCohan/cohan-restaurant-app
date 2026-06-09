@@ -46,7 +46,7 @@ $gray-900: #2f2418;
   top: auto;
   left: auto;
   right: auto;
-  z-index: 999;
+  z-index: var(--z-header, 40);
   width: 100%;
   min-width: 0;
   height: 64px;
@@ -54,22 +54,18 @@ $gray-900: #2f2418;
 
   // Compact mode when sidebar is open
   &--compact {
-    //
-    // --- ĐÃ SỬA ---
-    //
-    // Chỉ-áp-dụng-các-style-thu-gọn-này-trên-mobile (khi-dùng-layout-overlay)
     @media (max-width: 768px) {
       .header__content {
-        padding: 0 1rem; // Reduce padding
+        padding: 0 1rem;
       }
 
       .header__center {
-        max-width: 250px; // Smaller search box
-        margin: 0 0.5rem; // Less margin
+        max-width: 250px;
+        margin: 0 0.5rem;
       }
 
       .page-title {
-        font-size: 1rem; // Even smaller title
+        font-size: 1rem;
       }
     }
   }
@@ -135,6 +131,10 @@ $gray-900: #2f2418;
   position: relative;
   overflow: hidden;
 
+  @media (min-width: 769px) {
+    display: none;
+  }
+
   &:hover {
     background: #f7dfbd;
     box-shadow: 0 8px 18px rgba(154, 91, 22, 0.16);
@@ -145,7 +145,6 @@ $gray-900: #2f2418;
     transform: translateY(0) scale(0.98);
   }
 
-  // Active state (X icon)
   &.active {
     background: linear-gradient(135deg, $primary-blue, $secondary-purple);
     border-color: rgba(154, 91, 22, 0.35);
@@ -326,7 +325,7 @@ $gray-900: #2f2418;
   box-shadow: 0 18px 42px rgba(75, 56, 32, 0.14);
   border: 1px solid $gray-200;
   overflow: hidden;
-  z-index: 1000;
+  z-index: var(--z-overlay, 1000);
 
   @media (max-width: 768px) {
     width: 320px;
@@ -360,7 +359,7 @@ $gray-900: #2f2418;
   font-weight: 500;
 
   &:hover {
-    color: color.adjust($primary-blue, $lightness: -10%); // Sửa-lỗi: custom-darken -> darken
+    color: color.adjust($primary-blue, $lightness: -10%);
   }
 }
 
@@ -396,7 +395,6 @@ $gray-900: #2f2418;
   font-size: 1.2rem;
   flex-shrink: 0;
 
-  // Sửa-lỗi: custom-lighten -> lighten
   &--primary {
     background: color.adjust($primary-blue, $lightness: 40%);
     color: $primary-blue;
@@ -538,7 +536,7 @@ $gray-900: #2f2418;
 
 .user-chevron {
   color: #94a3b8;
-  font-size: 1rem; // Tăng-kích-thước-cho-icon
+  font-size: 1rem;
   transition: transform 0.2s ease, opacity 0.3s ease;
 }
 
@@ -556,7 +554,7 @@ $gray-900: #2f2418;
   box-shadow: 0 18px 42px rgba(75, 56, 32, 0.14);
   border: 1px solid $gray-200;
   overflow: hidden;
-  z-index: 1000;
+  z-index: var(--z-overlay, 1000);
 
   @media (max-width: 480px) {
     width: calc(100vw - 2rem);
@@ -649,11 +647,10 @@ $gray-900: #2f2418;
     width: 20px;
     height: 20px;
     @include flex-center;
-    font-size: 1.1rem; // Tăng-kích-thước-icon-trong-menu
+    font-size: 1.1rem;
     color: $gray-500;
   }
 
-  // Căn-chỉnh-màu-icon-khi-hover
   &:hover .menu-icon {
     color: $primary-blue;
   }
@@ -677,10 +674,6 @@ $gray-900: #2f2418;
 }
 
 .hide-compact {
-  //
-  // --- ĐÃ SỬA ---
-  //
-  // Class-này-chỉ-nên-có-tác-dụng-trên-mobile
   @media (max-width: 768px) {
     opacity: 0;
     transform: scale(0.8);
@@ -697,7 +690,6 @@ $gray-900: #2f2418;
     display: block;
   }
 }
-
 
 .sidebar-toggle:focus-visible,
 .notification-btn:focus-visible,
