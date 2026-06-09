@@ -1,3 +1,109 @@
+/* Order Management surface sync
+   Keep this file focused on visual cohesion for /manager#orders and the kitchen display polish. */
+
+.manager-layout.manager-layout--orders {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(216, 185, 138, 0.22), transparent 30rem),
+    radial-gradient(circle at 88% 8%, rgba(126, 76, 40, 0.08), transparent 28rem),
+    linear-gradient(rgba(117, 82, 45, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 82, 45, 0.028) 1px, transparent 1px),
+    #f7f0e6;
+  background-size: auto, auto, 32px 32px, 32px 32px, auto;
+}
+
+.manager-layout.manager-layout--orders .manager-layout__content {
+  padding: 0;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(216, 185, 138, 0.22), transparent 30rem),
+    radial-gradient(circle at 88% 8%, rgba(126, 76, 40, 0.08), transparent 28rem),
+    linear-gradient(rgba(117, 82, 45, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 82, 45, 0.028) 1px, transparent 1px),
+    #f7f0e6;
+  background-size: auto, auto, 32px 32px, 32px 32px, auto;
+}
+
+.manager-layout.manager-layout--orders .manager-page-shell--orders {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  margin: 0;
+}
+
+.manager-layout.manager-layout--orders .manager-page-shell--orders .manager-page-shell__body {
+  min-height: 100%;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) {
+  min-height: 100%;
+  width: 100%;
+  color: #2a2119;
+  background:
+    radial-gradient(circle at 7% 0%, rgba(216, 185, 138, 0.28), transparent 28rem),
+    radial-gradient(circle at 92% 8%, rgba(126, 76, 40, 0.1), transparent 26rem),
+    linear-gradient(rgba(117, 82, 45, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 82, 45, 0.028) 1px, transparent 1px),
+    #f7f0e6;
+  background-size: auto, auto, 32px 32px, 32px 32px, auto;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus)::before {
+  opacity: 0.1;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-wrapper {
+  width: min(calc(100% - clamp(24px, 4vw, 56px)), 1240px);
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(18px, 2.2vw, 28px) 0 clamp(40px, 5vw, 72px);
+  gap: 14px;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header {
+  min-height: auto;
+  padding: clamp(16px, 1.8vw, 22px);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 243, 0.94), rgba(247, 237, 223, 0.88)),
+    rgba(255, 250, 243, 0.9);
+  box-shadow:
+    0 18px 42px rgba(75, 50, 27, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-left {
+  flex-basis: 228px;
+  padding-right: 0.75rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-title {
+  font-size: clamp(1.42rem, 2vw, 1.92rem);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-subtitle {
+  max-width: 34rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-time-widget {
+  min-height: auto;
+  margin-top: 0.45rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-panel,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar {
+  margin-inline: 0;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-toolbar,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-kpi-card,
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-card-wrapper {
+  box-shadow:
+    0 16px 36px rgba(75, 50, 27, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
 .om-container--focus .om-toolbar__actions .om-btn-primary {
   display: none;
 }
@@ -64,7 +170,7 @@
 }
 
 .om-grid--sparse {
-  grid-template-columns: repeat(auto-fit, minmax(340px, 420px));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 420px));
   justify-content: start;
 }
 
@@ -131,6 +237,16 @@
 }
 
 @media (max-width: 900px) {
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-wrapper {
+    width: min(calc(100% - 24px), 1240px);
+    padding-block: 14px 48px;
+  }
+
+  .manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .management-page-header .mph-left {
+    flex-basis: auto;
+    padding-right: 0;
+  }
+
   .om-container--focus .om-content.om-content--kitchen-sparse {
     grid-template-columns: 1fr;
     width: 100%;
