@@ -1,5 +1,6 @@
 import React, { useContext, useEffect } from "react";
 import "./Styles/Sidebar.scss";
+import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
