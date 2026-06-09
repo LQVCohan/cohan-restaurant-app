@@ -213,10 +213,12 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="nav-section">
               <div className="nav-section-title" id={`manager-nav-section-${sectionIndex}`}>{section.title}</div>
-              {section.items.map((item) => (
+              {section.items.map((item) => {
+                const isAiItem = item.id?.startsWith("ai-");
+                return (
                 <button
                   key={item.id}
-                  className={`nav-item ${
+                  className={`nav-item ${isAiItem ? "nav-item--ai" : ""} ${
                     activeItem === item.id ? "active" : ""
                   }`}
                   onClick={() => handleItemClick(item)}
@@ -230,7 +232,8 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
                   <span className="nav-label">{item.label}</span>
                   {activeItem === item.id && <div className="nav-indicator" />}
                 </button>
-              ))}
+                );
+              })}
             </div>
           ))}
         </nav>

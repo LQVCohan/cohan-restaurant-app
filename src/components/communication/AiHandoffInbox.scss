@@ -8,7 +8,7 @@
   background:
     radial-gradient(circle at 8% 8%, rgba(255, 185, 115, 0.16), transparent 30rem),
     radial-gradient(circle at 92% 0%, rgba(255, 235, 214, 0.62), transparent 34rem),
-    linear-gradient(180deg, #fffaf4 0%, #fff7ee 48%, #ffffff 100%);
+    linear-gradient(180deg, #fffdf8 0%, #fff7ee 48%, #ffffff 100%);
 }
 
 @media (max-width: 1024px) {
@@ -72,14 +72,14 @@
 }
 
 .ai-handoff-inbox__tabs button:hover {
-  background: #fff7ed;
-  color: #ff6600;
+  background: #fbf7f1;
+  color: #7d5b38;
 }
 
 .ai-handoff-inbox__tabs button.active {
-  background: linear-gradient(135deg, #ff6600, #ff8a3d);
+  background: linear-gradient(135deg, #7d5b38, #9b7a58);
   color: #fff;
-  box-shadow: 0 10px 22px rgba(255, 102, 0, 0.22);
+  box-shadow: 0 10px 22px rgba(125, 91, 56, 0.18);
 }
 
 .ai-handoff-inbox__list {
@@ -98,7 +98,7 @@
 .ai-handoff-inbox__list::-webkit-scrollbar-thumb,
 .ai-handoff-inbox__content::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(255, 102, 0, 0.28);
+  background: rgba(125, 91, 56, 0.24);
 }
 
 .ai-handoff-inbox__item {
@@ -115,15 +115,15 @@
 
 .ai-handoff-inbox__item:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 102, 0, 0.28);
-  background: #fffaf4;
+  border-color: rgba(125, 91, 56, 0.24);
+  background: #fffdf8;
   box-shadow: 0 18px 38px rgba(83, 46, 20, 0.1);
 }
 
 .ai-handoff-inbox__item.active {
-  border-color: rgba(255, 102, 0, 0.42);
-  background: linear-gradient(135deg, #fff7ed, #fff);
-  box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1), 0 18px 40px rgba(83, 46, 20, 0.1);
+  border-color: rgba(125, 91, 56, 0.34);
+  background: linear-gradient(135deg, #fbf7f1, #fff);
+  box-shadow: 0 0 0 3px rgba(125, 91, 56, 0.1), 0 18px 40px rgba(83, 46, 20, 0.1);
 }
 
 .ai-handoff-inbox__item-meta,
@@ -162,8 +162,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ff6600;
-  box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.14);
+  background: #7d5b38;
+  box-shadow: 0 0 0 4px rgba(125, 91, 56, 0.14);
   display: inline-block;
   margin-right: 6px;
 }
@@ -208,15 +208,15 @@
 
 .ai-handoff-inbox__message.is-handoff-summary {
   max-width: 100%;
-  border-color: rgba(255, 102, 0, 0.18);
+  border-color: rgba(125, 91, 56, 0.18);
   border-radius: 20px;
-  background: linear-gradient(135deg, #fff7ed, #fff);
+  background: linear-gradient(135deg, #fbf7f1, #fff);
   color: #1e1915;
   white-space: pre-wrap;
 }
 
 .ai-handoff-inbox__message.is-handoff-summary strong {
-  color: #ff6600;
+  color: #7d5b38;
 }
 
 .ai-handoff-inbox__message.is-handoff-summary div {
@@ -226,10 +226,10 @@
 
 .ai-handoff-inbox__message button {
   margin-top: 8px;
-  border: 1px solid rgba(255, 102, 0, 0.22);
+  border: 1px solid rgba(125, 91, 56, 0.18);
   border-radius: 12px;
-  background: #fff7ed;
-  color: #ff6600;
+  background: #fbf7f1;
+  color: #7d5b38;
   padding: 8px 11px;
   font-weight: 900;
   cursor: pointer;
@@ -262,14 +262,14 @@
 }
 
 .ai-handoff-inbox__reply textarea:focus {
-  border-color: rgba(255, 102, 0, 0.45);
+  border-color: rgba(125, 91, 56, 0.45);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.1);
+  box-shadow: 0 0 0 4px rgba(125, 91, 56, 0.1);
 }
 
 .ai-handoff-inbox__reply button {
   min-height: 42px;
-  border: 1px solid rgba(255, 102, 0, 0.18);
+  border: 1px solid rgba(125, 91, 56, 0.18);
   border-radius: 14px;
   padding: 9px 14px;
   font-weight: 900;
@@ -278,14 +278,14 @@
 }
 
 .ai-handoff-inbox__reply button[type="submit"] {
-  background: linear-gradient(135deg, #ff6600, #ff8a3d);
+  background: linear-gradient(135deg, #7d5b38, #9b7a58);
   color: #fff;
-  box-shadow: 0 12px 24px rgba(255, 102, 0, 0.22);
+  box-shadow: 0 12px 24px rgba(125, 91, 56, 0.18);
 }
 
 .ai-handoff-inbox__reply button[type="button"] {
-  background: #fff7ed;
-  color: #ff6600;
+  background: #fbf7f1;
+  color: #7d5b38;
 }
 
 .ai-handoff-inbox__reply button:hover:not(:disabled) {
@@ -317,9 +317,9 @@
   letter-spacing: 0.02em;
   border-radius: 999px;
   padding: 5px 10px;
-  color: #ff6600;
-  background: #fff7ed;
-  border: 1px solid rgba(255, 102, 0, 0.18);
+  color: #7d5b38;
+  background: #fbf7f1;
+  border: 1px solid rgba(125, 91, 56, 0.18);
 }
 
 .ai-handoff-badge::after {
@@ -380,4 +380,63 @@
 @keyframes aiHandoffPanelIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-handoff-inbox__empty {
+  margin: auto;
+  max-width: 420px;
+  border: 1px dashed rgba(125, 91, 56, 0.24);
+  border-radius: 22px;
+  background: rgba(255, 253, 248, 0.78);
+  color: #75685c;
+  padding: 24px;
+  text-align: center;
+}
+
+.ai-handoff-inbox__empty strong {
+  display: block;
+  color: #2b241d;
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.ai-handoff-inbox__empty p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-handoff-inbox__skeleton {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.ai-handoff-inbox__skeleton span {
+  display: block;
+  height: 82px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #f4eee6 0%, #fffdf8 48%, #f4eee6 100%);
+  background-size: 220% 100%;
+  animation: aiHandoffSkeleton 1.2s ease-in-out infinite;
+}
+
+.ai-handoff-inbox__reply textarea:disabled {
+  background: #f1ebe2;
+  color: #75685c;
+  cursor: not-allowed;
+}
+
+@keyframes aiHandoffSkeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-handoff-inbox *,
+  .ai-handoff-inbox *::before,
+  .ai-handoff-inbox *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -280,9 +280,9 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
         </div>
 
         {isLoading ? (
-          <div className="ai-handoff-inbox__content">Đang tải dữ liệu handoff...</div>
+          <div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__skeleton" role="status"><span /><span /><span /></div></div>
         ) : currentItems.length === 0 ? (
-          <div className="ai-handoff-inbox__content">Chưa có yêu cầu hỗ trợ từ chatbot.</div>
+          <div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__empty"><strong>Chưa có yêu cầu hỗ trợ từ chatbot</strong><p>Khi khách cần nhân viên hỗ trợ, hội thoại sẽ xuất hiện ở đây để bạn tiếp nhận nhanh.</p></div></div>
         ) : (
           <div className="ai-handoff-inbox__list">
             {currentItems.map((item) => (
@@ -347,7 +347,9 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
           <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder="Nhập phản hồi cho luồng hỗ trợ..."
+            aria-label="Nội dung phản hồi handoff"
+            disabled={activeTab === TAB_RESOLVED || isThreadClosed}
+            placeholder={isThreadClosed ? "Phiên hỗ trợ đã đóng" : "Nhập phản hồi cho luồng hỗ trợ..."}
           />
           <button type="submit" disabled={activeTab === TAB_RESOLVED || isThreadClosed || !reply.trim() || !!sendMessageState?.loading}>Gửi phản hồi</button>
           <button type="button" onClick={onResolve} disabled={activeTab === TAB_RESOLVED || !selectedItem || isThreadClosed || resolving}>

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./CustomerAnalyticsPage.scss";
+import "./AiChatbotAdmin.scss";
 
 const GET_AI_CHATBOT_ANALYTICS = gql`
   query AiChatbotAnalytics($input: AiChatbotAnalyticsInput!) {
@@ -63,15 +64,15 @@ export default function AiChatbotAnalyticsPage() {
   const m = data?.aiChatbotAnalytics;
 
   return (
-    <section className="customer-analytics-page">
-      <section className="customer-analytics-hero">
+    <section className="customer-analytics-page ai-admin-page ai-admin-page--analytics">
+      <section className="customer-analytics-hero ai-admin-hero">
         <div>
-          <p className="customer-analytics-hero__eyebrow">AI Chatbot Analytics</p>
+          <p className="customer-analytics-hero__eyebrow ai-admin-eyebrow">AI Chatbot Analytics</p>
           <h2>AI Chatbot Analytics</h2>
           <p>Theo dõi mức sử dụng chatbot, handoff và chất lượng phản hồi theo dạng tổng hợp.</p>
         </div>
 
-        <div className="customer-analytics-toolbar">
+        <div className="customer-analytics-toolbar ai-admin-field--restaurant">
           <label className="customer-analytics-field">
             <span>Nhà hàng</span>
             <select value={effectiveRestaurantId} onChange={(e) => setSelectedRestaurantId(e.target.value)} disabled={restaurantsLoading || !hasRestaurants}>
@@ -96,19 +97,19 @@ export default function AiChatbotAnalyticsPage() {
 
       {!loading && !error && m ? (
         <>
-          <div className="customer-analytics-overview-grid">
-            <article className="customer-overview-card"><h4>Cuộc trò chuyện AI</h4><p>{formatNum(m.totalConversations)}</p></article>
-            <article className="customer-overview-card"><h4>Tin nhắn AI</h4><p>{formatNum(m.totalMessages)}</p></article>
-            <article className="customer-overview-card"><h4>Đang chat AI</h4><p>{formatNum(m.openConversations)}</p></article>
-            <article className="customer-overview-card"><h4>Handoff đang xử lý</h4><p>{formatNum(m.handoffRequested)}</p></article>
-            <article className="customer-overview-card"><h4>Handoff đã xử lý</h4><p>{formatNum(m.resolvedHandoffs)}</p></article>
-            <article className="customer-overview-card"><h4>Fallback / low confidence</h4><p>{formatNum(m.fallbackResponses)} / {formatNum(m.lowConfidenceResponses)}</p></article>
-            <article className="customer-overview-card"><h4>Tỷ lệ chuyển handoff</h4><p>{formatPct(m.handoffConversionRate)}</p></article>
-            <article className="customer-overview-card"><h4>Pending suggestions</h4><p>{formatNum(m.pendingSuggestions)}</p></article>
-            <article className="customer-overview-card"><h4>Not helpful feedback</h4><p>{formatNum(m.notHelpfulFeedback)}</p></article>
-            <article className="customer-overview-card"><h4>Active safety rules</h4><p>{formatNum(m.activeSafetyRules)}</p></article>
-            <article className="customer-overview-card"><h4>Evaluation cases</h4><p>{formatNum(m.evaluationCaseCount)}</p></article>
-            <article className="customer-overview-card"><h4>Thời gian xử lý handoff TB</h4><p>{m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}</p></article>
+          <div className="customer-analytics-overview-grid ai-admin-metrics">
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Cuộc trò chuyện AI</h4><p>{formatNum(m.totalConversations)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Tin nhắn AI</h4><p>{formatNum(m.totalMessages)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Đang chat AI</h4><p>{formatNum(m.openConversations)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Handoff đang xử lý</h4><p>{formatNum(m.handoffRequested)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Handoff đã xử lý</h4><p>{formatNum(m.resolvedHandoffs)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Fallback / low confidence</h4><p>{formatNum(m.fallbackResponses)} / {formatNum(m.lowConfidenceResponses)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Tỷ lệ chuyển handoff</h4><p>{formatPct(m.handoffConversionRate)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Pending suggestions</h4><p>{formatNum(m.pendingSuggestions)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Not helpful feedback</h4><p>{formatNum(m.notHelpfulFeedback)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Active safety rules</h4><p>{formatNum(m.activeSafetyRules)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Evaluation cases</h4><p>{formatNum(m.evaluationCaseCount)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Thời gian xử lý handoff TB</h4><p>{m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}</p></article>
           </div>
 
           <section className="customer-analytics-layout-grid">

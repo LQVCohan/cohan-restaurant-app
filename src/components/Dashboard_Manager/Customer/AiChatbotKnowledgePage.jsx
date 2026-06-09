@@ -3,4 +3,311 @@ import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import "./AiChatbotAdmin.scss";
 
-const Q = gql`query ManagerAiKnowledge($restaurantId: ID!, $filter: AiChatbotKnowledgeFilterInput) { restaurantAiChatbotKnowledge(restaurantId: $restaurantId
+const KNOWLEDGE_QUERY = gql`
+  query ManagerAiKnowledge($restaurantId: ID!, $filter: AiChatbotKnowledgeFilterInput) {
+    restaurantAiChatbotKnowledge(restaurantId: $restaurantId, filter: $filter) {
+      id
+      title
+      content
+      category
+      tags
+      enabled
+      priority
+      sourceType
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const SUGGESTIONS_QUERY = gql`
+  query ManagerAiKnowledgeSuggestions($restaurantId: ID!, $filter: AiChatbotKnowledgeSuggestionFilterInput) {
+    restaurantAiChatbotKnowledgeSuggestions(restaurantId: $restaurantId, filter: $filter) {
+      id
+      question
+      suggestedTitle
+      suggestedContent
+      category
+      tags
+      triggerType
+      confidence
+      status
+      occurrenceCount
+      lastAskedAt
+      createdAt
+    }
+  }
+`;
+
+const FEEDBACK_QUERY = gql`
+  query ManagerAiFeedback($restaurantId: ID!, $filter: AiChatbotAnswerFeedbackFilterInput) {
+    restaurantAiChatbotAnswerFeedback(restaurantId: $restaurantId, filter: $filter) {
+      id
+      question
+      answer
+      rating
+      reason
+      tags
+      sourceTypes
+      confidence
+      status
+      createdAt
+    }
+  }
+`;
+
+const SAFETY_QUERY = gql`
+  query ManagerAiSafetyRules($restaurantId: ID!, $filter: AiChatbotSafetyRuleFilterInput) {
+    restaurantAiChatbotSafetyRules(restaurantId: $restaurantId, filter: $filter) {
+      id
+      ruleType
+      pattern
+      responseMessage
+      enabled
+      priority
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const EVALUATION_CASES_QUERY = gql`
+  query ManagerAiEvaluationCases($restaurantId: ID!) {
+    restaurantAiChatbotEvaluationCases(restaurantId: $restaurantId) {
+      id
+      question
+      expectedBehavior
+      category
+      tags
+      enabled
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const EXPORT_QUERY = gql`query ExportManagerAiKnowledge($restaurantId: ID!, $format: String) { exportRestaurantAiChatbotKnowledge(restaurantId: $restaurantId, format: $format) }`;
+const EVALUATE_QUERY = gql`query EvaluateManagerAiPrompt($input: EvaluateAiChatbotPromptInput!) { evaluateRestaurantAiChatbotPrompt(input: $input) { caseId question expectedBehavior category tags answer intent confidence isFallback handoffSuggested handoffReason handoffMessage quickReplies knowledgeMatches { id title category sourceType score } safetyResult { blocked outOfScope disclaimers handoffSuggested matchedRuleIds } sources { type id label status isAvailable formattedPrice } } }`;
+const RUN_SET_QUERY = gql`query RunManagerAiEvaluationSet($input: RunAiChatbotEvaluationSetInput!) { runRestaurantAiChatbotEvaluationSet(input: $input) { caseId question expectedBehavior category tags answer intent confidence isFallback handoffSuggested handoffReason handoffMessage knowledgeMatches { id title category sourceType score } safetyResult { blocked outOfScope disclaimers handoffSuggested matchedRuleIds } } }`;
+
+const CREATE_KNOWLEDGE = gql`mutation CreateManagerAiKnowledge($input: CreateAiChatbotKnowledgeItemInput!) { createRestaurantAiChatbotKnowledgeItem(input: $input) { id } }`;
+const UPDATE_KNOWLEDGE = gql`mutation UpdateManagerAiKnowledge($input: UpdateAiChatbotKnowledgeItemInput!) { updateRestaurantAiChatbotKnowledgeItem(input: $input) { id } }`;
+const DELETE_KNOWLEDGE = gql`mutation DeleteManagerAiKnowledge($id: ID!) { deleteRestaurantAiChatbotKnowledgeItem(id: $id) }`;
+const BULK_KNOWLEDGE_ENABLED = gql`mutation BulkKnowledgeEnabled($input: BulkAiChatbotIdsInput!, $enabled: Boolean!) { bulkUpdateRestaurantAiChatbotKnowledgeEnabled(input: $input, enabled: $enabled) }`;
+const BULK_KNOWLEDGE_DELETE = gql`mutation BulkDeleteKnowledge($input: BulkAiChatbotIdsInput!) { bulkDeleteRestaurantAiChatbotKnowledge(input: $input) }`;
+const IMPORT_KNOWLEDGE = gql`mutation ImportManagerAiKnowledge($input: ImportAiChatbotKnowledgeInput!) { importRestaurantAiChatbotKnowledge(input: $input) { imported skipped errors } }`;
+
+const APPROVE_SUGGESTION = gql`mutation ApproveManagerAiSuggestion($id: ID!, $input: ApproveAiChatbotKnowledgeSuggestionInput!) { approveRestaurantAiChatbotKnowledgeSuggestion(id: $id, input: $input) { id } }`;
+const DISMISS_SUGGESTION = gql`mutation DismissManagerAiSuggestion($id: ID!) { dismissRestaurantAiChatbotKnowledgeSuggestion(id: $id) }`;
+const DELETE_SUGGESTION = gql`mutation DeleteManagerAiSuggestion($id: ID!) { deleteRestaurantAiChatbotKnowledgeSuggestion(id: $id) }`;
+const BULK_DISMISS_SUGGESTIONS = gql`mutation BulkDismissManagerAiSuggestions($input: BulkAiChatbotIdsInput!) { bulkDismissRestaurantAiChatbotKnowledgeSuggestions(input: $input) }`;
+const BULK_DELETE_SUGGESTIONS = gql`mutation BulkDeleteManagerAiSuggestions($input: BulkAiChatbotIdsInput!) { bulkDeleteRestaurantAiChatbotKnowledgeSuggestions(input: $input) }`;
+
+const MARK_FEEDBACK_REVIEWED = gql`mutation MarkAiFeedbackReviewed($id: ID!) { markAiChatbotAnswerFeedbackReviewed(id: $id) }`;
+const IGNORE_FEEDBACK = gql`mutation IgnoreAiFeedback($id: ID!) { ignoreAiChatbotAnswerFeedback(id: $id) }`;
+const CONVERT_FEEDBACK = gql`mutation ConvertAiFeedback($id: ID!) { convertAiChatbotFeedbackToSuggestion(id: $id) }`;
+const BULK_FEEDBACK_REVIEWED = gql`mutation BulkAiFeedbackReviewed($input: BulkAiChatbotIdsInput!) { bulkMarkAiChatbotAnswerFeedbackReviewed(input: $input) }`;
+const BULK_FEEDBACK_IGNORE = gql`mutation BulkAiFeedbackIgnore($input: BulkAiChatbotIdsInput!) { bulkIgnoreAiChatbotAnswerFeedback(input: $input) }`;
+const BULK_FEEDBACK_CONVERT = gql`mutation BulkAiFeedbackConvert($input: BulkAiChatbotIdsInput!) { bulkConvertAiChatbotFeedbackToSuggestion(input: $input) }`;
+
+const CREATE_SAFETY = gql`mutation CreateManagerAiSafetyRule($input: CreateAiChatbotSafetyRuleInput!) { createRestaurantAiChatbotSafetyRule(input: $input) { id } }`;
+const UPDATE_SAFETY = gql`mutation UpdateManagerAiSafetyRule($input: UpdateAiChatbotSafetyRuleInput!) { updateRestaurantAiChatbotSafetyRule(input: $input) { id } }`;
+const DELETE_SAFETY = gql`mutation DeleteManagerAiSafetyRule($id: ID!) { deleteRestaurantAiChatbotSafetyRule(id: $id) }`;
+const BULK_SAFETY_ENABLED = gql`mutation BulkAiSafetyEnabled($input: BulkAiChatbotIdsInput!, $enabled: Boolean!) { bulkUpdateRestaurantAiChatbotSafetyRuleEnabled(input: $input, enabled: $enabled) }`;
+const BULK_SAFETY_DELETE = gql`mutation BulkAiSafetyDelete($input: BulkAiChatbotIdsInput!) { bulkDeleteRestaurantAiChatbotSafetyRules(input: $input) }`;
+
+const CREATE_EVAL_CASE = gql`mutation CreateManagerAiEvalCase($input: CreateAiChatbotEvaluationCaseInput!) { createRestaurantAiChatbotEvaluationCase(input: $input) { id } }`;
+
+const defaultKnowledgeForm = { title: "", content: "", category: "general", tags: "", enabled: true, priority: 0, sourceType: "manual" };
+const defaultSafetyForm = { ruleType: "blocked_topic", pattern: "", responseMessage: "", enabled: true, priority: 0 };
+const tabs = ["knowledge", "suggestions", "feedback", "safety", "evaluation"];
+
+const formatDate = (value) => value ? new Date(value).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+const parseTags = (value) => String(value || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+const tagText = (tags) => (Array.isArray(tags) ? tags.join(", ") : tags || "");
+const statusClass = (enabled) => `ai-admin-status ${enabled ? "is-on" : "is-off"}`;
+const toPercent = (value) => value == null ? "—" : `${Math.round(Number(value) * 100)}%`;
+
+function EmptyState({ title, description }) {
+  return <div className="ai-admin-empty"><div className="ai-admin-empty__icon">∅</div><h4>{title}</h4><p>{description}</p></div>;
+}
+
+export default function AiChatbotKnowledgePage() {
+  const { restaurants = [] } = useContext(AuthContext) || {};
+  const [restaurantId, setRestaurantId] = useState("");
+  const effectiveRestaurantId = restaurantId || restaurants?.[0]?.id || "";
+  const [activeTab, setActiveTab] = useState("knowledge");
+  const [selectedKnowledge, setSelectedKnowledge] = useState([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState([]);
+  const [selectedFeedback, setSelectedFeedback] = useState([]);
+  const [selectedSafety, setSelectedSafety] = useState([]);
+  const [knowledgeForm, setKnowledgeForm] = useState(defaultKnowledgeForm);
+  const [editingKnowledgeId, setEditingKnowledgeId] = useState(null);
+  const [safetyForm, setSafetyForm] = useState(defaultSafetyForm);
+  const [editingSafetyId, setEditingSafetyId] = useState(null);
+  const [exportFormat, setExportFormat] = useState("json");
+  const [exportOutput, setExportOutput] = useState("");
+  const [importFormat, setImportFormat] = useState("json");
+  const [importPayload, setImportPayload] = useState("");
+  const [importResult, setImportResult] = useState(null);
+  const [evaluationMessage, setEvaluationMessage] = useState("");
+  const [evaluationExpected, setEvaluationExpected] = useState("");
+  const [evalResult, setEvalResult] = useState(null);
+  const [notice, setNotice] = useState("");
+  const [errorText, setErrorText] = useState("");
+
+  const commonVars = useMemo(() => ({ restaurantId: effectiveRestaurantId }), [effectiveRestaurantId]);
+  const knowledgeQuery = useQuery(KNOWLEDGE_QUERY, { skip: !effectiveRestaurantId, variables: { ...commonVars, filter: null } });
+  const suggestionsQuery = useQuery(SUGGESTIONS_QUERY, { skip: !effectiveRestaurantId, variables: { ...commonVars, filter: { status: "pending" } } });
+  const feedbackQuery = useQuery(FEEDBACK_QUERY, { skip: !effectiveRestaurantId, variables: { ...commonVars, filter: { status: "new" } } });
+  const safetyQuery = useQuery(SAFETY_QUERY, { skip: !effectiveRestaurantId, variables: { ...commonVars, filter: null } });
+  const evalCasesQuery = useQuery(EVALUATION_CASES_QUERY, { skip: !effectiveRestaurantId, variables: commonVars });
+
+  const [exportKnowledge, exportState] = useLazyQuery(EXPORT_QUERY, { fetchPolicy: "network-only" });
+  const [evaluatePrompt, evaluateState] = useLazyQuery(EVALUATE_QUERY, { fetchPolicy: "network-only" });
+  const [runSet, runSetState] = useLazyQuery(RUN_SET_QUERY, { fetchPolicy: "network-only" });
+
+  const [createKnowledge] = useMutation(CREATE_KNOWLEDGE);
+  const [updateKnowledge] = useMutation(UPDATE_KNOWLEDGE);
+  const [deleteKnowledge] = useMutation(DELETE_KNOWLEDGE);
+  const [bulkKnowledgeEnabled] = useMutation(BULK_KNOWLEDGE_ENABLED);
+  const [bulkKnowledgeDelete] = useMutation(BULK_KNOWLEDGE_DELETE);
+  const [importKnowledge] = useMutation(IMPORT_KNOWLEDGE);
+  const [approveSuggestion] = useMutation(APPROVE_SUGGESTION);
+  const [dismissSuggestion] = useMutation(DISMISS_SUGGESTION);
+  const [deleteSuggestion] = useMutation(DELETE_SUGGESTION);
+  const [bulkDismissSuggestion] = useMutation(BULK_DISMISS_SUGGESTIONS);
+  const [bulkDeleteSuggestion] = useMutation(BULK_DELETE_SUGGESTIONS);
+  const [markFeedbackReviewed] = useMutation(MARK_FEEDBACK_REVIEWED);
+  const [ignoreFeedback] = useMutation(IGNORE_FEEDBACK);
+  const [convertFeedback] = useMutation(CONVERT_FEEDBACK);
+  const [bulkFeedbackReviewed] = useMutation(BULK_FEEDBACK_REVIEWED);
+  const [bulkFeedbackIgnore] = useMutation(BULK_FEEDBACK_IGNORE);
+  const [bulkFeedbackConvert] = useMutation(BULK_FEEDBACK_CONVERT);
+  const [createSafety] = useMutation(CREATE_SAFETY);
+  const [updateSafety] = useMutation(UPDATE_SAFETY);
+  const [deleteSafety] = useMutation(DELETE_SAFETY);
+  const [bulkSafetyEnabled] = useMutation(BULK_SAFETY_ENABLED);
+  const [bulkSafetyDelete] = useMutation(BULK_SAFETY_DELETE);
+  const [createEvalCase] = useMutation(CREATE_EVAL_CASE);
+
+  const knowledge = knowledgeQuery.data?.restaurantAiChatbotKnowledge || [];
+  const suggestions = suggestionsQuery.data?.restaurantAiChatbotKnowledgeSuggestions || [];
+  const feedback = feedbackQuery.data?.restaurantAiChatbotAnswerFeedback || [];
+  const safetyRules = safetyQuery.data?.restaurantAiChatbotSafetyRules || [];
+  const evalCases = evalCasesQuery.data?.restaurantAiChatbotEvaluationCases || [];
+  const loading = knowledgeQuery.loading || suggestionsQuery.loading || feedbackQuery.loading || safetyQuery.loading || evalCasesQuery.loading;
+  const queryError = knowledgeQuery.error || suggestionsQuery.error || feedbackQuery.error || safetyQuery.error || evalCasesQuery.error;
+
+  const refetchAll = () => {
+    knowledgeQuery.refetch?.();
+    suggestionsQuery.refetch?.();
+    feedbackQuery.refetch?.();
+    safetyQuery.refetch?.();
+    evalCasesQuery.refetch?.();
+  };
+
+  const runAction = async (action, successMessage) => {
+    setErrorText("");
+    setNotice("");
+    try {
+      await action();
+      setNotice(successMessage);
+      refetchAll();
+    } catch (error) {
+      setErrorText(error?.message || "Không thể hoàn tất thao tác. Vui lòng thử lại.");
+    }
+  };
+
+  const toggleSelection = (id, selected, setSelected) => {
+    setSelected(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
+  };
+
+  const submitKnowledge = (event) => {
+    event.preventDefault();
+    const input = {
+      title: knowledgeForm.title.trim(),
+      content: knowledgeForm.content.trim(),
+      category: knowledgeForm.category.trim() || "general",
+      tags: parseTags(knowledgeForm.tags),
+      enabled: !!knowledgeForm.enabled,
+      priority: Number(knowledgeForm.priority || 0),
+      sourceType: knowledgeForm.sourceType.trim() || "manual",
+    };
+    if (!input.title || !input.content || !effectiveRestaurantId) return;
+    runAction(async () => {
+      if (editingKnowledgeId) await updateKnowledge({ variables: { input: { id: editingKnowledgeId, ...input } } });
+      else await createKnowledge({ variables: { input: { restaurantId: effectiveRestaurantId, ...input } } });
+      setKnowledgeForm(defaultKnowledgeForm);
+      setEditingKnowledgeId(null);
+    }, editingKnowledgeId ? "Đã cập nhật knowledge item." : "Đã thêm knowledge item.");
+  };
+
+  const editKnowledge = (item) => {
+    setEditingKnowledgeId(item.id);
+    setKnowledgeForm({ title: item.title || "", content: item.content || "", category: item.category || "general", tags: tagText(item.tags), enabled: !!item.enabled, priority: item.priority ?? 0, sourceType: item.sourceType || "manual" });
+  };
+
+  const submitSafety = (event) => {
+    event.preventDefault();
+    const input = { ruleType: safetyForm.ruleType.trim() || "blocked_topic", pattern: safetyForm.pattern.trim(), responseMessage: safetyForm.responseMessage, enabled: !!safetyForm.enabled, priority: Number(safetyForm.priority || 0) };
+    if (!input.pattern || !effectiveRestaurantId) return;
+    runAction(async () => {
+      if (editingSafetyId) await updateSafety({ variables: { input: { id: editingSafetyId, ...input } } });
+      else await createSafety({ variables: { input: { restaurantId: effectiveRestaurantId, ...input } } });
+      setSafetyForm(defaultSafetyForm);
+      setEditingSafetyId(null);
+    }, editingSafetyId ? "Đã cập nhật safety rule." : "Đã thêm safety rule.");
+  };
+
+  const editSafety = (item) => {
+    setEditingSafetyId(item.id);
+    setSafetyForm({ ruleType: item.ruleType || "blocked_topic", pattern: item.pattern || "", responseMessage: item.responseMessage || "", enabled: !!item.enabled, priority: item.priority ?? 0 });
+  };
+
+  const onExport = () => runAction(async () => {
+    const result = await exportKnowledge({ variables: { restaurantId: effectiveRestaurantId, format: exportFormat } });
+    setExportOutput(result?.data?.exportRestaurantAiChatbotKnowledge || "");
+  }, "Đã export knowledge.");
+
+  const onImport = () => runAction(async () => {
+    const result = await importKnowledge({ variables: { input: { restaurantId: effectiveRestaurantId, format: importFormat, payload: importPayload } } });
+    setImportResult(result?.data?.importRestaurantAiChatbotKnowledge || null);
+  }, "Đã import knowledge.");
+
+  const renderKnowledge = () => (
+    <div className="ai-admin-grid ai-admin-grid--knowledge">
+      <article className="ai-admin-panel">
+        <header className="ai-admin-panel__header">
+          <div><p className="ai-admin-eyebrow">Knowledge base</p><h3>Tri thức chatbot</h3><p>Card/table hybrid để scan nhanh title, preview, metadata và trạng thái.</p></div>
+          <div className="ai-admin-actions ai-admin-actions--end"><span className="ai-admin-selection">{selectedKnowledge.length} selected</span><button type="button" disabled={!selectedKnowledge.length} onClick={() => runAction(() => bulkKnowledgeEnabled({ variables: { input: { ids: selectedKnowledge }, enabled: true } }), "Đã bật các item đã chọn.")}>Enable selected</button><button type="button" className="ai-admin-button--secondary" disabled={!selectedKnowledge.length} onClick={() => runAction(() => bulkKnowledgeEnabled({ variables: { input: { ids: selectedKnowledge }, enabled: false } }), "Đã tắt các item đã chọn.")}>Disable selected</button><button type="button" className="ai-admin-button--danger" disabled={!selectedKnowledge.length} onClick={() => window.confirm("Xóa các knowledge item đã chọn?") && runAction(() => bulkKnowledgeDelete({ variables: { input: { ids: selectedKnowledge } } }), "Đã xóa các item đã chọn.")}>Delete selected</button></div>
+        </header>
+        {knowledge.length ? <div className="ai-admin-card-list">{knowledge.map((item) => <article key={item.id} className={`ai-admin-card ${selectedKnowledge.includes(item.id) ? "is-selected" : ""}`}><input className="ai-admin-card__checkbox" aria-label={`knowledge-${item.id}`} type="checkbox" checked={selectedKnowledge.includes(item.id)} onChange={() => toggleSelection(item.id, selectedKnowledge, setSelectedKnowledge)} /><div className="ai-admin-card__body"><div className="ai-admin-card__meta"><span className={statusClass(item.enabled)}>{item.enabled ? "Enabled" : "Disabled"}</span><span>{item.category || "general"}</span><span>Priority {item.priority ?? 0}</span><span>{item.sourceType || "manual"}</span></div><h4>{item.title}</h4><p>{item.content}</p><div className="ai-admin-tag-row">{(item.tags || []).map((tag) => <span key={tag} className="ai-admin-tag">{tag}</span>)}{!(item.tags || []).length ? <span className="ai-admin-tag ai-admin-tag--muted">No tags</span> : null}</div><small>Cập nhật {formatDate(item.updatedAt || item.createdAt)}</small></div><div className="ai-admin-card__actions"><button type="button" onClick={() => editKnowledge(item)}>Sửa</button><button type="button" className="ai-admin-button--secondary" onClick={() => runAction(() => updateKnowledge({ variables: { input: { id: item.id, enabled: !item.enabled } } }), item.enabled ? "Đã tắt item." : "Đã bật item.")}>{item.enabled ? "Tắt" : "Bật"}</button><button type="button" className="ai-admin-button--danger" onClick={() => window.confirm("Xóa knowledge item này?") && runAction(() => deleteKnowledge({ variables: { id: item.id } }), "Đã xóa knowledge item.")}>Xóa</button></div></article>)}</div> : <EmptyState title="Chưa có knowledge item" description="Thêm nội dung thủ công hoặc import JSON/CSV để chatbot có nguồn trả lời rõ ràng hơn." />}
+      </article>
+      <aside className="ai-admin-side-stack">
+        <article className="ai-admin-panel"><header className="ai-admin-panel__header ai-admin-panel__header--compact"><div><p className="ai-admin-eyebrow">Editor</p><h3>{editingKnowledgeId ? "Sửa item" : "Thêm item"}</h3><p>Giữ đầy đủ metadata để lọc, ưu tiên và truy vết nguồn.</p></div></header><form className="ai-admin-form" onSubmit={submitKnowledge}><label className="ai-admin-field"><span>Title</span><input value={knowledgeForm.title} onChange={(e) => setKnowledgeForm((f) => ({ ...f, title: e.target.value }))} /></label><label className="ai-admin-field"><span>Content</span><textarea rows={8} value={knowledgeForm.content} onChange={(e) => setKnowledgeForm((f) => ({ ...f, content: e.target.value }))} /></label><div className="ai-admin-form__split"><label className="ai-admin-field"><span>Category</span><input value={knowledgeForm.category} onChange={(e) => setKnowledgeForm((f) => ({ ...f, category: e.target.value }))} /></label><label className="ai-admin-field"><span>Source type</span><input value={knowledgeForm.sourceType} onChange={(e) => setKnowledgeForm((f) => ({ ...f, sourceType: e.target.value }))} /></label></div><label className="ai-admin-field"><span>Tags</span><input value={knowledgeForm.tags} onChange={(e) => setKnowledgeForm((f) => ({ ...f, tags: e.target.value }))} placeholder="menu, allergy, policy" /></label><div className="ai-admin-form__split"><label className="ai-admin-field"><span>Priority</span><input type="number" value={knowledgeForm.priority} onChange={(e) => setKnowledgeForm((f) => ({ ...f, priority: e.target.value }))} /></label><label className="ai-admin-check ai-admin-check--inline"><input type="checkbox" checked={!!knowledgeForm.enabled} onChange={(e) => setKnowledgeForm((f) => ({ ...f, enabled: e.target.checked }))} /><span>Enabled</span></label></div><div className="ai-admin-actions"><button type="submit">{editingKnowledgeId ? "Cập nhật" : "Thêm knowledge"}</button><button type="button" className="ai-admin-button--secondary" onClick={() => { setKnowledgeForm(defaultKnowledgeForm); setEditingKnowledgeId(null); }}>Reset form</button></div></form></article>
+        <article className="ai-admin-panel"><header className="ai-admin-panel__header ai-admin-panel__header--compact"><div><p className="ai-admin-eyebrow">Import / Export</p><h3>Dữ liệu tri thức</h3><p>JSON/CSV payload đặt trong panel phụ để không chiếm vùng thao tác chính.</p></div></header><div className="ai-admin-import-export"><label className="ai-admin-field"><span>Export format</span><select aria-label="Export format" value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}><option value="json">json</option><option value="csv">csv</option></select></label><button type="button" disabled={!effectiveRestaurantId || exportState.loading} onClick={onExport}>Export</button><label className="ai-admin-field"><span>Export output</span><textarea aria-label="Export output" value={exportOutput} readOnly placeholder="Export output sẽ hiển thị tại đây để copy." /></label><label className="ai-admin-field"><span>Import format</span><select aria-label="Import format" value={importFormat} onChange={(e) => setImportFormat(e.target.value)}><option value="json">json</option><option value="csv">csv</option></select></label><label className="ai-admin-field"><span>Import payload</span><textarea aria-label="Import payload" value={importPayload} onChange={(e) => setImportPayload(e.target.value)} placeholder='JSON array hoặc CSV với title,content,category,tags,enabled,priority,sourceType' /></label><button type="button" disabled={!effectiveRestaurantId || !importPayload.trim()} onClick={onImport}>Import</button>{importResult ? <small>Imported {importResult.imported}, skipped {importResult.skipped}{importResult.errors?.length ? `, errors ${importResult.errors.length}` : ""}</small> : null}</div></article>
+      </aside>
+    </div>
+  );
+
+  const renderSuggestions = () => <article className="ai-admin-panel"><header className="ai-admin-panel__header"><div><p className="ai-admin-eyebrow">Suggestions</p><h3>Câu hỏi khách hỏi nhiều</h3><p>Duyệt câu hỏi thành knowledge hoặc loại bỏ các gợi ý không còn phù hợp.</p></div><div className="ai-admin-actions"><span className="ai-admin-selection">{selectedSuggestions.length} selected</span><button type="button" disabled={!selectedSuggestions.length} onClick={() => runAction(() => bulkDismissSuggestion({ variables: { input: { ids: selectedSuggestions } } }), "Đã dismiss các suggestion đã chọn.")}>Dismiss selected</button><button type="button" className="ai-admin-button--danger" disabled={!selectedSuggestions.length} onClick={() => window.confirm("Xóa các suggestion đã chọn?") && runAction(() => bulkDeleteSuggestion({ variables: { input: { ids: selectedSuggestions } } }), "Đã xóa các suggestion đã chọn.")}>Delete selected</button></div></header>{suggestions.length ? <div className="ai-admin-card-list ai-admin-card-list--two">{suggestions.map((item) => <article key={item.id} className={`ai-admin-card ${selectedSuggestions.includes(item.id) ? "is-selected" : ""}`}><input className="ai-admin-card__checkbox" aria-label={`suggestion-${item.id}`} type="checkbox" checked={selectedSuggestions.includes(item.id)} onChange={() => toggleSelection(item.id, selectedSuggestions, setSelectedSuggestions)} /><div className="ai-admin-card__body"><div className="ai-admin-card__meta"><span className="ai-admin-status is-waiting">{item.status || "pending"}</span><span>{item.category || "general"}</span><span>{toPercent(item.confidence)}</span><span>{item.occurrenceCount || 0} lần</span></div><h4>{item.question}</h4><p>{item.suggestedTitle || "Chưa có tiêu đề"}</p><small>{item.suggestedContent || "Chưa có nội dung gợi ý."}</small><div className="ai-admin-tag-row">{(item.tags || []).map((tag) => <span key={tag} className="ai-admin-tag">{tag}</span>)}</div></div><div className="ai-admin-card__actions"><button type="button" onClick={() => runAction(() => approveSuggestion({ variables: { id: item.id, input: { title: item.suggestedTitle || item.question, content: item.suggestedContent || item.question, category: item.category || "general", tags: item.tags || [], enabled: true, priority: 0, sourceType: "suggestion" } } }), "Đã approve suggestion.")}>Approve</button><button type="button" className="ai-admin-button--secondary" onClick={() => runAction(() => dismissSuggestion({ variables: { id: item.id } }), "Đã dismiss suggestion.")}>Dismiss</button><button type="button" className="ai-admin-button--danger" onClick={() => window.confirm("Xóa suggestion này?") && runAction(() => deleteSuggestion({ variables: { id: item.id } }), "Đã xóa suggestion.")}>Delete</button></div></article>)}</div> : <EmptyState title="Không có suggestion" description="Khi khách hỏi câu AI chưa trả lời tốt, suggestion sẽ xuất hiện ở đây." />}</article>;
+
+  const renderFeedback = () => <article className="ai-admin-panel"><header className="ai-admin-panel__header"><div><p className="ai-admin-eyebrow">Feedback</p><h3>Phản hồi từ khách hàng</h3><p>Bố cục thoáng để rà soát rating, câu hỏi và lý do trước khi chuyển thành suggestion.</p></div><div className="ai-admin-actions"><span className="ai-admin-selection">{selectedFeedback.length} selected</span><button type="button" disabled={!selectedFeedback.length} onClick={() => runAction(() => bulkFeedbackReviewed({ variables: { input: { ids: selectedFeedback } } }), "Đã mark reviewed các feedback đã chọn.")}>Mark reviewed selected</button><button type="button" className="ai-admin-button--secondary" disabled={!selectedFeedback.length} onClick={() => runAction(() => bulkFeedbackIgnore({ variables: { input: { ids: selectedFeedback } } }), "Đã ignore các feedback đã chọn.")}>Ignore selected</button><button type="button" disabled={!selectedFeedback.length} onClick={() => runAction(() => bulkFeedbackConvert({ variables: { input: { ids: selectedFeedback } } }), "Đã convert feedback thành suggestion.")}>Convert selected to suggestions</button></div></header>{feedback.length ? <div className="ai-admin-card-list ai-admin-card-list--two">{feedback.map((item) => <article key={item.id} className={`ai-admin-card ${selectedFeedback.includes(item.id) ? "is-selected" : ""}`}><input className="ai-admin-card__checkbox" aria-label={`feedback-${item.id}`} type="checkbox" checked={selectedFeedback.includes(item.id)} onChange={() => toggleSelection(item.id, selectedFeedback, setSelectedFeedback)} /><div className="ai-admin-card__body"><div className="ai-admin-card__meta"><span className="ai-admin-status is-waiting">{item.status || "new"}</span><span>{item.rating}</span><span>{toPercent(item.confidence)}</span><span>{formatDate(item.createdAt)}</span></div><h4>{item.question || "Không có câu hỏi"}</h4><p>{item.reason || item.answer || "Không có ghi chú thêm."}</p><div className="ai-admin-tag-row">{(item.tags || []).map((tag) => <span key={tag} className="ai-admin-tag">{tag}</span>)}</div></div><div className="ai-admin-card__actions"><button type="button" onClick={() => runAction(() => markFeedbackReviewed({ variables: { id: item.id } }), "Đã mark reviewed feedback.")}>Mark reviewed</button><button type="button" className="ai-admin-button--secondary" onClick={() => runAction(() => ignoreFeedback({ variables: { id: item.id } }), "Đã ignore feedback.")}>Ignore</button><button type="button" onClick={() => runAction(() => convertFeedback({ variables: { id: item.id } }), "Đã convert thành suggestion.")}>Convert to suggestion</button></div></article>)}</div> : <EmptyState title="Chưa có feedback cần xử lý" description="Feedback mới của khách sẽ được gom tại đây để manager rà soát." />}</article>;
+
+  const renderSafety = () => <div className="ai-admin-grid ai-admin-grid--safety"><article className="ai-admin-panel"><header className="ai-admin-panel__header"><div><p className="ai-admin-eyebrow">Safety rules</p><h3>Luật an toàn</h3><p>Quản lý pattern, độ ưu tiên và phản hồi khi AI cần chặn hoặc chuyển hướng.</p></div><div className="ai-admin-actions"><span className="ai-admin-selection">{selectedSafety.length} selected</span><button type="button" disabled={!selectedSafety.length} onClick={() => runAction(() => bulkSafetyEnabled({ variables: { input: { ids: selectedSafety }, enabled: true } }), "Đã bật các rule đã chọn.")}>Enable selected</button><button type="button" className="ai-admin-button--secondary" disabled={!selectedSafety.length} onClick={() => runAction(() => bulkSafetyEnabled({ variables: { input: { ids: selectedSafety }, enabled: false } }), "Đã tắt các rule đã chọn.")}>Disable selected</button><button type="button" className="ai-admin-button--danger" disabled={!selectedSafety.length} onClick={() => window.confirm("Xóa các safety rule đã chọn?") && runAction(() => bulkSafetyDelete({ variables: { input: { ids: selectedSafety } } }), "Đã xóa các rule đã chọn.")}>Delete selected</button></div></header>{safetyRules.length ? <div className="ai-admin-card-list">{safetyRules.map((item) => <article key={item.id} className={`ai-admin-card ${selectedSafety.includes(item.id) ? "is-selected" : ""}`}><input className="ai-admin-card__checkbox" aria-label={`safety-${item.id}`} type="checkbox" checked={selectedSafety.includes(item.id)} onChange={() => toggleSelection(item.id, selectedSafety, setSelectedSafety)} /><div className="ai-admin-card__body"><div className="ai-admin-card__meta"><span className={statusClass(item.enabled)}>{item.enabled ? "Enabled" : "Disabled"}</span><span>{item.ruleType}</span><span>Priority {item.priority ?? 0}</span></div><h4>{item.pattern}</h4><p>{item.responseMessage || "Không có responseMessage riêng."}</p></div><div className="ai-admin-card__actions"><button type="button" onClick={() => editSafety(item)}>Sửa</button><button type="button" className="ai-admin-button--secondary" onClick={() => runAction(() => updateSafety({ variables: { input: { id: item.id, enabled: !item.enabled } } }), item.enabled ? "Đã tắt rule." : "Đã bật rule.")}>{item.enabled ? "Tắt" : "Bật"}</button><button type="button" className="ai-admin-button--danger" onClick={() => window.confirm("Xóa safety rule này?") && runAction(() => deleteSafety({ variables: { id: item.id } }), "Đã xóa safety rule.")}>Xóa</button></div></article>)}</div> : <EmptyState title="Chưa có safety rule" description="Tạo rule để điều hướng các chủ đề nhạy cảm theo chính sách nhà hàng." />}</article><aside className="ai-admin-panel"><header className="ai-admin-panel__header ai-admin-panel__header--compact"><div><p className="ai-admin-eyebrow">Rule editor</p><h3>{editingSafetyId ? "Sửa rule" : "Tạo rule"}</h3></div></header><form className="ai-admin-form" onSubmit={submitSafety}><label className="ai-admin-field"><span>Rule type</span><input value={safetyForm.ruleType} onChange={(e) => setSafetyForm((f) => ({ ...f, ruleType: e.target.value }))} /></label><label className="ai-admin-field"><span>Pattern</span><textarea rows={5} value={safetyForm.pattern} onChange={(e) => setSafetyForm((f) => ({ ...f, pattern: e.target.value }))} /></label><label className="ai-admin-field"><span>Response message</span><textarea rows={5} value={safetyForm.responseMessage} onChange={(e) => setSafetyForm((f) => ({ ...f, responseMessage: e.target.value }))} /></label><div className="ai-admin-form__split"><label className="ai-admin-field"><span>Priority</span><input type="number" value={safetyForm.priority} onChange={(e) => setSafetyForm((f) => ({ ...f, priority: e.target.value }))} /></label><label className="ai-admin-check ai-admin-check--inline"><input type="checkbox" checked={!!safetyForm.enabled} onChange={(e) => setSafetyForm((f) => ({ ...f, enabled: e.target.checked }))} /><span>Enabled</span></label></div><div className="ai-admin-actions"><button type="submit">{editingSafetyId ? "Cập nhật rule" : "Tạo rule"}</button><button type="button" className="ai-admin-button--secondary" onClick={() => { setSafetyForm(defaultSafetyForm); setEditingSafetyId(null); }}>Reset</button></div></form></aside></div>;
+
+  const renderEvaluation = () => <div className="ai-admin-grid ai-admin-grid--evaluation"><article className="ai-admin-panel"><header className="ai-admin-panel__header"><div><p className="ai-admin-eyebrow">Evaluation</p><h3>Evaluation Playground</h3><p>Test prompt nhanh, lưu case và chạy bộ case đang enabled.</p></div><div className="ai-admin-actions"><button type="button" disabled={!evaluationMessage.trim() || evaluateState.loading} onClick={() => runAction(async () => { const result = await evaluatePrompt({ variables: { input: { restaurantId: effectiveRestaurantId, message: evaluationMessage, history: [], includeDebug: true } } }); setEvalResult(result?.data?.evaluateRestaurantAiChatbotPrompt || null); }, "Đã chạy evaluation.")}>Run test</button><button type="button" className="ai-admin-button--secondary" disabled={!evaluationMessage.trim()} onClick={() => runAction(() => createEvalCase({ variables: { input: { restaurantId: effectiveRestaurantId, question: evaluationMessage, expectedBehavior: evaluationExpected, category: "manual", tags: [], enabled: true } } }), "Đã lưu evaluation case.")}>Save case</button><button type="button" disabled={runSetState.loading} onClick={() => runAction(async () => { const result = await runSet({ variables: { input: { restaurantId: effectiveRestaurantId, caseIds: evalCases.filter((item) => item.enabled).map((item) => item.id), includeDebug: true } } }); setEvalResult(result?.data?.runRestaurantAiChatbotEvaluationSet || []); }, "Đã chạy enabled set.")}>Run enabled set</button></div></header><form className="ai-admin-form" onSubmit={(event) => event.preventDefault()}><label className="ai-admin-field"><span>Evaluation message</span><textarea aria-label="Evaluation message" rows={7} value={evaluationMessage} onChange={(e) => setEvaluationMessage(e.target.value)} placeholder="Nhập câu hỏi test từ khách..." /></label><label className="ai-admin-field"><span>Expected behavior</span><textarea rows={4} value={evaluationExpected} onChange={(e) => setEvaluationExpected(e.target.value)} placeholder="Kỳ vọng: trả lời menu, đề xuất handoff, không trả lời ngoài phạm vi..." /></label></form>{evalResult ? <article className="ai-admin-panel ai-admin-panel--result"><header className="ai-admin-panel__header ai-admin-panel__header--compact"><div><p className="ai-admin-eyebrow">Result</p><h3>Kết quả test</h3></div></header>{!Array.isArray(evalResult) ? <div className="ai-admin-result-summary"><span>Confidence: <strong>{toPercent(evalResult.confidence)}</strong></span><span>Fallback: <strong>{evalResult.isFallback ? "Có" : "Không"}</strong></span><span>Handoff: <strong>{evalResult.handoffSuggested ? "Có" : "Không"}</strong></span><span>Knowledge matches: <strong>{evalResult.knowledgeMatches?.length || 0}</strong></span></div> : null}<pre>{JSON.stringify(evalResult, null, 2)}</pre></article> : null}</article><aside className="ai-admin-panel"><header className="ai-admin-panel__header ai-admin-panel__header--compact"><div><p className="ai-admin-eyebrow">Cases</p><h3>Evaluation cases</h3><p>{evalCases.length} case trong bộ kiểm thử.</p></div></header><div className="ai-admin-eval-cases">{evalCases.length ? <ul>{evalCases.map((item) => <li key={item.id}><strong>{item.question}</strong><span className={statusClass(item.enabled)}>{item.enabled ? "Enabled" : "Disabled"}</span></li>)}</ul> : <EmptyState title="Chưa có test case" description="Lưu câu hỏi từ playground để tạo bộ kiểm thử hồi quy." />}</div></aside></div>;
+
+  return <section className="ai-admin-page ai-admin-page--knowledge">
+    <header className="ai-admin-hero"><div className="ai-admin-hero__copy"><p className="ai-admin-eyebrow">AI operations</p><h2>AI Chatbot Knowledge</h2><p>Không gian quản lý tri thức, suggestion, feedback, safety rule và evaluation với palette kem ấm dịu mắt cho phiên làm việc dài.</p></div><label className="ai-admin-field ai-admin-field--restaurant"><span>Nhà hàng</span><select value={effectiveRestaurantId} onChange={(e) => setRestaurantId(e.target.value)}><option value="">Chọn nhà hàng</option>{restaurants.map((restaurant) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}</select></label></header>
+    <div className="ai-admin-metrics" aria-label="AI knowledge summary"><article><span>Knowledge</span><strong>{knowledge.length}</strong><small>item có thể dùng</small></article><article><span>Suggestions</span><strong>{suggestions.length}</strong><small>đang chờ duyệt</small></article><article><span>Feedback</span><strong>{feedback.length}</strong><small>cần rà soát</small></article><article><span>Safety</span><strong>{safetyRules.filter((rule) => rule.enabled).length}</strong><small>rule đang bật</small></article></div>
+    <nav className="ai-admin-tabs" aria-label="AI chatbot knowledge tabs">{tabs.map((tab) => <button key={tab} type="button" className={activeTab === tab ? "is-active" : ""} onClick={() => setActiveTab(tab)}>{tab}</button>)}</nav>
+    {!effectiveRestaurantId ? <EmptyState title="Chọn nhà hàng" description="Chọn một nhà hàng để tải dữ liệu AI chatbot." /> : null}
+    {loading ? <div className="ai-admin-skeleton" role="status">Đang tải dữ liệu quản lý AI...</div> : null}
+    {queryError ? <div className="ai-admin-error" role="alert">{queryError.message || "Không thể tải dữ liệu AI."}</div> : null}
+    {errorText ? <div className="ai-admin-error" role="alert">{errorText}</div> : null}
+    {notice ? <div className="ai-admin-notice" role="status">{notice}</div> : null}
+    {effectiveRestaurantId && !queryError ? <section className="ai-admin-tab-panel">{activeTab === "knowledge" && renderKnowledge()}{activeTab === "suggestions" && renderSuggestions()}{activeTab === "feedback" && renderFeedback()}{activeTab === "safety" && renderSafety()}{activeTab === "evaluation" && renderEvaluation()}</section> : null}
+  </section>;
+}
