@@ -4,6 +4,15 @@
 
 const ADMIN_ROLES = new Set(["admin"]);
 
+const AI_CHATBOT_MANAGER_PERMISSIONS = [
+  "ai.chatbot.read",
+  "ai.chatbot.write",
+  "ai.chatbot.moderate",
+  "ai.chatbot.evaluate",
+  "ai.chatbot.handoff",
+  "ai.chatbot.analytics.read",
+];
+
 const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
     "restaurant.read",
@@ -62,6 +71,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "payroll.validate",
     "payroll.payment.record",
     "payroll.export",
+    ...AI_CHATBOT_MANAGER_PERMISSIONS,
   ],
   hr: [
     "staff.read",
