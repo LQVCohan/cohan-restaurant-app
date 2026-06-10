@@ -1,0 +1,20 @@
+.ai-admin-page {
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+
+.ai-admin-page > .ai-admin-hero,
+.ai-admin-page > .ai-admin-metrics,
+.ai-admin-page > .ai-admin-tabs,
+.ai-admin-page > .ai-admin-tab-panel,
+.ai-admin-page > .ai-admin-insight-grid,
+.ai-admin-page > .ai-admin-skeleton,
+.ai-admin-page > .ai-admin-error,
+.ai-admin-page > .ai-admin-notice,
+.ai-admin-page > .ai-admin-empty {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+}
+
+.ai-admin-
