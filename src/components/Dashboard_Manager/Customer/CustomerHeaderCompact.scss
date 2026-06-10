@@ -1,0 +1,233 @@
+/* Customer page header compact overrides
+   Scope is intentionally narrow to avoid changing other manager pages. */
+
+.cm-page {
+  .management-page-header.density-compact {
+    max-width: 1180px;
+    width: calc(100% - 32px);
+    margin: 12px auto 14px;
+    padding: 14px 16px;
+    gap: 18px;
+    align-items: stretch;
+    background: rgba(255, 253, 248, 0.94);
+    border-color: rgba(222, 215, 201, 0.95);
+    box-shadow: 0 12px 30px rgba(66, 56, 38, 0.08);
+
+    .mph-left {
+      flex: 0 0 180px;
+      padding-right: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-right: 1px solid rgba(207, 195, 176, 0.72);
+    }
+
+    .mph-eyebrow {
+      margin-bottom: 5px;
+      font-size: 10px;
+      letter-spacing: 0.11em;
+      color: #a96f2d;
+    }
+
+    .mph-title {
+      margin: 0;
+      gap: 9px;
+      font-size: 22px;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+    }
+
+    .mph-title__icon {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      border-radius: 11px;
+      background: linear-gradient(145deg, #e9f4f3, #fff6e8);
+      border: 1px solid #d8e4df;
+    }
+
+    .mph-subtitle {
+      max-width: 175px;
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #64706e;
+    }
+
+    .mph-right {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: auto auto;
+      align-items: center;
+      gap: 10px 12px;
+    }
+
+    .mph-stats-grid {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(4, minmax(132px, 1fr));
+      gap: 8px;
+      margin-bottom: 0;
+    }
+
+    .mph-stat-card {
+      min-height: 46px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #fffdf8;
+      border-color: #ded7c9;
+      gap: 8px;
+    }
+
+    .mph-stat-card__icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: #f8f3ea;
+    }
+
+    .mph-stat-card__label {
+      font-size: 11px;
+      line-height: 1.1;
+      color: #7b8581;
+    }
+
+    .mph-stat-card__value {
+      font-size: 17px;
+      color: #1f2a2b;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mph-controls-row {
+      grid-column: 1 / -1;
+      padding-top: 0;
+      border-top: 0;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mph-select {
+      min-width: 150px;
+      height: 36px;
+      border-radius: 10px;
+      background: #fffdf8;
+      border-color: #ded7c9;
+    }
+
+    .mph-btn {
+      height: 36px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .mph-btn--primary {
+      background: #a96f2d;
+      border-color: #a96f2d;
+      box-shadow: 0 8px 18px rgba(169, 111, 45, 0.18);
+    }
+  }
+
+  .manager-command-bar {
+    max-width: 1180px;
+    width: calc(100% - 32px);
+    margin: 0 auto 10px;
+  }
+
+  .manager-command-bar .mcb-controls {
+    gap: 10px;
+  }
+
+  .manager-command-bar .mcb-left {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .manager-command-bar .mcb-right {
+    flex: 0 0 auto;
+  }
+
+  .cm-quick-filters {
+    min-width: 0;
+    max-width: 440px;
+  }
+
+  .cm-quick-filters .cm-pill {
+    height: 36px;
+    padding: 0 10px;
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .cm-quick-filters .cm-pill-icon {
+    display: inline-flex;
+    width: 14px;
+    justify-content: center;
+  }
+
+  .cm-quick-filters .cm-pill-count {
+    padding: 1px 6px;
+  }
+
+  .manager-command-bar .mcb-search {
+    width: 220px;
+    min-width: 220px;
+    flex: 0 0 220px;
+    height: 36px;
+  }
+
+  .manager-command-bar .mcb-btn {
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 10px;
+    font-size: 12.5px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .cm-page {
+    .management-page-header.density-compact,
+    .manager-command-bar {
+      width: calc(100% - 24px);
+    }
+
+    .management-page-header.density-compact {
+      .mph-right {
+        display: block;
+      }
+
+      .mph-stats-grid {
+        margin-bottom: 10px;
+      }
+    }
+  }
+}
+
+@media (max-width: 860px) {
+  .cm-page {
+    .management-page-header.density-compact {
+      flex-direction: column;
+
+      .mph-left {
+        flex-basis: auto;
+        padding-right: 0;
+        padding-bottom: 12px;
+        border-right: 0;
+        border-bottom: 1px solid rgba(207, 195, 176, 0.72);
+      }
+
+      .mph-subtitle {
+        max-width: none;
+      }
+
+      .mph-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .cm-quick-filters,
+    .manager-command-bar .mcb-search {
+      max-width: 100%;
+      width: 100%;
+      flex-basis: 100%;
+    }
+  }
+}
