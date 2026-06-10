@@ -6,7 +6,4 @@
 .manager-layout:has(.om-container--focus) .sidebar,
 .manager-layout:has(.om-container--focus) .sidebar-overlay,
 .manager-layout:has(.om-container--focus) .manager-layout__header {
-  display: none;
-}
-
-.manager-layout:has(.om
+  display: none
