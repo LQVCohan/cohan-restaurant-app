@@ -1,5 +1,4 @@
 // Staff page segmented navigation
-@use "sass:color";
 
 $nav-bg: rgba(255, 253, 248, 0.92);
 $nav-border: rgba(154, 119, 78, 0.2);
@@ -10,5 +9,4 @@ $nav-hover: #f6ead9;
 $nav-focus: rgba(184, 147, 101, 0.2);
 $nav-shadow: 0 14px 32px rgba(84, 55, 30, 0.09);
 
-.page-nav-container {
-  width: 
+.page-nav-container
