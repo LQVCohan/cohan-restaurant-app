@@ -1,16 +1,1 @@
-$promoGold: #b89365;
-$promoGoldDark: #7b5938;
-$promoGoldSoft: #f4eadc;
-$promoBg: #f5efe6;
-$promoSurface: #fffdf8;
-$promoSoft: #fbf7f0;
-$promoLine: #e6dccd;
-$promoLineStrong: #d5c6b4;
-$promoText: #211f1c;
-$promoMuted: #71685d;
-$promoDanger: #b95a4f;
-$promoDangerSoft: #faece8;
-$promoSuccess: #3f7d5a;
-$promoSuccessSoft: #e8f3ed;
-$promoInfo: #5f7693;
-$promoInfoSoft:
+.promotion-manager-page{min-height:100dvh;padding:1.25rem;background:radial-gradient(circle at 20% 0,rgba(184,147,101,.16),transparent 30rem),linear-gradient(180deg,#fbf7ef,#f5efe6);color:#211f1c;font-family:"Outfit","Inter",system-ui,sans-serif}.promotion-manager-page .management-page-header,.promotion-manager-page .manager-command-bar,.promotion-manager-page .main-content-card{
