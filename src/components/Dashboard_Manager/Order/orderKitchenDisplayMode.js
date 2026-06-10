@@ -1,13 +1,9 @@
-const CLASS_NAME = "kitchen-display-active";
-
-const syncKitchenClass = () => {
+const syncKitchenDisplayMode = () => {
   if (typeof document === "undefined") return;
-  document.body.classList.toggle(
-    CLASS_NAME,
-    Boolean(document.querySelector(".om-container--focus")),
-  );
+  const active = Boolean(document.querySelector(".om-container--focus"));
+  document.body.classList.toggle("kitchen-display-active", active);
 };
 
-let rafId = 0;
-const scheduleSync = () => {
-  if (
+if (typeof window !== "undefined") {
+  window.addEventListener("DOMContentLoaded", syncKitchenDisplayMode);
+  window.addEventListener("hash
