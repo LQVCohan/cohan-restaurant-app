@@ -740,3 +740,64 @@
     grid-template-columns: 1fr;
   }
 }
+
+.ai-admin-page--settings .ai-admin-panel--main textarea {
+  min-height: 140px;
+}
+
+.ai-admin-page--settings .ai-admin-panel--handoff textarea {
+  min-height: 132px;
+}
+
+.ai-admin-actions--settings {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ai-admin-help,
+.ai-admin-check small {
+  display: block;
+  color: var(--ai-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ai-admin-check--card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  border: 1px solid var(--ai-line);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.7);
+  padding: 13px;
+}
+
+.ai-admin-check--card input {
+  margin-top: 2px;
+}
+
+.ai-admin-check--card small {
+  grid-column: 2;
+  margin-top: -3px;
+}
+
+.ai-admin-empty--compact {
+  margin: 0;
+  text-align: left;
+  background: rgba(251, 247, 241, 0.82);
+}
+
+.ai-admin-empty--compact h4 {
+  font-size: 1rem;
+}
+
+@media (max-width: 780px) {
+  .ai-admin-actions--settings {
+    justify-content: stretch;
+  }
+
+  .ai-admin-actions--settings button {
+    flex: 1 1 100%;
+  }
+}
