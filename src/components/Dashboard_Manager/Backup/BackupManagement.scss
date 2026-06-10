@@ -331,3 +331,91 @@
     &__wizard { grid-template-columns: 1fr; }
   }
 }
+
+.backup-management {
+  &__run-workflow {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  &__run-editor,
+  &__run-detail {
+    display: grid;
+    gap: 16px;
+    padding: clamp(18px, 2vw, 26px);
+    border: 1px solid rgba(45,55,50,0.12);
+    border-radius: 26px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.86), rgba(247,244,237,0.76)),
+      radial-gradient(circle at 100% 0%, rgba(112,93,67,0.12), transparent 16rem);
+    box-shadow: 0 20px 60px rgba(69,58,42,0.08);
+
+    span { color: var(--accent); font-size: 12px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+    h3 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.035em; }
+    h4 { margin: 0 0 8px; }
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+  }
+
+  &__run-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  &__check-scope-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+
+    > div {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid rgba(45,55,50,0.1);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.58);
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 750;
+      color: #35413c;
+    }
+  }
+
+  &__run-note {
+    display: grid;
+    gap: 7px;
+    color: #35413c;
+    font-weight: 850;
+
+    textarea {
+      min-height: 105px;
+      resize: vertical;
+      border: 1px solid rgba(45,55,50,0.16);
+      border-radius: 14px;
+      padding: 11px 12px;
+      color: var(--ink);
+      background: #fcfbf8;
+      font: inherit;
+    }
+
+    small { color: var(--muted); }
+  }
+
+  &__run-detail select,
+  select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1120px) {
+  .backup-management {
+    &__run-workflow,
+    &__check-scope-grid { grid-template-columns: 1fr; }
+  }
+}

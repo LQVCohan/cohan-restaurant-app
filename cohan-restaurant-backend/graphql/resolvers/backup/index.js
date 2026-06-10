@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { AuditLog, BackupRun, Restaurant } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
-import { requireRole } from "../../../utils/authz.js";
+import { requireAnyPermission } from "../../../src/services/auth/authorization.service.js";
 import {
   buildRestaurantConfigSnapshot,
   buildSectionCounts,
@@ -81,8 +81,8 @@ function allChecklistDone(checklist) {
   return Object.values(checklist).every(Boolean);
 }
 
-async function assertAccess(ctx, restaurantId) {
-  requireRole(ctx?.user, ["admin", "manager"]);
+async function assertAccess(ctx, restaurantId, permissions = ["system.manage"]) {
+  await requireAnyPermission(ctx, [...permissions, "system.manage"]);
   if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Invalid restaurantId");
   await requireRestaurantAccess(ctx, restaurantId);
   const restaurant = await Restaurant.findById(restaurantId).lean();
@@ -166,7 +166,7 @@ async function safeAuditLog(payload) {
 export default {
   Query: {
     backupReadiness: async (_, { restaurantId }, ctx) => {
-      await assertAccess(ctx, restaurantId);
+      await assertAccess(ctx, restaurantId, ["backup.read"]);
       const latest = await BackupRun.findOne({ restaurantId }).sort({ createdAt: -1 }).lean();
       const checklist = normalizeChecklist(latest?.checklist || DEFAULT_CHECKLIST);
       const scope = normalizeScope(latest?.scope || DEFAULT_SCOPE);
@@ -181,7 +181,7 @@ export default {
       };
     },
     backupRuns: async (_, { restaurantId, limit = 20, offset = 0 }, ctx) => {
-      await assertAccess(ctx, restaurantId);
+      await assertAccess(ctx, restaurantId, ["backup.read"]);
       const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), MAX_LIMIT);
       const safeOffset = Math.max(Number(offset) || 0, 0);
       const rows = await BackupRun.find({ restaurantId })
@@ -193,7 +193,7 @@ export default {
     },
     restaurantConfigBackupPreview: async (_, { input }, ctx) => {
       const restaurantId = input?.restaurantId;
-      await assertAccess(ctx, restaurantId);
+      await assertAccess(ctx, restaurantId, ["backup.read"]);
       try {
         const snapshot = await buildRestaurantConfigSnapshot({
           restaurantId,
@@ -210,7 +210,7 @@ export default {
   Mutation: {
     createBackupRun: async (_, { input }, ctx) => {
       const restaurantId = input?.restaurantId;
-      await assertAccess(ctx, restaurantId);
+      await assertAccess(ctx, restaurantId, ["backup.write"]);
       const actorId = ctx?.user?.id || ctx?.user?._id;
 
       const checklist = normalizeChecklist({ ...DEFAULT_CHECKLIST, ...(input?.checklist || {}) });
@@ -251,7 +251,7 @@ export default {
 
     exportRestaurantConfigBackup: async (_, { input }, ctx) => {
       const restaurantId = input?.restaurantId;
-      await assertAccess(ctx, restaurantId);
+      await assertAccess(ctx, restaurantId, ["backup.export"]);
       const actorId = ctx?.user?.id || ctx?.user?._id;
       try {
         const snapshot = await buildRestaurantConfigSnapshot({ restaurantId, sections: input?.sections, actorId });
@@ -285,7 +285,7 @@ export default {
 
     previewRestaurantConfigImport: async (_, { input }, ctx) => {
       const targetRestaurantId = input?.targetRestaurantId;
-      await assertAccess(ctx, targetRestaurantId);
+      await assertAccess(ctx, targetRestaurantId, ["backup.import"]);
       const actorId = ctx?.user?.id || ctx?.user?._id;
       try {
         const snapshot = decodeSnapshotBase64(input?.fileContentBase64);
@@ -325,7 +325,7 @@ export default {
 
     importRestaurantConfigBackup: async (_, { input }, ctx) => {
       const targetRestaurantId = input?.targetRestaurantId;
-      await assertAccess(ctx, targetRestaurantId);
+      await assertAccess(ctx, targetRestaurantId, ["backup.import"]);
       const actorId = ctx?.user?.id || ctx?.user?._id;
       let snapshot;
       try {
@@ -374,7 +374,7 @@ export default {
 
     updateBackupRun: async (_, { input }, ctx) => {
       const { id, restaurantId } = input || {};
-      await assertAccess(ctx, restaurantId);
+      await assertAccess(ctx, restaurantId, ["backup.write"]);
       if (!mongoose.isValidObjectId(id)) throw badInput("Invalid id");
 
       const doc = await BackupRun.findById(id);

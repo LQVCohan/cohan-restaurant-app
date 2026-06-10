@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireRole = vi.fn();
+const requireAnyPermission = vi.fn();
 const requireRestaurantAccess = vi.fn();
 const service = vi.hoisted(() => ({
   buildRestaurantConfigSnapshot: vi.fn(),
@@ -15,7 +15,7 @@ const models = vi.hoisted(() => ({
   Restaurant: { findById: vi.fn() },
 }));
 
-vi.mock("../../utils/authz.js", () => ({ requireRole }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireAnyPermission }));
 vi.mock("../../graphql/guards.js", () => ({ requireRestaurantAccess }));
 vi.mock("../../src/services/restaurantConfigBackup.service.js", () => service);
 vi.mock("../../models/index.js", () => models);
@@ -43,7 +43,7 @@ describe("backup config resolver", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    requireRole.mockReturnValue(true);
+    requireAnyPermission.mockResolvedValue(true);
     requireRestaurantAccess.mockResolvedValue(true);
     models.Restaurant.findById.mockReturnValue(lean({ _id: restaurantId, name: "Target" }));
     models.BackupRun.findOne.mockReturnValue({ sort: vi.fn(() => lean(null)) });
@@ -57,10 +57,10 @@ describe("backup config resolver", () => {
     service.importRestaurantConfigSnapshot.mockResolvedValue({ success: true, dryRun: false, targetRestaurantId, mode: "clone", changes: [{ section: "systemSettings", action: "upsert", label: "Cấu hình hệ thống", count: 1 }], conflicts: [], appliedResolutions: [], warnings: [], errors: [] });
   });
 
-  it("export requires manager/admin + restaurant access", async () => {
+  it("export requires backup.export/system.manage + restaurant access", async () => {
     const r = await resolver();
     await r.Mutation.exportRestaurantConfigBackup(null, { input: { restaurantId } }, { user: { id: actorId, roleName: "manager" } });
-    expect(requireRole).toHaveBeenCalledWith(expect.objectContaining({ id: actorId }), ["admin", "manager"]);
+    expect(requireAnyPermission).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), ["backup.export", "system.manage"]);
     expect(requireRestaurantAccess).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), restaurantId);
     expect(service.buildRestaurantConfigSnapshot).toHaveBeenCalled();
     expect(models.AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ action: "CONFIG_BACKUP_EXPORTED" }));
