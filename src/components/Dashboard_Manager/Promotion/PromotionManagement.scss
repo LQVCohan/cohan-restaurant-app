@@ -1,1 +1,12 @@
-.promotion-manager-page{min-height:100dvh;padding:1.25rem;background:radial-gradient(circle at 20% 0,rgba(184,147,101,.16),transparent 30rem),linear-gradient(180deg,#fbf7ef,#f5efe6);color:#211f1c;font-family:"Outfit","Inter",system-ui,sans-serif}.promotion-manager-page .management-page-header,.promotion-manager-page .manager-command-bar,.promotion-manager-page .main-content-card{
+.promotion-manager-page {
+  min-height: 100dvh;
+  padding: 1.25rem;
+  color: #211f1c;
+  font-family: "Outfit", "Inter", system-ui, sans-serif;
+  background: linear-gradient(180deg, #fbf7ef 0%, #f5efe6 100%);
+}
+
+.promotion-manager-page .management-page-header,
+.promotion-manager-page .manager-command-bar,
+.promotion-manager-page .main-content-card {
+  border: 1px solid #e6dccd
