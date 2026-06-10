@@ -642,3 +642,162 @@
     grid-column: 1;
   }
 }
+
+.ai-admin-tab-panel {
+  margin-top: 18px;
+}
+
+.ai-admin-result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 16px 0;
+}
+
+.ai-admin-result-summary span {
+  border: 1px solid var(--ai-line);
+  border-radius: 999px;
+  background: #fbf7f1;
+  color: var(--ai-muted);
+  padding: 7px 11px;
+  font-size: 0.8rem;
+  font-weight: 760;
+}
+
+.ai-admin-result-summary strong {
+  color: var(--ai-text);
+}
+
+.ai-admin-panel--result pre {
+  background: #f4eee6;
+  color: #2b241d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.ai-admin-actions button:disabled,
+.ai-admin-card__actions button:disabled,
+.ai-admin-import-export button:disabled,
+.ai-admin-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+  transform: none;
+}
+
+.ai-admin-eval-cases li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--ai-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 10px 12px;
+}
+
+.ai-admin-eval-cases li strong {
+  color: var(--ai-text);
+  font-weight: 780;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-admin-page *,
+  .ai-admin-page *::before,
+  .ai-admin-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.ai-admin-page--analytics .customer-analytics-toolbar {
+  display: grid;
+  gap: 12px;
+  align-self: stretch;
+}
+
+.ai-admin-page--analytics .customer-analytics-field,
+.ai-admin-page--analytics .customer-analytics-refresh {
+  width: 100%;
+}
+
+.ai-admin-page--analytics .customer-analytics-overview-grid {
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+}
+
+.ai-admin-analytics-card p {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1180px) {
+  .ai-admin-page--analytics .customer-analytics-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .ai-admin-page--analytics .customer-analytics-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ai-admin-page--settings .ai-admin-panel--main textarea {
+  min-height: 140px;
+}
+
+.ai-admin-page--settings .ai-admin-panel--handoff textarea {
+  min-height: 132px;
+}
+
+.ai-admin-actions--settings {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ai-admin-help,
+.ai-admin-check small {
+  display: block;
+  color: var(--ai-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ai-admin-check--card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  border: 1px solid var(--ai-line);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.7);
+  padding: 13px;
+}
+
+.ai-admin-check--card input {
+  margin-top: 2px;
+}
+
+.ai-admin-check--card small {
+  grid-column: 2;
+  margin-top: -3px;
+}
+
+.ai-admin-empty--compact {
+  margin: 0;
+  text-align: left;
+  background: rgba(251, 247, 241, 0.82);
+}
+
+.ai-admin-empty--compact h4 {
+  font-size: 1rem;
+}
+
+@media (max-width: 780px) {
+  .ai-admin-actions--settings {
+    justify-content: stretch;
+  }
+
+  .ai-admin-actions--settings button {
+    flex: 1 1 100%;
+  }
+}
