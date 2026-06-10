@@ -23,6 +23,15 @@ const MENU_MANAGEMENT_PERMISSIONS = [
   "menu.audit.read",
 ];
 
+const AI_CHATBOT_MANAGER_PERMISSIONS = [
+  "ai.chatbot.read",
+  "ai.chatbot.write",
+  "ai.chatbot.moderate",
+  "ai.chatbot.evaluate",
+  "ai.chatbot.handoff",
+  "ai.chatbot.analytics.read",
+];
+
 const parentRoleMatrix = {
   admin: { name: "Admin", permissions: ["*"] },
   manager: {
@@ -39,6 +48,7 @@ const parentRoleMatrix = {
       "reservation.read", "reservation.update", "reservation.cancel",
       "promotion.read", "promotion.write", "coupon.read", "coupon.write",
       "role.read", "permission.read", "log.read",
+      ...AI_CHATBOT_MANAGER_PERMISSIONS,
     ],
   },
   hr: { name: "HR", permissions: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"] },

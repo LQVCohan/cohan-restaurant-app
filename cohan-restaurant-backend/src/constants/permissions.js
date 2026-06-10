@@ -71,6 +71,13 @@ export const PERMISSIONS = {
   REVIEW_EXPORT: "review.export",
   REVIEW_ANALYTICS_READ: "review.analytics.read",
 
+  AI_CHATBOT_READ: "ai.chatbot.read",
+  AI_CHATBOT_WRITE: "ai.chatbot.write",
+  AI_CHATBOT_MODERATE: "ai.chatbot.moderate",
+  AI_CHATBOT_EVALUATE: "ai.chatbot.evaluate",
+  AI_CHATBOT_HANDOFF: "ai.chatbot.handoff",
+  AI_CHATBOT_ANALYTICS_READ: "ai.chatbot.analytics.read",
+
   RESTAURANT_READ: "restaurant.read",
   RESTAURANT_WRITE: "restaurant.write",
 };
