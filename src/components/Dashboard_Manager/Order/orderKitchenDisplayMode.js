@@ -6,4 +6,4 @@ const syncKitchenDisplayMode = () => {
 
 if (typeof window !== "undefined") {
   window.addEventListener("DOMContentLoaded", syncKitchenDisplayMode);
-  window.addEventListener("hash
+  window.setInterval
