@@ -1,16 +1,2 @@
 // src/components/Dashboard_Manager/Storage/StorageManagement.scss
-
-.storage-management {
-  --sm-ink: #263241;
-  --sm-muted: #68736f;
-  --sm-accent: #98724b;
-  --sm-accent-2: #c59a6b;
-  --sm-border: #ead9c3;
-  --sm-bg: #fbf2e6;
-  --sm-panel: #fff8ef;
-  --sm-panel-2: #fff3e5;
-  --sm-shadow: 0 18px 46px rgba(84, 63, 39, 0.08);
-
-  position: relative;
-  isolation: isolate;
-  min-height:
+.storage-management{min-height:100vh;padding-bottom:44px;color:#263241;background:#fbf2e6;font-family:"Geist","Outfit","Inter",system-ui,-apple-system,"Segoe UI",sans-serif}.storage-management .sm-container{width:min(100%,1320px);margin:0 auto;padding:24px;display:flex;flex-direction:
