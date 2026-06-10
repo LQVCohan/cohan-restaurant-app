@@ -1,13 +1,13 @@
-const KITCHEN_BODY_CLASS = "kitchen-display-active";
+const CLASS_NAME = "kitchen-display-active";
 
-const syncKitchenDisplayClass = () => {
+const syncKitchenClass = () => {
   if (typeof document === "undefined") return;
-
-  const isActive = Boolean(document.querySelector(".om-container--focus"));
-  document.body.classList.toggle(KITCHEN_BODY_CLASS, isActive);
+  document.body.classList.toggle(
+    CLASS_NAME,
+    Boolean(document.querySelector(".om-container--focus")),
+  );
 };
 
-let scheduled = false;
+let rafId = 0;
 const scheduleSync = () => {
-  if (scheduled) return;
- 
+  if (
