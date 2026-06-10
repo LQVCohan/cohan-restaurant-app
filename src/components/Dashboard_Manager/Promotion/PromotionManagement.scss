@@ -1,18 +1,16 @@
-@use "sass:color";
-
-// Promotion manager follows the warm gold/charcoal manager theme.
-// The page is intentionally low-saturation to stay comfortable during long shifts.
-$pm-accent: #b89365;
-$pm-accent-dark: #7b5938;
-$pm-accent-soft: #f4eadc;
-$pm-accent-tint: #fbf6ee;
-$pm-bg: #f5efe6;
-$pm-surface: #fffdf8;
-$pm-surface-soft: #fbf7f0;
-$pm-line: #e6dccd;
-$pm-line-strong: #d5c6b4;
-$pm-text: #211f1c;
-$pm-muted: #71685d;
-$pm-subtle: #9a9083;
-$pm-success: #3f7d5a;
-$pm-success-soft: #e7f
+$promoGold: #b89365;
+$promoGoldDark: #7b5938;
+$promoGoldSoft: #f4eadc;
+$promoBg: #f5efe6;
+$promoSurface: #fffdf8;
+$promoSoft: #fbf7f0;
+$promoLine: #e6dccd;
+$promoLineStrong: #d5c6b4;
+$promoText: #211f1c;
+$promoMuted: #71685d;
+$promoDanger: #b95a4f;
+$promoDangerSoft: #faece8;
+$promoSuccess: #3f7d5a;
+$promoSuccessSoft: #e8f3ed;
+$promoInfo: #5f7693;
+$promoInfoSoft:
