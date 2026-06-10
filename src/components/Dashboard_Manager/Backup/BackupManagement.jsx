@@ -36,6 +36,27 @@ const Q_CONFIG_BACKUP_PREVIEW = gql`
   }
 `;
 
+
+const M_CREATE_BACKUP_RUN = gql`
+  mutation CreateBackupRun($input: CreateBackupRunInput!) {
+    createBackupRun(input: $input) {
+      id restaurantId status note createdBy completedBy completedAt createdAt updatedAt
+      checklist { reportsChecked transactionsReconciled settingsReviewed exportPrepared safeCopyStored operatorRecorded }
+      scope { ordersAndPayments tablesAndFloorPlan menuAndPricing inventory staffAndPermissions schedules customersAndPromotions reportsAndReconciliation }
+    }
+  }
+`;
+
+const M_UPDATE_BACKUP_RUN = gql`
+  mutation UpdateBackupRun($input: UpdateBackupRunInput!) {
+    updateBackupRun(input: $input) {
+      id restaurantId status note createdBy completedBy completedAt createdAt updatedAt
+      checklist { reportsChecked transactionsReconciled settingsReviewed exportPrepared safeCopyStored operatorRecorded }
+      scope { ordersAndPayments tablesAndFloorPlan menuAndPricing inventory staffAndPermissions schedules customersAndPromotions reportsAndReconciliation }
+    }
+  }
+`;
+
 const M_EXPORT_CONFIG_BACKUP = gql`
   mutation ExportRestaurantConfigBackup($input: ExportRestaurantConfigBackupInput!) {
     exportRestaurantConfigBackup(input: $input) {
@@ -188,6 +209,8 @@ const BackupManagement = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContentBase64, setFileContentBase64] = useState("");
   const [confirmedImport, setConfirmedImport] = useState(false);
+  const [selectedRunId, setSelectedRunId] = useState("");
+  const [runDraft, setRunDraft] = useState({ checklist: FALLBACK_CHECKLIST, scope: FALLBACK_SCOPE, note: "" });
   const [statusMessage, setStatusMessage] = useState("");
   const [conflictResolutions, setConflictResolutions] = useState({});
   const [conflictFilter, setConflictFilter] = useState({ section: "all", severity: "all", resolution: "all", search: "" });
@@ -203,16 +226,43 @@ const BackupManagement = () => {
   const [previewExport, previewExportState] = useLazyQuery(Q_CONFIG_BACKUP_PREVIEW, { fetchPolicy: "network-only", onError: (error) => setStatusMessage(`Backend chưa hỗ trợ preview export hoặc có lỗi: ${error.message}`) });
   const [exportBackup, exportBackupState] = useMutation(M_EXPORT_CONFIG_BACKUP, { onError: (error) => setStatusMessage(`Không tải được file backup JSON: ${error.message}`) });
   const [previewImport, previewImportState] = useMutation(M_PREVIEW_CONFIG_IMPORT, { onError: (error) => setStatusMessage(`Không preview được file import: ${error.message}`) });
+  const afterRunMutation = () => {
+    readinessQuery.refetch?.();
+    runsQuery.refetch?.();
+  };
+  const [createBackupRun, createRunState] = useMutation(M_CREATE_BACKUP_RUN, {
+    onCompleted: ({ createBackupRun: created }) => {
+      setSelectedRunId(created?.id || "");
+      setStatusMessage(`Đã tạo backup run ${created?.id || "mới"}.`);
+      afterRunMutation();
+    },
+    onError: (error) => setStatusMessage(`Không tạo được backup run: ${error.message}`),
+  });
+  const [updateBackupRun, updateRunState] = useMutation(M_UPDATE_BACKUP_RUN, {
+    onCompleted: ({ updateBackupRun: updated }) => {
+      setSelectedRunId(updated?.id || "");
+      setStatusMessage(`Đã lưu checklist backup run ${updated?.id || ""}.`);
+      afterRunMutation();
+    },
+    onError: (error) => setStatusMessage(`Không lưu được backup run: ${error.message}`),
+  });
   const [importBackup, importBackupState] = useMutation(M_IMPORT_CONFIG_BACKUP, {
     onError: (error) => setStatusMessage(`Import thất bại: ${error.message}`),
     onCompleted: () => {
-      readinessQuery.refetch?.();
-      runsQuery.refetch?.();
+      afterRunMutation();
     },
   });
 
   const readiness = readinessQuery.data?.backupReadiness || FALLBACK_READINESS;
   const runs = Array.isArray(runsQuery.data?.backupRuns) ? runsQuery.data.backupRuns : [];
+  const selectedRun = runs.find((run) => run.id === selectedRunId) || runs[0] || readiness.lastRun || null;
+  useEffect(() => {
+    if (!selectedRunId && selectedRun?.id) setSelectedRunId(selectedRun.id);
+  }, [selectedRunId, selectedRun?.id]);
+  useEffect(() => {
+    if (selectedRun) setRunDraft({ checklist: { ...FALLBACK_CHECKLIST, ...(selectedRun.checklist || {}) }, scope: { ...FALLBACK_SCOPE, ...(selectedRun.scope || {}) }, note: selectedRun.note || "" });
+    else setRunDraft((prev) => ({ checklist: { ...FALLBACK_CHECKLIST, ...prev.checklist }, scope: { ...FALLBACK_SCOPE, ...prev.scope }, note: prev.note || "" }));
+  }, [selectedRun?.id]);
   const checklistItems = useMemo(() => toChecklistItems(readiness.checklist), [readiness.checklist]);
   const scopeItems = useMemo(() => toScopeItems(readiness.scope), [readiness.scope]);
   const unresolvedRisks = useMemo(() => (readiness.risks || []).filter((risk) => !risk.resolved), [readiness.risks]);
@@ -243,6 +293,14 @@ const BackupManagement = () => {
     URL.revokeObjectURL(url);
     setStatusMessage(`Đã tạo file ${file.fileName}. Checksum: ${file.checksum}`);
   };
+  const updateDraftChecklist = (key, checked) => setRunDraft((prev) => ({ ...prev, checklist: { ...prev.checklist, [key]: checked } }));
+  const updateDraftScope = (key, checked) => setRunDraft((prev) => ({ ...prev, scope: { ...prev.scope, [key]: checked } }));
+  const createRun = () => createBackupRun({ variables: { input: { restaurantId, checklist: runDraft.checklist, scope: runDraft.scope, note: runDraft.note } } });
+  const saveRun = (status) => {
+    if (!selectedRun?.id) return;
+    updateBackupRun({ variables: { input: { id: selectedRun.id, restaurantId, checklist: runDraft.checklist, scope: runDraft.scope, note: runDraft.note, ...(status ? { status } : {}) } } });
+  };
+
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     setImportPreview(null);
@@ -289,7 +347,7 @@ const BackupManagement = () => {
     const current = conflictResolutions[conflict.id] || { resolution: conflict.defaultResolution, renameTo: "" };
     return !conflict.allowedResolutions.includes(current.resolution) || (current.resolution === "rename_source" && !current.renameTo?.trim()) || (conflict.severity === "blocking" && current.resolution === "skip");
   });
-  const statusType = statusMessage.toLowerCase().includes("thất bại") || statusMessage.toLowerCase().includes("lỗi") ? "error" : statusMessage.toLowerCase().includes("checksum") || statusMessage.toLowerCase().includes("đã tạo") ? "success" : "warning";
+  const statusType = statusMessage.toLowerCase().includes("thất bại") || statusMessage.toLowerCase().includes("lỗi") || statusMessage.toLowerCase().includes("không") ? "error" : statusMessage.toLowerCase().includes("checksum") || statusMessage.toLowerCase().includes("đã tạo") || statusMessage.toLowerCase().includes("đã lưu") ? "success" : "warning";
   const importCanRun = Boolean(importPreview?.valid && !(importPreview?.errors || []).length && confirmedImport && fileContentBase64 && !invalidConflictResolution);
 
   const importInput = (dryRun = true) => ({
@@ -341,6 +399,39 @@ const BackupManagement = () => {
       </section>
       {warning ? <section className="backup-management__alert is-warning" role="note">{warning}</section> : null}
       {statusMessage ? <section className={`backup-management__alert is-${statusType}`} role={statusType === "error" ? "alert" : "status"}>{statusMessage}</section> : null}
+
+      <section className="backup-management__run-workflow" aria-label="BackupRun workflow thủ công">
+        <div className="backup-management__run-editor">
+          <div>
+            <span>Manual BackupRun</span>
+            <h3>Checklist trước khi snapshot cấu hình</h3>
+            <p>Hoàn tất 6 điều kiện an toàn để trạng thái tự chuyển sang checklist_completed; có thể cancel nếu run không còn hợp lệ.</p>
+          </div>
+          <div className="backup-management__run-actions">
+            <button type="button" onClick={createRun} disabled={!restaurantId || createRunState.loading}>{createRunState.loading ? "Đang tạo..." : "Tạo backup run mới"}</button>
+            <button type="button" onClick={() => saveRun()} disabled={!selectedRun?.id || updateRunState.loading}>{updateRunState.loading ? "Đang lưu..." : "Lưu checklist"}</button>
+            <button type="button" onClick={() => saveRun("cancelled")} disabled={!selectedRun?.id || updateRunState.loading}>Cancel run</button>
+          </div>
+          <div className="backup-management__check-scope-grid">
+            <div>
+              <h4>Checklist progress</h4>
+              {Object.entries(CHECKLIST_LABELS).map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(runDraft.checklist[key])} onChange={(event) => updateDraftChecklist(key, event.target.checked)} />{label}</label>)}
+            </div>
+            <div>
+              <h4>Scope</h4>
+              {Object.entries(SCOPE_LABELS).map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(runDraft.scope[key])} onChange={(event) => updateDraftScope(key, event.target.checked)} />{label}</label>)}
+            </div>
+          </div>
+          <label className="backup-management__run-note">Audit / safety copy note
+            <textarea value={runDraft.note} maxLength={1000} onChange={(event) => setRunDraft((prev) => ({ ...prev, note: event.target.value }))} placeholder="VD: file đã lưu tại Google Drive nội bộ, người thực hiện, checklist đối soát..." />
+            <small>{runDraft.note.length}/1000 ký tự</small>
+          </label>
+        </div>
+        <aside className="backup-management__run-detail">
+          <h3>Selected run detail</h3>
+          {selectedRun ? <><p><strong>{selectedRun.status}</strong> • tạo {formatDate(selectedRun.createdAt)}</p><p>Hoàn tất: {selectedRun.completedAt ? formatDate(selectedRun.completedAt) : "Chưa hoàn tất"}</p><p>Cập nhật: {formatDate(selectedRun.updatedAt)}</p><p>Ghi chú audit/safety copy: {selectedRun.note || "Chưa có"}</p><label>Run history<select value={selectedRun?.id || ""} onChange={(event) => setSelectedRunId(event.target.value)}>{runs.map((run) => <option key={run.id} value={run.id}>{run.status} • {formatDate(run.createdAt)}</option>)}</select></label></> : <div className="backup-management__empty">Chưa có backup run. Hãy tạo run mới để bắt đầu checklist.</div>}
+        </aside>
+      </section>
 
       <section className="backup-management__flow" aria-label="Export và import cấu hình">
       <section className="backup-management__config-panel backup-management__config-panel--export" aria-label="Export cấu hình">

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { AuditLog, Restaurant, SystemSetting } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
-import { requireRole } from "../../../utils/authz.js";
+import { requireAnyPermission, requirePermission } from "../../../src/services/auth/authorization.service.js";
 
 const DEFAULT_DOC = {
   timezone: "Asia/Ho_Chi_Minh",
@@ -52,12 +52,21 @@ function normalizeDoc(doc) {
   };
 }
 
-async function assertAccess(ctx, restaurantId) {
-  requireRole(ctx?.user, ["admin", "manager"]);
+async function assertRestaurant(ctx, restaurantId) {
   if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Invalid restaurantId");
   await requireRestaurantAccess(ctx, restaurantId);
   const restaurant = await Restaurant.findById(restaurantId).lean();
   if (!restaurant) throw notFound("Restaurant not found");
+}
+
+async function assertReadAccess(ctx, restaurantId) {
+  await requireAnyPermission(ctx, ["system.manage", "restaurant.read"]);
+  await assertRestaurant(ctx, restaurantId);
+}
+
+async function assertManageAccess(ctx, restaurantId) {
+  await requirePermission(ctx, "system.manage");
+  await assertRestaurant(ctx, restaurantId);
 }
 
 async function findOrCreate(restaurantId) {
@@ -79,7 +88,7 @@ async function safeAuditLog(payload) {
 export default {
   Query: {
     systemSetting: async (_, { restaurantId }, ctx) => {
-      await assertAccess(ctx, restaurantId);
+      await assertReadAccess(ctx, restaurantId);
       const doc = await findOrCreate(restaurantId);
       return normalizeDoc(doc);
     },
@@ -87,7 +96,7 @@ export default {
   Mutation: {
     updateSystemSetting: async (_, { input }, ctx) => {
       const restaurantId = input?.restaurantId;
-      await assertAccess(ctx, restaurantId);
+      await assertManageAccess(ctx, restaurantId);
       const existing = await findOrCreate(restaurantId);
       const before = normalizeDoc(existing.toObject());
 

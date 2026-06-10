@@ -11,6 +11,8 @@ const previewExport = vi.fn();
 const exportBackup = vi.fn();
 const previewImport = vi.fn();
 const importBackup = vi.fn();
+const createBackupRun = vi.fn();
+const updateBackupRun = vi.fn();
 
 vi.mock("@apollo/client", () => ({
   gql: (strings) => strings,
@@ -50,6 +52,8 @@ beforeEach(() => {
   exportBackup.mockResolvedValue({ data: { exportRestaurantConfigBackup: { fileName: "backup.json", mimeType: "application/json", encoding: "base64", contentBase64: window.btoa('{"kind":"cohan.restaurant_config_snapshot"}'), checksum: "sha256:abc", sizeBytes: 42, createdAt: "2026-06-02T00:00:00.000Z" } } });
   previewImport.mockResolvedValue({ data: { previewRestaurantConfigImport: { valid: true, schemaVersion: 1, sourceRestaurantName: "Nguồn", targetRestaurantId: "r2", mode: "clone", warnings: ["dry-run"], errors: [], changes: [{ section: "systemSettings", action: "create", label: "Cấu hình hệ thống", count: 1 }] } } });
   importBackup.mockResolvedValue({ data: { importRestaurantConfigBackup: { success: true, dryRun: false, targetRestaurantId: "r2", mode: "clone", warnings: ["Skipped recipe ingredient line because ingredient was not imported or could not be remapped."], errors: [], changes: [], backupRun: { id: "br1", status: "checklist_completed", note: "Imported", createdAt: "2026-06-02T00:00:00.000Z", completedAt: "2026-06-02T00:00:00.000Z" } } } });
+  createBackupRun.mockResolvedValue({ data: { createBackupRun: { id: "br-new", restaurantId: "r1", status: "planned", checklist: {}, scope: {}, note: "" } } });
+  updateBackupRun.mockResolvedValue({ data: { updateBackupRun: { id: "br1", restaurantId: "r1", status: "checklist_completed", checklist: {}, scope: {}, note: "" } } });
   useLazyQueryMock.mockImplementation((query, options = {}) => [async (variables) => {
     try {
       return await previewExport(variables);
@@ -61,6 +65,8 @@ beforeEach(() => {
   useMutationMock.mockImplementation((mutation) => {
     const text = String(mutation);
     if (text.includes("restaurantConfigBackupPreview")) return [previewExport, { loading: false }];
+    if (text.includes("createBackupRun")) return [createBackupRun, { loading: false }];
+    if (text.includes("updateBackupRun")) return [updateBackupRun, { loading: false }];
     if (text.includes("exportRestaurantConfigBackup")) return [exportBackup, { loading: false }];
     if (text.includes("previewRestaurantConfigImport")) return [previewImport, { loading: false }];
     if (text.includes("importRestaurantConfigBackup")) return [importBackup, { loading: false }];
@@ -77,6 +83,14 @@ describe("BackupManagement config snapshot UI", () => {
     expect(screen.getByText("Export cấu hình")).toBeInTheDocument();
     expect(screen.getByText("Import / Khôi phục")).toBeInTheDocument();
     expect(screen.getByText(/không thay thế database backup/i)).toBeInTheDocument();
+  });
+
+  it("creates a manual backup run from checklist workflow", async () => {
+    renderPage();
+    fireEvent.click(screen.getByLabelText("Kiểm tra báo cáo cuối ngày"));
+    fireEvent.click(screen.getByText("Tạo backup run mới"));
+    await waitFor(() => expect(createBackupRun).toHaveBeenCalled());
+    expect(createBackupRun.mock.calls[0][0].variables.input.checklist.reportsChecked).toBe(true);
   });
 
   it("select sections and click preview export", async () => {

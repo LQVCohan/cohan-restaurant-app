@@ -28,6 +28,7 @@ const parentRoleMatrix = {
   manager: {
     name: "Manager",
     permissions: [
+      "system.manage", "backup.read", "backup.write", "backup.export", "backup.import",
       "restaurant.read", "restaurant.write", ...MENU_MANAGEMENT_PERMISSIONS,
       "order.read", "order.create", "order.update", "order.cancel",
       "payment.read", "payment.write", "staff.read", "staff.write",
