@@ -1,3 +1,98 @@
 export const PERMISSIONS = {
+  MENU_READ: "menu.read",
+  MENU_WRITE: "menu.write",
+  MENU_CREATE: "menu.create",
+  MENU_UPDATE: "menu.update",
+  MENU_DELETE: "menu.delete",
+  MENU_COPY: "menu.copy",
+  MENU_ITEM_CREATE: "menu.item.create",
+  MENU_ITEM_UPDATE: "menu.item.update",
+  MENU_ITEM_DELETE: "menu.item.delete",
+  MENU_PRICE_UPDATE: "menu.price.update",
+  MENU_CATEGORY_MANAGE: "menu.category.manage",
+  MENU_GROUP_MANAGE: "menu.group.manage",
+  MENU_INVENTORY_SYNC: "menu.inventory.sync",
+  MENU_AUDIT_READ: "menu.audit.read",
+
+  ORDER_READ: "order.read",
+  ORDER_CREATE: "order.create",
+  ORDER_UPDATE: "order.update",
+  ORDER_CANCEL: "order.cancel",
+
+  STAFF_READ: "staff.read",
+  STAFF_WRITE: "staff.write",
+  CUSTOMER_READ: "customer.read",
+  CUSTOMER_UPDATE: "customer.update",
+
+  PAYMENT_READ: "payment.read",
+  PAYMENT_WRITE: "payment.write",
+
+  FINANCE_READ: "finance.read",
+  FINANCE_WRITE: "finance.write",
+  FINANCE_EXPORT: "finance.export",
+  TRANSACTION_READ: "transaction.read",
+  TRANSACTION_WRITE: "transaction.write",
+  RECONCILIATION_READ: "reconciliation.read",
+  RECONCILIATION_WRITE: "reconciliation.write",
+  REFUND_READ: "refund.read",
+  REFUND_WRITE: "refund.write",
+
+  INVENTORY_READ: "inventory.read",
+  INVENTORY_WRITE: "inventory.write",
+  STOCK_READ: "stock.read",
+  STOCK_WRITE: "stock.write",
+
+  RESERVATION_READ: "reservation.read",
+  RESERVATION_CREATE: "reservation.create",
+  RESERVATION_UPDATE: "reservation.update",
+  RESERVATION_CANCEL: "reservation.cancel",
+
+  SHIFT_READ: "shift.read",
+  SHIFT_MANAGE: "shift.manage",
+
+  PROMOTION_READ: "promotion.read",
+  PROMOTION_WRITE: "promotion.write",
+  COUPON_READ: "coupon.read",
+  COUPON_WRITE: "coupon.write",
+
+  TABLE_READ: "table.read",
+  TABLE_WRITE: "table.write",
+
+  REPORT_READ: "report.read",
+  REPORT_EXPORT: "report.export",
+
+  REVIEW_READ: "review.read",
+  REVIEW_WRITE: "review.write",
+  REVIEW_REPLY: "review.reply",
+  REVIEW_MODERATE: "review.moderate",
+  REVIEW_DELETE: "review.delete",
+  REVIEW_REPORT_READ: "review.report.read",
+  REVIEW_REPORT_RESOLVE: "review.report.resolve",
+  REVIEW_EXPORT: "review.export",
+  REVIEW_ANALYTICS_READ: "review.analytics.read",
+
   AI_CHATBOT_READ: "ai.chatbot.read",
+  AI_CHATBOT_WRITE: "ai.chatbot.write",
+  AI_CHATBOT_MODERATE: "ai.chatbot.moderate",
+  AI_CHATBOT_EVALUATE: "ai.chatbot.evaluate",
+  AI_CHATBOT_HANDOFF: "ai.chatbot.handoff",
+  AI_CHATBOT_ANALYTICS_READ: "ai.chatbot.analytics.read",
+
+  RESTAURANT_READ: "restaurant.read",
+  RESTAURANT_WRITE: "restaurant.write",
+};
+
+export const MENU_PERMISSION_FALLBACKS = {
+  [PERMISSIONS.MENU_CREATE]: [PERMISSIONS.MENU_CREATE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_UPDATE]: [PERMISSIONS.MENU_UPDATE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_DELETE]: [PERMISSIONS.MENU_DELETE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_COPY]: [PERMISSIONS.MENU_COPY, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_ITEM_CREATE]: [PERMISSIONS.MENU_ITEM_CREATE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_ITEM_UPDATE]: [PERMISSIONS.MENU_ITEM_UPDATE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_ITEM_DELETE]: [PERMISSIONS.MENU_ITEM_DELETE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_PRICE_UPDATE]: [PERMISSIONS.MENU_PRICE_UPDATE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_CATEGORY_MANAGE]: [PERMISSIONS.MENU_CATEGORY_MANAGE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_GROUP_MANAGE]: [PERMISSIONS.MENU_GROUP_MANAGE, PERMISSIONS.MENU_WRITE],
+  [PERMISSIONS.MENU_INVENTORY_SYNC]: [PERMISSIONS.MENU_INVENTORY_SYNC, PERMISSIONS.MENU_WRITE, PERMISSIONS.INVENTORY_WRITE],
+  [PERMISSIONS.MENU_AUDIT_READ]: [PERMISSIONS.MENU_AUDIT_READ, PERMISSIONS.MENU_READ, PERMISSIONS.MENU_WRITE, "log.read"],
 };
