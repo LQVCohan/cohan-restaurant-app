@@ -36,6 +36,7 @@ export const MANAGER_STAFF_PERMISSION_WHITELIST = Object.freeze([
   "stock.write",
   "supplier.read",
   "supplier.write",
+  "ai.chatbot.handoff",
 ]);
 
 export const PROTECTED_SYSTEM_ROLE_SLUGS = Object.freeze([
@@ -44,6 +45,15 @@ export const PROTECTED_SYSTEM_ROLE_SLUGS = Object.freeze([
   "hr",
   "accountant",
 ]);
+
+const AI_CHATBOT_MANAGER_PERMISSIONS = [
+  "ai.chatbot.read",
+  "ai.chatbot.write",
+  "ai.chatbot.moderate",
+  "ai.chatbot.evaluate",
+  "ai.chatbot.handoff",
+  "ai.chatbot.analytics.read",
+];
 
 const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
@@ -55,6 +65,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "stock.read", "stock.write", "reservation.read", "reservation.create",
     "reservation.update", "reservation.cancel", "promotion.read", "promotion.write",
     "coupon.read", "coupon.write", "customer.read", "customer.update", "role.read", "permission.read",
+    ...AI_CHATBOT_MANAGER_PERMISSIONS,
   ],
   hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"],
   accountant: ["payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "report.read", "report.export", "payroll.read"],
@@ -170,6 +181,12 @@ export async function requireAnyPermission(ctx, permissionCodes) {
 export async function requireRestaurantPermission(ctx, restaurantId, permissionCode) {
   await requireRestaurantAccess(ctx, restaurantId);
   await requirePermission(ctx, permissionCode);
+  return true;
+}
+
+export async function requireAnyRestaurantPermission(ctx, restaurantId, permissionCodes) {
+  await requireRestaurantAccess(ctx, restaurantId);
+  await requireAnyPermission(ctx, permissionCodes);
   return true;
 }
 
