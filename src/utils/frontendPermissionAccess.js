@@ -13,6 +13,16 @@ const AI_CHATBOT_MANAGER_PERMISSIONS = [
   "ai.chatbot.analytics.read",
 ];
 
+const AI_CHATBOT_ROUTE_READ_ALIASES = Object.freeze({
+  "ai-chatbot-knowledge": [
+    "ai.chatbot.read",
+    "ai.chatbot.write",
+    "ai.chatbot.moderate",
+    "ai.chatbot.evaluate",
+  ],
+  "ai-chatbot-settings": ["ai.chatbot.read", "ai.chatbot.write"],
+});
+
 const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
     "restaurant.read",
@@ -208,6 +218,10 @@ const roleAllowed = (user, roles) => {
 
 export function canAccessPermissionAwareItem(user, item = {}) {
   if (isAdmin(user)) return true;
+
+  const routeAliasPermissions = AI_CHATBOT_ROUTE_READ_ALIASES[item?.id];
+  if (routeAliasPermissions && hasAnyPermission(user, routeAliasPermissions)) return true;
+
   const permissions = item.permissions || item.permissionCodes || item.permission;
   const requiredPermissions = Array.isArray(permissions)
     ? permissions
@@ -219,20 +233,10 @@ export function canAccessPermissionAwareItem(user, item = {}) {
     return hasAnyPermission(user, requiredPermissions);
   }
 
-  return roleAllowed(user, item.roles);
+  return roleAllowed(user, item.roles || item.allowedRoles);
 }
 
-export function filterNavigationByPermissionAccess(items, user) {
+export function filterNavigationByPermissionAccess(items = [], user) {
   if (!Array.isArray(items)) return [];
-
-  return items
-    .map((item) => {
-      if (Array.isArray(item.items)) {
-        const childItems = item.items.filter((child) => canAccessPermissionAwareItem(user, child));
-        return childItems.length > 0 ? { ...item, items: childItems } : null;
-      }
-
-      return canAccessPermissionAwareItem(user, item) ? item : null;
-    })
-    .filter(Boolean);
+  return items.filter((item) => canAccessPermissionAwareItem(user, item));
 }
