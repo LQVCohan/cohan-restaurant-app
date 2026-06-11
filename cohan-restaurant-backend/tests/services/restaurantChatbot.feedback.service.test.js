@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import mongoose from "mongoose";
 
 const permissionSpy = vi.fn();
+const anyRestaurantPermissionSpy = vi.fn();
 const recordSuggestionSpy = vi.fn();
 const feedbackStore = [];
 const conversationStore = [];
 const messageStore = [];
 
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requireRestaurantPermission: (...args) => permissionSpy(...args),
+  requireAnyRestaurantPermission: (...args) => anyRestaurantPermissionSpy(...args),
+}));
 vi.mock("../../src/services/ai/restaurantChatbotKnowledgeSuggestion.service.js", () => ({ recordKnowledgeGapSuggestion: (...args) => recordSuggestionSpy(...args) }));
 vi.mock("../../models/index.js", () => {
   const toLean = (row) => ({ lean: async () => (row ? { ...row } : null) });
@@ -45,6 +49,7 @@ const mid = new mongoose.Types.ObjectId().toString();
 
 beforeEach(() => {
   permissionSpy.mockReset(); permissionSpy.mockResolvedValue(true);
+  anyRestaurantPermissionSpy.mockReset(); anyRestaurantPermissionSpy.mockResolvedValue(true);
   recordSuggestionSpy.mockReset(); recordSuggestionSpy.mockResolvedValue({ id: "s1" });
   feedbackStore.length = 0; conversationStore.length = 0; messageStore.length = 0;
   conversationStore.push({ _id: cid, restaurantId: rid, guestId: "g1", userId: uid });
@@ -70,17 +75,17 @@ describe("restaurantChatbotFeedback service", () => {
     await expect(submitAiChatbotAnswerFeedback({ input: { restaurantId: rid2, conversationId: cid, messageId: mid, guestId: "g1", rating: "helpful" }, ctx: {} })).rejects.toMatchObject({ code: "BAD_USER_INPUT" });
   });
 
-  it("list requires REPORT_READ", async () => {
+  it("list requires AI chatbot read or moderate permission", async () => {
     await listRestaurantAiChatbotAnswerFeedback({ restaurantId: rid, filter: { search: "[abc" }, ctx: { user: { id: uid } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), rid, PERMISSIONS.REPORT_READ);
+    expect(anyRestaurantPermissionSpy).toHaveBeenCalledWith(expect.anything(), rid, [PERMISSIONS.AI_CHATBOT_MODERATE, PERMISSIONS.AI_CHATBOT_READ]);
   });
 
-  it("review/ignore/convert require RESTAURANT_WRITE", async () => {
+  it("review/ignore/convert require AI moderate permission", async () => {
     const row = await submitAiChatbotAnswerFeedback({ input: { restaurantId: rid, guestId: "g1", rating: "helpful" }, ctx: {} });
     await markAiChatbotAnswerFeedbackReviewed({ id: row.id, ctx: { user: { id: uid } } });
     await ignoreAiChatbotAnswerFeedback({ id: row.id, ctx: { user: { id: uid } } });
     await convertAiChatbotFeedbackToSuggestion({ id: row.id, ctx: { user: { id: uid } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), expect.anything(), PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), expect.anything(), PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 
   it("convert calls recordKnowledgeGapSuggestion and marks converted", async () => {
