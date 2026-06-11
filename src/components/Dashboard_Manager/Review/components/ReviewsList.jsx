@@ -45,13 +45,13 @@ function parseTags(tagsString) {
 }
 
 const reactionMeta = [
-  ["like", "👍"],
-  ["love", "❤️"],
-  ["care", "🤗"],
-  ["haha", "😆"],
-  ["wow", "😮"],
-  ["sad", "😢"],
-  ["angry", "😡"],
+  ["like", "Thích"],
+  ["love", "Yêu thích"],
+  ["care", "Quan tâm"],
+  ["haha", "Vui vẻ"],
+  ["wow", "Ấn tượng"],
+  ["sad", "Không hài lòng"],
+  ["angry", "Bức xúc"],
 ];
 
 const serviceTargetLabels = {
@@ -68,6 +68,17 @@ const getTargetLabel = (review) =>
   serviceTargetLabels[review.target_id] ||
   review.target_name ||
   "Chưa phân loại";
+
+const getStatusLabel = (status) => {
+  const labels = {
+    published: "Đang hiển thị",
+    pending: "Chờ kiểm tra",
+    hidden: "Đã ẩn",
+    reported: "Đang xem xét",
+    rejected: "Đã từ chối",
+  };
+  return labels[status] || status || "Chưa rõ";
+};
 
 const ReviewsList = ({
   isLoading,
@@ -141,10 +152,10 @@ const ReviewsList = ({
           (numericRating <= 2 && Number(review.reports_count || 0) > 0);
         const sentimentTone =
           numericRating >= 4
-            ? "Tốt"
+            ? "Tích cực"
             : numericRating === 3
-              ? "Trung bình"
-              : "Tiêu cực";
+              ? "Trung lập"
+              : "Cần chú ý";
 
         return (
           <article
@@ -165,15 +176,15 @@ const ReviewsList = ({
                 </div>
                 <div>
                   <div className="reviews-review-card__name">
-                    {review.customer_name}
+                    {review.customer_name || "Khách hàng"}
                   </div>
                   <div className="reviews-review-card__meta">
-                    <span>📍 {review.location}</span>
+                    <span>{review.location}</span>
                     <span>•</span>
-                    <span>🕒 {formatDate(review.created_at)}</span>
+                    <span>{formatDate(review.created_at)}</span>
                     {review.verified_purchase && (
                       <span className="reviews-review-card__verified">
-                        ✓ Đã xác thực
+                        Đã xác thực
                       </span>
                     )}
                   </div>
@@ -196,7 +207,7 @@ const ReviewsList = ({
                       className="reviews-review-card__action-btn"
                       onClick={() => onEdit(review, "reported")}
                     >
-                      Đánh dấu xử lý
+                      Chuyển sang xem xét
                     </button>
                   )}
                 {permissions.canAdminModerate && review.status !== "hidden" && (
@@ -205,7 +216,7 @@ const ReviewsList = ({
                     className="reviews-review-card__action-btn"
                     onClick={() => onEdit(review, "hidden")}
                   >
-                    Ẩn vi phạm
+                    Ẩn đánh giá
                   </button>
                 )}
                 {permissions.canDelete && (
@@ -237,7 +248,7 @@ const ReviewsList = ({
               </span>
               {review.restaurant_name && (
                 <span className="reviews-review-card__restaurant">
-                  🏪 {review.restaurant_name}
+                  {review.restaurant_name}
                 </span>
               )}
               {needsReply && (
@@ -247,7 +258,7 @@ const ReviewsList = ({
               )}
               {isHighRisk && (
                 <span className="reviews-review-card__high-risk">
-                  Rủi ro cao
+                  Ưu tiên xử lý
                 </span>
               )}
             </div>
@@ -256,12 +267,11 @@ const ReviewsList = ({
               <h3 className="reviews-review-card__title">{review.title}</h3>
               <p className="reviews-review-card__text">{review.content}</p>
               <p className="reviews-review-card__text">
-                <strong>Nhân viên được đánh giá:</strong>{" "}
-                {review.staff_name || "Không gắn nhân viên"}
+                <strong>Nhân viên được nhắc đến:</strong>{" "}
+                {review.staff_name || "Chưa gắn nhân viên"}
               </p>
               <p className="reviews-review-card__text reviews-review-card__text--note">
-                Đánh giá công khai được dùng làm dữ liệu tham khảo hiệu suất ở lần
-                tính lại tiếp theo.
+                Đánh giá này giúp nhà hàng cải thiện trải nghiệm phục vụ trong những lần tiếp theo.
               </p>
 
               {images.length > 0 && (
@@ -291,43 +301,29 @@ const ReviewsList = ({
             <footer className="reviews-review-card__footer">
               <div className="reviews-review-card__stats">
                 <div className="reviews-review-card__stat">
-                  <span>💬</span>
-                  <span>{review.replies} bình luận</span>
+                  <span>{review.replies} phản hồi</span>
                 </div>
                 <div className="reviews-review-card__stat">
-                  <span>🤝</span>
                   <span>{review.helpful_count} hữu ích</span>
                 </div>
                 <div className="reviews-review-card__stat">
-                  <span>📣</span>
                   <span>{review.likes} tương tác</span>
                 </div>
                 <div className="reviews-review-card__stat">
-                  <span>🚩</span>
                   <span>{review.reports_count || 0} báo cáo</span>
                 </div>
               </div>
 
               <div className={"reviews-review-card__status " + statusClass}>
-                {review.status === "published"
-                  ? "✅ Đã xuất bản"
-                  : review.status === "pending"
-                    ? "⏳ Không công khai (legacy)"
-                    : review.status === "hidden"
-                      ? "🚫 Đã ẩn"
-                      : review.status === "reported"
-                        ? "🚩 Đang được xem xét"
-                        : review.status === "rejected"
-                          ? "⛔ Từ chối"
-                          : review.status}
+                {getStatusLabel(review.status)}
               </div>
             </footer>
 
             {!!activeReactions.length && (
               <div className="reviews-review-card__meta reviews-review-card__meta--reactions">
-                {activeReactions.map(([key, emoji]) => (
+                {activeReactions.map(([key, label]) => (
                   <span key={key}>
-                    {emoji} {review.reactions?.[key]}
+                    {label}: {review.reactions?.[key]}
                   </span>
                 ))}
               </div>
