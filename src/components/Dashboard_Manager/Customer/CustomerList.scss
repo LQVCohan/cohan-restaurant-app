@@ -1,16 +1,16 @@
 /* src/pages/CustomerManagement/CustomerList.scss */
 
-$cl-gap: 16px;
-$cl-radius: 18px;
-$cl-border: #ded7c9;
-$cl-bg-skeleton: #ece5d8;
-$cl-bg-card: #fffdf8;
-$cl-bg-soft: #f8f3ea;
-$cl-primary: #256f75;
-$cl-text-main: #1f2a2b;
-$cl-text-sub: #64706e;
+.cl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+  padding-bottom: 18px;
+}
 
-@mixin shimmer {
-  position: relative;
-  overflow: hidden;
-  background
+.cl-empty-state {
+  min-height: clamp(250px, 28vh, 340px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 24px 50px
