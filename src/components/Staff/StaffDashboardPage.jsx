@@ -37,8 +37,22 @@ const getRestaurantLabel = (restaurantForStaff) => {
   return "—";
 };
 
+const getInitials = (name) => {
+  if (!name || typeof name !== "string") return "NV";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "NV";
+  return parts.slice(-2).map((part) => part.charAt(0).toUpperCase()).join("");
+};
+
 const StaffStatusBadge = ({ tone = "muted", children }) => (
   <span className={`staff-dashboard-badge staff-dashboard-badge--${tone}`}>{children}</span>
+);
+
+const StaffHeroLink = ({ to, label, value }) => (
+  <Link className="staff-hero-link" to={to}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+  </Link>
 );
 
 const StaffActionCard = ({ to, title, description, cta, tone = "neutral", primary = false }) => (
@@ -77,6 +91,7 @@ const StaffDashboardPage = () => {
   const staffName = getDisplayName(user);
   const roleLabel = getRawRoleLabel(user) || normalizedRole;
   const staffRestaurantLabel = getRestaurantLabel(user?.restaurantForStaff);
+  const initials = getInitials(staffName);
 
   const workAreaActions = useMemo(() => {
     const actions = [];
@@ -103,7 +118,6 @@ const StaffDashboardPage = () => {
       });
     }
 
-
     actions.push({
       to: "/staff/payslips",
       title: "Phiếu lương của tôi",
@@ -120,17 +134,26 @@ const StaffDashboardPage = () => {
     <div className="staff-dashboard-page" aria-labelledby="staff-dashboard-title">
       <section className="staff-dashboard-hero">
         <div className="staff-dashboard-hero__copy">
-          <StaffStatusBadge tone="accent">Khu vực nhân viên</StaffStatusBadge>
+          <StaffStatusBadge tone="accent">Bảng điều phối cá nhân</StaffStatusBadge>
           <h1 id="staff-dashboard-title">Hôm nay cần làm gì?</h1>
           <p>
-            Xem ca làm, chấm công, xác nhận ca và các yêu cầu cá nhân từ một màn hình dễ thao tác trong ca.
+            Mở nhanh lịch làm, chấm công, nhắc việc và đúng khu vực vận hành trong ca. Mọi thao tác quan trọng được gom lại để nhân viên xử lý gọn trên điện thoại hoặc tablet.
           </p>
+
+          <div className="staff-hero-links" aria-label="Lối tắt trong ca">
+            <StaffHeroLink to="/staff/schedule" label="Lịch tuần" value="Xem ca" />
+            <StaffHeroLink to="/staff/schedule" label="Chấm công" value="Check-in/out" />
+            <StaffHeroLink to="/notifications" label="Nhắc việc" value="Thông báo" />
+          </div>
         </div>
+
         <div className="staff-identity-card" aria-label="Thông tin nhân viên">
+          <div className="staff-identity-card__avatar" aria-hidden="true">{initials}</div>
           <span>Đang đăng nhập</span>
           <strong>{staffName || "Nhân viên"}</strong>
           <small>{roleLabel || "Chưa xác định vai trò"}</small>
           <small>{staffRestaurantLabel}</small>
+          <div className="staff-identity-card__status">Sẵn sàng phục vụ</div>
         </div>
       </section>
 
@@ -138,12 +161,19 @@ const StaffDashboardPage = () => {
         <article className="staff-shift-command-card">
           <div className="staff-shift-command-card__header">
             <StaffStatusBadge tone="muted">Ca hôm nay</StaffStatusBadge>
-            <span className="staff-shift-command-card__time">Lịch</span>
+            <span className="staff-shift-command-card__time">Sẵn sàng</span>
           </div>
           <h2>Kiểm tra ca hôm nay</h2>
           <p>
-            Mở lịch cá nhân để xem ca hiện tại, check-in/check-out và cảnh báo chấm công theo dữ liệu đã công bố.
+            Vào lịch cá nhân để xem ca được phân, xác nhận ca, check-in/check-out và gửi yêu cầu chỉnh công khi có sai lệch.
           </p>
+
+          <div className="staff-shift-command-card__checklist" aria-label="Các bước trước khi vào ca">
+            <span>Xem lịch trước ca</span>
+            <span>Xác nhận chấm công</span>
+            <span>Theo dõi nhắc việc</span>
+          </div>
+
           <div className="staff-shift-command-card__actions">
             <Link className="staff-primary-dashboard-button" to="/staff/schedule">
               Xem lịch tuần
@@ -177,8 +207,8 @@ const StaffDashboardPage = () => {
       </section>
 
       <section className="staff-metric-row" aria-label="Trạng thái vận hành cá nhân">
-        <StaffMetricTile label="Trạng thái" value="Xem lịch" hint="Theo ca đã công bố" tone="muted" />
-        <StaffMetricTile label="Chấm công" value="Trong lịch" hint="Check-in / check-out" tone="success" />
+        <StaffMetricTile label="Trạng thái" value="Sẵn sàng" hint="Theo ca đã công bố" tone="muted" />
+        <StaffMetricTile label="Chấm công" value="Theo lịch" hint="Check-in / check-out" tone="success" />
         <StaffMetricTile label="Yêu cầu" value="Theo dõi" hint="Nghỉ phép / tăng ca / chỉnh công" tone="warning" />
       </section>
 
@@ -188,7 +218,7 @@ const StaffDashboardPage = () => {
             <StaffStatusBadge tone="accent">Thao tác nhanh</StaffStatusBadge>
             <h2 id="staff-fast-actions-title">Đi thẳng tới việc cần làm</h2>
           </div>
-          <p>Ưu tiên các thao tác nhân viên dùng nhiều nhất trên điện thoại hoặc tablet.</p>
+          <p>Ưu tiên các thao tác nhân viên dùng nhiều nhất trong ca, ít bước và dễ bấm trên màn hình nhỏ.</p>
         </div>
 
         <div className="staff-action-grid">
@@ -244,7 +274,7 @@ const StaffDashboardPage = () => {
             <StaffStatusBadge tone="success">Khu vực chuyên môn</StaffStatusBadge>
             <h2 id="staff-work-area-title">Khu vực làm việc của bạn</h2>
           </div>
-          <p>Chỉ hiển thị khu vực phù hợp với quyền hiện tại.</p>
+          <p>Chỉ hiển thị khu vực phù hợp với quyền hiện tại, tránh đưa nhân viên vào nhầm màn hình.</p>
         </div>
 
         {workAreaActions.length > 0 ? (
