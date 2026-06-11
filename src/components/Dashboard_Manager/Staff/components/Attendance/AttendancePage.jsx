@@ -1,4 +1,11 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { AuthContext } from "@/context/AuthContext";
 import useAttendanceManagement, {
   toAttendanceIsoStartOfDay,
@@ -232,14 +239,35 @@ const formatMinutesValue = (value) => {
 };
 
 const getOvertimeStatusBadge = (record) => {
-  const rawStatus = String(record?.overtimeApprovalStatus || "not_required").toLowerCase();
+  const rawStatus = String(
+    record?.overtimeApprovalStatus || "not_required",
+  ).toLowerCase();
   const overtimeMinutes = Number(record?.overtimeMinutes || 0);
   const approvedMinutes = Number(record?.approvedOvertimeMinutes || 0);
   const config = {
-    pending: { label: `Chờ duyệt • ${formatMinutesValue(overtimeMinutes)}`, className: "warning", icon: "⏳" },
-    approved: { label: `Đã duyệt • ${formatMinutesValue(approvedMinutes)}`, className: "success", icon: "✅" },
-    rejected: { label: `Từ chối • ${formatMinutesValue(overtimeMinutes)}`, className: "danger", icon: "⛔" },
-    not_required: { label: overtimeMinutes > 0 ? `Chưa cần duyệt • ${formatMinutesValue(overtimeMinutes)}` : "Không tăng ca", className: "neutral", icon: "•" },
+    pending: {
+      label: `Chờ duyệt • ${formatMinutesValue(overtimeMinutes)}`,
+      className: "warning",
+      icon: "⏳",
+    },
+    approved: {
+      label: `Đã duyệt • ${formatMinutesValue(approvedMinutes)}`,
+      className: "success",
+      icon: "✅",
+    },
+    rejected: {
+      label: `Từ chối • ${formatMinutesValue(overtimeMinutes)}`,
+      className: "danger",
+      icon: "⛔",
+    },
+    not_required: {
+      label:
+        overtimeMinutes > 0
+          ? `Chưa cần duyệt • ${formatMinutesValue(overtimeMinutes)}`
+          : "Không tăng ca",
+      className: "neutral",
+      icon: "•",
+    },
   };
   const current = config[rawStatus] || config.not_required;
 
@@ -282,19 +310,43 @@ const renderRequestDetails = (request) => {
   const currentMetrics = [
     { label: "Check-in", value: formatDateTime(request.originalCheckInAt) },
     { label: "Check-out", value: formatDateTime(request.originalCheckOutAt) },
-    { label: "Giờ công", value: formatMinutesValue(request.originalWorkedMinutes) },
-    { label: "Đi muộn", value: formatMinutesValue(request.originalLatenessMinutes) },
-    { label: "Về sớm", value: formatMinutesValue(request.originalEarlyLeaveMinutes) },
-    { label: "Tăng ca", value: formatMinutesValue(request.originalOvertimeMinutes) },
+    {
+      label: "Giờ công",
+      value: formatMinutesValue(request.originalWorkedMinutes),
+    },
+    {
+      label: "Đi muộn",
+      value: formatMinutesValue(request.originalLatenessMinutes),
+    },
+    {
+      label: "Về sớm",
+      value: formatMinutesValue(request.originalEarlyLeaveMinutes),
+    },
+    {
+      label: "Tăng ca",
+      value: formatMinutesValue(request.originalOvertimeMinutes),
+    },
   ];
 
   const requestedMetrics = [
     { label: "Check-in", value: formatDateTime(request.requestedCheckInAt) },
     { label: "Check-out", value: formatDateTime(request.requestedCheckOutAt) },
-    { label: "Giờ công", value: formatMinutesValue(request.requestedWorkedMinutes) },
-    { label: "Đi muộn", value: formatMinutesValue(request.requestedLatenessMinutes) },
-    { label: "Về sớm", value: formatMinutesValue(request.requestedEarlyLeaveMinutes) },
-    { label: "Tăng ca", value: formatMinutesValue(request.requestedOvertimeMinutes) },
+    {
+      label: "Giờ công",
+      value: formatMinutesValue(request.requestedWorkedMinutes),
+    },
+    {
+      label: "Đi muộn",
+      value: formatMinutesValue(request.requestedLatenessMinutes),
+    },
+    {
+      label: "Về sớm",
+      value: formatMinutesValue(request.requestedEarlyLeaveMinutes),
+    },
+    {
+      label: "Tăng ca",
+      value: formatMinutesValue(request.requestedOvertimeMinutes),
+    },
   ];
 
   return (
@@ -314,21 +366,69 @@ const renderRequestDetails = (request) => {
         <div className="detail-card">
           <h4>Thông tin yêu cầu</h4>
           <dl className="detail-list">
-            <div><dt>Nhân viên</dt><dd>{request.employeeName || "--"}{request.employeeCode ? ` • ${request.employeeCode}` : ""}{request.employeeRole ? ` • ${request.employeeRole}` : ""}</dd></div>
-            <div><dt>Người gửi</dt><dd>{request.requestedByName || "--"}{request.requestedByRole ? ` • ${request.requestedByRole}` : ""}</dd></div>
-            <div><dt>Ngày công</dt><dd>{formatDate(request.workDate)}</dd></div>
-            <div><dt>Gửi lúc</dt><dd>{formatDateTime(request.requestedAt || request.createdAt)}</dd></div>
-            <div><dt>Loại chỉnh công</dt><dd>{getCorrectionTypeLabel(request.correctionType)}</dd></div>
-            <div><dt>Trạng thái</dt><dd>{getCorrectionStatusBadge(request.status)}</dd></div>
+            <div>
+              <dt>Nhân viên</dt>
+              <dd>
+                {request.employeeName || "--"}
+                {request.employeeCode ? ` • ${request.employeeCode}` : ""}
+                {request.employeeRole ? ` • ${request.employeeRole}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Người gửi</dt>
+              <dd>
+                {request.requestedByName || "--"}
+                {request.requestedByRole ? ` • ${request.requestedByRole}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Ngày công</dt>
+              <dd>{formatDate(request.workDate)}</dd>
+            </div>
+            <div>
+              <dt>Gửi lúc</dt>
+              <dd>
+                {formatDateTime(request.requestedAt || request.createdAt)}
+              </dd>
+            </div>
+            <div>
+              <dt>Loại chỉnh công</dt>
+              <dd>{getCorrectionTypeLabel(request.correctionType)}</dd>
+            </div>
+            <div>
+              <dt>Trạng thái</dt>
+              <dd>{getCorrectionStatusBadge(request.status)}</dd>
+            </div>
           </dl>
         </div>
 
         <div className="detail-card">
           <h4>Nội dung yêu cầu</h4>
           <div className="detail-copy">
-            <div><span className="detail-label">Lý do</span><p>{request.reason || "--"}</p></div>
-            <div><span className="detail-label">Ghi chú bằng chứng</span><p>{request.evidenceNote || "--"}</p></div>
-            <div><span className="detail-label">Link bằng chứng</span>{request.evidenceUrls?.length ? <ul className="evidence-list">{request.evidenceUrls.map((url) => (<li key={url}><a href={url} target="_blank" rel="noreferrer">{url}</a></li>))}</ul> : <p>--</p>}</div>
+            <div>
+              <span className="detail-label">Lý do</span>
+              <p>{request.reason || "--"}</p>
+            </div>
+            <div>
+              <span className="detail-label">Ghi chú bằng chứng</span>
+              <p>{request.evidenceNote || "--"}</p>
+            </div>
+            <div>
+              <span className="detail-label">Link bằng chứng</span>
+              {request.evidenceUrls?.length ? (
+                <ul className="evidence-list">
+                  {request.evidenceUrls.map((url) => (
+                    <li key={url}>
+                      <a href={url} target="_blank" rel="noreferrer">
+                        {url}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>--</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -340,19 +440,36 @@ const renderRequestDetails = (request) => {
         <div className="detail-card detail-card-wide">
           <h4>Trạng thái duyệt</h4>
           <dl className="detail-list detail-list-wide">
-            <div><dt>Người review</dt><dd>{request.reviewedByName || "--"}</dd></div>
-            <div><dt>Review lúc</dt><dd>{formatDateTime(request.reviewedAt)}</dd></div>
-            <div><dt>Ghi chú review</dt><dd>{request.reviewNote || "--"}</dd></div>
-            <div><dt>Lý do từ chối</dt><dd>{request.rejectionReason || "--"}</dd></div>
-            <div><dt>Người áp dụng</dt><dd>{request.appliedByName || "--"}</dd></div>
-            <div><dt>Áp dụng lúc</dt><dd>{formatDateTime(request.appliedAt)}</dd></div>
+            <div>
+              <dt>Người review</dt>
+              <dd>{request.reviewedByName || "--"}</dd>
+            </div>
+            <div>
+              <dt>Review lúc</dt>
+              <dd>{formatDateTime(request.reviewedAt)}</dd>
+            </div>
+            <div>
+              <dt>Ghi chú review</dt>
+              <dd>{request.reviewNote || "--"}</dd>
+            </div>
+            <div>
+              <dt>Lý do từ chối</dt>
+              <dd>{request.rejectionReason || "--"}</dd>
+            </div>
+            <div>
+              <dt>Người áp dụng</dt>
+              <dd>{request.appliedByName || "--"}</dd>
+            </div>
+            <div>
+              <dt>Áp dụng lúc</dt>
+              <dd>{formatDateTime(request.appliedAt)}</dd>
+            </div>
           </dl>
         </div>
       </div>
     </div>
   );
 };
-
 
 const AttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(
@@ -447,13 +564,19 @@ const AttendancePage = () => {
 
     window.addEventListener("manager:navigation-query", handleNavigationQuery);
     return () =>
-      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+      window.removeEventListener(
+        "manager:navigation-query",
+        handleNavigationQuery,
+      );
   }, [applyReadinessFocusFromQuery]);
 
-
-
   const hasScheduleAttendanceFocus = useMemo(
-    () => Boolean(scheduleAttendanceFocus?.date || scheduleAttendanceFocus?.employeeId || scheduleAttendanceFocus?.restaurantId),
+    () =>
+      Boolean(
+        scheduleAttendanceFocus?.date ||
+        scheduleAttendanceFocus?.employeeId ||
+        scheduleAttendanceFocus?.restaurantId,
+      ),
     [scheduleAttendanceFocus],
   );
 
@@ -545,10 +668,22 @@ const AttendancePage = () => {
   const reconciliationMetrics = [
     { key: "onTime", label: "Đúng lịch", value: reconciliationSummary.onTime },
     { key: "late", label: "Đi muộn", value: reconciliationSummary.late },
-    { key: "earlyLeave", label: "Về sớm", value: reconciliationSummary.earlyLeave },
-    { key: "missedCheckout", label: "Thiếu check-out", value: reconciliationSummary.missedCheckout },
+    {
+      key: "earlyLeave",
+      label: "Về sớm",
+      value: reconciliationSummary.earlyLeave,
+    },
+    {
+      key: "missedCheckout",
+      label: "Thiếu check-out",
+      value: reconciliationSummary.missedCheckout,
+    },
     { key: "noShow", label: "Vắng lịch", value: reconciliationSummary.noShow },
-    { key: "offSchedule", label: "Ngoài lịch", value: reconciliationSummary.offSchedule },
+    {
+      key: "offSchedule",
+      label: "Ngoài lịch",
+      value: reconciliationSummary.offSchedule,
+    },
   ];
 
   const handleReviewFilter = (item) => {
@@ -837,9 +972,7 @@ const AttendancePage = () => {
     const scrollKey = `${focusedDate}:${focusedEmployeeId}`;
     if (focusScrollKeyRef.current === scrollKey) return;
 
-    const row = document.querySelector(
-      '[data-focused-attendance-row="true"]',
-    );
+    const row = document.querySelector('[data-focused-attendance-row="true"]');
     if (!row) return;
 
     focusScrollKeyRef.current = scrollKey;
@@ -864,7 +997,7 @@ const AttendancePage = () => {
     <div className="attendance-management-page">
       <div className="page-header">
         <div className="header-left">
-          <h2 className="page-title">Quản Lý Chấm Công</h2>
+          <h2 className="page-title">Quản lý chấm công</h2>
           <p className="page-subtitle">
             Theo dõi công thực tế, xử lý chỉnh công có kiểm soát và đối chiếu
             trước kỳ lương.
@@ -889,27 +1022,42 @@ const AttendancePage = () => {
           <div className="focus-meta-grid">
             {focusedDate ? <span>Ngày: {focusedDate}</span> : null}
             <span>Nhân viên: {focusedEmployeeId || searchQuery || "--"}</span>
-            {focusedRestaurantId ? <span>Nhà hàng: {focusedRestaurantId}</span> : null}
+            {focusedRestaurantId ? (
+              <span>Nhà hàng: {focusedRestaurantId}</span>
+            ) : null}
             {focusedEmployeeId ? (
               <span>Số bản ghi khớp: {focusedAttendanceRecords.length}</span>
             ) : null}
           </div>
           {focusedEmployeeId && focusedAttendanceRecords.length === 0 && (
             <>
-              <p className="focus-hint">Chưa tìm thấy bản ghi chấm công khớp nhân viên này trong ngày đã chọn.</p>
-              <p className="focus-hint">Có thể nhân viên chưa check-in hoặc bộ lọc nhà hàng/ngày chưa đúng.</p>
+              <p className="focus-hint">
+                Chưa tìm thấy bản ghi chấm công khớp nhân viên này trong ngày đã
+                chọn.
+              </p>
+              <p className="focus-hint">
+                Có thể nhân viên chưa check-in hoặc bộ lọc nhà hàng/ngày chưa
+                đúng.
+              </p>
             </>
           )}
           {focusedEmployeeId && focusedAttendanceRecords.length > 1 && (
-            <p className="focus-hint">Có nhiều bản ghi khớp. Hãy chọn dòng cụ thể trong bảng công.</p>
+            <p className="focus-hint">
+              Có nhiều bản ghi khớp. Hãy chọn dòng cụ thể trong bảng công.
+            </p>
           )}
           {focusedEmployeeId && pendingFocusedCorrections.length > 0 && (
             <span className="focus-pending-badge">
-              Đã có {pendingFocusedCorrections.length} yêu cầu chỉnh công chờ duyệt
+              Đã có {pendingFocusedCorrections.length} yêu cầu chỉnh công chờ
+              duyệt
             </span>
           )}
           <div className="focus-actions">
-            <button type="button" className="staff-secondary-btn" onClick={handleFocusAttendanceTable}>
+            <button
+              type="button"
+              className="staff-secondary-btn"
+              onClick={handleFocusAttendanceTable}
+            >
               Lọc bảng công
             </button>
             <button
@@ -927,18 +1075,28 @@ const AttendancePage = () => {
             >
               Xem yêu cầu chỉnh công
             </button>
-            <button type="button" className="staff-secondary-btn" onClick={clearScheduleAttendanceFocus}>
+            <button
+              type="button"
+              className="staff-secondary-btn"
+              onClick={clearScheduleAttendanceFocus}
+            >
               Xoá bộ lọc từ lịch
             </button>
           </div>
           {focusedEmployeeId && focusedAttendanceRecords.length > 1 && (
-            <p className="focus-hint">Có nhiều bản ghi khớp, chọn dòng bên dưới để tạo chỉnh công.</p>
+            <p className="focus-hint">
+              Có nhiều bản ghi khớp, chọn dòng bên dưới để tạo chỉnh công.
+            </p>
           )}
           {focusedEmployeeId && focusedAttendanceRecords.length === 0 && (
-            <p className="focus-hint">Chưa có bản ghi chấm công để tạo chỉnh công.</p>
+            <p className="focus-hint">
+              Chưa có bản ghi chấm công để tạo chỉnh công.
+            </p>
           )}
           {!focusedEmployeeId && (
-            <p className="focus-hint">Đang hiển thị ngữ cảnh chung theo ngày/nhà hàng từ lịch làm việc.</p>
+            <p className="focus-hint">
+              Đang hiển thị ngữ cảnh chung theo ngày/nhà hàng từ lịch làm việc.
+            </p>
           )}
         </div>
       )}
@@ -968,7 +1126,7 @@ const AttendancePage = () => {
         <div className="stat-card correction">
           <div className="icon-box">📝</div>
           <div className="info">
-            <span className="label">Yêu cầu chỉnh công chờ duyệt</span>
+            <span className="label">Chờ duyệt chỉnh công</span>
             <span className="value">{correctionStats.pending}</span>
           </div>
         </div>
@@ -978,10 +1136,10 @@ const AttendancePage = () => {
         <div className="quick-header">
           <div className="icon-flash">⚡</div>
           <div className="text">
-            <h4>Chấm Công Nhanh</h4>
+            <h4>Ghi nhận vào ca / tan ca</h4>
             <p>
-              Lưu check-in/check-out trực tiếp. Nếu cần sửa giờ quá khứ, dùng
-              yêu cầu chỉnh công.
+              Dùng cho thao tác tại quầy quản lý ca. Trường hợp sai giờ, quên
+              thẻ hoặc máy lỗi thì tạo yêu cầu chỉnh công để duyệt sau.
             </p>
           </div>
         </div>
@@ -997,7 +1155,7 @@ const AttendancePage = () => {
               }}
               className="quick-select"
             >
-              <option value="">-- Tìm theo tên / Mã NV --</option>
+              <option value="">Chọn nhân viên đang có mặt tại ca...</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   [{emp.employeeCode || "--"}] {emp.fullName}
@@ -1007,10 +1165,10 @@ const AttendancePage = () => {
           </div>
 
           <div className="input-group note-group">
-            <label>Ghi chú:</label>
+            <label>Lý do / ghi chú ca trực:</label>
             <input
               type="text"
-              placeholder="VD: Quên thẻ, máy lỗi..."
+              placeholder="VD: Quên thẻ, đổi ca, máy vân tay lỗi..."
               value={quickNote}
               onChange={(event) => {
                 setQuickNote(event.target.value);
@@ -1046,7 +1204,8 @@ const AttendancePage = () => {
             <div
               className={`quick-feedback ${quickFeedback.type}`}
               role={
-                quickFeedback.type === "success" || quickFeedback.type === "info"
+                quickFeedback.type === "success" ||
+                quickFeedback.type === "info"
                   ? "status"
                   : "alert"
               }
@@ -1071,7 +1230,7 @@ const AttendancePage = () => {
           className={activeView === "corrections" ? "active" : ""}
           onClick={() => setActiveView("corrections")}
         >
-          Yêu cầu chỉnh công
+          Chờ duyệt chỉnh công
           {correctionStats.pending > 0 && (
             <span className="count-badge">{correctionStats.pending}</span>
           )}
@@ -1088,18 +1247,30 @@ const AttendancePage = () => {
 
       {activeView === "attendance" ? (
         <div className="table-section">
-          <section className={`attendance-reconciliation-panel card tone-${reconciliationSummary.tone}`} aria-label="Đối chiếu lịch và công thực tế">
+          <section
+            className={`attendance-reconciliation-panel card tone-${reconciliationSummary.tone}`}
+            aria-label="Đối chiếu lịch và công thực tế"
+          >
             <header className="attendance-reconciliation-header">
               <div>
                 <h3>Đối chiếu lịch & công thực tế</h3>
-                <p>So sánh ca dự kiến với giờ vào/ra thực tế trong ngày đã chọn.</p>
+                <p>
+                  So sánh ca dự kiến với giờ vào/ra thực tế trong ngày đã chọn.
+                </p>
               </div>
-              <span className={`reconciliation-score-badge tone-${reconciliationSummary.tone}`}>
-                {reconciliationSummary.score === null ? "--" : `${reconciliationSummary.score}/100`} • {reconciliationSummary.headline}
+              <span
+                className={`reconciliation-score-badge tone-${reconciliationSummary.tone}`}
+              >
+                {reconciliationSummary.score === null
+                  ? "--"
+                  : `${reconciliationSummary.score}/100`}{" "}
+                • {reconciliationSummary.headline}
               </span>
             </header>
             {reconciliationSummary.total === 0 ? (
-              <p className="attendance-reconciliation-empty">Chưa có dữ liệu chấm công để đối chiếu cho ngày này.</p>
+              <p className="attendance-reconciliation-empty">
+                Chưa có dữ liệu đối chiếu trong ngày này.
+              </p>
             ) : (
               <>
                 <div className="attendance-reconciliation-metrics">
@@ -1115,13 +1286,28 @@ const AttendancePage = () => {
                     <h4>Điểm cần rà soát nhanh</h4>
                     <ul>
                       {reconciliationSummary.reviewItems.map((item) => (
-                        <li key={item.id || `${item.employeeCode}-${item.status}`}>
+                        <li
+                          key={item.id || `${item.employeeCode}-${item.status}`}
+                        >
                           <div>
-                            <p className="issue-employee">{item.employeeName} <span>({item.employeeCode})</span></p>
-                            <p className="issue-meta">{item.reasonLabels.join(" • ")}</p>
-                            <p className="issue-meta">Ca dự kiến: {item.plannedTimeLabel} • Thực tế: {item.actualTimeLabel}</p>
+                            <p className="issue-employee">
+                              {item.employeeName}{" "}
+                              <span>({item.employeeCode})</span>
+                            </p>
+                            <p className="issue-meta">
+                              {item.reasonLabels.join(" • ")}
+                            </p>
+                            <p className="issue-meta">
+                              Ca dự kiến: {item.plannedTimeLabel} • Thực tế:{" "}
+                              {item.actualTimeLabel}
+                            </p>
                           </div>
-                          <button type="button" className="issue-filter-btn" onClick={() => handleReviewFilter(item)} aria-label={`Lọc bảng công để xem ${item.reasonLabels.join(", ")} của ${item.employeeName}`}>
+                          <button
+                            type="button"
+                            className="issue-filter-btn"
+                            onClick={() => handleReviewFilter(item)}
+                            aria-label={`Lọc bảng công để xem ${item.reasonLabels.join(", ")} của ${item.employeeName}`}
+                          >
                             Lọc để xem
                           </button>
                         </li>
@@ -1158,7 +1344,7 @@ const AttendancePage = () => {
 
           {error && (
             <div className="inline-state error" role="alert">
-              ❌ Không tải được dữ liệu chấm công.
+              ❌ Không tải được dữ liệu chấm công. Vui lòng thử lại.
             </div>
           )}
 
@@ -1206,7 +1392,9 @@ const AttendancePage = () => {
                     <tr
                       key={item.id}
                       className={isFocusedRow ? "focused-attendance-row" : ""}
-                      data-focused-attendance-row={isFocusedRow ? "true" : undefined}
+                      data-focused-attendance-row={
+                        isFocusedRow ? "true" : undefined
+                      }
                     >
                       <td>
                         <div className="employee-cell">
@@ -1227,11 +1415,14 @@ const AttendancePage = () => {
                             <div className="name">
                               {displayName}
                               {isFocusedRow ? (
-                                <span className="focus-source-badge">Từ lịch</span>
+                                <span className="focus-source-badge">
+                                  Từ lịch
+                                </span>
                               ) : null}
                             </div>
                             <div className="role">
-                              {item.employeeCode || "--"} • {item.employeeRole || "--"}
+                              {item.employeeCode || "--"} •{" "}
+                              {item.employeeRole || "--"}
                             </div>
                           </div>
                         </div>
@@ -1322,7 +1513,9 @@ const AttendancePage = () => {
             </div>
             <div className="summary-pill danger">
               <span>Từ chối / Hủy</span>
-              <strong>{correctionStats.rejected + correctionStats.cancelled}</strong>
+              <strong>
+                {correctionStats.rejected + correctionStats.cancelled}
+              </strong>
             </div>
           </div>
 
@@ -1381,7 +1574,9 @@ const AttendancePage = () => {
                                 (request.employeeName || "?").charAt(0)}
                             </div>
                             <div className="info">
-                              <div className="name">{request.employeeName || "--"}</div>
+                              <div className="name">
+                                {request.employeeName || "--"}
+                              </div>
                               <div className="role">
                                 {request.employeeCode || "--"} •{" "}
                                 {request.employeeRole || "--"}
@@ -1401,13 +1596,19 @@ const AttendancePage = () => {
                             <span>{request.requestedByRole || "--"}</span>
                           </div>
                         </td>
-                        <td>{formatDateTime(request.requestedAt || request.createdAt)}</td>
+                        <td>
+                          {formatDateTime(
+                            request.requestedAt || request.createdAt,
+                          )}
+                        </td>
                         <td>{getCorrectionStatusBadge(request.status)}</td>
                         <td>
                           <div className="compact-stack">
                             <strong>
-                              {formatTime(request.originalCheckInAt) || "--:--"} →{" "}
-                              {formatTime(request.requestedCheckInAt) || "--:--"}
+                              {formatTime(request.originalCheckInAt) || "--:--"}{" "}
+                              →{" "}
+                              {formatTime(request.requestedCheckInAt) ||
+                                "--:--"}
                             </strong>
                             <span>{request.reason || "--"}</span>
                           </div>
@@ -1435,7 +1636,9 @@ const AttendancePage = () => {
                                 title="Duyệt và áp dụng"
                                 aria-label={`Duyệt yêu cầu chỉnh công của ${request.employeeName || "nhân viên"}`}
                                 disabled={isReviewingCorrection}
-                                onClick={() => openReviewDialog("approve", request)}
+                                onClick={() =>
+                                  openReviewDialog("approve", request)
+                                }
                               >
                                 ✅
                               </button>
@@ -1445,7 +1648,9 @@ const AttendancePage = () => {
                                 title="Từ chối"
                                 aria-label={`Từ chối yêu cầu chỉnh công của ${request.employeeName || "nhân viên"}`}
                                 disabled={isReviewingCorrection}
-                                onClick={() => openReviewDialog("reject", request)}
+                                onClick={() =>
+                                  openReviewDialog("reject", request)
+                                }
                               >
                                 ⛔
                               </button>
@@ -1459,7 +1664,9 @@ const AttendancePage = () => {
                               title="Hủy yêu cầu"
                               aria-label={`Hủy yêu cầu chỉnh công của ${request.employeeName || "nhân viên"}`}
                               disabled={isReviewingCorrection}
-                              onClick={() => openReviewDialog("cancel", request)}
+                              onClick={() =>
+                                openReviewDialog("cancel", request)
+                              }
                             >
                               🚫
                             </button>
@@ -1490,7 +1697,10 @@ const AttendancePage = () => {
       )}
 
       {selectedCorrectionRecord && correctionForm && (
-        <div className="attendance-modal-overlay" onMouseDown={closeCorrectionModal}>
+        <div
+          className="attendance-modal-overlay"
+          onMouseDown={closeCorrectionModal}
+        >
           <div
             className="attendance-correction-modal"
             role="dialog"
@@ -1502,8 +1712,13 @@ const AttendancePage = () => {
             <div className="modal-header">
               <div>
                 <h3 id="attendance-correction-title">Tạo yêu cầu chỉnh công</h3>
-                <p id="attendance-correction-desc">Kiểm tra lại giờ vào/ra trước khi gửi yêu cầu chỉnh công.</p>
-                <p>Yêu cầu này cần được duyệt trước khi ảnh hưởng đến dữ liệu công.</p>
+                <p id="attendance-correction-desc">
+                  Kiểm tra lại giờ vào/ra trước khi gửi yêu cầu chỉnh công.
+                </p>
+                <p>
+                  Yêu cầu này cần được duyệt trước khi ảnh hưởng đến dữ liệu
+                  công.
+                </p>
               </div>
               <button
                 type="button"
@@ -1525,13 +1740,15 @@ const AttendancePage = () => {
                 <div>
                   <span className="label">Check-in hiện tại</span>
                   <strong>
-                    {formatTime(selectedCorrectionRecord.actualCheckInAt) || "--:--"}
+                    {formatTime(selectedCorrectionRecord.actualCheckInAt) ||
+                      "--:--"}
                   </strong>
                 </div>
                 <div>
                   <span className="label">Check-out hiện tại</span>
                   <strong>
-                    {formatTime(selectedCorrectionRecord.actualCheckOutAt) || "--:--"}
+                    {formatTime(selectedCorrectionRecord.actualCheckOutAt) ||
+                      "--:--"}
                   </strong>
                 </div>
                 <div>
@@ -1543,11 +1760,15 @@ const AttendancePage = () => {
               </div>
 
               {correctionSubmitError && (
-                <div className="form-alert error" role="alert">{correctionSubmitError}</div>
+                <div className="form-alert error" role="alert">
+                  {correctionSubmitError}
+                </div>
               )}
 
               <div className="form-grid">
-                <div className="form-section-heading full-width">Thông tin ca</div>
+                <div className="form-section-heading full-width">
+                  Thông tin ca
+                </div>
                 <div className="form-group">
                   <label>Ngày công</label>
                   <input
@@ -1577,14 +1798,19 @@ const AttendancePage = () => {
                   </select>
                 </div>
 
-                <div className="form-section-heading full-width">Giờ thực tế đề xuất</div>
+                <div className="form-section-heading full-width">
+                  Giờ thực tế đề xuất
+                </div>
                 <div className="form-group">
                   <label>Check-in đề xuất</label>
                   <input
                     type="datetime-local"
                     value={correctionForm.requestedCheckInAt}
                     onChange={(event) =>
-                      updateCorrectionForm("requestedCheckInAt", event.target.value)
+                      updateCorrectionForm(
+                        "requestedCheckInAt",
+                        event.target.value,
+                      )
                     }
                   />
                 </div>
@@ -1595,7 +1821,10 @@ const AttendancePage = () => {
                     type="datetime-local"
                     value={correctionForm.requestedCheckOutAt}
                     onChange={(event) =>
-                      updateCorrectionForm("requestedCheckOutAt", event.target.value)
+                      updateCorrectionForm(
+                        "requestedCheckOutAt",
+                        event.target.value,
+                      )
                     }
                   />
                   {correctionFormErrors.requestedCheckOutAt && (
@@ -1613,7 +1842,9 @@ const AttendancePage = () => {
                   </div>
                 )}
 
-                <div className="form-section-heading full-width">Lý do & bằng chứng</div>
+                <div className="form-section-heading full-width">
+                  Lý do & bằng chứng
+                </div>
                 <div className="form-group full-width">
                   <label htmlFor="correction-reason">Lý do chỉnh công</label>
                   <textarea
@@ -1628,8 +1859,14 @@ const AttendancePage = () => {
                     required
                     minLength={5}
                   />
-                  <div id="correction-reason-helper" className="field-helper">Nhập lý do đủ rõ để người duyệt có thể đối chiếu.</div>
-                  {correctionFormErrors.reason && (<div id="correction-reason-error" className="field-error">{correctionFormErrors.reason}</div>)}
+                  <div id="correction-reason-helper" className="field-helper">
+                    Nhập lý do đủ rõ để người duyệt có thể đối chiếu.
+                  </div>
+                  {correctionFormErrors.reason && (
+                    <div id="correction-reason-error" className="field-error">
+                      {correctionFormErrors.reason}
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-group full-width">
@@ -1649,7 +1886,10 @@ const AttendancePage = () => {
                   <textarea
                     value={correctionForm.evidenceUrlsText}
                     onChange={(event) =>
-                      updateCorrectionForm("evidenceUrlsText", event.target.value)
+                      updateCorrectionForm(
+                        "evidenceUrlsText",
+                        event.target.value,
+                      )
                     }
                     placeholder="https://..."
                   />
@@ -1670,7 +1910,9 @@ const AttendancePage = () => {
                   className="btn btn-primary"
                   disabled={isSubmittingCorrection}
                 >
-                  {isSubmittingCorrection ? "Đang gửi..." : "Gửi yêu cầu chỉnh công"}
+                  {isSubmittingCorrection
+                    ? "Đang gửi..."
+                    : "Gửi yêu cầu chỉnh công"}
                 </button>
               </div>
             </form>
@@ -1679,7 +1921,10 @@ const AttendancePage = () => {
       )}
 
       {reviewDialog?.request && (
-        <div className="attendance-modal-overlay" onMouseDown={closeReviewDialog}>
+        <div
+          className="attendance-modal-overlay"
+          onMouseDown={closeReviewDialog}
+        >
           <div
             className="attendance-correction-modal review-modal"
             role="dialog"
@@ -1691,11 +1936,16 @@ const AttendancePage = () => {
             <div className="modal-header">
               <div>
                 <h3 id="attendance-review-title">
-                  {reviewDialog.mode === "approve" && "Duyệt yêu cầu chỉnh công"}
-                  {reviewDialog.mode === "reject" && "Từ chối yêu cầu chỉnh công"}
+                  {reviewDialog.mode === "approve" &&
+                    "Duyệt yêu cầu chỉnh công"}
+                  {reviewDialog.mode === "reject" &&
+                    "Từ chối yêu cầu chỉnh công"}
                   {reviewDialog.mode === "cancel" && "Hủy yêu cầu chỉnh công"}
                 </h3>
-                <p id="attendance-review-desc">{reviewDialog.request.employeeName || "Nhân viên"} • {formatDate(reviewDialog.request.workDate)}</p>
+                <p id="attendance-review-desc">
+                  {reviewDialog.request.employeeName || "Nhân viên"} •{" "}
+                  {formatDate(reviewDialog.request.workDate)}
+                </p>
               </div>
               <button
                 type="button"
@@ -1708,17 +1958,27 @@ const AttendancePage = () => {
               </button>
             </div>
 
-            <form className="correction-form" onSubmit={handleSubmitReviewDialog}>
+            <form
+              className="correction-form"
+              onSubmit={handleSubmitReviewDialog}
+            >
               <div className="review-summary">
                 {renderRequestDetails(reviewDialog.request)}
               </div>
 
-              {reviewDialog.error && (<div className="form-alert error" role="alert">{reviewDialog.error}</div>)}
+              {reviewDialog.error && (
+                <div className="form-alert error" role="alert">
+                  {reviewDialog.error}
+                </div>
+              )}
 
               <div className={`form-alert review-mode-${reviewDialog.mode}`}>
-                {reviewDialog.mode === "approve" && "Sau khi duyệt, yêu cầu có thể ảnh hưởng đến dữ liệu công thực tế."}
-                {reviewDialog.mode === "reject" && "Yêu cầu sẽ không được áp dụng. Vui lòng nhập lý do từ chối rõ ràng."}
-                {reviewDialog.mode === "cancel" && "Yêu cầu này sẽ bị hủy và không còn khả dụng để duyệt."}
+                {reviewDialog.mode === "approve" &&
+                  "Sau khi duyệt, yêu cầu có thể ảnh hưởng đến dữ liệu công thực tế."}
+                {reviewDialog.mode === "reject" &&
+                  "Yêu cầu sẽ không được áp dụng. Vui lòng nhập lý do từ chối rõ ràng."}
+                {reviewDialog.mode === "cancel" &&
+                  "Yêu cầu này sẽ bị hủy và không còn khả dụng để duyệt."}
               </div>
 
               {reviewDialog.mode === "approve" && (
@@ -1726,7 +1986,9 @@ const AttendancePage = () => {
                   <label>Ghi chú quản lý (không bắt buộc)</label>
                   <textarea
                     value={reviewDialog.note}
-                    onChange={(event) => updateReviewDialog("note", event.target.value)}
+                    onChange={(event) =>
+                      updateReviewDialog("note", event.target.value)
+                    }
                     placeholder="Ghi chú xác nhận hoặc bối cảnh review..."
                   />
                 </div>
@@ -1741,7 +2003,9 @@ const AttendancePage = () => {
                       updateReviewDialog("reason", event.target.value)
                     }
                     placeholder="Nêu rõ vì sao yêu cầu chưa thể áp dụng..."
-                    aria-invalid={Boolean(reviewDialog.error && !reviewDialog.reason.trim())}
+                    aria-invalid={Boolean(
+                      reviewDialog.error && !reviewDialog.reason.trim(),
+                    )}
                     required
                   />
                 </div>
@@ -1770,7 +2034,9 @@ const AttendancePage = () => {
                   {reviewDialog.mode === "approve" &&
                     (isApproveSubmitting ? "Đang duyệt..." : "Xác nhận duyệt")}
                   {reviewDialog.mode === "reject" &&
-                    (isRejectSubmitting ? "Đang từ chối..." : "Xác nhận từ chối")}
+                    (isRejectSubmitting
+                      ? "Đang từ chối..."
+                      : "Xác nhận từ chối")}
                   {reviewDialog.mode === "cancel" &&
                     (isCancelSubmitting ? "Đang hủy..." : "Xác nhận hủy")}
                 </button>

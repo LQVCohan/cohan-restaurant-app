@@ -19,10 +19,26 @@ $sm-danger: #b54747;
   padding-bottom: 44px;
   overflow-x: clip;
   color: $sm-ink;
-  font-family: "Geist", "Outfit", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "Geist",
+    "Outfit",
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   background:
-    radial-gradient(circle at 8% -8%, rgba(168, 133, 95, 0.16), transparent 30rem),
-    radial-gradient(circle at 92% 2%, rgba(83, 108, 97, 0.10), transparent 30rem),
+    radial-gradient(
+      circle at 8% -8%,
+      rgba(168, 133, 95, 0.16),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 92% 2%,
+      rgba(83, 108, 97, 0.1),
+      transparent 30rem
+    ),
     linear-gradient(180deg, #f7f5f0 0%, $sm-bg 52%, #f2f1ec 100%);
 
   &::before {
@@ -36,7 +52,12 @@ $sm-danger: #b54747;
       linear-gradient(rgba(77, 66, 52, 0.035) 1px, transparent 1px),
       linear-gradient(90deg, rgba(77, 66, 52, 0.028) 1px, transparent 1px);
     background-size: 54px 54px;
-    mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 74%, transparent 100%);
+    mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      rgba(0, 0, 0, 0.2) 74%,
+      transparent 100%
+    );
   }
 
   *,
@@ -93,7 +114,10 @@ $sm-danger: #b54747;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.8),
       0 14px 36px rgba(48, 40, 30, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
 
     &:hover {
       transform: translateY(-1px);
@@ -385,4 +409,104 @@ $sm-danger: #b54747;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+/* Final storage visual unification override */
+.storage-management {
+  background:
+    radial-gradient(
+      circle at 14% 0%,
+      rgba(154, 120, 79, 0.12),
+      transparent 26rem
+    ),
+    linear-gradient(180deg, #f7f1e8 0%, #f5efe5 48%, #f3ede3 100%) !important;
+}
+
+.storage-management .sm-container {
+  max-width: 1280px;
+}
+
+.storage-management .sm-header-card,
+.storage-management .sm-kpi-card,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .ing-storage-wrapper .il-toolbar,
+.storage-management .supply-list-container .sl-toolbar,
+.storage-management .inventory-audit-tab .inv-toolbar,
+.storage-management .inventory-audit-tab .inv-table-wrap,
+.storage-management .inventory-audit-tab .inv-movement-block {
+  background: rgba(255, 250, 242, 0.86) !important;
+  border: 1px solid rgba(139, 112, 78, 0.16) !important;
+  box-shadow: 0 10px 28px rgba(73, 58, 38, 0.07) !important;
+  backdrop-filter: blur(10px) saturate(115%);
+}
+
+.storage-management .sm-header-card,
+.storage-management .sm-tab-content-wrapper {
+  border-radius: 24px !important;
+}
+
+.storage-management .sm-kpi-card {
+  border-radius: 20px !important;
+  min-height: 112px !important;
+}
+
+.storage-management .sm-tab-content-wrapper {
+  background: rgba(255, 252, 246, 0.78) !important;
+}
+
+.storage-management .sm-btn.primary,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-add {
+  background: #2f3a46 !important;
+  color: #fffaf2 !important;
+  border-color: rgba(47, 58, 70, 0.18) !important;
+  box-shadow: 0 10px 22px rgba(47, 58, 70, 0.14) !important;
+}
+
+.storage-management .sm-tabs-container {
+  background: rgba(255, 250, 242, 0.74) !important;
+  border-color: rgba(139, 112, 78, 0.15) !important;
+  box-shadow: none !important;
+}
+
+.storage-management .sm-tab-item.active {
+  background: #2f3a46 !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 8px 18px rgba(47, 58, 70, 0.14) !important;
+}
+
+.storage-management input,
+.storage-management select,
+.storage-management .il-input-search,
+.storage-management .il-select,
+.storage-management .custom-select-wrapper select {
+  background: rgba(255, 253, 248, 0.9) !important;
+  border-color: rgba(139, 112, 78, 0.18) !important;
+}
+
+.storage-management .ingredient-card,
+.storage-management .supply-card,
+.storage-management .recipe-card,
+.storage-management .il-trash-item {
+  background: rgba(255, 250, 242, 0.84) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+  box-shadow: 0 10px 24px rgba(73, 58, 38, 0.07) !important;
+}
+
+.storage-management .il-badge,
+.storage-management .inv-badge--ok {
+  background: #edf7f2 !important;
+  color: #2f7d68 !important;
+}
+
+.storage-management .sm-kpi-card--warning .sm-kpi-card__icon,
+.storage-management .inv-badge--low {
+  background: #fbf1e3 !important;
+  color: #a76628 !important;
+}
+
+.storage-management .sm-kpi-card--danger .sm-kpi-card__icon,
+.storage-management .inv-badge--out {
+  background: #fbefed !important;
+  color: #a94a42 !important;
 }

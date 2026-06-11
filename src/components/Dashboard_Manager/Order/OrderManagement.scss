@@ -1529,3 +1529,211 @@ input.om-select-input {
     flex: 1 1 auto;
   }
 }
+/* =========================================================
+   Order page manager mode: keep warm grid full surface
+   ========================================================= */
+
+.manager-layout.manager-layout--orders .manager-layout__content {
+  padding: 0;
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      rgba(216, 185, 138, 0.22),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 88% 8%,
+      rgba(126, 76, 40, 0.08),
+      transparent 28rem
+    ),
+    linear-gradient(rgba(117, 82, 45, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 82, 45, 0.028) 1px, transparent 1px),
+    #f7f0e6;
+  background-size:
+    auto,
+    auto,
+    32px 32px,
+    32px 32px,
+    auto;
+}
+
+.manager-layout.manager-layout--orders .manager-page-shell--orders {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  margin: 0;
+}
+
+.manager-layout.manager-layout--orders
+  .manager-page-shell--orders
+  .manager-page-shell__body {
+  min-height: 100%;
+}
+
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) {
+  min-height: 100%;
+  background:
+    radial-gradient(
+      circle at 7% 0%,
+      rgba(216, 185, 138, 0.28),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 92% 8%,
+      rgba(126, 76, 40, 0.1),
+      transparent 26rem
+    ),
+    linear-gradient(rgba(117, 82, 45, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(117, 82, 45, 0.028) 1px, transparent 1px),
+    #f7f0e6;
+  background-size:
+    auto,
+    auto,
+    32px 32px,
+    32px 32px,
+    auto;
+}
+
+/* Giữ page rộng, chỉ giảm spacing bên trong */
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-wrapper {
+  width: min(calc(100% - clamp(32px, 5vw, 72px)), 1240px);
+  max-width: 1240px;
+  padding-top: 12px;
+  gap: 10px;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header {
+  min-height: auto;
+  padding: 14px 16px;
+  gap: 12px;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-time-widget {
+  display: none;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-panel {
+  gap: 8px;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-card {
+  min-height: 50px;
+  padding: 8px 10px;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-toolbar {
+  padding: 10px;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-filter-group {
+  gap: 8px;
+}
+
+/* =========================================================
+   Kitchen display: dedicated fullscreen mode
+   ========================================================= */
+
+body.order-kitchen-active .manager-layout {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+body.order-kitchen-active .manager-layout__main {
+  grid-column: 1 / -1;
+  width: 100vw;
+  min-height: 100dvh;
+}
+
+body.order-kitchen-active .manager-layout__header,
+body.order-kitchen-active .sidebar,
+body.order-kitchen-active .sidebar-overlay {
+  display: none;
+}
+
+body.order-kitchen-active .manager-layout__content,
+body.order-kitchen-active .manager-page-shell,
+body.order-kitchen-active .manager-page-shell__body {
+  width: 100vw;
+  max-width: none;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body.order-kitchen-active .om-container--focus {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+}
+
+body.order-kitchen-active .om-container--focus .om-wrapper {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+}
+
+body.order-kitchen-active .om-container--focus .om-header {
+  min-height: 52px;
+  padding: 8px 16px;
+}
+
+body.order-kitchen-active .om-container--focus .om-header__focus-title {
+  gap: 10px;
+}
+
+body.order-kitchen-active .om-container--focus .om-header__focus-title h1 {
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  letter-spacing: 0.05em;
+}
+
+body.order-kitchen-active .om-container--focus .om-header__meta {
+  margin-top: 3px;
+  font-size: 0.76rem;
+}
+
+body.order-kitchen-active .om-container--focus .om-toolbar--focus {
+  min-height: 52px;
+  padding: 8px 16px;
+}
+
+body.order-kitchen-active .om-container--focus .om-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px clamp(18px, 2vw, 28px) 28px;
+}
+
+body.order-kitchen-active .om-container--focus .om-grid {
+  grid-template-columns: repeat(auto-fill, minmax(380px, 520px));
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  body.order-kitchen-active .om-container--focus .om-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

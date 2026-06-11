@@ -499,12 +499,16 @@ $border: #e2e8f0;
           border: 1px solid #e2e8f0;
           font-size: 0.78rem;
           color: #334155;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          font-family:
+            ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
           font-weight: 700;
         }
 
         .time-text {
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          font-family:
+            ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
           font-size: 0.94rem;
           letter-spacing: 0.02em;
 
@@ -939,7 +943,6 @@ $border: #e2e8f0;
     }
   }
 
-
   .correction-detail-panel {
     .detail-header {
       display: flex;
@@ -962,8 +965,13 @@ $border: #e2e8f0;
         }
       }
 
-      strong { color: #0f172a; }
-      span { color: #334155; font-size: 0.82rem; }
+      strong {
+        color: #0f172a;
+      }
+      span {
+        color: #334155;
+        font-size: 0.82rem;
+      }
     }
 
     .comparison-grid {
@@ -1443,7 +1451,9 @@ $border: #e2e8f0;
 }
 
 @media (max-width: 1024px) {
-    .correction-detail-panel .comparison-grid { grid-template-columns: 1fr; }
+  .correction-detail-panel .comparison-grid {
+    grid-template-columns: 1fr;
+  }
   .attendance-management-page {
     .page-header {
       flex-direction: column;
@@ -1645,11 +1655,26 @@ $border: #e2e8f0;
     white-space: nowrap;
   }
 
-  .reconciliation-score-badge.tone-success { background: #dcfce7; color: #166534; }
-  .reconciliation-score-badge.tone-info { background: #e0f2fe; color: #075985; }
-  .reconciliation-score-badge.tone-warning { background: #fef3c7; color: #92400e; }
-  .reconciliation-score-badge.tone-danger { background: #fee2e2; color: #991b1b; }
-  .reconciliation-score-badge.tone-neutral { background: #e2e8f0; color: #334155; }
+  .reconciliation-score-badge.tone-success {
+    background: #dcfce7;
+    color: #166534;
+  }
+  .reconciliation-score-badge.tone-info {
+    background: #e0f2fe;
+    color: #075985;
+  }
+  .reconciliation-score-badge.tone-warning {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .reconciliation-score-badge.tone-danger {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .reconciliation-score-badge.tone-neutral {
+    background: #e2e8f0;
+    color: #334155;
+  }
 
   .attendance-reconciliation-metrics {
     display: flex;
@@ -1730,5 +1755,846 @@ $border: #e2e8f0;
     .reconciliation-chip {
       min-width: calc(50% - 6px);
     }
+  }
+}
+/* ===== Attendance page realistic operations UI polish ===== */
+
+.attendance-management-page {
+  --att-paper: rgba(255, 253, 248, 0.96);
+  --att-paper-strong: #fffaf2;
+  --att-border: rgba(154, 119, 78, 0.18);
+  --att-border-strong: rgba(154, 119, 78, 0.28);
+  --att-text: #1f2a2b;
+  --att-muted: #6f7a76;
+  --att-soft: #f6ead9;
+  --att-gold: #a87845;
+  --att-gold-dark: #83552f;
+  --att-success: #0f9f6e;
+  --att-warning: #d98506;
+  --att-danger: #d64545;
+  --att-blue: #3478f6;
+
+  gap: 18px;
+}
+
+/* Header: biến thành thanh điều phối ngày công */
+.attendance-management-page .page-header {
+  padding: 16px 18px;
+  border: 1px solid var(--att-border);
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      circle at 18% 24%,
+      rgba(255, 247, 232, 0.92),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 253, 248, 0.98),
+      rgba(249, 240, 226, 0.86)
+    );
+  box-shadow: 0 14px 34px rgba(84, 55, 30, 0.08);
+  align-items: center;
+  gap: 16px;
+}
+
+.attendance-management-page .page-header .header-left {
+  min-width: 0;
+}
+
+.attendance-management-page .page-header .page-title {
+  margin: 0 0 5px;
+  color: var(--att-text);
+  font-size: 1.45rem;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+
+.attendance-management-page .page-header .page-title::before {
+  content: "⏱";
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 9px;
+  border-radius: 11px;
+  background: #f1e4d0;
+  border: 1px solid var(--att-border);
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.attendance-management-page .page-header .page-subtitle {
+  color: var(--att-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.attendance-management-page .page-header .header-controls {
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.attendance-management-page .date-picker {
+  height: 42px;
+  min-width: 150px;
+  border-radius: 13px !important;
+  border: 1px solid var(--att-border-strong) !important;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--att-text);
+  font-weight: 750;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.attendance-management-page .header-controls .btn.btn-primary {
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+}
+
+/* Stat cards: nhỏ gọn, đọc số nhanh */
+.attendance-management-page .stats-grid {
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.attendance-management-page .stats-grid .stat-card {
+  min-height: 104px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--att-border);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(255, 250, 242, 0.94)
+  );
+  box-shadow:
+    0 14px 30px rgba(84, 55, 30, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  gap: 14px;
+}
+
+.attendance-management-page .stats-grid .stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--att-border-strong);
+  box-shadow:
+    0 18px 36px rgba(84, 55, 30, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.attendance-management-page .stats-grid .stat-card .icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 1.22rem;
+  border: 1px solid rgba(154, 119, 78, 0.12);
+}
+
+.attendance-management-page .stats-grid .stat-card .info .label {
+  color: #61716d;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  font-weight: 750;
+}
+
+.attendance-management-page .stats-grid .stat-card .info .value {
+  margin-top: 4px;
+  color: var(--att-text);
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+/* Chấm công nhanh: giống quầy thao tác thực tế */
+.attendance-management-page .quick-action-section {
+  position: relative;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(217, 133, 6, 0.28);
+  border-left: 5px solid var(--att-warning);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 253, 248, 0.98),
+    rgba(255, 248, 235, 0.94)
+  );
+  box-shadow: 0 16px 34px rgba(84, 55, 30, 0.08);
+  align-items: center;
+  gap: 18px;
+}
+
+.attendance-management-page .quick-action-section::before {
+  content: "THAO TÁC TRỰC TIẾP";
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fffaf2;
+  color: #a56518;
+  border: 1px solid rgba(217, 133, 6, 0.22);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.attendance-management-page .quick-action-section .quick-header {
+  flex: 0 0 310px;
+  min-width: 260px;
+}
+
+.attendance-management-page .quick-action-section .icon-flash {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #fff4db;
+  border: 1px solid rgba(217, 133, 6, 0.22);
+}
+
+.attendance-management-page .quick-action-section .text h4 {
+  color: var(--att-text);
+  font-size: 1.08rem;
+  font-weight: 850;
+}
+
+.attendance-management-page .quick-action-section .text p {
+  max-width: 42ch;
+  color: var(--att-muted);
+  line-height: 1.45;
+}
+
+.attendance-management-page .quick-form {
+  display: grid !important;
+  grid-template-columns: minmax(230px, 1fr) minmax(260px, 1.25fr) auto;
+  gap: 12px !important;
+  align-items: end !important;
+  flex: 1 !important;
+}
+
+.attendance-management-page .quick-form .input-group {
+  min-width: 0;
+}
+
+.attendance-management-page .quick-form .input-group label {
+  margin-bottom: 5px;
+  color: #40514e;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.attendance-management-page .quick-select,
+.attendance-management-page .quick-form input {
+  height: 42px;
+  border-radius: 13px !important;
+  border: 1px solid var(--att-border-strong) !important;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--att-text);
+  font-weight: 650;
+}
+
+.attendance-management-page .quick-select:focus,
+.attendance-management-page .quick-form input:focus {
+  border-color: rgba(168, 120, 69, 0.62) !important;
+  box-shadow: 0 0 0 3px rgba(168, 120, 69, 0.14) !important;
+}
+
+.attendance-management-page .quick-form .action-buttons {
+  height: 42px;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.attendance-management-page .quick-form .btn-quick {
+  min-width: 104px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 13px;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.attendance-management-page .quick-form .btn-quick.in {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid rgba(15, 159, 110, 0.38);
+}
+
+.attendance-management-page .quick-form .btn-quick.out {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1px solid rgba(214, 69, 69, 0.34);
+}
+
+.attendance-management-page .quick-form .quick-feedback {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+/* View switch: rõ workflow hơn */
+.attendance-management-page .attendance-view-switch {
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid var(--att-border);
+  background: rgba(238, 228, 213, 0.68);
+  display: inline-flex;
+  gap: 6px;
+}
+
+.attendance-management-page .attendance-view-switch button {
+  position: relative;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: #65736f;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.attendance-management-page .attendance-view-switch button:hover {
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--att-text);
+}
+
+.attendance-management-page .attendance-view-switch button.active {
+  background: #fffaf2;
+  color: #2563eb;
+  box-shadow:
+    0 8px 18px rgba(84, 55, 30, 0.08),
+    inset 0 0 0 1px rgba(154, 119, 78, 0.12);
+}
+
+.attendance-management-page .attendance-view-switch .count-badge {
+  margin-left: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 18px;
+}
+
+/* Đối chiếu công: biến thành panel rà soát */
+.attendance-management-page .attendance-reconciliation-panel {
+  margin: 0 0 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--att-border);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 253, 248, 0.98),
+    rgba(248, 252, 255, 0.86)
+  );
+}
+
+.attendance-management-page .attendance-reconciliation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.attendance-management-page .attendance-reconciliation-header h3 {
+  margin: 0 0 4px;
+  color: var(--att-text);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.attendance-management-page .attendance-reconciliation-header p {
+  margin: 0;
+  color: var(--att-muted);
+  font-size: 0.86rem;
+}
+
+.attendance-management-page .reconciliation-score-badge {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #475569;
+  font-weight: 850;
+  font-size: 0.78rem;
+}
+
+.attendance-management-page .attendance-reconciliation-metrics {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.attendance-management-page .reconciliation-chip {
+  padding: 10px 11px;
+  border-radius: 13px;
+  border: 1px solid rgba(154, 119, 78, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attendance-management-page .reconciliation-chip strong {
+  color: var(--att-text);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.attendance-management-page .reconciliation-chip span {
+  color: var(--att-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+/* Toolbar lọc bảng công: bớt lộn xộn */
+.attendance-management-page .table-section {
+  border-radius: 18px;
+  border: 1px solid var(--att-border);
+  background: var(--att-paper);
+  box-shadow: 0 16px 34px rgba(84, 55, 30, 0.08);
+  overflow: hidden;
+}
+
+.attendance-management-page .table-section .table-toolbar {
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #fffaf2, #f8fbff);
+  align-items: center;
+  gap: 12px;
+}
+
+.attendance-management-page .table-section .tabs {
+  gap: 7px;
+}
+
+.attendance-management-page .table-section .tab-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.attendance-management-page .table-section .tab-btn.active {
+  background: #fff;
+  color: #2563eb;
+  box-shadow:
+    0 6px 14px rgba(84, 55, 30, 0.08),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+}
+
+.attendance-management-page .table-section .search-box input {
+  height: 38px;
+  width: min(100%, 320px);
+  border-radius: 13px;
+  border: 1px solid rgba(154, 119, 78, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* Bảng công: vận hành thực tế, dễ scan */
+.attendance-management-page .attendance-table {
+  min-width: 1080px;
+}
+
+.attendance-management-page .attendance-table thead th {
+  padding: 13px 16px;
+  background: #fffaf2;
+  color: #596a66;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.attendance-management-page .attendance-table tbody tr {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.attendance-management-page .attendance-table tbody tr:hover {
+  background: #fff9ef;
+}
+
+.attendance-management-page .attendance-table tbody tr.focused-attendance-row {
+  background: #eff6ff;
+  box-shadow: inset 4px 0 0 #3b82f6;
+}
+
+.attendance-management-page .attendance-table tbody tr td {
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(154, 119, 78, 0.12);
+}
+
+.attendance-management-page .employee-cell .avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+.attendance-management-page .employee-cell .info .name {
+  color: var(--att-text);
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.attendance-management-page .employee-cell .info .role {
+  margin-top: 2px;
+  color: #72817c;
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.attendance-management-page .shift-badge {
+  background: #fffaf2;
+  border-color: var(--att-border);
+  color: #6f4b2a;
+}
+
+.attendance-management-page .time-text.bold {
+  color: var(--att-text);
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.attendance-management-page .time-text.placeholder {
+  color: #b8c1bc;
+}
+
+.attendance-management-page .source-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #f3f6f8;
+  color: #65736f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.attendance-management-page .status-badge {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  white-space: nowrap;
+}
+
+.attendance-management-page .action-btn.correction {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #a56518;
+  border: 1px solid rgba(217, 133, 6, 0.22);
+}
+
+.attendance-management-page .action-btn.correction:hover {
+  background: #a56518;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Error/loading/empty nhìn rõ hơn */
+.attendance-management-page .inline-state {
+  margin: 12px 16px 0;
+  border-radius: 13px;
+  padding: 12px 14px;
+  font-weight: 800;
+}
+
+.attendance-management-page .inline-state.error {
+  max-width: 460px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+}
+
+.attendance-management-page .inline-state.loading {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
+.attendance-management-page .text-center {
+  padding: 28px !important;
+  color: #7c8a85;
+  font-weight: 750;
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .attendance-management-page .quick-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .attendance-management-page .quick-form .action-buttons {
+    grid-column: 1 / -1;
+  }
+
+  .attendance-management-page .attendance-reconciliation-metrics {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .attendance-management-page .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance-management-page .stats-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .attendance-management-page .quick-action-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance-management-page .quick-action-section .quick-header {
+    flex-basis: auto;
+  }
+
+  .attendance-management-page .quick-form {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-management-page .attendance-view-switch {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .attendance-management-page .attendance-reconciliation-header {
+    flex-direction: column;
+  }
+
+  .attendance-management-page .table-section .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance-management-page .table-section .search-box input {
+    width: 100%;
+  }
+}
+/* ===== Attendance final tightening polish ===== */
+
+.attendance-management-page {
+  gap: 14px !important;
+}
+
+/* Giảm khoảng trắng dọc nhưng không bóp layout */
+.attendance-management-page .page-header {
+  padding: 14px 16px !important;
+  margin-bottom: 2px !important;
+}
+
+.attendance-management-page .page-header .page-title {
+  font-size: 1.32rem !important;
+  line-height: 1.15 !important;
+}
+
+.attendance-management-page .page-header .page-title::before {
+  width: 30px !important;
+  height: 30px !important;
+  margin-right: 8px !important;
+}
+
+.attendance-management-page .page-header .page-subtitle {
+  font-size: 0.84rem !important;
+}
+
+/* Stat card gọn hơn */
+.attendance-management-page .stats-grid {
+  gap: 12px !important;
+}
+
+.attendance-management-page .stats-grid .stat-card {
+  min-height: 86px !important;
+  padding: 13px 15px !important;
+  border-radius: 16px !important;
+}
+
+.attendance-management-page .stats-grid .stat-card .icon-box {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 13px !important;
+}
+
+.attendance-management-page .stats-grid .stat-card .info .label {
+  font-size: 0.78rem !important;
+}
+
+.attendance-management-page .stats-grid .stat-card .info .value {
+  font-size: 1.42rem !important;
+}
+
+/* Chấm công nhanh: nới phần mô tả, form thực tế hơn */
+.attendance-management-page .quick-action-section {
+  padding: 16px 17px !important;
+  gap: 16px !important;
+  align-items: center !important;
+}
+
+.attendance-management-page .quick-action-section .quick-header {
+  flex: 0 0 360px !important;
+  min-width: 320px !important;
+}
+
+.attendance-management-page .quick-action-section .text h4 {
+  font-size: 1.02rem !important;
+  margin-bottom: 4px !important;
+}
+
+.attendance-management-page .quick-action-section .text p {
+  max-width: 46ch !important;
+  font-size: 0.82rem !important;
+  line-height: 1.42 !important;
+}
+
+.attendance-management-page .quick-form {
+  grid-template-columns: minmax(240px, 1.05fr) minmax(280px, 1.25fr) auto !important;
+  gap: 10px !important;
+}
+
+.attendance-management-page .quick-form .input-group label {
+  font-size: 0.74rem !important;
+  margin-bottom: 4px !important;
+}
+
+.attendance-management-page .quick-select,
+.attendance-management-page .quick-form input,
+.attendance-management-page .quick-form .btn-quick {
+  height: 40px !important;
+  min-height: 40px !important;
+}
+
+.attendance-management-page .quick-form .btn-quick {
+  min-width: 96px !important;
+  font-size: 0.78rem !important;
+}
+
+/* Module tabs đẹp hơn, ít giống filter */
+.attendance-management-page .attendance-view-switch {
+  margin-top: 2px !important;
+  padding: 5px !important;
+  border-radius: 15px !important;
+}
+
+.attendance-management-page .attendance-view-switch button {
+  min-height: 36px !important;
+  padding: 0 15px !important;
+}
+
+/* Đối chiếu lịch: gọn, rõ vai trò hơn */
+.attendance-management-page .attendance-reconciliation-panel {
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+}
+
+.attendance-management-page .attendance-reconciliation-header h3 {
+  font-size: 0.96rem !important;
+}
+
+.attendance-management-page .attendance-reconciliation-header p {
+  font-size: 0.82rem !important;
+}
+
+.attendance-management-page .reconciliation-score-badge {
+  max-width: 360px !important;
+  white-space: normal !important;
+  line-height: 1.25 !important;
+  text-align: right !important;
+}
+
+/* Toolbar bảng công: bớt mảng xanh loãng */
+.attendance-management-page .table-section .table-toolbar {
+  padding: 11px 14px !important;
+  background: linear-gradient(180deg, #fffaf2 0%, #f8fbff 100%) !important;
+}
+
+.attendance-management-page .table-section .tabs {
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+.attendance-management-page .table-section .tab-btn {
+  min-height: 32px !important;
+  padding: 0 11px !important;
+  font-size: 0.75rem !important;
+}
+
+.attendance-management-page .table-section .search-box {
+  margin-left: auto !important;
+  min-width: 280px !important;
+}
+
+.attendance-management-page .table-section .search-box input {
+  height: 36px !important;
+}
+
+/* Alert lỗi dịu hơn */
+.attendance-management-page .inline-state.error {
+  margin-top: 10px !important;
+  max-width: 410px !important;
+  padding: 10px 13px !important;
+  border-radius: 12px !important;
+  background: #fff5f5 !important;
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
+  font-size: 0.82rem !important;
+}
+
+/* Table header bớt nặng */
+.attendance-management-page .attendance-table thead th {
+  padding: 12px 14px !important;
+  font-size: 0.7rem !important;
+}
+
+.attendance-management-page .attendance-table tbody tr td {
+  padding: 12px 14px !important;
+}
+
+/* Responsive để form không vỡ */
+@media (max-width: 1320px) {
+  .attendance-management-page .quick-action-section {
+    align-items: stretch !important;
+  }
+
+  .attendance-management-page .quick-action-section .quick-header {
+    flex: 0 0 320px !important;
+    min-width: 280px !important;
+  }
+
+  .attendance-management-page .quick-form {
+    grid-template-columns: minmax(220px, 1fr) minmax(250px, 1fr) !important;
+  }
+
+  .attendance-management-page .quick-form .action-buttons {
+    grid-column: 1 / -1 !important;
+    justify-content: flex-end !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .attendance-management-page .quick-action-section .quick-header {
+    flex-basis: auto !important;
+    min-width: 0 !important;
+  }
+
+  .attendance-management-page .table-section .search-box {
+    margin-left: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
   }
 }

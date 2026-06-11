@@ -617,12 +617,19 @@ const OrderManagement = () => {
   }, [refetchOrders]);
 
   useEffect(() => {
-    if (!focusMode) return undefined;
+    document.body.classList.toggle("order-kitchen-active", focusMode);
+
+    if (!focusMode) {
+      return () => {
+        document.body.classList.remove("order-kitchen-active");
+      };
+    }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
+      document.body.classList.remove("order-kitchen-active");
       document.body.style.overflow = previousOverflow;
     };
   }, [focusMode]);
