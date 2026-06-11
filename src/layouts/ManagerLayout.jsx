@@ -27,7 +27,12 @@ import SettingsManagement from "@/components/Dashboard_Manager/Settings/Settings
 import BackupManagement from "@/components/Dashboard_Manager/Backup/BackupManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
-import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
+import {
+  isAccountantRole,
+  isHrRole,
+  isManagerRole,
+  isAdminRole,
+} from "@/utils/frontendRoleAccess";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
 
@@ -109,43 +114,189 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   backup: ["system.manage"],
   "print-management": ["print.read", "report.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
-  "ai-handoff": ["dashboard.read", "order.read"],
-  "ai-chatbot-analytics": ["report.read"],
-  "ai-chatbot-settings": ["report.read"],
-  "ai-chatbot-knowledge": ["report.read"],
+  "ai-handoff": ["ai.chatbot.handoff", "ai.chatbot.moderate"],
+  "ai-chatbot-analytics": ["ai.chatbot.analytics.read", "ai.chatbot.read"],
+  "ai-chatbot-settings": ["ai.chatbot.write"],
+  "ai-chatbot-knowledge": [
+    "ai.chatbot.write",
+    "ai.chatbot.moderate",
+    "ai.chatbot.evaluate",
+  ],
 };
 
 const PAGE_CONFIG = {
-  dashboard: { title: "Tổng quan", description: "Tổng quan hiệu suất và số liệu vận hành nhà hàng", icon: "📊", keywords: ["overview", "thống kê", "kpi", "doanh thu", "dashboard"] },
-  tables: { title: "Quản lý bàn", description: "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", icon: "🪑", keywords: ["bàn", "table", "đặt bàn", "sơ đồ"] },
-  orders: { title: "Quản lý đơn hàng", description: "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", icon: "🧾", keywords: ["order", "đơn", "timeline", "thanh toán"] },
-  menu: { title: "Quản lý menu", description: "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", icon: "🍜", keywords: ["món", "menu", "giá", "danh mục"] },
-  inventory: { title: "Quản lý kho", description: "Theo dõi tồn kho, nhập xuất và cảnh báo nguyên liệu", icon: "📦", keywords: ["kho", "inventory", "nguyên liệu", "tồn"] },
-  staff: { title: "Quản lý nhân viên", description: "Danh sách nhân viên, vai trò, trạng thái và phân công", icon: "👥", keywords: ["staff", "nhân viên", "vai trò", "quyền"] },
-  customers: { title: "Quản lý khách hàng", description: "Thông tin khách, hạng thành viên, điểm và hành vi mua", icon: "🧑‍🤝‍🧑", keywords: ["khách hàng", "loyalty", "rank", "điểm"] },
-  "customer-analytics": { title: "Phân tích khách hàng", description: "Phân tích phân khúc khách, khách quay lại, khách rời bỏ và cohort theo thời gian", icon: "📈", keywords: ["analytics", "phân tích", "khách", "insight"] },
-  analytics: { title: "Phân tích kinh doanh", description: "Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành", icon: "🧠", keywords: ["analyst", "ai", "chiến lược", "dự báo"] },
-  reports: { title: "Báo cáo", description: "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ", icon: "📑", keywords: ["report", "báo cáo", "xuất file", "csv"] },
-  finance: { title: "Tài chính", description: "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", icon: "💰", keywords: ["finance", "thu", "chi", "công nợ", "profit"] },
-  transactions: { title: "Giao dịch", description: "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch", icon: "💳", keywords: ["transaction", "giao dịch", "payment", "thanh toán", "refund", "đối soát"] },
-  schedules: { title: "Lịch làm việc", description: "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự", icon: "📅", keywords: ["schedule", "ca làm", "shift", "lịch"] },
-  promotions: { title: "Khuyến mãi", description: "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", icon: "🎁", keywords: ["promotion", "coupon", "discount", "khuyến mãi"] },
-  payroll: { title: "Bảng lương", description: "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên", icon: "💼", keywords: ["payroll", "salary", "lương", "thưởng", "khấu trừ"] },
-  reviews: { title: "Đánh giá khách hàng", description: "Xem đánh giá, phản hồi và kiểm duyệt nội dung review", icon: "⭐", keywords: ["review", "đánh giá", "rating", "feedback"] },
-  "print-management": { title: "Quản lý in ấn", description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job", icon: "🖨️", keywords: ["print", "máy in", "phiếu bếp", "queue"] },
-  "restaurant-info-management": { title: "Thông tin nhà hàng", description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", icon: "🏪", keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"] },
-  rbac: { title: "Phân quyền nhân viên", description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", icon: "🛡️", keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"] },
-  "ai-handoff": { title: "Handoff AI", description: "Xử lý yêu cầu hỗ trợ từ chatbot", icon: "🤖", keywords: ["handoff", "chatbot", "support"] },
-  "ai-chatbot-analytics": { title: "AI Chatbot Analytics", description: "Theo dõi số liệu tổng hợp chatbot và handoff", icon: "📡", keywords: ["ai", "chatbot", "analytics", "handoff"] },
-  "ai-chatbot-knowledge": { title: "AI Chatbot Knowledge", description: "Quản lý tri thức/FAQ cho chatbot theo từng nhà hàng", icon: "📚", keywords: ["ai", "chatbot", "knowledge", "faq"] },
-  settings: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
-  rates: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
-  setting: { title: "Cài đặt hệ thống", description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", icon: "⚙️", keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"] },
-  backup: { title: "Sao lưu & khôi phục", description: "Checklist sao lưu dữ liệu, đối soát và điều hướng xuất báo cáo", icon: "🗄️", keywords: ["backup", "sao lưu", "khôi phục", "export", "báo cáo"] },
+  dashboard: {
+    title: "Tổng quan",
+    description: "Tổng quan hiệu suất và số liệu vận hành nhà hàng",
+    icon: "📊",
+    keywords: ["overview", "thống kê", "kpi", "doanh thu", "dashboard"],
+  },
+  tables: {
+    title: "Quản lý bàn",
+    description: "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ",
+    icon: "🪑",
+    keywords: ["bàn", "table", "đặt bàn", "sơ đồ"],
+  },
+  orders: {
+    title: "Quản lý đơn hàng",
+    description: "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán",
+    icon: "🧾",
+    keywords: ["order", "đơn", "timeline", "thanh toán"],
+  },
+  menu: {
+    title: "Quản lý menu",
+    description: "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ",
+    icon: "🍜",
+    keywords: ["món", "menu", "giá", "danh mục"],
+  },
+  inventory: {
+    title: "Quản lý kho",
+    description: "Theo dõi tồn kho, nhập xuất và cảnh báo nguyên liệu",
+    icon: "📦",
+    keywords: ["kho", "inventory", "nguyên liệu", "tồn"],
+  },
+  staff: {
+    title: "Quản lý nhân viên",
+    description: "Danh sách nhân viên, vai trò, trạng thái và phân công",
+    icon: "👥",
+    keywords: ["staff", "nhân viên", "vai trò", "quyền"],
+  },
+  customers: {
+    title: "Quản lý khách hàng",
+    description: "Thông tin khách, hạng thành viên, điểm và hành vi mua",
+    icon: "🧑‍🤝‍🧑",
+    keywords: ["khách hàng", "loyalty", "rank", "điểm"],
+  },
+  "customer-analytics": {
+    title: "Phân tích khách hàng",
+    description:
+      "Phân tích phân khúc khách, khách quay lại, khách rời bỏ và cohort theo thời gian",
+    icon: "📈",
+    keywords: ["analytics", "phân tích", "khách", "insight"],
+  },
+  analytics: {
+    title: "Phân tích kinh doanh",
+    description:
+      "Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành",
+    icon: "🧠",
+    keywords: ["analyst", "ai", "chiến lược", "dự báo"],
+  },
+  reports: {
+    title: "Báo cáo",
+    description: "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ",
+    icon: "📑",
+    keywords: ["report", "báo cáo", "xuất file", "csv"],
+  },
+  finance: {
+    title: "Tài chính",
+    description: "Theo dõi thu chi, công nợ, hoàn tiền và đối soát",
+    icon: "💰",
+    keywords: ["finance", "thu", "chi", "công nợ", "profit"],
+  },
+  transactions: {
+    title: "Giao dịch",
+    description: "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch",
+    icon: "💳",
+    keywords: [
+      "transaction",
+      "giao dịch",
+      "payment",
+      "thanh toán",
+      "refund",
+      "đối soát",
+    ],
+  },
+  schedules: {
+    title: "Lịch làm việc",
+    description: "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự",
+    icon: "📅",
+    keywords: ["schedule", "ca làm", "shift", "lịch"],
+  },
+  promotions: {
+    title: "Khuyến mãi",
+    description: "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực",
+    icon: "🎁",
+    keywords: ["promotion", "coupon", "discount", "khuyến mãi"],
+  },
+  payroll: {
+    title: "Bảng lương",
+    description: "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên",
+    icon: "💼",
+    keywords: ["payroll", "salary", "lương", "thưởng", "khấu trừ"],
+  },
+  reviews: {
+    title: "Đánh giá khách hàng",
+    description: "Xem đánh giá, phản hồi và kiểm duyệt nội dung review",
+    icon: "⭐",
+    keywords: ["review", "đánh giá", "rating", "feedback"],
+  },
+  "print-management": {
+    title: "Quản lý in ấn",
+    description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job",
+    icon: "🖨️",
+    keywords: ["print", "máy in", "phiếu bếp", "queue"],
+  },
+  "restaurant-info-management": {
+    title: "Thông tin nhà hàng",
+    description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ",
+    icon: "🏪",
+    keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"],
+  },
+  rbac: {
+    title: "Phân quyền nhân viên",
+    description: "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên",
+    icon: "🛡️",
+    keywords: ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"],
+  },
+  "ai-handoff": {
+    title: "Handoff AI",
+    description: "Xử lý yêu cầu hỗ trợ từ chatbot",
+    icon: "🤖",
+    keywords: ["handoff", "chatbot", "support"],
+  },
+  "ai-chatbot-analytics": {
+    title: "AI Chatbot Analytics",
+    description: "Theo dõi số liệu tổng hợp chatbot và handoff",
+    icon: "📡",
+    keywords: ["ai", "chatbot", "analytics", "handoff"],
+  },
+  "ai-chatbot-knowledge": {
+    title: "AI Chatbot Knowledge",
+    description: "Quản lý tri thức/FAQ cho chatbot theo từng nhà hàng",
+    icon: "📚",
+    keywords: ["ai", "chatbot", "knowledge", "faq"],
+  },
+  settings: {
+    title: "Cài đặt hệ thống",
+    description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng",
+    icon: "⚙️",
+    keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"],
+  },
+  rates: {
+    title: "Cài đặt hệ thống",
+    description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng",
+    icon: "⚙️",
+    keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"],
+  },
+  setting: {
+    title: "Cài đặt hệ thống",
+    description: "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng",
+    icon: "⚙️",
+    keywords: ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"],
+  },
+  backup: {
+    title: "Sao lưu & khôi phục",
+    description:
+      "Checklist sao lưu dữ liệu, đối soát và điều hướng xuất báo cáo",
+    icon: "🗄️",
+    keywords: ["backup", "sao lưu", "khôi phục", "export", "báo cáo"],
+  },
 };
 
 const PermissionFallback = () => (
-  <div className="manager-page-shell__empty">Bạn không có quyền truy cập chức năng này.</div>
+  <div className="manager-page-shell__empty">
+    Bạn không có quyền truy cập chức năng này.
+  </div>
 );
 
 const ManagerLayout = () => {
@@ -155,8 +306,12 @@ const ManagerLayout = () => {
   const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
   const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
   const allowedPages = useMemo(() => {
-    const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(([id, permissions]) => ({ id, permissions }));
-    return new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
+    const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(
+      ([id, permissions]) => ({ id, permissions }),
+    );
+    return new Set(
+      filterNavigationByPermissionAccess(navItems, user).map((item) => item.id),
+    );
   }, [user]);
 
   useEffect(() => {
@@ -178,7 +333,11 @@ const ManagerLayout = () => {
         window.location.pathname !== MANAGER_CANONICAL_PATH ||
         window.location.hash !== expectedHash
       ) {
-        history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
+        history.replaceState(
+          null,
+          "",
+          `${MANAGER_CANONICAL_PATH}${expectedHash}`,
+        );
       }
     }
   }, [currentPage, validPages]);
@@ -259,49 +418,93 @@ const ManagerLayout = () => {
           keywords: PAGE_CONFIG[page].keywords || [],
           route: `#${page}`,
         })),
-    [allowedPages]
+    [allowedPages],
   );
 
   const renderContent = () => {
     if (!allowedPages.has(currentPage)) return <PermissionFallback />;
 
     switch (currentPage) {
-      case "dashboard": return <Dashboard />;
-      case "tables": return <TableManagement />;
-      case "orders": return <OrderManagement />;
-      case "menu": return <MenuManagement />;
-      case "inventory": return <StorageManagement />;
-      case "staff": return <StaffManagement />;
-      case "customers": return <CustomerManagement />;
-      case "customer-analytics": return <CustomerAnalyticsPage />;
-      case "analytics": return <ManagerAnalyst />;
-      case "reports": return <ReportsManagement />;
-      case "finance": return <FinanceDashboard />;
-      case "transactions": return <TransactionManagement />;
+      case "dashboard":
+        return <Dashboard />;
+      case "tables":
+        return <TableManagement />;
+      case "orders":
+        return <OrderManagement />;
+      case "menu":
+        return <MenuManagement />;
+      case "inventory":
+        return <StorageManagement />;
+      case "staff":
+        return <StaffManagement />;
+      case "customers":
+        return <CustomerManagement />;
+      case "customer-analytics":
+        return <CustomerAnalyticsPage />;
+      case "analytics":
+        return <ManagerAnalyst />;
+      case "reports":
+        return <ReportsManagement />;
+      case "finance":
+        return <FinanceDashboard />;
+      case "transactions":
+        return <TransactionManagement />;
       case "settings":
       case "rates":
-      case "setting": return <SettingsManagement />;
-      case "backup": return <BackupManagement />;
-      case "schedules": return <ScheduleManagementPage />;
-      case "promotions": return <PromotionManagement />;
-      case "payroll": return <PayrollManagement />;
-      case "reviews": return <ReviewManagement />;
-      case "print-management": return <PrintManagement />;
-      case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
-      case "rbac": return <RbacManagement />;
-      case "ai-handoff": return <AiHandoffInbox />;
-      case "ai-chatbot-analytics": return <AiChatbotAnalyticsPage />;
-      case "ai-chatbot-settings": return <AiChatbotSettingsPage />;
-      case "ai-chatbot-knowledge": return <AiChatbotKnowledgePage />;
-      default: return <div className="manager-page-shell__empty">Trang bạn truy cập không tồn tại hoặc không còn khả dụng.</div>;
+      case "setting":
+        return <SettingsManagement />;
+      case "backup":
+        return <BackupManagement />;
+      case "schedules":
+        return <ScheduleManagementPage />;
+      case "promotions":
+        return <PromotionManagement />;
+      case "payroll":
+        return <PayrollManagement />;
+      case "reviews":
+        return <ReviewManagement />;
+      case "print-management":
+        return <PrintManagement />;
+      case "restaurant-info-management":
+        return <ManagerRestaurantInfoManagement />;
+      case "rbac":
+        return <RbacManagement />;
+      case "ai-handoff":
+        return <AiHandoffInbox />;
+      case "ai-chatbot-analytics":
+        return <AiChatbotAnalyticsPage />;
+      case "ai-chatbot-settings":
+        return <AiChatbotSettingsPage />;
+      case "ai-chatbot-knowledge":
+        return <AiChatbotKnowledgePage />;
+      default:
+        return (
+          <div className="manager-page-shell__empty">
+            Trang bạn truy cập không tồn tại hoặc không còn khả dụng.
+          </div>
+        );
     }
   };
 
   return (
-    <div className={`manager-layout manager-layout--${currentPage} ${sidebarOpen ? "sidebar-open" : ""}`}>
-      {sidebarOpen && <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={closeSidebar} aria-hidden="true" />}
+    <div
+      className={`manager-layout manager-layout--${currentPage} ${sidebarOpen ? "sidebar-open" : ""}`}
+    >
+      {sidebarOpen && (
+        <div
+          className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`}
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+        onToggle={toggleSidebar}
+        onPageChange={setCurrentPage}
+        activeItem={currentPage}
+      />
 
       <div className="manager-layout__main">
         <div className="manager-layout__header">
@@ -320,7 +523,9 @@ const ManagerLayout = () => {
         </div>
 
         <main className="manager-layout__content">
-          <section className={`manager-page-shell manager-page-shell--${currentPage}`}>
+          <section
+            className={`manager-page-shell manager-page-shell--${currentPage}`}
+          >
             <div className="manager-page-shell__body">{renderContent()}</div>
           </section>
         </main>
