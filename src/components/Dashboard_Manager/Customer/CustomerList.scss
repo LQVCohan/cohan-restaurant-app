@@ -13,8 +13,4 @@ $cl-text-sub: #64706e;
 @mixin shimmer {
   position: relative;
   overflow: hidden;
-  background-color: $cl-bg-skeleton;
-
-  &::after {
-    content: "";
-    position
+  background
