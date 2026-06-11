@@ -28,7 +28,7 @@ describe("restaurantChatbotSettings permission + merge", () => {
       input: { restaurantId: rid, enabled: false },
       ctx: { user: { _id: uid, roleName: "staff", restaurantForStaff: rid } },
     })).rejects.toThrow("FORBIDDEN");
-    expect(permissionSpy).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), rid, PERMISSIONS.AI_CHATBOT_WRITE);
   });
 
   it("manager/admin with required permission can update", async () => {
@@ -41,7 +41,7 @@ describe("restaurantChatbotSettings permission + merge", () => {
     });
     expect(out.enabled).toBe(false);
     expect(restaurantDoc.save).toHaveBeenCalled();
-    expect(permissionSpy).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.objectContaining({ user: expect.any(Object) }), rid, PERMISSIONS.AI_CHATBOT_WRITE);
   });
 
   it("guest/customer cannot update", async () => {
