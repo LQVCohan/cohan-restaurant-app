@@ -1,0 +1,15 @@
+.ai-admin-page {
+  max-width: min(100%, 1480px);
+  margin-inline: auto;
+}
+
+.ai-admin-page--analytics .ai-admin-hero {
+  align-items: center;
+}
+
+.ai-admin-page--analytics .customer-analytics-refresh,
+.ai-admin-page .ai-admin-button-primary {
+  border: 1px solid rgba(95, 66, 41, 0.3);
+  background: var(--ai-accent-strong, #6f5034);
+  color: #fffaf3;
+  box
