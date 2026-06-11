@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import mongoose from "mongoose";
 
 const permissionSpy = vi.fn();
+const anyRestaurantPermissionSpy = vi.fn();
 const store = [];
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requireRestaurantPermission: (...args) => permissionSpy(...args),
+  requireAnyRestaurantPermission: (...args) => anyRestaurantPermissionSpy(...args),
+}));
 vi.mock("../../models/index.js", () => {
   const wrap = (b) => ({ ...b, async save() { return this; }, toObject() { return { ...this }; } });
   return {
@@ -22,17 +26,22 @@ vi.mock("../../models/index.js", () => {
 });
 
 import { PERMISSIONS } from "../../src/constants/permissions.js";
-import { createRestaurantAiChatbotSafetyRule, listRestaurantAiChatbotSafetyRules, evaluateRestaurantAiChatbotSafety, updateRestaurantAiChatbotSafetyRule, deleteRestaurantAiChatbotSafetyRule } from "../../src/services/ai/restaurantChatbotSafety.service.js";
+import { createRestaurantAiChatbotSafetyRule, listRestaurantAiChatbotSafetyRules, evaluateRestaurantAiChatbotSafety, deleteRestaurantAiChatbotSafetyRule } from "../../src/services/ai/restaurantChatbotSafety.service.js";
 
 const rid = new mongoose.Types.ObjectId().toString();
-beforeEach(() => { store.length = 0; permissionSpy.mockReset(); permissionSpy.mockResolvedValue(true); });
+beforeEach(() => {
+  store.length = 0;
+  permissionSpy.mockReset(); permissionSpy.mockResolvedValue(true);
+  anyRestaurantPermissionSpy.mockReset(); anyRestaurantPermissionSpy.mockResolvedValue(true);
+});
 
 describe("restaurantChatbotSafety service", () => {
   it("create/list dto id strings + permission", async () => {
     const row = await createRestaurantAiChatbotSafetyRule({ input: { restaurantId: rid, ruleType: "blocked_topic", pattern: "abc", priority: 150 }, ctx: { user: { _id: new mongoose.Types.ObjectId().toString() } } });
     expect(row.restaurantId).toBe(rid); expect(typeof row.id).toBe("string"); expect(row.priority).toBe(100);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
     await listRestaurantAiChatbotSafetyRules({ restaurantId: rid, filter: {}, ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), rid, PERMISSIONS.REPORT_READ);
+    expect(anyRestaurantPermissionSpy).toHaveBeenCalledWith(expect.anything(), rid, [PERMISSIONS.AI_CHATBOT_MODERATE, PERMISSIONS.AI_CHATBOT_WRITE]);
   });
   it("reject write without permission", async () => {
     permissionSpy.mockRejectedValueOnce(new Error("FORBIDDEN"));
