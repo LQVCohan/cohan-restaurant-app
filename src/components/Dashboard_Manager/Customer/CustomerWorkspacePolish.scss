@@ -1,0 +1,78 @@
+.cm-page .manager-page-header,
+.cm-page .mph-root {
+  max-width: 1280px;
+  margin: 12px auto 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+}
+
+.cm-page .mph-content,
+.cm-page .manager-page-header__content {
+  display: grid;
+  grid-template-columns: 220px 1fr 140px;
+  align-items: center;
+  gap: 12px;
+}
+
+.cm-page .mph-title,
+.cm-page .manager-page-header__title {
+  font-size: clamp(19px, 1.35vw, 25px);
+  line-height: 1.05;
+  max-width: 240px;
+}
+
+.cm-page .mph-subtitle,
+.cm-page .manager-page-header__subtitle {
+  max-width: 220px;
+  line-height: 1.35;
+}
+
+.cm-page .mph-stats,
+.cm-page .manager-page-header__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(128px, 1fr));
+  gap: 8px;
+}
+
+.cm-page .mph-stat,
+.cm-page .manager-page-header__stat {
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.cm-page .cm-toolbar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 253, 248, 0.72);
+  border: 1px solid rgba(222, 215, 201, 0.72);
+}
+
+.cm-page .cm-quick-filters {
+  max-width: 470px;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: visible;
+}
+
+.cm-page .cm-pill {
+  min-width: 96px;
+  justify-content: space-between;
+}
+
+.cm-page .cm-pill-label {
+  white-space: nowrap;
+}
+
+.cm-page .cm-layout {
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  padding-top: 12px;
+}
+
+.cm-page .cl-empty-state {
+  min-height: clamp(250px, 31vh, 350px);
+}
