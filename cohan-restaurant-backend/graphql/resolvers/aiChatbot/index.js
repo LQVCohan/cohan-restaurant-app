@@ -165,7 +165,12 @@ const Mutation = {
   deleteRestaurantAiChatbotEvaluationCase: async (_, { id }, ctx) => deleteRestaurantAiChatbotEvaluationCase({ id, ctx }),
   resolveAiChatbotHandoff: async (_, { input }, ctx) => {
     try {
-      return await resolveRestaurantChatbotHandoff({ input, user: ctx?.user || null, io: ctx?.io || null });
+      return await resolveRestaurantChatbotHandoff({
+        input,
+        user: ctx?.user || null,
+        ctx,
+        io: ctx?.io || null,
+      });
     } catch (err) {
       throw new GraphQLError(err?.message || "Không thể đánh dấu phiên hỗ trợ đã xử lý", {
         extensions: { code: err?.code || "AI_CHATBOT_HANDOFF_RESOLVE_FAILED" },
