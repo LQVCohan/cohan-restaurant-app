@@ -1,14 +1,7 @@
-$bg: #fff7ed;
-$bg-soft: #fffaf3;
-$surface: #fffdf8;
-$surface-warm: #fff8ed;
-$surface-soft: #fff3df;
-$border: rgba(194, 134, 63, 0.22);
-$border-strong: rgba(180, 113, 40, 0.34);
-$text: #26170d;
-$muted: #7b6a59;
-$primary: #b76417;
-$primary-dark: #8f4a0d;
-$primary-soft: #fff1d6;
-$sage: #6f8f82;
-$sage-soft: #eef
+.customer-analytics-page {
+  min-height: 100%;
+  padding: 22px 24px 30px;
+  display: grid;
+  gap: 16px;
+  color: #26170d;
+  background: radial-gradient(circle at 8% -12%, rgba(183, 100, 23, 0.1), transparent 30rem), radial-gradient(circle at 96% 12%, rgba(111, 143, 130, 0.08), transparent 24rem), linear-gradient(180deg, #fff7ed
