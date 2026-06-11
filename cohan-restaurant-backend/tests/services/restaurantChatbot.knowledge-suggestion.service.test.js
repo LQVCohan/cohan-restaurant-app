@@ -29,8 +29,8 @@ vi.mock("../../models/index.js", () => {
 });
 
 vi.mock("../../src/services/ai/restaurantChatbotKnowledge.service.js", () => ({
-  createRestaurantAiChatbotKnowledgeItem: async ({ input }) => {
-    const row = { id: new mongoose.Types.ObjectId().toString(), restaurantId: input.restaurantId, title: input.title };
+  createRestaurantAiChatbotKnowledgeItem: async ({ input, skipPermissionCheck }) => {
+    const row = { id: new mongoose.Types.ObjectId().toString(), restaurantId: input.restaurantId, title: input.title, sourceType: input.sourceType, skipPermissionCheck };
     knowledgeStore.push(row);
     return row;
   },
@@ -52,10 +52,12 @@ describe("knowledge suggestion service", () => {
     const s = await recordKnowledgeGapSuggestion({ restaurantId: rid, question: "Do you have vegan options?", triggerType: "fallback" });
     await approveRestaurantAiChatbotKnowledgeSuggestion({ id: s.id, input: { title: "Vegan", content: "Yes" }, ctx: { user: { _id: new mongoose.Types.ObjectId().toString() } } });
     expect(knowledgeStore).toHaveLength(1);
+    expect(knowledgeStore[0].sourceType).toBe("suggestion");
+    expect(knowledgeStore[0].skipPermissionCheck).toBe(true);
     const saved = suggestionStore.find((x) => String(x._id) === s.id);
     expect(saved.status).toBe("approved");
     expect(String(permissionSpy.mock.calls[0][1])).toBe(rid);
-    expect(permissionSpy.mock.calls[0][2]).toBe(PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy.mock.calls[0][2]).toBe(PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 
   it("approve already approved suggestion is rejected and does not create duplicate", async () => {
