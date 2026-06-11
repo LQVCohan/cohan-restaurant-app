@@ -5,4 +5,4 @@ import "./CustomerAnalyticsPage.scss";
 import "./AiChatbotAdmin.scss";
 import "./AiChatbotAdminFinalPolish.scss";
 
-const GET_AI_CHATBOT_ANALYT
+const GET_AI_CHATBOT_ANALYTICS
