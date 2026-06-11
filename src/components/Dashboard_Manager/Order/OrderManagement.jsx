@@ -237,9 +237,15 @@ const useRestaurant = () => {
   return { restaurantList: restaurants || [] };
 };
 
-const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
+const normalizeStatus = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 const normalizeId = (value) => (value ? String(value) : null);
-const normalizeTableCode = (value) => String(value || "").trim().toUpperCase();
+const normalizeTableCode = (value) =>
+  String(value || "")
+    .trim()
+    .toUpperCase();
 
 const isParentTableSession = (order) => order?.orderKind === "table_session";
 
@@ -252,8 +258,10 @@ const isPaidOrder = (order) => {
 
 const resolveKitchenActionOrderId = (order, fallbackId = null) => {
   if (!order || isParentTableSession(order)) return null;
-  return normalizeId(order?.sourceOrderId || order?.actionOrderId || order?.id) ||
-    normalizeId(fallbackId);
+  return (
+    normalizeId(order?.sourceOrderId || order?.actionOrderId || order?.id) ||
+    normalizeId(fallbackId)
+  );
 };
 
 const ORDER_STATUS_KPI_DEFS = [
@@ -263,7 +271,20 @@ const ORDER_STATUS_KPI_DEFS = [
   { id: "completed", icon: "✅", label: "Hoàn thành", tone: "success" },
   { id: "cancelled", icon: "✕", label: "Đã hủy", tone: "danger" },
 ];
+const KITCHEN_STATUS_FILTER_OPTIONS = [
+  { value: "", label: "Tất cả" },
+  { value: "pending", label: "Chờ xác nhận" },
+  { value: "remote_staff_pending", label: "Từ xa" },
+  { value: "confirmed", label: "Đã xác nhận" },
+  { value: "preparing", label: "Đang chuẩn bị" },
+  { value: "ready", label: "Sẵn sàng" },
+];
 
+const CHIP_SIZE_OPTIONS = [
+  { value: "s", label: "Nhỏ" },
+  { value: "m", label: "Vừa" },
+  { value: "l", label: "Lớn" },
+];
 const getBatchSessionKey = (order) => {
   const tableCode = normalizeTableCode(order?.tableCode);
   if (order?.orderType !== "dine_in" || !tableCode) return null;
@@ -311,7 +332,11 @@ const DishSummaryPanel = ({
         </button>
 
         {!collapsed && hasHighlight && (
-          <button type="button" onClick={onClearHighlight} className="om-summary__clear-btn">
+          <button
+            type="button"
+            onClick={onClearHighlight}
+            className="om-summary__clear-btn"
+          >
             Bỏ chọn
           </button>
         )}
@@ -394,7 +419,9 @@ export const RejectOrderDialog = ({
           <span className="om-reject-dialog__eyebrow">Từ chối đơn</span>
           <h2 id="om-reject-dialog-title">Nhập lý do từ chối đơn</h2>
           {orderLabel && (
-            <p>Đơn <strong>{orderLabel}</strong> sẽ được gửi trạng thái từ chối.</p>
+            <p>
+              Đơn <strong>{orderLabel}</strong> sẽ được gửi trạng thái từ chối.
+            </p>
           )}
         </div>
 
@@ -418,7 +445,11 @@ export const RejectOrderDialog = ({
         )}
 
         <div className="om-reject-dialog__actions">
-          <button type="button" className="om-reject-dialog__cancel" onClick={onCancel}>
+          <button
+            type="button"
+            className="om-reject-dialog__cancel"
+            onClick={onCancel}
+          >
             Hủy
           </button>
           <button
@@ -464,10 +495,12 @@ const OrderManagement = () => {
   };
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-  const [loadOrders, { data: ordersData, loading: ordersLoading, error: ordersError }] =
-    useLazyQuery(ORDERS_BY_RESTAURANT_NOW, {
-      notifyOnNetworkStatusChange: true,
-    });
+  const [
+    loadOrders,
+    { data: ordersData, loading: ordersLoading, error: ordersError },
+  ] = useLazyQuery(ORDERS_BY_RESTAURANT_NOW, {
+    notifyOnNetworkStatusChange: true,
+  });
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutConfirmIncomingOrder] = useMutation(CONFIRM_INCOMING_ORDER);
   const [mutRejectIncomingOrder] = useMutation(REJECT_INCOMING_ORDER);
@@ -532,7 +565,8 @@ const OrderManagement = () => {
   );
 
   const orders = useMemo(() => {
-    const nodes = ordersData?.ordersByRestaurantNow?.edges?.map((edge) => edge.node) || [];
+    const nodes =
+      ordersData?.ordersByRestaurantNow?.edges?.map((edge) => edge.node) || [];
     return nodes.map((order) => ({
       ...order,
       actionOrderId: resolveKitchenActionOrderId(order, order?.id),
@@ -560,11 +594,19 @@ const OrderManagement = () => {
       void refetchOrders();
     },
     onCustomerPaymentRequested: (evt) => {
-      const label = evt?.tableCode || evt?.trackingCode || evt?.order?.trackingCode || "không rõ bàn";
+      const label =
+        evt?.tableCode ||
+        evt?.trackingCode ||
+        evt?.order?.trackingCode ||
+        "không rõ bàn";
       showNotification(`Khách yêu cầu thanh toán (${label})`, "warning");
     },
     onCustomerStaffCallRequested: (evt) => {
-      const label = evt?.tableCode || evt?.trackingCode || evt?.order?.trackingCode || "không rõ bàn";
+      const label =
+        evt?.tableCode ||
+        evt?.trackingCode ||
+        evt?.order?.trackingCode ||
+        "không rõ bàn";
       const reason = evt?.message ? `: ${evt.message}` : "";
       showNotification(`Khách cần hỗ trợ (${label})${reason}`, "warning");
     },
@@ -656,7 +698,9 @@ const OrderManagement = () => {
       if (statusFilter === "remote_staff_pending") {
         return isRemoteStaffPendingOrder(order);
       }
-      return !statusFilter || normalizeStatus(order.currentStatus) === statusFilter;
+      return (
+        !statusFilter || normalizeStatus(order.currentStatus) === statusFilter
+      );
     };
     const matchesTableType = (order) =>
       !tableFilter || order.orderType === tableFilter;
@@ -882,8 +926,9 @@ const OrderManagement = () => {
 
   const stats = useMemo(() => {
     const countByStatus = (statuses) =>
-      orders.filter((order) => statuses.includes(normalizeStatus(order.currentStatus)))
-        .length;
+      orders.filter((order) =>
+        statuses.includes(normalizeStatus(order.currentStatus)),
+      ).length;
 
     return {
       total: orders.length,
@@ -900,9 +945,12 @@ const OrderManagement = () => {
       return {
         ...(updatedOrder || {}),
         actionOrderId:
-          resolveKitchenActionOrderId(source, updatedOrder?.id) || updatedOrder?.id,
+          resolveKitchenActionOrderId(source, updatedOrder?.id) ||
+          updatedOrder?.id,
         batchDisplayIndex:
-          source?.batchDisplayIndex ?? batchIndexByOrderId.get(updatedOrder?.id) ?? null,
+          source?.batchDisplayIndex ??
+          batchIndexByOrderId.get(updatedOrder?.id) ??
+          null,
       };
     },
     [batchIndexByOrderId, selectedOrder],
@@ -954,7 +1002,13 @@ const OrderManagement = () => {
         showNotification(err?.message || "Lỗi cập nhật", "error");
       }
     },
-    [displayOrders, mutUpdateOrderStatus, refetchOrders, selectedRestaurantId, showNotification],
+    [
+      displayOrders,
+      mutUpdateOrderStatus,
+      refetchOrders,
+      selectedRestaurantId,
+      showNotification,
+    ],
   );
 
   const handleUpdateItemStatus = useCallback(
@@ -980,7 +1034,13 @@ const OrderManagement = () => {
         },
       });
     },
-    [displayOrders, mergeSelectedOrderMetadata, refetchOrders, selectedRestaurantId, updateItemStatus],
+    [
+      displayOrders,
+      mergeSelectedOrderMetadata,
+      refetchOrders,
+      selectedRestaurantId,
+      updateItemStatus,
+    ],
   );
 
   const handleDishClick = useCallback((dish) => {
@@ -1050,14 +1110,21 @@ const OrderManagement = () => {
     }
 
     const order = rejectDialogOrder;
-    const targetOrderId = resolveKitchenActionOrderId(order, rejectDialog.orderId);
+    const targetOrderId = resolveKitchenActionOrderId(
+      order,
+      rejectDialog.orderId,
+    );
     if (!targetOrderId) return;
 
     setRejectDialog((prev) => ({ ...prev, loading: true, error: "" }));
     try {
       await mutRejectIncomingOrder({
         variables: {
-          input: { id: targetOrderId, restaurantId: selectedRestaurantId, reason },
+          input: {
+            id: targetOrderId,
+            restaurantId: selectedRestaurantId,
+            reason,
+          },
         },
       });
       await refetchOrders();
@@ -1094,7 +1161,12 @@ const OrderManagement = () => {
       });
       await refetchOrders();
     },
-    [displayOrders, mutConfirmIncomingOrder, refetchOrders, selectedRestaurantId],
+    [
+      displayOrders,
+      mutConfirmIncomingOrder,
+      refetchOrders,
+      selectedRestaurantId,
+    ],
   );
 
   const handleCreateTemporaryBill = useCallback(
@@ -1115,7 +1187,9 @@ const OrderManagement = () => {
     async (payload) => {
       const updatedOrder = await reviewOrderItemVoid(payload);
       if (updatedOrder) {
-        setSelectedOrder((prev) => mergeSelectedOrderMetadata(updatedOrder, prev));
+        setSelectedOrder((prev) =>
+          mergeSelectedOrderMetadata(updatedOrder, prev),
+        );
         await refetchOrders();
       }
       return updatedOrder;
@@ -1127,7 +1201,9 @@ const OrderManagement = () => {
     async (payload) => {
       const updatedOrder = await requestOrderItemReturn(payload);
       if (updatedOrder) {
-        setSelectedOrder((prev) => mergeSelectedOrderMetadata(updatedOrder, prev));
+        setSelectedOrder((prev) =>
+          mergeSelectedOrderMetadata(updatedOrder, prev),
+        );
         await refetchOrders();
       }
       return updatedOrder;
@@ -1139,7 +1215,9 @@ const OrderManagement = () => {
     async (payload) => {
       const updatedOrder = await reviewOrderItemReturn(payload);
       if (updatedOrder) {
-        setSelectedOrder((prev) => mergeSelectedOrderMetadata(updatedOrder, prev));
+        setSelectedOrder((prev) =>
+          mergeSelectedOrderMetadata(updatedOrder, prev),
+        );
         await refetchOrders();
       }
       return updatedOrder;
@@ -1164,10 +1242,22 @@ const OrderManagement = () => {
             onRestaurantChange={setSelectedRestaurantId}
             restaurantList={restaurantList}
             quickActions={[
-              { icon: "🕘", label: "Lịch sử", onClick: () => setShowHistory(true) },
-              { icon: "⚙️", label: "Cài đặt", onClick: () => setIsSettingsOpen(true) },
+              {
+                icon: "🕘",
+                label: "Lịch sử",
+                onClick: () => setShowHistory(true),
+              },
+              {
+                icon: "⚙️",
+                label: "Cài đặt",
+                onClick: () => setIsSettingsOpen(true),
+              },
             ]}
-            primaryAction={{ icon: focusMode ? "🡼" : "🡾", label: focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp", onClick: () => setFocusMode(!focusMode) }}
+            primaryAction={{
+              icon: focusMode ? "🡼" : "🡾",
+              label: focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp",
+              onClick: () => setFocusMode(!focusMode),
+            }}
           />
         ) : (
           <header className="om-header">
@@ -1177,10 +1267,14 @@ const OrderManagement = () => {
                 <h1>MÀN HÌNH BẾP</h1>
               </div>
               <div className="om-header__meta">
-                <span>{displayOrders.length.toLocaleString("vi-VN")} đơn đang lọc</span>
+                <span>
+                  {displayOrders.length.toLocaleString("vi-VN")} đơn đang lọc
+                </span>
                 <span>•</span>
                 <span>
-                  {sortBy === "oldest" ? "Ưu tiên đơn cũ nhất trước" : "Ưu tiên đơn mới nhất trước"}
+                  {sortBy === "oldest"
+                    ? "Ưu tiên đơn cũ nhất trước"
+                    : "Ưu tiên đơn mới nhất trước"}
                 </span>
               </div>
             </div>
@@ -1222,32 +1316,58 @@ const OrderManagement = () => {
           className={`om-toolbar ${focusMode ? "om-toolbar--focus" : ""}`}
           aria-label="Bộ lọc đơn hàng"
         >
-
           <div className="om-toolbar__inner">
             <div className="om-toolbar__filters">
               <div className="om-filter-group">
-                <label className="om-field">
-                  <span className="om-field__label">Trạng thái đơn</span>
-                  <span className="om-select-wrapper">
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="om-select-input"
+                {focusMode ? (
+                  <div className="om-field om-field--kitchen-status">
+                    <span className="om-field__label">Trạng thái đơn</span>
+                    <div
+                      className="om-status-segmented"
+                      role="group"
                       aria-label="Trạng thái đơn"
                     >
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="pending">Chờ xác nhận</option>
-                    <option value="remote_staff_pending">
-                      Đơn từ xa chờ xác nhận
-                    </option>
-                    <option value="confirmed">Đã xác nhận</option>
-                    <option value="preparing">Đang chuẩn bị</option>
-                    <option value="ready">Sẵn sàng</option>
-                    </select>
-                    <Filter size={16} className="om-select-icon-left" />
-                    <ChevronDown size={14} className="om-select-icon-right" />
-                  </span>
-                </label>
+                      {KITCHEN_STATUS_FILTER_OPTIONS.map((option) => (
+                        <button
+                          key={option.value || "all"}
+                          type="button"
+                          className={`om-status-segmented__btn ${
+                            statusFilter === option.value
+                              ? "om-status-segmented__btn--active"
+                              : ""
+                          }`}
+                          onClick={() => setStatusFilter(option.value)}
+                          aria-pressed={statusFilter === option.value}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <label className="om-field">
+                    <span className="om-field__label">Trạng thái đơn</span>
+                    <span className="om-select-wrapper">
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="om-select-input"
+                        aria-label="Trạng thái đơn"
+                      >
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="pending">Chờ xác nhận</option>
+                        <option value="remote_staff_pending">
+                          Đơn từ xa chờ xác nhận
+                        </option>
+                        <option value="confirmed">Đã xác nhận</option>
+                        <option value="preparing">Đang chuẩn bị</option>
+                        <option value="ready">Sẵn sàng</option>
+                      </select>
+                      <Filter size={16} className="om-select-icon-left" />
+                      <ChevronDown size={14} className="om-select-icon-right" />
+                    </span>
+                  </label>
+                )}
 
                 {!focusMode && (
                   <label className="om-field">
@@ -1259,10 +1379,10 @@ const OrderManagement = () => {
                         className="om-select-input"
                         aria-label="Loại đơn"
                       >
-                      <option value="">Tất cả loại</option>
-                      <option value="dine_in">Tại bàn</option>
-                      <option value="takeaway">Mang về</option>
-                      <option value="delivery">Giao hàng</option>
+                        <option value="">Tất cả loại</option>
+                        <option value="dine_in">Tại bàn</option>
+                        <option value="takeaway">Mang về</option>
+                        <option value="delivery">Giao hàng</option>
                       </select>
                       <ChevronDown size={14} className="om-select-icon-right" />
                     </span>
@@ -1303,10 +1423,13 @@ const OrderManagement = () => {
                           className="om-select-input"
                           aria-label="Sắp xếp đơn hàng"
                         >
-                        <option value="oldest">Cũ nhất trước</option>
-                        <option value="newest">Mới nhất trước</option>
+                          <option value="oldest">Cũ nhất trước</option>
+                          <option value="newest">Mới nhất trước</option>
                         </select>
-                        <ChevronDown size={14} className="om-select-icon-right" />
+                        <ChevronDown
+                          size={14}
+                          className="om-select-icon-right"
+                        />
                       </span>
                     </label>
                   </>
@@ -1316,34 +1439,52 @@ const OrderManagement = () => {
 
             <div className="om-toolbar__actions">
               {focusMode ? (
-                <div className="om-size-control">
+                <div className="om-size-control om-size-control--segmented">
                   <span>Cỡ thẻ:</span>
-                  <select
-                    value={chipSize}
-                    onChange={(e) => setChipSize(e.target.value)}
+                  <div
+                    className="om-size-segmented"
+                    role="group"
                     aria-label="Cỡ thẻ món"
                   >
-                    <option value="s">Nhỏ</option>
-                    <option value="m">Vừa</option>
-                    <option value="l">Lớn</option>
-                  </select>
+                    {CHIP_SIZE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`om-size-segmented__btn ${
+                          chipSize === option.value
+                            ? "om-size-segmented__btn--active"
+                            : ""
+                        }`}
+                        onClick={() => setChipSize(option.value)}
+                        aria-pressed={chipSize === option.value}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <button type="button" className="om-btn-outline" onClick={handleExportCsv}>
+                <button
+                  type="button"
+                  className="om-btn-outline"
+                  onClick={handleExportCsv}
+                >
                   <Download size={18} />
                   <span>Xuất BC</span>
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={() => setShowNewOrderModal(true)}
-                disabled={!selectedRestaurantId}
-                className="om-btn-primary"
-              >
-                <Plus size={18} />
-                <span>Đơn mới</span>
-              </button>
+              {!focusMode && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewOrderModal(true)}
+                  disabled={!selectedRestaurantId}
+                  className="om-btn-primary"
+                >
+                  <Plus size={18} />
+                  <span>Đơn mới</span>
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -1360,7 +1501,10 @@ const OrderManagement = () => {
 
         <section className="om-content" aria-label="Danh sách đơn hàng">
           {ordersLoading ? (
-            <div className="om-skeleton-grid" aria-label="Đang tải dữ liệu đơn hàng">
+            <div
+              className="om-skeleton-grid"
+              aria-label="Đang tải dữ liệu đơn hàng"
+            >
               {Array.from({ length: 6 }).map((_, index) => (
                 <article className="om-skeleton-card" key={index}>
                   <div className="om-skeleton-card__top" />

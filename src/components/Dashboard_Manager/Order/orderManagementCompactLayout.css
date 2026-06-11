@@ -1,6 +1,0 @@
-.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) .om-wrapper {
-  width: min(calc(100% - clamp(32px, 5vw, 72px)), 1240px);
-  max-width: 1240px;
-  padding-top: 12px;
-  gap: 10px;
-}
