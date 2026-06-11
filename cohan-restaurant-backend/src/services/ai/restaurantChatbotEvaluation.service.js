@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 import { AiChatbotEvaluationCase } from "../../../models/index.js";
 import { handleRestaurantChatbotMessage } from "./restaurantChatbot.service.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
-import { requireRestaurantPermission } from "../auth/authorization.service.js";
+import {
+  requireAnyRestaurantPermission,
+  requireRestaurantPermission,
+} from "../auth/authorization.service.js";
 
 const ensureAuth = (ctx) => {
   if (!ctx?.user) {
@@ -61,21 +64,33 @@ const sanitizeCaseInput = (input, { partial = false } = {}) => {
   return payload;
 };
 
+const ensureEvaluationRestaurantId = (restaurantId) => {
+  if (!mongoose.isValidObjectId(restaurantId)) {
+    const e = new Error("BAD_USER_INPUT: restaurantId is invalid");
+    e.code = "BAD_USER_INPUT";
+    throw e;
+  }
+};
+
 const ensureReadEvaluationPermission = async (ctx, restaurantId) => {
   ensureAuth(ctx);
-  try {
-    await requireRestaurantPermission(
-      ctx,
-      restaurantId,
-      PERMISSIONS.REPORT_READ,
-    );
-  } catch {
-    await requireRestaurantPermission(
-      ctx,
-      restaurantId,
-      PERMISSIONS.RESTAURANT_WRITE,
-    );
-  }
+  ensureEvaluationRestaurantId(restaurantId);
+
+  await requireAnyRestaurantPermission(ctx, restaurantId, [
+    PERMISSIONS.AI_CHATBOT_EVALUATE,
+    PERMISSIONS.AI_CHATBOT_WRITE,
+  ]);
+};
+
+const ensureWriteEvaluationPermission = async (ctx, restaurantId) => {
+  ensureAuth(ctx);
+  ensureEvaluationRestaurantId(restaurantId);
+
+  await requireRestaurantPermission(
+    ctx,
+    restaurantId,
+    PERMISSIONS.AI_CHATBOT_EVALUATE,
+  );
 };
 
 export const evaluateRestaurantAiChatbotPrompt = async ({ input, ctx }) => {
@@ -132,12 +147,8 @@ export const createRestaurantAiChatbotEvaluationCase = async ({
   input,
   ctx,
 }) => {
-  ensureAuth(ctx);
-  await requireRestaurantPermission(
-    ctx,
-    input?.restaurantId,
-    PERMISSIONS.RESTAURANT_WRITE,
-  );
+  await ensureWriteEvaluationPermission(ctx, input?.restaurantId);
+
   const uid = userIdFromCtx(ctx);
   const payload = sanitizeCaseInput(input, { partial: false });
   const created = await AiChatbotEvaluationCase.create({
@@ -155,11 +166,7 @@ export const updateRestaurantAiChatbotEvaluationCase = async ({
   ensureAuth(ctx);
   const row = await AiChatbotEvaluationCase.findById(input?.id);
   if (!row) return null;
-  await requireRestaurantPermission(
-    ctx,
-    row.restaurantId,
-    PERMISSIONS.RESTAURANT_WRITE,
-  );
+  await ensureWriteEvaluationPermission(ctx, row.restaurantId);
   Object.assign(row, {
     ...sanitizeCaseInput(input, { partial: true }),
     updatedBy: userIdFromCtx(ctx),
@@ -171,11 +178,7 @@ export const deleteRestaurantAiChatbotEvaluationCase = async ({ id, ctx }) => {
   ensureAuth(ctx);
   const row = await AiChatbotEvaluationCase.findById(id);
   if (!row) return false;
-  await requireRestaurantPermission(
-    ctx,
-    row.restaurantId,
-    PERMISSIONS.RESTAURANT_WRITE,
-  );
+  await ensureWriteEvaluationPermission(ctx, row.restaurantId);
   await AiChatbotEvaluationCase.deleteOne({ _id: row._id });
   return true;
 };
