@@ -85,7 +85,20 @@ const qualityQueueLabels = {
   fallback_response: "Câu trả lời cần rà soát",
   pending_suggestion: "Gợi ý tri thức mới",
 };
+const messageRoleLabels = {
+  assistant: "AI",
+  customer: "Khách hàng",
+  staff: "Nhân viên",
+  manager: "Quản lý",
+  system: "Hệ thống",
+};
 
+const signalLevelLabels = {
+  info: "Thông tin",
+  warning: "Cần chú ý",
+  critical: "Nghiêm trọng",
+  danger: "Nghiêm trọng",
+};
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
   const {
@@ -203,11 +216,11 @@ export default function AiChatbotAnalyticsPage() {
               <p>{formatNum(m.openConversations)}</p>
             </article>
             <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Handoff đang xử lý</h4>
+              <h4>Yêu cầu hỗ trợ đang xử lý</h4>
               <p>{formatNum(m.handoffRequested)}</p>
             </article>
             <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Handoff đã xử lý</h4>
+              <h4>Yêu cầu hỗ trợ đã xử lý</h4>
               <p>{formatNum(m.resolvedHandoffs)}</p>
             </article>
             <article className="customer-overview-card ai-admin-analytics-card">
@@ -218,7 +231,7 @@ export default function AiChatbotAnalyticsPage() {
               </p>
             </article>
             <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Tỷ lệ chuyển handoff</h4>
+              <h4>Tỷ lệ chuyển nhân viên</h4>
               <p>{formatPct(m.handoffConversionRate)}</p>
             </article>
             <article className="customer-overview-card ai-admin-analytics-card">
@@ -238,7 +251,7 @@ export default function AiChatbotAnalyticsPage() {
               <p>{formatNum(m.evaluationCaseCount)}</p>
             </article>
             <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Thời gian xử lý handoff TB</h4>
+              <h4>Thời gian xử lý hỗ trợ TB</h4>
               <p>
                 {m.averageHandoffResolutionMinutes == null
                   ? "—"
@@ -281,7 +294,7 @@ export default function AiChatbotAnalyticsPage() {
                   {m.messagesByRole.map((it) => (
                     <li key={it.role} className="ai-analytics-list__item">
                       <span className="ai-analytics-list__label">
-                        {it.role}
+                        {messageRoleLabels[it.role] || it.role}
                       </span>
                       <span className="ai-analytics-list__value">
                         {formatNum(it.count)}
@@ -297,7 +310,7 @@ export default function AiChatbotAnalyticsPage() {
             <article className="customer-analytics-panel ai-analytics-card">
               <header className="ai-analytics-card__header">
                 <h3>Giới hạn sử dụng AI</h3>
-                <p>Rate limit policy và chỉ tiêu sử dụng</p>
+                <p>Giới hạn số lượt dùng AI trong từng khoảng thời gian.</p>
               </header>
               {m.rateLimitStatus?.length ? (
                 <ul className="ai-analytics-list">
@@ -330,7 +343,8 @@ export default function AiChatbotAnalyticsPage() {
                         {riskySignalLabels[it.code] || it.code}
                       </span>
                       <span className="ai-analytics-list__value ai-analytics-list__value--warn">
-                        {it.level} ({formatNum(it.count)})
+                        {signalLevelLabels[it.level] || it.level} (
+                        {formatNum(it.count)})
                       </span>
                     </li>
                   ))}

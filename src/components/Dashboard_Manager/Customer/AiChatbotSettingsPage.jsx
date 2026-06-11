@@ -136,9 +136,9 @@ export default function AiChatbotSettingsPage() {
           <p className="ai-admin-eyebrow">Thiết lập AI</p>
           <h2>Cài đặt Chatbot AI</h2>
           <p>
-            Cấu hình lời chào, gợi ý nhanh, handoff và ngưỡng độ chắc chắn trong
-            một không gian dịu mắt, dễ rà soát khi manager cần tinh chỉnh
-            chatbot trong thời gian dài.
+            Cấu hình lời chào, gợi ý nhanh, chuyển nhân viên và ngưỡng độ chắc
+            chắn trong một không gian dịu mắt, dễ rà soát khi người quản lý cần
+            tinh chỉnh chatbot trong thời gian dài.
           </p>
         </div>
 
@@ -167,16 +167,16 @@ export default function AiChatbotSettingsPage() {
       >
         <article>
           <span>Chatbot</span>
-          <strong>{form.enabled ? "Bật" : "Tắt"}</strong>
+          <strong>{form.enabled ? "Đang bật" : "Đang tắt"}</strong>
           <small>{form.enabled ? "đang phục vụ khách" : "đang tạm tắt"}</small>
         </article>
         <article>
-          <span>Handoff</span>
-          <strong>{form.handoffEnabled ? "Bật" : "Tắt"}</strong>
+          <span>Chuyển nhân viên</span>
+          <strong>{form.handoffEnabled ? "Đang bật" : "Đang tắt"}</strong>
           <small>
             {form.handoffEnabled
               ? "nhân viên có thể tiếp nhận"
-              : "AI không chuyển nhân viên"}
+              : "AI chưa chuyển sang nhân viên"}
           </small>
         </article>
         <article>
@@ -188,7 +188,7 @@ export default function AiChatbotSettingsPage() {
           </small>
         </article>
         <article>
-          <span>Quick replies</span>
+          <span>Gợi ý nhanh</span>
           <strong>{quickReplyCount}</strong>
           <small>gợi ý mở đầu đang cấu hình</small>
         </article>
@@ -311,7 +311,7 @@ export default function AiChatbotSettingsPage() {
         <aside className="ai-admin-panel ai-admin-panel--handoff">
           <header className="ai-admin-panel__header ai-admin-panel__header--compact">
             <div>
-              <p className="ai-admin-eyebrow">Handoff</p>
+              <p className="ai-admin-eyebrow">Yêu cầu hỗ trợ</p>
               <h3>Chuyển nhân viên</h3>
               <p>
                 Cài đặt khi AI nên nhường lại cho nhân viên để xử lý thông tin
@@ -333,19 +333,19 @@ export default function AiChatbotSettingsPage() {
               <small>
                 {form.handoffEnabled
                   ? "Khách có thể được chuyển sang nhân viên khi cần."
-                  : "Chatbot sẽ không tạo yêu cầu handoff."}
+                  : "Chatbot sẽ không tạo yêu cầu hỗ trợ."}
               </small>
             </label>
 
             <label className="ai-admin-field">
-              <span>Tin nhắn không handoff</span>
+              <span>Tin nhắn khi chưa thể chuyển nhân viên</span>
               <textarea
                 value={form.handoffUnavailableMessage || ""}
                 onChange={(event) =>
                   updateForm({ handoffUnavailableMessage: event.target.value })
                 }
                 rows={6}
-                placeholder="Tin nhắn hiển thị khi nhà hàng chưa hỗ trợ nhân viên qua chatbot."
+                placeholder="Tin nhắn hiển thị khi nhà hàng chưa thể tiếp nhận hỗ trợ từ nhân viên."
               />
             </label>
 
@@ -364,8 +364,8 @@ export default function AiChatbotSettingsPage() {
                 }
               />
               <small className="ai-admin-help">
-                0.6 = 60%. AI sẽ cân nhắc handoff khi confidence thấp hơn ngưỡng
-                này.
+                0.6 = 60%. AI sẽ cân nhắc chuyển sang nhân viên khi độ chắc chắn
+                thấp hơn ngưỡng này.
               </small>
             </label>
 
@@ -373,7 +373,7 @@ export default function AiChatbotSettingsPage() {
               <h4>Lưu ý vận hành</h4>
               <p>
                 Hỗ trợ khung giờ nâng cao sẽ được bổ sung ở phase sau. Hiện tại
-                hãy dùng tin nhắn handoff để hướng dẫn khách rõ ràng.
+                hãy dùng tin nhắn hỗ trợ để hướng dẫn khách rõ ràng.
               </p>
             </div>
           </div>

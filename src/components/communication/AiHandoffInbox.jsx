@@ -32,13 +32,16 @@ const formatTime = (iso) =>
     : "";
 
 const isAiHandoffThread = (thread) =>
-  String(thread?.subject || "").trim().toLowerCase().startsWith(HANDOFF_PREFIX);
+  String(thread?.subject || "")
+    .trim()
+    .toLowerCase()
+    .startsWith(HANDOFF_PREFIX);
 
-const isAiHandoffNotification = (n) => String(n?.type || "").toLowerCase() === "ai_chatbot_handoff";
+const isAiHandoffNotification = (n) =>
+  String(n?.type || "").toLowerCase() === "ai_chatbot_handoff";
 
 const TAB_ACTIVE = "active";
 const TAB_RESOLVED = "resolved";
-
 
 const resolveSenderLabel = (msg) => {
   const role = String(msg?.senderRole || "").toLowerCase();
@@ -55,12 +58,15 @@ const runBestEffort = (result) => {
 const resolveRestaurantId = ({ propRestaurantId, user }) => {
   if (propRestaurantId) return String(propRestaurantId);
   if (user?.restaurantForStaff) return String(user.restaurantForStaff);
-  if (Array.isArray(user?.refRestaurants) && user.refRestaurants[0]) return String(user.refRestaurants[0]);
+  if (Array.isArray(user?.refRestaurants) && user.refRestaurants[0])
+    return String(user.refRestaurants[0]);
   if (user?.restaurantId) return String(user.restaurantId);
   return null;
 };
 
-export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }) {
+export default function AiHandoffInbox({
+  restaurantId: propRestaurantId = null,
+}) {
   const { user } = useContext(AuthContext) || {};
   const [selectedItem, setSelectedItem] = useState(null);
   const [reply, setReply] = useState("");
@@ -68,15 +74,23 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   const [actionError, setActionError] = useState("");
   const [resolvedThreadIds, setResolvedThreadIds] = useState(() => new Set());
   const [activeTab, setActiveTab] = useState(TAB_ACTIVE);
-  const [resolveHandoff, { loading: resolving }] = useMutation(RESOLVE_AI_CHATBOT_HANDOFF);
+  const [resolveHandoff, { loading: resolving }] = useMutation(
+    RESOLVE_AI_CHATBOT_HANDOFF,
+  );
 
   const restaurantId = useMemo(
     () => resolveRestaurantId({ propRestaurantId, user }),
-    [propRestaurantId, user]
+    [propRestaurantId, user],
   );
 
-  const activeCommunication = useCommunication({ restaurantId, status: "open" });
-  const resolvedCommunication = useCommunication({ restaurantId, status: "closed" });
+  const activeCommunication = useCommunication({
+    restaurantId,
+    status: "open",
+  });
+  const resolvedCommunication = useCommunication({
+    restaurantId,
+    status: "closed",
+  });
 
   const {
     threads: activeThreads,
@@ -105,19 +119,20 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
 
   const notificationItems = useMemo(
     () =>
-      (notifications || [])
-        .filter(isAiHandoffNotification)
-        .map((n) => ({
-          kind: "notification",
-          id: `notif_${n.id}`,
-          notificationId: n.id,
-          threadId: n?.payload?.threadId || null,
-          unread: !n.readAt,
-          preview: n?.payload?.messagePreview || n?.payload?.title || "Yêu cầu hỗ trợ từ chatbot",
-          time: n.createdAt,
-          restaurantId: n.restaurantId,
-        })),
-    [notifications]
+      (notifications || []).filter(isAiHandoffNotification).map((n) => ({
+        kind: "notification",
+        id: `notif_${n.id}`,
+        notificationId: n.id,
+        threadId: n?.payload?.threadId || null,
+        unread: !n.readAt,
+        preview:
+          n?.payload?.messagePreview ||
+          n?.payload?.title ||
+          "Yêu cầu hỗ trợ từ chatbot",
+        time: n.createdAt,
+        restaurantId: n.restaurantId,
+      })),
+    [notifications],
   );
 
   const threadItems = useMemo(() => {
@@ -128,13 +143,11 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       notificationId: null,
       threadId: t.id,
       unread: Number(t.unreadCount || 0) > 0,
-      preview: t.lastMessagePreview || t.subject || "Handoff AI",
+      preview: t.lastMessagePreview || t.subject || "Yêu cầu hỗ trợ từ AI",
       time: t.updatedAt || t.lastMessageAt,
       restaurantId: t.restaurantId,
     }));
   }, [activeThreads]);
-
-
 
   const resolvedItems = useMemo(() => {
     const rows = (resolvedThreads || []).filter((t) => isAiHandoffThread(t));
@@ -153,7 +166,6 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   }, [resolvedThreads]);
 
   const mergedItems = useMemo(() => {
-
     const map = new Map();
     for (const item of [...notificationItems, ...threadItems]) {
       const key = item.threadId || item.id;
@@ -175,8 +187,10 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
 
   const currentItems = activeTab === TAB_RESOLVED ? resolvedItems : mergedItems;
   const thread = activeTab === TAB_RESOLVED ? resolvedThread : activeThread;
-  const threadLoading = activeTab === TAB_RESOLVED ? resolvedThreadLoading : activeThreadLoading;
-  const loadThread = activeTab === TAB_RESOLVED ? loadResolvedThread : loadActiveThread;
+  const threadLoading =
+    activeTab === TAB_RESOLVED ? resolvedThreadLoading : activeThreadLoading;
+  const loadThread =
+    activeTab === TAB_RESOLVED ? loadResolvedThread : loadActiveThread;
 
   useEffect(() => {
     setSelectedItem(null);
@@ -192,21 +206,29 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
 
     const threadId = item?.threadId || null;
     if (!threadId) {
-      setWarning("Thông báo handoff chưa có threadId, vui lòng kiểm tra lại payload.");
+      setWarning(
+        "Thiếu thông tin hội thoại để gửi phản hồi. Vui lòng tải lại trang hoặc chọn yêu cầu khác.",
+      );
       return;
     }
 
     try {
       const { data } = await loadThread({ variables: { id: threadId } });
       if (!data?.chatThread) {
-        setActionError("Không thể tải hội thoại hoặc bạn không có quyền truy cập.");
+        setActionError(
+          "Không thể tải hội thoại hoặc bạn không có quyền truy cập.",
+        );
       }
     } catch {
-      setActionError("Không thể tải hội thoại hoặc bạn không có quyền truy cập.");
+      setActionError(
+        "Không thể tải hội thoại hoặc bạn không có quyền truy cập.",
+      );
     }
 
     if (item.notificationId) {
-      runBestEffort(markNotificationRead({ variables: { id: item.notificationId } }));
+      runBestEffort(
+        markNotificationRead({ variables: { id: item.notificationId } }),
+      );
     }
     runBestEffort(markThreadRead({ variables: { threadId } }));
     runBestEffort(refetchActiveThreads?.());
@@ -226,25 +248,32 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       setReply("");
       await loadThread({ variables: { id: threadId } });
       runBestEffort(refetchActiveThreads?.());
-    runBestEffort(refetchResolvedThreads?.());
+      runBestEffort(refetchResolvedThreads?.());
     } catch (error) {
       setActionError(error?.message || "Không thể gửi phản hồi lúc này.");
     }
   };
-  const isThreadClosed = String(thread?.status || "").toLowerCase() === "closed";
+  const isThreadClosed =
+    String(thread?.status || "").toLowerCase() === "closed";
 
   const onResolve = async () => {
     const threadId = thread?.id || selectedItem?.threadId || null;
     if (!threadId) return;
     setActionError("");
     try {
-      const { data } = await resolveHandoff({ variables: { input: { chatThreadId: threadId } } });
-      if (!data?.resolveAiChatbotHandoff?.ok) throw new Error(data?.resolveAiChatbotHandoff?.message || "Không thể kết thúc hỗ trợ.");
+      const { data } = await resolveHandoff({
+        variables: { input: { chatThreadId: threadId } },
+      });
+      if (!data?.resolveAiChatbotHandoff?.ok)
+        throw new Error(
+          data?.resolveAiChatbotHandoff?.message ||
+            "Không thể kết thúc hỗ trợ.",
+        );
       setResolvedThreadIds((current) => new Set(current).add(String(threadId)));
       setReply("");
       await loadThread({ variables: { id: threadId } });
       runBestEffort(refetchActiveThreads?.());
-    runBestEffort(refetchResolvedThreads?.());
+      runBestEffort(refetchResolvedThreads?.());
       runBestEffort(refetchNotifications?.());
     } catch (error) {
       setActionError(error?.message || "Không thể kết thúc hỗ trợ lúc này.");
@@ -258,7 +287,9 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   if (!restaurantId) {
     return (
       <div className="ai-handoff-inbox__panel">
-        <div className="ai-handoff-inbox__content">Chưa xác định được nhà hàng để tải yêu cầu handoff.</div>
+        <div className="ai-handoff-inbox__content">
+          Chưa xác định được nhà hàng để tải yêu cầu hỗ trợ.
+        </div>
       </div>
     );
   }
@@ -272,17 +303,43 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
     <div className="ai-handoff-inbox">
       <section className="ai-handoff-inbox__panel">
         <div className="ai-handoff-inbox__panel-header">
-          <h2>Yêu cầu hỗ trợ từ chatbot</h2>
+          <h2>Yêu cầu hỗ trợ từ AI</h2>
           <div className="ai-handoff-inbox__tabs">
-            <button type="button" className={activeTab === TAB_ACTIVE ? "active" : ""} onClick={() => setActiveTab(TAB_ACTIVE)}>Đang xử lý</button>
-            <button type="button" className={activeTab === TAB_RESOLVED ? "active" : ""} onClick={() => setActiveTab(TAB_RESOLVED)}>Đã xử lý</button>
+            <button
+              type="button"
+              className={activeTab === TAB_ACTIVE ? "active" : ""}
+              onClick={() => setActiveTab(TAB_ACTIVE)}
+            >
+              Đang xử lý
+            </button>
+            <button
+              type="button"
+              className={activeTab === TAB_RESOLVED ? "active" : ""}
+              onClick={() => setActiveTab(TAB_RESOLVED)}
+            >
+              Đã xử lý
+            </button>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__skeleton" role="status"><span /><span /><span /></div></div>
+          <div className="ai-handoff-inbox__content">
+            <div className="ai-handoff-inbox__skeleton" role="status">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
         ) : currentItems.length === 0 ? (
-          <div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__empty"><strong>Chưa có yêu cầu hỗ trợ từ chatbot</strong><p>Khi khách cần nhân viên hỗ trợ, hội thoại sẽ xuất hiện ở đây để bạn tiếp nhận nhanh.</p></div></div>
+          <div className="ai-handoff-inbox__content">
+            <div className="ai-handoff-inbox__empty">
+              <strong>Chưa có yêu cầu hỗ trợ từ chatbot</strong>
+              <p>
+                Khi khách cần nhân viên hỗ trợ, hội thoại sẽ xuất hiện ở đây để
+                bạn tiếp nhận nhanh.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="ai-handoff-inbox__list">
             {currentItems.map((item) => (
@@ -298,8 +355,21 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
                 </div>
                 <p className="ai-handoff-inbox__preview">{item.preview}</p>
                 <div className="ai-handoff-inbox__item-footer">
-                  <span>{item.restaurantId ? `NH: ${String(item.restaurantId).slice(-6)}` : "Không rõ nhà hàng"}</span>
-                  <span>{item.unread ? <><span className="ai-handoff-inbox__dot" />Chưa đọc</> : "Đã đọc"}</span>
+                  <span>
+                    {item.restaurantId
+                      ? `NH: ${String(item.restaurantId).slice(-6)}`
+                      : "Không rõ nhà hàng"}
+                  </span>
+                  <span>
+                    {item.unread ? (
+                      <>
+                        <span className="ai-handoff-inbox__dot" />
+                        Chưa đọc
+                      </>
+                    ) : (
+                      "Đã đọc"
+                    )}
+                  </span>
                 </div>
               </button>
             ))}
@@ -310,30 +380,50 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
       <section className="ai-handoff-inbox__panel">
         <div className="ai-handoff-inbox__panel-header">
           <h2>Chi tiết hội thoại</h2>
-          {(hasHandoffMarker || isAiHandoffThread(thread)) && <AiHandoffBadge />}
+          {(hasHandoffMarker || isAiHandoffThread(thread)) && (
+            <AiHandoffBadge />
+          )}
         </div>
 
         <div className="ai-handoff-inbox__content">
-          {warning && <div className="ai-handoff-inbox__message">{warning}</div>}
+          {warning && (
+            <div className="ai-handoff-inbox__message">{warning}</div>
+          )}
           {actionError && (
             <div className="ai-handoff-inbox__message">
               {actionError}
               <div>
-                <button type="button" onClick={() => selectedItem && openItem(selectedItem)}>Thử lại</button>
+                <button
+                  type="button"
+                  onClick={() => selectedItem && openItem(selectedItem)}
+                >
+                  Thử lại
+                </button>
               </div>
             </div>
           )}
           {!selectedItem ? (
-            <div className="ai-handoff-inbox__message">Chọn một yêu cầu handoff để xem chi tiết.</div>
+            <div className="ai-handoff-inbox__message">
+              Chọn một yêu cầu cần hỗ trợ để xem chi tiết.
+            </div>
           ) : threadLoading ? (
-            <div className="ai-handoff-inbox__message">Đang tải hội thoại...</div>
+            <div className="ai-handoff-inbox__message">
+              Đang tải hội thoại...
+            </div>
           ) : !thread ? (
-            <div className="ai-handoff-inbox__message">Không có dữ liệu hội thoại.</div>
+            <div className="ai-handoff-inbox__message">
+              Không có dữ liệu hội thoại.
+            </div>
           ) : (
             (thread.messages || []).map((msg, index) => {
-              const isSummary = index === 0 && String(msg?.content || "").includes(HANDOFF_MARKER);
+              const isSummary =
+                index === 0 &&
+                String(msg?.content || "").includes(HANDOFF_MARKER);
               return (
-                <div key={`${msg.createdAt || "na"}_${index}`} className={`ai-handoff-inbox__message ${isSummary ? "is-handoff-summary" : ""}`}>
+                <div
+                  key={`${msg.createdAt || "na"}_${index}`}
+                  className={`ai-handoff-inbox__message ${isSummary ? "is-handoff-summary" : ""}`}
+                >
                   <strong>{resolveSenderLabel(msg)}</strong>
                   <div>{msg.content}</div>
                   <small>{formatTime(msg.createdAt)}</small>
@@ -347,17 +437,47 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
           <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            aria-label="Nội dung phản hồi handoff"
+            aria-label="Nội dung phản hồi cho khách"
             disabled={activeTab === TAB_RESOLVED || isThreadClosed}
-            placeholder={isThreadClosed ? "Phiên hỗ trợ đã đóng" : "Nhập phản hồi cho luồng hỗ trợ..."}
+            placeholder={
+              isThreadClosed
+                ? "Phiên hỗ trợ đã đóng"
+                : "Nhập phản hồi cho khách..."
+            }
           />
-          <button type="submit" disabled={activeTab === TAB_RESOLVED || isThreadClosed || !reply.trim() || !!sendMessageState?.loading}>Gửi phản hồi</button>
-          <button type="button" onClick={onResolve} disabled={activeTab === TAB_RESOLVED || !selectedItem || isThreadClosed || resolving}>
-            {activeTab === TAB_RESOLVED || isThreadClosed ? "Đã xử lý" : resolving ? "Đang xử lý..." : "Đánh dấu đã xử lý"}
+          <button
+            type="submit"
+            disabled={
+              activeTab === TAB_RESOLVED ||
+              isThreadClosed ||
+              !reply.trim() ||
+              !!sendMessageState?.loading
+            }
+          >
+            Gửi phản hồi
           </button>
-          {isThreadClosed ? <small>Phiên hỗ trợ này đã được đóng.</small> : null}
+          <button
+            type="button"
+            onClick={onResolve}
+            disabled={
+              activeTab === TAB_RESOLVED ||
+              !selectedItem ||
+              isThreadClosed ||
+              resolving
+            }
+          >
+            {activeTab === TAB_RESOLVED || isThreadClosed
+              ? "Đã xử lý"
+              : resolving
+                ? "Đang xử lý..."
+                : "Đánh dấu đã xử lý"}
+          </button>
+          {isThreadClosed ? (
+            <small>Phiên hỗ trợ này đã được đóng.</small>
+          ) : null}
           <small>
-            Sau khi đóng phiên hỗ trợ, khách có thể tiếp tục trò chuyện với AI hoặc tạo yêu cầu hỗ trợ mới khi cần.
+            Sau khi đóng phiên hỗ trợ, khách có thể tiếp tục trò chuyện với AI
+            hoặc tạo yêu cầu hỗ trợ mới khi cần.
           </small>
         </form>
       </section>

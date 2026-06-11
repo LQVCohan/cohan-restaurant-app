@@ -368,7 +368,7 @@ const tabLabels = {
   suggestions: "Gợi ý",
   feedback: "Phản hồi",
   safety: "An toàn",
-  evaluation: "Đánh giá",
+  evaluation: "Kiểm thử",
 };
 
 const formatDate = (value) =>
@@ -681,8 +681,8 @@ export default function AiChatbotKnowledgePage() {
             <p className="ai-admin-eyebrow">Tri thức</p>
             <h3>Tri thức chatbot</h3>
             <p>
-              Card/table hybrid để scan nhanh title, preview, metadata và trạng
-              thái.
+              Dạng thẻ kết hợp bảng giúp người quản lý xem nhanh tiêu đề, nội
+              dung xem trước, thông tin bổ sung và trạng thái.
             </p>
           </div>
           <div className="ai-admin-actions ai-admin-actions--end">
@@ -784,7 +784,7 @@ export default function AiChatbotKnowledgePage() {
                     ))}
                     {!safeTags(item?.tags).length ? (
                       <span className="ai-admin-tag ai-admin-tag--muted">
-                        Không có tag
+                        Chưa gắn thẻ
                       </span>
                     ) : null}
                   </div>
@@ -817,10 +817,10 @@ export default function AiChatbotKnowledgePage() {
                     type="button"
                     className="ai-admin-button--danger"
                     onClick={() =>
-                      window.confirm("Xóa item tri thức này?") &&
+                      window.confirm("Xóa mục tri thức này?") &&
                       runAction(
                         () => deleteKnowledge({ variables: { id: item?.id } }),
-                        "Đã xóa item tri thức.",
+                        "Đã xóa mục tri thức.",
                       )
                     }
                   >
@@ -843,7 +843,10 @@ export default function AiChatbotKnowledgePage() {
             <div>
               <p className="ai-admin-eyebrow">Trình chỉnh sửa</p>
               <h3>{editingKnowledgeId ? "Sửa tri thức" : "Thêm tri thức"}</h3>
-              <p>Giữ đầy đủ metadata để lọc, ưu tiên và truy vết nguồn.</p>
+              <p>
+                Giữ đầy đủ thông tin bổ sung để lọc, ưu tiên và theo dõi nguồn
+                dữ liệu.
+              </p>
             </div>
           </header>
           <form className="ai-admin-form" onSubmit={submitKnowledge}>
@@ -953,8 +956,8 @@ export default function AiChatbotKnowledgePage() {
               <p className="ai-admin-eyebrow">Nhập / Xuất</p>
               <h3>Dữ liệu tri thức</h3>
               <p>
-                Mảng JSON hoặc CSV đặt trong panel phụ để không chiếm vùng thao
-                tác chính.
+                Dữ liệu JSON hoặc CSV được đặt trong khung phụ để không chiếm
+                vùng thao tác chính.
               </p>
             </div>
           </header>
@@ -1003,7 +1006,7 @@ export default function AiChatbotKnowledgePage() {
                 aria-label="Dữ liệu nhập"
                 value={importPayload}
                 onChange={(e) => setImportPayload(e.target.value)}
-                placeholder="JSON array hoặc CSV với title,content,category,tags,enabled,priority,sourceType"
+                placeholder="JSON array hoặc CSV với title,content,category,tags,enabled,priority,sourceType. sourceType là loại nguồn."
               />
             </label>
             <button
@@ -1112,7 +1115,7 @@ export default function AiChatbotKnowledgePage() {
                   {item.suggestedContent || "Chưa có nội dung gợi ý."}
                 </small>
                 <div className="ai-admin-tag-row">
-                  {(item.tags || []).map((tag) => (
+                  {safeTags(item?.tags).map((tag) => (
                     <span key={tag} className="ai-admin-tag">
                       {tag}
                     </span>
@@ -1132,7 +1135,7 @@ export default function AiChatbotKnowledgePage() {
                               title: item.suggestedTitle || item.question,
                               content: item.suggestedContent || item.question,
                               category: item.category || "general",
-                              tags: item.tags || [],
+                              tags: safeTags(item?.tags),
                               enabled: true,
                               priority: 0,
                               sourceType: "suggestion",
@@ -1176,8 +1179,8 @@ export default function AiChatbotKnowledgePage() {
         </div>
       ) : (
         <EmptyState
-          title="Không có suggestion"
-          description="Khi khách hỏi câu AI chưa trả lời tốt, suggestion sẽ xuất hiện ở đây."
+          title="Không có gợi ý mới"
+          description="Khi khách hỏi câu AI chưa trả lời tốt, gợi ý sẽ xuất hiện ở đây."
         />
       )}
     </article>
@@ -1207,7 +1210,7 @@ export default function AiChatbotKnowledgePage() {
                   bulkFeedbackReviewed({
                     variables: { input: { ids: selectedFeedback } },
                   }),
-                "Đã đánh dấu các feedback đã chọn là đã xem.",
+                "Đã đánh dấu các phản hồi đã chọn là đã xem.",
               )
             }
           >
@@ -1223,7 +1226,7 @@ export default function AiChatbotKnowledgePage() {
                   bulkFeedbackIgnore({
                     variables: { input: { ids: selectedFeedback } },
                   }),
-                "Đã bỏ qua các feedback đã chọn.",
+                "Đã bỏ qua các phản hồi đã chọn.",
               )
             }
           >
@@ -1238,7 +1241,7 @@ export default function AiChatbotKnowledgePage() {
                   bulkFeedbackConvert({
                     variables: { input: { ids: selectedFeedback } },
                   }),
-                "Đã chuyển các feedback đã chọn thành gợi ý.",
+                "Đã chuyển các phản hồi đã chọn thành gợi ý",
               )
             }
           >
@@ -1278,7 +1281,7 @@ export default function AiChatbotKnowledgePage() {
                 <h4>{item.question || "Không có câu hỏi"}</h4>
                 <p>{item.reason || item.answer || "Không có ghi chú thêm."}</p>
                 <div className="ai-admin-tag-row">
-                  {(item.tags || []).map((tag) => (
+                  {safeTags(item?.tags).map((tag) => (
                     <span key={tag} className="ai-admin-tag">
                       {tag}
                     </span>
@@ -1304,7 +1307,7 @@ export default function AiChatbotKnowledgePage() {
                   onClick={() =>
                     runAction(
                       () => ignoreFeedback({ variables: { id: item.id } }),
-                      "Đã bỏ qua feedback.",
+                      " Đã bỏ qua phản hồi.",
                     )
                   }
                 >
@@ -1315,7 +1318,7 @@ export default function AiChatbotKnowledgePage() {
                   onClick={() =>
                     runAction(
                       () => convertFeedback({ variables: { id: item.id } }),
-                      "Đã chuyển feedback thành gợi ý.",
+                      "Đã chuyển phản hồi thành gợi ý.",
                     )
                   }
                 >
@@ -1327,8 +1330,8 @@ export default function AiChatbotKnowledgePage() {
         </div>
       ) : (
         <EmptyState
-          title="Chưa có feedback cần xử lý"
-          description="Feedback mới của khách sẽ được gom tại đây để manager rà soát."
+          title="Chưa có phản hồi cần xử lý"
+          description="Phản hồi mới của khách sẽ được gom tại đây để người quản lý rà soát."
         />
       )}
     </article>
@@ -1569,8 +1572,8 @@ export default function AiChatbotKnowledgePage() {
         <header className="ai-admin-panel__header">
           <div>
             <p className="ai-admin-eyebrow">Đánh giá</p>
-            <h3>Playground đánh giá</h3>
-            <p>Thử prompt nhanh, lưu case và chạy bộ case đang bật.</p>
+            <h3>Khu vực kiểm thử</h3>
+            <p>Thử câu hỏi nhanh, lưu câu hỏi kiểm thử và chạy bộ câu hỏi đang bật.</p>
           </div>
           <div className="ai-admin-actions">
             <button
@@ -1591,7 +1594,7 @@ export default function AiChatbotKnowledgePage() {
                   setEvalResult(
                     result?.data?.evaluateRestaurantAiChatbotPrompt || null,
                   );
-                }, "Đã chạy thử nghiệm.")
+                }, "Đã chạy thử.")
               }
             >
               Chạy thử
@@ -1615,11 +1618,11 @@ export default function AiChatbotKnowledgePage() {
                         },
                       },
                     }),
-                  "Đã lưu case đánh giá.",
+                  "Đã lưu câu hỏi kiểm thử.",
                 )
               }
             >
-              Lưu case
+              Lưu câu hỏi kiểm thử
             </button>
             <button
               type="button"
@@ -1640,10 +1643,10 @@ export default function AiChatbotKnowledgePage() {
                   setEvalResult(
                     result?.data?.runRestaurantAiChatbotEvaluationSet || [],
                   );
-                }, "Đã chạy bộ case đang bật.")
+                }, "Đã chạy bộ câu hỏi đang bật.")
               }
             >
-              Chạy bộ case đang bật
+              Chạy bộ câu hỏi đang bật
             </button>
           </div>
         </header>
@@ -1658,7 +1661,7 @@ export default function AiChatbotKnowledgePage() {
               rows={7}
               value={evaluationMessage}
               onChange={(e) => setEvaluationMessage(e.target.value)}
-              placeholder="Nhập câu hỏi test từ khách..."
+              placeholder="Nhập câu hỏi kiểm thử từ khách..."
             />
           </label>
           <label className="ai-admin-field">
@@ -1667,7 +1670,7 @@ export default function AiChatbotKnowledgePage() {
               rows={4}
               value={evaluationExpected}
               onChange={(e) => setEvaluationExpected(e.target.value)}
-              placeholder="Kỳ vọng: trả lời menu, đề xuất handoff, không trả lời ngoài phạm vi..."
+              placeholder="Kỳ vọng: trả lời về menu, đề xuất chuyển nhân viên, không trả lời ngoài phạm vi..."
             />
           </label>
         </form>
@@ -1676,7 +1679,7 @@ export default function AiChatbotKnowledgePage() {
             <header className="ai-admin-panel__header ai-admin-panel__header--compact">
               <div>
                 <p className="ai-admin-eyebrow">Kết quả</p>
-                <h3>Kết quả test</h3>
+                <h3>Kết quả kiểm thử</h3>
               </div>
             </header>
             {!Array.isArray(evalResult) ? (
@@ -1708,9 +1711,9 @@ export default function AiChatbotKnowledgePage() {
       <aside className="ai-admin-panel">
         <header className="ai-admin-panel__header ai-admin-panel__header--compact">
           <div>
-            <p className="ai-admin-eyebrow">Case kiểm thử</p>
-            <h3>Các case đánh giá</h3>
-            <p>{evalCases.length} case trong bộ kiểm thử.</p>
+            <p className="ai-admin-eyebrow">Câu hỏi kiểm thử</p>
+            <h3>Các câu hỏi đánh giá</h3>
+            <p>{evalCases.length} câu hỏi trong bộ kiểm thử.</p>
           </div>
         </header>
         <div className="ai-admin-eval-cases">
@@ -1727,7 +1730,7 @@ export default function AiChatbotKnowledgePage() {
             </ul>
           ) : (
             <EmptyState
-              title="Chưa có test case"
+              title="Chưa có câu hỏi kiểm thử"
               description="Lưu câu hỏi từ playground để tạo bộ kiểm thử hồi quy."
             />
           )}
