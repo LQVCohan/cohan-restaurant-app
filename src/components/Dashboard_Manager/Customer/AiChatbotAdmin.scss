@@ -19,8 +19,16 @@
   padding: clamp(18px, 2.2vw, 30px);
   color: var(--ai-text);
   background:
-    radial-gradient(circle at 12% 4%, rgba(125, 91, 56, 0.12), transparent 28rem),
-    radial-gradient(circle at 88% 0%, rgba(237, 225, 210, 0.72), transparent 32rem),
+    radial-gradient(
+      circle at 12% 4%,
+      rgba(125, 91, 56, 0.12),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 88% 0%,
+      rgba(237, 225, 210, 0.72),
+      transparent 32rem
+    ),
     linear-gradient(180deg, #fbf7f1 0%, var(--ai-bg) 48%, #fbfaf7 100%);
   border-radius: 28px;
   font-variant-numeric: tabular-nums;
@@ -42,7 +50,9 @@
 .ai-admin-notice {
   border: 1px solid var(--ai-line);
   background: var(--ai-surface);
-  box-shadow: var(--ai-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow:
+    var(--ai-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
 }
 
@@ -144,7 +154,10 @@
   line-height: 1.45;
   outline: none;
   padding: 11px 13px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .ai-admin-field textarea,
@@ -223,7 +236,12 @@
   font-weight: 820;
   min-height: 38px;
   padding: 9px 13px;
-  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
   white-space: nowrap;
 }
 
@@ -318,7 +336,11 @@
   align-items: flex-start;
   padding: 18px;
   border-bottom: 1px solid var(--ai-line);
-  background: linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(245, 239, 230, 0.82));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 253, 248, 0.92),
+    rgba(245, 239, 230, 0.82)
+  );
 }
 
 .ai-admin-panel__header--compact {
@@ -379,7 +401,11 @@
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 12px 30px rgba(85, 64, 43, 0.06);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .ai-admin-card:hover {
@@ -391,7 +417,9 @@
 
 .ai-admin-card.is-selected {
   border-color: rgba(95, 66, 41, 0.42);
-  box-shadow: 0 0 0 3px rgba(125, 91, 56, 0.1), 0 18px 36px rgba(85, 64, 43, 0.1);
+  box-shadow:
+    0 0 0 3px rgba(125, 91, 56, 0.1),
+    0 18px 36px rgba(85, 64, 43, 0.1);
 }
 
 .ai-admin-card__checkbox {
@@ -815,7 +843,9 @@
   border: 1px solid var(--ai-line);
   border-radius: 26px;
   background: var(--ai-surface);
-  box-shadow: var(--ai-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow:
+    var(--ai-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
   overflow: hidden;
 }
@@ -823,7 +853,11 @@
 .ai-analytics-card__header {
   padding: 18px;
   border-bottom: 1px solid var(--ai-line);
-  background: linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(245, 239, 230, 0.82));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 253, 248, 0.92),
+    rgba(245, 239, 230, 0.82)
+  );
 }
 
 .ai-analytics-card__header h3 {
@@ -859,7 +893,9 @@
   border: 1px solid var(--ai-line);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.52);
-  transition: background 0.18s ease, border-color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .ai-analytics-list__item:hover {
