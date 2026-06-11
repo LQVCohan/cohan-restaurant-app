@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { AiChatConversation, ChatThread } from "../../../models/index.js";
+import { PERMISSIONS } from "../../constants/permissions.js";
+import { requireRestaurantPermission } from "../auth/authorization.service.js";
 
 const CLOSURE_MESSAGE = "Phiên hỗ trợ đã được đánh dấu là đã xử lý.";
 const GUEST_NOTICE = "Nhân viên đã kết thúc phiên hỗ trợ.";
@@ -35,7 +37,7 @@ const canAccessThread = (thread, user) => {
 const sanitizeNote = (value) => String(value || "").replace(/\s+/g, " ").trim().slice(0, 300);
 const preview = (text, max = 140) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
 
-export async function resolveRestaurantChatbotHandoff({ input, user, io } = {}) {
+export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } = {}) {
   if (!(user?.id || user?._id)) {
     const err = new Error("Unauthorized");
     err.code = "UNAUTHORIZED";
@@ -58,6 +60,12 @@ export async function resolveRestaurantChatbotHandoff({ input, user, io } = {}) 
   if (!conversation) {
     return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
   }
+
+  await requireRestaurantPermission(
+    ctx || { user },
+    conversation.restaurantId,
+    PERMISSIONS.AI_CHATBOT_HANDOFF,
+  );
 
   const isClosed = conversation.status === "closed";
   const isHandoffRequested = conversation.status === "handoff_requested";
