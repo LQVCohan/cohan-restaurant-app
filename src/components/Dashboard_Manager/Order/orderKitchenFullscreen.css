@@ -1,14 +1,11 @@
-.manager-layout:has(.om-container--focus) {
-  grid-template-columns: minmax(0, 1fr);
-  --sidebar-width: 0px;
+.om-container--focus {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  width: 100vw;
+  height: 100dvh;
 }
 
-.manager-layout:has(.om-container--focus) .sidebar,
-.manager-layout:has(.om-container--focus) .sidebar-overlay,
-.manager-layout:has(.om-container--focus) .manager-layout__header {
-  display: none;
+.om-container--focus .om-content {
+  padding-left: max(20px, env(safe-area-inset-left));
 }
-
-.manager-layout:has(.om-container--focus) .manager-layout__main,
-.manager-layout:has(.om-container--focus) .manager-layout__content,
-.manager-layout:has(.om-container--focus)
