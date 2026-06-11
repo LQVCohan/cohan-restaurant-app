@@ -34,6 +34,37 @@ const daysAgoIso = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).t
 const formatPct = (v) => `${(Number(v || 0) * 100).toFixed(1)}%`;
 const formatNum = (v) => new Intl.NumberFormat("vi-VN").format(Number(v || 0));
 
+// Format time window to human-readable Vietnamese
+const formatWindowMs = (windowMs) => {
+  const ms = Number(windowMs || 0);
+  if (ms < 60000) return `${Math.round(ms / 1000)} giây`;
+  if (ms < 3600000) return `${Math.round(ms / 60000)} phút`;
+  return `${Math.round(ms / 3600000)} giờ`;
+};
+
+// Rate limit action labels in Vietnamese
+const rateLimitLabels = {
+  askAiChatbot: "Hỏi AI",
+  requestRestaurantChatbotHandoff: "Yêu cầu nhân viên hỗ trợ",
+  sendRestaurantChatbotHandoffMessage: "Gửi tin nhắn khách",
+  submitAiChatbotAnswerFeedback: "Phản hồi AI cho khách",
+  joinRestaurantChatbotConversation: "Tham gia hội thoại",
+};
+
+// Risky signals map
+const riskySignalLabels = {
+  FALLBACK_SPIKE: "Tăng câu trả lời chưa chắc chắn",
+  NOT_HELPFUL_SPIKE: "Tăng phản hồi chưa hài lòng",
+  PENDING_SUGGESTION_BACKLOG: "Gợi ý tri thức còn tồn đọng",
+  SAFETY_BLOCK_SPIKE: "Tăng lượt chặn an toàn",
+};
+
+// Quality queue map
+const qualityQueueLabels = {
+  fallback_response: "Câu trả lời cần rà soát",
+  pending_suggestion: "Gợi ý tri thức mới",
+};
+
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
   const {
@@ -67,8 +98,8 @@ export default function AiChatbotAnalyticsPage() {
     <section className="customer-analytics-page ai-admin-page ai-admin-page--analytics">
       <section className="customer-analytics-hero ai-admin-hero">
         <div>
-          <p className="customer-analytics-hero__eyebrow ai-admin-eyebrow">AI Chatbot Analytics</p>
-          <h2>AI Chatbot Analytics</h2>
+          <p className="customer-analytics-hero__eyebrow ai-admin-eyebrow">Thống kê AI</p>
+          <h2>Phân tích Chatbot AI</h2>
           <p>Theo dõi mức sử dụng chatbot, handoff và chất lượng phản hồi theo dạng tổng hợp.</p>
         </div>
 
@@ -103,35 +134,113 @@ export default function AiChatbotAnalyticsPage() {
             <article className="customer-overview-card ai-admin-analytics-card"><h4>Đang chat AI</h4><p>{formatNum(m.openConversations)}</p></article>
             <article className="customer-overview-card ai-admin-analytics-card"><h4>Handoff đang xử lý</h4><p>{formatNum(m.handoffRequested)}</p></article>
             <article className="customer-overview-card ai-admin-analytics-card"><h4>Handoff đã xử lý</h4><p>{formatNum(m.resolvedHandoffs)}</p></article>
-            <article className="customer-overview-card ai-admin-analytics-card"><h4>Fallback / low confidence</h4><p>{formatNum(m.fallbackResponses)} / {formatNum(m.lowConfidenceResponses)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Câu trả lời chưa chắc chắn</h4><p>{formatNum(m.fallbackResponses)} / {formatNum(m.lowConfidenceResponses)}</p></article>
             <article className="customer-overview-card ai-admin-analytics-card"><h4>Tỷ lệ chuyển handoff</h4><p>{formatPct(m.handoffConversionRate)}</p></article>
-            <article className="customer-overview-card ai-admin-analytics-card"><h4>Pending suggestions</h4><p>{formatNum(m.pendingSuggestions)}</p></article>
-            <article className="customer-overview-card ai-admin-analytics-card"><h4>Not helpful feedback</h4><p>{formatNum(m.notHelpfulFeedback)}</p></article>
-            <article className="customer-overview-card ai-admin-analytics-card"><h4>Active safety rules</h4><p>{formatNum(m.activeSafetyRules)}</p></article>
-            <article className="customer-overview-card ai-admin-analytics-card"><h4>Evaluation cases</h4><p>{formatNum(m.evaluationCaseCount)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Gợi ý chờ duyệt</h4><p>{formatNum(m.pendingSuggestions)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Phản hồi chưa hài lòng</h4><p>{formatNum(m.notHelpfulFeedback)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Quy tắc an toàn đang bật</h4><p>{formatNum(m.activeSafetyRules)}</p></article>
+            <article className="customer-overview-card ai-admin-analytics-card"><h4>Bộ câu hỏi kiểm thử</h4><p>{formatNum(m.evaluationCaseCount)}</p></article>
             <article className="customer-overview-card ai-admin-analytics-card"><h4>Thời gian xử lý handoff TB</h4><p>{m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}</p></article>
           </div>
 
           <section className="customer-analytics-layout-grid">
-            <article className="customer-analytics-panel">
-              <h3>Top intents</h3>
-              {m.topIntents?.length ? m.topIntents.map((it) => <div key={it.intent}>{it.intent}: {formatNum(it.count)}</div>) : <p>Không có dữ liệu</p>}
+            <article className="customer-analytics-panel ai-analytics-card">
+              <header className="ai-analytics-card__header">
+                <h3>Chủ đề được hỏi nhiều</h3>
+                <p>Các intent hàng đầu từ người dùng</p>
+              </header>
+              {m.topIntents?.length ? (
+                <ul className="ai-analytics-list">
+                  {m.topIntents.map((it) => (
+                    <li key={it.intent} className="ai-analytics-list__item">
+                      <span className="ai-analytics-list__label">{it.intent}</span>
+                      <span className="ai-analytics-list__value">{formatNum(it.count)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="ai-analytics-empty">Không có dữ liệu</p>
+              )}
             </article>
-            <article className="customer-analytics-panel">
-              <h3>Messages by role</h3>
-              {m.messagesByRole?.length ? m.messagesByRole.map((it) => <div key={it.role}>{it.role}: {formatNum(it.count)}</div>) : <p>Không có dữ liệu</p>}
+
+            <article className="customer-analytics-panel ai-analytics-card">
+              <header className="ai-analytics-card__header">
+                <h3>Lượt nhắn theo nguồn</h3>
+                <p>Phân bố tin nhắn theo vai trò</p>
+              </header>
+              {m.messagesByRole?.length ? (
+                <ul className="ai-analytics-list">
+                  {m.messagesByRole.map((it) => (
+                    <li key={it.role} className="ai-analytics-list__item">
+                      <span className="ai-analytics-list__label">{it.role}</span>
+                      <span className="ai-analytics-list__value">{formatNum(it.count)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="ai-analytics-empty">Không có dữ liệu</p>
+              )}
             </article>
-            <article className="customer-analytics-panel">
-              <h3>Rate-limit policy/config</h3>
-              {m.rateLimitStatus?.length ? m.rateLimitStatus.map((it) => <div key={it.action}>{it.action}: {it.max}/{it.windowMs}ms</div>) : <p>Không có dữ liệu</p>}
+
+            <article className="customer-analytics-panel ai-analytics-card">
+              <header className="ai-analytics-card__header">
+                <h3>Giới hạn sử dụng AI</h3>
+                <p>Rate limit policy và chỉ tiêu sử dụng</p>
+              </header>
+              {m.rateLimitStatus?.length ? (
+                <ul className="ai-analytics-list">
+                  {m.rateLimitStatus.map((it) => (
+                    <li key={it.action} className="ai-analytics-list__item">
+                      <span className="ai-analytics-list__label">{rateLimitLabels[it.action] || it.action}</span>
+                      <span className="ai-analytics-list__value">{it.max} lượt / {formatWindowMs(it.windowMs)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="ai-analytics-empty">Không có dữ liệu</p>
+              )}
             </article>
-            <article className="customer-analytics-panel">
-              <h3>Risky signals</h3>
-              {m.riskySignals?.length ? m.riskySignals.map((it) => <div key={it.code}>{it.code}: {it.level} ({formatNum(it.count)})</div>) : <p>Không có dữ liệu</p>}
+
+            <article className="customer-analytics-panel ai-analytics-card">
+              <header className="ai-analytics-card__header">
+                <h3>Tín hiệu cần chú ý</h3>
+                <p>Các vấn đề cần xem xét</p>
+              </header>
+              {m.riskySignals?.length ? (
+                <ul className="ai-analytics-list">
+                  {m.riskySignals.map((it) => (
+                    <li key={it.code} className="ai-analytics-list__item">
+                      <span className="ai-analytics-list__label">{riskySignalLabels[it.code] || it.code}</span>
+                      <span className="ai-analytics-list__value ai-analytics-list__value--warn">{it.level} ({formatNum(it.count)})</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="ai-analytics-empty">Không có tín hiệu cảnh báo</p>
+              )}
             </article>
-            <article className="customer-analytics-panel">
-              <h3>Recent quality queue</h3>
-              {m.recentQualityQueue?.length ? m.recentQualityQueue.map((it) => <div key={it.id}>{it.type}: {it.label}</div>) : <p>Không có dữ liệu</p>}
+
+            <article className="customer-analytics-panel ai-analytics-card ai-analytics-card--full">
+              <header className="ai-analytics-card__header">
+                <h3>Việc cần rà soát</h3>
+                <p>Danh sách chất lượng gần đây cần kiểm tra</p>
+              </header>
+              {m.recentQualityQueue?.length ? (
+                <ul className="ai-analytics-list">
+                  {m.recentQualityQueue.map((it) => (
+                    <li key={it.id} className="ai-analytics-list__item ai-analytics-list__item--detail">
+                      <div className="ai-analytics-list__detail">
+                        <span className="ai-analytics-list__label">{qualityQueueLabels[it.type] || it.type}</span>
+                        <span className="ai-analytics-list__subtitle">{it.label}</span>
+                        {it.detail && <p className="ai-analytics-list__preview">{it.detail}</p>}
+                      </div>
+                      <span className="ai-analytics-list__meta">{new Date(it.createdAt).toLocaleDateString('vi-VN')}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="ai-analytics-empty">Không có mục cần rà soát</p>
+              )}
             </article>
           </section>
         </>
