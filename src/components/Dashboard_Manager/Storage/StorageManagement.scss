@@ -1,15 +1,11 @@
 // src/components/Dashboard_Manager/Storage/StorageManagement.scss
 
-$ink: #26313d;
-$muted: #6b7280;
-$line: rgba(139, 112, 78, 0.16);
-$panel: rgba(255, 252, 246, 0.86);
-$panel-2: #faf4ea;
-$accent: #9a784f;
-$charcoal: #2f3a46;
-$green: #2f7d68;
-$amber: #a76628;
-$red: #a94a42;
-
 .storage-management {
   min-height: 100dvh;
+  padding-bottom: 44px;
+  overflow-x: clip;
+  color: #26313d;
+  font-family: "Geist", "Outfit", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #f7f1e8 0%, #f5efe5 52%, #f3ede3 100%);
+
+  *, *::
