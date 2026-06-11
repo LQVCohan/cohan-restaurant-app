@@ -2,9 +2,12 @@ import mongoose from "mongoose";
 import { AiChatConversation, AiChatMessage, AiChatbotKnowledgeItem, AiChatbotKnowledgeSuggestion, AiChatbotAnswerFeedback, AiChatbotSafetyRule, AiChatbotEvaluationCase } from "../../../models/index.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES } from "./restaurantChatbotRateLimit.service.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
-import { requireRestaurantPermission, requirePermission } from "../auth/authorization.service.js";
+import {
+  requireAnyPermission,
+  requireAnyRestaurantPermission,
+} from "../auth/authorization.service.js";
 
-const ALLOWED_ROLES = new Set(["admin", "manager", "staff", "hr", "accountant", "supervisor"]);
+const MAX_ANALYTICS_RANGE_DAYS = 180;
 
 const toSafeDate = (v) => {
   if (!v) return null;
@@ -16,10 +19,18 @@ const parseRange = ({ from, to } = {}) => {
   const now = new Date();
   const parsedTo = toSafeDate(to) || now;
   const parsedFrom = toSafeDate(from) || new Date(parsedTo.getTime() - 7 * 24 * 60 * 60 * 1000);
-  return parsedFrom <= parsedTo ? { from: parsedFrom, to: parsedTo } : { from: parsedTo, to: parsedFrom };
-};
+  const range = parsedFrom <= parsedTo ? { from: parsedFrom, to: parsedTo } : { from: parsedTo, to: parsedFrom };
+  const days = Math.ceil((range.to.getTime() - range.from.getTime()) / (24 * 60 * 60 * 1000));
 
-const roleSlug = (user) => String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase();
+  if (days > MAX_ANALYTICS_RANGE_DAYS) {
+    throw Object.assign(
+      new Error("Khoảng thời gian analytics tối đa 180 ngày"),
+      { code: "BAD_USER_INPUT" },
+    );
+  }
+
+  return range;
+};
 
 const normalizeRestaurantId = (restaurantId) => {
   if (!restaurantId) return null;
@@ -41,31 +52,23 @@ const toRateLimitStatus = () =>
   }));
 
 async function enforceAnalyticsAccess({ ctx, restaurantId }) {
-  const role = roleSlug(ctx?.user);
   if (!ctx?.user?.id && !ctx?.user?._id) {
     const err = new Error("UNAUTHENTICATED");
     err.code = "UNAUTHENTICATED";
     throw err;
   }
-  if (!ALLOWED_ROLES.has(role)) {
-    const err = new Error("FORBIDDEN");
-    err.code = "FORBIDDEN";
-    throw err;
-  }
 
-  if (role === "admin") {
-    if (restaurantId) await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.REPORT_READ);
-    else await requirePermission(ctx, PERMISSIONS.REPORT_READ);
+  const permissions = [
+    PERMISSIONS.AI_CHATBOT_ANALYTICS_READ,
+    PERMISSIONS.AI_CHATBOT_READ,
+  ];
+
+  if (restaurantId) {
+    await requireAnyRestaurantPermission(ctx, restaurantId, permissions);
     return;
   }
 
-  if (!restaurantId) {
-    const err = new Error("BAD_USER_INPUT: restaurantId is required");
-    err.code = "BAD_USER_INPUT";
-    throw err;
-  }
-
-  await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.REPORT_READ);
+  await requireAnyPermission(ctx, permissions);
 }
 
 export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
@@ -163,7 +166,6 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
       ? resolutionMinutes.reduce((s, n) => s + n, 0) / resolutionMinutes.length
       : null;
 
-
   const safetyBlockSpike = await AiChatMessage.countDocuments({ ...msgFilter, intent: "safety" });
 
   const riskySignals = [
@@ -194,9 +196,27 @@ export async function getRestaurantChatbotAnalytics({ input, ctx } = {}) {
     rateLimitStatus: toRateLimitStatus(),
     riskySignals,
     recentQualityQueue: [
-      ...recentFeedbackRows.map((r) => ({ id: String(r._id), type: "not_helpful_feedback", label: String(r.question || "Not helpful feedback"), detail: String(r.reason || ""), createdAt: r.createdAt })),
-      ...recentSuggestionRows.map((r) => ({ id: String(r._id), type: "pending_suggestion", label: String(r.question || "Pending suggestion"), detail: String(r.triggerType || ""), createdAt: r.updatedAt || r.lastAskedAt || r.createdAt })),
-      ...recentFallbackRows.map((r) => ({ id: String(r._id), type: "fallback_response", label: String(r.content || "Fallback response").slice(0, 120), detail: String(r.intent || ""), createdAt: r.createdAt })),
+      ...recentFeedbackRows.map((r) => ({
+        id: String(r._id),
+        type: "not_helpful_feedback",
+        label: "Feedback không hữu ích cần xem lại",
+        detail: r.status ? `Trạng thái: ${String(r.status)}` : "",
+        createdAt: r.createdAt,
+      })),
+      ...recentSuggestionRows.map((r) => ({
+        id: String(r._id),
+        type: "pending_suggestion",
+        label: "Knowledge suggestion đang chờ duyệt",
+        detail: r.triggerType ? `Nguồn: ${String(r.triggerType)}` : "",
+        createdAt: r.updatedAt || r.lastAskedAt || r.createdAt,
+      })),
+      ...recentFallbackRows.map((r) => ({
+        id: String(r._id),
+        type: "fallback_response",
+        label: "Fallback response cần cải thiện tri thức",
+        detail: r.intent ? `Intent: ${String(r.intent)}` : "",
+        createdAt: r.createdAt,
+      })),
     ].sort((a,b)=> new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,10),
   };
 }
