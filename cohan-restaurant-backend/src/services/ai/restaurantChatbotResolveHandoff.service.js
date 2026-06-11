@@ -61,12 +61,6 @@ export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } =
     return { ok: false, conversationId: null, chatThreadId: null, status: null, alreadyClosed: false, message: "Không thể xử lý yêu cầu." };
   }
 
-  await requireRestaurantPermission(
-    ctx || { user },
-    conversation.restaurantId,
-    PERMISSIONS.AI_CHATBOT_HANDOFF,
-  );
-
   const isClosed = conversation.status === "closed";
   const isHandoffRequested = conversation.status === "handoff_requested";
   if (!isClosed && !isHandoffRequested) {
@@ -88,6 +82,13 @@ export async function resolveRestaurantChatbotHandoff({ input, user, ctx, io } =
     err.code = "FORBIDDEN";
     throw err;
   }
+
+  const scopedRestaurantId = conversation.restaurantId || thread?.restaurantId;
+  await requireRestaurantPermission(
+    ctx || { user },
+    scopedRestaurantId,
+    PERMISSIONS.AI_CHATBOT_HANDOFF,
+  );
 
   const note = sanitizeNote(input?.resolutionNote);
   const convoClosed = conversation.status === "closed";
