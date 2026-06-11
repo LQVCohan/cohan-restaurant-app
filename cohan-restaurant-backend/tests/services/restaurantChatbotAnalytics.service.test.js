@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PERMISSIONS } from "../../src/constants/permissions.js";
 
 const mocks = vi.hoisted(() => ({
   AiChatConversation: {
@@ -16,8 +17,8 @@ const mocks = vi.hoisted(() => ({
   AiChatbotAnswerFeedback: { countDocuments: vi.fn(), find: vi.fn() },
   AiChatbotSafetyRule: { countDocuments: vi.fn() },
   AiChatbotEvaluationCase: { countDocuments: vi.fn() },
-  requireRestaurantPermission: vi.fn(),
-  requirePermission: vi.fn(),
+  requireAnyRestaurantPermission: vi.fn(),
+  requireAnyPermission: vi.fn(),
 }));
 
 vi.mock("../../models/index.js", () => ({
@@ -31,15 +32,19 @@ vi.mock("../../models/index.js", () => ({
 }));
 
 vi.mock("../../src/services/auth/authorization.service.js", () => ({
-  requireRestaurantPermission: mocks.requireRestaurantPermission,
-  requirePermission: mocks.requirePermission,
+  requireAnyRestaurantPermission: mocks.requireAnyRestaurantPermission,
+  requireAnyPermission: mocks.requireAnyPermission,
 }));
 
 import { getRestaurantChatbotAnalytics } from "../../src/services/ai/restaurantChatbotAnalytics.service.js";
 
+const restaurantId = "507f1f77bcf86cd799439011";
+
 describe("restaurantChatbotAnalytics service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.requireAnyRestaurantPermission.mockResolvedValue(true);
+    mocks.requireAnyPermission.mockResolvedValue(true);
     mocks.AiChatConversation.countDocuments.mockResolvedValueOnce(10).mockResolvedValueOnce(4).mockResolvedValueOnce(2).mockResolvedValueOnce(3);
     mocks.AiChatMessage.countDocuments.mockResolvedValueOnce(40).mockResolvedValueOnce(5).mockResolvedValueOnce(7);
     mocks.AiChatMessage.countDocuments.mockResolvedValueOnce(2);
@@ -57,7 +62,7 @@ describe("restaurantChatbotAnalytics service", () => {
   });
 
   it("returns aggregated metrics and policy config", async () => {
-    const res = await getRestaurantChatbotAnalytics({ input: { restaurantId: "507f1f77bcf86cd799439011" }, ctx: { user: { id: "u1", roleName: "manager" } } });
+    const res = await getRestaurantChatbotAnalytics({ input: { restaurantId }, ctx: { user: { id: "u1", roleName: "manager" } } });
     expect(res.totalConversations).toBe(10);
     expect(res.totalMessages).toBe(40);
     expect(res.handoffConversionRate).toBeCloseTo(0.2);
@@ -73,15 +78,34 @@ describe("restaurantChatbotAnalytics service", () => {
     expect(Array.isArray(res.riskySignals)).toBe(true);
     expect(res.riskySignals.some((s) => s.code === "SAFETY_BLOCK_SPIKE")).toBe(true);
     expect(Array.isArray(res.recentQualityQueue)).toBe(true);
+    expect(res.recentQualityQueue.map((item) => item.label)).not.toContain("Q");
   });
 
-  it("blocks guest role", async () => {
-    await expect(getRestaurantChatbotAnalytics({ input: {}, ctx: { user: { id: "u1", roleName: "customer" } } })).rejects.toThrow("FORBIDDEN");
+  it("uses global AI analytics permissions when restaurantId is omitted", async () => {
+    await getRestaurantChatbotAnalytics({ input: {}, ctx: { user: { id: "u1", roleName: "manager" } } });
+    expect(mocks.requireAnyPermission).toHaveBeenCalledWith(expect.any(Object), [
+      PERMISSIONS.AI_CHATBOT_ANALYTICS_READ,
+      PERMISSIONS.AI_CHATBOT_READ,
+    ]);
   });
 
-  it("requires REPORT_READ permission for restaurant-scoped analytics", async () => {
-    await getRestaurantChatbotAnalytics({ input: { restaurantId: "507f1f77bcf86cd799439011" }, ctx: { user: { id: "u1", roleName: "manager" } } });
-    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(expect.any(Object), "507f1f77bcf86cd799439011", "report.read");
+  it("requires AI analytics permission for restaurant-scoped analytics", async () => {
+    await getRestaurantChatbotAnalytics({ input: { restaurantId }, ctx: { user: { id: "u1", roleName: "manager" } } });
+    expect(mocks.requireAnyRestaurantPermission).toHaveBeenCalledWith(expect.any(Object), restaurantId, [
+      PERMISSIONS.AI_CHATBOT_ANALYTICS_READ,
+      PERMISSIONS.AI_CHATBOT_READ,
+    ]);
+  });
+
+  it("rejects analytics ranges over 180 days", async () => {
+    await expect(getRestaurantChatbotAnalytics({
+      input: {
+        restaurantId,
+        from: "2025-01-01T00:00:00.000Z",
+        to: "2025-12-31T00:00:00.000Z",
+      },
+      ctx: { user: { id: "u1", roleName: "manager" } },
+    })).rejects.toMatchObject({ code: "BAD_USER_INPUT" });
   });
 
 });
