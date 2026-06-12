@@ -176,7 +176,6 @@ function EmptyReport() {
 
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
-  const [showAllReviewItems, setShowAllReviewItems] = useState(false);
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -207,9 +206,7 @@ export default function AiChatbotAnalyticsPage() {
 
   const m = data?.aiChatbotAnalytics;
   const reviewItems = m?.recentQualityQueue || [];
-  const visibleReviewItems = showAllReviewItems
-    ? reviewItems
-    : reviewItems.slice(0, 3);
+  const reviewPreviewItems = reviewItems.slice(0, 2);
   const reviewCount = Number(m?.fallbackResponses || 0) + Number(m?.pendingSuggestions || 0) + Number(m?.notHelpfulFeedback || 0);
 
   return (
@@ -309,6 +306,48 @@ export default function AiChatbotAnalyticsPage() {
             </article>
           </div>
 
+          {reviewItems.length ? (
+            <details className="ai-admin-review-popover">
+              <summary>
+                <span className="ai-admin-chip ai-admin-chip--warning">
+                  {formatNum(reviewItems.length)} mục cần rà soát
+                </span>
+                <span className="ai-admin-review-popover__title">Việc cần rà soát</span>
+                <span className="ai-admin-review-popover__hint">
+                  {reviewPreviewItems.map((item) => qualityItemTitle(item)).join(" · ")}
+                </span>
+                <span className="ai-admin-review-popover__action">Mở danh sách</span>
+              </summary>
+              <div className="ai-admin-review-popover__panel">
+                <div className="ai-admin-review-popover__header">
+                  <div>
+                    <p className="ai-admin-eyebrow">Quality review</p>
+                    <h3>Việc cần rà soát</h3>
+                    <p>Danh sách nội dung cần kiểm tra để cải thiện chất lượng tư vấn.</p>
+                  </div>
+                  <span>Nhấn lại thanh tiêu đề để thu gọn</span>
+                </div>
+                <ul className="ai-admin-review-list__items ai-admin-review-list__items--popover">
+                  {reviewItems.map((it) => (
+                    <li key={it.id} className="ai-admin-review-item">
+                      <div>
+                        <span className="ai-admin-chip ai-admin-chip--warning">
+                          {qualityQueueLabels[it.type] || "Cần rà soát"}
+                        </span>
+                        <h4>{qualityItemTitle(it)}</h4>
+                        <p>{qualityItemDescription(it)}</p>
+                        <small className="ai-admin-review-item__meta">
+                          {qualityItemMeta(it)}
+                        </small>
+                      </div>
+                      <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </details>
+          ) : null}
+
           <section className="ai-admin-insight-grid">
             <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
@@ -404,51 +443,6 @@ export default function AiChatbotAnalyticsPage() {
               )}
             </article>
           </section>
-
-          <article className="customer-analytics-panel ai-admin-control-card ai-admin-review-list">
-            <header className="ai-analytics-card__header ai-admin-review-list__header">
-              <div>
-                <h3>Việc cần rà soát</h3>
-                <p>Các nội dung có thể ảnh hưởng đến chất lượng tư vấn.</p>
-              </div>
-              {reviewItems.length > 3 ? (
-                <button
-                  type="button"
-                  className="ai-admin-link-button"
-                  onClick={() => setShowAllReviewItems((current) => !current)}
-                >
-                  {showAllReviewItems
-                    ? "Thu gọn"
-                    : `Xem tất cả (${formatNum(reviewItems.length)})`}
-                </button>
-              ) : null}
-            </header>
-            {visibleReviewItems.length ? (
-              <ul className="ai-admin-review-list__items">
-                {visibleReviewItems.map((it) => (
-                  <li key={it.id} className="ai-admin-review-item">
-                    <div>
-                      <span className="ai-admin-chip ai-admin-chip--warning">
-                        {qualityQueueLabels[it.type] || "Cần rà soát"}
-                      </span>
-                      <h4>{qualityItemTitle(it)}</h4>
-                      <p>{qualityItemDescription(it)}</p>
-                      <small className="ai-admin-review-item__meta">
-                        {qualityItemMeta(it)}
-                      </small>
-                    </div>
-                    <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="ai-admin-empty ai-admin-empty--soft">
-                <div className="ai-admin-empty__icon">✓</div>
-                <h4>Chưa có mục cần rà soát</h4>
-                <p>Khi có câu trả lời cần cải thiện, danh sách sẽ hiển thị tại đây.</p>
-              </div>
-            )}
-          </article>
 
           <details className="ai-admin-collapsible">
             <summary>Chi tiết kỹ thuật</summary>
