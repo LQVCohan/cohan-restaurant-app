@@ -51,6 +51,7 @@ export function PrinterSettingsModal({
 
   const [isTesting, setIsTesting] = useState(false);
   const [testFeedback, setTestFeedback] = useState(null);
+  const [touched, setTouched] = useState({ name: false, ip: false });
   useModalKeyboardClose({ isOpen, onClose, disabled: isTesting });
 
   useEffect(() => {
@@ -63,14 +64,33 @@ export function PrinterSettingsModal({
         location: printer?.location || "kitchen",
       });
       setTestFeedback(null);
+      setTouched({ name: false, ip: false });
     }
   }, [isOpen, printer]);
 
   if (!isOpen) return null;
 
   const change = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const markTouched = (field) =>
+    setTouched((current) => ({ ...current, [field]: true }));
+
+  const nameRequired = form.name.trim().length > 0;
+  const ipRequired = form.ip.trim().length > 0;
+  const canSubmit = nameRequired && ipRequired;
+  const disabledTitle = "Nhập tên và IP để lưu cấu hình.";
+  const disabledTestTitle = "Nhập tên và IP để test mô phỏng.";
 
   const handleTest = async () => {
+    setTouched({ name: true, ip: true });
+    if (!canSubmit) {
+      setTestFeedback({
+        ok: false,
+        mode: "validation",
+        message: "Nhập tên thiết bị và IP LAN trước khi test mô phỏng.",
+      });
+      return;
+    }
+
     setIsTesting(true);
     try {
       const result = await onTest?.(form);
@@ -116,7 +136,8 @@ export function PrinterSettingsModal({
             <div>
               <h3>{printer ? "Cấu hình thiết bị" : "Thêm máy in mới"}</h3>
               <p>
-                Thiết lập thông số kết nối và vị trí; test hiện là mô phỏng.
+                Thiết lập thông số kết nối và vị trí; test hiện là mô phỏng,
+                chưa handshake phần cứng thật.
               </p>
             </div>
           </div>
@@ -135,10 +156,17 @@ export function PrinterSettingsModal({
                 <input
                   value={form.name}
                   onChange={(e) => change("name", e.target.value)}
+                  onBlur={() => markTouched("name")}
                   placeholder="Ví dụ: Máy in Bếp Nóng"
+                  aria-invalid={touched.name && !nameRequired}
                   autoFocus
                 />
               </div>
+              {touched.name && !nameRequired && (
+                <small className={s.fieldError}>
+                  Tên thiết bị là bắt buộc.
+                </small>
+              )}
             </div>
 
             <div className={s.group}>
@@ -148,10 +176,19 @@ export function PrinterSettingsModal({
                 <input
                   value={form.ip}
                   onChange={(e) => change("ip", e.target.value)}
+                  onBlur={() => markTouched("ip")}
                   placeholder="192.168.1.xxx"
                   className={s.monoFont}
+                  aria-invalid={touched.ip && !ipRequired}
                 />
               </div>
+              <small className={s.helperText}>
+                Demo chấp nhận IP LAN mẫu như 192.168.1.50. Test hiện là mô
+                phỏng, chưa handshake phần cứng.
+              </small>
+              {touched.ip && !ipRequired && (
+                <small className={s.fieldError}>IP LAN là bắt buộc.</small>
+              )}
             </div>
           </div>
 
@@ -201,7 +238,8 @@ export function PrinterSettingsModal({
           <button
             className={`${s.btn} ${s.btnGhost} ${isTesting ? s.loading : ""}`}
             onClick={handleTest}
-            disabled={isTesting}
+            disabled={!canSubmit || isTesting}
+            title={!canSubmit ? disabledTestTitle : "Test cấu hình mô phỏng"}
           >
             {isTesting ? (
               <>Running...</>
@@ -214,7 +252,12 @@ export function PrinterSettingsModal({
 
           <button
             className={`${s.btn} ${s.btnPrimary}`}
-            onClick={() => onSave?.(form)}
+            onClick={() => {
+              setTouched({ name: true, ip: true });
+              if (canSubmit) onSave?.(form);
+            }}
+            disabled={!canSubmit}
+            title={!canSubmit ? disabledTitle : "Lưu cấu hình"}
           >
             <Save size={18} /> Lưu cấu hình
           </button>

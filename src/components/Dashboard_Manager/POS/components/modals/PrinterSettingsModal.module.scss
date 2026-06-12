@@ -115,7 +115,7 @@ $radius: 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-height: 70vh;
+  max-height: min(66vh, 560px);
   overflow-y: auto;
 }
 
@@ -170,6 +170,11 @@ $radius: 16px;
     &:focus {
       border-color: $primary;
       box-shadow: 0 0 0 3px rgba($primary, 0.1);
+    }
+
+    &[aria-invalid="true"] {
+      border-color: #b91c1c;
+      box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.09);
     }
 
     &::placeholder {
@@ -290,7 +295,25 @@ $radius: 16px;
       opacity: 0.7;
       cursor: wait;
     }
+
+    &:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+      transform: none;
+    }
   }
+}
+
+.helperText {
+  color: $text-sub;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.fieldError {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .testFeedback {

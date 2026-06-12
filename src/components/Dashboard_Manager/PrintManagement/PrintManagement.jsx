@@ -17,7 +17,6 @@ import {
   Wifi,
   Activity,
   Trash2,
-  Plus,
   Server,
   Check,
   Power,
@@ -47,6 +46,13 @@ const DEFAULT_TEMPLATES = [
     enabled: true,
     content: "[RECEIPT] {{orderCode}}",
   },
+];
+
+const UC22_DEMO_STEPS = [
+  "Thêm máy in demo",
+  "Test cấu hình mô phỏng",
+  "Gán máy in vào trạm bếp/bar/thu ngân",
+  "Tạo test job và retry nếu lỗi",
 ];
 
 const Q_PRINT_SETTINGS = gql`
@@ -321,7 +327,7 @@ export default function PrintManagement() {
           ok: false,
           mode: "validation",
           message:
-            "Thiếu tên hoặc IP. Đây là bước validate cấu hình, chưa test thiết bị thật.",
+            "Thiếu tên hoặc IP. Đây là bước validate cấu hình, chưa handshake phần cứng.",
         };
       }
 
@@ -330,7 +336,7 @@ export default function PrintManagement() {
           ok: true,
           mode: "validation",
           message:
-            "Máy in chưa lưu DB. Đã validate cấu hình form thành công (simulated), chưa có kiểm tra phần cứng.",
+            "Máy in chưa lưu DB. Đã validate cấu hình form thành công (mô phỏng), chưa handshake phần cứng.",
         };
       }
 
@@ -354,7 +360,7 @@ export default function PrintManagement() {
           mode: "db_simulation",
           message: getPrintSettingActionErrorMessage(
             err,
-            `Test job thất bại: ${err?.message || "unknown error"}`,
+            `Test cấu hình mô phỏng thất bại: ${err?.message || "unknown error"}`,
           ),
         };
       }
@@ -366,7 +372,7 @@ export default function PrintManagement() {
         message:
           job?.status === "completed"
             ? "Đã tạo test job mô phỏng và cập nhật trạng thái từ DB; chưa handshake phần cứng thật."
-            : `Test job thất bại: ${job?.error || "unknown error"}`,
+            : `Test cấu hình mô phỏng thất bại: ${job?.error || "unknown error"}`,
       };
     },
     [editingPrinter, refetch, selectedRestaurantId, testPrint],
@@ -476,13 +482,22 @@ export default function PrintManagement() {
   };
 
   const handleSendTemplateTest = async (templateKey) => {
+    const template = templates.find((item) => item.key === templateKey);
+    if (template && !template.enabled) {
+      setNotice({
+        type: "warning",
+        message: "Bật mẫu phiếu trước khi tạo test job mô phỏng.",
+      });
+      return;
+    }
+
     const targetPrinter =
       printers.find((p) => p.status === "online") || printers[0];
     if (!targetPrinter || !selectedRestaurantId) {
       setNotice({
         type: "warning",
         message:
-          "Cần chọn nhà hàng và có ít nhất một máy in trước khi gửi test print.",
+          "Cần chọn nhà hàng và có ít nhất một máy in trước khi tạo test job mô phỏng.",
       });
       return;
     }
@@ -509,7 +524,7 @@ export default function PrintManagement() {
         type: "error",
         message: getPrintSettingActionErrorMessage(
           err,
-          `Không thể gửi test print: ${err?.message || "Lỗi không xác định"}`,
+          `Không thể tạo test job mô phỏng: ${err?.message || "Lỗi không xác định"}`,
         ),
       });
     }
@@ -529,6 +544,11 @@ export default function PrintManagement() {
     [jobs, printers],
   );
 
+  const receiptTemplate = useMemo(
+    () => templates.find((template) => template.key === "receipt"),
+    [templates],
+  );
+
   const statusText = (status) => {
     if (status === "completed") return "Hoàn tất";
     if (status === "failed") return "Thất bại";
@@ -543,8 +563,9 @@ export default function PrintManagement() {
       <ManagementPageHeader
         eyebrow="PRINT OPERATIONS"
         title="Bảng điều phối in ấn"
-        subtitle="Điều phối thiết bị, ma trận luồng in, mẫu phiếu và hàng đợi print job."
+        subtitle="Thiết bị, trạm in, mẫu phiếu và hàng đợi print job cho demo vận hành nhà hàng."
         icon="🖨️"
+        density="compact"
         stats={[
           {
             id: "printers",
@@ -579,23 +600,21 @@ export default function PrintManagement() {
         }}
       />
 
-      <section className="print-ui__hero" aria-label="Tổng quan vận hành in">
-        {[
-          [
-            "Thiết bị",
-            printerStats.total,
-            `${printerStats.online} online / ${printerStats.offline} offline`,
-          ],
-          ["Jobs đang chờ", printerStats.pending, "Cần theo dõi trong ca"],
-          ["Jobs lỗi", printerStats.failed, "Có thể retry thủ công"],
-          ["Hoàn tất", printerStats.completed, "Đã xử lý thành công"],
-        ].map(([label, value, hint]) => (
-          <article key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-            <small>{hint}</small>
-          </article>
-        ))}
+      <section className="print-ui__demo-flow" aria-label="Luồng demo UC22">
+        <div className="demo-flow__intro">
+          <strong>Luồng demo UC22</strong>
+          <span>
+            Đi theo các bước vận hành in ấn mô phỏng, không handshake phần cứng.
+          </span>
+        </div>
+        <ol className="demo-flow__steps">
+          {UC22_DEMO_STEPS.map((step, index) => (
+            <li key={step}>
+              <span>{index + 1}</span>
+              <p>{step}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {notice ? (
@@ -666,13 +685,13 @@ export default function PrintManagement() {
                     <div className="empty-icon">
                       <Wifi size={32} />
                     </div>
-                    <h4>Chưa có máy in nào</h4>
+                    <h4>Chưa có máy in demo</h4>
                     <p>
-                      Thêm thiết bị demo để gán luồng bếp/bar/thu ngân và gửi
-                      test print mô phỏng.
+                      Thêm thiết bị để gán luồng bếp/bar/thu ngân và tạo print
+                      job mô phỏng.
                     </p>
                     <button type="button" onClick={openAddPrinter}>
-                      Thêm thiết bị
+                      Thêm máy in demo
                     </button>
                   </div>
                 ) : (
@@ -764,6 +783,12 @@ export default function PrintManagement() {
                 <p>Điều hướng lệnh in tự động</p>
               </div>
 
+              {!hasPrinters && (
+                <div className="routing-empty-hint">
+                  Cần thêm ít nhất một máy in để gán luồng.
+                </div>
+              )}
+
               <div className="routing-matrix">
                 {PRINT_STATIONS.map((station) => (
                   <div key={station.id} className="routing-row">
@@ -778,6 +803,10 @@ export default function PrintManagement() {
                     </div>
 
                     <div className="printer-toggles">
+                      {hasPrinters &&
+                        !(stationMap[station.id] || []).length && (
+                          <span className="station-unassigned">Chưa gán</span>
+                        )}
                       {printers.map((printer) => {
                         const isActive = (
                           stationMap[station.id] || []
@@ -804,8 +833,8 @@ export default function PrintManagement() {
                         );
                       })}
                       {!hasPrinters && (
-                        <span className="no-data no-data--compact">
-                          Chưa có máy in để gán luồng
+                        <span className="station-unassigned station-unassigned--waiting">
+                          Đang chờ thiết bị
                         </span>
                       )}
                     </div>
@@ -830,13 +859,20 @@ export default function PrintManagement() {
                     className={`template-card ${template.enabled ? "active" : ""}`}
                   >
                     <div className="template-head">
-                      <strong>{template.name}</strong>
+                      <div>
+                        <strong>{template.name}</strong>
+                        <span
+                          className={`template-status ${template.enabled ? "is-on" : "is-off"}`}
+                        >
+                          {template.enabled ? "Đang bật" : "Đang tắt"}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         className="template-toggle"
                         onClick={() => handleTemplateToggle(template.key)}
                       >
-                        {template.enabled ? "Bật" : "Tắt"}
+                        {template.enabled ? "Tắt mẫu" : "Bật mẫu"}
                       </button>
                     </div>
                     <textarea
@@ -850,18 +886,29 @@ export default function PrintManagement() {
                       type="button"
                       className="template-test"
                       onClick={() => handleSendTemplateTest(template.key)}
-                      disabled={!hasRestaurantSelection || !hasPrinters}
+                      disabled={
+                        !hasRestaurantSelection ||
+                        !hasPrinters ||
+                        !template.enabled
+                      }
                       title={
                         !hasPrinters
-                          ? "Cần thêm máy in trước khi gửi test print mô phỏng"
-                          : "Tạo test job mô phỏng"
+                          ? "Thêm máy in demo trước khi tạo test job"
+                          : !template.enabled
+                            ? "Bật mẫu trước khi tạo test job"
+                            : "Tạo test job mô phỏng"
                       }
                     >
-                      Test cấu hình (mô phỏng)
+                      Tạo test job mô phỏng
                     </button>
                     {!hasPrinters && (
                       <small className="template-card__hint">
-                        Cần có máy in để tạo test job mô phỏng.
+                        Thêm máy in demo trước khi tạo test job.
+                      </small>
+                    )}
+                    {hasPrinters && !template.enabled && (
+                      <small className="template-card__hint">
+                        Bật mẫu trước khi tạo test job.
                       </small>
                     )}
                   </div>
@@ -874,12 +921,32 @@ export default function PrintManagement() {
                 <h3>
                   <Printer size={18} /> Hàng đợi print job
                 </h3>
-                <span className="badge">{jobs.length} jobs</span>
+                <div className="job-header-actions">
+                  <button type="button" onClick={() => refetch?.()}>
+                    Tải lại hàng đợi
+                  </button>
+                  <span className="badge">{jobs.length} jobs</span>
+                </div>
               </div>
 
               {jobs.length === 0 ? (
-                <div className="no-data">
-                  Chưa có print job. Gửi test cấu hình mô phỏng để tạo job demo.
+                <div className="no-data no-data--job">
+                  <h4>Chưa có print job</h4>
+                  <p>Tạo test job mô phỏng từ mẫu phiếu để demo hàng đợi.</p>
+                  {hasPrinters && (
+                    <button
+                      type="button"
+                      onClick={() => handleSendTemplateTest("receipt")}
+                      disabled={!receiptTemplate?.enabled}
+                      title={
+                        receiptTemplate?.enabled
+                          ? "Tạo job từ mẫu hóa đơn"
+                          : "Bật mẫu hóa đơn trước khi tạo job"
+                      }
+                    >
+                      Tạo job từ mẫu hóa đơn
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="jobs-list">
@@ -889,7 +956,11 @@ export default function PrintManagement() {
                         <strong>{job.printType}</strong> •{" "}
                         {job.printerName || job.printerId || "N/A"}
                         <div className="job-meta">
-                          <span>{statusText(job.status)}</span>
+                          <span
+                            className={`job-status job-status--${job.status || "pending"}`}
+                          >
+                            {statusText(job.status)}
+                          </span>
                           <span>
                             {new Date(job.createdAt).toLocaleString("vi-VN")}
                           </span>

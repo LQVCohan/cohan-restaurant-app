@@ -35,6 +35,7 @@
 ## 5. Ghi chú demo
 
 - Test print là mô phỏng.
+- Giao diện UC22 được thiết kế theo hướng demo-first: người quản lý đi qua các bước thêm thiết bị, test mô phỏng, gán trạm, tạo test job và retry job lỗi.
 - Print job được lưu trong cấu hình in.
 - Job lỗi có thể retry.
 - Đây là đủ cho đồ án để chứng minh nghiệp vụ vận hành in.
