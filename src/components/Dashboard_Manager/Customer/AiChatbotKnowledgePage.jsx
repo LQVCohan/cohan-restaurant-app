@@ -161,10 +161,10 @@ export default function AiChatbotKnowledgePage() {
   const [pendingConfirm, setPendingConfirm] = useState(null);
 
   const commonVars = useMemo(() => ({ restaurantId: effectiveRestaurantId }), [effectiveRestaurantId]);
-  const knowledgeQuery = useQuery(KNOWLEDGE_QUERY, { skip: !canReadAi || !effectiveRestaurantId, variables: { ...commonVars, filter: null } });
+  const knowledgeQuery = useQuery(KNOWLEDGE_QUERY, { skip: !canReadAi || !effectiveRestaurantId, variables: { ...commonVars, filter: {} } });
   const suggestionsQuery = useQuery(SUGGESTIONS_QUERY, { skip: !canReadAi || !effectiveRestaurantId, variables: { ...commonVars, filter: { status: "pending" } } });
   const feedbackQuery = useQuery(FEEDBACK_QUERY, { skip: !canReadAi || !effectiveRestaurantId, variables: { ...commonVars, filter: { status: "new" } } });
-  const safetyQuery = useQuery(SAFETY_QUERY, { skip: !canModerateAi || !effectiveRestaurantId, variables: { ...commonVars, filter: null } });
+  const safetyQuery = useQuery(SAFETY_QUERY, { skip: !canModerateAi || !effectiveRestaurantId, variables: { ...commonVars, filter: {} } });
   const evalCasesQuery = useQuery(EVALUATION_CASES_QUERY, { skip: !canEvaluateAi || !effectiveRestaurantId, variables: commonVars });
   const [exportKnowledge, exportState] = useLazyQuery(EXPORT_QUERY, { fetchPolicy: "network-only" });
   const [evaluatePrompt, evaluateState] = useLazyQuery(EVALUATE_QUERY, { fetchPolicy: "network-only" });

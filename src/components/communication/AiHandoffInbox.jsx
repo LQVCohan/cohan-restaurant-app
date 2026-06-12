@@ -61,8 +61,9 @@ const resolveSenderLabel = (msg) => {
   return msg?.senderName || msg?.senderRole || "Hệ thống";
 };
 const runBestEffort = (result) => { if (result && typeof result.catch === "function") result.catch(() => {}); };
-const resolveRestaurantId = ({ propRestaurantId, user }) => {
+const resolveRestaurantId = ({ propRestaurantId, user, restaurants = [] }) => {
   if (propRestaurantId) return String(propRestaurantId);
+  if (Array.isArray(restaurants) && restaurants[0]?.id) return String(restaurants[0].id);
   if (user?.restaurantForStaff) return String(user.restaurantForStaff);
   if (Array.isArray(user?.refRestaurants) && user.refRestaurants[0]) return String(user.refRestaurants[0]);
   if (user?.restaurantId) return String(user.restaurantId);
@@ -70,7 +71,7 @@ const resolveRestaurantId = ({ propRestaurantId, user }) => {
 };
 
 export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }) {
-  const { user } = useContext(AuthContext) || {};
+  const { user, restaurants = [] } = useContext(AuthContext) || {};
   const canViewHandoff = hasAnyPermission(user, ["ai.chatbot.handoff", "ai.chatbot.moderate"]);
   const canResolveHandoff = hasAnyPermission(user, ["ai.chatbot.handoff"]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -79,8 +80,10 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
   const [actionError, setActionError] = useState("");
   const [resolvedThreadIds, setResolvedThreadIds] = useState(() => new Set());
   const [activeTab, setActiveTab] = useState(TAB_ACTIVE);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [resolveHandoff, { loading: resolving }] = useMutation(RESOLVE_AI_CHATBOT_HANDOFF);
-  const restaurantId = useMemo(() => resolveRestaurantId({ propRestaurantId, user }), [propRestaurantId, user]);
+  const fallbackRestaurantId = useMemo(() => resolveRestaurantId({ propRestaurantId, user, restaurants }), [propRestaurantId, user, restaurants]);
+  const restaurantId = selectedRestaurantId || fallbackRestaurantId;
 
   const activeCommunication = useCommunication({ restaurantId, status: "open", notificationsEnabled: canViewHandoff });
   const resolvedCommunication = useCommunication({ restaurantId, status: "closed", notificationsEnabled: false });
@@ -166,17 +169,17 @@ export default function AiHandoffInbox({ restaurantId: propRestaurantId = null }
     }
   };
 
-  if (!restaurantId) return <div className="ai-handoff-inbox__panel"><div className="ai-handoff-inbox__content">Chưa xác định được nhà hàng để tải yêu cầu hỗ trợ.</div></div>;
+  if (!restaurantId) return <div className="ai-handoff-inbox ai-handoff-inbox--single"><div className="ai-handoff-inbox__panel"><div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__empty"><strong>Chưa xác định được nhà hàng</strong><p>Vui lòng đảm bảo tài khoản quản lý đã được gán nhà hàng để tải yêu cầu hỗ trợ.</p></div></div></div></div>;
   if (!canViewHandoff) return <div className="ai-handoff-inbox__panel"><div className="ai-handoff-inbox__content">Bạn không có quyền xử lý handoff AI chatbot.</div></div>;
 
   return (
     <div className="ai-handoff-inbox">
       <section className="ai-handoff-inbox__panel">
-        <div className="ai-handoff-inbox__panel-header"><h2>Yêu cầu hỗ trợ từ AI</h2><div className="ai-handoff-inbox__tabs"><button type="button" className={activeTab === TAB_ACTIVE ? "active" : ""} onClick={() => setActiveTab(TAB_ACTIVE)}>Đang xử lý</button><button type="button" className={activeTab === TAB_RESOLVED ? "active" : ""} onClick={() => setActiveTab(TAB_RESOLVED)}>Đã xử lý</button></div></div>
+        <div className="ai-handoff-inbox__panel-header"><div><p className="ai-handoff-inbox__eyebrow">Live handoff</p><h2>Yêu cầu hỗ trợ từ AI</h2></div><div className="ai-handoff-inbox__header-actions">{restaurants?.length ? <label className="ai-handoff-inbox__restaurant"><span>Nhà hàng</span><select value={restaurantId || ""} onChange={(e) => setSelectedRestaurantId(e.target.value)}><option value="">Chọn nhà hàng</option>{restaurants.map((restaurant) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name || restaurant.id}</option>)}</select></label> : null}<div className="ai-handoff-inbox__tabs"><button type="button" className={activeTab === TAB_ACTIVE ? "active" : ""} onClick={() => setActiveTab(TAB_ACTIVE)}>Đang xử lý</button><button type="button" className={activeTab === TAB_RESOLVED ? "active" : ""} onClick={() => setActiveTab(TAB_RESOLVED)}>Đã xử lý</button></div></div></div>
         {isLoading ? <div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__skeleton" role="status"><span /><span /><span /></div></div> : currentItems.length === 0 ? <div className="ai-handoff-inbox__content"><div className="ai-handoff-inbox__empty"><strong>Chưa có yêu cầu hỗ trợ từ chatbot</strong><p>Khi khách cần nhân viên hỗ trợ, hội thoại sẽ xuất hiện ở đây để bạn tiếp nhận nhanh.</p></div></div> : <div className="ai-handoff-inbox__list">{currentItems.map((item) => <button key={item.id} type="button" className={`ai-handoff-inbox__item ${selectedItem?.id === item.id ? "active" : ""}`} onClick={() => openItem(item)}><div className="ai-handoff-inbox__item-meta"><AiHandoffBadge /><span>{formatTime(item.time)}</span></div><p className="ai-handoff-inbox__preview">{item.preview}</p><div className="ai-handoff-inbox__item-footer"><span>{item.restaurantId ? `NH: ${String(item.restaurantId).slice(-6)}` : "Không rõ nhà hàng"}</span><span>{item.unread ? <><span className="ai-handoff-inbox__dot" />Chưa đọc</> : "Đã đọc"}</span></div></button>)}</div>}
       </section>
       <section className="ai-handoff-inbox__panel">
-        <div className="ai-handoff-inbox__panel-header"><h2>Chi tiết hội thoại</h2>{(hasHandoffMarker || isAiHandoffThread(thread)) && <AiHandoffBadge />}</div>
+        <div className="ai-handoff-inbox__panel-header"><div><p className="ai-handoff-inbox__eyebrow">Conversation</p><h2>Chi tiết hội thoại</h2></div>{(hasHandoffMarker || isAiHandoffThread(thread)) && <AiHandoffBadge />}</div>
         <div className="ai-handoff-inbox__content">
           {warning && <div className="ai-handoff-inbox__message">{warning}</div>}
           {actionError && <div className="ai-handoff-inbox__message">{actionError}<div><button type="button" onClick={() => selectedItem && openItem(selectedItem)}>Thử lại</button></div></div>}
