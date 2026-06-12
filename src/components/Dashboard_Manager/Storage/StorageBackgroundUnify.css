@@ -1,0 +1,85 @@
+/* Storage page background unification.
+   The storage screen lives inside manager-page-shell, so a component-level background can create visible vertical edges on wide screens.
+   This file moves the storage background to the full manager content area and leaves the working cards inside the centered container. */
+
+.manager-layout__content:has(.storage-management) {
+  padding: 0;
+  background:
+    radial-gradient(circle at 11% 0%, rgba(47, 113, 105, 0.1), transparent 30rem),
+    radial-gradient(circle at 92% 0%, rgba(154, 105, 56, 0.09), transparent 30rem),
+    linear-gradient(180deg, #f8f3eb 0%, #f4efe6 54%, #f1eadf 100%);
+}
+
+.manager-layout__content:has(.storage-management)::before {
+  content: "";
+  position: fixed;
+  inset: var(--manager-header-height, 64px) 0 0 var(--sidebar-width, 72px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(77, 66, 52, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77, 66, 52, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.22) 74%, transparent 100%);
+}
+
+.manager-layout__content:has(.storage-management) .manager-page-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.manager-layout__content:has(.storage-management) .manager-page-shell__body {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100dvh - var(--manager-header-height, 64px));
+}
+
+.manager-layout__content:has(.storage-management) .storage-management {
+  min-height: calc(100dvh - var(--manager-header-height, 64px));
+  background: transparent;
+}
+
+.manager-layout__content:has(.storage-management) .storage-management::before {
+  display: none;
+}
+
+.manager-layout__content:has(.storage-management) .storage-management .sm-container {
+  width: min(100%, 1320px);
+  padding: clamp(22px, 2.5vw, 36px);
+}
+
+.storage-management .sm-tab-item .tab-icon {
+  width: 19px;
+  height: 19px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: transparent !important;
+  color: currentColor !important;
+}
+
+.storage-management .sm-tab-item.active .tab-icon {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #eef8f5 !important;
+}
+
+.storage-management .sm-tab-item.active .active-dot {
+  background: #d9eee9 !important;
+}
+
+@media (max-width: 768px) {
+  .manager-layout__content:has(.storage-management) {
+    padding: 0;
+  }
+
+  .manager-layout__content:has(.storage-management)::before {
+    inset-left: 0;
+  }
+
+  .manager-layout__content:has(.storage-management) .storage-management .sm-container {
+    padding: 14px;
+  }
+}
