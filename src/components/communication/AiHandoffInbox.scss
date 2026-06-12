@@ -1,21 +1,38 @@
 .ai-handoff-inbox {
+  --ai-bg: #fbf7ef;
+  --ai-surface: #fffdf8;
+  --ai-surface-soft: #f6efe4;
+  --ai-border: rgba(124, 93, 63, 0.14);
+  --ai-border-strong: rgba(124, 93, 63, 0.22);
+  --ai-text: #2f2923;
+  --ai-muted: #7a6b5d;
+  --ai-subtle: #9a8b7c;
+  --ai-accent: #8a623d;
+  --ai-accent-hover: #735032;
+  --ai-accent-soft: #eadccd;
+  --ai-danger: #b84a3c;
+  --ai-danger-bg: #fff0ed;
+  --ai-radius-lg: 22px;
+  --ai-shadow-sm: 0 8px 24px rgba(79, 55, 33, 0.08);
+  --ai-shadow-md: 0 18px 48px rgba(79, 55, 33, 0.12);
+
   display: grid;
-  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   gap: 18px;
   min-height: calc(100dvh - 120px);
-  padding: 22px;
-  color: #1e1915;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+  color: var(--ai-text);
   background:
-    radial-gradient(circle at 8% 8%, rgba(255, 185, 115, 0.16), transparent 30rem),
-    radial-gradient(circle at 92% 0%, rgba(255, 235, 214, 0.62), transparent 34rem),
-    linear-gradient(180deg, #fffdf8 0%, #fff7ee 48%, #ffffff 100%);
+    radial-gradient(circle at 8% 6%, rgba(234, 220, 205, 0.72), transparent 28rem),
+    linear-gradient(180deg, #fffdf8 0%, var(--ai-bg) 100%);
+  overflow-x: hidden;
 }
 
-@media (max-width: 1024px) {
-  .ai-handoff-inbox {
-    grid-template-columns: 1fr;
-    padding: 16px;
-  }
+.ai-handoff-inbox--single {
+  grid-template-columns: minmax(0, 680px);
+  justify-content: center;
 }
 
 .ai-handoff-inbox__panel {
@@ -23,71 +40,127 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(92, 64, 51, 0.1);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at top right, rgba(255, 138, 61, 0.08), transparent 18rem),
-    rgba(255, 255, 255, 0.94);
-  box-shadow: 0 24px 72px rgba(83, 46, 20, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-lg);
+  background: var(--ai-surface);
+  box-shadow: var(--ai-shadow-sm);
 }
 
 .ai-handoff-inbox__panel-header {
-  padding: 17px 18px;
-  border-bottom: 1px solid rgba(92, 64, 51, 0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: linear-gradient(135deg, rgba(255, 247, 237, 0.92), rgba(255, 255, 255, 0.88));
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--ai-border);
+  background: var(--ai-surface);
 }
 
 .ai-handoff-inbox__panel-header h2 {
   margin: 0;
+  color: var(--ai-text);
   font-size: clamp(1rem, 2vw, 1.18rem);
-  font-weight: 950;
+  font-weight: 800;
   letter-spacing: -0.025em;
-  color: #1e1915;
+}
+
+.ai-handoff-inbox__eyebrow {
+  margin: 0 0 4px;
+  color: var(--ai-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ai-handoff-inbox__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+.ai-handoff-inbox__restaurant,
+.ai-handoff-inbox__restaurant-select {
+  display: grid;
+  gap: 5px;
+  width: 250px;
+  padding: 8px;
+  border: 1px solid var(--ai-border);
+  border-radius: 16px;
+  background: rgba(246, 239, 228, 0.62);
+  color: var(--ai-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-handoff-inbox__restaurant span,
+.ai-handoff-inbox__restaurant-select span {
+  color: var(--ai-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-handoff-inbox__restaurant select,
+.ai-handoff-inbox__restaurant-select select {
+  height: 38px;
+  min-width: 0;
+  border: 1px solid var(--ai-border);
+  border-radius: 12px;
+  background: var(--ai-surface);
+  color: var(--ai-text);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.ai-handoff-inbox__restaurant select:focus,
+.ai-handoff-inbox__restaurant-select select:focus {
+  border-color: rgba(138, 98, 61, 0.48);
+  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.12);
 }
 
 .ai-handoff-inbox__tabs {
   display: inline-flex;
   gap: 6px;
   padding: 4px;
-  border: 1px solid rgba(92, 64, 51, 0.1);
+  border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--ai-surface-soft);
 }
 
 .ai-handoff-inbox__tabs button {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #766b61;
+  color: var(--ai-muted);
   padding: 7px 11px;
   font-size: 12px;
   font-weight: 850;
   cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .ai-handoff-inbox__tabs button:hover {
-  background: #fbf7f1;
-  color: #7d5b38;
+  background: var(--ai-accent-soft);
+  color: var(--ai-text);
 }
 
 .ai-handoff-inbox__tabs button.active {
-  background: linear-gradient(135deg, #7d5b38, #9b7a58);
+  background: var(--ai-accent);
   color: #fff;
-  box-shadow: 0 10px 22px rgba(125, 91, 56, 0.18);
+  box-shadow: 0 8px 18px rgba(138, 98, 61, 0.2);
 }
 
 .ai-handoff-inbox__list {
-  padding: 12px;
+  flex: 1;
+  padding: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
 }
 
 .ai-handoff-inbox__list::-webkit-scrollbar,
@@ -103,27 +176,24 @@
 
 .ai-handoff-inbox__item {
   width: 100%;
-  border: 1px solid rgba(92, 64, 51, 0.1);
-  border-radius: 18px;
-  background: #fff;
-  padding: 13px;
+  border: 0;
+  border-bottom: 1px solid var(--ai-border);
+  border-radius: 0;
+  background: transparent;
+  padding: 14px 16px;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 12px 28px rgba(83, 46, 20, 0.05);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  box-shadow: none;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .ai-handoff-inbox__item:hover {
-  transform: translateY(-2px);
-  border-color: rgba(125, 91, 56, 0.24);
-  background: #fffdf8;
-  box-shadow: 0 18px 38px rgba(83, 46, 20, 0.1);
+  background: rgba(246, 239, 228, 0.5);
 }
 
 .ai-handoff-inbox__item.active {
-  border-color: rgba(125, 91, 56, 0.34);
-  background: linear-gradient(135deg, #fbf7f1, #fff);
-  box-shadow: 0 0 0 3px rgba(125, 91, 56, 0.1), 0 18px 40px rgba(83, 46, 20, 0.1);
+  background: #f7efe5;
+  box-shadow: inset 4px 0 0 var(--ai-accent);
 }
 
 .ai-handoff-inbox__item-meta,
@@ -132,27 +202,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: #766b61;
-  font-size: 0.78rem;
+  color: var(--ai-subtle);
+  font-size: 12px;
   font-weight: 750;
 }
 
 .ai-handoff-inbox__item-footer span:first-child {
-  font-size: 0;
-}
-
-.ai-handoff-inbox__item-footer span:first-child::after {
-  content: "Yêu cầu từ khách";
-  font-size: 0.78rem;
-  color: #766b61;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ai-handoff-inbox__preview {
   margin: 9px 0;
-  color: #1e1915;
+  color: var(--ai-text);
   font-size: 0.92rem;
-  font-weight: 850;
-  line-height: 1.35;
+  font-weight: 700;
+  line-height: 1.4;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -162,8 +229,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #7d5b38;
-  box-shadow: 0 0 0 4px rgba(125, 91, 56, 0.14);
+  background: #ff7a1a;
+  box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.12);
   display: inline-block;
   margin-right: 6px;
 }
@@ -171,121 +238,127 @@
 .ai-handoff-inbox__content {
   flex: 1;
   overflow: auto;
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 250, 244, 0.9));
+  background: linear-gradient(180deg, #fffdf8 0%, #fbf7ef 100%);
 }
 
 .ai-handoff-inbox__message {
   max-width: 78%;
-  border: 1px solid rgba(92, 64, 51, 0.1);
-  border-radius: 18px 18px 18px 6px;
+  border: 1px solid var(--ai-border);
+  border-radius: 16px;
   background: #fff;
-  padding: 12px 13px;
-  color: #1e1915;
+  color: var(--ai-text);
+  padding: 12px 14px;
   font-size: 14px;
   line-height: 1.5;
-  box-shadow: 0 12px 28px rgba(83, 46, 20, 0.06);
+  box-shadow: none;
 }
 
 .ai-handoff-inbox__message strong {
   display: block;
   margin-bottom: 5px;
-  color: #8a3d05;
-  font-size: 0.78rem;
+  color: var(--ai-accent);
+  font-size: 12px;
   font-weight: 900;
 }
 
 .ai-handoff-inbox__message small {
   display: block;
   margin-top: 7px;
-  color: #766b61;
+  color: var(--ai-subtle);
   font-size: 0.73rem;
   font-weight: 750;
 }
 
 .ai-handoff-inbox__message.is-handoff-summary {
   max-width: 100%;
-  border-color: rgba(125, 91, 56, 0.18);
-  border-radius: 20px;
-  background: linear-gradient(135deg, #fbf7f1, #fff);
-  color: #1e1915;
+  border-color: var(--ai-border-strong);
+  background: var(--ai-surface-soft);
   white-space: pre-wrap;
 }
 
-.ai-handoff-inbox__message.is-handoff-summary strong {
-  color: #7d5b38;
+.ai-handoff-inbox__message.is-handoff-summary div {
+  color: var(--ai-muted);
+  font-weight: 650;
 }
 
-.ai-handoff-inbox__message.is-handoff-summary div {
-  color: #766b61;
-  font-weight: 650;
+.ai-handoff-inbox__message button,
+.ai-handoff-inbox__reply button {
+  border-radius: 12px;
+  font-weight: 800;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
 }
 
 .ai-handoff-inbox__message button {
   margin-top: 8px;
-  border: 1px solid rgba(125, 91, 56, 0.18);
-  border-radius: 12px;
-  background: #fbf7f1;
-  color: #7d5b38;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface-soft);
+  color: var(--ai-accent);
   padding: 8px 11px;
-  font-weight: 900;
   cursor: pointer;
 }
 
 .ai-handoff-inbox__reply {
-  border-top: 1px solid rgba(92, 64, 51, 0.1);
+  border-top: 1px solid var(--ai-border);
   padding: 14px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: end;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(14px);
+  background: var(--ai-surface);
 }
 
 .ai-handoff-inbox__reply textarea {
   grid-row: span 2;
   width: 100%;
-  min-height: 92px;
-  border: 1px solid rgba(92, 64, 51, 0.12);
-  border-radius: 17px;
+  min-height: 46px;
+  max-height: 140px;
+  border: 1px solid var(--ai-border);
+  border-radius: 14px;
+  background: var(--ai-surface);
+  color: var(--ai-text);
   padding: 12px 13px;
   resize: vertical;
   outline: none;
-  color: #1e1915;
-  background: #f8fafc;
   font-weight: 650;
   line-height: 1.45;
 }
 
 .ai-handoff-inbox__reply textarea:focus {
-  border-color: rgba(125, 91, 56, 0.45);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(125, 91, 56, 0.1);
+  border-color: rgba(138, 98, 61, 0.48);
+  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.12);
+}
+
+.ai-handoff-inbox__reply textarea:disabled {
+  background: #f1ebe2;
+  color: #75685c;
+  cursor: not-allowed;
 }
 
 .ai-handoff-inbox__reply button {
   min-height: 42px;
-  border: 1px solid rgba(125, 91, 56, 0.18);
-  border-radius: 14px;
+  border: 1px solid var(--ai-border);
   padding: 9px 14px;
-  font-weight: 900;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .ai-handoff-inbox__reply button[type="submit"] {
-  background: linear-gradient(135deg, #7d5b38, #9b7a58);
+  border: 0;
+  background: var(--ai-accent);
   color: #fff;
-  box-shadow: 0 12px 24px rgba(125, 91, 56, 0.18);
+}
+
+.ai-handoff-inbox__reply button[type="submit"]:hover:not(:disabled) {
+  background: var(--ai-accent-hover);
 }
 
 .ai-handoff-inbox__reply button[type="button"] {
-  background: #fbf7f1;
-  color: #7d5b38;
+  background: var(--ai-surface-soft);
+  color: var(--ai-accent);
 }
 
 .ai-handoff-inbox__reply button:hover:not(:disabled) {
@@ -295,13 +368,12 @@
 .ai-handoff-inbox__reply button:disabled {
   opacity: 0.58;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .ai-handoff-inbox__reply small {
   grid-column: 2 / -1;
   max-width: 380px;
-  color: #766b61;
+  color: var(--ai-muted);
   font-size: 0.76rem;
   font-weight: 700;
   line-height: 1.35;
@@ -311,20 +383,58 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  border: 1px solid rgba(255, 122, 26, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.08);
+  color: #8a623d;
+  padding: 5px 10px;
   font-size: 0 !important;
   font-weight: 900;
-  text-transform: uppercase;
   letter-spacing: 0.02em;
-  border-radius: 999px;
-  padding: 5px 10px;
-  color: #7d5b38;
-  background: #fbf7f1;
-  border: 1px solid rgba(125, 91, 56, 0.18);
+  text-transform: uppercase;
 }
 
 .ai-handoff-badge::after {
   content: "AI hỗ trợ";
   font-size: 11px;
+}
+
+.ai-handoff-inbox__empty {
+  margin: auto;
+  max-width: 420px;
+  border: 1px dashed var(--ai-border-strong);
+  border-radius: var(--ai-radius-lg);
+  background: rgba(255, 253, 248, 0.72);
+  color: var(--ai-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+.ai-handoff-inbox__empty strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ai-text);
+  font-size: 1rem;
+}
+
+.ai-handoff-inbox__empty p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-handoff-inbox__skeleton {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.ai-handoff-inbox__skeleton span {
+  display: block;
+  height: 82px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #f4eee6 0%, #fffdf8 48%, #f4eee6 100%);
+  background-size: 220% 100%;
+  animation: aiHandoffSkeleton 1.2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -335,9 +445,16 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1024px) {
   .ai-handoff-inbox {
-    padding: 12px;
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-handoff-inbox {
+    padding: 16px;
   }
 
   .ai-handoff-inbox__panel {
@@ -345,11 +462,14 @@
     min-height: 440px;
   }
 
-  .ai-handoff-inbox__panel-header {
-    align-items: flex-start;
+  .ai-handoff-inbox__panel-header,
+  .ai-handoff-inbox__header-actions {
+    align-items: stretch;
     flex-direction: column;
   }
 
+  .ai-handoff-inbox__restaurant,
+  .ai-handoff-inbox__restaurant-select,
   .ai-handoff-inbox__tabs {
     width: 100%;
   }
@@ -377,60 +497,6 @@
   }
 }
 
-@keyframes aiHandoffPanelIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.ai-handoff-inbox__empty {
-  margin: auto;
-  max-width: 420px;
-  border: 1px dashed rgba(125, 91, 56, 0.24);
-  border-radius: 22px;
-  background: rgba(255, 253, 248, 0.78);
-  color: #75685c;
-  padding: 24px;
-  text-align: center;
-}
-
-.ai-handoff-inbox__empty strong {
-  display: block;
-  color: #2b241d;
-  font-size: 1rem;
-  margin-bottom: 6px;
-}
-
-.ai-handoff-inbox__empty p {
-  margin: 0;
-  line-height: 1.5;
-}
-
-.ai-handoff-inbox__skeleton {
-  display: grid;
-  gap: 12px;
-  width: 100%;
-}
-
-.ai-handoff-inbox__skeleton span {
-  display: block;
-  height: 82px;
-  border-radius: 18px;
-  background: linear-gradient(90deg, #f4eee6 0%, #fffdf8 48%, #f4eee6 100%);
-  background-size: 220% 100%;
-  animation: aiHandoffSkeleton 1.2s ease-in-out infinite;
-}
-
-.ai-handoff-inbox__reply textarea:disabled {
-  background: #f1ebe2;
-  color: #75685c;
-  cursor: not-allowed;
-}
-
-@keyframes aiHandoffSkeleton {
-  from { background-position: 100% 0; }
-  to { background-position: -100% 0; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .ai-handoff-inbox *,
   .ai-handoff-inbox *::before,
@@ -441,287 +507,12 @@
   }
 }
 
-/* Calm premium handoff inbox refresh. */
-.ai-handoff-inbox {
-  --ai-bg: #fbf7ef;
-  --ai-surface: #fffdf8;
-  --ai-surface-soft: #f6efe4;
-  --ai-border: rgba(124, 93, 63, 0.14);
-  --ai-border-strong: rgba(124, 93, 63, 0.22);
-  --ai-text: #2f2923;
-  --ai-muted: #7a6b5d;
-  --ai-subtle: #9a8b7c;
-  --ai-accent: #8a623d;
-  --ai-accent-hover: #735032;
-  --ai-accent-soft: #eadccd;
-  --ai-danger: #b84a3c;
-  --ai-danger-bg: #fff0ed;
-  --ai-radius-lg: 22px;
-  --ai-shadow-sm: 0 8px 24px rgba(79, 55, 33, 0.08);
-  --ai-shadow-md: 0 18px 48px rgba(79, 55, 33, 0.12);
-
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 24px 28px 48px;
-  color: var(--ai-text);
-  background:
-    radial-gradient(circle at 8% 6%, rgba(234, 220, 205, 0.72), transparent 28rem),
-    linear-gradient(180deg, #fffdf8 0%, var(--ai-bg) 100%);
-  overflow-x: hidden;
+@keyframes aiHandoffPanelIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.ai-handoff-inbox--single {
-  grid-template-columns: minmax(0, 680px);
-  justify-content: center;
-}
-
-.ai-handoff-inbox__panel {
-  min-height: 560px;
-  border: 1px solid var(--ai-border);
-  border-radius: var(--ai-radius-lg);
-  background: var(--ai-surface);
-  box-shadow: var(--ai-shadow-sm);
-  backdrop-filter: none;
-}
-
-.ai-handoff-inbox__panel-header {
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--ai-border);
-  background: var(--ai-surface);
-}
-
-.ai-handoff-inbox__panel-header h2 {
-  color: var(--ai-text);
-  font-weight: 800;
-}
-
-.ai-handoff-inbox__eyebrow {
-  margin: 0 0 4px;
-  color: var(--ai-accent);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.ai-handoff-inbox__header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-  align-items: center;
-}
-
-.ai-handoff-inbox__restaurant {
-  display: grid;
-  gap: 5px;
-  width: 250px;
-  padding: 8px;
-  border: 1px solid var(--ai-border);
-  border-radius: 16px;
-  background: rgba(246, 239, 228, 0.62);
-  color: var(--ai-muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.ai-handoff-inbox__restaurant select {
-  height: 38px;
-  border: 1px solid var(--ai-border);
-  border-radius: 12px;
-  background: var(--ai-surface);
-  color: var(--ai-text);
-  padding: 0 10px;
-  font: inherit;
-  font-size: 13px;
-  outline: none;
-}
-
-.ai-handoff-inbox__restaurant select:focus {
-  border-color: rgba(138, 98, 61, 0.48);
-  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.12);
-}
-
-.ai-handoff-inbox__tabs {
-  border: 0;
-  background: var(--ai-surface-soft);
-}
-
-.ai-handoff-inbox__tabs button {
-  color: var(--ai-muted);
-}
-
-.ai-handoff-inbox__tabs button:hover {
-  background: var(--ai-accent-soft);
-  color: var(--ai-text);
-}
-
-.ai-handoff-inbox__tabs button.active {
-  background: var(--ai-accent);
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(138, 98, 61, 0.2);
-}
-
-.ai-handoff-inbox__list {
-  padding: 0;
-  gap: 0;
-}
-
-.ai-handoff-inbox__item {
-  border: 0;
-  border-bottom: 1px solid var(--ai-border);
-  border-radius: 0;
-  background: transparent;
-  padding: 14px 16px;
-  box-shadow: none;
-}
-
-.ai-handoff-inbox__item:hover {
-  transform: none;
-  border-color: var(--ai-border);
-  background: rgba(246, 239, 228, 0.5);
-  box-shadow: none;
-}
-
-.ai-handoff-inbox__item.active {
-  border-color: var(--ai-border);
-  background: #f7efe5;
-  box-shadow: inset 4px 0 0 var(--ai-accent);
-}
-
-.ai-handoff-inbox__item-meta,
-.ai-handoff-inbox__item-footer {
-  color: var(--ai-subtle);
-  font-size: 12px;
-}
-
-.ai-handoff-inbox__preview {
-  color: var(--ai-text);
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.ai-handoff-inbox__dot {
-  background: #ff7a1a;
-  box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.12);
-}
-
-.ai-handoff-inbox__content {
-  padding: 18px;
-  background: linear-gradient(180deg, #fffdf8 0%, #fbf7ef 100%);
-}
-
-.ai-handoff-inbox__message {
-  max-width: 78%;
-  border: 1px solid var(--ai-border);
-  border-radius: 16px;
-  background: #fff;
-  color: var(--ai-text);
-  padding: 12px 14px;
-  margin-bottom: 0;
-  box-shadow: none;
-}
-
-.ai-handoff-inbox__message strong {
-  color: var(--ai-accent);
-  font-size: 12px;
-}
-
-.ai-handoff-inbox__message small {
-  color: var(--ai-subtle);
-}
-
-.ai-handoff-inbox__message.is-handoff-summary {
-  border-color: var(--ai-border-strong);
-  background: var(--ai-surface-soft);
-}
-
-.ai-handoff-inbox__message button,
-.ai-handoff-inbox__reply button {
-  border-radius: 12px;
-  font-weight: 800;
-  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
-}
-
-.ai-handoff-inbox__reply {
-  border-top: 1px solid var(--ai-border);
-  padding: 14px;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  background: var(--ai-surface);
-}
-
-.ai-handoff-inbox__reply textarea {
-  min-height: 46px;
-  max-height: 140px;
-  border: 1px solid var(--ai-border);
-  border-radius: 14px;
-  background: var(--ai-surface);
-  color: var(--ai-text);
-}
-
-.ai-handoff-inbox__reply button[type="submit"] {
-  border: 0;
-  background: var(--ai-accent);
-  color: #fff;
-  box-shadow: none;
-}
-
-.ai-handoff-inbox__reply button[type="submit"]:hover:not(:disabled) {
-  background: var(--ai-accent-hover);
-}
-
-.ai-handoff-inbox__reply button[type="button"] {
-  border: 1px solid var(--ai-border);
-  background: var(--ai-surface-soft);
-  color: var(--ai-accent);
-}
-
-.ai-handoff-badge {
-  border-color: rgba(255, 122, 26, 0.2);
-  background: rgba(255, 122, 26, 0.08);
-  color: #8a623d;
-}
-
-.ai-handoff-inbox__empty {
-  border: 1px dashed var(--ai-border-strong);
-  background: rgba(255, 253, 248, 0.72);
-  color: var(--ai-muted);
-}
-
-.ai-handoff-inbox__empty strong {
-  color: var(--ai-text);
-}
-
-@media (max-width: 1024px) {
-  .ai-handoff-inbox {
-    grid-template-columns: 1fr;
-    padding: 16px;
-  }
-}
-
-@media (max-width: 640px) {
-  .ai-handoff-inbox {
-    padding: 16px;
-  }
-
-  .ai-handoff-inbox__panel-header,
-  .ai-handoff-inbox__header-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .ai-handoff-inbox__restaurant,
-  .ai-handoff-inbox__tabs {
-    width: 100%;
-  }
-
-  .ai-handoff-inbox__message {
-    max-width: 100%;
-  }
-
-  .ai-handoff-inbox__reply {
-    grid-template-columns: 1fr;
-  }
+@keyframes aiHandoffSkeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
 }
