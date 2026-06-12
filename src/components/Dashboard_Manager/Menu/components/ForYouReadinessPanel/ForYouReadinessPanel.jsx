@@ -42,10 +42,10 @@ const ForYouReadinessPanel = ({
   const shouldShowRestaurantGroups = Array.isArray(restaurantSummaries) && restaurantSummaries.length > 1;
 
   return (
-    <section className="for-you-readiness-panel" aria-label="Thông tin khẩu vị khách hàng">
+    <section className="for-you-readiness-panel" aria-label="Khẩu vị và dị ứng của món">
       <div className="for-you-readiness-panel__header">
-        <span className="for-you-readiness-panel__eyebrow">Hồ sơ khẩu vị khách</span>
-        <h3 className="for-you-readiness-panel__title">Thông tin khách cần để gợi ý món</h3>
+        <span className="for-you-readiness-panel__eyebrow">Thông tin tư vấn món</span>
+        <h3 className="for-you-readiness-panel__title">Khẩu vị & dị ứng cần bổ sung</h3>
         <p className="for-you-readiness-panel__subtitle">
           Bổ sung chế độ ăn, dị ứng và khẩu vị để nhân viên tư vấn món chính xác hơn.
         </p>
@@ -54,7 +54,7 @@ const ForYouReadinessPanel = ({
       <div className="for-you-readiness-panel__progress">
         <div className="for-you-readiness-panel__progress-meta">
           <strong>{readyPercent}%</strong>
-          <span>{safeSummary.ready}/{safeSummary.total} món có dữ liệu khẩu vị</span>
+          <span>{safeSummary.ready}/{safeSummary.total} món đã đủ thông tin tư vấn</span>
         </div>
         <div className="for-you-readiness-panel__progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={readyPercent}>
           <div className="for-you-readiness-panel__progress-fill" style={{ "--ready-percent": `${readyPercent}%` }} />
@@ -63,9 +63,7 @@ const ForYouReadinessPanel = ({
 
       <div className="for-you-readiness-panel__stats for-you-readiness-panel__stats--quality">
         <StatCard label="Tổng món" value={safeSummary.total} />
-        <StatCard label="Đủ dữ liệu" value={safeSummary.complete || 0} variant="complete" />
-        <StatCard label="Thiếu dữ liệu" value={safeSummary.missing} variant="missing" />
-        <StatCard label="Thiếu diet" value={safeSummary.missingDiet || 0} variant="missing-soft" />
+        <StatCard label="Còn thiếu" value={safeSummary.missing} variant="missing" />
         <StatCard label="Thiếu dị ứng" value={safeSummary.missingAllergen || 0} variant="missing-soft" />
         <StatCard label="Thiếu khẩu vị" value={safeSummary.missingTaste || 0} variant="missing-soft" />
       </div>
@@ -84,15 +82,15 @@ const ForYouReadinessPanel = ({
 
       <div className="for-you-readiness-panel__actions">
         {safeSummary.missing > 0 && (
-          <button type="button" className="mm-btn mm-btn--primary" onClick={onShowMissing}>Xem món còn thiếu thông tin</button>
+          <button type="button" className="mm-btn mm-btn--primary" onClick={onShowMissing}>Xem món còn thiếu</button>
         )}
         {safeSummary.missing > 0 && canUpdateItem && firstMissingItem && (
-          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu tiên</button>
+          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung cho món đầu tiên</button>
         )}
         {canBulkEdit && bulkTargetCount > 0 && (
           <button type="button" className="mm-btn mm-btn--secondary" onClick={onOpenBulkEdit}>
             Bổ sung hàng loạt
-            <small className="for-you-readiness-panel__bulk-helper">{selectedCount > 0 ? `Áp dụng cho ${selectedCount} món đã chọn` : "Áp dụng cho các món còn thiếu thông tin trong danh sách hiện tại"}</small>
+            <small className="for-you-readiness-panel__bulk-helper">{selectedCount > 0 ? `Áp dụng cho ${selectedCount} món đã chọn` : "Áp dụng cho các món còn thiếu trong danh sách hiện tại"}</small>
           </button>
         )}
         {safeSummary.missing === 0 && safeSummary.total > 0 && (
