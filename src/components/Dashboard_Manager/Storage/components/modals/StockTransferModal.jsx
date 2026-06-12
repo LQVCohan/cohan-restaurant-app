@@ -51,8 +51,9 @@ const StockTransferModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="🔄 Điều Chuyển Kho"
+      title="Điều chuyển kho"
       size="md"
+      className="storage-modal-shell storage-modal-transfer"
     >
       <div className="st-container">
         {/* Header Info */}
