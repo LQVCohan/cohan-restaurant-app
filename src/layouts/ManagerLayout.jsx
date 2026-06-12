@@ -116,7 +116,7 @@ const PAGE_CONFIG = {
   "print-management": page("Quản lý in ấn", "Cấu hình máy in, mẫu in, hàng đợi và retry print job", "🖨️", ["print", "máy in", "phiếu bếp", "queue"]),
   "restaurant-info-management": page("Thông tin nhà hàng", "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", "🏪", ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"]),
   rbac: page("Phân quyền nhân viên", "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", "🛡️", ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"]),
-  "ai-handoff": page("Handoff AI", "Xử lý yêu cầu hỗ trợ từ chatbot", "🤖", ["handoff", "chatbot", "support"]),
+  "ai-handoff": page("Hỗ trợ từ AI", "Tiếp nhận các cuộc trò chuyện cần nhân viên hỗ trợ", "🤖", ["handoff", "chatbot", "support", "hỗ trợ"]),
   "ai-chatbot-analytics": page("Báo cáo Chatbot AI", "Theo dõi chất lượng tư vấn và nhu cầu chuyển nhân viên", "📡", ["ai", "chatbot", "analytics", "handoff"]),
   "ai-chatbot-settings": page("Cài đặt Chatbot AI", "Quản lý lời chào, gợi ý nhanh và chuyển nhân viên", "⚙️", ["ai", "chatbot", "settings", "handoff"]),
   "ai-chatbot-knowledge": page("Tri thức Chatbot AI", "Quản lý tri thức, gợi ý, phản hồi, an toàn và kiểm thử", "📚", ["ai", "chatbot", "knowledge", "faq"]),
