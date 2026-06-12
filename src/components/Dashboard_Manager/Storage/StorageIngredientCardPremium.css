@@ -1,11 +1,13 @@
 /* Final premium ingredient card pass: match the requested mockup while keeping existing data/actions unchanged. */
 
+.storage-management .ing-storage-wrapper .il-grid,
 .storage-management .il-grid {
-  grid-template-columns: repeat(auto-fill, minmax(358px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+  gap: 18px !important;
 }
 
 .storage-management .il-card {
-  min-height: 258px !important;
+  min-height: 262px !important;
   overflow: hidden !important;
   border-radius: 24px !important;
   border: 1px solid rgba(47, 113, 105, 0.2) !important;
@@ -102,7 +104,7 @@
 }
 
 .storage-management .il-card .il-stat-box {
-  min-height: 74px !important;
+  min-height: 78px !important;
   padding: 12px 11px 11px !important;
   border: 1px solid rgba(222, 212, 196, 0.92) !important;
   border-radius: 12px !important;
@@ -126,22 +128,30 @@
   font-weight: 760 !important;
 }
 
+.storage-management .il-card .il-stat-value-group {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
 .storage-management .il-card .il-stat-value {
   color: #1f2a2b !important;
-  font-size: 1.06rem !important;
+  font-size: clamp(0.94rem, 1.05vw, 1.08rem) !important;
   line-height: 1.15 !important;
   font-weight: 860 !important;
   letter-spacing: -0.025em !important;
+  max-width: 100% !important;
 }
 
 .storage-management .il-card .il-stat-value.il-text-price {
   color: #9a6938 !important;
+  font-size: clamp(0.84rem, 0.92vw, 0.98rem) !important;
 }
 
 .storage-management .il-card .il-stat-unit {
   color: #70817e !important;
   font-size: 0.72rem !important;
   font-weight: 720 !important;
+  white-space: nowrap !important;
 }
 
 .storage-management .il-card__actions {
@@ -200,6 +210,7 @@
 }
 
 @media (max-width: 520px) {
+  .storage-management .ing-storage-wrapper .il-grid,
   .storage-management .il-grid {
     grid-template-columns: 1fr !important;
   }
