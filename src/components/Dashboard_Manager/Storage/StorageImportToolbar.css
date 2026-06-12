@@ -1,0 +1,5 @@
+.storage-management .il-file-input,
+.storage-management .sl-file-input,
+.storage-management .rl-file-input {
+  display: none !important;
+}
