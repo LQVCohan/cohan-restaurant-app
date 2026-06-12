@@ -8,6 +8,7 @@ import {
   STAFF_KITCHEN_ROLES,
   STAFF_ORDER_ROLES,
 } from "@/utils/frontendRoleAccess";
+import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
 
 const getDisplayName = (user) => {
   if (!user || typeof user !== "object") return null;
@@ -16,12 +17,10 @@ const getDisplayName = (user) => {
 
 const getRoleLabel = (user, normalizedRole) => {
   if (!user || typeof user !== "object") return normalizedRole;
-  return user.roleName || user.roleSlug || user.role?.slug || user.role?.name || normalizedRole;
+  return getStaffRoleDisplayLabel(user.role || user.roleName || user.roleSlug || normalizedRole) || normalizedRole;
 };
 
 const isActivePath = (location, target) => {
-  const current = `${location.pathname}${location.hash || ""}`;
-  if (target.includes("#")) return current === target;
   return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));
 };
 
@@ -36,9 +35,10 @@ const StaffLayout = ({ children }) => {
     () => [
       { label: "Tổng quan", to: "/staff/dashboard" },
       { label: "Lịch cá nhân", to: "/staff/schedule" },
-      { label: "Hồ sơ", to: "/staff/dashboard#profile" },
-      { label: "Thông báo", to: "/staff/dashboard#notifications" },
+      { label: "Hồ sơ", to: "/staff/profile" },
+      { label: "Thông báo", to: "/staff/notifications" },
       { label: "Handoff AI", to: "/staff/ai-handoff" },
+      { label: "Phiếu lương", to: "/staff/payslips" },
       { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
     ],
@@ -61,11 +61,15 @@ const StaffLayout = ({ children }) => {
           <div className="staff-shell__topbar">
             <div>
               <p className="staff-shell__eyebrow">Khu vực nhân viên</p>
-              <h1>Vận hành ca làm</h1>
+              <div className="staff-shell__title">Vận hành ca làm</div>
             </div>
             <div className="staff-shell__identity">
-              <div>{displayName || "Nhân viên"}</div>
-              <span>{roleLabel || "Chưa xác định vai trò"}</span>
+              <div className="staff-shell__identity-avatar" aria-hidden="true">{(displayName || "NV").slice(0, 2).toUpperCase()}</div>
+              <div className="staff-shell__identity-copy">
+                <div>{displayName || "Nhân viên"}</div>
+                <span>{roleLabel || "Chưa xác định vai trò"}</span>
+                <small>Sẵn sàng / Theo lịch</small>
+              </div>
             </div>
           </div>
 

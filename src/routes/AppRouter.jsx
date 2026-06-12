@@ -40,6 +40,8 @@ import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerfo
 import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 import StaffDashboardPage from "@/components/Staff/StaffDashboardPage";
 import StaffPayslipsPage from "@/components/Staff/StaffPayslipsPage";
+import StaffProfilePage from "@/components/Staff/StaffProfilePage";
+import StaffNotificationsPage from "@/components/Staff/StaffNotificationsPage";
 
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
@@ -143,6 +145,8 @@ const AppRouter = () => (
     <Route path="/staff/kitchen" element={withPrivateRoute(withStaffLayout(<StaffKitchenPage />), STAFF_KITCHEN_ROLES)} />
     <Route path="/staff/performance" element={withPrivateRoute(withStaffLayout(<StaffPerformancePage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/schedule" element={withPrivateRoute(withStaffLayout(<StaffSchedulePage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/profile" element={withPrivateRoute(withStaffLayout(<StaffProfilePage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/notifications" element={withPrivateRoute(withStaffLayout(<StaffNotificationsPage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/ai-handoff" element={withPrivateRoute(withStaffLayout(<AiHandoffInbox />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/payslips" element={withPrivateRoute(withStaffLayout(<StaffPayslipsPage />), STAFF_SHARED_ROLES)} />
 
