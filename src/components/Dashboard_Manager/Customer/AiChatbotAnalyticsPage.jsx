@@ -54,8 +54,15 @@ const daysAgoIso = (days) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 const formatPct = (v) => `${(Number(v || 0) * 100).toFixed(1)}%`;
 const formatNum = (v) => new Intl.NumberFormat("vi-VN").format(Number(v || 0));
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "—";
 
-// Format time window to human-readable Vietnamese
 const formatWindowMs = (windowMs) => {
   const ms = Number(windowMs || 0);
   if (ms < 60000) return `${Math.round(ms / 1000)} giây`;
@@ -63,42 +70,83 @@ const formatWindowMs = (windowMs) => {
   return `${Math.round(ms / 3600000)} giờ`;
 };
 
-// Rate limit action labels in Vietnamese
 const rateLimitLabels = {
   askAiChatbot: "Hỏi AI",
-  requestRestaurantChatbotHandoff: "Yêu cầu nhân viên hỗ trợ",
-  sendRestaurantChatbotHandoffMessage: "Gửi tin nhắn khách",
-  submitAiChatbotAnswerFeedback: "Phản hồi AI cho khách",
-  joinRestaurantChatbotConversation: "Tham gia hội thoại",
+  requestAiChatbotHandoff: "Chuyển nhân viên",
+  requestRestaurantChatbotHandoff: "Chuyển nhân viên",
+  sendAiChatbotGuestMessage: "Tin nhắn khách",
+  sendRestaurantChatbotHandoffMessage: "Tin nhắn khách",
+  aiChatbotGuestReplies: "Phản hồi của chatbot",
+  submitAiChatbotAnswerFeedback: "Phản hồi khách hàng",
+  joinAiChatbotConversation: "Khách bắt đầu trò chuyện",
+  joinRestaurantChatbotConversation: "Khách bắt đầu trò chuyện",
 };
 
-// Risky signals map
 const riskySignalLabels = {
-  FALLBACK_SPIKE: "Tăng câu trả lời chưa chắc chắn",
+  FALLBACK_SPIKE: "Nhiều câu trả lời cần rà soát",
   NOT_HELPFUL_SPIKE: "Tăng phản hồi chưa hài lòng",
-  PENDING_SUGGESTION_BACKLOG: "Gợi ý tri thức còn tồn đọng",
-  SAFETY_BLOCK_SPIKE: "Tăng lượt chặn an toàn",
+  PENDING_SUGGESTION_BACKLOG: "Gợi ý tri thức còn chờ duyệt",
+  SAFETY_BLOCK_SPIKE: "Nhiều nội dung bị chặn an toàn",
 };
 
-// Quality queue map
 const qualityQueueLabels = {
   fallback_response: "Câu trả lời cần rà soát",
-  pending_suggestion: "Gợi ý tri thức mới",
+  pending_suggestion: "Gợi ý bổ sung tri thức",
 };
 const messageRoleLabels = {
-  assistant: "AI",
-  customer: "Khách hàng",
+  assistant: "Phản hồi của chatbot",
+  customer: "Tin nhắn từ khách",
   staff: "Nhân viên",
   manager: "Quản lý",
   system: "Hệ thống",
 };
 
 const signalLevelLabels = {
-  info: "Thông tin",
+  info: "Ổn định",
+  low: "Mức thấp",
   warning: "Cần chú ý",
-  critical: "Nghiêm trọng",
-  danger: "Nghiêm trọng",
+  medium: "Cần chú ý",
+  critical: "Ưu tiên cao",
+  danger: "Ưu tiên cao",
+  high: "Ưu tiên cao",
 };
+
+const signalLevelClass = (level) => {
+  const normalized = String(level || "").toLowerCase();
+  if (["critical", "danger", "high"].includes(normalized)) {
+    return "ai-admin-chip--danger";
+  }
+  if (["warning", "medium"].includes(normalized)) return "ai-admin-chip--warning";
+  return "ai-admin-chip--success";
+};
+
+const intentLabel = (intent) => {
+  const normalized = String(intent || "").toLowerCase();
+  const labels = {
+    menu: "Thực đơn",
+    booking: "Đặt bàn",
+    reservation: "Đặt bàn",
+    order: "Đơn hàng",
+    coupon: "Ưu đãi",
+    promotion: "Ưu đãi",
+    payment: "Thanh toán",
+    delivery: "Giao hàng",
+    opening_hours: "Giờ mở cửa",
+    location: "Địa chỉ",
+  };
+  return labels[normalized] || intent || "Chủ đề khác";
+};
+
+function EmptyReport() {
+  return (
+    <div className="ai-admin-empty ai-admin-empty--soft">
+      <div className="ai-admin-empty__icon">•</div>
+      <h4>Chưa đủ dữ liệu để tạo báo cáo</h4>
+      <p>Khi khách bắt đầu trò chuyện, biểu đồ sẽ được cập nhật tự động.</p>
+    </div>
+  );
+}
+
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
   const {
@@ -130,23 +178,25 @@ export default function AiChatbotAnalyticsPage() {
   });
 
   const m = data?.aiChatbotAnalytics;
+  const reviewItems = m?.recentQualityQueue || [];
+  const visibleReviewItems = reviewItems.slice(0, 3);
+  const reviewCount = Number(m?.fallbackResponses || 0) + Number(m?.pendingSuggestions || 0) + Number(m?.notHelpfulFeedback || 0);
 
   return (
     <section className="customer-analytics-page ai-admin-page ai-admin-page--analytics">
-      <section className="customer-analytics-hero ai-admin-hero">
-        <div>
+      <section className="customer-analytics-hero ai-admin-hero ai-admin-report-summary">
+        <div className="ai-admin-hero__copy">
           <p className="customer-analytics-hero__eyebrow ai-admin-eyebrow">
-            Thống kê AI
+            Hiệu quả tư vấn
           </p>
-          <h2>Phân tích Chatbot AI</h2>
+          <h2>Báo cáo Chatbot AI</h2>
           <p>
-            Theo dõi mức sử dụng chatbot, handoff và chất lượng phản hồi theo
-            dạng tổng hợp.
+            Theo dõi chất lượng tư vấn, nhu cầu chuyển nhân viên và các nội dung cần cải thiện.
           </p>
         </div>
 
-        <div className="customer-analytics-toolbar ai-admin-field--restaurant">
-          <label className="customer-analytics-field">
+        <div className="customer-analytics-toolbar ai-admin-toolbar">
+          <label className="customer-analytics-field ai-admin-field">
             <span>Nhà hàng</span>
             <select
               value={effectiveRestaurantId}
@@ -163,8 +213,8 @@ export default function AiChatbotAnalyticsPage() {
               ))}
             </select>
           </label>
-          <label className="customer-analytics-field">
-            <span>Khoảng thời gian</span>
+          <label className="customer-analytics-field ai-admin-field">
+            <span>Thời gian</span>
             <select value={range} onChange={(e) => setRange(e.target.value)}>
               <option value="7">7 ngày</option>
               <option value="30">30 ngày</option>
@@ -182,18 +232,18 @@ export default function AiChatbotAnalyticsPage() {
       </section>
 
       {!effectiveRestaurantId && !restaurantsLoading ? (
-        <section className="customer-empty-state customer-empty-state--page">
-          <h3>Chọn nhà hàng để xem thống kê AI chatbot</h3>
+        <section className="customer-empty-state customer-empty-state--page ai-admin-empty">
+          <h3>Chọn nhà hàng để xem báo cáo chatbot</h3>
         </section>
       ) : null}
       {restaurantsLoading || loading ? (
-        <section className="customer-empty-state customer-empty-state--page">
-          <h3>Đang tải dữ liệu AI chatbot...</h3>
+        <section className="customer-empty-state customer-empty-state--page ai-admin-skeleton" role="status">
+          <h3>Đang tải dữ liệu chatbot...</h3>
         </section>
       ) : null}
       {error ? (
-        <section className="customer-analytics-error">
-          <span>{error.message || "Không thể tải thống kê AI chatbot"}</span>
+        <section className="customer-analytics-error ai-admin-error">
+          <span>{error.message || "Không thể tải báo cáo chatbot"}</span>
           <button type="button" onClick={() => refetch?.()}>
             Thử lại
           </button>
@@ -202,92 +252,59 @@ export default function AiChatbotAnalyticsPage() {
 
       {!loading && !error && m ? (
         <>
-          <div className="customer-analytics-overview-grid ai-admin-metrics">
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Cuộc trò chuyện AI</h4>
-              <p>{formatNum(m.totalConversations)}</p>
+          <div className="customer-analytics-overview-grid ai-admin-metrics ai-admin-metrics--primary">
+            <article>
+              <span>Cuộc trò chuyện</span>
+              <strong>{formatNum(m.totalConversations)}</strong>
+              <small>{formatNum(m.openConversations)} cuộc đang mở</small>
             </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Tin nhắn AI</h4>
-              <p>{formatNum(m.totalMessages)}</p>
+            <article>
+              <span>Tin nhắn AI</span>
+              <strong>{formatNum(m.totalMessages)}</strong>
+              <small>
+                {m.averageMessagesPerConversation == null
+                  ? "Tin nhắn trong kỳ"
+                  : `${Number(m.averageMessagesPerConversation).toFixed(1)} tin / cuộc`}
+              </small>
             </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Đang chat AI</h4>
-              <p>{formatNum(m.openConversations)}</p>
+            <article>
+              <span>Yêu cầu chuyển nhân viên</span>
+              <strong>{formatNum(m.handoffRequested)}</strong>
+              <small>{formatPct(m.handoffConversionRate)} tỷ lệ chuyển</small>
             </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Yêu cầu hỗ trợ đang xử lý</h4>
-              <p>{formatNum(m.handoffRequested)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Yêu cầu hỗ trợ đã xử lý</h4>
-              <p>{formatNum(m.resolvedHandoffs)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Câu trả lời chưa chắc chắn</h4>
-              <p>
-                {formatNum(m.fallbackResponses)} /{" "}
-                {formatNum(m.lowConfidenceResponses)}
-              </p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Tỷ lệ chuyển nhân viên</h4>
-              <p>{formatPct(m.handoffConversionRate)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Gợi ý chờ duyệt</h4>
-              <p>{formatNum(m.pendingSuggestions)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Phản hồi chưa hài lòng</h4>
-              <p>{formatNum(m.notHelpfulFeedback)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Quy tắc an toàn đang bật</h4>
-              <p>{formatNum(m.activeSafetyRules)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Bộ câu hỏi kiểm thử</h4>
-              <p>{formatNum(m.evaluationCaseCount)}</p>
-            </article>
-            <article className="customer-overview-card ai-admin-analytics-card">
-              <h4>Thời gian xử lý hỗ trợ TB</h4>
-              <p>
-                {m.averageHandoffResolutionMinutes == null
-                  ? "—"
-                  : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}
-              </p>
+            <article>
+              <span>Cần rà soát</span>
+              <strong>{formatNum(reviewCount)}</strong>
+              <small>{formatNum(m.notHelpfulFeedback)} phản hồi chưa hài lòng</small>
             </article>
           </div>
 
-          <section className="customer-analytics-layout-grid">
-            <article className="customer-analytics-panel ai-analytics-card">
+          <section className="ai-admin-insight-grid">
+            <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Chủ đề được hỏi nhiều</h3>
-                <p>Các intent hàng đầu từ người dùng</p>
+                <h3>Chủ đề khách hỏi nhiều</h3>
+                <p>Những nhóm câu hỏi nổi bật trong kỳ báo cáo.</p>
               </header>
               {m.topIntents?.length ? (
-                <ul className="ai-analytics-list">
-                  {m.topIntents.map((it) => (
+                <ul className="ai-analytics-list ai-analytics-list--bars">
+                  {m.topIntents.slice(0, 6).map((it) => (
                     <li key={it.intent} className="ai-analytics-list__item">
                       <span className="ai-analytics-list__label">
-                        {it.intent}
+                        Chủ đề: {intentLabel(it.intent)}
                       </span>
-                      <span className="ai-analytics-list__value">
-                        {formatNum(it.count)}
-                      </span>
+                      <span className="ai-analytics-list__value">{formatNum(it.count)}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="ai-analytics-empty">Không có dữ liệu</p>
+                <EmptyReport />
               )}
             </article>
 
-            <article className="customer-analytics-panel ai-analytics-card">
+            <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Lượt nhắn theo nguồn</h3>
-                <p>Phân bố tin nhắn theo vai trò</p>
+                <h3>Nguồn tin nhắn</h3>
+                <p>Khách, chatbot và nhân viên đóng góp vào hội thoại như thế nào.</p>
               </header>
               {m.messagesByRole?.length ? (
                 <ul className="ai-analytics-list">
@@ -296,28 +313,28 @@ export default function AiChatbotAnalyticsPage() {
                       <span className="ai-analytics-list__label">
                         {messageRoleLabels[it.role] || it.role}
                       </span>
-                      <span className="ai-analytics-list__value">
-                        {formatNum(it.count)}
-                      </span>
+                      <span className="ai-analytics-list__value">{formatNum(it.count)}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="ai-analytics-empty">Không có dữ liệu</p>
+                <EmptyReport />
               )}
             </article>
+          </section>
 
-            <article className="customer-analytics-panel ai-analytics-card">
+          <section className="ai-admin-operational-grid">
+            <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Giới hạn sử dụng AI</h3>
-                <p>Giới hạn số lượt dùng AI trong từng khoảng thời gian.</p>
+                <h3>Giới hạn sử dụng</h3>
+                <p>Các mức kiểm soát để hệ thống vận hành ổn định.</p>
               </header>
               {m.rateLimitStatus?.length ? (
                 <ul className="ai-analytics-list">
                   {m.rateLimitStatus.map((it) => (
                     <li key={it.action} className="ai-analytics-list__item">
                       <span className="ai-analytics-list__label">
-                        {rateLimitLabels[it.action] || it.action}
+                        {rateLimitLabels[it.action] || "Hoạt động chatbot"}
                       </span>
                       <span className="ai-analytics-list__value">
                         {it.max} lượt / {formatWindowMs(it.windowMs)}
@@ -326,70 +343,87 @@ export default function AiChatbotAnalyticsPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="ai-analytics-empty">Không có dữ liệu</p>
+                <EmptyReport />
               )}
             </article>
 
-            <article className="customer-analytics-panel ai-analytics-card">
+            <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
                 <h3>Tín hiệu cần chú ý</h3>
-                <p>Các vấn đề cần xem xét</p>
+                <p>Ưu tiên xử lý những điểm có thể ảnh hưởng trải nghiệm khách.</p>
               </header>
               {m.riskySignals?.length ? (
                 <ul className="ai-analytics-list">
                   {m.riskySignals.map((it) => (
                     <li key={it.code} className="ai-analytics-list__item">
                       <span className="ai-analytics-list__label">
-                        {riskySignalLabels[it.code] || it.code}
+                        {riskySignalLabels[it.code] || "Tín hiệu vận hành"}
                       </span>
-                      <span className="ai-analytics-list__value ai-analytics-list__value--warn">
-                        {signalLevelLabels[it.level] || it.level} (
-                        {formatNum(it.count)})
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="ai-analytics-empty">Không có tín hiệu cảnh báo</p>
-              )}
-            </article>
-
-            <article className="customer-analytics-panel ai-analytics-card ai-analytics-card--full">
-              <header className="ai-analytics-card__header">
-                <h3>Việc cần rà soát</h3>
-                <p>Danh sách chất lượng gần đây cần kiểm tra</p>
-              </header>
-              {m.recentQualityQueue?.length ? (
-                <ul className="ai-analytics-list">
-                  {m.recentQualityQueue.map((it) => (
-                    <li
-                      key={it.id}
-                      className="ai-analytics-list__item ai-analytics-list__item--detail"
-                    >
-                      <div className="ai-analytics-list__detail">
-                        <span className="ai-analytics-list__label">
-                          {qualityQueueLabels[it.type] || it.type}
-                        </span>
-                        <span className="ai-analytics-list__subtitle">
-                          {it.label}
-                        </span>
-                        {it.detail && (
-                          <p className="ai-analytics-list__preview">
-                            {it.detail}
-                          </p>
-                        )}
-                      </div>
-                      <span className="ai-analytics-list__meta">
-                        {new Date(it.createdAt).toLocaleDateString("vi-VN")}
+                      <span className={`ai-admin-chip ${signalLevelClass(it.level)}`}>
+                        {signalLevelLabels[String(it.level || "").toLowerCase()] || "Cần chú ý"} · {formatNum(it.count)}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="ai-analytics-empty">Không có mục cần rà soát</p>
+                <div className="ai-admin-empty ai-admin-empty--soft">
+                  <div className="ai-admin-empty__icon">✓</div>
+                  <h4>Ổn định</h4>
+                  <p>Chưa ghi nhận tín hiệu cần ưu tiên trong kỳ này.</p>
+                </div>
               )}
             </article>
           </section>
+
+          <article className="customer-analytics-panel ai-admin-control-card ai-admin-review-list">
+            <header className="ai-analytics-card__header ai-admin-review-list__header">
+              <div>
+                <h3>Việc cần rà soát</h3>
+                <p>Các nội dung có thể ảnh hưởng đến chất lượng tư vấn.</p>
+              </div>
+              {reviewItems.length > visibleReviewItems.length ? (
+                <button type="button" className="ai-admin-link-button">
+                  Xem tất cả ({formatNum(reviewItems.length)})
+                </button>
+              ) : null}
+            </header>
+            {visibleReviewItems.length ? (
+              <ul className="ai-admin-review-list__items">
+                {visibleReviewItems.map((it) => (
+                  <li key={it.id} className="ai-admin-review-item">
+                    <div>
+                      <span className="ai-admin-chip ai-admin-chip--warning">
+                        {qualityQueueLabels[it.type] || "Cần rà soát"}
+                      </span>
+                      <h4>{it.label || qualityQueueLabels[it.type] || "Nội dung cần xem lại"}</h4>
+                      {it.detail ? <p>{it.detail}</p> : null}
+                    </div>
+                    <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="ai-admin-empty ai-admin-empty--soft">
+                <div className="ai-admin-empty__icon">✓</div>
+                <h4>Chưa có mục cần rà soát</h4>
+                <p>Khi có câu trả lời cần cải thiện, danh sách sẽ hiển thị tại đây.</p>
+              </div>
+            )}
+          </article>
+
+          <details className="ai-admin-collapsible">
+            <summary>Chi tiết kỹ thuật</summary>
+            <div className="ai-admin-technical-grid">
+              <span>Đã xử lý chuyển nhân viên: {formatNum(m.resolvedHandoffs)}</span>
+              <span>Câu trả lời cần rà soát: {formatNum(m.fallbackResponses)}</span>
+              <span>Độ chắc chắn thấp: {formatNum(m.lowConfidenceResponses)}</span>
+              <span>Quy tắc an toàn đang bật: {formatNum(m.activeSafetyRules)}</span>
+              <span>Bộ câu hỏi kiểm thử: {formatNum(m.evaluationCaseCount)}</span>
+              <span>
+                Thời gian xử lý TB: {m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}
+              </span>
+            </div>
+          </details>
         </>
       ) : null}
     </section>
