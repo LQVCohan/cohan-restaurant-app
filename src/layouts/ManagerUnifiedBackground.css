@@ -1,6 +1,16 @@
 /* Unified manager workspace background.
-   Applies the Dashboard background to every manager sidebar page, except Orders.
+   Applies a calm neutral workspace canvas to every manager sidebar page, except Orders.
    Orders keeps its dedicated operational layout/background. */
+
+:root {
+  --manager-bg-base: #f8f6ef;
+  --manager-bg-mid: #f5f2ea;
+  --manager-bg-end: #f1eee6;
+  --manager-bg-sage: rgba(47, 113, 105, 0.065);
+  --manager-bg-stone: rgba(176, 162, 139, 0.16);
+  --manager-bg-ivory: rgba(255, 253, 248, 0.54);
+  --manager-grid-line: rgba(107, 97, 83, 0.025);
+}
 
 .manager-layout:not(.manager-layout--orders),
 .manager-layout:not(.manager-layout--orders) .manager-layout__main,
@@ -8,9 +18,10 @@
 .manager-layout:not(.manager-layout--orders) .manager-page-shell,
 .manager-layout:not(.manager-layout--orders) .manager-page-shell__body {
   background:
-    radial-gradient(circle at 10% 0%, rgba(180, 83, 9, 0.12), transparent 30rem),
-    radial-gradient(circle at 92% 2%, rgba(21, 128, 61, 0.07), transparent 28rem),
-    linear-gradient(180deg, #fbf8f2 0%, #f7f3ec 100%) !important;
+    radial-gradient(circle at 14% 0%, var(--manager-bg-ivory), transparent 34rem),
+    radial-gradient(circle at 88% 0%, var(--manager-bg-sage), transparent 32rem),
+    radial-gradient(circle at 72% 100%, var(--manager-bg-stone), transparent 38rem),
+    linear-gradient(180deg, var(--manager-bg-base) 0%, var(--manager-bg-mid) 48%, var(--manager-bg-end) 100%) !important;
 }
 
 .manager-layout:not(.manager-layout--orders) .manager-layout__content {
@@ -23,12 +34,12 @@
   inset: var(--manager-header-height, 64px) 0 0 var(--sidebar-width, 72px);
   z-index: 0;
   pointer-events: none;
-  opacity: 0.075;
+  opacity: 0.52;
   background-image:
-    linear-gradient(rgba(120, 72, 18, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 72, 18, 0.026) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.18) 74%, transparent 100%);
+    linear-gradient(var(--manager-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--manager-grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 72%, transparent 100%);
 }
 
 .manager-layout:not(.manager-layout--orders) .manager-page-shell,
@@ -92,10 +103,10 @@
   min-height: 320px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(120, 113, 108, 0.18);
+  border: 1px solid rgba(120, 113, 108, 0.16);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 16px 36px rgba(120, 72, 18, 0.08);
+  background: rgba(255, 253, 248, 0.76);
+  box-shadow: 0 16px 36px rgba(70, 62, 50, 0.07);
   color: #1f2933;
 }
 
