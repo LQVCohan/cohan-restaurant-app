@@ -14,7 +14,7 @@ import Tabs from "./layout/Tabs/Tabs";
 import IngredientList from "./components/ingredients/IngredientList";
 import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
-import WarehouseStatus from "./components/WarehouseStatus/WarehouseStatus"; // Import Component Status
+import WarehouseStatus from "./components/WarehouseStatus/WarehouseStatus";
 import QuickStockModal from "./components/ingredients/QuickStockModal";
 import InventoryAuditTab from "./components/inventory/InventoryAuditTab";
 
@@ -51,6 +51,8 @@ const StorageManagement = () => {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [ingredientActions, setIngredientActions] = useState(null);
+  const [supplyActions, setSupplyActions] = useState(null);
+  const [recipeActions, setRecipeActions] = useState(null);
 
   const {
     restaurantOptions,
@@ -71,7 +73,6 @@ const StorageManagement = () => {
     persistSettings: persistCurrencySettings,
   } = useRestaurantCurrency(currentRestaurant);
 
-  // ==== 2) Ingredients ====
   const {
     data: ingData,
     loading: ingLoading,
@@ -89,7 +90,6 @@ const StorageManagement = () => {
 
   const ingredients = useMemo(() => ingData?.ingredients || [], [ingData]);
 
-  // ==== 3) Warehouses ====
   const {
     data: whData,
     loading: whLoading,
@@ -110,7 +110,6 @@ const StorageManagement = () => {
 
   const warehouseFilterId = selectedWarehouseId ? selectedWarehouseId : null;
 
-  // ==== 4) StockItems/Movements ====
   const shouldFetchStockForKpi = restaurantReady;
   const shouldFetchMovementsForAudit = restaurantReady && activeTab === "inventory";
 
@@ -147,7 +146,6 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // ==== 5) Recipes ====
   const movements = useMemo(() => movementData?.stockMovements || [], [movementData]);
 
   const [recipeTimeSlot, setRecipeTimeSlot] = useState(null);
@@ -270,7 +268,13 @@ const StorageManagement = () => {
     ];
   }, [ingredients.length, lowStockItems, stockItems.length, warehouses.length]);
 
-  // Define Tabs
+  const activeStorageActions = useMemo(() => {
+    if (activeTab === "ingredients") return ingredientActions;
+    if (activeTab === "supplies") return supplyActions;
+    if (activeTab === "recipes") return recipeActions;
+    return null;
+  }, [activeTab, ingredientActions, recipeActions, supplyActions]);
+
   const tabs = [
     {
       id: "ingredients",
@@ -303,6 +307,7 @@ const StorageManagement = () => {
           warehouses={warehouses}
           warehousesLoading={whLoading}
           onReload={reloadIngredientsAndStock}
+          onRegisterActions={setSupplyActions}
         />
       ),
     },
@@ -328,11 +333,11 @@ const StorageManagement = () => {
           onAddRecipe={addRecipeHandler}
           onUpdateRecipe={updateRecipeHandler}
           onDeleteRecipe={deleteRecipeHandler}
+          onRegisterActions={setRecipeActions}
           ingredients={ingredients}
         />
       ),
     },
-    // Allocation flow is intentionally hidden until backend stock transfer workflow is enabled.
     {
       id: "inventory",
       label: "Kiểm kê",
@@ -376,7 +381,6 @@ const StorageManagement = () => {
   return (
     <div className="storage-management">
       <div className="sm-container">
-        {/* --- Header Section --- */}
         <section className="sm-header-section">
           <Header
             restaurantList={restaurantOptions}
@@ -412,7 +416,7 @@ const StorageManagement = () => {
             }}
             currencyLoading={currencyLoading}
             activeTab={activeTab}
-            ingredientActions={ingredientActions}
+            storageActions={activeStorageActions}
           />
         </section>
 
@@ -431,9 +435,7 @@ const StorageManagement = () => {
           ))}
         </section>
 
-        {/* --- Content Section --- */}
         <section className="sm-main-content" aria-label="Nội dung quản lý kho">
-          {/* TOOLBAR: Tabs (Left) - Status (Right) */}
           <div className="sm-toolbar-wrapper">
             <div className="toolbar-left">
               <Tabs
@@ -455,27 +457,16 @@ const StorageManagement = () => {
                 lowStockItems={lowStockItems}
                 onCreatePO={() => {
                   if (!warehouseFilterId) {
-                    showNotification(
-                      "Vui lòng chọn kho cụ thể trước khi nhập kho.",
-                      "warning"
-                    );
+                    showNotification("Vui lòng chọn kho cụ thể trước khi nhập kho.", "warning");
                     return;
                   }
-                  setPoEntries(
-                    lowStockItems.map((it) => ({
-                      id: it.id,
-                      type: "ingredient",
-                      name: it.name,
-                      unit: it.unit,
-                    }))
-                  );
+                  setPoEntries(lowStockItems.map((it) => ({ id: it.id, type: "ingredient", name: it.name, unit: it.unit })));
                   setPoOpen(true);
                 }}
               />
             </div>
           </div>
 
-          {/* Tab Content */}
           <div className="sm-tab-content-wrapper">
             {tabs.find((tab) => tab.id === activeTab)?.component}
           </div>
@@ -493,54 +484,34 @@ const StorageManagement = () => {
         onClose={() => setPoOpen(false)}
         entries={poEntries}
         onSubmit={async (rows) => {
-          if (!warehouseFilterId) {
-            throw new Error("Vui lòng chọn kho cụ thể để nhập kho.");
-          }
+          if (!warehouseFilterId) throw new Error("Vui lòng chọn kho cụ thể để nhập kho.");
+          if (!rows?.length) throw new Error("Danh sách nhập kho đang trống.");
 
-          if (!rows?.length) {
-            throw new Error("Danh sách nhập kho đang trống.");
-          }
-
-          const results = await Promise.allSettled(
-            rows.map((row) =>
-              adjustStockMu({
-                variables: {
-                  restaurantId: currentRestaurant,
-                  warehouseId: warehouseFilterId,
-                  ingredientId: row.id,
-                  qty: row.qty,
-                  reason: buildReason(row),
-                },
-              }),
-            ),
-          );
+          const results = await Promise.allSettled(rows.map((row) => adjustStockMu({
+            variables: {
+              restaurantId: currentRestaurant,
+              warehouseId: warehouseFilterId,
+              ingredientId: row.id,
+              qty: row.qty,
+              reason: buildReason(row),
+            },
+          })));
 
           const failed = results.filter((item) => item.status === "rejected");
           const successCount = results.length - failed.length;
           if (successCount === 0) {
             const firstError = failed[0]?.reason;
-            throw new Error(
-              getInventoryActionErrorMessage(
-                firstError,
-                `Nhập kho thất bại cho ${rows.length} nguyên liệu.`,
-              ),
-            );
+            throw new Error(getInventoryActionErrorMessage(firstError, `Nhập kho thất bại cho ${rows.length} nguyên liệu.`));
           }
 
           await reloadIngredientsAndStock();
           if (failed.length === 0) {
             setPoOpen(false);
-            showNotification(
-              `Nhập kho thành công ${rows.length} nguyên liệu.`,
-              "success",
-            );
+            showNotification(`Nhập kho thành công ${rows.length} nguyên liệu.`, "success");
             return;
           }
 
-          showNotification(
-            `⚠️ Nhập kho thành công ${successCount}/${rows.length} nguyên liệu. Vui lòng kiểm tra các dòng lỗi.`,
-            "warning",
-          );
+          showNotification(`⚠️ Nhập kho thành công ${successCount}/${rows.length} nguyên liệu. Vui lòng kiểm tra các dòng lỗi.`, "warning");
         }}
       />
     </div>
