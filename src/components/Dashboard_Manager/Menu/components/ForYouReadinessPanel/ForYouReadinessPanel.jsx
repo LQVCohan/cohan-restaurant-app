@@ -42,19 +42,19 @@ const ForYouReadinessPanel = ({
   const shouldShowRestaurantGroups = Array.isArray(restaurantSummaries) && restaurantSummaries.length > 1;
 
   return (
-    <section className="for-you-readiness-panel" aria-label="Chất lượng dữ liệu gợi ý khẩu vị">
+    <section className="for-you-readiness-panel" aria-label="Thông tin khẩu vị khách hàng">
       <div className="for-you-readiness-panel__header">
-        <span className="for-you-readiness-panel__eyebrow">Dữ liệu gợi ý khẩu vị</span>
-        <h3 className="for-you-readiness-panel__title">Chất lượng dữ liệu gợi ý khẩu vị</h3>
+        <span className="for-you-readiness-panel__eyebrow">Hồ sơ khẩu vị khách</span>
+        <h3 className="for-you-readiness-panel__title">Thông tin khách cần để gợi ý món</h3>
         <p className="for-you-readiness-panel__subtitle">
-          Bổ sung khẩu vị, dị ứng và diet tags để AI gợi ý món chính xác hơn.
+          Bổ sung chế độ ăn, dị ứng và khẩu vị để nhân viên tư vấn món chính xác hơn.
         </p>
       </div>
 
       <div className="for-you-readiness-panel__progress">
         <div className="for-you-readiness-panel__progress-meta">
           <strong>{readyPercent}%</strong>
-          <span>{safeSummary.ready}/{safeSummary.total} món có ít nhất một nhóm dữ liệu gợi ý</span>
+          <span>{safeSummary.ready}/{safeSummary.total} món có dữ liệu khẩu vị</span>
         </div>
         <div className="for-you-readiness-panel__progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={readyPercent}>
           <div className="for-you-readiness-panel__progress-fill" style={{ "--ready-percent": `${readyPercent}%` }} />
@@ -84,15 +84,15 @@ const ForYouReadinessPanel = ({
 
       <div className="for-you-readiness-panel__actions">
         {safeSummary.missing > 0 && (
-          <button type="button" className="mm-btn mm-btn--primary" onClick={onShowMissing}>Xem món thiếu khẩu vị</button>
+          <button type="button" className="mm-btn mm-btn--primary" onClick={onShowMissing}>Xem món còn thiếu thông tin</button>
         )}
         {safeSummary.missing > 0 && canUpdateItem && firstMissingItem && (
-          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu</button>
+          <button type="button" className="mm-btn mm-btn--secondary" onClick={() => onEditFirstMissing(firstMissingItem)}>Bổ sung món đầu tiên</button>
         )}
         {canBulkEdit && bulkTargetCount > 0 && (
           <button type="button" className="mm-btn mm-btn--secondary" onClick={onOpenBulkEdit}>
             Bổ sung hàng loạt
-            <small className="for-you-readiness-panel__bulk-helper">{selectedCount > 0 ? `Áp dụng cho ${selectedCount} món đã chọn` : "Áp dụng cho các món thiếu khẩu vị trong danh sách hiện tại"}</small>
+            <small className="for-you-readiness-panel__bulk-helper">{selectedCount > 0 ? `Áp dụng cho ${selectedCount} món đã chọn` : "Áp dụng cho các món còn thiếu thông tin trong danh sách hiện tại"}</small>
           </button>
         )}
         {safeSummary.missing === 0 && safeSummary.total > 0 && (

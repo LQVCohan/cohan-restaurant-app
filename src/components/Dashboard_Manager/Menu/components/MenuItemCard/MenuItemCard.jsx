@@ -46,9 +46,9 @@ const getInventoryWarningCta = (item, availability) => {
   if (isNotTracked) {
     return {
       type: "recipe_missing",
-      label: "Cập nhật recipe",
-      title: "Món chưa có recipe tracking",
-      description: "Thêm recipe để hệ thống tự kiểm tra nguyên liệu và tồn kho.",
+      label: "Bổ sung công thức",
+      title: "Món thiếu công thức kho",
+      description: "Thêm công thức để hệ thống tự kiểm tra nguyên liệu và tồn kho.",
       action: "recipe",
     };
   }
@@ -68,7 +68,7 @@ const getInventoryWarningCta = (item, availability) => {
       type: "out_of_stock",
       label: "Kiểm tra tồn kho",
       title: "Món đang hết hàng",
-      description: "Kiểm tra recipe hoặc tồn kho nguyên liệu trước khi mở bán lại.",
+      description: "Kiểm tra công thức hoặc tồn kho nguyên liệu trước khi mở bán lại.",
       action: "inventory",
     };
   }
