@@ -23,17 +23,6 @@ import {
 } from "@/utils/frontendPermissionAccess";
 import "./Header.scss";
 
-/**
- * Props:
- * - restaurantList: [{id, name, ...}]
- * - currentRestaurantId: string
- * - onRestaurantChange: fn(id)
- * - restaurantsLoading: boolean
- * - warehouses: [{id, name}]
- * - selectedWarehouseId: string|null
- * - onWarehouseChange: fn(id|null)
- * - warehousesLoading: boolean
- */
 const Header = ({
   restaurantList = [],
   currentRestaurantId = "",
@@ -49,7 +38,7 @@ const Header = ({
   onManualRateSave,
   currencyLoading = false,
   activeTab = "ingredients",
-  ingredientActions = null,
+  storageActions = null,
 }) => {
   const { user } = useContext(AuthContext);
   const canWriteInventory = hasAnyPermission(user, ["inventory.write", "stock.write"]);
@@ -60,22 +49,22 @@ const Header = ({
     setRateInput(String(manualRate || 26000));
   }, [manualRate, currentRestaurantId]);
 
-  const isIngredientTab = activeTab === "ingredients";
-  const actionDisabled = Boolean(ingredientActions?.busy);
   const activeTabCopy = getActiveTabCopy(activeTab);
   const ActiveTabIcon = activeTabCopy.Icon;
+  const activeActions = storageActions;
+  const actionDisabled = Boolean(activeActions?.busy);
 
   const handleImportData = () => {
     if (!canWriteInventory) return;
-    ingredientActions?.import?.();
+    activeActions?.import?.();
   };
   const handleExportData = (format = "xlsx") => {
-    if (!ingredientActions) return;
-    if (format === "csv") ingredientActions.exportCsv?.();
-    else ingredientActions.exportXlsx?.();
+    if (!activeActions) return;
+    if (format === "csv") activeActions.exportCsv?.();
+    else activeActions.exportXlsx?.();
   };
-  const handleGenerateReport = () => ingredientActions?.report?.();
-  const handleExportSample = () => ingredientActions?.template?.();
+  const handleGenerateReport = () => activeActions?.report?.();
+  const handleExportSample = () => activeActions?.template?.();
 
   const changeRestaurant = (e) => {
     const id = e.target.value || "";
@@ -108,15 +97,15 @@ const Header = ({
           </div>
         </div>
 
-        {isIngredientTab ? (
-          <div className="actions-wrapper" aria-label="Thao tác dữ liệu nguyên liệu">
+        {activeActions ? (
+          <div className="actions-wrapper" aria-label={`Thao tác dữ liệu ${activeTabCopy.label}`}>
             <button
               type="button"
               className="sm-btn ghost"
               onClick={handleExportSample}
-              title="Tải file mẫu Excel để nhập nguyên liệu"
-              disabled={actionDisabled}
-              aria-busy={ingredientActions?.busy ? "true" : "false"}
+              title={`Tải file mẫu ${activeTabCopy.label}`}
+              disabled={actionDisabled || !activeActions.template}
+              aria-busy={activeActions?.busy ? "true" : "false"}
             >
               <FileSpreadsheet size={17} />
               <span className="hide-on-mobile">Mẫu nhập</span>
@@ -128,19 +117,19 @@ const Header = ({
               type="button"
               className="sm-btn secondary"
               onClick={handleImportData}
-              disabled={actionDisabled || !canWriteInventory}
-              title={disabledWriteTitle || "Nhập dữ liệu từ Excel hoặc CSV"}
+              disabled={actionDisabled || !canWriteInventory || !activeActions.import}
+              title={disabledWriteTitle || `Nhập ${activeTabCopy.label} từ Excel hoặc CSV`}
             >
               <Upload size={17} /> <span className="hide-on-mobile">Nhập file</span>
             </button>
 
-            <div className="sm-action-group" role="group" aria-label="Xuất danh sách nguyên liệu">
+            <div className="sm-action-group" role="group" aria-label={`Xuất danh sách ${activeTabCopy.label}`}>
               <button
                 type="button"
                 className="sm-btn secondary"
                 onClick={() => handleExportData("xlsx")}
-                disabled={actionDisabled}
-                title="Xuất danh sách nguyên liệu dạng XLSX"
+                disabled={actionDisabled || !activeActions.exportXlsx}
+                title={`Xuất ${activeTabCopy.label} dạng XLSX`}
               >
                 <Download size={17} /> <span>XLSX</span>
               </button>
@@ -148,8 +137,8 @@ const Header = ({
                 type="button"
                 className="sm-btn secondary compact"
                 onClick={() => handleExportData("csv")}
-                disabled={actionDisabled}
-                title="Xuất danh sách nguyên liệu dạng CSV"
+                disabled={actionDisabled || !activeActions.exportCsv}
+                title={`Xuất ${activeTabCopy.label} dạng CSV`}
               >
                 CSV
               </button>
@@ -159,8 +148,8 @@ const Header = ({
               type="button"
               className="sm-btn primary"
               onClick={handleGenerateReport}
-              disabled={actionDisabled}
-              title="Lập báo cáo nguyên liệu theo khoảng thời gian"
+              disabled={actionDisabled || !activeActions.report}
+              title={`Lập báo cáo ${activeTabCopy.label}`}
             >
               <FileText size={17} /> <span>Báo cáo</span>
             </button>
@@ -202,9 +191,7 @@ const Header = ({
                 {restaurantsLoading ? "Đang tải..." : "— Chọn nhà hàng —"}
               </option>
               {restaurantList.map((res) => (
-                <option key={res.id} value={res.id}>
-                  {res.name}
-                </option>
+                <option key={res.id} value={res.id}>{res.name}</option>
               ))}
             </select>
             <ChevronDown className="arrow-icon" size={16} />
@@ -232,9 +219,7 @@ const Header = ({
                   : "— Tất cả kho —"}
               </option>
               {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
+                <option key={w.id} value={w.id}>{w.name}</option>
               ))}
             </select>
             <ChevronDown className="arrow-icon" size={16} />
@@ -292,30 +277,16 @@ const Header = ({
 
 function getActiveTabCopy(activeTab) {
   switch (activeTab) {
+    case "ingredients":
+      return { label: "Nguyên liệu", helper: "Import, export và báo cáo nguyên liệu.", Icon: Package };
     case "supplies":
-      return {
-        label: "Vật tư & Khác",
-        helper: "Thêm, nhập, xuất ngay trong danh sách.",
-        Icon: PackageOpen,
-      };
+      return { label: "Vật tư", helper: "Import, export và báo cáo vật tư.", Icon: PackageOpen };
     case "recipes":
-      return {
-        label: "Công thức",
-        helper: "Bộ lọc vẫn áp dụng cho giá vốn món ăn.",
-        Icon: BookOpen,
-      };
+      return { label: "Công thức", helper: "Import, export và báo cáo công thức.", Icon: BookOpen };
     case "inventory":
-      return {
-        label: "Kiểm kê",
-        helper: "Ưu tiên tồn kho, định mức và biến động.",
-        Icon: ClipboardList,
-      };
+      return { label: "Kiểm kê", helper: "Ưu tiên tồn kho, định mức và biến động.", Icon: ClipboardList };
     default:
-      return {
-        label: "Kho hàng",
-        helper: "Chọn nhà hàng và kho để giới hạn dữ liệu.",
-        Icon: Info,
-      };
+      return { label: "Kho hàng", helper: "Chọn nhà hàng và kho để giới hạn dữ liệu.", Icon: Info };
   }
 }
 
