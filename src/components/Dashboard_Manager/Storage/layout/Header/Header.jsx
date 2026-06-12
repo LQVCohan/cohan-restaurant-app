@@ -11,6 +11,10 @@ import {
   ChevronDown,
   Loader2,
   Coins,
+  Info,
+  PackageOpen,
+  BookOpen,
+  ClipboardList,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import {
@@ -59,6 +63,7 @@ const Header = ({
   const isIngredientTab = activeTab === "ingredients";
   const actionDisabled = Boolean(ingredientActions?.busy);
   const activeTabCopy = getActiveTabCopy(activeTab);
+  const ActiveTabIcon = activeTabCopy.Icon;
 
   const handleImportData = () => {
     if (!canWriteInventory) return;
@@ -161,9 +166,14 @@ const Header = ({
             </button>
           </div>
         ) : (
-          <div className="sm-context-note" aria-live="polite">
-            <span>{activeTabCopy.label}</span>
-            <strong>{activeTabCopy.helper}</strong>
+          <div className="sm-workspace-strip" aria-live="polite">
+            <span className="sm-workspace-strip__icon" aria-hidden="true">
+              <ActiveTabIcon size={15} />
+            </span>
+            <span className="sm-workspace-strip__copy">
+              <strong>{activeTabCopy.label}</strong>
+              <span>{activeTabCopy.helper}</span>
+            </span>
           </div>
         )}
       </div>
@@ -284,23 +294,27 @@ function getActiveTabCopy(activeTab) {
   switch (activeTab) {
     case "supplies":
       return {
-        label: "Đang xem vật tư",
-        helper: "Thao tác thêm, nhập, xuất vật tư nằm trong khung bên dưới.",
+        label: "Vật tư & Khác",
+        helper: "Thêm, nhập, xuất ngay trong danh sách.",
+        Icon: PackageOpen,
       };
     case "recipes":
       return {
-        label: "Đang xem công thức",
-        helper: "Bộ lọc nhà hàng và tiền tệ vẫn áp dụng cho giá vốn món ăn.",
+        label: "Công thức",
+        helper: "Bộ lọc vẫn áp dụng cho giá vốn món ăn.",
+        Icon: BookOpen,
       };
     case "inventory":
       return {
-        label: "Đang kiểm kê",
-        helper: "Bảng bên dưới ưu tiên số tồn, định mức và lịch sử biến động.",
+        label: "Kiểm kê",
+        helper: "Ưu tiên tồn kho, định mức và biến động.",
+        Icon: ClipboardList,
       };
     default:
       return {
-        label: "Đang xem kho",
-        helper: "Chọn nhà hàng và kho để giới hạn dữ liệu hiển thị.",
+        label: "Kho hàng",
+        helper: "Chọn nhà hàng và kho để giới hạn dữ liệu.",
+        Icon: Info,
       };
   }
 }
