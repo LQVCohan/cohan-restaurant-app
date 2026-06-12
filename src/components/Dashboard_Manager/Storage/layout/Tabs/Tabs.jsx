@@ -5,6 +5,7 @@ import "../../StorageExperiencePolish.css";
 import "../../StorageBackgroundUnify.css";
 import "../../StoragePremiumNine.css";
 import "../../StorageIngredientCardPremium.css";
+import "../../StorageControlsPolish.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
