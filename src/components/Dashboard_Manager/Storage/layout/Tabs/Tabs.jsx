@@ -6,6 +6,7 @@ import "../../StoragePremiumNine.css";
 import "../../StorageIngredientCardPremium.css";
 import "../../StorageControlsPolish.css";
 import "../../StorageImportToolbar.css";
+import "../../StorageVisualGradeNine.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
