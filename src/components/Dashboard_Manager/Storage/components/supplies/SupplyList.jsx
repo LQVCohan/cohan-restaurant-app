@@ -308,32 +308,31 @@ const SupplyList = ({
           </div>
         </div>
 
-        <div className="sl-toolbar__right">
-          {/* Badge Tổng - Đã sửa lại cho gọn */}
-          <div className="sl-stats">
-            Tổng: <b>{formatNum(filtered.length)}</b>
-          </div>
+        <div className="sl-toolbar__right" aria-label="Thao tác nhanh vật tư">
+          <span className="sl-count-chip" title="Số vật tư đang hiển thị">
+            <Layers size={14} aria-hidden="true" />
+            <b>{formatNum(filtered.length)}</b>
+            <span>vật tư</span>
+          </span>
 
-          {/* Nút Refresh - Dùng thẻ <button> thuần để tránh style lạ của Button component */}
           <button
-            className="sl-btn-icon"
+            className="sl-btn-icon sl-btn-refresh"
             onClick={refresh}
             disabled={loading}
-            title="Tải lại"
+            title="Tải lại danh sách vật tư"
             type="button"
+            aria-label="Tải lại danh sách vật tư"
           >
-            {/* Ép màu cho icon bằng class text-gray-500 hoặc style trực tiếp nếu cần */}
             <RefreshCw
-              size={18}
+              size={17}
               className={loading ? "spin" : ""}
             />
           </button>
 
-          {/* Nút Thêm mới - Đã ép style mạnh */}
-          <Button variant="primary" onClick={openCreate} className="sl-btn-add">
-            <Plus size={18} />
-            <span>Thêm mới</span>
-          </Button>
+          <button type="button" onClick={openCreate} className="sl-btn-add">
+            <Plus size={16} />
+            <span>Thêm vật tư</span>
+          </button>
         </div>
       </div>
 
