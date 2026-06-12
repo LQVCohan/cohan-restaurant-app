@@ -277,7 +277,7 @@ const Toolbar = ({
             value={issueFilterValue}
             onChange={(e) => handleIssueFilterChange(e.target.value)}
           >
-            <option value="">Tất cả vấn đề</option>
+            <option value="all">Tất cả vấn đề</option>
             <option value="missing_info">Thiếu khẩu vị/dị ứng ({forYouMetadataCounts.missing || 0})</option>
             <option value="low_stock">Sắp hết nguyên liệu ({inventoryFilterCounts.low_stock || 0})</option>
             <option value="out_of_stock">Hết nguyên liệu ({inventoryFilterCounts.out_of_stock || 0})</option>
