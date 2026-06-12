@@ -18,6 +18,7 @@ import PromotionManagement from "../components/Dashboard_Manager/Promotion/Promo
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
 import "./ManagerUnifiedBackground.css";
+import "../components/Dashboard_Manager/Customer/AiChatbotAdminDashboardScale.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
