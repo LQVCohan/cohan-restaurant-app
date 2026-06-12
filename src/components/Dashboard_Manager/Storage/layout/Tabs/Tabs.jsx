@@ -4,6 +4,7 @@ import "./Tabs.scss";
 import "../../StorageExperiencePolish.css";
 import "../../StorageBackgroundUnify.css";
 import "../../StoragePremiumNine.css";
+import "../../StorageIngredientCardPremium.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
