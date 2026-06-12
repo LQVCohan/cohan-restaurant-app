@@ -1,6 +1,7 @@
 // src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.jsx
 import React from "react";
 import "./Tabs.scss";
+import "../../StorageExperiencePolish.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (

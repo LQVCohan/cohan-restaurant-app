@@ -90,22 +90,32 @@ export async function listRestaurantAiChatbotSafetyRules({
   filter = {},
   ctx,
 }) {
+  const safeFilter = filter || {};
+
   await ensureAnyPermission(ctx, restaurantId, [
     PERMISSIONS.AI_CHATBOT_MODERATE,
     PERMISSIONS.AI_CHATBOT_WRITE,
   ]);
+
   const q = { restaurantId: toObjectId(restaurantId) };
-  if (filter.enabled != null) q.enabled = Boolean(filter.enabled);
-  if (filter.ruleType && RULE_TYPES.has(filter.ruleType))
-    q.ruleType = filter.ruleType;
-  if (filter.search)
+
+  if (safeFilter.enabled != null) q.enabled = Boolean(safeFilter.enabled);
+
+  if (safeFilter.ruleType && RULE_TYPES.has(safeFilter.ruleType)) {
+    q.ruleType = safeFilter.ruleType;
+  }
+
+  if (safeFilter.search) {
     q.pattern = {
-      $regex: escapeRegex(clean(filter.search, 80)),
+      $regex: escapeRegex(clean(safeFilter.search, 80)),
       $options: "i",
     };
+  }
+
   const rows = await AiChatbotSafetyRule.find(q)
     .sort({ priority: -1, updatedAt: -1 })
     .lean();
+
   return rows.map(toRuleDto);
 }
 export async function createRestaurantAiChatbotSafetyRule({ input, ctx }) {
