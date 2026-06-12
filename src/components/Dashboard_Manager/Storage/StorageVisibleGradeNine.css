@@ -1,0 +1,263 @@
+/* Visible Grade 9 pass
+   This pass is intentionally more noticeable than the previous subtle polish:
+   - remove teal/cyan dominance from decorative UI
+   - keep green only for stock meaning
+   - make primary actions charcoal and all surfaces neutral ivory/stone */
+
+.storage-management {
+  --vg9-primary: #2c3741;
+  --vg9-primary-hover: #202b34;
+  --vg9-surface: rgba(255, 253, 248, 0.88);
+  --vg9-surface-strong: rgba(255, 253, 248, 0.97);
+  --vg9-stone: #eeeae2;
+  --vg9-stone-strong: #dfd8cc;
+  --vg9-border: rgba(194, 184, 168, 0.76);
+  --vg9-border-strong: rgba(154, 144, 128, 0.38);
+  --vg9-text: #1f2a2b;
+  --vg9-muted: #68706e;
+  --vg9-icon: #66706f;
+  --vg9-success: #526f62;
+  --vg9-success-bg: #f0f4ef;
+  --vg9-warm: #8a633f;
+  --vg9-danger: #ba514b;
+}
+
+/* Page canvas: no green/cyan glow, just pearl + stone. */
+.manager-layout__content:has(.storage-management),
+.manager-layout__content:has(.storage-management) .manager-page-shell,
+.manager-layout__content:has(.storage-management) .manager-page-shell__body,
+.manager-layout__content:has(.storage-management) .storage-management {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 252, 0.82), transparent 38rem),
+    radial-gradient(circle at 86% 6%, rgba(135, 130, 120, 0.055), transparent 36rem),
+    radial-gradient(circle at 74% 100%, rgba(185, 176, 158, 0.12), transparent 42rem),
+    linear-gradient(180deg, #f8f7f2 0%, #f3f0e8 52%, #eeeadf 100%) !important;
+}
+
+/* Surfaces should read as the same product shell, not green-tinted blocks. */
+.storage-management .sm-header-card,
+.storage-management .sm-kpi-card,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar,
+.storage-management .inv-toolbar,
+.storage-management .inv-table-wrap,
+.storage-management .inv-movement-block {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(250, 247, 240, 0.88)) !important;
+  border-color: var(--vg9-border) !important;
+}
+
+.storage-management .sm-header-card {
+  background:
+    radial-gradient(circle at 6% 0%, rgba(188, 178, 160, 0.12), transparent 16rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 247, 240, 0.9)) !important;
+}
+
+/* Decorative icons: force stone, not mint/teal. */
+.storage-management .title-wrapper .icon-box,
+.storage-management .sm-header-card .title-wrapper .icon-box,
+.storage-management .sm-kpi-card .sm-kpi-card__icon,
+.storage-management .sm-kpi-card--good .sm-kpi-card__icon,
+.storage-management .sm-kpi-card--neutral .sm-kpi-card__icon,
+.storage-management .sm-kpi-card--warning .sm-kpi-card__icon,
+.storage-management .sm-kpi-card--danger .sm-kpi-card__icon,
+.storage-management .il-card__icon-wrapper,
+.storage-management .sc-icon-box,
+.storage-management .rc-icon-box {
+  background: var(--vg9-stone) !important;
+  border-color: var(--vg9-border-strong) !important;
+  color: var(--vg9-icon) !important;
+}
+
+/* KPI bottom lines were the biggest hidden source of green. */
+.storage-management .sm-kpi-card::after,
+.storage-management .sm-kpi-card--good::after,
+.storage-management .sm-kpi-card--neutral::after,
+.storage-management .sm-kpi-card--warning::after,
+.storage-management .sm-kpi-card--danger::after {
+  background: linear-gradient(90deg, rgba(165, 154, 135, 0.38), rgba(165, 154, 135, 0.16)) !important;
+}
+
+/* Primary actions: charcoal. */
+.storage-management .sm-btn.primary,
+.storage-management .sm-header-card .sm-btn.primary,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-add,
+.storage-management button.sl-btn-add,
+.storage-management .rl-btn-primary,
+.storage-management button[class*="primary"],
+.storage-management button[class*="add"]:not(.tm-add-floor-btn) {
+  background: var(--vg9-primary) !important;
+  border-color: var(--vg9-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 24px rgba(32, 43, 52, 0.18) !important;
+}
+
+.storage-management .sm-btn.primary:hover:not(:disabled),
+.storage-management .il-btn-primary:hover:not(:disabled),
+.storage-management .sl-btn-add:hover:not(:disabled),
+.storage-management button.sl-btn-add:hover:not(:disabled),
+.storage-management .rl-btn-primary:hover:not(:disabled),
+.storage-management button[class*="primary"]:hover:not(:disabled),
+.storage-management button[class*="add"]:hover:not(:disabled) {
+  background: var(--vg9-primary-hover) !important;
+  border-color: var(--vg9-primary-hover) !important;
+}
+
+/* Tabs: active charcoal, inactive neutral. */
+.storage-management .sm-tab-item.active {
+  background: var(--vg9-primary) !important;
+  border-color: var(--vg9-primary) !important;
+  color: #fff !important;
+}
+
+.storage-management .sm-tab-item:not(.active) {
+  color: #666d6b !important;
+}
+
+.storage-management .sm-tab-item.active .active-dot {
+  background: #e3e6e4 !important;
+}
+
+/* Cards: remove the remaining mint border/glow. */
+.storage-management .il-card,
+.storage-management .supply-card,
+.storage-management .rc-card,
+.storage-management .recipe-card {
+  border-color: rgba(181, 171, 154, 0.72) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(132, 126, 116, 0.035), transparent 9rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(249, 245, 237, 0.96)) !important;
+}
+
+.storage-management .il-card:hover,
+.storage-management .supply-card:hover,
+.storage-management .rc-card:hover,
+.storage-management .recipe-card:hover {
+  border-color: rgba(134, 126, 112, 0.52) !important;
+}
+
+.storage-management .il-card__header,
+.storage-management .supply-header,
+.storage-management .rc-header {
+  border-bottom-color: rgba(213, 204, 190, 0.86) !important;
+}
+
+/* Metric blocks should feel like stone tiles, not colored cards. */
+.storage-management .il-stat-box,
+.storage-management .sc-stat-item,
+.storage-management .rc-stat-item,
+.storage-management .rc-stats,
+.storage-management .inv-summary-card {
+  background: rgba(247, 243, 236, 0.84) !important;
+  border-color: rgba(213, 204, 190, 0.94) !important;
+}
+
+.storage-management .il-stat-label,
+.storage-management .sc-stat-lbl,
+.storage-management .rc-stat-label {
+  color: #727b78 !important;
+}
+
+/* Count chips and available-stock badges: semantic, but no bright cyan. */
+.storage-management .il-badge,
+.storage-management .il-title-count,
+.storage-management .rl-badge,
+.storage-management .sl-count-chip,
+.storage-management .il-status-badge.status-in-stock,
+.storage-management .il-status-badge.success,
+.storage-management .status-in-stock,
+.storage-management .badge-success,
+.storage-management .rc-badge-success,
+.storage-management .inv-status-pill.in-stock {
+  background: var(--vg9-success-bg) !important;
+  color: var(--vg9-success) !important;
+  border-color: rgba(82, 111, 98, 0.18) !important;
+}
+
+.storage-management .il-badge,
+.storage-management .il-title-count,
+.storage-management .rl-badge {
+  min-width: auto !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68) !important;
+}
+
+/* Toolbar inputs and secondary buttons: neutral hover, no amber/green flare. */
+.storage-management .sm-btn.secondary,
+.storage-management .sm-btn.ghost,
+.storage-management .il-input-search,
+.storage-management .il-select,
+.storage-management .sl-input-group,
+.storage-management .rl-input-group,
+.storage-management .rl-select-group,
+.storage-management .custom-select-wrapper select,
+.storage-management .inline-rate input,
+.storage-management .inline-rate .sm-btn {
+  background: rgba(255, 253, 248, 0.9) !important;
+  border-color: rgba(194, 184, 168, 0.72) !important;
+  color: #4f5958 !important;
+}
+
+.storage-management .sm-btn.secondary:hover:not(:disabled),
+.storage-management .sm-btn.ghost:hover:not(:disabled),
+.storage-management .il-input-search:hover,
+.storage-management .il-select:hover {
+  background: #fffdf8 !important;
+  border-color: rgba(134, 126, 112, 0.52) !important;
+  color: var(--vg9-primary) !important;
+}
+
+.storage-management .filter-group label,
+.storage-management .filter-group label svg,
+.storage-management .sm-header-filters label,
+.storage-management .sm-header-filters label svg,
+.storage-management .il-icon-left,
+.storage-management .sl-icon,
+.storage-management .rl-icon-left,
+.storage-management .arrow-icon {
+  color: #747b78 !important;
+}
+
+/* Keep money warm, but not orange-heavy. */
+.storage-management .il-stat-value.il-text-price,
+.storage-management .sc-stat-val.highlight,
+.storage-management [class*="price"],
+.storage-management .price {
+  color: var(--vg9-warm) !important;
+}
+
+.storage-management .il-btn-delete,
+.storage-management .sc-btn.danger,
+.storage-management .rc-icon-btn.danger {
+  color: var(--vg9-danger) !important;
+}
+
+/* Action rows: slightly cleaner, more premium. */
+.storage-management .il-card__actions,
+.storage-management .sc-actions,
+.storage-management .rc-actions {
+  background: rgba(255, 253, 248, 0.84) !important;
+  border-color: rgba(213, 204, 190, 0.9) !important;
+}
+
+.storage-management .il-action-btn,
+.storage-management .sc-btn.variant-icon,
+.storage-management .rc-icon-btn {
+  background: rgba(255, 255, 252, 0.9) !important;
+  border-color: rgba(213, 204, 190, 0.78) !important;
+}
+
+.storage-management .sc-btn.variant-ghost,
+.storage-management .rc-btn-view {
+  background: rgba(241, 239, 233, 0.9) !important;
+  color: #56615f !important;
+  border-color: rgba(194, 184, 168, 0.74) !important;
+}
+
+.storage-management :is(button, input, select, textarea):focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(44, 55, 65, 0.14) !important;
+}
