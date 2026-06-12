@@ -1,0 +1,168 @@
+.ai-admin-page {
+  width: min(100%, 1320px);
+  padding: 22px 28px 44px;
+}
+
+.ai-admin-hero {
+  min-height: 150px;
+  padding: 24px 28px;
+  gap: 24px;
+  border-radius: 22px;
+}
+
+.ai-admin-hero h2 {
+  font-size: clamp(32px, 3.2vw, 44px);
+}
+
+.ai-admin-hero p:not(.ai-admin-eyebrow) {
+  max-width: 680px;
+}
+
+.ai-admin-toolbar {
+  gap: 12px;
+}
+
+.ai-admin-toolbar .ai-admin-field,
+.ai-admin-toolbar .customer-analytics-field {
+  width: clamp(180px, 13vw, 220px);
+  padding: 10px 12px;
+}
+
+.ai-admin-toolbar .ai-admin-field select,
+.ai-admin-toolbar .customer-analytics-field select {
+  height: 42px;
+}
+
+.ai-admin-toolbar button,
+.ai-admin-link-button {
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.ai-admin-metrics {
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.ai-admin-metrics article {
+  min-height: 108px;
+  padding: 18px 20px;
+}
+
+.ai-admin-metrics strong {
+  font-size: clamp(28px, 2.6vw, 38px);
+}
+
+.ai-admin-tabs {
+  margin-top: 18px;
+}
+
+.ai-admin-tab-panel,
+.ai-admin-insight-grid,
+.ai-admin-operational-grid,
+.customer-analytics-layout-grid,
+.ai-admin-review-list {
+  margin-top: 18px;
+}
+
+.ai-admin-grid,
+.ai-admin-insight-grid,
+.ai-admin-operational-grid,
+.customer-analytics-layout-grid {
+  gap: 18px;
+}
+
+.ai-admin-grid--settings {
+  grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.82fr);
+}
+
+.ai-admin-grid--knowledge,
+.ai-admin-grid--safety,
+.ai-admin-grid--evaluation {
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.82fr);
+}
+
+.ai-admin-panel__header,
+.ai-analytics-card__header,
+.ai-admin-review-list__header {
+  padding: 20px 22px;
+}
+
+.ai-admin-panel__header h3,
+.ai-analytics-card__header h3 {
+  font-size: clamp(22px, 2vw, 30px);
+}
+
+.ai-admin-form,
+.ai-admin-import-export,
+.ai-admin-card-list,
+.ai-analytics-list,
+.ai-admin-eval-cases ul,
+.ai-admin-review-list__items {
+  gap: 12px;
+  padding: 18px;
+}
+
+.ai-admin-field input,
+.ai-admin-field select,
+.ai-admin-field textarea,
+.ai-admin-import-export textarea {
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.ai-admin-field textarea,
+.ai-admin-import-export textarea {
+  min-height: 132px;
+}
+
+.ai-admin-page--settings .ai-admin-panel--main textarea {
+  min-height: 146px;
+}
+
+.ai-admin-page--settings .ai-admin-panel--handoff textarea {
+  min-height: 126px;
+}
+
+.ai-admin-check,
+.ai-admin-check--card,
+.ai-analytics-list__item,
+.ai-admin-eval-cases li,
+.ai-admin-review-item,
+.ai-admin-card {
+  padding: 14px 16px;
+}
+
+.ai-admin-empty,
+.ai-admin-empty--soft {
+  padding: 24px;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-empty--soft {
+  min-height: 170px;
+}
+
+.ai-admin-page--analytics .ai-admin-hero {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (min-width: 1280px) {
+  .ai-admin-page--analytics .ai-admin-insight-grid,
+  .ai-admin-page--analytics .ai-admin-operational-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .ai-admin-page {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .ai-admin-grid--settings,
+  .ai-admin-grid--knowledge,
+  .ai-admin-grid--safety,
+  .ai-admin-grid--evaluation {
+    grid-template-columns: 1fr;
+  }
+}
