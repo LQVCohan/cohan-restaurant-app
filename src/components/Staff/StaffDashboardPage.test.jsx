@@ -36,6 +36,8 @@ describe("StaffDashboardPage", () => {
     expect(screen.getByRole("link", { name: /Mở hồ sơ/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Xem thông báo/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Xem phản hồi/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Check-in\/out/ })).toBeInTheDocument();
+    expect(screen.getByText("Sẵn sàng phục vụ")).toBeInTheDocument();
   });
 
   it("does not add another main landmark inside StaffLayout", () => {
