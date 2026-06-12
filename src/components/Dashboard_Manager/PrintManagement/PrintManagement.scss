@@ -30,7 +30,7 @@ $danger: #a3483f;
   min-height: 100dvh;
   max-width: 1400px;
   margin: 0 auto;
-  padding: clamp(18px, 2.4vw, 34px);
+  padding: clamp(16px, 2vw, 28px);
   position: relative;
   overflow: hidden;
   color: $ink;
@@ -64,11 +64,11 @@ $danger: #a3483f;
 
   &__demo-flow {
     display: grid;
-    grid-template-columns: minmax(210px, 0.34fr) minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: minmax(190px, 0.28fr) minmax(0, 1fr);
+    gap: 10px;
     align-items: center;
-    margin: 10px 0 16px;
-    padding: 12px 14px;
+    margin: 8px 0 14px;
+    padding: 10px 12px;
     border: 1px solid rgba(105, 88, 62, 0.16);
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.72);
@@ -105,8 +105,8 @@ $danger: #a3483f;
       display: flex;
       align-items: center;
       gap: 8px;
-      min-height: 42px;
-      padding: 8px 9px;
+      min-height: 36px;
+      padding: 7px 8px;
       border-radius: 14px;
       background: #fbf7ef;
       border: 1px solid rgba(105, 88, 62, 0.12);
@@ -115,9 +115,9 @@ $danger: #a3483f;
     span {
       display: grid;
       place-items: center;
-      width: 24px;
-      height: 24px;
-      flex: 0 0 24px;
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
       border-radius: 9px;
       background: #2b302d;
       color: #fff;
@@ -175,13 +175,13 @@ $danger: #a3483f;
   &__grid {
     display: grid;
     grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.4fr);
-    gap: 24px;
+    gap: 18px;
   }
 
   &__stack {
     display: grid;
-    gap: 24px;
-    margin-top: 24px;
+    gap: 18px;
+    margin-top: 18px;
   }
 
   &__skeleton {
@@ -221,11 +221,11 @@ $danger: #a3483f;
 }
 
 .ui-card {
-  border-radius: 26px;
-  padding: clamp(18px, 2vw, 26px);
+  border-radius: 22px;
+  padding: clamp(16px, 1.7vw, 22px);
   background: $surface;
   border: 1px solid $line;
-  box-shadow: 0 24px 70px rgba(67, 57, 42, 0.1);
+  box-shadow: 0 18px 52px rgba(67, 57, 42, 0.09);
   backdrop-filter: blur(10px);
 
   .card-header {
@@ -240,7 +240,7 @@ $danger: #a3483f;
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 20px;
+      font-size: 18px;
       letter-spacing: -0.025em;
     }
 
@@ -300,7 +300,7 @@ $danger: #a3483f;
 
 .device-list {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .device-item {
@@ -423,7 +423,7 @@ $danger: #a3483f;
   display: grid;
   place-items: center;
   gap: 12px;
-  min-height: 146px;
+  min-height: 118px;
   border: 1px dashed rgba(105, 88, 62, 0.28);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.52);
@@ -474,8 +474,8 @@ $danger: #a3483f;
   grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
   gap: 16px;
   align-items: center;
-  padding: 12px;
-  border-radius: 20px;
+  padding: 10px 12px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.62);
   border: 1px solid rgba(45, 55, 50, 0.1);
 }
@@ -494,8 +494,8 @@ $danger: #a3483f;
 .station-icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 14px;
   background: #ece4d6;
   color: $accent;
@@ -537,12 +537,12 @@ $danger: #a3483f;
 .template-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 .template-card {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.66);
   border: 1px solid rgba(45, 55, 50, 0.12);
@@ -585,7 +585,7 @@ $danger: #a3483f;
     line-height: 1.45;
   }
   textarea {
-    min-height: 130px;
+    min-height: 108px;
     resize: vertical;
     border: 1px solid rgba(45, 55, 50, 0.14);
     border-radius: 16px;
@@ -595,6 +595,13 @@ $danger: #a3483f;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     line-height: 1.55;
+  }
+  .template-test:disabled {
+    background: #f6f1e9;
+    border-color: rgba(105, 88, 62, 0.12);
+    color: #8c8172;
+    opacity: 0.72;
+    box-shadow: none;
   }
 }
 
@@ -688,6 +695,33 @@ $danger: #a3483f;
   background: #fff0ee;
   color: $danger;
   border: 1px solid rgba($danger, 0.24);
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .print-ui {
+    padding-block: 14px;
+  }
+
+  .print-ui__demo-flow {
+    margin-bottom: 12px;
+  }
+
+  .ui-card {
+    padding: 16px;
+  }
+
+  .routing-matrix {
+    gap: 8px;
+  }
+
+  .routing-row {
+    padding: 9px 10px;
+  }
+
+  .empty-state,
+  .no-data {
+    min-height: 104px;
+  }
 }
 
 @media (max-width: 1120px) {

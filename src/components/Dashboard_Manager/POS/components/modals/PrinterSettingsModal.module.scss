@@ -46,8 +46,8 @@ $radius: 16px;
 
 .modal {
   background: white;
-  width: 100%;
-  max-width: 600px;
+  width: min(100%, 600px);
+  max-height: min(92dvh, 720px);
   border-radius: $radius;
   box-shadow:
     0 20px 25px -5px rgba(0, 0, 0, 0.1),
@@ -111,10 +111,10 @@ $radius: 16px;
 
 // --- Body ---
 .body {
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   max-height: min(66vh, 560px);
   overflow-y: auto;
 }
@@ -254,7 +254,8 @@ $radius: 16px;
 
 // --- Footer ---
 .footer {
-  padding: 16px 24px;
+  flex-shrink: 0;
+  padding: 14px 24px;
   background: #f8fafc;
   border-top: 1px solid $border;
   display: flex;

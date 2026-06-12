@@ -51,7 +51,7 @@ const DEFAULT_TEMPLATES = [
 const UC22_DEMO_STEPS = [
   "Thêm máy in demo",
   "Test cấu hình mô phỏng",
-  "Gán máy in vào trạm bếp/bar/thu ngân",
+  "Gán trạm bếp/bar/thu ngân",
   "Tạo test job và retry nếu lỗi",
 ];
 
@@ -686,10 +686,7 @@ export default function PrintManagement() {
                       <Wifi size={32} />
                     </div>
                     <h4>Chưa có máy in demo</h4>
-                    <p>
-                      Thêm thiết bị để gán luồng bếp/bar/thu ngân và tạo print
-                      job mô phỏng.
-                    </p>
+                    <p>Thêm thiết bị để gán trạm và tạo print job mô phỏng.</p>
                     <button type="button" onClick={openAddPrinter}>
                       Thêm máy in demo
                     </button>
@@ -834,7 +831,7 @@ export default function PrintManagement() {
                       })}
                       {!hasPrinters && (
                         <span className="station-unassigned station-unassigned--waiting">
-                          Đang chờ thiết bị
+                          Chờ
                         </span>
                       )}
                     </div>
