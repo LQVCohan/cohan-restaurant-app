@@ -757,6 +757,55 @@
   display: none;
 }
 
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) > .ai-admin-panel > .ai-admin-panel__header .ai-admin-actions > button:first-of-type {
+  display: none;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-guide-card h3,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-guide-card p {
+  font-size: 0;
+  line-height: 0;
+  margin: 0;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-guide-card h3::after {
+  content: "Hướng dẫn nhanh";
+  display: block;
+  color: var(--ai-text);
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-guide-card p::after {
+  content: "Bắt đầu bằng các nội dung khách thường hỏi: thực đơn, giờ mở cửa, chính sách đặt bàn, ưu đãi hoặc câu hỏi thường gặp.";
+  display: block;
+  margin-top: 8px;
+  color: var(--ai-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-guide-card::after {
+  content: "Thực đơn  •  Giờ mở cửa  •  Chính sách đặt bàn  •  Ưu đãi";
+  display: block;
+  margin-top: 14px;
+  border: 1px solid var(--ai-border);
+  border-radius: 999px;
+  background: var(--ai-surface-soft);
+  color: var(--ai-accent);
+  padding: 8px 11px;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-empty--soft {
+  min-height: 132px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 1024px) {
   .ai-admin-page {
     width: 100%;
