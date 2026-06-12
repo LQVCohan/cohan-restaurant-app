@@ -1,0 +1,43 @@
+.staff-shell__inner,
+.staff-shell__main {
+  width: min(100%, 1440px);
+}
+
+.staff-shell__main {
+  padding: clamp(16px, 2.4vw, 30px) clamp(18px, 3vw, 34px);
+}
+
+.staff-dashboard-page,
+.staff-schedule-page {
+  width: min(100%, 1360px);
+  margin-inline: auto;
+}
+
+.staff-schedule-page {
+  --staff-bg: #f7f2e9;
+  --staff-text: #2a1f17;
+  --staff-muted: #7c6a59;
+  --staff-primary: #c7631f;
+  --staff-primary-strong: #9f4516;
+  --staff-primary-soft: #fff0df;
+  --staff-page-max: 1360px;
+  background: transparent;
+  padding: 0;
+}
+
+.staff-schedule-hero,
+.staff-schedule-layout {
+  max-width: 100%;
+}
+
+.staff-schedule-hero__content h1,
+.staff-schedule-hero__content p,
+.staff-week-switcher__button,
+.staff-week-switcher__current strong {
+  color: #2a1f17;
+}
+
+.staff-schedule-hero__content p,
+.staff-week-switcher__current span {
+  color: #7c6a59;
+}
