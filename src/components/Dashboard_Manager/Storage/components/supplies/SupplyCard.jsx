@@ -7,7 +7,6 @@ import {
   PackagePlus,
   PackageMinus,
   Pencil,
-  RefreshCw,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -201,16 +200,6 @@ const SupplyCard = ({
               title="Chỉnh sửa"
             >
               <Pencil size={15} />
-            </button>
-            <button
-              className="sc-btn variant-icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStockClick?.(supply);
-              }}
-              title="Làm mới tồn / nhập nhanh"
-            >
-              <RefreshCw size={15} />
             </button>
             <button
               className="sc-btn variant-icon danger"
