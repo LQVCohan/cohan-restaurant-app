@@ -1,4 +1,16 @@
 import React, { useMemo } from "react";
+import {
+  ArrowRightLeft,
+  Box,
+  CupSoda,
+  Droplets,
+  PackagePlus,
+  PackageMinus,
+  Pencil,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import Card from "../../../../common/Card";
 import "./SupplyCard.scss";
 
@@ -29,18 +41,18 @@ const SupplyCard = ({
     });
 
   // Category Icon Mapper
-  const iconByCategory = (cat) => {
+  const renderCategoryIcon = (cat) => {
     switch ((cat || "").toLowerCase()) {
       case "drink":
-        return "🥤";
+        return <CupSoda size={22} strokeWidth={1.85} />;
       case "tissue":
-        return "🧻";
+        return <Box size={22} strokeWidth={1.85} />;
       case "clean":
-        return "🧼";
+        return <Sparkles size={22} strokeWidth={1.85} />;
       case "sauce":
-        return "🧃";
+        return <Droplets size={22} strokeWidth={1.85} />;
       default:
-        return "📦";
+        return <Box size={22} strokeWidth={1.85} />;
     }
   };
 
@@ -77,7 +89,7 @@ const SupplyCard = ({
       <div className="supply-header">
         <div className="supply-flex-row">
           {/* Icon */}
-          <div className="sc-icon-box">{iconByCategory(supply?.category)}</div>
+          <div className="sc-icon-box">{renderCategoryIcon(supply?.category)}</div>
 
           {/* Meta Info */}
           <div className="sc-meta">
@@ -155,7 +167,7 @@ const SupplyCard = ({
               }}
               title="Nhập kho"
             >
-              📥 Nhập
+              <PackagePlus size={15} /> Nhập
             </button>
             <button
               className="sc-btn variant-ghost"
@@ -165,7 +177,7 @@ const SupplyCard = ({
               }}
               title="Xuất kho"
             >
-              📤 Xuất
+              <PackageMinus size={15} /> Xuất
             </button>
             <button
               className="sc-btn variant-icon"
@@ -175,7 +187,7 @@ const SupplyCard = ({
               }}
               title="Chuyển kho"
             >
-              🔁
+              <ArrowRightLeft size={15} />
             </button>
           </div>
 
@@ -188,7 +200,17 @@ const SupplyCard = ({
               }}
               title="Chỉnh sửa"
             >
-              ✏️
+              <Pencil size={15} />
+            </button>
+            <button
+              className="sc-btn variant-icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStockClick?.(supply);
+              }}
+              title="Làm mới tồn / nhập nhanh"
+            >
+              <RefreshCw size={15} />
             </button>
             <button
               className="sc-btn variant-icon danger"
@@ -198,7 +220,7 @@ const SupplyCard = ({
               }}
               title="Xoá"
             >
-              🗑️
+              <Trash2 size={15} />
             </button>
           </div>
         </div>
