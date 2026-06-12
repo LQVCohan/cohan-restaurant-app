@@ -1,0 +1,246 @@
+/* Premium pass for Storage Management: tighter consistency, wider data canvas, lower visual noise. */
+
+.storage-management {
+  --st-accent: #2f7169;
+  --st-accent-strong: #1f5d56;
+  --st-accent-soft: #e6f2ef;
+  --st-shadow: 0 12px 30px rgba(69, 57, 40, 0.06), 0 1px 3px rgba(69, 57, 40, 0.04);
+  --st-shadow-strong: 0 18px 44px rgba(69, 57, 40, 0.1), 0 3px 10px rgba(69, 57, 40, 0.05);
+  --st-hairline: rgba(222, 212, 196, 0.82);
+}
+
+.manager-layout__content:has(.storage-management) .storage-management .sm-container {
+  width: min(100%, 1480px) !important;
+  padding-inline: clamp(24px, 3vw, 48px) !important;
+}
+
+.storage-management .sm-header-card,
+.storage-management .sm-kpi-card,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar,
+.storage-management .inv-toolbar,
+.storage-management .inv-table-wrap,
+.storage-management .inv-movement-block {
+  box-shadow: var(--st-shadow) !important;
+}
+
+.storage-management .sm-header-card:hover,
+.storage-management .sm-kpi-card:hover,
+.storage-management .il-card:hover,
+.storage-management .supply-card:hover,
+.storage-management .rc-card:hover,
+.storage-management .recipe-card:hover {
+  box-shadow: var(--st-shadow-strong) !important;
+}
+
+/* Primary actions: use one product color system instead of mixing teal and navy. */
+.storage-management .sm-btn.primary,
+.storage-management .sm-btn.primary.sm-btn,
+.storage-management .sm-header-card .sm-btn.primary,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-add,
+.storage-management .rl-btn-primary,
+.storage-management .mcb-btn--primary,
+.storage-management button[class*="primary"],
+.storage-management button[class*="add"]:not(.tm-add-floor-btn) {
+  background: var(--st-accent) !important;
+  border-color: var(--st-accent) !important;
+  color: #fff !important;
+}
+
+.storage-management .sm-btn.primary:hover:not(:disabled),
+.storage-management .il-btn-primary:hover:not(:disabled),
+.storage-management .sl-btn-add:hover:not(:disabled),
+.storage-management .rl-btn-primary:hover:not(:disabled),
+.storage-management button[class*="primary"]:hover:not(:disabled),
+.storage-management button[class*="add"]:hover:not(:disabled) {
+  background: var(--st-accent-strong) !important;
+  border-color: var(--st-accent-strong) !important;
+}
+
+/* Header context: make it a light status chip, not a second card. */
+.storage-management .sm-context-note {
+  min-height: 38px !important;
+  max-width: 340px;
+  padding: 8px 12px !important;
+  border-radius: 999px !important;
+  background: rgba(230, 242, 239, 0.78) !important;
+  border-color: rgba(47, 113, 105, 0.16) !important;
+  box-shadow: none !important;
+  align-items: center;
+}
+
+.storage-management .sm-context-note span {
+  color: var(--st-accent-strong) !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+}
+
+.storage-management .sm-context-note strong {
+  color: #52635f !important;
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+}
+
+/* Tabs: remove visual blockiness around icons and keep active state polished. */
+.storage-management .sm-tab-item.active {
+  background: var(--st-accent-strong) !important;
+}
+
+.storage-management .sm-tab-item .tab-icon svg {
+  stroke-width: 1.9;
+}
+
+.storage-management .sm-tab-item.active .tab-icon {
+  background: transparent !important;
+  color: #eef8f5 !important;
+}
+
+.storage-management .sm-tab-item.active .active-dot {
+  bottom: 4px;
+  opacity: 0.9;
+}
+
+/* Wider data layouts for real admin work. */
+.storage-management .il-grid {
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)) !important;
+}
+
+.storage-management .sl-grid {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+}
+
+.storage-management .rl-grid {
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
+}
+
+.storage-management .inventory-audit-tab .inv-table {
+  min-width: 980px !important;
+}
+
+.storage-management .inventory-audit-tab .inv-movement-item {
+  grid-template-columns: minmax(180px, 1.4fr) 92px 110px 120px repeat(4, minmax(110px, 1fr)) !important;
+}
+
+/* Recipe cards now feel closer to the ingredient/supply cards. */
+.storage-management .rc-card {
+  overflow: hidden;
+  border-radius: 22px !important;
+  border: 1px solid var(--st-hairline) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(47, 113, 105, 0.06), transparent 8rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 245, 237, 0.92)) !important;
+  box-shadow: 0 1px 2px rgba(69, 57, 40, 0.04) !important;
+}
+
+.storage-management .rc-header {
+  padding: 16px 16px 14px !important;
+  border-bottom: 1px solid rgba(222, 212, 196, 0.72) !important;
+}
+
+.storage-management .rc-icon-box {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 15px !important;
+  background: var(--st-accent-soft) !important;
+  color: var(--st-accent-strong) !important;
+  border: 1px solid rgba(47, 113, 105, 0.16) !important;
+}
+
+.storage-management .rc-name {
+  color: #202b2d !important;
+  letter-spacing: -0.02em;
+}
+
+.storage-management .rc-category {
+  color: #6f7a76 !important;
+}
+
+.storage-management .rc-stats {
+  border-top: 0 !important;
+  border-bottom: 1px solid rgba(222, 212, 196, 0.72) !important;
+  background: rgba(248, 242, 233, 0.64) !important;
+}
+
+.storage-management .rc-stat-item {
+  background: rgba(255, 253, 248, 0.62) !important;
+  border-right: 1px solid rgba(222, 212, 196, 0.7) !important;
+}
+
+.storage-management .rc-stat-icon {
+  color: var(--st-accent) !important;
+}
+
+.storage-management .rc-stat-value {
+  color: #202b2d !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.storage-management .rc-stat-label {
+  color: #7b8782 !important;
+}
+
+.storage-management .rc-actions {
+  background: rgba(248, 242, 233, 0.72) !important;
+  border-top: 1px solid rgba(222, 212, 196, 0.72) !important;
+}
+
+.storage-management .rc-btn,
+.storage-management .rc-icon-btn {
+  border-radius: 12px !important;
+}
+
+.storage-management .rc-btn-view {
+  background: rgba(230, 242, 239, 0.72) !important;
+  color: var(--st-accent-strong) !important;
+  border: 1px solid rgba(47, 113, 105, 0.14) !important;
+}
+
+.storage-management .rc-btn-view:hover,
+.storage-management .rc-icon-btn:hover {
+  background: #fff !important;
+  border-color: rgba(47, 113, 105, 0.26) !important;
+  color: var(--st-accent-strong) !important;
+}
+
+/* Supply cards: make action icons professional after JSX icon swap. */
+.storage-management .sc-btn svg,
+.storage-management .sc-stock-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.storage-management .sc-btn.variant-ghost {
+  background: rgba(230, 242, 239, 0.78) !important;
+  color: var(--st-accent-strong) !important;
+  border: 1px solid rgba(47, 113, 105, 0.12) !important;
+}
+
+.storage-management .sc-btn.variant-ghost:hover {
+  background: #fff !important;
+}
+
+@media (min-width: 1500px) {
+  .manager-layout__content:has(.storage-management) .storage-management .sm-container {
+    width: min(100%, 1540px) !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .manager-layout__content:has(.storage-management) .storage-management .sm-container {
+    padding-inline: 14px !important;
+  }
+
+  .storage-management .sm-context-note {
+    max-width: 100%;
+    border-radius: 16px !important;
+  }
+
+  .storage-management .inventory-audit-tab .inv-movement-item {
+    grid-template-columns: 1fr !important;
+  }
+}
