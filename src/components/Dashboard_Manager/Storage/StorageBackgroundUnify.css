@@ -1,5 +1,5 @@
 /* Storage page background unification.
-   Match the manager Dashboard background so the inventory page does not look like a separate framed panel. */
+   Match the calm neutral manager canvas so the inventory page does not look separated. */
 
 .manager-layout:has(.storage-management),
 .manager-layout__main:has(.storage-management),
@@ -8,9 +8,10 @@
 .manager-layout__content:has(.storage-management) .manager-page-shell__body,
 .manager-layout__content:has(.storage-management) .storage-management {
   background:
-    radial-gradient(circle at 10% 0%, rgba(180, 83, 9, 0.12), transparent 30rem),
-    radial-gradient(circle at 92% 2%, rgba(21, 128, 61, 0.07), transparent 28rem),
-    linear-gradient(180deg, #fbf8f2 0%, #f7f3ec 100%) !important;
+    radial-gradient(circle at 14% 0%, rgba(255, 253, 248, 0.54), transparent 34rem),
+    radial-gradient(circle at 88% 0%, rgba(47, 113, 105, 0.065), transparent 32rem),
+    radial-gradient(circle at 72% 100%, rgba(176, 162, 139, 0.16), transparent 38rem),
+    linear-gradient(180deg, #f8f6ef 0%, #f5f2ea 48%, #f1eee6 100%) !important;
 }
 
 .manager-layout__content:has(.storage-management) {
@@ -23,12 +24,12 @@
   inset: var(--manager-header-height, 64px) 0 0 var(--sidebar-width, 72px);
   pointer-events: none;
   z-index: 0;
-  opacity: 0.08;
+  opacity: 0.52;
   background-image:
-    linear-gradient(rgba(120, 72, 18, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 72, 18, 0.026) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.18) 74%, transparent 100%);
+    linear-gradient(rgba(107, 97, 83, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107, 97, 83, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 72%, transparent 100%);
 }
 
 .manager-layout__content:has(.storage-management) .manager-page-shell {
@@ -60,7 +61,7 @@
 .storage-management .sm-kpi-card,
 .storage-management .sm-toolbar-wrapper,
 .storage-management .sm-tab-content-wrapper {
-  background-color: rgba(255, 255, 255, 0.72) !important;
+  background-color: rgba(255, 253, 248, 0.76) !important;
 }
 
 .storage-management .sm-tab-item .tab-icon {
