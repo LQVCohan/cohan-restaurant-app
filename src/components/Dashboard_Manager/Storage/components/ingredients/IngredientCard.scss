@@ -1,335 +1,353 @@
 /* src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.scss */
 
-$il-bg-surface: #ffffff;
-$il-border-color: #e2e8f0;
-$il-primary: #c5a47e;
-$il-text-main: #1e293b;
-$il-text-sub: #64748b;
-$il-danger: #ef4444;
-$il-success: #10b981;
-$il-warning: #f59e0b;
-$il-info: #3b82f6;
+$il-card-bg: #fffdf8;
+$il-card-soft: #fbf6ee;
+$il-border: #ded4c4;
+$il-border-soft: rgba(222, 212, 196, 0.72);
+$il-text: #1f2a2b;
+$il-muted: #667673;
+$il-muted-soft: #8a9692;
+$il-teal: #2f7169;
+$il-teal-dark: #1f5d56;
+$il-teal-soft: #e6f2ef;
+$il-warm: #9a6938;
+$il-danger: #e04842;
+$il-warning: #c9821b;
+$il-info: #2b70d8;
+$il-success: #2f8f61;
 
 .il-card {
-  background: $il-bg-surface;
-  border: 1px solid $il-border-color;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.2s ease-in-out;
   position: relative;
   display: flex;
   flex-direction: column;
+  min-height: 258px;
+  overflow: hidden;
+  border: 1px solid rgba(47, 113, 105, 0.2);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(47, 113, 105, 0.055), transparent 9rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(250, 245, 237, 0.94));
+  box-shadow: 0 12px 28px rgba(69, 57, 40, 0.07), 0 1px 2px rgba(69, 57, 40, 0.04);
+  color: $il-text;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  font-variant-numeric: tabular-nums;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
-    border-color: rgba($il-primary, 0.4);
-
-    .il-card__actions {
-      background-color: #f8fafc;
-    }
+    transform: translateY(-3px);
+    border-color: rgba(47, 113, 105, 0.36);
+    box-shadow: 0 20px 46px rgba(69, 57, 40, 0.12), 0 4px 12px rgba(69, 57, 40, 0.06);
   }
 
-  /* --- Header --- */
   &__header {
-    padding: 16px;
-    display: flex;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
-    border-bottom: 1px solid rgba($il-border-color, 0.5);
+    min-height: 82px;
+    padding: 16px 16px 14px;
+    border-bottom: 1px solid $il-border-soft;
   }
 
   &__icon-wrapper {
-    width: 40px;
-    height: 40px;
-    background: #fdf8f6;
-    border-radius: 10px;
-    display: flex;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: $il-primary;
+    border-radius: 16px;
+    background: $il-teal-soft;
+    border: 1px solid rgba(47, 113, 105, 0.16);
+    color: $il-teal-dark;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 
     svg,
     .lucide {
-      width: 24px;
-      height: 24px;
+      width: 23px;
+      height: 23px;
       display: block;
       flex-shrink: 0;
       color: currentColor;
       stroke: currentColor;
       fill: none;
+      stroke-width: 1.9;
       opacity: 1;
       visibility: visible;
     }
   }
 
+  &__emoji-icon {
+    font-size: 1.42rem;
+    line-height: 1;
+  }
+
   &__title-group {
-    flex: 1;
     min-width: 0;
+    display: grid;
+    gap: 5px;
+  }
 
-    .il-card__title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: $il-text-main;
-      margin: 0 0 4px 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  &__title {
+    margin: 0;
+    max-width: 100%;
+    color: $il-text;
+    font-size: 1.08rem;
+    line-height: 1.15;
+    font-weight: 830;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-    .il-card__subtitle {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.75rem;
-      color: #94a3b8;
+  &__subtitle {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 5px;
+    color: $il-muted;
+    font-size: 0.78rem;
+    font-weight: 620;
 
-      svg,
-      .lucide {
-        width: 12px;
-        height: 12px;
-        display: block;
-        flex-shrink: 0;
-        color: currentColor;
-        stroke: currentColor;
-        fill: none;
-        opacity: 0.7;
-        visibility: visible;
-      }
+    svg,
+    .lucide {
+      width: 13px;
+      height: 13px;
+      display: block;
+      flex-shrink: 0;
+      color: currentColor;
+      stroke: currentColor;
+      fill: none;
+      opacity: 0.82;
+      visibility: visible;
     }
   }
 
-  /* Status Badge Styles */
   .il-status-badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 6px;
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.72rem;
+    font-weight: 760;
     white-space: nowrap;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 
     &.status-in-stock,
     &.success {
-      background: #ecfdf5;
-      color: $il-success;
-      border: 1px solid rgba($il-success, 0.2);
+      background: $il-teal-soft;
+      color: $il-teal-dark;
+      border-color: rgba(47, 113, 105, 0.16);
     }
 
     &.status-low-stock,
     &.warning {
-      background: #fffbeb;
-      color: $il-warning;
-      border: 1px solid rgba($il-warning, 0.2);
+      background: #fff2df;
+      color: #9f6630;
+      border-color: rgba(159, 102, 48, 0.2);
     }
 
     &.status-out-of-stock,
     &.danger {
-      background: #fef2f2;
-      color: $il-danger;
-      border: 1px solid rgba($il-danger, 0.2);
+      background: #fbefed;
+      color: #a9514d;
+      border-color: rgba(169, 81, 77, 0.2);
     }
 
     &.status-unknown {
-      background: #f1f5f9;
-      color: #94a3b8;
+      background: #f2ece4;
+      color: $il-muted-soft;
+      border-color: rgba(222, 212, 196, 0.7);
     }
   }
 
-  /* --- Body --- */
   &__body {
-    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     flex: 1;
+    padding: 15px 16px 16px;
   }
 
-  /* Stats Grid */
   .il-stats-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
 
-    .il-stat-box {
-      background: #f8fafc;
-      border-radius: 8px;
-      padding: 10px;
-      border: 1px solid transparent;
-      transition: all 0.2s;
+  .il-stat-box {
+    min-width: 0;
+    min-height: 74px;
+    padding: 12px 11px 11px;
+    border: 1px solid rgba(222, 212, 196, 0.92);
+    border-radius: 12px;
+    background: rgba(248, 242, 233, 0.76);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    color: inherit;
+    text-align: left;
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 
-      &.il-stat-box--interactive {
-        cursor: pointer;
+    &.il-stat-box--interactive {
+      cursor: pointer;
 
-        &:hover {
-          background: #fff;
-          border-color: $il-primary;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        background: #fffdf8;
+        border-color: rgba(47, 113, 105, 0.28);
+        box-shadow: 0 10px 22px rgba(47, 113, 105, 0.07);
       }
+    }
 
-      .il-stat-label {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-      }
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
 
-      .il-stat-value-group {
-        display: flex;
-        align-items: baseline;
-        gap: 2px;
+  .il-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 28px;
+    margin-bottom: 5px;
+    color: #78908d;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    font-weight: 760;
+  }
 
-        .il-stat-value {
-          font-size: 1rem;
-          font-weight: 700;
-          color: $il-text-main;
+  .il-stat-label__edit-icon {
+    width: 11px;
+    height: 11px;
+    color: rgba(120, 137, 133, 0.65);
+  }
 
-          &.il-text-price {
-            color: $il-primary;
-          }
-        }
+  .il-stat-value-group {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 3px;
+  }
 
-        .il-stat-unit {
-          font-size: 0.7rem;
-          color: #94a3b8;
-        }
+  .il-stat-value {
+    min-width: 0;
+    color: $il-text;
+    font-size: 1.06rem;
+    line-height: 1.15;
+    font-weight: 860;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &.il-text-price {
+      color: $il-warm;
+    }
+  }
+
+  .il-stat-unit {
+    color: #70817e;
+    font-size: 0.72rem;
+    font-weight: 720;
+    white-space: nowrap;
+  }
+
+  &__actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) 1px 1fr;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    margin-top: auto;
+    padding: 7px 10px;
+    border: 1px solid rgba(222, 212, 196, 0.82);
+    border-radius: 16px;
+    background: rgba(255, 253, 248, 0.76);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  }
+
+  .il-action-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    margin-inline: auto;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(222, 212, 196, 0.64);
+    background: rgba(255, 255, 255, 0.82);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: $il-muted;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+
+    svg,
+    .lucide {
+      width: 16px !important;
+      height: 16px !important;
+      display: block;
+      flex-shrink: 0;
+      color: currentColor !important;
+      stroke: currentColor !important;
+      fill: none !important;
+      stroke-width: 2.15;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: none;
+    }
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: #ffffff;
+      border-color: rgba(47, 113, 105, 0.25);
+      box-shadow: 0 8px 18px rgba(69, 57, 40, 0.08);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(47, 113, 105, 0.18);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+      box-shadow: none;
+    }
+
+    &.il-btn-edit {
+      color: #2b70d8;
+    }
+
+    &.il-btn-stock {
+      color: $il-success;
+    }
+
+    &.il-btn-view {
+      color: $il-warning;
+    }
+
+    &.il-btn-delete {
+      color: $il-danger;
+
+      &:hover:not(:disabled) {
+        background: #fff5f3;
+        border-color: rgba(224, 72, 66, 0.2);
       }
     }
   }
 
-  /* --- Actions Toolbar --- */
-  &__actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #f8fafc;
-    border-radius: 8px;
-    padding: 6px;
-    margin-top: auto;
-    transition: background 0.2s;
-
-    .il-action-btn {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 32px;
-      min-width: 32px;
-      height: 32px;
-      min-height: 32px;
-      padding: 0;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      background: #fff;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex: 0 0 auto;
-      overflow: visible;
-      line-height: 1;
-      color: #94a3b8;
-      transition: all 0.2s ease;
-
-      svg,
-      .lucide {
-        width: 16px !important;
-        height: 16px !important;
-        min-width: 16px;
-        min-height: 16px;
-        display: block;
-        flex-shrink: 0;
-        overflow: visible;
-        color: currentColor !important;
-        stroke: currentColor !important;
-        fill: none !important;
-        stroke-width: 2.25;
-        opacity: 1 !important;
-        visibility: visible !important;
-        pointer-events: none;
-      }
-
-      &:hover {
-        border-color: rgba($il-primary, 0.25);
-        background: #fff;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-      }
-
-      &:focus-visible {
-        outline: 2px solid rgba($il-primary, 0.35);
-        outline-offset: 2px;
-      }
-
-      &:disabled {
-        opacity: 1;
-        cursor: not-allowed;
-        background: #f1f5f9;
-        border-color: transparent;
-      }
-
-      &:disabled svg,
-      &:disabled .lucide {
-        opacity: 1 !important;
-        visibility: visible !important;
-      }
-
-      &.il-btn-edit {
-        color: $il-info;
-      }
-
-      &.il-btn-stock {
-        color: $il-success;
-      }
-
-      &.il-btn-view {
-        color: $il-warning;
-      }
-
-      &.il-btn-delete {
-        color: $il-danger;
-      }
-
-      &.il-btn-edit:hover {
-        color: $il-info;
-      }
-
-      &.il-btn-stock:hover {
-        color: $il-success;
-      }
-
-      &.il-btn-view:hover {
-        color: $il-warning;
-      }
-
-      &.il-btn-delete:hover {
-        color: $il-danger;
-        background: #fef2f2;
-      }
-
-      /* giữ icon vẫn hiện ngay cả khi disabled */
-      &.il-btn-edit:disabled {
-        color: rgba($il-info, 0.65) !important;
-      }
-
-      &.il-btn-stock:disabled {
-        color: rgba($il-success, 0.65) !important;
-      }
-
-      &.il-btn-view:disabled {
-        color: rgba($il-warning, 0.75) !important;
-      }
-
-      &.il-btn-delete:disabled {
-        color: rgba($il-danger, 0.65) !important;
-      }
-    }
-
-    .il-divider-vertical {
-      width: 1px;
-      height: 20px;
-      background: $il-border-color;
-      margin: 0 4px;
-      flex-shrink: 0;
-    }
+  .il-divider-vertical {
+    width: 1px;
+    height: 24px;
+    background: rgba(222, 212, 196, 0.92);
+    justify-self: center;
   }
 }
 
@@ -343,8 +361,8 @@ $il-info: #3b82f6;
     .il-label {
       display: block;
       font-size: 0.9rem;
-      font-weight: 500;
-      color: $il-text-main;
+      font-weight: 650;
+      color: $il-text;
       margin-bottom: 8px;
     }
 
@@ -356,27 +374,28 @@ $il-info: #3b82f6;
         left: 10px;
         top: 50%;
         transform: translateY(-50%);
-        color: #94a3b8;
+        color: $il-muted-soft;
       }
 
       .il-input {
         width: 100%;
         padding: 10px 10px 10px 36px;
-        border: 1px solid $il-border-color;
-        border-radius: 8px;
+        border: 1px solid $il-border;
+        border-radius: 12px;
         font-size: 1rem;
         outline: none;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
 
         &:focus {
-          border-color: $il-primary;
+          border-color: $il-teal;
+          box-shadow: 0 0 0 4px rgba(47, 113, 105, 0.16);
         }
       }
     }
 
     .il-hint {
       font-size: 0.8rem;
-      color: #94a3b8;
+      color: $il-muted-soft;
       margin-top: 6px;
     }
   }
@@ -384,120 +403,41 @@ $il-info: #3b82f6;
   .il-btn-primary,
   .il-btn-secondary {
     padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
+    border-radius: 12px;
+    font-weight: 700;
     cursor: pointer;
-    border: none;
+    border: 1px solid transparent;
     font-size: 0.9rem;
   }
 
   .il-btn-primary {
-    background: $il-text-main;
+    background: $il-teal;
     color: #fff;
 
     &:hover {
-      opacity: 0.9;
+      background: $il-teal-dark;
     }
   }
 
   .il-btn-secondary {
     background: transparent;
-    color: #94a3b8;
+    color: $il-muted;
     margin-right: 8px;
 
     &:hover {
-      background: #f1f5f9;
+      background: $il-card-soft;
     }
   }
 }
 
-.il-card {
-  border-radius: 18px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+@media (max-width: 520px) {
+  .il-card {
+    .il-stats-grid {
+      grid-template-columns: 1fr;
+    }
 
-  &__emoji-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-  }
-
-  .il-stats-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .il-stat-box {
-    appearance: none;
-    width: 100%;
-    text-align: left;
-    color: inherit;
-    font: inherit;
-  }
-
-  .il-stat-label__edit-icon {
-    margin-left: 4px;
-    opacity: 0.55;
-  }
-}
-
-@media (max-width: 720px) {
-  .il-card .il-stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* --- Premium ingredient card polish --- */
-.ingredient-card {
-  border-color: rgba(122, 95, 61, 0.15);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(197, 164, 126, 0.12), transparent 9rem),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 248, 236, 0.58));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 16px 38px rgba(62, 47, 30, 0.1);
-
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 24px 50px rgba(62, 47, 30, 0.15);
-  }
-
-  button:focus-visible,
-  input:focus-visible {
-    outline: 3px solid rgba(197, 164, 126, 0.28);
-    outline-offset: 2px;
-  }
-}
-
-.il-card {
-  border-color: rgba(122, 95, 61, 0.15);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(197, 164, 126, 0.12), transparent 9rem),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 248, 236, 0.58));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 16px 38px rgba(62, 47, 30, 0.1);
-
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 24px 50px rgba(62, 47, 30, 0.15);
-  }
-
-  &__header,
-  &__actions {
-    background: transparent;
-  }
-
-  &__icon-wrapper,
-  .il-status-badge,
-  .il-action-btn {
-    border-radius: 14px;
-  }
-
-  .il-stat__value,
-  .price-value,
-  input {
-    font-variant-numeric: tabular-nums;
-  }
-
-  button:focus-visible,
-  input:focus-visible {
-    outline: 3px solid rgba(197, 164, 126, 0.28);
-    outline-offset: 2px;
+    &__actions {
+      grid-template-columns: repeat(3, 1fr) 1px 1fr;
+    }
   }
 }
