@@ -20,6 +20,7 @@ import {
   FiTrendingUp,
 } from "react-icons/fi";
 import "./Toolbar.scss";
+import "../../MenuManagementUsability.scss";
 
 const STATUS_OPTIONS = [
   { value: "available", label: "Sẵn sàng" },
@@ -32,6 +33,13 @@ const STATUS_LABELS = STATUS_OPTIONS.reduce((acc, option) => {
   acc[option.value] = option.label;
   return acc;
 }, {});
+
+const INVENTORY_FILTER_LABELS = {
+  low_stock: "Sắp hết",
+  out_of_stock: "Hết nguyên liệu",
+  needs_check: "Cần kiểm kho",
+  not_tracked: "Thiếu công thức",
+};
 
 const Toolbar = ({
   searchTerm,
@@ -177,7 +185,7 @@ const Toolbar = ({
             id="menu-search-input"
             type="text"
             className="search-input"
-            placeholder="Tìm món theo tên hoặc mô tả..."
+            placeholder="Tìm tên món, mô tả hoặc ghi chú..."
             aria-label="Tìm món"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -256,6 +264,7 @@ const Toolbar = ({
 
       <div className="toolbar-filters">
         <div className="filter-row">
+          <span className="filter-section-label">Sắp xếp & phạm vi món</span>
           <div className="select-wrapper">
             <FiSliders className="select-icon" />
             <label className="toolbar-sr-label" htmlFor="menu-sort-select">Sắp xếp món</label>
@@ -327,7 +336,8 @@ const Toolbar = ({
 
 
         <div className="toolbar-for-you-filter">
-          <span className="toolbar-for-you-filter__label">Khẩu vị</span>
+          <span className="filter-section-label">Dữ liệu khẩu vị khách</span>
+          <span className="toolbar-for-you-filter__label">Khẩu vị khách</span>
           {[
             ["all", "Tất cả"],
             ["missing", `Chưa khai báo (${forYouMetadataCounts.missing || 0})`],
@@ -345,15 +355,16 @@ const Toolbar = ({
         </div>
 
         <div className="inventory-filter-row">
+          <span className="filter-section-label">Tồn kho & công thức</span>
           {[
             ["all", "Tất cả"],
             ["low_stock", "Sắp hết"],
             ["out_of_stock", "Hết nguyên liệu"],
             ["needs_check", "Cần kiểm kho"],
-            ["not_tracked", "Chưa tracking recipe"],
+            ["not_tracked", "Thiếu công thức"],
           ].map(([key, label]) => (
             <button key={key} className={`inventory-chip ${inventoryFilter === key ? "active" : ""}`} onClick={() => onInventoryFilterChange?.(key)} type="button" title={label}>
-              <span>{key === "not_tracked" ? <><span className="desktop-label">{label}</span><span className="mobile-label">Chưa tracking</span></> : label}</span>
+              <span>{key === "not_tracked" ? <><span className="desktop-label">{label}</span><span className="mobile-label">Thiếu công thức</span></> : label}</span>
               <span className="count">{inventoryFilterCounts[key] || 0}</span>
             </button>
           ))}
@@ -410,7 +421,7 @@ const Toolbar = ({
             <span className="chip">{forYouMetadataFilter === "missing" ? "Chưa khai báo khẩu vị" : "Đã khai báo khẩu vị"}<button type="button" className="chip-x" aria-label="Xóa lọc khẩu vị" title="Xóa lọc khẩu vị" onClick={() => onForYouMetadataFilterChange?.("all")}><FiX /></button></span>
           )}
           {inventoryFilter !== "all" && (
-            <span className="chip">{{ low_stock: "Sắp hết", out_of_stock: "Hết nguyên liệu", needs_check: "Cần kiểm kho", not_tracked: "Chưa tracking recipe" }[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" aria-label="Xóa lọc tồn kho" title="Xóa lọc tồn kho" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>
+            <span className="chip">{INVENTORY_FILTER_LABELS[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" aria-label="Xóa lọc tồn kho" title="Xóa lọc tồn kho" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>
           )}
           {(minPrice || maxPrice) && (
             <span className="chip">
