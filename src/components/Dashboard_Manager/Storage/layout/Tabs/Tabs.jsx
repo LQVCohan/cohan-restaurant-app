@@ -1,4 +1,5 @@
 import React from "react";
+import StorageGridPaginationBridge from "../../components/common/StorageGridPaginationBridge";
 import "./Tabs.scss";
 import "../../StorageExperiencePolish.css";
 import "../../StorageBackgroundUnify.css";
@@ -9,29 +10,33 @@ import "../../StorageImportToolbar.css";
 import "../../StorageVisualGradeNine.css";
 import "../../StorageVisibleGradeNine.css";
 import "../../StorageComponentHarmony.css";
+import "../../StoragePagination.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
-    <div className="sm-tabs-container" role="tablist" aria-label="Nhóm chức năng kho">
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            className={`sm-tab-item ${isActive ? "active" : ""}`}
-            onClick={() => onTabChange(tab.id)}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            aria-current={isActive ? "page" : undefined}
-          >
-            {tab.icon && <span className="tab-icon">{tab.icon}</span>}
-            <span className="tab-label">{tab.label}</span>
-            {isActive && <span className="active-dot" />}
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div className="sm-tabs-container" role="tablist" aria-label="Nhóm chức năng kho">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              className={`sm-tab-item ${isActive ? "active" : ""}`}
+              onClick={() => onTabChange(tab.id)}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-current={isActive ? "page" : undefined}
+            >
+              {tab.icon && <span className="tab-icon">{tab.icon}</span>}
+              <span className="tab-label">{tab.label}</span>
+              {isActive && <span className="active-dot" />}
+            </button>
+          );
+        })}
+      </div>
+      <StorageGridPaginationBridge activeTab={activeTab} />
+    </>
   );
 };
 
