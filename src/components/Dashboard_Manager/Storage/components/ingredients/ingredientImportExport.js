@@ -458,7 +458,7 @@ export function downloadIngredientTemplate() {
 }
 
 export function downloadImportErrors(errors) {
-  const rows = [["dong", "ten", "sku", "loai_loi", "chi_tiet"], ...errors.map((e) => [e.rowNo, e.name || "", e.sku || "", e.type || "VALIDATION", e.reason || ""])];
+  const rows = [["dong", "ten", "sku", "loai_loi", "chi_tiet"], ...errors.map((e) => [e.rowNo, e.name || "", e.sku || "", e.type || "VALIDATION", e.reason || ""] )];
   const csv = toCSV(rows);
   downloadBlob(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }), `ingredient-import-errors-${dateStamp()}.csv`);
 }
@@ -552,4 +552,17 @@ export function downloadReportsZip(files) {
   downloadBlob(new Blob([zip], { type: "application/zip" }), `ingredient-reports-${dateStamp()}.zip`);
 }
 
-export { INGREDIENT_UNITS, STATUS_VALUES, normalizeText, normalizeSku };
+export {
+  INGREDIENT_UNITS,
+  STATUS_VALUES,
+  createWorkbookXlsx,
+  createZip,
+  dateStamp,
+  downloadBlob,
+  normalizeText,
+  normalizeSku,
+  parseCSVLine,
+  parseSpreadsheetMlXml,
+  parseXlsxFirstSheet,
+  toCSV,
+};
