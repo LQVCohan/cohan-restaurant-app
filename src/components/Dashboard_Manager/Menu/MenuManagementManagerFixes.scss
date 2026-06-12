@@ -129,13 +129,44 @@
   margin-top: 6px !important;
 }
 
+.toolbar-for-you-filter > .filter-section-label,
+.toolbar-for-you-filter__label,
+.menu-item-card .card-actions .action-btn.edit span,
+.menu-item-card .card-actions .status-trigger span {
+  font-size: 0 !important;
+}
+
+.toolbar-for-you-filter > .filter-section-label::after {
+  content: "Khẩu vị & dị ứng";
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.toolbar-for-you-filter__label::after {
+  content: "Tư vấn món";
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .menu-item-card .card-actions .action-btn.edit {
   color: #6f4b25 !important;
   font-weight: 850 !important;
 }
 
+.menu-item-card .card-actions .action-btn.edit span::after {
+  content: "Sửa món";
+  font-size: 12px;
+}
+
 .menu-item-card .card-actions .action-btn.status-trigger {
   color: #4b5563 !important;
+}
+
+.menu-item-card .card-actions .status-trigger span::after {
+  content: "Trạng thái";
+  font-size: 12px;
 }
 
 @media (max-width: 1180px) {
