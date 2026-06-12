@@ -29,6 +29,7 @@ import {
 
 import "./StaffManagement.scss";
 import "./StaffPremiumBoard.scss";
+import "./StaffManagerCohesion.scss";
 
 const QUERY_PENDING_LEAVE_REQUESTS = gql`
   query PendingLeaveRequests($filter: LeaveRequestFilterInput) {
