@@ -2,16 +2,21 @@
 .manager-layout--ai-chatbot-settings .manager-page-shell,
 .manager-layout--ai-chatbot-knowledge .manager-page-shell {
   width: min(100%, 1500px) !important;
+  max-width: 1500px !important;
 }
 
 .manager-layout--ai-chatbot-analytics .manager-page-shell__body,
 .manager-layout--ai-chatbot-settings .manager-page-shell__body,
 .manager-layout--ai-chatbot-knowledge .manager-page-shell__body {
   width: 100% !important;
+  max-width: none !important;
 }
 
-.ai-admin-page {
+.manager-layout--ai-chatbot-analytics .ai-admin-page,
+.manager-layout--ai-chatbot-settings .ai-admin-page,
+.manager-layout--ai-chatbot-knowledge .ai-admin-page {
   width: min(100%, 1480px) !important;
+  max-width: 1480px !important;
   padding: 22px 28px 44px !important;
 }
 
@@ -158,15 +163,72 @@
   grid-template-columns: minmax(0, 1fr) auto !important;
 }
 
-@media (min-width: 1280px) {
-  .ai-admin-page--analytics .ai-admin-insight-grid,
-  .ai-admin-page--analytics .ai-admin-operational-grid {
+@media (min-width: 1180px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-page {
+    display: grid !important;
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    align-items: start !important;
+    column-gap: 18px !important;
+    row-gap: 18px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-hero,
+  .manager-layout--ai-chatbot-analytics .ai-admin-metrics,
+  .manager-layout--ai-chatbot-analytics .ai-admin-review-list,
+  .manager-layout--ai-chatbot-analytics .ai-admin-collapsible,
+  .manager-layout--ai-chatbot-analytics .ai-admin-error,
+  .manager-layout--ai-chatbot-analytics .ai-admin-skeleton,
+  .manager-layout--ai-chatbot-analytics .ai-admin-empty:not(.ai-admin-empty--soft) {
+    grid-column: 1 / -1 !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid {
+    grid-column: 1 / span 8 !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid {
+    grid-column: 9 / -1 !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid .customer-analytics-panel,
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid .customer-analytics-panel {
+    min-height: 250px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid .ai-admin-empty--soft {
+    min-height: 154px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid .ai-analytics-list {
+    max-height: 246px !important;
+    overflow: auto !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid {
+    grid-column: 1 / span 9 !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid {
+    grid-column: 10 / -1 !important;
   }
 }
 
 @media (max-width: 1024px) {
-  .ai-admin-page {
+  .manager-layout--ai-chatbot-analytics .ai-admin-page,
+  .manager-layout--ai-chatbot-settings .ai-admin-page,
+  .manager-layout--ai-chatbot-knowledge .ai-admin-page {
     width: 100% !important;
     padding: 16px !important;
   }
