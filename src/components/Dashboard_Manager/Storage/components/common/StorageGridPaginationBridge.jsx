@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 12;
 
 const TAB_CONFIG = {
   ingredients: {
