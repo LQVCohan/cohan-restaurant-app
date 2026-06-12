@@ -1,8 +1,9 @@
 // src/pages/CustomerManagement/CustomerList.jsx
 import React from "react";
-import { SearchX, Inbox } from "lucide-react";
+import { SearchX } from "lucide-react";
 import CustomerCard from "./CustomerCard";
 import "./CustomerList.scss";
+import "./CustomerExperiencePolish.css";
 
 const CustomerList = ({ customers, loading, onCustomerClick }) => {
   // Render Skeleton khi đang tải (giả lập 6 thẻ)
