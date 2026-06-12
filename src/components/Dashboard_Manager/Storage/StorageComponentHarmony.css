@@ -1,0 +1,443 @@
+/* Storage Component Harmony
+   Bring all visible inventory components into the same neutral premium language as the new canvas. */
+
+.storage-management {
+  --sh-bg: rgba(255, 253, 248, 0.9);
+  --sh-bg-strong: rgba(255, 253, 248, 0.98);
+  --sh-bg-soft: rgba(247, 243, 236, 0.82);
+  --sh-border: rgba(196, 186, 170, 0.72);
+  --sh-border-soft: rgba(222, 214, 202, 0.78);
+  --sh-border-strong: rgba(146, 137, 122, 0.42);
+  --sh-text: #1f2a2f;
+  --sh-muted: #69716f;
+  --sh-subtle: #7c817d;
+  --sh-primary: #2c3741;
+  --sh-primary-hover: #202b34;
+  --sh-stone: #ebe7df;
+  --sh-stone-2: #f3f0e8;
+  --sh-success: #526f62;
+  --sh-success-bg: #f1f5f1;
+  --sh-warning: #8a633f;
+  --sh-warning-bg: #f7f0e7;
+  --sh-danger: #ba514b;
+  --sh-danger-bg: #f9eeee;
+  --sh-shadow-sm: 0 1px 2px rgba(54, 48, 40, 0.04);
+  --sh-shadow: 0 12px 28px rgba(54, 48, 40, 0.06), 0 2px 8px rgba(54, 48, 40, 0.035);
+  --sh-shadow-hover: 0 18px 44px rgba(54, 48, 40, 0.095), 0 5px 16px rgba(54, 48, 40, 0.045);
+}
+
+/* Global surface rhythm */
+.storage-management .sm-header-card,
+.storage-management .sm-kpi-card,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar,
+.storage-management .inv-toolbar,
+.storage-management .inv-table-wrap,
+.storage-management .inv-movement-block {
+  border: 1px solid var(--sh-border) !important;
+  background: linear-gradient(180deg, var(--sh-bg-strong), var(--sh-bg)) !important;
+  box-shadow: var(--sh-shadow) !important;
+}
+
+.storage-management .sm-header-card,
+.storage-management .sm-tab-content-wrapper {
+  backdrop-filter: blur(16px) saturate(112%) !important;
+}
+
+.storage-management .sm-header-card {
+  border-radius: 26px !important;
+  padding: clamp(18px, 1.9vw, 24px) !important;
+}
+
+.storage-management .sm-kpi-card,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar {
+  border-radius: 24px !important;
+}
+
+/* Header controls */
+.storage-management .actions-wrapper .sm-btn,
+.storage-management .sm-action-group .sm-btn,
+.storage-management .inline-rate .sm-btn {
+  min-height: 38px !important;
+  border-radius: 13px !important;
+  font-weight: 760 !important;
+}
+
+.storage-management .sm-action-group {
+  background: rgba(246, 242, 235, 0.76) !important;
+  border-color: var(--sh-border-soft) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+.storage-management .sm-btn.ghost,
+.storage-management .sm-btn.secondary {
+  background: rgba(255, 253, 248, 0.92) !important;
+  border-color: var(--sh-border-soft) !important;
+  color: #4f5959 !important;
+}
+
+.storage-management .sm-btn.ghost:hover:not(:disabled),
+.storage-management .sm-btn.secondary:hover:not(:disabled) {
+  background: #fffdf8 !important;
+  border-color: var(--sh-border-strong) !important;
+  color: var(--sh-primary) !important;
+  box-shadow: 0 10px 22px rgba(54, 48, 40, 0.07) !important;
+}
+
+.storage-management .sm-btn.primary,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-add,
+.storage-management .rl-btn-primary {
+  background: var(--sh-primary) !important;
+  border-color: var(--sh-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(32, 43, 52, 0.18) !important;
+}
+
+.storage-management .sm-btn.primary:hover:not(:disabled),
+.storage-management .il-btn-primary:hover:not(:disabled),
+.storage-management .sl-btn-add:hover:not(:disabled),
+.storage-management .rl-btn-primary:hover:not(:disabled) {
+  background: var(--sh-primary-hover) !important;
+  border-color: var(--sh-primary-hover) !important;
+  box-shadow: 0 15px 30px rgba(32, 43, 52, 0.22) !important;
+}
+
+/* Inputs/selects */
+.storage-management input,
+.storage-management select,
+.storage-management textarea,
+.storage-management .custom-select-wrapper select,
+.storage-management .il-input-search,
+.storage-management .il-select,
+.storage-management .sl-input-group,
+.storage-management .rl-input-group,
+.storage-management .rl-select-group {
+  border-color: var(--sh-border-soft) !important;
+  background-color: rgba(255, 253, 248, 0.94) !important;
+  color: var(--sh-text) !important;
+}
+
+.storage-management input::placeholder,
+.storage-management textarea::placeholder {
+  color: #9b968f !important;
+}
+
+.storage-management input:hover:not(:disabled),
+.storage-management select:hover:not(:disabled),
+.storage-management textarea:hover:not(:disabled),
+.storage-management .sl-input-group:hover,
+.storage-management .rl-input-group:hover,
+.storage-management .rl-select-group:hover {
+  border-color: var(--sh-border-strong) !important;
+  background-color: #fffdf8 !important;
+}
+
+.storage-management :is(input, select, textarea):focus,
+.storage-management :is(input, select, textarea):focus-visible {
+  border-color: rgba(44, 55, 65, 0.46) !important;
+  box-shadow: 0 0 0 4px rgba(44, 55, 65, 0.12) !important;
+}
+
+/* KPI cards */
+.storage-management .sm-kpi-card {
+  min-height: 118px !important;
+  padding: 18px !important;
+}
+
+.storage-management .sm-kpi-card:hover {
+  border-color: rgba(146, 137, 122, 0.5) !important;
+  box-shadow: var(--sh-shadow-hover) !important;
+}
+
+.storage-management .sm-kpi-card__icon,
+.storage-management .title-wrapper .icon-box {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 15px !important;
+  background: linear-gradient(180deg, #f0ede6, #e6e1d8) !important;
+  border-color: var(--sh-border-strong) !important;
+  color: #626a68 !important;
+}
+
+.storage-management .sm-kpi-card__label {
+  color: #6e6860 !important;
+  font-weight: 800 !important;
+}
+
+.storage-management .sm-kpi-card__helper {
+  color: var(--sh-muted) !important;
+}
+
+.storage-management .sm-kpi-card__value {
+  color: var(--sh-text) !important;
+}
+
+/* Tabs and warehouse status */
+.storage-management .sm-toolbar-wrapper {
+  padding: 9px 10px !important;
+}
+
+.storage-management .sm-tabs-container {
+  background: rgba(246, 242, 235, 0.72) !important;
+  border-color: var(--sh-border-soft) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.storage-management .sm-tab-item {
+  border-radius: 14px !important;
+  color: #68706e !important;
+}
+
+.storage-management .sm-tab-item.active {
+  background: var(--sh-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(32, 43, 52, 0.18) !important;
+}
+
+.storage-management .sm-tab-item:not(.active):hover {
+  background: rgba(255, 253, 248, 0.9) !important;
+  color: var(--sh-primary) !important;
+}
+
+.storage-management .warehouse-status,
+.storage-management .ws-pill,
+.storage-management .toolbar-right :where(button, span, div)[class*="status"],
+.storage-management .toolbar-right :where(button, span, div)[class*="Status"] {
+  background: rgba(255, 253, 248, 0.9) !important;
+  color: var(--sh-warning) !important;
+  border-color: rgba(138, 99, 63, 0.2) !important;
+}
+
+/* Cards */
+.storage-management .il-grid,
+.storage-management .sl-grid,
+.storage-management .rl-grid {
+  gap: 20px !important;
+}
+
+.storage-management .il-card,
+.storage-management .supply-card,
+.storage-management .rc-card,
+.storage-management .recipe-card {
+  border-radius: 24px !important;
+  border-color: rgba(185, 176, 160, 0.76) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(125, 119, 108, 0.035), transparent 9rem),
+    linear-gradient(180deg, #fffdf8 0%, #faf6ee 100%) !important;
+  box-shadow: var(--sh-shadow-sm) !important;
+}
+
+.storage-management .il-card:hover,
+.storage-management .supply-card:hover,
+.storage-management .rc-card:hover,
+.storage-management .recipe-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(137, 128, 113, 0.58) !important;
+  box-shadow: var(--sh-shadow-hover) !important;
+}
+
+.storage-management .il-card__header,
+.storage-management .supply-header,
+.storage-management .rc-header {
+  background: rgba(255, 253, 248, 0.34) !important;
+  border-bottom-color: var(--sh-border-soft) !important;
+}
+
+.storage-management .il-card__icon-wrapper,
+.storage-management .sc-icon-box,
+.storage-management .rc-icon-box {
+  background: linear-gradient(180deg, #f0ede6, #e6e1d8) !important;
+  color: #5d6664 !important;
+  border-color: var(--sh-border-strong) !important;
+}
+
+.storage-management .il-card__title,
+.storage-management .sc-name,
+.storage-management .rc-name {
+  color: var(--sh-text) !important;
+  font-weight: 840 !important;
+}
+
+.storage-management .il-card__subtitle,
+.storage-management .sc-meta,
+.storage-management .rc-category {
+  color: var(--sh-muted) !important;
+}
+
+.storage-management .il-stat-box,
+.storage-management .sc-stat-item,
+.storage-management .rc-stat-item,
+.storage-management .rc-stats,
+.storage-management .inv-summary-card {
+  background: var(--sh-bg-soft) !important;
+  border-color: var(--sh-border-soft) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+.storage-management .il-stat-label,
+.storage-management .sc-stat-lbl,
+.storage-management .rc-stat-label {
+  color: #747d7a !important;
+  font-weight: 740 !important;
+}
+
+.storage-management .il-stat-value,
+.storage-management .sc-stat-val,
+.storage-management .rc-stat-value {
+  color: var(--sh-text) !important;
+  font-weight: 830 !important;
+}
+
+.storage-management .il-stat-value.il-text-price,
+.storage-management .sc-stat-val.highlight,
+.storage-management [class*="price"],
+.storage-management .price {
+  color: var(--sh-warning) !important;
+}
+
+/* Status badges */
+.storage-management .il-status-badge,
+.storage-management .status-badge,
+.storage-management .status-pill,
+.storage-management .inv-status-pill,
+.storage-management .rc-badge,
+.storage-management .rl-badge,
+.storage-management .sl-count-chip,
+.storage-management .il-badge,
+.storage-management .il-title-count {
+  border-radius: 999px !important;
+  font-weight: 780 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64) !important;
+}
+
+.storage-management .il-status-badge.status-in-stock,
+.storage-management .il-status-badge.success,
+.storage-management .status-in-stock,
+.storage-management .badge-success,
+.storage-management .rc-badge-success,
+.storage-management .inv-status-pill.in-stock,
+.storage-management .rl-badge,
+.storage-management .sl-count-chip,
+.storage-management .il-badge,
+.storage-management .il-title-count {
+  background: var(--sh-success-bg) !important;
+  color: var(--sh-success) !important;
+  border-color: rgba(82, 111, 98, 0.2) !important;
+}
+
+.storage-management .il-status-badge.status-low,
+.storage-management .status-low,
+.storage-management .badge-warning,
+.storage-management .inv-status-pill.low-stock {
+  background: var(--sh-warning-bg) !important;
+  color: var(--sh-warning) !important;
+  border-color: rgba(138, 99, 63, 0.2) !important;
+}
+
+.storage-management .il-status-badge.status-out,
+.storage-management .status-out,
+.storage-management .badge-danger,
+.storage-management .inv-status-pill.out-stock {
+  background: var(--sh-danger-bg) !important;
+  color: var(--sh-danger) !important;
+  border-color: rgba(186, 81, 75, 0.2) !important;
+}
+
+/* Card action rows */
+.storage-management .il-card__actions,
+.storage-management .sc-actions,
+.storage-management .rc-actions {
+  background: rgba(255, 253, 248, 0.86) !important;
+  border-color: var(--sh-border-soft) !important;
+}
+
+.storage-management .il-action-btn,
+.storage-management .sc-btn,
+.storage-management .sc-stock-btn,
+.storage-management .rc-icon-btn,
+.storage-management .rc-btn-view {
+  border-color: var(--sh-border-soft) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+  color: #63706d !important;
+  box-shadow: var(--sh-shadow-sm) !important;
+}
+
+.storage-management .il-action-btn:hover,
+.storage-management .sc-btn:hover,
+.storage-management .sc-stock-btn:hover,
+.storage-management .rc-icon-btn:hover,
+.storage-management .rc-btn-view:hover {
+  border-color: var(--sh-border-strong) !important;
+  background: #fffdf8 !important;
+  color: var(--sh-primary) !important;
+}
+
+.storage-management .il-action-btn.variant-delete,
+.storage-management .il-btn-delete,
+.storage-management .sc-btn.danger,
+.storage-management .rc-icon-btn.danger,
+.storage-management button[title*="xóa" i],
+.storage-management button[aria-label*="xóa" i] {
+  color: var(--sh-danger) !important;
+}
+
+/* Audit table */
+.storage-management .inventory-audit-tab table,
+.storage-management .inv-table {
+  color: var(--sh-text) !important;
+}
+
+.storage-management .inventory-audit-tab th,
+.storage-management .inv-table th {
+  background: rgba(242, 238, 230, 0.9) !important;
+  color: #68655f !important;
+  border-bottom-color: var(--sh-border-soft) !important;
+}
+
+.storage-management .inventory-audit-tab td,
+.storage-management .inv-table td {
+  border-bottom-color: rgba(222, 214, 202, 0.62) !important;
+}
+
+.storage-management .inventory-audit-tab tr:hover td,
+.storage-management .inv-table tr:hover td {
+  background: rgba(255, 253, 248, 0.72) !important;
+}
+
+/* Small typography consistency */
+.storage-management .page-eyebrow,
+.storage-management .filter-group label,
+.storage-management .sm-header-filters label {
+  color: #756d63 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.storage-management .page-title,
+.storage-management .rl-title,
+.storage-management .il-header__left h2 {
+  color: var(--sh-text) !important;
+}
+
+.storage-management .page-subtitle,
+.storage-management .rl-subtitle {
+  color: var(--sh-muted) !important;
+}
+
+@media (max-width: 900px) {
+  .storage-management .sm-header-card,
+  .storage-management .sm-tab-content-wrapper {
+    border-radius: 22px !important;
+  }
+
+  .storage-management .actions-wrapper {
+    justify-content: flex-start !important;
+  }
+}
