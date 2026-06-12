@@ -54,7 +54,7 @@ export default function RecipeDishPickerModal({
         <div className={styles.header}>
           <div className={styles.titleWrap}>
             <div className={styles.title}>
-              🔎 Chọn món ăn cần cài đặt công thức
+              Chọn món ăn cần cài đặt công thức
             </div>
             <div className={styles.subTitle}>
               Tìm kiếm theo tên hoặc mã món để thiết lập định lượng nguyên liệu
