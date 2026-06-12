@@ -3,6 +3,7 @@ import React from "react";
 import "./Tabs.scss";
 import "../../StorageExperiencePolish.css";
 import "../../StorageBackgroundUnify.css";
+import "../../StoragePremiumNine.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
