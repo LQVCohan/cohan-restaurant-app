@@ -1,0 +1,598 @@
+/* Storage management polish: calm long-session UI and clearer data controls. */
+
+.storage-management {
+  --st-ink: #202b2d;
+  --st-soft-ink: #3e4a49;
+  --st-muted: #68746f;
+  --st-bg: #f4efe6;
+  --st-surface: #fffdf8;
+  --st-soft: #f8f2e9;
+  --st-border: #ded4c4;
+  --st-border-strong: #cabbab;
+  --st-accent: #2f7169;
+  --st-accent-strong: #1f5d56;
+  --st-accent-soft: #e6f2ef;
+  --st-warm: #9a6938;
+  --st-warm-soft: #fff3df;
+  --st-good: #477a62;
+  --st-good-soft: #eaf5ee;
+  --st-warning: #9f6630;
+  --st-warning-soft: #fff2df;
+  --st-danger: #a9514d;
+  --st-danger-soft: #fbefed;
+  --st-shadow: 0 18px 44px rgba(69, 57, 40, 0.08), 0 2px 8px rgba(69, 57, 40, 0.05);
+  --st-shadow-strong: 0 24px 58px rgba(69, 57, 40, 0.12), 0 3px 10px rgba(69, 57, 40, 0.06);
+  --st-focus: 0 0 0 4px rgba(47, 113, 105, 0.18);
+  color: var(--st-ink);
+  font-variant-numeric: tabular-nums;
+  background:
+    radial-gradient(circle at 8% -8%, rgba(47, 113, 105, 0.1), transparent 28rem),
+    radial-gradient(circle at 94% 1%, rgba(154, 105, 56, 0.1), transparent 28rem),
+    linear-gradient(180deg, #f8f3eb 0%, var(--st-bg) 54%, #f1eadf 100%);
+}
+
+.storage-management::before {
+  opacity: 0.18;
+  background-size: 46px 46px;
+}
+
+.storage-management :is(input, select, textarea, button) {
+  font: inherit;
+}
+
+.storage-management :is(input, select, textarea)::placeholder {
+  color: #8f9994;
+}
+
+.storage-management :is(button, input, select, textarea):focus-visible,
+.storage-management .custom-select-wrapper:focus-within,
+.storage-management .il-input-group:focus-within,
+.storage-management .il-select-group:focus-within,
+.storage-management .sl-input-group:focus-within,
+.storage-management .rl-input-group:focus-within,
+.storage-management .rl-select-group:focus-within,
+.storage-management .inv-search:focus-within {
+  outline: none !important;
+  box-shadow: var(--st-focus) !important;
+  border-color: rgba(47, 113, 105, 0.58) !important;
+}
+
+.storage-management button:not(:disabled) {
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.storage-management button:not(:disabled):active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.storage-management .sm-container {
+  width: min(100%, 1360px);
+  gap: 20px;
+}
+
+.storage-management .sm-header-card {
+  border: 1px solid rgba(222, 212, 196, 0.94);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top left, rgba(47, 113, 105, 0.08), transparent 32%),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.94), rgba(248, 242, 233, 0.88));
+  box-shadow: var(--st-shadow);
+}
+
+.storage-management .sm-header-card .icon-box,
+.storage-management .il-card__icon-wrapper,
+.storage-management .sc-icon-box {
+  border-radius: 16px !important;
+  background: var(--st-accent-soft) !important;
+  color: var(--st-accent-strong) !important;
+  border: 1px solid rgba(47, 113, 105, 0.16) !important;
+}
+
+.storage-management .sm-header-card .page-eyebrow {
+  color: var(--st-warm);
+  letter-spacing: 0.06em;
+}
+
+.storage-management .sm-header-card .page-title {
+  color: var(--st-ink);
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.storage-management .sm-header-card .page-subtitle,
+.storage-management .sm-context-note strong,
+.storage-management .il-card__subtitle,
+.storage-management .sc-sub-info,
+.storage-management .rl-subtitle {
+  color: var(--st-muted) !important;
+  text-wrap: pretty;
+}
+
+.storage-management .filter-group label {
+  color: #756452;
+  font-weight: 720;
+}
+
+.storage-management .custom-select-wrapper,
+.storage-management .inline-rate input,
+.storage-management .il-input-search,
+.storage-management .il-select,
+.storage-management .sl-input-group input,
+.storage-management .sl-input-group select,
+.storage-management .rl-input-search,
+.storage-management .rl-select,
+.storage-management .inv-toolbar select,
+.storage-management .inv-search,
+.storage-management .inv-sort-btn {
+  min-height: 44px !important;
+  border-color: rgba(222, 212, 196, 0.92) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  color: var(--st-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.storage-management .custom-select-wrapper:hover,
+.storage-management .il-input-search:hover,
+.storage-management .il-select:hover,
+.storage-management .sl-input-group input:hover,
+.storage-management .sl-input-group select:hover,
+.storage-management .rl-input-search:hover,
+.storage-management .rl-select:hover,
+.storage-management .inv-toolbar select:hover,
+.storage-management .inv-search:hover,
+.storage-management .inv-sort-btn:hover {
+  border-color: rgba(47, 113, 105, 0.32) !important;
+  background: #ffffff !important;
+}
+
+.storage-management .sm-btn,
+.storage-management .il-btn-icon,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-icon,
+.storage-management .sl-btn-add,
+.storage-management .rl-btn-primary,
+.storage-management .rl-btn-secondary,
+.storage-management .rl-btn-reset,
+.storage-management .inv-sort-btn,
+.storage-management .inv-pagination button {
+  border-radius: 14px !important;
+}
+
+.storage-management .sm-btn.primary,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-add,
+.storage-management .rl-btn-primary {
+  background: var(--st-accent) !important;
+  border-color: var(--st-accent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(47, 113, 105, 0.14) !important;
+}
+
+.storage-management .sm-btn.primary:hover:not(:disabled),
+.storage-management .il-btn-primary:hover:not(:disabled),
+.storage-management .sl-btn-add:hover:not(:disabled),
+.storage-management .rl-btn-primary:hover:not(:disabled) {
+  background: var(--st-accent-strong) !important;
+  border-color: var(--st-accent-strong) !important;
+  box-shadow: 0 14px 28px rgba(47, 113, 105, 0.18) !important;
+}
+
+.storage-management .sm-btn.secondary,
+.storage-management .sm-btn.ghost,
+.storage-management .il-btn-icon,
+.storage-management .sl-btn-icon,
+.storage-management .rl-btn-secondary,
+.storage-management .inv-pagination button {
+  border-color: var(--st-border) !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+  color: var(--st-soft-ink) !important;
+}
+
+.storage-management .sm-btn.secondary:hover:not(:disabled),
+.storage-management .sm-btn.ghost:hover:not(:disabled),
+.storage-management .il-btn-icon:hover:not(:disabled),
+.storage-management .sl-btn-icon:hover:not(:disabled),
+.storage-management .rl-btn-secondary:hover:not(:disabled),
+.storage-management .inv-pagination button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #b9d4cf !important;
+  background: var(--st-accent-soft) !important;
+  color: var(--st-accent-strong) !important;
+}
+
+.storage-management .sm-context-note,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar,
+.storage-management .inv-toolbar {
+  border-color: rgba(222, 212, 196, 0.94) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  box-shadow: var(--st-shadow) !important;
+  backdrop-filter: blur(14px);
+}
+
+.storage-management .sm-toolbar-wrapper {
+  top: calc(var(--manager-header-height, 72px) + 8px);
+  padding: 9px;
+}
+
+.storage-management .sm-tab-content-wrapper {
+  border-radius: 28px;
+  padding: clamp(16px, 2.1vw, 26px);
+}
+
+.storage-management .sm-tabs-container {
+  border-color: rgba(222, 212, 196, 0.92);
+  background: rgba(255, 253, 248, 0.84);
+  border-radius: 20px;
+}
+
+.storage-management .sm-tab-item {
+  min-height: 44px;
+  border-radius: 15px;
+  color: var(--st-muted);
+}
+
+.storage-management .sm-tab-item:hover:not(.active) {
+  background: var(--st-soft);
+  color: var(--st-ink);
+}
+
+.storage-management .sm-tab-item.active {
+  background: var(--st-accent) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 22px rgba(47, 113, 105, 0.16) !important;
+}
+
+.storage-management .sm-tab-item.active .tab-icon,
+.storage-management .sm-tab-item.active .active-dot {
+  color: #e6f2ef !important;
+  background: #d9eee9 !important;
+}
+
+.storage-management .sm-kpi-card,
+.storage-management .inv-summary-card {
+  border-color: rgba(222, 212, 196, 0.92) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+  box-shadow: var(--st-shadow) !important;
+}
+
+.storage-management .sm-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(47, 113, 105, 0.26) !important;
+  box-shadow: var(--st-shadow-strong) !important;
+}
+
+.storage-management .sm-kpi-card::after {
+  background: rgba(47, 113, 105, 0.52) !important;
+}
+
+.storage-management .sm-kpi-card--warning::after {
+  background: rgba(159, 102, 48, 0.58) !important;
+}
+
+.storage-management .sm-kpi-card--danger::after {
+  background: rgba(169, 81, 77, 0.56) !important;
+}
+
+.storage-management .sm-kpi-card__icon {
+  background: var(--st-accent-soft) !important;
+  color: var(--st-accent-strong) !important;
+  border-color: rgba(47, 113, 105, 0.18) !important;
+}
+
+.storage-management .sm-kpi-card--good .sm-kpi-card__icon {
+  background: var(--st-good-soft) !important;
+  color: var(--st-good) !important;
+}
+
+.storage-management .sm-kpi-card--warning .sm-kpi-card__icon,
+.storage-management .inv-summary-card--warn {
+  background: var(--st-warning-soft) !important;
+  color: var(--st-warning) !important;
+}
+
+.storage-management .sm-kpi-card--danger .sm-kpi-card__icon,
+.storage-management .inv-summary-card--danger {
+  background: var(--st-danger-soft) !important;
+  color: var(--st-danger) !important;
+}
+
+.storage-management .sm-kpi-card__label {
+  color: #6f5c4b;
+}
+
+.storage-management .sm-kpi-card__value,
+.storage-management .il-card__title,
+.storage-management .sc-name,
+.storage-management .rl-title,
+.storage-management .inv-table th,
+.storage-management .inv-movement-block h4 {
+  color: var(--st-ink) !important;
+}
+
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar,
+.storage-management .inv-toolbar {
+  border-radius: 22px !important;
+}
+
+.storage-management .il-icon-left,
+.storage-management .sl-icon,
+.storage-management .rl-icon-left,
+.storage-management .inv-search svg {
+  color: var(--st-muted) !important;
+}
+
+.storage-management .il-badge,
+.storage-management .rl-badge,
+.storage-management .sl-stats {
+  border: 1px solid rgba(47, 113, 105, 0.14);
+  background: var(--st-accent-soft) !important;
+  color: var(--st-accent-strong) !important;
+  border-radius: 999px !important;
+  font-weight: 760;
+}
+
+.storage-management .il-btn-clear:hover,
+.storage-management .rl-btn-clear:hover,
+.storage-management .rl-btn-reset:hover {
+  background: var(--st-danger-soft) !important;
+  color: var(--st-danger) !important;
+}
+
+.storage-management .il-grid,
+.storage-management .sl-grid,
+.storage-management .rl-grid {
+  gap: 18px;
+}
+
+.storage-management .il-grid {
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+}
+
+.storage-management .sl-grid,
+.storage-management .rl-grid {
+  grid-template-columns: repeat(auto-fill, minmax(292px, 1fr));
+}
+
+.storage-management .il-card,
+.storage-management .supply-card,
+.storage-management .recipe-card {
+  border-radius: 22px !important;
+  border-color: rgba(222, 212, 196, 0.92) !important;
+  background:
+    radial-gradient(circle at top right, rgba(47, 113, 105, 0.055), transparent 8.5rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 245, 237, 0.92)) !important;
+  box-shadow: 0 1px 2px rgba(69, 57, 40, 0.04) !important;
+}
+
+.storage-management .il-card:hover,
+.storage-management .supply-card:hover,
+.storage-management .recipe-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(47, 113, 105, 0.34) !important;
+  box-shadow: var(--st-shadow-strong) !important;
+}
+
+.storage-management .il-card__header,
+.storage-management .supply-header,
+.storage-management .rc-header {
+  border-bottom-color: rgba(222, 212, 196, 0.8) !important;
+  background: transparent !important;
+}
+
+.storage-management .il-status-badge,
+.storage-management .inv-badge {
+  border-radius: 10px !important;
+  border: 1px solid transparent;
+  font-weight: 760;
+}
+
+.storage-management .il-status-badge.status-in-stock,
+.storage-management .il-status-badge.success,
+.storage-management .inv-badge--ok {
+  background: var(--st-good-soft) !important;
+  color: var(--st-good) !important;
+  border-color: rgba(71, 122, 98, 0.18) !important;
+}
+
+.storage-management .il-status-badge.status-low-stock,
+.storage-management .il-status-badge.warning,
+.storage-management .inv-badge--low {
+  background: var(--st-warning-soft) !important;
+  color: var(--st-warning) !important;
+  border-color: rgba(159, 102, 48, 0.2) !important;
+}
+
+.storage-management .il-status-badge.status-out-of-stock,
+.storage-management .il-status-badge.danger,
+.storage-management .inv-badge--out {
+  background: var(--st-danger-soft) !important;
+  color: var(--st-danger) !important;
+  border-color: rgba(169, 81, 77, 0.2) !important;
+}
+
+.storage-management .il-stat-box,
+.storage-management .sc-stat-item {
+  border-color: rgba(222, 212, 196, 0.7) !important;
+  background: rgba(248, 242, 233, 0.82) !important;
+}
+
+.storage-management .il-stat-box--interactive:hover {
+  border-color: rgba(47, 113, 105, 0.36) !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(47, 113, 105, 0.08) !important;
+}
+
+.storage-management .il-text-price,
+.storage-management .sc-stat-val.highlight {
+  color: var(--st-warm) !important;
+}
+
+.storage-management .il-card__actions,
+.storage-management .sc-actions {
+  border: 1px solid rgba(222, 212, 196, 0.7);
+  border-radius: 15px !important;
+  background: rgba(248, 242, 233, 0.78) !important;
+}
+
+.storage-management .il-action-btn,
+.storage-management .sc-btn,
+.storage-management .sc-stock-btn {
+  border-radius: 12px !important;
+}
+
+.storage-management .il-action-btn:hover:not(:disabled),
+.storage-management .sc-btn:hover:not(:disabled),
+.storage-management .sc-stock-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(47, 113, 105, 0.28) !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(69, 57, 40, 0.08) !important;
+}
+
+.storage-management .sc-chip {
+  background: var(--st-soft) !important;
+  color: #6b5a49 !important;
+  border-radius: 8px !important;
+}
+
+.storage-management .sc-status-dot.is-stocked {
+  background-color: var(--st-good) !important;
+  box-shadow: 0 0 0 3px rgba(71, 122, 98, 0.14) !important;
+}
+
+.storage-management .sc-status-dot.is-low {
+  background-color: var(--st-warning) !important;
+  box-shadow: 0 0 0 3px rgba(159, 102, 48, 0.14) !important;
+}
+
+.storage-management .sc-status-dot.is-out {
+  background-color: var(--st-danger) !important;
+  box-shadow: 0 0 0 3px rgba(169, 81, 77, 0.14) !important;
+}
+
+.storage-management .rl-title {
+  font-size: clamp(1.25rem, 1.7vw, 1.55rem) !important;
+}
+
+.storage-management .rl-empty-state,
+.storage-management .rl-loading-state,
+.storage-management .sl-state-box,
+.storage-management .il-empty,
+.storage-management .il-trash-item {
+  border-color: rgba(222, 212, 196, 0.92) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 253, 248, 0.76) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.storage-management .rl-empty-icon,
+.storage-management .sl-state-box .icon-circle,
+.storage-management .il-empty__icon {
+  color: var(--st-accent-strong) !important;
+  background: var(--st-accent-soft) !important;
+  border: 1px solid rgba(47, 113, 105, 0.16);
+  border-radius: 18px !important;
+}
+
+.storage-management .sm-permission-note,
+.storage-management .il-header__alert,
+.storage-management .sm-error-toast,
+.storage-management .il-error,
+.storage-management .rl-error-box,
+.storage-management .inv-state--error,
+.storage-management .sl-state-box.error {
+  border-color: rgba(169, 81, 77, 0.24) !important;
+  background: var(--st-danger-soft) !important;
+  color: var(--st-danger) !important;
+}
+
+.storage-management .inv-table-wrap,
+.storage-management .inv-movement-block {
+  border-color: rgba(222, 212, 196, 0.92) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  box-shadow: var(--st-shadow) !important;
+}
+
+.storage-management .inv-table th {
+  background: var(--st-soft) !important;
+  color: #6f5c4b !important;
+  font-size: 0.78rem;
+  letter-spacing: 0.025em;
+}
+
+.storage-management .inv-table td {
+  color: var(--st-soft-ink) !important;
+  border-bottom-color: rgba(222, 212, 196, 0.68) !important;
+}
+
+.storage-management .inv-table tbody tr:nth-child(even) td {
+  background: rgba(248, 242, 233, 0.46) !important;
+}
+
+.storage-management .inv-table tbody tr:hover td {
+  background: var(--st-accent-soft) !important;
+}
+
+.storage-management .inv-movement-list {
+  gap: 10px;
+  max-height: 320px;
+}
+
+.storage-management .inv-movement-item {
+  border-radius: 16px !important;
+  border-color: rgba(222, 212, 196, 0.8) !important;
+  background: rgba(255, 253, 248, 0.78) !important;
+}
+
+.storage-management .inv-movement-item:hover {
+  border-color: rgba(47, 113, 105, 0.25) !important;
+  background: #ffffff !important;
+}
+
+@media (max-width: 1080px) {
+  .storage-management .sm-toolbar-wrapper {
+    position: static;
+  }
+
+  .storage-management .sm-kpi-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .storage-management .sm-container {
+    padding: 14px;
+  }
+
+  .storage-management .sm-kpi-section,
+  .storage-management .inv-summary-grid,
+  .storage-management .il-grid,
+  .storage-management .sl-grid,
+  .storage-management .rl-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storage-management .sm-tab-content-wrapper,
+  .storage-management .sm-header-card {
+    border-radius: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storage-management,
+  .storage-management * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
