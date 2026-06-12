@@ -137,6 +137,33 @@ const intentLabel = (intent) => {
   return labels[normalized] || intent || "Chủ đề khác";
 };
 
+const qualityItemTitle = (item) =>
+  qualityQueueLabels[item?.type] || "Nội dung cần xem lại";
+
+const qualityItemDescription = (item) => {
+  if (item?.type === "fallback_response") {
+    return "Chatbot chưa có đủ tri thức để trả lời chắc chắn.";
+  }
+  if (item?.type === "pending_suggestion") {
+    return "Khách hỏi nội dung chưa có trong kho tri thức.";
+  }
+  return "Nội dung này cần được kiểm tra để cải thiện chất lượng tư vấn.";
+};
+
+const qualityItemMeta = (item) => {
+  const raw = `${item?.label || ""} ${item?.detail || ""}`.toLowerCase();
+  if (raw.includes("menu")) return "Chủ đề: Thực đơn";
+  if (raw.includes("booking") || raw.includes("reservation")) {
+    return "Chủ đề: Đặt bàn";
+  }
+  if (raw.includes("order")) return "Chủ đề: Đơn hàng";
+  if (raw.includes("coupon") || raw.includes("promotion")) {
+    return "Chủ đề: Ưu đãi";
+  }
+  if (raw.includes("knowledge")) return "Nguồn: Thiếu nội dung phù hợp";
+  return "Cần quản lý rà soát";
+};
+
 function EmptyReport() {
   return (
     <div className="ai-admin-empty ai-admin-empty--soft">
@@ -149,6 +176,7 @@ function EmptyReport() {
 
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
+  const [showAllReviewItems, setShowAllReviewItems] = useState(false);
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -179,7 +207,9 @@ export default function AiChatbotAnalyticsPage() {
 
   const m = data?.aiChatbotAnalytics;
   const reviewItems = m?.recentQualityQueue || [];
-  const visibleReviewItems = reviewItems.slice(0, 3);
+  const visibleReviewItems = showAllReviewItems
+    ? reviewItems
+    : reviewItems.slice(0, 3);
   const reviewCount = Number(m?.fallbackResponses || 0) + Number(m?.pendingSuggestions || 0) + Number(m?.notHelpfulFeedback || 0);
 
   return (
@@ -381,9 +411,15 @@ export default function AiChatbotAnalyticsPage() {
                 <h3>Việc cần rà soát</h3>
                 <p>Các nội dung có thể ảnh hưởng đến chất lượng tư vấn.</p>
               </div>
-              {reviewItems.length > visibleReviewItems.length ? (
-                <button type="button" className="ai-admin-link-button">
-                  Xem tất cả ({formatNum(reviewItems.length)})
+              {reviewItems.length > 3 ? (
+                <button
+                  type="button"
+                  className="ai-admin-link-button"
+                  onClick={() => setShowAllReviewItems((current) => !current)}
+                >
+                  {showAllReviewItems
+                    ? "Thu gọn"
+                    : `Xem tất cả (${formatNum(reviewItems.length)})`}
                 </button>
               ) : null}
             </header>
@@ -395,8 +431,11 @@ export default function AiChatbotAnalyticsPage() {
                       <span className="ai-admin-chip ai-admin-chip--warning">
                         {qualityQueueLabels[it.type] || "Cần rà soát"}
                       </span>
-                      <h4>{it.label || qualityQueueLabels[it.type] || "Nội dung cần xem lại"}</h4>
-                      {it.detail ? <p>{it.detail}</p> : null}
+                      <h4>{qualityItemTitle(it)}</h4>
+                      <p>{qualityItemDescription(it)}</p>
+                      <small className="ai-admin-review-item__meta">
+                        {qualityItemMeta(it)}
+                      </small>
                     </div>
                     <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
                   </li>
