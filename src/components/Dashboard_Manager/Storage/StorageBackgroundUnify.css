@@ -1,5 +1,5 @@
 /* Storage page background unification.
-   Match the calm neutral manager canvas so the inventory page does not look separated. */
+   Match the neutral premium manager canvas so the inventory page does not look separated. */
 
 .manager-layout:has(.storage-management),
 .manager-layout__main:has(.storage-management),
@@ -8,10 +8,10 @@
 .manager-layout__content:has(.storage-management) .manager-page-shell__body,
 .manager-layout__content:has(.storage-management) .storage-management {
   background:
-    radial-gradient(circle at 14% 0%, rgba(255, 253, 248, 0.54), transparent 34rem),
-    radial-gradient(circle at 88% 0%, rgba(47, 113, 105, 0.065), transparent 32rem),
-    radial-gradient(circle at 72% 100%, rgba(176, 162, 139, 0.16), transparent 38rem),
-    linear-gradient(180deg, #f8f6ef 0%, #f5f2ea 48%, #f1eee6 100%) !important;
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 252, 0.74), transparent 36rem),
+    radial-gradient(circle at 88% 6%, rgba(116, 128, 133, 0.045), transparent 34rem),
+    radial-gradient(circle at 70% 100%, rgba(190, 179, 160, 0.13), transparent 42rem),
+    linear-gradient(180deg, #f8f7f2 0%, #f4f1ea 50%, #efebe3 100%) !important;
 }
 
 .manager-layout__content:has(.storage-management) {
@@ -24,12 +24,12 @@
   inset: var(--manager-header-height, 64px) 0 0 var(--sidebar-width, 72px);
   pointer-events: none;
   z-index: 0;
-  opacity: 0.52;
+  opacity: 0.42;
   background-image:
-    linear-gradient(rgba(107, 97, 83, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(107, 97, 83, 0.025) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 72%, transparent 100%);
+    linear-gradient(rgba(96, 90, 82, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 90, 82, 0.022) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.14) 74%, transparent 100%);
 }
 
 .manager-layout__content:has(.storage-management) .manager-page-shell {
@@ -61,7 +61,7 @@
 .storage-management .sm-kpi-card,
 .storage-management .sm-toolbar-wrapper,
 .storage-management .sm-tab-content-wrapper {
-  background-color: rgba(255, 253, 248, 0.76) !important;
+  background-color: rgba(255, 253, 248, 0.78) !important;
 }
 
 .storage-management .sm-tab-item .tab-icon {
@@ -77,11 +77,11 @@
 
 .storage-management .sm-tab-item.active .tab-icon {
   background: rgba(255, 255, 255, 0.14) !important;
-  color: #eef8f5 !important;
+  color: #eef1f2 !important;
 }
 
 .storage-management .sm-tab-item.active .active-dot {
-  background: #d9eee9 !important;
+  background: #d8dee0 !important;
 }
 
 @media (max-width: 768px) {
