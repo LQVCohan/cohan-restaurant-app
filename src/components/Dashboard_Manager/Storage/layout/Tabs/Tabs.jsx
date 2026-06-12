@@ -13,6 +13,7 @@ import "../../StorageComponentHarmony.css";
 import "../../StoragePagination.css";
 import "../../StorageWideLayout.css";
 import "../../StorageDropdownPolish.css";
+import "../../StorageModalPolish.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
