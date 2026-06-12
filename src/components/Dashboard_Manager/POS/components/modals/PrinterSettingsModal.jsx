@@ -80,14 +80,14 @@ export function PrinterSettingsModal({
         setTestFeedback({
           ok: true,
           mode: "validation",
-          message: "Đã hoàn tất kiểm tra cấu hình (simulated).",
+          message: "Đã hoàn tất kiểm tra cấu hình (mô phỏng).",
         });
       }
     } catch (err) {
       setTestFeedback({
         ok: false,
         mode: "validation",
-        message: err?.message || "Kiểm tra thất bại.",
+        message: err?.message || "Kiểm tra cấu hình mô phỏng thất bại.",
       });
     } finally {
       setIsTesting(false);
@@ -95,7 +95,12 @@ export function PrinterSettingsModal({
   };
 
   return (
-    <div className={s.backdrop} onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className={s.backdrop}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
       <div
         className={s.modal}
         onClick={(e) => e.stopPropagation()} // Ngăn click xuyên qua modal đóng backdrop
@@ -110,7 +115,9 @@ export function PrinterSettingsModal({
             </div>
             <div>
               <h3>{printer ? "Cấu hình thiết bị" : "Thêm máy in mới"}</h3>
-              <p>Thiết lập thông số kết nối và vị trí</p>
+              <p>
+                Thiết lập thông số kết nối và vị trí; test hiện là mô phỏng.
+              </p>
             </div>
           </div>
           <button className={s.closeBtn} onClick={onClose}>
@@ -200,7 +207,7 @@ export function PrinterSettingsModal({
               <>Running...</>
             ) : (
               <>
-                <Zap size={18} /> Test cấu hình (simulated)
+                <Zap size={18} /> Test cấu hình (mô phỏng)
               </>
             )}
           </button>
@@ -214,8 +221,11 @@ export function PrinterSettingsModal({
         </div>
 
         {testFeedback?.message && (
-          <div style={{ padding: "0 1.25rem 1rem", color: testFeedback.ok ? "#0f766e" : "#b91c1c", fontSize: 13 }}>
-            {testFeedback.message} {testFeedback.mode ? `(${testFeedback.mode})` : ""}
+          <div
+            className={`${s.testFeedback} ${testFeedback.ok ? s.success : s.error}`}
+          >
+            {testFeedback.message}{" "}
+            {testFeedback.mode ? `(${testFeedback.mode})` : ""}
           </div>
         )}
       </div>

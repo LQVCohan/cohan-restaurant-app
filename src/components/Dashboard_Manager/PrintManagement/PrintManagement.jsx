@@ -1,4 +1,11 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { PRINT_STATIONS } from "@/utils/printStations";
@@ -22,9 +29,24 @@ import "./PrintManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const DEFAULT_TEMPLATES = [
-  { key: "kitchen", name: "Phiếu bếp", enabled: true, content: "[KITCHEN] {{orderCode}}" },
-  { key: "bar", name: "Phiếu bar", enabled: true, content: "[BAR] {{orderCode}}" },
-  { key: "receipt", name: "Hóa đơn", enabled: true, content: "[RECEIPT] {{orderCode}}" },
+  {
+    key: "kitchen",
+    name: "Phiếu bếp",
+    enabled: true,
+    content: "[KITCHEN] {{orderCode}}",
+  },
+  {
+    key: "bar",
+    name: "Phiếu bar",
+    enabled: true,
+    content: "[BAR] {{orderCode}}",
+  },
+  {
+    key: "receipt",
+    name: "Hóa đơn",
+    enabled: true,
+    content: "[RECEIPT] {{orderCode}}",
+  },
 ];
 
 const Q_PRINT_SETTINGS = gql`
@@ -124,7 +146,8 @@ const buildStationDefaults = () =>
     return acc;
   }, {});
 
-const makePrinterId = () => `printer_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+const makePrinterId = () =>
+  `printer_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 
 const normalizeTemplates = (templates) => {
   const list = Array.isArray(templates) ? templates : [];
@@ -132,19 +155,27 @@ const normalizeTemplates = (templates) => {
   return DEFAULT_TEMPLATES.map((t) => ({ ...t, ...(byKey.get(t.key) || {}) }));
 };
 
-
 const sanitizeStationsByPrinters = (stations, printers) => {
-  const printerIds = new Set((Array.isArray(printers) ? printers : []).map((p) => p?.id).filter(Boolean));
+  const printerIds = new Set(
+    (Array.isArray(printers) ? printers : []).map((p) => p?.id).filter(Boolean),
+  );
   const next = { ...buildStationDefaults() };
   Object.entries(stations || {}).forEach(([stationId, ids]) => {
-    next[stationId] = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((id) => printerIds.has(id))));
+    next[stationId] = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : []).filter((id) => printerIds.has(id)),
+      ),
+    );
   });
   return next;
 };
 
 export default function PrintManagement() {
   const { restaurants } = useContext(AuthContext);
-  const restaurantList = useMemo(() => restaurants || [], [restaurants]);
+  const restaurantList = useMemo(
+    () => (Array.isArray(restaurants) ? restaurants : []),
+    [restaurants],
+  );
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [printers, setPrinters] = useState([]);
   const [stationMap, setStationMap] = useState(buildStationDefaults);
@@ -157,11 +188,30 @@ export default function PrintManagement() {
   const hydrateRef = useRef(false);
   const debounceRef = useRef(null);
 
+  const headerRestaurantList = useMemo(
+    () =>
+      restaurantList
+        .map((restaurant) => ({
+          id: String(
+            restaurant?.id ?? restaurant?.restaurantId ?? restaurant?._id ?? "",
+          ),
+          name:
+            restaurant?.name ||
+            restaurant?.restaurantName ||
+            "Nhà hàng chưa đặt tên",
+        }))
+        .filter((restaurant) => restaurant.id),
+    [restaurantList],
+  );
+
+  const hasRestaurantSelection = Boolean(selectedRestaurantId);
+  const hasPrinters = printers.length > 0;
+
   useEffect(() => {
-    if (!selectedRestaurantId && restaurantList.length) {
-      setSelectedRestaurantId(String(restaurantList[0].id ?? restaurantList[0].restaurantId));
+    if (!selectedRestaurantId && headerRestaurantList.length) {
+      setSelectedRestaurantId(headerRestaurantList[0].id);
     }
-  }, [restaurantList, selectedRestaurantId]);
+  }, [headerRestaurantList, selectedRestaurantId]);
 
   useEffect(() => {
     setEditingPrinter(null);
@@ -173,18 +223,22 @@ export default function PrintManagement() {
     fetchPolicy: "network-only",
   });
 
-  const [upsertPrintSettings, { loading: saving }] = useMutation(M_UPSERT_PRINT_SETTINGS);
+  const [upsertPrintSettings, { loading: saving }] = useMutation(
+    M_UPSERT_PRINT_SETTINGS,
+  );
   const [testPrint] = useMutation(M_TEST_PRINT);
   const [retryPrintJob] = useMutation(M_RETRY_PRINT_JOB);
   const [enqueuePrintJob] = useMutation(M_ENQUEUE_PRINT_JOB);
 
   const jobs = useMemo(() => {
     const list = data?.printSettings?.jobs || [];
-    return [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return [...list].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+    );
   }, [data]);
 
   useEffect(() => {
-    if (!selectedRestaurantId) return;
+    if (!selectedRestaurantId || loading || !data) return;
     const settings = data?.printSettings;
     if (!settings) {
       setPrinters([]);
@@ -194,17 +248,21 @@ export default function PrintManagement() {
     }
 
     hydrateRef.current = true;
-    const safePrinters = Array.isArray(settings?.printers) ? settings.printers : [];
+    const safePrinters = Array.isArray(settings?.printers)
+      ? settings.printers
+      : [];
     setPrinters(safePrinters);
-    setStationMap(sanitizeStationsByPrinters(settings?.stations || {}, safePrinters));
+    setStationMap(
+      sanitizeStationsByPrinters(settings?.stations || {}, safePrinters),
+    );
     setTemplates(normalizeTemplates(settings?.templates));
     setTimeout(() => {
       hydrateRef.current = false;
     }, 0);
-  }, [data, selectedRestaurantId]);
+  }, [data, loading, selectedRestaurantId]);
 
   useEffect(() => {
-    if (!selectedRestaurantId || hydrateRef.current) return;
+    if (!selectedRestaurantId || loading || error || hydrateRef.current) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       upsertPrintSettings({
@@ -227,7 +285,15 @@ export default function PrintManagement() {
           ),
         );
     }, 400);
-  }, [selectedRestaurantId, printers, stationMap, templates, upsertPrintSettings]);
+  }, [
+    error,
+    loading,
+    selectedRestaurantId,
+    printers,
+    stationMap,
+    templates,
+    upsertPrintSettings,
+  ]);
 
   const openAddPrinter = () => {
     setEditingPrinter(null);
@@ -242,12 +308,21 @@ export default function PrintManagement() {
   const handleTestConfig = useCallback(
     async (formPrinter) => {
       if (!selectedRestaurantId) {
-        return { ok: false, mode: "validation", message: "Vui lòng chọn nhà hàng trước khi test." };
+        return {
+          ok: false,
+          mode: "validation",
+          message: "Vui lòng chọn nhà hàng trước khi test.",
+        };
       }
 
       const draft = { ...(editingPrinter || {}), ...(formPrinter || {}) };
       if (!draft.name?.trim() || !draft.ip?.trim()) {
-        return { ok: false, mode: "validation", message: "Thiếu tên hoặc IP. Đây là bước validate cấu hình, chưa test thiết bị thật." };
+        return {
+          ok: false,
+          mode: "validation",
+          message:
+            "Thiếu tên hoặc IP. Đây là bước validate cấu hình, chưa test thiết bị thật.",
+        };
       }
 
       if (!draft.id) {
@@ -290,7 +365,7 @@ export default function PrintManagement() {
         mode: "db_simulation",
         message:
           job?.status === "completed"
-            ? "Đã tạo test job và cập nhật trạng thái từ DB (simulated, không có handshake phần cứng)."
+            ? "Đã tạo test job mô phỏng và cập nhật trạng thái từ DB; chưa handshake phần cứng thật."
             : `Test job thất bại: ${job?.error || "unknown error"}`,
       };
     },
@@ -303,7 +378,12 @@ export default function PrintManagement() {
       setPrinters((prev) =>
         prev.map((p) =>
           p.id === editingPrinter.id
-            ? { ...p, ...payload, status: p.status || "offline", updatedAt: new Date().toISOString() }
+            ? {
+                ...p,
+                ...payload,
+                status: p.status || "offline",
+                updatedAt: new Date().toISOString(),
+              }
             : p,
         ),
       );
@@ -326,11 +406,17 @@ export default function PrintManagement() {
     setPrinters((prev) => prev.filter((p) => p.id !== printerId));
     setStationMap((prev) => {
       const next = { ...prev };
-      Object.keys(next).forEach((k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)));
+      Object.keys(next).forEach(
+        (k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)),
+      );
       return next;
     });
     setPendingDeletePrinterId("");
-    setNotice({ type: "success", message: "Đã xóa thiết bị khỏi cấu hình cục bộ. Hệ thống sẽ tự lưu thay đổi." });
+    setNotice({
+      type: "success",
+      message:
+        "Đã xóa thiết bị khỏi cấu hình cục bộ. Hệ thống sẽ tự lưu thay đổi.",
+    });
   };
 
   const toggleStationPrinter = (stationId, printerId) => {
@@ -341,7 +427,6 @@ export default function PrintManagement() {
       return { ...prev, [stationId]: Array.from(current) };
     });
   };
-
 
   const handleRetryJob = async (jobId) => {
     if (!selectedRestaurantId) return;
@@ -355,7 +440,10 @@ export default function PrintManagement() {
         },
       });
       await refetch();
-      setNotice({ type: "success", message: "Đã gửi lại print job vào hàng đợi xử lý." });
+      setNotice({
+        type: "success",
+        message: "Đã gửi lại print job vào hàng đợi xử lý.",
+      });
     } catch (err) {
       setNotice({
         type: "error",
@@ -369,20 +457,33 @@ export default function PrintManagement() {
 
   const handleTemplateToggle = (key) => {
     setTemplates((prev) =>
-      prev.map((t) => (t.key === key ? { ...t, enabled: !t.enabled, updatedAt: new Date().toISOString() } : t)),
+      prev.map((t) =>
+        t.key === key
+          ? { ...t, enabled: !t.enabled, updatedAt: new Date().toISOString() }
+          : t,
+      ),
     );
   };
 
   const handleTemplateContent = (key, content) => {
     setTemplates((prev) =>
-      prev.map((t) => (t.key === key ? { ...t, content, updatedAt: new Date().toISOString() } : t)),
+      prev.map((t) =>
+        t.key === key
+          ? { ...t, content, updatedAt: new Date().toISOString() }
+          : t,
+      ),
     );
   };
 
   const handleSendTemplateTest = async (templateKey) => {
-    const targetPrinter = printers.find((p) => p.status === "online") || printers[0];
+    const targetPrinter =
+      printers.find((p) => p.status === "online") || printers[0];
     if (!targetPrinter || !selectedRestaurantId) {
-      setNotice({ type: "warning", message: "Cần chọn nhà hàng và có ít nhất một máy in trước khi gửi test print." });
+      setNotice({
+        type: "warning",
+        message:
+          "Cần chọn nhà hàng và có ít nhất một máy in trước khi gửi test print.",
+      });
       return;
     }
     try {
@@ -399,7 +500,10 @@ export default function PrintManagement() {
         },
       });
       await refetch();
-      setNotice({ type: "success", message: "Đã đưa lệnh test print vào hàng đợi." });
+      setNotice({
+        type: "success",
+        message: "Đã tạo test job mô phỏng và đưa vào hàng đợi print job.",
+      });
     } catch (err) {
       setNotice({
         type: "error",
@@ -411,14 +515,19 @@ export default function PrintManagement() {
     }
   };
 
-  const printerStats = useMemo(() => ({
-    total: printers.length,
-    online: printers.filter((printer) => printer.status === "online").length,
-    offline: printers.filter((printer) => printer.status !== "online").length,
-    failed: jobs.filter((job) => job.status === "failed").length,
-    pending: jobs.filter((job) => !["completed", "failed"].includes(job.status)).length,
-    completed: jobs.filter((job) => job.status === "completed").length,
-  }), [jobs, printers]);
+  const printerStats = useMemo(
+    () => ({
+      total: printers.length,
+      online: printers.filter((printer) => printer.status === "online").length,
+      offline: printers.filter((printer) => printer.status !== "online").length,
+      failed: jobs.filter((job) => job.status === "failed").length,
+      pending: jobs.filter(
+        (job) => !["completed", "failed"].includes(job.status),
+      ).length,
+      completed: jobs.filter((job) => job.status === "completed").length,
+    }),
+    [jobs, printers],
+  );
 
   const statusText = (status) => {
     if (status === "completed") return "Hoàn tất";
@@ -437,22 +546,46 @@ export default function PrintManagement() {
         subtitle="Điều phối thiết bị, ma trận luồng in, mẫu phiếu và hàng đợi print job."
         icon="🖨️"
         stats={[
-          { id: "printers", icon: "🧩", label: "Thiết bị", value: printerStats.total },
-          { id: "online", icon: "📡", label: "Online", value: printerStats.online },
-          { id: "failed", icon: "⚠️", label: "Jobs lỗi", value: printerStats.failed },
+          {
+            id: "printers",
+            icon: "🧩",
+            label: "Thiết bị",
+            value: printerStats.total,
+          },
+          {
+            id: "online",
+            icon: "📡",
+            label: "Online",
+            value: printerStats.online,
+          },
+          {
+            id: "failed",
+            icon: "⚠️",
+            label: "Jobs lỗi",
+            value: printerStats.failed,
+          },
         ]}
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
-        restaurantList={restaurantList.map((restaurant) => ({
-          id: String(restaurant.id),
-          name: restaurant.name,
-        }))}
-        primaryAction={{ icon: "➕", label: "Thiết bị mới", onClick: openAddPrinter }}
+        restaurantList={headerRestaurantList}
+        primaryAction={{
+          icon: "➕",
+          label: "Thiết bị mới",
+          onClick: openAddPrinter,
+          disabled: !hasRestaurantSelection,
+          title: hasRestaurantSelection
+            ? "Thêm thiết bị"
+            : "Chọn nhà hàng để thêm thiết bị",
+        }}
       />
 
       <section className="print-ui__hero" aria-label="Tổng quan vận hành in">
         {[
-          ["Thiết bị", printerStats.total, `${printerStats.online} online / ${printerStats.offline} offline`],
+          [
+            "Thiết bị",
+            printerStats.total,
+            `${printerStats.online} online / ${printerStats.offline} offline`,
+          ],
           ["Jobs đang chờ", printerStats.pending, "Cần theo dõi trong ca"],
           ["Jobs lỗi", printerStats.failed, "Có thể retry thủ công"],
           ["Hoàn tất", printerStats.completed, "Đã xử lý thành công"],
@@ -471,18 +604,55 @@ export default function PrintManagement() {
           role={notice.type === "error" ? "alert" : "status"}
         >
           <span>{notice.message}</span>
-          <button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo">
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Đóng thông báo"
+          >
             Đóng
           </button>
         </section>
       ) : null}
-      {loading && <div className="ui-card print-ui__skeleton" role="status">Đang tải cấu hình in...</div>}
-      {error && <div className="ui-card print-ui__notice is-error" role="alert">Không thể tải dữ liệu in ấn. Vui lòng thử lại.</div>}
+      {!hasRestaurantSelection ? (
+        <section className="ui-card print-ui__empty-panel" role="status">
+          <div className="empty-icon">
+            <Printer size={34} />
+          </div>
+          <h3>Chọn nhà hàng để tải cấu hình in ấn.</h3>
+          <p>
+            Danh sách thiết bị, phân luồng trạm in, mẫu phiếu và hàng đợi print
+            job sẽ hiển thị sau khi chọn nhà hàng.
+          </p>
+        </section>
+      ) : null}
+      {hasRestaurantSelection && loading && (
+        <div className="ui-card print-ui__skeleton" role="status">
+          Đang tải cấu hình in...
+        </div>
+      )}
+      {hasRestaurantSelection && error && (
+        <section className="ui-card print-ui__notice is-error" role="alert">
+          <span>
+            Không thể tải cấu hình in ấn. Kiểm tra kết nối hoặc thử tải lại dữ
+            liệu.
+          </span>
+          <button
+            type="button"
+            onClick={() => refetch?.()}
+            aria-label="Tải lại cấu hình in ấn"
+          >
+            Tải lại
+          </button>
+        </section>
+      )}
 
-      {!loading && !error && (
+      {hasRestaurantSelection && !loading && !error && (
         <>
           <div className="print-ui__grid">
-            <section className="ui-card devices-section" aria-label="Thiết bị đã kết nối">
+            <section
+              className="ui-card devices-section"
+              aria-label="Thiết bị đã kết nối"
+            >
               <div className="card-header">
                 <h3>
                   <Server size={18} /> Thiết bị đã kết nối
@@ -491,12 +661,16 @@ export default function PrintManagement() {
               </div>
 
               <div className="device-list">
-                {printers.length === 0 ? (
+                {!hasPrinters ? (
                   <div className="empty-state">
                     <div className="empty-icon">
                       <Wifi size={32} />
                     </div>
-                    <p>Chưa có máy in nào</p>
+                    <h4>Chưa có máy in nào</h4>
+                    <p>
+                      Thêm thiết bị demo để gán luồng bếp/bar/thu ngân và gửi
+                      test print mô phỏng.
+                    </p>
                     <button type="button" onClick={openAddPrinter}>
                       Thêm thiết bị
                     </button>
@@ -504,7 +678,9 @@ export default function PrintManagement() {
                 ) : (
                   printers.map((printer) => (
                     <div key={printer.id} className="device-item">
-                      <div className={`status-indicator ${printer.status === "online" ? "online" : "offline"}`}>
+                      <div
+                        className={`status-indicator ${printer.status === "online" ? "online" : "offline"}`}
+                      >
                         <div className="dot"></div>
                         <div className="pulse"></div>
                       </div>
@@ -513,8 +689,14 @@ export default function PrintManagement() {
                         <h4>{printer.name}</h4>
                         <div className="meta">
                           <span className="tag-ip">{printer.ip}</span>
-                          <span className="type">{printer.type === "thermal" ? "Nhiệt" : "Khác"}</span>
-                          <span className={`type status-${printer.status || "offline"}`}>{printer.status || "offline"}</span>
+                          <span className="type">
+                            {printer.type === "thermal" ? "Nhiệt" : "Khác"}
+                          </span>
+                          <span
+                            className={`type status-${printer.status || "offline"}`}
+                          >
+                            {printer.status || "offline"}
+                          </span>
                         </div>
                       </div>
 
@@ -554,10 +736,16 @@ export default function PrintManagement() {
                       {pendingDeletePrinterId === printer.id ? (
                         <div className="device-confirm" role="alert">
                           <span>Xóa thiết bị này?</span>
-                          <button type="button" onClick={() => handleRemovePrinter(printer.id)}>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePrinter(printer.id)}
+                          >
                             Xác nhận
                           </button>
-                          <button type="button" onClick={() => setPendingDeletePrinterId("")}>
+                          <button
+                            type="button"
+                            onClick={() => setPendingDeletePrinterId("")}
+                          >
                             Hủy
                           </button>
                         </div>
@@ -580,7 +768,9 @@ export default function PrintManagement() {
                 {PRINT_STATIONS.map((station) => (
                   <div key={station.id} className="routing-row">
                     <div className="station-info">
-                      <div className="station-icon">{station.label.charAt(0)}</div>
+                      <div className="station-icon">
+                        {station.label.charAt(0)}
+                      </div>
                       <div className="text">
                         <h4>{station.label}</h4>
                         <span>{station.description}</span>
@@ -589,23 +779,35 @@ export default function PrintManagement() {
 
                     <div className="printer-toggles">
                       {printers.map((printer) => {
-                        const isActive = (stationMap[station.id] || []).includes(printer.id);
+                        const isActive = (
+                          stationMap[station.id] || []
+                        ).includes(printer.id);
                         return (
                           <button
                             type="button"
                             key={`${station.id}-${printer.id}`}
                             className={`toggle-pill ${isActive ? "active" : ""}`}
-                            onClick={() => toggleStationPrinter(station.id, printer.id)}
+                            onClick={() =>
+                              toggleStationPrinter(station.id, printer.id)
+                            }
                             aria-pressed={isActive}
                           >
                             <div className="check-icon">
-                              {isActive ? <Check size={12} strokeWidth={4} /> : <Power size={12} />}
+                              {isActive ? (
+                                <Check size={12} strokeWidth={4} />
+                              ) : (
+                                <Power size={12} />
+                              )}
                             </div>
                             <span>{printer.name}</span>
                           </button>
                         );
                       })}
-                      {printers.length === 0 && <span className="no-data">Chưa có máy in để gán luồng</span>}
+                      {!hasPrinters && (
+                        <span className="no-data no-data--compact">
+                          Chưa có máy in để gán luồng
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -623,7 +825,10 @@ export default function PrintManagement() {
               </div>
               <div className="template-grid">
                 {templates.map((template) => (
-                  <div key={template.key} className={`template-card ${template.enabled ? "active" : ""}`}>
+                  <div
+                    key={template.key}
+                    className={`template-card ${template.enabled ? "active" : ""}`}
+                  >
                     <div className="template-head">
                       <strong>{template.name}</strong>
                       <button
@@ -637,16 +842,28 @@ export default function PrintManagement() {
                     <textarea
                       aria-label={`Nội dung mẫu ${template.name}`}
                       value={template.content || ""}
-                      onChange={(e) => handleTemplateContent(template.key, e.target.value)}
+                      onChange={(e) =>
+                        handleTemplateContent(template.key, e.target.value)
+                      }
                     />
                     <button
                       type="button"
                       className="template-test"
                       onClick={() => handleSendTemplateTest(template.key)}
-                      disabled={!selectedRestaurantId || printers.length === 0}
+                      disabled={!hasRestaurantSelection || !hasPrinters}
+                      title={
+                        !hasPrinters
+                          ? "Cần thêm máy in trước khi gửi test print mô phỏng"
+                          : "Tạo test job mô phỏng"
+                      }
                     >
-                      Gửi test print
+                      Test cấu hình (mô phỏng)
                     </button>
+                    {!hasPrinters && (
+                      <small className="template-card__hint">
+                        Cần có máy in để tạo test job mô phỏng.
+                      </small>
+                    )}
                   </div>
                 ))}
               </div>
@@ -655,29 +872,40 @@ export default function PrintManagement() {
             <section className="ui-card">
               <div className="card-header">
                 <h3>
-                  <Printer size={18} /> Hàng đợi in / Jobs
+                  <Printer size={18} /> Hàng đợi print job
                 </h3>
                 <span className="badge">{jobs.length} jobs</span>
               </div>
 
               {jobs.length === 0 ? (
-                <div className="no-data">Chưa có print job.</div>
+                <div className="no-data">
+                  Chưa có print job. Gửi test cấu hình mô phỏng để tạo job demo.
+                </div>
               ) : (
                 <div className="jobs-list">
                   {jobs.slice(0, 20).map((job) => (
                     <div key={job.id} className={`job-item job-${job.status}`}>
                       <div>
-                        <strong>{job.printType}</strong> • {job.printerName || job.printerId || "N/A"}
+                        <strong>{job.printType}</strong> •{" "}
+                        {job.printerName || job.printerId || "N/A"}
                         <div className="job-meta">
                           <span>{statusText(job.status)}</span>
-                          <span>{new Date(job.createdAt).toLocaleString("vi-VN")}</span>
+                          <span>
+                            {new Date(job.createdAt).toLocaleString("vi-VN")}
+                          </span>
                           <span>Retry: {job.retryCount || 0}</span>
                         </div>
-                        {job.error && <div className="job-error">Lỗi: {job.error}</div>}
+                        {job.error && (
+                          <div className="job-error">Lỗi: {job.error}</div>
+                        )}
                       </div>
                       {job.status === "failed" && (
-                        <button type="button" className="retry-btn" onClick={() => handleRetryJob(job.id)}>
-                          <RotateCcw size={14} /> Gửi lại
+                        <button
+                          type="button"
+                          className="retry-btn"
+                          onClick={() => handleRetryJob(job.id)}
+                        >
+                          <RotateCcw size={14} /> Retry job lỗi
                         </button>
                       )}
                     </div>
@@ -688,7 +916,9 @@ export default function PrintManagement() {
           </div>
 
           {saving && <div className="save-hint">Đang lưu cấu hình...</div>}
-          {saveError && <div className="save-hint">{saveError}</div>}
+          {saveError && (
+            <div className="save-hint save-hint--error">{saveError}</div>
+          )}
         </>
       )}
 

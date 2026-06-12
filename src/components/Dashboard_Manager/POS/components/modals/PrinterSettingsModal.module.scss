@@ -292,3 +292,17 @@ $radius: 16px;
     }
   }
 }
+
+.testFeedback {
+  padding: 0 1.25rem 1rem;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.success {
+  color: #0f766e;
+}
+
+.error {
+  color: #b91c1c;
+}

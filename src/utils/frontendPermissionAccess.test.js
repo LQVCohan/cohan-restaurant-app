@@ -20,7 +20,10 @@ const managementMenu = [
   { id: "rbac", permissions: ["role.read", "permission.read", "staff.write"] },
 ];
 
-const visibleIds = (user) => filterNavigationByPermissionAccess(managementMenu, user).map((item) => item.id);
+const visibleIds = (user) =>
+  filterNavigationByPermissionAccess(managementMenu, user).map(
+    (item) => item.id,
+  );
 
 describe("frontendPermissionAccess", () => {
   it("lets admin pass every management permission", () => {
@@ -34,14 +37,31 @@ describe("frontendPermissionAccess", () => {
     const manager = { roleName: "manager" };
 
     expect(getPermissionCodes(manager)).toContain("menu.read");
-    expect(visibleIds(manager)).toEqual(expect.arrayContaining(["menu", "orders", "payment", "inventory", "tables", "promotions", "staff", "schedule", "reports", "rbac"]));
+    expect(visibleIds(manager)).toEqual(
+      expect.arrayContaining([
+        "menu",
+        "orders",
+        "payment",
+        "inventory",
+        "tables",
+        "promotions",
+        "staff",
+        "schedule",
+        "reports",
+        "rbac",
+      ]),
+    );
   });
 
   it("shows cashier only order and payment modules when those permissions are assigned", () => {
     const cashier = {
       roleName: "cashier",
       role: {
-        permissions: [{ code: "order.read" }, { code: "payment.read" }, { code: "payment.write" }],
+        permissions: [
+          { code: "order.read" },
+          { code: "payment.read" },
+          { code: "payment.write" },
+        ],
       },
     };
 
@@ -50,7 +70,10 @@ describe("frontendPermissionAccess", () => {
   });
 
   it("does not grant write buttons to staff without write permissions", () => {
-    const staff = { roleName: "staff", role: { permissions: [{ code: "menu.read" }] } };
+    const staff = {
+      roleName: "staff",
+      role: { permissions: [{ code: "menu.read" }] },
+    };
 
     expect(hasPermission(staff, "menu.read")).toBe(true);
     expect(hasPermission(staff, "menu.write")).toBe(false);
@@ -69,22 +92,79 @@ describe("frontendPermissionAccess", () => {
       { id: "active-coupons", label: "Coupon đang chạy" },
     ];
 
-    expect(filterNavigationByPermissionAccess(publicCustomerItems, null).map((item) => item.id)).toEqual([
-      "public-menu",
-      "active-promotions",
-      "active-coupons",
-    ]);
-    expect(hasAnyPermission({ roleName: "customer" }, ["menu.read", "promotion.read"])).toBe(false);
+    expect(
+      filterNavigationByPermissionAccess(publicCustomerItems, null).map(
+        (item) => item.id,
+      ),
+    ).toEqual(["public-menu", "active-promotions", "active-coupons"]);
+    expect(
+      hasAnyPermission({ roleName: "customer" }, [
+        "menu.read",
+        "promotion.read",
+      ]),
+    ).toBe(false);
+  });
+
+  it("treats permission arrays as any-of for AI management entries", () => {
+    const aiMenu = [
+      {
+        id: "ai-handoff",
+        permissions: ["ai.chatbot.handoff", "ai.chatbot.moderate"],
+      },
+      {
+        id: "ai-chatbot-analytics",
+        permissions: ["ai.chatbot.analytics.read", "ai.chatbot.read"],
+      },
+      { id: "ai-chatbot-settings", permissions: ["ai.chatbot.write"] },
+      {
+        id: "ai-chatbot-knowledge",
+        permissions: [
+          "ai.chatbot.read",
+          "ai.chatbot.write",
+          "ai.chatbot.moderate",
+          "ai.chatbot.evaluate",
+        ],
+      },
+    ];
+
+    expect(
+      filterNavigationByPermissionAccess(aiMenu, {
+        role: { permissions: [{ code: "report.read" }] },
+      }),
+    ).toEqual([]);
+    expect(
+      filterNavigationByPermissionAccess(aiMenu, {
+        role: { permissions: [{ code: "ai.chatbot.read" }] },
+      }).map((item) => item.id),
+    ).toEqual(["ai-chatbot-analytics", "ai-chatbot-knowledge"]);
+    expect(
+      filterNavigationByPermissionAccess(aiMenu, {
+        role: { permissions: [{ code: "ai.chatbot.write" }] },
+      }).map((item) => item.id),
+    ).toEqual(["ai-chatbot-settings", "ai-chatbot-knowledge"]);
+    expect(
+      filterNavigationByPermissionAccess(aiMenu, {
+        role: { permissions: [{ code: "ai.chatbot.handoff" }] },
+      }).map((item) => item.id),
+    ).toEqual(["ai-handoff"]);
   });
 
   it("requires role.write or permission.write for RBAC role create and update controls", () => {
     const reader = { role: { permissions: [{ code: "role.read" }] } };
     const roleWriter = { role: { permissions: [{ code: "role.write" }] } };
-    const permissionWriter = { role: { permissions: [{ code: "permission.write" }] } };
+    const permissionWriter = {
+      role: { permissions: [{ code: "permission.write" }] },
+    };
 
-    expect(hasAnyPermission(reader, ["role.write", "permission.write"])).toBe(false);
-    expect(hasAnyPermission(roleWriter, ["role.write", "permission.write"])).toBe(true);
-    expect(hasAnyPermission(permissionWriter, ["role.write", "permission.write"])).toBe(true);
+    expect(hasAnyPermission(reader, ["role.write", "permission.write"])).toBe(
+      false,
+    );
+    expect(
+      hasAnyPermission(roleWriter, ["role.write", "permission.write"]),
+    ).toBe(true);
+    expect(
+      hasAnyPermission(permissionWriter, ["role.write", "permission.write"]),
+    ).toBe(true);
   });
 
   it("requires staff.write for RBAC staff role assignment controls", () => {
@@ -104,13 +184,25 @@ describe("frontendPermissionAccess", () => {
   });
 
   it("requires inventory.write or stock.write for inventory and stock write controls", () => {
-    const reader = { role: { permissions: [{ code: "inventory.read" }, { code: "stock.read" }] } };
-    const inventoryWriter = { role: { permissions: [{ code: "inventory.write" }] } };
+    const reader = {
+      role: {
+        permissions: [{ code: "inventory.read" }, { code: "stock.read" }],
+      },
+    };
+    const inventoryWriter = {
+      role: { permissions: [{ code: "inventory.write" }] },
+    };
     const stockWriter = { role: { permissions: [{ code: "stock.write" }] } };
 
-    expect(hasAnyPermission(reader, ["inventory.write", "stock.write"])).toBe(false);
-    expect(hasAnyPermission(inventoryWriter, ["inventory.write", "stock.write"])).toBe(true);
-    expect(hasAnyPermission(stockWriter, ["inventory.write", "stock.write"])).toBe(true);
+    expect(hasAnyPermission(reader, ["inventory.write", "stock.write"])).toBe(
+      false,
+    );
+    expect(
+      hasAnyPermission(inventoryWriter, ["inventory.write", "stock.write"]),
+    ).toBe(true);
+    expect(
+      hasAnyPermission(stockWriter, ["inventory.write", "stock.write"]),
+    ).toBe(true);
   });
 
   it("requires payment.write for payment mutation controls", () => {

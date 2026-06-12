@@ -7,23 +7,60 @@ import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAc
 const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);
   const sidebarUserName = user?.fullName || user?.name || "Quản lý";
-  const sidebarUserRole = user?.role?.name || user?.roleName || "Đang hoạt động";
+  const sidebarUserRole =
+    user?.role?.name || user?.roleName || "Đang hoạt động";
   // Navigation items data
   const navigationSections = [
     {
       title: "Tổng quan",
       items: [
-        { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan", permissions: ["dashboard.read", "report.read"] },
-        { id: "analytics", icon: "📈", label: "Phân tích kinh doanh", page: "Phân tích kinh doanh", permissions: ["report.read"] },
+        {
+          id: "dashboard",
+          icon: "📊",
+          label: "Dashboard",
+          page: "Tổng quan",
+          permissions: ["dashboard.read", "report.read"],
+        },
+        {
+          id: "analytics",
+          icon: "📈",
+          label: "Phân tích kinh doanh",
+          page: "Phân tích kinh doanh",
+          permissions: ["report.read"],
+        },
       ],
     },
     {
       title: "Quản lý",
       items: [
-        { id: "orders", permissions: ["order.read"], icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
-        { id: "menu", permissions: ["menu.read"], icon: "📋", label: "Thực đơn", page: "Thực đơn" },
-        { id: "inventory", permissions: ["inventory.read", "stock.read"], icon: "📦", label: "Kho hàng", page: "Kho hàng" },
-        { id: "tables", permissions: ["table.read"], icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
+        {
+          id: "orders",
+          permissions: ["order.read"],
+          icon: "🛒",
+          label: "Đơn hàng",
+          page: "Đơn hàng",
+        },
+        {
+          id: "menu",
+          permissions: ["menu.read"],
+          icon: "📋",
+          label: "Thực đơn",
+          page: "Thực đơn",
+        },
+        {
+          id: "inventory",
+          permissions: ["inventory.read", "stock.read"],
+          icon: "📦",
+          label: "Kho hàng",
+          page: "Kho hàng",
+        },
+        {
+          id: "tables",
+          permissions: ["table.read"],
+          icon: "🪑",
+          label: "Bàn ăn",
+          page: "Bàn ăn",
+        },
         {
           id: "restaurant-info-management",
           permissions: ["restaurant.read"],
@@ -36,8 +73,20 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
     {
       title: "Nhân sự",
       items: [
-        { id: "staff", permissions: ["staff.read"], icon: "👥", label: "Nhân viên", page: "Nhân viên" },
-        { id: "rbac", permissions: ["role.read", "permission.read", "staff.write"], icon: "🛡️", label: "Phân quyền nhân viên", page: "Phân quyền nhân viên" },
+        {
+          id: "staff",
+          permissions: ["staff.read"],
+          icon: "👥",
+          label: "Nhân viên",
+          page: "Nhân viên",
+        },
+        {
+          id: "rbac",
+          permissions: ["role.read", "permission.read", "staff.write"],
+          icon: "🛡️",
+          label: "Phân quyền nhân viên",
+          page: "Phân quyền nhân viên",
+        },
         {
           id: "schedules",
           permissions: ["shift.read"],
@@ -78,11 +127,46 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
           label: "Khuyến mãi",
           page: "Chương trình khuyến mãi",
         },
-        { id: "ai-handoff", permissions: ["dashboard.read", "order.read"], icon: "🤖", label: "Handoff AI", page: "Handoff AI" },
-        { id: "ai-chatbot-analytics", permissions: ["report.read"], icon: "📡", label: "AI Chatbot Analytics", page: "AI Chatbot Analytics" },
-        { id: "ai-chatbot-settings", permissions: ["report.read"], icon: "⚙️", label: "AI Chatbot Settings", page: "AI Chatbot Settings" },
-        { id: "ai-chatbot-knowledge", permissions: ["report.read"], icon: "📚", label: "AI Chatbot Knowledge", page: "AI Chatbot Knowledge" },
-        { id: "reviews", permissions: ["review.read", "report.read"], icon: "⭐", label: "Đánh giá", page: "Đánh giá" },
+        {
+          id: "ai-handoff",
+          permissions: ["ai.chatbot.handoff", "ai.chatbot.moderate"],
+          icon: "🤖",
+          label: "Handoff AI",
+          page: "Handoff AI",
+        },
+        {
+          id: "ai-chatbot-analytics",
+          permissions: ["ai.chatbot.analytics.read", "ai.chatbot.read"],
+          icon: "📡",
+          label: "AI Chatbot Analytics",
+          page: "AI Chatbot Analytics",
+        },
+        {
+          id: "ai-chatbot-settings",
+          permissions: ["ai.chatbot.write"],
+          icon: "⚙️",
+          label: "AI Chatbot Settings",
+          page: "AI Chatbot Settings",
+        },
+        {
+          id: "ai-chatbot-knowledge",
+          permissions: [
+            "ai.chatbot.read",
+            "ai.chatbot.write",
+            "ai.chatbot.moderate",
+            "ai.chatbot.evaluate",
+          ],
+          icon: "📚",
+          label: "AI Chatbot Knowledge",
+          page: "AI Chatbot Knowledge",
+        },
+        {
+          id: "reviews",
+          permissions: ["review.read", "report.read"],
+          icon: "⭐",
+          label: "Đánh giá",
+          page: "Đánh giá",
+        },
       ],
     },
     {
@@ -95,7 +179,13 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
           label: "Báo cáo tổng hợp",
           page: "Báo cáo",
         },
-        { id: "finance", permissions: ["payment.read"], icon: "💳", label: "Tài chính", page: "Tài chính" },
+        {
+          id: "finance",
+          permissions: ["payment.read"],
+          icon: "💳",
+          label: "Tài chính",
+          page: "Tài chính",
+        },
       ],
     },
     {
@@ -126,7 +216,10 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
     },
   ];
 
-  const visibleSections = filterNavigationByPermissionAccess(navigationSections, user);
+  const visibleSections = filterNavigationByPermissionAccess(
+    navigationSections,
+    user,
+  );
 
   // Handle navigation item click
   const handleItemClick = (item) => {
@@ -170,7 +263,10 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
   return (
     <>
       {/* Sidebar */}
-      <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`} aria-label="Thanh điều hướng quản lý">
+      <aside
+        className={`sidebar ${isOpen ? "sidebar-open" : ""}`}
+        aria-label="Thanh điều hướng quản lý"
+      >
         <button
           className="sidebar-rail-toggle"
           onClick={onToggle}
@@ -203,7 +299,12 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
               Cohan Manager
             </button>
           </div>
-          <button className="sidebar-close" onClick={onClose} type="button" aria-label="Đóng thanh điều hướng">
+          <button
+            className="sidebar-close"
+            onClick={onClose}
+            type="button"
+            aria-label="Đóng thanh điều hướng"
+          >
             ✕
           </button>
         </div>
@@ -212,26 +313,33 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
         <nav className="sidebar-nav" aria-label="Điều hướng quản lý nhà hàng">
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="nav-section">
-              <div className="nav-section-title" id={`manager-nav-section-${sectionIndex}`}>{section.title}</div>
+              <div
+                className="nav-section-title"
+                id={`manager-nav-section-${sectionIndex}`}
+              >
+                {section.title}
+              </div>
               {section.items.map((item) => {
                 const isAiItem = item.id?.startsWith("ai-");
                 return (
-                <button
-                  key={item.id}
-                  className={`nav-item ${isAiItem ? "nav-item--ai" : ""} ${
-                    activeItem === item.id ? "active" : ""
-                  }`}
-                  onClick={() => handleItemClick(item)}
-                  title={item.label}
-                  type="button"
-                  aria-current={activeItem === item.id ? "page" : undefined}
-                  aria-label={item.label}
-                  data-tooltip={item.label}
-                >
-                  <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
-                  {activeItem === item.id && <div className="nav-indicator" />}
-                </button>
+                  <button
+                    key={item.id}
+                    className={`nav-item ${isAiItem ? "nav-item--ai" : ""} ${
+                      activeItem === item.id ? "active" : ""
+                    }`}
+                    onClick={() => handleItemClick(item)}
+                    title={item.label}
+                    type="button"
+                    aria-current={activeItem === item.id ? "page" : undefined}
+                    aria-label={item.label}
+                    data-tooltip={item.label}
+                  >
+                    <span className="nav-icon">{item.icon}</span>
+                    <span className="nav-label">{item.label}</span>
+                    {activeItem === item.id && (
+                      <div className="nav-indicator" />
+                    )}
+                  </button>
                 );
               })}
             </div>
