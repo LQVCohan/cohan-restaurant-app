@@ -1,0 +1,268 @@
+// Cohesion layer for the manager staff workspace.
+// Keep this file as the final visual override so sub-pages share one canvas.
+
+$cohesion-bg: #fff7ed;
+$cohesion-bg-soft: #f7ead7;
+$cohesion-paper: #fffdf8;
+$cohesion-paper-warm: #fff8ec;
+$cohesion-line: rgba(154, 119, 78, 0.18);
+$cohesion-line-strong: rgba(154, 119, 78, 0.28);
+$cohesion-text: #2f2419;
+$cohesion-muted: #776552;
+$cohesion-accent: #a96f2d;
+$cohesion-accent-strong: #7f5731;
+$cohesion-shadow: 0 18px 44px rgba(84, 55, 30, 0.09);
+$cohesion-shadow-soft: 0 10px 24px rgba(84, 55, 30, 0.06);
+
+.manager-layout--staff {
+  .manager-layout__content {
+    padding: clamp(12px, 1.55vw, 22px);
+    padding-bottom: max(96px, clamp(16px, 2vw, 28px));
+    background:
+      radial-gradient(circle at 86% 0%, rgba(184, 147, 101, 0.12), transparent 32rem),
+      radial-gradient(circle at 8% 92%, rgba(184, 147, 101, 0.08), transparent 30rem),
+      linear-gradient(180deg, #fffaf3 0%, $cohesion-bg 48%, $cohesion-bg-soft 100%);
+  }
+
+  .manager-page-shell {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .manager-page-shell__body {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.staff-page-container {
+  min-height: auto;
+  padding: 0;
+  color: $cohesion-text;
+  background: transparent;
+
+  &::before,
+  .page-bg-blob {
+    display: none;
+  }
+
+  .staff-page-content {
+    width: min(100%, 1560px);
+    gap: 16px;
+    margin: 0 auto;
+  }
+
+  .page-header-wrapper,
+  .page-nav-wrapper,
+  .page-main-view {
+    width: 100%;
+  }
+
+  .page-nav-wrapper {
+    margin: 0;
+
+    &.sticky {
+      top: 78px;
+    }
+  }
+
+  .page-main-view {
+    min-width: 0;
+    border-radius: 28px;
+  }
+}
+
+.staff-page-container .staff-page-header.management-page-header,
+.staff-page-container .page-navigation,
+.staff-page-container .staff-tabs,
+.staff-page-container .employee-list-card,
+.staff-page-container .employee-detail-card,
+.staff-page-container .attendance-management-page .stat-card,
+.staff-page-container .attendance-management-page .quick-action-section,
+.staff-page-container .attendance-management-page .table-section,
+.staff-page-container .leave-request-form,
+.staff-page-container .leave-requests-list,
+.staff-page-container .schedule-container,
+.staff-page-container .schedule-header,
+.staff-page-container .schedule-toolbar,
+.staff-page-container .schedule-insights-panel,
+.staff-page-container .schedule-board,
+.staff-page-container .schedule-day-column {
+  border-color: $cohesion-line;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.97), rgba(255, 248, 238, 0.92)),
+    $cohesion-paper;
+  box-shadow: $cohesion-shadow;
+}
+
+.staff-page-container .staff-page-header.management-page-header {
+  margin: 0;
+}
+
+.staff-page-container .employee-dashboard {
+  grid-template-columns: minmax(620px, 1.03fr) minmax(520px, 0.97fr);
+  gap: 16px;
+}
+
+.staff-page-container .employee-list-card,
+.staff-page-container .employee-detail-card {
+  min-width: 0;
+}
+
+.staff-page-container .page-navigation,
+.staff-page-container .staff-tabs {
+  padding: 8px;
+  border: 1px solid $cohesion-line;
+  border-radius: 22px;
+  background: rgba(255, 253, 248, 0.82);
+  box-shadow: $cohesion-shadow-soft;
+}
+
+.staff-page-container .attendance-management-page,
+.staff-page-container .leave-management-page,
+.staff-page-container .staff-schedule-page {
+  width: 100%;
+}
+
+.staff-page-container .attendance-management-page {
+  gap: 16px;
+
+  .page-header {
+    padding: 18px 20px;
+    border: 1px solid $cohesion-line;
+    border-radius: 24px;
+    background: rgba(255, 253, 248, 0.88);
+    box-shadow: $cohesion-shadow-soft;
+  }
+
+  .stats-grid {
+    gap: 14px;
+  }
+
+  .quick-action-section {
+    border-left-color: $cohesion-accent;
+  }
+
+  .table-section {
+    min-height: 0;
+  }
+}
+
+.staff-page-container .leave-management-page {
+  gap: 18px;
+
+  .leave-request-form,
+  .leave-requests-list {
+    border-radius: 26px;
+  }
+
+  .leave-request-form {
+    width: min(100%, 720px);
+    margin: 0 auto;
+  }
+
+  .requests-container {
+    max-height: none;
+  }
+}
+
+.staff-page-container .staff-schedule-page {
+  height: auto;
+  min-height: 0;
+
+  .schedule-container {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    border-radius: 26px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .schedule-header,
+  .schedule-toolbar,
+  .schedule-insights-panel {
+    margin-bottom: 14px;
+    border: 1px solid $cohesion-line;
+    border-radius: 24px;
+  }
+
+  .schedule-header,
+  .schedule-toolbar {
+    padding: 16px 18px;
+  }
+
+  .schedule-board {
+    min-height: 360px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 14px;
+    border: 1px solid $cohesion-line;
+    border-radius: 24px;
+    background: rgba(255, 253, 248, 0.78);
+  }
+
+  .schedule-day-column {
+    min-height: 330px;
+    box-shadow: $cohesion-shadow-soft;
+  }
+}
+
+.staff-page-container .schedule-container,
+.staff-page-container .attendance-management-page,
+.staff-page-container .leave-management-page {
+  .page-title,
+  h1,
+  h2,
+  h3,
+  .title,
+  .form-title,
+  .list-title {
+    color: $cohesion-text;
+  }
+
+  .page-subtitle,
+  .subtitle,
+  .form-subtitle,
+  .list-subtitle,
+  p {
+    color: $cohesion-muted;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    border-color: $cohesion-line;
+  }
+}
+
+.staff-page-container .table-header-row,
+.staff-page-container .employee-row-item {
+  grid-template-columns: minmax(230px, 1.34fr) minmax(165px, 0.88fr) minmax(230px, 1.08fr) 40px;
+}
+
+@media (max-width: 1280px) {
+  .staff-page-container .employee-dashboard {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .manager-layout--staff .manager-layout__content {
+    padding: 12px;
+    padding-bottom: 96px;
+  }
+
+  .staff-page-container .attendance-management-page .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-page-container .attendance-management-page .page-header,
+  .staff-page-container .attendance-management-page .quick-action-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
