@@ -22,8 +22,9 @@ const useDelayUnmount = (isMounted, delayTime) => {
 
 // --- Main Component ---
 const Modal = ({
-  isOpen, // Ưu tiên dùng tên chuẩn boolean
+  isOpen,
   onClose,
+  title = null,
   size = "md", // sm, md, lg, xl, full
   position = "center", // center, top
   children,
@@ -53,7 +54,6 @@ const Modal = ({
       previousActiveElementRef.current = document.activeElement;
       document.body.style.overflow = "hidden";
 
-      // Focus vào modal khi mở
       const timer = setTimeout(() => {
         modalRef.current?.focus();
       }, 50);
@@ -72,7 +72,7 @@ const Modal = ({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (isOpen && closeOnEscape && e.key === "Escape") {
-        e.stopPropagation(); // Ngăn event bubbling nếu có modal cha
+        e.stopPropagation();
         requestClose();
       }
 
@@ -93,14 +93,13 @@ const Modal = ({
       }
     };
 
-    // Chỉ add event listener khi modal đang mở
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, closeOnEscape, requestClose]);
 
-  // 3. Handle Overlay Click (An toàn hơn mouseDown/Up)
+  // 3. Handle Overlay Click
   const handleOverlayClick = (e) => {
     if (
       closeOnOverlayClick &&
@@ -114,15 +113,22 @@ const Modal = ({
   if (!shouldRender) return null;
 
   const childArray = React.Children.toArray(children);
+  const hasExplicitHeader = childArray.some(
+    (child) => React.isValidElement(child) && child.type === ModalHeader,
+  );
   const hasExplicitBody = childArray.some(
     (child) => React.isValidElement(child) && child.type === ModalBody,
   );
-  const normalizedChildren =
-    autoWrapBody && !hasExplicitBody ? (
-      <ModalBody>{children}</ModalBody>
-    ) : (
-      children
-    );
+  const normalizedChildren = (
+    <>
+      {title && !hasExplicitHeader ? <ModalHeader>{title}</ModalHeader> : null}
+      {autoWrapBody && !hasExplicitBody ? (
+        <ModalBody>{children}</ModalBody>
+      ) : (
+        children
+      )}
+    </>
+  );
 
   return createPortal(
     <div
@@ -134,18 +140,32 @@ const Modal = ({
       onClick={handleOverlayClick}
       aria-modal="true"
       role="dialog"
-      aria-labelledby={titleId}
+      aria-labelledby={title ? titleId : undefined}
     >
       <div
         ref={modalRef}
         className={`modal-container size-${size} ${className}`}
-        tabIndex="-1" // Cho phép div nhận focus programmatically
+        tabIndex="-1"
       >
-        {/* Inject titleId context if needed, simple children rendering here */}
         {React.Children.map(normalizedChildren, (child) => {
-          // Clone element để truyền props tự động nếu cần (như onClose cho Header)
           if (React.isValidElement(child) && child.type === ModalHeader) {
             return React.cloneElement(child, { onClose: requestClose, titleId });
+          }
+          if (React.isValidElement(child) && child.type === React.Fragment) {
+            return React.cloneElement(child, {
+              children: React.Children.map(child.props.children, (nestedChild) => {
+                if (
+                  React.isValidElement(nestedChild) &&
+                  nestedChild.type === ModalHeader
+                ) {
+                  return React.cloneElement(nestedChild, {
+                    onClose: requestClose,
+                    titleId,
+                  });
+                }
+                return nestedChild;
+              }),
+            });
           }
           return child;
         })}
@@ -186,7 +206,6 @@ const ModalFooter = ({ children, className = "", ...rest }) => {
   );
 };
 
-// --- Gắn các sub-components vào Modal chính ---
 Modal.Header = ModalHeader;
 Modal.Body = ModalBody;
 Modal.Footer = ModalFooter;
