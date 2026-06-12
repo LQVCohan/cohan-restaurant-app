@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/supplies/SupplyList.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -17,6 +17,15 @@ import { getSupplyActionErrorMessage } from "@/utils/inventorySupplySupplierPrin
 import StockOutModal from "../modals/StockOutModal";
 import StockTransferModal from "../modals/StockTransferModal";
 import QuickStockModal from "../ingredients/QuickStockModal";
+import {
+  buildSupplyReportFiles,
+  downloadSupplyImportErrors,
+  downloadSupplyReportsZip,
+  downloadSupplyTemplate,
+  exportSuppliesFile,
+  parseSupplyImportFile,
+  validateAndNormalizeSupplyRow,
+} from "./supplyImportExport";
 import { debounce } from "../../../../../utils/debounce";
 import "./SupplyList.scss";
 
@@ -25,6 +34,7 @@ const SupplyList = ({
   warehouseId = null,
   warehouses = [],
   warehousesLoading = false,
+  onRegisterActions,
 }) => {
   const { showNotification } = useNotification();
   const {
@@ -42,19 +52,19 @@ const SupplyList = ({
     refresh,
   } = useSupply(restaurantId, warehouseId);
 
-  // ====== UI state ======
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [unit, setUnit] = useState("");
   const [current, setCurrent] = useState(null);
-  const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
+  const [mode, setMode] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmittingStockOut, setIsSubmittingStockOut] = useState(false);
   const [editing, setEditing] = useState(null);
   const [quickEntries, setQuickEntries] = useState([]);
+  const [busyAction, setBusyAction] = useState("");
+  const fileInputRef = useRef(null);
 
-  // Reset filter khi đổi nhà hàng/kho
   useEffect(() => {
     setSearchInput("");
     setSearch("");
@@ -97,7 +107,6 @@ const SupplyList = ({
   const formatNum = (n) =>
     (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN");
 
-  // ----- Handlers -----
   const openCreate = () => {
     setEditing(null);
     setIsModalOpen(true);
@@ -146,12 +155,7 @@ const SupplyList = ({
     setCurrent(s);
     setMode("in");
     setQuickEntries([
-      {
-        id: s.id,
-        type: "supply",
-        name: s.name,
-        unit: s.unit,
-      },
+      { id: s.id, type: "supply", name: s.name, unit: s.unit },
     ]);
   };
   const openOut = (s) => {
@@ -233,11 +237,7 @@ const SupplyList = ({
   const submitTransfer = async (values) => {
     if (!current) return;
     try {
-      await handleTransfer({
-        restaurantId,
-        supplyId: current.id,
-        ...values,
-      });
+      await handleTransfer({ restaurantId, supplyId: current.id, ...values });
       showNotification("Chuyển kho vật tư thành công.", "success");
       closeStockModal();
     } catch (err) {
@@ -252,21 +252,150 @@ const SupplyList = ({
     }
   };
 
-  // --- Render Skeleton ---
+  const handleTemplate = useCallback(() => {
+    downloadSupplyTemplate();
+    showNotification("Đã tải file mẫu vật tư.", "success");
+  }, [showNotification]);
+
+  const handleExport = useCallback((format = "xlsx") => {
+    exportSuppliesFile({ supplies: filtered, format });
+    showNotification(`Đã xuất danh sách vật tư (${format.toUpperCase()}).`, "success");
+  }, [filtered, showNotification]);
+
+  const handleReport = useCallback(() => {
+    const files = buildSupplyReportFiles({ supplies: filtered });
+    downloadSupplyReportsZip(files);
+    showNotification("Đã xuất gói báo cáo vật tư (.zip).", "success");
+  }, [filtered, showNotification]);
+
+  const handleImportClick = useCallback(() => fileInputRef.current?.click(), []);
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      setBusyAction("import");
+      const parsedRows = await parseSupplyImportFile(file);
+      if (!parsedRows.length) throw new Error("File import không có dòng dữ liệu hợp lệ.");
+      const prepared = parsedRows.map(validateAndNormalizeSupplyRow);
+      const fileErrors = prepared
+        .filter((r) => r.errors.length)
+        .flatMap((r) => r.errors.map((reason) => ({
+          rowNo: r.normalized.rowNo,
+          name: r.normalized.name,
+          sku: r.normalized.sku,
+          type: "VALIDATION",
+          reason,
+        })));
+
+      const existingBySku = new Map();
+      const existingByName = new Map();
+      (supplies || []).forEach((item) => {
+        const skuKey = normalizeFilterKey(item.sku || "");
+        const nameKey = normalizeSearchText(item.name || "");
+        if (skuKey) existingBySku.set(skuKey, item);
+        if (nameKey) existingByName.set(nameKey, item);
+      });
+
+      let successCount = 0;
+      for (const { normalized: row } of prepared) {
+        if (fileErrors.some((err) => err.rowNo === row.rowNo)) continue;
+        try {
+          const target = row.skuKey
+            ? existingBySku.get(row.skuKey)
+            : existingByName.get(row.nameKey);
+          const payload = {
+            restaurantId,
+            name: row.name,
+            sku: row.sku || "",
+            category: row.category,
+            unit: row.unit,
+            costPerUnit: row.costPerUnit,
+            pricePerUnit: row.pricePerUnit,
+            minStock: row.minStock,
+            isActive: row.isActive,
+            notes: row.notes,
+          };
+          if (target?.id) {
+            await handleUpdate(target.id, payload);
+            if (row.openingStock > 0 && warehouseId) {
+              await handleInbound({
+                restaurantId,
+                warehouseId,
+                supplyId: target.id,
+                qty: row.openingStock,
+                reason: "Nhập tồn đầu kỳ vật tư từ Excel",
+              });
+            }
+          } else {
+            await handleCreate(payload);
+            if (row.openingStock > 0) {
+              fileErrors.push({
+                rowNo: row.rowNo,
+                name: row.name,
+                sku: row.sku,
+                type: "INFO",
+                reason: "Đã tạo vật tư mới; vui lòng nhập tồn đầu kỳ bằng nút Nhập sau khi tạo.",
+              });
+            }
+          }
+          successCount += 1;
+        } catch (err) {
+          fileErrors.push({
+            rowNo: row.rowNo,
+            name: row.name,
+            sku: row.sku,
+            type: "PROCESS",
+            reason: err?.message || "Không thể import dòng này",
+          });
+        }
+      }
+      await refresh?.();
+      if (fileErrors.length) downloadSupplyImportErrors(fileErrors);
+      showNotification(
+        `Import vật tư hoàn tất: ${successCount} dòng thành công, ${fileErrors.length} dòng cần kiểm tra.`,
+        fileErrors.length ? "warning" : "success",
+      );
+    } catch (err) {
+      showNotification(err?.message || "Import vật tư thất bại.", "error");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const registeredActions = useMemo(() => ({
+    import: handleImportClick,
+    exportXlsx: () => handleExport("xlsx"),
+    exportCsv: () => handleExport("csv"),
+    template: handleTemplate,
+    report: handleReport,
+    busy: Boolean(busyAction || loading),
+  }), [busyAction, handleExport, handleImportClick, handleReport, handleTemplate, loading]);
+
+  useEffect(() => {
+    onRegisterActions?.(registeredActions);
+    return () => onRegisterActions?.(null);
+  }, [onRegisterActions, registeredActions]);
+
   const renderSkeletons = () => (
     <div className="sl-grid">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="sl-skeleton-card"></div>
-      ))}
+      {[...Array(6)].map((_, i) => <div key={i} className="sl-skeleton-card"></div>)}
     </div>
   );
 
   return (
     <div className="supply-list-container">
-      {/* Toolbar */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="sl-file-input"
+        onChange={handleImportFile}
+      />
+
       <div className="sl-toolbar">
         <div className="sl-toolbar__left">
-          {/* Search Box */}
           <div className="sl-input-group sl-search-box">
             <Search size={18} className="sl-icon" />
             <input
@@ -278,13 +407,9 @@ const SupplyList = ({
             />
           </div>
 
-          {/* Filter Category */}
           <div className="sl-input-group sl-filter-box">
             <Filter size={16} className="sl-icon" />
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="">Tất cả danh mục</option>
               <option value="drink">Nước uống</option>
               <option value="tissue">Khăn giấy</option>
@@ -294,7 +419,6 @@ const SupplyList = ({
             </select>
           </div>
 
-          {/* Filter Unit */}
           <div className="sl-input-group sl-filter-box">
             <Layers size={16} className="sl-icon" />
             <select value={unit} onChange={(e) => setUnit(e.target.value)}>
@@ -323,10 +447,7 @@ const SupplyList = ({
             type="button"
             aria-label="Tải lại danh sách vật tư"
           >
-            <RefreshCw
-              size={17}
-              className={loading ? "spin" : ""}
-            />
+            <RefreshCw size={17} className={loading ? "spin" : ""} />
           </button>
 
           <button type="button" onClick={openCreate} className="sl-btn-add">
@@ -336,27 +457,20 @@ const SupplyList = ({
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="sl-content">
         {error ? (
           <div className="sl-state-box error">
             <p>Đã xảy ra lỗi: {error.message}</p>
-            <Button size="sm" onClick={refresh}>
-              Thử lại
-            </Button>
+            <Button size="sm" onClick={refresh}>Thử lại</Button>
           </div>
         ) : loading ? (
           renderSkeletons()
         ) : filtered.length === 0 ? (
           <div className="sl-state-box empty">
-            <div className="icon-circle">
-              <PackageOpen size={40} />
-            </div>
+            <div className="icon-circle"><PackageOpen size={40} /></div>
             <h3>Không tìm thấy vật tư nào</h3>
             <p>Thử thay đổi bộ lọc hoặc thêm vật tư mới</p>
-            <Button variant="primary" onClick={openCreate}>
-              Thêm vật tư ngay
-            </Button>
+            <Button variant="primary" onClick={openCreate}>Thêm vật tư ngay</Button>
           </div>
         ) : (
           <div className="sl-grid">
@@ -379,7 +493,6 @@ const SupplyList = ({
         )}
       </div>
 
-      {/* Modals */}
       {isModalOpen && (
         <SupplyModal
           isOpen
@@ -397,15 +510,7 @@ const SupplyList = ({
           entries={quickEntries}
           onSubmit={async (rows) => {
             try {
-              await Promise.all(
-                rows.map((row) =>
-                  submitInbound({
-                    qty: row.qty,
-                    supplier: row.supplier,
-                    reason: buildReason(row),
-                  })
-                )
-              );
+              await Promise.all(rows.map((row) => submitInbound({ qty: row.qty, supplier: row.supplier, reason: buildReason(row) })));
               showNotification("Nhập kho vật tư thành công.", "success");
               closeStockModal();
             } catch (err) {
@@ -415,22 +520,10 @@ const SupplyList = ({
         />
       )}
       {mode === "out" && current && (
-        <StockOutModal
-          isOpen
-          onClose={closeStockModal}
-          onConfirm={submitOutbound}
-          supply={current}
-          isSubmitting={isSubmittingStockOut}
-        />
+        <StockOutModal isOpen onClose={closeStockModal} onConfirm={submitOutbound} supply={current} isSubmitting={isSubmittingStockOut} />
       )}
       {mode === "transfer" && current && (
-        <StockTransferModal
-          isOpen
-          onClose={closeStockModal}
-          onConfirm={submitTransfer}
-          supply={current}
-          warehouses={warehouses || []}
-        />
+        <StockTransferModal isOpen onClose={closeStockModal} onConfirm={submitTransfer} supply={current} warehouses={warehouses || []} />
       )}
     </div>
   );
@@ -447,13 +540,7 @@ function buildReason(row) {
 }
 
 function normalizeSearchText(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, " ").trim();
 }
 
 function getSupplyCode(supply) {
@@ -465,47 +552,25 @@ function normalizeFilterKey(value) {
 }
 
 function toFriendlyInboundError(error) {
-  const graphQLErrors =
-    error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const graphQLErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
   const message = graphQLErrors[0]?.message || error?.message || "";
   const code = graphQLErrors[0]?.extensions?.code || "";
-
-  if (code === "BAD_USER_INPUT") {
-    return "Dữ liệu nhập kho chưa hợp lệ. Vui lòng kiểm tra lại.";
-  }
-
-  if (/Invalid IDs/i.test(message)) {
-    return "Thông tin kho hoặc vật tư không hợp lệ.";
-  }
-
-  if (/qty must be > 0/i.test(message)) {
-    return "Số lượng nhập phải lớn hơn 0.";
-  }
-
+  if (code === "BAD_USER_INPUT") return "Dữ liệu nhập kho chưa hợp lệ. Vui lòng kiểm tra lại.";
+  if (/Invalid IDs/i.test(message)) return "Thông tin kho hoặc vật tư không hợp lệ.";
+  if (/qty must be > 0/i.test(message)) return "Số lượng nhập phải lớn hơn 0.";
   return message.replace(/^GraphQL error:\s*/i, "").trim() || "Nhập kho vật tư thất bại.";
 }
 
 function toFriendlyOutboundError(error) {
-  const graphQLErrors =
-    error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const graphQLErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
   const message = graphQLErrors[0]?.message || error?.message || "";
   const code = graphQLErrors[0]?.extensions?.code || "";
   const currentOnHand = graphQLErrors[0]?.extensions?.currentOnHand;
-
-  if (code === "STOCK_ITEM_NOT_FOUND" || /Stock item not found/i.test(message)) {
-    return "Vật tư này chưa có tồn kho tại kho đang chọn.";
-  }
-
+  if (code === "STOCK_ITEM_NOT_FOUND" || /Stock item not found/i.test(message)) return "Vật tư này chưa có tồn kho tại kho đang chọn.";
   if (code === "INSUFFICIENT_STOCK" || /Insufficient stock/i.test(message)) {
-    if (Number.isFinite(Number(currentOnHand))) {
-      return `Không đủ tồn kho để xuất. Tồn hiện tại: ${Number(currentOnHand).toLocaleString("vi-VN")}.`;
-    }
+    if (Number.isFinite(Number(currentOnHand))) return `Không đủ tồn kho để xuất. Tồn hiện tại: ${Number(currentOnHand).toLocaleString("vi-VN")}.`;
     return "Không đủ tồn kho để xuất.";
   }
-
-  if (code === "BAD_USER_INPUT") {
-    return "Dữ liệu xuất kho chưa hợp lệ. Vui lòng kiểm tra lại.";
-  }
-
+  if (code === "BAD_USER_INPUT") return "Dữ liệu xuất kho chưa hợp lệ. Vui lòng kiểm tra lại.";
   return message.replace(/^GraphQL error:\s*/i, "").trim() || "Xuất kho vật tư thất bại.";
 }
