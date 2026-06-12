@@ -12,6 +12,7 @@ import "../../StorageVisibleGradeNine.css";
 import "../../StorageComponentHarmony.css";
 import "../../StoragePagination.css";
 import "../../StorageWideLayout.css";
+import "../../StorageDropdownPolish.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
