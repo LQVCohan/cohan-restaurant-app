@@ -419,7 +419,7 @@ export default function AiChatbotSettingsPage() {
           <header className="ai-admin-panel__header ai-admin-panel__header--compact">
             <div>
               <p className="ai-admin-eyebrow">Chuyển nhân viên</p>
-              <h3>Chuyển nhân viên</h3>
+              <h3>Quy trình chuyển nhân viên</h3>
               <p>Quy định khi chatbot cần mời nhân viên tiếp tục hỗ trợ khách.</p>
             </div>
           </header>
@@ -433,7 +433,7 @@ export default function AiChatbotSettingsPage() {
                   updateForm({ handoffEnabled: event.target.checked })
                 }
               />
-              <span>Bật chuyển nhân viên</span>
+              <span>Cho phép chuyển sang nhân viên</span>
               <small>
                 {form.handoffEnabled
                   ? "Khách có thể được chuyển sang nhân viên khi cần."
