@@ -163,6 +163,102 @@
   grid-template-columns: minmax(0, 1fr) auto !important;
 }
 
+.ai-admin-review-popover {
+  position: relative !important;
+  grid-column: 1 / -1 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.ai-admin-review-popover summary {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-height: 62px !important;
+  padding: 12px 16px !important;
+  border: 1px solid rgba(166, 106, 24, 0.22) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(255, 243, 219, 0.88), rgba(255, 253, 248, 0.94)) !important;
+  box-shadow: 0 8px 22px rgba(79, 55, 33, 0.07) !important;
+  color: var(--ai-text, #2f2923) !important;
+  cursor: pointer !important;
+  list-style: none !important;
+}
+
+.ai-admin-review-popover summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.ai-admin-review-popover__title {
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-review-popover__hint {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: var(--ai-muted, #76685b) !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ai-admin-review-popover__action {
+  border-radius: 999px !important;
+  background: var(--ai-accent, #8a623d) !important;
+  color: #fff !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-review-popover[open] summary {
+  position: relative !important;
+  z-index: 61 !important;
+}
+
+.ai-admin-review-popover__panel {
+  position: fixed !important;
+  inset: 104px max(24px, calc((100vw - 940px) / 2)) auto !important;
+  z-index: 60 !important;
+  max-height: min(68dvh, 720px) !important;
+  overflow: auto !important;
+  border: 1px solid var(--ai-border-strong, rgba(124, 93, 63, 0.22)) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 28px 80px rgba(47, 41, 35, 0.24) !important;
+}
+
+.ai-admin-review-popover__header {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 18px 22px !important;
+  border-bottom: 1px solid var(--ai-border, rgba(124, 93, 63, 0.14)) !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(246, 239, 228, 0.82)) !important;
+}
+
+.ai-admin-review-popover__header h3 {
+  margin: 0 !important;
+  font-size: 24px !important;
+}
+
+.ai-admin-review-popover__header p,
+.ai-admin-review-popover__header span {
+  margin: 6px 0 0 !important;
+  color: var(--ai-muted, #76685b) !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+.ai-admin-review-list__items--popover {
+  max-height: 520px !important;
+  overflow: auto !important;
+}
+
 @media (min-width: 1180px) {
   .manager-layout--ai-chatbot-analytics .ai-admin-page {
     display: grid !important;
@@ -174,7 +270,7 @@
 
   .manager-layout--ai-chatbot-analytics .ai-admin-hero,
   .manager-layout--ai-chatbot-analytics .ai-admin-metrics,
-  .manager-layout--ai-chatbot-analytics .ai-admin-review-list,
+  .manager-layout--ai-chatbot-analytics .ai-admin-review-popover,
   .manager-layout--ai-chatbot-analytics .ai-admin-collapsible,
   .manager-layout--ai-chatbot-analytics .ai-admin-error,
   .manager-layout--ai-chatbot-analytics .ai-admin-skeleton,
@@ -238,5 +334,14 @@
   .ai-admin-grid--safety,
   .ai-admin-grid--evaluation {
     grid-template-columns: 1fr !important;
+  }
+
+  .ai-admin-review-popover summary {
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+  }
+
+  .ai-admin-review-popover__panel {
+    inset: 86px 12px auto !important;
   }
 }
