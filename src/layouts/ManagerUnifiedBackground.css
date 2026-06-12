@@ -41,6 +41,53 @@
   width: min(100%, 1500px);
 }
 
+/* Important: many manager modules set a full-page background on their root component.
+   Keep cards/panels intact, but make the first page wrapper transparent so the shared
+   Dashboard background is continuous and no centered page block is visible. */
+.manager-layout:not(.manager-layout--orders) .manager-page-shell__body > :where(div, main, section, article) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.manager-layout:not(.manager-layout--orders) .manager-page-shell__body > :where(div, main, section, article)::before {
+  background-image: none !important;
+}
+
+/* Known full-page manager roots that previously painted their own canvas. */
+.manager-layout:not(.manager-layout--orders) :where(
+  .manager-dashboard,
+  .tm-container,
+  .menu-management,
+  .menu-management-page,
+  .staff-management,
+  .schedule-management-page,
+  .cm-page,
+  .customer-management,
+  .customer-analytics-page,
+  .manager-analyst,
+  .reports-management,
+  .finance-dashboard,
+  .transaction-management,
+  .promotion-management,
+  .payroll-management,
+  .review-management,
+  .settings-management,
+  .backup-management,
+  .print-management,
+  .rbac-management,
+  .restaurant-info-management,
+  .ai-handoff-inbox,
+  .ai-chatbot-analytics-page,
+  .ai-chatbot-settings-page,
+  .ai-chatbot-knowledge-page,
+  .storage-management
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
 .manager-layout:not(.manager-layout--orders) .manager-page-shell__empty {
   min-height: 320px;
   display: grid;
