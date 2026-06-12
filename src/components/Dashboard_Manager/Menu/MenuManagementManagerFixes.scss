@@ -1,5 +1,5 @@
-// Manager-facing menu polish: reduce empty header space, keep the list closer to actions,
-// and replace technical wording with restaurant-operator language.
+// Manager-facing menu polish after redesign skill audit.
+// Focus: less empty hero space, shorter filters, clearer actions, and no technical wording.
 
 .mm-page-container {
   --mm-work-bg: #f5f0e9;
@@ -15,58 +15,184 @@
 }
 
 .mm-page-container > .management-page-header.density-compact {
-  grid-template-columns: minmax(280px, 1fr) minmax(240px, 320px) !important;
-  align-items: center !important;
-  min-height: auto !important;
-  padding: 16px 18px !important;
-  gap: 18px !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+  align-items: start !important;
+  min-height: 0 !important;
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
 }
 
 .mm-page-container > .management-page-header.density-compact .mph-left {
   grid-column: 1 !important;
-  max-width: 480px;
+  max-width: none !important;
   padding: 0 !important;
   border-right: 0 !important;
 }
 
-.mm-page-container > .management-page-header.density-compact .mph-title {
-  max-width: 12ch;
+.mm-page-container > .management-page-header.density-compact .mph-eyebrow {
   margin-bottom: 6px !important;
 }
 
+.mm-page-container > .management-page-header.density-compact .mph-title {
+  max-width: none !important;
+  margin: 0 0 4px !important;
+  font-size: clamp(1.28rem, 1.45vw, 1.62rem) !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.035em !important;
+  text-wrap: balance;
+}
+
 .mm-page-container > .management-page-header.density-compact .mph-subtitle {
-  max-width: 46ch !important;
-  font-size: 13px !important;
+  max-width: 66ch !important;
+  margin: 0 !important;
+  font-size: 0.83rem !important;
+  line-height: 1.42 !important;
   text-wrap: pretty;
 }
 
 .mm-page-container > .management-page-header.density-compact .mph-right {
-  display: contents !important;
+  display: block !important;
+  min-width: 0 !important;
 }
 
 .mm-page-container > .management-page-header.density-compact .mph-controls-row {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
+  display: flex !important;
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-height: 0 !important;
   min-width: 0 !important;
-  padding: 12px !important;
-  border-top: 0 !important;
-  border-left: 1px solid rgba(226, 214, 200, 0.92) !important;
-  border-radius: 18px !important;
-  background: rgba(255, 250, 244, 0.92) !important;
+  padding: 10px !important;
+  border-top: 1px solid rgba(226, 214, 200, 0.9) !important;
+  border-left: 0 !important;
+  border-radius: 16px !important;
+  background: rgba(255, 250, 244, 0.76) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
 
 .mm-page-container > .management-page-header.density-compact .mph-select,
 .mm-page-container > .management-page-header.density-compact .mph-btn,
 .mm-page-container > .management-page-header.density-compact .mph-icon-btn {
+  height: 38px !important;
   min-height: 38px !important;
 }
 
+.mm-page-container > .management-page-header.density-compact .mph-select {
+  width: auto !important;
+  min-width: 170px !important;
+  flex: 0 1 210px;
+}
+
+.mm-page-container > .management-page-header.density-compact .mph-icon-btn {
+  flex: 0 0 40px;
+  width: 40px !important;
+  min-width: 40px !important;
+  padding-inline: 0 !important;
+}
+
+.mm-page-container > .management-page-header.density-compact .mph-btn--primary {
+  min-width: 150px;
+  margin-left: auto;
+}
+
+.mm-page-container .mm-ops-kpi {
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.mm-page-container .mm-ops-kpi__card {
+  min-height: 72px !important;
+  padding: 10px 12px !important;
+  border-radius: 16px !important;
+}
+
+.mm-page-container .mm-ops-kpi__value {
+  margin-top: 4px !important;
+}
+
+.mm-page-container .mm-ops-kpi__hint {
+  margin-top: 4px !important;
+}
+
+.toolbar-container {
+  margin-bottom: 10px !important;
+}
+
+.toolbar-container .toolbar-top {
+  gap: 10px !important;
+}
+
+.toolbar-container .toolbar-filters {
+  gap: 8px !important;
+  padding-top: 8px !important;
+}
+
+.toolbar-container .filter-row,
+.toolbar-container .toolbar-for-you-filter,
+.toolbar-container .inventory-filter-row {
+  position: static !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 14px !important;
+}
+
+.toolbar-container .filter-section-label {
+  position: static !important;
+  flex: 0 0 auto;
+  margin-right: 2px;
+  color: var(--mm-work-accent-dark);
+  font-size: 10px !important;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.toolbar-container .filter-row .select-wrapper,
+.toolbar-container .filter-row .btn-filter-toggle {
+  flex: 0 1 auto;
+}
+
+.toolbar-container .toolbar-for-you-filter > .filter-section-label,
+.toolbar-container .toolbar-for-you-filter__label,
+.menu-item-card .card-actions .action-btn.edit span,
+.menu-item-card .card-actions .status-trigger span {
+  font-size: 0 !important;
+}
+
+.toolbar-container .toolbar-for-you-filter > .filter-section-label::after {
+  content: "Khẩu vị & dị ứng";
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.toolbar-container .toolbar-for-you-filter__label::after {
+  content: "Tư vấn món";
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.toolbar-container .inventory-chip,
+.toolbar-container .custom-select,
+.toolbar-container .btn-filter-toggle {
+  min-height: 34px !important;
+}
+
 .mm-page-container .for-you-readiness-panel {
-  grid-template-columns: minmax(240px, 1fr) minmax(260px, 0.9fr) minmax(190px, 240px) !important;
+  grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.78fr) minmax(190px, 220px) !important;
   gap: 10px 14px !important;
   align-items: center !important;
-  padding: 12px 14px !important;
+  padding: 11px 13px !important;
   margin-bottom: 10px !important;
   border-radius: 18px !important;
 }
@@ -79,7 +205,7 @@
 
 .mm-page-container .for-you-readiness-panel__eyebrow {
   margin-bottom: 3px !important;
-  font-size: 0.67rem !important;
+  font-size: 0.66rem !important;
   letter-spacing: 0.055em !important;
 }
 
@@ -92,7 +218,7 @@
   max-width: 48ch !important;
   margin-top: 4px !important;
   font-size: 0.8rem !important;
-  line-height: 1.42 !important;
+  line-height: 1.4 !important;
 }
 
 .mm-page-container .for-you-readiness-panel__progress-meta {
@@ -100,18 +226,7 @@
 }
 
 .mm-page-container .for-you-readiness-panel__stats {
-  grid-column: 1 / -1 !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 6px !important;
-}
-
-.mm-page-container .for-you-readiness-panel__stat {
-  padding: 6px 9px !important;
-  border-radius: 14px !important;
-}
-
-.mm-page-container .for-you-readiness-panel__stat span {
-  font-size: 0.68rem !important;
+  display: none !important;
 }
 
 .mm-page-container .for-you-readiness-panel__actions {
@@ -123,44 +238,64 @@
 }
 
 .mm-page-container .for-you-readiness-panel__actions .mm-btn {
+  justify-content: center !important;
   min-height: 34px !important;
   padding: 7px 12px !important;
+  border: 1px solid var(--mm-work-border) !important;
+  border-radius: 12px !important;
+  background: #fffaf5 !important;
+  color: var(--mm-work-accent-dark) !important;
+  font-weight: 820 !important;
+  box-shadow: none !important;
+}
+
+.mm-page-container .for-you-readiness-panel__actions .mm-btn--primary {
+  background: #a87845 !important;
+  border-color: #a87845 !important;
+  color: #fff !important;
 }
 
 .mm-page-container .for-you-readiness-panel__bulk-helper {
   margin-top: 2px;
+  color: #7a6a58 !important;
   line-height: 1.25;
 }
 
+.mm-menu-results-shell--sparse {
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
 .mm-sparse-guidance {
-  top: 12px !important;
-  padding: 16px !important;
+  position: relative !important;
+  top: auto !important;
+  order: -1;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 13px 15px !important;
   border-radius: 18px !important;
 }
 
+.mm-sparse-guidance__eyebrow,
+.mm-sparse-guidance h3,
+.mm-sparse-guidance p {
+  margin: 0 !important;
+}
+
 .mm-sparse-guidance h3 {
-  margin-top: 6px !important;
+  margin-top: 2px !important;
+  font-size: 1rem !important;
 }
 
-.toolbar-for-you-filter > .filter-section-label,
-.toolbar-for-you-filter__label,
-.menu-item-card .card-actions .action-btn.edit span,
-.menu-item-card .card-actions .status-trigger span {
-  font-size: 0 !important;
+.mm-sparse-guidance__chips {
+  justify-content: flex-end;
+  margin-top: 0 !important;
 }
 
-.toolbar-for-you-filter > .filter-section-label::after {
-  content: "Khẩu vị & dị ứng";
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-}
-
-.toolbar-for-you-filter__label::after {
-  content: "Tư vấn món";
-  font-size: 12px;
-  font-weight: 800;
+.mm-page-container .mm-grid--grid.mm-grid--sparse {
+  justify-content: flex-start !important;
 }
 
 .menu-item-card .card-actions .action-btn.edit {
@@ -183,23 +318,8 @@
 }
 
 @media (max-width: 1180px) {
-  .mm-page-container > .management-page-header.density-compact {
-    grid-template-columns: 1fr !important;
-  }
-
-  .mm-page-container > .management-page-header.density-compact .mph-controls-row {
-    grid-column: 1 !important;
-    grid-row: 2 !important;
-    flex-direction: row !important;
-    border-left: 0 !important;
-    border-top: 1px solid rgba(226, 214, 200, 0.92) !important;
-  }
-
-  .mm-page-container > .management-page-header.density-compact .mph-select,
-  .mm-page-container > .management-page-header.density-compact .mph-btn,
-  .mm-page-container > .management-page-header.density-compact .mph-icon-btn {
-    width: auto !important;
-    min-width: 160px !important;
+  .mm-page-container > .management-page-header.density-compact .mph-btn--primary {
+    margin-left: 0;
   }
 
   .mm-page-container .for-you-readiness-panel {
@@ -211,6 +331,14 @@
     grid-row: auto !important;
     flex-direction: row !important;
     flex-wrap: wrap !important;
+  }
+
+  .mm-sparse-guidance {
+    grid-template-columns: 1fr;
+  }
+
+  .mm-sparse-guidance__chips {
+    justify-content: flex-start;
   }
 }
 
@@ -230,6 +358,8 @@
   }
 
   .mm-page-container .for-you-readiness-panel__stats {
+    display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
   }
 }
