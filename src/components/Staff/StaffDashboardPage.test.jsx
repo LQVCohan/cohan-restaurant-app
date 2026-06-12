@@ -33,11 +33,13 @@ describe("StaffDashboardPage", () => {
     expect(screen.getByRole("heading", { name: "Kiểm tra ca hôm nay" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Xem lịch tuần" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Đăng ký lịch/ }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: /Mở hồ sơ/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Xem hồ sơ/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Xem thông báo/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Xem phản hồi/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Check-in\/out/ })).toBeInTheDocument();
     expect(screen.getByText("Sẵn sàng phục vụ")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hồ sơ trong khu vực nhân viên" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nhắc việc trong ca" })).toBeInTheDocument();
   });
 
   it("does not add another main landmark inside StaffLayout", () => {

@@ -84,6 +84,66 @@ const StaffMetricTile = ({ label, value, hint, tone = "neutral" }) => (
   </div>
 );
 
+const StaffProfilePanel = ({ user, staffName, roleLabel, restaurantLabel, initials }) => (
+  <section id="profile" className="staff-dashboard-section staff-dashboard-section--embedded" aria-labelledby="staff-profile-title">
+    <div className="staff-dashboard-section__header">
+      <div>
+        <StaffStatusBadge tone="accent">Thông tin cá nhân</StaffStatusBadge>
+        <h2 id="staff-profile-title">Hồ sơ trong khu vực nhân viên</h2>
+      </div>
+      <p>Giữ hồ sơ trong cùng dashboard để không bị chuyển sang giao diện khách hàng.</p>
+    </div>
+
+    <div className="staff-embedded-profile-card">
+      <div className="staff-embedded-profile-card__avatar" aria-hidden="true">{initials}</div>
+      <div>
+        <span>Nhân viên</span>
+        <strong>{staffName || "Nhân viên"}</strong>
+        <small>{roleLabel || "Chưa xác định vai trò"}</small>
+      </div>
+      <div className="staff-embedded-profile-card__meta">
+        <span>Cơ sở</span>
+        <strong>{restaurantLabel}</strong>
+      </div>
+      <div className="staff-embedded-profile-card__meta">
+        <span>Email</span>
+        <strong>{user?.email || "Chưa cập nhật"}</strong>
+      </div>
+      <div className="staff-embedded-profile-card__meta">
+        <span>Số điện thoại</span>
+        <strong>{user?.phone || "Chưa cập nhật"}</strong>
+      </div>
+    </div>
+  </section>
+);
+
+const StaffNotificationsPanel = () => (
+  <section id="notifications" className="staff-dashboard-section staff-dashboard-section--embedded" aria-labelledby="staff-notifications-title">
+    <div className="staff-dashboard-section__header">
+      <div>
+        <StaffStatusBadge tone="warning">Thông báo</StaffStatusBadge>
+        <h2 id="staff-notifications-title">Nhắc việc trong ca</h2>
+      </div>
+      <p>Đặt thông báo ngay trong dashboard để nhân viên không phải rời khu vực vận hành.</p>
+    </div>
+
+    <div className="staff-embedded-notification-list" role="list">
+      <div className="staff-embedded-notification" role="listitem">
+        <span>Lịch làm việc</span>
+        <strong>Kiểm tra lịch tuần và xác nhận ca nếu có thay đổi.</strong>
+      </div>
+      <div className="staff-embedded-notification" role="listitem">
+        <span>Chấm công</span>
+        <strong>Nhớ check-in trước ca và check-out khi kết thúc ca.</strong>
+      </div>
+      <div className="staff-embedded-notification" role="listitem">
+        <span>Phản hồi quản lý</span>
+        <strong>Theo dõi phản hồi về đăng ký lịch, tăng ca hoặc chỉnh công.</strong>
+      </div>
+    </div>
+  </section>
+);
+
 const StaffDashboardPage = () => {
   const { user } = useContext(AuthContext);
 
@@ -143,7 +203,7 @@ const StaffDashboardPage = () => {
           <div className="staff-hero-links" aria-label="Lối tắt trong ca">
             <StaffHeroLink to="/staff/schedule" label="Lịch tuần" value="Xem ca" />
             <StaffHeroLink to="/staff/schedule" label="Chấm công" value="Check-in/out" />
-            <StaffHeroLink to="/notifications" label="Nhắc việc" value="Thông báo" />
+            <StaffHeroLink to="/staff/dashboard#notifications" label="Nhắc việc" value="Thông báo" />
           </div>
         </div>
 
@@ -198,7 +258,7 @@ const StaffDashboardPage = () => {
               <span>Chấm công thiếu</span>
               <strong>Gửi chỉnh công nếu cần</strong>
             </Link>
-            <Link to="/notifications" className="staff-task-item">
+            <Link to="/staff/dashboard#notifications" className="staff-task-item">
               <span>Thông báo mới</span>
               <strong>Xem nhắc việc</strong>
             </Link>
@@ -245,14 +305,14 @@ const StaffDashboardPage = () => {
             tone="warning"
           />
           <StaffActionCard
-            to="/profile"
+            to="/staff/dashboard#profile"
             title="Hồ sơ cá nhân"
-            description="Kiểm tra thông tin liên hệ và trạng thái tài khoản."
-            cta="Mở hồ sơ"
+            description="Xem thông tin liên hệ và trạng thái tài khoản ngay trong dashboard."
+            cta="Xem hồ sơ"
             tone="neutral"
           />
           <StaffActionCard
-            to="/notifications"
+            to="/staff/dashboard#notifications"
             title="Thông báo / nhắc việc"
             description="Xem cập nhật lịch, nhắc check-out và phản hồi từ quản lý."
             cta="Xem thông báo"
@@ -298,6 +358,17 @@ const StaffDashboardPage = () => {
           />
         )}
       </section>
+
+      <div className="staff-dashboard-embedded-grid">
+        <StaffProfilePanel
+          user={user}
+          staffName={staffName}
+          roleLabel={roleLabel}
+          restaurantLabel={staffRestaurantLabel}
+          initials={initials}
+        />
+        <StaffNotificationsPanel />
+      </div>
     </div>
   );
 };
