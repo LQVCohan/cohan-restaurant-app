@@ -1,0 +1,179 @@
+/* Storage Dropdown Polish
+   Beautify native select/dropdown controls across Storage while keeping them lightweight. */
+
+.storage-management {
+  --dd-bg: rgba(255, 253, 248, 0.96);
+  --dd-bg-hover: #fffdf8;
+  --dd-border: rgba(201, 191, 174, 0.82);
+  --dd-border-hover: rgba(142, 133, 119, 0.5);
+  --dd-text: #25313a;
+  --dd-muted: #727b78;
+  --dd-primary: #2c3741;
+  --dd-shadow: 0 9px 20px rgba(54, 48, 40, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --dd-focus: 0 0 0 4px rgba(44, 55, 65, 0.12), 0 10px 22px rgba(54, 48, 40, 0.07);
+}
+
+.storage-management .custom-select-wrapper,
+.storage-management .il-select-wrapper,
+.storage-management .sl-filter-box,
+.storage-management .rl-select-group {
+  position: relative !important;
+  isolation: isolate;
+}
+
+.storage-management .custom-select-wrapper::after,
+.storage-management .il-select-wrapper::after,
+.storage-management .sl-filter-box::after,
+.storage-management .rl-select-group::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  z-index: 2;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  border-right: 1.8px solid #7b817d;
+  border-bottom: 1.8px solid #7b817d;
+  transform: translateY(-63%) rotate(45deg);
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.storage-management .custom-select-wrapper:focus-within::after,
+.storage-management .il-select-wrapper:focus-within::after,
+.storage-management .sl-filter-box:focus-within::after,
+.storage-management .rl-select-group:focus-within::after,
+.storage-management .custom-select-wrapper:hover::after,
+.storage-management .il-select-wrapper:hover::after,
+.storage-management .sl-filter-box:hover::after,
+.storage-management .rl-select-group:hover::after {
+  border-color: var(--dd-primary);
+}
+
+.storage-management .custom-select-wrapper select,
+.storage-management select.il-select,
+.storage-management .sl-filter-box select,
+.storage-management .rl-select {
+  width: 100% !important;
+  min-height: 40px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--dd-border) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 252, 0.96), var(--dd-bg)) !important;
+  color: var(--dd-text) !important;
+  font-weight: 720 !important;
+  font-size: 0.88rem !important;
+  letter-spacing: -0.006em !important;
+  padding: 0 38px 0 13px !important;
+  box-shadow: var(--dd-shadow) !important;
+  cursor: pointer !important;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease !important;
+}
+
+.storage-management .custom-select-wrapper select:hover:not(:disabled),
+.storage-management select.il-select:hover:not(:disabled),
+.storage-management .sl-filter-box select:hover:not(:disabled),
+.storage-management .rl-select:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--dd-border-hover) !important;
+  background: var(--dd-bg-hover) !important;
+  color: var(--dd-primary) !important;
+  box-shadow: 0 12px 25px rgba(54, 48, 40, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+.storage-management .custom-select-wrapper select:focus,
+.storage-management select.il-select:focus,
+.storage-management .sl-filter-box select:focus,
+.storage-management .rl-select:focus {
+  outline: none !important;
+  border-color: rgba(44, 55, 65, 0.48) !important;
+  box-shadow: var(--dd-focus) !important;
+}
+
+.storage-management .custom-select-wrapper select:disabled,
+.storage-management select.il-select:disabled,
+.storage-management .sl-filter-box select:disabled,
+.storage-management .rl-select:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.66 !important;
+  background: rgba(242, 238, 230, 0.72) !important;
+  color: #8b8880 !important;
+  box-shadow: none !important;
+}
+
+.storage-management .custom-select-wrapper select option,
+.storage-management select.il-select option,
+.storage-management .sl-filter-box select option,
+.storage-management .rl-select option {
+  background: #fffdf8;
+  color: #25313a;
+  font-weight: 650;
+}
+
+.storage-management .custom-select-wrapper select option:checked,
+.storage-management select.il-select option:checked,
+.storage-management .sl-filter-box select option:checked,
+.storage-management .rl-select option:checked {
+  background: #2c3741;
+  color: #ffffff;
+}
+
+.storage-management .filter-group label,
+.storage-management .sm-header-filters label {
+  margin-bottom: 6px !important;
+  color: #716a60 !important;
+  font-size: 0.76rem !important;
+  font-weight: 820 !important;
+}
+
+.storage-management .filter-group label svg,
+.storage-management .sm-header-filters label svg,
+.storage-management .sl-filter-box .sl-icon,
+.storage-management .rl-select-group .rl-icon-left {
+  color: #7a7770 !important;
+  stroke-width: 2.2 !important;
+}
+
+.storage-management .sl-filter-box,
+.storage-management .rl-select-group {
+  min-height: 40px !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.storage-management .sl-filter-box .sl-icon,
+.storage-management .rl-select-group .rl-icon-left {
+  z-index: 3 !important;
+  left: 13px !important;
+}
+
+.storage-management .sl-filter-box select,
+.storage-management .rl-select-group .rl-select {
+  padding-left: 38px !important;
+}
+
+.storage-management .custom-select-wrapper .arrow-icon {
+  display: none !important;
+}
+
+.storage-management .inline-rate {
+  gap: 8px !important;
+}
+
+@media (max-width: 860px) {
+  .storage-management .custom-select-wrapper select,
+  .storage-management select.il-select,
+  .storage-management .sl-filter-box select,
+  .storage-management .rl-select {
+    min-height: 42px !important;
+  }
+}
