@@ -254,8 +254,9 @@ const QuickStockModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="📦 Nhập kho nhanh"
+      title="Nhập kho nhanh"
       size="lg"
+      className="storage-modal-shell storage-modal-quick-stock"
     >
       <div className="qsm-wrapper">
         {submitError ? <div className="qsm-error">{submitError}</div> : null}
@@ -381,8 +382,8 @@ const QuickStockModal = ({
                   <div className="qsm-derived">
                     {d && (
                       <div className="qsm-meta">
-                        Quy đổi: {Number(d.qtyBase).toLocaleString("vi-VN")}{" "}
-                        {d.baseUnit} • Giá/base:{" "}
+                        Quy đổi: {Number(d.qtyBase).toLocaleString("vi-VN")} {" "}
+                        {d.baseUnit} • Giá/base: {" "}
                         <b>
                           {formatPrice(
                             convertCurrencyAmount(
@@ -394,7 +395,7 @@ const QuickStockModal = ({
                             { currency: activeCurrency },
                           )}
                         </b>{" "}
-                        • Tổng lô:{" "}
+                        • Tổng lô: {" "}
                         <b>{formatPrice(Number(row.unitPrice) || 0, { currency: activeCurrency })}</b>
                       </div>
                     )}
