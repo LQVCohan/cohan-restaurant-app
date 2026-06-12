@@ -1,0 +1,108 @@
+/* Shared pagination for Storage grids */
+
+.storage-management .storage-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 11px 12px;
+  border: 1px solid rgba(196, 186, 170, 0.72);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(247, 243, 236, 0.86));
+  box-shadow: 0 10px 24px rgba(54, 48, 40, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.storage-management .storage-pagination__summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  color: #68706e;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.storage-management .storage-pagination__summary strong {
+  color: #1f2a2f;
+  font-weight: 860;
+  font-variant-numeric: tabular-nums;
+}
+
+.storage-management .storage-pagination__controls,
+.storage-management .storage-pagination__pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.storage-management .storage-pagination__btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(222, 214, 202, 0.86);
+  background: rgba(255, 253, 248, 0.92);
+  color: #4f5958;
+  font-size: 0.82rem;
+  font-weight: 790;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.storage-management .storage-pagination__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(146, 137, 122, 0.46);
+  background: #fffdf8;
+  color: #2c3741;
+  box-shadow: 0 8px 18px rgba(54, 48, 40, 0.07);
+}
+
+.storage-management .storage-pagination__btn.is-active {
+  border-color: #2c3741;
+  background: #2c3741;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(32, 43, 52, 0.18);
+}
+
+.storage-management .storage-pagination__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.44;
+  box-shadow: none;
+  transform: none;
+}
+
+.storage-management .storage-pagination__btn--icon {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.storage-management .storage-pagination__ellipsis {
+  min-width: 22px;
+  text-align: center;
+  color: #8a8379;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .storage-management .storage-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .storage-management .storage-pagination__controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .storage-management .storage-pagination__pages {
+    gap: 4px;
+  }
+}
