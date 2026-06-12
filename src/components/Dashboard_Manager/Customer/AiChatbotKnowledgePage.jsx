@@ -457,8 +457,32 @@ const ratingLabel = (rating) =>
   rating === "helpful"
     ? "Hữu ích"
     : rating === "not_helpful"
-      ? "Không hữu ích"
+      ? "Phản hồi chưa hài lòng"
       : rating || "—";
+
+const suggestionReasonLabel = (triggerType) =>
+  ({
+    no_knowledge_match: "Khách hỏi nhưng chatbot chưa có nội dung phù hợp",
+    fallback_response: "Câu trả lời cần rà soát",
+    low_confidence: "Chatbot chưa đủ chắc chắn",
+  })[String(triggerType || "").toLowerCase()] ||
+  "Khách hỏi nhưng chatbot cần thêm nội dung hỗ trợ";
+const statusLabel = (status) =>
+  ({
+    pending: "Đang chờ",
+    new: "Cần xem",
+    reviewed: "Đã xem",
+    ignored: "Đã bỏ qua",
+    approved: "Đã duyệt",
+    dismissed: "Đã bỏ qua",
+  })[String(status || "").toLowerCase()] || status || "—";
+const safetyRuleLabel = (ruleType) =>
+  ({
+    blocked_topic: "Chủ đề cần chặn",
+    required_disclaimer: "Nội dung cần cảnh báo",
+    handoff_topic: "Chủ đề nên chuyển cho nhân viên",
+    allowed_scope: "Phạm vi chatbot có thể trả lời",
+  })[String(ruleType || "").toLowerCase()] || "Quy tắc an toàn";
 
 function EmptyState({ title, description }) {
   return (
@@ -522,8 +546,10 @@ export default function AiChatbotKnowledgePage() {
   const [selectedSafety, setSelectedSafety] = useState([]);
   const [knowledgeForm, setKnowledgeForm] = useState(defaultKnowledgeForm);
   const [editingKnowledgeId, setEditingKnowledgeId] = useState(null);
+  const [knowledgeEditorOpen, setKnowledgeEditorOpen] = useState(false);
   const [safetyForm, setSafetyForm] = useState(defaultSafetyForm);
   const [editingSafetyId, setEditingSafetyId] = useState(null);
+  const [safetyEditorOpen, setSafetyEditorOpen] = useState(false);
   const [evalForm, setEvalForm] = useState(defaultEvalForm);
   const [editingEvalId, setEditingEvalId] = useState(null);
   const [exportFormat, setExportFormat] = useState("json");
@@ -555,7 +581,7 @@ export default function AiChatbotKnowledgePage() {
   });
   const safetyQuery = useQuery(SAFETY_QUERY, {
     skip: !canModerateAi || !effectiveRestaurantId,
-    variables: { ...commonVars, filter: null },
+    variables: { ...commonVars, filter: {} },
   });
   const evalCasesQuery = useQuery(EVALUATION_CASES_QUERY, {
     skip: !canEvaluateAi || !effectiveRestaurantId,
@@ -705,6 +731,7 @@ export default function AiChatbotKnowledgePage() {
           });
         setKnowledgeForm(defaultKnowledgeForm);
         setEditingKnowledgeId(null);
+        setKnowledgeEditorOpen(false);
       },
       editingKnowledgeId
         ? "Đã cập nhật mục tri thức."
@@ -712,6 +739,7 @@ export default function AiChatbotKnowledgePage() {
     );
   };
   const editKnowledge = (item) => {
+    setKnowledgeEditorOpen(true);
     setEditingKnowledgeId(item.id);
     setKnowledgeForm({
       title: item.title || "",
@@ -754,6 +782,7 @@ export default function AiChatbotKnowledgePage() {
           });
         setSafetyForm(defaultSafetyForm);
         setEditingSafetyId(null);
+        setSafetyEditorOpen(false);
       },
       editingSafetyId
         ? "Đã cập nhật quy tắc an toàn."
@@ -761,6 +790,7 @@ export default function AiChatbotKnowledgePage() {
     );
   };
   const editSafety = (item) => {
+    setSafetyEditorOpen(true);
     setEditingSafetyId(item.id);
     setSafetyForm({
       ruleType: item.ruleType || "blocked_topic",
@@ -874,13 +904,13 @@ export default function AiChatbotKnowledgePage() {
     runAction(() => action({ variables: { input: { ids } } }), message);
   const disabledWriteTitle = canWriteKnowledge
     ? ""
-    : "Thiếu quyền ai.chatbot.write";
+    : "Thiếu quyền chỉnh sửa chatbot";
   const disabledModerateTitle = canModerateAi
     ? ""
-    : "Thiếu quyền ai.chatbot.moderate";
+    : "Thiếu quyền quản lý chatbot";
   const disabledEvaluateTitle = canEvaluateAi
     ? ""
-    : "Thiếu quyền ai.chatbot.evaluate";
+    : "Thiếu quyền kiểm thử chatbot";
 
   const renderKnowledge = () => (
     <div className="ai-admin-grid ai-admin-grid--knowledge">
@@ -898,6 +928,18 @@ export default function AiChatbotKnowledgePage() {
             <span className="ai-admin-selection">
               {selectedKnowledge.length} mục đã chọn
             </span>
+            <button
+              type="button"
+              disabled={!canWriteKnowledge}
+              title={disabledWriteTitle}
+              onClick={() => {
+                setKnowledgeForm(defaultKnowledgeForm);
+                setEditingKnowledgeId(null);
+                setKnowledgeEditorOpen(true);
+              }}
+            >
+              Thêm tri thức
+            </button>
             <button
               type="button"
               title={disabledWriteTitle}
@@ -1066,22 +1108,27 @@ export default function AiChatbotKnowledgePage() {
             ))}
           </div>
         ) : (
-          <EmptyState
-            title="Chưa có mục tri thức"
-            description="Thêm nội dung thủ công hoặc nhập JSON/CSV để chatbot có nguồn trả lời rõ ràng hơn."
-          />
+          <div className="ai-admin-empty ai-admin-empty--soft">
+            <div className="ai-admin-empty__icon">＋</div>
+            <h4>Chưa có mục tri thức</h4>
+            <p>Thêm tri thức đầu tiên để chatbot có nguồn trả lời rõ ràng hơn.</p>
+            <button type="button" disabled={!canWriteKnowledge} title={disabledWriteTitle} onClick={() => setKnowledgeEditorOpen(true)}>
+              Thêm tri thức đầu tiên
+            </button>
+          </div>
         )}
       </article>
       <aside className="ai-admin-side-stack">
-        <article className="ai-admin-panel">
+        {knowledgeEditorOpen ? (
+        <article className="ai-admin-panel ai-admin-drawer-panel">
           <header className="ai-admin-panel__header ai-admin-panel__header--compact">
             <div>
-              <p className="ai-admin-eyebrow">Trình chỉnh sửa</p>
+              <p className="ai-admin-eyebrow">Nội dung tri thức</p>
               <h3>{editingKnowledgeId ? "Sửa tri thức" : "Thêm tri thức"}</h3>
               <p>
                 {!canWriteKnowledge
-                  ? "Chế độ chỉ xem: cần ai.chatbot.write để chỉnh sửa."
-                  : "Giữ đầy đủ metadata để lọc, ưu tiên và truy vết nguồn."}
+                  ? "Chế độ chỉ xem: bạn cần quyền chỉnh sửa chatbot."
+                  : "Chỉ nhập nội dung cần thiết; mở cài đặt nâng cao khi cần."}
               </p>
             </div>
           </header>
@@ -1125,7 +1172,7 @@ export default function AiChatbotKnowledgePage() {
                 />
               </label>
               <label className="ai-admin-field">
-                <span>Loại nguồn</span>
+                <span>Nguồn nội dung</span>
                 <select
                   disabled={!canWriteKnowledge}
                   value={knowledgeForm.sourceType}
@@ -1136,10 +1183,10 @@ export default function AiChatbotKnowledgePage() {
                     }))
                   }
                 >
-                  <option value="manual">manual</option>
-                  <option value="faq">faq</option>
-                  <option value="policy">policy</option>
-                  <option value="suggestion">suggestion</option>
+                  <option value="manual">Thủ công</option>
+                  <option value="faq">FAQ</option>
+                  <option value="policy">Chính sách</option>
+                  <option value="suggestion">Gợi ý</option>
                 </select>
               </label>
             </div>
@@ -1151,7 +1198,7 @@ export default function AiChatbotKnowledgePage() {
                 onChange={(e) =>
                   setKnowledgeForm((f) => ({ ...f, tags: e.target.value }))
                 }
-                placeholder="menu, policy, spicy"
+                placeholder="thực đơn, chính sách, cay"
               />
             </label>
             <div className="ai-admin-form__split">
@@ -1184,7 +1231,7 @@ export default function AiChatbotKnowledgePage() {
                     }))
                   }
                 />
-                <span>Bật</span>
+                <span>Cho phép chatbot dùng nội dung này</span>
               </label>
             </div>
             <div className="ai-admin-actions">
@@ -1197,24 +1244,24 @@ export default function AiChatbotKnowledgePage() {
                 onClick={() => {
                   setKnowledgeForm(defaultKnowledgeForm);
                   setEditingKnowledgeId(null);
+                  setKnowledgeEditorOpen(false);
                 }}
               >
-                Đặt lại
+                Đóng
               </button>
             </div>
           </form>
         </article>
-        <article className="ai-admin-panel">
-          <header className="ai-admin-panel__header ai-admin-panel__header--compact">
-            <div>
-              <p className="ai-admin-eyebrow">Nhập / Xuất</p>
-              <h3>Dữ liệu tri thức</h3>
-              <p>
-                JSON array hoặc CSV có title,content để đồng bộ tri thức
-                chatbot.
-              </p>
-            </div>
-          </header>
+        ) : (
+          <article className="ai-admin-panel ai-admin-drawer-panel ai-admin-guide-card">
+            <div className="ai-admin-empty__icon">i</div>
+            <h3>Chọn một mục tri thức</h3>
+            <p>Chọn một mục tri thức để xem chi tiết hoặc thêm nội dung mới.</p>
+            <button type="button" disabled={!canWriteKnowledge} title={disabledWriteTitle} onClick={() => setKnowledgeEditorOpen(true)}>Thêm tri thức</button>
+          </article>
+        )}
+        <details className="ai-admin-collapsible ai-admin-panel">
+          <summary>Nhập / Xuất dữ liệu</summary>
           <div className="ai-admin-import-export">
             <label className="ai-admin-field">
               <span>Định dạng xuất</span>
@@ -1282,7 +1329,7 @@ export default function AiChatbotKnowledgePage() {
               </small>
             ) : null}
           </div>
-        </article>
+        </details>
       </aside>
     </div>
   );
@@ -1292,10 +1339,9 @@ export default function AiChatbotKnowledgePage() {
       <header className="ai-admin-panel__header">
         <div>
           <p className="ai-admin-eyebrow">Gợi ý</p>
-          <h3>Câu hỏi khách hỏi nhiều</h3>
+          <h3>Gợi ý bổ sung tri thức</h3>
           <p>
-            Duyệt câu hỏi thành tri thức hoặc loại bỏ các gợi ý không còn phù
-            hợp.
+            Duyệt các câu hỏi khách đã hỏi nhưng chatbot cần thêm nội dung để trả lời tốt hơn.
           </p>
         </div>
         <div className="ai-admin-actions">
@@ -1359,10 +1405,10 @@ export default function AiChatbotKnowledgePage() {
               />
               <div className="ai-admin-card__body">
                 <div className="ai-admin-card__meta">
-                  <span>{item.triggerType}</span>
+                  <span>Lý do: {suggestionReasonLabel(item.triggerType)}</span>
                   <span>{toPercent(item.confidence)}</span>
                   <span>{item.occurrenceCount || 1} lần</span>
-                  <span>{item.status}</span>
+                  <span>{statusLabel(item.status)}</span>
                 </div>
                 <h4>{item.suggestedTitle || item.question}</h4>
                 <p>{item.suggestedContent || item.question}</p>
@@ -1440,8 +1486,8 @@ export default function AiChatbotKnowledgePage() {
         </div>
       ) : (
         <EmptyState
-          title="Không có gợi ý pending"
-          description="Các câu hỏi fallback/low-confidence sẽ xuất hiện ở đây."
+          title="Chưa có gợi ý bổ sung tri thức"
+          description="Khi khách hỏi nhưng chatbot chưa có nội dung phù hợp, gợi ý sẽ xuất hiện tại đây."
         />
       )}
     </article>
@@ -1451,9 +1497,9 @@ export default function AiChatbotKnowledgePage() {
       <header className="ai-admin-panel__header">
         <div>
           <p className="ai-admin-eyebrow">Phản hồi</p>
-          <h3>Feedback câu trả lời</h3>
+          <h3>Phản hồi khách hàng</h3>
           <p>
-            Rà soát đánh giá không hữu ích và chuyển thành suggestion khi cần.
+            Tập trung vào phản hồi chưa hài lòng và các câu trả lời cần cải thiện.
           </p>
         </div>
         <div className="ai-admin-actions">
@@ -1482,11 +1528,11 @@ export default function AiChatbotKnowledgePage() {
               selectedAction(
                 selectedFeedback,
                 bulkFeedbackConvert,
-                "Đã chuyển thành suggestion.",
+                "Đã chuyển thành gợi ý tri thức.",
               )
             }
           >
-            Chuyển suggestion
+            Suggestion
           </button>
           <button
             type="button"
@@ -1524,15 +1570,16 @@ export default function AiChatbotKnowledgePage() {
               <div className="ai-admin-card__body">
                 <div className="ai-admin-card__meta">
                   <span>{ratingLabel(item.rating)}</span>
-                  <span>{item.status}</span>
+                  <span>{statusLabel(item.status)}</span>
                   <span>{toPercent(item.confidence)}</span>
                 </div>
-                <h4>{item.question || item.reason || "Feedback khách"}</h4>
+                <h4>{item.question || item.reason || "Phản hồi khách hàng"}</h4>
                 <p>{item.reason || item.answer || "Không có ghi chú."}</p>
                 <small>{formatDate(item.createdAt)}</small>
               </div>
               <div className="ai-admin-card__actions">
                 <button
+                  type="button"
                   disabled={!canModerateAi}
                   title={disabledModerateTitle}
                   onClick={() =>
@@ -1546,18 +1593,20 @@ export default function AiChatbotKnowledgePage() {
                   Đã xem
                 </button>
                 <button
+                  type="button"
                   disabled={!canModerateAi}
                   title={disabledModerateTitle}
                   onClick={() =>
                     runAction(
                       () => convertFeedback({ variables: { id: item.id } }),
-                      "Đã chuyển feedback thành suggestion.",
+                      "Đã chuyển phản hồi thành gợi ý tri thức.",
                     )
                   }
                 >
                   Suggestion
                 </button>
                 <button
+                  type="button"
                   className="ai-admin-button--secondary"
                   disabled={!canModerateAi}
                   title={disabledModerateTitle}
@@ -1576,8 +1625,8 @@ export default function AiChatbotKnowledgePage() {
         </div>
       ) : (
         <EmptyState
-          title="Chưa có feedback cần rà soát"
-          description="Feedback rating not_helpful hoặc status new sẽ xuất hiện tại đây."
+          title="Chưa có phản hồi cần xem"
+          description="Phản hồi chưa hài lòng hoặc câu trả lời cần cải thiện sẽ xuất hiện tại đây."
         />
       )}
     </article>
@@ -1587,11 +1636,10 @@ export default function AiChatbotKnowledgePage() {
       <article className="ai-admin-panel">
         <header className="ai-admin-panel__header">
           <div>
-            <p className="ai-admin-eyebrow">Safety</p>
+            <p className="ai-admin-eyebrow">Quy tắc an toàn</p>
             <h3>Quy tắc an toàn</h3>
             <p>
-              Chặn chủ đề nhạy cảm, yêu cầu disclaimer, đề xuất handoff và giới
-              hạn phạm vi trả lời.
+              Chặn chủ đề nhạy cảm, thêm nội dung cần cảnh báo, đề xuất chuyển nhân viên và giới hạn phạm vi trả lời.
             </p>
           </div>
           <div className="ai-admin-actions">
@@ -1610,7 +1658,7 @@ export default function AiChatbotKnowledgePage() {
                         enabled: true,
                       },
                     }),
-                  "Đã bật safety rules.",
+                  "Đã bật quy tắc an toàn.",
                 )
               }
             >
@@ -1628,7 +1676,7 @@ export default function AiChatbotKnowledgePage() {
                         enabled: false,
                       },
                     }),
-                  "Đã tắt safety rules.",
+                  "Đã tắt quy tắc an toàn.",
                 )
               }
             >
@@ -1641,14 +1689,14 @@ export default function AiChatbotKnowledgePage() {
               onClick={() =>
                 confirmAction({
                   danger: true,
-                  title: "Xóa safety rules đã chọn?",
-                  description: `${selectedSafety.length} rule sẽ bị xóa.`,
+                  title: "Xóa các quy tắc an toàn đã chọn?",
+                  description: `${selectedSafety.length} quy tắc sẽ bị xóa.`,
                   confirmLabel: "Xóa",
                   onConfirm: () =>
                     selectedAction(
                       selectedSafety,
                       bulkSafetyDelete,
-                      "Đã xóa safety rules.",
+                      "Đã xóa quy tắc an toàn.",
                     ),
                 })
               }
@@ -1679,27 +1727,28 @@ export default function AiChatbotKnowledgePage() {
                       <span className={statusClass(item.enabled)}>
                         {item.enabled ? "Bật" : "Tắt"}
                       </span>
-                      <span>{item.ruleType}</span>
+                      <span>{safetyRuleLabel(item.ruleType)}</span>
                       <span>Ưu tiên {item.priority}</span>
                     </div>
                     <h4>{item.pattern}</h4>
-                    <p>{item.responseMessage || "Chưa có response message."}</p>
+                    <p>{item.responseMessage || "Chưa có nội dung cảnh báo."}</p>
                   </div>
                   <div className="ai-admin-card__actions">
-                    <button onClick={() => editSafety(item)}>Sửa</button>
+                    <button type="button" onClick={() => editSafety(item)}>Sửa</button>
                     <button
+                      type="button"
                       className="ai-admin-button--danger"
                       onClick={() =>
                         confirmAction({
                           danger: true,
-                          title: "Xóa safety rule?",
+                          title: "Xóa quy tắc an toàn?",
                           description: item.pattern,
                           confirmLabel: "Xóa",
                           onConfirm: () =>
                             runAction(
                               () =>
                                 deleteSafety({ variables: { id: item.id } }),
-                              "Đã xóa safety rule.",
+                              "Đã xóa quy tắc an toàn.",
                             ),
                         })
                       }
@@ -1712,27 +1761,28 @@ export default function AiChatbotKnowledgePage() {
             </div>
           ) : (
             <EmptyState
-              title="Chưa có safety rule"
-              description="Thêm rule để kiểm soát phạm vi chatbot."
+              title="Chưa có quy tắc an toàn"
+              description="Thêm quy tắc để kiểm soát phạm vi chatbot."
             />
           )
         ) : (
           <EmptyState
-            title="Thiếu quyền moderation"
-            description="Bạn cần ai.chatbot.moderate để xem và quản lý safety rules."
+            title="Thiếu quyền quản lý an toàn"
+            description="Bạn cần quyền quản lý chatbot để xem và chỉnh quy tắc an toàn."
           />
         )}
       </article>
-      <aside className="ai-admin-panel">
+      {safetyEditorOpen ? (
+      <aside className="ai-admin-panel ai-admin-drawer-panel">
         <header className="ai-admin-panel__header ai-admin-panel__header--compact">
           <div>
-            <p className="ai-admin-eyebrow">Editor</p>
-            <h3>{editingSafetyId ? "Sửa rule" : "Thêm rule"}</h3>
+            <p className="ai-admin-eyebrow">Nội dung quy tắc</p>
+            <h3>{editingSafetyId ? "Sửa quy tắc" : "Thêm quy tắc"}</h3>
           </div>
         </header>
         <form className="ai-admin-form" onSubmit={submitSafety}>
           <label className="ai-admin-field">
-            <span>Rule type</span>
+            <span>Loại quy tắc</span>
             <select
               disabled={!canModerateAi}
               value={safetyForm.ruleType}
@@ -1742,13 +1792,13 @@ export default function AiChatbotKnowledgePage() {
             >
               {[...RULE_TYPES].map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {safetyRuleLabel(type)}
                 </option>
               ))}
             </select>
           </label>
           <label className="ai-admin-field">
-            <span>Pattern</span>
+            <span>Chủ đề hoặc nội dung cần kiểm soát</span>
             <input
               disabled={!canModerateAi}
               value={safetyForm.pattern}
@@ -1758,7 +1808,7 @@ export default function AiChatbotKnowledgePage() {
             />
           </label>
           <label className="ai-admin-field">
-            <span>Response message</span>
+            <span>Nội dung cần cảnh báo</span>
             <textarea
               disabled={!canModerateAi}
               value={safetyForm.responseMessage}
@@ -1792,11 +1842,11 @@ export default function AiChatbotKnowledgePage() {
                 setSafetyForm((f) => ({ ...f, enabled: e.target.checked }))
               }
             />
-            <span>Bật rule</span>
+            <span>Bật quy tắc</span>
           </label>
           <div className="ai-admin-actions">
             <button type="submit" disabled={!canModerateAi}>
-              {editingSafetyId ? "Cập nhật" : "Thêm rule"}
+              {editingSafetyId ? "Cập nhật" : "Thêm quy tắc"}
             </button>
             <button
               type="button"
@@ -1804,13 +1854,22 @@ export default function AiChatbotKnowledgePage() {
               onClick={() => {
                 setSafetyForm(defaultSafetyForm);
                 setEditingSafetyId(null);
+                setSafetyEditorOpen(false);
               }}
             >
-              Đặt lại
+              Đóng
             </button>
           </div>
         </form>
       </aside>
+      ) : (
+        <aside className="ai-admin-panel ai-admin-guide-card">
+          <div className="ai-admin-empty__icon">i</div>
+          <h3>Chọn một quy tắc</h3>
+          <p>Chọn quy tắc an toàn để xem chi tiết hoặc thêm quy tắc mới.</p>
+          <button type="button" disabled={!canModerateAi} title={disabledModerateTitle} onClick={() => setSafetyEditorOpen(true)}>Thêm quy tắc</button>
+        </aside>
+      )}
     </div>
   );
   const renderEvaluation = () => (
@@ -1818,9 +1877,9 @@ export default function AiChatbotKnowledgePage() {
       <article className="ai-admin-panel">
         <header className="ai-admin-panel__header">
           <div>
-            <p className="ai-admin-eyebrow">Evaluation</p>
-            <h3>Evaluation Playground</h3>
-            <p>Test prompt nhanh, lưu case và chạy bộ case đang enabled.</p>
+            <p className="ai-admin-eyebrow">Kiểm thử phản hồi</p>
+            <h3>Kiểm thử phản hồi</h3>
+            <p>Thử câu hỏi của khách và kiểm tra chất lượng câu trả lời trước khi áp dụng rộng rãi.</p>
           </div>
           <div className="ai-admin-actions">
             <button
@@ -1846,10 +1905,10 @@ export default function AiChatbotKnowledgePage() {
                   setEvalResult(
                     result?.data?.evaluateRestaurantAiChatbotPrompt || null,
                   );
-                }, "Đã chạy evaluation.")
+                }, "Đã chạy kiểm thử.")
               }
             >
-              Run test
+              Chạy thử
             </button>
             <button
               type="button"
@@ -1875,25 +1934,25 @@ export default function AiChatbotKnowledgePage() {
                   setEvalResult(
                     result?.data?.runRestaurantAiChatbotEvaluationSet || [],
                   );
-                }, "Đã chạy enabled set.")
+                }, "Đã chạy bộ câu hỏi đang bật.")
               }
             >
-              Run enabled set
+              Chạy bộ câu hỏi
             </button>
           </div>
         </header>
         <label className="ai-admin-field">
-          <span>Evaluation message</span>
+          <span>Câu hỏi thử nghiệm</span>
           <textarea
             rows={6}
             value={evaluationMessage}
             onChange={(e) => setEvaluationMessage(e.target.value)}
-            placeholder="Nhập câu hỏi test từ khách..."
+            placeholder="Nhập câu hỏi thử nghiệm từ khách..."
           />
         </label>
         <form className="ai-admin-form" onSubmit={submitEvalCase}>
           <label className="ai-admin-field">
-            <span>Question</span>
+            <span>Câu hỏi thử nghiệm</span>
             <textarea
               disabled={!canEvaluateAi}
               rows={3}
@@ -1904,7 +1963,7 @@ export default function AiChatbotKnowledgePage() {
             />
           </label>
           <label className="ai-admin-field">
-            <span>Expected behavior</span>
+            <span>Kỳ vọng phản hồi</span>
             <textarea
               disabled={!canEvaluateAi}
               rows={3}
@@ -1916,7 +1975,7 @@ export default function AiChatbotKnowledgePage() {
           </label>
           <div className="ai-admin-form__split">
             <label className="ai-admin-field">
-              <span>Category</span>
+              <span>Danh mục</span>
               <input
                 disabled={!canEvaluateAi}
                 value={evalForm.category}
@@ -1926,7 +1985,7 @@ export default function AiChatbotKnowledgePage() {
               />
             </label>
             <label className="ai-admin-field">
-              <span>Tags</span>
+              <span>Thẻ</span>
               <input
                 disabled={!canEvaluateAi}
                 value={evalForm.tags}
@@ -1945,7 +2004,7 @@ export default function AiChatbotKnowledgePage() {
                 setEvalForm((f) => ({ ...f, enabled: e.target.checked }))
               }
             />
-            <span>Enabled</span>
+            <span>Đang bật</span>
           </label>
           <div className="ai-admin-actions">
             <button type="submit" disabled={!canEvaluateAi}>
@@ -1967,32 +2026,32 @@ export default function AiChatbotKnowledgePage() {
           <article className="ai-admin-panel ai-admin-panel--result">
             <header className="ai-admin-panel__header ai-admin-panel__header--compact">
               <div>
-                <p className="ai-admin-eyebrow">Result</p>
-                <h3>Kết quả test</h3>
+                <p className="ai-admin-eyebrow">Kết quả</p>
+                <h3>Kết quả chatbot trả lời</h3>
               </div>
             </header>
             {!Array.isArray(evalResult) ? (
               <div className="ai-admin-result-summary">
                 <span>
-                  Confidence:{" "}
+                  Độ chắc chắn:{" "}
                   <strong>{toPercent(evalResult.confidence)}</strong>
                 </span>
                 <span>
-                  Fallback:{" "}
+                  Chưa đủ thông tin:{" "}
                   <strong>{evalResult.isFallback ? "Có" : "Không"}</strong>
                 </span>
                 <span>
-                  Handoff:{" "}
+                  Chuyển nhân viên:{" "}
                   <strong>
                     {evalResult.handoffSuggested ? "Có" : "Không"}
                   </strong>
                 </span>
                 <span>
-                  Knowledge matches:{" "}
+                  Nội dung tri thức phù hợp:{" "}
                   <strong>{evalResult.knowledgeMatches?.length || 0}</strong>
                 </span>
                 <span>
-                  Safety:{" "}
+                  Quy tắc an toàn:{" "}
                   <strong>
                     {evalResult.safetyResult?.blocked ? "Blocked" : "OK"}
                   </strong>
@@ -2018,8 +2077,8 @@ export default function AiChatbotKnowledgePage() {
       <aside className="ai-admin-panel">
         <header className="ai-admin-panel__header ai-admin-panel__header--compact">
           <div>
-            <p className="ai-admin-eyebrow">Cases</p>
-            <h3>Evaluation cases</h3>
+            <p className="ai-admin-eyebrow">Bộ kiểm thử</p>
+            <h3>Câu hỏi kiểm thử</h3>
             <p>{evalCases.length} case trong bộ kiểm thử.</p>
           </div>
         </header>
@@ -2062,14 +2121,14 @@ export default function AiChatbotKnowledgePage() {
                       onClick={() =>
                         confirmAction({
                           danger: true,
-                          title: "Xóa evaluation case?",
+                          title: "Xóa câu hỏi kiểm thử?",
                           description: item.question,
                           confirmLabel: "Xóa",
                           onConfirm: () =>
                             runAction(
                               () =>
                                 deleteEvalCase({ variables: { id: item.id } }),
-                              "Đã xóa evaluation case.",
+                              "Đã xóa câu hỏi kiểm thử.",
                             ),
                         })
                       }
@@ -2084,12 +2143,12 @@ export default function AiChatbotKnowledgePage() {
         ) : (
           <EmptyState
             title={
-              canEvaluateAi ? "Chưa có test case" : "Thiếu quyền evaluation"
+              canEvaluateAi ? "Chưa có câu hỏi kiểm thử" : "Thiếu quyền kiểm thử"
             }
             description={
               canEvaluateAi
-                ? "Lưu câu hỏi từ playground để tạo bộ kiểm thử hồi quy."
-                : "Bạn cần ai.chatbot.evaluate để xem và quản lý evaluation case."
+                ? "Lưu câu hỏi thử nghiệm để kiểm tra chất lượng phản hồi định kỳ."
+                : "Bạn cần quyền kiểm thử chatbot để xem và quản lý câu hỏi kiểm thử."
             }
           />
         )}
@@ -2111,11 +2170,10 @@ export default function AiChatbotKnowledgePage() {
     <section className="ai-admin-page ai-admin-page--knowledge">
       <header className="ai-admin-hero">
         <div className="ai-admin-hero__copy">
-          <p className="ai-admin-eyebrow">AI operations</p>
-          <h2>AI Chatbot Knowledge</h2>
+          <p className="ai-admin-eyebrow">Trung tâm tri thức</p>
+          <h2>Tri thức Chatbot AI</h2>
           <p>
-            Không gian quản lý tri thức, suggestion, feedback, safety rule và
-            evaluation. {readOnly ? "Bạn đang ở chế độ chỉ xem." : ""}
+            Quản lý nội dung chatbot dùng để trả lời khách và các gợi ý cần duyệt. {readOnly ? "Bạn đang ở chế độ chỉ xem." : ""}
           </p>
         </div>
         <label className="ai-admin-field ai-admin-field--restaurant">
@@ -2133,29 +2191,29 @@ export default function AiChatbotKnowledgePage() {
           </select>
         </label>
       </header>
-      <div className="ai-admin-metrics" aria-label="AI knowledge summary">
+      <div className="ai-admin-metrics" aria-label="Tóm tắt tri thức chatbot">
         <article>
-          <span>Knowledge</span>
+          <span>Tri thức có thể dùng</span>
           <strong>{knowledge.length}</strong>
-          <small>item có thể dùng</small>
+          <small>mục có thể dùng</small>
         </article>
         <article>
-          <span>Suggestions</span>
+          <span>Gợi ý đang chờ</span>
           <strong>{suggestions.length}</strong>
           <small>đang chờ duyệt</small>
         </article>
         <article>
-          <span>Feedback</span>
+          <span>Phản hồi cần xem</span>
           <strong>{feedback.length}</strong>
           <small>cần rà soát</small>
         </article>
         <article>
-          <span>Safety</span>
+          <span>Quy tắc đang bật</span>
           <strong>{safetyRules.filter((rule) => rule.enabled).length}</strong>
-          <small>rule đang bật</small>
+          <small>quy tắc đang bật</small>
         </article>
       </div>
-      <nav className="ai-admin-tabs" aria-label="AI chatbot knowledge tabs">
+      <nav className="ai-admin-tabs" aria-label="Các mục tri thức chatbot">
         {tabs.map((tab) => (
           <button
             key={tab}
@@ -2179,12 +2237,12 @@ export default function AiChatbotKnowledgePage() {
       ) : null}
       {loading ? (
         <div className="ai-admin-skeleton" role="status">
-          Đang tải dữ liệu quản lý AI...
+          Đang tải dữ liệu tri thức chatbot...
         </div>
       ) : null}
       {queryError ? (
         <div className="ai-admin-error" role="alert">
-          {queryError.message || "Không thể tải dữ liệu AI."}
+          {queryError.message || "Không thể tải dữ liệu chatbot."}
         </div>
       ) : null}
       {errorText ? (

@@ -1654,3 +1654,216 @@
     justify-content: flex-start;
   }
 }
+
+/* Manager AI chatbot reporting polish */
+.ai-admin-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(234, 220, 205, 0.66), transparent 27rem),
+    linear-gradient(180deg, #fffdf8 0%, #fbf7ef 100%);
+}
+
+.ai-admin-report-summary,
+.ai-admin-hero {
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(79, 55, 33, 0.08);
+}
+
+.ai-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: end;
+}
+
+.ai-admin-toolbar .ai-admin-field,
+.ai-admin-toolbar .customer-analytics-field {
+  min-width: 150px;
+  padding: 8px;
+  border: 1px solid var(--ai-border, var(--ai-line));
+  border-radius: 16px;
+  background: rgba(246, 239, 228, 0.58);
+}
+
+.ai-admin-toolbar button,
+.ai-admin-link-button {
+  border: 1px solid var(--ai-border, var(--ai-line));
+  border-radius: 14px;
+  background: var(--ai-accent, #8a623d);
+  color: #fff;
+  min-height: 42px;
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ai-admin-metrics--primary article,
+.ai-admin-control-card,
+.ai-admin-drawer-panel,
+.ai-admin-guide-card {
+  border-radius: 20px;
+  border: 1px solid var(--ai-border, var(--ai-line));
+  background: rgba(255, 253, 248, 0.94);
+  box-shadow: 0 8px 24px rgba(79, 55, 33, 0.07);
+}
+
+.ai-admin-insight-grid,
+.ai-admin-operational-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.ai-admin-control-card {
+  padding: 20px;
+}
+
+.ai-admin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.ai-admin-chip--success {
+  background: rgba(63, 114, 83, 0.12);
+  color: #3f7253;
+}
+
+.ai-admin-chip--warning {
+  background: rgba(155, 106, 37, 0.13);
+  color: #8a5e22;
+}
+
+.ai-admin-chip--danger {
+  background: rgba(160, 82, 69, 0.13);
+  color: #a05245;
+}
+
+.ai-admin-chip--muted {
+  background: var(--ai-surface-soft, #f6efe4);
+  color: var(--ai-muted, #75685c);
+}
+
+.ai-admin-review-list {
+  margin-top: 18px;
+}
+
+.ai-admin-review-list__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.ai-admin-review-list__items {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-admin-review-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 15px;
+  border: 1px solid var(--ai-border, var(--ai-line));
+  border-radius: 18px;
+  background: rgba(246, 239, 228, 0.42);
+}
+
+.ai-admin-review-item h4 {
+  margin: 10px 0 4px;
+  color: var(--ai-text);
+}
+
+.ai-admin-review-item p,
+.ai-admin-review-item time {
+  margin: 0;
+  color: var(--ai-muted);
+  line-height: 1.45;
+}
+
+.ai-admin-collapsible {
+  margin-top: 14px;
+  border: 1px solid var(--ai-border, var(--ai-line));
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.82);
+  padding: 12px 14px;
+}
+
+.ai-admin-collapsible summary {
+  cursor: pointer;
+  color: var(--ai-accent, #8a623d);
+  font-weight: 850;
+  outline: none;
+}
+
+.ai-admin-collapsible summary:focus-visible {
+  border-radius: 10px;
+  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.14);
+}
+
+.ai-admin-collapsible--inline {
+  padding: 10px 0 0;
+  border: 0;
+  background: transparent;
+}
+
+.ai-admin-technical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--ai-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-admin-guide-card {
+  padding: 22px;
+}
+
+.ai-admin-guide-card h3 {
+  margin: 0;
+}
+
+.ai-admin-guide-card p {
+  color: var(--ai-muted);
+  line-height: 1.55;
+}
+
+.ai-admin-empty--soft {
+  border-style: solid;
+  background: rgba(246, 239, 228, 0.42);
+}
+
+@media (max-width: 1024px) {
+  .ai-admin-insight-grid,
+  .ai-admin-operational-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-admin-toolbar,
+  .ai-admin-review-list__header,
+  .ai-admin-review-item {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ai-admin-technical-grid {
+    grid-template-columns: 1fr;
+  }
+}

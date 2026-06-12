@@ -177,14 +177,14 @@ export default function AiChatbotSettingsPage() {
     if (String(form.welcomeMessage || "").trim().length > 500)
       return "Lời chào tối đa 500 ký tự.";
     if (String(form.fallbackMessage || "").trim().length > 500)
-      return "Fallback message tối đa 500 ký tự.";
+      return "Tin nhắn khi chưa đủ thông tin tối đa 500 ký tự.";
     if (String(form.handoffUnavailableMessage || "").trim().length > 500)
-      return "Tin nhắn không handoff tối đa 500 ký tự.";
-    if (quickReplies.length > 8) return "Tối đa 8 quick replies.";
+      return "Tin nhắn khi chưa thể chuyển nhân viên tối đa 500 ký tự.";
+    if (quickReplies.length > 8) return "Tối đa 8 gợi ý nhanh.";
     if (quickReplies.some((item) => item.length > 80))
-      return "Mỗi quick reply tối đa 80 ký tự.";
+      return "Mỗi gợi ý nhanh tối đa 80 ký tự.";
     if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1)
-      return "Ngưỡng confidence phải là số từ 0 đến 1.";
+      return "Ngưỡng chuyển nhân viên phải là số từ 0 đến 1.";
     return "";
   };
 
@@ -215,7 +215,7 @@ export default function AiChatbotSettingsPage() {
           },
         },
       });
-      setNotice("Đã lưu cài đặt AI chatbot.");
+      setNotice("Đã lưu cài đặt Chatbot AI.");
       refetch?.();
     } catch (mutationError) {
       setSaveError(
@@ -240,7 +240,7 @@ export default function AiChatbotSettingsPage() {
         <div className="ai-admin-hero__copy">
           <p className="ai-admin-eyebrow">Thiết lập AI</p>
           <h2>Cài đặt Chatbot AI</h2>
-          <p>Cấu hình lời chào, gợi ý nhanh, handoff và ngưỡng độ chắc chắn.</p>
+          <p>Quản lý cách chatbot chào khách, gợi ý nhanh và chuyển yêu cầu cho nhân viên.</p>
         </div>
         <label className="ai-admin-field ai-admin-field--restaurant">
           <span>Nhà hàng</span>
@@ -266,29 +266,28 @@ export default function AiChatbotSettingsPage() {
       >
         <article>
           <span>Chatbot</span>
-          <strong>{form.enabled ? "Bật" : "Tắt"}</strong>
+          <strong>{form.enabled ? "Đang bật" : "Đang tắt"}</strong>
           <small>{form.enabled ? "đang phục vụ khách" : "đang tạm tắt"}</small>
         </article>
         <article>
-          <span>Handoff</span>
-          <strong>{form.handoffEnabled ? "Bật" : "Tắt"}</strong>
+          <span>Chuyển nhân viên</span>
+          <strong>{form.handoffEnabled ? "Đang bật" : "Đang tắt"}</strong>
           <small>
             {form.handoffEnabled
               ? "nhân viên có thể tiếp nhận"
-              : "AI không chuyển nhân viên"}
+              : "chưa chuyển cho nhân viên"}
           </small>
         </article>
         <article>
-          <span>Độ chắc chắn</span>
+          <span>Ngưỡng chuyển nhân viên</span>
           <strong>{thresholdPercent}%</strong>
           <small>
-            {Number.isFinite(thresholdValue) ? thresholdValue.toFixed(2) : "—"}{" "}
-            ngưỡng chuyển hỗ trợ
+            Khi chatbot chưa đủ chắc chắn
           </small>
         </article>
         <article>
-          <span>Quick replies</span>
-          <strong>{quickReplyCount}</strong>
+          <span>Gợi ý nhanh</span>
+          <strong>{quickReplyCount} gợi ý</strong>
           <small>gợi ý mở đầu đang cấu hình</small>
         </article>
       </div>
@@ -299,12 +298,12 @@ export default function AiChatbotSettingsPage() {
       ) : null}
       {loading ? (
         <div className="ai-admin-skeleton" role="status">
-          Đang tải cài đặt AI chatbot...
+          Đang tải cài đặt Chatbot AI...
         </div>
       ) : null}
       {error ? (
         <p className="ai-admin-error" role="alert">
-          {error.message || "Không thể tải cài đặt AI chatbot."}
+          {error.message || "Không thể tải cài đặt Chatbot AI."}
         </p>
       ) : null}
       {saveError ? (
@@ -338,18 +337,18 @@ export default function AiChatbotSettingsPage() {
                   loading ||
                   !effectiveRestaurantId
                 }
-                title={!canWriteSettings ? "Thiếu quyền ai.chatbot.write" : ""}
+                title={!canWriteSettings ? "Thiếu quyền chỉnh sửa chatbot" : ""}
               >
-                {saving ? "Đang lưu..." : "Lưu"}
+                {saving ? "Đang lưu..." : "Lưu cài đặt"}
               </button>
               <button
                 type="button"
                 className="ai-admin-button--secondary"
                 disabled={!canWriteSettings || saving}
-                title={!canWriteSettings ? "Thiếu quyền ai.chatbot.write" : ""}
+                title={!canWriteSettings ? "Thiếu quyền chỉnh sửa chatbot" : ""}
                 onClick={resetDefaults}
               >
-                Reset mặc định
+                Khôi phục mặc định
               </button>
             </div>
           </header>
@@ -399,26 +398,29 @@ export default function AiChatbotSettingsPage() {
                 Tối đa 8 dòng, mỗi dòng tối đa 80 ký tự.
               </small>
             </label>
-            <label className="ai-admin-field">
-              <span>Tin nhắn khi AI chưa chắc</span>
-              <textarea
-                value={form.fallbackMessage || ""}
-                disabled={disabled}
-                maxLength={500}
-                onChange={(event) =>
-                  updateForm({ fallbackMessage: event.target.value })
-                }
-                rows={5}
-              />
-            </label>
+            <details className="ai-admin-collapsible">
+              <summary>Cài đặt nâng cao</summary>
+              <label className="ai-admin-field">
+                <span>Tin nhắn khi chưa đủ thông tin</span>
+                <textarea
+                  value={form.fallbackMessage || ""}
+                  disabled={disabled}
+                  maxLength={500}
+                  onChange={(event) =>
+                    updateForm({ fallbackMessage: event.target.value })
+                  }
+                  rows={4}
+                />
+              </label>
+            </details>
           </div>
         </article>
         <aside className="ai-admin-panel ai-admin-panel--handoff">
           <header className="ai-admin-panel__header ai-admin-panel__header--compact">
             <div>
-              <p className="ai-admin-eyebrow">Handoff</p>
+              <p className="ai-admin-eyebrow">Chuyển nhân viên</p>
               <h3>Chuyển nhân viên</h3>
-              <p>Cài đặt khi AI nên nhường lại cho nhân viên xử lý.</p>
+              <p>Quy định khi chatbot cần mời nhân viên tiếp tục hỗ trợ khách.</p>
             </div>
           </header>
           <div className="ai-admin-form">
@@ -431,27 +433,30 @@ export default function AiChatbotSettingsPage() {
                   updateForm({ handoffEnabled: event.target.checked })
                 }
               />
-              <span>Bật hỗ trợ nhân viên</span>
+              <span>Bật chuyển nhân viên</span>
               <small>
                 {form.handoffEnabled
                   ? "Khách có thể được chuyển sang nhân viên khi cần."
-                  : "Chatbot sẽ không tạo yêu cầu handoff."}
+                  : "Chatbot sẽ không tạo yêu cầu chuyển nhân viên."}
               </small>
             </label>
+            <details className="ai-admin-collapsible">
+              <summary>Cài đặt nâng cao</summary>
+              <label className="ai-admin-field">
+                <span>Tin nhắn khi chưa thể chuyển nhân viên</span>
+                <textarea
+                  value={form.handoffUnavailableMessage || ""}
+                  disabled={disabled}
+                  maxLength={500}
+                  onChange={(event) =>
+                    updateForm({ handoffUnavailableMessage: event.target.value })
+                  }
+                  rows={4}
+                />
+              </label>
+            </details>
             <label className="ai-admin-field">
-              <span>Tin nhắn không handoff</span>
-              <textarea
-                value={form.handoffUnavailableMessage || ""}
-                disabled={disabled}
-                maxLength={500}
-                onChange={(event) =>
-                  updateForm({ handoffUnavailableMessage: event.target.value })
-                }
-                rows={6}
-              />
-            </label>
-            <label className="ai-admin-field">
-              <span>Ngưỡng độ chắc chắn</span>
+              <span>Ngưỡng chuyển nhân viên</span>
               <input
                 type="number"
                 min="0"
@@ -466,13 +471,12 @@ export default function AiChatbotSettingsPage() {
                 }
               />
               <small className="ai-admin-help">
-                0.6 = 60%. AI sẽ cân nhắc handoff khi confidence thấp hơn ngưỡng
-                này.
+                Khi độ chắc chắn thấp hơn ngưỡng này, chatbot sẽ cân nhắc chuyển khách cho nhân viên.
               </small>
             </label>
             <div className="ai-admin-empty ai-admin-empty--compact">
               <h4>Lưu ý vận hành</h4>
-              <p>Reset mặc định chỉ cập nhật form, không tự động lưu.</p>
+              <p>Khôi phục mặc định chỉ cập nhật biểu mẫu, không tự động áp dụng.</p>
             </div>
           </div>
         </aside>
