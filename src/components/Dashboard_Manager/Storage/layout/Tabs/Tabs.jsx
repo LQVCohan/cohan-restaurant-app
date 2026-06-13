@@ -21,6 +21,7 @@ import "../../StorageCategoryModalFitFix.css";
 import "../../StorageGreenToneFinal.css";
 import "../../StorageChecklistPolishFinal.css";
 import "../../StoragePostUpdateBugFix.css";
+import "../../StorageRecipeModalUpgrade.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => (
   <>
