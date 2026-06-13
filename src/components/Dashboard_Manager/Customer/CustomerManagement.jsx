@@ -449,6 +449,15 @@ const CustomerManagement = () => {
   }, [customersDecorated, tierFilters]);
 
   const loading = usersLoading;
+  const hasCustomerData = Number(customerTotalCount || 0) > 0;
+  const customerHeaderStats = hasCustomerData
+    ? [
+        { id: "total", icon: "👤", label: "Tổng khách", value: customerTotalCount || customersDecorated.length },
+        { id: "online", icon: "🟢", label: "Online", value: onlineCount },
+        { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0 },
+        { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0 },
+      ]
+    : [];
   const customerTotalPages = Math.max(1, Math.ceil(Number(customerTotalCount || 0) / customerPageSize) || 1);
   const customerPagination = {
     page: customerPageIndex + 1,
@@ -571,25 +580,21 @@ const CustomerManagement = () => {
   }, [rankSettingsData]);
 
   return (
-    <div className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""}`}>
+    <div className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""} ${hasCustomerData ? "has-customer-data" : "is-customer-empty"}`}>
       <ManagementPageHeader
         density="compact"
         showTimeWidget={false}
         eyebrow="CUSTOMER MANAGER"
         title="Quản lý khách hàng"
-        subtitle="Thông tin khách, hạng thành viên, điểm và hành vi mua."
+        subtitle="Tìm kiếm, phân hạng và chăm sóc khách theo từng chi nhánh."
         icon="👥"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={handleRestaurantChange}
         restaurantList={restaurantOptions}
         restaurantDisabled={restaurantsLoading || !hasRestaurants}
         restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
-        stats={[
-          { id: "total", icon: "👤", label: "Tổng khách", value: customerTotalCount || customersDecorated.length },
-          { id: "online", icon: "🟢", label: "Online", value: onlineCount },
-          { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0 },
-          { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0 },
-        ]}
+        stats={customerHeaderStats}
+        statsPlacement={hasCustomerData ? "right" : "none"}
         primaryAction={{ label: "Thêm khách", icon: "➕", onClick: () => setShowAddModal(true) }}
       />
 
@@ -615,7 +620,7 @@ const CustomerManagement = () => {
         actions={[
           { label: "Xuất Excel", icon: "📥", onClick: () => setShowExportModal(true) },
           { label: "Gửi ưu đãi", icon: "🎁", onClick: () => setShowPromotionModal(true) },
-          { label: "Phân tích người dùng", icon: "📊", onClick: () => (window.location.hash = "#customer-analytics") },
+          { label: "Phân tích", icon: "📊", onClick: () => (window.location.hash = "#customer-analytics") },
           { label: "Bộ lọc", icon: "⚙️", variant: showRightSidebar ? "primary" : undefined, onClick: () => setShowRightSidebar((v) => !v) },
         ]}
       />
