@@ -3,6 +3,84 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import "./Modal.scss";
 
+let activeModalCount = 0;
+let savedScrollY = 0;
+let savedBodyStyle = null;
+let savedHtmlStyle = null;
+
+const getScrollbarWidth = () =>
+  Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+
+const lockPageScroll = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  if (activeModalCount === 0) {
+    savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    savedBodyStyle = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+      paddingRight: document.body.style.paddingRight,
+    };
+    savedHtmlStyle = {
+      overflow: document.documentElement.style.overflow,
+      overscrollBehavior: document.documentElement.style.overscrollBehavior,
+    };
+
+    const scrollbarWidth = getScrollbarWidth();
+    document.body.classList.add("modal-open");
+    document.documentElement.classList.add("modal-open");
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+  }
+
+  activeModalCount += 1;
+};
+
+const unlockPageScroll = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  activeModalCount = Math.max(0, activeModalCount - 1);
+  if (activeModalCount > 0) return;
+
+  document.body.classList.remove("modal-open");
+  document.documentElement.classList.remove("modal-open");
+
+  if (savedBodyStyle) {
+    document.body.style.position = savedBodyStyle.position;
+    document.body.style.top = savedBodyStyle.top;
+    document.body.style.left = savedBodyStyle.left;
+    document.body.style.right = savedBodyStyle.right;
+    document.body.style.width = savedBodyStyle.width;
+    document.body.style.overflow = savedBodyStyle.overflow;
+    document.body.style.paddingRight = savedBodyStyle.paddingRight;
+  }
+
+  if (savedHtmlStyle) {
+    document.documentElement.style.overflow = savedHtmlStyle.overflow;
+    document.documentElement.style.overscrollBehavior = savedHtmlStyle.overscrollBehavior;
+  }
+
+  const restoreY = savedScrollY;
+  savedBodyStyle = null;
+  savedHtmlStyle = null;
+  savedScrollY = 0;
+  window.scrollTo(0, restoreY);
+};
+
 // --- Custom Hook: Animation Delay ---
 const useDelayUnmount = (isMounted, delayTime) => {
   const [shouldRender, setShouldRender] = useState(false);
@@ -50,22 +128,22 @@ const Modal = ({
 
   // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
-    if (isOpen) {
-      previousActiveElementRef.current = document.activeElement;
-      document.body.style.overflow = "hidden";
+    if (!isOpen) return undefined;
 
-      const timer = setTimeout(() => {
-        modalRef.current?.focus();
-      }, 50);
+    previousActiveElementRef.current = document.activeElement;
+    lockPageScroll();
 
-      return () => {
-        document.body.style.overflow = "unset";
-        clearTimeout(timer);
-        if (previousActiveElementRef.current?.focus) {
-          previousActiveElementRef.current.focus();
-        }
-      };
-    }
+    const timer = setTimeout(() => {
+      modalRef.current?.focus();
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      unlockPageScroll();
+      if (previousActiveElementRef.current?.focus) {
+        previousActiveElementRef.current.focus();
+      }
+    };
   }, [isOpen]);
 
   // 2. Handle Key Press (Escape)
@@ -110,6 +188,13 @@ const Modal = ({
     }
   };
 
+  const stopBackgroundWheel = (e) => {
+    if (!modalRef.current) return;
+    if (!modalRef.current.contains(e.target)) {
+      e.preventDefault();
+    }
+  };
+
   if (!shouldRender) return null;
 
   const childArray = React.Children.toArray(children);
@@ -138,6 +223,7 @@ const Modal = ({
       }`}
       style={{ zIndex }}
       onClick={handleOverlayClick}
+      onWheelCapture={stopBackgroundWheel}
       aria-modal="true"
       role="dialog"
       aria-labelledby={title ? titleId : undefined}
