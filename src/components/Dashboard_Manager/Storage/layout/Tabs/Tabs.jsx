@@ -16,6 +16,7 @@ import "../../StorageDropdownPolish.css";
 import "../../StorageModalPolish.css";
 import "../../StorageModalFinalTen.css";
 import "../../StorageModalRealityFix.css";
+import "../../StorageModalScrollLockFix.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
