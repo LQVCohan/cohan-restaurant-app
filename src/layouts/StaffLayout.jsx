@@ -39,7 +39,7 @@ const StaffLayout = ({ children }) => {
       { label: "Thông báo", to: "/staff/notifications" },
       { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff" },
       { label: "Phiếu lương", to: "/staff/payslips" },
-      { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
+      { label: "Đơn nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
     ],
     [],

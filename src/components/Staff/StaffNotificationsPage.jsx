@@ -35,7 +35,7 @@ const typeMeta = {
   attendance: { label: "Chấm công", icon: Clock3 },
   request: { label: "Yêu cầu", icon: ClipboardList },
   system: { label: "Hệ thống", icon: BellRing },
-  order: { label: "Order", icon: ShoppingBag },
+  order: { label: "Đơn nội bộ", icon: ShoppingBag },
   kitchen: { label: "Bếp", icon: CookingPot },
   payroll: { label: "Lương", icon: CreditCard },
   profile: { label: "Hồ sơ", icon: UserRound },
@@ -118,11 +118,11 @@ const buildNotifications = ({ user, role, canOrder, canKitchen }) => {
     items.push({
       id: "order-workspace",
       type: "order",
-      title: "Order nội bộ đã sẵn sàng",
-      description: "Vai trò của bạn có quyền mở order nội bộ để xử lý bàn, order và thanh toán.",
+      title: "Đơn nội bộ đã sẵn sàng",
+      description: "Vai trò của bạn có quyền mở khu vực đơn nội bộ để xử lý bàn, đơn và thanh toán.",
       time: "Theo ca",
       status: "new",
-      cta: "Mở order",
+      cta: "Mở đơn",
       to: "/staff/orders",
       unread: true,
     });
@@ -147,7 +147,7 @@ const buildNotifications = ({ user, role, canOrder, canKitchen }) => {
       id: "specialty-handoff",
       type: "system",
       title: "Theo dõi bàn giao chuyên môn",
-      description: "Vai trò của bạn không mở order/bếp mặc định; ưu tiên lịch, nhắc việc và bàn giao theo ca.",
+      description: "Vai trò của bạn chưa có khu vực đơn nội bộ hoặc bếp riêng; ưu tiên lịch, nhắc việc và bàn giao theo ca.",
       time: "Theo vai trò",
       status: "read",
       cta: "Xem lịch",
@@ -212,7 +212,7 @@ const StaffNotificationsPage = () => {
       </section>
 
       <div className="staff-notifications__local-note" role="note">
-        Các thao tác đánh dấu đã đọc hoặc ẩn thông báo chỉ áp dụng trong phiên làm việc hiện tại.
+        Những thay đổi này chỉ áp dụng trong lần sử dụng hiện tại.
       </div>
 
       <nav className="staff-notifications__tabs" aria-label="Lọc thông báo nhân viên">

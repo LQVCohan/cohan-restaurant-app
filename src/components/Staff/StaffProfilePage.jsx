@@ -270,7 +270,7 @@ const StaffProfilePage = () => {
               </div>
             </div>
             <div className="staff-profile__access-list">
-              <AccessPill enabled={canOrder}>Order nội bộ: {canOrder ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
+              <AccessPill enabled={canOrder}>Đơn nội bộ: {canOrder ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
               <AccessPill enabled={canKitchen}>Khu vực bếp: {canKitchen ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
               <AccessPill enabled={canManage}>Khu vực quản lý: {canManage ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
             </div>

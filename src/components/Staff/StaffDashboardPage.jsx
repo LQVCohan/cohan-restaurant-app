@@ -98,7 +98,7 @@ const baseActions = [
   },
   {
     title: "Nghỉ phép / tăng ca / chỉnh công",
-    description: "Hiện chưa có trang riêng. Vui lòng xử lý tại lịch cá nhân hoặc liên hệ quản lý.",
+    description: "Tính năng này đang chờ hỗ trợ. Vui lòng xử lý tại lịch cá nhân hoặc liên hệ quản lý.",
     tone: "muted",
     disabled: true,
   },
@@ -158,16 +158,16 @@ const StaffDashboardPage = () => {
   const initials = getInitials(staffName);
   const canOrder = hasStaffOrderAccess(normalizedRole);
   const canKitchen = hasStaffKitchenAccess(normalizedRole);
-  const specialtyLabel = canOrder && canKitchen ? "Order & Bếp" : canOrder ? "Order" : canKitchen ? "Bếp" : "Cơ bản";
+  const specialtyLabel = canOrder && canKitchen ? "Đơn nội bộ & Bếp" : canOrder ? "Đơn nội bộ" : canKitchen ? "Bếp" : "Cơ bản";
 
   const specialtyActions = useMemo(() => {
     const actions = [];
     if (canOrder) {
       actions.push({
         to: "/staff/orders",
-        title: "Order nội bộ",
-        description: "Xử lý order, bàn, thanh toán và điều phối phục vụ theo quyền được cấp.",
-        cta: "Mở order",
+        title: "Đơn nội bộ",
+        description: "Xử lý đơn, bàn, thanh toán và điều phối phục vụ theo quyền được cấp.",
+        cta: "Mở đơn",
         tone: "success",
       });
     }
@@ -247,7 +247,7 @@ const StaffDashboardPage = () => {
       <section className="staff-metric-row" aria-label="Tổng quan nhanh">
         <article className="staff-metric-tile staff-metric-tile--success"><span>Vai trò</span><strong>{roleLabel}</strong><small>{departmentLabel}</small></article>
         <article className="staff-metric-tile staff-metric-tile--warning"><span>Cơ sở</span><strong>{restaurantLabel}</strong><small>Phạm vi làm việc</small></article>
-        <article className="staff-metric-tile staff-metric-tile--muted"><span>Quyền chuyên môn</span><strong>{specialtyLabel}</strong><small>{canOrder || canKitchen ? "Đã mở theo vai trò" : "Lịch / hồ sơ / thông báo"}</small></article>
+        <article className="staff-metric-tile staff-metric-tile--muted"><span>Quyền chuyên môn</span><strong>{specialtyLabel}</strong><small>{canOrder || canKitchen ? "Theo quyền được cấp" : "Lịch / hồ sơ / thông báo"}</small></article>
       </section>
 
       <section className="staff-dashboard-section staff-card" aria-labelledby="staff-actions-title">
@@ -279,7 +279,7 @@ const StaffDashboardPage = () => {
           <div className="staff-dashboard-empty" role="status">
             <div className="staff-dashboard-empty__mark">•</div>
             <div>
-              <h3>Vai trò này chưa có khu vực order hoặc bếp riêng</h3>
+              <h3>Vai trò này chưa có khu vực đơn nội bộ hoặc bếp riêng</h3>
               <p>Bạn vẫn có thể sử dụng lịch cá nhân, hồ sơ, thông báo, phiếu lương và phản hồi hiệu suất.</p>
             </div>
           </div>

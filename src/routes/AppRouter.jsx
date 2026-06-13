@@ -112,6 +112,18 @@ const CustomerLayout = () => (
 );
 
 
+
+const StaffAwareNotificationsRoute = () => {
+  const { user } = useContext(AuthContext);
+  const role = resolveRoleName(user);
+
+  if (STAFF_OPERATIONAL_ROLES.has(role)) {
+    return <Navigate to="/staff/notifications" replace />;
+  }
+
+  return <NotificationsPage />;
+};
+
 const StaffAwareProfileRoute = () => {
   const { user } = useContext(AuthContext);
   const role = resolveRoleName(user);
@@ -200,7 +212,7 @@ const AppRouter = () => (
       <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
       <Route path="/help-center/:id" element={<HelpPage />} />
-      <Route path="/notifications" element={withPrivateRoute(<NotificationsPage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/notifications" element={withPrivateRoute(<StaffAwareNotificationsRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
       <Route path="/profile" element={withPrivateRoute(<StaffAwareProfileRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
     </Route>
 
