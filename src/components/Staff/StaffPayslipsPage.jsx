@@ -27,7 +27,7 @@ const StaffPayslipsPage = () => {
   return (
     <div className="staff-dashboard-page staff-payslips-page" aria-labelledby="staff-payslips-title">
       <section className="staff-payslips-hero staff-dashboard-section">
-        <div className="staff-dashboard-hero__copy">
+        <div className="staff-payslips-hero__copy">
           <span className="staff-dashboard-badge staff-dashboard-badge--accent">Phiếu lương cá nhân</span>
           <h1 id="staff-payslips-title">Phiếu lương của tôi</h1>
           <p>Xem các kỳ lương đã được công bố.</p>

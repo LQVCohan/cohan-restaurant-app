@@ -702,3 +702,26 @@
 .staff-payslips-empty p {
   margin: 0 0 6px;
 }
+
+.staff-payslips-hero__copy {
+  min-height: unset;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.staff-payslips-hero__copy h1 {
+  margin: 8px 0 6px;
+  color: var(--staff-text);
+  font-size: clamp(1.5rem, 3vw, 1.8rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.staff-payslips-hero__copy p {
+  max-width: 54ch;
+  margin: 0;
+  color: var(--staff-muted);
+  line-height: 1.5;
+}
