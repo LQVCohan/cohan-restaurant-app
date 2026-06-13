@@ -15,10 +15,11 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
-import "./IngredientCategoryManagerModal.scss"; // Nhớ import file CSS/SCSS
+import "./IngredientCategoryManagerModal.scss";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 7;
 
 const normalizeText = (value) =>
   String(value || "")
@@ -69,6 +70,15 @@ const IngredientCategoryManagerModal = ({
     setError("");
     setPendingCreatedCategory(null);
   }, [isOpen]);
+
+  const manualCount = useMemo(
+    () => (categories || []).filter((cat) => cat.source !== "sync").length,
+    [categories],
+  );
+  const syncCount = useMemo(
+    () => (categories || []).filter((cat) => cat.source === "sync").length,
+    [categories],
+  );
 
   const filtered = useMemo(() => {
     const key = String(search || "")
@@ -165,72 +175,97 @@ const IngredientCategoryManagerModal = ({
       onBeforeClose={canClose}
       title="Quản lý danh mục nguyên liệu"
       size="lg"
+      className="storage-category-modal-shell"
       closeOnOverlayClick={false}
       closeOnEscape={!loading}
     >
-      <Modal.Body>
+      <Modal.Body className="cat-manager-modal-body">
         <div className="cat-manager-premium">
-        {/* THÔNG BÁO LỖI CHUNG */}
-        {!!error && (
-          <div className="alert-box danger mb-4">
-            <AlertCircle size={18} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* ========================================== */}
-        {/* SECTION 1: TẠO MỚI & ĐỒNG BỘ NGUỒN */}
-        {/* ========================================== */}
-        <div className="form-grid-2">
-          {/* CỘT TRÁI: THÊM THỦ CÔNG */}
-          <div className="form-section elevated-section bg-slate">
-            <div className="im-section-header compact">
-              <div className="icon-box">
-                <FolderPlus size={16} />
-              </div>
-              <div className="header-text">
-                <h4 className="im-section-title">Thêm thủ công</h4>
-              </div>
+          <div className="cat-manager-hero">
+            <div className="cat-manager-hero-main">
+              <span className="hero-kicker">
+                <Sparkles size={14} /> Phân loại nguyên liệu
+              </span>
+              <h4>Chuẩn hóa danh mục để tìm kiếm, lọc và kiểm kê nhanh hơn.</h4>
+              <p>
+                Ưu tiên thao tác ngắn: thêm thủ công khi cần gấp, đồng bộ khi muốn
+                gom nhóm lại từ dữ liệu nguyên liệu hiện có.
+              </p>
             </div>
-
-            <div className="flex-row-action mt-3">
-              <div className="input-with-icon flex-1">
-                <Layers size={16} className="icon" />
-                <input
-                  className="standard-input"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nhập tên danh mục..."
-                  disabled={loading}
-                />
+            <div className="hero-stats">
+              <div>
+                <strong>{categories.length}</strong>
+                <span>Tổng danh mục</span>
               </div>
-              <Button
-                type="button"
-                onClick={create}
-                disabled={loading || !name.trim()}
-                className="btn-save shrink-0"
-              >
-                Thêm
-              </Button>
+              <div>
+                <strong>{filtered.length}</strong>
+                <span>Đang hiển thị</span>
+              </div>
             </div>
           </div>
 
-          {/* CỘT PHẢI: ĐỒNG BỘ TỰ ĐỘNG */}
-          <div className="form-section elevated-section bg-indigo">
-            <div className="im-section-header compact">
-              <div className="icon-box warning">
-                <Database size={16} />
+          {!!error && (
+            <div className="alert-box danger mb-4">
+              <AlertCircle size={18} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="category-action-grid">
+            <div className="category-action-card manual-card">
+              <div className="im-section-header compact">
+                <div className="icon-box">
+                  <FolderPlus size={16} />
+                </div>
+                <div className="header-text">
+                  <h4 className="im-section-title">Thêm thủ công</h4>
+                  <p className="im-section-desc">Dùng khi cần tạo nhóm mới ngay.</p>
+                </div>
               </div>
-              <div className="header-text">
-                <h4 className="im-section-title">Đồng bộ từ nguyên liệu</h4>
+
+              <div className="flex-row-action mt-3">
+                <div className="input-with-icon flex-1">
+                  <Layers size={16} className="icon" />
+                  <input
+                    className="standard-input"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        create();
+                      }
+                    }}
+                    placeholder="VD: Hải sản, Tinh bột..."
+                    disabled={loading}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={create}
+                  disabled={loading || !name.trim()}
+                  className="btn-save shrink-0"
+                >
+                  Thêm
+                </Button>
               </div>
             </div>
 
-            <div className="mt-3 text-right">
+            <div className="category-action-card sync-card">
+              <div className="im-section-header compact">
+                <div className="icon-box warning">
+                  <Database size={16} />
+                </div>
+                <div className="header-text">
+                  <h4 className="im-section-title">Đồng bộ từ nguyên liệu</h4>
+                  <p className="im-section-desc">Tự rà soát nhóm từ kho nguyên liệu.</p>
+                </div>
+              </div>
+
               <Button
                 type="button"
                 variant="secondary"
-                className="btn-outline-primary w-full justify-center"
+                className="btn-outline-primary w-full justify-center sync-button"
                 onClick={async () => {
                   if (
                     !window.confirm(
@@ -253,8 +288,7 @@ const IngredientCategoryManagerModal = ({
               >
                 {loading ? (
                   <span className="loading-state">
-                    <span className="spinner border-primary"></span> Đang xử
-                    lý...
+                    <span className="spinner border-primary"></span> Đang xử lý...
                   </span>
                 ) : (
                   <>
@@ -264,231 +298,211 @@ const IngredientCategoryManagerModal = ({
               </Button>
             </div>
           </div>
-        </div>
 
-        {/* THỐNG KÊ ĐỒNG BỘ (Chỉ hiện khi có data) */}
-        {summary && (
-          <div className="metrics-grid mt-4">
-            <Metric label="Tạo mới" value={summary.categoriesCreated} />
-            <Metric label="Cập nhật" value={summary.categoriesUpdated} />
-            <Metric label="Gán lại" value={summary.ingredientsReassigned} />
+          <div className="metrics-grid">
+            <Metric label="Thủ công" value={manualCount} />
+            <Metric label="Đồng bộ" value={syncCount} />
             <Metric
-              label="Lỗi"
-              value={summary.errors}
-              danger={summary.errors > 0}
+              label="Gán lại"
+              value={summary?.ingredientsReassigned || 0}
             />
-          </div>
-        )}
-
-        <hr className="divider" />
-
-        {/* ========================================== */}
-        {/* SECTION 2: DANH SÁCH & BỘ LỌC */}
-        {/* ========================================== */}
-        <div className="form-section borderless">
-          <div className="im-section-header">
-            <div className="icon-box">
-              <Layers size={18} />
-            </div>
-            <div className="header-text">
-              <h4 className="im-section-title">Danh mục hiện có</h4>
-              <p className="im-section-desc">
-                Tìm kiếm, lọc và quản lý các danh mục
-              </p>
-            </div>
+            <Metric label="Lỗi" value={summary?.errors || 0} danger={summary?.errors > 0} />
           </div>
 
-          {/* TOOLBAR: TÌM KIẾM & LỌC */}
-          <div className="toolbar mb-4">
-            <div className="input-with-icon search-box flex-1">
-              <Search size={16} className="icon" />
-              <input
-                className="standard-input"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Tìm danh mục..."
-                disabled={loading}
-              />
+          <section className="category-list-panel">
+            <div className="im-section-header list-header">
+              <div className="icon-box">
+                <Layers size={18} />
+              </div>
+              <div className="header-text">
+                <h4 className="im-section-title">Danh mục hiện có</h4>
+                <p className="im-section-desc">
+                  {filtered.length} kết quả · Trang {currentPage}/{pageCount}
+                </p>
+              </div>
             </div>
-            <div className="input-with-icon filter-box">
-              <Filter size={16} className="icon" />
-              <select
-                className="standard-input"
-                value={sourceFilter}
-                onChange={(e) => {
-                  setSourceFilter(e.target.value);
-                  setPage(1);
-                }}
-                disabled={loading}
-              >
-                <option value="all">Tất cả nguồn</option>
-                <option value="manual">Tạo thủ công (Manual)</option>
-                <option value="sync">Đồng bộ (Sync)</option>
-              </select>
-            </div>
-          </div>
 
-          {/* BẢNG DANH SÁCH */}
-          <div className="list-container">
-            {pageRows.map((cat) => (
-              <div key={cat.id || cat._id || cat.name} className="list-item">
-                <div className="item-info">
-                  <div className="item-name">
-                    {toIngredientCategoryVi(cat.name)}
+            <div className="toolbar">
+              <div className="input-with-icon search-box flex-1">
+                <Search size={16} className="icon" />
+                <input
+                  className="standard-input"
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Tìm theo tên danh mục..."
+                  disabled={loading}
+                />
+              </div>
+              <div className="input-with-icon filter-box">
+                <Filter size={16} className="icon" />
+                <select
+                  className="standard-input"
+                  value={sourceFilter}
+                  onChange={(e) => {
+                    setSourceFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  disabled={loading}
+                >
+                  <option value="all">Tất cả nguồn</option>
+                  <option value="manual">Tạo thủ công</option>
+                  <option value="sync">Đồng bộ</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="list-container">
+              {pageRows.map((cat) => (
+                <div key={cat.id || cat._id || cat.name} className="list-item">
+                  <div className="item-info">
+                    <div className="item-name">
+                      {toIngredientCategoryVi(cat.name)}
+                    </div>
+                    <div className="item-meta">
+                      <span
+                        className={`badge ${cat.source === "sync" ? "badge-sync" : "badge-manual"}`}
+                      >
+                        {cat.source === "sync" ? "SYNC" : "MANUAL"}
+                      </span>
+                      <span className="usage-count">
+                        Sử dụng: <b>{cat.usageCount || 0}</b>
+                      </span>
+                    </div>
                   </div>
-                  <div className="item-meta">
-                    <span
-                      className={`badge ${cat.source === "sync" ? "badge-sync" : "badge-manual"}`}
+
+                  <div className="item-actions">
+                    <button
+                      type="button"
+                      className="action-btn edit"
+                      disabled={loading}
+                      title="Đổi tên"
+                      onClick={async () => {
+                        const next = window.prompt(
+                          "Đổi tên danh mục:",
+                          cat.name || "",
+                        );
+                        if (!next?.trim() || next.trim() === cat.name) return;
+                        setLoading(true);
+                        try {
+                          await onRename?.(cat.id, next.trim());
+                          setError("");
+                        } catch (err) {
+                          setError(err?.message || "Đổi tên thất bại.");
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
                     >
-                      {cat.source || "manual"}
-                    </span>
-                    <span className="usage-count">
-                      • Sử dụng: <b>{cat.usageCount || 0}</b>
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="action-btn delete"
+                      disabled={loading}
+                      title="Xóa danh mục"
+                      onClick={async () => {
+                        if (!window.confirm(`Xóa danh mục "${cat.name}"?`)) return;
+                        setLoading(true);
+                        try {
+                          await onDelete?.(cat.id);
+                          setError("");
+                        } catch (err) {
+                          setError(err?.message || "Xóa thất bại.");
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {!pageRows.length && (
+                <div className="empty-state">
+                  <Search size={32} />
+                  <p>Không có danh mục phù hợp bộ lọc.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="pagination-premium">
+              <span className="page-info">
+                Hiển thị {pageRows.length} / {filtered.length} danh mục
+              </span>
+              <div className="page-controls">
+                <button
+                  type="button"
+                  className="page-btn"
+                  disabled={currentPage <= 1 || loading}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft size={16} /> Trước
+                </button>
+                <button
+                  type="button"
+                  className="page-btn"
+                  disabled={currentPage >= pageCount || loading}
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                >
+                  Sau <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="history-panel">
+            <div className="im-section-header compact mb-3">
+              <div className="icon-box bg-slate">
+                <Clock size={16} />
+              </div>
+              <div className="header-text">
+                <h4 className="im-section-title text-sm">Lịch sử hệ thống</h4>
+                <p className="im-section-desc">Các lần đồng bộ gần nhất</p>
+              </div>
+            </div>
+
+            <div className="history-timeline">
+              {(syncLogs || []).slice(0, 5).map((log) => (
+                <div key={log.id} className="timeline-item">
+                  <div className="timeline-dot"></div>
+                  <div className="timeline-content">
+                    <span className="time">{fmtDateTime(log.at)}</span>
+                    <span className="desc">
+                      {log.summaryText || "Không có mô tả chi tiết"}
                     </span>
                   </div>
                 </div>
-
-                <div className="item-actions">
-                  <button
-                    type="button"
-                    className="action-btn edit"
-                    disabled={loading}
-                    title="Đổi tên"
-                    onClick={async () => {
-                      const next = window.prompt(
-                        "Đổi tên danh mục:",
-                        cat.name || "",
-                      );
-                      if (!next?.trim() || next.trim() === cat.name) return;
-                      setLoading(true);
-                      try {
-                        await onRename?.(cat.id, next.trim());
-                        setError("");
-                      } catch (err) {
-                        setError(err?.message || "Đổi tên thất bại.");
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="action-btn delete"
-                    disabled={loading}
-                    title="Xóa danh mục"
-                    onClick={async () => {
-                      if (!window.confirm(`Xóa danh mục "${cat.name}"?`))
-                        return;
-                      setLoading(true);
-                      try {
-                        await onDelete?.(cat.id);
-                        setError("");
-                      } catch (err) {
-                        setError(err?.message || "Xóa thất bại.");
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+              ))}
+              {!syncLogs?.length && (
+                <div className="text-muted text-sm italic pl-2">
+                  Chưa có lịch sử đồng bộ.
                 </div>
-              </div>
-            ))}
-
-            {!pageRows.length && (
-              <div className="empty-state">
-                <Search size={32} />
-                <p>Không có danh mục phù hợp bộ lọc.</p>
-              </div>
-            )}
-          </div>
-
-          {/* PHÂN TRANG PREMIUM */}
-          <div className="pagination-premium">
-            <span className="page-info">
-              Trang {currentPage} / {pageCount}
-            </span>
-            <div className="page-controls">
-              <button
-                type="button"
-                className="page-btn"
-                disabled={currentPage <= 1 || loading}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronLeft size={16} /> Trước
-              </button>
-              <button
-                type="button"
-                className="page-btn"
-                disabled={currentPage >= pageCount || loading}
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-              >
-                Sau <ChevronRight size={16} />
-              </button>
+              )}
             </div>
+          </section>
+
+          <div className="form-actions-premium mt-0">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={requestClose}
+              disabled={loading}
+              className="btn-cancel"
+            >
+              Đóng cửa sổ
+            </Button>
           </div>
-        </div>
-
-        <hr className="divider" />
-
-        {/* ========================================== */}
-        {/* SECTION 3: LỊCH SỬ ĐỒNG BỘ */}
-        {/* ========================================== */}
-        <div className="form-section borderless">
-          <div className="im-section-header compact mb-3">
-            <div className="icon-box bg-slate">
-              <Clock size={16} />
-            </div>
-            <div className="header-text">
-              <h4 className="im-section-title text-sm">Lịch sử hệ thống</h4>
-            </div>
-          </div>
-
-          <div className="history-timeline">
-            {(syncLogs || []).map((log) => (
-              <div key={log.id} className="timeline-item">
-                <div className="timeline-dot"></div>
-                <div className="timeline-content">
-                  <span className="time">{fmtDateTime(log.at)}</span>
-                  <span className="desc">
-                    {log.summaryText || "Không có mô tả chi tiết"}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {!syncLogs?.length && (
-              <div className="text-muted text-sm italic pl-2">
-                Chưa có lịch sử đồng bộ.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* FOOTER ACTIONS */}
-        <div className="form-actions-premium mt-0">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={requestClose}
-            disabled={loading}
-            className="btn-cancel"
-          >
-            Đóng cửa sổ
-          </Button>
-        </div>
         </div>
       </Modal.Body>
     </Modal>
   );
 };
 
-// Component con hiển thị chỉ số
 const Metric = ({ label, value, danger = false }) => (
   <div className={`metric-card ${danger ? "danger" : ""}`}>
     <span className="metric-label">{label}</span>
