@@ -15,6 +15,7 @@ import "../../StorageWideLayout.css";
 import "../../StorageDropdownPolish.css";
 import "../../StorageModalPolish.css";
 import "../../StorageModalFinalTen.css";
+import "../../StorageModalRealityFix.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
