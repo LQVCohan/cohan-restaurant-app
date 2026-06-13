@@ -1,4 +1,4 @@
-/* Manager workflow layer: data status, empty actions, and table view */
+/* Manager workflow layer: data status, empty actions, table view, and BE pagination */
 .cm-page .cl-manager-strip {
   display: flex;
   align-items: center;
@@ -33,6 +33,41 @@
   color: #24323b;
   font-size: 12.5px;
   font-weight: 760;
+}
+
+.cm-page .cl-strip-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cm-page .cl-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #60706d;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.cm-page .cl-page-size select {
+  min-height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid rgba(216, 208, 197, 0.94);
+  border-radius: 10px;
+  background: #fffdfa;
+  color: #24323b;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.cm-page .cl-page-size select:focus-visible {
+  outline: none;
+  border-color: #1f6a60;
+  box-shadow: 0 0 0 4px rgba(31, 106, 96, 0.16);
 }
 
 .cm-page .cl-view-toggle {
@@ -248,14 +283,78 @@
   font-weight: 780;
 }
 
-.cm-page .cm-main-area > .text-xs.text-slate-500.mt-1 {
+.cm-page .cm-main-area > .text-xs.text-slate-500.mt-1,
+.cm-page .cm-main-area > .mt-3.flex.justify-center {
   display: none !important;
+}
+
+.cm-page .cl-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(216, 208, 197, 0.78);
+  border-radius: 16px;
+  background: rgba(255, 253, 250, 0.76);
+}
+
+.cm-page .cl-pagination span {
+  color: #60706d;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.cm-page .cl-pagination span strong {
+  color: #24323b;
+}
+
+.cm-page .cl-pagination button {
+  min-height: 36px;
+  border: 1px solid rgba(216, 208, 197, 0.96);
+  border-radius: 12px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fffdfa;
+  color: #24323b;
+  font-size: 13px;
+  font-weight: 770;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.cm-page .cl-pagination button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #f2faf7;
+  border-color: rgba(31, 106, 96, 0.28);
+  color: #17554d;
+}
+
+.cm-page .cl-pagination button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 @media (max-width: 760px) {
   .cm-page .cl-manager-strip {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .cm-page .cl-strip-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cm-page .cl-page-size {
+    flex: 1;
+  }
+
+  .cm-page .cl-page-size select {
+    flex: 1;
   }
 
   .cm-page .cl-view-toggle {
@@ -273,6 +372,15 @@
 
   .cm-page .cl-empty-actions button {
     width: 100%;
+    justify-content: center;
+  }
+
+  .cm-page .cl-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cm-page .cl-pagination button {
     justify-content: center;
   }
 }
