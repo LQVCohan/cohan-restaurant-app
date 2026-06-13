@@ -1,0 +1,227 @@
+.ai-chatbot-widget {
+  --chat-ink: #2f2923;
+  --chat-muted: #756759;
+  --chat-accent: #8a623d;
+  --chat-surface: #fffdf8;
+  --chat-soft: #f8f0e6;
+  --chat-border: rgba(124, 93, 63, 0.16);
+}
+
+.ai-chatbot-toggle {
+  background: linear-gradient(135deg, #b98555, #8a623d) !important;
+  box-shadow: 0 18px 38px rgba(138, 98, 61, 0.28) !important;
+}
+
+.ai-chatbot-panel {
+  width: min(392px, calc(100vw - 28px)) !important;
+  height: min(650px, calc(100vh - 40px)) !important;
+  border: 1px solid var(--chat-border) !important;
+  border-radius: 28px !important;
+  background: linear-gradient(180deg, var(--chat-surface) 0%, var(--chat-soft) 100%) !important;
+  box-shadow: 0 30px 84px rgba(47, 41, 35, 0.24) !important;
+}
+
+.ai-chatbot-panel.is-expanded {
+  width: min(760px, calc(100vw - 32px)) !important;
+  height: min(760px, calc(100vh - 40px)) !important;
+}
+
+.ai-chatbot-header {
+  padding: 18px 18px 14px !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+  border-bottom: 1px solid rgba(124, 93, 63, 0.12) !important;
+}
+
+.ai-chatbot-header > button {
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid rgba(124, 93, 63, 0.14) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+  color: var(--chat-ink) !important;
+}
+
+.ai-chatbot-title strong {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.ai-chatbot-title strong::after {
+  content: "Trợ lý Cohan";
+  color: var(--chat-ink);
+  font-size: 0.96rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.ai-chatbot-title small {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.ai-chatbot-title small::after {
+  content: "Đang sẵn sàng";
+  color: #2f7d4f;
+  font-size: 0.74rem;
+  font-weight: 820;
+}
+
+.ai-chatbot-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #8a623d, #b98555) !important;
+  box-shadow: 0 10px 22px rgba(138, 98, 61, 0.24) !important;
+}
+
+.ai-chatbot-body,
+.ai-chatbot-messages {
+  background: transparent !important;
+}
+
+.ai-chatbot-messages {
+  padding: 18px 18px 10px !important;
+}
+
+.ai-chatbot-message p {
+  line-height: 1.58 !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+}
+
+.ai-chatbot-message.assistant p {
+  padding: 13px 14px !important;
+  border-radius: 18px 18px 18px 7px !important;
+  color: var(--chat-ink) !important;
+  background: var(--chat-surface) !important;
+  border: 1px solid rgba(138, 98, 61, 0.14) !important;
+  box-shadow: 0 10px 22px rgba(79, 55, 33, 0.065) !important;
+}
+
+.ai-chatbot-message.user p {
+  border-radius: 18px 18px 7px 18px !important;
+  background: linear-gradient(135deg, #9b6b42, #744d2f) !important;
+  box-shadow: 0 10px 22px rgba(116, 77, 47, 0.18) !important;
+}
+
+.ai-chatbot-message.staff p {
+  background: #eaf6ef !important;
+  border: 1px solid rgba(47, 125, 79, 0.18) !important;
+  color: #28563c !important;
+}
+
+.ai-chatbot-message.loading {
+  background: var(--chat-surface) !important;
+  border: 1px solid rgba(138, 98, 61, 0.14) !important;
+}
+
+.ai-chatbot-message.loading span {
+  background: var(--chat-accent) !important;
+}
+
+.ai-chatbot-context {
+  margin: 0 18px 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(47, 125, 79, 0.16) !important;
+  border-radius: 16px !important;
+  background: rgba(234, 246, 239, 0.82) !important;
+  color: #2f6444 !important;
+  font-weight: 700 !important;
+}
+
+.ai-chatbot-actions,
+.ai-chatbot-quick-replies {
+  flex-wrap: wrap !important;
+  overflow: visible !important;
+  gap: 8px !important;
+  padding: 0 18px 12px !important;
+}
+
+.ai-chatbot-actions button,
+.ai-chatbot-quick-replies button {
+  border: 1px solid rgba(138, 98, 61, 0.16) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  color: var(--chat-accent) !important;
+  padding: 8px 12px !important;
+  white-space: normal !important;
+  font-size: 0.8rem !important;
+  font-weight: 820 !important;
+  box-shadow: 0 6px 14px rgba(79, 55, 33, 0.05) !important;
+}
+
+.ai-chatbot-input {
+  border-top: 1px solid rgba(124, 93, 63, 0.12) !important;
+  padding: 14px !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+}
+
+.ai-chatbot-input input {
+  height: 42px !important;
+  border: 1px solid rgba(124, 93, 63, 0.14) !important;
+  border-radius: 14px !important;
+  background: var(--chat-surface) !important;
+  color: var(--chat-ink) !important;
+  font-size: 0.86rem !important;
+  font-weight: 650 !important;
+}
+
+.ai-chatbot-input input:focus {
+  border-color: rgba(138, 98, 61, 0.48) !important;
+  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.1) !important;
+}
+
+.ai-chatbot-input button {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #b98555, #8a623d) !important;
+  box-shadow: 0 10px 20px rgba(138, 98, 61, 0.2) !important;
+}
+
+.ai-chatbot-menu-card,
+.ai-chatbot-menu-detail {
+  border-color: rgba(124, 93, 63, 0.14) !important;
+  background: var(--chat-surface) !important;
+  box-shadow: 0 10px 22px rgba(79, 55, 33, 0.055) !important;
+}
+
+.ai-chatbot-menu-card button,
+.ai-chatbot-menu-card__actions button,
+.ai-chatbot-menu-detail__actions button {
+  border-radius: 12px !important;
+  background: var(--chat-accent) !important;
+  color: #fff !important;
+  font-weight: 850 !important;
+}
+
+.ai-chatbot-action-card.primary {
+  background: linear-gradient(135deg, #eadccd, #fffdf8) !important;
+  border-color: rgba(138, 98, 61, 0.34) !important;
+}
+
+.ai-chatbot-action-card.secondary {
+  background: #fffdf8 !important;
+}
+
+.ai-chatbot-action-card__icon {
+  background: #eadccd !important;
+  color: var(--chat-accent) !important;
+}
+
+.ai-chatbot-action-card__text strong {
+  color: var(--chat-accent) !important;
+}
+
+.ai-chatbot-action-card__text small {
+  color: var(--chat-muted) !important;
+}
+
+@media (max-width: 640px) {
+  .ai-chatbot-panel,
+  .ai-chatbot-panel.is-expanded {
+    width: calc(100vw - 28px) !important;
+    height: min(620px, calc(100vh - 28px)) !important;
+    border-radius: 24px !important;
+  }
+}
