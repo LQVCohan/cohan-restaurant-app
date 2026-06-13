@@ -200,7 +200,7 @@ const StaffNotificationsPage = () => {
     <div className="staff-notifications staff-page" aria-labelledby="staff-notifications-title">
       <section className="staff-notifications__hero">
         <div>
-          <span className="staff-notifications__eyebrow">Workspace notifications</span>
+          <span className="staff-notifications__eyebrow">Thông báo trong ca</span>
           <h1 id="staff-notifications-title">Thông báo trong ca</h1>
           <p>Lịch làm, chấm công, phản hồi quản lý và yêu cầu thay đổi ca cho nhân viên nhà hàng.</p>
         </div>

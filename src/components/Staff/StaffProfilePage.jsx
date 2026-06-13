@@ -222,7 +222,7 @@ const StaffProfilePage = () => {
           <section className="staff-profile__card" aria-labelledby="staff-contact-title">
             <div className="staff-profile__card-header">
               <div>
-                <span>Contact & account</span>
+                <span>Thông tin tài khoản</span>
                 <h2 id="staff-contact-title">Thông tin liên hệ</h2>
               </div>
               <button type="button" className="staff-profile__ghost-button" onClick={() => setRequestOpen((value) => !value)}>
@@ -264,7 +264,7 @@ const StaffProfilePage = () => {
           <section className="staff-profile__card" aria-labelledby="staff-work-title">
             <div className="staff-profile__card-header">
               <div>
-                <span>Work summary</span>
+                <span>Tóm tắt công việc</span>
                 <h2 id="staff-work-title">Tóm tắt công việc</h2>
               </div>
             </div>

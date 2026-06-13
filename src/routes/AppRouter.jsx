@@ -111,6 +111,18 @@ const CustomerLayout = () => (
   </MainLayout>
 );
 
+
+const StaffAwareProfileRoute = () => {
+  const { user } = useContext(AuthContext);
+  const role = resolveRoleName(user);
+
+  if (STAFF_OPERATIONAL_ROLES.has(role)) {
+    return <Navigate to="/staff/profile" replace />;
+  }
+
+  return <ProfilePage />;
+};
+
 const LogoutHandler = () => {
   const { logout } = useContext(AuthContext);
   useEffect(() => {
@@ -189,7 +201,7 @@ const AppRouter = () => (
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
       <Route path="/help-center/:id" element={<HelpPage />} />
       <Route path="/notifications" element={withPrivateRoute(<NotificationsPage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
-      <Route path="/profile" element={withPrivateRoute(<ProfilePage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/profile" element={withPrivateRoute(<StaffAwareProfileRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
     </Route>
 
     <Route path="*" element={<Navigate to="/403" replace />} />

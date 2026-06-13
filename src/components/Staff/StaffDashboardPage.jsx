@@ -158,6 +158,7 @@ const StaffDashboardPage = () => {
   const initials = getInitials(staffName);
   const canOrder = hasStaffOrderAccess(normalizedRole);
   const canKitchen = hasStaffKitchenAccess(normalizedRole);
+  const specialtyLabel = canOrder && canKitchen ? "Order & Bếp" : canOrder ? "Order" : canKitchen ? "Bếp" : "Cơ bản";
 
   const specialtyActions = useMemo(() => {
     const actions = [];
@@ -186,7 +187,7 @@ const StaffDashboardPage = () => {
     <div className="staff-dashboard-page staff-page" aria-labelledby="staff-dashboard-title">
       <section className="staff-dashboard-hero" aria-label="Tổng quan ca làm">
         <div className="staff-dashboard-hero__copy">
-          <StatusBadge tone="success">Staff shift command center</StatusBadge>
+          <StatusBadge tone="success">Trung tâm ca làm</StatusBadge>
           <h1 id="staff-dashboard-title">Xin chào, {staffName}</h1>
           <p>
             Workspace vận hành ca làm: kiểm tra lịch, chấm công, nhắc việc và mở đúng khu vực chuyên môn mà không đi qua giao diện khách hàng.
@@ -246,13 +247,13 @@ const StaffDashboardPage = () => {
       <section className="staff-metric-row" aria-label="Tổng quan nhanh">
         <article className="staff-metric-tile staff-metric-tile--success"><span>Vai trò</span><strong>{roleLabel}</strong><small>{departmentLabel}</small></article>
         <article className="staff-metric-tile staff-metric-tile--warning"><span>Cơ sở</span><strong>{restaurantLabel}</strong><small>Phạm vi làm việc</small></article>
-        <article className="staff-metric-tile staff-metric-tile--muted"><span>Quyền chuyên môn</span><strong>{specialtyActions.length || "Cơ bản"}</strong><small>{canOrder ? "Order" : canKitchen ? "Bếp" : "Lịch / hồ sơ / thông báo"}</small></article>
+        <article className="staff-metric-tile staff-metric-tile--muted"><span>Quyền chuyên môn</span><strong>{specialtyLabel}</strong><small>{canOrder || canKitchen ? "Đã mở theo vai trò" : "Lịch / hồ sơ / thông báo"}</small></article>
       </section>
 
       <section className="staff-dashboard-section staff-card" aria-labelledby="staff-actions-title">
         <div className="staff-dashboard-section__header">
           <div>
-            <StatusBadge tone="success">Quick actions</StatusBadge>
+            <StatusBadge tone="success">Thao tác nhanh</StatusBadge>
             <h2 id="staff-actions-title">Thao tác nhân viên</h2>
           </div>
           <p>Mỗi thẻ dẫn tới route thật hoặc hiển thị rõ trạng thái chưa hỗ trợ, không có link chết.</p>
