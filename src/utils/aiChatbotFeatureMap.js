@@ -15,6 +15,11 @@ const normalizeText = (value = "") =>
     .replace(/Đ/g, "d")
     .toLowerCase();
 
+const isManagerHelpQuery = (query = "") => {
+  const q = normalizeText(query);
+  return /\b(giup gi|co the giup|ban co the giup|dieu huong|huong dan|lam duoc gi|quan ly o dau|mo giup|di toi|vao trang|mo trang)\b/.test(q);
+};
+
 export const AI_CHATBOT_FEATURE_MAP = [
   { key: "home", label: "Home", path: "/", intent: "navigation", description: "Trang chủ để khám phá nhà hàng, ưu đãi và lối tắt chính.", aliases: ["trang chu", "home", "bat dau"] },
   { key: "restaurant-detail", label: "Restaurant detail", path: "/restaurant/:restaurantId", intent: "navigation", description: "Trang chi tiết nhà hàng, thông tin mở cửa, đánh giá và thực đơn.", aliases: ["nha hang", "chi tiet nha hang", "mo cua", "dia chi nha hang"] },
@@ -25,9 +30,9 @@ export const AI_CHATBOT_FEATURE_MAP = [
   { key: "orders", label: "Orders", path: "/orders", intent: "orderHelp", description: "Trang đơn hàng của người dùng hiện tại.", allowedRoles: CUSTOMER_NAV_ROLES, aliases: ["don hang", "xem don hang", "ma don", "kiem tra don", "lich su don"] },
   { key: "reservations", label: "Reservations / table booking", path: "/restaurant/:restaurantId/layout", intent: "reservationHelp", description: "Khu vực đặt bàn, xem sơ đồ bàn và lịch giữ chỗ.", aliases: ["dat ban", "lam sao dat ban", "dat ban o dau", "giu cho", "dat cho", "ban trong", "so do ban", "reservation", "booking"] },
   { key: "profile", label: "Profile/account", path: "/profile", intent: "profileHelp", description: "Trang hồ sơ/tài khoản của người dùng hiện tại.", aliases: ["tai khoan", "ho so", "profile", "toi la ai", "dang nhap", "thong tin cua toi"] },
-  { key: "manager-dashboard", label: "Manager dashboard", path: "/manager", intent: "managerFeatureHelp", description: "Dashboard quản lý vận hành nhà hàng.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES, aliases: ["quan ly", "dashboard", "bao cao", "doanh thu"] },
+  { key: "manager-dashboard", label: "Manager dashboard", path: "/manager", intent: "managerFeatureHelp", description: "Dashboard quản lý vận hành nhà hàng.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES, aliases: ["quan ly", "dashboard", "bao cao", "doanh thu", "trang quan ly", "dashboard quan ly"] },
   { key: "staff-schedule", label: "Staff/schedule", path: "/staff/schedule", intent: "managerFeatureHelp", description: "Lịch làm việc/ca làm của nhân sự trên route staff thực tế.", allowedRoles: STAFF_SHARED_ROLES, aliases: ["lich nhan vien", "lich lam", "ca lam", "schedule", "nhan su"] },
-  { key: "storage-inventory", label: "Storage/inventory", path: "/manager#inventory", intent: "managerFeatureHelp", description: "Kho, tồn nguyên liệu và kiểm kê trong ManagerLayout.", managerOnly: true, allowedRoles: ["admin", "manager"], aliases: ["kho", "ton kho", "inventory", "nguyen lieu", "kiem ke"] },
+  { key: "storage-inventory", label: "Storage/inventory", path: "/manager#inventory", intent: "managerFeatureHelp", description: "Kho, tồn nguyên liệu và kiểm kê trong ManagerLayout.", managerOnly: true, allowedRoles: ["admin", "manager"], aliases: ["kho", "ton kho", "inventory", "nguyen lieu", "kiem ke", "quan ly kho"] },
   { key: "ai-chatbot-manager", label: "AI chatbot manager tools", path: "/manager#ai-chatbot-knowledge", intent: "managerFeatureHelp", description: "Cấu hình tri thức, phân tích và an toàn chatbot trong ManagerLayout.", managerOnly: true, allowedRoles: MANAGER_FEATURE_ROLES, aliases: ["quan ly chatbot", "ai chatbot", "chatbot manager", "tri thuc chatbot", "phan tich chatbot"] },
 ];
 
@@ -58,7 +63,9 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "orders") return path.includes("order");
   if (entry.key === "profile") return path.includes("profile") || path.includes("account");
   if (entry.key === "staff-schedule") return path.startsWith("/staff/schedule") || path.includes("schedule");
-  if (entry.managerOnly) return path.includes("manager") || path.includes("dashboard") || path.includes("storage") || path.includes("inventory") || path.includes("schedule") || path.includes("ai-chatbot");
+  if (entry.key === "manager-dashboard") return path === "/manager" || path === "/manager#dashboard";
+  if (entry.key === "storage-inventory") return path.includes("inventory") || path.includes("storage");
+  if (entry.key === "ai-chatbot-manager") return path.includes("ai-chatbot");
   return false;
 };
 
@@ -78,9 +85,19 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
   const path = String(pathname || "").toLowerCase();
   const role = normalizeRole(userRole);
   const menuItemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId || "";
+  const helpQuery = isManagerHelpQuery(query);
   return AI_CHATBOT_FEATURE_MAP
     .filter((entry) => canUseFeature(entry, role))
-    .map((entry) => ({ entry, score: (pathMatchesEntry(entry, path, menuItemId) ? 5 : 0) + queryScoreEntry(entry, query) }))
+    .map((entry) => {
+      const queryScore = queryScoreEntry(entry, query);
+      const pathScore = pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
+      const shouldUsePathScore = !entry.managerOnly && queryScore > 0;
+      const managerHelpScore = entry.managerOnly && helpQuery ? 4 : 0;
+      return {
+        entry,
+        score: queryScore + managerHelpScore + (shouldUsePathScore ? pathScore : 0),
+      };
+    })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
     .map(({ entry }) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
