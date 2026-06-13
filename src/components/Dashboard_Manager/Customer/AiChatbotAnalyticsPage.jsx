@@ -176,6 +176,7 @@ function EmptyReport() {
 
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -307,45 +308,32 @@ export default function AiChatbotAnalyticsPage() {
           </div>
 
           {reviewItems.length ? (
-            <details className="ai-admin-review-popover">
-              <summary>
+            <article className="ai-admin-review-strip" aria-label="Việc cần rà soát">
+              <div className="ai-admin-review-strip__summary">
                 <span className="ai-admin-chip ai-admin-chip--warning">
                   {formatNum(reviewItems.length)} mục cần rà soát
                 </span>
-                <span className="ai-admin-review-popover__title">Việc cần rà soát</span>
-                <span className="ai-admin-review-popover__hint">
-                  {reviewPreviewItems.map((item) => qualityItemTitle(item)).join(" · ")}
-                </span>
-                <span className="ai-admin-review-popover__action">Mở danh sách</span>
-              </summary>
-              <div className="ai-admin-review-popover__panel">
-                <div className="ai-admin-review-popover__header">
-                  <div>
-                    <p className="ai-admin-eyebrow">Quality review</p>
-                    <h3>Việc cần rà soát</h3>
-                    <p>Danh sách nội dung cần kiểm tra để cải thiện chất lượng tư vấn.</p>
-                  </div>
-                  <span>Nhấn lại thanh tiêu đề để thu gọn</span>
+                <div>
+                  <h3>Việc cần rà soát</h3>
+                  <p>Ưu tiên kiểm tra các nội dung có thể ảnh hưởng chất lượng tư vấn.</p>
                 </div>
-                <ul className="ai-admin-review-list__items ai-admin-review-list__items--popover">
-                  {reviewItems.map((it) => (
-                    <li key={it.id} className="ai-admin-review-item">
-                      <div>
-                        <span className="ai-admin-chip ai-admin-chip--warning">
-                          {qualityQueueLabels[it.type] || "Cần rà soát"}
-                        </span>
-                        <h4>{qualityItemTitle(it)}</h4>
-                        <p>{qualityItemDescription(it)}</p>
-                        <small className="ai-admin-review-item__meta">
-                          {qualityItemMeta(it)}
-                        </small>
-                      </div>
-                      <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
-                    </li>
-                  ))}
-                </ul>
               </div>
-            </details>
+              <div className="ai-admin-review-strip__items">
+                {reviewPreviewItems.map((item) => (
+                  <div key={item.id} className="ai-admin-review-strip__item">
+                    <strong>{qualityItemTitle(item)}</strong>
+                    <small>{qualityItemMeta(item)}</small>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="ai-admin-link-button"
+                onClick={() => setReviewModalOpen(true)}
+              >
+                Mở danh sách
+              </button>
+            </article>
           ) : null}
 
           <section className="ai-admin-insight-grid">
@@ -457,6 +445,55 @@ export default function AiChatbotAnalyticsPage() {
               </span>
             </div>
           </details>
+
+          {reviewModalOpen ? (
+            <div
+              className="ai-admin-modal-backdrop"
+              role="presentation"
+              onMouseDown={() => setReviewModalOpen(false)}
+            >
+              <section
+                className="ai-admin-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ai-review-modal-title"
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <header className="ai-admin-modal__header">
+                  <div>
+                    <p className="ai-admin-eyebrow">Quality review</p>
+                    <h3 id="ai-review-modal-title">Việc cần rà soát</h3>
+                    <p>Danh sách nội dung cần quản lý kiểm tra để cải thiện chất lượng tư vấn.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="ai-admin-modal__close"
+                    aria-label="Đóng danh sách rà soát"
+                    onClick={() => setReviewModalOpen(false)}
+                  >
+                    ×
+                  </button>
+                </header>
+                <ul className="ai-admin-review-list__items ai-admin-review-list__items--modal">
+                  {reviewItems.map((it) => (
+                    <li key={it.id} className="ai-admin-review-item">
+                      <div>
+                        <span className="ai-admin-chip ai-admin-chip--warning">
+                          {qualityQueueLabels[it.type] || "Cần rà soát"}
+                        </span>
+                        <h4>{qualityItemTitle(it)}</h4>
+                        <p>{qualityItemDescription(it)}</p>
+                        <small className="ai-admin-review-item__meta">
+                          {qualityItemMeta(it)}
+                        </small>
+                      </div>
+                      <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          ) : null}
         </>
       ) : null}
     </section>
