@@ -1,0 +1,10 @@
+/* Remove confusing recipe summary cards from the recipe modal.
+   The operator only needs the chosen dish, variants, ingredients and calculated cost. */
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-summary-grid {
+  display: none !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section:has(.recipe-summary-grid) .section-header {
+  margin-bottom: 12px !important;
+}
