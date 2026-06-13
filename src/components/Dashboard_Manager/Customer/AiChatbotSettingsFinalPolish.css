@@ -1,0 +1,78 @@
+.ai-admin-page--settings .ai-admin-settings-footer > div:first-child {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer > div:first-child strong,
+.ai-admin-page--settings .ai-admin-settings-footer > div:first-child span {
+  display: block !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer > div:first-child strong {
+  color: #2f2923 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer > div:first-child span {
+  color: #756759 !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer {
+  min-height: 58px !important;
+  align-items: center !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer--dirty > div:first-child strong {
+  color: #8a623d !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel--preview .ai-admin-panel__header h3 {
+  max-width: 280px !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__window {
+  min-height: 575px !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__conversation::after {
+  content: "Gợi ý nhanh đã sẵn sàng để khách bắt đầu cuộc trò chuyện.";
+  width: fit-content;
+  max-width: 82%;
+  border: 1px dashed rgba(124, 93, 63, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 253, 248, 0.72);
+  color: #756759;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__footer span {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-compact > summary {
+  border-radius: 14px !important;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-compact[open] > summary {
+  border-bottom: 1px solid rgba(124, 93, 63, 0.12) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  margin-bottom: 14px !important;
+}
+
+@media (max-width: 760px) {
+  .ai-admin-page--settings .ai-admin-settings-footer > div:first-child {
+    width: 100% !important;
+  }
+}
