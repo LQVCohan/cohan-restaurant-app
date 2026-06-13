@@ -248,6 +248,10 @@
   font-weight: 780;
 }
 
+.cm-page .cm-main-area > .text-xs.text-slate-500.mt-1 {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
   .cm-page .cl-manager-strip {
     align-items: stretch;
