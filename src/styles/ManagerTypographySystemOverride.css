@@ -1,0 +1,61 @@
+.manager-layout {
+  --manager-font-family: Aptos, "Segoe UI Variable", "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
+}
+
+.manager-layout,
+.manager-layout button,
+.manager-layout input,
+.manager-layout textarea,
+.manager-layout select,
+.manager-layout option,
+.manager-layout label,
+.manager-layout table,
+.manager-layout th,
+.manager-layout td,
+.manager-layout .btn,
+.manager-layout .btn__text,
+.manager-layout .ant-btn,
+.manager-layout .ant-input,
+.manager-layout .ant-select,
+.manager-layout .ant-table,
+.manager-layout .ant-card,
+.manager-layout .manager-page-shell,
+.manager-layout .storage-management {
+  font-family: var(--manager-font-family) !important;
+}
+
+body:has(.manager-layout) .modal-container,
+body:has(.manager-layout) .modal-container button,
+body:has(.manager-layout) .modal-container input,
+body:has(.manager-layout) .modal-container textarea,
+body:has(.manager-layout) .modal-container select,
+body:has(.manager-layout) .modal-container label,
+body:has(.manager-layout) .modal-container table,
+body:has(.manager-layout) .modal-container .btn,
+body:has(.manager-layout) .modal-container .btn__text,
+body:has(.manager-layout) .ant-select-dropdown,
+body:has(.manager-layout) .ant-picker-dropdown,
+body:has(.manager-layout) .ant-dropdown,
+body:has(.manager-layout) .ant-popover {
+  font-family: var(--manager-font-family) !important;
+}
+
+.manager-layout,
+body:has(.manager-layout) .modal-container {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.manager-layout h1,
+.manager-layout h2,
+.manager-layout h3,
+.manager-layout h4,
+.manager-layout h5,
+.manager-layout h6,
+body:has(.manager-layout) .modal-container h1,
+body:has(.manager-layout) .modal-container h2,
+body:has(.manager-layout) .modal-container h3,
+body:has(.manager-layout) .modal-container h4 {
+  letter-spacing: -0.014em;
+}
