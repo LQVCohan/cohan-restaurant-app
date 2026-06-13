@@ -4,11 +4,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 0 10px;
-  padding: 9px 12px;
-  border: 1px solid rgba(216, 208, 197, 0.86);
-  border-radius: 16px;
-  background: rgba(255, 253, 250, 0.82);
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(216, 208, 197, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 253, 250, 0.78);
   color: #60706d;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
@@ -22,7 +22,7 @@
 }
 
 .cm-page .cl-strip-label {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -31,7 +31,7 @@
 
 .cm-page .cl-manager-strip strong {
   color: #24323b;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 760;
 }
 
@@ -53,8 +53,8 @@
 }
 
 .cm-page .cl-page-size select {
-  min-height: 32px;
-  padding: 0 28px 0 10px;
+  min-height: 30px;
+  padding: 0 26px 0 9px;
   border: 1px solid rgba(216, 208, 197, 0.94);
   border-radius: 10px;
   background: #fffdfa;
@@ -77,15 +77,15 @@
   gap: 4px;
   padding: 3px;
   border: 1px solid rgba(216, 208, 197, 0.9);
-  border-radius: 12px;
+  border-radius: 11px;
   background: #f7f1e8;
 }
 
 .cm-page .cl-view-toggle button {
-  min-height: 30px;
+  min-height: 28px;
   border: 0;
-  border-radius: 9px;
-  padding: 0 10px;
+  border-radius: 8px;
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -111,6 +111,89 @@
 .cm-page .cl-view-toggle button:disabled {
   opacity: 0.46;
   cursor: not-allowed;
+}
+
+.cm-page.is-customer-empty .management-page-header.density-compact {
+  grid-template-columns: minmax(190px, 1fr) max-content;
+  min-height: 0;
+  padding: 0.52rem 0.68rem;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-left {
+  padding-right: 0.75rem;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-greeting {
+  display: none;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-subtitle {
+  max-width: none;
+  font-size: 11.5px;
+}
+
+.cm-page.is-customer-empty .manager-command-bar {
+  margin-bottom: 8px;
+  padding: 0.58rem 0.68rem;
+}
+
+.cm-page.is-customer-empty .manager-command-bar .mcb-controls {
+  gap: 8px 10px;
+}
+
+.cm-page.is-customer-empty .manager-command-bar .mcb-search,
+.cm-page.is-customer-empty .manager-command-bar .mcb-btn {
+  height: 36px;
+}
+
+.cm-page.is-customer-empty .cm-pill {
+  min-height: 32px;
+  padding-inline: 10px;
+}
+
+.cm-page.is-customer-empty .cm-layout {
+  padding-bottom: 12px;
+}
+
+.cm-page.is-customer-empty .cl-empty-state {
+  min-height: 200px;
+  padding: 30px 18px;
+  border-radius: 18px;
+}
+
+.cm-page.is-customer-empty .cl-empty-state .cl-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  margin-bottom: 10px;
+}
+
+.cm-page.is-customer-empty .cl-empty-state .cl-empty-title {
+  margin-bottom: 5px;
+  font-size: 15px;
+}
+
+.cm-page.is-customer-empty .cl-empty-state .cl-empty-desc {
+  max-width: 420px;
+  font-size: 12.5px;
+}
+
+.cm-page.is-customer-empty .cl-empty-actions {
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cm-page.is-customer-empty .cl-empty-actions button {
+  min-height: 34px;
+  border-radius: 11px;
+  font-size: 12.5px;
 }
 
 .cm-page .cl-empty-state .cl-empty-desc {
@@ -293,16 +376,16 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(216, 208, 197, 0.78);
-  border-radius: 16px;
-  background: rgba(255, 253, 250, 0.76);
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(216, 208, 197, 0.76);
+  border-radius: 14px;
+  background: rgba(255, 253, 250, 0.72);
 }
 
 .cm-page .cl-pagination span {
   color: #60706d;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 720;
 }
 
@@ -311,16 +394,16 @@
 }
 
 .cm-page .cl-pagination button {
-  min-height: 36px;
+  min-height: 32px;
   border: 1px solid rgba(216, 208, 197, 0.96);
-  border-radius: 12px;
-  padding: 0 12px;
+  border-radius: 11px;
+  padding: 0 11px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: #fffdfa;
   color: #24323b;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 770;
   cursor: pointer;
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
