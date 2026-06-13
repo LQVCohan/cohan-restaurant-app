@@ -114,20 +114,15 @@
 }
 
 .cm-page.is-customer-empty .management-page-header.density-compact {
-  grid-template-columns: minmax(190px, 1fr) max-content;
-  min-height: 0;
-  padding: 0.52rem 0.68rem;
-  margin-top: 12px;
-  margin-bottom: 8px;
-}
-
-.cm-page.is-customer-empty .management-page-header .mph-right {
-  display: flex;
-  justify-content: flex-end;
+  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  min-height: 82px;
+  padding: 0.68rem 0.78rem;
+  margin-top: 14px;
+  margin-bottom: 10px;
 }
 
 .cm-page.is-customer-empty .management-page-header .mph-left {
-  padding-right: 0.75rem;
+  padding-right: 0.85rem;
 }
 
 .cm-page.is-customer-empty .management-page-header .mph-greeting {
@@ -135,42 +130,77 @@
 }
 
 .cm-page.is-customer-empty .management-page-header .mph-subtitle {
-  max-width: none;
-  font-size: 11.5px;
+  max-width: 28ch;
+  font-size: 11.8px;
+  line-height: 1.35;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-right {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(150px, max-content);
+  align-items: stretch;
+  gap: 0.7rem;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-right::before {
+  content: "👤 Tổng khách 0   •   🟢 Online 0   •   ⭐ VIP 0   •   🆕 Mới 0";
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid rgba(216, 208, 197, 0.92);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(255, 253, 250, 0.95), rgba(242, 250, 247, 0.78));
+  color: #24323b;
+  font-size: 13px;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-controls-row {
+  min-width: 154px;
+  padding-left: 0.7rem;
+  align-self: stretch;
+  justify-content: center;
 }
 
 .cm-page.is-customer-empty .manager-command-bar {
-  margin-bottom: 8px;
-  padding: 0.58rem 0.68rem;
+  margin-bottom: 10px;
+  padding: 0.66rem 0.78rem;
 }
 
 .cm-page.is-customer-empty .manager-command-bar .mcb-controls {
-  gap: 8px 10px;
+  gap: 9px 12px;
 }
 
 .cm-page.is-customer-empty .manager-command-bar .mcb-search,
 .cm-page.is-customer-empty .manager-command-bar .mcb-btn {
-  height: 36px;
+  height: 38px;
 }
 
 .cm-page.is-customer-empty .cm-pill {
-  min-height: 32px;
-  padding-inline: 10px;
+  min-height: 34px;
+  padding-inline: 11px;
 }
 
 .cm-page.is-customer-empty .cm-layout {
-  padding-bottom: 12px;
+  padding-bottom: 14px;
 }
 
 .cm-page.is-customer-empty .cl-empty-state {
-  min-height: 200px;
-  padding: 30px 18px;
+  min-height: 218px;
+  padding: 34px 20px;
   border-radius: 18px;
 }
 
 .cm-page.is-customer-empty .cl-empty-state .cl-empty-icon {
-  width: 56px;
-  height: 56px;
+  width: 58px;
+  height: 58px;
   border-radius: 16px;
   margin-bottom: 10px;
 }
@@ -419,6 +449,18 @@
 .cm-page .cl-pagination button:disabled {
   opacity: 0.48;
   cursor: not-allowed;
+}
+
+@media (max-width: 1180px) {
+  .cm-page.is-customer-empty .management-page-header .mph-right {
+    grid-template-columns: 1fr;
+  }
+
+  .cm-page.is-customer-empty .management-page-header .mph-controls-row {
+    justify-content: flex-start;
+    padding-left: 0;
+    border-left: 0;
+  }
 }
 
 @media (max-width: 760px) {
