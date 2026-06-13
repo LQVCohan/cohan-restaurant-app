@@ -159,6 +159,7 @@ export default function RecipeDishPickerModal({
                     className={`${styles.row} ${hasRecipe ? styles.rowHasRecipe : styles.rowNewRecipe}`}
                     onClick={() => {
                       onPickDishRow?.(row);
+                      onRequestClose?.();
                     }}
                   >
                     <div className={styles.left}>
