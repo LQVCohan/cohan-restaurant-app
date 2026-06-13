@@ -1,6 +1,6 @@
 // src/pages/CustomerManagement/CustomerList.jsx
 import React, { useMemo, useState } from "react";
-import { SearchX, LayoutGrid, List, Plus, RotateCcw } from "lucide-react";
+import { SearchX, LayoutGrid, List, Plus, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import CustomerCard from "./CustomerCard";
 import "./CustomerList.scss";
 import "./CustomerExperiencePolish.css";
@@ -152,29 +152,88 @@ const CustomerTable = ({ customers, onCustomerClick }) => (
   </div>
 );
 
-const CustomerList = ({ customers, loading, onCustomerClick }) => {
+const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const [viewMode, setViewMode] = useState("grid");
   const totalLoaded = customers?.length || 0;
   const hasCustomers = totalLoaded > 0;
+  const page = Math.max(1, Number(pagination?.page || 1));
+  const pageSize = Math.max(1, Number(pagination?.pageSize || totalLoaded || 1));
+  const totalCount = Number(pagination?.totalCount || totalLoaded || 0);
+  const totalPages = Math.max(1, Number(pagination?.totalPages || Math.ceil(totalCount / pageSize) || 1));
+  const startItem = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
+  const endItem = totalCount > 0 ? Math.min(totalCount, startItem + totalLoaded - 1) : 0;
+  const pageSizeOptions = pagination?.pageSizeOptions || [10, 20, 30, 50];
 
   const managerSummary = useMemo(() => {
-    if (loading) return "Đang tải dữ liệu khách hàng...";
-    return `Đang xem danh sách khách đã tải • ${totalLoaded.toLocaleString("vi-VN")} khách`;
-  }, [loading, totalLoaded]);
+    if (loading || pagination?.isLoading) return "Đang tải dữ liệu khách hàng từ máy chủ...";
+    if (!totalCount) return "Không có khách phù hợp với bộ lọc hiện tại";
+    return `Trang ${page}/${totalPages} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
+  }, [endItem, loading, page, pagination?.isLoading, startItem, totalCount, totalPages]);
+
+  const renderManagerStrip = () => (
+    <div className="cl-manager-strip">
+      <div>
+        <span className="cl-strip-label">Phân trang từ BE</span>
+        <strong>{managerSummary}</strong>
+      </div>
+      <div className="cl-strip-tools">
+        <label className="cl-page-size">
+          <span>Hiển thị</span>
+          <select
+            value={pageSize}
+            disabled={loading || pagination?.isLoading}
+            onChange={(event) => pagination?.onPageSizeChange?.(Number(event.target.value))}
+          >
+            {pageSizeOptions.map((value) => (
+              <option key={value} value={value}>{value}/trang</option>
+            ))}
+          </select>
+        </label>
+        <div className="cl-view-toggle" aria-label="Chế độ xem">
+          <button
+            type="button"
+            className={viewMode === "grid" ? "is-active" : ""}
+            onClick={() => setViewMode("grid")}
+          >
+            <LayoutGrid size={14} /> Lưới
+          </button>
+          <button
+            type="button"
+            className={viewMode === "table" ? "is-active" : ""}
+            onClick={() => setViewMode("table")}
+            disabled={!hasCustomers}
+          >
+            <List size={14} /> Bảng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPager = () => (
+    <div className="cl-pagination" aria-label="Phân trang khách hàng từ backend">
+      <button
+        type="button"
+        onClick={pagination?.onPrevious}
+        disabled={loading || pagination?.isLoading || !pagination?.hasPreviousPage}
+      >
+        <ChevronLeft size={15} /> Trang trước
+      </button>
+      <span>Trang <strong>{page}</strong> / {totalPages}</span>
+      <button
+        type="button"
+        onClick={pagination?.onNext}
+        disabled={loading || pagination?.isLoading || !pagination?.hasNextPage}
+      >
+        Trang sau <ChevronRight size={15} />
+      </button>
+    </div>
+  );
 
   if (loading) {
     return (
       <>
-        <div className="cl-manager-strip">
-          <div>
-            <span className="cl-strip-label">Trạng thái dữ liệu</span>
-            <strong>{managerSummary}</strong>
-          </div>
-          <div className="cl-view-toggle" aria-label="Chế độ xem">
-            <button type="button" className="is-active"><LayoutGrid size={14} /> Lưới</button>
-            <button type="button" disabled><List size={14} /> Bảng</button>
-          </div>
-        </div>
+        {renderManagerStrip()}
         <div className="cl-grid">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="cl-skeleton-card">
@@ -198,29 +257,7 @@ const CustomerList = ({ customers, loading, onCustomerClick }) => {
 
   return (
     <>
-      <div className="cl-manager-strip">
-        <div>
-          <span className="cl-strip-label">Trạng thái dữ liệu</span>
-          <strong>{managerSummary}</strong>
-        </div>
-        <div className="cl-view-toggle" aria-label="Chế độ xem">
-          <button
-            type="button"
-            className={viewMode === "grid" ? "is-active" : ""}
-            onClick={() => setViewMode("grid")}
-          >
-            <LayoutGrid size={14} /> Lưới
-          </button>
-          <button
-            type="button"
-            className={viewMode === "table" ? "is-active" : ""}
-            onClick={() => setViewMode("table")}
-            disabled={!hasCustomers}
-          >
-            <List size={14} /> Bảng
-          </button>
-        </div>
-      </div>
+      {renderManagerStrip()}
 
       {!hasCustomers ? (
         <div className="cl-empty-state">
@@ -253,6 +290,8 @@ const CustomerList = ({ customers, loading, onCustomerClick }) => {
           ))}
         </div>
       )}
+
+      {pagination ? renderPager() : null}
     </>
   );
 };
