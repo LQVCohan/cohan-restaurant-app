@@ -22,6 +22,7 @@ import "../../StorageGreenToneFinal.css";
 import "../../StorageChecklistPolishFinal.css";
 import "../../StoragePostUpdateBugFix.css";
 import "../../StorageRecipeModalUpgrade.css";
+import "../../StorageRecipeModalButtonToneFix.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => (
   <>
