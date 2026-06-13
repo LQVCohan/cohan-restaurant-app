@@ -4,6 +4,7 @@ import { SearchX } from "lucide-react";
 import CustomerCard from "./CustomerCard";
 import "./CustomerList.scss";
 import "./CustomerExperiencePolish.css";
+import "./CustomerOperationsPolish.scss";
 
 const CustomerList = ({ customers, loading, onCustomerClick }) => {
   // Render Skeleton khi đang tải (giả lập 6 thẻ)
