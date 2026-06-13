@@ -1,7 +1,7 @@
 // Variables
 $primary: #1F6F4A;
 $success: #2F7D57;
-$warning: #6B7F35;
+$warning: #1F6F4A;
 $danger: #B42318;
 $bg-main: #F7F8F3;
 $bg-card: #ffffff;
@@ -526,4 +526,48 @@ $border-color: #DCE8DF;
 
 .staff-pos-layout {
   overflow: visible;
+}
+
+.staff-pos-layout {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  min-height: auto;
+  height: auto;
+  background: transparent;
+  overflow: visible;
+}
+
+.staff-pos-header {
+  width: 100%;
+  margin: 0 0 12px;
+  border: 1px solid $border-color;
+  border-radius: 20px;
+  background: $bg-card;
+  box-shadow: 0 12px 28px rgba(31, 111, 74, 0.06);
+
+  .search-container {
+    width: 100%;
+    max-width: none;
+
+    .search-input-wrapper {
+      background: #fff;
+      border-color: $border-color;
+      border-radius: 14px;
+    }
+
+    &.active .search-input-wrapper {
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(31, 111, 74, 0.12);
+    }
+  }
+}
+
+.staff-pos-main {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid $border-color;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(31, 111, 74, 0.06);
 }

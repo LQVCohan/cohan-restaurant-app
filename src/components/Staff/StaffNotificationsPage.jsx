@@ -9,8 +9,10 @@ import {
   CookingPot,
   CreditCard,
   Inbox,
+  Search,
   ShoppingBag,
   Trash2,
+  X,
   UserRound,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
@@ -176,6 +178,7 @@ const StaffNotificationsPage = () => {
     [user, role, canOrder, canKitchen],
   );
   const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [locallyReadIds, setLocallyReadIds] = useState(() => new Set());
   const [locallyDeletedIds, setLocallyDeletedIds] = useState(() => new Set());
 
@@ -186,10 +189,25 @@ const StaffNotificationsPage = () => {
     [generatedNotifications, locallyDeletedIds, locallyReadIds],
   );
   const unreadCount = notifications.filter((item) => item.unread).length;
+  const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredNotifications = notifications.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "unread") return item.unread;
-    return item.type === activeTab || (activeTab === "system" && ["system", "profile", "payroll", "order", "kitchen"].includes(item.type));
+    const matchesTab = activeTab === "all"
+      ? true
+      : activeTab === "unread"
+        ? item.unread
+        : item.type === activeTab || (activeTab === "system" && ["system", "profile", "payroll", "order", "kitchen"].includes(item.type));
+
+    const meta = typeMeta[item.type] || typeMeta.system;
+    const haystack = [
+      item.title,
+      item.description,
+      item.time,
+      meta.label,
+      statusLabels[item.status],
+    ].join(" ").toLowerCase();
+    const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
+
+    return matchesTab && matchesSearch;
   });
 
   const markRead = (id) => setLocallyReadIds((prev) => new Set(prev).add(id));
@@ -201,8 +219,8 @@ const StaffNotificationsPage = () => {
       <section className="staff-notifications__toolbar-card" aria-label="Bộ lọc thông báo">
         <div className="staff-notifications__topline">
           <div className="staff-notifications__heading">
-            <h1 id="staff-notifications-title">Thông báo trong ca</h1>
-            <p>Theo dõi lịch làm, chấm công và các việc cần xử lý.</p>
+            <h1 id="staff-notifications-title">Thông báo</h1>
+            <p>Theo dõi lịch làm, chấm công và việc cần xử lý.</p>
           </div>
           <div className="staff-notifications__actions">
             <span className="staff-notifications__total">{notifications.length} thông báo</span>
@@ -213,6 +231,25 @@ const StaffNotificationsPage = () => {
               <CheckCheck size={16} /> Đánh dấu đã đọc
             </button>
           </div>
+        </div>
+
+        <div className="staff-notifications__search-row">
+          <label className="staff-notifications__search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="search"
+              aria-label="Tìm thông báo"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Tìm thông báo, lịch làm, chấm công..."
+            />
+            {searchTerm ? (
+              <button type="button" aria-label="Xóa tìm kiếm" onClick={() => setSearchTerm("")}>
+                <X size={15} />
+              </button>
+            ) : null}
+          </label>
+          <span className="staff-notifications__filtered-count">{filteredNotifications.length} kết quả</span>
         </div>
 
         <div className="staff-notifications__filters">
@@ -228,7 +265,6 @@ const StaffNotificationsPage = () => {
               </button>
             ))}
           </nav>
-          <span className="staff-notifications__filtered-count">{filteredNotifications.length} đang hiển thị</span>
         </div>
 
         <p className="staff-notifications__local-note">Các thay đổi chỉ áp dụng trong lần sử dụng hiện tại.</p>
@@ -265,7 +301,7 @@ const StaffNotificationsPage = () => {
         }) : (
           <div className="staff-notifications__empty" role="status">
             <Inbox size={34} />
-            <h2>Không có thông báo phù hợp.</h2>
+            <h2>{searchTerm ? "Không tìm thấy thông báo phù hợp." : "Không có thông báo phù hợp."}</h2>
             <p>Hãy kiểm tra lịch cá nhân nếu bạn cần xem ca làm hoặc chấm công.</p>
             <Link to="/staff/schedule">Xem lịch cá nhân</Link>
           </div>

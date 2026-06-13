@@ -11,7 +11,7 @@ vi.mock("@/hooks/useCommunication", () => ({
   default: (...args) => useCommunicationMock(...args),
 }));
 
-const renderWithUser = (ui, user = { restaurantForStaff: "r1" }) =>
+const renderWithUser = (ui, user = { restaurantForStaff: "r1", permissionCodes: ["ai.chatbot.handoff"] }) =>
   render(<AuthContext.Provider value={{ user }}>{ui}</AuthContext.Provider>);
 
 const baseHook = {
@@ -58,7 +58,7 @@ describe("AiHandoffInbox", () => {
   it("renders missing restaurant state", () => {
     mockDualHook();
     renderWithUser(<AiHandoffInbox />, {});
-    expect(screen.getByText("Chưa xác định được nhà hàng để tải yêu cầu handoff.")).toBeInTheDocument();
+    expect(screen.getByText("Chưa xác định được nhà hàng")).toBeInTheDocument();
   });
 
   it("active tab renders notification item and handles missing threadId warning", async () => {
@@ -66,8 +66,8 @@ describe("AiHandoffInbox", () => {
       notifications: [{ id: "n1", type: "ai_chatbot_handoff", payload: {}, createdAt: new Date().toISOString() }],
     });
     renderWithUser(<AiHandoffInbox />);
-    fireEvent.click(screen.getByRole("button", { name: /yêu cầu hỗ trợ từ chatbot/i }));
-    expect(await screen.findByText(/chưa có threadId/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /yêu cầu cần hỗ trợ/i }));
+    expect(await screen.findByText(/thiếu thông tin hội thoại/i)).toBeInTheDocument();
   });
 
   it("resolved tab shows closed handoffs and disables actions", async () => {

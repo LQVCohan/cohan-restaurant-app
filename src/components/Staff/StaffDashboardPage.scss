@@ -668,18 +668,6 @@
   gap: 16px;
 }
 
-.staff-payslips-hero {
-  min-height: auto;
-  padding: clamp(18px, 3vw, 26px);
-  background:
-    radial-gradient(circle at 92% 12%, rgba(31, 111, 74, 0.08), transparent 20rem),
-    linear-gradient(135deg, #ffffff 0%, #F5FBF7 100%);
-}
-
-.staff-payslips-hero h1 {
-  font-size: clamp(1.5rem, 3vw, 1.8rem);
-}
-
 .staff-payslips-empty {
   display: grid;
   gap: 8px;
@@ -703,25 +691,25 @@
   margin: 0 0 6px;
 }
 
-.staff-payslips-hero__copy {
-  min-height: unset;
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+.staff-payslips-page__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 4px 0 2px;
 }
 
-.staff-payslips-hero__copy h1 {
-  margin: 8px 0 6px;
+.staff-payslips-page__header h1 {
+  margin: 0;
   color: var(--staff-text);
-  font-size: clamp(1.5rem, 3vw, 1.8rem);
-  line-height: 1.12;
+  font-size: clamp(1.45rem, 3vw, 1.7rem);
+  line-height: 1.14;
   letter-spacing: -0.035em;
 }
 
-.staff-payslips-hero__copy p {
-  max-width: 54ch;
-  margin: 0;
+.staff-payslips-page__header p {
+  margin: 4px 0 0;
   color: var(--staff-muted);
-  line-height: 1.5;
+  line-height: 1.45;
 }

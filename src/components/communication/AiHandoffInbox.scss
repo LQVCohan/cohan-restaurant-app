@@ -1,20 +1,20 @@
 .ai-handoff-inbox {
-  --ai-bg: #fbf7ef;
-  --ai-surface: #fffdf8;
-  --ai-surface-soft: #f6efe4;
-  --ai-border: rgba(124, 93, 63, 0.14);
-  --ai-border-strong: rgba(124, 93, 63, 0.22);
-  --ai-text: #2f2923;
-  --ai-muted: #7a6b5d;
-  --ai-subtle: #9a8b7c;
-  --ai-accent: #8a623d;
-  --ai-accent-hover: #735032;
-  --ai-accent-soft: #eadccd;
-  --ai-danger: #b84a3c;
-  --ai-danger-bg: #fff0ed;
+  --ai-bg: #F7F8F3;
+  --ai-surface: #FFFFFF;
+  --ai-surface-soft: #F5FBF7;
+  --ai-border: rgba(31, 111, 74, 0.14);
+  --ai-border-strong: rgba(31, 111, 74, 0.24);
+  --ai-text: #1F2A24;
+  --ai-muted: #64746A;
+  --ai-subtle: #7A8B80;
+  --ai-accent: #1F6F4A;
+  --ai-accent-hover: #165C3C;
+  --ai-accent-soft: #EAF5EE;
+  --ai-danger: #B42318;
+  --ai-danger-bg: #FFF5F5;
   --ai-radius-lg: 22px;
-  --ai-shadow-sm: 0 8px 24px rgba(79, 55, 33, 0.08);
-  --ai-shadow-md: 0 18px 48px rgba(79, 55, 33, 0.12);
+  --ai-shadow-sm: 0 8px 24px rgba(31, 111, 74, 0.08);
+  --ai-shadow-md: 0 18px 48px rgba(31, 111, 74, 0.12);
 
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
@@ -25,8 +25,8 @@
   padding: 24px 28px 48px;
   color: var(--ai-text);
   background:
-    radial-gradient(circle at 8% 6%, rgba(234, 220, 205, 0.72), transparent 28rem),
-    linear-gradient(180deg, #fffdf8 0%, var(--ai-bg) 100%);
+    radial-gradient(circle at 8% 6%, rgba(234, 245, 238, 0.72), transparent 28rem),
+    linear-gradient(180deg, #FFFFFF 0%, var(--ai-bg) 100%);
   overflow-x: hidden;
 }
 
@@ -89,7 +89,7 @@
   padding: 8px;
   border: 1px solid var(--ai-border);
   border-radius: 16px;
-  background: rgba(246, 239, 228, 0.62);
+  background: rgba(245, 251, 247, 0.9);
   color: var(--ai-muted);
   font-size: 11px;
   font-weight: 800;
@@ -118,8 +118,8 @@
 
 .ai-handoff-inbox__restaurant select:focus,
 .ai-handoff-inbox__restaurant-select select:focus {
-  border-color: rgba(138, 98, 61, 0.48);
-  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.12);
+  border-color: rgba(31, 111, 74, 0.48);
+  box-shadow: 0 0 0 4px rgba(31, 111, 74, 0.12);
 }
 
 .ai-handoff-inbox__tabs {
@@ -151,7 +151,7 @@
 .ai-handoff-inbox__tabs button.active {
   background: var(--ai-accent);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(138, 98, 61, 0.2);
+  box-shadow: 0 8px 18px rgba(31, 111, 74, 0.2);
 }
 
 .ai-handoff-inbox__list {
@@ -171,7 +171,7 @@
 .ai-handoff-inbox__list::-webkit-scrollbar-thumb,
 .ai-handoff-inbox__content::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(125, 91, 56, 0.24);
+  background: rgba(31, 111, 74, 0.24);
 }
 
 .ai-handoff-inbox__item {
@@ -188,11 +188,11 @@
 }
 
 .ai-handoff-inbox__item:hover {
-  background: rgba(246, 239, 228, 0.5);
+  background: rgba(245, 251, 247, 0.9);
 }
 
 .ai-handoff-inbox__item.active {
-  background: #f7efe5;
+  background: #F5FBF7;
   box-shadow: inset 4px 0 0 var(--ai-accent);
 }
 
@@ -229,8 +229,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ff7a1a;
-  box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.12);
+  background: #1F6F4A;
+  box-shadow: 0 0 0 4px rgba(31, 111, 74, 0.12);
   display: inline-block;
   margin-right: 6px;
 }
@@ -242,7 +242,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: linear-gradient(180deg, #fffdf8 0%, #fbf7ef 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #F7F8F3 100%);
 }
 
 .ai-handoff-inbox__message {
@@ -328,13 +328,13 @@
 }
 
 .ai-handoff-inbox__reply textarea:focus {
-  border-color: rgba(138, 98, 61, 0.48);
-  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.12);
+  border-color: rgba(31, 111, 74, 0.48);
+  box-shadow: 0 0 0 4px rgba(31, 111, 74, 0.12);
 }
 
 .ai-handoff-inbox__reply textarea:disabled {
-  background: #f1ebe2;
-  color: #75685c;
+  background: #F5FBF7;
+  color: #64746A;
   cursor: not-allowed;
 }
 
@@ -383,10 +383,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid rgba(255, 122, 26, 0.2);
+  border: 1px solid rgba(31, 111, 74, 0.2);
   border-radius: 999px;
-  background: rgba(255, 122, 26, 0.08);
-  color: #8a623d;
+  background: rgba(31, 111, 74, 0.08);
+  color: #1F6F4A;
   padding: 5px 10px;
   font-size: 0 !important;
   font-weight: 900;
@@ -395,7 +395,7 @@
 }
 
 .ai-handoff-badge::after {
-  content: "AI hỗ trợ";
+  content: "Hỗ trợ";
   font-size: 11px;
 }
 
@@ -404,7 +404,7 @@
   max-width: 420px;
   border: 1px dashed var(--ai-border-strong);
   border-radius: var(--ai-radius-lg);
-  background: rgba(255, 253, 248, 0.72);
+  background: rgba(245, 251, 247, 0.92);
   color: var(--ai-muted);
   padding: 24px;
   text-align: center;
@@ -432,7 +432,7 @@
   display: block;
   height: 82px;
   border-radius: 18px;
-  background: linear-gradient(90deg, #f4eee6 0%, #fffdf8 48%, #f4eee6 100%);
+  background: linear-gradient(90deg, #EAF5EE 0%, #FFFFFF 48%, #EAF5EE 100%);
   background-size: 220% 100%;
   animation: aiHandoffSkeleton 1.2s ease-in-out infinite;
 }
@@ -515,4 +515,11 @@
 @keyframes aiHandoffSkeleton {
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
+}
+
+.ai-handoff-inbox__reply {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -10px 24px rgba(31, 111, 74, 0.06);
 }

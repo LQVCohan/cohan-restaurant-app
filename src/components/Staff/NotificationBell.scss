@@ -3,7 +3,7 @@ $noti-bg-card: #1f2937;
 $noti-bg-hover: #374151;
 $noti-text-light: #f9fafb;
 $noti-text-muted: #9ca3af;
-$noti-orange: #ff6600;
+$noti-green: #ff6600;
 $noti-border: #374151;
 
 .staff-notification-container {
@@ -79,7 +79,7 @@ $noti-border: #374151;
     .btn-mark-read {
       background: none;
       border: none;
-      color: $noti-orange;
+      color: $noti-green;
       font-size: 12px;
       display: flex;
       align-items: center;
@@ -105,8 +105,8 @@ $noti-border: #374151;
       border-bottom: 2px solid transparent;
       transition: 0.2s;
       &.active {
-        color: $noti-orange;
-        border-bottom-color: $noti-orange;
+        color: $noti-green;
+        border-bottom-color: $noti-green;
       }
       &:hover:not(.active) {
         color: $noti-text-light;
@@ -158,7 +158,7 @@ $noti-border: #374151;
         color: white;
         flex-shrink: 0;
         &.order {
-          background: #3b82f6;
+          background: #1F6F4A;
         }
         &.kitchen {
           background: #10b981;
@@ -187,7 +187,7 @@ $noti-border: #374151;
       .noti-dot {
         width: 8px;
         height: 8px;
-        background-color: $noti-orange;
+        background-color: $noti-green;
         border-radius: 50%;
         margin-top: 6px;
         flex-shrink: 0;
