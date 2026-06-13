@@ -213,8 +213,202 @@ body .modal-container:has(.add-customer-modal) .btn--primary:hover:not(:disabled
   border-color: #17554d;
 }
 
+/* Density fixes after screenshot review */
+.cm-page .management-page-header.density-compact {
+  margin-top: 14px;
+  margin-bottom: 10px;
+  padding: 0.62rem 0.76rem;
+  border-radius: 18px;
+  grid-template-columns: minmax(176px, 204px) minmax(0, 1fr) minmax(154px, max-content);
+}
+
+.cm-page .management-page-header.density-compact .mph-title {
+  margin: 2px 0 3px;
+  font-size: 19px;
+}
+
+.cm-page .management-page-header.density-compact .mph-title > span:last-child {
+  font-size: 0;
+}
+
+.cm-page .management-page-header.density-compact .mph-title > span:last-child::after {
+  content: "Tệp khách";
+  font-size: 19px;
+}
+
+.cm-page .management-page-header.density-compact .mph-title__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.cm-page .management-page-header.density-compact .mph-subtitle {
+  max-width: 24ch;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.cm-page .management-page-header.density-compact .mph-stats-grid {
+  gap: 0.42rem;
+}
+
+.cm-page .management-page-header.density-compact .mph-stat-card {
+  min-height: 48px;
+  padding: 0.42rem 0.5rem;
+  border-radius: 11px;
+}
+
+.cm-page .management-page-header.density-compact .mph-stat-card:first-child {
+  border-color: rgba(31, 106, 96, 0.28);
+  background: #f2faf7;
+}
+
+.cm-page .management-page-header.density-compact .mph-stat-card__icon {
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+}
+
+.cm-page .management-page-header.density-compact .mph-stat-card__label {
+  font-size: 10.5px;
+}
+
+.cm-page .management-page-header.density-compact .mph-stat-card__value {
+  font-size: 16px;
+}
+
+.cm-page .management-page-header.density-compact .mph-controls-row {
+  min-width: 154px;
+  padding-left: 0.65rem;
+  gap: 0.38rem;
+}
+
+.cm-page .management-page-header.density-compact .mph-select,
+.cm-page .management-page-header.density-compact .mph-btn {
+  height: 33px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.cm-page .manager-command-bar {
+  margin-bottom: 12px;
+  padding: 0.7rem 0.78rem;
+}
+
+.cm-page .manager-command-bar .mcb-controls {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.cm-page .manager-command-bar .mcb-left {
+  display: contents;
+}
+
+.cm-page .manager-command-bar .mcb-search {
+  grid-column: 1;
+  grid-row: 1;
+  width: min(420px, 100%);
+  min-width: 0;
+  height: 40px;
+}
+
+.cm-page .manager-command-bar .mcb-right {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: flex-end;
+  align-self: center;
+}
+
+.cm-page .manager-command-bar .mcb-btn {
+  height: 40px;
+  border-radius: 12px;
+}
+
+.cm-page .cm-quick-filters {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  padding: 0;
+}
+
+.cm-page .cm-pill {
+  min-height: 36px;
+  border-radius: 12px;
+  padding: 0 11px;
+  font-size: 12.5px;
+}
+
+.cm-page .cm-layout {
+  padding-bottom: 18px;
+}
+
+.cm-page .cm-main-area {
+  padding-top: 0;
+}
+
+.cm-page .cl-empty-state {
+  min-height: 260px;
+  padding: 44px 22px;
+  border-radius: 20px;
+}
+
+.cm-page .cl-empty-state .cl-empty-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+}
+
+.cm-page .cl-empty-state .cl-empty-title {
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.cm-page .cl-empty-state .cl-empty-desc {
+  font-size: 13px;
+}
+
+@media (max-width: 1180px) {
+  .cm-page .manager-command-bar .mcb-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cm-page .manager-command-bar .mcb-search,
+  .cm-page .manager-command-bar .mcb-right,
+  .cm-page .cm-quick-filters {
+    grid-column: 1;
+  }
+
+  .cm-page .manager-command-bar .mcb-right {
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+
+  .cm-page .cm-quick-filters {
+    grid-row: 3;
+  }
+}
+
 @media (max-width: 900px) {
   .cm-page .cl-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .cm-page .management-page-header.density-compact .mph-title > span:last-child::after {
+    font-size: 18px;
+  }
+
+  .cm-page .manager-command-bar .mcb-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cm-page .manager-command-bar .mcb-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
