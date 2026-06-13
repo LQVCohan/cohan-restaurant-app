@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { Star, Sparkles, UserCheck, Users } from "lucide-react";
 
@@ -20,6 +20,8 @@ import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSe
 
 // Styles
 import "./CustomerManagement.scss";
+
+const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 100];
 
 const GET_CUSTOMER_RANK_SETTINGS = gql`
   query GetCustomerRankSettings($restaurantId: ID!) {
@@ -82,7 +84,6 @@ const GET_CUSTOMER_LIST_SUMMARIES = gql`
 
 const toDateStringVI = (ts) => {
   if (typeof ts === "number" && Number.isFinite(ts)) {
-    // Nếu timestamp là giây (10 số), đổi sang ms
     const ms = String(ts).length === 10 ? ts * 1000 : ts;
     return new Date(ms).toLocaleDateString("vi-VN");
   }
@@ -98,7 +99,6 @@ const toDateStringVI = (ts) => {
 
 const buildTopDishes = (topDishes = []) => (topDishes || []).map((dish) => dish?.dishName).filter(Boolean);
 
-// Định dạng số lượng hiển thị trên nút lọc (VD: 1.2k)
 const formatCompactCount = (n) =>
   new Intl.NumberFormat("vi-VN", {
     notation: "compact",
@@ -165,7 +165,6 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
 /* ================== Main Component ================== */
 
 const CustomerManagement = () => {
-  // --- 1. Hooks & State ---
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -184,7 +183,6 @@ const CustomerManagement = () => {
     getCustomerExportRows,
   } = useUserManagement();
 
-  // UI States
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -193,8 +191,10 @@ const CustomerManagement = () => {
   const [exportError, setExportError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerPageSize, setCustomerPageSize] = useState(30);
+  const [customerPageIndex, setCustomerPageIndex] = useState(0);
+  const [customerPageCursors, setCustomerPageCursors] = useState([null]);
 
-  // Filter & Search States
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
@@ -215,8 +215,10 @@ const CustomerManagement = () => {
     () => normalizeRanks(rankSettingsData?.customerRankSettings?.ranks || []),
     [rankSettingsData],
   );
-
-  // --- 2. Effects ---
+  const customerRankFilter = useMemo(
+    () => getRankBoundsForFilter(activeFilter, rankSettings),
+    [activeFilter, rankSettings],
+  );
 
   const summaryUserIds = useMemo(
     () => [...new Set((customerPageItems || []).map((c) => c?.id).filter(Boolean))],
@@ -236,19 +238,30 @@ const CustomerManagement = () => {
     },
   );
 
-  // Fetch dữ liệu khách hàng khi thay đổi nhà hàng
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(searchQuery), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
-  useEffect(() => {
-    if (!selectedRestaurantId) return;
-    getCustomersPage({
-      restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30, customerRank: getRankBoundsForFilter(activeFilter, rankSettings),
-    });
-  }, [activeFilter, getCustomersPage, rankSettings, searchDebounced, selectedRestaurantId]);
 
-  // --- 3. Handlers ---
+  const loadCustomerPageFromBackend = useCallback(async ({ cursor = null, pageSize = customerPageSize } = {}) => {
+    if (!selectedRestaurantId) return null;
+    return getCustomersPage({
+      restaurantId: selectedRestaurantId,
+      includeGuests: true,
+      search: searchDebounced,
+      customerRank: customerRankFilter,
+      limit: pageSize,
+      cursor: cursor || undefined,
+      append: false,
+    });
+  }, [customerPageSize, customerRankFilter, getCustomersPage, searchDebounced, selectedRestaurantId]);
+
+  useEffect(() => {
+    setCustomerPageIndex(0);
+    setCustomerPageCursors([null]);
+    if (!selectedRestaurantId) return;
+    loadCustomerPageFromBackend({ cursor: null, pageSize: customerPageSize });
+  }, [customerPageSize, customerRankFilter, loadCustomerPageFromBackend, searchDebounced, selectedRestaurantId]);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -265,15 +278,42 @@ const CustomerManagement = () => {
     setSelectedRestaurantId(restaurantId);
     setActiveFilter("all");
     setSelectedCustomer(null);
+    setCustomerPageIndex(0);
+    setCustomerPageCursors([null]);
     switchRestaurant(restaurantId);
-    if (restaurantId) {
-      getCustomersPage({ restaurantId, includeGuests: true, search: searchDebounced, limit: 30 });
-      refetchRankSettings?.({ restaurantId });
-    }
+    if (restaurantId) refetchRankSettings?.({ restaurantId });
   };
 
   const handleCustomerClick = (customer) => {
     setSelectedCustomer(customer);
+  };
+
+  const handleCustomerNextPage = async () => {
+    if (!customerPageInfo?.hasNextPage || !customerPageInfo?.endCursor) return;
+    const nextIndex = customerPageIndex + 1;
+    const nextCursor = customerPageInfo.endCursor;
+    setCustomerPageIndex(nextIndex);
+    setCustomerPageCursors((prev) => {
+      const copy = prev.slice(0, nextIndex + 1);
+      copy[nextIndex] = nextCursor;
+      return copy;
+    });
+    await loadCustomerPageFromBackend({ cursor: nextCursor, pageSize: customerPageSize });
+  };
+
+  const handleCustomerPreviousPage = async () => {
+    if (customerPageIndex <= 0) return;
+    const previousIndex = customerPageIndex - 1;
+    const previousCursor = customerPageCursors[previousIndex] || null;
+    setCustomerPageIndex(previousIndex);
+    await loadCustomerPageFromBackend({ cursor: previousCursor, pageSize: customerPageSize });
+  };
+
+  const handleCustomerPageSizeChange = (size) => {
+    const safeSize = CUSTOMER_PAGE_SIZE_OPTIONS.includes(Number(size)) ? Number(size) : 30;
+    setCustomerPageSize(safeSize);
+    setCustomerPageIndex(0);
+    setCustomerPageCursors([null]);
   };
 
   const handleSaveRankSettings = async () => {
@@ -292,7 +332,9 @@ const CustomerManagement = () => {
   };
 
   const refreshCustomerListAfterCreate = async (createdUser = null) => {
-    await getCustomersPage({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 30 });
+    setCustomerPageIndex(0);
+    setCustomerPageCursors([null]);
+    await loadCustomerPageFromBackend({ cursor: null, pageSize: customerPageSize });
     if (selectedRestaurantId) await refetchSummaries();
 
     if (!createdUser) {
@@ -332,9 +374,6 @@ const CustomerManagement = () => {
     return { visibleInCurrentList: matchesSearch && matchesFilter };
   };
 
-  // --- 4. Data Processing (Memoized) ---
-
-  // Gom nhóm đơn hàng theo UserID để map vào Customer
   const summaryByUserId = useMemo(() => {
     const map = new Map();
     (summaryData?.customerListSummaries || []).forEach((row) => {
@@ -342,7 +381,7 @@ const CustomerManagement = () => {
     });
     return map;
   }, [summaryData]);
-  // Decorate: Gắn đơn hàng gần đây vào thông tin khách hàng
+
   const customersDecorated = useMemo(() => {
     return (customerPageItems || []).map((c) => {
       const uid = c.id;
@@ -371,7 +410,6 @@ const CustomerManagement = () => {
     [customersDecorated],
   );
 
-  // Tính toán số lượng cho các bộ lọc nhanh (Quick Filters)
   const tierFilters = useMemo(() => {
     const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
     const base = sortedAsc[0];
@@ -411,6 +449,20 @@ const CustomerManagement = () => {
   }, [customersDecorated, tierFilters]);
 
   const loading = usersLoading;
+  const customerTotalPages = Math.max(1, Math.ceil(Number(customerTotalCount || 0) / customerPageSize) || 1);
+  const customerPagination = {
+    page: customerPageIndex + 1,
+    totalPages: customerTotalPages,
+    pageSize: customerPageSize,
+    pageSizeOptions: CUSTOMER_PAGE_SIZE_OPTIONS,
+    totalCount: Number(customerTotalCount || 0),
+    hasNextPage: Boolean(customerPageInfo?.hasNextPage),
+    hasPreviousPage: customerPageIndex > 0,
+    isLoading: loading,
+    onNext: handleCustomerNextPage,
+    onPrevious: handleCustomerPreviousPage,
+    onPageSizeChange: handleCustomerPageSizeChange,
+  };
 
   const toCustomerRow = (customer, index) => [
     index + 1,
@@ -518,11 +570,8 @@ const CustomerManagement = () => {
     setRankDraft(ranks);
   }, [rankSettingsData]);
 
-  // --- 5. Render ---
-
   return (
     <div className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""}`}>
-      {/* === HEADER SECTION === */}
       <ManagementPageHeader
         density="compact"
         showTimeWidget={false}
@@ -536,7 +585,7 @@ const CustomerManagement = () => {
         restaurantDisabled={restaurantsLoading || !hasRestaurants}
         restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
         stats={[
-          { id: "total", icon: "👤", label: "Tổng khách", value: customersDecorated.length },
+          { id: "total", icon: "👤", label: "Tổng khách", value: customerTotalCount || customersDecorated.length },
           { id: "online", icon: "🟢", label: "Online", value: onlineCount },
           { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0 },
           { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0 },
@@ -571,43 +620,16 @@ const CustomerManagement = () => {
         ]}
       />
 
-
-      {/* === MAIN CONTENT LAYOUT === */}
       <main className="cm-layout">
         <section className="cm-main-area">
           <CustomerList
             customers={customersVisible}
             loading={loading}
             onCustomerClick={handleCustomerClick}
+            pagination={customerPagination}
           />
-          <div className="text-xs text-slate-500 mt-1">
-            {Number.isFinite(Number(customerTotalCount)) && Number(customerTotalCount) > 0
-              ? `Đang hiển thị ${customersVisible.length} / ${Number(customerTotalCount)} khách`
-              : `Đã tải ${customersVisible.length} khách${customerPageInfo?.hasNextPage ? " — còn dữ liệu, bấm Tải thêm để xem tiếp" : ""}`}
-          </div>
-          {customerPageInfo?.hasNextPage ? (
-            <div className="mt-3 flex justify-center">
-              <button
-                className="cm-btn cm-btn-secondary"
-                onClick={() =>
-                  getCustomersPage({
-                    restaurantId: selectedRestaurantId,
-                    includeGuests: true,
-                    search: searchDebounced,
-                    customerRank: getRankBoundsForFilter(activeFilter, rankSettings),
-                    limit: 30,
-                    cursor: customerPageInfo?.endCursor || undefined,
-                    append: true,
-                  })
-                }
-              >
-                Tải thêm
-              </button>
-            </div>
-          ) : null}
         </section>
 
-        {/* Sidebar Filter Panel (Animated) */}
         <aside className="cm-sidebar">
           {showRightSidebar && (
             <>
@@ -663,9 +685,6 @@ const CustomerManagement = () => {
         </aside>
       </main>
 
-      {/* === MODALS === */}
-
-      {/* Modal gửi khuyến mãi */}
       {showPromotionModal && (
         <PromotionModal
           onClose={() => setShowPromotionModal(false)}
@@ -674,7 +693,6 @@ const CustomerManagement = () => {
         />
       )}
 
-      {/* Modal chi tiết khách hàng */}
       {selectedCustomer && (
         <CustomerDetailModal
           isOpen={Boolean(selectedCustomer)}
@@ -684,7 +702,6 @@ const CustomerManagement = () => {
         />
       )}
 
-      {/* Modal thêm khách hàng mới */}
       {showAddModal && (
         <AddCustomerModal
           onClose={() => setShowAddModal(false)}
@@ -778,7 +795,6 @@ const CustomerManagement = () => {
           </Modal.Footer>
         </Modal>
       )}
-
     </div>
   );
 };
