@@ -13,6 +13,7 @@ import {
 import RecipeCard from "./RecipeCard";
 import RecipeModal from "./RecipeModal";
 import RecipeDetailModal from "./RecipeDetailModal";
+import RecipeDishPickerModal from "./RecipeDishPickerModal";
 import {
   buildRecipeImportPayloads,
   buildRecipeReportFiles,
@@ -24,6 +25,103 @@ import {
 } from "./recipeImportExport";
 import { useNotification } from "@/hooks/useNotification";
 import "./RecipeList.scss";
+
+const getVariantLines = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v.ingredients)) return v.ingredients;
+  if (Array.isArray(v.Ingredients)) return v.Ingredients;
+  if (Array.isArray(v.components)) return v.components;
+  if (Array.isArray(v.recipeItems)) return v.recipeItems;
+  return [];
+};
+
+const normalizeLineQty = (line) => {
+  const q = Number(line?.qty ?? line?.quantify ?? line?.quantity ?? 0);
+  return Number.isFinite(q) ? q : 0;
+};
+
+const normalizeUnitCost = (line) => {
+  const c = Number(line?.costPerBaseUnit ?? line?.unitCost ?? 0);
+  return Number.isFinite(c) ? c : 0;
+};
+
+const calcVariantCost = (variant) => {
+  const lines = getVariantLines(variant);
+  let hasCostLine = false;
+  const total = lines.reduce((sum, line) => {
+    const qty = normalizeLineQty(line);
+    const unitCost = normalizeUnitCost(line);
+    if (qty <= 0 || unitCost <= 0) return sum;
+    hasCostLine = true;
+    return sum + qty * unitCost;
+  }, 0);
+  return { total, hasCostLine };
+};
+
+const calcMinCost = (recipe, ingredientIdSet, canDetectMissingIngredients) => {
+  const variants = Array.isArray(recipe?.servingVariants) ? recipe.servingVariants : [];
+  if (!variants.length) {
+    return { minCost: 0, hasAnyCost: false, estimatedCostValid: true, hasNoReplacementIngredient: false };
+  }
+
+  let estimatedCostValid = true;
+  let hasNoReplacementIngredient = false;
+  const costs = variants
+    .map((variant) => {
+      const lines = getVariantLines(variant);
+      const hasMissingReplacement = canDetectMissingIngredients
+        ? lines.some((line) => {
+            const id = String(line?.ingredientId || "").trim();
+            return id && !ingredientIdSet.has(id);
+          })
+        : false;
+
+      if (hasMissingReplacement) {
+        estimatedCostValid = false;
+        hasNoReplacementIngredient = true;
+        return 0;
+      }
+
+      const result = calcVariantCost(variant);
+      return result.hasCostLine ? result.total : 0;
+    })
+    .filter((n) => n > 0);
+
+  if (!estimatedCostValid) {
+    return { minCost: 0, hasAnyCost: false, estimatedCostValid: false, hasNoReplacementIngredient };
+  }
+
+  if (!costs.length) {
+    return { minCost: 0, hasAnyCost: false, estimatedCostValid: true, hasNoReplacementIngredient: false };
+  }
+
+  return { minCost: Math.min(...costs), hasAnyCost: true, estimatedCostValid: true, hasNoReplacementIngredient: false };
+};
+
+const hasRecipeData = (row) => {
+  if (!row) return false;
+  const variants = Array.isArray(row?.servingVariants) ? row.servingVariants : [];
+  return Boolean(row?.recipeId || row?.hasRecipe || row?._meta?.hasRecipe || variants.length || row?.components?.length || row?.recipeItems?.length);
+};
+
+const getMenuItemPrice = (item, fallback = 0) =>
+  Number(item?.price ?? item?.basePrice ?? item?.menuPrice ?? fallback ?? 0);
+
+const normalizeMenuItemFromDishRow = (row) => {
+  const raw = row?._rawMenuItem || row || {};
+  return {
+    ...raw,
+    id: raw.id || row?.id || row?.menuItemId || "",
+    name: raw.name || row?.name || row?.menuItemName || "Chưa có tên",
+    code: raw.code || raw.sku || row?.code || row?.sku || "",
+    description: raw.description || row?.description || row?.menuItemDescription || "",
+    price: getMenuItemPrice(raw, getMenuItemPrice(row)),
+    basePrice: getMenuItemPrice(raw, getMenuItemPrice(row)),
+    menuPrice: getMenuItemPrice(raw, getMenuItemPrice(row)),
+    status: raw.status || row?.status || "ACTIVE",
+    imageUrl: raw.imageUrl || raw.image || row?.imageUrl || row?.image || "",
+  };
+};
 
 const RecipeList = ({
   restaurantId,
@@ -52,80 +150,12 @@ const RecipeList = ({
 
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDishPicker, setShowDishPicker] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState(null);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [viewingRecipe, setViewingRecipe] = useState(null);
   const [busyAction, setBusyAction] = useState("");
   const fileInputRef = useRef(null);
-
-  const getVariantLines = (v) => {
-    if (!v) return [];
-    if (Array.isArray(v.ingredients)) return v.ingredients;
-    if (Array.isArray(v.Ingredients)) return v.Ingredients;
-    return [];
-  };
-
-  const normalizeLineQty = (line) => {
-    const q = Number(line?.qty ?? line?.quantify ?? line?.quantity ?? 0);
-    return Number.isFinite(q) ? q : 0;
-  };
-
-  const normalizeUnitCost = (line) => {
-    const c = Number(line?.costPerBaseUnit ?? line?.unitCost ?? 0);
-    return Number.isFinite(c) ? c : 0;
-  };
-
-  const calcVariantCost = (variant) => {
-    const lines = getVariantLines(variant);
-    let hasCostLine = false;
-    const total = lines.reduce((sum, line) => {
-      const qty = normalizeLineQty(line);
-      const unitCost = normalizeUnitCost(line);
-      if (qty <= 0 || unitCost <= 0) return sum;
-      hasCostLine = true;
-      return sum + qty * unitCost;
-    }, 0);
-    return { total, hasCostLine };
-  };
-
-  const calcMinCost = (recipe, ingredientIdSet, canDetectMissingIngredients) => {
-    const variants = Array.isArray(recipe?.servingVariants) ? recipe.servingVariants : [];
-    if (!variants.length) {
-      return { minCost: 0, hasAnyCost: false, estimatedCostValid: true, hasNoReplacementIngredient: false };
-    }
-
-    let estimatedCostValid = true;
-    let hasNoReplacementIngredient = false;
-    const costs = variants
-      .map((variant) => {
-        const lines = getVariantLines(variant);
-        const hasMissingReplacement = canDetectMissingIngredients
-          ? lines.some((line) => {
-              const id = String(line?.ingredientId || "").trim();
-              return id && !ingredientIdSet.has(id);
-            })
-          : false;
-
-        if (hasMissingReplacement) {
-          estimatedCostValid = false;
-          hasNoReplacementIngredient = true;
-          return 0;
-        }
-
-        const result = calcVariantCost(variant);
-        return result.hasCostLine ? result.total : 0;
-      })
-      .filter((n) => n > 0);
-
-    if (!estimatedCostValid) {
-      return { minCost: 0, hasAnyCost: false, estimatedCostValid: false, hasNoReplacementIngredient };
-    }
-
-    if (!costs.length) {
-      return { minCost: 0, hasAnyCost: false, estimatedCostValid: true, hasNoReplacementIngredient: false };
-    }
-
-    return { minCost: Math.min(...costs), hasAnyCost: true, estimatedCostValid: true, hasNoReplacementIngredient: false };
-  };
 
   const recipesWithMeta = useMemo(() => {
     const ingredientIdSet = new Set((ingredients || []).map((ing) => String(ing?.id || "")).filter(Boolean));
@@ -148,7 +178,7 @@ const RecipeList = ({
       });
 
       const { minCost, hasAnyCost, estimatedCostValid, hasNoReplacementIngredient } = calcMinCost(r, ingredientIdSet, canDetectMissingIngredients);
-      const hasRecipe = variants.length > 0;
+      const hasRecipe = variants.length > 0 || Boolean(r?.hasRecipe || r?.recipeId);
 
       return {
         ...r,
@@ -168,7 +198,6 @@ const RecipeList = ({
         },
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipes, ingredients]);
 
   const handleSearch = (e) => {
@@ -202,12 +231,22 @@ const RecipeList = ({
 
   const handleAdd = () => {
     setEditingRecipe(null);
+    setSelectedMenuItem(null);
+    setShowDishPicker(true);
+  };
+
+  const handlePickDishForCreate = (row) => {
+    const nextMenuItem = normalizeMenuItemFromDishRow(row);
+    setSelectedMenuItem(nextMenuItem);
+    setEditingRecipe(hasRecipeData(row) ? row : null);
+    setShowDishPicker(false);
     setShowModal(true);
   };
 
   const handleEdit = (menuItemId) => {
     const r = (recipesWithMeta || []).find((x) => x.id === menuItemId);
     setEditingRecipe(r || null);
+    setSelectedMenuItem(r ? normalizeMenuItemFromDishRow(r) : null);
     setShowModal(true);
   };
 
@@ -223,13 +262,14 @@ const RecipeList = ({
   };
 
   const handleSave = async (formData) => {
-    if (editingRecipe) {
+    if (editingRecipe && hasRecipeData(editingRecipe)) {
       await onUpdateRecipe?.(editingRecipe.id, formData);
     } else {
       await onAddRecipe?.(formData);
     }
     setShowModal(false);
     setEditingRecipe(null);
+    setSelectedMenuItem(null);
   };
 
   const handleTemplate = useCallback(() => {
@@ -304,6 +344,7 @@ const RecipeList = ({
   const handleModalClose = () => {
     setShowModal(false);
     setEditingRecipe(null);
+    setSelectedMenuItem(null);
   };
 
   return (
@@ -419,15 +460,21 @@ const RecipeList = ({
         )}
       </div>
 
+      <RecipeDishPickerModal
+        isOpenPicker={showDishPicker}
+        onRequestClose={() => setShowDishPicker(false)}
+        dishRows={recipesWithMeta}
+        onPickDishRow={handlePickDishForCreate}
+      />
+
       <RecipeModal
         isOpen={showModal}
         onClose={handleModalClose}
         onSave={handleSave}
         onDelete={handleDelete}
-        menuItemRecipeRows={recipes}
         recipe={editingRecipe}
-        menuItemName={editingRecipe?.name}
-        restaurantId={restaurantId}
+        menuItem={selectedMenuItem || (editingRecipe ? normalizeMenuItemFromDishRow(editingRecipe) : null)}
+        menuItems={recipesWithMeta}
         ingredients={ingredients}
         currency={activeCurrency}
         usdToVndRate={usdToVndRate}
