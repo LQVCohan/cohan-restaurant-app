@@ -1,0 +1,405 @@
+/* Storage Modal Final 10
+   Fixes the remaining visual mismatches found after testing:
+   1) no empty square in modal header
+   2) category manager modal fully matches the storage theme
+   3) recipe modal summary/error/table/footer feel premium and do not cover content */
+
+:root {
+  --sm10-surface: #fffdf8;
+  --sm10-surface-soft: #f7f3ec;
+  --sm10-stone: #e9e4dc;
+  --sm10-border: rgba(196, 186, 170, 0.78);
+  --sm10-border-soft: rgba(222, 214, 202, 0.82);
+  --sm10-text: #1f2a2f;
+  --sm10-muted: #68716f;
+  --sm10-primary: #2c3741;
+  --sm10-primary-hover: #202b34;
+  --sm10-success: #526f62;
+  --sm10-success-bg: #f1f5f1;
+  --sm10-warm: #8a633f;
+  --sm10-warm-bg: #f7f0e7;
+  --sm10-danger: #ba514b;
+  --sm10-danger-bg: #f9eeee;
+  --sm10-shadow-card: 0 10px 26px rgba(54, 48, 40, 0.055);
+}
+
+/* 1) Header icon: turn the previous empty square into a small, intentional mark. */
+.modal-container.storage-modal-shell .modal-header h3::before,
+.modal-container:has(.qsm-wrapper) .modal-header h3::before,
+.modal-container:has(.ingredient-form-premium) .modal-header h3::before,
+.modal-container:has(.cat-manager-premium) .modal-header h3::before,
+.modal-container:has(.so-container) .modal-header h3::before,
+.modal-container:has(.st-container) .modal-header h3::before,
+.modal-container:has(.recipe-modal-form) .modal-header h3::before,
+.modal-container:has(.recipeDetail) .modal-header h3::before,
+.modal-container:has(.modal-body > .sm-container) .modal-header h3::before {
+  content: "✦" !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 31px !important;
+  height: 31px !important;
+  flex: 0 0 auto !important;
+  border-radius: 11px !important;
+  border: 1px solid rgba(146, 137, 122, 0.34) !important;
+  background: linear-gradient(180deg, #f0ede6, #e6e1d8) !important;
+  color: #65706d !important;
+  font-size: 0.86rem !important;
+  line-height: 1 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+/* 2) Include category manager modal in the same modal shell language. */
+.modal-overlay:has(.cat-manager-premium) {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 253, 248, 0.18), transparent 28rem),
+    rgba(31, 42, 47, 0.42) !important;
+  backdrop-filter: blur(11px) saturate(112%) !important;
+  padding: clamp(18px, 2.2vw, 34px) !important;
+}
+
+.modal-container:has(.cat-manager-premium) {
+  max-width: min(980px, calc(100vw - 34px)) !important;
+  border: 1px solid var(--sm10-border) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(188, 178, 160, 0.13), transparent 18rem),
+    linear-gradient(180deg, #ffffff, var(--sm10-surface)) !important;
+  box-shadow: 0 30px 80px rgba(36, 30, 22, 0.22), 0 12px 30px rgba(36, 30, 22, 0.1) !important;
+  overflow: hidden !important;
+}
+
+.modal-container:has(.cat-manager-premium) .modal-header {
+  min-height: 66px !important;
+  padding: 17px 22px !important;
+  border-bottom: 1px solid var(--sm10-border-soft) !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(247, 243, 236, 0.9)) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .modal-header h3 {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  color: var(--sm10-text) !important;
+  font-size: 1.05rem !important;
+  font-weight: 880 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.modal-container:has(.cat-manager-premium) .btn-close {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--sm10-border-soft) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  color: #68716f !important;
+}
+
+.modal-container:has(.cat-manager-premium) .btn-close:hover {
+  border-color: rgba(186, 81, 75, 0.28) !important;
+  background: var(--sm10-danger-bg) !important;
+  color: var(--sm10-danger) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .modal-body {
+  padding: 22px !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(247, 243, 236, 0.62)) !important;
+  color: var(--sm10-text) !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(146, 137, 122, 0.46) transparent;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium {
+  gap: 18px !important;
+  color: var(--sm10-text) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .form-section.elevated-section,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .form-section.borderless,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .list-container,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metric-card,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .history-timeline {
+  border: 1px solid var(--sm10-border-soft) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+  box-shadow: var(--sm10-shadow-card) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .form-section.elevated-section.bg-indigo,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .form-section.elevated-section.bg-slate {
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.88), rgba(247, 243, 236, 0.72)) !important;
+  border-color: var(--sm10-border-soft) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .im-section-header .icon-box {
+  background: linear-gradient(180deg, #f0ede6, #e6e1d8) !important;
+  border: 1px solid rgba(146, 137, 122, 0.34) !important;
+  color: #65706d !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .im-section-title,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .item-name,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metric-value {
+  color: var(--sm10-text) !important;
+  font-weight: 840 !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .im-section-desc,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .item-meta,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metric-label,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .text-muted,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .timeline-content .time {
+  color: var(--sm10-muted) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .standard-input {
+  min-height: 42px !important;
+  border: 1px solid var(--sm10-border-soft) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  color: var(--sm10-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .standard-input:focus {
+  outline: none !important;
+  border-color: rgba(44, 55, 65, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(44, 55, 65, 0.12) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .btn-save,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .btn-outline-primary {
+  border: 1px solid var(--sm10-primary) !important;
+  border-radius: 14px !important;
+  background: var(--sm10-primary) !important;
+  color: #fff !important;
+  font-weight: 820 !important;
+  box-shadow: 0 12px 24px rgba(32, 43, 52, 0.16) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .btn-save:hover:not(:disabled),
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .btn-outline-primary:hover:not(:disabled) {
+  background: var(--sm10-primary-hover) !important;
+  border-color: var(--sm10-primary-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metrics-grid {
+  gap: 12px !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metric-card.danger {
+  background: var(--sm10-danger-bg) !important;
+  border-color: rgba(186, 81, 75, 0.22) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metric-card.danger .metric-label,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .metric-card.danger .metric-value {
+  color: var(--sm10-danger) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .list-container {
+  max-height: 310px !important;
+  overflow: auto !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .list-item {
+  border-bottom: 1px solid rgba(222, 214, 202, 0.68) !important;
+  background: transparent !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .list-item:hover {
+  background: rgba(247, 243, 236, 0.58) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .badge-sync,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .badge-manual {
+  border: 1px solid rgba(82, 111, 98, 0.18) !important;
+  background: var(--sm10-success-bg) !important;
+  color: var(--sm10-success) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .action-btn {
+  border-radius: 11px !important;
+  color: #65706d !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .pagination-premium {
+  padding: 12px 0 0 !important;
+  border-top: 1px solid var(--sm10-border-soft) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .page-btn,
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .btn-cancel {
+  border: 1px solid var(--sm10-border-soft) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+  color: #4f5958 !important;
+  font-weight: 780 !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .page-btn:hover:not(:disabled),
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .btn-cancel:hover:not(:disabled) {
+  border-color: rgba(146, 137, 122, 0.48) !important;
+  background: #fffdf8 !important;
+  color: var(--sm10-primary) !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .form-actions-premium {
+  position: sticky !important;
+  bottom: -22px !important;
+  z-index: 5 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  padding: 14px 0 0 !important;
+  background: linear-gradient(180deg, transparent, rgba(255, 253, 248, 0.94) 36%) !important;
+}
+
+/* 3) Recipe modal: reduce visual noise and prevent sticky footer from covering content. */
+.modal-container:has(.recipe-modal-form) .modal-body {
+  padding-bottom: 108px !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipe-modal-form > .modal-body {
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(247, 243, 236, 0.72)) !important;
+  padding-bottom: 118px !important;
+}
+
+.modal-container:has(.recipe-modal-form) .modal-footer {
+  padding: 13px 20px !important;
+  min-height: 62px !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipe-section {
+  border-color: var(--sm10-border-soft) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  box-shadow: var(--sm10-shadow-card) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipe-section .section-title {
+  color: var(--sm10-text) !important;
+  font-weight: 880 !important;
+}
+
+/* The old blue/pink summary cards are direct children of the variant section. */
+.modal-container:has(.recipe-modal-form) .recipe-section:nth-of-type(2) > div:nth-of-type(2) > div {
+  background: rgba(247, 243, 236, 0.78) !important;
+  border: 1px solid var(--sm10-border-soft) !important;
+  border-radius: 18px !important;
+  color: var(--sm10-muted) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipe-section:nth-of-type(2) > div:nth-of-type(2) > div strong,
+.modal-container:has(.recipe-modal-form) .recipe-section:nth-of-type(2) > div:nth-of-type(2) > div div {
+  color: var(--sm10-text) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipe-section:nth-of-type(2) > div:nth-of-type(2) > div div[style*="color"] {
+  color: var(--sm10-warm) !important;
+}
+
+.modal-container:has(.recipe-modal-form) span[style*="#eef2ff"] {
+  background: var(--sm10-success-bg) !important;
+  color: var(--sm10-success) !important;
+  border: 1px solid rgba(82, 111, 98, 0.18) !important;
+}
+
+.modal-container:has(.recipe-modal-form) div[style*="#16a34a"] {
+  color: var(--sm10-warm) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .method-tabs {
+  background: rgba(247, 243, 236, 0.78) !important;
+  border: 1px solid var(--sm10-border-soft) !important;
+  border-radius: 18px !important;
+  padding: 8px !important;
+}
+
+.modal-container:has(.recipe-modal-form) .method-tab {
+  border-radius: 13px !important;
+  border-color: var(--sm10-border-soft) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+  color: #4f5958 !important;
+}
+
+.modal-container:has(.recipe-modal-form) .method-tab.active,
+.modal-container:has(.recipe-modal-form) .method-tab[style*="#3b82f6"]:hover {
+  border-color: var(--sm10-primary) !important;
+  background: var(--sm10-primary) !important;
+  color: #fff !important;
+}
+
+.modal-container:has(.recipe-modal-form) .method-tab[style*="#3b82f6"] {
+  color: var(--sm10-primary) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .ingredient-table,
+.modal-container:has(.recipe-modal-form) .ingredient-table thead,
+.modal-container:has(.recipe-modal-form) .ingredient-table-header {
+  border-color: var(--sm10-border-soft) !important;
+  background: rgba(247, 243, 236, 0.78) !important;
+}
+
+.modal-container:has(.recipe-modal-form) tr,
+.modal-container:has(.recipe-modal-form) .ingredient-row,
+.modal-container:has(.recipe-modal-form) .component-row {
+  border-color: var(--sm10-border-soft) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .missing-ingredient,
+.modal-container:has(.recipe-modal-form) .ingredient-warning,
+.modal-container:has(.recipe-modal-form) [style*="Chưa có nguyên liệu bù"],
+.modal-container:has(.recipe-modal-form) [title*="Chưa có nguyên liệu bù"] {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.modal-container:has(.recipe-modal-form) div[style*="#fef2f2"],
+.modal-container:has(.recipe-modal-form) div[style*="#fecaca"] {
+  background: var(--sm10-danger-bg) !important;
+  border: 1px solid rgba(186, 81, 75, 0.22) !important;
+  border-radius: 16px !important;
+  color: var(--sm10-danger) !important;
+}
+
+.modal-container:has(.recipe-modal-form) div[style*="#ef4444"],
+.modal-container:has(.recipe-modal-form) strong[style*="#dc2626"],
+.modal-container:has(.recipe-modal-form) ul[style*="#b91c1c"] {
+  color: var(--sm10-danger) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .variant-footer {
+  background: var(--sm10-success-bg) !important;
+  border: 1px solid rgba(82, 111, 98, 0.18) !important;
+  border-radius: 16px !important;
+}
+
+.modal-container:has(.recipe-modal-form) input[type="checkbox"] {
+  accent-color: var(--sm10-success) !important;
+}
+
+/* More consistent large modal dimensions */
+.modal-container:has(.recipe-modal-form).size-xl {
+  max-width: min(1340px, calc(100vw - 42px)) !important;
+  max-height: min(90vh, 900px) !important;
+}
+
+@media (max-width: 760px) {
+  .modal-container:has(.cat-manager-premium),
+  .modal-container:has(.recipe-modal-form).size-xl {
+    border-radius: 22px !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  .modal-container:has(.cat-manager-premium) .form-grid-2,
+  .modal-container:has(.cat-manager-premium) .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal-container:has(.recipe-modal-form) .recipe-modal-form > .modal-body {
+    padding: 16px 16px 120px !important;
+  }
+}
