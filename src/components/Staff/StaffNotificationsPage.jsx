@@ -198,41 +198,40 @@ const StaffNotificationsPage = () => {
 
   return (
     <div className="staff-notifications staff-page" aria-labelledby="staff-notifications-title">
-      <section className="staff-notifications__hero">
-        <div>
-          <span className="staff-notifications__eyebrow">Thông báo trong ca</span>
-          <h1 id="staff-notifications-title">Thông báo trong ca</h1>
-          <p>Lịch làm, chấm công, phản hồi quản lý và yêu cầu thay đổi ca cho nhân viên nhà hàng.</p>
+      <section className="staff-notifications__toolbar-card" aria-label="Bộ lọc thông báo">
+        <div className="staff-notifications__topline">
+          <div className="staff-notifications__heading">
+            <h1 id="staff-notifications-title">Thông báo trong ca</h1>
+            <p>Theo dõi lịch làm, chấm công và các việc cần xử lý.</p>
+          </div>
+          <div className="staff-notifications__actions">
+            <span className="staff-notifications__total">{notifications.length} thông báo</span>
+            <span className="staff-notifications__unread-pill" aria-label={`${unreadCount} thông báo mới`}>
+              <BellRing size={15} /> {unreadCount} mới
+            </span>
+            <button type="button" onClick={markAllRead} disabled={unreadCount === 0}>
+              <CheckCheck size={16} /> Đánh dấu đã đọc
+            </button>
+          </div>
         </div>
-        <div className="staff-notifications__summary" aria-label={`${unreadCount} thông báo mới`}>
-          <BellRing size={24} />
-          <strong>{unreadCount}</strong>
-          <span>mới</span>
+
+        <div className="staff-notifications__filters">
+          <nav className="staff-notifications__tabs" aria-label="Lọc thông báo nhân viên">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={activeTab === tab.key ? "is-active" : ""}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+          <span className="staff-notifications__filtered-count">{filteredNotifications.length} đang hiển thị</span>
         </div>
-      </section>
 
-      <div className="staff-notifications__local-note" role="note">
-        Những thay đổi này chỉ áp dụng trong lần sử dụng hiện tại.
-      </div>
-
-      <nav className="staff-notifications__tabs" aria-label="Lọc thông báo nhân viên">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={activeTab === tab.key ? "is-active" : ""}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-
-      <section className="staff-notifications__toolbar" aria-label="Tác vụ thông báo">
-        <span>{filteredNotifications.length} thông báo đang hiển thị</span>
-        <button type="button" onClick={markAllRead} disabled={unreadCount === 0}>
-          <CheckCheck size={17} /> Đánh dấu đã đọc
-        </button>
+        <p className="staff-notifications__local-note">Các thay đổi chỉ áp dụng trong lần sử dụng hiện tại.</p>
       </section>
 
       <section className="staff-notifications__list" aria-live="polite">
@@ -257,7 +256,7 @@ const StaffNotificationsPage = () => {
               <div className="staff-notification-card__state">
                 <span className={`staff-notification-card__status is-${item.status}`}>{statusLabels[item.status]}</span>
                 {item.unread ? <span className="staff-notification-card__dot" aria-label="Thông báo mới" /> : null}
-                <button type="button" aria-label={`Ẩn thông báo: ${item.title}`} onClick={() => deleteLocal(item.id)}>
+                <button type="button" aria-label={`Ẩn thông báo: ${item.title}`} title="Ẩn thông báo" onClick={() => deleteLocal(item.id)}>
                   <Trash2 size={17} />
                 </button>
               </div>
@@ -265,9 +264,10 @@ const StaffNotificationsPage = () => {
           );
         }) : (
           <div className="staff-notifications__empty" role="status">
-            <Inbox size={38} />
-            <h2>Chưa có thông báo trong ca</h2>
-            <p>Không có mục nào phù hợp bộ lọc hiện tại.</p>
+            <Inbox size={34} />
+            <h2>Không có thông báo phù hợp.</h2>
+            <p>Hãy kiểm tra lịch cá nhân nếu bạn cần xem ca làm hoặc chấm công.</p>
+            <Link to="/staff/schedule">Xem lịch cá nhân</Link>
           </div>
         )}
       </section>

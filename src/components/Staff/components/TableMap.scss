@@ -1,13 +1,13 @@
 // Variables
-$primary: #3b82f6;
-$success: #10b981;
-$warning: #f59e0b;
-$danger: #ef4444;
-$bg-main: #f3f4f6;
+$primary: #1F6F4A;
+$success: #2F7D57;
+$warning: #6B7F35;
+$danger: #B42318;
+$bg-main: #F7F8F3;
 $bg-card: #ffffff;
-$text-main: #1f2937;
-$text-sub: #6b7280;
-$border-color: #e5e7eb;
+$text-main: #1F2A24;
+$text-sub: #64746A;
+$border-color: #DCE8DF;
 $shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
@@ -104,7 +104,7 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       &.status-empty {
         border-color: $border-color;
         .status-indicator {
-          background: #d1d5db;
+          background: #DCE8DF;
         }
         .table-status-text {
           color: $text-sub;
@@ -112,7 +112,7 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       }
 
       &.status-serving {
-        background: #f0fdf4; // Light Green
+        background: #F5FBF7; // Light Green
         border-color: rgba($success, 0.3);
         .status-indicator {
           background: $success;
@@ -122,22 +122,22 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
           color: $success;
         }
         .guest-count {
-          color: #065f46;
+          color: #165C3C;
         }
       }
 
       &.status-checkout {
-        background: #fffbeb; // Light Yellow
+        background: #EEF7F1; // Light Yellow
         border-color: rgba($warning, 0.4);
         .status-indicator {
           background: $warning;
           box-shadow: 0 0 8px rgba($warning, 0.6);
         }
         .table-status-text {
-          color: #b45309;
+          color: #1F6F4A;
         }
         .guest-count {
-          color: #92400e;
+          color: #165C3C;
         }
       }
 
@@ -266,7 +266,7 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
             &:active .icon-wrap {
               transform: scale(0.9);
-              background: #e5e7eb;
+              background: #DCE8DF;
             }
 
             &.btn-checkout {
@@ -279,6 +279,63 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
               }
             }
           }
+        }
+      }
+    }
+  }
+}
+
+.staff-pos-tables {
+  gap: 12px;
+
+  .floor-selector-scroll .floor-chip.active {
+    background: $primary;
+    border-color: $primary;
+  }
+
+  .table-grid {
+    gap: 10px;
+
+    @media (min-width: 900px) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .table-card-wrapper {
+      border-color: $border-color;
+      border-width: 1px;
+      box-shadow: 0 10px 24px rgba(31, 111, 74, 0.06);
+
+      &.status-empty {
+        background: $bg-card;
+        .status-indicator { background: #DCE8DF; }
+      }
+
+      &.status-serving,
+      &.status-checkout {
+        background: #F5FBF7;
+        border-color: rgba(31, 111, 74, 0.24);
+        .status-indicator {
+          background: $primary;
+          box-shadow: 0 0 0 4px rgba(31, 111, 74, 0.12);
+        }
+        .table-status-text,
+        .guest-count { color: $primary; }
+      }
+
+      .table-card-main {
+        padding: 12px;
+
+        .table-header {
+          margin-bottom: 8px;
+        }
+
+        .table-body {
+          gap: 6px;
+          min-height: 40px;
+        }
+
+        .table-status-text {
+          margin-top: 9px;
         }
       }
     }

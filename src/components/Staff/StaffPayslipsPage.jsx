@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { QUERY_MY_PAYSLIP, QUERY_MY_PAYSLIPS } from "@/hooks/usePayroll";
 import PayrollPayslipModal from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
@@ -24,19 +25,23 @@ const StaffPayslipsPage = () => {
   }, [detailQuery.data]);
 
   return (
-    <div className="staff-dashboard-page" aria-labelledby="staff-payslips-title">
-      <section className="staff-dashboard-hero">
+    <div className="staff-dashboard-page staff-payslips-page" aria-labelledby="staff-payslips-title">
+      <section className="staff-payslips-hero staff-dashboard-section">
         <div className="staff-dashboard-hero__copy">
           <span className="staff-dashboard-badge staff-dashboard-badge--accent">Phiếu lương cá nhân</span>
           <h1 id="staff-payslips-title">Phiếu lương của tôi</h1>
-          <p>Chỉ hiển thị các kỳ lương đã được công bố/chốt, đang chi trả, đã thanh toán hoặc đã khóa.</p>
+          <p>Xem các kỳ lương đã được công bố.</p>
         </div>
       </section>
 
       {listQuery.loading && <div className="staff-dashboard-empty">Đang tải phiếu lương...</div>}
       {listQuery.error && <div className="staff-dashboard-empty">Không tải được phiếu lương. Vui lòng thử lại.</div>}
       {!listQuery.loading && !listQuery.error && rows.length === 0 && (
-        <div className="staff-dashboard-empty">Chưa có phiếu lương được công bố.</div>
+        <section className="staff-payslips-empty" role="status">
+          <h2>Chưa có phiếu lương</h2>
+          <p>Phiếu lương sẽ hiển thị khi kỳ lương được công bố.</p>
+          <Link className="staff-secondary-dashboard-button" to="/staff/schedule">Xem lịch cá nhân</Link>
+        </section>
       )}
 
       {rows.length > 0 && (

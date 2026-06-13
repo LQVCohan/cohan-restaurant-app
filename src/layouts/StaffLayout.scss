@@ -146,13 +146,13 @@
 .staff-shell {
   background:
     radial-gradient(circle at 8% 0%, rgba(47, 125, 87, 0.08), transparent 28rem),
-    linear-gradient(180deg, #f8f6ef 0%, #f7f8f3 100%);
-  color: #2b211a;
+    linear-gradient(180deg, #F7F8F3 0%, #F7F8F3 100%);
+  color: #1F2A24;
 }
 
 .staff-shell__title {
   margin: 0;
-  color: #2b211a;
+  color: #1F2A24;
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   font-weight: 850;
   letter-spacing: -0.035em;

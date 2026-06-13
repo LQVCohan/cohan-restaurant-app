@@ -14,12 +14,12 @@
 }
 
 .staff-schedule-page {
-  --staff-bg: #f7f2e9;
-  --staff-text: #2a1f17;
-  --staff-muted: #7c6a59;
-  --staff-primary: #c7631f;
-  --staff-primary-strong: #9f4516;
-  --staff-primary-soft: #fff0df;
+  --staff-bg: #F8FAF6;
+  --staff-text: #1F2A24;
+  --staff-muted: #64746A;
+  --staff-primary: #1F6F4A;
+  --staff-primary-strong: #165C3C;
+  --staff-primary-soft: #EAF5EE;
   --staff-page-max: 1360px;
   background: transparent;
   padding: 0;
@@ -34,12 +34,12 @@
 .staff-schedule-hero__content p,
 .staff-week-switcher__button,
 .staff-week-switcher__current strong {
-  color: #2a1f17;
+  color: #1F2A24;
 }
 
 .staff-schedule-hero__content p,
 .staff-week-switcher__current span {
-  color: #7c6a59;
+  color: #64746A;
 }
 
 .staff-dashboard-embedded-grid {
@@ -65,9 +65,9 @@
   grid-template-columns: auto minmax(180px, 1fr) repeat(3, minmax(0, 1fr));
   align-items: center;
   padding: 16px;
-  border: 1px solid rgba(188, 116, 36, 0.16);
+  border: 1px solid rgba(31, 111, 74, 0.16);
   border-radius: 22px;
-  background: #fffaf2;
+  background: #f5fbf7;
 }
 
 .staff-embedded-profile-card__avatar {
@@ -76,7 +76,7 @@
   height: 54px;
   place-items: center;
   border-radius: 18px;
-  background: #c7631f;
+  background: #1F6F4A;
   color: #fff;
   font-weight: 860;
 }
@@ -84,7 +84,7 @@
 .staff-embedded-profile-card span,
 .staff-embedded-profile-card small,
 .staff-embedded-profile-card__meta span {
-  color: #7c6a59;
+  color: #64746A;
   font-size: 0.78rem;
   font-weight: 760;
 }
@@ -93,7 +93,7 @@
 .staff-embedded-profile-card__meta strong {
   display: block;
   margin-top: 4px;
-  color: #2a1f17;
+  color: #1F2A24;
   font-size: 0.96rem;
   font-weight: 850;
   overflow-wrap: anywhere;
@@ -103,19 +103,19 @@
   display: grid;
   gap: 6px;
   padding: 14px 15px;
-  border: 1px solid rgba(188, 116, 36, 0.16);
+  border: 1px solid rgba(31, 111, 74, 0.16);
   border-radius: 18px;
-  background: #fffaf2;
+  background: #f5fbf7;
 }
 
 .staff-embedded-notification span {
-  color: #9f4516;
+  color: #165C3C;
   font-size: 0.78rem;
   font-weight: 820;
 }
 
 .staff-embedded-notification strong {
-  color: #2a1f17;
+  color: #1F2A24;
   font-size: 0.95rem;
   line-height: 1.35;
 }
