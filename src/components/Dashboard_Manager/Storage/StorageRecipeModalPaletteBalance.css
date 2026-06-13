@@ -1,0 +1,170 @@
+/* Final palette balance for recipe modal: neutral-first, sage as a restrained signal only. */
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell {
+  --recipe-ink: #202a2f;
+  --recipe-text: #273433;
+  --recipe-muted: #66706d;
+  --recipe-sage-900: #28504a;
+  --recipe-sage-800: #376456;
+  --recipe-sage-700: #5f8d7b;
+  --recipe-sage-100: #e2eee9;
+  --recipe-sage-050: #f6faf7;
+  --recipe-warm-100: #f4f1ea;
+  --recipe-warm-200: #ece5da;
+  --recipe-border: rgba(222, 214, 202, 0.86);
+  --recipe-border-strong: rgba(196, 186, 170, 0.78);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(196, 186, 170, 0.13), transparent 22rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(248, 245, 238, 0.98)) !important;
+  border-color: rgba(222, 214, 202, 0.9) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell > .modal-header,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .modal-footer {
+  border-color: var(--recipe-border) !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .btn-close,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-editor,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tabs,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredient-table {
+  border-color: var(--recipe-border) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(222, 214, 202, 0.14), transparent 15rem),
+    rgba(255, 253, 248, 0.88) !important;
+  box-shadow: 0 14px 34px rgba(31, 42, 47, 0.052), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .section-header {
+  border-bottom-color: rgba(196, 186, 170, 0.56) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section:first-of-type > div[style*="justify-content"] {
+  border-color: var(--recipe-border) !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.86), rgba(247, 244, 237, 0.78)) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-section:first-of-type div[style*="#8a633f"] {
+  color: #8a633f !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tabs {
+  background: rgba(247, 244, 237, 0.72) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tab {
+  color: #5f6664 !important;
+  background: rgba(255, 253, 248, 0.74) !important;
+  border-color: rgba(222, 214, 202, 0.86) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tab:hover:not(.active) {
+  color: #202a2f !important;
+  background: #f4f1ea !important;
+  border-color: rgba(196, 186, 170, 0.82) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .method-tab.active {
+  color: #ffffff !important;
+  background: #24323b !important;
+  border-color: #24323b !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid input,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-variant-grid select,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine input,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine select {
+  border-color: rgba(222, 214, 202, 0.92) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell input:focus,
+body:has(.manager-layout) .modal-container.recipe-modal-shell select:focus,
+body:has(.manager-layout) .modal-container.recipe-modal-shell textarea:focus,
+body:has(.manager-layout) .modal-container.recipe-modal-shell input:focus-visible,
+body:has(.manager-layout) .modal-container.recipe-modal-shell select:focus-visible,
+body:has(.manager-layout) .modal-container.recipe-modal-shell textarea:focus-visible {
+  border-color: rgba(42, 52, 60, 0.48) !important;
+  box-shadow: 0 0 0 4px rgba(42, 52, 60, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-default-check input[type="checkbox"] {
+  accent-color: #376456 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine {
+  background: rgba(255, 253, 248, 0.76) !important;
+  border-bottom-color: rgba(222, 214, 202, 0.78) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine.header {
+  background: linear-gradient(180deg, #f7f4ed, #efe9df) !important;
+  color: #4f5957 !important;
+  border-bottom-color: rgba(196, 186, 170, 0.82) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine:not(.header):hover,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipeIngredientLine:not(.header):focus-within {
+  background: #fffdf8 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-ingredient-picked button,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-remove-line {
+  border-color: rgba(222, 214, 202, 0.86) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+  color: #66706d !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-add-line-btn {
+  border-color: rgba(196, 186, 170, 0.8) !important;
+  background: rgba(247, 244, 237, 0.74) !important;
+  color: #376456 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-add-line-btn:hover {
+  background: #f4f1ea !important;
+  border-color: rgba(95, 141, 123, 0.34) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestDropdown {
+  border-color: rgba(222, 214, 202, 0.9) !important;
+  background: rgba(255, 253, 248, 0.985) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestTitle {
+  background: #f4f1ea !important;
+  color: #4f5957 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestItem:hover {
+  background: #f7f4ed !important;
+  color: #202a2f !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .variant-footer {
+  border-color: rgba(95, 141, 123, 0.24) !important;
+  background: linear-gradient(180deg, rgba(246, 250, 247, 0.86), rgba(242, 240, 233, 0.86)) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .variant-footer .label {
+  color: #376456 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .variant-footer .value {
+  color: #28504a !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .modal-body::-webkit-scrollbar-thumb,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestDropdown::-webkit-scrollbar-thumb {
+  background: rgba(146, 137, 122, 0.38) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .modal-body::-webkit-scrollbar-thumb:hover,
+body:has(.manager-layout) .modal-container.recipe-modal-shell .ingredientSuggestDropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(88, 106, 102, 0.42) !important;
+}
