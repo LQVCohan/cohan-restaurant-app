@@ -6,14 +6,13 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Grid,
   Coffee,
-  MessageSquare,
   UserCircle,
   ShoppingCart,
-  Bell,
   Star,
   X,
   AlertCircle,
@@ -35,13 +34,9 @@ import NotificationBell from "./NotificationBell";
 import TableMap from "./components/TableMap";
 import MenuOrdering from "./components/MenuOrdering";
 import CartBottomSheet from "./components/CartBottomSheet";
-import ContactsView from "./components/ContactsView";
-import NotificationsView from "./components/NotificationsView";
-import StaffProfile from "./components/StaffProfile";
 import { AuthContext } from "../../context/AuthContext";
 import StaffProofCaptureModal from "./components/StaffProofCaptureModal";
 import { buildProofState, requiresProofImage } from "@/utils/orderProofRules";
-import useCommunication from "@/hooks/useCommunication";
 const STAFF_ORDER_NO_PERMISSION_MESSAGE =
   "Vai trò hiện tại không có quyền thực hiện thao tác này.";
 const REQUEST_ORDER_ITEM_VOID = gql`
@@ -360,7 +355,73 @@ const buildCartFromServerOrders = (orders = []) => {
   return result;
 };
 
+const RemoteOrderModal = ({ open, value, onChange, onClose, onCreate, selectedCustomer }) => {
+  if (!open) return null;
+  const isDelivery = value.orderType === "delivery";
+
+  const update = (patch) => onChange((prev) => ({ ...prev, ...patch }));
+
+  return (
+    <div className="remote-order-modal" role="dialog" aria-modal="true" aria-labelledby="remote-order-title" onClick={onClose}>
+      <form className="remote-order-modal__panel" onSubmit={onCreate} onClick={(event) => event.stopPropagation()}>
+        <div className="remote-order-modal__header">
+          <div>
+            <h2 id="remote-order-title">Lên đơn hộ khách</h2>
+            <p>Dùng khi khách đặt qua điện thoại, tin nhắn hoặc cần nhân viên tạo đơn giao đi/mang đi.</p>
+          </div>
+          <button type="button" className="remote-order-modal__close" onClick={onClose} aria-label="Đóng form lên đơn từ xa">
+            <X size={18} />
+          </button>
+        </div>
+
+        {selectedCustomer ? (
+          <div className="remote-order-modal__member-note">
+            Đã điền thông tin từ khách quen: <strong>{selectedCustomer.name}</strong>
+          </div>
+        ) : null}
+
+        <div className="remote-order-modal__grid">
+          <label>
+            <span>Tên khách</span>
+            <input value={value.customerName} onChange={(event) => update({ customerName: event.target.value })} required />
+          </label>
+          <label>
+            <span>Số điện thoại</span>
+            <input value={value.phone} onChange={(event) => update({ phone: event.target.value })} required />
+          </label>
+          <label>
+            <span>Email nếu có</span>
+            <input type="email" value={value.email} onChange={(event) => update({ email: event.target.value })} />
+          </label>
+          <fieldset className="remote-order-modal__choice">
+            <legend>Hình thức nhận đơn</legend>
+            <button type="button" className={isDelivery ? "is-active" : ""} onClick={() => update({ orderType: "delivery" })}>Giao tận nơi</button>
+            <button type="button" className={!isDelivery ? "is-active" : ""} onClick={() => update({ orderType: "takeaway", address: "" })}>Khách đến lấy</button>
+          </fieldset>
+          {isDelivery ? (
+            <label className="remote-order-modal__full">
+              <span>Địa chỉ giao hàng</span>
+              <input value={value.address} onChange={(event) => update({ address: event.target.value })} required={isDelivery} />
+            </label>
+          ) : null}
+          <label className="remote-order-modal__full">
+            <span>Ghi chú của khách</span>
+            <textarea value={value.customerNote} onChange={(event) => update({ customerNote: event.target.value })} rows={3} />
+          </label>
+        </div>
+
+        <div className="remote-order-modal__actions">
+          <button type="button" onClick={onClose}>Hủy</button>
+          <button type="submit" className="is-primary">Tạo đơn</button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+
 export default function StaffOrdering() {
+  const navigate = useNavigate();
   const { user, restaurants } = useContext(AuthContext) || {};
   const restaurantId = user?.restaurantForStaff || restaurants?.[0]?.id || null;
 
@@ -368,6 +429,13 @@ export default function StaffOrdering() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedCustomerForRemote, setSelectedCustomerForRemote] = useState(null);
+  const [menuSearchQuery, setMenuSearchQuery] = useState("");
+  const [menuCategoryFilter, setMenuCategoryFilter] = useState("all");
+  const [menuServingFilter, setMenuServingFilter] = useState("all");
+  const [menuAvailabilityFilter, setMenuAvailabilityFilter] = useState("available");
+  const [menuPriceFilter, setMenuPriceFilter] = useState("all");
+  const [isRemoteOrderModalOpen, setIsRemoteOrderModalOpen] = useState(false);
   const [tables, setTables] = useState([]);
   const [selectedTableId, setSelectedTableId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
@@ -377,7 +445,6 @@ export default function StaffOrdering() {
   const [tableCustomerMap, setTableCustomerMap] = useState({});
   const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
   const [proofCaptureItem, setProofCaptureItem] = useState(null);
-  const [focusChatThreadId, setFocusChatThreadId] = useState(null);
   const [orderMode, setOrderMode] = useState("dine_in");
   const [remoteOrderInfo, setRemoteOrderInfo] = useState({
     customerName: "",
@@ -420,6 +487,7 @@ export default function StaffOrdering() {
     setRemoteDiscountPreviewKey("");
   }, []);
   const searchTimerRef = useRef(null);
+  const customerSearchRef = useRef(null);
   const remoteSubmitKeyRef = useRef(null);
   const [requestOrderItemVoid] = useMutation(REQUEST_ORDER_ITEM_VOID);
   const [createOrderForTable, { loading: savingOrder }] = useMutation(
@@ -496,8 +564,6 @@ export default function StaffOrdering() {
     skip: !user?.id,
     fetchPolicy: "network-only",
   });
-  const { openThread } = useCommunication({ restaurantId });
-
   useEffect(() => {
     if (!tablesData?.tables) return;
     const mapped = tablesData.tables.map((t) => ({
@@ -778,6 +844,23 @@ export default function StaffOrdering() {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, [searchQuery, loadCustomers, showSearchResults]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!customerSearchRef.current?.contains(event.target)) {
+        setShowSearchResults(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setShowSearchResults(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
   const reloadSelectedTableOrders = async () => {
     if (!selectedTable || !restaurantId) return;
 
@@ -936,11 +1019,20 @@ export default function StaffOrdering() {
     }
   };
   const handleAssignCustomer = async (customer) => {
-    if (!ensureStaffOrderPermission(staffOrderPermissions.canAssignCustomer)) {
+    setSelectedCustomerForRemote(customer);
+    setRemoteOrderInfo((prev) => ({
+      ...prev,
+      customerName: customer.name || prev.customerName,
+      phone: customer.phone || prev.phone,
+      email: customer.email || prev.email,
+    }));
+    setSearchQuery("");
+    setShowSearchResults(false);
+
+    if (!selectedTableId || !selectedTable || !restaurantId) {
       return;
     }
-    if (!selectedTableId || !selectedTable || !restaurantId) {
-      alert("Vui lòng chọn 1 bàn trước khi gán khách!");
+    if (!ensureStaffOrderPermission(staffOrderPermissions.canAssignCustomer)) {
       return;
     }
 
@@ -1450,6 +1542,21 @@ export default function StaffOrdering() {
     }
   };
 
+  const handleCreateRemoteOrderContext = (event) => {
+    event.preventDefault();
+    if (!remoteOrderInfo.customerName.trim() || !remoteOrderInfo.phone.trim()) {
+      alert("Vui lòng nhập tên khách và số điện thoại.");
+      return;
+    }
+    if (remoteOrderInfo.orderType === "delivery" && !remoteOrderInfo.address.trim()) {
+      alert("Đơn giao tận nơi cần địa chỉ giao hàng.");
+      return;
+    }
+    setOrderMode("remote");
+    setIsRemoteOrderModalOpen(false);
+    alert("Đã tạo đơn từ xa. Bạn có thể thêm món cho khách.");
+  };
+
   const pendingCount = activeCart.filter((c) => c.status === "pending").length;
   const linkedTableCustomer = selectedTable
     ? tableCustomerMap[selectedTable.id]
@@ -1463,14 +1570,12 @@ export default function StaffOrdering() {
   const navTabs = [
     { key: "tables", label: "Bàn", icon: Grid },
     { key: "menu", label: "Menu", icon: Coffee },
-    { key: "contacts", label: "Liên lạc", icon: MessageSquare },
-    { key: "notifications", label: "Thông báo", icon: Bell },
-    { key: "profile", label: "Cá nhân", icon: UserCircle },
   ];
   return (
     <div className={`staff-pos-layout staff-pos-layout--${activeTab}`}>
       <header className="staff-pos-header">
         <div
+          ref={customerSearchRef}
           className={`search-container ${showSearchResults ? "active" : ""}`}
         >
           <div className="search-input-wrapper">
@@ -1486,7 +1591,7 @@ export default function StaffOrdering() {
               onFocus={() => setShowSearchResults(true)}
             />
             {searchQuery && (
-              <button className="btn-clear" onClick={() => setSearchQuery("")}>
+              <button type="button" className="btn-clear" onClick={() => { setSearchQuery(""); setShowSearchResults(false); }} aria-label="Xóa tìm kiếm khách quen">
                 <X size={16} />
               </button>
             )}
@@ -1495,6 +1600,9 @@ export default function StaffOrdering() {
           {showSearchResults && (
             <div className="search-results-dropdown">
               <div className="dropdown-title">Khách hàng thành viên</div>
+              {searchQuery.trim().length < 2 && (
+                <div className="search-state">Nhập ít nhất 2 ký tự để tìm khách quen.</div>
+              )}
               {customerSearchState.loading && (
                 <div className="search-state">Đang tải gợi ý...</div>
               )}
@@ -1506,7 +1614,7 @@ export default function StaffOrdering() {
                   </div>
                 )}
               <div className="results-list">
-                {customerResults.map((cus) => (
+                {searchQuery.trim().length >= 2 && customerResults.map((cus) => (
                   <div
                     key={cus.id}
                     className="search-result-item"
@@ -1547,22 +1655,15 @@ export default function StaffOrdering() {
 
         <div className="header-actions">
           <NotificationBell
-            onViewAll={() => setActiveTab("notifications")}
+            onViewAll={() => navigate("/staff/notifications")}
             restaurantId={restaurantId}
             onOpenThread={(threadId) => {
-              setFocusChatThreadId(threadId);
-              setActiveTab("contacts");
+              navigate(`/staff/contacts?threadId=${encodeURIComponent(threadId)}`);
             }}
           />
         </div>
       </header>
 
-      {showSearchResults && (
-        <div
-          className="search-overlay"
-          onClick={() => setShowSearchResults(false)}
-        ></div>
-      )}
 
       <div className="staff-pos-main">
         {(tablesLoading || menuLoading) && (
@@ -1625,7 +1726,7 @@ export default function StaffOrdering() {
                     <span>Thao tác nhanh</span>
                     <h2>Chọn bàn để thao tác</h2>
                   </div>
-                  <p className="table-sidepanel__empty-copy">Chọn một bàn trên sơ đồ để mở menu, xem order hoặc yêu cầu thanh toán.</p>
+                  <p className="table-sidepanel__empty-copy">Chọn một bàn trên sơ đồ để mở menu, xem đơn hoặc yêu cầu thanh toán.</p>
                   <div className="table-sidepanel__summary">
                     <span>Đang phục vụ</span>
                     <strong>{servingTablesCount}/{tables.length || 0} bàn</strong>
@@ -1652,120 +1753,37 @@ export default function StaffOrdering() {
               </button>
             </div>
             {orderMode === "remote" && (
-              <div className="staff-remote-order-form">
-                <input
-                  placeholder="Tên khách"
-                  value={remoteOrderInfo.customerName}
-                  onChange={(e) =>
-                    setRemoteOrderInfo((p) => ({
-                      ...p,
-                      customerName: e.target.value,
-                    }))
-                  }
-                />
-                <input
-                  placeholder="Số điện thoại"
-                  value={remoteOrderInfo.phone}
-                  onChange={(e) =>
-                    setRemoteOrderInfo((p) => ({ ...p, phone: e.target.value }))
-                  }
-                />
-                <input
-                  placeholder="Email (nếu có)"
-                  value={remoteOrderInfo.email}
-                  onChange={(e) =>
-                    setRemoteOrderInfo((p) => ({ ...p, email: e.target.value }))
-                  }
-                />
-                <input
-                  placeholder="Địa chỉ giao hàng"
-                  value={remoteOrderInfo.address}
-                  onChange={(e) =>
-                    setRemoteOrderInfo((p) => ({
-                      ...p,
-                      address: e.target.value,
-                    }))
-                  }
-                />
-                <textarea
-                  placeholder="Ghi chú khách"
-                  value={remoteOrderInfo.customerNote}
-                  onChange={(e) =>
-                    setRemoteOrderInfo((p) => ({
-                      ...p,
-                      customerNote: e.target.value,
-                    }))
-                  }
-                />
-                <div className="remote-inline-fields">
-                  <select
-                    value={remoteOrderInfo.orderType}
-                    onChange={(e) =>
-                      setRemoteOrderInfo((p) => ({
-                        ...p,
-                        orderType: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="delivery">delivery</option>
-                    <option value="takeaway">takeaway</option>
-                  </select>
-                  <select
-                    value={remoteOrderInfo.channel}
-                    onChange={(e) =>
-                      setRemoteOrderInfo((p) => ({
-                        ...p,
-                        channel: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="phone">phone</option>
-                    <option value="chat">chat</option>
-                    <option value="web">web</option>
-                    <option value="other">other</option>
-                  </select>
-                  <input
-                    type="datetime-local"
-                    value={remoteOrderInfo.requestedAt}
-                    onChange={(e) =>
-                      setRemoteOrderInfo((p) => ({
-                        ...p,
-                        requestedAt: e.target.value,
-                      }))
-                    }
-                  />
+              <section className="staff-remote-order-queue" aria-labelledby="staff-remote-queue-title">
+                <div>
+                  <span>Đơn từ xa</span>
+                  <h3 id="staff-remote-queue-title">Đơn từ xa chờ xác nhận</h3>
+                  <p>Khi khách đặt giao đi hoặc mang đi, đơn sẽ xuất hiện tại đây để nhân viên tiếp nhận.</p>
                 </div>
-                <button
-                  type="button"
-                  className="btn-open-remote-chat"
-                  onClick={async () => {
-                    if (!restaurantId || !remoteOrderInfo.customerName.trim()) {
-                      alert("Nhập tên khách trước khi mở chat.");
-                      return;
-                    }
-                    const { data } = await openThread({
-                      variables: {
-                        input: {
-                          restaurantId,
-                          channel: "order",
-                          subject: `Remote order - ${remoteOrderInfo.customerName.trim()}`,
-                        },
-                      },
-                    });
-                    const threadId = data?.openChatThread?.id;
-                    if (threadId) {
-                      setFocusChatThreadId(threadId);
-                      setActiveTab("contacts");
-                    }
-                  }}
-                >
-                  Nhắn khách
+                <button type="button" className="btn-open-remote-order" onClick={() => setIsRemoteOrderModalOpen(true)}>
+                  Lên đơn hộ khách
                 </button>
-              </div>
+                <div className="staff-remote-order-empty" role="status">
+                  Chưa có đơn từ xa chờ xác nhận.
+                </div>
+              </section>
+            )}
+            {orderMode === "dine_in" && (
+              <button type="button" className="btn-open-remote-order btn-open-remote-order--inline" onClick={() => { setOrderMode("remote"); setIsRemoteOrderModalOpen(true); }}>
+                Tạo đơn từ xa
+              </button>
             )}
             <MenuOrdering
               onAdd={handleAddToCart}
-              searchQuery={searchQuery}
+              menuSearchQuery={menuSearchQuery}
+              setMenuSearchQuery={setMenuSearchQuery}
+              menuCategoryFilter={menuCategoryFilter}
+              setMenuCategoryFilter={setMenuCategoryFilter}
+              menuServingFilter={menuServingFilter}
+              setMenuServingFilter={setMenuServingFilter}
+              menuAvailabilityFilter={menuAvailabilityFilter}
+              setMenuAvailabilityFilter={setMenuAvailabilityFilter}
+              menuPriceFilter={menuPriceFilter}
+              setMenuPriceFilter={setMenuPriceFilter}
               selectedTable={cartContextTable}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
@@ -1775,23 +1793,6 @@ export default function StaffOrdering() {
             />
           </>
         )}
-        {activeTab === "contacts" && (
-          <ContactsView
-            restaurantId={restaurantId}
-            focusThreadId={focusChatThreadId}
-            onFocusHandled={() => setFocusChatThreadId(null)}
-          />
-        )}
-        {activeTab === "notifications" && (
-          <NotificationsView
-            restaurantId={restaurantId}
-            onOpenThread={(threadId) => {
-              setFocusChatThreadId(threadId);
-              setActiveTab("contacts");
-            }}
-          />
-        )}
-        {activeTab === "profile" && <StaffProfile />}
       </div>
 
       {(activeTab === "menu" || activeTab === "tables") && cartContextTable && (
@@ -1853,6 +1854,15 @@ export default function StaffOrdering() {
         ))}
       </nav>
 
+      <RemoteOrderModal
+        open={isRemoteOrderModalOpen}
+        value={remoteOrderInfo}
+        onChange={setRemoteOrderInfo}
+        onClose={() => setIsRemoteOrderModalOpen(false)}
+        onCreate={handleCreateRemoteOrderContext}
+        selectedCustomer={selectedCustomerForRemote}
+      />
+
       {isCartOpen && (
         <CartBottomSheet
           cart={activeCart}
@@ -1881,7 +1891,7 @@ export default function StaffOrdering() {
           )}
           sending={orderMode === "remote" ? savingRemoteOrder : savingOrder}
           sendActionLabel={
-            orderMode === "remote" ? "Gửi POS xác nhận" : "Gửi Bếp"
+            orderMode === "remote" ? "Gửi xác nhận" : "Gửi Bếp"
           }
           discountEnabled={orderMode === "remote"}
           couponCode={remoteCouponCode}

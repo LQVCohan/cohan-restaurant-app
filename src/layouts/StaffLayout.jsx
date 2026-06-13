@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import "./StaffLayout.scss";
@@ -20,16 +20,28 @@ const getRoleLabel = (user, normalizedRole) => {
   return getStaffRoleDisplayLabel(user.role || user.roleName || user.roleSlug || normalizedRole) || normalizedRole;
 };
 
+const getRestaurantLabel = (user, restaurants) => {
+  return user?.restaurantName || user?.restaurant?.name || restaurants?.[0]?.name || "Cơ sở đang làm việc";
+};
+
 const isActivePath = (location, target) => {
   return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));
 };
 
+const navGroups = [
+  { label: "Công việc", keys: ["/staff/dashboard", "/staff/schedule", "/staff/orders", "/staff/kitchen", "/staff/contacts"] },
+  { label: "Tài khoản", keys: ["/staff/profile", "/staff/notifications", "/staff/payslips", "/staff/settings"] },
+  { label: "Hỗ trợ", keys: ["/staff/ai-handoff"] },
+];
+
 const StaffLayout = ({ children }) => {
-  const { user } = useContext(AuthContext);
+  const { user, restaurants } = useContext(AuthContext);
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
+  const restaurantLabel = getRestaurantLabel(user, restaurants);
 
   const navItems = useMemo(
     () => [
@@ -37,10 +49,12 @@ const StaffLayout = ({ children }) => {
       { label: "Lịch cá nhân", to: "/staff/schedule" },
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
+      { label: "Liên lạc", to: "/staff/contacts" },
       { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff" },
       { label: "Phiếu lương", to: "/staff/payslips" },
       { label: "Đơn nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
+      { label: "Cài đặt", to: "/staff/settings" },
     ],
     [],
   );
@@ -68,9 +82,20 @@ const StaffLayout = ({ children }) => {
               <div className="staff-shell__identity-copy">
                 <div>{displayName || "Nhân viên"}</div>
                 <span>{roleLabel || "Chưa xác định vai trò"}</span>
-                <small>Sẵn sàng / Theo lịch</small>
+                <small>{restaurantLabel} • Sẵn sàng</small>
               </div>
             </div>
+            <button
+              type="button"
+              className="staff-shell__menu-button"
+              aria-label="Mở menu nhân viên"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((value) => !value)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
           </div>
 
           <nav aria-label="Điều hướng nhân viên" className="staff-shell__nav">
@@ -90,6 +115,34 @@ const StaffLayout = ({ children }) => {
               );
             })}
           </nav>
+
+          {menuOpen ? (
+            <div className="staff-shell__drawer" role="dialog" aria-label="Menu nhân viên">
+              {navGroups.map((group) => {
+                const items = visibleNavItems.filter((item) => group.keys.includes(item.to));
+                if (!items.length) return null;
+                return (
+                  <section key={group.label} className="staff-shell__drawer-group">
+                    <h2>{group.label}</h2>
+                    {items.map((item) => {
+                      const active = isActivePath(location, item.to);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          className={"staff-shell__drawer-link " + (active ? "is-active" : "")}
+                          aria-current={active ? "page" : undefined}
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </section>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </header>
 

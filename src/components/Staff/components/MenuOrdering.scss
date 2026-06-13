@@ -465,3 +465,80 @@ $shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
     opacity: 1;
   }
 }
+
+/* Menu search/filter refinements */
+.staff-pos-menu {
+  .table-status-banner,
+  .customer-vip-card,
+  .customer-empty-hint,
+  .menu-item-card {
+    border-color: #DDE6DF;
+    box-shadow: 0 8px 18px rgba(31, 42, 36, 0.05);
+  }
+
+  .menu-filter-panel {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #DDE6DF;
+    border-radius: 16px;
+    background: #fff;
+  }
+
+  .menu-search-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid #DDE6DF;
+    border-radius: 13px;
+    background: #F8FAF6;
+    color: #64746A;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #1F2A24;
+      font-size: 0.95rem;
+    }
+
+    button {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid #DDE6DF;
+      border-radius: 10px;
+      background: #fff;
+      color: #64746A;
+    }
+  }
+
+  .category-scroll--secondary .filter-chip {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .category-scroll .filter-chip:not(.active) {
+    background: #fff;
+    color: #64746A;
+    border-color: #DDE6DF;
+    box-shadow: none;
+  }
+
+  .menu-grid .menu-item-card {
+    border-color: #DDE6DF;
+
+    &:hover:not(.out-of-stock) {
+      border-color: rgba(31, 111, 74, 0.28);
+      box-shadow: 0 12px 22px rgba(31, 111, 74, 0.08);
+    }
+
+    .item-content .item-price { color: #1F2A24; }
+    .item-footer .stock-badge.in { background: #F4F6F2; color: #64746A; }
+  }
+}
