@@ -69,6 +69,7 @@
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
+  scroll-padding-bottom: 18px !important;
   background: linear-gradient(180deg, #ffffff 0%, #fffaf4 100%) !important;
 }
 
@@ -102,19 +103,28 @@
 }
 
 .ai-chatbot-panel:has(.ai-chatbot-menu-cards) > .ai-chatbot-action-cards,
-.ai-chatbot-panel:has(.ai-chatbot-menu-cards) > .ai-chatbot-quick-replies {
+.ai-chatbot-panel:has(.ai-chatbot-menu-cards) > .ai-chatbot-quick-replies,
+.ai-chatbot-panel:has(.ai-chatbot-menu-cards) > .ai-chatbot-actions:not(.ai-chatbot-action-cards),
+.ai-chatbot-panel:has(.ai-chatbot-menu-detail) > .ai-chatbot-action-cards,
+.ai-chatbot-panel:has(.ai-chatbot-menu-detail) > .ai-chatbot-quick-replies,
+.ai-chatbot-panel:has(.ai-chatbot-menu-detail) > .ai-chatbot-actions:not(.ai-chatbot-action-cards) {
+  display: none !important;
+}
+
+.ai-chatbot-panel:has(> .ai-chatbot-action-cards) > .ai-chatbot-quick-replies,
+.ai-chatbot-panel:has(> .ai-chatbot-action-cards) > .ai-chatbot-actions:not(.ai-chatbot-action-cards) {
   display: none !important;
 }
 
 .ai-chatbot-actions,
 .ai-chatbot-quick-replies {
   flex: 0 0 auto !important;
-  max-height: 118px !important;
+  max-height: 84px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   flex-wrap: wrap !important;
-  gap: 8px !important;
-  padding: 0 16px 12px !important;
+  gap: 7px !important;
+  padding: 0 16px 10px !important;
   background: linear-gradient(180deg, rgba(255, 250, 244, 0), #fffaf4 30%) !important;
 }
 
@@ -132,6 +142,18 @@
   color: #ff6600 !important;
 }
 
+.ai-chatbot-action-cards {
+  max-height: 58px !important;
+}
+
+.ai-chatbot-action-card {
+  min-width: 0 !important;
+  max-width: calc(100% - 2px) !important;
+  min-height: 40px !important;
+  padding: 8px 12px !important;
+  border-radius: 999px !important;
+}
+
 .ai-chatbot-action-card.primary {
   background: linear-gradient(135deg, #fff1e5, #fff7ed) !important;
   border-color: rgba(255, 102, 0, 0.28) !important;
@@ -142,16 +164,22 @@
 }
 
 .ai-chatbot-action-card__icon {
-  background: #fff7ed !important;
-  color: #ff6600 !important;
+  display: none !important;
+}
+
+.ai-chatbot-action-card__text {
+  min-width: 0 !important;
 }
 
 .ai-chatbot-action-card__text strong {
-  color: #1f1914 !important;
+  color: #8a3d05 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .ai-chatbot-action-card__text small {
-  color: #766b61 !important;
+  display: none !important;
 }
 
 .ai-chatbot-context {
