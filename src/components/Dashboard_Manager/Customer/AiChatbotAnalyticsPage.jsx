@@ -111,6 +111,14 @@ const signalLevelLabels = {
   high: "Ưu tiên cao",
 };
 
+const knowledgeTabLabels = {
+  knowledge: "Tri thức",
+  suggestions: "Gợi ý",
+  feedback: "Phản hồi",
+  safety: "An toàn",
+  evaluation: "Kiểm thử",
+};
+
 const signalLevelClass = (level) => {
   const normalized = String(level || "").toLowerCase();
   if (["critical", "danger", "high"].includes(normalized)) {
@@ -162,6 +170,40 @@ const qualityItemMeta = (item) => {
   }
   if (raw.includes("knowledge")) return "Nguồn: Thiếu nội dung phù hợp";
   return "Cần quản lý rà soát";
+};
+
+const reviewActionFor = (item) => {
+  const raw = `${item?.type || ""} ${item?.label || ""} ${item?.detail || ""}`.toLowerCase();
+
+  if (item?.type === "pending_suggestion" || raw.includes("suggestion") || raw.includes("knowledge")) {
+    return {
+      tab: "suggestions",
+      label: "Duyệt gợi ý",
+      description: "Mở mục Gợi ý để duyệt thành tri thức hoặc bỏ qua nếu không phù hợp.",
+    };
+  }
+
+  if (raw.includes("safety") || raw.includes("block")) {
+    return {
+      tab: "safety",
+      label: "Xem quy tắc",
+      description: "Mở mục An toàn để kiểm tra quy tắc chặn hoặc phạm vi trả lời.",
+    };
+  }
+
+  if (item?.type === "fallback_response" || raw.includes("feedback") || raw.includes("fallback")) {
+    return {
+      tab: "feedback",
+      label: "Xem phản hồi",
+      description: "Mở mục Phản hồi để đánh dấu đã xem hoặc chuyển thành gợi ý tri thức.",
+    };
+  }
+
+  return {
+    tab: "knowledge",
+    label: "Bổ sung tri thức",
+    description: "Mở kho tri thức để thêm hoặc chỉnh nội dung chatbot có thể dùng.",
+  };
 };
 
 function EmptyReport() {
@@ -234,6 +276,48 @@ export default function AiChatbotAnalyticsPage() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [reviewModalOpen]);
+
+  const openKnowledgeTarget = (item) => {
+    const action = reviewActionFor(item);
+    const query = {
+      tab: action.tab,
+      focusId: item?.id || "",
+      source: item?.type || "quality-review",
+    };
+
+    setReviewModalOpen(false);
+    sessionStorage.setItem("aiChatbotKnowledgeTarget", JSON.stringify(query));
+    window.dispatchEvent(
+      new CustomEvent("manager:navigate", {
+        detail: {
+          page: "ai-chatbot-knowledge",
+          query,
+          source: "ai-analytics-review",
+        },
+      }),
+    );
+
+    let attempts = 0;
+    const clickTargetTab = () => {
+      const buttons = Array.from(document.querySelectorAll(".ai-admin-tabs button"));
+      const target = buttons.find(
+        (button) => button.textContent?.trim() === knowledgeTabLabels[action.tab],
+      );
+
+      if (target) {
+        target.click();
+        document
+          .querySelector(".ai-admin-tab-panel")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      attempts += 1;
+      if (attempts <= 12) window.setTimeout(clickTargetTab, 120);
+    };
+
+    window.setTimeout(clickTargetTab, 120);
+  };
 
   return (
     <section className="customer-analytics-page ai-admin-page ai-admin-page--analytics">
@@ -345,10 +429,15 @@ export default function AiChatbotAnalyticsPage() {
               </div>
               <div className="ai-admin-review-strip__items">
                 {reviewPreviewItems.map((item) => (
-                  <div key={item.id} className="ai-admin-review-strip__item">
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="ai-admin-review-strip__item"
+                    onClick={() => openKnowledgeTarget(item)}
+                  >
                     <strong>{qualityItemTitle(item)}</strong>
-                    <small>{qualityItemMeta(item)}</small>
-                  </div>
+                    <small>{reviewActionFor(item).label} · {qualityItemMeta(item)}</small>
+                  </button>
                 ))}
               </div>
               <button
@@ -500,21 +589,36 @@ export default function AiChatbotAnalyticsPage() {
                   </button>
                 </header>
                 <ul className="ai-admin-review-list__items ai-admin-review-list__items--modal">
-                  {reviewItems.map((it) => (
-                    <li key={it.id} className="ai-admin-review-item">
-                      <div>
-                        <span className="ai-admin-chip ai-admin-chip--warning">
-                          {qualityQueueLabels[it.type] || "Cần rà soát"}
-                        </span>
-                        <h4>{qualityItemTitle(it)}</h4>
-                        <p>{qualityItemDescription(it)}</p>
-                        <small className="ai-admin-review-item__meta">
-                          {qualityItemMeta(it)}
-                        </small>
-                      </div>
-                      <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
-                    </li>
-                  ))}
+                  {reviewItems.map((it) => {
+                    const action = reviewActionFor(it);
+                    return (
+                      <li key={it.id} className="ai-admin-review-item ai-admin-review-item--actionable">
+                        <div>
+                          <span className="ai-admin-chip ai-admin-chip--warning">
+                            {qualityQueueLabels[it.type] || "Cần rà soát"}
+                          </span>
+                          <h4>{qualityItemTitle(it)}</h4>
+                          <p>{qualityItemDescription(it)}</p>
+                          <small className="ai-admin-review-item__meta">
+                            {qualityItemMeta(it)}
+                          </small>
+                          <div className="ai-admin-review-item__next-step">
+                            <strong>Việc nên làm:</strong> {action.description}
+                          </div>
+                        </div>
+                        <div className="ai-admin-review-item__side">
+                          <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
+                          <button
+                            type="button"
+                            className="ai-admin-review-item__action"
+                            onClick={() => openKnowledgeTarget(it)}
+                          >
+                            {action.label}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             </div>
