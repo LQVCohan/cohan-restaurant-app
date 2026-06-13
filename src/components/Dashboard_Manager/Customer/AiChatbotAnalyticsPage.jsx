@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./CustomerAnalyticsPage.scss";
@@ -209,6 +209,31 @@ export default function AiChatbotAnalyticsPage() {
   const reviewItems = m?.recentQualityQueue || [];
   const reviewPreviewItems = reviewItems.slice(0, 2);
   const reviewCount = Number(m?.fallbackResponses || 0) + Number(m?.pendingSuggestions || 0) + Number(m?.notHelpfulFeedback || 0);
+
+  useEffect(() => {
+    const lockClassName = "ai-admin-modal-open";
+
+    if (!reviewModalOpen) {
+      return undefined;
+    }
+
+    document.body.classList.add(lockClassName);
+    document.documentElement.classList.add(lockClassName);
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setReviewModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.classList.remove(lockClassName);
+      document.documentElement.classList.remove(lockClassName);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [reviewModalOpen]);
 
   return (
     <section className="customer-analytics-page ai-admin-page ai-admin-page--analytics">
@@ -432,7 +457,7 @@ export default function AiChatbotAnalyticsPage() {
             </article>
           </section>
 
-          <details className="ai-admin-collapsible">
+          <details className="ai-admin-collapsible ai-admin-technical-details">
             <summary>Chi tiết kỹ thuật</summary>
             <div className="ai-admin-technical-grid">
               <span>Đã xử lý chuyển nhân viên: {formatNum(m.resolvedHandoffs)}</span>
