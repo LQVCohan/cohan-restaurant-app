@@ -70,7 +70,7 @@ const ActionCard = ({ to, title, description, cta, tone = "neutral", disabled = 
 
 const taskItems = [
   { label: "Trước ca", title: "Kiểm tra lịch và phản hồi ca mới", to: "/staff/schedule" },
-  { label: "Trong ca", title: "Check-in/check-out đúng thời điểm", to: "/staff/schedule" },
+  { label: "Trong ca", title: "Chấm công vào/ra đúng thời điểm", to: "/staff/schedule" },
   { label: "Sau ca", title: "Theo dõi nhắc việc và phản hồi quản lý", to: "/staff/notifications" },
 ];
 
@@ -84,7 +84,7 @@ const baseActions = [
   },
   {
     to: "/staff/schedule",
-    title: "Check-in / check-out",
+    title: "Chấm công vào/ra",
     description: "Vào trang lịch để chấm công ca đang diễn ra hoặc sắp bắt đầu.",
     cta: "Chấm công",
     tone: "success",
@@ -92,13 +92,13 @@ const baseActions = [
   {
     to: "/staff/schedule",
     title: "Đăng ký lịch rảnh/bận",
-    description: "Gửi availability, báo ca không khả dụng hoặc yêu cầu thay đổi muộn.",
+    description: "Gửi lịch rảnh/bận, báo ca không thể làm hoặc yêu cầu thay đổi muộn.",
     cta: "Đăng ký",
     tone: "warm",
   },
   {
     title: "Nghỉ phép / tăng ca / chỉnh công",
-    description: "Hiện chưa có route riêng. Vui lòng xử lý tại lịch cá nhân hoặc liên hệ quản lý.",
+    description: "Hiện chưa có trang riêng. Vui lòng xử lý tại lịch cá nhân hoặc liên hệ quản lý.",
     tone: "muted",
     disabled: true,
   },
@@ -134,8 +134,8 @@ const baseActions = [
 
 const notificationPreview = [
   { type: "Lịch làm", title: "Kiểm tra lịch tuần và phản hồi ca mới nếu có." },
-  { type: "Chấm công", title: "Check-in trước ca, check-out khi kết thúc ca." },
-  { type: "Availability", title: "Gửi lịch rảnh/bận đúng kỳ để quản lý xếp ca." },
+  { type: "Chấm công", title: "Chấm công vào trước ca và chấm công ra khi kết thúc ca." },
+  { type: "Lịch rảnh/bận", title: "Gửi lịch rảnh/bận đúng kỳ để quản lý xếp ca." },
   { type: "Hồ sơ", title: "Cập nhật thiếu sót thông tin qua quản lý trực tiếp." },
 ];
 
@@ -190,7 +190,7 @@ const StaffDashboardPage = () => {
           <StatusBadge tone="success">Trung tâm ca làm</StatusBadge>
           <h1 id="staff-dashboard-title">Xin chào, {staffName}</h1>
           <p>
-            Workspace vận hành ca làm: kiểm tra lịch, chấm công, nhắc việc và mở đúng khu vực chuyên môn mà không đi qua giao diện khách hàng.
+            Khu vực làm việc của nhân viên: kiểm tra lịch, chấm công, xem nhắc việc và mở nhanh đúng phần việc trong ca.
           </p>
           <div className="staff-hero-links" aria-label="Lối tắt ca làm">
             <Link className="staff-hero-link" to="/staff/schedule"><span>Ca hôm nay</span><strong>Xem lịch</strong></Link>
@@ -216,7 +216,7 @@ const StaffDashboardPage = () => {
             <span className="staff-shift-command-card__time">Sẵn sàng</span>
           </div>
           <h2>Kiểm tra ca trước khi bắt đầu</h2>
-          <p>Vào lịch cá nhân để xem ca được phân, xác nhận lịch, check-in/check-out và gửi availability đúng kỳ.</p>
+          <p>Vào lịch cá nhân để xem ca được phân, xác nhận lịch, chấm công và gửi lịch rảnh/bận đúng kỳ.</p>
           <div className="staff-shift-command-card__checklist" aria-label="Các bước trong ca">
             <span>Xem lịch tuần</span>
             <span>Chấm công</span>
@@ -256,7 +256,7 @@ const StaffDashboardPage = () => {
             <StatusBadge tone="success">Thao tác nhanh</StatusBadge>
             <h2 id="staff-actions-title">Thao tác nhân viên</h2>
           </div>
-          <p>Mỗi thẻ dẫn tới route thật hoặc hiển thị rõ trạng thái chưa hỗ trợ, không có link chết.</p>
+          <p>Các thao tác thường dùng được gom lại để nhân viên xử lý nhanh trong ca.</p>
         </div>
         <div className="staff-action-grid">
           {baseActions.map((action) => <ActionCard key={action.title} {...action} />)}
@@ -267,7 +267,7 @@ const StaffDashboardPage = () => {
         <div className="staff-dashboard-section__header">
           <div>
             <StatusBadge tone="warm">Khu vực chuyên môn</StatusBadge>
-            <h2 id="staff-work-area-title">Mở đúng workspace theo vai trò</h2>
+            <h2 id="staff-work-area-title">Khu vực làm việc theo vai trò</h2>
           </div>
           <p>{departmentCopy}</p>
         </div>
@@ -279,8 +279,8 @@ const StaffDashboardPage = () => {
           <div className="staff-dashboard-empty" role="status">
             <div className="staff-dashboard-empty__mark">•</div>
             <div>
-              <h3>Không có khu vực order/bếp cho vai trò này</h3>
-              <p>Bạn vẫn có đầy đủ lịch cá nhân, hồ sơ, thông báo, phiếu lương và hiệu suất.</p>
+              <h3>Vai trò này chưa có khu vực order hoặc bếp riêng</h3>
+              <p>Bạn vẫn có thể sử dụng lịch cá nhân, hồ sơ, thông báo, phiếu lương và phản hồi hiệu suất.</p>
             </div>
           </div>
         )}

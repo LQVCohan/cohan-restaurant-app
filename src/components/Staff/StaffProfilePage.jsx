@@ -98,6 +98,22 @@ const EMPLOYMENT_TYPE_LABELS = {
   probation: "Thử việc",
 };
 
+const EMPLOYMENT_STATUS_LABELS = {
+  working: "Đang làm việc",
+  on_leave: "Đang nghỉ phép",
+  resigned: "Đã nghỉ việc",
+  suspended: "Tạm khóa",
+};
+
+const normalizeDisplayKey = (value) =>
+  String(value || "").trim().toLowerCase();
+
+const getEmploymentTypeLabel = (value) =>
+  EMPLOYMENT_TYPE_LABELS[normalizeDisplayKey(value)] || value || "Chưa cập nhật";
+
+const getEmploymentStatusLabel = (value) =>
+  EMPLOYMENT_STATUS_LABELS[normalizeDisplayKey(value)] || value || "Đang làm việc";
+
 const departmentLabels = DEPARTMENT_OPTIONS.reduce((acc, item) => {
   acc[item.value] = item.label.replace(/^\S+\s*/, "");
   return acc;
@@ -188,7 +204,8 @@ const StaffProfilePage = () => {
   const roleLabel = overview.positionTitle || getStaffRoleDisplayLabel(overview.roleName || user?.roleName || normalizedRole) || "Nhân viên";
   const departmentLabel = roleOption?.department ? departmentLabels[roleOption.department] : "Vận hành";
   const employmentType = overview.employmentType || user?.employmentType || "";
-  const employmentLabel = EMPLOYMENT_TYPE_LABELS[String(employmentType).toLowerCase()] || employmentType || "Chưa cập nhật";
+  const employmentLabel = getEmploymentTypeLabel(employmentType);
+  const employmentStatusLabel = getEmploymentStatusLabel(overview.employmentStatus || user?.employmentStatus);
   const restaurantLabel = getRestaurantLabel(user, restaurants);
   const initials = getInitials(displayName);
 
@@ -204,7 +221,7 @@ const StaffProfilePage = () => {
           <p>{roleLabel} • {departmentLabel} • {restaurantLabel}</p>
           <div className="staff-profile__hero-badges">
             <span>{employmentLabel}</span>
-            <span>{overview.employmentStatus || "Đang làm việc"}</span>
+            <span>{employmentStatusLabel}</span>
             <span>Tài khoản hoạt động</span>
           </div>
         </div>
@@ -231,16 +248,16 @@ const StaffProfilePage = () => {
             </div>
             {overviewLoading ? <div className="staff-profile__skeleton" aria-live="polite">Đang tải hồ sơ...</div> : null}
             <InfoRow icon={Mail} label="Email" value={overview.email || user?.email || "Chưa cập nhật"} />
-            <InfoRow icon={Phone} label="Phone" value={overview.phone || user?.phone || "Chưa cập nhật"} />
-            <InfoRow icon={IdCard} label="Employee code" value={overview.employeeCode || user?.employeeCode || user?.id} />
-            <InfoRow icon={UserRound} label="Username" value={user?.username || "—"} muted />
-            <InfoRow icon={ShieldCheck} label="Role slug/name" value={overview.roleName || user?.roleName || normalizedRole} />
-            <InfoRow icon={Building2} label="Position title" value={overview.positionTitle || roleLabel} />
+            <InfoRow icon={Phone} label="Số điện thoại" value={overview.phone || user?.phone || "Chưa cập nhật"} />
+            <InfoRow icon={IdCard} label="Mã nhân viên" value={overview.employeeCode || user?.employeeCode || user?.id} />
+            <InfoRow icon={UserRound} label="Tên đăng nhập" value={user?.username || "—"} muted />
+            <InfoRow icon={ShieldCheck} label="Vai trò" value={overview.roleName || user?.roleName || normalizedRole} />
+            <InfoRow icon={Building2} label="Chức danh" value={overview.positionTitle || roleLabel} />
             <InfoRow icon={Store} label="Cơ sở làm việc" value={restaurantLabel} />
             {requestOpen ? (
               <div className="staff-profile__request-panel">
-                <strong>Thông tin hồ sơ đang ở chế độ đọc</strong>
-                <p>Liên hệ quản lý hoặc HR để cập nhật thông tin này. Màn hình hiện không ghi dữ liệu lên server.</p>
+                <strong>Thông tin hồ sơ hiện chỉ cho phép xem</strong>
+                <p>Vui lòng liên hệ quản lý hoặc bộ phận nhân sự để cập nhật thông tin.</p>
               </div>
             ) : null}
           </section>
@@ -249,13 +266,13 @@ const StaffProfilePage = () => {
             <div className="staff-profile__card-header">
               <div>
                 <span>Quyền truy cập</span>
-                <h2 id="staff-access-title">Workspace được mở</h2>
+                <h2 id="staff-access-title">Khu vực được phép truy cập</h2>
               </div>
             </div>
             <div className="staff-profile__access-list">
-              <AccessPill enabled={canOrder}>Order nội bộ {canOrder ? "được mở" : "không khả dụng"}</AccessPill>
-              <AccessPill enabled={canKitchen}>Khu vực bếp {canKitchen ? "được mở" : "không khả dụng"}</AccessPill>
-              <AccessPill enabled={canManage}>Dashboard quản lý {canManage ? "được mở" : "không khả dụng"}</AccessPill>
+              <AccessPill enabled={canOrder}>Order nội bộ: {canOrder ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
+              <AccessPill enabled={canKitchen}>Khu vực bếp: {canKitchen ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
+              <AccessPill enabled={canManage}>Khu vực quản lý: {canManage ? "Có quyền truy cập" : "Chưa được cấp quyền"}</AccessPill>
             </div>
           </section>
         </div>
@@ -269,12 +286,12 @@ const StaffProfilePage = () => {
               </div>
             </div>
             <div className="staff-profile__summary-grid">
-              <article><span>Current shift</span><strong>{overview.currentShift || "Chưa có ca"}</strong></article>
-              <article><span>Last shift</span><strong>{overview.lastShift || "—"}</strong></article>
-              <article><span>Orders served</span><strong>{overview.ordersServedCount ?? 0}</strong></article>
-              <article><span>Shifts worked</span><strong>{overview.shiftsWorkedCount ?? 0}</strong></article>
-              <article><span>Bàn / tầng</span><strong>{overview.tableCount ?? 0} / {overview.floorCount ?? 0}</strong></article>
-              <article><span>Danh mục / KM</span><strong>{overview.categoryCount ?? 0} / {overview.promotionCount ?? 0}</strong></article>
+              <article><span>Ca hiện tại</span><strong>{overview.currentShift || "Chưa có ca"}</strong></article>
+              <article><span>Ca gần nhất</span><strong>{overview.lastShift || "—"}</strong></article>
+              <article><span>Đơn đã phục vụ</span><strong>{overview.ordersServedCount ?? 0}</strong></article>
+              <article><span>Ca đã làm</span><strong>{overview.shiftsWorkedCount ?? 0}</strong></article>
+              <article><span>Bàn phụ trách / Khu vực</span><strong>{overview.tableCount ?? 0} / {overview.floorCount ?? 0}</strong></article>
+              <article><span>Danh mục / Khuyến mãi</span><strong>{overview.categoryCount ?? 0} / {overview.promotionCount ?? 0}</strong></article>
             </div>
           </section>
 
@@ -282,7 +299,7 @@ const StaffProfilePage = () => {
             <div className="staff-profile__card-header">
               <div>
                 <span>Lương & thưởng</span>
-                <h2 id="staff-salary-title">Preview thu nhập</h2>
+                <h2 id="staff-salary-title">Thu nhập tạm tính</h2>
               </div>
               <Link className="staff-profile__text-link" to="/staff/payslips">Xem phiếu lương</Link>
             </div>

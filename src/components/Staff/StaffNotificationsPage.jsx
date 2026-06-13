@@ -58,18 +58,18 @@ const buildNotifications = ({ user, role, canOrder, canKitchen }) => {
       id: "attendance-reminder",
       type: "attendance",
       title: "Nhắc chấm công",
-      description: "Check-in khi sắp vào ca và check-out sau khi hoàn tất để dữ liệu công không bị lệch.",
+      description: "Chấm công vào khi sắp bắt đầu ca và chấm công ra sau khi hoàn tất để dữ liệu công không bị lệch.",
       time: "Trong ca",
       status: "action",
-      cta: "Check-in/out",
+      cta: "Chấm công",
       to: "/staff/schedule",
       unread: true,
     },
     {
       id: "availability-window",
       type: "request",
-      title: "Gửi availability đúng kỳ",
-      description: "Part-time chọn ca có thể làm; full-time báo ca không khả dụng nếu chính sách cho phép.",
+      title: "Gửi lịch rảnh/bận đúng kỳ",
+      description: "Nhân viên bán thời gian chọn ca có thể làm; nhân viên toàn thời gian báo ca không thể làm nếu chính sách cho phép.",
       time: "Theo tuần",
       status: "action",
       cta: "Đăng ký lịch",
@@ -212,7 +212,7 @@ const StaffNotificationsPage = () => {
       </section>
 
       <div className="staff-notifications__local-note" role="note">
-        Mark read/delete hiện chỉ là trạng thái local UI trong phiên này; chưa ghi lên server thông báo nhân viên.
+        Các thao tác đánh dấu đã đọc hoặc ẩn thông báo chỉ áp dụng trong phiên làm việc hiện tại.
       </div>
 
       <nav className="staff-notifications__tabs" aria-label="Lọc thông báo nhân viên">
