@@ -1,0 +1,117 @@
+/* Post update bug fix
+   - Restore ingredient price stat boxes after global button alignment override.
+   - Keep "Kho ổn định" inside the green system instead of warm/orange.
+   - Preserve icon/text alignment only for real action buttons. */
+
+.storage-management .il-card .il-stat-box {
+  display: block !important;
+  align-items: initial !important;
+  justify-content: initial !important;
+  gap: 0 !important;
+  white-space: normal !important;
+  line-height: normal !important;
+  text-align: left !important;
+}
+
+.storage-management .il-card button.il-stat-box {
+  width: 100% !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.storage-management .il-card .il-stat-label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  min-height: 26px !important;
+  margin-bottom: 5px !important;
+  line-height: 1.22 !important;
+  white-space: normal !important;
+}
+
+.storage-management .il-card .il-stat-value-group {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: flex-start !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+}
+
+.storage-management .il-card .il-stat-value {
+  display: inline-block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  line-height: 1.15 !important;
+  color: #1f2a2f !important;
+}
+
+.storage-management .il-card .il-stat-value.il-text-price {
+  max-width: calc(100% - 22px) !important;
+  color: #17554d !important;
+}
+
+.storage-management .il-card .il-stat-unit {
+  flex: 0 0 auto !important;
+  color: #60716e !important;
+  line-height: 1.15 !important;
+}
+
+/* Action buttons keep the one-line centered rule. */
+.storage-management .il-card .il-action-btn,
+.storage-management .sm-add-btn,
+.storage-management .btn-primary,
+.storage-management .btn-add,
+.storage-management .sm-action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+.storage-management .warehouse-status-wrapper.safe .status-badge {
+  background: #dcefe9 !important;
+  color: #17554d !important;
+  border-color: rgba(31, 106, 96, 0.26) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76), 0 8px 18px rgba(31, 106, 96, 0.08) !important;
+}
+
+.storage-management .warehouse-status-wrapper.safe .safe-icon,
+.storage-management .warehouse-status-wrapper.safe .status-text {
+  color: #17554d !important;
+}
+
+.storage-management .warehouse-status-wrapper .status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.storage-management .warehouse-status-wrapper .status-badge svg {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+/* Make the small top summaries feel less washed out after the new font. */
+.storage-management .sm-stat-card,
+.storage-management .summary-card,
+.storage-management .inventory-summary-card {
+  color: #263a38 !important;
+}
+
+.storage-management .sm-stat-card :where(.sm-stat-desc, .summary-desc, small),
+.storage-management .summary-card :where(.sm-stat-desc, .summary-desc, small),
+.storage-management .inventory-summary-card :where(.sm-stat-desc, .summary-desc, small) {
+  color: #60716e !important;
+}
