@@ -165,15 +165,15 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const pageSizeOptions = pagination?.pageSizeOptions || [10, 20, 30, 50];
 
   const managerSummary = useMemo(() => {
-    if (loading || pagination?.isLoading) return "Đang tải dữ liệu khách hàng từ máy chủ...";
-    if (!totalCount) return "Không có khách phù hợp với bộ lọc hiện tại";
+    if (loading || pagination?.isLoading) return "Đang tải danh sách khách...";
+    if (!totalCount) return "Chưa có khách phù hợp";
     return `Trang ${page}/${totalPages} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
   }, [endItem, loading, page, pagination?.isLoading, startItem, totalCount, totalPages]);
 
   const renderManagerStrip = () => (
     <div className="cl-manager-strip">
       <div>
-        <span className="cl-strip-label">Phân trang từ BE</span>
+        <span className="cl-strip-label">Danh sách khách</span>
         <strong>{managerSummary}</strong>
       </div>
       <div className="cl-strip-tools">
@@ -217,7 +217,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         onClick={pagination?.onPrevious}
         disabled={loading || pagination?.isLoading || !pagination?.hasPreviousPage}
       >
-        <ChevronLeft size={15} /> Trang trước
+        <ChevronLeft size={15} /> Trước
       </button>
       <span>Trang <strong>{page}</strong> / {totalPages}</span>
       <button
@@ -225,7 +225,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         onClick={pagination?.onNext}
         disabled={loading || pagination?.isLoading || !pagination?.hasNextPage}
       >
-        Trang sau <ChevronRight size={15} />
+        Sau <ChevronRight size={15} />
       </button>
     </div>
   );
@@ -264,9 +264,9 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           <div className="cl-empty-icon">
             <SearchX size={42} strokeWidth={1.2} />
           </div>
-          <h3 className="cl-empty-title">Không tìm thấy khách hàng</h3>
+          <h3 className="cl-empty-title">Chưa tìm thấy khách hàng</h3>
           <p className="cl-empty-desc">
-            Có thể chi nhánh chưa có khách, hoặc bộ lọc/từ khóa đang quá hẹp.
+            Thêm khách mới hoặc xóa bộ lọc để xem lại toàn bộ danh sách.
           </p>
           <div className="cl-empty-actions">
             <button type="button" className="cl-empty-primary" onClick={triggerAddCustomer}>
