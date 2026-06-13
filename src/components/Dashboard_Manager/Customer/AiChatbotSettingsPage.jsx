@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import "./AiChatbotAdmin.scss";
+import "./AiChatbotSettingsRefine.scss";
 
 const Q = gql`
   query ManagerAiSettings($restaurantId: ID!) {
