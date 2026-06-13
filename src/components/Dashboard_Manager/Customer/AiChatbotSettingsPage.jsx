@@ -123,6 +123,21 @@ const normalizeQuickReplies = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const normalizeSettingsSnapshot = (value = defaultForm) => ({
+  enabled: !!value.enabled,
+  welcomeMessage: String(value.welcomeMessage || ""),
+  starterQuickReplies: Array.isArray(value.starterQuickReplies)
+    ? value.starterQuickReplies.map((item) => String(item || "").trim()).filter(Boolean)
+    : normalizeQuickReplies(value.starterQuickReplies),
+  handoffEnabled: !!value.handoffEnabled,
+  handoffUnavailableMessage: String(value.handoffUnavailableMessage || ""),
+  lowConfidenceHandoffThreshold: Number(value.lowConfidenceHandoffThreshold ?? 0.6),
+  fallbackMessage: String(value.fallbackMessage || ""),
+});
+
+const serializeSettings = (value) =>
+  JSON.stringify(normalizeSettingsSnapshot(value || defaultForm));
+
 function PermissionFallback() {
   return (
     <section className="ai-admin-page ai-admin-page--settings">
@@ -150,10 +165,16 @@ export default function AiChatbotSettingsPage() {
   const [notice, setNotice] = useState("");
   const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState(defaultForm);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(
+    serializeSettings(defaultForm),
+  );
 
   useEffect(() => {
-    if (data?.restaurantAiChatbotSettings)
-      setForm(data.restaurantAiChatbotSettings);
+    if (data?.restaurantAiChatbotSettings) {
+      const nextSettings = data.restaurantAiChatbotSettings;
+      setForm(nextSettings);
+      setLastSavedSnapshot(serializeSettings(nextSettings));
+    }
   }, [data]);
 
   const quickRepliesText = useMemo(
@@ -166,6 +187,15 @@ export default function AiChatbotSettingsPage() {
     : 0;
   const quickReplyCount = normalizeQuickReplies(quickRepliesText).length;
   const readOnly = canReadSettings && !canWriteSettings;
+  const currentSnapshot = useMemo(
+    () =>
+      serializeSettings({
+        ...form,
+        starterQuickReplies: normalizeQuickReplies(quickRepliesText),
+      }),
+    [form, quickRepliesText],
+  );
+  const hasUnsavedChanges = currentSnapshot !== lastSavedSnapshot;
 
   const updateForm = (patch) => {
     setNotice("");
@@ -203,19 +233,24 @@ export default function AiChatbotSettingsPage() {
     }
     setNotice("");
     setSaveError("");
+    const input = {
+      ...form,
+      restaurantId: effectiveRestaurantId,
+      starterQuickReplies: normalizeQuickReplies(quickRepliesText),
+      lowConfidenceHandoffThreshold: Number(
+        form.lowConfidenceHandoffThreshold,
+      ),
+    };
     try {
-      await save({
+      const result = await save({
         variables: {
-          input: {
-            ...form,
-            restaurantId: effectiveRestaurantId,
-            starterQuickReplies: normalizeQuickReplies(quickRepliesText),
-            lowConfidenceHandoffThreshold: Number(
-              form.lowConfidenceHandoffThreshold,
-            ),
-          },
+          input,
         },
       });
+      const savedSettings =
+        result?.data?.updateRestaurantAiChatbotSettings || input;
+      setForm(savedSettings);
+      setLastSavedSnapshot(serializeSettings(savedSettings));
       setNotice("Đã lưu cài đặt Chatbot AI.");
       refetch?.();
     } catch (mutationError) {
@@ -266,12 +301,12 @@ export default function AiChatbotSettingsPage() {
         className="ai-admin-settings-status-strip"
         aria-label="Trạng thái cấu hình AI chatbot"
       >
-        <article>
+        <article className={form.enabled ? "is-active" : "is-muted"}>
           <span>Chatbot</span>
           <strong>{form.enabled ? "Đang bật" : "Đang tắt"}</strong>
           <small>{form.enabled ? "phục vụ khách" : "tạm tắt"}</small>
         </article>
-        <article>
+        <article className={form.handoffEnabled ? "is-active" : "is-muted"}>
           <span>Chuyển nhân viên</span>
           <strong>{form.handoffEnabled ? "Đang bật" : "Đang tắt"}</strong>
           <small>{form.handoffEnabled ? "có thể tiếp nhận" : "chưa tiếp nhận"}</small>
@@ -444,15 +479,15 @@ export default function AiChatbotSettingsPage() {
               <p className="ai-admin-eyebrow">Tóm tắt vận hành</p>
               <ul>
                 <li>
-                  Chatbot {form.enabled ? "đang nhận câu hỏi" : "đang tạm tắt"} từ khách.
+                  Khách sẽ thấy lời chào và các gợi ý nhanh ở cửa sổ chatbot.
                 </li>
                 <li>
                   {form.handoffEnabled
-                    ? "Yêu cầu cần nhân viên sẽ xuất hiện ở trang Hỗ trợ từ AI."
-                    : "Chatbot sẽ xử lý trong phạm vi tự động, không chuyển nhân viên."}
+                    ? "Khi cần người xử lý, yêu cầu sẽ xuất hiện tại trang Hỗ trợ từ AI."
+                    : "Chatbot đang xử lý tự động, chưa tạo yêu cầu cho nhân viên."}
                 </li>
                 <li>
-                  Ngưỡng {thresholdPercent}% giúp giảm chuyển tiếp khi câu trả lời vẫn đủ chắc chắn.
+                  Ngưỡng {thresholdPercent}% quyết định lúc chatbot nên mời nhân viên hỗ trợ.
                 </li>
               </ul>
             </div>
@@ -473,17 +508,31 @@ export default function AiChatbotSettingsPage() {
               </label>
             </details>
 
-            <div className="ai-admin-empty ai-admin-empty--compact ai-admin-settings-note">
-              <h4>Lưu ý vận hành</h4>
-              <p>Khôi phục mặc định chỉ cập nhật biểu mẫu. Bấm lưu để áp dụng cho khách.</p>
+            <div className="ai-admin-settings-checklist">
+              <h4>Trước khi lưu</h4>
+              <ul>
+                <li>Kiểm tra lời chào có đúng giọng thương hiệu.</li>
+                <li>Giữ gợi ý nhanh ngắn, dễ bấm và đúng nhu cầu khách.</li>
+                <li>Bấm lưu để áp dụng thay đổi cho cửa sổ chatbot.</li>
+              </ul>
             </div>
           </div>
         </aside>
 
-        <footer className="ai-admin-settings-footer">
+        <footer
+          className={`ai-admin-settings-footer${
+            hasUnsavedChanges ? " ai-admin-settings-footer--dirty" : ""
+          }`}
+        >
           <div>
-            <strong>Áp dụng thay đổi</strong>
-            <span>Kiểm tra lại lời chào và ngưỡng chuyển trước khi lưu.</span>
+            <strong>
+              {hasUnsavedChanges ? "Có thay đổi chưa lưu" : "Cài đặt đã đồng bộ"}
+            </strong>
+            <span>
+              {hasUnsavedChanges
+                ? "Kiểm tra lại nội dung trước khi áp dụng cho khách."
+                : "Thay đổi mới sẽ xuất hiện ở đây trước khi lưu."}
+            </span>
           </div>
           <div className="ai-admin-actions ai-admin-actions--settings">
             <button
@@ -501,7 +550,8 @@ export default function AiChatbotSettingsPage() {
                 !canWriteSettings ||
                 saving ||
                 loading ||
-                !effectiveRestaurantId
+                !effectiveRestaurantId ||
+                !hasUnsavedChanges
               }
               title={!canWriteSettings ? "Thiếu quyền chỉnh sửa chatbot" : ""}
             >
