@@ -20,6 +20,7 @@ import "../../StorageModalScrollLockFix.css";
 import "../../StorageCategoryModalFitFix.css";
 import "../../StorageGreenToneFinal.css";
 import "../../StorageChecklistPolishFinal.css";
+import "../../StoragePostUpdateBugFix.css";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => (
   <>
