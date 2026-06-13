@@ -414,26 +414,68 @@ export default function AiChatbotSettingsPage() {
               </small>
             </label>
 
-            <section className="ai-admin-settings-preview" aria-label="Xem trước chatbot">
-              <div className="ai-admin-settings-preview__header">
-                <div>
-                  <p className="ai-admin-eyebrow">Xem trước</p>
-                  <h4>Khách nhìn thấy gì?</h4>
-                </div>
-                <span>{form.enabled ? "Đang hiển thị" : "Đang tắt"}</span>
+            <details className="ai-admin-collapsible ai-admin-collapsible--settings ai-admin-handoff-compact">
+              <summary>
+                <span>Quy trình chuyển nhân viên</span>
+                <small>
+                  {form.handoffEnabled ? "Đang bật" : "Đang tắt"} · Ngưỡng {thresholdPercent}%
+                </small>
+              </summary>
+              <div className="ai-admin-handoff-compact__body">
+                <label className="ai-admin-check ai-admin-check--card ai-admin-check--inline">
+                  <input
+                    type="checkbox"
+                    checked={!!form.handoffEnabled}
+                    disabled={disabled}
+                    onChange={(event) =>
+                      updateForm({ handoffEnabled: event.target.checked })
+                    }
+                  />
+                  <span>Cho phép chuyển sang nhân viên</span>
+                  <small>
+                    {form.handoffEnabled
+                      ? "Khách có thể được chuyển sang nhân viên khi cần."
+                      : "Chatbot sẽ không tạo yêu cầu chuyển nhân viên."}
+                  </small>
+                </label>
+
+                <label className="ai-admin-field ai-admin-field--threshold">
+                  <span>Ngưỡng chuyển nhân viên</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={form.lowConfidenceHandoffThreshold ?? 0.6}
+                    disabled={disabled}
+                    onChange={(event) =>
+                      updateForm({
+                        lowConfidenceHandoffThreshold: event.target.value,
+                      })
+                    }
+                  />
+                  <small className="ai-admin-help">
+                    Khi độ chắc chắn thấp hơn ngưỡng này, chatbot sẽ cân nhắc chuyển khách cho nhân viên.
+                  </small>
+                </label>
+
+                <details className="ai-admin-collapsible ai-admin-collapsible--settings ai-admin-handoff-message">
+                  <summary>Tin nhắn khi chưa có nhân viên</summary>
+                  <label className="ai-admin-field ai-admin-field--calm-textarea">
+                    <span>Nội dung hiển thị cho khách</span>
+                    <textarea
+                      value={form.handoffUnavailableMessage || ""}
+                      disabled={disabled}
+                      maxLength={500}
+                      onChange={(event) =>
+                        updateForm({ handoffUnavailableMessage: event.target.value })
+                      }
+                      rows={4}
+                    />
+                  </label>
+                </details>
               </div>
-              <p className="ai-admin-settings-preview__bubble">
-                {String(form.welcomeMessage || "").trim() ||
-                  "Chưa có lời chào. Thêm một câu ngắn để khách biết chatbot có thể hỗ trợ gì."}
-              </p>
-              <div className="ai-admin-settings-preview__chips">
-                {quickReplies.length ? (
-                  quickReplies.slice(0, 4).map((reply) => <span key={reply}>{reply}</span>)
-                ) : (
-                  <small>Chưa có gợi ý nhanh.</small>
-                )}
-              </div>
-            </section>
+            </details>
 
             <details className="ai-admin-collapsible ai-admin-collapsible--settings">
               <summary>Cài đặt nâng cao</summary>
@@ -453,94 +495,59 @@ export default function AiChatbotSettingsPage() {
           </div>
         </article>
 
-        <aside className="ai-admin-panel ai-admin-panel--handoff">
+        <aside className="ai-admin-panel ai-admin-panel--preview">
           <header className="ai-admin-panel__header ai-admin-panel__header--compact">
             <div>
-              <p className="ai-admin-eyebrow">Chuyển nhân viên</p>
-              <h3>Quy trình chuyển nhân viên</h3>
-              <p>Quy định khi chatbot cần mời nhân viên tiếp tục hỗ trợ khách.</p>
+              <p className="ai-admin-eyebrow">Xem trước</p>
+              <h3>Khách nhìn thấy gì?</h3>
+              <p>Mô phỏng cửa sổ chatbot dựa trên nội dung đang cấu hình.</p>
             </div>
           </header>
-          <div className="ai-admin-form ai-admin-form--handoff-settings">
-            <label className="ai-admin-check ai-admin-check--card ai-admin-check--inline">
-              <input
-                type="checkbox"
-                checked={!!form.handoffEnabled}
-                disabled={disabled}
-                onChange={(event) =>
-                  updateForm({ handoffEnabled: event.target.checked })
-                }
-              />
-              <span>Cho phép chuyển sang nhân viên</span>
-              <small>
-                {form.handoffEnabled
-                  ? "Khách có thể được chuyển sang nhân viên khi cần."
-                  : "Chatbot sẽ không tạo yêu cầu chuyển nhân viên."}
-              </small>
-            </label>
+          <section className="ai-admin-settings-preview" aria-label="Xem trước chatbot">
+            <div className="ai-admin-settings-preview__window">
+              <div className="ai-admin-settings-preview__topbar">
+                <div>
+                  <strong>Trợ lý Cohan</strong>
+                  <span>{form.enabled ? "Đang sẵn sàng" : "Đang tắt"}</span>
+                </div>
+                <i aria-hidden="true" />
+              </div>
 
-            <label className="ai-admin-field ai-admin-field--threshold">
-              <span>Ngưỡng chuyển nhân viên</span>
-              <input
-                type="number"
-                min="0"
-                max="1"
-                step="0.05"
-                value={form.lowConfidenceHandoffThreshold ?? 0.6}
-                disabled={disabled}
-                onChange={(event) =>
-                  updateForm({
-                    lowConfidenceHandoffThreshold: event.target.value,
-                  })
-                }
-              />
-              <small className="ai-admin-help">
-                Khi độ chắc chắn thấp hơn ngưỡng này, chatbot sẽ cân nhắc chuyển khách cho nhân viên.
-              </small>
-            </label>
+              <div className="ai-admin-settings-preview__conversation">
+                <p className="ai-admin-settings-preview__bubble">
+                  {String(form.welcomeMessage || "").trim() ||
+                    "Chưa có lời chào. Thêm một câu ngắn để khách biết chatbot có thể hỗ trợ gì."}
+                </p>
+                <div className="ai-admin-settings-preview__chips">
+                  {quickReplies.length ? (
+                    quickReplies
+                      .slice(0, 5)
+                      .map((reply) => <span key={reply}>{reply}</span>)
+                  ) : (
+                    <small>Chưa có gợi ý nhanh.</small>
+                  )}
+                </div>
+              </div>
 
-            <div className="ai-admin-settings-summary">
-              <p className="ai-admin-eyebrow">Tóm tắt vận hành</p>
-              <ul>
-                <li>
-                  Khách sẽ thấy lời chào và các gợi ý nhanh ở cửa sổ chatbot.
-                </li>
-                <li>
-                  {form.handoffEnabled
-                    ? "Khi cần người xử lý, yêu cầu sẽ xuất hiện tại trang Hỗ trợ từ AI."
-                    : "Chatbot đang xử lý tự động, chưa tạo yêu cầu cho nhân viên."}
-                </li>
-                <li>
-                  Ngưỡng {thresholdPercent}% quyết định lúc chatbot nên mời nhân viên hỗ trợ.
-                </li>
-              </ul>
+              <div className="ai-admin-settings-preview__footer">
+                <span>Nhập câu hỏi cho nhà hàng...</span>
+                <button type="button" disabled>
+                  Gửi
+                </button>
+              </div>
             </div>
 
-            <details className="ai-admin-collapsible ai-admin-collapsible--settings">
-              <summary>Tin nhắn khi chưa có nhân viên</summary>
-              <label className="ai-admin-field ai-admin-field--calm-textarea">
-                <span>Nội dung hiển thị cho khách</span>
-                <textarea
-                  value={form.handoffUnavailableMessage || ""}
-                  disabled={disabled}
-                  maxLength={500}
-                  onChange={(event) =>
-                    updateForm({ handoffUnavailableMessage: event.target.value })
-                  }
-                  rows={4}
-                />
-              </label>
-            </details>
-
-            <div className="ai-admin-settings-checklist">
-              <h4>Trước khi lưu</h4>
-              <ul>
-                <li>Kiểm tra lời chào có đúng giọng thương hiệu.</li>
-                <li>Giữ gợi ý nhanh ngắn, dễ bấm và đúng nhu cầu khách.</li>
-                <li>Bấm lưu để áp dụng thay đổi cho cửa sổ chatbot.</li>
-              </ul>
+            <div className="ai-admin-settings-preview__notes">
+              <article>
+                <span>Chuyển nhân viên</span>
+                <strong>{form.handoffEnabled ? "Có thể chuyển" : "Đang tắt"}</strong>
+              </article>
+              <article>
+                <span>Ngưỡng chắc chắn</span>
+                <strong>{thresholdPercent}%</strong>
+              </article>
             </div>
-          </div>
+          </section>
         </aside>
 
         <footer
