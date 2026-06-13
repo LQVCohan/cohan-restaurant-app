@@ -1,14 +1,13 @@
 /* Manager typography final pass
-   Direction: clearer, calmer, less rounded-heavy than the previous font stack.
-   Uses native/system fonts for speed and reliable Vietnamese rendering. */
+   Direction: Vietnamese-first, clear, professional, and comfortable for long operations. */
 
 .manager-layout {
-  --manager-font-family: "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
-  --manager-heading-weight: 760;
-  --manager-title-weight: 720;
-  --manager-body-weight: 450;
-  --manager-label-weight: 610;
-  --manager-control-weight: 590;
+  --manager-font-family: "Be Vietnam Pro", "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
+  --manager-heading-weight: 700;
+  --manager-title-weight: 680;
+  --manager-body-weight: 400;
+  --manager-label-weight: 600;
+  --manager-control-weight: 600;
 }
 
 .manager-layout,
@@ -51,7 +50,7 @@ body:has(.manager-layout) .ant-popover {
 
 .manager-layout,
 body:has(.manager-layout) .modal-container {
-  text-rendering: geometricPrecision;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "kern" 1, "liga" 1, "tnum" 1;
@@ -80,7 +79,7 @@ body:has(.manager-layout) .modal-container .im-section-title,
 body:has(.manager-layout) .modal-container .item-name {
   font-family: var(--manager-font-family) !important;
   font-weight: var(--manager-heading-weight) !important;
-  letter-spacing: -0.012em !important;
+  letter-spacing: -0.018em !important;
 }
 
 .manager-layout p,
@@ -97,7 +96,7 @@ body:has(.manager-layout) .modal-container small,
 body:has(.manager-layout) .modal-container td,
 body:has(.manager-layout) .modal-container .im-section-desc {
   font-weight: var(--manager-body-weight) !important;
-  letter-spacing: 0 !important;
+  letter-spacing: -0.001em !important;
 }
 
 .manager-layout label,
@@ -111,7 +110,7 @@ body:has(.manager-layout) .modal-container label,
 body:has(.manager-layout) .modal-container th,
 body:has(.manager-layout) .modal-container .metric-label {
   font-weight: var(--manager-label-weight) !important;
-  letter-spacing: 0.006em !important;
+  letter-spacing: 0.004em !important;
 }
 
 .manager-layout button,
@@ -129,8 +128,8 @@ body:has(.manager-layout) .modal-container input,
 body:has(.manager-layout) .modal-container textarea,
 body:has(.manager-layout) .modal-container select {
   font-weight: var(--manager-control-weight) !important;
-  letter-spacing: -0.002em !important;
-  line-height: 1.38 !important;
+  letter-spacing: -0.003em !important;
+  line-height: 1.42 !important;
 }
 
 .manager-layout .sm-stat-value,
@@ -142,8 +141,8 @@ body:has(.manager-layout) .modal-container select {
 body:has(.manager-layout) .modal-container .metric-value,
 body:has(.manager-layout) .modal-container .hero-stats strong {
   font-variant-numeric: tabular-nums;
-  font-weight: 760 !important;
-  letter-spacing: -0.008em !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.012em !important;
 }
 
 /* Neutralize overly heavy legacy weights inside manager pages. */
@@ -155,5 +154,5 @@ body:has(.manager-layout) .modal-container [style*="font-weight: 800"],
 body:has(.manager-layout) .modal-container [style*="font-weight:800"],
 body:has(.manager-layout) .modal-container [style*="font-weight: 900"],
 body:has(.manager-layout) .modal-container [style*="font-weight:900"] {
-  font-weight: 720 !important;
+  font-weight: 700 !important;
 }
