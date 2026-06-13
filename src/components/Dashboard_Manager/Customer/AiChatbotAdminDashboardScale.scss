@@ -218,10 +218,23 @@ body.ai-admin-modal-open .manager-page-shell__body {
 
 .ai-admin-review-strip__item {
   min-width: 0 !important;
-  border: 1px solid rgba(166, 106, 24, 0.14) !important;
+  border: 1px solid rgba(166, 106, 24, 0.18) !important;
   border-radius: 12px !important;
-  background: rgba(255, 253, 248, 0.72) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  color: inherit !important;
   padding: 9px 11px !important;
+  font: inherit !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease !important;
+}
+
+.ai-admin-review-strip__item:hover,
+.ai-admin-review-strip__item:focus-visible {
+  border-color: rgba(138, 98, 61, 0.46) !important;
+  box-shadow: 0 6px 18px rgba(79, 55, 33, 0.1) !important;
+  transform: translateY(-1px) !important;
+  outline: none !important;
 }
 
 .ai-admin-review-strip__item strong,
@@ -240,9 +253,9 @@ body.ai-admin-modal-open .manager-page-shell__body {
 
 .ai-admin-review-strip__item small {
   margin-top: 3px !important;
-  color: var(--ai-muted, #76685b) !important;
+  color: var(--ai-accent, #8a623d) !important;
   font-size: 11px !important;
-  font-weight: 750 !important;
+  font-weight: 850 !important;
 }
 
 .ai-admin-modal-backdrop {
@@ -259,8 +272,8 @@ body.ai-admin-modal-open .manager-page-shell__body {
 }
 
 .ai-admin-modal {
-  width: min(920px, 100%) !important;
-  max-height: min(78dvh, 760px) !important;
+  width: min(960px, 100%) !important;
+  max-height: min(82dvh, 780px) !important;
   display: grid !important;
   grid-template-rows: auto minmax(0, 1fr) !important;
   overflow: hidden !important;
@@ -311,6 +324,87 @@ body.ai-admin-modal-open .manager-page-shell__body {
   max-height: 100% !important;
   overflow: auto !important;
   overscroll-behavior: contain !important;
+  padding: 18px !important;
+  background: rgba(251, 247, 239, 0.62) !important;
+}
+
+.ai-admin-review-item--actionable {
+  grid-template-columns: minmax(0, 1fr) 150px !important;
+  align-items: stretch !important;
+  border-color: rgba(124, 93, 63, 0.22) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 8px 18px rgba(79, 55, 33, 0.06) !important;
+}
+
+.ai-admin-review-item--actionable h4 {
+  margin: 10px 0 6px !important;
+  color: var(--ai-text, #2f2923) !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-review-item--actionable p {
+  color: #594b40 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.ai-admin-review-item__meta {
+  display: inline-flex !important;
+  margin-top: 8px !important;
+  color: var(--ai-accent, #8a623d) !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.ai-admin-review-item__next-step {
+  margin-top: 10px !important;
+  border: 1px solid rgba(47, 125, 79, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(234, 246, 239, 0.72) !important;
+  color: #2f6444 !important;
+  padding: 10px 12px !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.45 !important;
+}
+
+.ai-admin-review-item__next-step strong {
+  color: #26583b !important;
+}
+
+.ai-admin-review-item__side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.ai-admin-review-item__side time {
+  color: var(--ai-muted, #76685b) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.ai-admin-review-item__action {
+  min-height: 38px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--ai-accent, #8a623d) !important;
+  color: #fff !important;
+  padding: 8px 12px !important;
+  font: inherit !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+.ai-admin-review-item__action:hover,
+.ai-admin-review-item__action:focus-visible {
+  background: var(--ai-accent-hover, #735032) !important;
+  outline: none !important;
 }
 
 .ai-admin-technical-details {
@@ -457,6 +551,14 @@ body.ai-admin-modal-open .manager-page-shell__body {
 
   .ai-admin-modal-backdrop {
     padding: 14px !important;
+  }
+
+  .ai-admin-review-item--actionable {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ai-admin-review-item__side {
+    align-items: flex-start !important;
   }
 
   .ai-admin-technical-grid {
