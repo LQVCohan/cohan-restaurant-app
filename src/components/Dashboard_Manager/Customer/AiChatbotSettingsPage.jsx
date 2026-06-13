@@ -181,19 +181,23 @@ export default function AiChatbotSettingsPage() {
     () => (form.starterQuickReplies || []).join("\n"),
     [form.starterQuickReplies],
   );
+  const quickReplies = useMemo(
+    () => normalizeQuickReplies(quickRepliesText),
+    [quickRepliesText],
+  );
   const thresholdValue = Number(form.lowConfidenceHandoffThreshold ?? 0.6);
   const thresholdPercent = Number.isFinite(thresholdValue)
     ? Math.round(thresholdValue * 100)
     : 0;
-  const quickReplyCount = normalizeQuickReplies(quickRepliesText).length;
+  const quickReplyCount = quickReplies.length;
   const readOnly = canReadSettings && !canWriteSettings;
   const currentSnapshot = useMemo(
     () =>
       serializeSettings({
         ...form,
-        starterQuickReplies: normalizeQuickReplies(quickRepliesText),
+        starterQuickReplies: quickReplies,
       }),
-    [form, quickRepliesText],
+    [form, quickReplies],
   );
   const hasUnsavedChanges = currentSnapshot !== lastSavedSnapshot;
 
@@ -203,7 +207,6 @@ export default function AiChatbotSettingsPage() {
     setForm((current) => ({ ...current, ...patch }));
   };
   const validate = () => {
-    const quickReplies = normalizeQuickReplies(quickRepliesText);
     const threshold = Number(form.lowConfidenceHandoffThreshold);
     if (String(form.welcomeMessage || "").trim().length > 500)
       return "Lời chào tối đa 500 ký tự.";
@@ -236,7 +239,7 @@ export default function AiChatbotSettingsPage() {
     const input = {
       ...form,
       restaurantId: effectiveRestaurantId,
-      starterQuickReplies: normalizeQuickReplies(quickRepliesText),
+      starterQuickReplies: quickReplies,
       lowConfidenceHandoffThreshold: Number(
         form.lowConfidenceHandoffThreshold,
       ),
@@ -410,6 +413,27 @@ export default function AiChatbotSettingsPage() {
                 Tối đa 8 dòng, mỗi dòng tối đa 80 ký tự.
               </small>
             </label>
+
+            <section className="ai-admin-settings-preview" aria-label="Xem trước chatbot">
+              <div className="ai-admin-settings-preview__header">
+                <div>
+                  <p className="ai-admin-eyebrow">Xem trước</p>
+                  <h4>Khách nhìn thấy gì?</h4>
+                </div>
+                <span>{form.enabled ? "Đang hiển thị" : "Đang tắt"}</span>
+              </div>
+              <p className="ai-admin-settings-preview__bubble">
+                {String(form.welcomeMessage || "").trim() ||
+                  "Chưa có lời chào. Thêm một câu ngắn để khách biết chatbot có thể hỗ trợ gì."}
+              </p>
+              <div className="ai-admin-settings-preview__chips">
+                {quickReplies.length ? (
+                  quickReplies.slice(0, 4).map((reply) => <span key={reply}>{reply}</span>)
+                ) : (
+                  <small>Chưa có gợi ý nhanh.</small>
+                )}
+              </div>
+            </section>
 
             <details className="ai-admin-collapsible ai-admin-collapsible--settings">
               <summary>Cài đặt nâng cao</summary>
