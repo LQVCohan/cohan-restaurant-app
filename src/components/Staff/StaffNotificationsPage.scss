@@ -10,6 +10,8 @@
   --staff-danger: #b42318;
   display: grid;
   gap: 12px;
+  width: min(100%, 1240px);
+  margin-inline: auto;
   color: var(--staff-text);
 }
 

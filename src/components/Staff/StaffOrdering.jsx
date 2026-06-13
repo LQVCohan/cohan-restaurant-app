@@ -614,7 +614,7 @@ export default function StaffOrdering() {
 
   const cartContextTable =
     orderMode === "remote"
-      ? { id: "remote_order", name: "Order từ xa", customer: null }
+      ? { id: "remote_order", name: "Đơn từ xa", customer: null }
       : selectedTable;
 
   const buildRemoteDiscountPreviewInput = useCallback(() => {
@@ -1454,8 +1454,21 @@ export default function StaffOrdering() {
   const linkedTableCustomer = selectedTable
     ? tableCustomerMap[selectedTable.id]
     : null;
+  const selectedTableStatusLabel = selectedTable?.status === "checkout"
+    ? "Chờ thanh toán"
+    : selectedTable?.status === "serving"
+      ? "Đang phục vụ"
+      : "Sẵn sàng";
+  const servingTablesCount = tables.filter((table) => table.status !== "empty").length;
+  const navTabs = [
+    { key: "tables", label: "Bàn", icon: Grid },
+    { key: "menu", label: "Menu", icon: Coffee },
+    { key: "contacts", label: "Liên lạc", icon: MessageSquare },
+    { key: "notifications", label: "Thông báo", icon: Bell },
+    { key: "profile", label: "Cá nhân", icon: UserCircle },
+  ];
   return (
-    <div className="staff-pos-layout">
+    <div className={`staff-pos-layout staff-pos-layout--${activeTab}`}>
       <header className="staff-pos-header">
         <div
           className={`search-container ${showSearchResults ? "active" : ""}`}
@@ -1518,6 +1531,20 @@ export default function StaffOrdering() {
           )}
         </div>
 
+        <nav className="staff-pos-top-tabs" aria-label="Điều hướng đơn nội bộ">
+          {navTabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              className={`nav-item ${activeTab === key ? "active" : ""}`}
+              onClick={() => setActiveTab(key)}
+            >
+              <Icon size={17} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+
         <div className="header-actions">
           <NotificationBell
             onViewAll={() => setActiveTab("notifications")}
@@ -1551,13 +1578,62 @@ export default function StaffOrdering() {
           )}
 
         {activeTab === "tables" && (
-          <TableMap
-            tables={tables}
-            floors={floors}
-            onSelect={(t) => setSelectedTableId(t.id)}
-            selectedTable={selectedTable}
-            onTableAction={handleTableAction}
-          />
+          <div className="staff-pos-tables-workspace">
+            <section className="staff-pos-tables-area" aria-label="Sơ đồ bàn nhà hàng">
+              <TableMap
+                tables={tables}
+                floors={floors}
+                onSelect={(t) => setSelectedTableId(t.id)}
+                selectedTable={selectedTable}
+                onTableAction={handleTableAction}
+              />
+            </section>
+
+            <aside className="staff-pos-table-sidepanel" aria-label="Thao tác bàn đang chọn">
+              {selectedTable ? (
+                <>
+                  <div className="table-sidepanel__header">
+                    <span>Bàn đang chọn</span>
+                    <h2>{selectedTable.name}</h2>
+                    <em className={`table-sidepanel__status status-${selectedTable.status}`}>{selectedTableStatusLabel}</em>
+                  </div>
+                  <dl className="table-sidepanel__details">
+                    <div>
+                      <dt>Sức chứa</dt>
+                      <dd>{selectedTable.capacity || selectedTable.guests || 0} khách</dd>
+                    </div>
+                    <div>
+                      <dt>Khách liên kết</dt>
+                      <dd>{linkedTableCustomer?.customerName || selectedTable.customer?.name || "Chưa gán"}</dd>
+                    </div>
+                    <div>
+                      <dt>Giỏ hiện tại</dt>
+                      <dd>{activeCart.length} món • {pendingCount} món đang chờ</dd>
+                    </div>
+                  </dl>
+                  <div className="table-sidepanel__actions">
+                    <button type="button" className="is-primary" onClick={() => setActiveTab("menu")}>Mở menu</button>
+                    <button type="button" onClick={() => setIsCartOpen(true)} disabled={!cartContextTable}>Xem đơn / Tính tiền</button>
+                    {linkedTableCustomer && orderMode !== "remote" ? (
+                      <button type="button" onClick={() => setShowCustomerNoteModal(true)}>Lưu ý khách</button>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="table-sidepanel__header">
+                    <span>Thao tác nhanh</span>
+                    <h2>Chọn bàn để thao tác</h2>
+                  </div>
+                  <p className="table-sidepanel__empty-copy">Chọn một bàn trên sơ đồ để mở menu, xem order hoặc yêu cầu thanh toán.</p>
+                  <div className="table-sidepanel__summary">
+                    <span>Đang phục vụ</span>
+                    <strong>{servingTablesCount}/{tables.length || 0} bàn</strong>
+                  </div>
+                </>
+              )}
+            </aside>
+          </div>
         )}
         {activeTab === "menu" && (
           <>
@@ -1566,13 +1642,13 @@ export default function StaffOrdering() {
                 className={orderMode === "dine_in" ? "active" : ""}
                 onClick={() => setOrderMode("dine_in")}
               >
-                Order tại bàn
+                Đơn tại bàn
               </button>
               <button
                 className={orderMode === "remote" ? "active" : ""}
                 onClick={() => setOrderMode("remote")}
               >
-                Order từ xa
+                Đơn từ xa
               </button>
             </div>
             {orderMode === "remote" && (
@@ -1740,7 +1816,7 @@ export default function StaffOrdering() {
                 <span className="status-info">
                   {pendingCount > 0
                     ? `${pendingCount} món đang chờ`
-                    : "Xem Order / Tính tiền"}
+                    : "Xem đơn / Tính tiền"}
                 </span>
               </div>
             </div>
@@ -1761,52 +1837,20 @@ export default function StaffOrdering() {
         </div>
       )}
 
-      <nav className="staff-pos-bottom-nav">
-        <button
-          className={`nav-item ${activeTab === "tables" ? "active" : ""}`}
-          onClick={() => setActiveTab("tables")}
-        >
-          <div className="nav-icon-wrap">
-            <Grid size={22} />
-          </div>
-          <span>Bàn</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "menu" ? "active" : ""}`}
-          onClick={() => setActiveTab("menu")}
-        >
-          <div className="nav-icon-wrap">
-            <Coffee size={22} />
-          </div>
-          <span>Menu</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "contacts" ? "active" : ""}`}
-          onClick={() => setActiveTab("contacts")}
-        >
-          <div className="nav-icon-wrap">
-            <MessageSquare size={22} />
-          </div>
-          <span>Liên lạc</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "notifications" ? "active" : ""}`}
-          onClick={() => setActiveTab("notifications")}
-        >
-          <div className="nav-icon-wrap">
-            <Bell size={22} />
-          </div>
-          <span>Thông báo</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "profile" ? "active" : ""}`}
-          onClick={() => setActiveTab("profile")}
-        >
-          <div className="nav-icon-wrap">
-            <UserCircle size={22} />
-          </div>
-          <span>Cá nhân</span>
-        </button>
+      <nav className="staff-pos-bottom-nav" aria-label="Điều hướng đơn nội bộ trên di động">
+        {navTabs.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            className={`nav-item ${activeTab === key ? "active" : ""}`}
+            onClick={() => setActiveTab(key)}
+          >
+            <div className="nav-icon-wrap">
+              <Icon size={22} />
+            </div>
+            <span>{label}</span>
+          </button>
+        ))}
       </nav>
 
       {isCartOpen && (
@@ -1882,7 +1926,7 @@ export default function StaffOrdering() {
               <strong>SĐT:</strong> {linkedTableCustomer.customerPhone || "—"}
             </p>
             <p>
-              <strong>Dietary notes:</strong>{" "}
+              <strong>Lưu ý ăn uống:</strong>{" "}
               {linkedTableCustomer.dietaryNotes ||
                 linkedTableCustomer.note ||
                 "Chưa có"}

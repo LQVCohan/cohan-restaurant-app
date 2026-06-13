@@ -86,13 +86,13 @@ $shadow-md: 0 14px 28px rgba(31, 111, 74, 0.12);
   .table-grid {
     display: grid;
     width: 100%;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 12px;
     align-items: stretch;
     padding-bottom: 20px;
 
     .table-card-wrapper {
-      min-height: 108px;
+      min-height: 104px;
       border: 1px solid $border-color;
       border-radius: 16px;
       background: $bg-card;
@@ -285,5 +285,18 @@ $shadow-md: 0 14px 28px rgba(31, 111, 74, 0.12);
         }
       }
     }
+  }
+}
+
+
+@media (min-width: 1200px) {
+  .staff-pos-tables .table-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .staff-pos-tables .table-grid {
+    grid-template-columns: 1fr;
   }
 }

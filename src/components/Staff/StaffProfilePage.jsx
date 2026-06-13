@@ -225,7 +225,12 @@ const StaffProfilePage = () => {
             <span>Tài khoản hoạt động</span>
           </div>
         </div>
-        <Link className="staff-profile__hero-action" to="/staff/schedule">Xem lịch cá nhân</Link>
+        <nav className="staff-profile__hero-actions" aria-label="Thao tác nhanh hồ sơ">
+          <Link className="staff-profile__hero-action is-primary" to="/staff/schedule">Xem lịch cá nhân</Link>
+          <Link to="/staff/notifications"><Bell size={17} /> Thông báo</Link>
+          <Link to="/staff/performance"><ClipboardList size={17} /> Hiệu suất</Link>
+          <Link to="/staff/payslips"><Banknote size={17} /> Phiếu lương</Link>
+        </nav>
       </section>
 
       {overviewError ? (
@@ -332,11 +337,6 @@ const StaffProfilePage = () => {
             </div>
           </section>
 
-          <nav className="staff-profile__quick-actions" aria-label="Lối tắt hồ sơ">
-            <Link to="/staff/notifications"><Bell size={17} /> Thông báo</Link>
-            <Link to="/staff/performance"><ClipboardList size={17} /> Hiệu suất</Link>
-            <Link to="/staff/payslips"><Banknote size={17} /> Phiếu lương</Link>
-          </nav>
         </div>
       </div>
     </div>

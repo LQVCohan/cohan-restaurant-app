@@ -665,6 +665,8 @@
 }
 
 .staff-payslips-page {
+  width: min(100%, 1360px);
+  margin-inline: auto;
   gap: 16px;
 }
 

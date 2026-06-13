@@ -13,8 +13,8 @@ $border-color: #DCE8DF;
 .staff-pos-layout {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 1360px;
+  width: min(100%, 1440px);
+  max-width: none;
   min-height: auto;
   height: auto;
   margin: 0 auto;
@@ -26,7 +26,8 @@ $border-color: #DCE8DF;
 // 1. HEADER
 .staff-pos-header {
   flex-shrink: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
@@ -469,9 +470,6 @@ $border-color: #DCE8DF;
 }
 
 @media (prefers-color-scheme: dark) {
-  .staff-pos-layout {
-    background: #F7F8F3;
-  }
   .staff-pos-header,
   .staff-pos-bottom-nav,
   .floating-cart-wrapper .btn-customer-note,
@@ -497,4 +495,151 @@ $border-color: #DCE8DF;
     background: #EAF5EE;
     color: #64746A;
   }
+}
+
+/* Desktop workspace layout for staff ordering */
+.staff-pos-top-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: max-content;
+
+  .nav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid $border-color;
+    border-radius: 13px;
+    background: #fff;
+    color: $text-sub;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease;
+
+    &:hover { transform: translateY(-1px); border-color: rgba(31, 111, 74, 0.26); }
+
+    &.active {
+      background: $primary;
+      color: #fff;
+      border-color: $primary;
+      box-shadow: 0 8px 18px rgba(31, 111, 74, 0.18);
+    }
+  }
+}
+
+.staff-pos-tables-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 14px;
+  align-items: start;
+}
+
+.staff-pos-tables-area,
+.staff-pos-table-sidepanel {
+  border: 1px solid $border-color;
+  border-radius: 20px;
+  background: #FFFFFF;
+  box-shadow: 0 12px 28px rgba(31, 111, 74, 0.06);
+}
+
+.staff-pos-tables-area { padding: 14px; min-width: 0; }
+
+.staff-pos-table-sidepanel {
+  position: sticky;
+  top: 160px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.table-sidepanel__header span {
+  display: block;
+  color: $primary;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.table-sidepanel__header h2 {
+  margin: 5px 0 8px;
+  color: $text-main;
+  font-size: clamp(1.3rem, 2vw, 1.65rem);
+  line-height: 1.1;
+}
+
+.table-sidepanel__status {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #EAF5EE;
+  color: $primary;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.table-sidepanel__details {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+
+  div {
+    display: grid;
+    gap: 3px;
+    padding: 11px 0;
+    border-top: 1px solid $border-color;
+  }
+
+  dt { color: $text-sub; font-size: 0.82rem; font-weight: 750; }
+  dd { margin: 0; color: $text-main; font-weight: 850; overflow-wrap: anywhere; }
+}
+
+.table-sidepanel__actions {
+  display: grid;
+  gap: 8px;
+
+  button {
+    min-height: 42px;
+    border: 1px solid rgba(31, 111, 74, 0.18);
+    border-radius: 13px;
+    background: #EAF5EE;
+    color: $primary;
+    font-weight: 850;
+    cursor: pointer;
+
+    &.is-primary { background: $primary; border-color: $primary; color: #fff; }
+    &:disabled { cursor: not-allowed; opacity: 0.55; }
+    &:not(:disabled):hover { transform: translateY(-1px); }
+  }
+}
+
+.table-sidepanel__empty-copy { margin: 0; color: $text-sub; line-height: 1.55; }
+.table-sidepanel__summary { display: flex; justify-content: space-between; gap: 10px; padding: 12px; border-radius: 14px; background: #F5FBF7; color: $text-sub; }
+.table-sidepanel__summary strong { color: $primary; }
+
+@media (min-width: 1180px) {
+  .staff-pos-main { padding: 16px; }
+}
+
+@media (max-width: 1179px) and (min-width: 900px) {
+  .staff-pos-header { grid-template-columns: 1fr auto; }
+  .staff-pos-top-tabs { grid-column: 1 / -1; overflow-x: auto; padding-bottom: 2px; }
+}
+
+@media (min-width: 900px) {
+  .staff-pos-bottom-nav { display: none; }
+  .staff-pos-layout--tables .floating-cart-wrapper { display: none; }
+}
+
+@media (max-width: 899px) {
+  .staff-pos-layout { width: 100%; }
+  .staff-pos-header { display: flex; }
+  .staff-pos-top-tabs { display: none; }
+  .staff-pos-bottom-nav { display: flex; }
+  .staff-pos-tables-workspace { grid-template-columns: 1fr; }
+  .staff-pos-table-sidepanel { position: static; }
 }
