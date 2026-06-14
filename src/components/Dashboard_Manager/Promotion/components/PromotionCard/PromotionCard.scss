@@ -1,24 +1,23 @@
 @use "sass:color";
 
-$accent: #9a7048;
-$accent-dark: #6f5236;
-$accent-soft: #f3eadf;
-$surface: #fffdf9;
-$white: #ffffff;
-$ink: #22201d;
-$text: #3c3833;
-$muted: #756f66;
-$subtle: #9b9388;
-$line: #e6ded3;
-$line-strong: #d7cbbd;
-$success: #3f7d5a;
-$success-soft: #e9f3ed;
-$danger: #b95a4f;
-$danger-soft: #faece8;
-$warning: #a66d2e;
-$warning-soft: #fff3df;
-$shadow: 0 16px 34px rgba(74, 57, 37, 0.08);
-$shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
+$pm-sage: #1f6a60;
+$pm-sage-dark: #17554d;
+$pm-sage-soft: #dcefe9;
+$pm-sage-mist: #f2faf7;
+$pm-charcoal: #24323b;
+$pm-surface: #fffdf9;
+$pm-white: #ffffff;
+$pm-ink: #24303f;
+$pm-muted: #667085;
+$pm-subtle: #8a8177;
+$pm-line: #ded6cb;
+$pm-line-strong: #cec3b5;
+$pm-danger: #9a413d;
+$pm-danger-soft: #faece8;
+$pm-warning: #835b20;
+$pm-warning-soft: #fbf1df;
+$pm-shadow: 0 16px 34px rgba(48, 40, 30, 0.08);
+$pm-shadow-hover: 0 24px 48px rgba(48, 40, 30, 0.12);
 
 .promotion-card {
   position: relative;
@@ -28,12 +27,12 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
   flex-direction: column;
   overflow: hidden;
   padding: 1.25rem;
-  border: 1px solid rgba($line-strong, 0.82);
+  border: 1px solid rgba($pm-line-strong, 0.78);
   border-radius: 24px;
   background:
-    linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(255, 250, 243, 0.94)),
-    radial-gradient(circle at top right, rgba($accent, 0.12), transparent 16rem);
-  box-shadow: $shadow;
+    linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(248, 245, 238, 0.94)),
+    radial-gradient(circle at top right, rgba($pm-sage, 0.12), transparent 16rem);
+  box-shadow: $pm-shadow;
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -45,14 +44,14 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
     position: absolute;
     inset: 0 0 auto;
     height: 4px;
-    background: linear-gradient(90deg, $accent, #cfaa70, rgba($success, 0.76));
-    opacity: 0.8;
+    background: linear-gradient(90deg, $pm-sage-dark, $pm-sage, rgba(#a8855f, 0.76));
+    opacity: 0.82;
   }
 
   &:hover {
     transform: translateY(-3px);
-    border-color: rgba($accent, 0.42);
-    box-shadow: $shadow-hover;
+    border-color: rgba($pm-sage, 0.36);
+    box-shadow: $pm-shadow-hover;
 
     .card-actions {
       opacity: 1;
@@ -62,8 +61,8 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
   }
 
   &:focus-within {
-    border-color: rgba($accent, 0.5);
-    box-shadow: 0 0 0 3px rgba($accent, 0.14), $shadow;
+    border-color: rgba($pm-sage, 0.5);
+    box-shadow: 0 0 0 3px rgba($pm-sage, 0.14), $pm-shadow;
   }
 
   .card-actions {
@@ -73,9 +72,9 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
     display: flex;
     gap: 0.45rem;
     padding: 0.25rem;
-    border: 1px solid rgba($line, 0.76);
+    border: 1px solid rgba($pm-line, 0.76);
     border-radius: 14px;
-    background: rgba($white, 0.86);
+    background: rgba($pm-white, 0.86);
     backdrop-filter: blur(12px);
     opacity: 0;
     pointer-events: none;
@@ -91,15 +90,15 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
       border: 1px solid transparent;
       border-radius: 10px;
       background: transparent;
-      color: $muted;
+      color: $pm-muted;
       cursor: pointer;
       transition: transform 180ms ease, background 180ms ease, color 180ms ease, border-color 180ms ease;
 
       &:hover:not(:disabled) {
         transform: translateY(-1px);
-        border-color: rgba($accent, 0.24);
-        background: $accent-soft;
-        color: $accent-dark;
+        border-color: rgba($pm-sage, 0.22);
+        background: $pm-sage-mist;
+        color: $pm-sage-dark;
       }
 
       &:active:not(:disabled) {
@@ -108,7 +107,7 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
 
       &:focus-visible {
         outline: none;
-        box-shadow: 0 0 0 3px rgba($accent, 0.16);
+        box-shadow: 0 0 0 3px rgba($pm-sage, 0.16);
       }
 
       &:disabled {
@@ -117,9 +116,9 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
       }
 
       &.delete:hover:not(:disabled) {
-        border-color: rgba($danger, 0.24);
-        background: $danger-soft;
-        color: $danger;
+        border-color: rgba($pm-danger, 0.24);
+        background: $pm-danger-soft;
+        color: $pm-danger;
       }
     }
 
@@ -136,7 +135,7 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
 
   .text-xs.text-secondary {
     margin: 0 0 0.75rem;
-    color: $muted;
+    color: $pm-muted;
     line-height: 1.45;
   }
 
@@ -154,23 +153,26 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
       padding: 0.25rem 0.62rem;
       border-radius: 9px;
       font-size: 0.72rem;
-      font-weight: 760;
+      font-weight: 800;
       letter-spacing: 0.05em;
       text-transform: uppercase;
 
       &.active {
-        background: $success-soft;
-        color: $success;
+        border: 1px solid rgba($pm-sage, 0.16);
+        background: $pm-sage-soft;
+        color: $pm-sage-dark;
       }
 
       &.draft {
-        background: $warning-soft;
-        color: $warning;
+        border: 1px solid rgba($pm-warning, 0.16);
+        background: $pm-warning-soft;
+        color: $pm-warning;
       }
 
       &.expired {
-        background: $danger-soft;
-        color: $danger;
+        border: 1px solid rgba($pm-danger, 0.16);
+        background: $pm-danger-soft;
+        color: $pm-danger;
       }
     }
   }
@@ -186,11 +188,11 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
       align-items: baseline;
       flex-wrap: wrap;
       gap: 0.35rem;
-      color: $accent-dark;
+      color: $pm-sage-dark;
 
       .value {
         font-size: clamp(2rem, 4vw, 2.7rem);
-        font-weight: 820;
+        font-weight: 840;
         line-height: 0.95;
         letter-spacing: -0.055em;
         font-variant-numeric: tabular-nums;
@@ -198,22 +200,22 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
 
       .unit {
         font-size: 1.02rem;
-        font-weight: 760;
+        font-weight: 800;
       }
 
       .max-discount-hint {
         flex-basis: 100%;
-        color: $muted;
+        color: $pm-muted;
         font-size: 0.78rem;
-        font-weight: 600;
+        font-weight: 650;
       }
     }
 
     .promo-title {
       margin: 0;
-      color: $ink;
+      color: $pm-charcoal;
       font-size: 1.08rem;
-      font-weight: 760;
+      font-weight: 800;
       line-height: 1.35;
       letter-spacing: -0.025em;
       display: -webkit-box;
@@ -229,31 +231,31 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      border: 1px dashed rgba($accent, 0.34);
+      border: 1px dashed rgba($pm-sage, 0.34);
       border-radius: 12px;
-      background: #fbf7f1;
-      color: $accent-dark;
+      background: $pm-sage-mist;
+      color: $pm-sage-dark;
       cursor: copy;
       margin-top: 0.1rem;
       padding: 0.45rem 0.65rem;
       transition: background 180ms ease, border-color 180ms ease;
 
       &:hover {
-        border-color: rgba($accent, 0.52);
-        background: $accent-soft;
+        border-color: rgba($pm-sage, 0.52);
+        background: $pm-sage-soft;
       }
 
       .code-icon {
         flex: 0 0 auto;
-        color: $accent;
+        color: $pm-sage;
       }
 
       .promo-code {
         overflow: hidden;
-        color: $accent-dark;
+        color: $pm-sage-dark;
         font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
         font-size: 0.84rem;
-        font-weight: 760;
+        font-weight: 800;
         letter-spacing: 0.045em;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -268,20 +270,20 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
     gap: 0.55rem;
     margin-top: 1.25rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba($line, 0.82);
+    border-top: 1px solid rgba($pm-line, 0.82);
 
     .info-row {
       display: flex;
       align-items: center;
       gap: 0.55rem;
       min-width: 0;
-      color: $muted;
+      color: $pm-muted;
       font-size: 0.86rem;
       line-height: 1.35;
 
       svg {
         flex: 0 0 auto;
-        color: $subtle;
+        color: $pm-subtle;
       }
 
       span {
@@ -292,13 +294,13 @@ $shadow-hover: 0 24px 48px rgba(74, 57, 37, 0.12);
       }
 
       b {
-        color: $ink;
+        color: $pm-charcoal;
         font-variant-numeric: tabular-nums;
       }
 
       .separator {
         margin: 0 0.25rem;
-        color: $subtle;
+        color: $pm-subtle;
       }
     }
   }
