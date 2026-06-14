@@ -78,6 +78,147 @@
   color: #244940 !important;
 }
 
+/* ===== Inventory modal clarity overrides ===== */
+.recipe-modal-shell .form-label,
+.recipe-modal-form label,
+.recipe-modal-form .section-title,
+.ingredient-form-premium .form-group > label,
+.ingredient-form-premium .im-section-title,
+.sm-container .sm-label,
+.sm-container .sm-header-note span {
+  color: #1f2a2f !important;
+  font-weight: 820 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.recipe-modal-shell .form-label,
+.recipe-modal-form label,
+.ingredient-form-premium .form-group > label,
+.sm-container .sm-label {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+  text-transform: none !important;
+  margin-bottom: 4px !important;
+}
+
+.recipe-modal-form .section-title,
+.ingredient-form-premium .im-section-title {
+  font-size: 16px !important;
+}
+
+.ingredient-form-premium .im-section-desc,
+.sm-container .sm-help,
+.recipe-modal-form .recipe-summary-card div {
+  color: #52605d !important;
+  font-weight: 620 !important;
+}
+
+.recipe-modal-form input,
+.recipe-modal-form select,
+.ingredient-form-premium .standard-input,
+.ingredient-form-premium select,
+.ingredient-form-premium .standard-textarea,
+.ingredient-form-premium .input-with-icon input,
+.ingredient-form-premium .input-with-icon select,
+.ingredient-form-premium .input-addon-group,
+.sm-container .sm-input,
+.sm-container .sm-status-toggle {
+  border: 1px solid #d7cfc1 !important;
+  background-color: #fffdf8 !important;
+  color: #1f2a2f !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
+}
+
+.recipe-modal-form input:focus,
+.recipe-modal-form select:focus,
+.ingredient-form-premium input:focus,
+.ingredient-form-premium select:focus,
+.ingredient-form-premium textarea:focus,
+.sm-container .sm-input:focus {
+  border-color: #8a633f !important;
+  box-shadow: 0 0 0 3px rgba(138, 99, 63, 0.16) !important;
+}
+
+.recipeIngredientLine.header > div {
+  color: #2b3438 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.recipeIngredientLine.header > div:nth-child(3) {
+  font-size: 0 !important;
+}
+
+.recipeIngredientLine.header > div:nth-child(3)::after {
+  content: "Đơn vị tính";
+  font-size: 12px;
+}
+
+.recipeIngredientLine.header > div:nth-child(4) {
+  font-size: 0 !important;
+}
+
+.recipeIngredientLine.header > div:nth-child(4)::after {
+  content: "Hao hụt (%)";
+  font-size: 12px;
+}
+
+.recipeIngredientLine.is-missing-ingredient {
+  background: #fff8f0 !important;
+  border-left: 4px solid #d97706 !important;
+}
+
+.recipeIngredientLine.is-missing-ingredient .recipe-ingredient-picked {
+  align-items: flex-start !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.recipeIngredientLine.is-missing-ingredient .recipe-ingredient-picked strong {
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+.recipeIngredientLine.is-missing-ingredient .recipe-ingredient-picked strong::after {
+  content: "Cần chọn nguyên liệu thay thế";
+  display: inline-block;
+  color: #7c3f00;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 850;
+}
+
+.recipeIngredientLine.is-missing-ingredient .recipe-ingredient-picked::after {
+  content: "Nguyên liệu cũ không còn trong kho. Bấm bút chì để chọn lại.";
+  display: block;
+  max-width: 260px;
+  color: #8a633f;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.recipe-missing-warning {
+  border-color: rgba(217, 119, 6, 0.24) !important;
+  background: #fff8ed !important;
+  color: #7c3f00 !important;
+  font-weight: 720 !important;
+}
+
+.recipe-danger-text {
+  color: #8a4b12 !important;
+  font-weight: 760 !important;
+}
+
+.recipe-modal-form .variant-footer .label {
+  color: #315f55 !important;
+}
+
+.recipe-modal-form .variant-footer .value {
+  color: #224a42 !important;
+  font-size: 17px !important;
+}
+
 @media (max-width: 720px) {
   .rl-container .rl-toolbar-actions,
   .rl-container .rl-trash-toggle,
