@@ -7,6 +7,12 @@ import React, {
 } from "react";
 import { NotificationContext } from "./NotificationContext";
 
+/**
+ * UI-only toast/local notification provider.
+ *
+ * This provider intentionally stores short-lived interface feedback in React state.
+ * It is not the persistent DB notification workflow used by NotificationBell.
+ */
 const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const timeoutRefs = useRef({});
