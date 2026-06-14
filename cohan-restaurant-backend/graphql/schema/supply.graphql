@@ -33,6 +33,8 @@ type Supply {
   minStock: Float
   notes: String
   isActive: Boolean
+  deletedAt: DateTime
+  deleteExpiresAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -68,6 +70,8 @@ type SupplyWithStock {
   minStock: Float
   notes: String
   isActive: Boolean
+  deletedAt: DateTime
+  deleteExpiresAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
 
@@ -141,6 +145,7 @@ extend type Query {
   # Trả Supply kèm stockItem (nếu truyền warehouseId -> stock ở kho đó; nếu không -> tổng across kho)
   supplies(restaurantId: ID!, warehouseId: ID): [SupplyWithStock!]!
   supply(id: ID!): SupplyWithStock
+  supplyTrash(restaurantId: ID!, warehouseId: ID, limit: Int = 200): [SupplyWithStock!]!
 
   supplyStockItems(restaurantId: ID!, supplyId: ID): [StockItem!]!
   supplyCategories(restaurantId: ID!, search: String, includeInactive: Boolean = false, limit: Int = 200): [SupplyCategory!]!
@@ -151,6 +156,8 @@ extend type Mutation {
   createSupply(input: CreateSupplyInput!): Supply!
   updateSupply(id: ID!, input: UpdateSupplyInput!): Supply!
   deleteSupply(id: ID!): Boolean!
+  restoreSupply(id: ID!): Supply!
+  deleteSupplyPermanently(id: ID!): Boolean!
   stockTransfer(input: StockTransferInput!): Boolean!
   adjustSupply(input: AdjustSupplyInput!): StockItem!
   stockInbound(input: StockInboundInput!): StockItem!
