@@ -359,13 +359,23 @@ const SupplyModal = ({
         </div>
 
         <div className="sm-grid-2">
-          <label className="sm-field">
+          <div className="sm-field">
             <span className="sm-label">Trạng thái</span>
-            <select className="sm-input" value={form.isActive ? "1" : "0"} onChange={(e) => set({ isActive: e.target.value === "1" })}>
-              <option value="1">🟢 Đang hoạt động</option>
-              <option value="0">🔴 Ngưng sử dụng</option>
-            </select>
-          </label>
+            <button
+              type="button"
+              className={`sm-status-toggle ${form.isActive ? "is-active" : "is-inactive"}`}
+              aria-pressed={form.isActive}
+              onClick={() => set({ isActive: !form.isActive })}
+            >
+              <span className="status-main">
+                <span className="status-dot" aria-hidden="true" />
+                <span>{form.isActive ? "Đang hoạt động" : "Ngưng sử dụng"}</span>
+              </span>
+              <span className="status-hint">
+                {form.isActive ? "Bấm để tạm ngưng" : "Bấm để kích hoạt lại"}
+              </span>
+            </button>
+          </div>
 
           <label className="sm-field">
             <span className="sm-label">Ghi chú</span>
