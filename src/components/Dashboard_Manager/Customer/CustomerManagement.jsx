@@ -162,6 +162,18 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
   return null;
 };
 
+const CustomerKpiCards = ({ stats }) => (
+  <div className="cm-header-kpis" aria-label="Chỉ số khách hàng">
+    {stats.map((item) => (
+      <div key={item.id} className={`cm-header-kpi tone-${item.tone || "default"}`}>
+        <span className="cm-header-kpi__icon">{item.icon}</span>
+        <span className="cm-header-kpi__label">{item.label}</span>
+        <strong className="cm-header-kpi__value">{formatCompactCount(item.value)}</strong>
+      </div>
+    ))}
+  </div>
+);
+
 /* ================== Main Component ================== */
 
 const CustomerManagement = () => {
@@ -449,15 +461,13 @@ const CustomerManagement = () => {
   }, [customersDecorated, tierFilters]);
 
   const loading = usersLoading;
+  const customerHeaderStats = [
+    { id: "total", icon: "👤", label: "Tổng khách", value: customerTotalCount || customersDecorated.length, tone: "total" },
+    { id: "online", icon: "🟢", label: "Online", value: onlineCount, tone: "online" },
+    { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0, tone: "vip" },
+    { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0, tone: "new" },
+  ];
   const hasCustomerData = Number(customerTotalCount || 0) > 0;
-  const customerHeaderStats = hasCustomerData
-    ? [
-        { id: "total", icon: "👤", label: "Tổng khách", value: customerTotalCount || customersDecorated.length },
-        { id: "online", icon: "🟢", label: "Online", value: onlineCount },
-        { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0 },
-        { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0 },
-      ]
-    : [];
   const customerTotalPages = Math.max(1, Math.ceil(Number(customerTotalCount || 0) / customerPageSize) || 1);
   const customerPagination = {
     page: customerPageIndex + 1,
@@ -593,8 +603,9 @@ const CustomerManagement = () => {
         restaurantList={restaurantOptions}
         restaurantDisabled={restaurantsLoading || !hasRestaurants}
         restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
-        stats={customerHeaderStats}
-        statsPlacement={hasCustomerData ? "right" : "none"}
+        stats={[]}
+        statsPlacement="none"
+        customControls={<CustomerKpiCards stats={customerHeaderStats} />}
         primaryAction={{ label: "Thêm khách", icon: "➕", onClick: () => setShowAddModal(true) }}
       />
 
