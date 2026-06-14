@@ -50,14 +50,18 @@ const lockPageScroll = () => {
   activeModalCount += 1;
 };
 
+const isJsdomRuntime = () =>
+  typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
+
 const restoreWindowScroll = (y) => {
   if (typeof window === "undefined") return;
   if (typeof window.scrollTo !== "function") return;
+  if (isJsdomRuntime()) return;
 
   try {
     window.scrollTo(0, y);
   } catch {
-    // jsdom exposes scrollTo but throws "not implemented". Runtime browsers still restore normally.
+    // Runtime browsers restore normally; non-browser test doubles may not support scrollTo.
   }
 };
 
