@@ -1,7 +1,7 @@
 .cm-page .management-page-header,
 .cm-page .manager-command-bar,
 .cm-page .cm-layout {
-  width: min(1400px, calc(100vw - 190px)) !important;
+  width: min(1440px, calc(100vw - 150px)) !important;
   max-width: none !important;
   margin-left: 50% !important;
   margin-right: 0 !important;
@@ -10,47 +10,53 @@
 
 .cm-page .management-page-header.density-compact {
   position: relative !important;
-  min-height: 218px !important;
-  padding: 1.15rem !important;
-  border-radius: 24px !important;
+  min-height: 214px !important;
+  padding: 1.18rem 1.18rem 1.05rem !important;
+  border-radius: 26px !important;
   gap: 1rem !important;
-  grid-template-columns: minmax(320px, 1fr) 260px !important;
+  grid-template-columns: minmax(360px, 1fr) 270px !important;
   grid-template-rows: auto auto !important;
   align-items: start !important;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(242, 250, 247, 0.58), transparent 34%),
+    linear-gradient(135deg, rgba(255, 253, 250, 0.98), rgba(247, 241, 232, 0.88)) !important;
+  box-shadow: 0 14px 34px rgba(54, 44, 29, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
 }
 
 .cm-page .management-page-header .mph-left {
   grid-column: 1 !important;
   grid-row: 1 !important;
+  min-width: 0 !important;
 }
 
 .cm-page .management-page-header .mph-eyebrow {
   font-size: 11px !important;
-  letter-spacing: 0.12em !important;
+  letter-spacing: 0.13em !important;
 }
 
 .cm-page .management-page-header .mph-title {
   margin: 4px 0 7px !important;
-  font-size: 27px !important;
-  line-height: 1.08 !important;
-  letter-spacing: -0.038em !important;
+  font-size: 28px !important;
+  line-height: 1.06 !important;
+  letter-spacing: -0.04em !important;
 }
 
 .cm-page .management-page-header .mph-title > span:last-child::after {
-  font-size: 27px !important;
+  font-size: 28px !important;
 }
 
 .cm-page .management-page-header .mph-title__icon {
-  width: 42px !important;
-  height: 42px !important;
-  border-radius: 14px !important;
-  font-size: 20px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 15px !important;
+  font-size: 21px !important;
 }
 
 .cm-page .management-page-header .mph-subtitle {
-  max-width: 44ch !important;
+  max-width: 48ch !important;
   font-size: 14px !important;
-  line-height: 1.45 !important;
+  line-height: 1.48 !important;
+  color: #60706d !important;
 }
 
 .cm-page .management-page-header .mph-right,
@@ -68,6 +74,7 @@
   border-radius: 14px !important;
   font-size: 14px !important;
   font-weight: 820 !important;
+  box-shadow: 0 6px 14px rgba(54, 44, 29, 0.04) !important;
 }
 
 .cm-page .management-page-header .mph-btn--primary {
@@ -76,11 +83,17 @@
   align-self: start !important;
   justify-self: stretch !important;
   width: 100% !important;
-  height: 44px !important;
-  margin-top: 52px !important;
+  height: 46px !important;
+  margin-top: 54px !important;
   border-radius: 14px !important;
   font-size: 14px !important;
-  font-weight: 820 !important;
+  font-weight: 840 !important;
+  box-shadow: 0 14px 26px rgba(26, 42, 51, 0.16) !important;
+}
+
+.cm-page .management-page-header .mph-btn--primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 18px 30px rgba(26, 42, 51, 0.2) !important;
 }
 
 .cm-page .management-page-header .mph-btn--secondary,
@@ -98,68 +111,104 @@
   bottom: auto !important;
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 0.85rem !important;
+  gap: 0.9rem !important;
   width: 100% !important;
   min-width: 0 !important;
-  margin-top: 1rem !important;
+  margin-top: 1.05rem !important;
 }
 
 .cm-page .cm-header-kpi {
-  min-height: 82px !important;
-  padding: 0.78rem 0.9rem !important;
+  position: relative !important;
+  min-height: 88px !important;
+  padding: 0.82rem 0.95rem 0.9rem !important;
   border: 1px solid rgba(216, 208, 197, 0.94) !important;
-  border-radius: 18px !important;
+  border-radius: 20px !important;
   display: grid !important;
-  grid-template-columns: 38px minmax(0, 1fr) !important;
-  grid-template-rows: auto auto !important;
-  column-gap: 0.72rem !important;
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  grid-template-rows: auto auto auto !important;
+  column-gap: 0.76rem !important;
   align-content: center !important;
   background: linear-gradient(135deg, #fffdfa, #f7f1e8) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 8px 20px rgba(54, 44, 29, 0.045) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84), 0 10px 22px rgba(54, 44, 29, 0.05) !important;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.cm-page .cm-header-kpi:hover {
+  transform: translateY(-1px) !important;
+  border-color: rgba(31, 106, 96, 0.24) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 14px 28px rgba(54, 44, 29, 0.075) !important;
 }
 
 .cm-page .cm-header-kpi.tone-total {
-  border-color: rgba(31, 106, 96, 0.3) !important;
+  border-color: rgba(31, 106, 96, 0.32) !important;
   background: linear-gradient(135deg, #f2faf7, #fffdfa) !important;
 }
 
 .cm-page .cm-header-kpi__icon {
-  grid-row: 1 / span 2 !important;
-  width: 38px !important;
-  height: 38px !important;
-  border-radius: 13px !important;
+  grid-row: 1 / span 3 !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 14px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(242, 250, 247, 0.9) !important;
+  background: rgba(242, 250, 247, 0.92) !important;
   border: 1px solid rgba(31, 106, 96, 0.16) !important;
   font-size: 17px !important;
 }
 
 .cm-page .cm-header-kpi__label {
   color: #60706d !important;
-  font-size: 12.5px !important;
+  font-size: 12.6px !important;
   font-weight: 780 !important;
   line-height: 1.1 !important;
 }
 
 .cm-page .cm-header-kpi__value {
   color: #24323b !important;
-  font-size: 25px !important;
-  font-weight: 880 !important;
+  font-size: 26px !important;
+  font-weight: 900 !important;
   line-height: 1 !important;
   font-variant-numeric: tabular-nums !important;
 }
 
+.cm-page .cm-header-kpi::after {
+  grid-column: 2 !important;
+  color: #7d8986 !important;
+  font-size: 11.6px !important;
+  font-weight: 680 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.cm-page .cm-header-kpi.tone-total::after {
+  content: "Trong chi nhánh hiện tại" !important;
+}
+
+.cm-page .cm-header-kpi.tone-online::after {
+  content: "Đang hoạt động" !important;
+}
+
+.cm-page .cm-header-kpi.tone-vip::after {
+  content: "Nhóm ưu tiên chăm sóc" !important;
+}
+
+.cm-page .cm-header-kpi.tone-new::after {
+  content: "Phát sinh gần đây" !important;
+}
+
 .cm-page .manager-command-bar {
-  padding: 0.98rem 1.05rem !important;
-  border-radius: 22px !important;
+  padding: 1rem 1.08rem !important;
+  border-radius: 24px !important;
+  box-shadow: 0 10px 28px rgba(54, 44, 29, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
 }
 
 .cm-page .manager-command-bar .mcb-search {
-  height: 48px !important;
-  width: min(520px, 100%) !important;
-  border-radius: 16px !important;
+  height: 50px !important;
+  width: min(540px, 100%) !important;
+  border-radius: 17px !important;
 }
 
 .cm-page .manager-command-bar .mcb-search input {
@@ -167,10 +216,15 @@
 }
 
 .cm-page .manager-command-bar .mcb-btn {
-  height: 46px !important;
-  border-radius: 15px !important;
-  padding-inline: 16px !important;
+  height: 48px !important;
+  border-radius: 16px !important;
+  padding-inline: 17px !important;
   font-size: 14.5px !important;
+  font-weight: 820 !important;
+}
+
+.cm-page .manager-command-bar .mcb-btn:hover {
+  transform: translateY(-1px) !important;
 }
 
 .cm-page .cm-pill {
@@ -178,6 +232,7 @@
   padding: 0 15px !important;
   border-radius: 15px !important;
   font-size: 14px !important;
+  font-weight: 780 !important;
 }
 
 .cm-page .cm-pill-count {
@@ -186,9 +241,10 @@
 }
 
 .cm-page .cl-manager-strip {
-  min-height: 46px !important;
+  min-height: 48px !important;
   padding: 10px 14px !important;
-  border-radius: 17px !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 18px rgba(54, 44, 29, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
 }
 
 .cm-page .cl-strip-label {
@@ -215,16 +271,18 @@
 }
 
 .cm-page .cl-empty-state {
-  min-height: 292px !important;
-  padding: 50px 28px !important;
+  min-height: 282px !important;
+  padding: 46px 28px !important;
   border-radius: 24px !important;
+  background: rgba(255, 253, 250, 0.82) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
 }
 
 .cm-page .cl-empty-state .cl-empty-icon {
-  width: 78px !important;
-  height: 78px !important;
+  width: 76px !important;
+  height: 76px !important;
   border-radius: 23px !important;
-  margin-bottom: 16px !important;
+  margin-bottom: 15px !important;
 }
 
 .cm-page .cl-empty-state .cl-empty-title {
@@ -233,6 +291,7 @@
 }
 
 .cm-page .cl-empty-state .cl-empty-desc {
+  max-width: 410px !important;
   font-size: 14.5px !important;
 }
 
