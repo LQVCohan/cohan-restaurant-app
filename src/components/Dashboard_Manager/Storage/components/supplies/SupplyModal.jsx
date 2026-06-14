@@ -16,7 +16,7 @@ const UNITS = [
   { value: "g", label: "Gram (g)" },
   { value: "kg", label: "Kilogram (kg)" },
   { value: "ml", label: "Milliliter (ml)" },
-  { value: "l", label: "Lít (l)" },
+  { value: "l", label: "Lít" },
   { value: "tbsp", label: "Muỗng canh (tbsp)" },
   { value: "tsp", label: "Muỗng cà phê (tsp)" },
 ];
@@ -91,7 +91,7 @@ const SupplyModal = ({
   const subtitle = useMemo(
     () =>
       isEditing
-        ? "Điều chỉnh thông tin vật phẩm và quản lý lô hàng."
+        ? "Điều chỉnh thông tin vật phẩm, giá vốn và trạng thái hoạt động."
         : "Thiết lập vật phẩm mới vào hệ thống quản lý kho.",
     [isEditing],
   );
@@ -271,136 +271,170 @@ const SupplyModal = ({
     <Modal
       isOpen={isOpen}
       onClose={() => requestCloseWithDraft(onClose)}
-      title={isEditing ? "Chỉnh Sửa Vật Phẩm" : "Thêm Vật Phẩm Mới"}
-      size="md"
+      title={isEditing ? "Chỉnh sửa vật phẩm" : "Thêm vật phẩm mới"}
+      size="lg"
+      className="supply-modal-shell"
     >
-      <div className="sm-container">
-        <div className="sm-header-note">
-          <i className="note-icon">ℹ️</i>
-          <span>{subtitle}</span>
-        </div>
-
-        <div className="sm-grid-2">
-          <label className="sm-field">
-            <span className="sm-label">Tên vật phẩm <b className="req">*</b></span>
-            <input
-              className={`sm-input ${errors.name ? "error" : ""}`}
-              value={form.name}
-              onChange={(e) => set({ name: e.target.value })}
-              placeholder="VD: Coca-Cola 330ml"
-            />
-            {errors.name && <small className="sm-msg">{errors.name}</small>}
-          </label>
-
-          <label className="sm-field">
-            <span className="sm-label">Mã vật tư (code)</span>
-            <input
-              className={`sm-input ${errors.sku ? "error" : ""}`}
-              value={form.sku}
-              onChange={(e) => set({ sku: e.target.value })}
-              placeholder="VD: SUP-COCA-330"
-            />
-            {errors.sku && <small className="sm-msg">{errors.sku}</small>}
-          </label>
-
-          <label className="sm-field">
-            <span className="sm-label">Danh mục</span>
-            <select
-              className="sm-input"
-              value={form.category}
-              onChange={(e) => {
-                setCategoryTouched(true);
-                set({ category: e.target.value });
-              }}
-            >
-              {dynamicCategoryOptions.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            {aiState === "loading" && <small className="sm-help">AI đang gợi ý danh mục...</small>}
-            {aiState === "ready" && aiSuggestion && (
-              <small className="sm-help">
-                Gợi ý AI: <b>{aiSuggestion.categoryName}</b>
-                {aiSuggestion.autoSelected && !categoryTouched ? " • Đã tự chọn từ AI" : " • Bạn có thể đổi tay"}
-                {!aiSuggestion.existing ? " • Danh mục mới sẽ được tạo khi lưu" : ""}
-              </small>
-            )}
-          </label>
-        </div>
-
-        <div className="sm-grid-3">
-          <label className="sm-field">
-            <span className="sm-label">Đơn vị <b className="req">*</b></span>
-            <select className={`sm-input ${errors.unit ? "error" : ""}`} value={form.unit} onChange={(e) => set({ unit: e.target.value })}>
-              {UNITS.map((u) => (
-                <option key={u.value} value={u.value}>{u.label}</option>
-              ))}
-            </select>
-            {errors.unit && <small className="sm-msg">{errors.unit}</small>}
-          </label>
-
-          <label className="sm-field">
-            <span className="sm-label">Giá nhập (VNĐ) <b className="req">*</b></span>
-            <input className={`sm-input ${errors.costPerUnit ? "error" : ""}`} type="number" min="0" value={form.costPerUnit} onChange={(e) => set({ costPerUnit: e.target.value })} placeholder="0" />
-          </label>
-
-          <label className="sm-field">
-            <span className="sm-label">Giá bán (VNĐ) <b className="req">*</b></span>
-            <input className={`sm-input ${errors.pricePerUnit ? "error" : ""}`} type="number" min="0" value={form.pricePerUnit} onChange={(e) => set({ pricePerUnit: e.target.value })} placeholder="0" />
-            {errors.pricePerUnit && <small className="sm-msg">{errors.pricePerUnit}</small>}
-          </label>
-
-          <label className="sm-field">
-            <span className="sm-label">Tồn tối thiểu <b className="req">*</b></span>
-            <input className={`sm-input ${errors.minStock ? "error" : ""}`} type="number" min="0" step="0.01" value={form.minStock} onChange={(e) => set({ minStock: e.target.value })} placeholder="0" />
-          </label>
-        </div>
-
-        <div className="sm-grid-2">
-          <div className="sm-field">
-            <span className="sm-label">Trạng thái</span>
-            <button
-              type="button"
-              className={`sm-status-toggle ${form.isActive ? "is-active" : "is-inactive"}`}
-              aria-pressed={form.isActive}
-              onClick={() => set({ isActive: !form.isActive })}
-            >
-              <span className="status-main">
-                <span className="status-dot" aria-hidden="true" />
-                <span>{form.isActive ? "Đang hoạt động" : "Ngưng sử dụng"}</span>
-              </span>
-              <span className="status-hint">
-                {form.isActive ? "Bấm để tạm ngưng" : "Bấm để kích hoạt lại"}
-              </span>
-            </button>
-          </div>
-
-          <label className="sm-field">
-            <span className="sm-label">Ghi chú</span>
-            <input className="sm-input" value={form.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="Ghi chú nội bộ..." />
-          </label>
-        </div>
-
-        {isEditing && (onOpenInbound || onOpenOutbound) && (
-          <div className="sm-quick-actions">
-            <div className="qa-info">
-              <span className="qa-badge">FIFO System</span>
-              <p>Hệ thống tự động ưu tiên xuất các lô hàng cũ nhất để đảm bảo tuổi thọ sản phẩm.</p>
+      <Modal.Body className="supply-modal-body">
+        <div className="sm-container">
+          <section className="sm-hero" aria-label="Tóm tắt vật phẩm">
+            <div className="sm-hero__icon" aria-hidden="true">▣</div>
+            <div className="sm-hero__copy">
+              <span className="sm-eyebrow">Vật tư & hàng hóa</span>
+              <h3>{isEditing ? "Cập nhật hồ sơ vật phẩm" : "Tạo vật phẩm mới"}</h3>
+              <p>{subtitle}</p>
             </div>
-            <div className="qa-buttons">
-              {onOpenInbound && <button type="button" className="sm-btn-ghost" onClick={() => onOpenInbound?.(initial)}>📥 Nhập kho</button>}
-              {onOpenOutbound && <button type="button" className="sm-btn-ghost" onClick={() => onOpenOutbound?.(initial)}>📤 Xuất kho</button>}
+            <span className={`sm-hero__status ${form.isActive ? "is-active" : "is-inactive"}`}>
+              {form.isActive ? "Đang hoạt động" : "Ngưng sử dụng"}
+            </span>
+          </section>
+
+          <section className="sm-section">
+            <div className="sm-section__header">
+              <div>
+                <span className="sm-section__kicker">01</span>
+                <h4>Thông tin định danh</h4>
+              </div>
+              <p>Tên, mã vật tư và nhóm danh mục trong kho.</p>
             </div>
-          </div>
-        )}
-      </div>
+
+            <div className="sm-grid-2">
+              <label className="sm-field">
+                <span className="sm-label">Tên vật phẩm <b className="req">*</b></span>
+                <input
+                  className={`sm-input ${errors.name ? "error" : ""}`}
+                  value={form.name}
+                  onChange={(e) => set({ name: e.target.value })}
+                  placeholder="VD: Coca-Cola 330ml"
+                />
+                {errors.name && <small className="sm-msg">{errors.name}</small>}
+              </label>
+
+              <label className="sm-field">
+                <span className="sm-label">Mã vật tư <em>Tùy chọn</em></span>
+                <input
+                  className={`sm-input ${errors.sku ? "error" : ""}`}
+                  value={form.sku}
+                  onChange={(e) => set({ sku: e.target.value })}
+                  placeholder="VD: SUP-COCA-330"
+                />
+                {errors.sku && <small className="sm-msg">{errors.sku}</small>}
+              </label>
+
+              <label className="sm-field sm-field--wide">
+                <span className="sm-label">Danh mục</span>
+                <select
+                  className="sm-input"
+                  value={form.category}
+                  onChange={(e) => {
+                    setCategoryTouched(true);
+                    set({ category: e.target.value });
+                  }}
+                >
+                  {dynamicCategoryOptions.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                {aiState === "loading" && <small className="sm-help">AI đang gợi ý danh mục...</small>}
+                {aiState === "ready" && aiSuggestion && (
+                  <small className="sm-help">
+                    Gợi ý AI: <b>{aiSuggestion.categoryName}</b>
+                    {aiSuggestion.autoSelected && !categoryTouched ? " • Đã tự chọn từ AI" : " • Bạn có thể đổi tay"}
+                    {!aiSuggestion.existing ? " • Danh mục mới sẽ được tạo khi lưu" : ""}
+                  </small>
+                )}
+              </label>
+            </div>
+          </section>
+
+          <section className="sm-section">
+            <div className="sm-section__header">
+              <div>
+                <span className="sm-section__kicker">02</span>
+                <h4>Đơn vị, giá và tồn tối thiểu</h4>
+              </div>
+              <p>Giữ dữ liệu giá vốn rõ ràng để báo cáo kho chính xác.</p>
+            </div>
+
+            <div className="sm-grid-4">
+              <label className="sm-field">
+                <span className="sm-label">Đơn vị <b className="req">*</b></span>
+                <select className={`sm-input ${errors.unit ? "error" : ""}`} value={form.unit} onChange={(e) => set({ unit: e.target.value })}>
+                  {UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+                {errors.unit && <small className="sm-msg">{errors.unit}</small>}
+              </label>
+
+              <label className="sm-field">
+                <span className="sm-label">Giá nhập <b className="req">*</b></span>
+                <input className={`sm-input ${errors.costPerUnit ? "error" : ""}`} type="number" min="0" value={form.costPerUnit} onChange={(e) => set({ costPerUnit: e.target.value })} placeholder="0" />
+                {errors.costPerUnit && <small className="sm-msg">{errors.costPerUnit}</small>}
+              </label>
+
+              <label className="sm-field">
+                <span className="sm-label">Giá bán <b className="req">*</b></span>
+                <input className={`sm-input ${errors.pricePerUnit ? "error" : ""}`} type="number" min="0" value={form.pricePerUnit} onChange={(e) => set({ pricePerUnit: e.target.value })} placeholder="0" />
+                {errors.pricePerUnit && <small className="sm-msg">{errors.pricePerUnit}</small>}
+              </label>
+
+              <label className="sm-field">
+                <span className="sm-label">Tồn tối thiểu <b className="req">*</b></span>
+                <input className={`sm-input ${errors.minStock ? "error" : ""}`} type="number" min="0" step="0.01" value={form.minStock} onChange={(e) => set({ minStock: e.target.value })} placeholder="0" />
+                {errors.minStock && <small className="sm-msg">{errors.minStock}</small>}
+              </label>
+            </div>
+          </section>
+
+          <section className="sm-section sm-section--soft">
+            <div className="sm-grid-2 sm-grid-2--compact">
+              <div className="sm-field">
+                <span className="sm-label">Trạng thái</span>
+                <button
+                  type="button"
+                  className={`sm-status-toggle ${form.isActive ? "is-active" : "is-inactive"}`}
+                  aria-pressed={form.isActive}
+                  onClick={() => set({ isActive: !form.isActive })}
+                >
+                  <span className="status-main">
+                    <span className="status-dot" aria-hidden="true" />
+                    <span>{form.isActive ? "Đang hoạt động" : "Ngưng sử dụng"}</span>
+                  </span>
+                  <span className="status-hint">
+                    {form.isActive ? "Bấm để tạm ngưng" : "Bấm để kích hoạt lại"}
+                  </span>
+                </button>
+              </div>
+
+              <label className="sm-field">
+                <span className="sm-label">Ghi chú</span>
+                <textarea className="sm-input sm-textarea" value={form.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="Ghi chú nội bộ, quy cách lưu kho hoặc nhà cung cấp..." />
+              </label>
+            </div>
+          </section>
+
+          {isEditing && (onOpenInbound || onOpenOutbound) && (
+            <section className="sm-quick-actions">
+              <div className="qa-info">
+                <span className="qa-badge">FIFO</span>
+                <p>Ưu tiên xuất các lô hàng cũ trước để kiểm soát tuổi thọ vật phẩm.</p>
+              </div>
+              <div className="qa-buttons">
+                {onOpenInbound && <button type="button" className="sm-btn-ghost" onClick={() => onOpenInbound?.(initial)}>Nhập kho</button>}
+                {onOpenOutbound && <button type="button" className="sm-btn-ghost" onClick={() => onOpenOutbound?.(initial)}>Xuất kho</button>}
+              </div>
+            </section>
+          )}
+        </div>
+      </Modal.Body>
 
       <Modal.Footer>
-        <button className="sm-btn-cancel" onClick={() => requestCloseWithDraft(onClose)}>Hủy bỏ</button>
-        <button className="sm-btn-submit" onClick={handleSave} disabled={isSubmitting}>
-          {isSubmitting ? "Đang lưu..." : isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}
+        <button type="button" className="sm-btn-cancel" onClick={() => requestCloseWithDraft(onClose)}>Hủy bỏ</button>
+        <button type="button" className="sm-btn-submit" onClick={handleSave} disabled={isSubmitting}>
+          {isSubmitting ? "Đang lưu..." : isEditing ? "Lưu thay đổi" : "Xác nhận tạo"}
         </button>
       </Modal.Footer>
     </Modal>
