@@ -1,4 +1,3 @@
-// src/graphql/resolvers/recipe/mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Recipe, MenuItem } from "../../../models/index.js";
@@ -7,6 +6,8 @@ import { requireRestaurantPermission } from "../../../src/services/auth/authoriz
 
 const SELL_UNITS = new Set(["portion", "g", "kg"]);
 const MODES = new Set(["PORTION", "BY_WEIGHT"]);
+const SOFT_DELETE_RETENTION_DAYS = 30;
+const ACTIVE_RECIPE_FILTER = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
 
 function slugifyKey(str) {
   return String(str || "")
@@ -38,237 +39,136 @@ function computeMinPrice(variants = []) {
 }
 
 function computeHasByWeight(variants = []) {
-  return (Array.isArray(variants) ? variants : []).some(
-    (v) => v?.mode === "BY_WEIGHT"
-  );
+  return (Array.isArray(variants) ? variants : []).some((v) => v?.mode === "BY_WEIGHT");
+}
+
+function normalizeServingVariants(inputServingVariants = []) {
+  const normalizedVariants = inputServingVariants
+    .map((v) => {
+      if (!v) return null;
+      const name = (v.name ?? v.preparationMethodName ?? "").trim() || undefined;
+      let key = String(v.key || "").trim();
+      if (!key && name) key = slugifyKey(name);
+      if (!key) return null;
+      key = slugifyKey(key);
+      if (!key) return null;
+
+      const mode = (v.mode || "PORTION").toString();
+      if (!MODES.has(mode)) throw new GraphQLError(`Invalid mode for variant "${key}"`);
+
+      let sellUnit = (v.sellUnit || (mode === "PORTION" ? "portion" : "kg")).toString();
+      let sellQty = toNumberOrDefault(v.sellQty, 1);
+      if (mode === "PORTION") {
+        sellUnit = "portion";
+        sellQty = 1;
+      } else {
+        if (!["kg", "g"].includes(sellUnit)) sellUnit = "kg";
+        if (!Number.isFinite(sellQty) || sellQty <= 0) sellQty = 1;
+      }
+      if (!SELL_UNITS.has(sellUnit)) throw new GraphQLError(`Invalid sellUnit for variant "${key}"`);
+
+      let price = Number(v.price);
+      if (!Number.isFinite(price) || price < 0) price = 0;
+      const rawLines = Array.isArray(v.ingredients) ? v.ingredients : Array.isArray(v.Ingredients) ? v.Ingredients : [];
+      const ingredients = rawLines
+        .map((c) => {
+          if (!c?.ingredientId) return null;
+          const qty = toNumberOrDefault(c.qty ?? c.quantify ?? c.quantity, 0);
+          const unit = c.unit ?? c.baseUnit;
+          const wastePct = toNumberOrDefault(c.wastePct, 0);
+          if (!unit) throw new GraphQLError(`Missing unit for ingredient line in variant "${key}"`);
+          if (!Number.isFinite(qty) || qty <= 0) return null;
+          return { ingredientId: c.ingredientId, qty, unit, wastePct: Math.min(100, Math.max(0, wastePct)) };
+        })
+        .filter(Boolean);
+
+      return { key, name, mode, sellQty, sellUnit, ingredients, price, isDefault: !!v.isDefault };
+    })
+    .filter(Boolean);
+
+  if (normalizedVariants.length === 0) throw new GraphQLError("servingVariants must have at least 1 variant");
+  const keys = normalizedVariants.map((x) => x.key);
+  if (new Set(keys).size !== keys.length) throw new GraphQLError("servingVariants.key must be unique");
+  const defaults = normalizedVariants.filter((v) => v.isDefault);
+  if (defaults.length > 1) throw new GraphQLError("Only one servingVariant can be isDefault=true");
+  if (defaults.length === 0) normalizedVariants[0].isDefault = true;
+
+  for (const v of normalizedVariants) {
+    if (v.mode === "PORTION" && v.sellUnit !== "portion") throw new GraphQLError(`Variant "${v.key}": PORTION must use sellUnit=portion`);
+    if (v.mode === "BY_WEIGHT" && !["kg", "g"].includes(v.sellUnit)) throw new GraphQLError(`Variant "${v.key}": BY_WEIGHT must use sellUnit kg/g`);
+  }
+  return normalizedVariants;
+}
+
+async function syncMenuItemFromRecipe({ restaurantId, menuItemId, variants = [] }) {
+  try {
+    const minPrice = computeMinPrice(variants);
+    const defaultServingKey = pickDefaultVariantKey(variants);
+    const hasByWeightVariant = computeHasByWeight(variants);
+    const setObj = { basePrice: minPrice, hasByWeightVariant };
+    if (defaultServingKey) setObj.defaultServingKey = defaultServingKey;
+    await MenuItem.updateOne({ _id: menuItemId, restaurantId }, { $set: setObj });
+  } catch (err) {
+    console.error("sync MenuItem from recipe failed:", err);
+  }
+}
+
+async function resetMenuItemRecipeCache({ restaurantId, menuItemId }) {
+  try {
+    await MenuItem.updateOne(
+      { _id: menuItemId, restaurantId },
+      { $set: { hasByWeightVariant: false }, $unset: { defaultServingKey: 1 } },
+    );
+  } catch (err) {
+    console.error("sync MenuItem after recipe delete failed:", err);
+  }
 }
 
 export default {
   upsertRecipe: async (_p, { input }, ctx) => {
-    const {
-      restaurantId,
-      menuItemId,
-      servingVariants: inputServingVariants,
-      ...rest
-    } = input || {};
-
-    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) {
-      throw new GraphQLError("Invalid ids");
-    }
-
+    const { restaurantId, menuItemId, servingVariants: inputServingVariants, ...rest } = input || {};
+    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) throw new GraphQLError("Invalid ids");
     await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
 
     const patch = { ...rest };
-    let normalizedVariants = [];
-
-    // =========================
-    // Normalize servingVariants
-    // =========================
     if (Array.isArray(inputServingVariants)) {
-      normalizedVariants = inputServingVariants
-        .map((v) => {
-          if (!v) return null;
-
-          // Backward compatibility: name có thể đến từ preparationMethodName (cũ)
-          const name =
-            (v.name ?? v.preparationMethodName ?? "").trim() || undefined;
-
-          // Key: bắt buộc ổn định
-          let key = String(v.key || "").trim();
-          if (!key && name) key = slugifyKey(name);
-          if (!key) return null;
-
-          key = slugifyKey(key);
-          if (!key) return null;
-
-          // Mode
-          const mode = (v.mode || "PORTION").toString();
-          if (!MODES.has(mode)) {
-            throw new GraphQLError(`Invalid mode for variant "${key}"`);
-          }
-
-          // Sell unit/qty
-          let sellUnit = (
-            v.sellUnit || (mode === "PORTION" ? "portion" : "kg")
-          ).toString();
-
-          let sellQty = toNumberOrDefault(v.sellQty, 1);
-
-          if (mode === "PORTION") {
-            sellUnit = "portion";
-            sellQty = 1;
-          } else {
-            // BY_WEIGHT
-            if (!["kg", "g"].includes(sellUnit)) sellUnit = "kg";
-            if (!Number.isFinite(sellQty) || sellQty <= 0) sellQty = 1;
-          }
-
-          if (!SELL_UNITS.has(sellUnit)) {
-            throw new GraphQLError(`Invalid sellUnit for variant "${key}"`);
-          }
-
-          // Price
-          let price = Number(v.price);
-          if (!Number.isFinite(price) || price < 0) price = 0;
-
-          // isDefault
-          const isDefault = !!v.isDefault;
-
-          // Ingredients lines: bắt buộc qty + unit
-          const rawLines = Array.isArray(v.ingredients)
-            ? v.ingredients
-            : Array.isArray(v.Ingredients)
-            ? v.Ingredients
-            : [];
-
-          const ingredients = rawLines
-            .map((c) => {
-              if (!c?.ingredientId) return null;
-
-              const qty = toNumberOrDefault(
-                c.qty ?? c.quantify ?? c.quantity,
-                0
-              );
-
-              const unit = c.unit ?? c.baseUnit; // baseUnit fallback legacy
-              const wastePct = toNumberOrDefault(c.wastePct, 0);
-
-              if (!unit) {
-                throw new GraphQLError(
-                  `Missing unit for ingredient line in variant "${key}"`
-                );
-              }
-
-              // qty = 0 thì bỏ qua để sạch dữ liệu
-              if (!Number.isFinite(qty) || qty <= 0) return null;
-
-              return {
-                ingredientId: c.ingredientId,
-                qty,
-                unit,
-                wastePct: Math.min(100, Math.max(0, wastePct)),
-              };
-            })
-            .filter(Boolean);
-
-          return {
-            key,
-            name,
-            mode,
-            sellQty,
-            sellUnit,
-            ingredients,
-            price,
-            isDefault,
-          };
-        })
-        .filter(Boolean);
-
-      if (normalizedVariants.length === 0) {
-        throw new GraphQLError("servingVariants must have at least 1 variant");
-      }
-
-      // Validate unique key
-      const keys = normalizedVariants.map((x) => x.key);
-      const set = new Set(keys);
-      if (set.size !== keys.length) {
-        throw new GraphQLError("servingVariants.key must be unique");
-      }
-
-      // Validate only one default
-      const defaults = normalizedVariants.filter((v) => v.isDefault);
-      if (defaults.length > 1) {
-        throw new GraphQLError("Only one servingVariant can be isDefault=true");
-      }
-
-      // Auto set default nếu chưa có
-      if (defaults.length === 0) {
-        normalizedVariants[0].isDefault = true;
-      }
-
-      // Final consistency checks (mode vs sellUnit)
-      for (const v of normalizedVariants) {
-        if (v.mode === "PORTION" && v.sellUnit !== "portion") {
-          throw new GraphQLError(
-            `Variant "${v.key}": PORTION must use sellUnit=portion`
-          );
-        }
-        if (v.mode === "BY_WEIGHT" && !["kg", "g"].includes(v.sellUnit)) {
-          throw new GraphQLError(
-            `Variant "${v.key}": BY_WEIGHT must use sellUnit kg/g`
-          );
-        }
-      }
-
-      // FE source-of-truth → overwrite toàn bộ
-      patch.servingVariants = normalizedVariants;
+      patch.servingVariants = normalizeServingVariants(inputServingVariants);
     }
 
-    // =========================
-    // Upsert Recipe
-    // =========================
     const doc = await Recipe.findOneAndUpdate(
       { restaurantId, menuItemId },
-      { $set: patch },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true,
-        setDefaultsOnInsert: true,
-      }
+      { $set: patch, $unset: { deletedAt: 1, deleteExpiresAt: 1 } },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
     ).lean({ virtuals: true });
 
-    // =========================
-    // Sync MenuItem caches
-    // =========================
-    try {
-      const variants = patch.servingVariants || doc?.servingVariants || [];
-
-      const minPrice = computeMinPrice(variants);
-      const defaultServingKey = pickDefaultVariantKey(variants);
-      const hasByWeightVariant = computeHasByWeight(variants);
-
-      const setObj = {
-        basePrice: minPrice,
-        hasByWeightVariant,
-      };
-
-      // chỉ set khi có key hợp lệ (để tránh set undefined)
-      if (defaultServingKey) {
-        setObj.defaultServingKey = defaultServingKey;
-      }
-
-      await MenuItem.updateOne(
-        { _id: menuItemId, restaurantId },
-        { $set: setObj }
-      );
-    } catch (err) {
-      console.error("sync MenuItem from recipe failed:", err);
-    }
-
+    await syncMenuItemFromRecipe({ restaurantId, menuItemId, variants: patch.servingVariants || doc?.servingVariants || [] });
     return doc;
   },
 
   deleteRecipe: async (_p, { restaurantId, menuItemId }, ctx) => {
-    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId))
-      return false;
-
+    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) return false;
     await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
+    const recipe = await Recipe.findOne({ restaurantId, menuItemId, ...ACTIVE_RECIPE_FILTER });
+    if (!recipe) return false;
+    const now = new Date();
+    recipe.set({
+      isActive: false,
+      deletedAt: now,
+      deleteExpiresAt: new Date(now.getTime() + SOFT_DELETE_RETENTION_DAYS * 24 * 60 * 60 * 1000),
+    });
+    await recipe.save();
+    await resetMenuItemRecipeCache({ restaurantId, menuItemId });
+    return true;
+  },
 
-    const res = await Recipe.deleteOne({ restaurantId, menuItemId });
-    if (res.deletedCount > 0) {
-      try {
-        await MenuItem.updateOne(
-          { _id: menuItemId, restaurantId },
-          {
-            $set: { hasByWeightVariant: false },
-            $unset: { defaultServingKey: 1 },
-          }
-        );
-      } catch (err) {
-        console.error("sync MenuItem after recipe delete failed:", err);
-      }
-    }
-    return res.deletedCount > 0;
+  restoreRecipe: async (_p, { restaurantId, menuItemId }, ctx) => {
+    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) return null;
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.INVENTORY_WRITE);
+    const recipe = await Recipe.findOne({ restaurantId, menuItemId, deletedAt: { $ne: null } });
+    if (!recipe) return null;
+    recipe.set({ isActive: true, deletedAt: null, deleteExpiresAt: null });
+    await recipe.save();
+    await syncMenuItemFromRecipe({ restaurantId, menuItemId, variants: recipe.servingVariants || [] });
+    return recipe.toObject({ virtuals: true });
   },
 };
