@@ -1,9 +1,7 @@
 import "dotenv/config.js";
 import mongoose from "mongoose";
 import {
-  Category,
   Customer,
-  Menu,
   MenuItem,
   Order,
   Restaurant,
@@ -20,6 +18,8 @@ const CUSTOMER_EMAIL_DOMAIN = "customer-demo.cohan.local";
 const DEFAULT_REGISTERED_COUNT = Number(process.env.CUSTOMER_DEMO_REGISTERED_COUNT || 22);
 const DEFAULT_GUEST_COUNT = Number(process.env.CUSTOMER_DEMO_GUEST_COUNT || 8);
 const DEFAULT_ORDER_COUNT = Number(process.env.CUSTOMER_DEMO_ORDER_COUNT || 56);
+const CLEANUP_DEMO_MENU = process.argv.includes("--cleanup-demo-menu") || process.env.CUSTOMER_DEMO_CLEANUP_MENU === "true";
+const INCLUDE_PREVIOUS_DEMO_MENU = process.argv.includes("--include-demo-menu") || process.env.CUSTOMER_DEMO_INCLUDE_SEEDED_MENU === "true";
 
 const now = () => new Date();
 const daysAgo = (days, hour = 12) => {
@@ -73,21 +73,6 @@ const guestProfiles = [
   ["Guest thử món mới", "0907811018", "guest.newdish@customer-demo.cohan.local", 2, 970_000, "Vừa", "Quan tâm món theo mùa."],
 ];
 
-const demoMenuItems = [
-  { category: "Món chính", icon: "🍛", code: "CMD-BB-01", name: "Bún bò Huế", price: 89000, spice: "Nồng", labels: ["best-seller"], allergens: [] },
-  { category: "Món chính", icon: "🍛", code: "CMD-CG-02", name: "Cơm gà Hội An", price: 79000, spice: "Vừa", labels: ["lunch"], allergens: [] },
-  { category: "Món chính", icon: "🍛", code: "CMD-BL-03", name: "Bò lúc lắc", price: 139000, spice: "Vừa", labels: ["premium"], allergens: [] },
-  { category: "Món chính", icon: "🍛", code: "CMD-SN-04", name: "Sườn nướng mật ong", price: 129000, spice: "Không", labels: ["signature"], allergens: [] },
-  { category: "Món chính", icon: "🍛", code: "CMD-LT-05", name: "Lẩu Thái", price: 289000, spice: "Rất cay", labels: ["group"], allergens: ["seafood"] },
-  { category: "Món nhẹ", icon: "🥗", code: "CMD-GC-06", name: "Gỏi cuốn tôm thịt", price: 69000, spice: "Không", labels: ["starter"], allergens: ["seafood"] },
-  { category: "Món nhẹ", icon: "🥗", code: "CMD-SG-07", name: "Salad ức gà", price: 86000, spice: "Không", labels: ["healthy"], allergens: [] },
-  { category: "Đồ uống", icon: "🥤", code: "CMD-TD-08", name: "Trà đào cam sả", price: 49000, spice: "Không", labels: ["drink"], allergens: [] },
-  { category: "Đồ uống", icon: "🥤", code: "CMD-CF-09", name: "Cà phê sữa đá", price: 39000, spice: "Không", labels: ["drink"], allergens: ["milk"] },
-  { category: "Tráng miệng", icon: "🍮", code: "CMD-FL-10", name: "Bánh flan", price: 42000, spice: "Không", labels: ["dessert"], allergens: ["egg", "milk"] },
-  { category: "Tráng miệng", icon: "🍮", code: "CMD-KB-11", name: "Chè khúc bạch", price: 52000, spice: "Không", labels: ["dessert"], allergens: ["milk"] },
-  { category: "Món Âu", icon: "🍝", code: "CMD-MY-12", name: "Mì Ý bò bằm", price: 119000, spice: "Vừa", labels: ["western"], allergens: ["gluten"] },
-];
-
 function rankFromPoints(points) {
   if (points >= 20) return "VIP";
   if (points >= 5) return "OFTEN";
@@ -125,71 +110,47 @@ async function ensureCustomerRole() {
   );
 }
 
-async function ensureDemoMenu(restaurantId) {
-  const menu = await Menu.findOneAndUpdate(
-    { restaurantId, timeSlot: "dinner" },
-    {
-      $setOnInsert: {
-        restaurantId,
-        timeSlot: "dinner",
-        name: "Customer Manager Demo Menu",
-        description: "Menu demo dùng để tạo đơn hàng khách hàng.",
-        isActive: true,
-      },
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
+function isPreviousDemoMenuItem(item) {
+  const code = String(item?.code || "");
+  const notes = String(item?.notes || "");
+  const labels = Array.isArray(item?.labels) ? item.labels.map(String) : [];
+  return notes === DEMO_TAG || labels.includes(DEMO_TAG) || code.startsWith("CMD-");
+}
 
-  const categoryMap = new Map();
-  for (const item of demoMenuItems) {
-    if (categoryMap.has(item.category)) continue;
-    const category = await Category.findOneAndUpdate(
-      { restaurantId, name: item.category },
-      { $setOnInsert: { restaurantId, name: item.category, icon: item.icon, isActive: true } },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+async function loadRestaurantMenuItems(restaurantId) {
+  const query = {
+    restaurantId,
+    status: "available",
+    basePrice: { $gt: 0 },
+    menuId: { $ne: null },
+    categoryId: { $ne: null },
+  };
+
+  const allItems = await MenuItem.find(query)
+    .sort({ orderCounter: -1, basePrice: -1, name: 1 })
+    .lean();
+
+  const items = INCLUDE_PREVIOUS_DEMO_MENU ? allItems : allItems.filter((item) => !isPreviousDemoMenuItem(item));
+
+  if (!items.length) {
+    throw new Error(
+      "No real available menu items found for this restaurant. Add menuitems first or rerun with CUSTOMER_DEMO_INCLUDE_SEEDED_MENU=true if you want to reuse old demo CMD-* items.",
     );
-    categoryMap.set(item.category, category);
   }
 
-  const menuItems = [];
-  for (const [index, item] of demoMenuItems.entries()) {
-    const category = categoryMap.get(item.category);
-    const menuItem = await MenuItem.findOneAndUpdate(
-      { restaurantId, code: item.code },
-      {
-        $set: {
-          restaurantId,
-          menuId: menu._id,
-          categoryId: category._id,
-          name: item.name,
-          description: `${item.name} dùng cho dữ liệu demo quản lý khách hàng.`,
-          sortOrder: index + 1,
-          labels: [DEMO_TAG, ...item.labels],
-          allergenTags: item.allergens,
-          tasteProfile: { containsOnion: false, containsCilantro: false, sugar: 30, spice: item.spice },
-          basePrice: item.price,
-          defaultServingKey: "portion",
-          taxRate: 0.08,
-          servingPortion: 1,
-          servingUnit: "phần",
-          status: "available",
-          avgPrepTimeMin: 12 + (index % 5) * 2,
-          point: Math.max(1, Math.floor(item.price / 50_000)),
-          notes: DEMO_TAG,
-        },
-        $setOnInsert: { code: item.code },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-    menuItems.push(menuItem);
-  }
+  return items;
+}
 
-  for (const [categoryName, category] of categoryMap.entries()) {
-    const menuItemCount = menuItems.filter((item) => String(item.categoryId) === String(category._id)).length;
-    await Category.updateOne({ _id: category._id }, { $set: { menuItemCount } });
-  }
-
-  return menuItems;
+async function cleanupPreviousDemoMenuItems(restaurantId) {
+  const result = await MenuItem.deleteMany({
+    restaurantId,
+    $or: [
+      { notes: DEMO_TAG },
+      { labels: DEMO_TAG },
+      { code: /^CMD-/ },
+    ],
+  });
+  return result.deletedCount || 0;
 }
 
 async function upsertCustomer({ profile, index, restaurantId, roleId, guest = false }) {
@@ -254,35 +215,53 @@ async function upsertCustomer({ profile, index, restaurantId, roleId, guest = fa
   );
 }
 
+function isByWeightItem(dish) {
+  const servingKey = String(dish?.defaultServingKey || "").toLowerCase();
+  return servingKey === "kg" || servingKey.includes("kg") || /theo kg/i.test(String(dish?.name || ""));
+}
+
+function buildOrderItem(dish, seed, itemIndex) {
+  const byWeight = isByWeightItem(dish);
+  const quantity = byWeight ? 1 : 1 + ((seed + itemIndex) % 3 === 0 ? 1 : 0);
+  const weightGrams = byWeight ? 500 + ((seed + itemIndex) % 4) * 250 : undefined;
+  const sellUnit = byWeight ? "kg" : "portion";
+  const servingKey = dish.defaultServingKey || (byWeight ? "kg" : "default");
+  const basePrice = Number(dish.basePrice || 0);
+  const pricingQty = byWeight ? weightGrams / 1000 : quantity;
+  const lineSubtotal = money(basePrice * pricingQty);
+
+  return {
+    dishId: dish._id,
+    menuId: dish.menuId,
+    categoryId: dish.categoryId,
+    name: dish.name,
+    unit: byWeight ? "kg" : "portion",
+    servingKey,
+    servingVariant: {
+      key: servingKey,
+      name: byWeight ? "Theo kg" : "Phần tiêu chuẩn",
+      mode: byWeight ? "BY_WEIGHT" : "PORTION",
+      price: basePrice,
+      sellQty: 1,
+      sellUnit,
+    },
+    quantity,
+    weightGrams,
+    baseUnitPrice: basePrice,
+    unitPrice: basePrice,
+    modifiersPricePerUnit: 0,
+    lineSubtotal,
+    ingredientsSnapshot: [],
+    priority: seed % 7 === 0 ? "HIGH" : seed % 3 === 0 ? "MEDIUM" : "LOW",
+    status: "served",
+  };
+}
+
 function pickOrderItems(menuItems, seed, count) {
   const items = [];
   for (let i = 0; i < count; i += 1) {
     const dish = menuItems[(seed + i * 3) % menuItems.length];
-    const quantity = 1 + ((seed + i) % 3 === 0 ? 1 : 0);
-    items.push({
-      dishId: dish._id,
-      menuId: dish.menuId,
-      categoryId: dish.categoryId,
-      name: dish.name,
-      unit: "portion",
-      servingKey: dish.defaultServingKey || "portion",
-      servingVariant: {
-        key: dish.defaultServingKey || "portion",
-        name: "Phần tiêu chuẩn",
-        mode: "PORTION",
-        price: dish.basePrice,
-        sellQty: 1,
-        sellUnit: "portion",
-      },
-      quantity,
-      baseUnitPrice: dish.basePrice,
-      unitPrice: dish.basePrice,
-      modifiersPricePerUnit: 0,
-      lineSubtotal: dish.basePrice * quantity,
-      ingredientsSnapshot: [],
-      priority: seed % 7 === 0 ? "HIGH" : seed % 3 === 0 ? "MEDIUM" : "LOW",
-      status: "served",
-    });
+    items.push(buildOrderItem(dish, seed, i));
   }
   return items;
 }
@@ -354,7 +333,7 @@ async function seedOrders({ customers, menuItems, restaurantId }) {
       currentStatus: "completed",
       priority: i % 7 === 0 ? "HIGH" : "MEDIUM",
       note: DEMO_TAG,
-      clientMeta: { demoTag: DEMO_TAG, seed: "seedCustomerDemoData" },
+      clientMeta: { demoTag: DEMO_TAG, seed: "seedCustomerDemoData", usesRealMenuItems: true },
       createdAt,
       updatedAt: new Date(createdAt.getTime() + 60 * 60 * 1000),
     });
@@ -419,8 +398,13 @@ async function main() {
     throw new Error(`Restaurant not found: ${RESTAURANT_ID}`);
   }
 
+  if (CLEANUP_DEMO_MENU) {
+    const deletedMenuItems = await cleanupPreviousDemoMenuItems(restaurantId);
+    console.log(`🧹 Removed previous demo menu items: ${deletedMenuItems}`);
+  }
+
   const customerRole = await ensureCustomerRole();
-  const menuItems = await ensureDemoMenu(restaurantId);
+  const menuItems = await loadRestaurantMenuItems(restaurantId);
 
   const registered = await Promise.all(
     registeredProfiles.slice(0, DEFAULT_REGISTERED_COUNT).map((profile, index) => upsertCustomer({ profile, index, restaurantId, roleId: customerRole._id, guest: false })),
@@ -435,7 +419,7 @@ async function main() {
   console.log(`Restaurant: ${restaurant.name} (${restaurant._id})`);
   console.log(`Registered customers: ${registered.length}`);
   console.log(`Guest customers: ${guests.length}`);
-  console.log(`Demo menu items: ${menuItems.length}`);
+  console.log(`Real menu items used: ${menuItems.length}`);
   console.log(`Demo orders: ${orders.length}`);
   console.log("Open manager page: /manager#customers");
 
