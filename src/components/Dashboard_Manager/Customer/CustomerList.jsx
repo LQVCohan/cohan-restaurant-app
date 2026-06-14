@@ -6,6 +6,7 @@ import "./CustomerList.scss";
 import "./CustomerExperiencePolish.css";
 import "./CustomerOperationsPolish.scss";
 import "./CustomerManagerWorkflow.scss";
+import "./CustomerManagerScale.scss";
 
 const normalizeEpochToMs = (v) => {
   if (v == null) return null;
