@@ -164,7 +164,11 @@ const roleMatches = (roles = [], role = "") => {
   return roles.map(normalizeRole).includes(normalizedRole);
 };
 
-const isManagerFeatureRole = (value) => roleMatches(MANAGER_FEATURE_ROLES, value);
+const isManagerFeatureRole = (value) => {
+  const normalizedRole = normalizeRole(value);
+  const rawRole = normalizeText(extractRawRole(value));
+  return MANAGER_FEATURE_ROLES.includes(normalizedRole) || MANAGER_FEATURE_ROLES.includes(rawRole);
+};
 
 export const getAiChatbotUserRole = (userOrRole) => normalizeRole(userOrRole) || "";
 
@@ -216,11 +220,11 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
   const helpQuery = isManagerHelpQuery(query);
   const isManagerShell = path === "/manager" || path === "/manager#dashboard";
 
-  if (isManagerShell && !query && isManagerFeatureRole(role)) {
-    return ["manager-dashboard", "storage-inventory", "ai-chatbot-manager", "staff-schedule"]
+  if (isManagerShell && !query && isManagerFeatureRole(userRole)) {
+    const managerShortcutKeys = ["manager-dashboard", "storage-inventory", "ai-chatbot-manager", "staff-schedule"];
+    return managerShortcutKeys
       .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
       .filter(Boolean)
-      .filter((entry) => canUseFeature(entry, role))
       .map((entry) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
       .slice(0, 6);
   }
