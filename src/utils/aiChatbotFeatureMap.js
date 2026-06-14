@@ -236,11 +236,10 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
       const queryScore = queryScoreEntry(entry, query);
       const pathScore = pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
       const managerShellScore = entry.managerOnly && isManagerShell ? 2 : 0;
-      const shouldUsePathScore = entry.managerOnly || queryScore > 0;
       const managerHelpScore = entry.managerOnly && helpQuery ? 4 : 0;
       return {
         entry,
-        score: queryScore + managerHelpScore + managerShellScore + (shouldUsePathScore ? pathScore : 0),
+        score: queryScore + managerHelpScore + managerShellScore + pathScore,
       };
     })
     .filter(({ score }) => score > 0)
