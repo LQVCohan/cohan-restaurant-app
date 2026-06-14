@@ -1,5 +1,5 @@
 /* Wording-only CSS patch for the AI knowledge manager.
-   Used to quickly reduce technical wording without touching data logic. */
+   Keeps labels short so the page feels like a clean management product, not a technical report. */
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > span,
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > small,
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > span,
@@ -12,28 +12,28 @@
 }
 
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > span::after {
-  content: "Nội dung đang dùng";
+  content: "Đang dùng";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > small::after {
-  content: "đang dùng để trả lời";
+  content: "nội dung";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > span::after {
-  content: "Gợi ý cần duyệt";
+  content: "Cần duyệt";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > small::after {
-  content: "cần duyệt";
+  content: "gợi ý";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3) > span::after {
-  content: "Phản hồi cần xử lý";
+  content: "Cần xử lý";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3) > small::after {
-  content: "cần xử lý";
+  content: "phản hồi";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4) > span::after {
-  content: "Quy tắc an toàn";
+  content: "An toàn";
 }
 .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4) > small::after {
-  content: "đang áp dụng";
+  content: "quy tắc";
 }
 
 .ai-admin-page--knowledge .ai-admin-metrics article > span::after,
@@ -52,9 +52,14 @@
 }
 
 .ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header h3,
-.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header p,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header p:not(.ai-admin-eyebrow),
 .ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card h3,
-.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card p {
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card p,
+.ai-admin-page--knowledge .ai-admin-grid--safety > .ai-admin-panel > .ai-admin-panel__header p:not(.ai-admin-eyebrow),
+.ai-admin-page--knowledge .ai-admin-grid--safety .ai-admin-guide-card h3,
+.ai-admin-page--knowledge .ai-admin-grid--safety .ai-admin-guide-card p,
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header h3,
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header p:not(.ai-admin-eyebrow) {
   font-size: 0 !important;
 }
 
@@ -65,59 +70,59 @@
   color: #211b16;
 }
 
-.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header p::after {
-  content: "Quản lý các nội dung chatbot dùng để trả lời khách: thực đơn, giờ mở cửa, đặt bàn, ưu đãi và chính sách nhà hàng.";
+.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header p:not(.ai-admin-eyebrow)::after {
+  content: "Nội dung chatbot dùng để trả lời khách.";
   display: block;
-  max-width: 640px;
+  max-width: 460px;
   font-size: 13px !important;
-  line-height: 1.5 !important;
+  line-height: 1.45 !important;
   color: #76685b;
 }
 
-.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card h3::after {
-  content: "Hướng dẫn nhanh";
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card h3::after,
+.ai-admin-page--knowledge .ai-admin-grid--safety .ai-admin-guide-card h3::after {
+  content: "Hướng dẫn";
   font-size: 22px !important;
   line-height: 1.05 !important;
   color: #211b16;
 }
 
 .ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card p::after {
-  content: "Bắt đầu với các câu khách hay hỏi, sau đó bổ sung câu trả lời rõ ràng để chatbot dùng lại.";
-  display: block;
-  font-size: 13px !important;
-  line-height: 1.55 !important;
-  color: #746557;
-}
-
-.ai-admin-page--knowledge .ai-admin-grid--safety > .ai-admin-panel > .ai-admin-panel__header p {
-  font-size: 0 !important;
-}
-
-.ai-admin-page--knowledge .ai-admin-grid--safety > .ai-admin-panel > .ai-admin-panel__header p::after {
-  content: "Quy định nội dung chatbot không nên trả lời, cần cảnh báo hoặc nên chuyển cho nhân viên.";
+  content: "Thêm thực đơn, giờ mở cửa, đặt bàn hoặc ưu đãi.";
   display: block;
   font-size: 13px !important;
   line-height: 1.5 !important;
+  color: #746557;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--safety > .ai-admin-panel > .ai-admin-panel__header p:not(.ai-admin-eyebrow)::after {
+  content: "Kiểm soát nội dung nhạy cảm và chuyển nhân viên khi cần.";
+  display: block;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
   color: #76685b;
 }
 
-.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header h3,
-.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header p {
-  font-size: 0 !important;
+.ai-admin-page--knowledge .ai-admin-grid--safety .ai-admin-guide-card p::after {
+  content: "Thêm quy tắc khi chatbot không nên tự trả lời.";
+  display: block;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #746557;
 }
 
 .ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header h3::after {
-  content: "Kiểm thử câu trả lời";
+  content: "Kiểm thử";
   font-size: clamp(23px, 1.9vw, 30px) !important;
   line-height: 1.05 !important;
   color: #211b16;
 }
 
-.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header p::after {
-  content: "Nhập câu khách có thể hỏi để kiểm tra chatbot trả lời có đúng, đủ và an toàn không.";
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header p:not(.ai-admin-eyebrow)::after {
+  content: "Thử câu hỏi trước khi áp dụng.";
   display: block;
   font-size: 13px !important;
-  line-height: 1.5 !important;
+  line-height: 1.45 !important;
   color: #76685b;
 }
 
