@@ -1,0 +1,188 @@
+/* Depth and layer contrast for the AI chatbot settings page.
+   Goal: keep the calm beige palette, but separate page background, cards, forms and preview clearly. */
+.ai-admin-page--settings {
+  width: min(100%, 1180px) !important;
+  padding: 24px 26px 42px !important;
+  border: 1px solid rgba(124, 93, 63, 0.12) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(199, 169, 136, 0.24), transparent 24rem),
+    radial-gradient(circle at 100% 12%, rgba(255, 102, 0, 0.07), transparent 21rem),
+    linear-gradient(180deg, #f8f3eb 0%, #eee7dc 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 24px 70px rgba(79, 55, 33, 0.08) !important;
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings,
+.ai-admin-page--settings .ai-admin-settings-status-strip article,
+.ai-admin-page--settings .ai-admin-panel,
+.ai-admin-page--settings .ai-admin-settings-footer {
+  border-color: rgba(124, 93, 63, 0.22) !important;
+  background: rgba(255, 253, 248, 0.985) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 16px 40px rgba(79, 55, 33, 0.12) !important;
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings {
+  position: relative;
+  min-height: 126px !important;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 244, 0.96)),
+    radial-gradient(circle at 92% 12%, rgba(255, 102, 0, 0.08), transparent 14rem) !important;
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings::after {
+  content: "";
+  position: absolute;
+  inset: auto 24px 0 24px;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, rgba(138, 98, 61, 0.22), rgba(255, 102, 0, 0.42), rgba(138, 98, 61, 0.08));
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings h2 {
+  color: #211b16 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.ai-admin-page--settings .ai-admin-field--restaurant {
+  border-color: rgba(124, 93, 63, 0.24) !important;
+  background: linear-gradient(180deg, #fffdf8, #f7efe5) !important;
+  box-shadow: 0 10px 24px rgba(79, 55, 33, 0.08) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article {
+  min-height: 82px !important;
+  border-radius: 20px !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article::after {
+  content: "";
+  position: absolute;
+  inset: auto 14px 0 14px;
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: rgba(138, 98, 61, 0.18);
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-active::after {
+  background: rgba(47, 125, 79, 0.34);
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip strong {
+  color: #211b16 !important;
+}
+
+.ai-admin-page--settings .ai-admin-grid--settings {
+  gap: 22px !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel {
+  border-radius: 24px !important;
+  overflow: hidden;
+}
+
+.ai-admin-page--settings .ai-admin-panel__header {
+  border-bottom: 1px solid rgba(124, 93, 63, 0.17) !important;
+  background:
+    linear-gradient(135deg, #fffdf8, #f6ede2),
+    radial-gradient(circle at 100% 0%, rgba(255, 102, 0, 0.06), transparent 14rem) !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel__header h3 {
+  color: #211b16 !important;
+}
+
+.ai-admin-page--settings .ai-admin-form {
+  background: rgba(255, 253, 248, 0.62) !important;
+}
+
+.ai-admin-page--settings .ai-admin-check--inline,
+.ai-admin-page--settings .ai-admin-field textarea,
+.ai-admin-page--settings .ai-admin-field input,
+.ai-admin-page--settings .ai-admin-field select,
+.ai-admin-page--settings .ai-admin-collapsible--settings {
+  border-color: rgba(124, 93, 63, 0.22) !important;
+  background: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74), 0 8px 18px rgba(79, 55, 33, 0.045) !important;
+}
+
+.ai-admin-page--settings .ai-admin-check--inline {
+  background: linear-gradient(135deg, #fffaf4, #ffffff) !important;
+}
+
+.ai-admin-page--settings .ai-admin-field textarea {
+  color: #211b16 !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel--preview {
+  border-color: rgba(255, 102, 0, 0.2) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 102, 0, 0.1), transparent 16rem),
+    rgba(255, 253, 248, 0.99) !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel--preview .ai-admin-panel__header {
+  background:
+    linear-gradient(135deg, #fffdf8, #fff3e6),
+    radial-gradient(circle at 100% 0%, rgba(255, 102, 0, 0.11), transparent 16rem) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__window {
+  border: 1px solid rgba(255, 102, 0, 0.22) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 102, 0, 0.08), transparent 16rem),
+    linear-gradient(180deg, #ffffff 0%, #fff6ec 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 26px 58px rgba(129, 70, 25, 0.14) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__topbar {
+  border-bottom-color: rgba(255, 102, 0, 0.16) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__bubble,
+.ai-admin-page--settings .ai-admin-settings-preview__chips span,
+.ai-admin-page--settings .ai-admin-settings-preview__footer span,
+.ai-admin-page--settings .ai-admin-settings-preview__notes article {
+  background: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(83, 46, 20, 0.06) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer {
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(246, 239, 228, 0.94)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer--dirty {
+  border-color: rgba(255, 102, 0, 0.38) !important;
+  background: linear-gradient(135deg, #fff3db, #fffdf8) !important;
+  box-shadow: 0 22px 54px rgba(129, 70, 25, 0.18) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer button[type="submit"] {
+  border-color: #8a623d !important;
+  background: linear-gradient(135deg, #8a623d, #6f4a2b) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 22px rgba(111, 74, 43, 0.18) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-footer button[type="submit"]:disabled {
+  box-shadow: none !important;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-compact__body::before,
+.ai-admin-page--settings .ai-admin-field--threshold::after {
+  box-shadow: 0 8px 18px rgba(79, 55, 33, 0.055) !important;
+}
+
+@media (max-width: 760px) {
+  .ai-admin-page--settings {
+    padding: 18px 16px 30px !important;
+    border-radius: 22px !important;
+  }
+}
