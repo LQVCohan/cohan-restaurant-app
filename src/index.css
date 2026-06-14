@@ -16,6 +16,7 @@
 @import "./components/Dashboard_Manager/Customer/AiChatbotKnowledgeWordingPatch.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotStorageTone.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotUnifiedNeutralPalette.css";
+@import "./components/Dashboard_Manager/Customer/AiChatbotStorageSagePalette.css";
 @import "./components/Customer/BookingTableModal/BookingModal.product.css";
 @import "./components/Customer/TableBooking/TableBooking.product.css";
 @import "./components/Customer/AddressPage/AddressPage.product.css";
