@@ -9,8 +9,8 @@ const createAttendanceHookData = (overrides = {}) => ({
   employees: [],
   records: [],
   correctionRequests: [],
-  stats: {},
-  correctionStats: {},
+  stats: { total: 0, present: 0, lateOrEarly: 0 },
+  correctionStats: { pending: 0, total: 0, applied: 0, rejected: 0, cancelled: 0 },
   loading: false,
   error: "",
   correctionsLoading: false,
@@ -243,7 +243,7 @@ describe("AttendancePage readiness navigation", () => {
 
   it("shows pending correction summary and opens correction view from context action", async () => {
     useAttendanceManagementMock.mockReturnValue({
-      ...createAttendanceHookData(),
+      ...createAttendanceHookData({ correctionStats: { pending: 1, total: 1, applied: 0, rejected: 0, cancelled: 0 } }),
       records: [
         { id: "a1", employeeId: "e01", employeeName: "Lan Manager", employeeCode: "L01", employeeRole: "Manager", source: "system" },
       ],
@@ -253,6 +253,7 @@ describe("AttendancePage readiness navigation", () => {
     render(<AttendancePage />);
     expect(await screen.findByText("Đã có 1 yêu cầu chỉnh công chờ duyệt")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Xem yêu cầu chỉnh công" }));
-    expect(await screen.findByText("Yêu cầu chỉnh công")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Chờ duyệt chỉnh công" })).toHaveClass("active");
+    expect(screen.getByText("Lan Manager")).toBeInTheDocument();
   });
 });
