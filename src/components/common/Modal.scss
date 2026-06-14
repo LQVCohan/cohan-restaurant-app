@@ -52,18 +52,29 @@ body.modal-open {
   overflow: hidden;
   overscroll-behavior: contain;
   touch-action: none;
+  pointer-events: none;
 
-  // Trạng thái mở
-  &.is-open {
+  // Trạng thái mở - hỗ trợ cả class cũ `is-open` và class hiện tại `modal-open` trong Modal.jsx
+  &.is-open,
+  &.modal-open {
     opacity: 1;
+    pointer-events: auto;
+
     .modal-container {
       transform: translateY(0) scale(1);
       opacity: 1;
     }
   }
 
+  // Trạng thái đóng: không được bắt click khi animation đang fade-out.
+  &.modal-closing {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   // Vị trí: Top
-  &.is-top {
+  &.is-top,
+  &:has(.modal--top) {
     align-items: flex-start;
     padding-top: 60px;
   }
@@ -87,20 +98,25 @@ body.modal-open {
   overscroll-behavior: contain;
   touch-action: auto;
 
-  // Sizes
-  &.size-sm {
+  // Sizes - hỗ trợ class cũ size-* và class hiện tại modal--* trong Modal.jsx
+  &.size-sm,
+  &.modal--sm {
     max-width: 400px;
   }
-  &.size-md {
+  &.size-md,
+  &.modal--md {
     max-width: 600px;
   }
-  &.size-lg {
+  &.size-lg,
+  &.modal--lg {
     max-width: 800px;
   }
-  &.size-xl {
+  &.size-xl,
+  &.modal--xl {
     max-width: 1140px;
   }
-  &.size-full {
+  &.size-full,
+  &.modal--full {
     max-width: 98%;
     height: 98%;
   }
@@ -115,6 +131,7 @@ body.modal-open {
   padding: 16px 24px;
   border-bottom: 1px solid #e2e8f0;
 
+  h2,
   h3 {
     margin: 0;
     font-size: 1.125rem;
@@ -122,7 +139,8 @@ body.modal-open {
     color: #1e293b;
   }
 
-  .btn-close {
+  .btn-close,
+  .modal-close {
     background: transparent;
     border: none;
     color: #94a3b8;
