@@ -8,6 +8,10 @@ const restoreSupply = vi.fn(async () => ({ data: {} }));
 const refetchTrash = vi.fn(async () => ({ data: { supplyTrash: [] } }));
 const showNotification = vi.fn();
 
+vi.mock("../../../../../utils/debounce", () => ({
+  debounce: (fn) => fn,
+}));
+
 vi.mock("@apollo/client", async () => {
   const actual = await vi.importActual("@apollo/client");
   return {
