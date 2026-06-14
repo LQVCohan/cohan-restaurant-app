@@ -1,19 +1,19 @@
 @use "sass:color";
 
-$accent: #9a7048;
-$accent-dark: #6f5236;
-$accent-soft: #f3eadf;
-$surface: #fffdf9;
-$line: #e6ded3;
-$line-strong: #d7cbbd;
-$ink: #22201d;
-$muted: #756f66;
-$subtle: #9b9388;
-$shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
+$pm-sage: #1f6a60;
+$pm-sage-dark: #17554d;
+$pm-sage-soft: #dcefe9;
+$pm-sage-mist: #f2faf7;
+$pm-charcoal: #24323b;
+$pm-muted: #667085;
+$pm-border: #ded6cb;
+$pm-border-strong: #cec3b5;
+$pm-warning: #835b20;
+$pm-shadow-soft: 0 18px 42px rgba(48, 40, 30, 0.08);
 
 .promotions-grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
   gap: clamp(1rem, 1.6vw, 1.35rem);
   width: 100%;
   padding-bottom: 1.5rem;
@@ -25,17 +25,17 @@ $shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
   place-items: center;
   padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem;
   text-align: center;
-  border: 1px dashed $line-strong;
+  border: 1px dashed rgba(128, 109, 83, 0.26);
   border-radius: 24px;
   background:
-    linear-gradient(145deg, rgba(255, 253, 249, 0.96), rgba(250, 244, 235, 0.78)),
-    radial-gradient(circle at 50% 0%, rgba($accent, 0.1), transparent 20rem);
+    radial-gradient(circle at 50% 0%, rgba($pm-sage, 0.11), transparent 20rem),
+    linear-gradient(145deg, rgba(255, 253, 249, 0.96), rgba(248, 245, 238, 0.78));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 
   &:hover {
-    border-color: rgba($accent, 0.42);
-    box-shadow: $shadow-soft;
+    border-color: rgba($pm-sage, 0.34);
+    box-shadow: $pm-shadow-soft;
   }
 
   .empty-content {
@@ -52,32 +52,33 @@ $shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
     display: grid;
     place-items: center;
     margin-bottom: 1.35rem;
+    border: 1px solid rgba($pm-sage, 0.14);
     border-radius: 22px;
-    color: $accent-dark;
-    background: linear-gradient(180deg, #fff8ee, $accent-soft);
-    box-shadow: 0 18px 32px rgba($accent, 0.16);
+    color: $pm-sage-dark;
+    background: linear-gradient(180deg, #fffdf9, $pm-sage-mist);
+    box-shadow: 0 18px 32px rgba($pm-sage, 0.12);
 
     .sparkle-icon {
       position: absolute;
       top: -0.25rem;
       right: -0.3rem;
-      color: #b27c37;
+      color: $pm-warning;
       animation: promoFloat 3s ease-in-out infinite;
     }
   }
 
   .empty-title {
     margin: 0 0 0.65rem;
-    color: $ink;
+    color: $pm-charcoal;
     font-size: clamp(1.18rem, 2vw, 1.45rem);
-    font-weight: 760;
+    font-weight: 800;
     letter-spacing: -0.035em;
     text-wrap: balance;
   }
 
   .empty-desc {
     margin: 0 0 1.7rem;
-    color: $muted;
+    color: $pm-muted;
     font-size: 0.95rem;
     line-height: 1.65;
   }
@@ -88,19 +89,19 @@ $shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
     align-items: center;
     justify-content: center;
     gap: 0.55rem;
-    border: 1px solid $accent;
+    border: 1px solid rgba($pm-sage-dark, 0.9);
     border-radius: 14px;
-    background: linear-gradient(180deg, #a97c50, $accent-dark);
-    color: #fffaf2;
+    background: linear-gradient(180deg, $pm-sage, $pm-sage-dark);
+    color: #fffdf8;
     cursor: pointer;
-    font-weight: 720;
+    font-weight: 780;
     padding: 0 1rem;
-    box-shadow: 0 14px 26px rgba($accent, 0.22);
+    box-shadow: 0 14px 26px rgba($pm-sage, 0.22);
     transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
 
     &:hover {
       transform: translateY(-1px);
-      box-shadow: 0 18px 34px rgba($accent, 0.28);
+      box-shadow: 0 18px 34px rgba($pm-sage, 0.28);
     }
 
     &:active {
@@ -109,7 +110,7 @@ $shadow-soft: 0 18px 42px rgba(74, 57, 37, 0.08);
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px rgba($accent, 0.18), 0 14px 26px rgba($accent, 0.22);
+      box-shadow: 0 0 0 3px rgba($pm-sage, 0.18), 0 14px 26px rgba($pm-sage, 0.22);
     }
   }
 }
