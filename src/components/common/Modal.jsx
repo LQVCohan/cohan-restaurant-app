@@ -50,6 +50,17 @@ const lockPageScroll = () => {
   activeModalCount += 1;
 };
 
+const restoreWindowScroll = (y) => {
+  if (typeof window === "undefined") return;
+  if (typeof window.scrollTo !== "function") return;
+
+  try {
+    window.scrollTo(0, y);
+  } catch {
+    // jsdom exposes scrollTo but throws "not implemented". Runtime browsers still restore normally.
+  }
+};
+
 const unlockPageScroll = () => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
 
@@ -78,7 +89,7 @@ const unlockPageScroll = () => {
   savedBodyStyle = null;
   savedHtmlStyle = null;
   savedScrollY = 0;
-  window.scrollTo(0, restoreY);
+  restoreWindowScroll(restoreY);
 };
 
 // --- Custom Hook: Animation Delay ---
@@ -188,112 +199,57 @@ const Modal = ({
     }
   };
 
-  const stopBackgroundWheel = (e) => {
-    if (!modalRef.current) return;
-    if (!modalRef.current.contains(e.target)) {
-      e.preventDefault();
-    }
-  };
-
   if (!shouldRender) return null;
 
-  const childArray = React.Children.toArray(children);
-  const hasExplicitHeader = childArray.some(
-    (child) => React.isValidElement(child) && child.type === ModalHeader,
-  );
-  const hasExplicitBody = childArray.some(
-    (child) => React.isValidElement(child) && child.type === ModalBody,
-  );
-  const normalizedChildren = (
-    <>
-      {title && !hasExplicitHeader ? <ModalHeader>{title}</ModalHeader> : null}
-      {autoWrapBody && !hasExplicitBody ? (
-        <ModalBody>{children}</ModalBody>
-      ) : (
-        children
-      )}
-    </>
-  );
-
-  return createPortal(
+  const modalContent = (
     <div
+      className={`modal-overlay ${isOpen ? "modal-open" : "modal-closing"}`}
+      onMouseDown={handleOverlayClick}
       ref={overlayRef}
-      className={`modal-overlay ${isOpen ? "is-open" : ""} ${
-        position === "top" ? "is-top" : ""
-      }`}
       style={{ zIndex }}
-      onClick={handleOverlayClick}
-      onWheelCapture={stopBackgroundWheel}
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby={title ? titleId : undefined}
+      role="presentation"
     >
       <div
+        className={`modal modal--${size} modal--${position} ${className}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
         ref={modalRef}
-        className={`modal-container size-${size} ${className}`}
-        tabIndex="-1"
+        tabIndex={-1}
       >
-        {React.Children.map(normalizedChildren, (child) => {
-          if (React.isValidElement(child) && child.type === ModalHeader) {
-            return React.cloneElement(child, { onClose: requestClose, titleId });
-          }
-          if (React.isValidElement(child) && child.type === React.Fragment) {
-            return React.cloneElement(child, {
-              children: React.Children.map(child.props.children, (nestedChild) => {
-                if (
-                  React.isValidElement(nestedChild) &&
-                  nestedChild.type === ModalHeader
-                ) {
-                  return React.cloneElement(nestedChild, {
-                    onClose: requestClose,
-                    titleId,
-                  });
-                }
-                return nestedChild;
-              }),
-            });
-          }
-          return child;
-        })}
+        {(title || onClose) && (
+          <header className="modal-header">
+            {title ? <h2 id={titleId}>{title}</h2> : <span />}
+            {onClose && (
+              <button
+                type="button"
+                className="modal-close"
+                onClick={requestClose}
+                aria-label="Đóng"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </header>
+        )}
+        {autoWrapBody ? <div className="modal-body">{children}</div> : children}
       </div>
-    </div>,
-    document.body
-  );
-};
-
-// --- Compound Components ---
-
-const ModalHeader = ({ children, onClose, titleId, className = "" }) => {
-  return (
-    <div className={`modal-header ${className}`}>
-      <h3 id={titleId}>{children}</h3>
-      {onClose && (
-        <button className="btn-close" onClick={onClose} aria-label="Close">
-          <X size={20} />
-        </button>
-      )}
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
-const ModalBody = ({ children, className = "", ...rest }) => {
-  return (
-    <div className={`modal-body ${className}`} {...rest}>
-      {children}
-    </div>
-  );
+Modal.Header = function ModalHeader({ children, className = "" }) {
+  return <header className={`modal-header ${className}`}>{children}</header>;
 };
 
-const ModalFooter = ({ children, className = "", ...rest }) => {
-  return (
-    <div className={`modal-footer ${className}`} {...rest}>
-      {children}
-    </div>
-  );
+Modal.Body = function ModalBody({ children, className = "" }) {
+  return <div className={`modal-body ${className}`}>{children}</div>;
 };
 
-Modal.Header = ModalHeader;
-Modal.Body = ModalBody;
-Modal.Footer = ModalFooter;
+Modal.Footer = function ModalFooter({ children, className = "" }) {
+  return <footer className={`modal-footer ${className}`}>{children}</footer>;
+};
 
 export default Modal;
