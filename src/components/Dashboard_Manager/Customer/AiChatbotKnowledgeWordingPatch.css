@@ -1,0 +1,132 @@
+/* Wording-only CSS patch for the AI knowledge manager.
+   Used to quickly reduce technical wording without touching data logic. */
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > span,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > small,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > span,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > small,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3) > span,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3) > small,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4) > span,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4) > small {
+  font-size: 0 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > span::after {
+  content: "Nội dung đang dùng";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1) > small::after {
+  content: "đang dùng để trả lời";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > span::after {
+  content: "Gợi ý cần duyệt";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2) > small::after {
+  content: "cần duyệt";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3) > span::after {
+  content: "Phản hồi cần xử lý";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3) > small::after {
+  content: "cần xử lý";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4) > span::after {
+  content: "Quy tắc an toàn";
+}
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4) > small::after {
+  content: "đang áp dụng";
+}
+
+.ai-admin-page--knowledge .ai-admin-metrics article > span::after,
+.ai-admin-page--knowledge .ai-admin-metrics article > small::after {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  font-weight: 780 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-metrics article > span::after {
+  color: #6f5f51;
+}
+
+.ai-admin-page--knowledge .ai-admin-metrics article > small::after {
+  color: #76685b;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header h3,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header p,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card h3,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card p {
+  font-size: 0 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header h3::after {
+  content: "Kho tri thức";
+  font-size: clamp(23px, 1.9vw, 30px) !important;
+  line-height: 1.05 !important;
+  color: #211b16;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge > .ai-admin-panel > .ai-admin-panel__header p::after {
+  content: "Quản lý các nội dung chatbot dùng để trả lời khách: thực đơn, giờ mở cửa, đặt bàn, ưu đãi và chính sách nhà hàng.";
+  display: block;
+  max-width: 640px;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #76685b;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card h3::after {
+  content: "Hướng dẫn nhanh";
+  font-size: 22px !important;
+  line-height: 1.05 !important;
+  color: #211b16;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card p::after {
+  content: "Bắt đầu với các câu khách hay hỏi, sau đó bổ sung câu trả lời rõ ràng để chatbot dùng lại.";
+  display: block;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  color: #746557;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--safety > .ai-admin-panel > .ai-admin-panel__header p {
+  font-size: 0 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--safety > .ai-admin-panel > .ai-admin-panel__header p::after {
+  content: "Quy định nội dung chatbot không nên trả lời, cần cảnh báo hoặc nên chuyển cho nhân viên.";
+  display: block;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #76685b;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header h3,
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header p {
+  font-size: 0 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header h3::after {
+  content: "Kiểm thử câu trả lời";
+  font-size: clamp(23px, 1.9vw, 30px) !important;
+  line-height: 1.05 !important;
+  color: #211b16;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--evaluation > .ai-admin-panel:first-child > .ai-admin-panel__header p::after {
+  content: "Nhập câu khách có thể hỏi để kiểm tra chatbot trả lời có đúng, đủ và an toàn không.";
+  display: block;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #76685b;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--evaluation .ai-admin-form button[type="submit"] {
+  font-size: 0 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--evaluation .ai-admin-form button[type="submit"]::after {
+  content: "Lưu bài kiểm thử";
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
