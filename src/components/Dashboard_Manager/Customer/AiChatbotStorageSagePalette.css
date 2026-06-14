@@ -1,0 +1,207 @@
+/* Storage-aligned final accent pass.
+   Use sage green as the main action/active color, keep warm beige as the base,
+   and remove the orange/brown/black competition from the AI manager suite. */
+.ai-admin-page,
+.ai-handoff-inbox {
+  --ai-accent: #3f6f61 !important;
+  --ai-accent-hover: #31584d !important;
+  --ai-accent-soft: rgba(63, 111, 97, 0.14) !important;
+  --ai-accent-softer: rgba(63, 111, 97, 0.08) !important;
+  --ai-warm: #7a6042 !important;
+  --ai-text: #24303f !important;
+  --ai-muted: #667085 !important;
+  --ai-success: #3f6f61 !important;
+  --ai-success-bg: rgba(63, 111, 97, 0.12) !important;
+  --ai-warning: #8a6a3d !important;
+  --ai-warning-bg: rgba(138, 106, 61, 0.1) !important;
+  --ai-danger: #9b5a52 !important;
+  --ai-danger-bg: rgba(155, 90, 82, 0.1) !important;
+}
+
+/* Main actions and active navigation: green, not black. */
+.ai-admin-page .ai-admin-toolbar button,
+.ai-admin-page .ai-admin-link-button,
+.ai-admin-page .ai-admin-tabs button.is-active,
+.ai-admin-page .ai-admin-actions button,
+.ai-admin-page .ai-admin-panel button,
+.ai-admin-page .ai-admin-card button,
+.ai-admin-page .ai-admin-import-export button,
+.ai-admin-page--settings .ai-admin-settings-footer button:last-child,
+.ai-handoff-inbox .ai-handoff-inbox__tabs button.active,
+.ai-handoff-inbox .ai-handoff-inbox__reply button[type="submit"] {
+  background: linear-gradient(135deg, #3f6f61, #31584d) !important;
+  color: #fffaf2 !important;
+  border-color: rgba(63, 111, 97, 0.24) !important;
+  box-shadow: 0 10px 20px rgba(63, 111, 97, 0.16) !important;
+}
+
+.ai-admin-page .ai-admin-toolbar button:hover:not(:disabled),
+.ai-admin-page .ai-admin-link-button:hover:not(:disabled),
+.ai-admin-page .ai-admin-actions button:hover:not(:disabled),
+.ai-admin-page .ai-admin-panel button:hover:not(:disabled),
+.ai-admin-page .ai-admin-card button:hover:not(:disabled),
+.ai-admin-page .ai-admin-import-export button:hover:not(:disabled),
+.ai-handoff-inbox .ai-handoff-inbox__reply button[type="submit"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #31584d, #28483f) !important;
+}
+
+/* Secondary buttons stay warm-neutral, so green has a clear hierarchy. */
+.ai-admin-page .ai-admin-button--secondary,
+.ai-admin-page .ai-admin-actions .ai-admin-button--secondary,
+.ai-admin-page .ai-admin-panel .ai-admin-button--secondary,
+.ai-admin-page .ai-admin-card .ai-admin-button--secondary,
+.ai-handoff-inbox .ai-handoff-inbox__reply button[type="button"],
+.ai-handoff-inbox .ai-handoff-inbox__message button {
+  background: rgba(255, 250, 242, 0.88) !important;
+  color: #7a6042 !important;
+  border-color: rgba(139, 112, 78, 0.18) !important;
+  box-shadow: none !important;
+}
+
+/* KPI cards: single visual rhythm with a green active underline. */
+.ai-admin-page .ai-admin-metrics article,
+.ai-admin-page--settings .ai-admin-settings-status-strip article {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(63, 111, 97, 0.045), transparent 10rem),
+    rgba(255, 250, 242, 0.88) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+}
+
+.ai-admin-page .ai-admin-metrics article::after,
+.ai-admin-page--knowledge .ai-admin-metrics article::after,
+.ai-admin-page .ai-admin-metrics article:nth-child(1)::after,
+.ai-admin-page .ai-admin-metrics article:nth-child(2)::after,
+.ai-admin-page .ai-admin-metrics article:nth-child(3)::after,
+.ai-admin-page .ai-admin-metrics article:nth-child(4)::after,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1)::after,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2)::after,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3)::after,
+.ai-admin-page--knowledge .ai-admin-metrics article:nth-child(4)::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-active::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-muted::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(3)::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(4)::after {
+  background: linear-gradient(90deg, rgba(63, 111, 97, 0.74), rgba(63, 111, 97, 0.12)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article::before,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(2)::before,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(3)::before,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(4)::before,
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-active::before,
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-muted::before {
+  background: rgba(63, 111, 97, 0.12) !important;
+  color: #3f6f61 !important;
+  border: 1px solid rgba(63, 111, 97, 0.16) !important;
+  box-shadow: none !important;
+}
+
+/* Status chips: visible sage green but quiet enough for long working sessions. */
+.ai-admin-page .ai-admin-status,
+.ai-admin-page .ai-admin-status.is-on,
+.ai-admin-page .ai-admin-status.is-waiting,
+.ai-admin-page .ai-admin-chip,
+.ai-admin-page .ai-admin-chip--success,
+.ai-admin-page .ai-admin-chip--warning,
+.ai-admin-page .ai-admin-chip--danger,
+.ai-admin-page--settings .ai-admin-settings-status-strip article small,
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-active small,
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-muted small {
+  background: rgba(63, 111, 97, 0.11) !important;
+  color: #3f6f61 !important;
+  border-color: rgba(63, 111, 97, 0.15) !important;
+}
+
+.ai-admin-page .ai-admin-button--danger,
+.ai-admin-page .ai-admin-actions .ai-admin-button--danger,
+.ai-admin-page .ai-admin-panel .ai-admin-button--danger,
+.ai-admin-page .ai-admin-card .ai-admin-button--danger {
+  background: rgba(155, 90, 82, 0.09) !important;
+  color: #8a4d46 !important;
+  border-color: rgba(155, 90, 82, 0.16) !important;
+  box-shadow: none !important;
+}
+
+/* Hero and panels keep the storage beige feel, with only a light green atmospheric hint. */
+.ai-admin-page .ai-admin-hero,
+.ai-admin-page .ai-admin-report-summary,
+.ai-admin-page--knowledge .ai-admin-hero,
+.ai-admin-page--settings .ai-admin-hero--settings,
+.ai-admin-page .ai-admin-panel__header,
+.ai-admin-page .ai-analytics-card__header,
+.ai-admin-page .ai-admin-guide-card,
+.ai-handoff-inbox .ai-handoff-inbox__panel-header {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(63, 111, 97, 0.06), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 250, 242, 0.94), rgba(248, 246, 241, 0.88)) !important;
+}
+
+.ai-admin-page .ai-admin-eyebrow,
+.ai-admin-page .ai-admin-collapsible summary,
+.ai-admin-page .ai-analytics-list__value,
+.ai-handoff-inbox .ai-handoff-inbox__eyebrow,
+.ai-handoff-inbox .ai-handoff-inbox__message strong,
+.ai-handoff-inbox .ai-handoff-badge {
+  color: #7a6042 !important;
+}
+
+/* Preview chatbot in manager page: keep customer orange only inside the preview bubble/chips.
+   The preview is a customer-facing object, but its container remains manager-storage toned. */
+.ai-admin-settings-preview__window {
+  border-color: rgba(63, 111, 97, 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 18px 42px rgba(73, 58, 38, 0.08) !important;
+}
+
+.ai-admin-settings-preview__topbar i,
+.ai-admin-page--settings .ai-admin-settings-preview__topbar i {
+  background: linear-gradient(135deg, #3f6f61, #31584d) !important;
+  box-shadow: 0 8px 18px rgba(63, 111, 97, 0.18) !important;
+}
+
+.ai-admin-settings-preview__topbar span {
+  color: #3f6f61 !important;
+}
+
+.ai-admin-settings-preview__chips span {
+  background: rgba(255, 250, 242, 0.9) !important;
+  color: #7a6042 !important;
+  border-color: rgba(139, 112, 78, 0.18) !important;
+}
+
+.ai-admin-settings-preview__footer button {
+  background: rgba(63, 111, 97, 0.14) !important;
+  color: #3f6f61 !important;
+}
+
+/* Analytics review strip: beige base, green button, no orange band. */
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(63, 111, 97, 0.055), transparent 16rem),
+    rgba(255, 250, 242, 0.9) !important;
+  border-color: rgba(139, 112, 78, 0.17) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__count,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__item strong,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-modal__item strong {
+  color: #7a6042 !important;
+}
+
+/* Handoff selected state uses the same green accent. */
+.ai-handoff-inbox .ai-handoff-inbox__item.active {
+  box-shadow: inset 4px 0 0 #3f6f61 !important;
+}
+
+.ai-handoff-inbox .ai-handoff-inbox__dot {
+  background: #3f6f61 !important;
+  box-shadow: 0 0 0 4px rgba(63, 111, 97, 0.12) !important;
+}
+
+.ai-handoff-inbox .ai-handoff-badge {
+  background: rgba(63, 111, 97, 0.1) !important;
+  color: #3f6f61 !important;
+  border-color: rgba(63, 111, 97, 0.14) !important;
+}
