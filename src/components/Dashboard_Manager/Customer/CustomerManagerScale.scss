@@ -1,18 +1,21 @@
 .cm-page .management-page-header,
 .cm-page .manager-command-bar,
 .cm-page .cm-layout {
-  width: min(1380px, calc(100% - 16px)) !important;
+  width: min(1400px, calc(100vw - 190px)) !important;
   max-width: none !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: 50% !important;
+  margin-right: 0 !important;
+  transform: translateX(-50%) !important;
 }
 
 .cm-page .management-page-header.density-compact {
-  min-height: 118px !important;
-  padding: 1rem 1.1rem !important;
-  border-radius: 22px !important;
+  position: relative !important;
+  min-height: 208px !important;
+  padding: 1.15rem 1.15rem 1.05rem !important;
+  border-radius: 24px !important;
   gap: 1rem !important;
-  grid-template-columns: minmax(260px, 315px) minmax(0, 1fr) !important;
+  grid-template-columns: minmax(300px, 1fr) minmax(220px, max-content) !important;
+  align-items: start !important;
 }
 
 .cm-page .management-page-header .mph-eyebrow {
@@ -21,113 +24,123 @@
 }
 
 .cm-page .management-page-header .mph-title {
-  margin: 4px 0 6px !important;
-  font-size: 25px !important;
+  margin: 4px 0 7px !important;
+  font-size: 27px !important;
   line-height: 1.08 !important;
-  letter-spacing: -0.035em !important;
+  letter-spacing: -0.038em !important;
 }
 
 .cm-page .management-page-header .mph-title > span:last-child::after {
-  font-size: 25px !important;
+  font-size: 27px !important;
 }
 
 .cm-page .management-page-header .mph-title__icon {
-  width: 40px !important;
-  height: 40px !important;
+  width: 42px !important;
+  height: 42px !important;
   border-radius: 14px !important;
   font-size: 20px !important;
 }
 
 .cm-page .management-page-header .mph-subtitle {
-  max-width: 36ch !important;
-  font-size: 13.5px !important;
-  line-height: 1.42 !important;
+  max-width: 44ch !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
 }
 
 .cm-page .management-page-header .mph-right {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(175px, max-content) !important;
-  gap: 1rem !important;
-  align-items: stretch !important;
+  display: block !important;
+  align-self: start !important;
+  justify-self: end !important;
+  width: 240px !important;
 }
 
 .cm-page .management-page-header .mph-controls-row {
-  min-width: 175px !important;
-  padding-left: 0.85rem !important;
-  align-self: stretch !important;
-  justify-content: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-left: 0 !important;
+  border-left: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.65rem !important;
+  justify-content: stretch !important;
+  align-items: stretch !important;
 }
 
 .cm-page .management-page-header .mph-select,
 .cm-page .management-page-header .mph-btn {
-  height: 42px !important;
-  border-radius: 13px !important;
-  font-size: 13.5px !important;
-  font-weight: 800 !important;
+  width: 100% !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  font-size: 14px !important;
+  font-weight: 820 !important;
 }
 
 .cm-page .cm-header-kpis {
+  position: absolute !important;
+  left: 1.15rem !important;
+  right: 1.15rem !important;
+  bottom: 1.05rem !important;
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(116px, 1fr)) !important;
-  gap: 0.75rem !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.85rem !important;
   min-width: 0 !important;
 }
 
 .cm-page .cm-header-kpi {
-  min-height: 76px !important;
-  padding: 0.75rem 0.85rem !important;
+  min-height: 82px !important;
+  padding: 0.78rem 0.9rem !important;
   border: 1px solid rgba(216, 208, 197, 0.94) !important;
   border-radius: 18px !important;
   display: grid !important;
-  grid-template-columns: 36px minmax(0, 1fr) !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
   grid-template-rows: auto auto !important;
-  column-gap: 0.7rem !important;
+  column-gap: 0.72rem !important;
   align-content: center !important;
   background: linear-gradient(135deg, #fffdfa, #f7f1e8) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 8px 20px rgba(54, 44, 29, 0.045) !important;
 }
 
 .cm-page .cm-header-kpi.tone-total {
-  border-color: rgba(31, 106, 96, 0.28) !important;
+  border-color: rgba(31, 106, 96, 0.3) !important;
   background: linear-gradient(135deg, #f2faf7, #fffdfa) !important;
 }
 
 .cm-page .cm-header-kpi__icon {
   grid-row: 1 / span 2 !important;
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 12px !important;
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 13px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   background: rgba(242, 250, 247, 0.9) !important;
   border: 1px solid rgba(31, 106, 96, 0.16) !important;
-  font-size: 16px !important;
+  font-size: 17px !important;
 }
 
 .cm-page .cm-header-kpi__label {
   color: #60706d !important;
-  font-size: 12.2px !important;
-  font-weight: 760 !important;
+  font-size: 12.5px !important;
+  font-weight: 780 !important;
   line-height: 1.1 !important;
 }
 
 .cm-page .cm-header-kpi__value {
   color: #24323b !important;
-  font-size: 23px !important;
-  font-weight: 860 !important;
+  font-size: 25px !important;
+  font-weight: 880 !important;
   line-height: 1 !important;
   font-variant-numeric: tabular-nums !important;
 }
 
 .cm-page .manager-command-bar {
-  padding: 0.95rem 1rem !important;
+  padding: 0.98rem 1.05rem !important;
   border-radius: 22px !important;
 }
 
 .cm-page .manager-command-bar .mcb-search {
   height: 48px !important;
-  width: min(500px, 100%) !important;
+  width: min(520px, 100%) !important;
   border-radius: 16px !important;
 }
 
@@ -184,7 +197,7 @@
 }
 
 .cm-page .cl-empty-state {
-  min-height: 290px !important;
+  min-height: 292px !important;
   padding: 50px 28px !important;
   border-radius: 24px !important;
 }
@@ -227,13 +240,24 @@
 }
 
 @media (max-width: 1180px) {
+  .cm-page .management-page-header,
+  .cm-page .manager-command-bar,
+  .cm-page .cm-layout {
+    width: min(100%, calc(100vw - 32px)) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    transform: none !important;
+  }
+
   .cm-page .management-page-header.density-compact,
   .cm-page.is-customer-empty .management-page-header.density-compact {
+    min-height: 330px !important;
     grid-template-columns: 1fr !important;
   }
 
   .cm-page .management-page-header .mph-right {
-    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    justify-self: stretch !important;
   }
 
   .cm-page .cm-header-kpis {
@@ -241,8 +265,6 @@
   }
 
   .cm-page .management-page-header .mph-controls-row {
-    justify-content: flex-start !important;
-    padding-left: 0 !important;
-    border-left: 0 !important;
+    max-width: none !important;
   }
 }
