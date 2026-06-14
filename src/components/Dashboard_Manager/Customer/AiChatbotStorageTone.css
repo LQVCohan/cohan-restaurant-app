@@ -6,6 +6,7 @@
   --ai-page-bg: #f7f1e8 !important;
   --ai-surface: #fffaf2 !important;
   --ai-surface-glass: rgba(255, 250, 242, 0.86) !important;
+  --ai-surface-strong: rgba(255, 253, 248, 0.94) !important;
   --ai-surface-soft: #f8f6f1 !important;
   --ai-border: rgba(139, 112, 78, 0.16) !important;
   --ai-border-strong: rgba(139, 112, 78, 0.24) !important;
@@ -15,6 +16,7 @@
   --ai-accent: #2f3a46 !important;
   --ai-accent-hover: #24303f !important;
   --ai-accent-soft: #eadfcc !important;
+  --ai-warm: #735637 !important;
   --ai-success: #2f7d68 !important;
   --ai-success-bg: #edf7f2 !important;
   --ai-warning: #a76628 !important;
@@ -59,6 +61,7 @@
 .customer-analytics-panel,
 .ai-analytics-card,
 .ai-admin-review-strip,
+.ai-admin-settings-footer,
 .ai-handoff-inbox__panel,
 .ai-handoff-inbox__empty,
 .ai-handoff-inbox__skeleton span {
@@ -86,6 +89,36 @@
 .ai-handoff-inbox__reply {
   background: linear-gradient(135deg, rgba(255, 250, 242, 0.9), rgba(248, 246, 241, 0.78)) !important;
   border-color: var(--ai-border) !important;
+}
+
+.ai-admin-page h2,
+.ai-admin-page h3,
+.ai-admin-page h4,
+.ai-handoff-inbox h2,
+.ai-handoff-inbox h3,
+.ai-handoff-inbox h4,
+.ai-admin-metrics strong,
+.ai-admin-settings-status-strip strong,
+.ai-admin-settings-preview__topbar strong,
+.ai-admin-settings-preview__notes strong,
+.ai-handoff-inbox__preview,
+.ai-analytics-list__label {
+  color: var(--ai-text) !important;
+}
+
+.ai-admin-page p,
+.ai-admin-page small,
+.ai-admin-page span,
+.ai-admin-help,
+.ai-admin-settings-status-strip span,
+.ai-admin-settings-status-strip small,
+.ai-admin-settings-preview__chips small,
+.ai-admin-settings-preview__notes span,
+.ai-handoff-inbox small,
+.ai-handoff-inbox span,
+.ai-handoff-inbox__item-meta,
+.ai-handoff-inbox__item-footer {
+  color: var(--ai-muted) !important;
 }
 
 .ai-admin-field input,
@@ -117,6 +150,7 @@
 .ai-admin-eval-cases li,
 .ai-analytics-list__item,
 .ai-admin-review-item,
+.ai-admin-review-strip__item,
 .ai-handoff-inbox__tabs,
 .ai-handoff-inbox__message.is-handoff-summary {
   background: rgba(255, 250, 242, 0.74) !important;
@@ -168,7 +202,7 @@
 .ai-handoff-inbox__message button {
   background: rgba(255, 250, 242, 0.84) !important;
   border: 1px solid rgba(139, 112, 78, 0.18) !important;
-  color: #735637 !important;
+  color: var(--ai-warm) !important;
   box-shadow: none !important;
 }
 
@@ -186,11 +220,6 @@
 .ai-handoff-inbox__tabs button:hover {
   background: rgba(234, 223, 204, 0.7) !important;
   color: var(--ai-text) !important;
-}
-
-.ai-admin-metrics article::after,
-.ai-handoff-inbox__item.active {
-  border-color: rgba(47, 58, 70, 0.18) !important;
 }
 
 .ai-admin-page .ai-admin-metrics article::after,
@@ -224,12 +253,11 @@
 .ai-handoff-inbox__eyebrow,
 .ai-handoff-inbox__message strong,
 .ai-handoff-badge {
-  color: #735637 !important;
+  color: var(--ai-warm) !important;
 }
 
 .ai-admin-status.is-on,
-.ai-admin-chip--success,
-.ai-handoff-inbox__dot {
+.ai-admin-chip--success {
   background: var(--ai-success-bg) !important;
   color: var(--ai-success) !important;
 }
@@ -245,13 +273,225 @@
   color: var(--ai-danger) !important;
 }
 
-.ai-handoff-inbox__content {
-  background: linear-gradient(180deg, rgba(255, 252, 246, 0.74) 0%, rgba(245, 239, 229, 0.8) 100%) !important;
+/* Settings page children */
+.ai-admin-page--settings {
+  --settings-ink: var(--ai-text) !important;
+  --settings-muted: var(--ai-muted) !important;
+  --settings-accent: var(--ai-warm) !important;
+  --settings-border: var(--ai-border) !important;
+  --settings-panel: var(--ai-surface-glass) !important;
 }
 
+.ai-admin-page--settings .ai-admin-settings-status-strip {
+  border-color: var(--ai-border) !important;
+  background:
+    radial-gradient(circle at 6% 0%, rgba(47, 125, 104, 0.07), transparent 16rem),
+    radial-gradient(circle at 100% 0%, rgba(168, 133, 95, 0.09), transparent 17rem),
+    var(--ai-surface-glass) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    var(--ai-shadow-sm) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip::before {
+  color: var(--ai-text) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip::after {
+  color: var(--ai-muted) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article,
+.ai-admin-settings-preview__notes article,
+.ai-admin-handoff-message,
+.ai-admin-handoff-compact,
+.ai-admin-settings-preview__footer span,
+.ai-admin-settings-preview__chips span {
+  background: rgba(255, 250, 242, 0.82) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+  box-shadow: 0 10px 24px rgba(73, 58, 38, 0.055) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article::before {
+  background: rgba(47, 58, 70, 0.42) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 0 0 4px rgba(47, 58, 70, 0.08) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-active::before {
+  background: var(--ai-success) !important;
+  box-shadow: 0 0 0 4px rgba(47, 125, 104, 0.11) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-muted::before {
+  background: var(--ai-danger) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-active::after {
+  background: linear-gradient(90deg, var(--ai-success), rgba(47, 125, 104, 0.24)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article.is-muted::after {
+  background: linear-gradient(90deg, var(--ai-danger), rgba(169, 74, 66, 0.22)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(3)::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(4)::after {
+  background: linear-gradient(90deg, var(--ai-warning), rgba(167, 102, 40, 0.22)) !important;
+}
+
+.ai-admin-settings-preview__window {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.9) 0%, rgba(245, 239, 229, 0.78) 100%) !important;
+  border-color: rgba(139, 112, 78, 0.17) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 18px 42px rgba(73, 58, 38, 0.08) !important;
+}
+
+.ai-admin-settings-preview__topbar,
+.ai-admin-settings-preview__footer {
+  background: rgba(255, 250, 242, 0.88) !important;
+  border-color: rgba(139, 112, 78, 0.14) !important;
+}
+
+.ai-admin-settings-preview__topbar i {
+  background: linear-gradient(135deg, #2f3a46, #536c61) !important;
+  box-shadow: 0 8px 18px rgba(47, 58, 70, 0.18) !important;
+}
+
+.ai-admin-settings-preview__bubble,
 .ai-handoff-inbox__message {
   background: rgba(255, 253, 248, 0.92) !important;
   border-color: rgba(139, 112, 78, 0.16) !important;
+  color: var(--ai-text) !important;
+}
+
+.ai-admin-settings-preview__chips span,
+.ai-admin-settings-preview__footer button {
+  color: var(--ai-warm) !important;
+}
+
+.ai-admin-settings-preview__footer button {
+  background: rgba(115, 86, 55, 0.16) !important;
+  box-shadow: none !important;
+}
+
+.ai-admin-settings-footer--dirty {
+  border-color: rgba(167, 102, 40, 0.28) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(251, 241, 227, 0.9), transparent 18rem),
+    var(--ai-surface-glass) !important;
+}
+
+/* Analytics page children */
+.manager-layout--ai-chatbot-analytics .ai-admin-report-summary,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip,
+.manager-layout--ai-chatbot-analytics .customer-analytics-panel,
+.manager-layout--ai-chatbot-analytics .ai-admin-control-card {
+  border-color: var(--ai-border) !important;
+  background: var(--ai-surface-glass) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    var(--ai-shadow-sm) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-report-summary {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(168, 133, 95, 0.12), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 250, 242, 0.9), rgba(248, 246, 241, 0.82)) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip {
+  border-color: rgba(167, 102, 40, 0.22) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(251, 241, 227, 0.78), transparent 18rem),
+    rgba(255, 250, 242, 0.88) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__count,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__item,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-modal__item,
+.manager-layout--ai-chatbot-analytics .ai-admin-technical-details,
+.manager-layout--ai-chatbot-analytics .ai-admin-technical-details summary {
+  background: rgba(255, 250, 242, 0.78) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+  color: var(--ai-text) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__count,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__item strong,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-modal__item strong {
+  color: var(--ai-warm) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-modal__backdrop {
+  background: rgba(36, 48, 63, 0.36) !important;
+  backdrop-filter: blur(8px) saturate(105%) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-modal {
+  background: var(--ai-surface-strong) !important;
+  border: 1px solid var(--ai-border) !important;
+  box-shadow: 0 28px 70px rgba(36, 48, 63, 0.22) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-link-button {
+  background: var(--ai-accent) !important;
+  color: #fffaf2 !important;
+  box-shadow: 0 10px 20px rgba(47, 58, 70, 0.14) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-card__header {
+  background: linear-gradient(135deg, rgba(255, 250, 242, 0.9), rgba(248, 246, 241, 0.78)) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-list__item,
+.manager-layout--ai-chatbot-analytics .ai-admin-empty--soft {
+  background: rgba(255, 250, 242, 0.78) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+}
+
+/* Knowledge page children */
+.ai-admin-page--knowledge .ai-admin-guide-card::after,
+.ai-admin-page--knowledge .ai-admin-card__meta span,
+.ai-admin-page--knowledge .ai-admin-tag,
+.ai-admin-page--knowledge .ai-admin-tag--muted,
+.ai-admin-page--knowledge .ai-admin-selection {
+  background: rgba(234, 223, 204, 0.62) !important;
+  color: var(--ai-warm) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-empty,
+.ai-admin-page--knowledge .ai-admin-empty--soft {
+  background:
+    radial-gradient(circle at top, rgba(168, 133, 95, 0.08), transparent 14rem),
+    rgba(255, 250, 242, 0.7) !important;
+  border-color: rgba(139, 112, 78, 0.22) !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-empty__icon,
+.ai-admin-empty__icon {
+  background: var(--ai-accent-soft) !important;
+  color: var(--ai-warm) !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-card,
+.ai-admin-page--knowledge .ai-admin-eval-cases li,
+.ai-admin-page--knowledge .ai-admin-review-item {
+  background: rgba(255, 250, 242, 0.82) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-panel pre {
+  background: #24303f !important;
+  color: #fffaf2 !important;
+}
+
+/* Handoff page children */
+.ai-handoff-inbox__content {
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.74) 0%, rgba(245, 239, 229, 0.8) 100%) !important;
 }
 
 .ai-handoff-inbox__item:hover,
@@ -263,9 +503,41 @@
   box-shadow: inset 4px 0 0 var(--ai-accent) !important;
 }
 
+.ai-handoff-badge {
+  background: rgba(234, 223, 204, 0.72) !important;
+  border-color: rgba(139, 112, 78, 0.16) !important;
+}
+
+.ai-handoff-inbox__dot {
+  background: var(--ai-warning) !important;
+  box-shadow: 0 0 0 4px rgba(167, 102, 40, 0.11) !important;
+}
+
 .ai-admin-page::-webkit-scrollbar-thumb,
+.ai-admin-page *::-webkit-scrollbar-thumb,
 .ai-handoff-inbox ::-webkit-scrollbar-thumb,
 .ai-handoff-inbox__list::-webkit-scrollbar-thumb,
 .ai-handoff-inbox__content::-webkit-scrollbar-thumb {
   background: #c9c1b5 !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ai-admin-card,
+  .ai-analytics-list__item,
+  .ai-admin-review-item,
+  .ai-handoff-inbox__item {
+    transition:
+      background 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease !important;
+  }
+
+  .ai-admin-card:hover,
+  .ai-analytics-list__item:hover,
+  .ai-admin-review-item:hover,
+  .ai-handoff-inbox__item:hover {
+    border-color: rgba(139, 112, 78, 0.24) !important;
+    box-shadow: 0 14px 30px rgba(73, 58, 38, 0.09) !important;
+  }
 }
