@@ -189,9 +189,16 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
   const menuItemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId || "";
   const helpQuery = isManagerHelpQuery(query);
   const isManagerShell = path === "/manager" || path === "/manager#dashboard";
+  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role));
 
-  return AI_CHATBOT_FEATURE_MAP
-    .filter((entry) => canUseFeature(entry, role))
+  if (isManagerShell && !query) {
+    return accessibleEntries
+      .filter((entry) => entry.managerOnly || entry.key === "staff-schedule")
+      .map((entry) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
+      .slice(0, 6);
+  }
+
+  return accessibleEntries
     .map((entry) => {
       const queryScore = queryScoreEntry(entry, query);
       const pathScore = pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
