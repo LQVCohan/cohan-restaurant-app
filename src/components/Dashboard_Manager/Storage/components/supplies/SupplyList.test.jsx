@@ -92,7 +92,7 @@ describe("SupplyList inventory regression", () => {
     expect(screen.getByPlaceholderText("Tìm trong thùng rác...")).toBeInTheDocument();
     expect(screen.getByText("Thùng rác vật tư đang trống")).toBeInTheDocument();
     expect(screen.getByText("Vật tư đã chuyển vào đây sẽ được giữ trong 30 ngày.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Danh sách/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Danh sách$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Thêm vật tư$/i })).toBeDisabled();
   });
 
