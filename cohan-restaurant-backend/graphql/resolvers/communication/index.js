@@ -8,6 +8,7 @@ import {
 } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { emitAiChatbotStaffReplyIfLinked } from "../../../src/services/ai/restaurantChatbotRealtime.service.js";
+import { setNotificationSocketServer } from "../../../src/services/notification/notificationWorkflow.service.js";
 
 const toId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -17,7 +18,12 @@ const toId = (id) => {
 const roleSlug = (user) =>
   String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase();
 
+const bindNotificationSocket = (ctx) => {
+  if (ctx?.io) setNotificationSocketServer(ctx.io);
+};
+
 const ensureAuth = (ctx) => {
+  bindNotificationSocket(ctx);
   if (!ctx?.user?.id) {
     throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHORIZED" } });
   }
