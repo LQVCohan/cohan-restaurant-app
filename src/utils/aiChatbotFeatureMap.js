@@ -138,7 +138,26 @@ export const AI_CHATBOT_FEATURE_MAP = [
   },
 ];
 
-const normalizeRole = (value) => resolveUserRoleName(value) || String(value || "").trim().toLowerCase();
+const extractRawRole = (value) => {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  return (
+    value.roleName ||
+    value.roleSlug ||
+    value.userType ||
+    value.role?.slug ||
+    value.role?.name ||
+    value.role?.parentRole?.slug ||
+    value.role?.parentRole?.name ||
+    ""
+  );
+};
+
+const normalizeRole = (value) => {
+  const resolved = resolveUserRoleName(value);
+  const raw = extractRawRole(value);
+  return String(resolved || raw || "").trim().toLowerCase();
+};
 
 export const getAiChatbotUserRole = (userOrRole) => normalizeRole(userOrRole) || "";
 
