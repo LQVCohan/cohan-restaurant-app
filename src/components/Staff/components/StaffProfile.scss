@@ -1,7 +1,7 @@
 // Variables
-$primary: #3b82f6;
+$primary: #1F6F4A;
 $success: #10b981;
-$warning: #f59e0b;
+$warning: #1F6F4A;
 $danger: #ef4444;
 $bg-main: #f3f4f6;
 $bg-card: #ffffff;
@@ -153,9 +153,9 @@ $shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
 
         &.bg-blue {
           background: #dbeafe;
-          color: #2563eb;
+          color: #165C3C;
         }
-        &.bg-orange {
+        &.bg-green {
           background: #ffedd5;
           color: #ea580c;
         }
@@ -246,7 +246,7 @@ $shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
                 color: $success;
                 background: rgba($success, 0.1);
               }
-              &.text-orange {
+              &.text-green {
                 color: $warning;
                 background: rgba($warning, 0.1);
               }

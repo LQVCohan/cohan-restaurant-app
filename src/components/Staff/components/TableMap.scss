@@ -1,40 +1,43 @@
-// Variables
-$primary: #3b82f6;
-$success: #10b981;
-$warning: #f59e0b;
-$danger: #ef4444;
-$bg-main: #f3f4f6;
-$bg-card: #ffffff;
-$text-main: #1f2937;
-$text-sub: #6b7280;
-$border-color: #e5e7eb;
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+$primary: #1F6F4A;
+$success: #2F7D57;
+$danger: #B42318;
+$bg-main: #F7F8F3;
+$bg-card: #FFFFFF;
+$text-main: #1F2A24;
+$text-sub: #64746A;
+$border-color: #DCE8DF;
+$shadow-sm: 0 10px 24px rgba(31, 111, 74, 0.06);
+$shadow-md: 0 14px 28px rgba(31, 111, 74, 0.12);
 
 .staff-pos-tables {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  width: 100%;
   height: 100%;
+  gap: 12px;
+  background: transparent;
 
-  // Tiêu đề
   .floor-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0;
+    margin-bottom: 2px;
 
     .floor-stats {
       h3 {
         margin: 0 0 4px;
-        font-size: 20px;
+        font-size: 1.08rem;
         font-weight: 700;
         color: $text-main;
       }
+
       p {
         margin: 0;
         font-size: 14px;
         color: $text-sub;
       }
+
       strong {
         color: $primary;
         font-weight: 700;
@@ -42,7 +45,6 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
   }
 
-  // Scroll Tầng
   .floor-selector-scroll {
     display: flex;
     gap: 10px;
@@ -52,6 +54,7 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     &::-webkit-scrollbar {
       display: none;
     }
+
     -ms-overflow-style: none;
     scrollbar-width: none;
 
@@ -68,100 +71,98 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       transition: all 0.2s ease;
 
       &.active {
-        background: $text-main;
-        color: white;
-        border-color: $text-main;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        background: $primary;
+        border-color: $primary;
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(31, 111, 74, 0.18);
       }
+
       &:active {
         transform: scale(0.95);
       }
     }
   }
 
-  // Lưới Bàn
   .table-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); // 2 cột trên mobile
-    gap: 14px;
-    padding-bottom: 24px;
-    align-items: flex-start;
-
-    @media (min-width: 600px) {
-      grid-template-columns: repeat(3, 1fr);
-    }
+    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+    padding-bottom: 20px;
 
     .table-card-wrapper {
-      background: $bg-card;
+      min-height: 104px;
+      border: 1px solid $border-color;
       border-radius: 16px;
-      border: 2px solid transparent;
+      background: $bg-card;
       box-shadow: $shadow-sm;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       overflow: hidden;
       cursor: pointer;
 
-      // Xử lý màu sắc theo trạng thái
       &.status-empty {
-        border-color: $border-color;
         .status-indicator {
-          background: #d1d5db;
+          background: $border-color;
         }
+
         .table-status-text {
           color: $text-sub;
         }
       }
 
       &.status-serving {
-        background: #f0fdf4; // Light Green
-        border-color: rgba($success, 0.3);
+        background: #F5FBF7;
+        border-color: rgba(31, 111, 74, 0.24);
+
         .status-indicator {
           background: $success;
-          box-shadow: 0 0 8px rgba($success, 0.6);
+          box-shadow: 0 0 0 4px rgba(47, 125, 87, 0.12);
         }
-        .table-status-text {
-          color: $success;
-        }
+
+        .table-status-text,
         .guest-count {
-          color: #065f46;
+          color: $primary;
         }
       }
 
       &.status-checkout {
-        background: #fffbeb; // Light Yellow
-        border-color: rgba($warning, 0.4);
+        background: #EAF5EE;
+        border-color: rgba(31, 111, 74, 0.34);
+
         .status-indicator {
-          background: $warning;
-          box-shadow: 0 0 8px rgba($warning, 0.6);
+          background: $primary;
+          box-shadow: 0 0 0 4px rgba(31, 111, 74, 0.12);
         }
-        .table-status-text {
-          color: #b45309;
-        }
+
+        .table-status-text,
         .guest-count {
-          color: #92400e;
+          color: $primary;
         }
       }
 
-      // Khi được chọn
       &.selected {
         border-color: $primary;
+        background: #F5FBF7;
         transform: translateY(-2px);
         box-shadow: $shadow-md;
       }
 
       .table-card-main {
-        padding: 14px;
+        padding: 12px;
 
         .table-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
 
           .table-name {
             font-size: 16px;
             font-weight: 700;
             color: $text-main;
           }
+
           .status-indicator {
             width: 10px;
             height: 10px;
@@ -172,8 +173,8 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         .table-body {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          min-height: 48px; // Giữ layout không bị nhảy khi có/không có thẻ customer
+          gap: 6px;
+          min-height: 40px;
 
           .guest-count {
             display: flex;
@@ -188,18 +189,19 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            background: rgba($primary, 0.1);
-            color: $primary;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
             width: fit-content;
             max-width: 100%;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(31, 111, 74, 0.1);
+            color: $primary;
+            font-size: 11px;
+            font-weight: 600;
 
             .star-icon {
               flex-shrink: 0;
             }
+
             .truncate {
               white-space: nowrap;
               overflow: hidden;
@@ -209,7 +211,7 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .table-status-text {
-          margin-top: 12px;
+          margin-top: 9px;
           font-size: 12px;
           font-weight: 700;
           text-transform: uppercase;
@@ -217,10 +219,9 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
       }
 
-      // Animation mượt mà cho phần Actions
       .table-quick-actions {
         display: grid;
-        grid-template-rows: 0fr; // Kỹ thuật CSS Grid animation mới
+        grid-template-rows: 0fr;
         transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background: white;
 
@@ -233,7 +234,7 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
           overflow: hidden;
           display: flex;
           justify-content: space-between;
-          padding: 0 8px; // Padding ngang khi mở ra
+          padding: 0 8px;
 
           .action-btn {
             flex: 1;
@@ -266,21 +267,36 @@ $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
             &:active .icon-wrap {
               transform: scale(0.9);
-              background: #e5e7eb;
+              background: $border-color;
             }
 
             &.btn-checkout {
               color: $primary;
+
               .icon-wrap {
-                background: rgba($primary, 0.1);
+                background: rgba(31, 111, 74, 0.1);
               }
+
               &:active .icon-wrap {
-                background: rgba($primary, 0.2);
+                background: rgba(31, 111, 74, 0.2);
               }
             }
           }
         }
       }
     }
+  }
+}
+
+
+@media (min-width: 1200px) {
+  .staff-pos-tables .table-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .staff-pos-tables .table-grid {
+    grid-template-columns: 1fr;
   }
 }

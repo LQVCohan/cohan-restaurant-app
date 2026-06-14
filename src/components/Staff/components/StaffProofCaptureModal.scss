@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
-  z-index: 1200;
+  z-index: 90;
   display: grid;
   place-items: center;
 }
@@ -133,7 +133,7 @@
       background: #e2e8f0;
     }
     .btn-save {
-      background: #2563eb;
+      background: #165C3C;
       color: #fff;
     }
   }

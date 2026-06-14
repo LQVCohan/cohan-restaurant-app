@@ -111,7 +111,7 @@ const resolveSenderLabel = (message) => {
   if (role === "guest" || role === "customer") return "Khách hàng";
 
   if (role === "assistant" || role === "ai" || role === "chatbot") {
-    return "AI chatbot";
+    return "Trợ lý tự động";
   }
 
   if (["staff", "manager", "admin"].includes(role)) {
@@ -243,7 +243,7 @@ export default function AiHandoffInbox({
         preview:
           item?.payload?.messagePreview ||
           item?.payload?.title ||
-          "Yêu cầu hỗ trợ từ chatbot",
+          "Yêu cầu cần hỗ trợ",
         time: item.createdAt,
         restaurantId: item.restaurantId,
       })),
@@ -259,7 +259,7 @@ export default function AiHandoffInbox({
         threadId: item.id,
         unread: Number(item.unreadCount || 0) > 0,
         preview:
-          item.lastMessagePreview || item.subject || "Yêu cầu hỗ trợ từ AI",
+          item.lastMessagePreview || item.subject || "Yêu cầu cần hỗ trợ",
         time: item.updatedAt || item.lastMessageAt,
         restaurantId: item.restaurantId,
       })),
@@ -276,7 +276,7 @@ export default function AiHandoffInbox({
           notificationId: null,
           threadId: item.id,
           unread: false,
-          preview: item.lastMessagePreview || item.subject || "Handoff AI",
+          preview: item.lastMessagePreview || item.subject || "Yêu cầu cần hỗ trợ",
           time: item.updatedAt || item.lastMessageAt,
           restaurantId: item.restaurantId,
         }))
@@ -469,8 +469,8 @@ export default function AiHandoffInbox({
         <div className="ai-handoff-inbox__panel">
           <div className="ai-handoff-inbox__content">
             <div className="ai-handoff-inbox__empty">
-              <strong>Không có quyền xử lý handoff AI chatbot</strong>
-              <p>Bạn cần quyền ai.chatbot.handoff hoặc ai.chatbot.moderate.</p>
+              <strong>Không có quyền xử lý bàn giao hỗ trợ</strong>
+              <p>Bạn chưa được cấp quyền xử lý yêu cầu hỗ trợ.</p>
             </div>
           </div>
         </div>
@@ -483,8 +483,8 @@ export default function AiHandoffInbox({
       <section className="ai-handoff-inbox__panel">
         <div className="ai-handoff-inbox__panel-header">
           <div>
-            <p className="ai-handoff-inbox__eyebrow">Live handoff</p>
-            <h2>Yêu cầu hỗ trợ từ AI</h2>
+            <p className="ai-handoff-inbox__eyebrow">Bàn giao hỗ trợ</p>
+            <h2>Yêu cầu cần hỗ trợ</h2>
           </div>
 
           <div className="ai-handoff-inbox__header-actions">
@@ -545,9 +545,9 @@ export default function AiHandoffInbox({
         ) : currentItems.length === 0 ? (
           <div className="ai-handoff-inbox__content">
             <div className="ai-handoff-inbox__empty">
-              <strong>Chưa có yêu cầu hỗ trợ từ chatbot</strong>
+              <strong>Chưa có yêu cầu cần hỗ trợ</strong>
               <p>
-                Khi khách cần nhân viên hỗ trợ, hội thoại sẽ xuất hiện ở đây để
+                Khi khách cần nhân viên hỗ trợ, yêu cầu sẽ xuất hiện ở đây để
                 bạn tiếp nhận nhanh.
               </p>
             </div>
@@ -597,7 +597,7 @@ export default function AiHandoffInbox({
       <section className="ai-handoff-inbox__panel">
         <div className="ai-handoff-inbox__panel-header">
           <div>
-            <p className="ai-handoff-inbox__eyebrow">Conversation</p>
+            <p className="ai-handoff-inbox__eyebrow">Chi tiết hội thoại</p>
             <h2>Chi tiết hội thoại</h2>
           </div>
 
@@ -707,7 +707,7 @@ export default function AiHandoffInbox({
 
           {!canResolveHandoff ? (
             <small>
-              Bạn cần quyền ai.chatbot.handoff để đánh dấu đã xử lý.
+              Bạn chưa được cấp quyền đánh dấu đã xử lý.
             </small>
           ) : null}
 
@@ -716,8 +716,8 @@ export default function AiHandoffInbox({
           ) : null}
 
           <small>
-            Sau khi đóng phiên hỗ trợ, khách có thể tiếp tục trò chuyện với AI
-            hoặc tạo yêu cầu hỗ trợ mới khi cần.
+            Sau khi đóng phiên hỗ trợ, khách có thể tiếp tục trò chuyện với hệ thống hỗ trợ
+            hoặc tạo yêu cầu mới khi cần.
           </small>
         </form>
       </section>

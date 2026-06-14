@@ -203,7 +203,7 @@ export default function StaffProfile() {
               </div>
             </div>
             <div className="stat-card">
-              <div className="icon-wrap bg-orange">
+              <div className="icon-wrap bg-green">
                 <TrendingUp size={20} />
               </div>
               <div className="stat-info">
@@ -250,7 +250,7 @@ export default function StaffProfile() {
                 </button>
                 <button className="menu-item" onClick={() => setView("shifts")}>
                   <div className="item-left">
-                    <div className="menu-icon text-orange">
+                    <div className="menu-icon text-green">
                       <History size={20} />
                     </div>
                     <span>Lịch sử ca làm việc</span>

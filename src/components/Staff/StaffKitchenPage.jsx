@@ -91,8 +91,8 @@ const matchesKitchenFilter = (item, filter) => {
 
 const getKitchenItemBadgeClassName = (status) => {
   const bucket = getKitchenItemBucket(status);
-  if (bucket === "pending") return "bg-amber-50 text-amber-700";
-  if (bucket === "preparing") return "bg-blue-50 text-blue-700";
+  if (bucket === "pending") return "bg-green-50 text-green-700";
+  if (bucket === "preparing") return "bg-green-50 text-green-700";
   if (bucket === "ready") return "bg-green-50 text-green-700";
   return "bg-gray-100 text-gray-700";
 };
@@ -171,7 +171,7 @@ const getTimingBadges = (item) => {
       key: `time-${timeLevel}`,
       label: TIME_LEVEL_LABELS[timeLevel],
       className:
-        timeLevel === "very_late" ? "bg-red-100 text-red-800" : "bg-orange-50 text-orange-700",
+        timeLevel === "very_late" ? "bg-red-100 text-red-800" : "bg-green-50 text-green-700",
     });
   }
   return badges;
@@ -326,7 +326,7 @@ const StaffKitchenPage = () => {
   if (!restaurantId) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 shadow-sm">
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800 shadow-sm">
           <h1 className="text-lg font-semibold">Tài khoản chưa được gán nhà hàng.</h1>
           <p className="mt-1 text-sm">
             Vui lòng liên hệ quản lý để gán nhà hàng trước khi mở bảng điều phối bếp / bar.
@@ -343,7 +343,7 @@ const StaffKitchenPage = () => {
       <div className="mb-5 flex flex-col gap-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-blue-600">KITCHEN / BAR DISPATCH</p>
+            <p className="text-sm font-medium uppercase tracking-wide text-green-700">KITCHEN / BAR DISPATCH</p>
             <h1 className="text-2xl font-semibold text-gray-900">Bảng điều phối bếp / bar</h1>
             <p className="mt-1 text-sm text-gray-600">
               Xem món cần chuẩn bị theo khu vực bếp/bar và cập nhật trạng thái chế biến cho nhà hàng được gán.
@@ -356,16 +356,16 @@ const StaffKitchenPage = () => {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Cần xử lý</p>
-            <p className="mt-2 text-2xl font-semibold text-amber-900">{kitchenSummary.totalActive}</p>
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-green-700">Cần xử lý</p>
+            <p className="mt-2 text-2xl font-semibold text-green-900">{kitchenSummary.totalActive}</p>
           </div>
-          <div className="rounded-xl border border-amber-100 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Chờ nhận</p>
+          <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-green-700">Chờ nhận</p>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.pending}</p>
           </div>
-          <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Đang làm</p>
+          <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-green-700">Đang làm</p>
             <p className="mt-2 text-2xl font-semibold text-gray-900">{kitchenSummary.preparing}</p>
           </div>
           <div className="rounded-xl border border-green-100 bg-white p-4 shadow-sm">
@@ -390,8 +390,8 @@ const StaffKitchenPage = () => {
                 type="button"
                 className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
                   isActive
-                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:text-blue-700"
+                    ? "border-green-600 bg-green-600 text-white shadow-sm"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-green-200 hover:text-green-700"
                 }`}
                 onClick={() => setStatusFilter(option.value)}
               >
@@ -457,7 +457,7 @@ const StaffKitchenPage = () => {
                       {order.orderCode || order.id} · {ORDER_STATUS_LABELS[normalizeStatus(order.currentStatus)] || order.currentStatus || "Không rõ"} · {ageMinutes > 0 ? `${ageMinutes} phút` : "Mới"}
                     </p>
                   </div>
-                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
                     {order.orderType === "delivery" ? "Giao hàng" : order.orderType === "takeaway" ? "Mang về" : "Tại bàn"}
                   </span>
                 </div>
@@ -470,7 +470,7 @@ const StaffKitchenPage = () => {
                 </div>
 
                 {order.note ? (
-                  <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <div className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-800">
                     Ghi chú: {order.note}
                   </div>
                 ) : null}
@@ -508,7 +508,7 @@ const StaffKitchenPage = () => {
                           {next ? (
                             <button
                               type="button"
-                              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                              className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-300"
                               disabled={savingKey === saveKey}
                               onClick={() => handleUpdateItemStatus(order, item, index, next.value)}
                             >

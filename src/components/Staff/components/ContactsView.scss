@@ -1,7 +1,7 @@
 // Variables
-$primary: #3b82f6;
+$primary: #1F6F4A;
 $success: #10b981;
-$warning: #f59e0b;
+$warning: #1F6F4A;
 $danger: #ef4444;
 $bg-main: #f3f4f6;
 $bg-card: #ffffff;
@@ -144,16 +144,16 @@ $shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             font-weight: 700;
 
             // Các lớp màu thay thế Tailwind (nếu project không có sẵn Tailwind)
-            &.bg-blue-100 {
+            &.bg-green-100 {
               background: #dbeafe;
             }
-            &.text-blue-600 {
-              color: #2563eb;
+            &.text-green-600 {
+              color: #165C3C;
             }
-            &.bg-orange-100 {
+            &.bg-green-100 {
               background: #ffedd5;
             }
-            &.text-orange-600 {
+            &.text-green-600 {
               color: #ea580c;
             }
             &.bg-emerald-100 {

@@ -1,8 +1,8 @@
 // Variables
-$primary: #3b82f6;
-$primary-hover: #2563eb;
+$primary: #1F6F4A;
+$primary-hover: #165C3C;
 $success: #10b981;
-$warning: #f59e0b;
+$warning: #1F6F4A;
 $danger: #ef4444;
 $bg-main: #f3f4f6;
 $bg-card: #ffffff;
@@ -463,5 +463,200 @@ $shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Menu search/filter refinements */
+.staff-pos-menu {
+  .table-status-banner,
+  .customer-vip-card,
+  .customer-empty-hint,
+  .menu-item-card {
+    border-color: #DDE6DF;
+    box-shadow: 0 8px 18px rgba(31, 42, 36, 0.05);
+  }
+
+  .menu-filter-panel {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #DDE6DF;
+    border-radius: 16px;
+    background: #fff;
+  }
+
+  .menu-search-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid #DDE6DF;
+    border-radius: 13px;
+    background: #F8FAF6;
+    color: #64746A;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #1F2A24;
+      font-size: 0.95rem;
+    }
+
+    button {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid #DDE6DF;
+      border-radius: 10px;
+      background: #fff;
+      color: #64746A;
+    }
+  }
+
+  .category-scroll--secondary .filter-chip {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .category-scroll .filter-chip:not(.active) {
+    background: #fff;
+    color: #64746A;
+    border-color: #DDE6DF;
+    box-shadow: none;
+  }
+
+  .menu-grid .menu-item-card {
+    border-color: #DDE6DF;
+
+    &:hover:not(.out-of-stock) {
+      border-color: rgba(31, 111, 74, 0.28);
+      box-shadow: 0 12px 22px rgba(31, 111, 74, 0.08);
+    }
+
+    .item-content .item-price { color: #1F2A24; }
+    .item-footer .stock-badge.in { background: #F4F6F2; color: #64746A; }
+  }
+}
+
+// Staff add-item sheet polish: keep cart below overlays and leave room for it.
+.staff-pos-menu {
+  padding-bottom: 108px;
+}
+
+.staff-pos-menu .menu-filter-panel {
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.staff-pos-menu .category-scroll,
+.staff-pos-menu .category-scroll--secondary {
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.staff-pos-menu .menu-grid {
+  padding-bottom: 118px;
+}
+
+.staff-pos-menu .menu-grid .menu-item-card {
+  border-color: #DDE6DF;
+  box-shadow: 0 8px 18px rgba(31, 42, 36, 0.06);
+
+  &:hover:not(.out-of-stock) {
+    border-color: rgba(31, 111, 74, 0.28);
+    box-shadow: 0 12px 22px rgba(31, 111, 74, 0.08);
+  }
+
+  .item-content .item-price {
+    color: #1F2A24;
+  }
+}
+
+.item-options-overlay {
+  z-index: 70;
+  background: rgba(31, 42, 36, 0.38);
+  backdrop-filter: none;
+}
+
+.item-options-overlay .item-options-sheet {
+  max-height: min(88dvh, 720px);
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+.item-options-overlay .sheet-body {
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.proof-option-card {
+  border: 1px solid #DDE6DF;
+  border-radius: 16px;
+  background: #F8FAF6;
+  padding: 12px;
+}
+
+.proof-option-card__copy {
+  display: grid;
+  gap: 4px;
+
+  p {
+    margin: 0;
+    color: #64746A;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+}
+
+.proof-option-card__status {
+  color: #1F2A24;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.proof-option-card__hint {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid rgba(31, 111, 74, 0.16);
+  color: #1F6F4A;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 10px;
+}
+
+.proof-option-card__button {
+  margin-top: 10px;
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid rgba(31, 111, 74, 0.22);
+  border-radius: 13px;
+  background: #FFFFFF;
+  color: #1F6F4A;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .staff-pos-menu {
+    padding-bottom: 130px;
+  }
+
+  .staff-pos-menu .menu-grid {
+    padding-bottom: 138px;
   }
 }

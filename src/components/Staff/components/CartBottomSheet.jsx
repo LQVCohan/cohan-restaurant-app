@@ -158,7 +158,7 @@ export default function CartBottomSheet({
 
         <div className="sheet-header">
           <div className="header-info">
-            <h3>Order: {table?.name || "Chưa chọn bàn"}</h3>
+            <h3>Đơn: {table?.name || "Chưa chọn bàn"}</h3>
             <p className="subtitle">{cart.length} món đang chọn</p>
           </div>
           <button className="btn-close" onClick={onClose}>
@@ -176,7 +176,7 @@ export default function CartBottomSheet({
               <div className="empty-icon-wrap">
                 <ShoppingBag size={48} />
               </div>
-              <p>Chưa có món nào trong order</p>
+              <p>Chưa có món nào trong đơn</p>
             </div>
           ) : (
             cart.map((item) => (
@@ -382,7 +382,7 @@ export default function CartBottomSheet({
                   <input
                     className="staff-discount-input"
                     value={couponCode}
-                    placeholder="Nhập mã coupon"
+                    placeholder="Nhập mã ưu đãi"
                     disabled={!permissions.canApplyCoupon}
                     onChange={(event) => {
                       if (!permissions.canApplyCoupon) {
@@ -482,7 +482,7 @@ export default function CartBottomSheet({
                   : READONLY_MESSAGE
               }
             >
-              <Banknote size={20} /> Thanh Toán
+              <Banknote size={20} /> Thanh toán
             </button>
           </div>
         </div>

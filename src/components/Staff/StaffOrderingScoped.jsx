@@ -27,7 +27,7 @@ const resolveStaffOrderingRestaurantId = ({ user, restaurants, role }) => {
 
 const StaffOrderingEmptyState = ({ isStaffOperationalRole }) => (
   <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800 shadow-sm">
+    <div className="rounded-xl border border-[#DCE8DF] bg-[#F5FBF7] p-4 text-[#1F2A24] shadow-sm">
       {isStaffOperationalRole ? (
         <>
           <h1 className="text-lg font-semibold">
@@ -39,7 +39,7 @@ const StaffOrderingEmptyState = ({ isStaffOperationalRole }) => (
         </>
       ) : (
         <h1 className="text-lg font-semibold">
-          Không tìm thấy nhà hàng để vận hành order.
+          Chưa có cơ sở để xử lý đơn.
         </h1>
       )}
     </div>

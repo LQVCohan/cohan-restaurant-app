@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   MapPin,
   UserCircle,
@@ -8,9 +8,15 @@ import {
   Plus,
   Crown,
   ChevronRight,
+  Camera,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { getStaffOrderingPermissions } from "../staffOrderingPermissions";
+import StaffProofCaptureModal from "./StaffProofCaptureModal";
+import {
+  normalizeProofImages,
+  requiresProofImage,
+} from "@/utils/orderProofRules";
 import "./MenuOrdering.scss";
 
 const NO_PERMISSION_MESSAGE =
@@ -18,11 +24,32 @@ const NO_PERMISSION_MESSAGE =
 const READONLY_MESSAGE =
   "Vai trò hiện tại chỉ có quyền xem và thao tác trong phạm vi được phân công.";
 
+const sanitizeCategoryLabel = (value) => {
+  const label = String(value || "").trim();
+  if (!label || label === "Khác") return "Chưa phân loại";
+  if (/^Danh mục\s+[0-9a-f]{3,}$/i.test(label)) return "Chưa phân loại";
+  if (/^[0-9a-f]{12,}$/i.test(label)) return "Chưa phân loại";
+  return label;
+};
+
+const getVariantKey = (variant) => {
+  return String(variant?.key || variant?.mode || variant?.name || "");
+};
+
 export default function MenuOrdering({
   onAdd,
-  searchQuery,
+  onItemSheetOpenChange,
+  menuSearchQuery = "",
+  setMenuSearchQuery,
+  menuCategoryFilter = "all",
+  setMenuCategoryFilter,
+  menuServingFilter = "all",
+  setMenuServingFilter,
+  menuAvailabilityFilter = "available",
+  setMenuAvailabilityFilter,
+  menuPriceFilter = "all",
+  setMenuPriceFilter,
   selectedTable,
-  selectedCategory,
   setSelectedCategory,
   onRemoveCustomer,
   menuItems = [],
@@ -37,24 +64,144 @@ export default function MenuOrdering({
   const [prepChoice, setPrepChoice] = useState("");
   const [serveOrder, setServeOrder] = useState("Mang ra cùng lúc");
   const [selectedVariantKey, setSelectedVariantKey] = useState("");
+  const [draftProofImages, setDraftProofImages] = useState([]);
+  const [proofDraftItem, setProofDraftItem] = useState(null);
 
-  if (!selectedTable) {
+  const servingOptions = useMemo(() => {
+    const options = new Map([["all", "Tất cả khẩu phần"]]);
+    (menuItems || []).forEach((item) => {
+      (item.servingVariants || []).forEach((variant) => {
+        const key = getVariantKey(variant);
+        if (key) {
+          options.set(key, variant?.name || variant?.key || "Khẩu phần");
+        }
+      });
+    });
+    return Array.from(options, ([value, label]) => ({ value, label }));
+  }, [menuItems]);
+
+  const categoryOptions = useMemo(() => {
+    const seen = new Set(["all"]);
+    const options = [{ value: "all", label: "Tất cả" }];
+    const source = categories?.length ? categories : ["Tất cả"];
+
+    source.forEach((cat) => {
+      const label = sanitizeCategoryLabel(cat);
+      if (!label || label === "Tất cả" || seen.has(label)) return;
+      seen.add(label);
+      options.push({ value: label, label });
+    });
+
+    const meaningfulOptions = options.filter((option) => option.value !== "all");
+    if (meaningfulOptions.length === 1 && meaningfulOptions[0].label === "Chưa phân loại") {
+      return options.slice(0, 1);
+    }
+
+    return options;
+  }, [categories]);
+
+  const selectedVariants = useMemo(() => {
+    return Array.isArray(selectedItem?.servingVariants)
+      ? selectedItem.servingVariants
+      : [];
+  }, [selectedItem]);
+
+  const selectedVariant = useMemo(() => {
     return (
-      <div className="staff-pos-empty-state">
-        <div className="empty-icon-wrapper">
-          <MapPin size={40} />
-        </div>
-        <h3>Chưa chọn bàn</h3>
-        <p>Vui lòng chọn một bàn từ Sơ đồ để bắt đầu gọi món</p>
-      </div>
+      selectedVariants.find((variant) => getVariantKey(variant) === selectedVariantKey) ||
+      selectedItem?.defaultVariant ||
+      selectedVariants[0] ||
+      null
     );
-  }
+  }, [selectedItem, selectedVariantKey, selectedVariants]);
 
-  const filteredMenu = (menuItems || []).filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (selectedCategory === "Tất cả" || m.category === selectedCategory),
-  );
+  const draftProofTarget = useMemo(() => {
+    if (!selectedItem) return null;
+    return {
+      ...selectedItem,
+      servingVariant: selectedVariant,
+      proofImages: draftProofImages,
+    };
+  }, [draftProofImages, selectedItem, selectedVariant]);
+
+  const shouldSuggestProof = useMemo(() => {
+    if (!draftProofTarget) return false;
+    const variantMode = String(selectedVariant?.mode || selectedVariant?.key || "").toUpperCase();
+    return variantMode === "BY_WEIGHT" || requiresProofImage(draftProofTarget);
+  }, [draftProofTarget, selectedVariant]);
+
+  const filteredMenu = useMemo(() => {
+    const matchesPriceFilter = (price) => {
+      const amount = Number(price || 0);
+      if (menuPriceFilter === "under_50000") return amount < 50000;
+      if (menuPriceFilter === "50000_100000") {
+        return amount >= 50000 && amount <= 100000;
+      }
+      if (menuPriceFilter === "100000_300000") {
+        return amount > 100000 && amount <= 300000;
+      }
+      if (menuPriceFilter === "over_300000") return amount > 300000;
+      return true;
+    };
+
+    return (menuItems || []).filter((m) => {
+      const keyword = menuSearchQuery.trim().toLowerCase();
+      const variantText = (m.servingVariants || [])
+        .map((variant) => [variant?.name, variant?.key, variant?.mode].filter(Boolean).join(" "))
+        .join(" ")
+        .toLowerCase();
+      const categoryLabel = sanitizeCategoryLabel(m.category);
+      const matchesKeyword = !keyword || `${m.name} ${variantText}`.toLowerCase().includes(keyword);
+      const matchesCategory = menuCategoryFilter === "all" || categoryLabel === menuCategoryFilter;
+      const matchesServing =
+        menuServingFilter === "all" ||
+        (m.servingVariants || []).some((variant) => {
+          return [variant?.key, variant?.mode, variant?.name]
+            .filter(Boolean)
+            .map(String)
+            .includes(menuServingFilter);
+        });
+      const isAvailable =
+        Number(m.stock || 0) > 0 &&
+        !["unavailable", "out_of_stock", "hidden"].includes(String(m.status || "").toLowerCase());
+      const matchesAvailability =
+        menuAvailabilityFilter === "all" ||
+        (menuAvailabilityFilter === "available" ? isAvailable : !isAvailable);
+      return matchesKeyword && matchesCategory && matchesServing && matchesAvailability && matchesPriceFilter(m.price);
+    });
+  }, [menuAvailabilityFilter, menuCategoryFilter, menuItems, menuPriceFilter, menuSearchQuery, menuServingFilter]);
+
+  useEffect(() => {
+    onItemSheetOpenChange?.(Boolean(selectedItem && permissions.canAddItems));
+    return () => onItemSheetOpenChange?.(false);
+  }, [onItemSheetOpenChange, permissions.canAddItems, selectedItem]);
+
+  const closeOptionsSheet = () => {
+    setSelectedItem(null);
+    setSelectedVariantKey("");
+    setPrepChoice("");
+    setServeOrder("Mang ra cùng lúc");
+    setDraftProofImages([]);
+    setProofDraftItem(null);
+  };
+
+  const handleOpenItem = (item) => {
+    if (!permissions.canAddItems) return;
+
+    const variants = Array.isArray(item.servingVariants) ? item.servingVariants : [];
+    const defaultVariant =
+      item.defaultVariant ||
+      variants.find((variant) => variant?.key === item.servingKey) ||
+      variants[0] ||
+      null;
+
+    setSelectedItem(item);
+    setSelectedVariantKey(getVariantKey(defaultVariant));
+    setPrepChoice("");
+    setServeOrder("Mang ra cùng lúc");
+    setDraftProofImages([]);
+    setProofDraftItem(null);
+  };
 
   const handleConfirmAdd = () => {
     if (!permissions.canAddItems) {
@@ -62,17 +209,7 @@ export default function MenuOrdering({
       return;
     }
 
-    const variants = Array.isArray(selectedItem?.servingVariants)
-      ? selectedItem.servingVariants
-      : [];
-
-    const selectedVariant =
-      variants.find((v) => v?.key === selectedVariantKey) ||
-      selectedItem?.defaultVariant ||
-      variants[0] ||
-      null;
-
-    if (variants.length > 1 && !selectedVariant) {
+    if (selectedVariants.length > 1 && !selectedVariant) {
       alert("Vui lòng chọn biến thể món.");
       return;
     }
@@ -81,12 +218,10 @@ export default function MenuOrdering({
       variant: selectedVariant,
       prep: prepChoice || "Mặc định",
       serveOrder,
+      proofImages: draftProofImages,
     });
 
-    setSelectedItem(null);
-    setSelectedVariantKey("");
-    setPrepChoice("");
-    setServeOrder("Mang ra cùng lúc");
+    closeOptionsSheet();
   };
 
   function formatCurrency(value) {
@@ -111,11 +246,24 @@ export default function MenuOrdering({
       ""
     );
   }
+
+  if (!selectedTable) {
+    return (
+      <div className="staff-pos-empty-state">
+        <div className="empty-icon-wrapper">
+          <MapPin size={40} />
+        </div>
+        <h3>Chưa chọn bàn</h3>
+        <p>Vui lòng chọn một bàn từ sơ đồ để bắt đầu gọi món</p>
+      </div>
+    );
+  }
+
   return (
     <div className="staff-pos-menu">
       <div className="table-status-banner">
         <div className="table-info">
-          <span className="label">Đang Order</span>
+          <span className="label">Đang lên đơn</span>
           <span className="table-name">{selectedTable.name}</span>
         </div>
         <ChevronRight size={18} className="icon-right" />
@@ -146,6 +294,7 @@ export default function MenuOrdering({
             </div>
             {permissions.canRemoveCustomer && (
               <button
+                type="button"
                 className="btn-remove-cus"
                 onClick={() => {
                   if (!permissions.canRemoveCustomer) {
@@ -154,6 +303,7 @@ export default function MenuOrdering({
                   }
                   onRemoveCustomer?.();
                 }}
+                aria-label="Gỡ khách khỏi bàn"
               >
                 <X size={20} />
               </button>
@@ -172,7 +322,7 @@ export default function MenuOrdering({
       ) : (
         <div className="customer-empty-hint">
           <Search size={16} />
-          <span>Tìm kiếm SĐT để liên kết thành viên</span>
+          <span>Có thể gán khách quen từ thanh tìm khách phía trên.</span>
         </div>
       )}
 
@@ -182,16 +332,53 @@ export default function MenuOrdering({
 
       {permissions.canViewMenu && (
         <>
-          <div className="category-scroll">
-            {(categories || ["Tất cả"]).map((cat) => (
-              <button
-                key={cat}
-                className={`filter-chip ${selectedCategory === cat ? "active" : ""}`}
-                onClick={() => setSelectedCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="menu-filter-panel" aria-label="Tìm và lọc món">
+            <label className="menu-search-field">
+              <Search size={17} />
+              <input
+                type="search"
+                placeholder="Tìm món ăn, đồ uống..."
+                value={menuSearchQuery}
+                onChange={(event) => setMenuSearchQuery?.(event.target.value)}
+              />
+              {menuSearchQuery ? (
+                <button type="button" onClick={() => setMenuSearchQuery?.("")} aria-label="Xóa tìm kiếm món">
+                  <X size={15} />
+                </button>
+              ) : null}
+            </label>
+            <div className="category-scroll" aria-label="Lọc danh mục món">
+              {categoryOptions.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  className={`filter-chip ${menuCategoryFilter === cat.value ? "active" : ""}`}
+                  onClick={() => {
+                    setMenuCategoryFilter?.(cat.value);
+                    setSelectedCategory?.(cat.label);
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="category-scroll category-scroll--secondary" aria-label="Lọc món nâng cao">
+              {servingOptions.map((option) => (
+                <button key={option.value} type="button" className={`filter-chip ${menuServingFilter === option.value ? "active" : ""}`} onClick={() => setMenuServingFilter?.(option.value)}>{option.label}</button>
+              ))}
+              {[{ value: "available", label: "Còn món" }, { value: "all", label: "Tất cả trạng thái" }, { value: "sold_out", label: "Hết món" }].map((option) => (
+                <button key={option.value} type="button" className={`filter-chip ${menuAvailabilityFilter === option.value ? "active" : ""}`} onClick={() => setMenuAvailabilityFilter?.(option.value)}>{option.label}</button>
+              ))}
+              {[
+                { value: "all", label: "Mọi giá" },
+                { value: "under_50000", label: "Dưới 50k" },
+                { value: "50000_100000", label: "50k–100k" },
+                { value: "100000_300000", label: "100k–300k" },
+                { value: "over_300000", label: "Trên 300k" },
+              ].map((option) => (
+                <button key={option.value} type="button" className={`filter-chip ${menuPriceFilter === option.value ? "active" : ""}`} onClick={() => setMenuPriceFilter?.(option.value)}>{option.label}</button>
+              ))}
+            </div>
           </div>
 
           <div className="menu-grid">
@@ -200,24 +387,13 @@ export default function MenuOrdering({
             {filteredMenu.map((item) => {
               const isOutOfStock = item.stock <= 0;
               return (
-                <div
+                <button
+                  type="button"
                   key={item.id}
                   className={`menu-item-card ${isOutOfStock ? "out-of-stock" : ""}`}
                   onClick={() => {
                     if (isOutOfStock || !permissions.canAddItems) return;
-
-                    const variants = Array.isArray(item.servingVariants)
-                      ? item.servingVariants
-                      : [];
-                    const defaultVariant =
-                      item.defaultVariant ||
-                      variants.find((v) => v?.key === item.servingKey) ||
-                      variants[0] ||
-                      null;
-
-                    setSelectedItem(item);
-                    setSelectedVariantKey(defaultVariant?.key || "");
-                    setPrepChoice("");
+                    handleOpenItem(item);
                   }}
                 >
                   <div className="item-content">
@@ -229,12 +405,12 @@ export default function MenuOrdering({
                       {isOutOfStock ? "Hết món" : `Còn ${item.stock}`}
                     </span>
                     {!isOutOfStock && permissions.canAddItems && (
-                      <button className="btn-add-quick">
+                      <span className="btn-add-quick" aria-hidden="true">
                         <Plus size={16} />
-                      </button>
+                      </span>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -244,7 +420,7 @@ export default function MenuOrdering({
       {selectedItem && permissions.canAddItems && (
         <div
           className="item-options-overlay"
-          onClick={() => setSelectedItem(null)}
+          onClick={closeOptionsSheet}
         >
           <div
             className="item-options-sheet"
@@ -262,36 +438,41 @@ export default function MenuOrdering({
                 </p>
               </div>
               <button
+                type="button"
                 className="btn-close"
-                onClick={() => setSelectedItem(null)}
+                onClick={closeOptionsSheet}
+                aria-label="Đóng tùy chọn món"
               >
                 <X size={24} />
               </button>
             </div>
 
             <div className="sheet-body">
-              {Array.isArray(selectedItem.servingVariants) &&
-                selectedItem.servingVariants.length > 1 && (
-                  <div className="option-group">
-                    <label className="group-label">1. Chọn biến thể</label>
-                    <div className="chips-container">
-                      {selectedItem.servingVariants.map((variant) => (
+              {selectedVariants.length > 1 && (
+                <div className="option-group">
+                  <label className="group-label">1. Chọn biến thể</label>
+                  <div className="chips-container">
+                    {selectedVariants.map((variant) => {
+                      const variantKey = getVariantKey(variant);
+                      return (
                         <button
-                          key={variant.key}
+                          type="button"
+                          key={variantKey}
                           className={`option-chip ${
-                            selectedVariantKey === variant.key ? "selected" : ""
+                            selectedVariantKey === variantKey ? "selected" : ""
                           }`}
-                          onClick={() => setSelectedVariantKey(variant.key)}
+                          onClick={() => setSelectedVariantKey(variantKey)}
                         >
                           {variant.name || variant.key}
                           {variant.price != null
                             ? ` · ${Number(variant.price).toLocaleString("vi-VN")}đ`
                             : ""}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
+              )}
               <div className="option-group">
                 <label className="group-label">2. Thứ tự lên món</label>
                 <div className="chips-container">
@@ -301,6 +482,7 @@ export default function MenuOrdering({
                     "Tráng miệng (Mang ra sau)",
                   ].map((s) => (
                     <button
+                      type="button"
                       key={s}
                       className={`option-chip ${serveOrder === s ? "selected" : ""}`}
                       onClick={() => setServeOrder(s)}
@@ -310,15 +492,52 @@ export default function MenuOrdering({
                   ))}
                 </div>
               </div>
+
+              <div className="option-group proof-option-card">
+                <div className="proof-option-card__copy">
+                  <label className="group-label">3. Ảnh minh chứng</label>
+                  <p>Dùng cho món cân ký hoặc món cần xác nhận hình ảnh trước khi gửi bếp.</p>
+                  <span className="proof-option-card__status">
+                    {draftProofImages.length
+                      ? `Đã có ${draftProofImages.length} ảnh minh chứng`
+                      : "Chưa có ảnh minh chứng."}
+                  </span>
+                </div>
+                {shouldSuggestProof ? (
+                  <div className="proof-option-card__hint">
+                    Món này nên có ảnh minh chứng trước khi gửi bếp.
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="proof-option-card__button"
+                  onClick={() => setProofDraftItem(draftProofTarget)}
+                >
+                  <Camera size={16} />
+                  Chụp ảnh minh chứng
+                </button>
+              </div>
             </div>
 
             <div className="sheet-footer">
-              <button className="btn-confirm-add" onClick={handleConfirmAdd}>
-                Thêm vào Order
+              <button type="button" className="btn-confirm-add" onClick={handleConfirmAdd}>
+                Thêm vào đơn
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {proofDraftItem && (
+        <StaffProofCaptureModal
+          open={Boolean(proofDraftItem)}
+          item={{ ...proofDraftItem, proofImages: draftProofImages }}
+          onClose={() => setProofDraftItem(null)}
+          onSave={(images) => {
+            setDraftProofImages(normalizeProofImages(images));
+            setProofDraftItem(null);
+          }}
+        />
       )}
     </div>
   );

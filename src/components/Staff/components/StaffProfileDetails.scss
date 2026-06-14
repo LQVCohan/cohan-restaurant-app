@@ -1,7 +1,7 @@
 // Variables
-$primary: #3b82f6;
+$primary: #1F6F4A;
 $success: #10b981;
-$warning: #f59e0b;
+$warning: #1F6F4A;
 $danger: #ef4444;
 $bg-main: #f3f4f6;
 $bg-card: #ffffff;
@@ -109,7 +109,7 @@ $border-color: #e5e7eb;
 
   // Specific: Salary Summary
   .salary-hero-card {
-    background: linear-gradient(135deg, $primary, #2563eb);
+    background: linear-gradient(135deg, $primary, #165C3C);
     color: white;
     border-radius: 16px;
     padding: 24px 16px;
@@ -173,8 +173,8 @@ $border-color: #e5e7eb;
           color: #059669;
         }
         &.pending {
-          background: #fef3c7;
-          color: #d97706;
+          background: #EAF5EE;
+          color: #1F6F4A;
         }
         &.default {
           background: #f3f4f6;
@@ -287,7 +287,7 @@ $border-color: #e5e7eb;
   background-color: #fff;
 
   &:focus {
-    border-color: #3b82f6;
+    border-color: #1F6F4A;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 

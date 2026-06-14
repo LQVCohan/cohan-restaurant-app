@@ -40,6 +40,10 @@ import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerfo
 import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 import StaffDashboardPage from "@/components/Staff/StaffDashboardPage";
 import StaffPayslipsPage from "@/components/Staff/StaffPayslipsPage";
+import StaffProfilePage from "@/components/Staff/StaffProfilePage";
+import StaffNotificationsPage from "@/components/Staff/StaffNotificationsPage";
+import StaffCommunicationPage from "@/components/Staff/StaffCommunicationPage";
+import StaffSettingsPage from "@/components/Staff/StaffSettingsPage";
 
 import MainLayout from "../layouts/MainLayout";
 import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
@@ -109,6 +113,30 @@ const CustomerLayout = () => (
   </MainLayout>
 );
 
+
+
+const StaffAwareNotificationsRoute = () => {
+  const { user } = useContext(AuthContext);
+  const role = resolveRoleName(user);
+
+  if (STAFF_OPERATIONAL_ROLES.has(role)) {
+    return <Navigate to="/staff/notifications" replace />;
+  }
+
+  return <NotificationsPage />;
+};
+
+const StaffAwareProfileRoute = () => {
+  const { user } = useContext(AuthContext);
+  const role = resolveRoleName(user);
+
+  if (STAFF_OPERATIONAL_ROLES.has(role)) {
+    return <Navigate to="/staff/profile" replace />;
+  }
+
+  return <ProfilePage />;
+};
+
 const LogoutHandler = () => {
   const { logout } = useContext(AuthContext);
   useEffect(() => {
@@ -143,8 +171,12 @@ const AppRouter = () => (
     <Route path="/staff/kitchen" element={withPrivateRoute(withStaffLayout(<StaffKitchenPage />), STAFF_KITCHEN_ROLES)} />
     <Route path="/staff/performance" element={withPrivateRoute(withStaffLayout(<StaffPerformancePage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/schedule" element={withPrivateRoute(withStaffLayout(<StaffSchedulePage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/profile" element={withPrivateRoute(withStaffLayout(<StaffProfilePage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/notifications" element={withPrivateRoute(withStaffLayout(<StaffNotificationsPage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/contacts" element={withPrivateRoute(withStaffLayout(<StaffCommunicationPage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/ai-handoff" element={withPrivateRoute(withStaffLayout(<AiHandoffInbox />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/payslips" element={withPrivateRoute(withStaffLayout(<StaffPayslipsPage />), STAFF_SHARED_ROLES)} />
+    <Route path="/staff/settings" element={withPrivateRoute(withStaffLayout(<StaffSettingsPage />), STAFF_SHARED_ROLES)} />
 
     <Route path="/manager" element={withPrivateRoute(<ManagerLayout><Dashboard /></ManagerLayout>, ["manager", "admin", "hr", "accountant"])} />
     <Route path="/manager/dashboard/POS" element={withPrivateRoute(<POSLayout />, ["manager", "admin"])} />
@@ -184,8 +216,8 @@ const AppRouter = () => (
       <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
       <Route path="/help-center/:id" element={<HelpPage />} />
-      <Route path="/notifications" element={withPrivateRoute(<NotificationsPage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
-      <Route path="/profile" element={withPrivateRoute(<ProfilePage />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/notifications" element={withPrivateRoute(<StaffAwareNotificationsRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
+      <Route path="/profile" element={withPrivateRoute(<StaffAwareProfileRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
     </Route>
 
     <Route path="*" element={<Navigate to="/403" replace />} />
