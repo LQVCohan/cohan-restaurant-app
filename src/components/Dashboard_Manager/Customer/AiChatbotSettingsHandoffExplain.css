@@ -1,0 +1,67 @@
+.ai-admin-page--settings .ai-admin-handoff-compact__body::before {
+  content: "Khi chatbot chưa đủ chắc chắn hoặc khách muốn gặp người thật, hệ thống sẽ tạo yêu cầu ở Handoff AI để nhân viên tiếp nhận. Bật mục này nếu nhà hàng có người theo dõi hội thoại trong giờ hoạt động.";
+  display: block;
+  border: 1px solid rgba(47, 125, 79, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(234, 246, 239, 0.82), rgba(255, 253, 248, 0.9));
+  color: #315c42;
+  padding: 13px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.ai-admin-page--settings .ai-admin-field--threshold::after {
+  content: "Ví dụ: 0.6 = 60%. Nếu độ chắc chắn của câu trả lời thấp hơn mức này, chatbot sẽ ưu tiên đề xuất chuyển nhân viên thay vì trả lời thiếu chắc chắn.";
+  display: block;
+  margin-top: 10px;
+  border-left: 3px solid rgba(138, 98, 61, 0.38);
+  border-radius: 0 12px 12px 0;
+  background: rgba(246, 239, 228, 0.54);
+  color: #6f5b49;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 680;
+  line-height: 1.5;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-message > summary {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+  padding-block: 10px !important;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-message > summary::after {
+  content: "Dùng khi ngoài giờ, chưa có nhân viên trực hoặc nhà hàng tạm không nhận hỗ trợ trực tiếp.";
+  display: block;
+  color: #7a6b5d;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-compact[open] > summary::before {
+  content: "Tự động tạo yêu cầu hỗ trợ khi cần người thật";
+  order: 3;
+  flex-basis: 100%;
+  color: #7a6b5d;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.ai-admin-page--settings .ai-admin-handoff-compact[open] > summary {
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+}
+
+@media (max-width: 760px) {
+  .ai-admin-page--settings .ai-admin-handoff-compact > summary small {
+    white-space: normal !important;
+    text-align: left !important;
+  }
+}
