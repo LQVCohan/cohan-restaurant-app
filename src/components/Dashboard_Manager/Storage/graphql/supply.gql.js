@@ -1,90 +1,115 @@
 import { gql } from "@apollo/client";
 
-export const Q_SUPPLIES_WITH_STOCK = gql`
-  query Supplies($restaurantId: ID!, $warehouseId: ID) {
-    supplies(restaurantId: $restaurantId, warehouseId: $warehouseId) {
+const SUPPLY_WITH_STOCK_FIELDS = gql`
+  fragment SupplyWithStockFields on SupplyWithStock {
+    id
+    restaurantId
+    name
+    sku
+    category
+    unit
+    costPerUnit
+    pricePerUnit
+    minStock
+    notes
+    isActive
+    deletedAt
+    deleteExpiresAt
+    createdAt
+    updatedAt
+    stockItem {
       id
       restaurantId
-      name
-      sku
-      category
-      unit
+      warehouseId
       costPerUnit
       pricePerUnit
-      minStock
-      notes
-      isActive
-      createdAt
-      updatedAt
-      stockItem {
+      note
+      onHand
+      reserved
+      batches {
         id
-        restaurantId
-        warehouseId
-        costPerUnit
-        pricePerUnit
-        note
-
-        onHand
-        reserved
-        batches {
-          id
-          lot
-          qty
-          expiry
-          costPerBaseUnit
-          createdAt
-          updatedAt
-        }
+        lot
+        qty
+        expiry
+        costPerBaseUnit
         createdAt
         updatedAt
       }
+      createdAt
+      updatedAt
     }
   }
+`;
+
+const SUPPLY_FIELDS = gql`
+  fragment SupplyFields on Supply {
+    id
+    restaurantId
+    name
+    sku
+    category
+    unit
+    costPerUnit
+    pricePerUnit
+    minStock
+    notes
+    isActive
+    deletedAt
+    deleteExpiresAt
+    createdAt
+    updatedAt
+  }
+`;
+
+export const Q_SUPPLIES_WITH_STOCK = gql`
+  query Supplies($restaurantId: ID!, $warehouseId: ID) {
+    supplies(restaurantId: $restaurantId, warehouseId: $warehouseId) {
+      ...SupplyWithStockFields
+    }
+  }
+  ${SUPPLY_WITH_STOCK_FIELDS}
+`;
+
+export const Q_SUPPLY_TRASH = gql`
+  query SupplyTrash($restaurantId: ID!, $warehouseId: ID, $limit: Int = 200) {
+    supplyTrash(restaurantId: $restaurantId, warehouseId: $warehouseId, limit: $limit) {
+      ...SupplyWithStockFields
+    }
+  }
+  ${SUPPLY_WITH_STOCK_FIELDS}
 `;
 
 export const M_CREATE_SUPPLY = gql`
   mutation CreateSupply($input: CreateSupplyInput!) {
     createSupply(input: $input) {
-      id
-      restaurantId
-      name
-      sku
-      category
-      unit
-      costPerUnit
-      pricePerUnit
-      minStock
-      notes
-      isActive
-      createdAt
-      updatedAt
+      ...SupplyFields
     }
   }
+  ${SUPPLY_FIELDS}
 `;
 
 export const M_UPDATE_SUPPLY = gql`
   mutation UpdateSupply($id: ID!, $input: UpdateSupplyInput!) {
     updateSupply(id: $id, input: $input) {
-      id
-      restaurantId
-      name
-      sku
-      category
-      unit
-      costPerUnit
-      pricePerUnit
-      minStock
-      notes
-      isActive
-      updatedAt
+      ...SupplyFields
     }
   }
+  ${SUPPLY_FIELDS}
 `;
 
 export const M_DELETE_SUPPLY = gql`
   mutation DeleteSupply($id: ID!) {
     deleteSupply(id: $id)
   }
+`;
+
+export const M_RESTORE_SUPPLY = gql`
+  mutation RestoreSupply($id: ID!) {
+    restoreSupply(id: $id) {
+      ...SupplyFields
+    }
+  }
+  ${SUPPLY_FIELDS}
 `;
 
 export const M_ADJUST_SUPPLY = gql`
@@ -138,7 +163,6 @@ export const M_STOCK_OUTBOUND = gql`
     }
   }
 `;
-
 
 export const Q_SUPPLY_CATEGORIES = gql`
   query SupplyCategories(
