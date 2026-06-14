@@ -20,7 +20,7 @@ $pm-accent-soft: #eadfcc;
 
 .stat-card-premium {
   position: relative;
-  min-height: 124px;
+  min-height: 132px;
   overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -74,7 +74,7 @@ $pm-accent-soft: #eadfcc;
   margin: 0;
   color: #6f5f4d;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 760;
   letter-spacing: 0.01em;
   line-height: 1.35;
   text-wrap: pretty;
@@ -84,10 +84,20 @@ $pm-accent-soft: #eadfcc;
   margin: 7px 0 0;
   color: $pm-charcoal;
   font-size: clamp(1.55rem, 2.1vw, 2rem);
-  font-weight: 820;
+  font-weight: 830;
   line-height: 0.98;
   letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
+}
+
+.stat-helper {
+  max-width: 24ch;
+  margin: 7px 0 0;
+  color: $pm-muted;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .stat-icon-wrapper {
@@ -104,6 +114,7 @@ $pm-accent-soft: #eadfcc;
   svg {
     width: 21px;
     height: 21px;
+    stroke-width: 2.2;
   }
 }
 
