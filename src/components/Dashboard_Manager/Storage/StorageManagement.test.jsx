@@ -131,35 +131,37 @@ const renderPage = () =>
     </AuthContext.Provider>,
   );
 
+const lowStockKpi = () => screen.getByText("Sắp hết").closest(".sm-kpi");
+
 describe("StorageManagement operations UI", () => {
   it("renders storage title, tabs, KPI cards, and empty ingredient state", async () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Quản lý kho" })).toBeInTheDocument();
-    expect(screen.getByText("Theo dõi nguyên liệu, vật tư, công thức và kiểm kê kho.")).toBeInTheDocument();
+    expect(screen.getByText("Chọn phạm vi dữ liệu, xử lý nhập/xuất và theo dõi tồn kho trong một màn hình.")).toBeInTheDocument();
     expect(screen.getByText("Tổng nguyên liệu")).toBeInTheDocument();
     expect(screen.getByText("Sắp hết")).toBeInTheDocument();
-    expect(within(screen.getByText("Sắp hết").closest(".sm-kpi-card")).getByText("1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Nguyên liệu/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Vật tư & Khác/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Công thức/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Kiểm kê/i })).toBeInTheDocument();
+    expect(within(lowStockKpi()).getByText("1")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Nguyên liệu/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Vật tư & Khác/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Công thức/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Kiểm kê/i })).toBeInTheDocument();
     expect(screen.getByText("Không có nguyên liệu phù hợp với bộ lọc hiện tại.")).toBeInTheDocument();
   });
 
   it("keeps stock KPI values when switching to the recipes tab", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Công thức/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /Công thức/i }));
 
     expect(screen.getByText("Công thức đang hiển thị")).toBeInTheDocument();
-    expect(within(screen.getByText("Sắp hết").closest(".sm-kpi-card")).getByText("1")).toBeInTheDocument();
+    expect(within(lowStockKpi()).getByText("1")).toBeInTheDocument();
   });
 
   it("switches tab content when the inventory tab is clicked", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Kiểm kê/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /Kiểm kê/i }));
 
     expect(screen.getByText("Kiểm kê đang hiển thị")).toBeInTheDocument();
   });
