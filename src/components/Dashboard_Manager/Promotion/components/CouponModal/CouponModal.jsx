@@ -31,6 +31,54 @@ const PAYMENT_METHOD_OPTIONS = [
 
 const toArray = (value) => (Array.isArray(value) ? value : []);
 
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatVnd = (value) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(toNumber(value));
+
+const getCouponPreview = (formData) => {
+  const minOrderValue = toNumber(formData.minOrderValue);
+  const maxDiscount = toNumber(formData.maxDiscount);
+  const discountValue = toNumber(formData.discountValue);
+  const sampleOrderValue = Math.max(minOrderValue, 250000);
+  const isPercent = formData.discountType === "percent";
+  const rawDiscount = isPercent
+    ? Math.round((sampleOrderValue * discountValue) / 100)
+    : discountValue;
+  const estimatedDiscount = maxDiscount > 0
+    ? Math.min(rawDiscount, maxDiscount)
+    : rawDiscount;
+  const payableAmount = Math.max(sampleOrderValue - estimatedDiscount, 0);
+  const warnings = [];
+
+  if (isPercent && discountValue > 50) {
+    warnings.push("Mức giảm phần trăm khá cao, nên kiểm tra biên lợi nhuận.");
+  }
+  if (isPercent && discountValue > 0 && maxDiscount <= 0) {
+    warnings.push("Coupon phần trăm chưa có giới hạn giảm tối đa.");
+  }
+  if (discountValue > 0 && minOrderValue <= 0) {
+    warnings.push("Chưa đặt giá trị đơn tối thiểu, khách có thể áp mã cho đơn nhỏ.");
+  }
+  if (formData.stackable && formData.combinableWithPromotions) {
+    warnings.push("Coupon đang cho phép dùng chồng nhiều lớp ưu đãi.");
+  }
+
+  return {
+    sampleOrderValue,
+    estimatedDiscount: discountValue > 0 ? estimatedDiscount : 0,
+    payableAmount: discountValue > 0 ? payableAmount : sampleOrderValue,
+    warnings,
+  };
+};
+
 const buildInitialFormData = (coupon) => ({
   name: coupon?.name || "",
   code: coupon?.code || "",
@@ -62,6 +110,7 @@ const buildInitialFormData = (coupon) => ({
 const CouponModal = ({ coupon, onSave, onClose }) => {
   const [formData, setFormData] = useState(buildInitialFormData(coupon));
   const [errors, setErrors] = useState({});
+  const discountPreview = getCouponPreview(formData);
 
   useEffect(() => {
     setFormData(buildInitialFormData(coupon));
@@ -330,6 +379,32 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
                   />
                 </div>
               </div>
+
+              <aside className="discount-preview-card" aria-label="Ước tính giá trị coupon">
+                <div className="preview-card-header">
+                  <span>Ước tính trên đơn mẫu</span>
+                  <strong>{formatVnd(discountPreview.sampleOrderValue)}</strong>
+                </div>
+                <div className="preview-card-metrics">
+                  <div>
+                    <span>Khách được giảm</span>
+                    <strong>{formatVnd(discountPreview.estimatedDiscount)}</strong>
+                  </div>
+                  <div>
+                    <span>Khách thanh toán</span>
+                    <strong>{formatVnd(discountPreview.payableAmount)}</strong>
+                  </div>
+                </div>
+                {discountPreview.warnings.length > 0 ? (
+                  <ul className="preview-warning-list">
+                    {discountPreview.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="preview-safe-note">Điều kiện hiện tại chưa có cảnh báo rủi ro lớn.</p>
+                )}
+              </aside>
 
               <div className="form-group full mt-3">
                 <label>Mô tả coupon</label>
