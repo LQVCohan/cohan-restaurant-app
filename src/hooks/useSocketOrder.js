@@ -25,10 +25,13 @@ function broadcastMenuAvailabilityEvent(evt, channel = "inventory") {
  *
  * @param {string} restaurantId - ID của nhà hàng
  * @param {object} handlers - Các callback cho từng loại event
+ * @param {object} options
+ * @param {string|null} options.token - access token từ AuthContext; fallback sang getToken() khi không truyền.
  */
-export default function useSocketOrder(restaurantId, handlers = {}) {
+export default function useSocketOrder(restaurantId, handlers = {}, options = {}) {
   const socketRef = useRef(null);
   const handlersRef = useRef(handlers);
+  const authToken = options?.token || null;
 
   useEffect(() => {
     handlersRef.current = handlers || {};
@@ -37,7 +40,7 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
   useEffect(() => {
     if (!restaurantId) return undefined;
 
-    const token = getToken();
+    const token = authToken || getToken();
     if (!token) {
       console.warn("[SOCKET.IO] Skip restaurant realtime: missing access token.");
       return undefined;
@@ -140,7 +143,7 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [restaurantId]);
+  }, [restaurantId, authToken]);
 
   return socketRef.current;
 }
