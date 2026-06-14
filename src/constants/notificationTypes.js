@@ -1,0 +1,31 @@
+export const NOTIFICATION_TYPES = {
+  REVIEW_NEGATIVE_CREATED: "review.negative.created",
+  REVIEW_PUBLISHED: "review.published",
+  REVIEW_REJECTED: "review.rejected",
+  REVIEW_REPORTED: "review.reported",
+  REVIEW_OFFICIAL_REPLY_CREATED: "review.official_reply.created",
+  CHAT_MESSAGE: "chat_message",
+  PERFORMANCE_APPEAL_SUBMITTED: "appeal_submitted",
+  PERFORMANCE_APPEAL_NEEDS_MORE_INFO: "appeal_needs_more_info",
+  PERFORMANCE_APPEAL_ACCEPTED: "appeal_accepted",
+  PERFORMANCE_APPEAL_REJECTED: "appeal_rejected",
+  PERFORMANCE_APPEAL_SCORE_REVERSED: "appeal_score_reversed",
+  ATTENDANCE_CORRECTION_REQUESTED: "attendance_correction_requested",
+  OVERTIME_REQUEST_SUBMITTED: "overtime_request_submitted",
+};
+
+export const notificationTitleByType = {
+  [NOTIFICATION_TYPES.REVIEW_NEGATIVE_CREATED]: "Review tiêu cực mới",
+  [NOTIFICATION_TYPES.REVIEW_PUBLISHED]: "Review đã được duyệt",
+  [NOTIFICATION_TYPES.REVIEW_REJECTED]: "Review bị từ chối",
+  [NOTIFICATION_TYPES.REVIEW_REPORTED]: "Review bị báo cáo",
+  [NOTIFICATION_TYPES.REVIEW_OFFICIAL_REPLY_CREATED]: "Nhà hàng đã phản hồi review",
+  [NOTIFICATION_TYPES.CHAT_MESSAGE]: "Tin nhắn mới",
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_SUBMITTED]: "Có phản hồi/khiếu nại mới",
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_NEEDS_MORE_INFO]: "Cần bổ sung thông tin",
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_ACCEPTED]: "Phản hồi đã được chấp nhận",
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_REJECTED]: "Phản hồi bị từ chối",
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_SCORE_REVERSED]: "Điểm hiệu suất đã được điều chỉnh",
+  [NOTIFICATION_TYPES.ATTENDANCE_CORRECTION_REQUESTED]: "Yêu cầu chỉnh công mới",
+  [NOTIFICATION_TYPES.OVERTIME_REQUEST_SUBMITTED]: "Yêu cầu tăng ca mới",
+};
