@@ -65,7 +65,7 @@ describe("CustomerList manager workflow", () => {
     expect(screen.getByRole("button", { name: /thêm khách hàng/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /xóa bộ lọc/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /bảng/i })).toBeDisabled();
-    expect(screen.getByText(/trang/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Trang\s+/i)).toBeInTheDocument();
   });
 
   it("shows loading skeletons while customer data is loading", () => {
