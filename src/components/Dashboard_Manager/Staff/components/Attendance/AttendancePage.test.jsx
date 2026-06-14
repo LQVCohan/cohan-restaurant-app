@@ -253,7 +253,7 @@ describe("AttendancePage readiness navigation", () => {
     render(<AttendancePage />);
     expect(await screen.findByText("Đã có 1 yêu cầu chỉnh công chờ duyệt")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Xem yêu cầu chỉnh công" }));
-    const activeCorrectionButton = screen.getByText("Chờ duyệt chỉnh công").closest("button");
+    const activeCorrectionButton = screen.getByRole("button", { name: /Chờ duyệt chỉnh công/i });
     expect(activeCorrectionButton).toHaveClass("active");
     expect(screen.getByText("Lan Manager")).toBeInTheDocument();
   });
