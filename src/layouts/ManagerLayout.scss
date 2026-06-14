@@ -3,6 +3,7 @@
 
 $manager-sidebar-collapsed: 72px;
 $manager-sidebar-expanded: 304px;
+$manager-sidebar-shift: $manager-sidebar-expanded - $manager-sidebar-collapsed;
 $manager-header-height: 64px;
 $manager-bg: #f5f4ef;
 $manager-bg-soft: #f8f6f1;
@@ -79,9 +80,15 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     min-height: 100dvh;
     overflow: hidden;
     z-index: var(--z-content);
-    transform: translateZ(0);
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.22s $manager-sidebar-ease;
+    will-change: transform;
     backface-visibility: hidden;
     contain: paint;
+  }
+
+  &.sidebar-open &__main {
+    transform: translate3d($manager-sidebar-shift, 0, 0);
   }
 
   &__header {
@@ -174,9 +181,11 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       max-width: min(100%, 22rem);
     }
 
-    &__main {
+    &__main,
+    &.sidebar-open &__main {
       grid-column: 1;
       width: 100%;
+      transform: translate3d(0, 0, 0);
     }
 
     &__header,
