@@ -20,6 +20,7 @@ import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSe
 
 // Styles
 import "./CustomerManagement.scss";
+import "./CustomerManagerScale.scss";
 
 const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 100];
 
