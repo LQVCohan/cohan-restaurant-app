@@ -6,33 +6,11 @@ import {
   hasStaffOrderAccess,
   resolveUserRoleName,
 } from "@/utils/frontendRoleAccess";
-import {
-  DEPARTMENT_OPTIONS,
-  getStaffRoleDisplayLabel,
-  getStaffRoleOption,
-} from "@/utils/staffRoleOptions";
+import { getStaffRoleOption } from "@/utils/staffRoleOptions";
 import "./StaffDashboardPage.scss";
-
-const departmentLabelMap = DEPARTMENT_OPTIONS.reduce((acc, item) => {
-  acc[item.value] = item.label.replace(/^\S+\s*/, "");
-  return acc;
-}, {});
 
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.displayName || user?.username || "Nhân viên";
-
-const getRestaurantLabel = (restaurantForStaff) => {
-  if (!restaurantForStaff) return "Chưa xác định cơ sở làm việc";
-  if (typeof restaurantForStaff === "string") return restaurantForStaff;
-  return (
-    restaurantForStaff.name ||
-    restaurantForStaff.restaurantName ||
-    restaurantForStaff.code ||
-    restaurantForStaff.id ||
-    restaurantForStaff._id ||
-    "Chưa xác định cơ sở làm việc"
-  );
-};
 
 const getInitials = (name) => {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -146,26 +124,12 @@ const roleDepartmentCopy = {
   bar: "Ưu tiên lịch quầy bar, chuẩn bị nguyên liệu và phối hợp phục vụ.",
 };
 
-const managementRoleLabels = {
-  admin: "Quản trị viên",
-  manager: "Quản lý",
-  hr: "Nhân sự",
-  accountant: "Kế toán",
-  staff: "Nhân viên",
-};
-
-const getDashboardRoleLabel = (role) =>
-  managementRoleLabels[role] || getStaffRoleDisplayLabel(role) || "Nhân viên";
-
 const StaffDashboardPage = () => {
   const { user } = useContext(AuthContext);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const staffName = getDisplayName(user);
   const roleOption = getStaffRoleOption(normalizedRole);
-  const roleLabel = getDashboardRoleLabel(normalizedRole);
-  const departmentLabel = roleOption?.department ? departmentLabelMap[roleOption.department] : "Vận hành";
   const departmentCopy = roleDepartmentCopy[roleOption?.department] || "Mở nhanh đúng khu vực thao tác theo vai trò và lịch ca của bạn.";
-  const restaurantLabel = getRestaurantLabel(user?.restaurantForStaff);
   const initials = getInitials(staffName);
   const canOrder = hasStaffOrderAccess(normalizedRole);
   const canKitchen = hasStaffKitchenAccess(normalizedRole);
@@ -213,8 +177,6 @@ const StaffDashboardPage = () => {
           <div className="staff-identity-card__avatar" aria-hidden="true">{initials}</div>
           <span>Đang đăng nhập</span>
           <strong>{staffName}</strong>
-          <small>{roleLabel}</small>
-          <small>{departmentLabel} • {restaurantLabel}</small>
           <div className="staff-identity-card__status">Sẵn sàng / Theo lịch</div>
         </aside>
       </section>
@@ -302,7 +264,7 @@ const StaffDashboardPage = () => {
           </div>
           <div className="staff-embedded-profile-card">
             <div className="staff-embedded-profile-card__avatar" aria-hidden="true">{initials}</div>
-            <div><span>Nhân viên</span><strong>{staffName}</strong><small>{roleLabel}</small></div>
+            <div><span>Nhân viên</span><strong>{staffName}</strong><small>Chi tiết trong hồ sơ</small></div>
             <div className="staff-embedded-profile-card__meta"><span>Email</span><strong>{user?.email || "Chưa cập nhật"}</strong></div>
             <div className="staff-embedded-profile-card__meta"><span>Điện thoại</span><strong>{user?.phone || "Chưa cập nhật"}</strong></div>
           </div>

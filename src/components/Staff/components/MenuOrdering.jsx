@@ -92,6 +92,11 @@ export default function MenuOrdering({
       options.push({ value: label, label });
     });
 
+    const meaningfulOptions = options.filter((option) => option.value !== "all");
+    if (meaningfulOptions.length === 1 && meaningfulOptions[0].label === "Chưa phân loại") {
+      return options.slice(0, 1);
+    }
+
     return options;
   }, [categories]);
 
