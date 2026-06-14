@@ -220,35 +220,6 @@ $border-color: #DCE8DF;
   }
 }
 
-.staff-remote-order-form {
-  background: #fff;
-  border: 1px solid $border-color;
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 12px;
-  display: grid;
-  gap: 8px;
-  input,
-  textarea,
-  select {
-    border: 1px solid $border-color;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 14px;
-  }
-  textarea {
-    min-height: 64px;
-  }
-  .remote-inline-fields {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    input {
-      grid-column: span 2;
-    }
-  }
-}
-
 // 3. CART FLOATING BUTTON (Nổi trên Bottom Nav)
 .floating-cart-wrapper {
   position: absolute;
@@ -819,10 +790,14 @@ $border-color: #DCE8DF;
   button.is-active { background: $primary; border-color: $primary; color: #fff; }
 }
 
-.remote-order-modal__time-note {
+.remote-order-modal__timestamp {
   margin: -4px 16px 14px;
   color: $text-sub;
   font-size: 0.86rem;
+
+  strong {
+    color: $text-main;
+  }
 }
 
 .remote-order-modal__actions {

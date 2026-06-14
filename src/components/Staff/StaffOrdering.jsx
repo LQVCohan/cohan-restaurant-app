@@ -322,17 +322,15 @@ const getLocalDateTimeValue = () => {
   return local.toISOString().slice(0, 16);
 };
 
-const formatLocalDateTime = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("vi-VN", {
+const formatRemoteCreatedAt = (value) => {
+  if (!value) return "Tự động ghi nhận khi tạo đơn";
+  return new Date(value).toLocaleString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(date);
+  });
 };
 
 const buildCartFromServerOrders = (orders = []) => {
@@ -380,7 +378,7 @@ const buildCartFromServerOrders = (orders = []) => {
 const RemoteOrderModal = ({ open, value, onChange, onClose, onCreate, selectedCustomer }) => {
   if (!open) return null;
   const isDelivery = value.orderType === "delivery";
-  const createdAtLabel = formatLocalDateTime(value.requestedAt) || "Tự động ghi nhận khi tạo đơn";
+  const createdAtLabel = formatRemoteCreatedAt(value.requestedAt);
 
   const update = (patch) => onChange((prev) => ({ ...prev, ...patch }));
 
@@ -433,9 +431,9 @@ const RemoteOrderModal = ({ open, value, onChange, onClose, onCreate, selectedCu
           </label>
         </div>
 
-        <p className="remote-order-modal__time-note">
-          Thời gian tạo: {createdAtLabel}
-        </p>
+        <div className="remote-order-modal__timestamp">
+          Thời gian tạo: <strong>{createdAtLabel}</strong>
+        </div>
 
         <div className="remote-order-modal__actions">
           <button type="button" onClick={onClose}>Hủy</button>
@@ -1404,7 +1402,7 @@ export default function StaffOrdering() {
         setCartByTable((prev) => ({ ...prev, remote_order: [] }));
         remoteSubmitKeyRef.current = null;
         resetRemoteDiscount();
-        alert("Đã gửi POS xác nhận.");
+        alert("Đã gửi đơn từ xa để xác nhận.");
       } catch (err) {
         alert(err?.message || "Gửi đơn từ xa thất bại");
       }
@@ -1518,7 +1516,7 @@ export default function StaffOrdering() {
         ...prev,
         [selectedTable.id]: buildCartFromServerOrders(latest?.orders || []),
       }));
-      alert("Đã gửi bếp và lưu order vào hệ thống.");
+      alert("Đã gửi bếp và lưu đơn vào hệ thống.");
     } catch (err) {
       alert(err?.message || "Gửi bếp thất bại");
     }
@@ -1796,6 +1794,7 @@ export default function StaffOrdering() {
                   setOrderMode("remote");
                   setRemoteOrderInfo((prev) => ({
                     ...prev,
+                    channel: STAFF_ASSISTED_CHANNEL,
                     requestedAt: prev.requestedAt || getLocalDateTimeValue(),
                   }));
                 }}
@@ -1813,7 +1812,7 @@ export default function StaffOrdering() {
                 <button type="button" className="btn-open-remote-order" onClick={openRemoteOrderModal}>
                   Lên đơn hộ khách
                 </button>
-                {/* Waiting for backend query for pending remote orders. */}
+                {/* Waiting for backend query for pending remote delivery/takeaway orders. */}
                 <div className="staff-remote-order-empty" role="status">
                   <strong>Chưa có đơn giao đi hoặc mang đi chờ xác nhận.</strong>
                   <span>Khi khách đặt từ xa, đơn sẽ xuất hiện tại đây để nhân viên tiếp nhận.</span>
