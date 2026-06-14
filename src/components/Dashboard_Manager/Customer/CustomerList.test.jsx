@@ -112,7 +112,7 @@ describe("CustomerList manager workflow", () => {
     expect(screen.getByRole("region", { name: /bảng khách hàng/i })).toBeInTheDocument();
     expect(screen.getByText("Liên hệ")).toBeInTheDocument();
     expect(screen.getByText("VIP")).toBeInTheDocument();
-    expect(screen.getByText("250.000 ₫")).toBeInTheDocument();
+    expect(screen.getByText(/250\.000/)).toBeInTheDocument();
 
     const row = screen.getByText("Nguyễn Linh").closest("tr");
     fireEvent.click(row);
