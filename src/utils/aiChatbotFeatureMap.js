@@ -156,8 +156,15 @@ const extractRawRole = (value) => {
 const normalizeRole = (value) => {
   const resolved = resolveUserRoleName(value);
   const raw = extractRawRole(value);
-  return String(resolved || raw || "").trim().toLowerCase();
+  return normalizeText(resolved || raw || "").trim();
 };
+
+const roleMatches = (roles = [], role = "") => {
+  const normalizedRole = normalizeRole(role);
+  return roles.map(normalizeRole).includes(normalizedRole);
+};
+
+const isManagerFeatureRole = (value) => roleMatches(MANAGER_FEATURE_ROLES, value);
 
 export const getAiChatbotUserRole = (userOrRole) => normalizeRole(userOrRole) || "";
 
@@ -168,8 +175,8 @@ const fillPath = (path = "", { restaurantId, menuItemId } = {}) =>
 
 const canUseFeature = (entry, role) => {
   if (!role) return !entry.managerOnly && !entry.allowedRoles;
-  if (entry.allowedRoles?.length) return entry.allowedRoles.includes(role);
-  if (entry.managerOnly) return MANAGER_FEATURE_ROLES.includes(role);
+  if (entry.allowedRoles?.length) return roleMatches(entry.allowedRoles, role);
+  if (entry.managerOnly) return isManagerFeatureRole(role);
   return true;
 };
 
@@ -209,7 +216,7 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
   const helpQuery = isManagerHelpQuery(query);
   const isManagerShell = path === "/manager" || path === "/manager#dashboard";
 
-  if (isManagerShell && !query && MANAGER_FEATURE_ROLES.includes(role)) {
+  if (isManagerShell && !query && isManagerFeatureRole(role)) {
     return ["manager-dashboard", "storage-inventory", "ai-chatbot-manager", "staff-schedule"]
       .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
       .filter(Boolean)
