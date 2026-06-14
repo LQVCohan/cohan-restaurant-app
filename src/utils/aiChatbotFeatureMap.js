@@ -189,14 +189,17 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
   const menuItemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId || "";
   const helpQuery = isManagerHelpQuery(query);
   const isManagerShell = path === "/manager" || path === "/manager#dashboard";
-  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role));
 
-  if (isManagerShell && !query) {
-    return accessibleEntries
-      .filter((entry) => entry.managerOnly || entry.key === "staff-schedule")
+  if (isManagerShell && !query && MANAGER_FEATURE_ROLES.includes(role)) {
+    return ["manager-dashboard", "storage-inventory", "ai-chatbot-manager", "staff-schedule"]
+      .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
+      .filter(Boolean)
+      .filter((entry) => canUseFeature(entry, role))
       .map((entry) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
       .slice(0, 6);
   }
+
+  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role));
 
   return accessibleEntries
     .map((entry) => {
