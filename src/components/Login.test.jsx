@@ -54,6 +54,7 @@ const getPrimaryLoginButton = () => within(getLoginForm()).getByRole("button", {
 
 describe("Login captcha config", () => {
   beforeEach(() => {
+    cleanup();
     notifications.length = 0;
     loginMutationMock.mockReset();
     registerMutationMock.mockReset();
@@ -75,9 +76,9 @@ describe("Login captcha config", () => {
     expect(screen.queryByTestId("mock-captcha")).not.toBeInTheDocument();
     fireEvent.change(within(loginForm).getByPlaceholderText("Email / Username / SĐT"), { target: { value: "user1" } });
     fireEvent.change(within(loginForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
-    fireEvent.click(getPrimaryLoginButton());
+    fireEvent.submit(loginForm);
 
-    await waitFor(() => expect(loginMutationMock).toHaveBeenCalledTimes(1));
+    expect(loginMutationMock).toHaveBeenCalledTimes(1);
     expect(loginMutationMock.mock.calls[0][0].variables.captchaToken).toBeUndefined();
   });
 
@@ -90,7 +91,7 @@ describe("Login captcha config", () => {
     expect(within(loginForm).getByTestId("mock-captcha")).toBeInTheDocument();
     fireEvent.change(within(loginForm).getByPlaceholderText("Email / Username / SĐT"), { target: { value: "user1" } });
     fireEvent.change(within(loginForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
-    fireEvent.click(getPrimaryLoginButton());
+    fireEvent.submit(loginForm);
 
     expect(loginMutationMock).not.toHaveBeenCalled();
     expect(notifications.some((n) => n.message.includes("Vui lòng xác thực Captcha"))).toBe(true);
@@ -118,7 +119,7 @@ describe("Login captcha config", () => {
     fireEvent.change(within(registerForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Nhập lại mật khẩu"), { target: { value: "123456" } });
     fireEvent.click(within(registerForm).getByRole("checkbox"));
-    fireEvent.click(within(registerForm).getByRole("button", { name: "Đăng ký ngay" }));
+    fireEvent.submit(registerForm);
 
     await waitFor(() => expect(registerMutationMock).toHaveBeenCalledTimes(1));
     expect(registerMutationMock.mock.calls[0][0].variables.i.captchaToken).toBeUndefined();
