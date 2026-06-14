@@ -2,16 +2,16 @@
 @use "../styles/mixins.scss" as *;
 
 $manager-sidebar-collapsed: 72px;
-$manager-sidebar-expanded: 272px;
+$manager-sidebar-expanded: 304px;
 $manager-header-height: 64px;
-$manager-bg: #fff7ed;
-$manager-bg-soft: #f8fafc;
+$manager-bg: #f5f4ef;
+$manager-bg-soft: #f8f6f1;
 $manager-paper: #ffffff;
-$manager-border: #e2e8f0;
-$manager-text: #0f172a;
-$manager-muted: #64748b;
-$manager-accent: #f97316;
-$manager-accent-dark: #c2410c;
+$manager-border: #e5ded3;
+$manager-text: #24303f;
+$manager-muted: #667085;
+$manager-accent: #a8855f;
+$manager-accent-dark: #735637;
 
 .manager-layout {
   --sidebar-width: #{$manager-sidebar-collapsed};
@@ -30,11 +30,10 @@ $manager-accent-dark: #c2410c;
   min-height: 100dvh;
   overflow-x: hidden;
   isolation: isolate;
-  transition: grid-template-columns 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
   background:
-    radial-gradient(circle at 10% 0%, rgba(249, 115, 22, 0.13), transparent 28rem),
-    radial-gradient(circle at 95% 0%, rgba(251, 146, 60, 0.1), transparent 26rem),
-    linear-gradient(180deg, $manager-bg 0%, $manager-bg-soft 52%, #eef6ff 100%);
+    radial-gradient(circle at 10% 0%, rgba(168, 133, 95, 0.13), transparent 28rem),
+    radial-gradient(circle at 95% 0%, rgba(83, 108, 97, 0.09), transparent 26rem),
+    linear-gradient(180deg, $manager-bg-soft 0%, $manager-bg 52%, #f2f1ec 100%);
 
   &.sidebar-open {
     --sidebar-width: #{$manager-sidebar-expanded};
@@ -47,11 +46,8 @@ $manager-accent-dark: #c2410c;
     min-width: var(--sidebar-width);
     max-width: var(--sidebar-width);
     transition:
-      width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-      min-width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-      max-width 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-      transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
-      visibility 0.24s ease;
+      transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0.18s ease;
   }
 
   &__main {
@@ -87,8 +83,8 @@ $manager-accent-dark: #c2410c;
     overflow-y: auto;
     overflow-x: hidden;
     background:
-      radial-gradient(circle at 18% 0%, rgba(255, 237, 213, 0.72), transparent 28rem),
-      linear-gradient(180deg, rgba(255, 247, 237, 0.94), rgba(248, 250, 252, 0.98));
+      radial-gradient(circle at 18% 0%, rgba(168, 133, 95, 0.12), transparent 28rem),
+      linear-gradient(180deg, rgba(248, 246, 241, 0.96), rgba(245, 244, 239, 0.98));
     @include custom-scrollbar;
     padding: clamp(1rem, 2vw, 1.5rem);
     padding-bottom: max(96px, clamp(1rem, 2vw, 1.5rem));
@@ -96,7 +92,7 @@ $manager-accent-dark: #c2410c;
     .manager-page-shell {
       --manager-accent-a: #{$manager-accent};
       --manager-accent-b: #{$manager-accent-dark};
-      --manager-soft-accent: rgba(249, 115, 22, 0.12);
+      --manager-soft-accent: rgba(168, 133, 95, 0.12);
       position: relative;
       z-index: var(--z-content);
       display: flex;
@@ -112,7 +108,7 @@ $manager-accent-dark: #c2410c;
         .ant-card {
           border-color: $manager-border;
           border-radius: 16px;
-          box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+          box-shadow: 0 12px 26px rgba(48, 40, 30, 0.06);
         }
 
         .ant-table-wrapper,
@@ -172,14 +168,14 @@ $manager-accent-dark: #c2410c;
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at 12% 20%, rgba(249, 115, 22, 0.18), transparent 34%),
-    rgba(15, 23, 42, 0.46);
+    radial-gradient(circle at 12% 20%, rgba(168, 133, 95, 0.18), transparent 34%),
+    rgba(36, 48, 63, 0.42);
   z-index: var(--z-overlay, 1000);
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 0.24s ease,
-    visibility 0.24s ease;
+    opacity 0.18s ease,
+    visibility 0.18s ease;
   backdrop-filter: blur(3px);
 
   &.active {
