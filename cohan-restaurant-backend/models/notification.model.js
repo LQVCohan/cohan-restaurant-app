@@ -9,7 +9,7 @@ const NotificationSchema = new Schema(
     toRole: String,
     restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
     type: { type: String, required: true },
-    uniqueKey: { type: String, default: null },
+    uniqueKey: String,
     payload: Schema.Types.Mixed,
     readAt: Date,
   },
