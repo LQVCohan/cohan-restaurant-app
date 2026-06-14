@@ -131,7 +131,7 @@ const renderPage = () =>
     </AuthContext.Provider>,
   );
 
-const lowStockKpi = () => screen.getByText("Sắp hết").closest(".sm-kpi");
+const lowStockKpi = () => screen.getByText("Sắp hết").closest(".sm-kpi-card");
 
 describe("StorageManagement operations UI", () => {
   it("renders storage title, tabs, KPI cards, and empty ingredient state", async () => {
