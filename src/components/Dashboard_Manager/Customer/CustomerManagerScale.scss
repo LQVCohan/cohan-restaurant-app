@@ -1,0 +1,231 @@
+.cm-page .management-page-header,
+.cm-page .manager-command-bar,
+.cm-page .cm-layout {
+  width: min(1320px, calc(100% - 24px)) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.cm-page .management-page-header.density-compact {
+  min-height: 106px !important;
+  padding: 1rem 1.05rem !important;
+  border-radius: 22px !important;
+  gap: 1rem !important;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(172px, max-content) !important;
+}
+
+.cm-page .management-page-header .mph-eyebrow {
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+}
+
+.cm-page .management-page-header .mph-title {
+  margin: 4px 0 5px !important;
+  font-size: 24px !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.cm-page .management-page-header .mph-title > span:last-child::after {
+  font-size: 24px !important;
+}
+
+.cm-page .management-page-header .mph-title__icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 13px !important;
+  font-size: 19px !important;
+}
+
+.cm-page .management-page-header .mph-subtitle {
+  max-width: 34ch !important;
+  font-size: 13px !important;
+  line-height: 1.42 !important;
+}
+
+.cm-page .management-page-header .mph-stats-grid {
+  gap: 0.7rem !important;
+}
+
+.cm-page .management-page-header .mph-stat-card {
+  min-height: 68px !important;
+  padding: 0.7rem 0.78rem !important;
+  border-radius: 16px !important;
+}
+
+.cm-page .management-page-header .mph-stat-card__icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+  font-size: 16px !important;
+}
+
+.cm-page .management-page-header .mph-stat-card__label {
+  font-size: 12px !important;
+}
+
+.cm-page .management-page-header .mph-stat-card__value {
+  font-size: 22px !important;
+  line-height: 1 !important;
+}
+
+.cm-page .management-page-header .mph-select,
+.cm-page .management-page-header .mph-btn {
+  height: 40px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.cm-page .manager-command-bar {
+  padding: 0.82rem 0.9rem !important;
+  border-radius: 20px !important;
+}
+
+.cm-page .manager-command-bar .mcb-search {
+  height: 46px !important;
+  width: min(460px, 100%) !important;
+  border-radius: 15px !important;
+}
+
+.cm-page .manager-command-bar .mcb-search input {
+  font-size: 14.5px !important;
+}
+
+.cm-page .manager-command-bar .mcb-btn {
+  height: 44px !important;
+  border-radius: 14px !important;
+  padding-inline: 15px !important;
+  font-size: 14px !important;
+}
+
+.cm-page .cm-pill {
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 14px !important;
+  font-size: 13.5px !important;
+}
+
+.cm-page .cm-pill-count {
+  min-width: 26px !important;
+  font-size: 11.5px !important;
+}
+
+.cm-page .cl-manager-strip {
+  min-height: 44px !important;
+  padding: 9px 13px !important;
+  border-radius: 16px !important;
+}
+
+.cm-page .cl-strip-label {
+  font-size: 10.8px !important;
+}
+
+.cm-page .cl-manager-strip strong,
+.cm-page .cl-page-size,
+.cm-page .cl-view-toggle button,
+.cm-page .cl-pagination span,
+.cm-page .cl-pagination button {
+  font-size: 13px !important;
+}
+
+.cm-page .cl-page-size select {
+  min-height: 34px !important;
+  font-size: 13px !important;
+  border-radius: 11px !important;
+}
+
+.cm-page .cl-view-toggle button {
+  min-height: 32px !important;
+  padding-inline: 11px !important;
+}
+
+.cm-page .cl-empty-state {
+  min-height: 270px !important;
+  padding: 44px 24px !important;
+  border-radius: 22px !important;
+}
+
+.cm-page .cl-empty-state .cl-empty-icon {
+  width: 74px !important;
+  height: 74px !important;
+  border-radius: 22px !important;
+  margin-bottom: 16px !important;
+}
+
+.cm-page .cl-empty-state .cl-empty-title {
+  font-size: 18px !important;
+  margin-bottom: 8px !important;
+}
+
+.cm-page .cl-empty-state .cl-empty-desc {
+  font-size: 14px !important;
+}
+
+.cm-page .cl-empty-actions button {
+  min-height: 40px !important;
+  padding-inline: 15px !important;
+  font-size: 13.5px !important;
+}
+
+.cm-page .cl-pagination {
+  min-height: 48px !important;
+  border-radius: 16px !important;
+}
+
+.cm-page .cl-pagination button {
+  min-height: 36px !important;
+  padding-inline: 13px !important;
+}
+
+.cm-page.is-customer-empty .management-page-header.density-compact {
+  grid-template-columns: minmax(260px, 310px) minmax(0, 1fr) minmax(172px, max-content) !important;
+  min-height: 112px !important;
+  padding: 1rem 1.05rem !important;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-left {
+  padding-right: 1rem !important;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-right {
+  display: contents !important;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-right::before {
+  grid-column: 2 !important;
+  content: "👤  Tổng khách  0        🟢  Online  0        ⭐  VIP  0        🆕  Mới  0" !important;
+  min-height: 70px !important;
+  padding: 0 22px !important;
+  border-radius: 18px !important;
+  font-size: 15px !important;
+  font-weight: 820 !important;
+  letter-spacing: -0.015em !important;
+  background: linear-gradient(135deg, rgba(255, 253, 250, 0.98), rgba(242, 250, 247, 0.82)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 10px 24px rgba(54, 44, 29, 0.055) !important;
+}
+
+.cm-page.is-customer-empty .management-page-header .mph-controls-row {
+  grid-column: 3 !important;
+  min-width: 172px !important;
+  padding-left: 0.9rem !important;
+  align-self: stretch !important;
+}
+
+@media (max-width: 1180px) {
+  .cm-page.is-customer-empty .management-page-header.density-compact {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cm-page.is-customer-empty .management-page-header .mph-right,
+  .cm-page.is-customer-empty .management-page-header .mph-right::before,
+  .cm-page.is-customer-empty .management-page-header .mph-controls-row {
+    display: block !important;
+    grid-column: auto !important;
+  }
+
+  .cm-page.is-customer-empty .management-page-header .mph-controls-row {
+    margin-top: 0.75rem !important;
+    padding-left: 0 !important;
+  }
+}
