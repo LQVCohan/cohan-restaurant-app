@@ -188,16 +188,19 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
   const role = normalizeRole(userRole);
   const menuItemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId || "";
   const helpQuery = isManagerHelpQuery(query);
+  const isManagerShell = path === "/manager" || path === "/manager#dashboard";
+
   return AI_CHATBOT_FEATURE_MAP
     .filter((entry) => canUseFeature(entry, role))
     .map((entry) => {
       const queryScore = queryScoreEntry(entry, query);
       const pathScore = pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
-      const shouldUsePathScore = !entry.managerOnly && queryScore > 0;
+      const managerShellScore = entry.managerOnly && isManagerShell ? 2 : 0;
+      const shouldUsePathScore = entry.managerOnly || queryScore > 0;
       const managerHelpScore = entry.managerOnly && helpQuery ? 4 : 0;
       return {
         entry,
-        score: queryScore + managerHelpScore + (shouldUsePathScore ? pathScore : 0),
+        score: queryScore + managerHelpScore + managerShellScore + (shouldUsePathScore ? pathScore : 0),
       };
     })
     .filter(({ score }) => score > 0)
