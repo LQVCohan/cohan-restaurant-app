@@ -8,6 +8,18 @@ let savedScrollY = 0;
 let savedBodyStyle = null;
 let savedHtmlStyle = null;
 
+const STRUCTURED_MODAL_CHILD_NAMES = new Set(["ModalHeader", "ModalBody", "ModalFooter"]);
+
+const isStructuredModalChild = (child) => {
+  if (!React.isValidElement(child)) return false;
+  const childType = child.type;
+  const displayName = childType?.displayName || childType?.name || "";
+  return STRUCTURED_MODAL_CHILD_NAMES.has(displayName);
+};
+
+const hasStructuredModalChildren = (children) =>
+  React.Children.toArray(children).some(isStructuredModalChild);
+
 const isJsdomRuntime = () =>
   typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
 
@@ -130,7 +142,7 @@ const Modal = ({
   zIndex = 1000, // Hỗ trợ stack modals
   autoWrapBody = true,
 }) => {
-  const shouldRender = useDelayUnmount(isOpen, 300); // 300ms khớp với CSS transition
+  const shouldRender = useDelayUnmount(isOpen, 260);
   const modalRef = useRef(null);
   const overlayRef = useRef(null);
   const previousActiveElementRef = useRef(null);
@@ -142,6 +154,7 @@ const Modal = ({
     }
     onClose?.();
   }, [onBeforeClose, onClose]);
+  const shouldAutoWrapBody = autoWrapBody && !hasStructuredModalChildren(children);
 
   // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
@@ -238,7 +251,7 @@ const Modal = ({
             )}
           </header>
         )}
-        {autoWrapBody ? <div className="modal-body">{children}</div> : children}
+        {shouldAutoWrapBody ? <div className="modal-body">{children}</div> : children}
       </div>
     </div>
   );
@@ -249,13 +262,16 @@ const Modal = ({
 Modal.Header = function ModalHeader({ children, className = "" }) {
   return <header className={`modal-header ${className}`}>{children}</header>;
 };
+Modal.Header.displayName = "ModalHeader";
 
 Modal.Body = function ModalBody({ children, className = "" }) {
   return <div className={`modal-body ${className}`}>{children}</div>;
 };
+Modal.Body.displayName = "ModalBody";
 
 Modal.Footer = function ModalFooter({ children, className = "" }) {
   return <footer className={`modal-footer ${className}`}>{children}</footer>;
 };
+Modal.Footer.displayName = "ModalFooter";
 
 export default Modal;
