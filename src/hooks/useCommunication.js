@@ -97,6 +97,7 @@ export const Q_NOTIFICATIONS = gql`
       toRole
       restaurantId
       type
+      uniqueKey
       payload
       readAt
       createdAt
