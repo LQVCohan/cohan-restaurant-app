@@ -12,6 +12,7 @@ $manager-text: #24303f;
 $manager-muted: #667085;
 $manager-accent: #a8855f;
 $manager-accent-dark: #735637;
+$manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
 .manager-layout {
   --sidebar-width: #{$manager-sidebar-collapsed};
@@ -30,6 +31,7 @@ $manager-accent-dark: #735637;
   min-height: 100dvh;
   overflow-x: hidden;
   isolation: isolate;
+  transition: grid-template-columns 0.22s $manager-sidebar-ease;
   background:
     radial-gradient(circle at 10% 0%, rgba(168, 133, 95, 0.13), transparent 28rem),
     radial-gradient(circle at 95% 0%, rgba(83, 108, 97, 0.09), transparent 26rem),
@@ -46,7 +48,10 @@ $manager-accent-dark: #735637;
     min-width: var(--sidebar-width);
     max-width: var(--sidebar-width);
     transition:
-      transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 0.22s $manager-sidebar-ease,
+      min-width 0.22s $manager-sidebar-ease,
+      max-width 0.22s $manager-sidebar-ease,
+      transform 0.18s $manager-sidebar-ease,
       visibility 0.18s ease;
   }
 
@@ -61,6 +66,9 @@ $manager-accent-dark: #735637;
     min-height: 100dvh;
     overflow: hidden;
     z-index: var(--z-content);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: paint;
   }
 
   &__header {
@@ -88,6 +96,9 @@ $manager-accent-dark: #735637;
     @include custom-scrollbar;
     padding: clamp(1rem, 2vw, 1.5rem);
     padding-bottom: max(96px, clamp(1rem, 2vw, 1.5rem));
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: paint;
 
     .manager-page-shell {
       --manager-accent-a: #{$manager-accent};
@@ -122,6 +133,7 @@ $manager-accent-dark: #735637;
   @media (max-width: 768px) {
     --sidebar-width: 0px;
     grid-template-columns: minmax(0, 1fr);
+    transition: none;
 
     &.sidebar-open {
       --sidebar-width: 0px;
