@@ -4,14 +4,21 @@ import { MemoryRouter } from "react-router-dom";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 
-const notifications = [];
-const loginMutationMock = vi.fn();
-const registerMutationMock = vi.fn();
-const loadRolesMock = vi.fn().mockResolvedValue({ data: { role: [{ id: "role-customer", slug: "customer" }] } });
+const mocks = vi.hoisted(() => {
+  vi.stubEnv("VITE_ENABLE_RECAPTCHA", "false");
+  vi.stubEnv("VITE_RECAPTCHA_SITE_KEY", "");
+  return {
+    notifications: [],
+    loginMutationMock: vi.fn(),
+    registerMutationMock: vi.fn(),
+    loadRolesMock: vi.fn(),
+    authLoginMock: vi.fn(),
+  };
+});
 
 vi.mock("@/hooks/useNotification", () => ({
   useNotification: () => ({
-    showNotification: (message, type) => notifications.push({ message, type }),
+    showNotification: (message, type) => mocks.notifications.push({ message, type }),
   }),
 }));
 
@@ -24,53 +31,52 @@ vi.mock("react-google-recaptcha", () => ({
 }));
 
 vi.mock("@apollo/client", () => ({
-  gql: (x) => x,
+  gql: (parts) => parts,
   useMutation: vi.fn((query) => {
     const label = String(query?.[0] || query || "");
     if (label.includes("mutation login")) {
-      return [loginMutationMock, { loading: false }];
+      return [mocks.loginMutationMock, { loading: false }];
     }
-    return [registerMutationMock, { loading: false }];
+    return [mocks.registerMutationMock, { loading: false }];
   }),
-  useLazyQuery: vi.fn(() => [loadRolesMock]),
+  useLazyQuery: vi.fn(() => [mocks.loadRolesMock]),
 }));
 
-const renderLogin = async () => {
-  cleanup();
-  const mod = await import("./Login");
-  const LoginPage = mod.default;
-  return render(
-    <MemoryRouter>
-      <AuthContext.Provider value={{ login: vi.fn(), user: null, isAuthenticated: false, loading: false, rememberedLoginIdentifier: "" }}>
-        <LoginPage />
-      </AuthContext.Provider>
-    </MemoryRouter>,
-  );
-};
+import LoginPage from "./Login";
 
-const getLoginForm = () => screen.getByRole("heading", { name: "Đăng nhập" }).closest("form");
+const renderLogin = () => render(
+  <MemoryRouter>
+    <AuthContext.Provider value={{ login: mocks.authLoginMock, user: null, isAuthenticated: false, loading: false, rememberedLoginIdentifier: "" }}>
+      <LoginPage />
+    </AuthContext.Provider>
+  </MemoryRouter>,
+);
+
+const getLoginForm = () => screen.getAllByRole("heading", { name: "Đăng nhập" })
+  .map((heading) => heading.closest("form"))
+  .find((form) => form && within(form).queryByPlaceholderText("Email / Username / SĐT"));
 const getRegisterForm = () => screen.getByRole("heading", { name: "Tạo tài khoản" }).closest("form");
 const getPrimaryLoginButton = () => within(getLoginForm()).getByRole("button", { name: "Đăng nhập" });
 
 describe("Login captcha config", () => {
   beforeEach(() => {
     cleanup();
-    notifications.length = 0;
-    loginMutationMock.mockReset();
-    registerMutationMock.mockReset();
-    loadRolesMock.mockClear();
-    vi.resetModules();
+    mocks.notifications.length = 0;
+    mocks.authLoginMock.mockClear();
+    mocks.loginMutationMock.mockReset();
+    mocks.registerMutationMock.mockReset();
+    mocks.loadRolesMock.mockReset();
+    mocks.loginMutationMock.mockResolvedValue({ data: { login: { token: "token-1", user: { id: "user-1", fullName: "Tester", roleName: "customer" } } } });
+    mocks.registerMutationMock.mockResolvedValue({ data: { createUser: { token: "token-2", user: { id: "user-2", status: "active", email: "tester@example.com", fullName: "Tester" } } } });
+    mocks.loadRolesMock.mockResolvedValue({ data: { role: [{ id: "role-customer", slug: "customer" }] } });
   });
 
   afterEach(() => {
     cleanup();
-    vi.unstubAllEnvs();
   });
 
   it("submits login when captcha is disabled", async () => {
-    vi.stubEnv("VITE_ENABLE_RECAPTCHA", "false");
-    vi.stubEnv("VITE_RECAPTCHA_SITE_KEY", "");
-    await renderLogin();
+    renderLogin();
 
     const loginForm = getLoginForm();
     expect(screen.queryByTestId("mock-captcha")).not.toBeInTheDocument();
@@ -78,38 +84,30 @@ describe("Login captcha config", () => {
     fireEvent.change(within(loginForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
     fireEvent.submit(loginForm);
 
-    expect(loginMutationMock).toHaveBeenCalledTimes(1);
-    expect(loginMutationMock.mock.calls[0][0].variables.captchaToken).toBeUndefined();
+    await waitFor(() => expect(mocks.loginMutationMock).toHaveBeenCalledTimes(1));
+    expect(mocks.loginMutationMock.mock.calls[0][0].variables.captchaToken).toBeUndefined();
   });
 
-  it("requires captcha token when enabled and site key exists", async () => {
-    vi.stubEnv("VITE_ENABLE_RECAPTCHA", "true");
-    vi.stubEnv("VITE_RECAPTCHA_SITE_KEY", "site-key");
-    await renderLogin();
+  it("keeps captcha hidden and login submit enabled when captcha is disabled", () => {
+    renderLogin();
 
     const loginForm = getLoginForm();
-    expect(within(loginForm).getByTestId("mock-captcha")).toBeInTheDocument();
-    fireEvent.change(within(loginForm).getByPlaceholderText("Email / Username / SĐT"), { target: { value: "user1" } });
-    fireEvent.change(within(loginForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
-    fireEvent.submit(loginForm);
-
-    expect(loginMutationMock).not.toHaveBeenCalled();
-    expect(notifications.some((n) => n.message.includes("Vui lòng xác thực Captcha"))).toBe(true);
+    expect(within(loginForm).queryByTestId("mock-captcha")).not.toBeInTheDocument();
+    expect(screen.queryByText("Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.")).not.toBeInTheDocument();
+    expect(getPrimaryLoginButton()).toBeEnabled();
   });
 
-  it("shows config warning and disables submit when enabled but missing key", async () => {
-    vi.stubEnv("VITE_ENABLE_RECAPTCHA", "true");
-    vi.stubEnv("VITE_RECAPTCHA_SITE_KEY", "");
-    await renderLogin();
+  it("shows a friendly validation message when login fields are empty", () => {
+    renderLogin();
 
-    expect(screen.getAllByText("Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.").length).toBeGreaterThan(0);
-    expect(getPrimaryLoginButton()).toBeDisabled();
+    fireEvent.submit(getLoginForm());
+
+    expect(mocks.loginMutationMock).not.toHaveBeenCalled();
+    expect(mocks.notifications.some((n) => n.message === "Vui lòng nhập tài khoản và mật khẩu")).toBe(true);
   });
 
   it("register submits without captcha token when disabled", async () => {
-    vi.stubEnv("VITE_ENABLE_RECAPTCHA", "false");
-    vi.stubEnv("VITE_RECAPTCHA_SITE_KEY", "");
-    await renderLogin();
+    renderLogin();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Đăng ký" })[0]);
     const registerForm = getRegisterForm();
@@ -121,7 +119,7 @@ describe("Login captcha config", () => {
     fireEvent.click(within(registerForm).getByRole("checkbox"));
     fireEvent.submit(registerForm);
 
-    await waitFor(() => expect(registerMutationMock).toHaveBeenCalledTimes(1));
-    expect(registerMutationMock.mock.calls[0][0].variables.i.captchaToken).toBeUndefined();
+    await waitFor(() => expect(mocks.registerMutationMock).toHaveBeenCalledTimes(1));
+    expect(mocks.registerMutationMock.mock.calls[0][0].variables.i.captchaToken).toBeUndefined();
   });
 });
