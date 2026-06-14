@@ -68,6 +68,15 @@ export const calculateShiftHours = (startTime, endTime) => {
   return Number(((end.getTime() - start.getTime()) / 3600000 || 8).toFixed(2));
 };
 
+const buildUtcShiftDate = (dateKey, hour, minute) => {
+  const [year, month, day] = String(dateKey || "")
+    .split("-")
+    .map((part) => Number(part));
+
+  if (!year || !month || !day) return new Date(NaN);
+  return new Date(Date.UTC(year, month - 1, day, hour || 0, minute || 0, 0, 0));
+};
+
 export const buildShiftWindow = (
   dateKey,
   shiftType,
@@ -84,12 +93,9 @@ export const buildShiftWindow = (
     .split(":")
     .map(Number);
 
-  const start = new Date(`${safeDateKey}T00:00:00`);
-  start.setHours(startHour || 0, startMinute || 0, 0, 0);
-
-  const end = new Date(`${safeDateKey}T00:00:00`);
-  end.setHours(endHour || 0, endMinute || 0, 0, 0);
-  if (end <= start) end.setDate(end.getDate() + 1);
+  const start = buildUtcShiftDate(safeDateKey, startHour, startMinute);
+  const end = buildUtcShiftDate(safeDateKey, endHour, endMinute);
+  if (end <= start) end.setUTCDate(end.getUTCDate() + 1);
 
   return {
     start,
@@ -840,43 +846,36 @@ export const buildAutoScheduleCreateInputs = ({
   const dedupe = new Set();
 
   for (const item of previewItems) {
-    if (!selectedShiftKeys[item.shiftKey]) continue;
-
-    if (!item.canApply || !(item.plannedAssignments || []).length) {
-      continue;
-    }
+    if (!selectedShiftKeys[item.shiftKey] || !item.canApply) continue;
 
     for (const assignment of item.plannedAssignments || []) {
-      const dedupeKey = `${assignment.staffId}|${item.startTime}|${item.endTime}`;
-      if (dedupe.has(dedupeKey)) continue;
-      dedupe.add(dedupeKey);
+      const key = `${item.shiftKey}|${assignment.staffId}`;
+      if (dedupe.has(key)) continue;
+      dedupe.add(key);
 
-      const scoreText =
-        assignment.validationScore != null
-          ? ` • Điểm phù hợp: ${assignment.validationScore}/100`
-          : "";
-
-      const warningText = assignment.requiresOverride
-        ? " • Có cảnh báo chính sách, cần ghi đè khi áp dụng"
-        : "";
-
-      const missingText =
-        Number(item.unresolvedCount || 0) > 0
-          ? ` • Ca còn thiếu ${item.unresolvedCount} vị trí, manager cần bổ sung sau`
-          : "";
+      const notes = [
+        "Tự động xếp ca từ AI scheduling assistant",
+        item.unresolvedCount
+          ? `Ca còn thiếu ${item.unresolvedCount} vị trí, cần quản lý kiểm tra thêm.`
+          : "Ca đã có đủ vị trí theo đề xuất tự động.",
+        assignment.requiresOverride
+          ? "Ứng viên có cảnh báo chính sách và cần ghi đè khi áp dụng."
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" | ");
 
       inputs.push({
-        employeeId: assignment.staffId,
         restaurantId,
-        shiftType: String(item.shiftType || "").toUpperCase(),
+        employeeId: assignment.staffId,
+        shiftType: item.shiftType,
         startTime: item.startTime,
         endTime: item.endTime,
-        status: "scheduled",
         allowOverride: Boolean(assignment.requiresOverride),
         overrideReason: assignment.requiresOverride
-          ? "Tự động xếp ca: chấp nhận phân công có cảnh báo chính sách."
+          ? "Tự động xếp ca có cảnh báo policy, quản lý xác nhận ghi đè."
           : "",
-        notes: `Tự động xếp ca${scoreText}${warningText}${missingText}`,
+        notes,
       });
     }
   }
