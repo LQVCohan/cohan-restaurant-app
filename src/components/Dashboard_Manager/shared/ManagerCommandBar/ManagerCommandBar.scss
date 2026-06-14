@@ -1,29 +1,78 @@
+$mcb-sage: #1f6a60;
+$mcb-sage-dark: #17554d;
+$mcb-sage-soft: #dcefe9;
+$mcb-sage-mist: #f2faf7;
+$mcb-charcoal: #24323b;
+$mcb-muted: #667085;
+$mcb-border: #ded6cb;
+$mcb-border-strong: #cec3b5;
+$mcb-paper: #fffdf9;
+$mcb-canvas: #f8f5ee;
+
 .manager-command-bar {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 0.8rem 1rem;
+  position: sticky;
+  top: calc(var(--manager-header-height, 72px) + 10px);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
   margin-bottom: 16px;
+  padding: 10px;
+  border: 1px solid rgba(128, 109, 83, 0.15);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(14px) saturate(125%);
+  box-shadow: 0 12px 32px rgba(48, 40, 30, 0.08);
 }
 
 .mcb-tabs {
-  display: flex;
-  gap: 0.5rem;
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.35rem;
   flex-wrap: wrap;
-  margin-bottom: 0.65rem;
+  padding: 5px;
+  border: 1px solid rgba(128, 109, 83, 0.13);
+  border-radius: 17px;
+  background: rgba(248, 246, 241, 0.82);
 }
 
 .mcb-tab {
-  border: 1px solid #dbe3ed;
-  background: #fff;
-  padding: 0.38rem 0.7rem;
-  border-radius: 999px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #6f6256;
+  cursor: pointer;
+  font-weight: 750;
+  padding: 0 0.78rem;
+  border-radius: 12px;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+
+  &:hover:not(.is-active) {
+    border-color: rgba($mcb-sage, 0.16);
+    background: rgba($mcb-sage-soft, 0.42);
+    color: $mcb-sage-dark;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($mcb-sage, 0.16);
+  }
 }
 
 .mcb-tab.is-active {
-  background: #1e293b;
-  color: #fff;
-  border-color: #1e293b;
+  background: $mcb-charcoal;
+  color: #fffdf8;
+  border-color: rgba($mcb-charcoal, 0.16);
+  box-shadow: 0 10px 24px rgba(36, 50, 59, 0.18);
 }
 
 .mcb-controls {
@@ -41,67 +90,177 @@
   flex-wrap: wrap;
 }
 
+.mcb-left {
+  min-width: 0;
+  flex: 1 1 560px;
+}
+
+.mcb-right {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
 .mcb-search {
+  min-width: min(280px, 100%);
+  height: 42px;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  border: 1px solid #dbe3ed;
-  border-radius: 10px;
-  padding: 0 0.55rem;
-  height: 40px;
-  min-width: 240px;
+  gap: 0.5rem;
+  border: 1px solid rgba(128, 109, 83, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 253, 249, 0.92);
+  color: $mcb-muted;
+  padding: 0 0.75rem;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+
+  &:focus-within {
+    border-color: rgba($mcb-sage, 0.52);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba($mcb-sage, 0.14);
+  }
 }
 
 .mcb-search input {
+  width: 100%;
+  min-width: 0;
   border: none;
   outline: none;
+  background: transparent;
+  color: $mcb-charcoal;
+  font-weight: 650;
+
+  &::placeholder {
+    color: #8a8177;
+  }
 }
 
 .mcb-btn {
-  height: 40px;
-  border: 1px solid #dbe3ed;
-  background: #fff;
-  border-radius: 10px;
-  padding: 0 0.7rem;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  gap: 0.48rem;
+  border: 1px solid rgba(128, 109, 83, 0.18);
+  background: rgba(255, 253, 249, 0.88);
+  color: $mcb-charcoal;
+  cursor: pointer;
+  border-radius: 14px;
+  font-weight: 760;
+  padding: 0 0.82rem;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+
+  svg {
+    flex: 0 0 auto;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: rgba($mcb-sage, 0.22);
+    background: $mcb-sage-mist;
+    color: $mcb-sage-dark;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($mcb-sage, 0.16);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 .mcb-btn--primary {
-  background: #b89365;
-  color: #fff;
-  border-color: #b89365;
-}
+  background: linear-gradient(180deg, $mcb-sage, $mcb-sage-dark);
+  color: #fffdf8;
+  border-color: rgba($mcb-sage-dark, 0.92);
+  box-shadow: 0 14px 28px rgba($mcb-sage, 0.2);
 
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #23756a, $mcb-sage-dark);
+    color: #fffdf8;
+    box-shadow: 0 18px 34px rgba($mcb-sage, 0.26);
+  }
+}
 
 .mcb-view-toggle {
   display: inline-flex;
   gap: 0.35rem;
+  padding: 4px;
+  border: 1px solid rgba(128, 109, 83, 0.14);
+  border-radius: 14px;
+  background: rgba(248, 246, 241, 0.78);
 
   button {
-    height: 36px;
-    border: 1px solid #dbe3ed;
-    background: #fff;
-    border-radius: 8px;
+    height: 34px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: $mcb-muted;
+    cursor: pointer;
+    border-radius: 10px;
+    font-weight: 730;
     padding: 0 0.65rem;
+    transition:
+      background 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+
+    &:hover:not(.is-active) {
+      border-color: rgba($mcb-sage, 0.16);
+      background: rgba($mcb-sage-soft, 0.42);
+      color: $mcb-sage-dark;
+    }
   }
 
   .is-active {
-    border-color: #1e293b;
-    color: #1e293b;
-    font-weight: 600;
+    border-color: rgba($mcb-charcoal, 0.16);
+    background: $mcb-charcoal;
+    color: #fffdf8;
+    font-weight: 780;
+  }
+}
+
+@media (max-width: 1080px) {
+  .manager-command-bar {
+    position: static;
   }
 }
 
 @media (max-width: 768px) {
+  .mcb-controls {
+    flex-direction: column;
+  }
+
   .mcb-left,
   .mcb-right {
     width: 100%;
   }
 
-  .mcb-search {
+  .mcb-right {
+    justify-content: flex-start;
+  }
+
+  .mcb-search,
+  .mcb-btn,
+  .mcb-view-toggle {
     width: 100%;
-    min-width: 0;
+  }
+
+  .mcb-view-toggle button,
+  .mcb-btn {
+    flex: 1;
   }
 }
