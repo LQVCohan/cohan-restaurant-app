@@ -575,7 +575,7 @@ export default function StaffOrdering() {
       });
 
       await reloadSelectedTableOrders();
-      alert("Đã gửi yêu cầu hủy/giảm món đến POS.");
+      alert("Đã gửi yêu cầu hủy/giảm món đến hệ thống.");
     } catch (error) {
       alert(error?.message || "Không thể gửi yêu cầu hủy món.");
     }
@@ -1275,7 +1275,7 @@ export default function StaffOrdering() {
         (x) => x.status === "pending" && !x.persisted,
       );
       if (!pendingItems.length) {
-        alert("Không có món mới để gửi POS.");
+        alert("Không có món mới để gửi xác nhận.");
         return;
       }
       if (
@@ -1308,7 +1308,7 @@ export default function StaffOrdering() {
         return;
       }
       if (shouldBlockRemoteDiscount) {
-        alert("Vui lòng áp dụng coupon hợp lệ trước khi gửi POS.");
+        alert("Vui lòng áp dụng ưu đãi hợp lệ trước khi gửi xác nhận.");
         return;
       }
       const payloadItems = pendingItems.map((item) => {
@@ -1539,11 +1539,11 @@ export default function StaffOrdering() {
           ...new Set((remoteCart || []).map((x) => x.orderId).filter(Boolean)),
         ];
         if (!orderIds.length)
-          return alert("Chưa có order đã gửi để yêu cầu thanh toán.");
+          return alert("Chưa có đơn đã gửi để yêu cầu thanh toán.");
         await requestPaymentForOrder({
           variables: { input: { restaurantId, orderIds } },
         });
-        alert("Đã gửi yêu cầu thanh toán đến POS.");
+        alert("Đã gửi yêu cầu thanh toán đến hệ thống.");
         return;
       }
       if (!selectedTable?.tableCode && !selectedTable?.name)
@@ -1556,7 +1556,7 @@ export default function StaffOrdering() {
           },
         },
       });
-      alert("Đã gửi yêu cầu thanh toán đến POS.");
+      alert("Đã gửi yêu cầu thanh toán đến hệ thống.");
     } catch (e) {
       alert(e?.message || "Yêu cầu thanh toán thất bại.");
     }
@@ -1569,7 +1569,7 @@ export default function StaffOrdering() {
       const orderId = item?.orderId;
       const orderItemId = item?.id;
       if (!orderId || !orderItemId)
-        return alert("Không xác định được order/item để nhắc.");
+        return alert("Không xác định được đơn/món để nhắc.");
       const { data } = await remindOrderItem({
         variables: { input: { restaurantId, orderId, orderItemId } },
       });
