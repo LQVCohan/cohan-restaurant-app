@@ -617,6 +617,7 @@ export default function StaffOrdering() {
     variables: { restaurantId, timeSlot: currentMenuTimeSlot },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
   });
 
   const { data: menuData, loading: menuLoading } = useQuery(MENU_ITEMS_QUERY, {

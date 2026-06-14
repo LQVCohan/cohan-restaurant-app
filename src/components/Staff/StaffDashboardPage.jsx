@@ -6,7 +6,6 @@ import {
   hasStaffOrderAccess,
   resolveUserRoleName,
 } from "@/utils/frontendRoleAccess";
-import { getStaffRoleOption } from "@/utils/staffRoleOptions";
 import "./StaffDashboardPage.scss";
 
 const getDisplayName = (user) =>
@@ -117,19 +116,11 @@ const notificationPreview = [
   { type: "Hồ sơ", title: "Cập nhật thiếu sót thông tin qua quản lý trực tiếp." },
 ];
 
-const roleDepartmentCopy = {
-  cleaning: "Ưu tiên lịch vệ sinh, bàn giao khu vực và các nhắc việc theo ca.",
-  delivery: "Ưu tiên lịch giao hàng, bàn giao đơn và xác nhận thời điểm làm việc.",
-  inventory: "Ưu tiên lịch kho, bàn giao nguyên liệu và kiểm tra phân công nhập xuất.",
-  bar: "Ưu tiên lịch quầy bar, chuẩn bị nguyên liệu và phối hợp phục vụ.",
-};
-
 const StaffDashboardPage = () => {
   const { user } = useContext(AuthContext);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const staffName = getDisplayName(user);
-  const roleOption = getStaffRoleOption(normalizedRole);
-  const departmentCopy = roleDepartmentCopy[roleOption?.department] || "Mở nhanh đúng khu vực thao tác theo vai trò và lịch ca của bạn.";
+  const departmentCopy = "Các khu vực được mở theo quyền truy cập của tài khoản để nhân viên xử lý nhanh trong ca.";
   const initials = getInitials(staffName);
   const canOrder = hasStaffOrderAccess(normalizedRole);
   const canKitchen = hasStaffKitchenAccess(normalizedRole);
@@ -233,8 +224,8 @@ const StaffDashboardPage = () => {
       <section className="staff-dashboard-section staff-dashboard-section--work-area staff-card" aria-labelledby="staff-work-area-title">
         <div className="staff-dashboard-section__header">
           <div>
-            <StatusBadge tone="warm">Khu vực chuyên môn</StatusBadge>
-            <h2 id="staff-work-area-title">Khu vực làm việc theo vai trò</h2>
+            <StatusBadge tone="warm">Công cụ ca làm</StatusBadge>
+            <h2 id="staff-work-area-title">Khu vực thao tác trong ca</h2>
           </div>
           <p>{departmentCopy}</p>
         </div>
@@ -246,7 +237,7 @@ const StaffDashboardPage = () => {
           <div className="staff-dashboard-empty" role="status">
             <div className="staff-dashboard-empty__mark">•</div>
             <div>
-              <h3>Vai trò này chưa có khu vực đơn nội bộ hoặc bếp riêng</h3>
+              <h3>Tài khoản này chưa có khu vực đơn nội bộ hoặc bếp riêng</h3>
               <p>Bạn vẫn có thể sử dụng lịch cá nhân, hồ sơ, thông báo, phiếu lương và phản hồi hiệu suất.</p>
             </div>
           </div>
