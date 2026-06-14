@@ -1,0 +1,96 @@
+.rl-container .rl-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.rl-container .rl-trash-toggle {
+  min-width: 116px;
+  border-color: rgba(128, 109, 83, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  color: #5f6664;
+  font-weight: 740;
+}
+
+.rl-container .rl-trash-toggle.active {
+  border-color: rgba(181, 71, 71, 0.24);
+  background: #fff6f3;
+  color: #8f3d38;
+}
+
+.rl-container .rl-trash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rl-container .rl-trash-item {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 15px;
+  border: 1px solid rgba(128, 109, 83, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74), 0 10px 24px rgba(31, 42, 47, 0.045);
+}
+
+.rl-container .rl-trash-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rl-container .rl-trash-main strong {
+  color: #24303f;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.rl-container .rl-trash-main span {
+  color: #667085;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.rl-container .rl-trash-main p {
+  margin: 0;
+  color: #7a746c;
+  font-size: 0.81rem;
+  line-height: 1.45;
+}
+
+.rl-container .rl-btn-restore {
+  min-width: 104px;
+  flex: 0 0 auto;
+  background: #f3f7f5 !important;
+  color: #315f55 !important;
+  border-color: rgba(49, 95, 85, 0.18) !important;
+}
+
+.rl-container .rl-btn-restore:hover:not(:disabled) {
+  background: #e7f0ec !important;
+  color: #244940 !important;
+}
+
+@media (max-width: 720px) {
+  .rl-container .rl-toolbar-actions,
+  .rl-container .rl-trash-toggle,
+  .rl-container .rl-btn-primary {
+    width: 100%;
+  }
+
+  .rl-container .rl-toolbar-actions {
+    flex-direction: column;
+  }
+
+  .rl-container .rl-trash-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
