@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -35,6 +35,8 @@ const STAFF_ROLE_SLUGS = new Set([
 
 const FALLBACK_SYSTEM_ROLE_SLUGS = new Set(["admin", "manager", "hr", "accountant"]);
 const STATUS_OPTIONS = ["active", "pending", "inactive", "blocked"];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^(\+?84|0)[0-9]{8,10}$/;
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
 const roleLabel = (role) => role?.name || role?.slug || "Chưa có vai trò";
@@ -58,7 +60,13 @@ const formatDateTime = (value) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" });
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 const getRoleSlug = (role) => normalize(role?.slug || role?.name);
@@ -105,7 +113,66 @@ const exportUsersToCsv = (users) => {
   URL.revokeObjectURL(url);
 };
 
-function SystemUserEditPanel({ user, roles, form, setForm, onSave, onClose, saving }) {
+const validateSystemUserForm = (form) => {
+  const errors = {};
+  if (!form.fullName.trim()) errors.fullName = "Tên tài khoản không được rỗng.";
+  if (form.email.trim() && !EMAIL_PATTERN.test(form.email.trim())) errors.email = "Email chưa đúng định dạng.";
+  if (form.phone.trim() && !PHONE_PATTERN.test(form.phone.trim().replace(/\s+/g, ""))) errors.phone = "Số điện thoại chưa đúng định dạng Việt Nam.";
+  if (!form.roleId) errors.roleId = "Chọn vai trò hệ thống trước khi lưu.";
+  if (!STATUS_OPTIONS.includes(form.status)) errors.status = "Trạng thái không hợp lệ.";
+  return errors;
+};
+
+function SystemUsersCommandSurface({ totalUsers, visibleUsers, roleCount, selectedCount, lockedCount, activeFilterText }) {
+  return (
+    <section className="system-users-command-surface" aria-label="Tổng quan phạm vi quản trị">
+      <div className="system-users-command-surface__copy">
+        <span className="system-users-kicker">Admin-only scope</span>
+        <h2>Tách tài khoản hệ thống khỏi nhân viên vận hành</h2>
+        <p>
+          Màn hình này chỉ xử lý tài khoản cấp hệ thống. Các vai trò thuộc nhóm staff hoặc kế thừa parentRole staff được loại khỏi danh sách để tránh thao tác nhầm vào nhân viên nhà hàng.
+        </p>
+      </div>
+      <div className="system-users-command-surface__metrics">
+        <article>
+          <span>Đang hiển thị</span>
+          <strong>{visibleUsers.toLocaleString("vi-VN")}</strong>
+          <small>{activeFilterText}</small>
+        </article>
+        <article>
+          <span>Tổng hệ thống</span>
+          <strong>{totalUsers.toLocaleString("vi-VN")}</strong>
+          <small>{roleCount.toLocaleString("vi-VN")} role hợp lệ</small>
+        </article>
+        <article className={selectedCount ? "is-hot" : ""}>
+          <span>Đã chọn</span>
+          <strong>{selectedCount.toLocaleString("vi-VN")}</strong>
+          <small>{lockedCount.toLocaleString("vi-VN")} tài khoản khóa/chờ</small>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function SystemUsersSkeleton() {
+  return (
+    <tbody aria-label="Đang tải tài khoản hệ thống">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <tr key={index} className="system-users-skeleton-row">
+          <td><span /></td>
+          <td><span /></td>
+          <td><span /></td>
+          <td><span /></td>
+          <td><span /></td>
+          <td><span /></td>
+          <td><span /></td>
+        </tr>
+      ))}
+    </tbody>
+  );
+}
+
+function SystemUserEditPanel({ user, roles, form, setForm, formErrors, onSave, onClose, saving }) {
   if (!user) {
     return (
       <aside className="system-users-panel system-users-panel--empty">
@@ -129,10 +196,11 @@ function SystemUserEditPanel({ user, roles, form, setForm, onSave, onClose, savi
         <button type="button" onClick={onClose}>Đóng</button>
       </div>
 
-      <form className="system-users-form" onSubmit={onSave}>
+      <form className="system-users-form" onSubmit={onSave} noValidate>
         <label>
           Họ tên
-          <input value={form.fullName} onChange={(event) => setField("fullName", event.target.value)} required />
+          <input value={form.fullName} onChange={(event) => setField("fullName", event.target.value)} required aria-invalid={Boolean(formErrors.fullName)} />
+          {formErrors.fullName ? <small className="system-users-form__error">{formErrors.fullName}</small> : null}
         </label>
         <label>
           Username
@@ -140,25 +208,29 @@ function SystemUserEditPanel({ user, roles, form, setForm, onSave, onClose, savi
         </label>
         <label>
           Email
-          <input value={form.email} onChange={(event) => setField("email", event.target.value)} placeholder="email@domain.com" />
+          <input value={form.email} onChange={(event) => setField("email", event.target.value)} placeholder="email@domain.com" aria-invalid={Boolean(formErrors.email)} />
+          {formErrors.email ? <small className="system-users-form__error">{formErrors.email}</small> : null}
         </label>
         <label>
           Số điện thoại
-          <input value={form.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="09xxxxxxxx" />
+          <input value={form.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="09xxxxxxxx" aria-invalid={Boolean(formErrors.phone)} />
+          {formErrors.phone ? <small className="system-users-form__error">{formErrors.phone}</small> : null}
         </label>
         <div className="system-users-form__grid">
           <label>
             Vai trò hệ thống
-            <select value={form.roleId} onChange={(event) => setField("roleId", event.target.value)} required>
+            <select value={form.roleId} onChange={(event) => setField("roleId", event.target.value)} required aria-invalid={Boolean(formErrors.roleId)}>
               <option value="">Chọn vai trò</option>
               {roles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role)}</option>)}
             </select>
+            {formErrors.roleId ? <small className="system-users-form__error">{formErrors.roleId}</small> : null}
           </label>
           <label>
             Trạng thái
-            <select value={form.status} onChange={(event) => setField("status", event.target.value)} required>
+            <select value={form.status} onChange={(event) => setField("status", event.target.value)} required aria-invalid={Boolean(formErrors.status)}>
               {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
             </select>
+            {formErrors.status ? <small className="system-users-form__error">{formErrors.status}</small> : null}
           </label>
         </div>
         <div className="system-users-verification-box">
@@ -194,6 +266,7 @@ export default function SystemUserManagement() {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [selectedUserId, setSelectedUserId] = useState("");
   const [form, setForm] = useState({ fullName: "", username: "", email: "", phone: "", roleId: "", status: "active" });
+  const [formErrors, setFormErrors] = useState({});
   const [notice, setNotice] = useState(null);
 
   const systemRoles = useMemo(() => {
@@ -206,11 +279,11 @@ export default function SystemUserManagement() {
   const roleBySlug = useMemo(() => new Map((roleList || []).map((role) => [getRoleSlug(role), role])), [roleList]);
   const systemRoleSlugs = useMemo(() => new Set(systemRoles.map(getRoleSlug).filter(Boolean)), [systemRoles]);
 
-  const resolveFullRole = (targetUser) => {
+  const resolveFullRole = useCallback((targetUser) => {
     const byId = targetUser?.role?.id ? roleById.get(String(targetUser.role.id)) : null;
     const slug = normalize(targetUser?.role?.slug || targetUser?.roleName);
     return byId || roleBySlug.get(slug) || targetUser?.role || null;
-  };
+  }, [roleById, roleBySlug]);
 
   const systemUsers = useMemo(() => {
     return (users || []).filter((targetUser) => {
@@ -220,7 +293,7 @@ export default function SystemUserManagement() {
       if (systemRoleSlugs.size) return systemRoleSlugs.has(slug);
       return FALLBACK_SYSTEM_ROLE_SLUGS.has(slug) || !hasStaffParentRole(role);
     });
-  }, [users, roleById, roleBySlug, systemRoleSlugs]);
+  }, [users, resolveFullRole, systemRoleSlugs]);
 
   const filteredUsers = useMemo(() => {
     return systemUsers.filter((targetUser) => {
@@ -231,10 +304,11 @@ export default function SystemUserManagement() {
       if (statusFilter !== "all" && status !== statusFilter) return false;
       return true;
     });
-  }, [systemUsers, roleFilter, statusFilter, roleById, roleBySlug]);
+  }, [systemUsers, roleFilter, statusFilter, resolveFullRole]);
 
   const selectedUser = useMemo(() => filteredUsers.find((targetUser) => targetUser.id === selectedUserId) || systemUsers.find((targetUser) => targetUser.id === selectedUserId) || null, [filteredUsers, selectedUserId, systemUsers]);
   const selectedUsers = useMemo(() => systemUsers.filter((targetUser) => selectedIds.has(targetUser.id)), [selectedIds, systemUsers]);
+  const lockedOrPendingCount = useMemo(() => systemUsers.filter((targetUser) => ["blocked", "pending"].includes(normalize(targetUser.status))).length, [systemUsers]);
 
   const stats = useMemo(() => {
     const activeCount = systemUsers.filter((targetUser) => normalize(targetUser.status) === "active").length;
@@ -247,6 +321,12 @@ export default function SystemUserManagement() {
       { label: "Vai trò được quản lý", value: systemRoles.length, icon: "🧩" },
     ];
   }, [systemUsers, systemRoles]);
+
+  const activeFilterText = useMemo(() => {
+    const roleText = roleFilter === "all" ? "mọi role" : roleLabel(systemRoles.find((role) => getRoleSlug(role) === roleFilter));
+    const statusText = statusFilter === "all" ? "mọi trạng thái" : statusLabels[statusFilter];
+    return `${roleText} • ${statusText}`;
+  }, [roleFilter, statusFilter, systemRoles]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -265,7 +345,8 @@ export default function SystemUserManagement() {
       roleId: role?.id || selectedUser.role?.id || "",
       status: normalize(selectedUser.status || "active"),
     });
-  }, [selectedUser?.id, selectedUser?.updatedAt, roleById, roleBySlug]);
+    setFormErrors({});
+  }, [selectedUser?.id, selectedUser?.updatedAt, resolveFullRole]);
 
   useEffect(() => {
     setSelectedIds((current) => {
@@ -293,6 +374,14 @@ export default function SystemUserManagement() {
   };
 
   const refresh = () => getAllUsers({ search: appliedSearch || undefined, roleId: roleFilter !== "all" ? systemRoles.find((role) => getRoleSlug(role) === roleFilter)?.id : undefined });
+
+  const resetFilters = () => {
+    setSearchInput("");
+    setAppliedSearch("");
+    setRoleFilter("all");
+    setStatusFilter("all");
+    setSelectedIds(new Set());
+  };
 
   const toggleSelected = (id) => {
     setSelectedIds((current) => {
@@ -368,6 +457,9 @@ export default function SystemUserManagement() {
   const saveSelectedUser = async (event) => {
     event.preventDefault();
     if (!selectedUser) return;
+    const nextErrors = validateSystemUserForm(form);
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     setNotice(null);
     try {
       await adminUpdateUser(selectedUser.id, {
@@ -384,6 +476,8 @@ export default function SystemUserManagement() {
     }
   };
 
+  const showSkeleton = loading && !systemUsers.length;
+
   return (
     <main className="system-users-page">
       <ManagementPageHeader
@@ -395,6 +489,15 @@ export default function SystemUserManagement() {
         icon="🛡️"
         stats={stats}
         primaryAction={{ label: loading ? "Đang tải..." : "Làm mới", icon: "🔄", onClick: refresh, disabled: loading }}
+      />
+
+      <SystemUsersCommandSurface
+        totalUsers={systemUsers.length}
+        visibleUsers={filteredUsers.length}
+        roleCount={systemRoles.length}
+        selectedCount={selectedUsers.length}
+        lockedCount={lockedOrPendingCount}
+        activeFilterText={activeFilterText}
       />
 
       <section className="system-users-toolbar" aria-label="Bộ lọc người dùng hệ thống">
@@ -456,47 +559,49 @@ export default function SystemUserManagement() {
                   <th>Thao tác</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredUsers.map((targetUser) => {
-                  const role = resolveFullRole(targetUser);
-                  const status = normalize(targetUser.status || "active");
-                  return (
-                    <tr key={targetUser.id} className={selectedUserId === targetUser.id ? "is-selected" : ""}>
-                      <td><input type="checkbox" checked={selectedIds.has(targetUser.id)} onChange={() => toggleSelected(targetUser.id)} aria-label={`Chọn ${userDisplayName(targetUser)}`} /></td>
-                      <td>
-                        <button type="button" className="system-users-identity" onClick={() => setSelectedUserId(targetUser.id)}>
-                          <span>{userDisplayName(targetUser).charAt(0).toUpperCase()}</span>
-                          <strong>{userDisplayName(targetUser)}</strong>
-                          <small>{targetUser.email || targetUser.phone || targetUser.username || "Chưa có liên hệ"}</small>
-                        </button>
-                      </td>
-                      <td><span className="system-users-role"><ShieldCheck size={14} />{roleLabel(role)}</span></td>
-                      <td><span className={`system-users-status is-${statusTones[status] || "muted"}`}>{statusLabels[status] || targetUser.status || "Không rõ"}</span></td>
-                      <td>
-                        <div className="system-users-verify">
-                          <span className={targetUser.emailVerified ? "is-ok" : "is-missing"}>Email</span>
-                          <span className={targetUser.phoneVerified ? "is-ok" : "is-missing"}>SĐT</span>
-                        </div>
-                      </td>
-                      <td>{formatDateTime(targetUser.lastLoginAt)}</td>
-                      <td>
-                        <div className="system-users-row-actions">
-                          <button type="button" onClick={() => setSelectedUserId(targetUser.id)}>Sửa</button>
-                          {status === "blocked" ? (
-                            <button type="button" onClick={() => runSingleStatus(targetUser, "active")}><Unlock size={14} />Mở</button>
-                          ) : (
-                            <button type="button" onClick={() => runSingleStatus(targetUser, "blocked")}><Lock size={14} />Khóa</button>
-                          )}
-                          <button type="button" className="is-danger" onClick={() => runSoftDelete(targetUser)}><Trash2 size={14} />Xóa</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!filteredUsers.length ? (
-                  <tr><td colSpan={7}><div className="system-users-empty"><Users size={26} /><strong>Chưa có tài khoản hệ thống phù hợp</strong><span>Thử đổi bộ lọc hoặc làm mới danh sách.</span></div></td></tr>
-                ) : null}
-              </tbody>
+              {showSkeleton ? <SystemUsersSkeleton /> : (
+                <tbody>
+                  {filteredUsers.map((targetUser) => {
+                    const role = resolveFullRole(targetUser);
+                    const status = normalize(targetUser.status || "active");
+                    return (
+                      <tr key={targetUser.id} className={selectedUserId === targetUser.id ? "is-selected" : ""}>
+                        <td><input type="checkbox" checked={selectedIds.has(targetUser.id)} onChange={() => toggleSelected(targetUser.id)} aria-label={`Chọn ${userDisplayName(targetUser)}`} /></td>
+                        <td>
+                          <button type="button" className="system-users-identity" onClick={() => setSelectedUserId(targetUser.id)}>
+                            <span>{userDisplayName(targetUser).charAt(0).toUpperCase()}</span>
+                            <strong>{userDisplayName(targetUser)}</strong>
+                            <small>{targetUser.email || targetUser.phone || targetUser.username || "Chưa có liên hệ"}</small>
+                          </button>
+                        </td>
+                        <td><span className="system-users-role"><ShieldCheck size={14} />{roleLabel(role)}</span></td>
+                        <td><span className={`system-users-status is-${statusTones[status] || "muted"}`}>{statusLabels[status] || targetUser.status || "Không rõ"}</span></td>
+                        <td>
+                          <div className="system-users-verify">
+                            <span className={targetUser.emailVerified ? "is-ok" : "is-missing"}>Email</span>
+                            <span className={targetUser.phoneVerified ? "is-ok" : "is-missing"}>SĐT</span>
+                          </div>
+                        </td>
+                        <td>{formatDateTime(targetUser.lastLoginAt)}</td>
+                        <td>
+                          <div className="system-users-row-actions">
+                            <button type="button" onClick={() => setSelectedUserId(targetUser.id)}>Sửa</button>
+                            {status === "blocked" ? (
+                              <button type="button" onClick={() => runSingleStatus(targetUser, "active")}><Unlock size={14} />Mở</button>
+                            ) : (
+                              <button type="button" onClick={() => runSingleStatus(targetUser, "blocked")}><Lock size={14} />Khóa</button>
+                            )}
+                            <button type="button" className="is-danger" onClick={() => runSoftDelete(targetUser)}><Trash2 size={14} />Xóa</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!filteredUsers.length ? (
+                    <tr><td colSpan={7}><div className="system-users-empty"><Users size={26} /><strong>Chưa có tài khoản hệ thống phù hợp</strong><span>Thử đổi bộ lọc hoặc làm mới danh sách.</span><button type="button" onClick={resetFilters}>Xóa bộ lọc</button></div></td></tr>
+                  ) : null}
+                </tbody>
+              )}
             </table>
           </div>
         </div>
@@ -506,6 +611,7 @@ export default function SystemUserManagement() {
           roles={systemRoles}
           form={form}
           setForm={setForm}
+          formErrors={formErrors}
           onSave={saveSelectedUser}
           onClose={() => setSelectedUserId("")}
           saving={loading}
