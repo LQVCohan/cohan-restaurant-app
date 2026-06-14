@@ -8,8 +8,13 @@ let savedScrollY = 0;
 let savedBodyStyle = null;
 let savedHtmlStyle = null;
 
-const getScrollbarWidth = () =>
-  Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+const isJsdomRuntime = () =>
+  typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
+
+const getScrollbarWidth = () => {
+  if (isJsdomRuntime()) return 0;
+  return Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+};
 
 const lockPageScroll = () => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -49,9 +54,6 @@ const lockPageScroll = () => {
 
   activeModalCount += 1;
 };
-
-const isJsdomRuntime = () =>
-  typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
 
 const restoreWindowScroll = (y) => {
   if (typeof window === "undefined") return;
@@ -214,7 +216,7 @@ const Modal = ({
       role="presentation"
     >
       <div
-        className={`modal modal--${size} modal--${position} ${className}`}
+        className={`modal modal-container modal--${size} modal--${position} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
