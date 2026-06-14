@@ -27,6 +27,7 @@
     "seed:rbac": "npm run seed:permissions && npm run seed:parent-roles && npm run seed:roles",
     "seed:demo:coupon-promotion": "node scripts/seedCouponPromotionDemo.js",
     "seed:demo:menu-management": "node scripts/seedMenuManagementDemo.js",
+    "seed:demo:customers": "node scripts/seedCustomerDemoData.js --restaurantId=69ce9e2e8d8d711f12e251b1",
     "test:performance": "vitest run tests/services/staff-performance-core-formula.service.test.js tests/services/performance-incident.service.test.js tests/services/performance-appeal.service.test.js",
     "backfill:restaurant-location": "node scripts/backfillRestaurantLocation.js",
     "seed:demo:payroll-readiness": "node scripts/seedPayrollReadinessDemo.js",
