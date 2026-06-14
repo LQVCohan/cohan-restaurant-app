@@ -42,6 +42,12 @@ vi.mock("@/context/AuthContext", () => ({ AuthContext: React.createContext({ use
 
 const open = () => fireEvent.click(screen.getByRole("button", { name: /Mở ChatBot A.I/i }));
 const send = (t) => { fireEvent.change(screen.getByPlaceholderText(/Hỏi AI gợi ý món|Hỏi về món ăn/i), { target: { value: t } }); fireEvent.click(screen.getByRole("button", { name: /Gửi tin nhắn/i })); };
+const waitForAssistantAnswer = () => waitFor(() => expect(screen.getByText("Trợ lý đã tiếp nhận.")).toBeInTheDocument(), { timeout: 1500 });
+const requestHandoff = async () => {
+  await waitForAssistantAnswer();
+  fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
+  await waitFor(() => expect(mocks.handoffMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+};
 const makeSocketFactory = () => ({
   on: (event, cb) => {
     if (event === "connect") mocks.connectHandler = cb;
@@ -75,8 +81,7 @@ describe("handoff", () => {
     render(<AiChatbotWidget testOverrides={{ disablePolling: true, socketFactory: makeSocketFactory }} />);
     open(); send("Cần hỗ trợ");
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
-    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
-    await waitFor(() => expect(mocks.handoffMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    await requestHandoff();
     send("Sau handoff");
     await waitFor(() => expect(mocks.guestMessageMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
   });
@@ -86,8 +91,7 @@ describe("handoff", () => {
     render(<AiChatbotWidget testOverrides={{ disablePolling: true, socketFactory: makeSocketFactory }} />);
     open(); send("Cần hỗ trợ");
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
-    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
-    await waitFor(() => expect(mocks.handoffMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    await requestHandoff();
     send("Tin mới");
     await waitFor(() => expect(screen.getByText("Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.")).toBeInTheDocument(), { timeout: 1500 });
   });
@@ -96,8 +100,7 @@ describe("handoff", () => {
     render(<AiChatbotWidget testOverrides={{ disablePolling: true, socketFactory: makeSocketFactory }} />);
     open(); send("Cần hỗ trợ");
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalled(), { timeout: 1500 });
-    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
-    await waitFor(() => expect(mocks.handoffMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    await requestHandoff();
     await act(async () => mocks.connectHandler?.());
     fireEvent.click(screen.getByRole("button", { name: /Đóng chatbot/i }));
     expect(mocks.socketEmit).toHaveBeenCalledWith("leaveAiChatbotConversation", { conversationId: "conv-1", guestId: "guest-1" });
@@ -108,8 +111,8 @@ describe("handoff", () => {
     render(<AiChatbotWidget testOverrides={{ disablePolling: true, socketFactory: makeSocketFactory }} />);
     open(); send("Cần hỗ trợ");
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalled(), { timeout: 1500 });
-    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
-    await waitFor(() => expect(mocks.handoffMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    await requestHandoff();
+    await waitFor(() => expect(typeof mocks.staffReplyHandler).toBe("function"), { timeout: 1500 });
     await act(async () => mocks.staffReplyHandler?.({ id: "2026-05-25T10:00:00.000Z_0", content: "Mình là nhân viên hỗ trợ đây.", senderLabel: "Nhân viên", createdAt: "2026-05-25T10:00:00.000Z" }));
     expect(screen.getAllByText("Mình là nhân viên hỗ trợ đây.")).toHaveLength(1);
   });
@@ -118,8 +121,7 @@ describe("handoff", () => {
     render(<AiChatbotWidget testOverrides={{ disablePolling: true, socketFactory: makeSocketFactory }} />);
     open(); send("Cần hỗ trợ");
     await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
-    fireEvent.click(screen.getByRole("button", { name: /Gặp nhân viên/i }));
-    await waitFor(() => expect(mocks.handoffMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    await requestHandoff();
     await waitFor(() => expect(typeof mocks.handoffResolvedHandler).toBe("function"), { timeout: 1500 });
     await act(async () => mocks.handoffResolvedHandler?.({ conversationId: "conv-1", status: "closed", message: "Nhân viên đã kết thúc phiên hỗ trợ." }));
     send("Sau close");
