@@ -57,7 +57,7 @@ describe("CustomerList manager workflow", () => {
   it("renders the empty state with backend pagination controls", () => {
     const pagination = makePagination();
 
-    render(<CustomerList customers={[]} loading={false} pagination={pagination} />);
+    const { container } = render(<CustomerList customers={[]} loading={false} pagination={pagination} />);
 
     expect(screen.getByText("Danh sách khách")).toBeInTheDocument();
     expect(screen.getByText("Chưa có khách phù hợp")).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe("CustomerList manager workflow", () => {
     expect(screen.getByRole("button", { name: /thêm khách hàng/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /xóa bộ lọc/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /bảng/i })).toBeDisabled();
-    expect(screen.getByText(/^Trang\s+/i)).toBeInTheDocument();
+    expect(container.querySelector(".cl-pagination")).toHaveTextContent(/Trang\s+1\s*\/\s*1/i);
   });
 
   it("shows loading skeletons while customer data is loading", () => {
