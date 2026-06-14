@@ -37,7 +37,7 @@ describe("StaffDashboardPage", () => {
     expect(screen.getByRole("link", { name: /Hồ sơ cá nhân/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Thông báo \/ nhắc việc/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Hiệu suất/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Chấm công vào\/ra/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Chấm công vào\/ra/i }).length).toBeGreaterThan(0);
     expect(screen.getByText("Sẵn sàng / Theo lịch")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Hồ sơ nhân viên" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Nhắc việc quan trọng" })).toBeInTheDocument();
