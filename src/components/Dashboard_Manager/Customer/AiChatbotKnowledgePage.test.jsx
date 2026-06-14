@@ -130,7 +130,7 @@ describe("AiChatbotKnowledgePage phase 18 UI", () => {
   it("evaluation tab renders and run/save/set actions call GraphQL operations", async () => {
     render(<AiChatbotKnowledgePage />);
     fireEvent.click(screen.getByRole("button", { name: "Kiểm thử" }));
-    expect(screen.getByText("Kiểm thử phản hồi")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kiểm thử phản hồi" })).toBeInTheDocument();
     fireEvent.change(screen.getAllByLabelText("Câu hỏi thử nghiệm")[0], { target: { value: "How is menu?" } });
     fireEvent.click(screen.getByText("Chạy thử"));
     fireEvent.change(screen.getAllByLabelText("Câu hỏi thử nghiệm")[1], { target: { value: "q" } });
