@@ -83,7 +83,7 @@ describe("SupplyList inventory regression", () => {
     render(<SupplyList restaurantId="res-1" warehouseId="wh-1" warehouses={[{ id: "wh-1", name: "Kho Việt" }]} />);
 
     expect(screen.getByPlaceholderText("Tìm kiếm vật tư...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Thêm vật tư/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^Thêm vật tư$/i })).toBeEnabled();
     expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.getByText("vật tư")).toBeInTheDocument();
 
@@ -93,7 +93,7 @@ describe("SupplyList inventory regression", () => {
     expect(screen.getByText("Thùng rác vật tư đang trống")).toBeInTheDocument();
     expect(screen.getByText("Vật tư đã chuyển vào đây sẽ được giữ trong 30 ngày.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Danh sách/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Thêm vật tư/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Thêm vật tư$/i })).toBeDisabled();
   });
 
   it("refreshes active and trash lists from the toolbar", () => {
