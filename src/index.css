@@ -6,8 +6,10 @@
 @import "./components/Customer/OrderTracking/publicOrderTracking.product.css";
 @import "./components/common/AiChatbotWidget.product.css";
 @import "./components/common/AiChatbotWidgetCustomerOrange.css";
+@import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotSettingsFinalPolish.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotSettingsHandoffExplain.css";
+@import "./components/Dashboard_Manager/Customer/AiChatbotSettingsDepthContrast.css";
 @import "./components/Customer/BookingTableModal/BookingModal.product.css";
 @import "./components/Customer/TableBooking/TableBooking.product.css";
 @import "./components/Customer/AddressPage/AddressPage.product.css";
