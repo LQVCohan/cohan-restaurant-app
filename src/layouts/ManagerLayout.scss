@@ -88,6 +88,7 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   &.sidebar-open &__main {
+    width: calc(100% - #{$manager-sidebar-shift});
     transform: translate3d($manager-sidebar-shift, 0, 0);
   }
 
