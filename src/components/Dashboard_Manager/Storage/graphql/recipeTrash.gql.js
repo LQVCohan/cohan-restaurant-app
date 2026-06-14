@@ -6,6 +6,8 @@ export const Q_RECIPE_TRASH = gql`
     recipeTrash(restaurantId: $restaurantId, limit: $limit) {
       recipe {
         ...RecipeFields
+        deletedAt
+        deleteExpiresAt
       }
       menuItem {
         id
@@ -25,6 +27,8 @@ export const M_RESTORE_RECIPE = gql`
   mutation RestoreRecipe($restaurantId: ID!, $menuItemId: ID!) {
     restoreRecipe(restaurantId: $restaurantId, menuItemId: $menuItemId) {
       ...RecipeFields
+      deletedAt
+      deleteExpiresAt
     }
   }
   ${FR_RECIPE_FIELDS}
