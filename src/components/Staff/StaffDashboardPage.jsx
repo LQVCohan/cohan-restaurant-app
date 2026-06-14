@@ -22,7 +22,7 @@ const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.displayName || user?.username || "Nhân viên";
 
 const getRestaurantLabel = (restaurantForStaff) => {
-  if (!restaurantForStaff) return "Chưa gán cơ sở";
+  if (!restaurantForStaff) return "Chưa xác định cơ sở làm việc";
   if (typeof restaurantForStaff === "string") return restaurantForStaff;
   return (
     restaurantForStaff.name ||
@@ -30,7 +30,7 @@ const getRestaurantLabel = (restaurantForStaff) => {
     restaurantForStaff.code ||
     restaurantForStaff.id ||
     restaurantForStaff._id ||
-    "Chưa gán cơ sở"
+    "Chưa xác định cơ sở làm việc"
   );
 };
 
@@ -146,19 +146,29 @@ const roleDepartmentCopy = {
   bar: "Ưu tiên lịch quầy bar, chuẩn bị nguyên liệu và phối hợp phục vụ.",
 };
 
+const managementRoleLabels = {
+  admin: "Quản trị viên",
+  manager: "Quản lý",
+  hr: "Nhân sự",
+  accountant: "Kế toán",
+  staff: "Nhân viên",
+};
+
+const getDashboardRoleLabel = (role) =>
+  managementRoleLabels[role] || getStaffRoleDisplayLabel(role) || "Nhân viên";
+
 const StaffDashboardPage = () => {
   const { user } = useContext(AuthContext);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const staffName = getDisplayName(user);
   const roleOption = getStaffRoleOption(normalizedRole);
-  const roleLabel = getStaffRoleDisplayLabel(user?.role || user?.roleName || normalizedRole) || "Nhân viên";
+  const roleLabel = getDashboardRoleLabel(normalizedRole);
   const departmentLabel = roleOption?.department ? departmentLabelMap[roleOption.department] : "Vận hành";
   const departmentCopy = roleDepartmentCopy[roleOption?.department] || "Mở nhanh đúng khu vực thao tác theo vai trò và lịch ca của bạn.";
   const restaurantLabel = getRestaurantLabel(user?.restaurantForStaff);
   const initials = getInitials(staffName);
   const canOrder = hasStaffOrderAccess(normalizedRole);
   const canKitchen = hasStaffKitchenAccess(normalizedRole);
-  const specialtyLabel = canOrder && canKitchen ? "Đơn nội bộ & Bếp" : canOrder ? "Đơn nội bộ" : canKitchen ? "Bếp" : "Cơ bản";
 
   const specialtyActions = useMemo(() => {
     const actions = [];
@@ -244,11 +254,6 @@ const StaffDashboardPage = () => {
         </aside>
       </section>
 
-      <section className="staff-metric-row" aria-label="Tổng quan nhanh">
-        <article className="staff-metric-tile staff-metric-tile--success"><span>Vai trò</span><strong>{roleLabel}</strong><small>{departmentLabel}</small></article>
-        <article className="staff-metric-tile staff-metric-tile--warning"><span>Cơ sở</span><strong>{restaurantLabel}</strong><small>Phạm vi làm việc</small></article>
-        <article className="staff-metric-tile staff-metric-tile--muted"><span>Quyền chuyên môn</span><strong>{specialtyLabel}</strong><small>{canOrder || canKitchen ? "Theo quyền được cấp" : "Lịch / hồ sơ / thông báo"}</small></article>
-      </section>
 
       <section className="staff-dashboard-section staff-card" aria-labelledby="staff-actions-title">
         <div className="staff-dashboard-section__header">

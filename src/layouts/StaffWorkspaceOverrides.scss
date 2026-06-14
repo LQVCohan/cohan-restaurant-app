@@ -126,3 +126,44 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Shared staff page rhythm aligned with the schedule page scale. */
+.staff-page {
+  color: #1F2A24;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.staff-page h1 {
+  color: #1F2A24;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.staff-page h2,
+.staff-section-title {
+  color: #1F2A24;
+  font-size: clamp(1.05rem, 1.8vw, 1.22rem);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.staff-page p {
+  color: #64746A;
+  line-height: 1.55;
+}
+
+.staff-card {
+  border-color: #DDE6DF;
+  border-radius: 20px;
+}
+
+.staff-chip {
+  border: 1px solid #DDE6DF;
+  border-radius: 999px;
+  background: #FFFFFF;
+  color: #64746A;
+  font-weight: 800;
+}

@@ -826,3 +826,13 @@ $border-color: #DCE8DF;
   .remote-order-modal__choice { grid-template-columns: 1fr; }
   .remote-order-modal__actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
+
+.staff-pos-main--menu {
+  padding-bottom: 112px;
+}
+
+@media (max-width: 899px) {
+  .staff-pos-main--menu {
+    padding-bottom: 132px;
+  }
+}

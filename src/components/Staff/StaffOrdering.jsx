@@ -36,7 +36,11 @@ import MenuOrdering from "./components/MenuOrdering";
 import CartBottomSheet from "./components/CartBottomSheet";
 import { AuthContext } from "../../context/AuthContext";
 import StaffProofCaptureModal from "./components/StaffProofCaptureModal";
-import { buildProofState, requiresProofImage } from "@/utils/orderProofRules";
+import {
+  buildProofState,
+  normalizeProofImages,
+  requiresProofImage,
+} from "@/utils/orderProofRules";
 const STAFF_ORDER_NO_PERMISSION_MESSAGE =
   "Vai trò hiện tại không có quyền thực hiện thao tác này.";
 const REQUEST_ORDER_ITEM_VOID = gql`
@@ -96,6 +100,18 @@ const TABLES_QUERY = gql`
       floorLevel
       status
       capacity
+    }
+  }
+`;
+
+
+const STAFF_MENU_CATEGORIES = gql`
+  query StaffMenuCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
+    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+      id
+      name
+      isActive
+      order
     }
   }
 `;
@@ -315,6 +331,14 @@ const toCustomerLabel = (row) => ({
 
 const STAFF_ASSISTED_CHANNEL = "staff_assisted";
 
+const getCurrentStaffMenuTimeSlot = () => {
+  const hour = new Date().getHours();
+  if (hour < 10) return "breakfast";
+  if (hour < 15) return "lunch";
+  if (hour < 21) return "dinner";
+  return "late_night";
+};
+
 const getLocalDateTimeValue = () => {
   const now = new Date();
   const offset = now.getTimezoneOffset();
@@ -486,6 +510,7 @@ export default function StaffOrdering() {
   const [remoteDiscountBreakdown, setRemoteDiscountBreakdown] = useState(null);
   const [remoteDiscountError, setRemoteDiscountError] = useState("");
   const [remoteDiscountPreviewKey, setRemoteDiscountPreviewKey] = useState("");
+  const [isMenuItemSheetOpen, setIsMenuItemSheetOpen] = useState(false);
   const staffOrderPermissions = useMemo(
     () =>
       getStaffOrderingPermissions(user, {
@@ -586,6 +611,14 @@ export default function StaffOrdering() {
     fetchPolicy: "network-only",
   });
 
+  const currentMenuTimeSlot = useMemo(() => getCurrentStaffMenuTimeSlot(), []);
+
+  const { data: menuCategoriesData } = useQuery(STAFF_MENU_CATEGORIES, {
+    variables: { restaurantId, timeSlot: currentMenuTimeSlot },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+
   const { data: menuData, loading: menuLoading } = useQuery(MENU_ITEMS_QUERY, {
     variables: { restaurantId, limit: 300 },
     skip: !restaurantId,
@@ -616,6 +649,16 @@ export default function StaffOrdering() {
     return set.size ? Array.from(set) : ["Tầng 1"];
   }, [tables]);
 
+  const menuCategoryNameById = useMemo(() => {
+    const map = new Map();
+    (menuCategoriesData?.categories || []).forEach((category) => {
+      if (category?.id && category?.name) {
+        map.set(String(category.id), category.name);
+      }
+    });
+    return map;
+  }, [menuCategoriesData]);
+
   const menuItems = useMemo(() => {
     const rows = menuData?.menuItems || [];
     return rows.map((m) => {
@@ -630,6 +673,11 @@ export default function StaffOrdering() {
         String(m.status || "").toLowerCase(),
       );
 
+      // Waiting for backend category name mapping; avoid exposing raw category IDs in staff UI.
+      const categoryName = m.categoryId
+        ? menuCategoryNameById.get(String(m.categoryId))
+        : "";
+
       return {
         id: m.id,
         dishId: m.id,
@@ -638,9 +686,7 @@ export default function StaffOrdering() {
         name: m.name,
         price: Number(defaultVariant?.price ?? m.basePrice ?? 0),
         stock: isSellable ? 99 : 0,
-        category: m.categoryId
-          ? `Danh mục ${String(m.categoryId).slice(-4)}`
-          : "Khác",
+        category: categoryName || "Chưa phân loại",
         prep: variants.length
           ? variants.map((v) => v.name).filter(Boolean)
           : ["Mặc định"],
@@ -650,11 +696,11 @@ export default function StaffOrdering() {
         thumbImage: m.thumbImage || null,
       };
     });
-  }, [menuData]);
+  }, [menuCategoryNameById, menuData]);
 
   const dynamicCategories = useMemo(() => {
     const set = new Set(["Tất cả"]);
-    menuItems.forEach((m) => set.add(m.category || "Khác"));
+    menuItems.forEach((m) => set.add(m.category || "Chưa phân loại"));
     return Array.from(set);
   }, [menuItems]);
 
@@ -1162,6 +1208,7 @@ export default function StaffOrdering() {
 
     const prep = addOptions.prep || "Mặc định";
     const serveOrder = addOptions.serveOrder || "Mang ra cùng lúc";
+    const proofImages = normalizeProofImages(addOptions.proofImages);
     const selectedVariant =
       addOptions.variant ||
       item.defaultVariant ||
@@ -1175,10 +1222,11 @@ export default function StaffOrdering() {
 
     const nextPriority = mapItemPriorityFromServeOrder(serveOrder);
     const signature = `${item.id}__${selectedVariant?.key || item.servingKey || "portion"}__${prep || ""}__${serveOrder || ""}`;
+    const hasDraftProofImages = proofImages.length > 0;
 
     setCartByTable((prevMap) => {
       const prev = prevMap[targetTableId] || [];
-      const idx = prev.findIndex(
+      const idx = hasDraftProofImages ? -1 : prev.findIndex(
         (x) =>
           x.signature === signature && x.status === "pending" && !x.persisted,
       );
@@ -1219,7 +1267,7 @@ export default function StaffOrdering() {
                 quantity: 1,
 
                 status: "pending",
-                proofImages: [],
+                proofImages,
                 persisted: false,
               };
               const proofState = buildProofState(newItem);
@@ -1708,7 +1756,7 @@ export default function StaffOrdering() {
       </header>
 
 
-      <div className="staff-pos-main">
+      <div className={`staff-pos-main staff-pos-main--${activeTab}`}>
         {(tablesLoading || menuLoading) && (
           <div className="staff-inline-state">Đang tải dữ liệu nhà hàng...</div>
         )}
@@ -1842,12 +1890,13 @@ export default function StaffOrdering() {
               onRemoveCustomer={handleRemoveCustomer}
               menuItems={menuItems}
               categories={dynamicCategories}
+              onItemSheetOpenChange={setIsMenuItemSheetOpen}
             />
           </>
         )}
       </div>
 
-      {(activeTab === "menu" || activeTab === "tables") && cartContextTable && (
+      {(activeTab === "menu" || activeTab === "tables") && cartContextTable && !isMenuItemSheetOpen && (
         <div className="floating-cart-wrapper">
           <button
             className="btn-floating-cart"

@@ -2349,3 +2349,69 @@
   .staff-window-summary { grid-template-columns: 1fr; }
   .staff-availability-matrix { overflow-x: auto; }
 }
+
+/* Final staff schedule scale pass: keep this page as the typography rhythm reference. */
+.staff-schedule-page {
+  --staff-border: #DDE6DF;
+  --staff-page-max: 1360px;
+  --staff-sidebar-width: 360px;
+  --staff-page-gap: 18px;
+  font-size: 15px;
+}
+
+.staff-schedule-layout,
+.staff-schedule-hero {
+  max-width: min(var(--staff-page-max), 100%);
+}
+
+.staff-card__header h2 {
+  font-size: 20px;
+}
+
+.staff-card__header p,
+.staff-schedule-page p {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.staff-primary-button,
+.staff-week-switcher__button,
+.staff-shift-tab,
+.staff-day-card {
+  min-height: 42px;
+}
+
+.staff-availability-matrix__grid {
+  grid-template-columns: 148px repeat(7, minmax(112px, 1fr));
+  min-width: 980px;
+}
+
+.staff-availability-matrix__corner,
+.staff-availability-matrix__day {
+  min-height: 54px;
+}
+
+.staff-availability-matrix__shift,
+.staff-matrix-slot {
+  min-height: 64px;
+}
+
+.staff-availability-matrix__day strong,
+.staff-availability-matrix__shift strong {
+  font-size: 13.5px;
+}
+
+.staff-matrix-slot__label {
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .staff-schedule-page {
+    font-size: 14px;
+  }
+
+  .staff-availability-matrix__grid {
+    grid-template-columns: 132px repeat(7, 96px);
+    min-width: 804px;
+  }
+}

@@ -15,13 +15,25 @@ const getDisplayName = (user) => {
   return user.fullName || user.name || user.displayName || user.username || null;
 };
 
+const roleLabelFallbacks = {
+  admin: "Quản trị viên",
+  manager: "Quản lý",
+  hr: "Nhân sự",
+  accountant: "Kế toán",
+  staff: "Nhân viên",
+};
+
 const getRoleLabel = (user, normalizedRole) => {
-  if (!user || typeof user !== "object") return normalizedRole;
-  return getStaffRoleDisplayLabel(user.role || user.roleName || user.roleSlug || normalizedRole) || normalizedRole;
+  if (!user || typeof user !== "object") return roleLabelFallbacks[normalizedRole] || normalizedRole;
+  return (
+    roleLabelFallbacks[normalizedRole] ||
+    getStaffRoleDisplayLabel(user.role || user.roleName || user.roleSlug || normalizedRole) ||
+    normalizedRole
+  );
 };
 
 const getRestaurantLabel = (user, restaurants) => {
-  return user?.restaurantName || user?.restaurant?.name || restaurants?.[0]?.name || "Cơ sở đang làm việc";
+  return user?.restaurantName || user?.restaurant?.name || restaurants?.[0]?.name || "Chưa xác định cơ sở làm việc";
 };
 
 const isActivePath = (location, target) => {
