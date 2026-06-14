@@ -28,18 +28,19 @@ describe("StaffDashboardPage", () => {
   it("renders the redesigned staff dashboard copy and action links", () => {
     renderDashboard();
 
-    expect(screen.getByRole("heading", { name: "Hôm nay cần làm gì?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /Xin chào,\s*Nhân viên Test/i })).toBeInTheDocument();
     expect(screen.queryByText("Bạn chưa có ca hôm nay")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Kiểm tra ca hôm nay" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kiểm tra ca trước khi bắt đầu" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Việc cần xử lý" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Xem lịch tuần" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Đăng ký lịch/ }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: /Xem hồ sơ/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Xem thông báo/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Xem phản hồi/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Check-in\/out/ })).toBeInTheDocument();
-    expect(screen.getByText("Sẵn sàng phục vụ")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Hồ sơ trong khu vực nhân viên" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Nhắc việc trong ca" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Đăng ký lịch rảnh\/bận/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /Hồ sơ cá nhân/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Thông báo \/ nhắc việc/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Hiệu suất/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Chấm công vào\/ra/i })).toBeInTheDocument();
+    expect(screen.getByText("Sẵn sàng / Theo lịch")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hồ sơ nhân viên" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nhắc việc quan trọng" })).toBeInTheDocument();
   });
 
   it("does not add another main landmark inside StaffLayout", () => {
