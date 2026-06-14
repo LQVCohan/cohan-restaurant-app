@@ -25,34 +25,47 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   position: relative;
   display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-columns: #{$manager-sidebar-collapsed} minmax(0, 1fr);
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
   isolation: isolate;
-  transition: grid-template-columns 0.22s $manager-sidebar-ease;
   background:
     radial-gradient(circle at 10% 0%, rgba(168, 133, 95, 0.13), transparent 28rem),
     radial-gradient(circle at 95% 0%, rgba(83, 108, 97, 0.09), transparent 26rem),
     linear-gradient(180deg, $manager-bg-soft 0%, $manager-bg 52%, #f2f1ec 100%);
 
   &.sidebar-open {
-    --sidebar-width: #{$manager-sidebar-expanded};
+    --sidebar-width: #{$manager-sidebar-collapsed};
   }
 
   .sidebar {
-    grid-column: 1;
+    position: fixed;
+    top: 0;
+    left: 0;
+    grid-column: auto;
     z-index: var(--z-sidebar);
-    width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
-    max-width: var(--sidebar-width);
+    width: $manager-sidebar-collapsed;
+    min-width: $manager-sidebar-collapsed;
+    max-width: $manager-sidebar-collapsed;
+    height: 100vh;
+    height: 100dvh;
+    transform: translate3d(0, 0, 0);
     transition:
       width 0.22s $manager-sidebar-ease,
       min-width 0.22s $manager-sidebar-ease,
       max-width 0.22s $manager-sidebar-ease,
-      transform 0.18s $manager-sidebar-ease,
+      box-shadow 0.22s ease,
       visibility 0.18s ease;
+    will-change: width;
+    contain: layout paint;
+  }
+
+  &.sidebar-open .sidebar {
+    width: $manager-sidebar-expanded;
+    min-width: $manager-sidebar-expanded;
+    max-width: $manager-sidebar-expanded;
   }
 
   &__main {
@@ -131,13 +144,7 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   @media (max-width: 768px) {
-    --sidebar-width: 0px;
     grid-template-columns: minmax(0, 1fr);
-    transition: none;
-
-    &.sidebar-open {
-      --sidebar-width: 0px;
-    }
 
     .sidebar {
       position: fixed;
@@ -152,11 +159,19 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       transform: translate3d(-100%, 0, 0);
       visibility: hidden;
       z-index: var(--z-overlay);
+      transition:
+        transform 0.22s $manager-sidebar-ease,
+        visibility 0.22s ease;
+      will-change: transform;
+      contain: layout paint;
     }
 
     &.sidebar-open .sidebar {
       transform: translate3d(0, 0, 0);
       visibility: visible;
+      width: min(100%, 22rem);
+      min-width: 0;
+      max-width: min(100%, 22rem);
     }
 
     &__main {
