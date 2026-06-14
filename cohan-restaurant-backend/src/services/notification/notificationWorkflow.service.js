@@ -22,6 +22,7 @@ function emitNotificationCreated(notification) {
     toRole: notification.toRole || null,
     restaurantId: notification.restaurantId ? String(notification.restaurantId) : null,
     type: notification.type,
+    uniqueKey: notification.uniqueKey || notification.payload?.uniqueKey || null,
     payload: notification.payload || {},
     readAt: notification.readAt || null,
     createdAt: notification.createdAt || null,
@@ -37,23 +38,28 @@ async function reviewerIds(restaurantId) {
 export async function createNotificationOnce({ toUserId, toRole = null, restaurantId = null, type, payload = {}, sourceType, sourceId }) {
   if (!toUserId || !type) return null;
   const uniqueKey = buildUniqueKey({ toUserId, type, sourceType, sourceId });
-  const notification = await Notification.findOneAndUpdate(
-    { $or: [{ uniqueKey }, { "payload.uniqueKey": uniqueKey }] },
-    {
-      $setOnInsert: {
-        toUserId,
-        toRole,
-        restaurantId,
-        type,
-        uniqueKey,
-        payload: { ...payload, sourceType: sourceType || null, sourceId: sourceId || null, uniqueKey },
-        readAt: null,
-      },
-    },
-    { new: true, upsert: true },
-  );
-  emitNotificationCreated(notification);
-  return notification;
+  const condition = { $or: [{ uniqueKey }, { "payload.uniqueKey": uniqueKey }] };
+  const existing = await Notification.findOne(condition);
+  if (existing) return existing;
+
+  try {
+    const notification = await Notification.create({
+      toUserId,
+      toRole,
+      restaurantId,
+      type,
+      uniqueKey,
+      payload: { ...payload, sourceType: sourceType || null, sourceId: sourceId || null, uniqueKey },
+      readAt: null,
+    });
+    emitNotificationCreated(notification);
+    return notification;
+  } catch (error) {
+    if (error?.code === 11000) {
+      return Notification.findOne(condition);
+    }
+    throw error;
+  }
 }
 
 export async function notifyReviewers({ restaurantId, type, payload, sourceType, sourceId, actionUrl }) {
