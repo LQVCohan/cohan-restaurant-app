@@ -1,0 +1,186 @@
+/* Final report-grid polish for AI Chatbot Analytics.
+   Goal: reduce right-column heaviness, use the full dashboard width, and improve report rhythm. */
+
+.manager-layout--ai-chatbot-analytics .ai-admin-page--analytics {
+  row-gap: 16px !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-report-summary {
+  min-height: 142px !important;
+  border: 1px solid rgba(124, 93, 63, 0.18) !important;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(255, 102, 0, 0.07), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(249, 243, 234, 0.92)) !important;
+  box-shadow: 0 18px 46px rgba(79, 55, 33, 0.1) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-report-summary h2 {
+  font-size: clamp(34px, 3vw, 44px) !important;
+  letter-spacing: -0.055em !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-metrics article {
+  min-height: 100px !important;
+  border: 1px solid rgba(124, 93, 63, 0.18) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 12px 30px rgba(79, 55, 33, 0.08) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip {
+  min-height: 58px !important;
+  padding: 10px 14px !important;
+  border-color: rgba(166, 106, 24, 0.24) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 94, 0.18), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 246, 226, 0.95), rgba(255, 253, 248, 0.98)) !important;
+  box-shadow: 0 12px 30px rgba(79, 55, 33, 0.08) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__summary h3 {
+  font-size: 15px !important;
+  letter-spacing: -0.015em !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__summary p,
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__item small {
+  font-size: 11px !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-review-strip__item {
+  min-height: 42px !important;
+  display: grid !important;
+  align-content: center !important;
+  padding: 8px 10px !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-link-button {
+  min-height: 40px !important;
+  border-radius: 13px !important;
+  background: #8a623d !important;
+  color: #fff !important;
+  box-shadow: 0 10px 20px rgba(138, 98, 61, 0.18) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-card__header {
+  min-height: 86px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.78fr) minmax(180px, 1fr) !important;
+  align-items: start !important;
+  column-gap: 18px !important;
+  padding: 18px 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(138, 98, 61, 0.05), transparent 14rem),
+    linear-gradient(135deg, #fffdf8, #f7efe5) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-card__header h3 {
+  margin: 0 !important;
+  color: #211b16 !important;
+  font-size: clamp(22px, 1.7vw, 28px) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.052em !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-card__header p {
+  margin: 2px 0 0 !important;
+  color: #76685b !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+}
+
+.manager-layout--ai-chatbot-analytics .customer-analytics-panel,
+.manager-layout--ai-chatbot-analytics .ai-admin-control-card {
+  border: 1px solid rgba(124, 93, 63, 0.17) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 16px 38px rgba(79, 55, 33, 0.09) !important;
+  overflow: hidden !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-list {
+  padding: 14px 16px !important;
+  gap: 10px !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-analytics-list__item {
+  min-height: 46px !important;
+  padding: 11px 13px !important;
+  border-radius: 14px !important;
+  border-color: rgba(124, 93, 63, 0.15) !important;
+  background: rgba(255, 250, 244, 0.82) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-empty--soft {
+  min-height: 150px !important;
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  border-radius: 16px !important;
+  background: rgba(255, 250, 244, 0.78) !important;
+}
+
+@media (min-width: 1180px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid,
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+    width: 100% !important;
+    margin-top: 0 !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid article:nth-child(2) {
+    order: -1 !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid .customer-analytics-panel,
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid .customer-analytics-panel {
+    min-height: 252px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid .ai-analytics-list {
+    max-height: 236px !important;
+    overflow: auto !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-technical-details {
+    grid-column: 1 / -1 !important;
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid,
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid article:nth-child(2) {
+    order: -1 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-metrics {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-analytics-card__header {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-analytics-card__header h3 {
+    font-size: 23px !important;
+  }
+}

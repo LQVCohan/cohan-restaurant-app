@@ -1,0 +1,158 @@
+/* Manager typography final pass
+   Direction: Vietnamese-first, clear, professional, and comfortable for long operations. */
+
+.manager-layout {
+  --manager-font-family: "Be Vietnam Pro", "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
+  --manager-heading-weight: 700;
+  --manager-title-weight: 680;
+  --manager-body-weight: 400;
+  --manager-label-weight: 600;
+  --manager-control-weight: 600;
+}
+
+.manager-layout,
+.manager-layout button,
+.manager-layout input,
+.manager-layout textarea,
+.manager-layout select,
+.manager-layout option,
+.manager-layout label,
+.manager-layout table,
+.manager-layout th,
+.manager-layout td,
+.manager-layout .btn,
+.manager-layout .btn__text,
+.manager-layout .ant-btn,
+.manager-layout .ant-input,
+.manager-layout .ant-select,
+.manager-layout .ant-table,
+.manager-layout .ant-card,
+.manager-layout .manager-page-shell,
+.manager-layout .storage-management {
+  font-family: var(--manager-font-family) !important;
+}
+
+body:has(.manager-layout) .modal-container,
+body:has(.manager-layout) .modal-container button,
+body:has(.manager-layout) .modal-container input,
+body:has(.manager-layout) .modal-container textarea,
+body:has(.manager-layout) .modal-container select,
+body:has(.manager-layout) .modal-container label,
+body:has(.manager-layout) .modal-container table,
+body:has(.manager-layout) .modal-container .btn,
+body:has(.manager-layout) .modal-container .btn__text,
+body:has(.manager-layout) .ant-select-dropdown,
+body:has(.manager-layout) .ant-picker-dropdown,
+body:has(.manager-layout) .ant-dropdown,
+body:has(.manager-layout) .ant-popover {
+  font-family: var(--manager-font-family) !important;
+}
+
+.manager-layout,
+body:has(.manager-layout) .modal-container {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1, "tnum" 1;
+}
+
+.manager-layout h1,
+.manager-layout h2,
+.manager-layout h3,
+.manager-layout h4,
+.manager-layout h5,
+.manager-layout h6,
+.manager-layout .page-title,
+.manager-layout .section-title,
+.manager-layout .card-title,
+.manager-layout .sm-page-title,
+.manager-layout .sm-section-title,
+.manager-layout .im-section-title,
+.manager-layout .il-card__name,
+.manager-layout .item-name,
+body:has(.manager-layout) .modal-container h1,
+body:has(.manager-layout) .modal-container h2,
+body:has(.manager-layout) .modal-container h3,
+body:has(.manager-layout) .modal-container h4,
+body:has(.manager-layout) .modal-container .modal-title,
+body:has(.manager-layout) .modal-container .im-section-title,
+body:has(.manager-layout) .modal-container .item-name {
+  font-family: var(--manager-font-family) !important;
+  font-weight: var(--manager-heading-weight) !important;
+  letter-spacing: -0.018em !important;
+}
+
+.manager-layout p,
+.manager-layout small,
+.manager-layout li,
+.manager-layout td,
+.manager-layout .description,
+.manager-layout .subtitle,
+.manager-layout .text-muted,
+.manager-layout .sm-muted,
+.manager-layout .im-section-desc,
+body:has(.manager-layout) .modal-container p,
+body:has(.manager-layout) .modal-container small,
+body:has(.manager-layout) .modal-container td,
+body:has(.manager-layout) .modal-container .im-section-desc {
+  font-weight: var(--manager-body-weight) !important;
+  letter-spacing: -0.001em !important;
+}
+
+.manager-layout label,
+.manager-layout th,
+.manager-layout .label,
+.manager-layout .field-label,
+.manager-layout .sm-field-label,
+.manager-layout .il-stat-label,
+.manager-layout .metric-label,
+body:has(.manager-layout) .modal-container label,
+body:has(.manager-layout) .modal-container th,
+body:has(.manager-layout) .modal-container .metric-label {
+  font-weight: var(--manager-label-weight) !important;
+  letter-spacing: 0.004em !important;
+}
+
+.manager-layout button,
+.manager-layout .btn,
+.manager-layout .btn__text,
+.manager-layout input,
+.manager-layout textarea,
+.manager-layout select,
+.manager-layout .ant-btn,
+.manager-layout .ant-input,
+body:has(.manager-layout) .modal-container button,
+body:has(.manager-layout) .modal-container .btn,
+body:has(.manager-layout) .modal-container .btn__text,
+body:has(.manager-layout) .modal-container input,
+body:has(.manager-layout) .modal-container textarea,
+body:has(.manager-layout) .modal-container select {
+  font-weight: var(--manager-control-weight) !important;
+  letter-spacing: -0.003em !important;
+  line-height: 1.42 !important;
+}
+
+.manager-layout .sm-stat-value,
+.manager-layout .il-stat-value,
+.manager-layout .metric-value,
+.manager-layout .hero-stats strong,
+.manager-layout .number,
+.manager-layout .price,
+body:has(.manager-layout) .modal-container .metric-value,
+body:has(.manager-layout) .modal-container .hero-stats strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700 !important;
+  letter-spacing: -0.012em !important;
+}
+
+/* Neutralize overly heavy legacy weights inside manager pages. */
+.manager-layout [style*="font-weight: 800"],
+.manager-layout [style*="font-weight:800"],
+.manager-layout [style*="font-weight: 900"],
+.manager-layout [style*="font-weight:900"],
+body:has(.manager-layout) .modal-container [style*="font-weight: 800"],
+body:has(.manager-layout) .modal-container [style*="font-weight:800"],
+body:has(.manager-layout) .modal-container [style*="font-weight: 900"],
+body:has(.manager-layout) .modal-container [style*="font-weight:900"] {
+  font-weight: 700 !important;
+}

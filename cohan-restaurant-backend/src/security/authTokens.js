@@ -9,12 +9,17 @@ export { parseDurationMs };
 
 export const REFRESH_TOKEN_INVALID_MESSAGE = "Authentication failed";
 
-export function getRefreshTokenTtlMs() {
-  return parseDurationMs(process.env.REFRESH_TOKEN_EXPIRES_IN, "7d");
+export function getRefreshTokenTtlMs({ persistent = true } = {}) {
+  return parseDurationMs(
+    persistent
+      ? process.env.REFRESH_TOKEN_EXPIRES_IN
+      : process.env.SESSION_REFRESH_TOKEN_EXPIRES_IN,
+    persistent ? "30d" : "12h",
+  );
 }
 
-export function getRefreshCookieMaxAgeSeconds() {
-  return Math.floor(getRefreshTokenTtlMs() / 1000);
+export function getRefreshCookieMaxAgeSeconds(options = {}) {
+  return Math.floor(getRefreshTokenTtlMs(options) / 1000);
 }
 
 export function hashRefreshToken(rawToken) {
@@ -32,15 +37,20 @@ export function signAccessToken(user) {
   );
 }
 
-export function refreshCookieOptions() {
+export function refreshCookieOptions({ persistent = true } = {}) {
   const isProduction = process.env.NODE_ENV === "production";
-  return {
+  const options = {
     path: "/api/auth",
     httpOnly: true,
     secure: isProduction,
     sameSite: String(process.env.REFRESH_TOKEN_COOKIE_SAMESITE || "lax").toLowerCase(),
-    maxAge: getRefreshCookieMaxAgeSeconds(),
   };
+
+  if (persistent) {
+    options.maxAge = getRefreshCookieMaxAgeSeconds({ persistent });
+  }
+
+  return options;
 }
 
 export function clearRefreshCookie(reply) {
@@ -50,12 +60,24 @@ export function clearRefreshCookie(reply) {
   });
 }
 
-export async function issueRefreshToken({ userId, reply, userAgent, ip }) {
+export async function issueRefreshToken({ userId, reply, userAgent, ip, persistent = true }) {
   const raw = crypto.randomBytes(48).toString("base64url");
   const tokenHash = hashRefreshToken(raw);
-  const expiresAt = new Date(Date.now() + getRefreshTokenTtlMs());
-  await RefreshToken.create({ userId, tokenHash, expiresAt, userAgent: userAgent || null, ip: ip || null });
-  reply.setCookie(process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token", raw, refreshCookieOptions());
+  const isPersistent = persistent !== false;
+  const expiresAt = new Date(Date.now() + getRefreshTokenTtlMs({ persistent: isPersistent }));
+  await RefreshToken.create({
+    userId,
+    tokenHash,
+    expiresAt,
+    persistent: isPersistent,
+    userAgent: userAgent || null,
+    ip: ip || null,
+  });
+  reply.setCookie(
+    process.env.REFRESH_TOKEN_COOKIE_NAME || "refresh_token",
+    raw,
+    refreshCookieOptions({ persistent: isPersistent }),
+  );
   return { raw, tokenHash };
 }
 
@@ -101,7 +123,8 @@ export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip
   const user = await User.findById(existing.userId).populate("role").lean({ virtuals: true });
   if (!user || user.status !== "active") return null;
 
-  const issued = await issueRefreshToken({ userId: existing.userId, reply, userAgent, ip });
+  const persistent = existing.persistent !== false;
+  const issued = await issueRefreshToken({ userId: existing.userId, reply, userAgent, ip, persistent });
   existing.revokedAt = new Date();
   existing.replacedByTokenHash = issued.tokenHash;
   await existing.save();

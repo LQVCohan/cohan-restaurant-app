@@ -18,6 +18,7 @@ import PromotionManagement from "../components/Dashboard_Manager/Promotion/Promo
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
 import "./ManagerUnifiedBackground.css";
+import "../components/Dashboard_Manager/Customer/AiChatbotAdminDashboardScale.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
@@ -26,6 +27,7 @@ import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/Prin
 import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
 import SettingsManagement from "@/components/Dashboard_Manager/Settings/SettingsManagement";
 import BackupManagement from "@/components/Dashboard_Manager/Backup/BackupManagement";
+import SystemUserManagement from "@/components/Dashboard_Manager/SystemUsers/SystemUserManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
@@ -38,7 +40,7 @@ const VALID_MANAGER_PAGES = new Set([
   "dashboard", "tables", "orders", "menu", "inventory", "staff", "customers",
   "customer-analytics", "analytics", "transactions", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
-  "backup", "print-management", "restaurant-info-management", "rbac", "ai-handoff",
+  "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
 ]);
 
@@ -84,6 +86,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   backup: ["system.manage"],
   "print-management": ["print.read", "report.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
+  "system-users": ["system.manage"],
   "ai-handoff": ["ai.chatbot.handoff", "ai.chatbot.moderate"],
   "ai-chatbot-analytics": ["ai.chatbot.analytics.read", "ai.chatbot.read"],
   "ai-chatbot-settings": ["ai.chatbot.write"],
@@ -94,6 +97,8 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
     "ai.chatbot.evaluate",
   ],
 };
+
+const ADMIN_ONLY_MANAGER_PAGES = new Set(["system-users"]);
 
 const page = (title, description, icon, keywords = []) => ({ title, description, icon, keywords });
 const PAGE_CONFIG = {
@@ -116,6 +121,7 @@ const PAGE_CONFIG = {
   "print-management": page("Quản lý in ấn", "Cấu hình máy in, mẫu in, hàng đợi và retry print job", "🖨️", ["print", "máy in", "phiếu bếp", "queue"]),
   "restaurant-info-management": page("Thông tin nhà hàng", "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", "🏪", ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"]),
   rbac: page("Phân quyền nhân viên", "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", "🛡️", ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"]),
+  "system-users": page("Quản lý người dùng hệ thống", "Quản lý Admin, Manager và các tài khoản không thuộc nhóm Staff", "👤", ["admin", "manager", "người dùng", "tài khoản", "system user", "khóa tài khoản"]),
   "ai-handoff": page("Hỗ trợ từ AI", "Tiếp nhận các cuộc trò chuyện cần nhân viên hỗ trợ", "🤖", ["handoff", "chatbot", "support", "hỗ trợ"]),
   "ai-chatbot-analytics": page("Báo cáo Chatbot AI", "Theo dõi chất lượng tư vấn và nhu cầu chuyển nhân viên", "📡", ["ai", "chatbot", "analytics", "handoff"]),
   "ai-chatbot-settings": page("Cài đặt Chatbot AI", "Quản lý lời chào, gợi ý nhanh và chuyển nhân viên", "⚙️", ["ai", "chatbot", "settings", "handoff"]),
@@ -131,13 +137,18 @@ const PermissionFallback = () => <div className="manager-page-shell__empty">Bạ
 const ManagerLayout = () => {
   const { user } = useContext(AuthContext);
   const roleName = user?.roleName || user?.role?.slug;
+  const isAdminUser = isAdminRole(user) || isAdminRole(roleName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
   const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
   const allowedPages = useMemo(() => {
     const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(([id, permissions]) => ({ id, permissions }));
-    return new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
-  }, [user]);
+    const pageSet = new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
+    if (!isAdminUser) {
+      ADMIN_ONLY_MANAGER_PAGES.forEach((pageId) => pageSet.delete(pageId));
+    }
+    return pageSet;
+  }, [isAdminUser, user]);
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -231,6 +242,7 @@ const ManagerLayout = () => {
       case "print-management": return <PrintManagement />;
       case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
       case "rbac": return <RbacManagement />;
+      case "system-users": return <SystemUserManagement />;
       case "ai-handoff": return <AiHandoffInbox />;
       case "ai-chatbot-analytics": return <AiChatbotAnalyticsPage />;
       case "ai-chatbot-settings": return <AiChatbotSettingsPage />;

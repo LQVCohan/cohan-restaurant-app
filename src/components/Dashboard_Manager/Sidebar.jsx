@@ -199,6 +199,13 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
           page: "Cài đặt",
         },
         {
+          id: "system-users",
+          roles: ["admin"],
+          icon: "👤",
+          label: "Người dùng hệ thống",
+          page: "Người dùng hệ thống",
+        },
+        {
           id: "print-management",
           permissions: ["print.read", "report.read"],
           icon: "🖨️",
@@ -357,10 +364,6 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
                 {sidebarUserRole}
               </div>
             </div>
-          </div>
-
-          <div className="sidebar-version">
-            <span>v2.1.0</span>
           </div>
         </div>
       </aside>

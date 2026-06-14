@@ -3,6 +3,101 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import "./Modal.scss";
 
+let activeModalCount = 0;
+let savedScrollY = 0;
+let savedBodyStyle = null;
+let savedHtmlStyle = null;
+
+const isJsdomRuntime = () =>
+  typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
+
+const getScrollbarWidth = () => {
+  if (isJsdomRuntime()) return 0;
+  return Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+};
+
+const lockPageScroll = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  if (activeModalCount === 0) {
+    savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    savedBodyStyle = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+      paddingRight: document.body.style.paddingRight,
+    };
+    savedHtmlStyle = {
+      overflow: document.documentElement.style.overflow,
+      overscrollBehavior: document.documentElement.style.overscrollBehavior,
+    };
+
+    const scrollbarWidth = getScrollbarWidth();
+    document.body.classList.add("modal-open");
+    document.documentElement.classList.add("modal-open");
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+  }
+
+  activeModalCount += 1;
+};
+
+const restoreWindowScroll = (y) => {
+  if (typeof window === "undefined") return;
+  if (typeof window.scrollTo !== "function") return;
+  if (isJsdomRuntime()) return;
+
+  try {
+    window.scrollTo(0, y);
+  } catch {
+    // Runtime browsers restore normally; non-browser test doubles may not support scrollTo.
+  }
+};
+
+const unlockPageScroll = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  activeModalCount = Math.max(0, activeModalCount - 1);
+  if (activeModalCount > 0) return;
+
+  document.body.classList.remove("modal-open");
+  document.documentElement.classList.remove("modal-open");
+
+  if (savedBodyStyle) {
+    document.body.style.position = savedBodyStyle.position;
+    document.body.style.top = savedBodyStyle.top;
+    document.body.style.left = savedBodyStyle.left;
+    document.body.style.right = savedBodyStyle.right;
+    document.body.style.width = savedBodyStyle.width;
+    document.body.style.overflow = savedBodyStyle.overflow;
+    document.body.style.paddingRight = savedBodyStyle.paddingRight;
+  }
+
+  if (savedHtmlStyle) {
+    document.documentElement.style.overflow = savedHtmlStyle.overflow;
+    document.documentElement.style.overscrollBehavior = savedHtmlStyle.overscrollBehavior;
+  }
+
+  const restoreY = savedScrollY;
+  savedBodyStyle = null;
+  savedHtmlStyle = null;
+  savedScrollY = 0;
+  restoreWindowScroll(restoreY);
+};
+
 // --- Custom Hook: Animation Delay ---
 const useDelayUnmount = (isMounted, delayTime) => {
   const [shouldRender, setShouldRender] = useState(false);
@@ -22,8 +117,9 @@ const useDelayUnmount = (isMounted, delayTime) => {
 
 // --- Main Component ---
 const Modal = ({
-  isOpen, // Ưu tiên dùng tên chuẩn boolean
+  isOpen,
   onClose,
+  title = null,
   size = "md", // sm, md, lg, xl, full
   position = "center", // center, top
   children,
@@ -49,30 +145,29 @@ const Modal = ({
 
   // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
-    if (isOpen) {
-      previousActiveElementRef.current = document.activeElement;
-      document.body.style.overflow = "hidden";
+    if (!isOpen) return undefined;
 
-      // Focus vào modal khi mở
-      const timer = setTimeout(() => {
-        modalRef.current?.focus();
-      }, 50);
+    previousActiveElementRef.current = document.activeElement;
+    lockPageScroll();
 
-      return () => {
-        document.body.style.overflow = "unset";
-        clearTimeout(timer);
-        if (previousActiveElementRef.current?.focus) {
-          previousActiveElementRef.current.focus();
-        }
-      };
-    }
+    const timer = setTimeout(() => {
+      modalRef.current?.focus();
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      unlockPageScroll();
+      if (previousActiveElementRef.current?.focus) {
+        previousActiveElementRef.current.focus();
+      }
+    };
   }, [isOpen]);
 
   // 2. Handle Key Press (Escape)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (isOpen && closeOnEscape && e.key === "Escape") {
-        e.stopPropagation(); // Ngăn event bubbling nếu có modal cha
+        e.stopPropagation();
         requestClose();
       }
 
@@ -93,14 +188,13 @@ const Modal = ({
       }
     };
 
-    // Chỉ add event listener khi modal đang mở
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, closeOnEscape, requestClose]);
 
-  // 3. Handle Overlay Click (An toàn hơn mouseDown/Up)
+  // 3. Handle Overlay Click
   const handleOverlayClick = (e) => {
     if (
       closeOnOverlayClick &&
@@ -113,82 +207,55 @@ const Modal = ({
 
   if (!shouldRender) return null;
 
-  const childArray = React.Children.toArray(children);
-  const hasExplicitBody = childArray.some(
-    (child) => React.isValidElement(child) && child.type === ModalBody,
-  );
-  const normalizedChildren =
-    autoWrapBody && !hasExplicitBody ? (
-      <ModalBody>{children}</ModalBody>
-    ) : (
-      children
-    );
-
-  return createPortal(
+  const modalContent = (
     <div
+      className={`modal-overlay ${isOpen ? "modal-open" : "modal-closing"}`}
+      onMouseDown={handleOverlayClick}
       ref={overlayRef}
-      className={`modal-overlay ${isOpen ? "is-open" : ""} ${
-        position === "top" ? "is-top" : ""
-      }`}
       style={{ zIndex }}
-      onClick={handleOverlayClick}
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby={titleId}
+      role="presentation"
     >
       <div
+        className={`modal modal-container modal--${size} modal--${position} ${className}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
         ref={modalRef}
-        className={`modal-container size-${size} ${className}`}
-        tabIndex="-1" // Cho phép div nhận focus programmatically
+        tabIndex={-1}
       >
-        {/* Inject titleId context if needed, simple children rendering here */}
-        {React.Children.map(normalizedChildren, (child) => {
-          // Clone element để truyền props tự động nếu cần (như onClose cho Header)
-          if (React.isValidElement(child) && child.type === ModalHeader) {
-            return React.cloneElement(child, { onClose: requestClose, titleId });
-          }
-          return child;
-        })}
+        {(title || onClose) && (
+          <header className="modal-header">
+            {title ? <h2 id={titleId}>{title}</h2> : <span />}
+            {onClose && (
+              <button
+                type="button"
+                className="modal-close"
+                onClick={requestClose}
+                aria-label="Đóng"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </header>
+        )}
+        {autoWrapBody ? <div className="modal-body">{children}</div> : children}
       </div>
-    </div>,
-    document.body
-  );
-};
-
-// --- Compound Components ---
-
-const ModalHeader = ({ children, onClose, titleId, className = "" }) => {
-  return (
-    <div className={`modal-header ${className}`}>
-      <h3 id={titleId}>{children}</h3>
-      {onClose && (
-        <button className="btn-close" onClick={onClose} aria-label="Close">
-          <X size={20} />
-        </button>
-      )}
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
-const ModalBody = ({ children, className = "", ...rest }) => {
-  return (
-    <div className={`modal-body ${className}`} {...rest}>
-      {children}
-    </div>
-  );
+Modal.Header = function ModalHeader({ children, className = "" }) {
+  return <header className={`modal-header ${className}`}>{children}</header>;
 };
 
-const ModalFooter = ({ children, className = "", ...rest }) => {
-  return (
-    <div className={`modal-footer ${className}`} {...rest}>
-      {children}
-    </div>
-  );
+Modal.Body = function ModalBody({ children, className = "" }) {
+  return <div className={`modal-body ${className}`}>{children}</div>;
 };
 
-// --- Gắn các sub-components vào Modal chính ---
-Modal.Header = ModalHeader;
-Modal.Body = ModalBody;
-Modal.Footer = ModalFooter;
+Modal.Footer = function ModalFooter({ children, className = "" }) {
+  return <footer className={`modal-footer ${className}`}>{children}</footer>;
+};
 
 export default Modal;

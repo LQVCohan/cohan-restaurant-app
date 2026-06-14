@@ -36,6 +36,7 @@ type AppNotification {
   toRole: String
   restaurantId: ID
   type: String!
+  uniqueKey: String
   payload: JSON
   readAt: DateTime
   createdAt: DateTime

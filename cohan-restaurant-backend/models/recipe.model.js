@@ -54,10 +54,13 @@ const RecipeSchema = BaseSchemaModel({
 
   notes: { type: String },
   isActive: { type: Boolean, default: true },
+  deletedAt: { type: Date, default: null, index: true },
+  deleteExpiresAt: { type: Date, default: null, index: true },
 });
 
 RecipeSchema.index({ restaurantId: 1, menuItemId: 1 }, { unique: true });
 RecipeSchema.index({ restaurantId: 1, updatedAt: -1 });
+RecipeSchema.index({ restaurantId: 1, deletedAt: 1, deleteExpiresAt: 1 });
 RecipeSchema.pre("validate", function (next) {
   const variants = Array.isArray(this.servingVariants)
     ? this.servingVariants

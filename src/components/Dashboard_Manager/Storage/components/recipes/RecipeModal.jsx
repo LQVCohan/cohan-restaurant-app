@@ -1,1433 +1,197 @@
-// src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation } from "@apollo/client";
-
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
-
-import FormGroup from "../Form/FormGroup";
-import FormLabel from "../Form/FormLabel";
-import FormInput from "../Form/FormInput";
-import FormSelect from "../Form/FormSelect";
-import FormTextarea from "../Form/FormTextarea";
-
-import { formatPrice } from "../../../../../utils/formatters";
-import {
-  convertCurrencyAmount,
-  normalizeCurrency,
-} from "../../../../../utils/currency";
-import { toBaseQty, fromBaseQty } from "../../../../../utils/unitConversion";
-
+import FormGroup from "../../../../common/Form/FormGroup";
+import FormInput from "../../../../common/Form/FormInput";
+import FormLabel from "../../../../common/Form/FormLabel";
+import FormSelect from "../../../../common/Form/FormSelect";
 import RecipeDishPickerModal from "./RecipeDishPickerModal";
-import useModalDraft from "../../../../../hooks/useModalDraft";
-import { useNotification } from "../../../../../hooks/useNotification";
-import {
-  Q_INGREDIENT_SUGGESTIONS,
-  M_RECORD_INGREDIENT_USED,
-} from "../../graphql/ingredientSuggestions.gql";
-
 import "./RecipeModal.scss";
 
-const sanitizeDecimalText = (v) => {
-  let s = String(v ?? "").replace(/[^\d.,]/g, "");
-  const i = s.search(/[.,]/);
-  if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/[.,]/g, "");
-  return s;
+const MENU_ITEM_STATUS_LABEL = {
+  ACTIVE: "Có sẵn",
+  AVAILABLE: "Có sẵn",
+  INACTIVE: "Tạm ngưng",
+  UNAVAILABLE: "Tạm ngưng",
 };
 
-const parseDecimalLoose = (v) => {
-  const s = String(v ?? "").trim();
-  if (!s) return null;
-  const n = Number(s.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
+const DEFAULT_VARIANT = {
+  name: "Default",
+  key: "default",
+  mode: "PORTION",
+  sellQty: 1,
+  sellQtyText: "1",
+  sellUnit: "portion",
+  price: 0,
+  isDefault: true,
+  components: [],
 };
 
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-
-const MENU_ITEM_STATUS_OPTIONS = [
-  { value: "available", label: "Có sẵn" },
-  { value: "unavailable", label: "Tạm ngưng" },
-  { value: "out_of_stock", label: "Hết món" },
-  { value: "hidden", label: "Ẩn" },
-];
-
-const MENU_ITEM_STATUS_LABEL = MENU_ITEM_STATUS_OPTIONS.reduce((acc, item) => {
-  acc[item.value] = item.label;
-  return acc;
-}, {});
-
-const roundUpToThousand = (n) => {
-  const x = Number(n) || 0;
-  if (x <= 0) return 0;
-  return Math.ceil(x / 1000) * 1000;
-};
-
-const normalizeText = (s) =>
-  String(s ?? "")
-    .trim()
-    .toLowerCase()
+const normalizeText = (value) =>
+  String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d");
+    .toLowerCase()
+    .trim();
 
-const normalizeVariantNameForCompare = (name) =>
-  normalizeText(name).replace(/\s+/g, " ").trim();
+const formatMoney = (value) =>
+  `${Number(value || 0).toLocaleString("vi-VN", {
+    maximumFractionDigits: 0,
+  })} đ`;
 
-// Cho phép đơn vị nhập liệu thân thiện hơn ở recipe line
-// nhưng vẫn chuẩn hóa về baseUnit khi save.
-const getRecipeDisplayUnitsForBase = (baseUnit) => {
-  const base = String(baseUnit || "").trim();
-
-  if (base === "kg") return ["g", "kg"];
-  if (base === "l") return ["ml", "l"];
-
-  return base ? [base] : [];
+const toNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
 };
 
-const getPreferredDisplayUnit = (baseUnit) => {
-  const base = String(baseUnit || "").trim();
-
-  if (base === "kg") return "g";
-  if (base === "l") return "ml";
-
-  return base || "";
+const sanitizeDecimalText = (value) => {
+  const raw = String(value || "").replace(",", ".");
+  const cleaned = raw.replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length <= 1) return cleaned;
+  return `${parts[0]}.${parts.slice(1).join("")}`;
 };
+
+const getIngredientId = (component) =>
+  component?.ingredientId || component?.ingredient?.id || component?.supplyId || "";
+
+const getIngredientName = (component) =>
+  component?.ingredient?.name || component?.ingredientName || component?.name || "";
+
+const normalizeComponents = (components = []) =>
+  (components || []).map((component) => {
+    const ingredientId = getIngredientId(component);
+    const ingredientName = getIngredientName(component);
+    return {
+      ingredientId,
+      ingredientName,
+      ingSearch: ingredientName,
+      ingFocused: false,
+      isEditingIngredient: !ingredientId,
+      qty: component?.qty ?? component?.quantity ?? "",
+      unit: component?.unit || component?.ingredient?.baseUnit || "g",
+      wastePct: component?.wastePct ?? component?.waste ?? 0,
+    };
+  });
+
+const normalizeVariants = (recipe, menuItemPrice = 0) => {
+  const variants = recipe?.servingVariants || recipe?.variants || [];
+
+  if (Array.isArray(variants) && variants.length > 0) {
+    return variants.map((variant, index) => ({
+      name: variant?.name || (index === 0 ? "Default" : `Biến thể ${index + 1}`),
+      key: variant?.key || (index === 0 ? "default" : `variant_${index + 1}`),
+      mode:
+        variant?.mode ||
+        (variant?.sellUnit && variant.sellUnit !== "portion"
+          ? "BY_WEIGHT"
+          : "PORTION"),
+      sellQty: variant?.sellQty ?? variant?.quantity ?? 1,
+      sellQtyText: String(variant?.sellQty ?? variant?.quantity ?? 1),
+      sellUnit: variant?.sellUnit || variant?.unit || "portion",
+      price: Number(variant?.price || variant?.menuPrice || menuItemPrice || 0),
+      isDefault: Boolean(variant?.isDefault || index === 0),
+      components: normalizeComponents(variant?.components || variant?.recipeItems || []),
+    }));
+  }
+
+  return [
+    {
+      ...DEFAULT_VARIANT,
+      price: Number(menuItemPrice || recipe?.menuPrice || 0),
+      components: normalizeComponents(recipe?.components || recipe?.recipeItems || []),
+    },
+  ];
+};
+
+const getMenuItemPrice = (item, fallback = 0) =>
+  Number(item?.price || item?.basePrice || item?.menuPrice || fallback || 0);
 
 const RecipeModal = ({
   isOpen,
   onClose,
+  recipe,
+  menuItem,
+  menuItems = [],
+  ingredients = [],
   onSave,
   onDelete,
-  recipe = null,
-  menuItemRecipeRows = [],
-  restaurantId,
-  ingredients = [],
-  currency = "VND",
-  usdToVndRate = 26000,
 }) => {
-  const { showNotification } = useNotification();
-
-  const activeCurrency = normalizeCurrency(currency, "VND");
-  const cfmt = (amount) =>
-    formatPrice(
-      convertCurrencyAmount(amount, "VND", activeCurrency, usdToVndRate),
-      { currency: activeCurrency },
-    );
-
+  const [formData, setFormData] = useState({
+    menuItemId: "",
+    menuItemName: "",
+    menuItemDescription: "",
+    menuItemPrice: 0,
+    status: "ACTIVE",
+    servingVariants: [{ ...DEFAULT_VARIANT }],
+  });
+  const [activeVariantIndex, setActiveVariantIndex] = useState(0);
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [activeVariantIndex, setActiveVariantIndex] = useState(0);
-  const [previewWeight, setPreviewWeight] = useState(100);
   const [isDishPickerOpen, setIsDishPickerOpen] = useState(false);
-  const [pickedDishRow, setPickedDishRow] = useState(null);
   const [isDishInfoCollapsed, setIsDishInfoCollapsed] = useState(true);
 
-  const shouldLoadSuggest = Boolean(isOpen && restaurantId);
-  const { data: suggestData, loading: suggestLoading } = useQuery(
-    Q_INGREDIENT_SUGGESTIONS,
-    {
-      variables: { restaurantId, limit: 8 },
-      skip: !shouldLoadSuggest,
-      fetchPolicy: "cache-and-network",
-    },
-  );
-
-  const [recordIngredientUsed] = useMutation(M_RECORD_INGREDIENT_USED);
-
-  const ingredientIdSet = useMemo(() => {
-    const s = new Set();
-    (ingredients || []).forEach((i) => s.add(String(i.id)));
-    return s;
-  }, [ingredients]);
-  const canDetectMissingIngredients = ingredientIdSet.size > 0;
-
-  const findIngredient = (ingredientId) =>
-    ingredients.find((x) => String(x.id) === String(ingredientId));
-
-  const getIngredientBaseUnit = (ingredientId) =>
-    findIngredient(ingredientId)?.baseUnit || "g";
-
-  const getIngredientCost = (ingredientId) =>
-    Number(findIngredient(ingredientId)?.costPerBaseUnit) || 0;
-
-  const getAllowedUnitsForIngredient = (ingredientId) => {
-    const ing = findIngredient(ingredientId);
-    if (!ing) return [];
-
-    const base = String(ing.baseUnit || "g").trim();
-    const set = new Set(getRecipeDisplayUnitsForBase(base));
-
-    const conv = Array.isArray(ing.conversions) ? ing.conversions : [];
-    conv.forEach((c) => {
-      const from = String(c?.from || "").trim();
-      const to = String(c?.to || "").trim();
-      if (!from || !to) return;
-      if (from === base) set.add(to);
-      if (to === base) set.add(from);
-    });
-
-    return Array.from(set);
-  };
-
-  const isUnitAllowed = (ingredientId, unit) => {
-    if (!ingredientId || !unit) return false;
-    const allowed = getAllowedUnitsForIngredient(ingredientId);
-    return allowed.includes(unit);
-  };
-
-  const normalizeWasteForComp = (comp) => {
-    if (!comp?.ingredientId) return comp;
-
-    const baseUnit = getIngredientBaseUnit(comp.ingredientId);
-    const unit = comp.unit || baseUnit;
-
-    const qtyNum = parseDecimalLoose(comp.qty);
-    const qty = qtyNum && qtyNum > 0 ? qtyNum : 0;
-    const qtyBase = qty > 0 ? toBaseQty(qty, unit, baseUnit) : 0;
-
-    const mode = comp.wasteMode === "UNIT" ? "UNIT" : "PERCENT";
-
-    if (mode === "UNIT") {
-      const wNum = parseDecimalLoose(comp.wasteQty);
-      const w = wNum && wNum > 0 ? wNum : 0;
-      const wBaseRaw = w > 0 ? toBaseQty(w, unit, baseUnit) : 0;
-
-      const wBase = qtyBase > 0 ? clamp(wBaseRaw, 0, qtyBase) : 0;
-      const wastePct = qtyBase > 0 ? (wBase / qtyBase) * 100 : 0;
-
-      const wasteQtyClamped =
-        qtyBase > 0 ? fromBaseQty(wBase, unit, baseUnit) : 0;
-
-      return {
-        ...comp,
-        wasteMode: "UNIT",
-        wasteQty: String(wasteQtyClamped),
-        wastePct: clamp(wastePct, 0, 100),
-      };
-    }
-
-    const pctNum = parseDecimalLoose(comp.wastePct);
-    const pct = pctNum !== null ? clamp(pctNum, 0, 100) : 0;
-
-    const wBase = qtyBase > 0 ? qtyBase * (pct / 100) : 0;
-    const wasteQty = qtyBase > 0 ? fromBaseQty(wBase, unit, baseUnit) : 0;
-
-    return {
-      ...comp,
-      wasteMode: "PERCENT",
-      wastePct: pct,
-      wasteQty: String(wasteQty),
-    };
-  };
-
-  const slugifyKey = (str) =>
-    String(str || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s_-]+/gu, "")
-      .replace(/\s+/g, "_")
-      .replace(/_+/g, "_")
-      .slice(0, 80);
-
-  const ensureUniqueKey = (rawKey, usedKeys) => {
-    const base = slugifyKey(rawKey) || "variant";
-    if (!usedKeys.has(base)) {
-      usedKeys.add(base);
-      return base;
-    }
-    let i = 2;
-    while (usedKeys.has(`${base}_${i}`)) i += 1;
-    const next = `${base}_${i}`;
-    usedKeys.add(next);
-    return next;
-  };
-
-  const findDuplicateVariantNameIndexes = (variants = []) => {
-    const map = new Map();
-    const dup = new Set();
-
-    variants.forEach((variant, index) => {
-      const normalized = normalizeVariantNameForCompare(variant?.name || "");
-      if (!normalized) return;
-      if (!map.has(normalized)) {
-        map.set(normalized, index);
-        return;
-      }
-      dup.add(map.get(normalized));
-      dup.add(index);
-    });
-
-    return Array.from(dup);
-  };
-
-  const makeUniqueVariantName = (rawName, existingVariants = []) => {
-    const base = String(rawName || "").trim() || "Biến thể";
-    const used = new Set(
-      (existingVariants || [])
-        .map((v) => normalizeVariantNameForCompare(v?.name || ""))
-        .filter(Boolean),
-    );
-
-    let candidate = base;
-    let i = 2;
-    while (used.has(normalizeVariantNameForCompare(candidate))) {
-      candidate = `${base} (${i})`;
-      i += 1;
-    }
-    return candidate;
-  };
-
-  const makeEmptyVariant = (idx, usedKeys) => {
-    const name = idx === 0 ? "Cơ bản" : `Biến thể ${idx + 1}`;
-    const key = ensureUniqueKey(name, usedKeys);
-
-    return {
-      uiId: `${Date.now()}_${idx}`,
-      key,
-      name,
-      mode: "PORTION",
-      sellQty: 1,
-      sellQtyText: "1",
-      sellUnit: "portion",
-      price: 0,
-      isDefault: idx === 0,
-      components: [],
-    };
-  };
-
-  const activeRow = useMemo(
-    () => pickedDishRow || recipe || null,
-    [pickedDishRow, recipe],
-  );
-
-  const menuItemNode = useMemo(() => {
-    if (activeRow?.menuItem) return activeRow.menuItem;
-    return activeRow;
-  }, [activeRow]);
-
-  const recipeNode = useMemo(() => {
-    if (activeRow?.recipe) return activeRow.recipe;
-    return activeRow;
-  }, [activeRow]);
-
-  const currentMenuItemId = useMemo(() => {
-    return (
-      menuItemNode?.id ||
-      recipeNode?.menuItemId ||
-      activeRow?.menuItemId ||
-      activeRow?.id ||
-      null
-    );
-  }, [menuItemNode, recipeNode, activeRow]);
-
-  const dishInfo = useMemo(() => {
-    return {
-      name: menuItemNode?.name || "",
-      description: menuItemNode?.description || "",
-      status: menuItemNode?.status || "",
-      basePrice:
-        typeof menuItemNode?.basePrice === "number"
-          ? menuItemNode.basePrice
-          : 0,
-    };
-  }, [menuItemNode]);
-
-  const hasExistingRecipe = useMemo(() => {
-    if (activeRow?.recipe?.id) return true;
-    if (recipeNode?.id && recipeNode?.menuItemId) return true;
-    const variants = Array.isArray(recipeNode?.servingVariants)
-      ? recipeNode.servingVariants
-      : [];
-    return variants.length > 0;
-  }, [activeRow, recipeNode]);
-
-  const [formData, setFormData] = useState({
-    notes: "",
-    status: "available",
-    servingVariants: [],
-  });
-
-  const activeVariant = formData.servingVariants?.[activeVariantIndex];
-
-  const isMissingIngredientId = useCallback(
-    (ingredientId) => {
-      const id = String(ingredientId || "").trim();
-      if (!id || !canDetectMissingIngredients) return false;
-      return !ingredientIdSet.has(id);
-    },
-    [canDetectMissingIngredients, ingredientIdSet],
-  );
-
-  const recipeMissingIngredientSummary = useMemo(() => {
-    if (!canDetectMissingIngredients) {
-      return {
-        ids: [],
-        count: 0,
-      };
-    }
-
-    const missingIds = new Set();
-    (formData.servingVariants || []).forEach((variant) => {
-      (variant?.components || []).forEach((comp) => {
-        const id = String(comp?.ingredientId || "").trim();
-        if (!id) return;
-        if (!ingredientIdSet.has(id)) missingIds.add(id);
-      });
-    });
-
-    return {
-      ids: Array.from(missingIds),
-      count: missingIds.size,
-    };
-  }, [canDetectMissingIngredients, formData.servingVariants, ingredientIdSet]);
-
-  const activeVariantMissingIngredientLines = useMemo(() => {
-    if (!activeVariant || !canDetectMissingIngredients) return [];
-    return (activeVariant.components || []).reduce((acc, comp, idx) => {
-      if (isMissingIngredientId(comp?.ingredientId)) acc.push(idx);
-      return acc;
-    }, []);
-  }, [activeVariant, canDetectMissingIngredients, isMissingIngredientId]);
-
-  const isDirty = useMemo(() => {
-    if (!isOpen) return false;
-    if ((formData.notes || "").trim()) return true;
-    if (formData.status && formData.status !== (dishInfo?.status || "available"))
-      return true;
-
-    return (formData.servingVariants || []).some((v) => {
-      const hasMeta =
-        (v?.name || "").trim() ||
-        (v?.key || "").trim() ||
-        Number(v?.price || 0) > 0;
-
-      const hasLines = (v?.components || []).some(
-        (c) => c?.ingredientId || c?.qty || c?.wastePct,
-      );
-
-      return hasMeta || hasLines;
-    });
-  }, [formData.notes, formData.servingVariants, formData.status, dishInfo?.status, isOpen]);
-
-  const { requestCloseWithDraft, clearDraft } = useModalDraft({
-    enabled: isOpen,
-    draftIdentity: {
-      module: "storage",
-      modal: "recipe-modal",
-      route:
-        typeof window !== "undefined" ? window.location.pathname : "unknown",
-      mode: hasExistingRecipe ? "edit" : "create",
-      entityType: "recipe",
-      recordId: currentMenuItemId || activeRow?.id || null,
-      context: "recipe-list",
-      schemaVersion: "1",
-    },
-    formValue: formData,
-    isDirty,
-    sanitize: (v) => ({
-      notes: v?.notes || "",
-      status: v?.status || "available",
-      servingVariants: Array.isArray(v?.servingVariants)
-        ? v.servingVariants.map((variant) => ({
-            key: variant?.key || "",
-            name: variant?.name || "",
-            mode: variant?.mode || "PORTION",
-            sellQty: variant?.sellQty || 1,
-            sellUnit: variant?.sellUnit || "portion",
-            price: variant?.price || 0,
-            isDefault: !!variant?.isDefault,
-            components: Array.isArray(variant?.components)
-              ? variant.components.map((comp) => ({
-                  ingredientId: comp?.ingredientId || "",
-                  qty: comp?.qty || "",
-                  unit: comp?.unit || "",
-                  wastePct: comp?.wastePct || "",
-                }))
-              : [],
-          }))
-        : [],
-    }),
-    onRestore: (draft) => setFormData((prev) => ({ ...prev, ...draft })),
-    notify: showNotification,
-  });
-
   useEffect(() => {
     if (!isOpen) return;
 
-    setErrors({});
-    setActiveVariantIndex(0);
-    setPreviewWeight(100);
-
-    if (!recipe && !pickedDishRow) {
-      setIsDishPickerOpen(true);
-      setIsDishInfoCollapsed(true);
-    } else {
-      setIsDishInfoCollapsed(true);
-    }
-  }, [isOpen, recipe, pickedDishRow]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const usedKeys = new Set();
-    const srcVariants = Array.isArray(recipeNode?.servingVariants)
-      ? recipeNode.servingVariants
-      : [];
-
-    const normalizedVariants = (srcVariants || []).map((v, idx) => {
-      const name = String(v?.name || `Biến thể ${idx + 1}`).trim();
-      const existingKey = String(v?.key || "").trim();
-      const key = existingKey
-        ? ensureUniqueKey(existingKey, usedKeys)
-        : ensureUniqueKey(name, usedKeys);
-
-      const mode = v?.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
-
-      let sellUnit = String(
-        v?.sellUnit || (mode === "BY_WEIGHT" ? "kg" : "portion"),
-      );
-      let sellQty = Number(v?.sellQty);
-
-      if (mode === "PORTION") {
-        sellUnit = "portion";
-        sellQty = 1;
-      } else {
-        if (!["kg", "g"].includes(sellUnit)) sellUnit = "kg";
-        if (!Number.isFinite(sellQty) || sellQty <= 0) sellQty = 1;
-      }
-
-      const price = Number(v?.price);
-      const isDefault = !!v?.isDefault;
-
-      const rawLines = Array.isArray(v?.ingredients)
-        ? v.ingredients
-        : Array.isArray(v?.components)
-          ? v.components
-          : [];
-
-      const components = rawLines
-        .map((c) => {
-          const ingredientId = c?.ingredientId;
-          if (!ingredientId) return null;
-
-          const baseUnit = getIngredientBaseUnit(ingredientId);
-          const preferredUnit = getPreferredDisplayUnit(baseUnit);
-
-          // Backend đang lưu line theo baseUnit.
-          // UI ưu tiên hiển thị g/ml để nhập dễ hơn khi có thể.
-          const storedUnit = c?.unit || baseUnit;
-          const lineUnitCandidate =
-            storedUnit === baseUnit ? preferredUnit || baseUnit : storedUnit;
-
-          const unit = isUnitAllowed(ingredientId, lineUnitCandidate)
-            ? lineUnitCandidate
-            : preferredUnit || baseUnit;
-
-          const qtyBase = Number(c?.qty ?? 0) || 0;
-          const qtyDisplay =
-            unit === baseUnit ? qtyBase : fromBaseQty(qtyBase, unit, baseUnit);
-
-          const wastePct = Number(c?.wastePct) || 0;
-          const wasteQtyDisplay = qtyDisplay * (wastePct / 100);
-
-          return normalizeWasteForComp({
-            ingredientId: String(ingredientId),
-            qty: String(qtyDisplay),
-            unit,
-            wasteMode: "PERCENT",
-            wastePct: String(wastePct),
-            wasteQty: String(wasteQtyDisplay),
-            ingSearch: "",
-            ingFocused: false,
-            isEditingIngredient: false,
-          });
-        })
-        .filter(Boolean);
-
-      return {
-        uiId: `${Date.now()}_${idx}`,
-        key,
-        name,
-        mode,
-        sellQty,
-        sellQtyText: String(sellQty),
-        sellUnit,
-        price: Number.isFinite(price) && price >= 0 ? price : 0,
-        isDefault,
-        components,
-      };
-    });
-
-    const variantsFinal = normalizedVariants.length
-      ? normalizedVariants
-      : [makeEmptyVariant(0, usedKeys)];
-
-    if (variantsFinal.length) {
-      const hasDefault = variantsFinal.some((x) => x.isDefault);
-      if (!hasDefault) variantsFinal[0].isDefault = true;
-
-      let seen = false;
-      variantsFinal.forEach((vv) => {
-        if (vv.isDefault && !seen) seen = true;
-        else if (vv.isDefault && seen) vv.isDefault = false;
-      });
-    }
+    const currentMenuItem = menuItem || recipe?.menuItem || null;
+    const menuItemId =
+      currentMenuItem?.id || recipe?.menuItemId || recipe?.menu_item_id || "";
+    const menuItemName =
+      currentMenuItem?.name || recipe?.menuItemName || recipe?.name || "";
+    const menuItemPrice = getMenuItemPrice(currentMenuItem, recipe?.menuPrice || 0);
+    const normalizedVariants = normalizeVariants(recipe, menuItemPrice);
+    const hasDefault = normalizedVariants.some((variant) => variant.isDefault);
 
     setFormData({
-      notes: String(recipeNode?.notes || ""),
-      status: menuItemNode?.status || "available",
-      servingVariants: variantsFinal,
-    });
-  }, [isOpen, recipeNode, menuItemNode, ingredients]);
-
-  const getComponentQtyInBase = (comp) => {
-    const baseUnit = getIngredientBaseUnit(comp.ingredientId);
-    const unit = comp.unit || baseUnit;
-    const q = parseDecimalLoose(comp.qty);
-    return toBaseQty(q || 0, unit, baseUnit);
-  };
-
-  const getComponentWasteFactor = (comp) => {
-    const wastePct = clamp(Number(comp?.wastePct) || 0, 0, 200);
-    return 1 + wastePct / 100;
-  };
-
-  const calcVariantCostPortion = (variant) => {
-    const list = variant?.components || [];
-    const hasMissingReplacement = list.some((c) =>
-      isMissingIngredientId(c?.ingredientId),
-    );
-    if (hasMissingReplacement) {
-      return { total: 0, isValid: false };
-    }
-
-    const total = list.reduce((sum, c) => {
-      const unitCost = getIngredientCost(c.ingredientId);
-      const qtyBase = getComponentQtyInBase(c) * getComponentWasteFactor(c);
-      return sum + qtyBase * unitCost;
-    }, 0);
-    return { total, isValid: true };
-  };
-
-  const calcVariantCostByWeightPreview = (variant, weightGrams = 100) => {
-    const ratio = (Number(weightGrams) || 0) / 100;
-    const list = variant?.components || [];
-    const hasMissingReplacement = list.some((c) =>
-      isMissingIngredientId(c?.ingredientId),
-    );
-    if (hasMissingReplacement) {
-      return { total: 0, isValid: false };
-    }
-
-    const total = list.reduce((sum, c) => {
-      const unitCost = getIngredientCost(c.ingredientId);
-      const qtyBasePer100g =
-        getComponentQtyInBase(c) * getComponentWasteFactor(c);
-      return sum + qtyBasePer100g * ratio * unitCost;
-    }, 0);
-    return { total, isValid: true };
-  };
-
-  const activeCostMeta = useMemo(() => {
-    if (!activeVariant) return { total: 0, isValid: true };
-    if (activeVariant.mode === "BY_WEIGHT") {
-      return calcVariantCostByWeightPreview(activeVariant, previewWeight);
-    }
-    return calcVariantCostPortion(activeVariant);
-  }, [activeVariant, previewWeight, ingredients, isMissingIngredientId]);
-
-  const activeCost = activeCostMeta.isValid ? activeCostMeta.total : null;
-
-  const getPriceLabel = (variant) => {
-    if (!variant) return "Giá";
-    if (variant.mode === "PORTION") return "Giá / phần";
-    const unit = variant.sellUnit || "kg";
-    const qtyText = String(variant.sellQtyText ?? "").trim() || "…";
-    return `Giá / ${qtyText} ${unit}`;
-  };
-
-  const getFinalDisplay = (variant) => {
-    if (!variant) return "";
-    const price = Math.max(0, Number(variant.price) || 0);
-
-    if (variant.mode === "PORTION") return `${cfmt(price)} / phần`;
-
-    const unit = variant.sellUnit || "kg";
-    const qtyNum = parseDecimalLoose(variant.sellQtyText) || 0;
-    if (qtyNum > 0) {
-      const perUnit = price / qtyNum;
-      return `${cfmt(perUnit)} / ${unit}`;
-    }
-    return `${cfmt(price)} / ${unit}`;
-  };
-
-  const recipeSummary = useMemo(() => {
-    const variants = formData.servingVariants || [];
-    const allComponents = variants.flatMap((v) => v.components || []);
-    const validComponents = allComponents.filter((c) => c.ingredientId);
-
-    let estimatedCostValid = true;
-    const totalEstimated = variants.reduce((sum, variant) => {
-      const variantCost =
-        variant.mode === "BY_WEIGHT"
-          ? calcVariantCostByWeightPreview(variant, previewWeight)
-          : calcVariantCostPortion(variant);
-
-      if (!variantCost.isValid) {
-        estimatedCostValid = false;
-        return sum;
-      }
-
-      return sum + variantCost.total;
-    }, 0);
-
-    const noReplacementCount = allComponents.filter((c) =>
-      isMissingIngredientId(c?.ingredientId),
-    ).length;
-
-    return {
-      totalVariants: variants.length,
-      totalComponents: allComponents.length,
-      validComponents: validComponents.length,
-      totalEstimated,
-      estimatedCostValid,
-      noReplacementCount,
-      defaultVariantName:
-        variants.find((v) => v.isDefault)?.name || variants[0]?.name || "—",
-    };
-  }, [formData.servingVariants, previewWeight, isMissingIngredientId]);
-
-  const activeVariantSummary = useMemo(() => {
-    if (!activeVariant) {
-      return {
-        totalLines: 0,
-        readyLines: 0,
-        wasteLines: 0,
-        displayPrice: "—",
-      };
-    }
-
-    const components = activeVariant.components || [];
-    const readyLines = components.filter((c) => {
-      const q = parseDecimalLoose(c.qty);
-      return c.ingredientId && q && q > 0;
-    }).length;
-
-    const wasteLines = components.filter((c) => Number(c?.wastePct) > 0).length;
-
-    return {
-      totalLines: components.length,
-      readyLines,
-      wasteLines,
-      displayPrice: getFinalDisplay(activeVariant) || "—",
-    };
-  }, [activeVariant]);
-
-  const priceSuggestionValues = useMemo(() => {
-    if (!activeVariant) return [];
-
-    const mode = activeVariant.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
-    const costBase =
-      mode === "PORTION"
-        ? calcVariantCostPortion(activeVariant).total
-        : calcVariantCostByWeightPreview(
-            activeVariant,
-            (activeVariant.sellUnit === "kg"
-              ? (Number(activeVariant.sellQty) || 1) * 1000
-              : Number(activeVariant.sellQty) || 1) || 1000,
-          ).total;
-
-    const values = [
-      dishInfo?.basePrice,
-      costBase > 0 ? costBase * 1.3 : 0,
-      costBase > 0 ? costBase * 1.6 : 0,
-      costBase > 0 ? costBase * 2 : 0,
-    ]
-      .map((x) => roundUpToThousand(x))
-      .filter((x) => x > 0);
-
-    return Array.from(new Set(values)).slice(0, 4);
-  }, [activeVariant, dishInfo?.basePrice, ingredients]);
-
-  const activeVariantErrors = useMemo(() => {
-    if (!activeVariant) return [];
-    const prefix = `variant_${activeVariantIndex}`;
-    return Object.entries(errors)
-      .filter(([key]) => key.startsWith(prefix))
-      .map(([, value]) => value);
-  }, [errors, activeVariant, activeVariantIndex]);
-
-  const handleVariantAdd = () => {
-    const currentVariants = formData.servingVariants || [];
-    const used = new Set(
-      currentVariants.map((v) => v.key).filter(Boolean),
-    );
-    const nextVariant = makeEmptyVariant(currentVariants.length, used);
-    nextVariant.name = makeUniqueVariantName(nextVariant.name, currentVariants);
-
-    setFormData((p) => ({
-      ...p,
-      servingVariants: [...(p.servingVariants || []), nextVariant],
-    }));
-    setActiveVariantIndex(currentVariants.length);
-  };
-
-  const handleVariantDuplicate = (index) => {
-    const src = formData.servingVariants?.[index];
-    if (!src) return;
-
-    const used = new Set(
-      (formData.servingVariants || [])
-        .map((v) => String(v.key || "").trim())
-        .filter(Boolean),
-    );
-
-    const existingVariants = formData.servingVariants || [];
-    const copyNameSeed = `${src.name || "Biến thể"} (copy)`;
-    const copyName = makeUniqueVariantName(copyNameSeed, existingVariants);
-    const copyKey = ensureUniqueKey(copyName, used);
-
-    const cloned = {
-      ...src,
-      uiId: `${Date.now()}_${Math.random()}`,
-      name: copyName,
-      key: copyKey,
-      isDefault: false,
-      components: (src.components || []).map((c) => ({
-        ...c,
-        ingSearch: "",
-        ingFocused: false,
+      menuItemId,
+      menuItemName,
+      menuItemDescription:
+        currentMenuItem?.description || recipe?.menuItemDescription || "",
+      menuItemPrice,
+      status: currentMenuItem?.status || recipe?.status || "ACTIVE",
+      servingVariants: normalizedVariants.map((variant, index) => ({
+        ...variant,
+        isDefault: hasDefault ? Boolean(variant.isDefault) : index === 0,
       })),
-    };
-
-    setFormData((p) => ({
-      ...p,
-      servingVariants: [...(p.servingVariants || []), cloned],
-    }));
-    setActiveVariantIndex(existingVariants.length);
-  };
-
-  const handleVariantRemove = (index) => {
-    if ((formData.servingVariants || []).length <= 1) {
-      alert("Phải có ít nhất 1 biến thể.");
-      return;
-    }
-
-    const removingDefault = !!formData.servingVariants[index]?.isDefault;
-    const next = formData.servingVariants.filter((_, i) => i !== index);
-
-    if (removingDefault && next.length) next[0].isDefault = true;
-
-    setFormData((p) => ({ ...p, servingVariants: next }));
-    setActiveVariantIndex((cur) => Math.max(0, Math.min(cur, next.length - 1)));
-  };
-
-  const setOnlyDefault = (index) => {
-    const next = formData.servingVariants.map((v, i) => ({
-      ...v,
-      isDefault: i === index,
-    }));
-    setFormData((p) => ({ ...p, servingVariants: next }));
-  };
-
-  const handleVariantChange = (index, patch) => {
-    const next = [...formData.servingVariants];
-    const original = next[index];
-    let updated = { ...original, ...patch };
-
-    if (patch.sellQtyText !== undefined) {
-      const t = sanitizeDecimalText(patch.sellQtyText);
-      updated.sellQtyText = t;
-      const n = parseDecimalLoose(t);
-      if (n && n > 0) updated.sellQty = n;
-    }
-
-    if (patch.mode) {
-      const mode = patch.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
-      updated.mode = mode;
-
-      if (mode === "PORTION") {
-        updated.sellUnit = "portion";
-        updated.sellQty = 1;
-        updated.sellQtyText = "1";
-      } else {
-        if (!["kg", "g"].includes(updated.sellUnit)) updated.sellUnit = "kg";
-        if (!String(updated.sellQtyText || "").trim()) {
-          updated.sellQtyText = "1";
-        }
-        const n = parseDecimalLoose(updated.sellQtyText);
-        updated.sellQty = n && n > 0 ? n : 1;
-      }
-    }
-
-    if (updated.mode === "BY_WEIGHT") {
-      if (!["kg", "g"].includes(updated.sellUnit)) updated.sellUnit = "kg";
-      const n = parseDecimalLoose(updated.sellQtyText);
-      updated.sellQty = n && n > 0 ? n : updated.sellQty || 1;
-    } else {
-      updated.sellUnit = "portion";
-      updated.sellQty = 1;
-      updated.sellQtyText = "1";
-    }
-
-    if (patch.price !== undefined) {
-      const p = Number(patch.price);
-      updated.price = Number.isFinite(p) && p >= 0 ? p : 0;
-    }
-
-    next[index] = updated;
-    setFormData((p) => ({ ...p, servingVariants: next }));
-  };
-
-  const handleComponentAdd = (variantIndex) => {
-    const next = [...formData.servingVariants];
-    next[variantIndex].components = [
-      ...(next[variantIndex].components || []),
-      normalizeWasteForComp({
-        ingredientId: "",
-        qty: "",
-        unit: "",
-        wasteMode: "PERCENT",
-        wastePct: "0",
-        wasteQty: "0",
-        ingSearch: "",
-        ingFocused: false,
-        isEditingIngredient: true,
-      }),
-    ];
-    setFormData((p) => ({ ...p, servingVariants: next }));
-  };
-
-  const handleComponentRemove = (variantIndex, compIndex) => {
-    const next = [...formData.servingVariants];
-    next[variantIndex].components = (
-      next[variantIndex].components || []
-    ).filter((_, i) => i !== compIndex);
-    setFormData((p) => ({ ...p, servingVariants: next }));
-  };
-
-  const fireRecordUsed = (ingredientId) => {
-    if (!restaurantId || !ingredientId) return;
-    recordIngredientUsed({
-      variables: { restaurantId, ingredientId },
-    }).catch(() => {});
-  };
-
-  const handleComponentChange = (variantIndex, compIndex, field, value) => {
-    const next = [...formData.servingVariants];
-    const comp0 = next[variantIndex].components?.[compIndex] || {};
-    let comp = { ...comp0 };
-
-    if (field === "ingSearch") {
-      comp.ingSearch = value;
-      next[variantIndex].components[compIndex] = comp;
-      setFormData((p) => ({ ...p, servingVariants: next }));
-      return;
-    }
-
-    if (field === "ingFocused") {
-      comp.ingFocused = !!value;
-      next[variantIndex].components[compIndex] = comp;
-      setFormData((p) => ({ ...p, servingVariants: next }));
-      return;
-    }
-
-    if (field === "pickIngredient") {
-      const ingredientId = value;
-      const baseUnit = getIngredientBaseUnit(ingredientId);
-      const preferredUnit = getPreferredDisplayUnit(baseUnit);
-      const unit = isUnitAllowed(ingredientId, comp.unit)
-        ? comp.unit
-        : preferredUnit || baseUnit;
-
-      comp.ingredientId = ingredientId;
-      comp.unit = unit;
-      comp.ingSearch = "";
-      comp.ingFocused = false;
-      comp.isEditingIngredient = false;
-      comp.qty = comp.qty || "";
-      comp.wasteMode = comp.wasteMode || "PERCENT";
-      comp.wastePct = comp.wastePct ?? "0";
-      comp.wasteQty = comp.wasteQty ?? "0";
-      comp = normalizeWasteForComp(comp);
-
-      next[variantIndex].components[compIndex] = comp;
-      setFormData((p) => ({ ...p, servingVariants: next }));
-
-      fireRecordUsed(String(ingredientId));
-      return;
-    }
-
-    if (field === "ingredientId") {
-      const ingredientId = value;
-      const baseUnit = getIngredientBaseUnit(ingredientId);
-      const preferredUnit = getPreferredDisplayUnit(baseUnit);
-      const unit = isUnitAllowed(ingredientId, comp.unit)
-        ? comp.unit
-        : preferredUnit || baseUnit;
-
-      comp.ingredientId = ingredientId;
-      comp.unit = unit;
-      comp.isEditingIngredient = false;
-      comp.qty = comp.qty || "";
-      comp.wasteMode = comp.wasteMode || "PERCENT";
-      comp.wastePct = comp.wastePct ?? "0";
-      comp.wasteQty = comp.wasteQty ?? "0";
-
-      comp = normalizeWasteForComp(comp);
-      fireRecordUsed(String(ingredientId));
-    } else if (field === "unit") {
-      const ingredientId = comp.ingredientId;
-      if (!ingredientId) return;
-
-      const baseUnit = getIngredientBaseUnit(ingredientId);
-      const newUnit = value || baseUnit;
-
-      if (!isUnitAllowed(ingredientId, newUnit)) {
-        comp.unit = getPreferredDisplayUnit(baseUnit) || baseUnit;
-        comp = normalizeWasteForComp(comp);
-      } else {
-        const oldUnit = comp.unit || baseUnit;
-
-        const qtyBase = toBaseQty(
-          parseDecimalLoose(comp.qty) || 0,
-          oldUnit,
-          baseUnit,
-        );
-        const newQty = fromBaseQty(qtyBase, newUnit, baseUnit);
-
-        const wasteBase = toBaseQty(
-          parseDecimalLoose(comp.wasteQty) || 0,
-          oldUnit,
-          baseUnit,
-        );
-        const newWasteQty = fromBaseQty(wasteBase, newUnit, baseUnit);
-
-        comp.unit = newUnit;
-        comp.qty = String(newQty);
-        comp.wasteQty = String(newWasteQty);
-
-        comp = normalizeWasteForComp(comp);
-      }
-    } else if (field === "qty") {
-      comp.qty = value;
-      comp = normalizeWasteForComp(comp);
-    } else if (field === "wasteMode") {
-      comp.wasteMode = value === "UNIT" ? "UNIT" : "PERCENT";
-      comp = normalizeWasteForComp(comp);
-    } else if (field === "wastePct") {
-      comp.wastePct = value;
-      comp.wasteMode = "PERCENT";
-      comp = normalizeWasteForComp(comp);
-    } else if (field === "wasteQty") {
-      comp.wasteQty = value;
-      comp.wasteMode = "UNIT";
-      comp = normalizeWasteForComp(comp);
-    } else {
-      comp[field] = value;
-      comp = normalizeWasteForComp(comp);
-    }
-
-    next[variantIndex].components[compIndex] = comp;
-    setFormData((p) => ({ ...p, servingVariants: next }));
-  };
-
-  const validateForm = () => {
-    const e = {};
-
-    if (!currentMenuItemId) e.menuItem = "Vui lòng chọn món trước khi lưu.";
-
-    const variants = formData.servingVariants || [];
-    if (!variants.length) e.variants = "Phải có ít nhất 1 biến thể";
-
-    const defaultCount = variants.filter((v) => v?.isDefault).length;
-    if (defaultCount !== 1) e.default = "Phải chọn đúng 1 biến thể mặc định";
-
-    const keys = variants
-      .map((v) => String(v?.key || "").trim())
-      .filter(Boolean);
-    const set = new Set(keys);
-    if (set.size !== keys.length) {
-      e.keys = "Key biến thể bị trùng (vui lòng sửa)";
-    }
-
-    const duplicateNameIndexes = findDuplicateVariantNameIndexes(variants);
-    if (duplicateNameIndexes.length) {
-      e.variantNames = "Tên biến thể bị trùng. Vui lòng dùng tên khác.";
-      duplicateNameIndexes.forEach((idx) => {
-        e[`variant_${idx}_name`] = "Tên biến thể bị trùng.";
-      });
-    }
-
-    variants.forEach((v, vi) => {
-      if (!String(v?.name || "").trim()) {
-        e[`variant_${vi}_name`] = "Tên biến thể là bắt buộc";
-      }
-      if (!String(v?.key || "").trim()) {
-        e[`variant_${vi}_key`] = "Key biến thể là bắt buộc";
-      }
-
-      if (v.mode === "BY_WEIGHT") {
-        const sq = parseDecimalLoose(v.sellQtyText);
-        if (!sq || sq <= 0) {
-          e[`variant_${vi}_sellQty`] = "Số lượng bán phải > 0";
-        }
-        if (!["kg", "g"].includes(v.sellUnit)) {
-          e[`variant_${vi}_sellUnit`] = "sellUnit chỉ kg/g";
-        }
-      }
-
-      if (Number(v?.price) < 0) {
-        e[`variant_${vi}_price`] = "Giá bán không được âm";
-      }
-
-      (v.components || []).forEach((c, ci) => {
-        if (!c.ingredientId) {
-          e[`variant_${vi}_comp_${ci}_id`] = "Chọn nguyên liệu";
-        }
-
-        const q = parseDecimalLoose(c.qty);
-        if (!q || q <= 0) {
-          e[`variant_${vi}_comp_${ci}_qty`] = "Số lượng phải > 0";
-        }
-
-        const wp = Number(c.wastePct) || 0;
-        if (wp < 0 || wp > 100) {
-          e[`variant_${vi}_comp_${ci}_waste`] = "Hao hụt 0-100%";
-        }
-
-        const baseUnit = getIngredientBaseUnit(c.ingredientId);
-        const unit = c.unit || baseUnit;
-
-        if (c.ingredientId && !isUnitAllowed(c.ingredientId, unit)) {
-          e[`variant_${vi}_comp_${ci}_unit`] =
-            `Unit không hợp lệ (chỉ cho: ${getAllowedUnitsForIngredient(
-              c.ingredientId,
-            ).join(", ")})`;
-        }
-      });
     });
+    setActiveVariantIndex(0);
+    setErrors({});
+    setIsDishInfoCollapsed(Boolean(menuItemId));
+  }, [isOpen, recipe, menuItem]);
 
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const buildPayload = () => {
-    const duplicateNameIndexes = findDuplicateVariantNameIndexes(
-      formData.servingVariants || [],
-    );
-    if (duplicateNameIndexes.length) {
-      throw new Error("Tên biến thể bị trùng. Vui lòng dùng tên khác.");
-    }
-
-    const variants = (formData.servingVariants || []).map((v, idx) => {
-      const mode = v.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
-      const sellUnit =
-        mode === "PORTION" ? "portion" : v.sellUnit === "g" ? "g" : "kg";
-
-      const sqNum = parseDecimalLoose(v.sellQtyText);
-      const sellQty = mode === "PORTION" ? 1 : sqNum && sqNum > 0 ? sqNum : 1;
-
-      const ingredientsPayload = (v.components || [])
-        .map((c) => {
-          if (!c?.ingredientId) return null;
-
-          const baseUnit = getIngredientBaseUnit(c.ingredientId);
-          const unit = c.unit || baseUnit;
-
-          const qtyBase = toBaseQty(
-            parseDecimalLoose(c.qty) || 0,
-            unit,
-            baseUnit,
-          );
-          const q = Number(qtyBase);
-          if (!Number.isFinite(q) || q <= 0) return null;
-
-          const wastePct = clamp(Number(c.wastePct) || 0, 0, 100);
-
-          return {
-            ingredientId: c.ingredientId,
-            qty: q,
-            unit: baseUnit,
-            wastePct,
-          };
-        })
-        .filter(Boolean);
-
-      return {
-        key: String(v.key || "").trim() || `variant_${idx + 1}`,
-        name: String(v.name || "").trim(),
-        mode,
-        sellQty,
-        sellUnit,
-        price: Math.max(0, Number(v.price) || 0),
-        isDefault: !!v.isDefault,
-        ingredients: ingredientsPayload,
-      };
+  const ingredientMap = useMemo(() => {
+    const map = new Map();
+    (ingredients || []).forEach((ingredient) => {
+      if (ingredient?.id) map.set(String(ingredient.id), ingredient);
     });
-
-    if (variants.length && !variants.some((x) => x.isDefault)) {
-      variants[0].isDefault = true;
-    }
-
-    let seen = false;
-    variants.forEach((x) => {
-      if (x.isDefault && !seen) seen = true;
-      else if (x.isDefault && seen) x.isDefault = false;
-    });
-
-    return {
-      restaurantId,
-      menuItemId: currentMenuItemId,
-      notes: formData.notes || "",
-      status: formData.status || dishInfo?.status || "available",
-      isActive: true,
-      servingVariants: variants,
-    };
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      setSaving(true);
-      const payload = buildPayload();
-      await onSave?.(payload);
-      clearDraft();
-      showNotification(
-        "Đã xóa dữ liệu nháp sau khi lưu công thức.",
-        "success",
-        2200,
-      );
-      onClose?.();
-    } catch (err) {
-      showNotification(
-        err?.message || "Không thể lưu công thức. Vui lòng kiểm tra lại.",
-        "error",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteClick = async () => {
-    if (!onDelete || !currentMenuItemId) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa công thức này?")) return;
-
-    try {
-      setDeleting(true);
-      await onDelete(currentMenuItemId);
-      onClose?.();
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const ingredientOptions = useMemo(() => {
-    return (ingredients || []).map((ing) => ({
-      value: String(ing.id),
-      label: ing.name,
-    }));
+    return map;
   }, [ingredients]);
 
-  const suggestPayload = suggestData?.ingredientSuggestions;
+  const dishRows = useMemo(
+    () =>
+      (menuItems || []).map((item) => ({
+        id: item?.id || "",
+        name: item?.name || "Chưa có tên",
+        code: item?.code || item?.sku || "",
+        description: item?.description || "",
+        basePrice: getMenuItemPrice(item),
+        status: item?.status || "ACTIVE",
+        imageUrl: item?.imageUrl || item?.image || "",
+        hasRecipe: Boolean(item?.recipeId || item?.hasRecipe),
+        recipeId: item?.recipeId || null,
+        _rawMenuItem: item,
+      })),
+    [menuItems],
+  );
 
-  const suggestGroups = useMemo(() => {
-    const toOpts = (arr) =>
-      (arr || [])
-        .map((x) => ({ value: String(x.id), label: x.name, source: "recent" }))
-        .filter((o) => ingredientIdSet.has(o.value));
+  const activeVariant = formData.servingVariants?.[activeVariantIndex] || null;
+  const hasExistingRecipe = Boolean(recipe?.id);
 
-    const recentUsed = toOpts(suggestPayload?.recentUsed).map((x) => ({
-      ...x,
-      source: "recent",
-    }));
-    const topUsed = toOpts(suggestPayload?.topUsed).map((x) => ({
-      ...x,
-      source: "top",
-    }));
-    const recentCreated = toOpts(suggestPayload?.recentCreated).map((x) => ({
-      ...x,
-      source: "new",
-    }));
-
-    const seen = new Set();
-    const uniq = (list) =>
-      list.filter((o) => {
-        if (!o.value || seen.has(o.value)) return false;
-        seen.add(o.value);
-        return true;
-      });
-
-    const gRecent = uniq(recentUsed);
-    const gTop = uniq(topUsed);
-    const gNew = uniq(recentCreated);
-
-    const take = (list, n) => list.slice(0, Math.max(n, 0));
-    let remain = 8;
-
-    const out = [];
-    if (gRecent.length && remain > 0) {
-      const part = take(gRecent, remain);
-      out.push({ title: "Gần đây", items: part, kind: "recent" });
-      remain -= part.length;
-    }
-    if (gTop.length && remain > 0) {
-      const part = take(gTop, remain);
-      out.push({ title: "Dùng nhiều", items: part, kind: "top" });
-      remain -= part.length;
-    }
-    if (gNew.length && remain > 0) {
-      const part = take(gNew, remain);
-      out.push({ title: "Mới tạo", items: part, kind: "new" });
-      remain -= part.length;
-    }
-
-    if (!out.length && ingredientOptions.length) {
-      out.push({
-        title: "Gợi ý",
-        items: ingredientOptions.slice(0, 8),
-        kind: "fallback",
-      });
-    }
-
-    return out;
-  }, [suggestPayload, ingredientIdSet, ingredientOptions]);
-
-  const aiLikeGroups = useMemo(() => {
-    const allRows = Array.isArray(menuItemRecipeRows) ? menuItemRecipeRows : [];
-    if (!allRows.length || !ingredientOptions.length) return [];
-
-    const selectedIds = new Set(
-      (activeVariant?.components || [])
-        .map((c) => String(c?.ingredientId || "").trim())
-        .filter(Boolean),
-    );
-
-    const activeDishName = normalizeText(dishInfo?.name);
-    const activeCategory = String(menuItemNode?.categoryId || "").trim();
-    const nameTokens = activeDishName
-      .split(/\s+/)
-      .map((x) => x.trim())
-      .filter((x) => x.length >= 2);
-
-    const pairScore = new Map();
-    const fallbackScore = new Map();
-
-    const addScore = (id, score) => {
-      if (!id || selectedIds.has(id) || !ingredientIdSet.has(id)) return;
-      pairScore.set(id, (pairScore.get(id) || 0) + score);
-    };
-
-    const addFallback = (id, score) => {
-      if (!id || selectedIds.has(id) || !ingredientIdSet.has(id)) return;
-      fallbackScore.set(id, (fallbackScore.get(id) || 0) + score);
-    };
-
-    allRows.forEach((row) => {
-      const rowMenu = row?.menuItem || row;
-      const rowRecipe = row?.recipe || row;
-      const variants = Array.isArray(rowRecipe?.servingVariants)
-        ? rowRecipe.servingVariants
-        : [];
-      if (!variants.length) return;
-
-      const rowName = normalizeText(rowMenu?.name || "");
-      const rowCategory = String(rowMenu?.categoryId || "").trim();
-
-      let recipeWeight = 0;
-      if (rowCategory && activeCategory && rowCategory === activeCategory) {
-        recipeWeight += 3;
-      }
-      if (activeDishName && rowName && rowName === activeDishName) {
-        recipeWeight += 3;
-      }
-      if (nameTokens.length) {
-        const tokenHits = nameTokens.filter((t) => rowName.includes(t)).length;
-        recipeWeight += Math.min(tokenHits, 3);
-      }
-      recipeWeight = Math.max(1, recipeWeight);
-
-      const ingredientSet = new Set();
-      variants.forEach((v) => {
-        const lines = Array.isArray(v?.ingredients) ? v.ingredients : [];
-        lines.forEach((line) => {
-          const iid = String(line?.ingredientId || "").trim();
-          if (iid) ingredientSet.add(iid);
-        });
-      });
-
-      if (!ingredientSet.size) return;
-
-      ingredientSet.forEach((iid) => addFallback(iid, recipeWeight));
-      if (!selectedIds.size) return;
-
-      const sharedCount = Array.from(selectedIds).filter((iid) =>
-        ingredientSet.has(iid),
-      ).length;
-      if (!sharedCount) return;
-
-      const extraBoost = sharedCount >= 2 ? 2 : 1;
-      ingredientSet.forEach((iid) => addScore(iid, recipeWeight * extraBoost));
-    });
-
-    const toItems = (mapObj, limit) =>
-      Array.from(mapObj.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, limit)
-        .map(([id, score]) => {
-          const ing = ingredients.find((x) => String(x.id) === id);
-          return {
-            value: id,
-            label: ing?.name || `Ingredient ${id}`,
-            score,
-          };
-        });
-
-    const pairingItems = toItems(pairScore, 5);
-    const managerHintItems = toItems(fallbackScore, 5).filter(
-      (x) => !pairingItems.some((p) => p.value === x.value),
-    );
-
-    const groups = [];
-    if (pairingItems.length) {
-      groups.push({
-        title: "Gợi ý thêm (AI-like)",
-        items: pairingItems,
-        kind: "ai_pair",
-      });
-    }
-    if (managerHintItems.length) {
-      groups.push({
-        title: "Manager hint",
-        items: managerHintItems,
-        kind: "ai_hint",
-      });
-    }
-
-    return groups;
-  }, [
-    menuItemRecipeRows,
-    ingredientOptions,
-    activeVariant,
-    dishInfo?.name,
-    menuItemNode?.categoryId,
-    ingredientIdSet,
-    ingredients,
-  ]);
-
-  const handlePickDishRow = (row) => {
-    setPickedDishRow(row);
-    setIsDishPickerOpen(false);
-    setErrors({});
-    setActiveVariantIndex(0);
-    setPreviewWeight(100);
-    setIsDishInfoCollapsed(true);
-  };
-
-  if (!isOpen) return null;
+  const findIngredient = (id) => ingredientMap.get(String(id));
+  const isMissingIngredientId = (id) => Boolean(id && !findIngredient(id));
 
   const modeOptions = [
     { value: "PORTION", label: "Bán theo phần" },
@@ -1439,161 +203,454 @@ const RecipeModal = ({
     { value: "g", label: "g" },
   ];
 
+  const getAllowedUnitsForIngredient = (ingredientId) => {
+    const ingredient = findIngredient(ingredientId);
+    if (!ingredient) return ["g", "kg", "ml", "l", "unit"];
+    const units = new Set([ingredient.baseUnit || "g"]);
+    (ingredient.conversions || []).forEach((conversion) => {
+      if (conversion?.from) units.add(conversion.from);
+      if (conversion?.to) units.add(conversion.to);
+    });
+    return Array.from(units);
+  };
+
+  const calculateVariantCost = (variant) => {
+    if (!variant) return null;
+    let total = 0;
+
+    for (const component of variant.components || []) {
+      if (!component.ingredientId || isMissingIngredientId(component.ingredientId)) {
+        return null;
+      }
+
+      const ingredient = findIngredient(component.ingredientId);
+      const qty = toNumber(component.qty);
+      if (!ingredient || qty <= 0) return null;
+
+      const unitCost = Number(
+        ingredient.costPerBaseUnit ||
+          ingredient.avgCost ||
+          ingredient.cost ||
+          ingredient.price ||
+          0,
+      );
+      const wasteMultiplier = 1 + Math.max(0, toNumber(component.wastePct)) / 100;
+      total += qty * unitCost * wasteMultiplier;
+    }
+
+    return total;
+  };
+
+  const activeCost = useMemo(
+    () => calculateVariantCost(activeVariant),
+    [activeVariant, ingredients],
+  );
+
+  const recipeSummary = useMemo(() => {
+    const variants = formData.servingVariants || [];
+    let validComponents = 0;
+    let missingComponents = 0;
+
+    variants.forEach((variant) => {
+      (variant.components || []).forEach((component) => {
+        if (component.ingredientId && isMissingIngredientId(component.ingredientId)) {
+          missingComponents += 1;
+        }
+        if (
+          component.ingredientId &&
+          !isMissingIngredientId(component.ingredientId) &&
+          toNumber(component.qty) > 0
+        ) {
+          validComponents += 1;
+        }
+      });
+    });
+
+    return {
+      totalVariants: variants.length,
+      validComponents,
+      missingComponents,
+      defaultVariantName: variants.find((variant) => variant.isDefault)?.name || "Chưa chọn",
+    };
+  }, [formData.servingVariants, ingredientMap]);
+
+  const activeVariantSummary = useMemo(() => {
+    const components = activeVariant?.components || [];
+    return {
+      totalLines: components.length,
+      readyLines: components.filter(
+        (component) =>
+          component.ingredientId &&
+          !isMissingIngredientId(component.ingredientId) &&
+          toNumber(component.qty) > 0,
+      ).length,
+      displayPrice: formatMoney(activeVariant?.price || formData.menuItemPrice || 0),
+    };
+  }, [activeVariant, formData.menuItemPrice, ingredientMap]);
+
+  const ingredientSuggestions = (keyword, selectedIds = new Set()) => {
+    const q = normalizeText(keyword);
+    return (ingredients || [])
+      .filter((ingredient) => {
+        if (!ingredient?.id || selectedIds.has(String(ingredient.id))) return false;
+        if (!q) return true;
+        return [ingredient.name, ingredient.sku, ingredient.category]
+          .map(normalizeText)
+          .some((value) => value.includes(q));
+      })
+      .slice(0, 12);
+  };
+
+  const setOnlyDefault = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: prev.servingVariants.map((variant, variantIndex) => ({
+        ...variant,
+        isDefault: variantIndex === index,
+      })),
+    }));
+  };
+
+  const updateVariant = (index, patch) => {
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: prev.servingVariants.map((variant, variantIndex) =>
+        variantIndex === index ? { ...variant, ...patch } : variant,
+      ),
+    }));
+  };
+
+  const updateComponent = (variantIndex, componentIndex, patch) => {
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: prev.servingVariants.map((variant, currentVariantIndex) => {
+        if (currentVariantIndex !== variantIndex) return variant;
+        return {
+          ...variant,
+          components: (variant.components || []).map((component, currentComponentIndex) =>
+            currentComponentIndex === componentIndex
+              ? { ...component, ...patch }
+              : component,
+          ),
+        };
+      }),
+    }));
+  };
+
+  const pickIngredient = (variantIndex, componentIndex, ingredientId) => {
+    const ingredient = findIngredient(ingredientId);
+    updateComponent(variantIndex, componentIndex, {
+      ingredientId,
+      ingredientName: ingredient?.name || "",
+      ingSearch: ingredient?.name || "",
+      unit: ingredient?.baseUnit || "g",
+      ingFocused: false,
+      isEditingIngredient: false,
+    });
+  };
+
+  const addComponent = (variantIndex) => {
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: prev.servingVariants.map((variant, currentIndex) => {
+        if (currentIndex !== variantIndex) return variant;
+        return {
+          ...variant,
+          components: [
+            ...(variant.components || []),
+            {
+              ingredientId: "",
+              ingredientName: "",
+              ingSearch: "",
+              ingFocused: false,
+              isEditingIngredient: true,
+              qty: "",
+              unit: "g",
+              wastePct: 0,
+            },
+          ],
+        };
+      }),
+    }));
+  };
+
+  const removeComponent = (variantIndex, componentIndex) => {
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: prev.servingVariants.map((variant, currentIndex) =>
+        currentIndex === variantIndex
+          ? {
+              ...variant,
+              components: (variant.components || []).filter(
+                (_, currentComponentIndex) => currentComponentIndex !== componentIndex,
+              ),
+            }
+          : variant,
+      ),
+    }));
+  };
+
+  const addVariant = () => {
+    const nextIndex = formData.servingVariants.length + 1;
+    const nextVariant = {
+      ...DEFAULT_VARIANT,
+      name: `Size ${nextIndex}`,
+      key: `size_${nextIndex}`,
+      isDefault: false,
+      price: formData.menuItemPrice || 0,
+    };
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: [...prev.servingVariants, nextVariant],
+    }));
+    setActiveVariantIndex(formData.servingVariants.length);
+  };
+
+  const duplicateVariant = (index) => {
+    const source = formData.servingVariants[index];
+    if (!source) return;
+    const copy = {
+      ...source,
+      name: `${source.name || "Biến thể"} copy`,
+      key: `${source.key || "variant"}_copy_${Date.now()}`,
+      isDefault: false,
+      components: (source.components || []).map((component) => ({ ...component })),
+    };
+    setFormData((prev) => ({
+      ...prev,
+      servingVariants: [...prev.servingVariants, copy],
+    }));
+    setActiveVariantIndex(formData.servingVariants.length);
+  };
+
+  const removeVariant = (index) => {
+    if (formData.servingVariants.length <= 1) return;
+    const nextVariants = formData.servingVariants.filter((_, currentIndex) => currentIndex !== index);
+    if (!nextVariants.some((variant) => variant.isDefault)) {
+      nextVariants[0] = { ...nextVariants[0], isDefault: true };
+    }
+    setFormData((prev) => ({ ...prev, servingVariants: nextVariants }));
+    setActiveVariantIndex(Math.max(0, Math.min(index - 1, nextVariants.length - 1)));
+  };
+
+  const handlePickDishRow = (row) => {
+    const raw = row?._rawMenuItem || row || {};
+    const menuItemPrice = getMenuItemPrice(raw, row?.basePrice || 0);
+    setFormData((prev) => ({
+      ...prev,
+      menuItemId: raw.id || row?.id || "",
+      menuItemName: raw.name || row?.name || "",
+      menuItemDescription: raw.description || row?.description || "",
+      menuItemPrice,
+      status: raw.status || row?.status || "ACTIVE",
+      servingVariants: prev.servingVariants.map((variant) => ({
+        ...variant,
+        price: Number(variant.price || menuItemPrice || 0),
+      })),
+    }));
+    setErrors((prev) => ({ ...prev, menuItem: null }));
+    setIsDishInfoCollapsed(true);
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+    if (!formData.menuItemId) nextErrors.menuItem = "Vui lòng chọn món ăn.";
+    if (!formData.servingVariants?.length) {
+      nextErrors.variants = "Cần ít nhất một biến thể.";
+    }
+    if (!formData.servingVariants?.some((variant) => variant.isDefault)) {
+      nextErrors.default = "Cần chọn biến thể mặc định.";
+    }
+
+    const keys = new Set();
+    (formData.servingVariants || []).forEach((variant, index) => {
+      if (!String(variant.name || "").trim()) {
+        nextErrors.variantNames = "Tên biến thể là bắt buộc.";
+      }
+      const key = String(variant.key || "").trim();
+      if (!key) nextErrors.keys = "Định danh biến thể là bắt buộc.";
+      if (keys.has(key)) nextErrors.keys = "Định danh biến thể không được trùng.";
+      keys.add(key);
+
+      if (index === activeVariantIndex) {
+        (variant.components || []).forEach((component, componentIndex) => {
+          if (!component.ingredientId) {
+            nextErrors[`component_${componentIndex}`] = `Dòng ${componentIndex + 1}: chưa chọn nguyên liệu.`;
+          }
+          if (toNumber(component.qty) <= 0) {
+            nextErrors[`qty_${componentIndex}`] = `Dòng ${componentIndex + 1}: số lượng phải lớn hơn 0.`;
+          }
+        });
+      }
+    });
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const activeVariantErrors = useMemo(() => {
+    if (!activeVariant) return [];
+    const list = [];
+    (activeVariant.components || []).forEach((component, index) => {
+      if (!component.ingredientId) list.push(`Dòng ${index + 1}: chưa chọn nguyên liệu.`);
+      if (isMissingIngredientId(component.ingredientId)) {
+        list.push(`Dòng ${index + 1}: nguyên liệu không còn tồn tại trong kho.`);
+      }
+      if (toNumber(component.qty) <= 0) {
+        list.push(`Dòng ${index + 1}: số lượng phải lớn hơn 0.`);
+      }
+    });
+    return list;
+  }, [activeVariant, ingredientMap]);
+
+  const serializePayload = () => ({
+    id: recipe?.id,
+    menuItemId: formData.menuItemId,
+    variants: (formData.servingVariants || []).map((variant) => ({
+      name: variant.name,
+      key: variant.key,
+      mode: variant.mode,
+      sellQty: variant.mode === "BY_WEIGHT" ? toNumber(variant.sellQtyText || variant.sellQty) : 1,
+      sellUnit: variant.mode === "BY_WEIGHT" ? variant.sellUnit : "portion",
+      price: toNumber(variant.price),
+      isDefault: Boolean(variant.isDefault),
+      components: (variant.components || []).map((component) => ({
+        ingredientId: component.ingredientId,
+        qty: toNumber(component.qty),
+        unit: component.unit,
+        wastePct: toNumber(component.wastePct),
+      })),
+    })),
+  });
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await onSave?.(serializePayload());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteClick = async () => {
+    if (!recipe?.id) return;
+    setDeleting(true);
+    try {
+      await onDelete?.(recipe.id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const closeModal = () => {
+    setErrors({});
+    onClose?.();
+  };
+
+  if (!isOpen) return null;
+
   return (
     <>
       <Modal
         isOpen={isOpen}
-        onClose={() => requestCloseWithDraft(onClose)}
-        title={
-          hasExistingRecipe ? "Cập nhật công thức món" : "Thêm công thức mới"
-        }
+        onClose={closeModal}
+        title={hasExistingRecipe ? "Cập nhật công thức món" : "Thêm công thức mới"}
         size="xl"
+        className="storage-modal-shell recipe-modal-shell"
+        autoWrapBody={false}
       >
         <form className="recipe-modal-form" onSubmit={handleSubmit}>
-          <Modal.Body style={{ padding: "24px", background: "#f8fafc" }}>
+          <Modal.Body>
             <div className="recipe-section">
               <div className="section-header">
                 <h3 className="section-title">🍽️ Thông tin món ăn</h3>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  {currentMenuItemId && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {formData.menuItemId && (
                     <button
                       type="button"
                       className="method-tab"
-                      style={{ padding: "6px 12px", fontSize: "12px" }}
-                      onClick={() => setIsDishInfoCollapsed((v) => !v)}
+                      style={{ padding: "6px 12px", fontSize: 12 }}
+                      onClick={() => setIsDishInfoCollapsed((value) => !value)}
                     >
                       {isDishInfoCollapsed ? "Mở rộng" : "Thu gọn"}
                     </button>
                   )}
-                  {!recipe && (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setIsDishPickerOpen(true)}
-                    >
-                      {currentMenuItemId ? "🔁 Đổi món khác" : "🔎 Chọn món"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {!currentMenuItemId ? (
-                <div
-                  style={{
-                    padding: "20px",
-                    textAlign: "center",
-                    border: "2px dashed #cbd5e1",
-                    borderRadius: "12px",
-                    color: "#64748b",
-                  }}
-                >
-                  <div style={{ fontWeight: 800, marginBottom: "8px" }}>
-                    Chưa có món ăn nào được chọn
-                  </div>
                   <Button
                     type="button"
                     variant="primary"
+                    size="sm"
                     onClick={() => setIsDishPickerOpen(true)}
                   >
+                    {formData.menuItemId ? "🔁 Đổi món khác" : "🔎 Chọn món"}
+                  </Button>
+                </div>
+              </div>
+
+              {!formData.menuItemId ? (
+                <div
+                  style={{
+                    padding: 22,
+                    textAlign: "center",
+                    border: "1px dashed rgba(196,186,170,.9)",
+                    borderRadius: 16,
+                    color: "#68716f",
+                  }}
+                >
+                  <div style={{ fontWeight: 850, marginBottom: 10 }}>
+                    Chưa có món ăn nào được chọn
+                  </div>
+                  <Button type="button" variant="primary" onClick={() => setIsDishPickerOpen(true)}>
                     Chọn món ngay
                   </Button>
                   {errors.menuItem && (
-                    <div
-                      style={{
-                        color: "#ef4444",
-                        marginTop: "8px",
-                        fontSize: "13px",
-                      }}
-                    >
+                    <div style={{ color: "#ba514b", marginTop: 10, fontSize: 13 }}>
                       {errors.menuItem}
                     </div>
                   )}
                 </div>
               ) : isDishInfoCollapsed ? (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 18 }}>
                   <div>
-                    <div
-                      style={{
-                        fontWeight: 900,
-                        fontSize: "16px",
-                        color: "#0f172a",
-                      }}
-                    >
-                      {dishInfo.name}
+                    <div style={{ fontWeight: 900, fontSize: 16, color: "#1f2a2f" }}>
+                      {formData.menuItemName}
                     </div>
-                    <div
-                      style={{
-                        color: "#64748b",
-                        fontSize: "13px",
-                        marginTop: "4px",
-                      }}
-                    >
-                      {dishInfo.description || "Không có mô tả"}
+                    <div style={{ color: "#64706d", fontSize: 13, marginTop: 4 }}>
+                      {formData.menuItemDescription || "Không có mô tả"}
                     </div>
-                    <div style={{ marginTop: "8px" }}>
+                    <div style={{ marginTop: 8 }}>
                       <span
                         style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          padding: "2px 10px",
-                          borderRadius: "999px",
-                          background: "#eef2ff",
-                          color: "#3730a3",
+                          fontSize: 12,
+                          fontWeight: 760,
+                          padding: "3px 10px",
+                          borderRadius: 999,
+                          background: "#f1f5f1",
+                          color: "#526f62",
+                          border: "1px solid rgba(82,111,98,.18)",
                         }}
                       >
                         Trạng thái: {MENU_ITEM_STATUS_LABEL[formData.status] || "Không rõ"}
                       </span>
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "12px", color: "#64748b" }}>
-                      Giá bán gốc
-                    </div>
-                    <div
-                      style={{
-                        fontWeight: 900,
-                        color: "#16a34a",
-                        fontSize: "16px",
-                      }}
-                    >
-                      {cfmt(dishInfo.basePrice)}
+                  <div style={{ textAlign: "right", flex: "0 0 auto" }}>
+                    <div style={{ fontSize: 12, color: "#64706d" }}>Giá bán gốc</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#8a633f" }}>
+                      {formatMoney(formData.menuItemPrice)}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "grid", gap: "16px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <FormGroup>
                     <FormLabel>Tên món</FormLabel>
-                    <FormInput value={dishInfo.name} disabled />
+                    <FormInput value={formData.menuItemName} disabled />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Trạng thái món ăn</FormLabel>
-                    <FormSelect
-                      value={formData.status || "available"}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, status: e.target.value }))
-                      }
-                      options={MENU_ITEM_STATUS_OPTIONS}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>
-                      Ghi chú công thức chung (Không bắt buộc)
-                    </FormLabel>
-                    <FormTextarea
-                      placeholder="Nhập lưu ý sơ chế, cách chế biến chung..."
-                      value={formData.notes || ""}
-                      onChange={(e) =>
-                        setFormData((p) => ({ ...p, notes: e.target.value }))
-                      }
-                    />
+                    <FormLabel>Giá bán gốc</FormLabel>
+                    <FormInput value={formatMoney(formData.menuItemPrice)} disabled />
                   </FormGroup>
                 </div>
               )}
@@ -1601,435 +658,149 @@ const RecipeModal = ({
 
             <div className="recipe-section">
               <div className="section-header">
-                <h4 className="section-title">
-                  ⚖️ Cấu hình các biến thể định lượng
-                </h4>
+                <h4 className="section-title">⚖️ Cấu hình các biến thể định lượng</h4>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: "16px",
-                  marginBottom: "20px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    flex: "1 1 250px",
-                    background: "#f0f9ff",
-                    padding: "14px",
-                    borderRadius: "10px",
-                    border: "1px solid #bae6fd",
-                  }}
-                >
-                  <strong style={{ color: "#0369a1", fontSize: "14px" }}>
-                    Tổng quan cấu hình:
-                  </strong>
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#0c4a6e",
-                      marginTop: "6px",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    <div>
-                      Tổng số biến thể:{" "}
-                      <strong>{recipeSummary.totalVariants}</strong>
+              <div className="recipe-summary-grid">
+                <div className="recipe-summary-card">
+                  <strong>Tổng quan cấu hình</strong>
+                  <div>Tổng số biến thể: <b>{recipeSummary.totalVariants}</b></div>
+                  <div>Số dòng NL hợp lệ: <b>{recipeSummary.validComponents}</b></div>
+                  <div>Biến thể mặc định: <b>{recipeSummary.defaultVariantName}</b></div>
+                  {recipeSummary.missingComponents > 0 && (
+                    <div className="recipe-danger-text">
+                      Có {recipeSummary.missingComponents} dòng chưa có nguyên liệu bù.
                     </div>
-                    <div>
-                      Số dòng NL hợp lệ:{" "}
-                      <strong>{recipeSummary.validComponents}</strong>
-                    </div>
-                    <div>
-                      Biến thể mặc định:{" "}
-                      <strong>{recipeSummary.defaultVariantName}</strong>
-                    </div>
-                    {!recipeSummary.estimatedCostValid && (
-                      <div style={{ color: "#b91c1c", fontWeight: 700 }}>
-                        {`Có ${recipeSummary.noReplacementCount} dòng Chưa có nguyên liệu bù.`}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-
-                {activeVariant && (
-                  <div
-                    style={{
-                      flex: "1 1 250px",
-                      background: "#fdf4ff",
-                      padding: "14px",
-                      borderRadius: "10px",
-                      border: "1px solid #fbcfe8",
-                    }}
-                  >
-                    <strong style={{ color: "#86198f", fontSize: "14px" }}>
-                      Thống kê biến thể hiện tại:
-                    </strong>
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        color: "#701a75",
-                        marginTop: "6px",
-                        lineHeight: "1.6",
-                      }}
-                    >
-                      <div>
-                        Tổng số dòng:{" "}
-                        <strong>{activeVariantSummary.totalLines}</strong>
-                      </div>
-                      <div>
-                        Dòng đã nhập đủ:{" "}
-                        <strong>{activeVariantSummary.readyLines}</strong>
-                      </div>
-                      <div>
-                        Hiển thị bán:{" "}
-                        <strong>{activeVariantSummary.displayPrice}</strong>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="recipe-summary-card">
+                  <strong>Thống kê biến thể hiện tại</strong>
+                  <div>Tổng số dòng: <b>{activeVariantSummary.totalLines}</b></div>
+                  <div>Dòng đã nhập đủ: <b>{activeVariantSummary.readyLines}</b></div>
+                  <div>Hiển thị bán: <b>{activeVariantSummary.displayPrice}</b></div>
+                </div>
               </div>
 
-              {errors.variants && (
-                <div
-                  style={{
-                    color: "#ef4444",
-                    fontSize: "13px",
-                    marginBottom: "12px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {errors.variants}
-                </div>
-              )}
-              {errors.default && (
-                <div
-                  style={{
-                    color: "#ef4444",
-                    fontSize: "13px",
-                    marginBottom: "12px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {errors.default}
-                </div>
-              )}
-              {errors.keys && (
-                <div
-                  style={{
-                    color: "#ef4444",
-                    fontSize: "13px",
-                    marginBottom: "12px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {errors.keys}
-                </div>
-              )}
-              {errors.variantNames && (
-                <div
-                  style={{
-                    color: "#ef4444",
-                    fontSize: "13px",
-                    marginBottom: "12px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {errors.variantNames}
+              {Object.values(errors).filter(Boolean).length > 0 && (
+                <div className="recipe-missing-warning">
+                  {Object.values(errors)
+                    .filter(Boolean)
+                    .slice(0, 4)
+                    .map((error, index) => (
+                      <div key={index}>⚠️ {error}</div>
+                    ))}
                 </div>
               )}
 
               {activeVariantErrors.length > 0 && (
-                <div
-                  style={{
-                    background: "#fef2f2",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid #fecaca",
-                    marginBottom: "16px",
-                  }}
-                >
-                  <strong style={{ color: "#dc2626", fontSize: "13px" }}>
-                    Vui lòng sửa các lỗi sau:
-                  </strong>
-                  <ul
-                    style={{
-                      margin: 0,
-                      paddingLeft: "20px",
-                      color: "#b91c1c",
-                      fontSize: "13px",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {activeVariantErrors.map((err, i) => (
-                      <li key={i}>{err}</li>
-                    ))}
-                  </ul>
+                <div className="recipe-missing-warning">
+                  {activeVariantErrors.slice(0, 5).map((error, index) => (
+                    <div key={index}>⚠️ {error}</div>
+                  ))}
                 </div>
               )}
 
               <div className="method-tabs">
-                {(formData.servingVariants || []).map((v, index) => (
+                {(formData.servingVariants || []).map((variant, index) => (
                   <button
-                    key={index}
+                    key={`${variant.key}_${index}`}
                     type="button"
-                    className={`method-tab ${
-                      activeVariantIndex === index ? "active" : ""
-                    }`}
+                    className={`method-tab ${activeVariantIndex === index ? "active" : ""}`}
                     onClick={() => setActiveVariantIndex(index)}
                   >
-                    {v.name || `Biến thể ${index + 1}`}
-                    {v.isDefault && (
-                      <span style={{ marginLeft: "6px", color: "#10b981" }}>
-                        ★
-                      </span>
-                    )}
+                    {variant.name || `Biến thể ${index + 1}`}
+                    {variant.isDefault && <span style={{ marginLeft: 6 }}>★</span>}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  className="method-tab"
-                  onClick={handleVariantAdd}
-                  style={{ color: "#3b82f6" }}
-                >
+                <button type="button" className="method-tab" onClick={addVariant}>
                   + Thêm biến thể
                 </button>
               </div>
 
               {activeVariant && (
-                <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "16px",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    <div>
-                      <FormGroup>
-                        <FormLabel>
-                          Tên biến thể <span style={{ color: "red" }}>*</span>
-                        </FormLabel>
-                        <FormInput
-                          type="text"
-                          value={activeVariant.name || ""}
-                          onChange={(e) =>
-                            handleVariantChange(activeVariantIndex, {
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="VD: Mặc định, Cỡ Lớn..."
-                        />
-                      </FormGroup>
-                    </div>
-
-                    <div>
-                      <FormGroup>
-                        <FormLabel>
-                          Định danh (Key){" "}
-                          <span style={{ color: "red" }}>*</span>
-                        </FormLabel>
-                        <FormInput
-                          type="text"
-                          value={activeVariant.key || ""}
-                          onChange={(e) =>
-                            handleVariantChange(activeVariantIndex, {
-                              key: e.target.value,
-                            })
-                          }
-                          placeholder="VD: mac_dinh, co_lon..."
-                        />
-                      </FormGroup>
-                    </div>
-
-                    <div>
-                      <FormGroup>
-                        <FormLabel>
-                          Chế độ bán <span style={{ color: "red" }}>*</span>
-                        </FormLabel>
-                        <FormSelect
-                          options={modeOptions}
-                          value={activeVariant.mode}
-                          onChange={(e) =>
-                            handleVariantChange(activeVariantIndex, {
-                              mode: e.target.value,
-                            })
-                          }
-                        />
-                      </FormGroup>
-                    </div>
-
+                <div className="recipe-variant-editor">
+                  <div className="recipe-variant-grid">
+                    <FormGroup>
+                      <FormLabel>Tên biến thể *</FormLabel>
+                      <FormInput
+                        value={activeVariant.name || ""}
+                        placeholder="VD: Default, Size lớn..."
+                        onChange={(event) => updateVariant(activeVariantIndex, { name: event.target.value })}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Định danh (Key) *</FormLabel>
+                      <FormInput
+                        value={activeVariant.key || ""}
+                        placeholder="VD: default, size_lon..."
+                        onChange={(event) => updateVariant(activeVariantIndex, { key: event.target.value })}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Chế độ bán *</FormLabel>
+                      <FormSelect
+                        options={modeOptions}
+                        value={activeVariant.mode}
+                        onChange={(event) => updateVariant(activeVariantIndex, { mode: event.target.value })}
+                      />
+                    </FormGroup>
                     {activeVariant.mode === "BY_WEIGHT" ? (
-                      <div style={{ display: "flex", gap: "12px" }}>
-                        <div style={{ flex: 1 }}>
-                          <FormGroup>
-                            <FormLabel>
-                              Số lượng bán{" "}
-                              <span style={{ color: "red" }}>*</span>
-                            </FormLabel>
-                            <FormInput
-                              type="text"
-                              value={activeVariant.sellQtyText || ""}
-                              onChange={(e) =>
-                                handleVariantChange(activeVariantIndex, {
-                                  sellQtyText: e.target.value,
-                                })
-                              }
-                              style={{ textAlign: "right" }}
-                            />
-                          </FormGroup>
-                        </div>
-                        <div style={{ width: "100px" }}>
-                          <FormGroup>
-                            <FormLabel>ĐVT</FormLabel>
-                            <FormSelect
-                              options={sellUnitOptions}
-                              value={activeVariant.sellUnit}
-                              onChange={(e) =>
-                                handleVariantChange(activeVariantIndex, {
-                                  sellUnit: e.target.value,
-                                })
-                              }
-                            />
-                          </FormGroup>
-                        </div>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <FormGroup style={{ flex: 1 }}>
+                          <FormLabel>Số lượng bán *</FormLabel>
+                          <FormInput
+                            value={activeVariant.sellQtyText || ""}
+                            onChange={(event) =>
+                              updateVariant(activeVariantIndex, {
+                                sellQtyText: sanitizeDecimalText(event.target.value),
+                              })
+                            }
+                          />
+                        </FormGroup>
+                        <FormGroup style={{ width: 105 }}>
+                          <FormLabel>ĐVT</FormLabel>
+                          <FormSelect
+                            options={sellUnitOptions}
+                            value={activeVariant.sellUnit}
+                            onChange={(event) => updateVariant(activeVariantIndex, { sellUnit: event.target.value })}
+                          />
+                        </FormGroup>
                       </div>
                     ) : (
                       <FormGroup>
                         <FormLabel>Số lượng / ĐVT</FormLabel>
-                        <FormInput type="text" value="1 phần" disabled />
+                        <FormInput value="1 phần" disabled />
                       </FormGroup>
                     )}
-
-                    <div>
-                      <FormGroup>
-                        <FormLabel>{getPriceLabel(activeVariant)}</FormLabel>
-                        <FormInput
-                          type="number"
-                          step={1000}
-                          min={0}
-                          value={
-                            activeVariant.price === 0 ? "" : activeVariant.price
-                          }
-                          onChange={(e) =>
-                            handleVariantChange(activeVariantIndex, {
-                              price: e.target.value,
-                            })
-                          }
-                          onWheel={(e) => {
-                            e.preventDefault();
-                            const delta = e.deltaY < 0 ? 1000 : -1000;
-                            const next = Math.max(
-                              0,
-                              (Number(activeVariant.price) || 0) + delta,
-                            );
-                            handleVariantChange(activeVariantIndex, {
-                              price: next,
-                            });
-                          }}
-                          placeholder="0"
-                          style={{ textAlign: "right" }}
-                        />
-                        {priceSuggestionValues.length > 0 && (
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "8px",
-                              flexWrap: "wrap",
-                              marginTop: "8px",
-                            }}
-                          >
-                            {priceSuggestionValues.map((v, idx) => (
-                              <button
-                                key={`${v}_${idx}`}
-                                type="button"
-                                onClick={() =>
-                                  handleVariantChange(activeVariantIndex, {
-                                    price: v,
-                                  })
-                                }
-                                style={{
-                                  border: "1px solid #cbd5e1",
-                                  background: "#f8fafc",
-                                  color: "#0f172a",
-                                  borderRadius: "999px",
-                                  padding: "4px 10px",
-                                  fontSize: "12px",
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                {cfmt(v)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </FormGroup>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-end",
-                        paddingBottom: "10px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          cursor: "pointer",
-                        }}
-                      >
+                    <FormGroup>
+                      <FormLabel>{activeVariant.mode === "BY_WEIGHT" ? `Giá / ${activeVariant.sellUnit || "đơn vị"}` : "Giá / phần"}</FormLabel>
+                      <FormInput
+                        type="number"
+                        min={0}
+                        step={1000}
+                        value={activeVariant.price === 0 ? "" : activeVariant.price}
+                        onChange={(event) => updateVariant(activeVariantIndex, { price: event.target.value })}
+                      />
+                    </FormGroup>
+                    <div className="recipe-default-check">
+                      <label>
                         <input
                           type="checkbox"
-                          checked={activeVariant.isDefault || false}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setOnlyDefault(activeVariantIndex);
-                            }
-                          }}
-                          style={{
-                            width: "20px",
-                            height: "20px",
-                            accentColor: "#10b981",
-                            marginRight: "10px",
+                          checked={Boolean(activeVariant.isDefault)}
+                          onChange={(event) => {
+                            if (event.target.checked) setOnlyDefault(activeVariantIndex);
                           }}
                         />
-                        <span style={{ fontWeight: 800, color: "#0f172a" }}>
-                          Dùng làm biến thể mặc định
-                        </span>
+                        Dùng làm biến thể mặc định
                       </label>
                     </div>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "12px",
-                      marginBottom: "20px",
-                      justifyContent: "flex-end",
-                      borderBottom: "1px dashed #cbd5e1",
-                      paddingBottom: "16px",
-                    }}
-                  >
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleVariantDuplicate(activeVariantIndex)}
-                    >
+                  <div className="recipe-variant-actions">
+                    <Button type="button" variant="secondary" size="sm" onClick={() => duplicateVariant(activeVariantIndex)}>
                       ⧉ Nhân bản
                     </Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleVariantRemove(activeVariantIndex)}
-                    >
+                    <Button type="button" variant="danger" size="sm" onClick={() => removeVariant(activeVariantIndex)}>
                       🗑 Xóa biến thể này
                     </Button>
                   </div>
@@ -2043,280 +814,133 @@ const RecipeModal = ({
                       <div style={{ textAlign: "center" }}>Xoá</div>
                     </div>
 
-                    {recipeMissingIngredientSummary.count > 0 && (
-                      <div className="recipe-missing-warning">
-                        ⚠️ Có dòng <strong>Chưa có nguyên liệu bù</strong>. Hệ
-                        thống sẽ không tính chi phí ước tính để tránh sai số.
-                      </div>
-                    )}
+                    {(activeVariant.components || []).map((component, componentIndex) => {
+                      const selectedIds = new Set(
+                        (activeVariant.components || [])
+                          .map((item) => String(item.ingredientId || ""))
+                          .filter(Boolean),
+                      );
+                      selectedIds.delete(String(component.ingredientId || ""));
+                      const suggestions = ingredientSuggestions(component.ingSearch, selectedIds);
+                      const selectedIngredient = findIngredient(component.ingredientId);
+                      const isMissing = isMissingIngredientId(component.ingredientId);
 
-                    {(activeVariant.components || []).map((comp, cIdx) => (
-                      <div
-                        key={cIdx}
-                        className={`recipeIngredientLine${
-                          isMissingIngredientId(comp?.ingredientId)
-                            ? " is-missing-ingredient"
-                            : ""
-                        }`}
-                      >
-                        <div style={{ position: "relative" }}>
-                          {comp.ingredientId && !comp.isEditingIngredient ? (
-                            <div
-                              style={{
-                                minHeight: "42px",
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "10px",
-                                padding: "8px 10px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: "8px",
-                                background: "#f8fafc",
-                              }}
-                            >
-                              <strong
-                                style={{
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  color: isMissingIngredientId(comp.ingredientId)
-                                    ? "#b91c1c"
-                                    : undefined,
-                                }}
-                              >
-                                {findIngredient(comp.ingredientId)?.name ||
-                                  `Chưa có nguyên liệu bù (${comp.ingredientId})`}
-                              </strong>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleComponentChange(
-                                    activeVariantIndex,
-                                    cIdx,
-                                    "isEditingIngredient",
-                                    true,
+                      return (
+                        <div
+                          key={componentIndex}
+                          className={`recipeIngredientLine ${isMissing ? "is-missing-ingredient" : ""}`}
+                        >
+                          <div style={{ position: "relative" }}>
+                            {component.ingredientId && !component.isEditingIngredient ? (
+                              <div className="recipe-ingredient-picked">
+                                <strong title={selectedIngredient?.name || component.ingredientName || component.ingredientId}>
+                                  {selectedIngredient?.name || component.ingredientName || `Chưa có nguyên liệu bù (${component.ingredientId})`}
+                                </strong>
+                                <button
+                                  type="button"
+                                  onClick={() => updateComponent(activeVariantIndex, componentIndex, { isEditingIngredient: true })}
+                                  title="Thay đổi nguyên liệu"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            ) : (
+                              <FormInput
+                                placeholder="🔍 Tìm nguyên liệu..."
+                                value={component.ingSearch || ""}
+                                onFocus={() => updateComponent(activeVariantIndex, componentIndex, { ingFocused: true })}
+                                onBlur={() =>
+                                  setTimeout(
+                                    () => updateComponent(activeVariantIndex, componentIndex, { ingFocused: false }),
+                                    160,
                                   )
                                 }
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  cursor: "pointer",
-                                  color: "#2563eb",
-                                  fontWeight: 700,
-                                }}
-                                title="Thay đổi nguyên liệu"
-                              >
-                                ✏️
-                              </button>
-                            </div>
-                          ) : (
-                            <FormInput
-                              type="text"
-                              placeholder="🔍 Tìm nguyên liệu..."
-                              value={
-                                comp.ingSearch !== undefined
-                                  ? comp.ingSearch
-                                  : comp.ingredientName || ""
-                              }
-                              onChange={(e) =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  cIdx,
-                                  "ingSearch",
-                                  e.target.value,
-                                )
-                              }
-                              onFocus={() =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  cIdx,
-                                  "ingFocused",
-                                  true,
-                                )
-                              }
-                              onBlur={() =>
-                                setTimeout(
-                                  () =>
-                                    handleComponentChange(
-                                      activeVariantIndex,
-                                      cIdx,
-                                      "ingFocused",
-                                      false,
-                                    ),
-                                  200,
-                                )
-                              }
-                            />
-                          )}
+                                onChange={(event) =>
+                                  updateComponent(activeVariantIndex, componentIndex, {
+                                    ingSearch: event.target.value,
+                                    isEditingIngredient: true,
+                                  })
+                                }
+                              />
+                            )}
 
-                          {comp.isEditingIngredient !== false &&
-                            comp.ingFocused && (
+                            {component.isEditingIngredient !== false && component.ingFocused && (
                               <div className="ingredientSuggestDropdown">
-                                {[...(suggestGroups || []), ...aiLikeGroups]
-                                  .filter(
-                                    (g) =>
-                                      Array.isArray(g?.items) &&
-                                      g.items.length > 0,
-                                  )
-                                  .map((group, gIdx) => (
-                                    <div
-                                      key={gIdx}
-                                      className="ingredientSuggestGroup"
-                                    >
-                                      <div className="ingredientSuggestTitle">
-                                        {group.title}
-                                      </div>
-                                      <div style={{ padding: "4px" }}>
-                                        {group.items.map((item, iIdx) => (
-                                          <button
-                                            key={iIdx}
-                                            type="button"
-                                            className="ingredientSuggestItem"
-                                            onMouseDown={() =>
-                                              handleComponentChange(
-                                                activeVariantIndex,
-                                                cIdx,
-                                                "pickIngredient",
-                                                item.value,
-                                              )
-                                            }
-                                          >
-                                            {item.label}
-                                          </button>
-                                        ))}
-                                      </div>
+                                {suggestions.length > 0 ? (
+                                  <div className="ingredientSuggestGroup">
+                                    <div className="ingredientSuggestTitle">Gợi ý nguyên liệu</div>
+                                    <div style={{ padding: 4 }}>
+                                      {suggestions.map((ingredient) => (
+                                        <button
+                                          key={ingredient.id}
+                                          type="button"
+                                          className="ingredientSuggestItem"
+                                          onMouseDown={() => pickIngredient(activeVariantIndex, componentIndex, ingredient.id)}
+                                        >
+                                          {ingredient.name} ({ingredient.baseUnit || "unit"})
+                                        </button>
+                                      ))}
                                     </div>
-                                  ))}
-
-                                {!suggestGroups.length &&
-                                  !aiLikeGroups.length && (
-                                    <div className="ingredientSuggestEmpty">
-                                      {suggestLoading
-                                        ? "Đang tải gợi ý..."
-                                        : "Không tìm thấy"}
-                                    </div>
-                                  )}
+                                  </div>
+                                ) : (
+                                  <div className="ingredientSuggestEmpty">Không tìm thấy</div>
+                                )}
                               </div>
                             )}
-                        </div>
+                          </div>
 
-                        <div>
                           <FormInput
-                            type="text"
+                            value={component.qty || ""}
                             inputMode="decimal"
                             placeholder="0.00"
-                            value={comp.qty}
-                            onChange={(e) =>
-                              handleComponentChange(
-                                activeVariantIndex,
-                                cIdx,
-                                "qty",
-                                sanitizeDecimalText(e.target.value),
-                              )
-                            }
                             className="right-align"
-                          />
-                        </div>
-
-                        <div>
-                          <FormSelect
-                            value={comp.unit || ""}
-                            onChange={(e) =>
-                              handleComponentChange(
-                                activeVariantIndex,
-                                cIdx,
-                                "unit",
-                                e.target.value,
-                              )
+                            onChange={(event) =>
+                              updateComponent(activeVariantIndex, componentIndex, {
+                                qty: sanitizeDecimalText(event.target.value),
+                              })
                             }
+                          />
+
+                          <FormSelect
+                            value={component.unit || ""}
                             options={
-                              comp.ingredientId
-                                ? getAllowedUnitsForIngredient(
-                                    comp.ingredientId,
-                                  ).map((u) => ({ value: u, label: u }))
+                              component.ingredientId
+                                ? getAllowedUnitsForIngredient(component.ingredientId).map((unit) => ({ value: unit, label: unit }))
                                 : []
                             }
-                            disabled={!comp.ingredientId}
+                            disabled={!component.ingredientId}
+                            onChange={(event) => updateComponent(activeVariantIndex, componentIndex, { unit: event.target.value })}
                           />
-                        </div>
 
-                        <div>
                           <FormInput
-                            type="text"
+                            value={component.wastePct || ""}
                             inputMode="decimal"
                             placeholder="0"
-                            value={comp.wastePct}
-                            onChange={(e) =>
-                              handleComponentChange(
-                                activeVariantIndex,
-                                cIdx,
-                                "wastePct",
-                                sanitizeDecimalText(e.target.value),
-                              )
-                            }
                             className="right-align"
-                            style={{
-                              color:
-                                Number(comp.wastePct) > 0
-                                  ? "#ef4444"
-                                  : "inherit",
-                              fontWeight:
-                                Number(comp.wastePct) > 0 ? "bold" : "normal",
-                            }}
+                            onChange={(event) =>
+                              updateComponent(activeVariantIndex, componentIndex, {
+                                wastePct: sanitizeDecimalText(event.target.value),
+                              })
+                            }
                           />
-                        </div>
 
-                        <div>
                           <button
                             type="button"
-                            onClick={() =>
-                              handleComponentRemove(activeVariantIndex, cIdx)
-                            }
-                            style={{
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "none",
-                              cursor: "pointer",
-                              fontSize: "16px",
-                              padding: "8px",
-                              margin: "0 auto",
-                              display: "block",
-                              transition: "transform 0.2s",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.target.style.transform = "scale(1.2)")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.target.style.transform = "scale(1)")
-                            }
+                            className="recipe-remove-line"
+                            onClick={() => removeComponent(activeVariantIndex, componentIndex)}
                             title="Xoá dòng này"
                           >
                             ✕
                           </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
-                    {activeVariantMissingIngredientLines.length > 0 && (
-                      <div className="recipe-missing-hint">
-                        {`Có ${activeVariantMissingIngredientLines.length} dòng Chưa có nguyên liệu bù trong biến thể đang chọn.`}
-                      </div>
-                    )}
-
-                    <div style={{ padding: "12px" }}>
+                    <div style={{ padding: 12 }}>
                       <button
                         type="button"
-                        onClick={() => handleComponentAdd(activeVariantIndex)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          borderRadius: "8px",
-                          background: "#eff6ff",
-                          border: "1px dashed #93c5fd",
-                          color: "#2563eb",
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
+                        className="recipe-add-line-btn"
+                        onClick={() => addComponent(activeVariantIndex)}
                       >
                         + Thêm dòng nguyên liệu
                       </button>
@@ -2324,11 +948,9 @@ const RecipeModal = ({
                   </div>
 
                   <div className="variant-footer">
-                    <span className="label">
-                      Tổng chi phí dự kiến cho biến thể này:
-                    </span>
+                    <span className="label">Tổng chi phí dự kiến cho biến thể này:</span>
                     <span className="value">
-                      {activeCost === null ? "Không thể tính (N/A)" : cfmt(activeCost)}
+                      {activeCost === null ? "Không thể tính (N/A)" : formatMoney(activeCost)}
                     </span>
                   </div>
                 </div>
@@ -2336,43 +958,17 @@ const RecipeModal = ({
             </div>
           </Modal.Body>
 
-          <Modal.Footer
-            style={{ borderTop: "1px solid #e2e8f0", background: "#ffffff" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "flex-end",
-                width: "100%",
-                padding: "8px 0",
-              }}
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => requestCloseWithDraft(onClose)}
-                disabled={saving || deleting}
-              >
+          <Modal.Footer>
+            <div className="recipe-modal-footer-actions">
+              <Button type="button" variant="secondary" onClick={closeModal} disabled={saving || deleting}>
                 Hủy bỏ
               </Button>
-
               {hasExistingRecipe && (
-                <Button
-                  type="button"
-                  variant="danger"
-                  onClick={handleDeleteClick}
-                  disabled={saving || deleting || !currentMenuItemId}
-                >
+                <Button type="button" variant="danger" onClick={handleDeleteClick} disabled={saving || deleting}>
                   {deleting ? "Đang xoá..." : "Xóa công thức này"}
                 </Button>
               )}
-
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={saving || deleting || !currentMenuItemId}
-              >
+              <Button type="submit" variant="primary" disabled={saving || deleting || !formData.menuItemId}>
                 {saving ? "Đang lưu..." : "💾 Lưu công thức"}
               </Button>
             </div>
@@ -2383,7 +979,7 @@ const RecipeModal = ({
       <RecipeDishPickerModal
         isOpenPicker={isDishPickerOpen}
         onRequestClose={() => setIsDishPickerOpen(false)}
-        dishRows={menuItemRecipeRows}
+        dishRows={dishRows}
         onPickDishRow={handlePickDishRow}
       />
     </>

@@ -1,0 +1,150 @@
+/* Storage Wide Layout
+   Match the horizontal footprint of Manager Dashboard while keeping the header compact. */
+
+.manager-layout__content:has(.storage-management) .storage-management .sm-container,
+.storage-management .sm-container {
+  width: min(100%, 1680px) !important;
+  max-width: calc(100vw - var(--sidebar-width, 72px) - 48px) !important;
+  padding: clamp(16px, 1.45vw, 24px) clamp(18px, 1.9vw, 32px) 34px !important;
+  gap: 18px !important;
+}
+
+.storage-management .sm-header-card {
+  padding: clamp(16px, 1.35vw, 22px) clamp(18px, 1.7vw, 26px) !important;
+  border-radius: 24px !important;
+}
+
+.storage-management .sm-header-top {
+  align-items: flex-start !important;
+  gap: 16px !important;
+}
+
+.storage-management .title-wrapper {
+  min-width: 360px !important;
+}
+
+.storage-management .actions-wrapper {
+  flex: 0 0 auto !important;
+}
+
+.storage-management .sm-header-filters {
+  display: grid !important;
+  grid-template-columns: minmax(240px, 1.2fr) minmax(240px, 1.2fr) minmax(160px, 0.72fr) minmax(260px, 1fr) !important;
+  gap: 12px !important;
+  align-items: end !important;
+}
+
+.storage-management .filter-group {
+  min-width: 0 !important;
+}
+
+.storage-management .sm-kpi-section {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.storage-management .sm-kpi-card {
+  min-height: 104px !important;
+  padding: 15px 16px !important;
+  align-items: center !important;
+}
+
+.storage-management .sm-toolbar-wrapper {
+  padding: 9px 10px !important;
+}
+
+.storage-management .sm-tab-content-wrapper {
+  padding: clamp(18px, 1.7vw, 26px) !important;
+}
+
+.storage-management .il-toolbar,
+.storage-management .sl-toolbar,
+.storage-management .rl-toolbar {
+  padding: 14px !important;
+}
+
+.storage-management .il-toolbar__filters,
+.storage-management .sl-toolbar__left,
+.storage-management .rl-toolbar-filters {
+  flex: 1 1 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(190px, 0.8fr) minmax(170px, 0.72fr) !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+}
+
+.storage-management .il-toolbar__actions,
+.storage-management .sl-toolbar__right,
+.storage-management .rl-toolbar-actions {
+  flex: 0 0 auto !important;
+}
+
+.storage-management .il-grid,
+.storage-management .sl-grid,
+.storage-management .rl-grid {
+  grid-template-columns: repeat(4, minmax(238px, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.storage-management .il-card,
+.storage-management .supply-card,
+.storage-management .rc-card,
+.storage-management .recipe-card {
+  min-width: 0 !important;
+}
+
+.storage-management .storage-pagination {
+  margin-top: 16px !important;
+}
+
+@media (max-width: 1540px) {
+  .manager-layout__content:has(.storage-management) .storage-management .sm-container,
+  .storage-management .sm-container {
+    width: min(100%, 1500px) !important;
+    max-width: calc(100vw - var(--sidebar-width, 72px) - 38px) !important;
+  }
+
+  .storage-management .il-grid,
+  .storage-management .sl-grid,
+  .storage-management .rl-grid {
+    grid-template-columns: repeat(3, minmax(250px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .storage-management .sm-header-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .storage-management .sm-kpi-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .storage-management .il-toolbar__filters,
+  .storage-management .sl-toolbar__left,
+  .storage-management .rl-toolbar-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .manager-layout__content:has(.storage-management) .storage-management .sm-container,
+  .storage-management .sm-container {
+    max-width: 100% !important;
+    padding: 14px !important;
+  }
+
+  .storage-management .sm-header-top,
+  .storage-management .sm-header-filters,
+  .storage-management .il-toolbar__filters,
+  .storage-management .sl-toolbar__left,
+  .storage-management .rl-toolbar-filters {
+    grid-template-columns: 1fr !important;
+  }
+
+  .storage-management .il-grid,
+  .storage-management .sl-grid,
+  .storage-management .rl-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

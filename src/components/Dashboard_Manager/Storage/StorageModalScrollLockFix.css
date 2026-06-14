@@ -1,0 +1,189 @@
+/* Storage Modal Scroll Lock Fix
+   Final QA layer: when a storage modal is open, the page behind must not move.
+   The modal becomes a fixed-height flex shell; only the modal body scrolls. */
+
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.modal-overlay:has(.recipe-modal-form),
+.modal-overlay:has(.ingredient-form-premium),
+.modal-overlay:has(.cat-manager-premium),
+.modal-overlay:has(.qsm-wrapper),
+.modal-overlay:has(.so-container),
+.modal-overlay:has(.st-container),
+.modal-overlay:has(.modal-body > .sm-container) {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+  padding: clamp(18px, 2.2vw, 34px) !important;
+}
+
+.modal-container:has(.recipe-modal-form),
+.modal-container:has(.ingredient-form-premium),
+.modal-container:has(.cat-manager-premium),
+.modal-container:has(.qsm-wrapper),
+.modal-container:has(.so-container),
+.modal-container:has(.st-container),
+.modal-container:has(.modal-body > .sm-container) {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: calc(100dvh - clamp(36px, 4.4vw, 68px)) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+.modal-container:has(.recipe-modal-form) {
+  width: min(1360px, calc(100vw - 68px)) !important;
+}
+
+.modal-container:has(.ingredient-form-premium),
+.modal-container:has(.cat-manager-premium) {
+  width: min(980px, calc(100vw - 68px)) !important;
+}
+
+.modal-container:has(.modal-body > .sm-container),
+.modal-container:has(.qsm-wrapper),
+.modal-container:has(.so-container),
+.modal-container:has(.st-container) {
+  width: min(760px, calc(100vw - 68px)) !important;
+}
+
+.modal-container:has(.recipe-modal-form) > .modal-header,
+.modal-container:has(.ingredient-form-premium) > .modal-header,
+.modal-container:has(.cat-manager-premium) > .modal-header,
+.modal-container:has(.qsm-wrapper) > .modal-header,
+.modal-container:has(.so-container) > .modal-header,
+.modal-container:has(.st-container) > .modal-header,
+.modal-container:has(.modal-body > .sm-container) > .modal-header {
+  flex: 0 0 auto !important;
+}
+
+.modal-container:has(.recipe-modal-form) > .modal-body,
+.modal-container:has(.ingredient-form-premium) > .modal-body,
+.modal-container:has(.cat-manager-premium) > .modal-body,
+.modal-container:has(.qsm-wrapper) > .modal-body,
+.modal-container:has(.so-container) > .modal-body,
+.modal-container:has(.st-container) > .modal-body,
+.modal-container:has(.modal-body > .sm-container) > .modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Recipe modal has its own form with an internal body/footer. */
+.modal-container:has(.recipe-modal-form) > .modal-body {
+  display: none !important;
+}
+
+.modal-container:has(.recipe-modal-form) > .recipe-modal-form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+.modal-container:has(.recipe-modal-form) > .recipe-modal-form > .modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: clamp(18px, 1.8vw, 26px) !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(247, 243, 236, 0.72)) !important;
+}
+
+.modal-container:has(.recipe-modal-form) > .recipe-modal-form > .modal-footer {
+  position: relative !important;
+  bottom: auto !important;
+  flex: 0 0 auto !important;
+  min-height: 62px !important;
+  padding: 12px 20px !important;
+  border-top: 1px solid rgba(222, 214, 202, 0.84) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 -8px 22px rgba(54, 48, 40, 0.055) !important;
+}
+
+/* Keep content away from modal edges. */
+.modal-container:has(.recipe-modal-form) .recipe-section,
+.modal-container:has(.ingredient-form-premium) .form-section,
+.modal-container:has(.cat-manager-premium) .form-section,
+.modal-container:has(.cat-manager-premium) .list-container,
+.modal-container:has(.modal-body > .sm-container) .sm-header-note,
+.modal-container:has(.qsm-wrapper) .qsm-item {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipe-section {
+  padding: clamp(16px, 1.5vw, 22px) !important;
+}
+
+.modal-container:has(.recipe-modal-form) .recipeIngredientLine {
+  padding-inline: 12px !important;
+}
+
+.modal-container:has(.recipe-modal-form) .ingredientSuggestDropdown {
+  max-height: min(280px, 45dvh) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Category manager: give the search/list block enough breathing room. */
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .toolbar {
+  margin-bottom: 12px !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .list-container {
+  max-height: min(252px, 32dvh) !important;
+  min-height: 208px !important;
+  padding: 8px 10px !important;
+}
+
+.modal-container:has(.cat-manager-premium) .cat-manager-premium .history-timeline {
+  max-height: min(120px, 18dvh) !important;
+  overflow-y: auto !important;
+}
+
+@media (max-width: 900px) {
+  .modal-overlay:has(.recipe-modal-form),
+  .modal-overlay:has(.ingredient-form-premium),
+  .modal-overlay:has(.cat-manager-premium),
+  .modal-overlay:has(.qsm-wrapper),
+  .modal-overlay:has(.so-container),
+  .modal-overlay:has(.st-container),
+  .modal-overlay:has(.modal-body > .sm-container) {
+    padding: 12px !important;
+    align-items: flex-start !important;
+  }
+
+  .modal-container:has(.recipe-modal-form),
+  .modal-container:has(.ingredient-form-premium),
+  .modal-container:has(.cat-manager-premium),
+  .modal-container:has(.qsm-wrapper),
+  .modal-container:has(.so-container),
+  .modal-container:has(.st-container),
+  .modal-container:has(.modal-body > .sm-container) {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .modal-container:has(.recipe-modal-form) .recipeIngredientLine {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}

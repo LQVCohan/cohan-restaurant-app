@@ -30,8 +30,9 @@ const StockOutModal = ({ isOpen, onClose, onConfirm, supply, isSubmitting = fals
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="📤 Xuất Kho Hàng Hoá"
+      title="Xuất kho hàng hoá"
       size="md"
+      className="storage-modal-shell storage-modal-stock-out"
     >
       <div className="so-container">
         {/* Header Info Block */}

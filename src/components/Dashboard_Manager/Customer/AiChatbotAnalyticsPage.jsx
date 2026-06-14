@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./CustomerAnalyticsPage.scss";
@@ -71,44 +71,52 @@ const formatWindowMs = (windowMs) => {
 };
 
 const rateLimitLabels = {
-  askAiChatbot: "Hỏi AI",
-  requestAiChatbotHandoff: "Chuyển nhân viên",
-  requestRestaurantChatbotHandoff: "Chuyển nhân viên",
-  sendAiChatbotGuestMessage: "Tin nhắn khách",
-  sendRestaurantChatbotHandoffMessage: "Tin nhắn khách",
-  aiChatbotGuestReplies: "Phản hồi của chatbot",
-  submitAiChatbotAnswerFeedback: "Phản hồi khách hàng",
-  joinAiChatbotConversation: "Khách bắt đầu trò chuyện",
-  joinRestaurantChatbotConversation: "Khách bắt đầu trò chuyện",
+  askAiChatbot: "Khách hỏi chatbot",
+  requestAiChatbotHandoff: "Yêu cầu gặp nhân viên",
+  requestRestaurantChatbotHandoff: "Yêu cầu gặp nhân viên",
+  sendAiChatbotGuestMessage: "Tin nhắn của khách",
+  sendRestaurantChatbotHandoffMessage: "Tin nhắn của khách",
+  aiChatbotGuestReplies: "Chatbot trả lời",
+  submitAiChatbotAnswerFeedback: "Đánh giá câu trả lời",
+  joinAiChatbotConversation: "Bắt đầu trò chuyện",
+  joinRestaurantChatbotConversation: "Bắt đầu trò chuyện",
 };
 
 const riskySignalLabels = {
-  FALLBACK_SPIKE: "Nhiều câu trả lời cần rà soát",
-  NOT_HELPFUL_SPIKE: "Tăng phản hồi chưa hài lòng",
-  PENDING_SUGGESTION_BACKLOG: "Gợi ý tri thức còn chờ duyệt",
-  SAFETY_BLOCK_SPIKE: "Nhiều nội dung bị chặn an toàn",
+  FALLBACK_SPIKE: "Nhiều câu trả lời chưa chắc chắn",
+  NOT_HELPFUL_SPIKE: "Phản hồi chưa hài lòng tăng",
+  PENDING_SUGGESTION_BACKLOG: "Gợi ý tri thức chờ duyệt",
+  SAFETY_BLOCK_SPIKE: "Nội dung bị chặn tăng",
 };
 
 const qualityQueueLabels = {
-  fallback_response: "Câu trả lời cần rà soát",
-  pending_suggestion: "Gợi ý bổ sung tri thức",
+  fallback_response: "Cần bổ sung câu trả lời",
+  pending_suggestion: "Gợi ý tri thức mới",
 };
 const messageRoleLabels = {
-  assistant: "Phản hồi của chatbot",
-  customer: "Tin nhắn từ khách",
+  assistant: "Chatbot",
+  customer: "Khách",
   staff: "Nhân viên",
   manager: "Quản lý",
   system: "Hệ thống",
 };
 
 const signalLevelLabels = {
-  info: "Ổn định",
-  low: "Mức thấp",
-  warning: "Cần chú ý",
-  medium: "Cần chú ý",
+  info: "Ổn",
+  low: "Ổn",
+  warning: "Cần xem",
+  medium: "Cần xem",
   critical: "Ưu tiên cao",
   danger: "Ưu tiên cao",
   high: "Ưu tiên cao",
+};
+
+const knowledgeTabLabels = {
+  knowledge: "Tri thức",
+  suggestions: "Gợi ý",
+  feedback: "Phản hồi",
+  safety: "An toàn",
+  evaluation: "Kiểm thử",
 };
 
 const signalLevelClass = (level) => {
@@ -134,7 +142,7 @@ const intentLabel = (intent) => {
     opening_hours: "Giờ mở cửa",
     location: "Địa chỉ",
   };
-  return labels[normalized] || intent || "Chủ đề khác";
+  return labels[normalized] || intent || "Khác";
 };
 
 const qualityItemTitle = (item) =>
@@ -142,7 +150,7 @@ const qualityItemTitle = (item) =>
 
 const qualityItemDescription = (item) => {
   if (item?.type === "fallback_response") {
-    return "Chatbot chưa có đủ tri thức để trả lời chắc chắn.";
+    return "Chatbot thiếu thông tin để trả lời rõ ràng.";
   }
   if (item?.type === "pending_suggestion") {
     return "Khách hỏi nội dung chưa có trong kho tri thức.";
@@ -152,31 +160,65 @@ const qualityItemDescription = (item) => {
 
 const qualityItemMeta = (item) => {
   const raw = `${item?.label || ""} ${item?.detail || ""}`.toLowerCase();
-  if (raw.includes("menu")) return "Chủ đề: Thực đơn";
+  if (raw.includes("menu")) return "Thực đơn";
   if (raw.includes("booking") || raw.includes("reservation")) {
-    return "Chủ đề: Đặt bàn";
+    return "Đặt bàn";
   }
-  if (raw.includes("order")) return "Chủ đề: Đơn hàng";
+  if (raw.includes("order")) return "Đơn hàng";
   if (raw.includes("coupon") || raw.includes("promotion")) {
-    return "Chủ đề: Ưu đãi";
+    return "Ưu đãi";
   }
-  if (raw.includes("knowledge")) return "Nguồn: Thiếu nội dung phù hợp";
-  return "Cần quản lý rà soát";
+  if (raw.includes("knowledge")) return "Thiếu tri thức phù hợp";
+  return "Cần rà soát";
+};
+
+const reviewActionFor = (item) => {
+  const raw = `${item?.type || ""} ${item?.label || ""} ${item?.detail || ""}`.toLowerCase();
+
+  if (item?.type === "pending_suggestion" || raw.includes("suggestion") || raw.includes("knowledge")) {
+    return {
+      tab: "suggestions",
+      label: "Mở Gợi ý",
+      description: "Duyệt thành tri thức mới hoặc bỏ qua nếu nội dung không phù hợp.",
+    };
+  }
+
+  if (raw.includes("safety") || raw.includes("block")) {
+    return {
+      tab: "safety",
+      label: "Mở An toàn",
+      description: "Kiểm tra quy tắc chặn và phạm vi chatbot được phép trả lời.",
+    };
+  }
+
+  if (item?.type === "fallback_response" || raw.includes("feedback") || raw.includes("fallback")) {
+    return {
+      tab: "feedback",
+      label: "Mở Phản hồi",
+      description: "Xem câu trả lời chưa ổn và bổ sung tri thức nếu cần.",
+    };
+  }
+
+  return {
+    tab: "knowledge",
+    label: "Mở Tri thức",
+    description: "Thêm hoặc chỉnh nội dung để chatbot có nguồn trả lời tốt hơn.",
+  };
 };
 
 function EmptyReport() {
   return (
     <div className="ai-admin-empty ai-admin-empty--soft">
       <div className="ai-admin-empty__icon">•</div>
-      <h4>Chưa đủ dữ liệu để tạo báo cáo</h4>
-      <p>Khi khách bắt đầu trò chuyện, biểu đồ sẽ được cập nhật tự động.</p>
+      <h4>Chưa có dữ liệu</h4>
+      <p>Khi có hội thoại mới, báo cáo sẽ tự cập nhật.</p>
     </div>
   );
 }
 
 export default function AiChatbotAnalyticsPage() {
   const [range, setRange] = useState("7");
-  const [showAllReviewItems, setShowAllReviewItems] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -207,10 +249,82 @@ export default function AiChatbotAnalyticsPage() {
 
   const m = data?.aiChatbotAnalytics;
   const reviewItems = m?.recentQualityQueue || [];
-  const visibleReviewItems = showAllReviewItems
-    ? reviewItems
-    : reviewItems.slice(0, 3);
+  const reviewPreviewItems = reviewItems.slice(0, 2);
   const reviewCount = Number(m?.fallbackResponses || 0) + Number(m?.pendingSuggestions || 0) + Number(m?.notHelpfulFeedback || 0);
+  const averageMessageLabel =
+    Number(m?.totalConversations || 0) > 0 && m?.averageMessagesPerConversation != null
+      ? `${Number(m.averageMessagesPerConversation).toFixed(1)} tin / cuộc`
+      : "tổng tin nhắn trong kỳ";
+  const handoffLabel = Number(m?.handoffRequested || 0)
+    ? `${formatPct(m.handoffConversionRate)} trong số hội thoại`
+    : "chưa phát sinh";
+
+  useEffect(() => {
+    const lockClassName = "ai-admin-modal-open";
+
+    if (!reviewModalOpen) {
+      return undefined;
+    }
+
+    document.body.classList.add(lockClassName);
+    document.documentElement.classList.add(lockClassName);
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setReviewModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.classList.remove(lockClassName);
+      document.documentElement.classList.remove(lockClassName);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [reviewModalOpen]);
+
+  const openKnowledgeTarget = (item) => {
+    const action = reviewActionFor(item);
+    const query = {
+      tab: action.tab,
+      focusId: item?.id || "",
+      source: item?.type || "quality-review",
+    };
+
+    setReviewModalOpen(false);
+    sessionStorage.setItem("aiChatbotKnowledgeTarget", JSON.stringify(query));
+    window.dispatchEvent(
+      new CustomEvent("manager:navigate", {
+        detail: {
+          page: "ai-chatbot-knowledge",
+          query,
+          source: "ai-analytics-review",
+        },
+      }),
+    );
+
+    let attempts = 0;
+    const clickTargetTab = () => {
+      const buttons = Array.from(document.querySelectorAll(".ai-admin-tabs button"));
+      const target = buttons.find(
+        (button) => button.textContent?.trim() === knowledgeTabLabels[action.tab],
+      );
+
+      if (target) {
+        target.click();
+        document
+          .querySelector(".ai-admin-tab-panel")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      attempts += 1;
+      if (attempts <= 12) window.setTimeout(clickTargetTab, 120);
+    };
+
+    window.setTimeout(clickTargetTab, 120);
+  };
 
   return (
     <section className="customer-analytics-page ai-admin-page ai-admin-page--analytics">
@@ -221,7 +335,7 @@ export default function AiChatbotAnalyticsPage() {
           </p>
           <h2>Báo cáo Chatbot AI</h2>
           <p>
-            Theo dõi chất lượng tư vấn, nhu cầu chuyển nhân viên và các nội dung cần cải thiện.
+            Xem hiệu quả tư vấn, nhu cầu gặp nhân viên và các nội dung cần xử lý.
           </p>
         </div>
 
@@ -289,38 +403,68 @@ export default function AiChatbotAnalyticsPage() {
               <small>{formatNum(m.openConversations)} cuộc đang mở</small>
             </article>
             <article>
-              <span>Tin nhắn AI</span>
+              <span>Tin nhắn</span>
               <strong>{formatNum(m.totalMessages)}</strong>
-              <small>
-                {m.averageMessagesPerConversation == null
-                  ? "Tin nhắn trong kỳ"
-                  : `${Number(m.averageMessagesPerConversation).toFixed(1)} tin / cuộc`}
-              </small>
+              <small>{averageMessageLabel}</small>
             </article>
             <article>
-              <span>Yêu cầu chuyển nhân viên</span>
+              <span>Gặp nhân viên</span>
               <strong>{formatNum(m.handoffRequested)}</strong>
-              <small>{formatPct(m.handoffConversionRate)} tỷ lệ chuyển</small>
+              <small>{handoffLabel}</small>
             </article>
             <article>
               <span>Cần rà soát</span>
               <strong>{formatNum(reviewCount)}</strong>
-              <small>{formatNum(m.notHelpfulFeedback)} phản hồi chưa hài lòng</small>
+              <small>mục cần xử lý trong kỳ</small>
             </article>
           </div>
+
+          {reviewItems.length ? (
+            <article className="ai-admin-review-strip" aria-label="Việc cần rà soát">
+              <div className="ai-admin-review-strip__summary">
+                <span className="ai-admin-chip ai-admin-chip--warning">
+                  {formatNum(reviewItems.length)} mục
+                </span>
+                <div>
+                  <h3>Việc cần rà soát</h3>
+                  <p>Nội dung cần kiểm tra để chatbot trả lời tốt hơn.</p>
+                </div>
+              </div>
+              <div className="ai-admin-review-strip__items">
+                {reviewPreviewItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="ai-admin-review-strip__item"
+                    onClick={() => openKnowledgeTarget(item)}
+                  >
+                    <strong>{qualityItemTitle(item)}</strong>
+                    <small>{reviewActionFor(item).label} · {qualityItemMeta(item)}</small>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="ai-admin-link-button"
+                onClick={() => setReviewModalOpen(true)}
+              >
+                Xem tất cả
+              </button>
+            </article>
+          ) : null}
 
           <section className="ai-admin-insight-grid">
             <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Chủ đề khách hỏi nhiều</h3>
-                <p>Những nhóm câu hỏi nổi bật trong kỳ báo cáo.</p>
+                <h3>Khách hỏi về gì?</h3>
+                <p>Các nhóm câu hỏi xuất hiện nhiều trong kỳ.</p>
               </header>
               {m.topIntents?.length ? (
                 <ul className="ai-analytics-list ai-analytics-list--bars">
                   {m.topIntents.slice(0, 6).map((it) => (
                     <li key={it.intent} className="ai-analytics-list__item">
                       <span className="ai-analytics-list__label">
-                        Chủ đề: {intentLabel(it.intent)}
+                        {intentLabel(it.intent)}
                       </span>
                       <span className="ai-analytics-list__value">{formatNum(it.count)}</span>
                     </li>
@@ -333,8 +477,8 @@ export default function AiChatbotAnalyticsPage() {
 
             <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Nguồn tin nhắn</h3>
-                <p>Khách, chatbot và nhân viên đóng góp vào hội thoại như thế nào.</p>
+                <h3>Ai đang nhắn?</h3>
+                <p>Tin nhắn đến từ khách, chatbot hay nhân viên.</p>
               </header>
               {m.messagesByRole?.length ? (
                 <ul className="ai-analytics-list">
@@ -356,8 +500,8 @@ export default function AiChatbotAnalyticsPage() {
           <section className="ai-admin-operational-grid">
             <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Giới hạn sử dụng</h3>
-                <p>Các mức kiểm soát để hệ thống vận hành ổn định.</p>
+                <h3>Giới hạn hệ thống</h3>
+                <p>Mức giới hạn giúp chatbot vận hành ổn định.</p>
               </header>
               {m.rateLimitStatus?.length ? (
                 <ul className="ai-analytics-list">
@@ -379,18 +523,18 @@ export default function AiChatbotAnalyticsPage() {
 
             <article className="customer-analytics-panel ai-admin-control-card">
               <header className="ai-analytics-card__header">
-                <h3>Tín hiệu cần chú ý</h3>
-                <p>Ưu tiên xử lý những điểm có thể ảnh hưởng trải nghiệm khách.</p>
+                <h3>Cần ưu tiên xử lý</h3>
+                <p>Các điểm có thể ảnh hưởng trải nghiệm khách.</p>
               </header>
               {m.riskySignals?.length ? (
                 <ul className="ai-analytics-list">
                   {m.riskySignals.map((it) => (
                     <li key={it.code} className="ai-analytics-list__item">
                       <span className="ai-analytics-list__label">
-                        {riskySignalLabels[it.code] || "Tín hiệu vận hành"}
+                        {riskySignalLabels[it.code] || "Tín hiệu cần xem"}
                       </span>
                       <span className={`ai-admin-chip ${signalLevelClass(it.level)}`}>
-                        {signalLevelLabels[String(it.level || "").toLowerCase()] || "Cần chú ý"} · {formatNum(it.count)}
+                        {signalLevelLabels[String(it.level || "").toLowerCase()] || "Cần xem"} · {formatNum(it.count)}
                       </span>
                     </li>
                   ))}
@@ -399,70 +543,89 @@ export default function AiChatbotAnalyticsPage() {
                 <div className="ai-admin-empty ai-admin-empty--soft">
                   <div className="ai-admin-empty__icon">✓</div>
                   <h4>Ổn định</h4>
-                  <p>Chưa ghi nhận tín hiệu cần ưu tiên trong kỳ này.</p>
+                  <p>Chưa có vấn đề cần ưu tiên trong kỳ này.</p>
                 </div>
               )}
             </article>
           </section>
 
-          <article className="customer-analytics-panel ai-admin-control-card ai-admin-review-list">
-            <header className="ai-analytics-card__header ai-admin-review-list__header">
-              <div>
-                <h3>Việc cần rà soát</h3>
-                <p>Các nội dung có thể ảnh hưởng đến chất lượng tư vấn.</p>
-              </div>
-              {reviewItems.length > 3 ? (
-                <button
-                  type="button"
-                  className="ai-admin-link-button"
-                  onClick={() => setShowAllReviewItems((current) => !current)}
-                >
-                  {showAllReviewItems
-                    ? "Thu gọn"
-                    : `Xem tất cả (${formatNum(reviewItems.length)})`}
-                </button>
-              ) : null}
-            </header>
-            {visibleReviewItems.length ? (
-              <ul className="ai-admin-review-list__items">
-                {visibleReviewItems.map((it) => (
-                  <li key={it.id} className="ai-admin-review-item">
-                    <div>
-                      <span className="ai-admin-chip ai-admin-chip--warning">
-                        {qualityQueueLabels[it.type] || "Cần rà soát"}
-                      </span>
-                      <h4>{qualityItemTitle(it)}</h4>
-                      <p>{qualityItemDescription(it)}</p>
-                      <small className="ai-admin-review-item__meta">
-                        {qualityItemMeta(it)}
-                      </small>
-                    </div>
-                    <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="ai-admin-empty ai-admin-empty--soft">
-                <div className="ai-admin-empty__icon">✓</div>
-                <h4>Chưa có mục cần rà soát</h4>
-                <p>Khi có câu trả lời cần cải thiện, danh sách sẽ hiển thị tại đây.</p>
-              </div>
-            )}
-          </article>
-
-          <details className="ai-admin-collapsible">
-            <summary>Chi tiết kỹ thuật</summary>
+          <details className="ai-admin-collapsible ai-admin-technical-details">
+            <summary>Thông tin hệ thống</summary>
             <div className="ai-admin-technical-grid">
-              <span>Đã xử lý chuyển nhân viên: {formatNum(m.resolvedHandoffs)}</span>
-              <span>Câu trả lời cần rà soát: {formatNum(m.fallbackResponses)}</span>
-              <span>Độ chắc chắn thấp: {formatNum(m.lowConfidenceResponses)}</span>
+              <span>Chuyển nhân viên đã xử lý: {formatNum(m.resolvedHandoffs)}</span>
+              <span>Câu trả lời cần bổ sung: {formatNum(m.fallbackResponses)}</span>
+              <span>Câu trả lời chưa chắc chắn: {formatNum(m.lowConfidenceResponses)}</span>
               <span>Quy tắc an toàn đang bật: {formatNum(m.activeSafetyRules)}</span>
-              <span>Bộ câu hỏi kiểm thử: {formatNum(m.evaluationCaseCount)}</span>
+              <span>Kịch bản kiểm thử: {formatNum(m.evaluationCaseCount)}</span>
               <span>
-                Thời gian xử lý TB: {m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}
+                Thời gian xử lý trung bình: {m.averageHandoffResolutionMinutes == null ? "—" : `${Number(m.averageHandoffResolutionMinutes).toFixed(1)} phút`}
               </span>
             </div>
           </details>
+
+          {reviewModalOpen ? (
+            <div
+              className="ai-admin-modal-backdrop"
+              role="presentation"
+              onMouseDown={() => setReviewModalOpen(false)}
+            >
+              <section
+                className="ai-admin-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ai-review-modal-title"
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <header className="ai-admin-modal__header">
+                  <div>
+                    <p className="ai-admin-eyebrow">Rà soát chất lượng</p>
+                    <h3 id="ai-review-modal-title">Việc cần rà soát</h3>
+                    <p>Mở từng mục để chuyển đến nơi xử lý phù hợp.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="ai-admin-modal__close"
+                    aria-label="Đóng danh sách rà soát"
+                    onClick={() => setReviewModalOpen(false)}
+                  >
+                    ×
+                  </button>
+                </header>
+                <ul className="ai-admin-review-list__items ai-admin-review-list__items--modal">
+                  {reviewItems.map((it) => {
+                    const action = reviewActionFor(it);
+                    return (
+                      <li key={it.id} className="ai-admin-review-item ai-admin-review-item--actionable">
+                        <div>
+                          <span className="ai-admin-chip ai-admin-chip--warning">
+                            {qualityQueueLabels[it.type] || "Cần rà soát"}
+                          </span>
+                          <h4>{qualityItemTitle(it)}</h4>
+                          <p>{qualityItemDescription(it)}</p>
+                          <small className="ai-admin-review-item__meta">
+                            {qualityItemMeta(it)}
+                          </small>
+                          <div className="ai-admin-review-item__next-step">
+                            <strong>Gợi ý xử lý:</strong> {action.description}
+                          </div>
+                        </div>
+                        <div className="ai-admin-review-item__side">
+                          <time dateTime={it.createdAt}>{formatDate(it.createdAt)}</time>
+                          <button
+                            type="button"
+                            className="ai-admin-review-item__action"
+                            onClick={() => openKnowledgeTarget(it)}
+                          >
+                            {action.label}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            </div>
+          ) : null}
         </>
       ) : null}
     </section>

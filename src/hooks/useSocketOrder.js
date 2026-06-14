@@ -1,6 +1,7 @@
 // src/hooks/useSocketOrder.js
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import { getToken } from "@/lib/authStorage";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 export const MENU_AVAILABILITY_SOCKET_EVENT = "menu-availability:socket-event";
@@ -19,14 +20,18 @@ function broadcastMenuAvailabilityEvent(evt, channel = "inventory") {
 
 /**
  * Hook kết nối socket.io để lắng nghe các sự kiện order + inventory realtime.
+ * Socket sử dụng đúng access token hiện hành từ authStorage, cùng nguồn với Apollo client.
  * Handlers được lưu bằng ref để tránh stale closure khi state của component thay đổi.
  *
  * @param {string} restaurantId - ID của nhà hàng
  * @param {object} handlers - Các callback cho từng loại event
+ * @param {object} options
+ * @param {string|null} options.token - access token từ AuthContext; fallback sang getToken() khi không truyền.
  */
-export default function useSocketOrder(restaurantId, handlers = {}) {
+export default function useSocketOrder(restaurantId, handlers = {}, options = {}) {
   const socketRef = useRef(null);
   const handlersRef = useRef(handlers);
+  const authToken = options?.token || null;
 
   useEffect(() => {
     handlersRef.current = handlers || {};
@@ -35,8 +40,15 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
   useEffect(() => {
     if (!restaurantId) return undefined;
 
+    const token = authToken || getToken();
+    if (!token) {
+      console.warn("[SOCKET.IO] Skip restaurant realtime: missing access token.");
+      return undefined;
+    }
+
     const socket = io(SOCKET_URL, {
       transports: ["websocket"],
+      auth: { token },
       reconnection: true,
       reconnectionDelay: 2000,
       reconnectionAttempts: 10,
@@ -47,7 +59,11 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
 
     socket.on("connect", () => {
       console.log(`[SOCKET.IO] Connected (${socket.id})`);
-      socket.emit("joinRestaurant", restaurantId);
+      socket.emit("joinRestaurant", restaurantId, (ack) => {
+        if (!ack?.ok) {
+          console.warn("[SOCKET.IO] joinRestaurant failed:", ack?.code || "UNKNOWN");
+        }
+      });
     });
 
     socket.on("disconnect", (reason) => {
@@ -122,11 +138,12 @@ export default function useSocketOrder(restaurantId, handlers = {}) {
     });
 
     return () => {
-      console.log("[SOCKET.IO] Disconnecting...");
+      console.log("[SOCKET.IO] Leaving restaurant realtime and disconnecting...");
+      socket.emit("leaveRestaurant", restaurantId);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [restaurantId]);
+  }, [restaurantId, authToken]);
 
   return socketRef.current;
 }

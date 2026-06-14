@@ -35,17 +35,21 @@ const SupplySchema = BaseSchemaModel({
   notes: { type: String, trim: true },
 
   isActive: { type: Boolean, default: true },
+
+  deletedAt: { type: Date, default: null, index: true },
+  deleteExpiresAt: { type: Date, default: null, index: true },
 });
 
 // Query/index hỗ trợ lọc theo nhà hàng + tên
-SupplySchema.index({ restaurantId: 1, name: 1 });
-// SKU unique theo nhà hàng, cho phép để trống
+SupplySchema.index({ restaurantId: 1, name: 1, deletedAt: 1 });
+// SKU unique theo nhà hàng, cho phép để trống và bỏ qua bản ghi trong thùng rác
 SupplySchema.index(
   { restaurantId: 1, sku: 1 },
   {
     unique: true,
     partialFilterExpression: {
       sku: { $exists: true, $type: "string", $ne: "" },
+      deletedAt: null,
     },
   },
 );

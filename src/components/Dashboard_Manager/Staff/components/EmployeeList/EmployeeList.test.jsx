@@ -55,7 +55,7 @@ describe("EmployeeList UC15 filters", () => {
     expect(screen.getByText("Nguyễn An")).toBeInTheDocument();
     expect(screen.getByText("Trần Bình")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/Tìm theo tên/i), {
+    fireEvent.change(screen.getByLabelText(/Tìm nhân viên/i), {
       target: { value: "NV001" },
     });
 

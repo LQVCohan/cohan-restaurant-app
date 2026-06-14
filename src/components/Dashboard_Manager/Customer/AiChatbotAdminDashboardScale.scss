@@ -1,0 +1,570 @@
+html.ai-admin-modal-open,
+body.ai-admin-modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body.ai-admin-modal-open .manager-layout__content,
+body.ai-admin-modal-open .manager-page-shell,
+body.ai-admin-modal-open .manager-page-shell__body {
+  overflow: hidden !important;
+}
+
+.manager-layout--ai-chatbot-analytics .manager-page-shell,
+.manager-layout--ai-chatbot-settings .manager-page-shell,
+.manager-layout--ai-chatbot-knowledge .manager-page-shell {
+  width: min(100%, 1500px) !important;
+  max-width: 1500px !important;
+}
+
+.manager-layout--ai-chatbot-analytics .manager-page-shell__body,
+.manager-layout--ai-chatbot-settings .manager-page-shell__body,
+.manager-layout--ai-chatbot-knowledge .manager-page-shell__body {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.manager-layout--ai-chatbot-analytics .ai-admin-page,
+.manager-layout--ai-chatbot-settings .ai-admin-page,
+.manager-layout--ai-chatbot-knowledge .ai-admin-page {
+  width: min(100%, 1480px) !important;
+  max-width: 1480px !important;
+  padding: 22px 28px 44px !important;
+}
+
+.ai-admin-hero {
+  min-height: 152px !important;
+  padding: 24px 30px !important;
+  gap: 28px !important;
+  border-radius: 22px !important;
+}
+
+.ai-admin-hero h2 {
+  font-size: clamp(34px, 3.2vw, 46px) !important;
+}
+
+.ai-admin-hero p:not(.ai-admin-eyebrow) {
+  max-width: 760px !important;
+}
+
+.ai-admin-toolbar {
+  gap: 12px !important;
+}
+
+.ai-admin-toolbar .ai-admin-field,
+.ai-admin-toolbar .customer-analytics-field {
+  width: clamp(190px, 13vw, 230px) !important;
+  padding: 10px 12px !important;
+}
+
+.ai-admin-toolbar .ai-admin-field select,
+.ai-admin-toolbar .customer-analytics-field select {
+  height: 42px !important;
+}
+
+.ai-admin-toolbar button,
+.ai-admin-link-button {
+  min-height: 42px !important;
+  padding: 0 18px !important;
+}
+
+.ai-admin-metrics {
+  gap: 16px !important;
+  margin-top: 18px !important;
+}
+
+.ai-admin-metrics article {
+  min-height: 108px !important;
+  padding: 18px 20px !important;
+}
+
+.ai-admin-metrics strong {
+  font-size: clamp(28px, 2.6vw, 38px) !important;
+}
+
+.ai-admin-tabs {
+  margin-top: 18px !important;
+}
+
+.ai-admin-tab-panel,
+.ai-admin-insight-grid,
+.ai-admin-operational-grid,
+.customer-analytics-layout-grid,
+.ai-admin-review-list {
+  margin-top: 18px !important;
+}
+
+.ai-admin-grid,
+.ai-admin-insight-grid,
+.ai-admin-operational-grid,
+.customer-analytics-layout-grid {
+  gap: 18px !important;
+}
+
+.ai-admin-grid--settings {
+  grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.85fr) !important;
+}
+
+.ai-admin-grid--knowledge,
+.ai-admin-grid--safety,
+.ai-admin-grid--evaluation {
+  grid-template-columns: minmax(0, 1.45fr) minmax(380px, 0.85fr) !important;
+}
+
+.ai-admin-panel__header,
+.ai-analytics-card__header,
+.ai-admin-review-list__header {
+  padding: 20px 22px !important;
+}
+
+.ai-admin-panel__header h3,
+.ai-analytics-card__header h3 {
+  font-size: clamp(22px, 2vw, 30px) !important;
+}
+
+.ai-admin-form,
+.ai-admin-import-export,
+.ai-admin-card-list,
+.ai-analytics-list,
+.ai-admin-eval-cases ul,
+.ai-admin-review-list__items {
+  gap: 12px !important;
+  padding: 18px !important;
+}
+
+.ai-admin-field input,
+.ai-admin-field select,
+.ai-admin-field textarea,
+.ai-admin-import-export textarea {
+  padding: 12px 14px !important;
+  font-size: 14px !important;
+}
+
+.ai-admin-field textarea,
+.ai-admin-import-export textarea {
+  min-height: 132px !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel--main textarea {
+  min-height: 146px !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel--handoff textarea {
+  min-height: 126px !important;
+}
+
+.ai-admin-check,
+.ai-admin-check--card,
+.ai-analytics-list__item,
+.ai-admin-eval-cases li,
+.ai-admin-review-item,
+.ai-admin-card {
+  padding: 14px 16px !important;
+}
+
+.ai-admin-empty,
+.ai-admin-empty--soft {
+  padding: 24px !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge:has(> .ai-admin-panel .ai-admin-empty--soft) .ai-admin-empty--soft {
+  min-height: 170px !important;
+}
+
+.ai-admin-page--analytics .ai-admin-hero {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+.ai-admin-review-strip {
+  display: grid !important;
+  grid-template-columns: minmax(260px, auto) minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+  min-height: 68px !important;
+  padding: 12px 16px !important;
+  border: 1px solid rgba(166, 106, 24, 0.22) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(255, 243, 219, 0.88), rgba(255, 253, 248, 0.96)) !important;
+  box-shadow: 0 8px 22px rgba(79, 55, 33, 0.07) !important;
+}
+
+.ai-admin-review-strip__summary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+}
+
+.ai-admin-review-strip__summary h3 {
+  margin: 0 !important;
+  color: var(--ai-text, #2f2923) !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-review-strip__summary p {
+  margin: 3px 0 0 !important;
+  color: var(--ai-muted, #76685b) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.ai-admin-review-strip__items {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.ai-admin-review-strip__item {
+  min-width: 0 !important;
+  border: 1px solid rgba(166, 106, 24, 0.18) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  color: inherit !important;
+  padding: 9px 11px !important;
+  font: inherit !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease !important;
+}
+
+.ai-admin-review-strip__item:hover,
+.ai-admin-review-strip__item:focus-visible {
+  border-color: rgba(138, 98, 61, 0.46) !important;
+  box-shadow: 0 6px 18px rgba(79, 55, 33, 0.1) !important;
+  transform: translateY(-1px) !important;
+  outline: none !important;
+}
+
+.ai-admin-review-strip__item strong,
+.ai-admin-review-strip__item small {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ai-admin-review-strip__item strong {
+  color: var(--ai-text, #2f2923) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-review-strip__item small {
+  margin-top: 3px !important;
+  color: var(--ai-accent, #8a623d) !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+}
+
+.ai-admin-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 32px !important;
+  overflow: hidden !important;
+  background: rgba(47, 41, 35, 0.36) !important;
+  backdrop-filter: blur(5px) !important;
+  overscroll-behavior: contain !important;
+}
+
+.ai-admin-modal {
+  width: min(960px, 100%) !important;
+  max-height: min(82dvh, 780px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  border: 1px solid var(--ai-border-strong, rgba(124, 93, 63, 0.22)) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 32px 96px rgba(47, 41, 35, 0.28) !important;
+  overscroll-behavior: contain !important;
+}
+
+.ai-admin-modal__header {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  padding: 20px 24px !important;
+  border-bottom: 1px solid var(--ai-border, rgba(124, 93, 63, 0.14)) !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(246, 239, 228, 0.82)) !important;
+}
+
+.ai-admin-modal__header h3 {
+  margin: 0 !important;
+  color: var(--ai-text, #2f2923) !important;
+  font-size: 25px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-modal__header p:not(.ai-admin-eyebrow) {
+  margin: 6px 0 0 !important;
+  color: var(--ai-muted, #76685b) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.ai-admin-modal__close {
+  width: 38px !important;
+  height: 38px !important;
+  border: 1px solid var(--ai-border, rgba(124, 93, 63, 0.14)) !important;
+  border-radius: 999px !important;
+  background: var(--ai-surface-soft, #f6efe4) !important;
+  color: var(--ai-text, #2f2923) !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+.ai-admin-review-list__items--modal {
+  max-height: 100% !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  padding: 18px !important;
+  background: rgba(251, 247, 239, 0.62) !important;
+}
+
+.ai-admin-review-item--actionable {
+  grid-template-columns: minmax(0, 1fr) 150px !important;
+  align-items: stretch !important;
+  border-color: rgba(124, 93, 63, 0.22) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 8px 18px rgba(79, 55, 33, 0.06) !important;
+}
+
+.ai-admin-review-item--actionable h4 {
+  margin: 10px 0 6px !important;
+  color: var(--ai-text, #2f2923) !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-review-item--actionable p {
+  color: #594b40 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.ai-admin-review-item__meta {
+  display: inline-flex !important;
+  margin-top: 8px !important;
+  color: var(--ai-accent, #8a623d) !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.ai-admin-review-item__next-step {
+  margin-top: 10px !important;
+  border: 1px solid rgba(47, 125, 79, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(234, 246, 239, 0.72) !important;
+  color: #2f6444 !important;
+  padding: 10px 12px !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.45 !important;
+}
+
+.ai-admin-review-item__next-step strong {
+  color: #26583b !important;
+}
+
+.ai-admin-review-item__side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.ai-admin-review-item__side time {
+  color: var(--ai-muted, #76685b) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.ai-admin-review-item__action {
+  min-height: 38px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--ai-accent, #8a623d) !important;
+  color: #fff !important;
+  padding: 8px 12px !important;
+  font: inherit !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+.ai-admin-review-item__action:hover,
+.ai-admin-review-item__action:focus-visible {
+  background: var(--ai-accent-hover, #735032) !important;
+  outline: none !important;
+}
+
+.ai-admin-technical-details {
+  border: 1px solid var(--ai-border, rgba(124, 93, 63, 0.14)) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+  box-shadow: 0 8px 22px rgba(79, 55, 33, 0.06) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.ai-admin-technical-details summary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 12px 16px !important;
+  color: var(--ai-accent, #8a623d) !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  list-style: none !important;
+}
+
+.ai-admin-technical-details summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.ai-admin-technical-details summary::before {
+  content: "▸" !important;
+  transform: rotate(0deg) !important;
+  transition: transform 0.16s ease !important;
+}
+
+.ai-admin-technical-details[open] summary::before {
+  transform: rotate(90deg) !important;
+}
+
+.ai-admin-technical-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  padding: 0 16px 16px !important;
+  border-top: 1px solid var(--ai-border, rgba(124, 93, 63, 0.14)) !important;
+}
+
+.ai-admin-technical-grid span {
+  display: block !important;
+  min-width: 0 !important;
+  border: 1px solid rgba(124, 93, 63, 0.12) !important;
+  border-radius: 12px !important;
+  background: rgba(246, 239, 228, 0.54) !important;
+  color: var(--ai-muted, #76685b) !important;
+  padding: 10px 12px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+}
+
+@media (min-width: 1180px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-page {
+    display: grid !important;
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    align-items: start !important;
+    column-gap: 18px !important;
+    row-gap: 18px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-hero,
+  .manager-layout--ai-chatbot-analytics .ai-admin-metrics,
+  .manager-layout--ai-chatbot-analytics .ai-admin-review-strip,
+  .manager-layout--ai-chatbot-analytics .ai-admin-collapsible,
+  .manager-layout--ai-chatbot-analytics .ai-admin-error,
+  .manager-layout--ai-chatbot-analytics .ai-admin-skeleton,
+  .manager-layout--ai-chatbot-analytics .ai-admin-empty:not(.ai-admin-empty--soft) {
+    grid-column: 1 / -1 !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid {
+    grid-column: 1 / span 8 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid {
+    grid-column: 9 / -1 !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid .customer-analytics-panel {
+    min-height: 250px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid .customer-analytics-panel {
+    min-height: 306px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid .ai-admin-empty--soft {
+    min-height: 154px !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid .ai-analytics-list {
+    max-height: 336px !important;
+    overflow: auto !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-insight-grid {
+    grid-column: 1 / span 8 !important;
+  }
+
+  .manager-layout--ai-chatbot-analytics .ai-admin-operational-grid {
+    grid-column: 9 / -1 !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .manager-layout--ai-chatbot-analytics .ai-admin-page,
+  .manager-layout--ai-chatbot-settings .ai-admin-page,
+  .manager-layout--ai-chatbot-knowledge .ai-admin-page {
+    width: 100% !important;
+    padding: 16px !important;
+  }
+
+  .ai-admin-grid--settings,
+  .ai-admin-grid--knowledge,
+  .ai-admin-grid--safety,
+  .ai-admin-grid--evaluation {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ai-admin-review-strip {
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+  }
+
+  .ai-admin-review-strip__items {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ai-admin-modal-backdrop {
+    padding: 14px !important;
+  }
+
+  .ai-admin-review-item--actionable {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ai-admin-review-item__side {
+    align-items: flex-start !important;
+  }
+
+  .ai-admin-technical-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

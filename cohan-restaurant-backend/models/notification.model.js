@@ -9,6 +9,7 @@ const NotificationSchema = new Schema(
     toRole: String,
     restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
     type: { type: String, required: true },
+    uniqueKey: String,
     payload: Schema.Types.Mixed,
     readAt: Date,
   },
@@ -18,5 +19,6 @@ const NotificationSchema = new Schema(
 NotificationSchema.index({ toUserId: 1, createdAt: -1 });
 NotificationSchema.index({ toUserId: 1, readAt: 1, createdAt: -1 });
 NotificationSchema.index({ toRole: 1, restaurantId: 1, readAt: 1, createdAt: -1 });
+NotificationSchema.index({ uniqueKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Notification", NotificationSchema);

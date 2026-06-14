@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import AiChatbotKnowledgePage from "./AiChatbotKnowledgePage";
 
 const useQueryMock = vi.fn();
@@ -24,7 +24,12 @@ vi.mock("@apollo/client", () => ({
   useMutation: (...args) => useMutationMock(...args),
   useLazyQuery: (...args) => useLazyQueryMock(...args),
 }));
-vi.mock("@/context/AuthContext", () => ({ AuthContext: React.createContext({ restaurants: [{ id: "r1", name: "R1" }] }) }));
+vi.mock("@/context/AuthContext", () => ({
+  AuthContext: React.createContext({
+    user: { roleName: "manager" },
+    restaurants: [{ id: "r1", name: "R1" }],
+  }),
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -34,7 +39,7 @@ beforeEach(() => {
     const t = String(q);
     if (t.includes("restaurantAiChatbotKnowledgeSuggestions")) return { data: { restaurantAiChatbotKnowledgeSuggestions: [{ id: "s1", question: "sq" }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
     if (t.includes("restaurantAiChatbotAnswerFeedback")) return { data: { restaurantAiChatbotAnswerFeedback: [{ id: "f1", question: "fq" }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
-    if (t.includes("restaurantAiChatbotSafetyRules")) return { data: { restaurantAiChatbotSafetyRules: [{ id: "sa1", ruleType: "blocked_topic", pattern: "x" }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
+    if (t.includes("restaurantAiChatbotSafetyRules")) return { data: { restaurantAiChatbotSafetyRules: [{ id: "sa1", ruleType: "blocked_topic", pattern: "x", enabled: true }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
     if (t.includes("restaurantAiChatbotEvaluationCases")) return { data: { restaurantAiChatbotEvaluationCases: [{ id: "ec1", question: "test case", enabled: true }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
     return { data: { restaurantAiChatbotKnowledge: [{ id: "k1", title: "kt", content: "kc", enabled: true, tags: [] }] }, loading: false, error: null, refetch: vi.fn(async () => ({})) };
   });
@@ -67,67 +72,71 @@ beforeEach(() => {
 describe("AiChatbotKnowledgePage phase 18 UI", () => {
   it("renders import/export controls and calls export+import", async () => {
     render(<AiChatbotKnowledgePage />);
-    expect(screen.getByLabelText("Export format")).toBeInTheDocument();
-    expect(screen.getByLabelText("Import format")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Export"));
+    expect(screen.getByLabelText("Định dạng xuất")).toBeInTheDocument();
+    expect(screen.getByLabelText("Định dạng nhập")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Xuất dữ liệu"));
     expect(exportFn).toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Import payload"), { target: { value: "[]" } });
-    fireEvent.click(screen.getByText("Import"));
-    expect(m.importKnowledge).toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Dữ liệu nhập"), { target: { value: "[]" } });
+    fireEvent.click(screen.getByText("Nhập dữ liệu"));
+    await waitFor(() => expect(m.importKnowledge).toHaveBeenCalled());
   });
 
-  it("knowledge bulk actions call mutations", () => {
+  it("knowledge bulk actions call mutations", async () => {
     render(<AiChatbotKnowledgePage />);
     fireEvent.click(screen.getByLabelText("knowledge-k1"));
-    fireEvent.click(screen.getByText("Enable selected"));
-    fireEvent.click(screen.getByText("Disable selected"));
-    fireEvent.click(screen.getByText("Delete selected"));
-    expect(m.bulkKnowledgeEnabled).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByText("Bật mục đã chọn"));
+    fireEvent.click(screen.getByText("Tắt mục đã chọn"));
+    fireEvent.click(screen.getByText("Xóa mục đã chọn"));
+    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Xóa" }));
+    await waitFor(() => expect(m.bulkKnowledgeEnabled).toHaveBeenCalledTimes(2));
     expect(m.bulkKnowledgeDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("suggestions bulk actions call mutations", () => {
+  it("suggestions bulk actions call mutations", async () => {
     render(<AiChatbotKnowledgePage />);
-    fireEvent.click(screen.getByText("suggestions"));
-    fireEvent.click(screen.getByLabelText("suggestion-s1"));
-    fireEvent.click(screen.getByText("Dismiss selected"));
-    fireEvent.click(screen.getByText("Delete selected"));
-    expect(m.bulkDismissSuggestion).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Gợi ý" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Bỏ qua" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Xóa" })[0]);
+    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Xóa" }));
+    await waitFor(() => expect(m.bulkDismissSuggestion).toHaveBeenCalled());
     expect(m.bulkDeleteSuggestion).toHaveBeenCalled();
   });
 
-  it("feedback bulk actions call mutations", () => {
+  it("feedback bulk actions call mutations", async () => {
     render(<AiChatbotKnowledgePage />);
-    fireEvent.click(screen.getByText("feedback"));
-    fireEvent.click(screen.getByLabelText("feedback-f1"));
-    fireEvent.click(screen.getByText("Mark reviewed selected"));
-    fireEvent.click(screen.getByText("Ignore selected"));
-    fireEvent.click(screen.getByText("Convert selected to suggestions"));
-    expect(m.bulkFeedbackReviewed).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Phản hồi" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Đã xem" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Bỏ qua" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Suggestion" })[0]);
+    await waitFor(() => expect(m.bulkFeedbackReviewed).toHaveBeenCalled());
     expect(m.bulkFeedbackIgnore).toHaveBeenCalled();
     expect(m.bulkFeedbackConvert).toHaveBeenCalled();
   });
 
-  it("safety bulk actions call mutations", () => {
+  it("safety bulk actions call mutations", async () => {
     render(<AiChatbotKnowledgePage />);
-    fireEvent.click(screen.getByText("safety"));
-    fireEvent.click(screen.getByLabelText("safety-sa1"));
-    fireEvent.click(screen.getByText("Enable selected"));
-    fireEvent.click(screen.getByText("Disable selected"));
-    fireEvent.click(screen.getByText("Delete selected"));
-    expect(m.bulkSafetyEnabled).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "An toàn" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Bật" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Tắt" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Xóa" })[0]);
+    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Xóa" }));
+    await waitFor(() => expect(m.bulkSafetyEnabled).toHaveBeenCalledTimes(2));
     expect(m.bulkSafetyDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("evaluation tab renders and run/save/set actions call GraphQL operations", () => {
+  it("evaluation tab renders and run/save/set actions call GraphQL operations", async () => {
     render(<AiChatbotKnowledgePage />);
-    fireEvent.click(screen.getByText("evaluation"));
-    expect(screen.getByText("Evaluation Playground")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Evaluation message"), { target: { value: "How is menu?" } });
-    fireEvent.click(screen.getByText("Run test"));
+    fireEvent.click(screen.getByRole("button", { name: "Kiểm thử" }));
+    expect(screen.getByRole("heading", { name: "Kiểm thử phản hồi" })).toBeInTheDocument();
+    fireEvent.change(screen.getAllByLabelText("Câu hỏi thử nghiệm")[0], { target: { value: "How is menu?" } });
+    fireEvent.click(screen.getByText("Chạy thử"));
+    fireEvent.change(screen.getAllByLabelText("Câu hỏi thử nghiệm")[1], { target: { value: "q" } });
     fireEvent.click(screen.getByText("Save case"));
-    fireEvent.click(screen.getByText("Run enabled set"));
-    expect(evalFn).toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Chạy bộ câu hỏi"));
+    await waitFor(() => expect(evalFn).toHaveBeenCalled());
     expect(m.createEvalCase).toHaveBeenCalled();
     expect(runSetFn).toHaveBeenCalled();
   });

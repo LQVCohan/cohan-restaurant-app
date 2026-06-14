@@ -1,23 +1,23 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { AlertCircle, Bell, CheckCheck, Clock, MessageCircle, Star } from "lucide-react";
 import useCommunication from "@/hooks/useCommunication";
+import { NOTIFICATION_TYPES, notificationTitleByType } from "@/constants/notificationTypes";
 import "./NotificationBell.scss";
 
 const iconByType = {
-  "review.negative.created": <AlertCircle size={16} />,
-  "review.published": <Star size={16} />,
-  "review.rejected": <AlertCircle size={16} />,
-  "review.reported": <AlertCircle size={16} />,
-  "review.official_reply.created": <MessageCircle size={16} />,
-  chat_message: <MessageCircle size={16} />,
-};
-
-const titleByType = {
-  "review.negative.created": "Review tiêu cực mới",
-  "review.published": "Review đã được duyệt",
-  "review.rejected": "Review bị từ chối",
-  "review.reported": "Review bị báo cáo",
-  "review.official_reply.created": "Nhà hàng đã phản hồi review",
+  [NOTIFICATION_TYPES.REVIEW_NEGATIVE_CREATED]: <AlertCircle size={16} />,
+  [NOTIFICATION_TYPES.REVIEW_PUBLISHED]: <Star size={16} />,
+  [NOTIFICATION_TYPES.REVIEW_REJECTED]: <AlertCircle size={16} />,
+  [NOTIFICATION_TYPES.REVIEW_REPORTED]: <AlertCircle size={16} />,
+  [NOTIFICATION_TYPES.REVIEW_OFFICIAL_REPLY_CREATED]: <MessageCircle size={16} />,
+  [NOTIFICATION_TYPES.CHAT_MESSAGE]: <MessageCircle size={16} />,
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_SUBMITTED]: <AlertCircle size={16} />,
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_NEEDS_MORE_INFO]: <AlertCircle size={16} />,
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_ACCEPTED]: <Star size={16} />,
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_REJECTED]: <AlertCircle size={16} />,
+  [NOTIFICATION_TYPES.PERFORMANCE_APPEAL_SCORE_REVERSED]: <Star size={16} />,
+  [NOTIFICATION_TYPES.ATTENDANCE_CORRECTION_REQUESTED]: <Clock size={16} />,
+  [NOTIFICATION_TYPES.OVERTIME_REQUEST_SUBMITTED]: <Clock size={16} />,
 };
 
 const toTime = (iso) =>
@@ -49,7 +49,7 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
       return {
         id: n.id,
         type: n.type,
-        title: payload.title || payload.message || payload.messagePreview || titleByType[n.type] || n.type,
+        title: payload.title || payload.message || payload.messagePreview || notificationTitleByType[n.type] || n.type,
         detail: detailParts.join(" • "),
         time: toTime(n.createdAt),
         isRead: Boolean(n.readAt),

@@ -1,0 +1,271 @@
+/* Storage checklist polish final
+   Targets the exact review checklist: hierarchy, color consistency, typography contrast,
+   CTA alignment, table readability, focus visibility, and reduced warm/orange leakage. */
+
+.storage-management {
+  --sm-sage-900: #123f39;
+  --sm-sage-800: #17554d;
+  --sm-sage-700: #1f6a60;
+  --sm-sage-600: #287d72;
+  --sm-sage-200: #c7e4dc;
+  --sm-sage-100: #dcefe9;
+  --sm-sage-050: #f2faf7;
+  --sm-ink: #1f2a2f;
+  --sm-text: #263a38;
+  --sm-muted: #60716e;
+  --sm-border: rgba(31, 106, 96, 0.16);
+  --sm-border-strong: rgba(31, 106, 96, 0.28);
+  --sm-surface: rgba(255, 253, 248, 0.86);
+}
+
+/* Typography contrast: labels and helper copy must stay readable on beige backgrounds. */
+.storage-management :where(.sm-muted, .text-muted, .subtitle, .description, small, .il-stat-label, .sm-stat-desc, .tab-label) {
+  color: var(--sm-muted) !important;
+}
+
+.storage-management :where(h1, h2, h3, h4, .sm-page-title, .sm-section-title, .section-title, .card-title) {
+  color: var(--sm-ink) !important;
+}
+
+.storage-management :where(.sm-field-label, label, th, .il-stat-label, .metric-label) {
+  color: #435956 !important;
+}
+
+/* Main page width and section rhythm: keep content wide without feeling stretched. */
+.storage-management .storage-manager-shell,
+.storage-management .storage-page-shell,
+.storage-management .sm-page-shell,
+.storage-management .inventory-page-shell {
+  max-width: 1500px !important;
+}
+
+.storage-management .sm-hero,
+.storage-management .storage-hero,
+.storage-management .sm-header-card {
+  border-color: var(--sm-border) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(31, 106, 96, 0.055), transparent 18rem),
+    rgba(255, 253, 248, 0.88) !important;
+}
+
+.storage-management .sm-stat-card,
+.storage-management .summary-card,
+.storage-management .inventory-summary-card {
+  border-color: var(--sm-border) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  box-shadow: 0 12px 28px rgba(31, 42, 47, 0.05) !important;
+}
+
+.storage-management .sm-stat-card:hover,
+.storage-management .summary-card:hover,
+.storage-management .inventory-summary-card:hover {
+  border-color: var(--sm-border-strong) !important;
+}
+
+.storage-management .sm-stat-icon,
+.storage-management .summary-icon,
+.storage-management .il-card__icon-wrapper,
+.storage-management .recipe-card-icon,
+.storage-management .icon-box {
+  background: linear-gradient(180deg, #eaf6f2, #dcefe9) !important;
+  color: var(--sm-sage-800) !important;
+  border-color: rgba(31, 106, 96, 0.24) !important;
+}
+
+.storage-management .sm-stat-value,
+.storage-management .summary-value,
+.storage-management .il-stat-value {
+  color: var(--sm-ink) !important;
+  font-weight: 700 !important;
+}
+
+/* Tabs: stronger active state, calmer inactive state. */
+.storage-management .sm-tabs-container {
+  border-color: var(--sm-border) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+}
+
+.storage-management .sm-tab-item {
+  color: #526562 !important;
+}
+
+.storage-management .sm-tab-item.active {
+  background: #24323b !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(31, 42, 47, 0.16) !important;
+}
+
+.storage-management .sm-tab-item.active .tab-icon,
+.storage-management .sm-tab-item.active .tab-label {
+  color: #ffffff !important;
+}
+
+.storage-management .sm-tab-item .active-dot {
+  background: var(--sm-sage-200) !important;
+}
+
+/* Toolbar and fields: consistent baseline and visible focus. */
+.storage-management :where(input, select, textarea, .sm-input, .sm-select, .filter-control, .search-control) {
+  color: var(--sm-text) !important;
+}
+
+.storage-management :where(input, select, textarea, button, .sm-input, .sm-select, .filter-control, .search-control):focus-visible,
+.storage-management :where(.sm-input, .sm-select, .filter-control, .search-control):focus-within {
+  outline: none !important;
+  border-color: rgba(31, 106, 96, 0.62) !important;
+  box-shadow: 0 0 0 4px rgba(31, 106, 96, 0.14) !important;
+}
+
+.storage-management :where(button, .btn, .sm-add-btn, .sm-action-btn, .il-action-btn) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+.storage-management :where(button, .btn, .sm-add-btn, .sm-action-btn, .il-action-btn) svg {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.storage-management :where(.sm-add-btn, .btn-primary:not(.btn-danger), .btn-add) {
+  background: var(--sm-sage-700) !important;
+  border-color: var(--sm-sage-700) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 26px rgba(31, 106, 96, 0.18) !important;
+}
+
+.storage-management :where(.sm-add-btn, .btn-primary:not(.btn-danger), .btn-add):hover:not(:disabled) {
+  background: var(--sm-sage-800) !important;
+  border-color: var(--sm-sage-800) !important;
+}
+
+/* Ingredient and item cards: reduce warm leakage, make green visible enough. */
+.storage-management .il-card,
+.storage-management .stock-card,
+.storage-management .recipe-card {
+  border-color: rgba(31, 106, 96, 0.2) !important;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(31, 106, 96, 0.04), transparent 14rem),
+    rgba(255, 253, 248, 0.88) !important;
+}
+
+.storage-management .il-card:hover,
+.storage-management .stock-card:hover,
+.storage-management .recipe-card:hover {
+  border-color: rgba(31, 106, 96, 0.34) !important;
+  box-shadow: 0 16px 34px rgba(31, 42, 47, 0.08) !important;
+}
+
+.storage-management .il-status-badge,
+.storage-management .status-badge,
+.storage-management .badge-success,
+.storage-management .status-in-stock {
+  background: var(--sm-sage-100) !important;
+  color: var(--sm-sage-800) !important;
+  border-color: rgba(31, 106, 96, 0.24) !important;
+}
+
+.storage-management .il-text-price,
+.storage-management .price-text,
+.storage-management .cost-text,
+.storage-management .il-stat-value[class*='price'],
+.storage-management .il-stat-value[class*='cost'] {
+  color: var(--sm-sage-800) !important;
+}
+
+.storage-management .il-stat-box,
+.storage-management .recipe-metric,
+.storage-management .stock-metric {
+  border-color: rgba(31, 106, 96, 0.14) !important;
+  background: rgba(255, 253, 248, 0.72) !important;
+}
+
+/* Orange only for real warnings, never as general decoration. */
+.storage-management .badge-warning,
+.storage-management .warning:not(.danger),
+.storage-management .is-warning,
+.storage-management .recipe-warning-badge {
+  background: #fff5df !important;
+  color: #835b20 !important;
+  border-color: rgba(156, 117, 55, 0.2) !important;
+}
+
+.storage-management .danger,
+.storage-management .badge-danger,
+.storage-management .is-danger,
+.storage-management .error,
+.storage-management .il-btn-delete,
+.storage-management .delete-btn {
+  color: #8b3f3f !important;
+}
+
+/* Inventory audit table final polish. */
+.storage-management .inventory-audit-tab .inv-table-wrap {
+  border-color: var(--sm-border) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+}
+
+.storage-management .inventory-audit-tab .inv-table th {
+  color: #425653 !important;
+  background: linear-gradient(180deg, #f4f8f5, #edf3ef) !important;
+}
+
+.storage-management .inventory-audit-tab .inv-table td {
+  color: #2f3f3d !important;
+}
+
+.storage-management .inventory-audit-tab .inv-table tbody tr:hover td {
+  background: #edf6f2 !important;
+}
+
+.storage-management .inventory-audit-tab .inv-badge--ok {
+  background: var(--sm-sage-100) !important;
+  color: var(--sm-sage-800) !important;
+  border: 1px solid rgba(31, 106, 96, 0.24) !important;
+}
+
+/* Pagination: less basic, same visual language as cards. */
+.storage-management .storage-pagination,
+.storage-management .inv-pagination,
+.storage-management .pagination-premium {
+  color: var(--sm-muted) !important;
+}
+
+.storage-management .storage-pagination button,
+.storage-management .inv-pagination button,
+.storage-management .pagination-premium button,
+.storage-management .page-btn {
+  border-color: rgba(31, 106, 96, 0.18) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+  color: var(--sm-text) !important;
+}
+
+.storage-management .storage-pagination button:hover:not(:disabled),
+.storage-management .inv-pagination button:hover:not(:disabled),
+.storage-management .pagination-premium button:hover:not(:disabled),
+.storage-management .page-btn:hover:not(:disabled) {
+  background: #edf6f2 !important;
+  color: var(--sm-sage-800) !important;
+  border-color: rgba(31, 106, 96, 0.34) !important;
+}
+
+/* Modal overlays opened from manager should inherit the same green and alignment rules. */
+body:has(.manager-layout) .modal-container {
+  --sm-sage-800: #17554d;
+  --sm-sage-700: #1f6a60;
+}
+
+body:has(.manager-layout) .modal-container :where(button, .btn) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+}
+
+body:has(.manager-layout) .modal-container :where(button, .btn) svg {
+  flex: 0 0 auto !important;
+}

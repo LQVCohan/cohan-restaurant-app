@@ -58,12 +58,14 @@ describe("AiHandoffInbox", () => {
   it("renders tabs", () => {
     mockDualHook();
     renderWithUser(<AiHandoffInbox />);
+
     expect(screen.getByRole("button", { name: "Đang xử lý" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Đã xử lý" })).toBeInTheDocument();
   });
 
   it("renders missing restaurant state", () => {
     mockDualHook();
+
     renderWithUser(<AiHandoffInbox />, {
       roleName: "manager",
       permissions: ["ai.chatbot.handoff"],
@@ -87,6 +89,7 @@ describe("AiHandoffInbox", () => {
     });
 
     renderWithUser(<AiHandoffInbox />);
+
     fireEvent.click(screen.getByRole("button", { name: /yêu cầu cần hỗ trợ/i }));
 
     expect(await screen.findByText(/thiếu thông tin hội thoại/i)).toBeInTheDocument();
@@ -136,10 +139,12 @@ describe("AiHandoffInbox", () => {
     );
 
     renderWithUser(<AiHandoffInbox />);
+
     fireEvent.click(screen.getByRole("button", { name: "Đã xử lý" }));
     fireEvent.click(screen.getByRole("button", { name: /closed/i }));
 
     await waitFor(() => expect(loadResolvedThread).toHaveBeenCalled());
+
     expect(screen.getByRole("button", { name: "Gửi phản hồi" })).toBeDisabled();
     expect(screen.getAllByRole("button", { name: "Đã xử lý" }).at(-1)).toBeDisabled();
     expect(screen.getByText("Phiên hỗ trợ này đã được đóng.")).toBeInTheDocument();
@@ -147,7 +152,13 @@ describe("AiHandoffInbox", () => {
 
   it("active resolve flow still works", async () => {
     const loadThread = vi.fn().mockResolvedValue({
-      data: { chatThread: { id: "t1", status: "open", messages: [] } },
+      data: {
+        chatThread: {
+          id: "t1",
+          status: "open",
+          messages: [],
+        },
+      },
     });
 
     mockDualHook({
@@ -155,7 +166,10 @@ describe("AiHandoffInbox", () => {
         {
           id: "n1",
           type: "ai_chatbot_handoff",
-          payload: { threadId: "t1", messagePreview: "preview" },
+          payload: {
+            threadId: "t1",
+            messagePreview: "preview",
+          },
           createdAt: new Date().toISOString(),
         },
       ],
@@ -169,10 +183,15 @@ describe("AiHandoffInbox", () => {
     });
 
     resolveMutationSpy.mockResolvedValue({
-      data: { resolveAiChatbotHandoff: { ok: true } },
+      data: {
+        resolveAiChatbotHandoff: {
+          ok: true,
+        },
+      },
     });
 
     renderWithUser(<AiHandoffInbox />);
+
     fireEvent.click(screen.getByRole("button", { name: /preview/i }));
     fireEvent.click(screen.getByRole("button", { name: /đánh dấu đã xử lý/i }));
 

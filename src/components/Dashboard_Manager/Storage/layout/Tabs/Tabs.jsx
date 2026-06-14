@@ -1,4 +1,5 @@
 import React from "react";
+import StorageGridPaginationBridge from "../../components/common/StorageGridPaginationBridge";
 import "./Tabs.scss";
 import "../../StorageExperiencePolish.css";
 import "../../StorageBackgroundUnify.css";
@@ -9,9 +10,24 @@ import "../../StorageImportToolbar.css";
 import "../../StorageVisualGradeNine.css";
 import "../../StorageVisibleGradeNine.css";
 import "../../StorageComponentHarmony.css";
+import "../../StoragePagination.css";
+import "../../StorageWideLayout.css";
+import "../../StorageDropdownPolish.css";
+import "../../StorageModalPolish.css";
+import "../../StorageModalFinalTen.css";
+import "../../StorageModalRealityFix.css";
+import "../../StorageModalScrollLockFix.css";
+import "../../StorageCategoryModalFitFix.css";
+import "../../StorageGreenToneFinal.css";
+import "../../StorageChecklistPolishFinal.css";
+import "../../StoragePostUpdateBugFix.css";
+import "../../StorageRecipeModalUpgrade.css";
+import "../../StorageRecipeModalButtonToneFix.css";
+import "../../StorageRecipeModalSummaryHide.css";
+import "../../StorageRecipeModalPaletteBalance.css";
 
-const Tabs = ({ tabs, activeTab, onTabChange }) => {
-  return (
+const Tabs = ({ tabs, activeTab, onTabChange }) => (
+  <>
     <div className="sm-tabs-container" role="tablist" aria-label="Nhóm chức năng kho">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -32,7 +48,8 @@ const Tabs = ({ tabs, activeTab, onTabChange }) => {
         );
       })}
     </div>
-  );
-};
+    <StorageGridPaginationBridge activeTab={activeTab} />
+  </>
+);
 
 export default Tabs;

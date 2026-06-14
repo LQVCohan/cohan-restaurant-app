@@ -1,0 +1,468 @@
+.ai-admin-page--settings {
+  --settings-ink: #2f2923;
+  --settings-muted: #756759;
+  --settings-accent: #8a623d;
+  --settings-border: rgba(124, 93, 63, 0.14);
+  --settings-panel: rgba(255, 253, 248, 0.96);
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings {
+  min-height: 118px !important;
+  padding: 20px 26px !important;
+  align-items: center !important;
+  border: 1px solid rgba(124, 93, 63, 0.12) !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(249, 243, 234, 0.9)) !important;
+  box-shadow: 0 18px 48px rgba(79, 55, 33, 0.09) !important;
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings h2 {
+  font-size: clamp(30px, 2.5vw, 40px) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.048em !important;
+}
+
+.ai-admin-page--settings .ai-admin-hero--settings p:not(.ai-admin-eyebrow) {
+  color: var(--settings-muted) !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+}
+
+.ai-admin-page--settings .ai-admin-field--restaurant {
+  width: clamp(230px, 18vw, 270px) !important;
+  min-width: 230px !important;
+  padding: 12px 14px !important;
+  border-radius: 18px !important;
+}
+
+.ai-admin-page--settings .ai-admin-field--restaurant select {
+  height: 46px !important;
+  padding: 0 34px 0 14px !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  text-overflow: ellipsis !important;
+}
+
+.ai-admin-settings-status-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.ai-admin-settings-status-strip article {
+  position: relative;
+  min-height: 74px;
+  border: 1px solid var(--settings-border);
+  border-radius: 18px;
+  background: var(--settings-panel);
+  box-shadow: 0 10px 26px rgba(79, 55, 33, 0.065);
+  padding: 14px 16px 13px 34px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.ai-admin-settings-status-strip article:hover {
+  border-color: rgba(124, 93, 63, 0.22);
+  box-shadow: 0 16px 34px rgba(79, 55, 33, 0.1);
+  transform: translateY(-1px);
+}
+
+.ai-admin-settings-status-strip article::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 18px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(138, 98, 61, 0.42);
+  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.08);
+}
+
+.ai-admin-settings-status-strip article.is-active::before {
+  background: #2f7d4f;
+  box-shadow: 0 0 0 4px rgba(47, 125, 79, 0.11);
+}
+
+.ai-admin-settings-status-strip article.is-muted::before {
+  background: #b84a3c;
+}
+
+.ai-admin-settings-status-strip span,
+.ai-admin-settings-status-strip small {
+  display: block;
+  color: var(--settings-muted);
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1.3;
+}
+
+.ai-admin-settings-status-strip strong {
+  display: block;
+  margin: 5px 0 4px;
+  color: var(--settings-ink);
+  font-size: clamp(18px, 1.35vw, 23px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.ai-admin-page--settings .ai-admin-grid--settings {
+  grid-template-columns: minmax(0, 1.62fr) minmax(390px, 0.98fr) !important;
+  align-items: start !important;
+  gap: 20px !important;
+  margin-top: 18px !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel {
+  overflow: hidden;
+  border-color: rgba(124, 93, 63, 0.13) !important;
+  background: var(--settings-panel) !important;
+  box-shadow: 0 18px 44px rgba(79, 55, 33, 0.09) !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel__header {
+  padding: 20px 22px !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(246, 239, 228, 0.72)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel__header h3 {
+  font-size: clamp(22px, 1.75vw, 28px) !important;
+  font-weight: 900 !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.ai-admin-page--settings .ai-admin-form {
+  gap: 15px !important;
+  padding: 17px !important;
+}
+
+.ai-admin-page--settings .ai-admin-check--inline {
+  min-height: 58px !important;
+  padding: 12px 15px !important;
+  border-color: rgba(124, 93, 63, 0.16) !important;
+  background: linear-gradient(135deg, rgba(246, 239, 228, 0.8), rgba(255, 253, 248, 0.82)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-field textarea,
+.ai-admin-page--settings .ai-admin-field input,
+.ai-admin-page--settings .ai-admin-field select {
+  background: rgba(255, 253, 248, 0.98) !important;
+  color: var(--settings-ink) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 1.65 !important;
+  border-color: rgba(124, 93, 63, 0.15) !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+.ai-admin-page--settings .ai-admin-field textarea:focus,
+.ai-admin-page--settings .ai-admin-field input:focus,
+.ai-admin-page--settings .ai-admin-field select:focus {
+  border-color: rgba(138, 98, 61, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(138, 98, 61, 0.1) !important;
+  outline: none !important;
+}
+
+.ai-admin-page--settings .ai-admin-field--calm-textarea textarea {
+  min-height: 116px !important;
+  resize: vertical !important;
+}
+
+.ai-admin-page--settings .ai-admin-panel--main .ai-admin-field--calm-textarea textarea {
+  min-height: 128px !important;
+}
+
+.ai-admin-handoff-compact {
+  border-color: rgba(138, 98, 61, 0.16) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+}
+
+.ai-admin-handoff-compact > summary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  min-height: 50px !important;
+  padding: 0 16px !important;
+}
+
+.ai-admin-handoff-compact > summary span {
+  color: var(--settings-ink) !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-handoff-compact > summary small {
+  color: var(--settings-accent) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
+
+.ai-admin-handoff-compact__body {
+  display: grid;
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+
+.ai-admin-handoff-message {
+  background: rgba(246, 239, 228, 0.38) !important;
+}
+
+.ai-admin-panel--preview {
+  position: sticky;
+  top: 88px;
+}
+
+.ai-admin-panel--preview .ai-admin-panel__header {
+  padding-bottom: 16px !important;
+}
+
+.ai-admin-panel--preview .ai-admin-settings-preview {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 18px;
+}
+
+.ai-admin-settings-preview__window {
+  min-height: 560px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(124, 93, 63, 0.16);
+  border-radius: 28px;
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f0e6 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 22px 52px rgba(79, 55, 33, 0.11);
+}
+
+.ai-admin-settings-preview__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(124, 93, 63, 0.12);
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.ai-admin-settings-preview__topbar strong,
+.ai-admin-settings-preview__topbar span {
+  display: block;
+}
+
+.ai-admin-settings-preview__topbar strong {
+  color: var(--settings-ink);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.ai-admin-settings-preview__topbar span {
+  margin-top: 3px;
+  color: #2f7d4f;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.ai-admin-settings-preview__topbar i {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8a623d, #b98555);
+  box-shadow: 0 8px 18px rgba(138, 98, 61, 0.24);
+}
+
+.ai-admin-settings-preview__conversation {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 18px;
+}
+
+.ai-admin-settings-preview__bubble {
+  width: min(100%, 330px);
+  margin: 0;
+  border: 1px solid rgba(138, 98, 61, 0.14);
+  border-radius: 18px 18px 18px 7px;
+  background: #fffdf8;
+  color: var(--settings-ink);
+  padding: 14px 15px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  box-shadow: 0 10px 22px rgba(79, 55, 33, 0.065);
+}
+
+.ai-admin-settings-preview__chips {
+  display: grid;
+  gap: 9px;
+  margin-top: 0;
+}
+
+.ai-admin-settings-preview__chips span {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(138, 98, 61, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.94);
+  color: var(--settings-accent);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 820;
+  box-shadow: 0 6px 14px rgba(79, 55, 33, 0.05);
+}
+
+.ai-admin-settings-preview__chips small {
+  color: var(--settings-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-admin-settings-preview__footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid rgba(124, 93, 63, 0.12);
+  background: rgba(255, 253, 248, 0.92);
+}
+
+.ai-admin-settings-preview__footer span {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(124, 93, 63, 0.14);
+  border-radius: 14px;
+  background: #fffdf8;
+  color: var(--settings-muted);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ai-admin-settings-preview__footer button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--settings-accent);
+  color: #fff;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0.72;
+}
+
+.ai-admin-settings-preview__notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-admin-settings-preview__notes article {
+  border: 1px solid rgba(124, 93, 63, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 253, 248, 0.82);
+  padding: 12px;
+}
+
+.ai-admin-settings-preview__notes span,
+.ai-admin-settings-preview__notes strong {
+  display: block;
+}
+
+.ai-admin-settings-preview__notes span {
+  color: var(--settings-muted);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.ai-admin-settings-preview__notes strong {
+  margin-top: 5px;
+  color: var(--settings-ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.ai-admin-page--settings .ai-admin-collapsible--settings summary {
+  min-height: 46px !important;
+  color: var(--settings-accent) !important;
+  font-weight: 900 !important;
+}
+
+.ai-admin-settings-footer {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(124, 93, 63, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 253, 248, 0.94);
+  box-shadow: 0 14px 32px rgba(79, 55, 33, 0.09);
+  backdrop-filter: blur(12px);
+  padding: 12px 13px 12px 18px;
+}
+
+.ai-admin-settings-footer--dirty {
+  border-color: rgba(166, 106, 24, 0.36);
+  background: linear-gradient(135deg, rgba(255, 243, 219, 0.96), rgba(255, 253, 248, 0.98));
+  box-shadow: 0 20px 48px rgba(79, 55, 33, 0.14);
+}
+
+.ai-admin-settings-footer button {
+  min-height: 40px !important;
+  padding: 0 17px !important;
+}
+
+.ai-admin-settings-footer button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.58 !important;
+}
+
+@media (max-width: 1180px) {
+  .ai-admin-page--settings .ai-admin-grid--settings,
+  .ai-admin-settings-status-strip {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .ai-admin-panel--preview {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-admin-settings-status-strip,
+  .ai-admin-page--settings .ai-admin-grid--settings {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ai-admin-page--settings .ai-admin-field--restaurant {
+    width: 100% !important;
+  }
+
+  .ai-admin-settings-preview__window {
+    min-height: 440px;
+  }
+
+  .ai-admin-settings-preview__notes {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-admin-settings-footer {
+    position: static;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-admin-settings-footer .ai-admin-actions {
+    width: 100%;
+  }
+}

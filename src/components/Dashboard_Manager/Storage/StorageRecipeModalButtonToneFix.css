@@ -1,0 +1,51 @@
+/* Keep recipe modal actions in the storage tone system. */
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn, button) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn-primary, button.btn-primary) {
+  background: #1f6a60 !important;
+  border-color: #1f6a60 !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(31, 106, 96, 0.18) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn-primary, button.btn-primary):hover:not(:disabled) {
+  background: #17554d !important;
+  border-color: #17554d !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell .recipe-modal-footer-actions :where(.btn-primary, button[type="submit"]) {
+  background: #24323b !important;
+  border-color: #24323b !important;
+  box-shadow: 0 12px 24px rgba(31, 42, 47, 0.22) !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn-secondary, button.btn-secondary) {
+  background: rgba(255, 253, 248, 0.88) !important;
+  border: 1px solid rgba(31, 106, 96, 0.16) !important;
+  color: #283b38 !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn-secondary, button.btn-secondary):hover:not(:disabled) {
+  background: #edf6f2 !important;
+  border-color: rgba(31, 106, 96, 0.28) !important;
+  color: #17554d !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn-danger, button.btn-danger) {
+  background: #fff4f2 !important;
+  border: 1px solid rgba(154, 65, 61, 0.22) !important;
+  color: #9a413d !important;
+}
+
+body:has(.manager-layout) .modal-container.recipe-modal-shell :where(.btn-danger, button.btn-danger):hover:not(:disabled) {
+  background: #fde8e5 !important;
+  border-color: rgba(154, 65, 61, 0.34) !important;
+}

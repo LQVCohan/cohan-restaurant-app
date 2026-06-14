@@ -1,6 +1,33 @@
 import { Notification, User } from "../../../models/index.js";
+
 const REVIEWER_TYPES = ["MANAGER", "ADMIN", "HR"];
 const uniq = (arr = []) => [...new Set(arr.map(String).filter(Boolean))];
+
+let notificationIo = null;
+
+export function setNotificationSocketServer(io) {
+  notificationIo = io || null;
+}
+
+function buildUniqueKey({ toUserId, type, sourceType, sourceId }) {
+  return [String(toUserId), String(type), String(sourceType || ""), String(sourceId || "")].join(":");
+}
+
+function emitNotificationCreated(notification) {
+  if (!notificationIo || !notification?.toUserId) return;
+  const userId = String(notification.toUserId);
+  notificationIo.to(`user_${userId}`).emit("notificationCreated", {
+    id: String(notification._id || notification.id || ""),
+    toUserId: userId,
+    toRole: notification.toRole || null,
+    restaurantId: notification.restaurantId ? String(notification.restaurantId) : null,
+    type: notification.type,
+    uniqueKey: notification.uniqueKey || notification.payload?.uniqueKey || null,
+    payload: notification.payload || {},
+    readAt: notification.readAt || null,
+    createdAt: notification.createdAt || null,
+  });
+}
 
 async function reviewerIds(restaurantId) {
   if (!restaurantId) return [];
@@ -10,8 +37,29 @@ async function reviewerIds(restaurantId) {
 
 export async function createNotificationOnce({ toUserId, toRole = null, restaurantId = null, type, payload = {}, sourceType, sourceId }) {
   if (!toUserId || !type) return null;
-  const uniqueKey = [String(toUserId), String(type), String(sourceType || ""), String(sourceId || "")].join(":");
-  return Notification.findOneAndUpdate({ "payload.uniqueKey": uniqueKey }, { $setOnInsert: { toUserId, toRole, restaurantId, type, payload: { ...payload, sourceType: sourceType || null, sourceId: sourceId || null, uniqueKey }, readAt: null } }, { new: true, upsert: true });
+  const uniqueKey = buildUniqueKey({ toUserId, type, sourceType, sourceId });
+  const condition = { $or: [{ uniqueKey }, { "payload.uniqueKey": uniqueKey }] };
+  const existing = await Notification.findOne(condition);
+  if (existing) return existing;
+
+  try {
+    const notification = await Notification.create({
+      toUserId,
+      toRole,
+      restaurantId,
+      type,
+      uniqueKey,
+      payload: { ...payload, sourceType: sourceType || null, sourceId: sourceId || null, uniqueKey },
+      readAt: null,
+    });
+    emitNotificationCreated(notification);
+    return notification;
+  } catch (error) {
+    if (error?.code === 11000) {
+      return Notification.findOne(condition);
+    }
+    throw error;
+  }
 }
 
 export async function notifyReviewers({ restaurantId, type, payload, sourceType, sourceId, actionUrl }) {
