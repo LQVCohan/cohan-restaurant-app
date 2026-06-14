@@ -4,8 +4,6 @@ import {
   BarChart3,
   CalendarClock,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   Download,
   Edit3,
@@ -26,17 +24,17 @@ import {
 } from "@/utils/frontendPermissionAccess";
 import { useCouponAnalytics } from "../../../hooks/useCouponAnalytics";
 import { usePromotionAnalytics } from "../../../hooks/usePromotionAnalytics";
+import { usePromotions } from "../../../hooks/usePromotions";
+import { useCoupons } from "../../../hooks/useCoupons";
+import { COUPON_CATEGORIES } from "../../../utils/constants";
+import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
 import StatsCard from "./components/StatsCard/StatsCard";
 import PromotionModal from "./components/PromotionModal/PromotionModal";
 import CouponModal from "./components/CouponModal/CouponModal";
 import CouponPackageModal from "./components/CouponPackageModal/CouponPackageModal";
-import { COUPON_CATEGORIES } from "../../../utils/constants";
-import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
-import { usePromotions } from "../../../hooks/usePromotions";
-import { useCoupons } from "../../../hooks/useCoupons";
-import "./PromotionManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ManagerCommandBar from "../shared/ManagerCommandBar";
+import "./PromotionManagement.scss";
 
 const STATUS_TABS = [
   { id: "all", label: "Tất cả" },
@@ -64,7 +62,7 @@ const PROMOTION_TYPE_LABELS = {
 
 const DATE_FILTER_LABELS = {
   all: "Mọi thời gian",
-  today: "Đang hiệu lực hôm nay",
+  today: "Hiệu lực hôm nay",
   week: "Trong 7 ngày tới",
   expiring: "Sắp hết hạn 72h",
 };
@@ -76,7 +74,6 @@ const SECTION_META = {
     emptyTitle: "Chưa có chương trình phù hợp",
     emptyText: "Tạo chương trình mới hoặc đổi bộ lọc để xem các ưu đãi đang vận hành.",
     createLabel: "Tạo khuyến mãi",
-    permission: "promotion.write",
   },
   coupons: {
     title: "Quản lý coupon",
@@ -84,7 +81,6 @@ const SECTION_META = {
     emptyTitle: "Chưa có coupon phù hợp",
     emptyText: "Tạo coupon cho khách mới, khách VIP hoặc chiến dịch giao hàng.",
     createLabel: "Tạo coupon",
-    permission: "coupon.write",
   },
   couponPackages: {
     title: "Quản lý gói coupon",
@@ -92,8 +88,12 @@ const SECTION_META = {
     emptyTitle: "Chưa có gói coupon phù hợp",
     emptyText: "Tạo gói coupon để gom ưu đãi onboarding, sinh nhật hoặc chăm sóc khách cũ.",
     createLabel: "Tạo gói coupon",
-    permission: "coupon.write",
   },
+};
+
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const formatCurrency = (value) =>
@@ -101,10 +101,10 @@ const formatCurrency = (value) =>
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
-  }).format(Number(value || 0));
+  }).format(toNumber(value));
 
 const formatCompactCurrency = (value) => {
-  const number = Number(value || 0);
+  const number = toNumber(value);
   if (Math.abs(number) >= 1000000) return `₫${(number / 1000000).toFixed(1)}M`;
   return formatCurrency(number);
 };
@@ -151,29 +151,30 @@ const matchesDateFilter = (item, filter) => {
     return Boolean(endMs && endMs >= range.start.getTime() && endMs <= range.end.getTime());
   }
 
-  const rangeStart = range.start.getTime();
-  const rangeEnd = range.end.getTime();
   const itemStart = startMs || Number.NEGATIVE_INFINITY;
   const itemEnd = endMs || Number.POSITIVE_INFINITY;
-  return itemStart <= rangeEnd && itemEnd >= rangeStart;
+  return itemStart <= range.end.getTime() && itemEnd >= range.start.getTime();
+};
+
+const getHoursUntilEnd = (item) => {
+  if (!item?.endDate) return null;
+  const end = new Date(item.endDate).getTime();
+  if (!Number.isFinite(end)) return null;
+  return Math.round((end - Date.now()) / 36e5);
 };
 
 const getUsageRatio = (item) => {
-  const used = Number(item.usageCount || 0);
-  const limit = Number(item.usageLimit || 0);
+  const used = toNumber(item.usageCount);
+  const limit = toNumber(item.usageLimit);
   if (!limit) return used > 0 ? 100 : 0;
   return Math.min(Math.round((used / limit) * 100), 100);
 };
 
 const getPromotionValue = (promotion) => {
-  if (promotion.type === "bogo") {
-    return `Mua ${promotion.buyQuantity || 1} tặng ${promotion.getQuantity || 1}`;
-  }
+  if (promotion.type === "bogo") return `Mua ${promotion.buyQuantity || 1} tặng ${promotion.getQuantity || 1}`;
   if (promotion.type === "freeship") return "Freeship";
   if (promotion.type === "percentage") return `${promotion.discountValue || 0}%`;
-  if (promotion.type === "combo" && promotion.discountType === "percent") {
-    return `${promotion.discountValue || 0}% combo`;
-  }
+  if (promotion.type === "combo" && promotion.discountType === "percent") return `${promotion.discountValue || 0}% combo`;
   return formatCompactCurrency(promotion.discountValue);
 };
 
@@ -235,18 +236,18 @@ const PromotionManagement = () => {
     error: promotionAnalyticsError,
   } = usePromotionAnalytics(selectedRestaurantId);
 
+  const [activeSection, setActiveSection] = useState("promotions");
+  const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState("list");
+  const [promotionTypeFilter, setPromotionTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [detailDrawer, setDetailDrawer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isCouponPackageModalOpen, setIsCouponPackageModalOpen] = useState(false);
   const [editingCouponPackage, setEditingCouponPackage] = useState(null);
-  const [viewMode, setViewMode] = useState("list");
-  const [activeTab, setActiveTab] = useState("all");
-  const [activeSection, setActiveSection] = useState("promotions");
-  const [promotionTypeFilter, setPromotionTypeFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
-  const [detailDrawer, setDetailDrawer] = useState(null);
 
   const selectedRestaurant = useMemo(
     () =>
@@ -256,14 +257,12 @@ const PromotionManagement = () => {
     [promotionRestaurants, selectedRestaurantId],
   );
 
-  const selectedRestaurantLabel =
-    selectedRestaurant?.name || `Restaurant-${selectedRestaurantId || "all"}`;
+  const selectedRestaurantLabel = selectedRestaurant?.name || `Restaurant-${selectedRestaurantId || "all"}`;
 
   const filteredPromotions = useMemo(
     () =>
       promotions.filter((promotion) => {
-        const matchesType =
-          promotionTypeFilter === "all" || promotion.type === promotionTypeFilter;
+        const matchesType = promotionTypeFilter === "all" || promotion.type === promotionTypeFilter;
         return matchesType && matchesDateFilter(promotion, dateFilter);
       }),
     [promotions, promotionTypeFilter, dateFilter],
@@ -275,10 +274,7 @@ const PromotionManagement = () => {
   );
 
   const filteredCouponPackages = useMemo(
-    () =>
-      couponPackages.filter((couponPackage) =>
-        matchesDateFilter(couponPackage, dateFilter),
-      ),
+    () => couponPackages.filter((couponPackage) => matchesDateFilter(couponPackage, dateFilter)),
     [couponPackages, dateFilter],
   );
 
@@ -297,60 +293,50 @@ const PromotionManagement = () => {
       : activeSection === "coupons"
         ? allCoupons.length
         : allCouponPackages.length;
-  const canWriteCurrentSection =
-    activeSection === "promotions" ? canWritePromotion : canWriteCoupon;
+  const canWriteCurrentSection = activeSection === "promotions" ? canWritePromotion : canWriteCoupon;
 
   const statsData = useMemo(() => {
     if (activeSection === "coupons") {
       return {
-        totalSavings: Number(couponAnalytics.totalDiscountAmount || 0),
-        usageRate: Number(couponAnalytics.usageRate || 0),
-        totalUsage: Number(couponAnalytics.totalRedemptions || 0),
-        hotPromotions: Number(couponAnalytics.topCoupons?.length || 0),
+        totalSavings: toNumber(couponAnalytics.totalDiscountAmount),
+        usageRate: toNumber(couponAnalytics.usageRate),
+        totalUsage: toNumber(couponAnalytics.totalRedemptions),
+        hotPromotions: toNumber(couponAnalytics.topCoupons?.length),
       };
     }
 
     if (activeSection === "couponPackages") {
-      const activePackages = allCouponPackages.filter(
-        (couponPackage) => resolveStatus(couponPackage) === "active",
-      ).length;
-      const scheduledPackages = allCouponPackages.filter(
-        (couponPackage) => resolveStatus(couponPackage) === "scheduled",
-      ).length;
+      const activePackages = allCouponPackages.filter((couponPackage) => resolveStatus(couponPackage) === "active").length;
+      const scheduledPackages = allCouponPackages.filter((couponPackage) => resolveStatus(couponPackage) === "scheduled").length;
       return {
         totalSavings: 0,
-        usageRate: allCouponPackages.length
-          ? Math.round((activePackages / allCouponPackages.length) * 100)
-          : 0,
+        usageRate: allCouponPackages.length ? Math.round((activePackages / allCouponPackages.length) * 100) : 0,
         totalUsage: allCouponPackages.length,
         hotPromotions: scheduledPackages,
       };
     }
 
     return {
-      totalSavings: Number(promotionAnalytics.totalDiscountAmount || 0),
-      usageRate: Number(promotionAnalytics.usageRate || 0),
-      totalUsage: Number(promotionAnalytics.totalRedemptions || 0),
-      hotPromotions: Number(promotionAnalytics.topPromotions?.length || 0),
+      totalSavings: toNumber(promotionAnalytics.totalDiscountAmount),
+      usageRate: toNumber(promotionAnalytics.usageRate),
+      totalUsage: toNumber(promotionAnalytics.totalRedemptions),
+      hotPromotions: toNumber(promotionAnalytics.topPromotions?.length),
     };
-  }, [
-    activeSection,
-    couponAnalytics,
-    promotionAnalytics,
-    allCouponPackages,
-    resolveStatus,
-  ]);
+  }, [activeSection, couponAnalytics, promotionAnalytics, allCouponPackages, resolveStatus]);
 
   const statsLabels = useMemo(() => {
     if (activeSection === "couponPackages") {
       return {
-        savings: "Tiết kiệm đã ghi nhận",
+        savings: "Tiết kiệm ghi nhận",
+        savingsHelper: "Tổng giảm giá từ coupon trong gói",
         usage: "Tỷ lệ đang chạy",
+        usageHelper: "Gói active trên tổng số gói",
         total: "Tổng gói Coupon",
+        totalHelper: "Số gói đã tạo trong nhà hàng",
         hot: "Gói sắp tới",
+        hotHelper: "Gói đã lên lịch công bố",
       };
     }
-
     if (activeSection === "coupons") {
       return {
         savings: "Chi phí giảm giá",
@@ -359,7 +345,6 @@ const PromotionManagement = () => {
         hot: "Top Coupon",
       };
     }
-
     return {
       savings: "Chi phí giảm giá",
       usage: "Tỷ lệ sử dụng",
@@ -370,15 +355,11 @@ const PromotionManagement = () => {
 
   const resolvePromotionTargetLabel = (promotion) => {
     if (promotion.scope === "item") {
-      const item = menuItems.find(
-        (menuItem) => String(menuItem.id) === String(promotion.itemId || ""),
-      );
+      const item = menuItems.find((menuItem) => String(menuItem.id) === String(promotion.itemId || ""));
       return item?.name || promotion.itemId || "Món áp dụng";
     }
     if (promotion.scope === "category") {
-      const category = categories.find(
-        (item) => String(item.id) === String(promotion.categoryId || ""),
-      );
+      const category = categories.find((item) => String(item.id) === String(promotion.categoryId || ""));
       return category?.name || promotion.categoryId || "Danh mục áp dụng";
     }
     return "Toàn bộ đơn hàng";
@@ -386,9 +367,7 @@ const PromotionManagement = () => {
 
   const resolveGiftItemLabel = (promotion) => {
     if (!promotion.giftItemId) return "";
-    const item = menuItems.find(
-      (menuItem) => String(menuItem.id) === String(promotion.giftItemId || ""),
-    );
+    const item = menuItems.find((menuItem) => String(menuItem.id) === String(promotion.giftItemId || ""));
     return item?.name || promotion.giftItemId;
   };
 
@@ -396,11 +375,9 @@ const PromotionManagement = () => {
     if (!Array.isArray(promotion.comboItems) || !promotion.comboItems.length) return "";
     return promotion.comboItems
       .map((comboItem) => {
-        const item = menuItems.find(
-          (menuItem) => String(menuItem.id) === String(comboItem.itemId || ""),
-        );
+        const item = menuItems.find((menuItem) => String(menuItem.id) === String(comboItem.itemId || ""));
         const name = item?.name || comboItem.itemId;
-        const quantity = Number(comboItem.quantity || 1);
+        const quantity = toNumber(comboItem.quantity) || 1;
         return quantity > 1 ? `${name} x${quantity}` : name;
       })
       .join(", ");
@@ -409,9 +386,7 @@ const PromotionManagement = () => {
   const resolvePromotionDiscountKind = (promotion) => {
     if (promotion.type === "freeship") return "FREESHIP";
     if (promotion.type === "bogo") return "BOGO";
-    if (promotion.type === "combo") {
-      return promotion.discountType === "fixed" ? "COMBO_FIXED" : "COMBO_PERCENT";
-    }
+    if (promotion.type === "combo") return promotion.discountType === "fixed" ? "COMBO_FIXED" : "COMBO_PERCENT";
     return promotion.discountType === "fixed" ? "FIXED" : "PERCENTAGE";
   };
 
@@ -425,22 +400,17 @@ const PromotionManagement = () => {
         status: resolveStatus(item),
         value: getCouponValue(item),
         type: COUPON_CATEGORIES[item.category] || item.category || "Coupon",
-        scope: (item.orderTypes || []).length
-          ? item.orderTypes.join(", ")
-          : "Mọi loại đơn",
+        scope: (item.orderTypes || []).length ? item.orderTypes.join(", ") : "Mọi loại đơn",
         minOrderValue: item.minOrderValue,
         maxDiscount: item.maxDiscount,
         usageCount: item.usageCount,
         usageLimit: item.usageLimit,
         startDate: item.startDate,
         endDate: item.endDate,
-        description: item.description,
         conditions: item.conditions || [],
         ruleLines: [
           item.stackable ? "Cho phép dùng chung coupon" : "Không dùng chồng coupon",
-          item.combinableWithPromotions
-            ? "Có thể đi cùng promotion"
-            : "Không đi cùng promotion",
+          item.combinableWithPromotions ? "Có thể đi cùng promotion" : "Không đi cùng promotion",
           item.exclusive ? "Ưu đãi độc quyền" : "Không độc quyền",
           item.firstOrderOnly ? "Chỉ đơn đầu tiên" : "Không giới hạn đơn đầu tiên",
         ],
@@ -458,17 +428,10 @@ const PromotionManagement = () => {
         value: `${packageCoupons.length || item.couponIds?.length || 0} coupon`,
         type: "Gói coupon",
         scope: "Phát theo nhóm khách hàng",
-        usageCount: packageCoupons.reduce(
-          (sum, coupon) => sum + Number(coupon.usageCount || 0),
-          0,
-        ),
-        usageLimit: packageCoupons.reduce(
-          (sum, coupon) => sum + Number(coupon.usageLimit || 0),
-          0,
-        ),
+        usageCount: packageCoupons.reduce((sum, coupon) => sum + toNumber(coupon.usageCount), 0),
+        usageLimit: packageCoupons.reduce((sum, coupon) => sum + toNumber(coupon.usageLimit), 0),
         startDate: item.startDate,
         endDate: item.endDate,
-        description: item.description,
         conditions: item.conditions || [],
         ruleLines: packageCoupons.length
           ? packageCoupons.map((coupon) => `${coupon.code} · ${coupon.name}`)
@@ -489,138 +452,174 @@ const PromotionManagement = () => {
       usageLimit: item.usageLimit,
       startDate: item.startDate,
       endDate: item.endDate,
-      description: item.description,
       conditions: item.conditions || [],
       ruleLines: [
-        item.type === "bogo" && resolveGiftItemLabel(item)
-          ? `Món tặng: ${resolveGiftItemLabel(item)}`
-          : null,
-        item.type === "combo" && resolveComboItemsLabel(item)
-          ? `Combo: ${resolveComboItemsLabel(item)}`
-          : null,
+        item.type === "bogo" && resolveGiftItemLabel(item) ? `Món tặng: ${resolveGiftItemLabel(item)}` : null,
+        item.type === "combo" && resolveComboItemsLabel(item) ? `Combo: ${resolveComboItemsLabel(item)}` : null,
         item.stacking ? "Cho phép dùng chung coupon hợp lệ" : "Không dùng chung coupon",
         `Độ ưu tiên: ${item.level || 1}`,
       ].filter(Boolean),
     };
   };
 
+  const operationalAlerts = useMemo(() => {
+    const alerts = [];
+    const addAlert = (alert) => alerts.push({ id: `${alert.type}-${alert.section}-${alert.item.id}`, ...alert });
+
+    currentRows.forEach((item) => {
+      const section = activeSection;
+      const status = section === "promotions" ? item.status : resolveStatus(item);
+      const hoursUntilEnd = getHoursUntilEnd(item);
+      const usageRatio = getUsageRatio(item);
+      const commonPayload = { section, item };
+
+      if ((status === "active" || status === "scheduled") && hoursUntilEnd !== null && hoursUntilEnd >= 0 && hoursUntilEnd <= 72) {
+        addAlert({
+          ...commonPayload,
+          type: "expiring",
+          severity: "warning",
+          title: "Sắp hết hạn",
+          description: `${item.name} còn khoảng ${hoursUntilEnd} giờ hiệu lực.`,
+        });
+      }
+
+      if (toNumber(item.usageLimit) > 0 && usageRatio >= 85) {
+        addAlert({
+          ...commonPayload,
+          type: "usage",
+          severity: usageRatio >= 95 ? "danger" : "warning",
+          title: "Gần đạt giới hạn dùng",
+          description: `${item.name} đã dùng ${usageRatio}% giới hạn đã đặt.`,
+        });
+      }
+
+      if ((section === "promotions" || section === "coupons") && toNumber(item.discountValue) > 0 && toNumber(item.minOrderValue) <= 0) {
+        addAlert({
+          ...commonPayload,
+          type: "min-order",
+          severity: "warning",
+          title: "Thiếu đơn tối thiểu",
+          description: `${item.name} có thể áp dụng cho đơn nhỏ vì chưa đặt đơn tối thiểu.`,
+        });
+      }
+
+      if (section === "promotions" && item.type === "percentage" && toNumber(item.discountValue) > 50) {
+        addAlert({
+          ...commonPayload,
+          type: "deep-discount",
+          severity: "danger",
+          title: "Mức giảm quá sâu",
+          description: `${item.name} đang giảm ${item.discountValue}%, nên kiểm tra biên lợi nhuận.`,
+        });
+      }
+
+      if (section === "coupons" && item.discountType === "percent" && toNumber(item.discountValue) > 50) {
+        addAlert({
+          ...commonPayload,
+          type: "deep-discount",
+          severity: "danger",
+          title: "Mức giảm quá sâu",
+          description: `${item.name} đang giảm ${item.discountValue}%, nên kiểm tra biên lợi nhuận.`,
+        });
+      }
+
+      if (section === "coupons" && item.stackable && item.combinableWithPromotions) {
+        addAlert({
+          ...commonPayload,
+          type: "stacking",
+          severity: "warning",
+          title: "Dùng chồng nhiều lớp",
+          description: `${item.name} cho phép đi cùng coupon khác và promotion.`,
+        });
+      }
+
+      if (section === "couponPackages" && !(item.couponIds || []).length) {
+        addAlert({
+          ...commonPayload,
+          type: "empty-package",
+          severity: "warning",
+          title: "Gói chưa có coupon",
+          description: `${item.name} chưa gắn coupon nào để phát cho khách.`,
+        });
+      }
+    });
+
+    const severityRank = { danger: 0, warning: 1, info: 2 };
+    return alerts.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]).slice(0, 4);
+  }, [activeSection, currentRows, resolveStatus]);
+
   const buildExportSheets = () => {
     if (activeSection === "coupons") {
-      return [
-        {
-          name: "Coupons",
-          rows: [
-            [
-              "Tên coupon",
-              "Mã",
-              "Nhóm",
-              "Giảm giá",
-              "Đơn tối thiểu",
-              "Giảm tối đa",
-              "Lượt dùng",
-              "Giới hạn",
-              "Trạng thái",
-              "Bắt đầu",
-              "Kết thúc",
-              "Nhà hàng",
-            ],
-            ...filteredCoupons.map((coupon) => [
-              coupon.name,
-              coupon.code,
-              COUPON_CATEGORIES[coupon.category] || coupon.category,
-              getCouponValue(coupon),
-              coupon.minOrderValue,
-              coupon.maxDiscount,
-              coupon.usageCount,
-              coupon.usageLimit,
-              resolveStatus(coupon),
-              coupon.startDate,
-              coupon.endDate,
-              selectedRestaurantLabel,
-            ]),
-          ],
-        },
-      ];
+      return [{
+        name: "Coupons",
+        rows: [
+          ["Tên coupon", "Mã", "Nhóm", "Giảm giá", "Đơn tối thiểu", "Giảm tối đa", "Lượt dùng", "Giới hạn", "Trạng thái", "Bắt đầu", "Kết thúc", "Nhà hàng"],
+          ...filteredCoupons.map((coupon) => [
+            coupon.name,
+            coupon.code,
+            COUPON_CATEGORIES[coupon.category] || coupon.category,
+            getCouponValue(coupon),
+            coupon.minOrderValue,
+            coupon.maxDiscount,
+            coupon.usageCount,
+            coupon.usageLimit,
+            resolveStatus(coupon),
+            coupon.startDate,
+            coupon.endDate,
+            selectedRestaurantLabel,
+          ]),
+        ],
+      }];
     }
 
     if (activeSection === "couponPackages") {
-      return [
-        {
-          name: "CouponPackages",
-          rows: [
-            ["Tên gói", "Mã", "Coupon", "Trạng thái", "Bắt đầu", "Kết thúc", "Nhà hàng", "Điều kiện"],
-            ...filteredCouponPackages.map((couponPackage) => [
-              couponPackage.name,
-              couponPackage.code,
-              (couponPackage.couponIds || [])
-                .map((couponId) => {
-                  const coupon = allCoupons.find(
-                    (item) => String(item.id) === String(couponId),
-                  );
-                  return coupon?.name || couponId;
-                })
-                .join(", "),
-              resolveStatus(couponPackage),
-              couponPackage.startDate,
-              couponPackage.endDate,
-              selectedRestaurantLabel,
-              (couponPackage.conditions || []).join(" | "),
-            ]),
-          ],
-        },
-      ];
-    }
-
-    return [
-      {
-        name: "Promotions",
+      return [{
+        name: "CouponPackages",
         rows: [
-          [
-            "Tên chương trình",
-            "Mã",
-            "Loại",
-            "Phạm vi",
-            "Giảm giá",
-            "Đơn tối thiểu",
-            "Giảm tối đa",
-            "Đã dùng",
-            "Giới hạn",
-            "Bắt đầu",
-            "Kết thúc",
-            "Trạng thái",
-            "Nhà hàng",
-            "Mô tả",
-            "Điều kiện",
-          ],
-          ...filteredPromotions.map((promotion) => [
-            promotion.name,
-            promotion.code,
-            resolvePromotionDiscountKind(promotion),
-            resolvePromotionTargetLabel(promotion),
-            getPromotionValue(promotion),
-            promotion.minOrderValue,
-            promotion.maxDiscount,
-            promotion.usageCount,
-            promotion.usageLimit,
-            promotion.startDate,
-            promotion.endDate,
-            promotion.status,
+          ["Tên gói", "Mã", "Coupon", "Trạng thái", "Bắt đầu", "Kết thúc", "Nhà hàng", "Điều kiện"],
+          ...filteredCouponPackages.map((couponPackage) => [
+            couponPackage.name,
+            couponPackage.code,
+            (couponPackage.couponIds || []).join(", "),
+            resolveStatus(couponPackage),
+            couponPackage.startDate,
+            couponPackage.endDate,
             selectedRestaurantLabel,
-            promotion.description,
-            (promotion.conditions || []).join(" | "),
+            (couponPackage.conditions || []).join(" | "),
           ]),
         ],
-      },
-    ];
+      }];
+    }
+
+    return [{
+      name: "Promotions",
+      rows: [
+        ["Tên chương trình", "Mã", "Loại", "Phạm vi", "Giảm giá", "Đơn tối thiểu", "Giảm tối đa", "Đã dùng", "Giới hạn", "Bắt đầu", "Kết thúc", "Trạng thái", "Nhà hàng", "Mô tả", "Điều kiện"],
+        ...filteredPromotions.map((promotion) => [
+          promotion.name,
+          promotion.code,
+          resolvePromotionDiscountKind(promotion),
+          resolvePromotionTargetLabel(promotion),
+          getPromotionValue(promotion),
+          promotion.minOrderValue,
+          promotion.maxDiscount,
+          promotion.usageCount,
+          promotion.usageLimit,
+          promotion.startDate,
+          promotion.endDate,
+          promotion.status,
+          selectedRestaurantLabel,
+          promotion.description,
+          (promotion.conditions || []).join(" | "),
+        ]),
+      ],
+    }];
   };
 
   const handleExport = () => {
     if (!currentRows.length) return;
     const dateSuffix = new Date().toISOString().slice(0, 10);
-    downloadXlsxWorkbook(
-      buildExportSheets(),
-      `promotion-${activeSection}-${selectedRestaurantId || "all"}-${dateSuffix}.xlsx`,
-    );
+    downloadXlsxWorkbook(buildExportSheets(), `promotion-${activeSection}-${selectedRestaurantId || "all"}-${dateSuffix}.xlsx`);
   };
 
   const handleOpenPromotionModal = (promotion = null) => {
@@ -665,7 +664,6 @@ const PromotionManagement = () => {
       const targetRestaurantId = editingPromotion
         ? await updatePromotion(editingPromotion.id, promotionData)
         : await addPromotion(promotionData);
-
       if (targetRestaurantId && String(targetRestaurantId) !== String(selectedRestaurantId)) {
         updateFilters({ restaurant: targetRestaurantId });
       }
@@ -702,23 +700,17 @@ const PromotionManagement = () => {
 
   const handleDeletePromotion = (id) => {
     if (!canWritePromotion) return;
-    if (window.confirm("Bạn có chắc chắn muốn xóa khuyến mãi này?")) {
-      deletePromotion(id);
-    }
+    if (window.confirm("Bạn có chắc chắn muốn xóa khuyến mãi này?")) deletePromotion(id);
   };
 
   const handleDeleteCoupon = (id) => {
     if (!canWriteCoupon) return;
-    if (window.confirm("Bạn có chắc chắn muốn xóa coupon này?")) {
-      deleteCoupon(id);
-    }
+    if (window.confirm("Bạn có chắc chắn muốn xóa coupon này?")) deleteCoupon(id);
   };
 
   const handleDeleteCouponPackage = (id) => {
     if (!canWriteCoupon) return;
-    if (window.confirm("Bạn có chắc chắn muốn xóa gói coupon này?")) {
-      deleteCouponPackage(id);
-    }
+    if (window.confirm("Bạn có chắc chắn muốn xóa gói coupon này?")) deleteCouponPackage(id);
   };
 
   const handleTogglePromotionStatus = async (promotion) => {
@@ -752,13 +744,9 @@ const PromotionManagement = () => {
     setPromotionTypeFilter("all");
     setDateFilter("all");
     setDetailDrawer(null);
-    if (activeSection === "promotions") {
-      updateFilters({ search: "", status: "all", restaurant: selectedRestaurantId });
-    } else if (activeSection === "coupons") {
-      updateCouponFilters({ search: "", category: "all", status: "all" });
-    } else {
-      updateCouponPackageFilters({ search: "", status: "all" });
-    }
+    if (activeSection === "promotions") updateFilters({ search: "", status: "all", restaurant: selectedRestaurantId });
+    else if (activeSection === "coupons") updateCouponFilters({ search: "", category: "all", status: "all" });
+    else updateCouponPackageFilters({ search: "", status: "all" });
   };
 
   const searchValue =
@@ -776,7 +764,7 @@ const PromotionManagement = () => {
         ? couponFilters.search || couponFilters.status !== "all" || couponFilters.category !== "all"
         : couponPackageFilters.search || couponPackageFilters.status !== "all");
 
-  const promotionSearchPlaceholder =
+  const searchPlaceholder =
     activeSection === "promotions"
       ? "Tìm chương trình, mã..."
       : activeSection === "coupons"
@@ -785,23 +773,17 @@ const PromotionManagement = () => {
 
   const renderStatusBadge = (status) => {
     const conf = normalizeStatus(status);
-    return (
-      <span className={`promo-status-badge promo-status-badge--${conf.tone}`}>
-        {conf.label}
-      </span>
-    );
+    return <span className={`promo-status-badge promo-status-badge--${conf.tone}`}>{conf.label}</span>;
   };
 
   const renderUsage = (item) => {
     const ratio = getUsageRatio(item);
     return (
       <div className="usage-bar">
-        <div className="bar-bg">
-          <div className="bar-fill" style={{ width: `${ratio}%` }} />
-        </div>
+        <div className="bar-bg"><div className="bar-fill" style={{ width: `${ratio}%` }} /></div>
         <span className="text-xs text-secondary mt-1 block">
-          {Number(item.usageCount || 0).toLocaleString("vi-VN")}
-          {item.usageLimit ? ` / ${Number(item.usageLimit).toLocaleString("vi-VN")}` : " lượt dùng"}
+          {toNumber(item.usageCount).toLocaleString("vi-VN")}
+          {item.usageLimit ? ` / ${toNumber(item.usageLimit).toLocaleString("vi-VN")}` : " lượt dùng"}
         </span>
       </div>
     );
@@ -816,14 +798,7 @@ const PromotionManagement = () => {
 
     return (
       <div className="action-buttons">
-        <button
-          type="button"
-          onClick={() => setDetailDrawer({ section, item })}
-          title="Xem chi tiết"
-          aria-label="Xem chi tiết"
-        >
-          <Eye size={16} />
-        </button>
+        <button type="button" onClick={() => setDetailDrawer({ section, item })} title="Xem chi tiết" aria-label="Xem chi tiết"><Eye size={16} /></button>
         <button
           type="button"
           disabled={!canWrite}
@@ -891,9 +866,7 @@ const PromotionManagement = () => {
         <article className="promotion-tile" key={promotion.id}>
           <div className="promotion-tile__topline">
             {renderStatusBadge(promotion.status)}
-            <span className="promotion-type-chip">
-              {PROMOTION_TYPE_LABELS[promotion.type] || promotion.type}
-            </span>
+            <span className="promotion-type-chip">{PROMOTION_TYPE_LABELS[promotion.type] || promotion.type}</span>
           </div>
           <div className="promotion-tile__value">{getPromotionValue(promotion)}</div>
           <h3>{promotion.name}</h3>
@@ -903,9 +876,7 @@ const PromotionManagement = () => {
             <span>{formatDate(promotion.startDate)} – {formatDate(promotion.endDate)}</span>
           </div>
           {renderUsage(promotion)}
-          <div className="promotion-tile__actions">
-            {renderActionButtons("promotions", promotion)}
-          </div>
+          <div className="promotion-tile__actions">{renderActionButtons("promotions", promotion)}</div>
         </article>
       ))}
     </div>
@@ -914,41 +885,18 @@ const PromotionManagement = () => {
   const renderPromotionTable = () => (
     <div className="table-responsive">
       <table className="premium-table promotion-table">
-        <thead>
-          <tr>
-            <th>Chương trình / Mã</th>
-            <th>Loại</th>
-            <th>Phạm vi</th>
-            <th>Hiệu lực</th>
-            <th>Giảm giá</th>
-            <th>Hiệu quả</th>
-            <th>Trạng thái</th>
-            <th className="text-right">Hành động</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Chương trình / Mã</th><th>Loại</th><th>Phạm vi</th><th>Hiệu lực</th><th>Giảm giá</th><th>Hiệu quả</th><th>Trạng thái</th><th className="text-right">Hành động</th></tr></thead>
         <tbody>
           {filteredPromotions.map((promotion) => (
             <tr key={promotion.id}>
-              <td>
-                <div className="fw-bold text-dark mb-1">{promotion.name}</div>
-                <div className="code-badge"><Tag size={12} /> {promotion.code || "NO-CODE"}</div>
-              </td>
-              <td className="text-secondary text-sm">
-                {PROMOTION_TYPE_LABELS[promotion.type] || promotion.type}
-              </td>
+              <td><div className="fw-bold text-dark mb-1">{promotion.name}</div><div className="code-badge"><Tag size={12} /> {promotion.code || "NO-CODE"}</div></td>
+              <td className="text-secondary text-sm">{PROMOTION_TYPE_LABELS[promotion.type] || promotion.type}</td>
               <td className="text-secondary text-sm">
                 <div>{resolvePromotionTargetLabel(promotion)}</div>
-                {promotion.type === "bogo" && resolveGiftItemLabel(promotion) ? (
-                  <div className="text-xs">Tặng: {resolveGiftItemLabel(promotion)}</div>
-                ) : null}
-                {promotion.type === "combo" && resolveComboItemsLabel(promotion) ? (
-                  <div className="text-xs">{resolveComboItemsLabel(promotion)}</div>
-                ) : null}
+                {promotion.type === "bogo" && resolveGiftItemLabel(promotion) ? <div className="text-xs">Tặng: {resolveGiftItemLabel(promotion)}</div> : null}
+                {promotion.type === "combo" && resolveComboItemsLabel(promotion) ? <div className="text-xs">{resolveComboItemsLabel(promotion)}</div> : null}
               </td>
-              <td className="text-secondary text-sm">
-                <div>{formatDate(promotion.startDate)}</div>
-                <div className="text-xs">đến {formatDate(promotion.endDate)}</div>
-              </td>
+              <td className="text-secondary text-sm"><div>{formatDate(promotion.startDate)}</div><div className="text-xs">đến {formatDate(promotion.endDate)}</div></td>
               <td className="text-primary font-bold">{getPromotionValue(promotion)}</td>
               <td>{renderUsage(promotion)}</td>
               <td>{renderStatusBadge(promotion.status)}</td>
@@ -963,41 +911,20 @@ const PromotionManagement = () => {
   const renderCouponTable = () => (
     <div className="table-responsive">
       <table className="premium-table coupon-table">
-        <thead>
-          <tr>
-            <th>Coupon / Mã</th>
-            <th>Nhóm</th>
-            <th>Hiệu lực</th>
-            <th>Giảm giá</th>
-            <th>Dùng chồng</th>
-            <th>Hiệu quả</th>
-            <th>Trạng thái</th>
-            <th className="text-right">Hành động</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Coupon / Mã</th><th>Nhóm</th><th>Hiệu lực</th><th>Giảm giá</th><th>Dùng chồng</th><th>Hiệu quả</th><th>Trạng thái</th><th className="text-right">Hành động</th></tr></thead>
         <tbody>
           {filteredCoupons.map((coupon) => (
             <tr key={coupon.id}>
-              <td>
-                <div className="fw-bold text-dark mb-1">{coupon.name}</div>
-                <div className="code-badge"><Tag size={12} /> {coupon.code}</div>
-              </td>
-              <td className="text-secondary text-sm">
-                {COUPON_CATEGORIES[coupon.category] || coupon.category}
-              </td>
-              <td className="text-secondary text-sm">
-                <div>{formatDate(coupon.startDate)}</div>
-                <div className="text-xs">đến {formatDate(coupon.endDate)}</div>
-              </td>
+              <td><div className="fw-bold text-dark mb-1">{coupon.name}</div><div className="code-badge"><Tag size={12} /> {coupon.code}</div></td>
+              <td className="text-secondary text-sm">{COUPON_CATEGORIES[coupon.category] || coupon.category}</td>
+              <td className="text-secondary text-sm"><div>{formatDate(coupon.startDate)}</div><div className="text-xs">đến {formatDate(coupon.endDate)}</div></td>
               <td className="text-primary font-bold">{getCouponValue(coupon)}</td>
               <td className="text-secondary text-sm">
                 <div className="coupon-stack-flags">
                   {coupon.combinableWithPromotions && <span className="coupon-chip">+ Promotion</span>}
                   {coupon.stackable && <span className="coupon-chip">+ Coupon</span>}
                   {coupon.exclusive && <span className="coupon-chip coupon-chip-danger">Độc quyền</span>}
-                  {!coupon.combinableWithPromotions && !coupon.stackable && !coupon.exclusive && (
-                    <span className="text-xs text-muted">Không dùng chồng</span>
-                  )}
+                  {!coupon.combinableWithPromotions && !coupon.stackable && !coupon.exclusive && <span className="text-xs text-muted">Không dùng chồng</span>}
                 </div>
               </td>
               <td>{renderUsage(coupon)}</td>
@@ -1013,41 +940,21 @@ const PromotionManagement = () => {
   const renderCouponPackageTable = () => (
     <div className="table-responsive">
       <table className="premium-table coupon-table">
-        <thead>
-          <tr>
-            <th>Gói coupon / Mã</th>
-            <th>Coupon trong gói</th>
-            <th>Hiệu lực</th>
-            <th>Trạng thái</th>
-            <th className="text-right">Hành động</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Gói coupon / Mã</th><th>Coupon trong gói</th><th>Hiệu lực</th><th>Trạng thái</th><th className="text-right">Hành động</th></tr></thead>
         <tbody>
           {filteredCouponPackages.map((couponPackage) => (
             <tr key={couponPackage.id}>
-              <td>
-                <div className="fw-bold text-dark mb-1">{couponPackage.name}</div>
-                <div className="code-badge"><Tag size={12} /> {couponPackage.code}</div>
-              </td>
+              <td><div className="fw-bold text-dark mb-1">{couponPackage.name}</div><div className="code-badge"><Tag size={12} /> {couponPackage.code}</div></td>
               <td>
                 <div className="coupon-pack-list">
                   {(couponPackage.couponIds || []).slice(0, 4).map((couponId) => {
                     const coupon = allCoupons.find((item) => String(item.id) === String(couponId));
-                    return (
-                      <span key={couponId} className="coupon-chip">
-                        {coupon ? coupon.name : `#${couponId}`}
-                      </span>
-                    );
+                    return <span key={couponId} className="coupon-chip">{coupon ? coupon.name : `#${couponId}`}</span>;
                   })}
-                  {(couponPackage.couponIds || []).length > 4 && (
-                    <span className="coupon-chip">+{couponPackage.couponIds.length - 4}</span>
-                  )}
+                  {(couponPackage.couponIds || []).length > 4 && <span className="coupon-chip">+{couponPackage.couponIds.length - 4}</span>}
                 </div>
               </td>
-              <td className="text-secondary text-sm">
-                <div>{formatDate(couponPackage.startDate)}</div>
-                <div className="text-xs">đến {formatDate(couponPackage.endDate)}</div>
-              </td>
+              <td className="text-secondary text-sm"><div>{formatDate(couponPackage.startDate)}</div><div className="text-xs">đến {formatDate(couponPackage.endDate)}</div></td>
               <td>{renderStatusBadge(resolveStatus(couponPackage))}</td>
               <td className="text-right">{renderActionButtons("couponPackages", couponPackage)}</td>
             </tr>
@@ -1057,31 +964,53 @@ const PromotionManagement = () => {
     </div>
   );
 
+  const renderOperationalAlerts = () => (
+    <section className={`ops-alert-panel ${operationalAlerts.length ? "" : "ops-alert-panel--clear"}`} aria-label="Cảnh báo vận hành khuyến mãi">
+      <div className="ops-alert-panel__head">
+        <div className="ops-alert-title">
+          <span className="ops-alert-icon">{operationalAlerts.length ? "!" : "✓"}</span>
+          <div>
+            <h3>Cảnh báo vận hành</h3>
+            <p>{operationalAlerts.length ? "Ưu tiên kiểm tra các ưu đãi có rủi ro trước khi chạy." : "Chưa phát hiện rủi ro trong bộ lọc hiện tại."}</p>
+          </div>
+        </div>
+        <button type="button" onClick={() => setDateFilter("expiring")} disabled={dateFilter === "expiring"}>
+          Sắp hết hạn
+        </button>
+      </div>
+
+      {operationalAlerts.length ? (
+        <div className="ops-alert-list">
+          {operationalAlerts.map((alert) => (
+            <button
+              type="button"
+              key={alert.id}
+              className={`ops-alert-item ops-alert-item--${alert.severity}`}
+              onClick={() => setDetailDrawer({ section: alert.section, item: alert.item })}
+            >
+              <span>{alert.title}</span>
+              <strong>{alert.description}</strong>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="ops-alert-clear-note">0 cảnh báo trong {currentCount} kết quả đang hiển thị.</div>
+      )}
+    </section>
+  );
+
   const renderEmptyState = () => (
     <div className="empty-state empty-state--actionable">
-      <Inbox size={48} />
+      <Inbox size={44} />
       <h3>{currentSection.emptyTitle}</h3>
       <p>{currentSection.emptyText}</p>
-      <button
-        type="button"
-        className="btn-empty-primary"
-        onClick={handleCreateCurrent}
-        disabled={!canWriteCurrentSection}
-        title={canWriteCurrentSection ? currentSection.createLabel : NO_PERMISSION_MESSAGE}
-      >
-        <Plus size={16} />
-        <span>{currentSection.createLabel}</span>
+      <button type="button" className="btn-empty-primary" onClick={handleCreateCurrent} disabled={!canWriteCurrentSection} title={canWriteCurrentSection ? currentSection.createLabel : NO_PERMISSION_MESSAGE}>
+        <Plus size={16} /> <span>{currentSection.createLabel}</span>
       </button>
       <div className="quick-template-row" aria-label="Gợi ý tạo nhanh">
-        <button type="button" onClick={() => handleTemplateOpen("coupons")} disabled={!canWriteCoupon}>
-          NEW10 khách mới
-        </button>
-        <button type="button" onClick={() => handleTemplateOpen("promotions")} disabled={!canWritePromotion}>
-          Combo trưa
-        </button>
-        <button type="button" onClick={() => handleTemplateOpen("promotions")} disabled={!canWritePromotion}>
-          Freeship đơn lớn
-        </button>
+        <button type="button" onClick={() => handleTemplateOpen("coupons")} disabled={!canWriteCoupon}>NEW10 khách mới</button>
+        <button type="button" onClick={() => handleTemplateOpen("promotions")} disabled={!canWritePromotion}>Combo trưa</button>
+        <button type="button" onClick={() => handleTemplateOpen("promotions")} disabled={!canWritePromotion}>Freeship đơn lớn</button>
       </div>
     </div>
   );
@@ -1101,35 +1030,18 @@ const PromotionManagement = () => {
               <h2>{meta.title}</h2>
               <div className="code-badge"><Tag size={12} /> {meta.code || "NO-CODE"}</div>
             </div>
-            <button type="button" onClick={() => setDetailDrawer(null)} aria-label="Đóng chi tiết">
-              <X size={18} />
-            </button>
+            <button type="button" onClick={() => setDetailDrawer(null)} aria-label="Đóng chi tiết"><X size={18} /></button>
           </div>
 
           <div className="promo-detail-summary">
-            <div>
-              <span>Giá trị ưu đãi</span>
-              <strong>{meta.value}</strong>
-            </div>
-            <div>
-              <span>Trạng thái</span>
-              {renderStatusBadge(meta.status)}
-            </div>
+            <div><span>Giá trị ưu đãi</span><strong>{meta.value}</strong></div>
+            <div><span>Trạng thái</span>{renderStatusBadge(meta.status)}</div>
           </div>
 
           <div className="promo-detail-metrics">
-            <div>
-              <span>Đã dùng</span>
-              <strong>{Number(meta.usageCount || 0).toLocaleString("vi-VN")}</strong>
-            </div>
-            <div>
-              <span>Giới hạn</span>
-              <strong>{meta.usageLimit ? Number(meta.usageLimit).toLocaleString("vi-VN") : "Không giới hạn"}</strong>
-            </div>
-            <div>
-              <span>Tỷ lệ dùng</span>
-              <strong>{ratio}%</strong>
-            </div>
+            <div><span>Đã dùng</span><strong>{toNumber(meta.usageCount).toLocaleString("vi-VN")}</strong></div>
+            <div><span>Giới hạn</span><strong>{meta.usageLimit ? toNumber(meta.usageLimit).toLocaleString("vi-VN") : "Không giới hạn"}</strong></div>
+            <div><span>Tỷ lệ dùng</span><strong>{ratio}%</strong></div>
           </div>
 
           <section className="promo-detail-section">
@@ -1154,16 +1066,14 @@ const PromotionManagement = () => {
 
           <section className="promo-detail-section promo-detail-history">
             <h3>Lịch sử sử dụng</h3>
-            {Number(meta.usageCount || 0) > 0 ? (
-              <p>Hệ thống đã ghi nhận {Number(meta.usageCount).toLocaleString("vi-VN")} lượt sử dụng. Kết nối API đơn hàng để xem từng hóa đơn áp mã.</p>
+            {toNumber(meta.usageCount) > 0 ? (
+              <p>Hệ thống đã ghi nhận {toNumber(meta.usageCount).toLocaleString("vi-VN")} lượt sử dụng. Kết nối API đơn hàng để xem từng hóa đơn áp mã.</p>
             ) : (
               <p>Chưa có lượt sử dụng nào cho ưu đãi này.</p>
             )}
           </section>
 
-          <div className="promo-detail-actions">
-            {renderActionButtons(detailDrawer.section, detailDrawer.item)}
-          </div>
+          <div className="promo-detail-actions">{renderActionButtons(detailDrawer.section, detailDrawer.item)}</div>
         </aside>
       </div>
     );
@@ -1180,10 +1090,7 @@ const PromotionManagement = () => {
         icon="🎁"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={(value) => updateFilters({ restaurant: value })}
-        restaurantList={promotionRestaurants.map((restaurant) => ({
-          id: restaurant.id,
-          name: restaurant.name || `Nhà hàng ${restaurant.id}`,
-        }))}
+        restaurantList={promotionRestaurants.map((restaurant) => ({ id: restaurant.id, name: restaurant.name || `Nhà hàng ${restaurant.id}` }))}
         stats={[
           { id: "total", icon: "📦", label: "Tổng", value: totalCount },
           { id: "active", icon: "🟢", label: "Đang chạy", value: currentRows.filter((item) => (activeSection === "promotions" ? item.status : resolveStatus(item)) === "active").length },
@@ -1193,6 +1100,7 @@ const PromotionManagement = () => {
       />
 
       <ManagerCommandBar
+        className="manager-command-bar--promotions"
         tabs={[
           { id: "promotions", label: "Chương trình khuyến mãi" },
           { id: "coupons", label: "Coupon" },
@@ -1202,14 +1110,14 @@ const PromotionManagement = () => {
         onTabChange={(sectionId) => {
           setActiveSection(sectionId);
           setActiveTab("all");
-          setViewMode(sectionId === "promotions" ? "list" : "list");
+          setViewMode("list");
           setDetailDrawer(null);
           if (sectionId === "promotions") updateFilters({ status: "all" });
           else if (sectionId === "coupons") updateCouponFilters({ status: "all" });
           else updateCouponPackageFilters({ status: "all" });
         }}
         searchValue={searchValue}
-        searchPlaceholder={promotionSearchPlaceholder}
+        searchPlaceholder={searchPlaceholder}
         onSearchChange={(value) => {
           if (activeSection === "promotions") updateFilters({ search: value });
           else if (activeSection === "coupons") updateCouponFilters({ search: value });
@@ -1218,189 +1126,70 @@ const PromotionManagement = () => {
         filters={(
           <>
             {activeSection === "promotions" && (
-              <div className="dropdown-filter">
-                <select
-                  aria-label="Lọc loại khuyến mãi"
-                  value={promotionTypeFilter}
-                  onChange={(event) => setPromotionTypeFilter(event.target.value)}
-                >
-                  {Object.entries(PROMOTION_TYPE_LABELS).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} />
-              </div>
+              <div className="dropdown-filter"><select aria-label="Lọc loại khuyến mãi" value={promotionTypeFilter} onChange={(event) => setPromotionTypeFilter(event.target.value)}>{Object.entries(PROMOTION_TYPE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14} /></div>
             )}
             {activeSection === "coupons" && (
-              <div className="dropdown-filter">
-                <select
-                  aria-label="Lọc nhóm coupon"
-                  value={couponFilters.category}
-                  onChange={(event) => updateCouponFilters({ category: event.target.value })}
-                >
-                  <option value="all">Tất cả nhóm</option>
-                  {Object.entries(COUPON_CATEGORIES).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} />
-              </div>
+              <div className="dropdown-filter"><select aria-label="Lọc nhóm coupon" value={couponFilters.category} onChange={(event) => updateCouponFilters({ category: event.target.value })}><option value="all">Tất cả nhóm</option>{Object.entries(COUPON_CATEGORIES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14} /></div>
             )}
-            <div className="dropdown-filter dropdown-filter--date">
-              <select
-                aria-label="Lọc thời gian hiệu lực"
-                value={dateFilter}
-                onChange={(event) => setDateFilter(event.target.value)}
-              >
-                {Object.entries(DATE_FILTER_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} />
-            </div>
-            <button className="btn-clear-filter" onClick={handleClearFilters} disabled={!hasActiveFilters} type="button">
-              <FilterX size={14} />
-              <span>Xóa lọc</span>
-            </button>
+            <div className="dropdown-filter dropdown-filter--date"><select aria-label="Lọc thời gian hiệu lực" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>{Object.entries(DATE_FILTER_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14} /></div>
+            <button className="btn-clear-filter" onClick={handleClearFilters} disabled={!hasActiveFilters} type="button"><FilterX size={14} /><span>Xóa lọc</span></button>
           </>
         )}
         viewMode={activeSection === "promotions" ? viewMode : undefined}
         onViewModeChange={activeSection === "promotions" ? setViewMode : undefined}
         actions={[
-          {
-            label: "Xuất",
-            icon: <Download size={18} />,
-            onClick: handleExport,
-            disabled: !currentCount,
-          },
-          {
-            label: currentSection.createLabel,
-            icon: <Plus size={18} />,
-            variant: "primary",
-            disabled: !canWriteCurrentSection,
-            title: canWriteCurrentSection ? currentSection.createLabel : NO_PERMISSION_MESSAGE,
-            onClick: handleCreateCurrent,
-          },
+          { label: "Xuất", icon: <Download size={18} />, onClick: handleExport, disabled: !currentCount },
+          { label: currentSection.createLabel, icon: <Plus size={18} />, variant: "primary", disabled: !canWriteCurrentSection, title: canWriteCurrentSection ? currentSection.createLabel : NO_PERMISSION_MESSAGE, onClick: handleCreateCurrent },
         ]}
       />
 
-      <section className="stats-section">
-        <StatsCard stats={statsData} labels={statsLabels} />
-      </section>
+      <section className="stats-section"><StatsCard stats={statsData} labels={statsLabels} /></section>
 
-      {activeSection === "coupons" && couponAnalyticsError && (
-        <p className="promotion-inline-alert promotion-inline-alert--danger">
-          <AlertTriangle size={14} /> Chưa tải được thống kê Coupon. Danh sách vẫn hiển thị bình thường.
-        </p>
-      )}
-      {activeSection === "coupons" && couponAnalyticsLoading && (
-        <p className="promotion-inline-alert"><BarChart3 size={14} /> Đang cập nhật thống kê Coupon...</p>
-      )}
-      {activeSection === "promotions" && promotionAnalyticsError && (
-        <p className="promotion-inline-alert promotion-inline-alert--danger">
-          <AlertTriangle size={14} /> Chưa tải được thống kê Promotion, đang hiển thị giá trị mặc định.
-        </p>
-      )}
-      {activeSection === "promotions" && promotionAnalyticsLoading && (
-        <p className="promotion-inline-alert"><BarChart3 size={14} /> Đang cập nhật thống kê Promotion...</p>
-      )}
+      {activeSection === "coupons" && couponAnalyticsError && <p className="promotion-inline-alert promotion-inline-alert--danger"><AlertTriangle size={14} /> Chưa tải được thống kê Coupon. Danh sách vẫn hiển thị bình thường.</p>}
+      {activeSection === "coupons" && couponAnalyticsLoading && <p className="promotion-inline-alert"><BarChart3 size={14} /> Đang cập nhật thống kê Coupon...</p>}
+      {activeSection === "promotions" && promotionAnalyticsError && <p className="promotion-inline-alert promotion-inline-alert--danger"><AlertTriangle size={14} /> Chưa tải được thống kê Promotion, đang hiển thị giá trị mặc định.</p>}
+      {activeSection === "promotions" && promotionAnalyticsLoading && <p className="promotion-inline-alert"><BarChart3 size={14} /> Đang cập nhật thống kê Promotion...</p>}
+
+      {renderOperationalAlerts()}
 
       <div className="main-content-card">
         <div className="promotion-section-head">
-          <div>
-            <p>{currentSection.subtitle}</p>
-            <h2>{currentSection.title}</h2>
-          </div>
-          <div className="promotion-section-head__meta">
-            <CalendarClock size={15} />
-            <span>{DATE_FILTER_LABELS[dateFilter]}</span>
-          </div>
+          <div><p>{currentSection.subtitle}</p><h2>{currentSection.title}</h2></div>
+          <div className="promotion-section-head__meta"><CalendarClock size={15} /><span>{DATE_FILTER_LABELS[dateFilter]}</span></div>
         </div>
 
         <div className="tabs-header">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`tab-item ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => handleStatusTabChange(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {STATUS_TABS.map((tab) => <button key={tab.id} type="button" className={`tab-item ${activeTab === tab.id ? "active" : ""}`} onClick={() => handleStatusTabChange(tab.id)}>{tab.label}</button>)}
         </div>
 
-        {!canWriteCurrentSection && (
-          <p className="text-xs text-secondary mt-2" title={NO_PERMISSION_MESSAGE}>
-            {NO_PERMISSION_MESSAGE}
-          </p>
-        )}
+        {!canWriteCurrentSection && <p className="text-xs text-secondary mt-2" title={NO_PERMISSION_MESSAGE}>{NO_PERMISSION_MESSAGE}</p>}
 
         <div className="content-body">
-          {currentRows.length === 0 ? (
-            renderEmptyState()
-          ) : activeSection === "promotions" ? (
-            viewMode === "grid" ? renderPromotionGrid() : renderPromotionTable()
-          ) : activeSection === "coupons" ? (
-            renderCouponTable()
-          ) : (
-            renderCouponPackageTable()
-          )}
+          {currentRows.length === 0
+            ? renderEmptyState()
+            : activeSection === "promotions"
+              ? viewMode === "grid" ? renderPromotionGrid() : renderPromotionTable()
+              : activeSection === "coupons"
+                ? renderCouponTable()
+                : renderCouponPackageTable()}
         </div>
 
         <div className="pagination-footer">
-          <span className="showing-text">
-            Hiển thị <b>{currentCount}</b> trên <b>{totalCount}</b> kết quả
-          </span>
-          <div className="pagination-controls" aria-label="Phân trang khuyến mãi">
-            <button type="button" disabled><ChevronLeft size={16} /></button>
-            <button type="button" className="active">1</button>
-            <button type="button" disabled={totalCount <= currentCount}>2</button>
-            <button type="button" disabled>...</button>
-            <button type="button" disabled={totalCount <= currentCount}><ChevronRight size={16} /></button>
-          </div>
+          <span className="showing-text">Hiển thị <b>{currentCount}</b> trên <b>{totalCount}</b> kết quả</span>
+          {currentCount > 0 && totalCount > currentCount && (
+            <div className="pagination-controls" aria-label="Phân trang khuyến mãi">
+              <button type="button" disabled>1</button>
+              <button type="button" className="active">Đang lọc</button>
+            </div>
+          )}
         </div>
       </div>
 
       {renderDetailDrawer()}
 
-      {isModalOpen && canWritePromotion && (
-        <PromotionModal
-          promotion={editingPromotion}
-          restaurants={promotionRestaurants}
-          defaultRestaurantId={selectedRestaurantId}
-          categories={categories}
-          menuItems={menuItems}
-          onSave={handleSavePromotion}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingPromotion(null);
-          }}
-        />
-      )}
-
-      {isCouponModalOpen && canWriteCoupon && (
-        <CouponModal
-          coupon={editingCoupon}
-          onSave={handleSaveCoupon}
-          onClose={() => {
-            setIsCouponModalOpen(false);
-            setEditingCoupon(null);
-          }}
-        />
-      )}
-
-      {isCouponPackageModalOpen && canWriteCoupon && (
-        <CouponPackageModal
-          couponPackage={editingCouponPackage}
-          availableCoupons={allCoupons}
-          onSave={handleSaveCouponPackage}
-          onClose={() => {
-            setIsCouponPackageModalOpen(false);
-            setEditingCouponPackage(null);
-          }}
-        />
-      )}
+      {isModalOpen && canWritePromotion && <PromotionModal promotion={editingPromotion} restaurants={promotionRestaurants} defaultRestaurantId={selectedRestaurantId} categories={categories} menuItems={menuItems} onSave={handleSavePromotion} onClose={() => { setIsModalOpen(false); setEditingPromotion(null); }} />}
+      {isCouponModalOpen && canWriteCoupon && <CouponModal coupon={editingCoupon} onSave={handleSaveCoupon} onClose={() => { setIsCouponModalOpen(false); setEditingCoupon(null); }} />}
+      {isCouponPackageModalOpen && canWriteCoupon && <CouponPackageModal couponPackage={editingCouponPackage} availableCoupons={allCoupons} onSave={handleSaveCouponPackage} onClose={() => { setIsCouponPackageModalOpen(false); setEditingCouponPackage(null); }} />}
     </div>
   );
 };
