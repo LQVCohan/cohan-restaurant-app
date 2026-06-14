@@ -37,6 +37,11 @@ export function signAccessToken(user) {
   );
 }
 
+export function isRefreshTokenRotationEnabled() {
+  if (process.env.NODE_ENV === "production") return true;
+  return String(process.env.AUTH_REFRESH_TOKEN_ROTATION_ENABLED ?? "true").toLowerCase() !== "false";
+}
+
 export function refreshCookieOptions({ persistent = true } = {}) {
   const isProduction = process.env.NODE_ENV === "production";
   const options = {
@@ -123,13 +128,22 @@ export async function rotateRefreshToken({ currentRawToken, reply, userAgent, ip
   const user = await User.findById(existing.userId).populate("role").lean({ virtuals: true });
   if (!user || user.status !== "active") return null;
 
+  const roleName = (user.role?.slug || user.role?.name || "").toLowerCase();
+  const safeUser = sanitizeUserForClient({ ...user, roleName });
+
+  if (!isRefreshTokenRotationEnabled()) {
+    logger?.debug?.(
+      { userId: String(existing.userId) },
+      "refresh token rotation disabled for non-production environment",
+    );
+    return { token: signAccessToken({ ...user, roleName }), user: safeUser };
+  }
+
   const persistent = existing.persistent !== false;
   const issued = await issueRefreshToken({ userId: existing.userId, reply, userAgent, ip, persistent });
   existing.revokedAt = new Date();
   existing.replacedByTokenHash = issued.tokenHash;
   await existing.save();
-  const roleName = (user.role?.slug || user.role?.name || "").toLowerCase();
-  const safeUser = sanitizeUserForClient({ ...user, roleName });
   return { token: signAccessToken({ ...user, roleName }), user: safeUser };
 }
 
