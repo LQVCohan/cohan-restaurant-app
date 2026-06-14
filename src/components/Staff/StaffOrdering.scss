@@ -170,18 +170,6 @@ $border-color: #DCE8DF;
   }
 }
 
-// Lớp phủ mờ khi tìm kiếm
-.search-overlay {
-  position: absolute;
-  top: 64px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  z-index: 49;
-}
-
 // 2. MAIN CONTENT (Vùng cuộn độc lập)
 .staff-pos-main {
   flex: 1;
@@ -644,9 +632,6 @@ $border-color: #DCE8DF;
   .staff-pos-table-sidepanel { position: static; }
 }
 
-/* Mobile-first search and remote-order flow refinements */
-.search-overlay { display: none; }
-
 .staff-pos-header .search-container .search-results-dropdown {
   border: 1px solid $border-color;
   box-shadow: 0 14px 30px rgba(31, 42, 36, 0.12);
@@ -712,12 +697,23 @@ $border-color: #DCE8DF;
 }
 
 .staff-remote-order-empty {
+  display: grid;
+  gap: 4px;
   padding: 12px;
   border: 1px dashed $border-color;
   border-radius: 14px;
   background: #F8FAF6;
   color: $text-sub;
   font-size: 0.92rem;
+
+  strong {
+    color: $text-main;
+    font-weight: 820;
+  }
+
+  span {
+    color: $text-sub;
+  }
 }
 
 .remote-order-modal {
@@ -821,6 +817,12 @@ $border-color: #DCE8DF;
     font-weight: 800;
   }
   button.is-active { background: $primary; border-color: $primary; color: #fff; }
+}
+
+.remote-order-modal__time-note {
+  margin: -4px 16px 14px;
+  color: $text-sub;
+  font-size: 0.86rem;
 }
 
 .remote-order-modal__actions {

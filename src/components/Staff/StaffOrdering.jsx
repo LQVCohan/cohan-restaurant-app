@@ -313,6 +313,28 @@ const toCustomerLabel = (row) => ({
   noteInternal: row?.noteInternal || "",
 });
 
+const STAFF_ASSISTED_CHANNEL = "staff_assisted";
+
+const getLocalDateTimeValue = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+};
+
+const formatLocalDateTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+};
+
 const buildCartFromServerOrders = (orders = []) => {
   const result = [];
   for (const order of orders) {
@@ -358,6 +380,7 @@ const buildCartFromServerOrders = (orders = []) => {
 const RemoteOrderModal = ({ open, value, onChange, onClose, onCreate, selectedCustomer }) => {
   if (!open) return null;
   const isDelivery = value.orderType === "delivery";
+  const createdAtLabel = formatLocalDateTime(value.requestedAt) || "Tự động ghi nhận khi tạo đơn";
 
   const update = (patch) => onChange((prev) => ({ ...prev, ...patch }));
 
@@ -410,6 +433,10 @@ const RemoteOrderModal = ({ open, value, onChange, onClose, onCreate, selectedCu
           </label>
         </div>
 
+        <p className="remote-order-modal__time-note">
+          Thời gian tạo: {createdAtLabel}
+        </p>
+
         <div className="remote-order-modal__actions">
           <button type="button" onClick={onClose}>Hủy</button>
           <button type="submit" className="is-primary">Tạo đơn</button>
@@ -453,7 +480,7 @@ export default function StaffOrdering() {
     address: "",
     customerNote: "",
     orderType: "delivery",
-    channel: "phone",
+    channel: STAFF_ASSISTED_CHANNEL,
     requestedAt: "",
   });
   const [remoteCouponCode, setRemoteCouponCode] = useState("");
@@ -489,6 +516,14 @@ export default function StaffOrdering() {
   const searchTimerRef = useRef(null);
   const customerSearchRef = useRef(null);
   const remoteSubmitKeyRef = useRef(null);
+  const openRemoteOrderModal = useCallback(() => {
+    setRemoteOrderInfo((prev) => ({
+      ...prev,
+      channel: STAFF_ASSISTED_CHANNEL,
+      requestedAt: prev.requestedAt || getLocalDateTimeValue(),
+    }));
+    setIsRemoteOrderModalOpen(true);
+  }, []);
   const [requestOrderItemVoid] = useMutation(REQUEST_ORDER_ITEM_VOID);
   const [createOrderForTable, { loading: savingOrder }] = useMutation(
     CREATE_ORDER_FOR_TABLE,
@@ -1316,13 +1351,17 @@ export default function StaffOrdering() {
             .toString(36)
             .slice(2)}`;
         }
+        const requestedAt = remoteOrderInfo.requestedAt || getLocalDateTimeValue();
+        if (!remoteOrderInfo.requestedAt) {
+          setRemoteOrderInfo((prev) => ({ ...prev, requestedAt }));
+        }
 
         await createStaffRemoteOrder({
           variables: {
             input: {
               restaurantId,
               orderType: remoteOrderInfo.orderType,
-              note: `[${remoteOrderInfo.channel}] ${remoteOrderInfo.customerNote || ""}`.trim(),
+              note: remoteOrderInfo.customerNote?.trim() || null,
               customer: {
                 fullName: remoteOrderInfo.customerName.trim(),
                 phone: remoteOrderInfo.phone.trim(),
@@ -1335,16 +1374,16 @@ export default function StaffOrdering() {
                 address: remoteOrderInfo.address.trim() || null,
                 note: remoteOrderInfo.customerNote.trim() || null,
                 deliveryMethod: remoteOrderInfo.orderType,
-                deliveryTime: remoteOrderInfo.requestedAt || null,
+                deliveryTime: requestedAt || null,
               },
               items: payloadItems,
-              channel: remoteOrderInfo.channel,
+              channel: STAFF_ASSISTED_CHANNEL,
               idempotencyKey: remoteSubmitKeyRef.current,
               clientMeta: {
                 source: "staff_remote",
-                channel: remoteOrderInfo.channel,
+                channel: STAFF_ASSISTED_CHANNEL,
                 receivedByStaffId: user?.id || null,
-                requestedAt: remoteOrderInfo.requestedAt || null,
+                requestedAt: requestedAt || null,
               },
               pricing:
                 remoteDiscountBreakdown && !isRemoteDiscountStale
@@ -1544,6 +1583,7 @@ export default function StaffOrdering() {
 
   const handleCreateRemoteOrderContext = (event) => {
     event.preventDefault();
+    const requestedAt = remoteOrderInfo.requestedAt || getLocalDateTimeValue();
     if (!remoteOrderInfo.customerName.trim() || !remoteOrderInfo.phone.trim()) {
       alert("Vui lòng nhập tên khách và số điện thoại.");
       return;
@@ -1552,6 +1592,11 @@ export default function StaffOrdering() {
       alert("Đơn giao tận nơi cần địa chỉ giao hàng.");
       return;
     }
+    setRemoteOrderInfo((prev) => ({
+      ...prev,
+      channel: STAFF_ASSISTED_CHANNEL,
+      requestedAt,
+    }));
     setOrderMode("remote");
     setIsRemoteOrderModalOpen(false);
     alert("Đã tạo đơn từ xa. Bạn có thể thêm món cho khách.");
@@ -1747,7 +1792,13 @@ export default function StaffOrdering() {
               </button>
               <button
                 className={orderMode === "remote" ? "active" : ""}
-                onClick={() => setOrderMode("remote")}
+                onClick={() => {
+                  setOrderMode("remote");
+                  setRemoteOrderInfo((prev) => ({
+                    ...prev,
+                    requestedAt: prev.requestedAt || getLocalDateTimeValue(),
+                  }));
+                }}
               >
                 Đơn từ xa
               </button>
@@ -1759,16 +1810,18 @@ export default function StaffOrdering() {
                   <h3 id="staff-remote-queue-title">Đơn từ xa chờ xác nhận</h3>
                   <p>Khi khách đặt giao đi hoặc mang đi, đơn sẽ xuất hiện tại đây để nhân viên tiếp nhận.</p>
                 </div>
-                <button type="button" className="btn-open-remote-order" onClick={() => setIsRemoteOrderModalOpen(true)}>
+                <button type="button" className="btn-open-remote-order" onClick={openRemoteOrderModal}>
                   Lên đơn hộ khách
                 </button>
+                {/* Waiting for backend query for pending remote orders. */}
                 <div className="staff-remote-order-empty" role="status">
-                  Chưa có đơn từ xa chờ xác nhận.
+                  <strong>Chưa có đơn giao đi hoặc mang đi chờ xác nhận.</strong>
+                  <span>Khi khách đặt từ xa, đơn sẽ xuất hiện tại đây để nhân viên tiếp nhận.</span>
                 </div>
               </section>
             )}
             {orderMode === "dine_in" && (
-              <button type="button" className="btn-open-remote-order btn-open-remote-order--inline" onClick={() => { setOrderMode("remote"); setIsRemoteOrderModalOpen(true); }}>
+              <button type="button" className="btn-open-remote-order btn-open-remote-order--inline" onClick={() => { setOrderMode("remote"); openRemoteOrderModal(); }}>
                 Tạo đơn từ xa
               </button>
             )}
