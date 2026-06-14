@@ -1,1 +1,126 @@
 @use "../PromotionModal/PromotionModal.scss";
+
+$pm-sage: #1f6a60;
+$pm-sage-dark: #17554d;
+$pm-sage-mist: #f2faf7;
+$pm-charcoal: #24323b;
+$pm-muted: #667085;
+$pm-border: #ded6cb;
+$pm-warning: #835b20;
+$pm-warning-soft: #fbf1df;
+$pm-danger: #9a413d;
+$pm-danger-soft: #faece8;
+
+.premium-modal-overlay {
+  .discount-preview-card {
+    display: grid;
+    gap: 12px;
+    margin-top: 1rem;
+    padding: 14px;
+    border: 1px solid rgba($pm-sage, 0.16);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 100% 0%, rgba($pm-sage, 0.12), transparent 14rem),
+      rgba(242, 250, 247, 0.82);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  }
+
+  .preview-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: $pm-muted;
+    font-size: 0.82rem;
+    font-weight: 760;
+
+    strong {
+      color: $pm-charcoal;
+      font-size: 1rem;
+      font-weight: 830;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .preview-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
+    div {
+      display: grid;
+      gap: 5px;
+      padding: 12px;
+      border: 1px solid rgba($pm-border, 0.72);
+      border-radius: 14px;
+      background: rgba(255, 253, 249, 0.76);
+    }
+
+    span {
+      color: $pm-muted;
+      font-size: 0.76rem;
+      font-weight: 720;
+    }
+
+    strong {
+      color: $pm-sage-dark;
+      font-size: 1.08rem;
+      font-weight: 840;
+      letter-spacing: -0.035em;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .preview-warning-list {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      position: relative;
+      padding: 9px 10px 9px 28px;
+      border: 1px solid rgba($pm-warning, 0.16);
+      border-radius: 12px;
+      background: $pm-warning-soft;
+      color: $pm-warning;
+      font-size: 0.8rem;
+      font-weight: 700;
+      line-height: 1.45;
+
+      &::before {
+        content: "";
+        position: absolute;
+        top: 14px;
+        left: 12px;
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+    }
+  }
+
+  .preview-safe-note {
+    margin: 0;
+    padding: 9px 10px;
+    border: 1px solid rgba($pm-sage, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 253, 249, 0.72);
+    color: $pm-sage-dark;
+    font-size: 0.8rem;
+    font-weight: 720;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 760px) {
+  .premium-modal-overlay {
+    .preview-card-header,
+    .preview-card-metrics {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+  }
+}
