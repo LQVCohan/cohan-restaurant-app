@@ -34,6 +34,8 @@ function buildCopiedItemPayload(sourceItem, targetMenuId) {
     description: sourceItem.description,
     sortOrder: sourceItem.sortOrder,
     labels: clonePlain(sourceItem.labels || []),
+    foodType: sourceItem.foodType || "UNKNOWN",
+    meatTypes: clonePlain(sourceItem.meatTypes || []),
     basePrice: sourceItem.basePrice,
     defaultServingKey: sourceItem.defaultServingKey,
     hasByWeightVariant: sourceItem.hasByWeightVariant,

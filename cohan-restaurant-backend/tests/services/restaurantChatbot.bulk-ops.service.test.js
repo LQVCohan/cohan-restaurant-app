@@ -6,7 +6,7 @@ const suggestions = [];
 const feedbacks = [];
 const safetyRules = [];
 
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args), requireAnyRestaurantPermission: (...args) => permissionSpy(...args), requirePermission: (...args) => permissionSpy(...args), requireAnyPermission: (...args) => permissionSpy(...args) }));
 vi.mock("../../models/index.js", () => ({
   AiChatbotKnowledgeSuggestion: {
     findById(id) {
@@ -50,25 +50,25 @@ beforeEach(() => {
 describe("chatbot bulk ops", () => {
   it("knowledge suggestion bulk ops enforce permissions", async () => {
     await bulkDismissRestaurantAiChatbotKnowledgeSuggestions({ ids: [String(suggestions[0]._id)], ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
     permissionSpy.mockClear();
     await bulkDeleteRestaurantAiChatbotKnowledgeSuggestions({ ids: [String(suggestions[0]._id)], ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 
   it("feedback bulk ops enforce permissions", async () => {
     await bulkMarkAiChatbotAnswerFeedbackReviewed({ ids: [String(feedbacks[0]._id)], ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
     permissionSpy.mockClear();
     await bulkIgnoreAiChatbotAnswerFeedback({ ids: [String(feedbacks[0]._id)], ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 
   it("safety bulk ops enforce permissions", async () => {
     await bulkUpdateRestaurantAiChatbotSafetyRuleEnabled({ ids: [String(safetyRules[0]._id)], enabled: false, ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
     permissionSpy.mockClear();
     await bulkDeleteRestaurantAiChatbotSafetyRules({ ids: [String(safetyRules[0]._id)], ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 });

@@ -11,7 +11,6 @@ import { io } from "socket.io-client";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Star,
-  Clock,
   ChevronRight,
   Minus,
   Plus,
@@ -60,6 +59,8 @@ const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
       thumbImage
       point
       labels
+      foodType
+      meatTypes
       dietTags
       allergenTags
       tasteProfile {
@@ -84,6 +85,7 @@ const GET_MENU_ITEMS_FOR_FOOD_DETAIL = gql`
         sellUnit
         name
         price
+        isDefault
       }
         }
       }
@@ -163,6 +165,8 @@ const CUSTOMER_MENU_ITEM = gql`
       thumbImage
       point
       labels
+      foodType
+      meatTypes
       dietTags
       allergenTags
       tasteProfile {
@@ -187,6 +191,7 @@ const CUSTOMER_MENU_ITEM = gql`
         sellUnit
         name
         price
+        isDefault
       }
     }
   }
@@ -284,7 +289,41 @@ const getAddToCartButtonText = ({
 const hasFoodPreferenceMetadata = (dish) =>
   Array.isArray(dish?.dietTags) ||
   Array.isArray(dish?.allergenTags) ||
+  Boolean(dish?.foodType) ||
   Boolean(dish?.tasteProfile);
+
+const FOOD_TYPE_META = {
+  VEGETARIAN: { label: "Chay", className: "vegetarian" },
+  NON_VEGETARIAN: { label: "Mặn", className: "non-vegetarian" },
+  VEGAN: { label: "Thuần chay", className: "vegan" },
+  MIXED: { label: "Có cả chay và mặn", className: "mixed" },
+  UNKNOWN: { label: "Chưa phân loại", className: "unknown" },
+};
+
+const MEAT_TYPE_LABELS = {
+  BEEF: "Bò",
+  PORK: "Heo",
+  CHICKEN: "Gà",
+  DUCK: "Vịt",
+  SEAFOOD: "Hải sản",
+  FISH: "Cá",
+  LAMB: "Cừu",
+  OTHER: "Khác",
+};
+
+const formatTagLabel = (value) =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatServingVariant = (variant = {}) => {
+  const qty = Number(variant.sellQty || 0);
+  const qtyLabel = Number.isFinite(qty) && qty > 0 ? qty.toLocaleString("vi-VN") : "1";
+  const unit = variant.sellUnit || (variant.mode === "BY_WEIGHT" ? "kg" : "portion");
+  return variant.mode === "BY_WEIGHT"
+    ? `${qtyLabel}${unit}`
+    : `${qtyLabel} ${unit === "portion" ? "phần" : unit}`;
+};
 
 const FoodDetail = () => {
   const { foodId } = useParams();
@@ -447,9 +486,28 @@ const FoodDetail = () => {
         name: variant.name || `Tùy chọn ${idx + 1}`,
         price: finalPrice,
         priceAdd: finalPrice - base,
+        mode: variant.mode,
+        sellQty: variant.sellQty,
+        sellUnit: variant.sellUnit,
+        isDefault: variant.isDefault,
       };
     });
   }, [resolvedDish]);
+
+  const foodTypeKey = String(resolvedDish?.foodType || "UNKNOWN").toUpperCase();
+  const foodTypeMeta = FOOD_TYPE_META[foodTypeKey] || FOOD_TYPE_META.UNKNOWN;
+  const hasByWeightVariant = useMemo(
+    () =>
+      (resolvedDish?.servingVariants || []).some(
+        (variant) => String(variant?.mode || "").toUpperCase() === "BY_WEIGHT",
+      ),
+    [resolvedDish?.servingVariants],
+  );
+  const shouldShowFoodTypeBadge = foodTypeKey !== "UNKNOWN";
+  const shouldShowMeatTypes =
+    ["NON_VEGETARIAN", "MIXED"].includes(foodTypeKey) &&
+    Array.isArray(resolvedDish?.meatTypes) &&
+    resolvedDish.meatTypes.length > 0;
 
   const [mainImage, setMainImage] = useState("/default-dishes.jpg");
   const [selectedSize, setSelectedSize] = useState(null);
@@ -951,16 +1009,62 @@ const FoodDetail = () => {
 
             <h1 className="food-name">{resolvedDish.name}</h1>
 
+            <section className="fd-food-profile" aria-label="Thông tin món ăn">
+              <div className="fd-profile-badges">
+                {shouldShowFoodTypeBadge ? (
+                  <span className={`fd-food-type-badge fd-food-type-badge--${foodTypeMeta.className}`}>
+                    {foodTypeMeta.label}
+                  </span>
+                ) : null}
+                {(resolvedDish.dietTags || []).map((tag) => (
+                  <span className="fd-chip fd-chip--diet" key={`diet-${tag}`}>
+                    {formatTagLabel(tag)}
+                  </span>
+                ))}
+                {(resolvedDish.allergenTags || []).map((tag) => (
+                  <span className="fd-chip fd-chip--allergen" key={`allergen-${tag}`}>
+                    Dị ứng: {formatTagLabel(tag)}
+                  </span>
+                ))}
+              </div>
+
+              {shouldShowMeatTypes ? (
+                <div className="fd-meat-types">
+                  <span>Loại thịt:</span>
+                  {(resolvedDish.meatTypes || []).map((type) => (
+                    <strong key={type}>
+                      {MEAT_TYPE_LABELS[type] || formatTagLabel(type)}
+                    </strong>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="fd-serving-summary">
+                <div>
+                  <span>Khẩu phần</span>
+                  <strong>
+                    {Number(resolvedDish.servingPortion || 1).toLocaleString("vi-VN")}{" "}
+                    {resolvedDish.servingUnit || "người"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Chuẩn bị</span>
+                  <strong>{resolvedDish.avgPrepTimeMin || 20} phút</strong>
+                </div>
+              </div>
+
+              {hasByWeightVariant ? (
+                <div className="fd-weight-note" role="note">
+                  Món này tính theo cân nặng thực tế. Sau khi thanh toán, nhà hàng sẽ cập nhật ảnh cân minh chứng để khách hàng theo dõi.
+                </div>
+              ) : null}
+            </section>
+
             <div className="meta-info">
               <div className="rating">
                 <Star size={16} fill="#FFD700" color="#FFD700" />
                 <span>{foodReviews.length ? averageFoodRating.toFixed(1) : Number(resolvedDish.point || 0).toFixed(1)}</span>
                 <span className="text-gray">({foodReviews.length} đánh giá)</span>
-              </div>
-              <div className="divider"></div>
-              <div className="prep-time">
-                <Clock size={16} />
-                Thời gian chuẩn bị: {resolvedDish.avgPrepTimeMin || 20} phút
               </div>
             </div>
 
@@ -1083,6 +1187,11 @@ const FoodDetail = () => {
                       type="button"
                     >
                       {size.name}
+                      {size.mode ? (
+                        <span className="variant-meta">
+                          {formatServingVariant(size)}
+                        </span>
+                      ) : null}
                       {size.priceAdd > 0 && (
                         <span className="price-add">+{formatPrice(size.priceAdd)}</span>
                       )}

@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const authMocks = vi.hoisted(() => ({
+  requireRestaurantPermission: vi.fn((_ctx, restaurantId) => {
+    if (String(restaurantId).endsWith("077")) throw new Error("Forbidden");
+    return true;
+  }),
+}));
+
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requireRestaurantPermission: authMocks.requireRestaurantPermission,
+}));
 import { AiChatConversation, ChatThread } from "../../models/index.js";
 import { resolveRestaurantChatbotHandoff } from "../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
 
 describe("resolveRestaurantChatbotHandoff", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => { vi.restoreAllMocks(); authMocks.requireRestaurantPermission.mockClear(); });
 
-  const user = { id: "507f1f77bcf86cd799439099", roleName: "support", restaurantForStaff: "507f1f77bcf86cd799439013" };
+  const user = { id: "507f1f77bcf86cd799439099", roleName: "support", restaurantId: "507f1f77bcf86cd799439013", restaurantForStaff: "507f1f77bcf86cd799439013", restaurantIds: ["507f1f77bcf86cd799439013"], permissions: ["ai.chatbot.handoff"] };
 
   it("resolves by conversationId", async () => {
     const conversation = {
@@ -13,6 +24,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
       chatThreadId: "507f1f77bcf86cd799439012",
       status: "handoff_requested",
       metadata: {},
+      restaurantId: "507f1f77bcf86cd799439013",
       save: vi.fn().mockResolvedValue(true),
     };
     const thread = {
@@ -38,7 +50,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
 
   it("resolves by chatThreadId", async () => {
     vi.spyOn(AiChatConversation, "findById").mockResolvedValue(null);
-    const conversation = { _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", status: "handoff_requested", metadata: {}, save: vi.fn() };
+    const conversation = { _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", status: "handoff_requested", metadata: {}, restaurantId: "507f1f77bcf86cd799439013", save: vi.fn() };
     vi.spyOn(AiChatConversation, "findOne").mockResolvedValue(conversation);
     vi.spyOn(ChatThread, "findById").mockResolvedValue({
       _id: "507f1f77bcf86cd799439012", restaurantId: "507f1f77bcf86cd799439013", targetRole: "support", participants: [], status: "open", messages: [],
@@ -49,7 +61,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
   });
 
   it("idempotent when already closed", async () => {
-    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: null, status: "closed" });
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: null, restaurantId: "507f1f77bcf86cd799439013", status: "closed" });
     const out = await resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user });
     expect(out.ok).toBe(true);
     expect(out.alreadyClosed).toBe(true);
@@ -61,6 +73,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
       _id: "507f1f77bcf86cd799439011",
       chatThreadId: "507f1f77bcf86cd799439012",
       status: "open",
+      restaurantId: "507f1f77bcf86cd799439013",
       save,
     });
     const out = await resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user });
@@ -74,6 +87,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
       _id: "507f1f77bcf86cd799439011",
       chatThreadId: null,
       status: "handoff_requested",
+      restaurantId: "507f1f77bcf86cd799439013",
       save,
     });
     const out = await resolveRestaurantChatbotHandoff({ input: { conversationId: "507f1f77bcf86cd799439011" }, user });
@@ -87,6 +101,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
       _id: "507f1f77bcf86cd799439011",
       chatThreadId: "507f1f77bcf86cd799439012",
       status: "handoff_requested",
+      restaurantId: "507f1f77bcf86cd799439013",
       save,
     });
     vi.spyOn(ChatThread, "findById").mockResolvedValue(null);
@@ -100,7 +115,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
   });
 
   it("forbids cross restaurant access", async () => {
-    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", status: "handoff_requested", metadata: {}, save: vi.fn() });
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", status: "handoff_requested", metadata: {}, restaurantId: "507f1f77bcf86cd799439077", save: vi.fn() });
     vi.spyOn(ChatThread, "findById").mockResolvedValue({
       _id: "507f1f77bcf86cd799439012", restaurantId: "507f1f77bcf86cd799439077", targetRole: "support", participants: [], status: "open", messages: [],
       toObject: () => ({ restaurantId: "507f1f77bcf86cd799439077", targetRole: "support", participants: [] }),
@@ -109,7 +124,7 @@ describe("resolveRestaurantChatbotHandoff", () => {
   });
 
   it("realtime emit failure does not fail mutation", async () => {
-    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", status: "closed", metadata: {}, save: vi.fn() });
+    vi.spyOn(AiChatConversation, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439011", chatThreadId: "507f1f77bcf86cd799439012", restaurantId: "507f1f77bcf86cd799439013", status: "closed", metadata: {}, save: vi.fn() });
     vi.spyOn(ChatThread, "findById").mockResolvedValue({ _id: "507f1f77bcf86cd799439012", status: "closed", restaurantId: "507f1f77bcf86cd799439013", targetRole: "support", participants: [], toObject: () => ({ restaurantId: "507f1f77bcf86cd799439013", targetRole: "support", participants: [] }) });
     const out = await resolveRestaurantChatbotHandoff({
       input: { conversationId: "507f1f77bcf86cd799439011" },

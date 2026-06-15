@@ -5,7 +5,7 @@ const permissionSpy = vi.fn();
 const suggestionStore = [];
 const knowledgeStore = [];
 
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args), requireAnyRestaurantPermission: (...args) => permissionSpy(...args), requirePermission: (...args) => permissionSpy(...args), requireAnyPermission: (...args) => permissionSpy(...args) }));
 vi.mock("../../models/index.js", () => {
   const enhance = (row) => {
     if (!row.save) row.save = async function save() { return this; };
@@ -55,7 +55,7 @@ describe("knowledge suggestion service", () => {
     const saved = suggestionStore.find((x) => String(x._id) === s.id);
     expect(saved.status).toBe("approved");
     expect(String(permissionSpy.mock.calls[0][1])).toBe(rid);
-    expect(permissionSpy.mock.calls[0][2]).toBe(PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy.mock.calls[0][2]).toBe(PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 
   it("approve already approved suggestion is rejected and does not create duplicate", async () => {
