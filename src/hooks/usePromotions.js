@@ -111,6 +111,81 @@ const resolvePromotionStatus = (row) => {
   return "active";
 };
 
+const getApolloErrorMessage = (error) => {
+  if (!error) return "";
+  return (
+    error.graphQLErrors?.[0]?.message ||
+    error.networkError?.message ||
+    error.message ||
+    "Không tải được dữ liệu khuyến mãi."
+  );
+};
+
+const mountPromotionErrorBanner = ({ error, refetch }) => {
+  if (typeof document === "undefined") return undefined;
+
+  const bannerId = "promotion-query-error-banner";
+  document.getElementById(bannerId)?.remove();
+  if (!error) return undefined;
+
+  const message = getApolloErrorMessage(error);
+  const container = document.querySelector(".promotion-manager-page") || document.body;
+  const banner = document.createElement("section");
+  banner.id = bannerId;
+  banner.setAttribute("role", "alert");
+  banner.setAttribute("aria-live", "polite");
+  banner.style.cssText = [
+    "display:flex",
+    "align-items:center",
+    "justify-content:space-between",
+    "gap:12px",
+    "margin:0 0 12px",
+    "padding:12px 14px",
+    "border:1px solid rgba(154,65,61,.2)",
+    "border-radius:18px",
+    "background:#faece8",
+    "color:#9a413d",
+    "box-shadow:0 14px 34px rgba(48,40,30,.08)",
+    "font-family:Geist,Outfit,Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+  ].join(";");
+
+  const text = document.createElement("div");
+  text.style.cssText = "display:grid;gap:3px;min-width:0";
+  const title = document.createElement("strong");
+  title.textContent = "Không tải được dữ liệu khuyến mãi";
+  title.style.cssText = "font-size:.92rem;font-weight:820;color:#9a413d";
+  const detail = document.createElement("span");
+  detail.textContent = message;
+  detail.style.cssText = "font-size:.82rem;line-height:1.45;color:#9a413d;word-break:break-word";
+  text.append(title, detail);
+
+  const retryButton = document.createElement("button");
+  retryButton.type = "button";
+  retryButton.textContent = "Thử tải lại";
+  retryButton.style.cssText = [
+    "min-height:36px",
+    "border:1px solid rgba(154,65,61,.22)",
+    "border-radius:12px",
+    "background:#fffdf9",
+    "color:#9a413d",
+    "cursor:pointer",
+    "font-weight:780",
+    "padding:0 12px",
+    "white-space:nowrap",
+  ].join(";");
+  retryButton.addEventListener("click", () => {
+    refetch?.();
+  });
+
+  banner.append(text, retryButton);
+  container.prepend(banner);
+
+  return () => {
+    retryButton.removeEventListener("click", () => refetch?.());
+    banner.remove();
+  };
+};
+
 const normalizePromotion = (row) => ({
   id: row.id,
   name: row.name,
@@ -266,6 +341,8 @@ export const usePromotions = () => {
     skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
+
+  useEffect(() => mountPromotionErrorBanner({ error, refetch }), [error, refetch]);
 
   const { data: formData } = useQuery(Q_PROMOTION_FORM_DATA, {
     variables: { restaurantId: selectedRestaurantId },
