@@ -1,0 +1,276 @@
+/* =========================================================
+   Schedule manager x storage visual alignment
+   Removes orange as a dominant color and applies the same warm
+   cream / sage / taupe system used by the storage-oriented manager UI.
+   ========================================================= */
+
+.schedule-container.schedule-container {
+  --schedule-storage-bg: #f5f4ef;
+  --schedule-storage-surface: #fffdf8;
+  --schedule-storage-surface-soft: #f8f6f1;
+  --schedule-storage-border: #e5ded3;
+  --schedule-storage-border-strong: #d5c8b8;
+  --schedule-storage-ink: #24303f;
+  --schedule-storage-text: #2d3540;
+  --schedule-storage-muted: #667085;
+  --schedule-storage-taupe: #a8855f;
+  --schedule-storage-taupe-dark: #735637;
+  --schedule-storage-taupe-soft: #eadfcc;
+  --schedule-storage-sage: #536c61;
+  --schedule-storage-sage-soft: #edf4f0;
+  --schedule-storage-success: #2f7d68;
+  --schedule-storage-danger: #b54747;
+  --schedule-storage-warning: #8f6b45;
+  --safe-sage: var(--schedule-storage-sage);
+  --safe-sage-strong: #40564c;
+  --safe-sage-mist: var(--schedule-storage-sage-soft);
+  --safe-ink: var(--schedule-storage-ink);
+  --safe-cream: var(--schedule-storage-surface);
+  --safe-border: rgba(83, 108, 97, 0.18);
+  --safe-border-strong: rgba(83, 108, 97, 0.34);
+
+  width: min(100%, 1500px) !important;
+  margin-inline: auto !important;
+  color: var(--schedule-storage-text) !important;
+  background:
+    radial-gradient(circle at 14% -4%, rgba(83, 108, 97, 0.1), transparent 30rem),
+    radial-gradient(circle at 100% 8%, rgba(168, 133, 95, 0.07), transparent 28rem),
+    linear-gradient(180deg, var(--schedule-storage-surface-soft) 0%, var(--schedule-storage-bg) 62%, #f1efe8 100%) !important;
+}
+
+.schedule-container.schedule-container .schedule-header,
+.schedule-container.schedule-container .schedule-toolbar,
+.schedule-container.schedule-container .schedule-day-column,
+.schedule-container.schedule-container .schedule-availability-panel,
+.schedule-container.schedule-container .schedule-insights-panel,
+.schedule-container.schedule-container .kpi-card {
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 0.97), rgba(248, 246, 241, 0.9)),
+    radial-gradient(circle at 12% 0%, rgba(83, 108, 97, 0.06), transparent 24rem) !important;
+  box-shadow:
+    0 18px 42px rgba(48, 40, 30, 0.055),
+    inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.schedule-container.schedule-container .schedule-header {
+  border-radius: 24px 24px 18px 18px !important;
+}
+
+.schedule-container.schedule-container .schedule-toolbar {
+  border-left: 4px solid var(--schedule-storage-sage) !important;
+  border-radius: 18px !important;
+}
+
+/* Remove orange from KPI and status accent treatment. */
+.schedule-container.schedule-container .kpi-card,
+.schedule-container.schedule-container .kpi-card.has-alert,
+.schedule-container.schedule-container .kpi-card.action,
+.schedule-container.schedule-container .kpi-card.availability,
+.schedule-container.schedule-container .kpi-card.hours,
+.schedule-container.schedule-container .kpi-card.shifts,
+.schedule-container.schedule-container .kpi-card.status {
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+}
+
+.schedule-container.schedule-container .kpi-card::after,
+.schedule-container.schedule-container .kpi-card.has-alert::after,
+.schedule-container.schedule-container .kpi-card.action::after,
+.schedule-container.schedule-container .metrics-strip .metric-item::before {
+  background: linear-gradient(90deg, var(--schedule-storage-sage), var(--schedule-storage-success)) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-icon,
+.schedule-container.schedule-container .kpi-card.action .kpi-icon,
+.schedule-container.schedule-container .kpi-card.has-alert .kpi-icon,
+.schedule-container.schedule-container .kpi-card.hours .kpi-icon,
+.schedule-container.schedule-container .kpi-card.availability .kpi-icon,
+.schedule-container.schedule-container .kpi-card.shifts .kpi-icon,
+.schedule-container.schedule-container .kpi-card.status .kpi-icon {
+  background: var(--schedule-storage-sage-soft) !important;
+  border-color: rgba(83, 108, 97, 0.18) !important;
+  color: var(--schedule-storage-sage) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .label,
+.schedule-container.schedule-container .title-group .subtitle,
+.schedule-container.schedule-container .eyebrow,
+.schedule-container.schedule-container .day-header span,
+.schedule-container.schedule-container .schedule-availability-panel__header p,
+.schedule-container.schedule-container .schedule-availability-panel__empty p {
+  color: var(--schedule-storage-muted) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .value,
+.schedule-container.schedule-container .title-group h1,
+.schedule-container.schedule-container .day-header strong,
+.schedule-container.schedule-container .schedule-availability-panel__header h3 {
+  color: var(--schedule-storage-ink) !important;
+}
+
+.schedule-container.schedule-container .title-group .eyebrow--command,
+.schedule-container.schedule-container .status-chip,
+.schedule-container.schedule-container .schedule-status-badge,
+.schedule-container.schedule-container .day-header small,
+.schedule-container.schedule-container .day-summary-pill {
+  background: var(--schedule-storage-sage-soft) !important;
+  border-color: rgba(83, 108, 97, 0.2) !important;
+  color: #40564c !important;
+}
+
+/* Buttons: charcoal primary, sage secondary; no orange hover/focus. */
+.schedule-container.schedule-container .primary-action,
+.schedule-container.schedule-container .btn-publish,
+.schedule-container.schedule-container .staff-primary-btn,
+.schedule-container.schedule-container .schedule-availability-panel__empty button,
+.schedule-container.schedule-container .schedule-availability-panel__actions button,
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button {
+  background: var(--schedule-storage-ink) !important;
+  border-color: var(--schedule-storage-ink) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 14px 28px rgba(36, 48, 63, 0.13) !important;
+}
+
+.schedule-container.schedule-container .secondary-action,
+.schedule-container.schedule-container .toolbar-group--actions > button:not(.btn-publish),
+.schedule-container.schedule-container .btn-auto-schedule,
+.schedule-container.schedule-container .btn-print-schedule,
+.schedule-container.schedule-container .btn-availability-snapshot,
+.schedule-container.schedule-container .staff-secondary-btn,
+.schedule-container.schedule-container .schedule-settings-trigger,
+.schedule-container.schedule-container .date-navigation .nav-btn,
+.schedule-container.schedule-container .view-toggles button:not(.active) {
+  background: rgba(255, 253, 248, 0.78) !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  color: #40564c !important;
+  box-shadow: 0 8px 18px rgba(48, 40, 30, 0.045) !important;
+}
+
+.schedule-container.schedule-container .secondary-action:hover:not(:disabled),
+.schedule-container.schedule-container .toolbar-group--actions > button:not(.btn-publish):hover:not(:disabled),
+.schedule-container.schedule-container .btn-auto-schedule:hover:not(:disabled),
+.schedule-container.schedule-container .btn-print-schedule:hover:not(:disabled),
+.schedule-container.schedule-container .btn-availability-snapshot:hover:not(:disabled),
+.schedule-container.schedule-container .staff-secondary-btn:hover:not(:disabled),
+.schedule-container.schedule-container .date-navigation .nav-btn:hover:not(:disabled),
+.schedule-container.schedule-container .date-navigation .nav-btn--today {
+  background: var(--schedule-storage-sage-soft) !important;
+  border-color: rgba(83, 108, 97, 0.26) !important;
+  color: var(--schedule-storage-sage) !important;
+}
+
+.schedule-container.schedule-container .view-toggles {
+  background: rgba(229, 222, 211, 0.58) !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+}
+
+.schedule-container.schedule-container .view-toggles button.active,
+.schedule-container.schedule-container .view-toggles button[aria-pressed="true"] {
+  background: var(--schedule-storage-ink) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 10px 20px rgba(36, 48, 63, 0.14) !important;
+}
+
+.schedule-container.schedule-container select,
+.schedule-container.schedule-container input,
+.schedule-container.schedule-container textarea {
+  background-color: rgba(255, 253, 248, 0.94) !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  color: var(--schedule-storage-text) !important;
+}
+
+/* Calendar board: storage-like calm surface and sage day focus. */
+.schedule-container.schedule-container .schedule-board {
+  background: rgba(245, 244, 239, 0.72) !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column {
+  background: rgba(255, 253, 248, 0.92) !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+}
+
+.schedule-container.schedule-container .day-header {
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f6f1 100%) !important;
+  border-bottom-color: rgba(229, 222, 211, 0.88) !important;
+}
+
+.schedule-container.schedule-container .day-header.today,
+.schedule-container.schedule-container .schedule-day-column:first-child .day-header {
+  background: linear-gradient(135deg, var(--schedule-storage-sage-soft), #fffdf8) !important;
+  box-shadow: inset 4px 0 0 var(--schedule-storage-sage) !important;
+}
+
+.schedule-container.schedule-container .add-shift-btn,
+.schedule-container.schedule-container .empty-shift-slot,
+.schedule-container.schedule-container .more-shifts-btn {
+  background: rgba(237, 244, 240, 0.74) !important;
+  border-color: rgba(83, 108, 97, 0.24) !important;
+  color: #40564c !important;
+}
+
+.schedule-container.schedule-container .add-shift-btn:hover:not(:disabled),
+.schedule-container.schedule-container .more-shifts-btn:hover:not(:disabled) {
+  background: #dfeae5 !important;
+  border-color: rgba(83, 108, 97, 0.36) !important;
+}
+
+/* Replace remaining blue/purple/orange markers with storage sage/taupe. */
+.schedule-container.schedule-container .day-priority,
+.schedule-container.schedule-container [class*="priority"],
+.schedule-container.schedule-container [class*="focused"],
+.schedule-container.schedule-container [class*="highlight"]:not(.shift-card-anchor),
+.schedule-container.schedule-container .schedule-day-column:first-child .add-shift-btn,
+.schedule-container.schedule-container .schedule-day-column:first-child .empty-shift-slot {
+  color: #40564c !important;
+  border-color: rgba(83, 108, 97, 0.32) !important;
+  background: var(--schedule-storage-sage-soft) !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column:first-child,
+.schedule-container.schedule-container .schedule-day-column:focus-within {
+  border-color: rgba(83, 108, 97, 0.32) !important;
+  box-shadow: inset 4px 0 0 var(--schedule-storage-sage), 0 12px 26px rgba(48, 40, 30, 0.07) !important;
+}
+
+.schedule-container.schedule-container .status-dot.warning,
+.schedule-container.schedule-container .job-dot.job-orange,
+.schedule-container.schedule-container .status-chip.locked,
+.schedule-container.schedule-container .status-chip.changed,
+.schedule-container.schedule-container .schedule-status-badge.locked,
+.schedule-container.schedule-container .schedule-status-badge.changed {
+  background: var(--schedule-storage-taupe-soft) !important;
+  border-color: rgba(168, 133, 95, 0.22) !important;
+  color: var(--schedule-storage-taupe-dark) !important;
+}
+
+.schedule-container.schedule-container .schedule-feedback,
+.schedule-container.schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) {
+  border-color: rgba(168, 133, 95, 0.22) !important;
+  background:
+    radial-gradient(circle at 1.45rem 1.35rem, rgba(83, 108, 97, 0.12), transparent 1.6rem),
+    linear-gradient(135deg, #fffdf8 0%, #f8f6f1 100%) !important;
+  color: var(--schedule-storage-text) !important;
+}
+
+.schedule-container.schedule-container .schedule-feedback::before,
+.schedule-container.schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel)::before {
+  background: var(--schedule-storage-sage-soft) !important;
+  color: var(--schedule-storage-sage) !important;
+}
+
+.schedule-container.schedule-container .schedule-feedback button,
+.schedule-container.schedule-container > .schedule-header + div:not(.schedule-toolbar):not(.schedule-availability-panel):not(.schedule-legend):not(.schedule-insights-panel) button {
+  border-color: rgba(83, 108, 97, 0.24) !important;
+  background: #fffdf8 !important;
+  color: var(--schedule-storage-sage) !important;
+}
+
+.schedule-container.schedule-container button:focus-visible,
+.schedule-container.schedule-container select:focus-visible,
+.schedule-container.schedule-container input:focus-visible,
+.schedule-container.schedule-container textarea:focus-visible {
+  outline-color: rgba(83, 108, 97, 0.32) !important;
+  box-shadow: 0 0 0 5px rgba(83, 108, 97, 0.1) !important;
+}
