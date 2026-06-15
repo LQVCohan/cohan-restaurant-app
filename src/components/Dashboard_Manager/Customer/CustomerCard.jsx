@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import "./CustomerCard.scss";
+import "./CustomerToneSystem.scss";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* --- Helpers Functions (Giữ nguyên) --- */
