@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import OrderSummaryModal from "@/components/Customer/BookingDishesModal/OrderSummaryModal";
+import OrderSummaryModal from "@/components/Customer/BookingDishesModal/OrderSummaryTransferModal";
 import { useCart } from "@/context/CartProvider";
 import { isHoldExpired } from "@/hooks/useCart";
 import { AuthContext } from "@/context/AuthContext";
