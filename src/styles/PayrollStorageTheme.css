@@ -1,0 +1,455 @@
+:root {
+  --payroll-storage-bg: #f5f4ef;
+  --payroll-storage-surface: #fffdf8;
+  --payroll-storage-surface-soft: #f8f6f1;
+  --payroll-storage-border: #e5ded3;
+  --payroll-storage-border-strong: #d5c8b8;
+  --payroll-storage-ink: #24303f;
+  --payroll-storage-text: #2d3540;
+  --payroll-storage-muted: #667085;
+  --payroll-storage-taupe: #a8855f;
+  --payroll-storage-taupe-dark: #735637;
+  --payroll-storage-taupe-soft: #eadfcc;
+  --payroll-storage-sage: #536c61;
+  --payroll-storage-sage-soft: #edf4f0;
+  --payroll-storage-success: #2f7d68;
+  --payroll-storage-danger: #b54747;
+  --payroll-storage-warning: #b26b24;
+}
+
+.payroll-page-compact {
+  width: min(100%, 1500px);
+  margin: 0 auto;
+  gap: 1rem !important;
+  padding: clamp(0.95rem, 1.65vw, 1.45rem) !important;
+  color: var(--payroll-storage-text) !important;
+  background:
+    radial-gradient(circle at 14% -4%, rgba(168, 133, 95, 0.16), transparent 30rem),
+    radial-gradient(circle at 100% 8%, rgba(83, 108, 97, 0.11), transparent 28rem),
+    linear-gradient(180deg, var(--payroll-storage-surface-soft) 0%, var(--payroll-storage-bg) 62%, #f1efe8 100%) !important;
+  border: 1px solid rgba(229, 222, 211, 0.88);
+  border-radius: 28px !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.payroll-page-compact::before {
+  opacity: 0.28 !important;
+  background-image:
+    linear-gradient(rgba(83, 108, 97, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 133, 95, 0.035) 1px, transparent 1px) !important;
+  background-size: 36px 36px !important;
+}
+
+.payroll-page-compact .header-toolbar,
+.payroll-page-compact .metrics-strip,
+.payroll-page-compact .table-card {
+  border: 1px solid rgba(229, 222, 211, 0.95) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(248, 246, 241, 0.9)),
+    radial-gradient(circle at 12% 0%, rgba(168, 133, 95, 0.08), transparent 24rem) !important;
+  box-shadow:
+    0 18px 42px rgba(48, 40, 30, 0.07),
+    inset 0 1px rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.payroll-page-compact .header-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr) !important;
+  align-items: stretch !important;
+  padding: clamp(1.1rem, 2vw, 1.55rem) !important;
+}
+
+.payroll-page-compact .header-toolbar::after {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.72), transparent 22rem),
+    radial-gradient(circle at 82% 18%, rgba(83, 108, 97, 0.1), transparent 20rem) !important;
+}
+
+.payroll-page-compact .page-title {
+  color: var(--payroll-storage-ink) !important;
+  font-size: clamp(1.8rem, 3vw, 2.85rem) !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.05em !important;
+}
+
+.payroll-page-compact .page-subtitle {
+  max-width: 60ch !important;
+  color: var(--payroll-storage-muted) !important;
+  font-weight: 560 !important;
+}
+
+.payroll-page-compact .cycle-picker-compact,
+.payroll-page-compact .workflow-tabs {
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(255, 253, 248, 0.74) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.payroll-page-compact .cycle-picker-compact .label,
+.payroll-page-compact .metrics-strip .metric-item .label,
+.payroll-page-compact .progress-info,
+.payroll-page-compact .table-empty {
+  color: var(--payroll-storage-muted) !important;
+}
+
+.payroll-page-compact .cycle-picker-compact .arrow {
+  color: var(--payroll-storage-taupe) !important;
+}
+
+.payroll-page-compact .metrics-strip {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.32fr) !important;
+  min-height: 0 !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-group {
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-item,
+.payroll-page-compact .progress-section {
+  border-color: rgba(229, 222, 211, 0.88) !important;
+  background: rgba(255, 255, 255, 0.68) !important;
+  border-radius: 19px !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8) !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-item::before {
+  background: linear-gradient(180deg, var(--payroll-storage-taupe), var(--payroll-storage-sage)) !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-item .value,
+.payroll-page-compact .net-cell,
+.payroll-page-compact .emp-cell .name {
+  color: var(--payroll-storage-ink) !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-item .value.highlight {
+  color: var(--payroll-storage-taupe-dark) !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-item .value.success,
+.payroll-page-compact .text-success,
+.payroll-page-compact .progress-info strong {
+  color: var(--payroll-storage-success) !important;
+}
+
+.payroll-page-compact .metrics-strip .metric-item .value.danger,
+.payroll-page-compact .text-danger {
+  color: var(--payroll-storage-danger) !important;
+}
+
+.payroll-page-compact .progress-section {
+  border-color: rgba(47, 125, 104, 0.2) !important;
+  background:
+    linear-gradient(135deg, rgba(237, 244, 240, 0.82), rgba(255, 255, 255, 0.72)) !important;
+}
+
+.payroll-page-compact .progress-track {
+  border-color: rgba(47, 125, 104, 0.18) !important;
+  background: rgba(83, 108, 97, 0.1) !important;
+}
+
+.payroll-page-compact .progress-fill {
+  background: linear-gradient(90deg, var(--payroll-storage-sage), var(--payroll-storage-success)) !important;
+  box-shadow: 0 8px 18px rgba(47, 125, 104, 0.18) !important;
+}
+
+.payroll-page-compact .table-card {
+  border-radius: 26px !important;
+  min-height: 540px !important;
+}
+
+.payroll-page-compact .table-controls {
+  padding: 0.9rem !important;
+  border-bottom-color: rgba(229, 222, 211, 0.92) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.payroll-page-compact .workflow-tabs {
+  border-radius: 16px !important;
+  padding: 0.28rem !important;
+}
+
+.payroll-page-compact .workflow-tabs .tab-btn {
+  border-radius: 12px !important;
+  color: #596573 !important;
+  font-weight: 780 !important;
+}
+
+.payroll-page-compact .workflow-tabs .tab-btn:hover:not(.active) {
+  color: var(--payroll-storage-ink) !important;
+  background: rgba(168, 133, 95, 0.1) !important;
+}
+
+.payroll-page-compact .workflow-tabs .tab-btn.active {
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, var(--payroll-storage-ink), #34414a) !important;
+  box-shadow: 0 10px 20px rgba(36, 48, 63, 0.16) !important;
+}
+
+.payroll-page-compact .table-responsive {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.72), rgba(248, 246, 241, 0.9)) !important;
+  scrollbar-color: rgba(168, 133, 95, 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+.payroll-page-compact .table-responsive::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.payroll-page-compact .table-responsive::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(168, 133, 95, 0.26);
+  background-clip: padding-box;
+}
+
+.payroll-page-compact .payroll-table thead th {
+  border-bottom-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(248, 246, 241, 0.96) !important;
+  color: #65716f !important;
+}
+
+.payroll-page-compact .payroll-table tbody td {
+  border-bottom-color: rgba(229, 222, 211, 0.62) !important;
+  color: #34404a !important;
+}
+
+.payroll-page-compact .payroll-table tbody td.sticky-left {
+  border-right-color: rgba(229, 222, 211, 0.9) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+}
+
+.payroll-page-compact .payroll-table tbody tr:hover {
+  background: rgba(83, 108, 97, 0.055) !important;
+}
+
+.payroll-page-compact .payroll-table tbody tr:hover td.sticky-left {
+  background: #f3f5ef !important;
+}
+
+.payroll-page-compact .payroll-table tbody tr.selected {
+  background: rgba(83, 108, 97, 0.1) !important;
+  box-shadow: inset 4px 0 0 var(--payroll-storage-sage) !important;
+}
+
+.payroll-page-compact .emp-cell .avatar {
+  border-color: rgba(83, 108, 97, 0.2) !important;
+  color: var(--payroll-storage-sage) !important;
+  background:
+    radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.7), transparent 50%),
+    var(--payroll-storage-sage-soft) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.75), 0 8px 16px rgba(48, 40, 30, 0.07) !important;
+}
+
+.payroll-page-compact .emp-cell .sub {
+  color: var(--payroll-storage-muted) !important;
+}
+
+.payroll-page-compact .work-tag {
+  border-color: rgba(168, 133, 95, 0.24) !important;
+  color: var(--payroll-storage-ink) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+}
+
+.payroll-page-compact .status-dot.finalized,
+.payroll-page-compact .status-dot.paying,
+.payroll-page-compact .status-dot.pending-payment,
+.payroll-page-compact .status-dot.processing-payment,
+.payroll-page-compact .status-dot.info {
+  color: var(--payroll-storage-taupe-dark) !important;
+  border-color: rgba(168, 133, 95, 0.26) !important;
+  background: rgba(234, 223, 204, 0.62) !important;
+}
+
+.payroll-page-compact .status-dot.success {
+  color: var(--payroll-storage-success) !important;
+  border-color: rgba(47, 125, 104, 0.24) !important;
+  background: rgba(237, 244, 240, 0.9) !important;
+}
+
+.payroll-page-compact .status-dot.danger {
+  color: var(--payroll-storage-danger) !important;
+  border-color: rgba(181, 71, 71, 0.22) !important;
+  background: rgba(255, 244, 242, 0.9) !important;
+}
+
+.payroll-page-compact .status-dot.warning,
+.payroll-page-compact .status-dot.locked {
+  color: var(--payroll-storage-warning) !important;
+  border-color: rgba(178, 107, 36, 0.24) !important;
+  background: rgba(255, 247, 237, 0.88) !important;
+}
+
+.payroll-page-compact .table-empty--rich .table-empty__content {
+  border-color: rgba(168, 133, 95, 0.28) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(83, 108, 97, 0.08), transparent 16rem),
+    rgba(255, 253, 248, 0.72) !important;
+}
+
+.payroll-page-compact .btn,
+.payroll-page-compact .btn-primary,
+.payroll-page-compact .btn-white,
+.payroll-page-compact .btn-success,
+.payroll-page-compact .btn-secondary,
+.modal-overlay[data-testid^="payroll"] .btn,
+.modal-overlay[data-testid^="payroll"] .btn-primary,
+.modal-overlay[data-testid^="payroll"] .btn-white,
+.modal-overlay[data-testid^="payroll"] .btn-success,
+.modal-overlay[data-testid^="payroll"] .btn-secondary,
+.modal-overlay[data-testid="employee-bank-account-modal"] .btn,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .btn {
+  border-radius: 13px !important;
+  border-color: rgba(213, 200, 184, 0.86) !important;
+  font-weight: 780 !important;
+  box-shadow: none;
+}
+
+.payroll-page-compact .btn-primary,
+.modal-overlay[data-testid^="payroll"] .btn-primary,
+.modal-overlay[data-testid="employee-bank-account-modal"] .btn-primary,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .btn-primary {
+  color: #fffdf8 !important;
+  border-color: rgba(36, 48, 63, 0.92) !important;
+  background: linear-gradient(135deg, var(--payroll-storage-ink), #35424c) !important;
+}
+
+.payroll-page-compact .btn-white,
+.payroll-page-compact .btn-secondary,
+.modal-overlay[data-testid^="payroll"] .btn-white,
+.modal-overlay[data-testid^="payroll"] .btn-secondary,
+.modal-overlay[data-testid="employee-bank-account-modal"] .btn-white,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .btn-white,
+.modal-overlay[data-testid="employee-bank-account-modal"] .btn-secondary,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .btn-secondary {
+  color: var(--payroll-storage-ink) !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+}
+
+.payroll-page-compact .btn-success,
+.modal-overlay[data-testid^="payroll"] .btn-success {
+  color: #fffdf8 !important;
+  border-color: rgba(47, 125, 104, 0.4) !important;
+  background: linear-gradient(135deg, var(--payroll-storage-sage), var(--payroll-storage-success)) !important;
+}
+
+.payroll-page-compact input,
+.payroll-page-compact select,
+.payroll-page-compact textarea,
+.payroll-page-compact .filter-select,
+.modal-overlay[data-testid^="payroll"] input,
+.modal-overlay[data-testid^="payroll"] select,
+.modal-overlay[data-testid^="payroll"] textarea,
+.modal-overlay[data-testid^="payroll"] .filter-select,
+.modal-overlay[data-testid="employee-bank-account-modal"] input,
+.modal-overlay[data-testid="employee-bank-account-modal"] select,
+.modal-overlay[data-testid="employee-bank-account-modal"] textarea,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] input,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] select,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] textarea {
+  border-color: rgba(213, 200, 184, 0.88) !important;
+  color: var(--payroll-storage-ink) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.payroll-page-compact input:focus,
+.payroll-page-compact select:focus,
+.payroll-page-compact textarea:focus,
+.modal-overlay[data-testid^="payroll"] input:focus,
+.modal-overlay[data-testid^="payroll"] select:focus,
+.modal-overlay[data-testid^="payroll"] textarea:focus,
+.modal-overlay[data-testid="employee-bank-account-modal"] input:focus,
+.modal-overlay[data-testid="employee-bank-account-modal"] select:focus,
+.modal-overlay[data-testid="employee-bank-account-modal"] textarea:focus,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] input:focus,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] select:focus,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] textarea:focus {
+  outline: 3px solid rgba(168, 133, 95, 0.24) !important;
+  outline-offset: 2px !important;
+  border-color: rgba(168, 133, 95, 0.55) !important;
+}
+
+.modal-overlay[data-testid^="payroll"],
+.modal-overlay[data-testid="employee-bank-account-modal"],
+.modal-overlay[data-testid="restaurant-payout-account-modal"] {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(168, 133, 95, 0.22), transparent 30rem),
+    radial-gradient(circle at 84% 18%, rgba(83, 108, 97, 0.16), transparent 30rem),
+    rgba(36, 48, 63, 0.46) !important;
+  backdrop-filter: blur(9px) saturate(1.04) !important;
+}
+
+.modal-overlay[data-testid^="payroll"] .payslip-modal,
+.modal-overlay[data-testid="employee-bank-account-modal"] .payslip-modal,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .payslip-modal {
+  border: 1px solid rgba(229, 222, 211, 0.95) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(248, 246, 241, 0.96)),
+    radial-gradient(circle at 12% 0%, rgba(168, 133, 95, 0.08), transparent 22rem) !important;
+  box-shadow:
+    0 28px 70px rgba(48, 40, 30, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.modal-overlay[data-testid^="payroll"] .modal-header,
+.modal-overlay[data-testid="employee-bank-account-modal"] .modal-header,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .modal-header {
+  border-bottom-color: rgba(229, 222, 211, 0.88) !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(248, 246, 241, 0.9)) !important;
+}
+
+.modal-overlay[data-testid^="payroll"] .modal-header h3,
+.modal-overlay[data-testid="employee-bank-account-modal"] .modal-header h3,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .modal-header h3 {
+  color: var(--payroll-storage-ink) !important;
+}
+
+.modal-overlay[data-testid^="payroll"] .modal-footer,
+.modal-overlay[data-testid="employee-bank-account-modal"] .modal-footer,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .modal-footer {
+  border-top-color: rgba(229, 222, 211, 0.88) !important;
+  background: linear-gradient(180deg, rgba(248, 246, 241, 0.88), rgba(255, 253, 248, 0.97)) !important;
+}
+
+.modal-overlay[data-testid^="payroll"] .section,
+.modal-overlay[data-testid^="payroll"] .formula-note,
+.modal-overlay[data-testid^="payroll"] .payroll-payment-form,
+.modal-overlay[data-testid="employee-bank-account-modal"] .section,
+.modal-overlay[data-testid="restaurant-payout-account-modal"] .section {
+  border-color: rgba(229, 222, 211, 0.88) !important;
+  background: rgba(255, 255, 255, 0.66) !important;
+}
+
+.modal-overlay[data-testid^="payroll"] .net-total,
+.modal-overlay[data-testid^="payroll"] .net-total-box {
+  background: linear-gradient(135deg, var(--payroll-storage-ink), #34414a) !important;
+}
+
+@media (max-width: 1180px) {
+  .payroll-page-compact .header-toolbar,
+  .payroll-page-compact .metrics-strip {
+    grid-template-columns: 1fr !important;
+  }
+
+  .payroll-page-compact .header-toolbar .right-actions,
+  .payroll-page-compact .table-controls .right-controls {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .payroll-page-compact {
+    padding: 0.8rem !important;
+    border-radius: 22px !important;
+  }
+
+  .payroll-page-compact .metrics-strip .metric-group,
+  .payroll-page-compact .metrics-strip--period .metric-group {
+    grid-template-columns: 1fr !important;
+  }
+}
