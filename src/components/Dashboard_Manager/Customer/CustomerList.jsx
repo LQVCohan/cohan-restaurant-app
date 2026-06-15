@@ -8,6 +8,8 @@ import "./CustomerOperationsPolish.scss";
 import "./CustomerManagerWorkflow.scss";
 import "./CustomerManagerScale.scss";
 
+const CUSTOMER_VISIBLE_PAGE_SIZE = 9;
+
 const normalizeEpochToMs = (v) => {
   if (v == null) return null;
   if (v instanceof Date) return v.getTime();
@@ -155,17 +157,31 @@ const CustomerTable = ({ customers, onCustomerClick }) => (
 
 const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const [viewMode, setViewMode] = useState("grid");
+  const [localPage, setLocalPage] = useState(1);
   const listAnchorRef = useRef(null);
   const didMountRef = useRef(false);
   const totalLoaded = customers?.length || 0;
   const hasCustomers = totalLoaded > 0;
-  const page = Math.max(1, Number(pagination?.page || 1));
-  const pageSize = Math.max(1, Number(pagination?.pageSize || totalLoaded || 1));
+  const backendPage = Math.max(1, Number(pagination?.page || 1));
+  const backendPageSize = Math.max(1, Number(pagination?.pageSize || totalLoaded || 1));
   const totalCount = Number(pagination?.totalCount || totalLoaded || 0);
-  const totalPages = Math.max(1, Number(pagination?.totalPages || Math.ceil(totalCount / pageSize) || 1));
-  const startItem = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
-  const endItem = totalCount > 0 ? Math.min(totalCount, startItem + totalLoaded - 1) : 0;
-  const pageSizeOptions = pagination?.pageSizeOptions || [10, 20, 30, 50];
+  const visiblePageSize = CUSTOMER_VISIBLE_PAGE_SIZE;
+  const localTotalPages = Math.max(1, Math.ceil(totalLoaded / visiblePageSize));
+  const totalVirtualPageCount = Math.max(1, Math.ceil(totalCount / visiblePageSize));
+  const backendOffset = (backendPage - 1) * backendPageSize;
+  const localStartIndex = (localPage - 1) * visiblePageSize;
+  const localEndIndex = localStartIndex + visiblePageSize;
+  const visibleCustomers = useMemo(
+    () => (customers || []).slice(localStartIndex, localEndIndex),
+    [customers, localEndIndex, localStartIndex],
+  );
+  const currentVirtualPage = Math.max(1, Math.floor(backendOffset / visiblePageSize) + localPage);
+  const startItem = totalCount > 0 ? backendOffset + localStartIndex + 1 : 0;
+  const endItem = totalCount > 0 ? Math.min(totalCount, backendOffset + localStartIndex + visibleCustomers.length) : 0;
+  const hasPreviousLocalPage = localPage > 1;
+  const hasNextLocalPage = localPage < localTotalPages;
+  const hasPreviousPage = hasPreviousLocalPage || Boolean(pagination?.hasPreviousPage);
+  const hasNextPage = hasNextLocalPage || Boolean(pagination?.hasNextPage);
 
   const scrollListToTop = () => {
     window.requestAnimationFrame(() => {
@@ -174,58 +190,79 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   };
 
   useEffect(() => {
+    setLocalPage(1);
+  }, [customers, backendPage, backendPageSize]);
+
+  useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
       return;
     }
     scrollListToTop();
-  }, [page, pageSize, viewMode]);
+  }, [localPage, backendPage, backendPageSize, viewMode]);
 
   const managerSummary = useMemo(() => {
     if (loading || pagination?.isLoading) return "Đang tải danh sách khách...";
     if (!totalCount) return "Chưa có khách phù hợp";
-    return `Trang ${page}/${totalPages} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
-  }, [endItem, loading, page, pagination?.isLoading, startItem, totalCount, totalPages]);
+    return `Trang ${currentVirtualPage}/${totalVirtualPageCount} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
+  }, [currentVirtualPage, endItem, loading, pagination?.isLoading, startItem, totalCount, totalVirtualPageCount]);
 
   const handlePreviousPage = () => {
     scrollListToTop();
+    if (hasPreviousLocalPage) {
+      setLocalPage((current) => Math.max(1, current - 1));
+      return;
+    }
     pagination?.onPrevious?.();
   };
 
   const handleNextPage = () => {
     scrollListToTop();
+    if (hasNextLocalPage) {
+      setLocalPage((current) => Math.min(localTotalPages, current + 1));
+      return;
+    }
     pagination?.onNext?.();
-  };
-
-  const handlePageSizeChange = (event) => {
-    scrollListToTop();
-    pagination?.onPageSizeChange?.(Number(event.target.value));
   };
 
   const handleViewModeChange = (nextMode) => {
     setViewMode(nextMode);
+    setLocalPage(1);
     scrollListToTop();
   };
 
+  const renderPager = (compact = false) => (
+    <div className={`cl-pagination ${compact ? "cl-pagination--inline" : ""}`} aria-label="Phân trang khách hàng">
+      <button
+        type="button"
+        onClick={handlePreviousPage}
+        disabled={loading || pagination?.isLoading || !hasPreviousPage}
+      >
+        <ChevronLeft size={15} /> Trước
+      </button>
+      <span>Trang <strong>{currentVirtualPage}</strong> / {totalVirtualPageCount}</span>
+      <button
+        type="button"
+        onClick={handleNextPage}
+        disabled={loading || pagination?.isLoading || !hasNextPage}
+      >
+        Sau <ChevronRight size={15} />
+      </button>
+    </div>
+  );
+
   const renderManagerStrip = () => (
-    <div ref={listAnchorRef} className="cl-manager-strip">
+    <div ref={listAnchorRef} className="cl-manager-strip cl-manager-strip--with-pagination">
       <div>
         <span className="cl-strip-label">Danh sách khách</span>
         <strong>{managerSummary}</strong>
       </div>
       <div className="cl-strip-tools">
-        <label className="cl-page-size">
+        <div className="cl-page-size cl-page-size--fixed" aria-label="Số khách mỗi trang">
           <span>Hiển thị</span>
-          <select
-            value={pageSize}
-            disabled={loading || pagination?.isLoading}
-            onChange={handlePageSizeChange}
-          >
-            {pageSizeOptions.map((value) => (
-              <option key={value} value={value}>{value}/trang</option>
-            ))}
-          </select>
-        </label>
+          <strong>{CUSTOMER_VISIBLE_PAGE_SIZE}/trang</strong>
+        </div>
+        {hasCustomers ? renderPager(true) : null}
         <div className="cl-view-toggle" aria-label="Chế độ xem">
           <button
             type="button"
@@ -247,32 +284,12 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     </div>
   );
 
-  const renderPager = () => (
-    <div className="cl-pagination" aria-label="Phân trang khách hàng từ backend">
-      <button
-        type="button"
-        onClick={handlePreviousPage}
-        disabled={loading || pagination?.isLoading || !pagination?.hasPreviousPage}
-      >
-        <ChevronLeft size={15} /> Trước
-      </button>
-      <span>Trang <strong>{page}</strong> / {totalPages}</span>
-      <button
-        type="button"
-        onClick={handleNextPage}
-        disabled={loading || pagination?.isLoading || !pagination?.hasNextPage}
-      >
-        Sau <ChevronRight size={15} />
-      </button>
-    </div>
-  );
-
   if (loading) {
     return (
       <>
         {renderManagerStrip()}
-        <div className="cl-grid">
-          {Array.from({ length: 6 }).map((_, index) => (
+        <div className="cl-grid cl-grid--nine-page">
+          {Array.from({ length: CUSTOMER_VISIBLE_PAGE_SIZE }).map((_, index) => (
             <div key={index} className="cl-skeleton-card">
               <div className="cl-sk-header">
                 <div className="cl-sk-avatar" />
@@ -315,10 +332,10 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           </div>
         </div>
       ) : viewMode === "table" ? (
-        <CustomerTable customers={customers} onCustomerClick={onCustomerClick} />
+        <CustomerTable customers={visibleCustomers} onCustomerClick={onCustomerClick} />
       ) : (
-        <div className="cl-grid">
-          {customers.map((customer) => (
+        <div className="cl-grid cl-grid--nine-page">
+          {visibleCustomers.map((customer) => (
             <CustomerCard
               key={customer.id}
               customer={customer}
@@ -327,8 +344,6 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           ))}
         </div>
       )}
-
-      {pagination ? renderPager() : null}
     </>
   );
 };
