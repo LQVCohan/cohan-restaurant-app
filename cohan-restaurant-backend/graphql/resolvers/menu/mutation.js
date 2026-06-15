@@ -14,6 +14,23 @@ const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 const MENU_ITEM_DIET_TAGS = ["vegan", "keto", "halal"];
 const MENU_ITEM_ALLERGEN_TAGS = ["seafood", "peanut", "milk", "egg", "gluten"];
+const MENU_ITEM_FOOD_TYPES = [
+  "VEGETARIAN",
+  "NON_VEGETARIAN",
+  "VEGAN",
+  "MIXED",
+  "UNKNOWN",
+];
+const MENU_ITEM_MEAT_TYPES = [
+  "BEEF",
+  "PORK",
+  "CHICKEN",
+  "DUCK",
+  "SEAFOOD",
+  "FISH",
+  "LAMB",
+  "OTHER",
+];
 const MENU_ITEM_SUGAR_LEVELS = [0, 30, 50, 70, 100];
 const MENU_ITEM_SPICE_LEVELS = ["Không", "Vừa", "Nồng", "Rất cay"];
 
@@ -51,6 +68,28 @@ function normalizeStringTags(values, whitelist, fieldName) {
       seen.add(value);
       out.push(value);
     }
+  }
+  return out;
+}
+function normalizeEnumValue(value, whitelist, fieldName) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return undefined;
+  const normalized = String(value).trim().toUpperCase();
+  if (!whitelist.includes(normalized)) {
+    throw badInput(`Invalid ${fieldName} value: ${value}`);
+  }
+  return normalized;
+}
+function normalizeEnumList(values, whitelist, fieldName) {
+  if (values === undefined) return undefined;
+  if (!Array.isArray(values)) throw badInput(`${fieldName} must be an array`);
+  const out = [];
+  const seen = new Set();
+  for (const raw of values) {
+    const value = normalizeEnumValue(raw, whitelist, fieldName);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    out.push(value);
   }
   return out;
 }
@@ -135,6 +174,8 @@ function includesMeaningfulItemField(input = {}) {
     "notes",
     "status",
     "avgPrepTimeMin",
+    "foodType",
+    "meatTypes",
     "point",
     "rate",
     "orderCounter",
@@ -264,6 +305,8 @@ export const MenuMutation = {
       notes,
       dietTags,
       allergenTags,
+      foodType,
+      meatTypes,
       tasteProfile,
     } = input || {};
 
@@ -310,6 +353,14 @@ export const MenuMutation = {
       MENU_ITEM_ALLERGEN_TAGS,
       "allergenTags",
     );
+    const normalizedFoodType =
+      normalizeEnumValue(foodType, MENU_ITEM_FOOD_TYPES, "foodType") ||
+      undefined;
+    const normalizedMeatTypes = normalizeEnumList(
+      meatTypes,
+      MENU_ITEM_MEAT_TYPES,
+      "meatTypes",
+    );
     const normalizedTasteProfile = normalizeTasteProfile(tasteProfile);
 
     const session = await mongoose.startSession();
@@ -350,6 +401,8 @@ export const MenuMutation = {
               rate: rateNum ?? undefined,
               orderCounter: orderCounterNum ?? undefined,
               notes,
+              foodType: normalizedFoodType,
+              meatTypes: normalizedMeatTypes ?? [],
               dietTags: normalizedDietTags ?? [],
               allergenTags: normalizedAllergenTags ?? [],
               tasteProfile: normalizedTasteProfile,
@@ -440,6 +493,8 @@ export const MenuMutation = {
           "mediaAssetIds",
           "modifierGroupIds",
           "notes",
+          "foodType",
+          "meatTypes",
           "dietTags",
           "allergenTags",
         ];
@@ -454,6 +509,18 @@ export const MenuMutation = {
             input.allergenTags,
             MENU_ITEM_ALLERGEN_TAGS,
             "allergenTags",
+          );
+        }
+        if (input.foodType !== undefined) {
+          item.foodType =
+            normalizeEnumValue(input.foodType, MENU_ITEM_FOOD_TYPES, "foodType") ||
+            "UNKNOWN";
+        }
+        if (input.meatTypes !== undefined) {
+          item.meatTypes = normalizeEnumList(
+            input.meatTypes,
+            MENU_ITEM_MEAT_TYPES,
+            "meatTypes",
           );
         }
         if (input.tasteProfile !== undefined) {
@@ -680,6 +747,18 @@ export const MenuMutation = {
         input.allergenTags,
         MENU_ITEM_ALLERGEN_TAGS,
         "allergenTags",
+      );
+    }
+    if (input.foodType !== undefined) {
+      patch.foodType =
+        normalizeEnumValue(input.foodType, MENU_ITEM_FOOD_TYPES, "foodType") ||
+        "UNKNOWN";
+    }
+    if (input.meatTypes !== undefined) {
+      patch.meatTypes = normalizeEnumList(
+        input.meatTypes,
+        MENU_ITEM_MEAT_TYPES,
+        "meatTypes",
       );
     }
     if (input.tasteProfile !== undefined) {

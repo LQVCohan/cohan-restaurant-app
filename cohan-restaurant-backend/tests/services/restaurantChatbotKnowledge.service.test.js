@@ -5,7 +5,7 @@ const store = [];
 const permissionSpy = vi.fn();
 const embeddingSpy = vi.fn();
 
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args), requireAnyRestaurantPermission: (...args) => permissionSpy(...args), requirePermission: (...args) => permissionSpy(...args), requireAnyPermission: (...args) => permissionSpy(...args) }));
 vi.mock("../../src/services/ai/localAiProvider.service.js", () => ({
   isLocalAiEnabled: () => process.env.LOCAL_AI_ENABLED === "true",
   getLocalAiConfig: () => ({ embeddingModel: "bge-m3" }),

@@ -134,10 +134,29 @@ const MENU_ITEM_STATUS_SET = new Set(
   MENU_ITEM_STATUS_OPTIONS.map(({ value }) => value)
 );
 const FOR_YOU_DEFAULTS = {
+  foodType: "UNKNOWN",
+  meatTypes: [],
   dietTags: [],
   allergenTags: [],
   tasteProfile: { containsOnion: false, containsCilantro: false, sugar: 100, spice: "Vừa" },
 };
+const FOOD_TYPE_OPTIONS = [
+  { value: "UNKNOWN", label: "Chưa phân loại", helper: "Dùng khi chưa chắc thành phần chính." },
+  { value: "VEGETARIAN", label: "Chay", helper: "Không dùng thịt/cá/hải sản." },
+  { value: "VEGAN", label: "Thuần chay", helper: "Không dùng nguyên liệu từ động vật." },
+  { value: "NON_VEGETARIAN", label: "Mặn", helper: "Có thịt, cá hoặc hải sản." },
+  { value: "MIXED", label: "Có cả chay và mặn", helper: "Món/biến thể có cả lựa chọn chay và mặn." },
+];
+const MEAT_TYPE_OPTIONS = [
+  { value: "BEEF", label: "Bò" },
+  { value: "PORK", label: "Heo" },
+  { value: "CHICKEN", label: "Gà" },
+  { value: "DUCK", label: "Vịt" },
+  { value: "SEAFOOD", label: "Hải sản" },
+  { value: "FISH", label: "Cá" },
+  { value: "LAMB", label: "Cừu" },
+  { value: "OTHER", label: "Khác" },
+];
 const FOR_YOU_DIET_OPTIONS = [
   { value: "vegan", label: "Món chay / thuần chay", helper: "Phù hợp khách chọn ăn chay." },
   { value: "keto", label: "Keto / ít tinh bột", helper: "Phù hợp khách hạn chế tinh bột, đường." },
@@ -223,7 +242,6 @@ const MenuItemModal = ({
     ...FOR_YOU_DEFAULTS,
   });
 
-  const [imgError, setImgError] = useState(false);
   const [imageSyncStatus, setImageSyncStatus] = useState("idle");
   const [toasts, setToasts] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -346,6 +364,8 @@ const MenuItemModal = ({
       formData.categoryId ||
       (formData.description || "").trim() ||
       (formData.thumbImage || "").trim() ||
+      formData.foodType !== FOR_YOU_DEFAULTS.foodType ||
+      (Array.isArray(formData.meatTypes) && formData.meatTypes.length > 0) ||
       (Array.isArray(formData.preparationMethods) &&
         formData.preparationMethods.some(
           (m) =>
@@ -377,6 +397,8 @@ const MenuItemModal = ({
       status: normalizeMenuItemStatus(v?.status),
       thumbImage: v?.thumbImage || "",
       description: v?.description || "",
+      foodType: v?.foodType || FOR_YOU_DEFAULTS.foodType,
+      meatTypes: Array.isArray(v?.meatTypes) ? v.meatTypes : [],
       dietTags: Array.isArray(v?.dietTags) ? v.dietTags : [],
       allergenTags: Array.isArray(v?.allergenTags) ? v.allergenTags : [],
       tasteProfile: {
@@ -409,7 +431,6 @@ const MenuItemModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      setImgError(false);
       setImageSyncStatus("idle");
       setIsSubmitting(false);
       submitLockRef.current = false;
@@ -453,6 +474,8 @@ const MenuItemModal = ({
           thumbImage: currentItem.thumbImage || "",
           description: currentItem.description || "",
           preparationMethods: methods,
+          foodType: currentItem.foodType || FOR_YOU_DEFAULTS.foodType,
+          meatTypes: Array.isArray(currentItem.meatTypes) ? currentItem.meatTypes : [],
           dietTags: Array.isArray(currentItem.dietTags) ? currentItem.dietTags : [],
           allergenTags: Array.isArray(currentItem.allergenTags) ? currentItem.allergenTags : [],
           tasteProfile: { ...FOR_YOU_DEFAULTS.tasteProfile, ...(currentItem.tasteProfile || {}) },
@@ -482,9 +505,13 @@ const MenuItemModal = ({
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      if (field === "foodType" && !["NON_VEGETARIAN", "MIXED"].includes(value)) {
+        return { ...prev, [field]: value, meatTypes: [] };
+      }
+      return { ...prev, [field]: value };
+    });
     if (field === "thumbImage") {
-      setImgError(false);
       setImageSyncStatus("idle");
     }
   };
@@ -609,6 +636,10 @@ const MenuItemModal = ({
           : {}),
         dietTags: Array.from(new Set((formData.dietTags || []).filter(Boolean))),
         allergenTags: Array.from(new Set((formData.allergenTags || []).filter(Boolean))),
+        foodType: formData.foodType || FOR_YOU_DEFAULTS.foodType,
+        meatTypes: ["NON_VEGETARIAN", "MIXED"].includes(formData.foodType)
+          ? Array.from(new Set((formData.meatTypes || []).filter(Boolean)))
+          : [],
         tasteProfile: { ...FOR_YOU_DEFAULTS.tasteProfile, ...(formData.tasteProfile || {}) },
       };
 
@@ -697,6 +728,12 @@ const MenuItemModal = ({
   );
   const selectedDietLabels = (formData.dietTags || []).map((tag) => dietLabelMap.get(tag) || tag);
   const selectedAllergenLabels = (formData.allergenTags || []).map((tag) => allergenLabelMap.get(tag) || tag);
+  const foodTypeLabel =
+    FOOD_TYPE_OPTIONS.find((option) => option.value === formData.foodType)?.label ||
+    FOOD_TYPE_OPTIONS[0].label;
+  const selectedMeatLabels = (formData.meatTypes || [])
+    .map((type) => MEAT_TYPE_OPTIONS.find((option) => option.value === type)?.label || type);
+  const shouldShowMeatTypes = ["NON_VEGETARIAN", "MIXED"].includes(formData.foodType);
   const currentSugarValue = Number(formData.tasteProfile?.sugar ?? 100);
   const sugarPreviewLabel =
     FOR_YOU_SUGAR_OPTIONS.find((option) => option.value === currentSugarValue)?.label || `${currentSugarValue}%`;
@@ -710,6 +747,8 @@ const MenuItemModal = ({
   const hasForYouMetadata =
     selectedDietLabels.length > 0 ||
     selectedAllergenLabels.length > 0 ||
+    formData.foodType !== FOR_YOU_DEFAULTS.foodType ||
+    selectedMeatLabels.length > 0 ||
     !!formData.tasteProfile?.containsOnion ||
     !!formData.tasteProfile?.containsCilantro ||
     currentSugarValue !== FOR_YOU_DEFAULTS.tasteProfile.sugar ||
@@ -838,6 +877,40 @@ const MenuItemModal = ({
                 </p>
               </div>
               <div className="for-you-option-group">
+                <div className="for-you-option-group__title">Phân loại món ăn</div>
+                <select
+                  className="modern-select"
+                  value={formData.foodType || FOR_YOU_DEFAULTS.foodType}
+                  onChange={(e) => handleInputChange("foodType", e.target.value)}
+                  disabled={isSaving}
+                >
+                  {FOOD_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="for-you-option-group__hint">
+                  {FOOD_TYPE_OPTIONS.find((option) => option.value === formData.foodType)?.helper || FOOD_TYPE_OPTIONS[0].helper}
+                </p>
+              </div>
+              {shouldShowMeatTypes ? (
+                <div className="for-you-option-group">
+                  <div className="for-you-option-group__title">Loại thịt / đạm động vật</div>
+                  <div className="for-you-option-grid for-you-option-grid--compact">
+                    {MEAT_TYPE_OPTIONS.map((option) => {
+                      const isSelected = (formData.meatTypes || []).includes(option.value);
+                      return (
+                        <label key={option.value} className={`for-you-option-card for-you-option-card--compact ${isSelected ? "for-you-option-card--selected" : ""}`}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleArrayValue("meatTypes", option.value)} disabled={isSaving} />
+                          <span className="for-you-option-card__label">{option.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              <div className="for-you-option-group">
                 <div className="for-you-option-group__title">Phù hợp chế độ ăn</div>
                 <div className="for-you-option-grid">
                   {FOR_YOU_DIET_OPTIONS.map((option) => {
@@ -885,6 +958,7 @@ const MenuItemModal = ({
                 <div className="for-you-meta-preview__title">Hệ thống sẽ hiểu món này là:</div>
                 {hasForYouMetadata ? (
                   <ul>
+                    <li>Phân loại: {foodTypeLabel}{selectedMeatLabels.length ? ` (${selectedMeatLabels.join(" / ")})` : ""}</li>
                     <li>Gợi ý cho: {selectedDietLabels.length ? selectedDietLabels.join(" / ") : "Chưa khai báo"}</li>
                     <li>Cảnh báo dị ứng: {selectedAllergenLabels.length ? selectedAllergenLabels.join(" / ") : "Chưa khai báo"}</li>
                     <li>Lưu ý khẩu vị: {tasteNotes.join(", ")}</li>

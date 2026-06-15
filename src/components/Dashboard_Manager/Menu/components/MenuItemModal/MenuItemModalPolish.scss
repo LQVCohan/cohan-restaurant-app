@@ -252,8 +252,11 @@
   .for-you-meta-section__description { margin: 0; font-size: 13px; color: #64748b; line-height: 1.45; }
   .for-you-option-group { margin-top: 10px; }
   .for-you-option-group__title { font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
+  .for-you-option-group__hint { margin: 6px 0 0; color: #64748b; font-size: 12px; line-height: 1.45; }
   .for-you-option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .for-you-option-grid--compact { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .for-you-option-card { display: flex; flex-direction: column; gap: 4px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; background: #fff; cursor: pointer; }
+  .for-you-option-card--compact { min-height: auto; }
   .for-you-option-card--selected { border-color: #b89365; background: #fdf8f3; box-shadow: 0 0 0 2px rgba(184, 147, 101, 0.12); }
   .for-you-option-card input { margin: 0; }
   .for-you-option-card__label { font-size: 13px; font-weight: 700; color: #0f172a; }

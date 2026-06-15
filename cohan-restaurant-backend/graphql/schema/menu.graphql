@@ -33,6 +33,25 @@ enum MenuItemInventoryStatus {
   ERROR
 }
 
+enum FoodType {
+  VEGETARIAN
+  NON_VEGETARIAN
+  VEGAN
+  MIXED
+  UNKNOWN
+}
+
+enum MeatType {
+  BEEF
+  PORK
+  CHICKEN
+  DUCK
+  SEAFOOD
+  FISH
+  LAMB
+  OTHER
+}
+
 input BulkPriceUpdateTarget {
   categoryId: ID
   menuItemIds: [ID!]
@@ -127,6 +146,8 @@ type MenuItem {
 
   sortOrder: Int
   labels: [String!]
+  foodType: FoodType
+  meatTypes: [MeatType!]
   dietTags: [String!]
   allergenTags: [String!]
   tasteProfile: MenuItemTasteProfile
@@ -228,6 +249,8 @@ input CreateMenuItemInput {
 
   sortOrder: Int
   labels: [String!]
+  foodType: FoodType
+  meatTypes: [MeatType!]
   dietTags: [String!]
   allergenTags: [String!]
   tasteProfile: MenuItemTasteProfileInput
@@ -268,6 +291,8 @@ input UpdateMenuItemInput {
 
   sortOrder: Int
   labels: [String!]
+  foodType: FoodType
+  meatTypes: [MeatType!]
   dietTags: [String!]
   allergenTags: [String!]
   tasteProfile: MenuItemTasteProfileInput
@@ -307,6 +332,8 @@ input UpdateMenuItemBasicInput {
 
   sortOrder: Int
   labels: [String!]
+  foodType: FoodType
+  meatTypes: [MeatType!]
   dietTags: [String!]
   allergenTags: [String!]
   tasteProfile: MenuItemTasteProfileInput

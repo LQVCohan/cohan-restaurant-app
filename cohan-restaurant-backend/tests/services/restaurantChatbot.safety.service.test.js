@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 
 const permissionSpy = vi.fn();
 const store = [];
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args), requireAnyRestaurantPermission: (...args) => permissionSpy(...args), requirePermission: (...args) => permissionSpy(...args), requireAnyPermission: (...args) => permissionSpy(...args) }));
 vi.mock("../../models/index.js", () => {
   const wrap = (b) => ({ ...b, async save() { return this; }, toObject() { return { ...this }; } });
   return {
@@ -32,7 +32,7 @@ describe("restaurantChatbotSafety service", () => {
     const row = await createRestaurantAiChatbotSafetyRule({ input: { restaurantId: rid, ruleType: "blocked_topic", pattern: "abc", priority: 150 }, ctx: { user: { _id: new mongoose.Types.ObjectId().toString() } } });
     expect(row.restaurantId).toBe(rid); expect(typeof row.id).toBe("string"); expect(row.priority).toBe(100);
     await listRestaurantAiChatbotSafetyRules({ restaurantId: rid, filter: {}, ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), rid, PERMISSIONS.REPORT_READ);
+    expect(permissionSpy).toHaveBeenLastCalledWith(expect.anything(), rid, expect.arrayContaining([PERMISSIONS.AI_CHATBOT_WRITE]));
   });
   it("reject write without permission", async () => {
     permissionSpy.mockRejectedValueOnce(new Error("FORBIDDEN"));
