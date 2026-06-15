@@ -9,6 +9,7 @@ import { initScheduleHydrationPolish } from "@/utils/scheduleHydrationPolish.js"
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import ScheduleManagement from "./ScheduleManagement";
 import "@/styles/schedule-manager-workspace-final.css";
+import "@/styles/schedule-manager-drawer-workspace.css";
 
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
