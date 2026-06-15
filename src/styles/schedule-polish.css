@@ -23,6 +23,7 @@
 @import "./schedule-print-polish.css";
 @import "./schedule-command-center-warm.css";
 @import "./schedule-command-center-tight.css";
+@import "./schedule-manager-accessibility-warm.css";
 
 .schedule-readiness-focus-banner {
   position: relative;
