@@ -1,18 +1,7 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { AuthContext } from "@/context/AuthContext";
-import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
-import { resolveUserRoleName } from "@/utils/frontendRoleAccess";
+import React, { useMemo, useState } from "react";
 import usePayroll from "@/hooks/usePayroll";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
-import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
-import PayrollPayslipModal, {
-  getPayrollPaymentErrorMessage,
-} from "@/components/Dashboard_Manager/Staff/components/PayrollPayslipModal";
-import { getPayrollActionErrorMessage } from "@/utils/payrollPerformanceErrorMessages";
-import { dispatchPayrollReadinessNavigation } from "@/utils/payrollReadinessRouting";
 import "./PayrollManagement.scss";
-import "./PayrollManagementStorageTheme.scss";
 
 const getDefaultRange = () => {
   const today = new Date();
@@ -33,13 +22,9 @@ export function escapeCsvValue(value) {
 }
 
 export function downloadCsv(filename, rows, columns) {
-  const header = columns
-    .map((column) => escapeCsvValue(column.label))
-    .join(",");
+  const header = columns.map((column) => escapeCsvValue(column.label)).join(",");
   const body = rows
-    .map((row) =>
-      columns.map((column) => escapeCsvValue(row[column.key])).join(","),
-    )
+    .map((row) => columns.map((column) => escapeCsvValue(row[column.key])).join(","))
     .join("\n");
 
   const blob = new Blob([`\uFEFF${header}\n${body}`], {
@@ -54,9 +39,7 @@ export function downloadCsv(filename, rows, columns) {
   URL.revokeObjectURL(url);
 }
 
-
-const PAYROLL_STATUS_TAB_LABELS = {
-  all: "Tất cả",
+const STATUS_LABELS = {
   draft: "Nháp",
   finalized: "Đã chốt",
   paying: "Đang chi",
@@ -67,372 +50,334 @@ const PAYROLL_STATUS_TAB_LABELS = {
   locked: "Đã khóa",
 };
 
-const PAYROLL_STATUS_TABS = Object.keys(PAYROLL_STATUS_TAB_LABELS);
+const STATUS_TABS = ["all", ...Object.keys(STATUS_LABELS)];
 
-const PAYROLL_LOADING_ROWS = Array.from({ length: 6 }, (_, index) => index);
-
-const PAYROLL_EXPORT_COLUMNS = [
-  "employeeCode",
-  "employeeName",
-  "department",
-  "role",
-  "baseSalary",
-  "actualWorkDays",
-  "totalHours",
-  "overtimeNormalHours",
-  "overtimeWeekendHours",
-  "overtimeHolidayHours",
-  "nightHours",
-  "grossIncome",
-  "allowance",
-  "bonus",
-  "deduction",
-  "insuranceTotal",
-  "personalIncomeTax",
-  "netSalary",
-  "paidAmount",
-  "remainingAmount",
-  "status",
-].map((key) => ({ key, label: key }));
-
-const sanitizeFilenamePart = (value) =>
-  String(value || "payroll")
-    .replace(/[^a-zA-Z0-9-_]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-const PAYROLL_SETTINGS_DEFAULTS = {
-  standardWorkDaysPerMonth: 26,
-  standardHoursPerDay: 8,
-  overtimeMultiplierWeekday: 1.5,
-  overtimeMultiplierWeekend: 2,
-  overtimeMultiplierHoliday: 3,
-  latenessPenaltyPerMinute: 0,
-  earlyLeavePenaltyPerMinute: 0,
-  unpaidLeaveDeductionPerDay: 0,
-  defaultAllowance: 0,
-  defaultBonus: 0,
-  defaultDeduction: 0,
-  weekendDays: ["SUN"],
-  holidayDates: [],
-  nightShiftStart: "22:00",
-  nightShiftEnd: "06:00",
-  nightShiftAllowanceRate: 0.3,
-  enablePersonalIncomeTax: false,
-  personalIncomeTaxRate: 0,
-  personalIncomeTaxFreeThreshold: 0,
-  allowPaidLeaveInWorkDays: true,
-  notes: "",
-};
-
-const PAYROLL_SETTINGS_FIELDS = [
-  "standardWorkDaysPerMonth",
-  "standardHoursPerDay",
-  "overtimeMultiplierWeekday",
-  "overtimeMultiplierWeekend",
-  "overtimeMultiplierHoliday",
-  "latenessPenaltyPerMinute",
-  "earlyLeavePenaltyPerMinute",
-  "unpaidLeaveDeductionPerDay",
-  "defaultAllowance",
-  "defaultBonus",
-  "defaultDeduction",
+const EXPORT_COLUMNS = [
+  { key: "code", label: "Mã NV" },
+  { key: "name", label: "Nhân viên" },
+  { key: "department", label: "Bộ phận" },
+  { key: "role", label: "Vai trò" },
+  { key: "actualWorkDays", label: "Ngày công" },
+  { key: "totalHours", label: "Giờ công" },
+  { key: "grossIncome", label: "Thu nhập gộp" },
+  { key: "totalDeduction", label: "Khấu trừ" },
+  { key: "netSalary", label: "Thực nhận" },
+  { key: "paidAmount", label: "Đã chi" },
+  { key: "remainingAmount", label: "Còn lại" },
+  { key: "status", label: "Trạng thái" },
 ];
 
-const WEEKDAY_OPTIONS = [
-  { value: "MON", label: "Thứ 2" },
-  { value: "TUE", label: "Thứ 3" },
-  { value: "WED", label: "Thứ 4" },
-  { value: "THU", label: "Thứ 5" },
-  { value: "FRI", label: "Thứ 6" },
-  { value: "SAT", label: "Thứ 7" },
-  { value: "SUN", label: "Chủ nhật" },
-];
+const formatMoney = (value) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
 
-const PAYROLL_ADVANCED_NUMBER_FIELDS = [
-  "nightShiftAllowanceRate",
-  "personalIncomeTaxRate",
-  "personalIncomeTaxFreeThreshold",
-];
+const formatNumber = (value) =>
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(Number(value || 0));
 
-const buildPayrollSettingsForm = (settings) => ({
-  ...PAYROLL_SETTINGS_DEFAULTS,
-  ...settings,
-  weekendDays: Array.isArray(settings?.weekendDays)
-    ? settings.weekendDays
-    : PAYROLL_SETTINGS_DEFAULTS.weekendDays,
-  holidayDates: Array.isArray(settings?.holidayDates)
-    ? settings.holidayDates.map((value) => String(value).slice(0, 10))
-    : PAYROLL_SETTINGS_DEFAULTS.holidayDates,
-  nightShiftStart:
-    settings?.nightShiftStart ?? PAYROLL_SETTINGS_DEFAULTS.nightShiftStart,
-  nightShiftEnd:
-    settings?.nightShiftEnd ?? PAYROLL_SETTINGS_DEFAULTS.nightShiftEnd,
-  nightShiftAllowanceRate:
-    settings?.nightShiftAllowanceRate ??
-    PAYROLL_SETTINGS_DEFAULTS.nightShiftAllowanceRate,
-  enablePersonalIncomeTax:
-    settings?.enablePersonalIncomeTax ??
-    PAYROLL_SETTINGS_DEFAULTS.enablePersonalIncomeTax,
-  personalIncomeTaxRate:
-    settings?.personalIncomeTaxRate ??
-    PAYROLL_SETTINGS_DEFAULTS.personalIncomeTaxRate,
-  personalIncomeTaxFreeThreshold:
-    settings?.personalIncomeTaxFreeThreshold ??
-    PAYROLL_SETTINGS_DEFAULTS.personalIncomeTaxFreeThreshold,
-  allowPaidLeaveInWorkDays:
-    settings?.allowPaidLeaveInWorkDays ??
-    PAYROLL_SETTINGS_DEFAULTS.allowPaidLeaveInWorkDays,
-  notes: settings?.notes ?? PAYROLL_SETTINGS_DEFAULTS.notes,
-});
-
-const toInputDate = (value) =>
-  value ? new Date(value).toISOString().slice(0, 10) : "";
-
-const escapeXml = (value) =>
-  String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-
-const CRC_TABLE = new Uint32Array(256).map((_, index) => {
-  let c = index;
-  for (let bit = 0; bit < 8; bit += 1) {
-    c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  }
-  return c >>> 0;
-});
-
-const crc32 = (input) => {
-  let crc = 0xffffffff;
-  for (let i = 0; i < input.length; i += 1) {
-    crc = CRC_TABLE[(crc ^ input[i]) & 0xff] ^ (crc >>> 8);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+const formatDate = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleDateString("vi-VN");
 };
 
-const createZipBuffer = (files) => {
-  const writeU16 = (view, offset, value) => view.setUint16(offset, value, true);
-  const writeU32 = (view, offset, value) => view.setUint32(offset, value, true);
-  const localFileRecords = [];
-  const centralDirectory = [];
-  let offset = 0;
+const statusLabel = (status) => STATUS_LABELS[status] || status || "Nháp";
 
-  files.forEach(({ name, data }) => {
-    const nameBytes = new TextEncoder().encode(name);
-    const checksum = crc32(data);
-
-    const localHeader = new Uint8Array(30 + nameBytes.length + data.length);
-    const localView = new DataView(localHeader.buffer);
-    writeU32(localView, 0, 0x04034b50);
-    writeU16(localView, 4, 20);
-    writeU16(localView, 6, 0);
-    writeU16(localView, 8, 0);
-    writeU16(localView, 10, 0);
-    writeU16(localView, 12, 0);
-    writeU32(localView, 14, checksum);
-    writeU32(localView, 18, data.length);
-    writeU32(localView, 22, data.length);
-    writeU16(localView, 26, nameBytes.length);
-    writeU16(localView, 28, 0);
-    localHeader.set(nameBytes, 30);
-    localHeader.set(data, 30 + nameBytes.length);
-    localFileRecords.push(localHeader);
-
-    const centralHeader = new Uint8Array(46 + nameBytes.length);
-    const centralView = new DataView(centralHeader.buffer);
-    writeU32(centralView, 0, 0x02014b50);
-    writeU16(centralView, 4, 20);
-    writeU16(centralView, 6, 20);
-    writeU16(centralView, 8, 0);
-    writeU16(centralView, 10, 0);
-    writeU16(centralView, 12, 0);
-    writeU16(centralView, 14, 0);
-    writeU32(centralView, 16, checksum);
-    writeU32(centralView, 20, data.length);
-    writeU32(centralView, 24, data.length);
-    writeU16(centralView, 28, nameBytes.length);
-    writeU16(centralView, 30, 0);
-    writeU16(centralView, 32, 0);
-    writeU16(centralView, 34, 0);
-    writeU16(centralView, 36, 0);
-    writeU32(centralView, 38, 0);
-    writeU32(centralView, 42, offset);
-    centralHeader.set(nameBytes, 46);
-    centralDirectory.push(centralHeader);
-
-    offset += localHeader.length;
-  });
-
-  const centralSize = centralDirectory.reduce(
-    (sum, row) => sum + row.length,
-    0,
-  );
-  const endRecord = new Uint8Array(22);
-  const endView = new DataView(endRecord.buffer);
-  writeU32(endView, 0, 0x06054b50);
-  writeU16(endView, 4, 0);
-  writeU16(endView, 6, 0);
-  writeU16(endView, 8, files.length);
-  writeU16(endView, 10, files.length);
-  writeU32(endView, 12, centralSize);
-  writeU32(endView, 16, offset);
-  writeU16(endView, 20, 0);
-
-  const output = new Uint8Array(offset + centralSize + endRecord.length);
-  let cursor = 0;
-  [...localFileRecords, ...centralDirectory, endRecord].forEach((chunk) => {
-    output.set(chunk, cursor);
-    cursor += chunk.length;
-  });
-  return output;
+const statusClass = (status) => {
+  if (["paid"].includes(status)) return "success";
+  if (["payment_failed"].includes(status)) return "danger";
+  if (["locked"].includes(status)) return "locked";
+  if (["finalized", "paying", "pending_payment", "processing_payment"].includes(status)) return "info";
+  return "warning";
 };
 
-const buildPayrollXlsxBlob = ({ rows, sheetName = "BangLuong" }) => {
-  const xmlHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-  const sheetRows = rows
-    .map(
-      (row, rowIndex) =>
-        `<row r="${rowIndex + 1}">${row
-          .map((cell, cellIndex) => {
-            const col = String.fromCharCode(65 + cellIndex);
-            const isNumber = typeof cell === "number" && Number.isFinite(cell);
-            return isNumber
-              ? `<c r="${col}${rowIndex + 1}"><v>${cell}</v></c>`
-              : `<c r="${col}${rowIndex + 1}" t="inlineStr"><is><t>${escapeXml(cell)}</t></is></c>`;
-          })
-          .join("")}</row>`,
-    )
-    .join("");
-  const worksheet = `${xmlHeader}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`;
-  const workbook = `${xmlHeader}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`;
-  const workbookRels = `${xmlHeader}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
-  const rootRels = `${xmlHeader}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
-  const styles = `${xmlHeader}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellXfs count="1"><xf fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>`;
-  const contentTypes = `${xmlHeader}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
-  const encoder = new TextEncoder();
-  const zipBytes = createZipBuffer([
-    { name: "[Content_Types].xml", data: encoder.encode(contentTypes) },
-    { name: "_rels/.rels", data: encoder.encode(rootRels) },
-    { name: "xl/workbook.xml", data: encoder.encode(workbook) },
-    { name: "xl/_rels/workbook.xml.rels", data: encoder.encode(workbookRels) },
-    { name: "xl/worksheets/sheet1.xml", data: encoder.encode(worksheet) },
-    { name: "xl/styles.xml", data: encoder.encode(styles) },
-  ]);
-
-  return new Blob([zipBytes], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+const getEmployeeInitials = (name = "") => {
+  const parts = String(name || "NV").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "NV";
+  return parts.slice(-2).map((part) => part[0]).join("").toUpperCase();
 };
 
-const getSettingsRestaurantId = ({ settings, periodDetail, periods }) =>
-  settings?.restaurantId ||
-  periodDetail?.period?.restaurantId ||
-  periods?.[0]?.restaurantId ||
-  null;
+const PayrollManagement = () => {
+  const defaultRange = useMemo(() => getDefaultRange(), []);
+  const [range, setRange] = useState(defaultRange);
+  const [activeStatus, setActiveStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
 
-const PayrollSettingsModal = ({
-  settings,
-  loading,
-  loadError,
-  saveError,
-  isSaving,
-  onClose,
-  onSave,
-}) => {
-  const [form, setForm] = useState(() => buildPayrollSettingsForm(settings));
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantsLoading,
+  } = useManagerRestaurantSelection();
 
-  useEffect(() => {
-    setForm(buildPayrollSettingsForm(settings));
-  }, [settings]);
+  const payroll = usePayroll({
+    periodId: selectedPeriodId || undefined,
+    restaurantId: selectedRestaurantId || undefined,
+    startDate: range.start,
+    endDate: range.end,
+  });
 
-  const setField = (key, value) =>
-    setForm((prev) => ({
-      ...prev,
-      [key]: value,
+  const periods = payroll.periods || [];
+  const currentPeriod = payroll.periodDetail?.period || periods.find((period) => period.id === (selectedPeriodId || payroll.currentPeriodId)) || null;
+  const stats = payroll.payrollStats || currentPeriod?.stats || {};
+  const items = payroll.payrollItems || [];
+  const readiness = payroll.payrollReadiness || null;
+
+  const effectivePeriodId = selectedPeriodId || currentPeriod?.id || payroll.currentPeriodId || periods[0]?.id || "";
+
+  const filteredItems = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    return items.filter((item) => {
+      const matchesStatus = activeStatus === "all" || item.status === activeStatus;
+      const haystack = [item.name, item.code, item.department, item.role].join(" ").toLowerCase();
+      const matchesSearch = !keyword || haystack.includes(keyword);
+      return matchesStatus && matchesSearch;
+    });
+  }, [activeStatus, items, search]);
+
+  const totals = useMemo(() => {
+    const totalPayroll = Number(stats.totalPayroll ?? items.reduce((sum, item) => sum + Number(item.netSalary || 0), 0));
+    const paidAmount = Number(stats.paidAmount ?? items.reduce((sum, item) => sum + Number(item.paidAmount || 0), 0));
+    const remaining = Number(stats.remaining ?? Math.max(totalPayroll - paidAmount, 0));
+    const progress = Number(stats.progress ?? (totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0));
+    return { totalPayroll, paidAmount, remaining, progress };
+  }, [items, stats]);
+
+  const handlePeriodChange = (event) => {
+    const nextPeriodId = event.target.value;
+    setSelectedPeriodId(nextPeriodId);
+  };
+
+  const handleExportCsv = () => {
+    const rows = filteredItems.map((item) => ({
+      ...item,
+      status: statusLabel(item.status),
     }));
+    downloadCsv(`payroll-${range.start}-${range.end}.csv`, rows, EXPORT_COLUMNS);
+  };
 
-  const hasPersistedSettings = Boolean(settings?.updatedAt);
+  const runAction = async (label, action) => {
+    if (!effectivePeriodId || typeof action !== "function") {
+      setActionMessage("Chưa có kỳ lương để thao tác.");
+      return;
+    }
+    try {
+      setActionMessage(`Đang ${label.toLowerCase()}...`);
+      await action({ variables: { periodId: effectivePeriodId } });
+      await Promise.allSettled([
+        payroll.refetchPeriods?.(),
+        payroll.refetchDetail?.({ periodId: effectivePeriodId }),
+        payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }),
+      ]);
+      setActionMessage(`${label} thành công.`);
+    } catch (error) {
+      setActionMessage(error?.message || `${label} không thành công.`);
+    }
+  };
 
   return (
-    <div
-      className="modal-overlay"
-      data-testid="payroll-settings-modal"
-      onClick={onClose}
-    >
-      <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Cấu hình lương</h3>
-          <button className="close-btn" type="button" onClick={onClose}>
-            x
-          </button>
+    <div className="payroll-page-compact">
+      <section className="header-toolbar">
+        <div className="title-zone">
+          <span className="eyebrow">Trung tâm lương thưởng</span>
+          <h1 className="page-title">Quản lý lương</h1>
+          <p className="page-subtitle">
+            Theo dõi kỳ lương, tổng chi phí, trạng thái chi trả và bảng lương nhân viên theo từng nhà hàng.
+          </p>
+          <div className="quick-stats">
+            <span className="status-dot info">{statusLabel(currentPeriod?.status || "draft")}</span>
+            <span>{formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}</span>
+            <span>{filteredItems.length}/{items.length} nhân viên</span>
+          </div>
         </div>
-        <div className="modal-body">
-          {loading && (
-            <div className="settings-modal-state">
-              Đang tải cấu hình lương...
-            </div>
-          )}
-          {!loading && !hasPersistedSettings && (
-            <div className="settings-modal-state">
-              Chưa có cấu hình lương trong dữ liệu. Hệ thống sẽ tạo mới khi bạn
-              lưu.
-            </div>
-          )}
-          {loadError && (
-            <div className="settings-modal-state settings-modal-state--error">
-              Không tải được cấu hình hiện tại. Bạn vẫn có thể nhập và lưu cấu
-              hình mới.
-            </div>
-          )}
-          {saveError && (
-            <div
-              className="settings-modal-state settings-modal-state--error"
-              data-testid="payroll-settings-save-error"
-            >
-              {saveError}
-            </div>
-          )}
 
-          <div className="settings-form-grid">
-            {PAYROLL_SETTINGS_FIELDS.map((field) => (
-              <label key={field} className="settings-field">
-                <span>{field}</span>
-                <input
-                  type="number"
-                  value={form[field]}
-                  onChange={(e) => setField(field, Number(e.target.value || 0))}
-                />
-              </label>
+        <div className="right-actions">
+          <label className="cycle-picker-compact">
+            <span className="label">Nhà hàng</span>
+            <select
+              className="filter-select"
+              value={selectedRestaurantId || ""}
+              onChange={(event) => setSelectedRestaurantId(event.target.value)}
+              disabled={restaurantsLoading}
+            >
+              {!restaurantOptions.length && <option value="">Chưa có nhà hàng</option>}
+              {restaurantOptions.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="cycle-picker-compact">
+            <span className="label">Kỳ lương</span>
+            <select className="filter-select" value={selectedPeriodId} onChange={handlePeriodChange}>
+              <option value="">Kỳ hiện tại / gần nhất</option>
+              {periods.map((period) => (
+                <option key={period.id} value={period.id}>{period.name || `${formatDate(period.startDate)} - ${formatDate(period.endDate)}`}</option>
+              ))}
+            </select>
+          </label>
+
+          <div className="actions-row">
+            <button className="btn btn-white" type="button" onClick={() => payroll.refetchPeriods?.()}>
+              Làm mới
+            </button>
+            <button className="btn btn-primary" type="button" onClick={handleExportCsv} disabled={!filteredItems.length}>
+              Xuất CSV
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="metrics-strip metrics-strip--period">
+        <div className="metric-group">
+          <article className="metric-item">
+            <span className="label">Tổng bảng lương</span>
+            <strong className="value highlight">{formatMoney(totals.totalPayroll)}</strong>
+            <small>Chi phí lương trong kỳ</small>
+          </article>
+          <article className="metric-item">
+            <span className="label">Đã chi</span>
+            <strong className="value success">{formatMoney(totals.paidAmount)}</strong>
+            <small>Khoản đã thanh toán</small>
+          </article>
+          <article className="metric-item">
+            <span className="label">Còn lại</span>
+            <strong className="value danger">{formatMoney(totals.remaining)}</strong>
+            <small>Cần tiếp tục xử lý</small>
+          </article>
+        </div>
+        <aside className="progress-section">
+          <div className="progress-info">
+            <span>Tiến độ chi trả</span>
+            <strong>{formatNumber(totals.progress)}%</strong>
+          </div>
+          <div className="progress-track">
+            <div className="progress-fill" style={{ width: `${Math.max(0, Math.min(100, totals.progress))}%` }} />
+          </div>
+          <small>{readiness?.readyToFinalize ? "Kỳ lương sẵn sàng chốt" : "Kiểm tra dữ liệu trước khi chốt"}</small>
+        </aside>
+      </section>
+
+      <section className="table-card">
+        <div className="table-controls">
+          <div className="workflow-tabs" role="tablist" aria-label="Trạng thái bảng lương">
+            {STATUS_TABS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={`tab-btn ${activeStatus === status ? "active" : ""}`}
+                onClick={() => setActiveStatus(status)}
+              >
+                {status === "all" ? "Tất cả" : statusLabel(status)}
+              </button>
             ))}
-            <div className="settings-field">
-              <span>Ngày cuối tuần</span>
-              <div className="settings-checkbox-group">
-                {WEEKDAY_OPTIONS.map((option) => (
-                  <label
-                    key={option.value}
-                    className="settings-inline-checkbox"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={(form.weekendDays || []).includes(option.value)}
-                      onChange={(e) => {
-                        const current = new Set(form.weekendDays || []);
-                        if (e.target.checked) current.add(option.value);
-                        else current.delete(option.value);
-                        setField("weekendDays", Array.from(current));
-                      }}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <label className="settings-field">
-              <span>Ngày lễ, mỗi dòng một ngày YYYY-MM-DD</span>
-              <textarea
-                rows={4}
-                value={(form.holidayDates || []).join("\n")}
-                onChange={(e) =>
-... (truncated)
+          </div>
+          <div className="right-controls">
+            <input
+              className="filter-select"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm nhân viên, mã, bộ phận..."
+            />
+            <input
+              className="filter-select"
+              type="date"
+              value={range.start}
+              onChange={(event) => setRange((current) => ({ ...current, start: event.target.value }))}
+            />
+            <input
+              className="filter-select"
+              type="date"
+              value={range.end}
+              onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))}
+            />
+          </div>
+        </div>
+
+        <div className="table-controls table-controls--secondary">
+          <div className="right-controls">
+            <button className="btn btn-white" type="button" onClick={() => runAction("Tính lại lương", payroll.recalculatePeriod)} disabled={!effectivePeriodId}>
+              Tính lại
+            </button>
+            <button className="btn btn-success" type="button" onClick={() => runAction("Chốt kỳ lương", payroll.finalizePeriod)} disabled={!effectivePeriodId}>
+              Chốt kỳ
+            </button>
+            <button className="btn btn-primary" type="button" onClick={() => runAction("Khóa kỳ lương", payroll.lockPeriod)} disabled={!effectivePeriodId}>
+              Khóa kỳ
+            </button>
+          </div>
+          {actionMessage && <span className="progress-info"><strong>{actionMessage}</strong></span>}
+        </div>
+
+        <div className="table-responsive">
+          <table className="payroll-table">
+            <thead>
+              <tr>
+                <th className="sticky-left">Nhân viên</th>
+                <th>Bộ phận</th>
+                <th>Ngày công</th>
+                <th>Giờ công</th>
+                <th>Thu nhập</th>
+                <th>Khấu trừ</th>
+                <th>Thực nhận</th>
+                <th>Đã chi</th>
+                <th>Còn lại</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payroll.loading && !items.length ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`loading-${index}`}>
+                    <td className="sticky-left" colSpan={10}>Đang tải dữ liệu lương...</td>
+                  </tr>
+                ))
+              ) : filteredItems.length ? (
+                filteredItems.map((item) => (
+                  <tr key={item.id || item.payrollItemId || item.code || item.name}>
+                    <td className="sticky-left">
+                      <div className="emp-cell">
+                        <span className="avatar">{getEmployeeInitials(item.name)}</span>
+                        <span>
+                          <strong className="name">{item.name || "Nhân viên"}</strong>
+                          <small className="sub">{item.code || item.payrollItemId || "--"}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td>{item.department || item.role || "--"}</td>
+                    <td><span className="work-tag">{formatNumber(item.actualWorkDays ?? item.workDays)} ngày</span></td>
+                    <td>{formatNumber(item.totalHours)} giờ</td>
+                    <td>{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
+                    <td className="text-danger">{formatMoney(item.totalDeduction ?? item.deduction)}</td>
+                    <td className="net-cell">{formatMoney(item.netSalary)}</td>
+                    <td className="text-success">{formatMoney(item.paidAmount)}</td>
+                    <td>{formatMoney(item.remainingAmount)}</td>
+                    <td><span className={`status-dot ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={10}>
+                    <div className="table-empty table-empty--rich">
+                      <div className="table-empty__content">
+                        <strong>Chưa có dữ liệu lương phù hợp</strong>
+                        <span>Hãy chọn kỳ lương, nhà hàng hoặc khoảng thời gian khác để xem bảng lương.</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default PayrollManagement;
