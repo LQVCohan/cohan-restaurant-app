@@ -1,0 +1,60 @@
+enum TransferVerificationStatus {
+  NOT_REQUIRED
+  INSTRUCTIONS_SHOWN
+  SUBMITTED
+  VERIFYING
+  VERIFIED
+  REJECTED
+  FAILED
+  EXPIRED
+}
+
+type TransferPaymentState {
+  status: TransferVerificationStatus!
+  instructionsShownAt: DateTime
+  submittedAt: DateTime
+  submittedBy: ID
+  proofImages: [String!]!
+  proofNote: String
+  customerClaimedPaidAt: DateTime
+  verifiedAt: DateTime
+  verifiedBy: ID
+  rejectedAt: DateTime
+  rejectedBy: ID
+  rejectReason: String
+  providerTransactionId: String
+  receivedAmount: Float
+  varianceAmount: Float
+  matchedBankTransactionId: ID
+  matchedReconciliationId: ID
+}
+
+extend type PaymentSession {
+  transfer: TransferPaymentState
+}
+
+input SubmitTransferProofInput {
+  paymentSessionId: ID!
+  proofImages: [String!]!
+  proofNote: String
+  customerClaimedPaidAt: DateTime
+}
+
+input VerifyTransferPaymentInput {
+  paymentSessionId: ID!
+  bankTransactionId: ID
+  providerTransactionId: String
+  receivedAmount: Float
+  note: String
+}
+
+input RejectTransferPaymentInput {
+  paymentSessionId: ID!
+  reason: String!
+}
+
+extend type Mutation {
+  submitTransferProof(input: SubmitTransferProofInput!): PaymentSession!
+  verifyTransferPayment(input: VerifyTransferPaymentInput!): PaymentSession!
+  rejectTransferPayment(input: RejectTransferPaymentInput!): PaymentSession!
+}
