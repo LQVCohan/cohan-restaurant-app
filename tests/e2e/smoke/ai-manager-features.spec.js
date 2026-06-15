@@ -19,6 +19,9 @@ const expectAiText = async (page, textOrRegex) => {
   await expect(pageRoot(page).getByText(textOrRegex).first()).toBeVisible();
 };
 
+const restaurantSelect = (page) =>
+  pageRoot(page).getByRole("combobox", { name: "Nhà hàng" }).first();
+
 const fieldByLabel = (scope, labelText) =>
   scope.locator("label.ai-admin-field").filter({ hasText: labelText }).first();
 
@@ -31,7 +34,7 @@ test.describe("manager AI pages: feature smoke", () => {
     await expectNoPageCrash(page);
     await expect(pageRoot(page)).toBeVisible();
     await expectAiHeading(page, "Cài đặt Chatbot AI", { level: 2 });
-    await expectAiText(page, "Cohan Smoke Bistro");
+    await expect(restaurantSelect(page)).toHaveValue("test-restaurant-active");
 
     const welcomeField = fieldByLabel(page, "Lời chào").locator("textarea");
     await welcomeField.fill("Xin chào từ Playwright. Mình có thể hỗ trợ bạn xem thực đơn, đặt bàn và kiểm tra ưu đãi.");
@@ -85,7 +88,11 @@ test.describe("manager AI pages: feature smoke", () => {
     await expect(reviewDialog).toBeVisible();
     await expect(page.locator("body")).toHaveClass(/ai-admin-modal-open/);
     await expect(reviewDialog.getByText("Cần bổ sung câu trả lời").first()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(reviewDialog).toBeHidden();
 
+    await page.getByRole("button", { name: "Xem tất cả" }).click();
+    await expect(reviewDialog).toBeVisible();
     await reviewDialog.getByRole("button", { name: "Mở Gợi ý" }).click();
     await expect(reviewDialog).toBeHidden();
     await expect
@@ -96,10 +103,7 @@ test.describe("manager AI pages: feature smoke", () => {
         }),
       )
       .toBe("suggestions");
-
-    await page.getByRole("button", { name: "Xem tất cả" }).click();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name: "Việc cần rà soát" })).toBeHidden();
+    await expectAiHeading(page, "Tri thức Chatbot AI", { level: 2 });
 
     expect(pageErrors).toEqual([]);
   });
@@ -138,13 +142,13 @@ test.describe("manager AI pages: feature smoke", () => {
 
     await page.getByRole("button", { name: "An toàn" }).click();
     await expectAiHeading(page, "Quy tắc an toàn", { level: 3 });
-    await page.getByRole("button", { name: "Thêm quy tắc" }).click();
+    await page.locator("article.ai-admin-card").filter({ hasText: "khiếu nại nghiêm trọng" }).getByRole("button", { name: "Sửa" }).click();
     const safetyEditor = page.locator(".ai-admin-grid--safety aside.ai-admin-panel").filter({ hasText: "Chủ đề hoặc nội dung cần kiểm soát" }).first();
     await safetyEditor.locator("label.ai-admin-field").filter({ hasText: "Chủ đề hoặc nội dung cần kiểm soát" }).locator("input").fill("dị ứng nghiêm trọng");
     await safetyEditor.locator("label.ai-admin-field").filter({ hasText: "Nội dung cần cảnh báo" }).locator("textarea").fill("Vui lòng gặp nhân viên để được tư vấn an toàn hơn.");
     await safetyEditor.locator("label.ai-admin-field").filter({ hasText: "Ưu tiên" }).locator("input").fill("30");
-    await safetyEditor.getByRole("button", { name: "Thêm quy tắc" }).click();
-    await expect(page.getByText("Đã thêm quy tắc an toàn.").first()).toBeVisible();
+    await safetyEditor.getByRole("button", { name: "Cập nhật" }).click();
+    await expect(page.getByText("Đã cập nhật quy tắc an toàn.").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Kiểm thử" }).click();
     await expectAiHeading(page, "Kiểm thử phản hồi", { level: 3 });
