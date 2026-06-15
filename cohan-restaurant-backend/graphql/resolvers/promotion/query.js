@@ -16,6 +16,30 @@ function toObjectIdString(value) {
   return String(value);
 }
 
+function serializePromotion(promotion) {
+  if (!promotion) return null;
+  const row = typeof promotion.toObject === "function"
+    ? promotion.toObject({ virtuals: true })
+    : promotion;
+  const id = toObjectIdString(row._id || row.id);
+  if (!id) return null;
+
+  return {
+    ...row,
+    id,
+    restaurantId: row.restaurantId ? toObjectIdString(row.restaurantId) : null,
+    categoryId: row.categoryId ? toObjectIdString(row.categoryId) : null,
+    itemId: row.itemId ? toObjectIdString(row.itemId) : null,
+    giftItemId: row.giftItemId ? toObjectIdString(row.giftItemId) : null,
+    comboItems: Array.isArray(row.comboItems)
+      ? row.comboItems.map((item) => ({
+          itemId: toObjectIdString(item?.itemId),
+          quantity: Number(item?.quantity || 1),
+        })).filter((item) => item.itemId)
+      : [],
+  };
+}
+
 function getPromotionStatus(promotion, now) {
   if (!promotion?.isActive) return "draft";
   const startAt = promotion.startAt ? new Date(promotion.startAt).getTime() : null;
@@ -60,7 +84,7 @@ export const PromotionQuery = {
         if (status === "expired") counts.expiredPromotions += 1;
         return counts;
       },
-      { activePromotions: 0, scheduledPromotions: 0, expiredPromotions: 0 },
+      { activePromotions: 0, scheduledPromotions: 0, expiredPromotions: 0 }
     );
 
     const invoices = await Invoice.find({
@@ -228,10 +252,12 @@ export const PromotionQuery = {
       };
     }
 
-    return Promotion.find(query)
+    const rows = await Promotion.find(query)
       .sort({ startAt: -1, _id: -1 })
       .skip(safeOffset)
       .limit(safeLimit)
-      .lean({ virtuals: true });
+      .lean();
+
+    return rows.map(serializePromotion).filter(Boolean);
   },
 };
