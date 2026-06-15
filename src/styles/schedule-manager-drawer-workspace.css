@@ -1,0 +1,378 @@
+/* =========================================================
+   Schedule manager drawer workspace
+   Final UX pass: stop shrinking the interface, keep the calendar
+   large/readable, and move secondary management information to drawers.
+   ========================================================= */
+
+.schedule-container.schedule-container {
+  --drawer-sage: #1f6a60;
+  --drawer-sage-strong: #17554d;
+  --drawer-sage-soft: #dcefe9;
+  --drawer-sage-mist: #f2faf7;
+  --drawer-ink: #24323b;
+  --drawer-cream: #fffdfa;
+  --drawer-warm: #f8f5ee;
+  --drawer-border: rgba(31, 106, 96, 0.18);
+  --drawer-border-strong: rgba(31, 106, 96, 0.34);
+  --drawer-muted: #4e5b56;
+  --drawer-gold: #835b20;
+  font-size: 15px !important;
+}
+
+/* =========================================================
+   1) Header: overview only. Put operational details in drawers.
+   ========================================================= */
+
+.schedule-container.schedule-container .schedule-header {
+  padding: 0.95rem 1.2rem 0.78rem !important;
+  gap: 0.72rem !important;
+}
+
+.schedule-container.schedule-container .title-group h1 {
+  font-size: clamp(1.55rem, 1.9vw, 1.9rem) !important;
+  line-height: 1.08 !important;
+}
+
+.schedule-container.schedule-container .title-group .subtitle {
+  font-size: 0.92rem !important;
+  line-height: 1.42 !important;
+}
+
+.schedule-container.schedule-container .header-actions > button,
+.schedule-container.schedule-container .schedule-settings-trigger {
+  min-height: 38px !important;
+  height: 38px !important;
+  padding: 0 0.82rem !important;
+  font-size: 0.84rem !important;
+  border-radius: 12px !important;
+}
+
+.schedule-container.schedule-container .schedule-settings-trigger .user-info .name {
+  font-size: 0.78rem !important;
+}
+
+.schedule-container.schedule-container .schedule-settings-trigger .user-info .role {
+  font-size: 0.68rem !important;
+}
+
+/* Detail panels are useful, but not required on first view. Open them through Thống kê. */
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel {
+  display: none !important;
+}
+
+/* KPI cards should stay readable, not micro-sized. */
+.schedule-container.schedule-container .kpi-grid.compact {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.68rem !important;
+  margin-top: 0 !important;
+}
+
+.schedule-container.schedule-container .kpi-card {
+  min-height: 78px !important;
+  padding: 0.68rem 0.78rem !important;
+  border-radius: 16px !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-icon {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 12px !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .label {
+  font-size: 0.76rem !important;
+  line-height: 1.18 !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .value {
+  font-size: 1.28rem !important;
+  line-height: 1.06 !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .hint,
+.schedule-container.schedule-container .schedule-status-card .status-subtext {
+  font-size: 0.75rem !important;
+  line-height: 1.28 !important;
+}
+
+/* =========================================================
+   2) Command bar: one clear row with readable controls.
+   ========================================================= */
+
+.schedule-container.schedule-container .schedule-toolbar {
+  padding: 0.72rem 1.05rem !important;
+  gap: 0.7rem !important;
+  border-left: 4px solid var(--drawer-sage) !important;
+  align-items: center !important;
+}
+
+.schedule-container.schedule-container .toolbar-group {
+  gap: 0.5rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--view {
+  flex: 1.3 1 470px !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--filters {
+  flex: 0.85 1 300px !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions {
+  flex: 1 1 360px !important;
+  justify-content: flex-end !important;
+}
+
+.schedule-container.schedule-container .view-toggles button,
+.schedule-container.schedule-container .date-navigation .nav-btn,
+.schedule-container.schedule-container .toolbar-group--filters select,
+.schedule-container.schedule-container .toolbar-group--actions > button,
+.schedule-container.schedule-container .toolbar-group--actions > .schedule-status-badge {
+  min-height: 38px !important;
+  height: 38px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.86rem !important;
+  border-radius: 12px !important;
+}
+
+.schedule-container.schedule-container .date-navigation .week-label {
+  font-size: 0.92rem !important;
+  font-weight: 850 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions > button:not(.btn-publish) {
+  background: rgba(255, 253, 250, 0.78) !important;
+  box-shadow: 0 6px 14px rgba(47, 60, 54, 0.04) !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .btn-publish {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding-inline: 0.94rem !important;
+  font-size: 0.9rem !important;
+  background: var(--drawer-ink) !important;
+  border-color: var(--drawer-ink) !important;
+  color: #fffdfa !important;
+}
+
+/* Reminder and legend are not primary work. Remove them from the main flow. */
+.schedule-container.schedule-container .schedule-publish-reminder {
+  display: none !important;
+}
+
+.schedule-legend.schedule-legend {
+  display: none !important;
+}
+
+/* =========================================================
+   3) Calendar: make it large enough to work with comfortably.
+   ========================================================= */
+
+.schedule-container.schedule-container .schedule-board:not(.month-board),
+.schedule-container.schedule-container .schedule-board.month-board {
+  grid-template-columns: repeat(7, minmax(152px, 1fr)) !important;
+  gap: 0.75rem !important;
+  padding: 0.85rem 1rem 1.05rem !important;
+  overflow-x: auto !important;
+  scrollbar-gutter: stable both-edges;
+}
+
+.schedule-container.schedule-container .schedule-day-column {
+  min-width: 152px !important;
+  min-height: 410px !important;
+  border-radius: 17px !important;
+}
+
+.schedule-container.schedule-container .day-header {
+  min-height: 68px !important;
+  padding: 0.7rem 0.72rem !important;
+}
+
+.schedule-container.schedule-container .day-header strong {
+  font-size: 1.02rem !important;
+}
+
+.schedule-container.schedule-container .day-header span {
+  font-size: 0.78rem !important;
+}
+
+.schedule-container.schedule-container .day-header small {
+  font-size: 0.76rem !important;
+  padding: 0.24rem 0.5rem !important;
+}
+
+.schedule-container.schedule-container .day-body {
+  padding: 0.68rem !important;
+  gap: 0.54rem !important;
+}
+
+.schedule-container.schedule-container .shift-slot {
+  min-height: 45px !important;
+  margin-bottom: 0.3rem !important;
+}
+
+.schedule-container.schedule-container .add-shift-btn,
+.schedule-container.schedule-container .empty-shift-slot,
+.schedule-container.schedule-container .more-shifts-btn,
+.schedule-container.schedule-container .day-summary-pill {
+  min-height: 44px !important;
+  padding: 0.48rem 0.58rem !important;
+  border-radius: 13px !important;
+  font-size: 0.86rem !important;
+  font-weight: 850 !important;
+}
+
+.schedule-container.schedule-container .day-priority,
+.schedule-container.schedule-container [class*="priority"],
+.schedule-container.schedule-container [class*="focused"],
+.schedule-container.schedule-container [class*="highlight"]:not(.shift-card-anchor),
+.schedule-container.schedule-container .schedule-day-column:first-child .add-shift-btn,
+.schedule-container.schedule-container .schedule-day-column:first-child .empty-shift-slot {
+  color: var(--drawer-sage-strong) !important;
+  border-color: var(--drawer-border-strong) !important;
+  background: var(--drawer-sage-mist) !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column:first-child,
+.schedule-container.schedule-container .schedule-day-column:focus-within {
+  border-color: rgba(31, 106, 96, 0.32) !important;
+  box-shadow: inset 4px 0 0 rgba(31, 106, 96, 0.62), 0 12px 26px rgba(47, 60, 54, 0.09) !important;
+}
+
+/* =========================================================
+   4) Drawers for secondary information.
+   - Thống kê panel becomes a right-side drawer.
+   - Đăng ký lịch nhân viên becomes a hover/focus drawer.
+   ========================================================= */
+
+.schedule-container.schedule-container .schedule-insights-panel {
+  position: fixed !important;
+  top: 96px !important;
+  right: 18px !important;
+  bottom: 24px !important;
+  z-index: 120 !important;
+  width: min(520px, calc(100vw - 42px)) !important;
+  overflow: auto !important;
+  border: 1px solid rgba(31, 106, 96, 0.22) !important;
+  border-radius: 22px !important;
+  background: #fffdfa !important;
+  box-shadow: 0 26px 70px rgba(31, 42, 47, 0.24) !important;
+  padding: 1rem !important;
+}
+
+.schedule-container.schedule-container .schedule-insights-panel::before {
+  content: "Ngăn thông tin vận hành";
+  display: block;
+  margin: 0 0 0.72rem;
+  color: var(--drawer-sage-strong);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The availability workflow stays accessible but no longer consumes page height. */
+.schedule-container.schedule-container .schedule-availability-panel {
+  position: fixed !important;
+  top: 188px !important;
+  right: 0 !important;
+  bottom: 34px !important;
+  z-index: 95 !important;
+  width: min(450px, calc(100vw - 64px)) !important;
+  margin: 0 !important;
+  padding: 0.9rem 1rem !important;
+  border: 1px solid rgba(31, 106, 96, 0.22) !important;
+  border-right: 0 !important;
+  border-radius: 20px 0 0 20px !important;
+  background: #fffdfa !important;
+  box-shadow: -18px 0 50px rgba(31, 42, 47, 0.16) !important;
+  overflow: auto !important;
+  transform: translateX(calc(100% - 48px)) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel::before {
+  content: "Đăng ký lịch";
+  position: absolute;
+  top: 1.25rem;
+  left: -48px;
+  width: 48px;
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  border: 1px solid rgba(31, 106, 96, 0.22);
+  border-right: 0;
+  border-radius: 14px 0 0 14px;
+  background: var(--drawer-ink);
+  color: #fffdfa;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: -8px 0 20px rgba(31, 42, 47, 0.12);
+}
+
+.schedule-container.schedule-container .schedule-availability-panel:hover,
+.schedule-container.schedule-container .schedule-availability-panel:focus-within {
+  transform: translateX(0) !important;
+  box-shadow: -24px 0 70px rgba(31, 42, 47, 0.22) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__header h3 {
+  font-size: 1rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__header p,
+.schedule-container.schedule-container .schedule-availability-panel__empty p,
+.schedule-container.schedule-container .schedule-availability-panel__hint {
+  font-size: 0.82rem !important;
+  line-height: 1.38 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty button,
+.schedule-container.schedule-container .schedule-availability-panel__actions button,
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button {
+  min-height: 38px !important;
+  padding: 0 0.9rem !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--drawer-ink) !important;
+  background: var(--drawer-ink) !important;
+  color: var(--drawer-cream) !important;
+  font-size: 0.84rem !important;
+}
+
+@media (max-width: 1320px) {
+  .schedule-container.schedule-container .schedule-board:not(.month-board),
+  .schedule-container.schedule-container .schedule-board.month-board {
+    grid-template-columns: repeat(7, minmax(150px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .schedule-container.schedule-container .schedule-availability-panel,
+  .schedule-container.schedule-container .schedule-insights-panel {
+    position: static !important;
+    width: auto !important;
+    transform: none !important;
+    border-radius: 16px !important;
+    margin: 0.75rem 1rem !important;
+  }
+
+  .schedule-container.schedule-container .schedule-availability-panel::before {
+    content: none !important;
+  }
+
+  .schedule-container.schedule-container .schedule-board:not(.month-board),
+  .schedule-container.schedule-container .schedule-board.month-board {
+    overflow-x: auto !important;
+    grid-template-columns: repeat(7, minmax(158px, 1fr)) !important;
+  }
+}
