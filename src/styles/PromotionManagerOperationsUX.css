@@ -1,5 +1,5 @@
 .manager-layout--promotions .manager-layout__content {
-  padding-inline: clamp(0.65rem, 1vw, 1rem) !important;
+  padding-inline: clamp(0.8rem, 1.25vw, 1.35rem) !important;
 }
 
 .manager-layout--promotions .manager-page-shell--promotions {
@@ -14,10 +14,10 @@
 }
 
 .manager-layout--promotions .promotion-manager-page {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: clamp(10px, 1.15vw, 18px) !important;
+  width: min(100%, 1620px) !important;
+  max-width: 1620px !important;
+  margin-inline: auto !important;
+  padding: clamp(10px, 1vw, 16px) !important;
 }
 
 .manager-layout--promotions .promotion-manager-page .main-content-card,
@@ -38,7 +38,7 @@
 
 .promotion-manager-page .table-responsive {
   position: relative;
-  max-height: min(68vh, 760px);
+  max-height: min(68vh, 740px);
   overflow-y: auto;
   overflow-x: hidden;
   border-radius: 18px;
@@ -77,19 +77,19 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  height: 42px;
-  padding: 10px 10px;
+  height: 40px;
+  padding: 9px 10px;
   border-bottom: 1px solid rgba(206, 195, 181, 0.9);
   background: rgba(248, 245, 238, 0.98);
   color: #6d6258;
-  font-size: 0.64rem;
-  letter-spacing: 0.05em;
+  font-size: 0.63rem;
+  letter-spacing: 0.045em;
   backdrop-filter: blur(10px);
 }
 
 .promotion-manager-page .premium-table th,
 .promotion-manager-page .premium-table td {
-  padding: 11px 10px;
+  padding: 10px;
 }
 
 .promotion-manager-page .premium-table tbody tr {
@@ -105,10 +105,11 @@
 }
 
 .promotion-manager-page .premium-table tbody td {
-  height: 66px;
+  height: 64px;
   color: #42505c;
-  line-height: 1.36;
+  line-height: 1.34;
   overflow: hidden;
+  vertical-align: middle;
 }
 
 .promotion-manager-page .premium-table th:first-child,
@@ -122,11 +123,11 @@
 }
 
 .promotion-manager-page .promotion-table th:nth-child(1),
-.promotion-manager-page .promotion-table td:nth-child(1) { width: 23%; }
+.promotion-manager-page .promotion-table td:nth-child(1) { width: 25%; }
 .promotion-manager-page .promotion-table th:nth-child(2),
 .promotion-manager-page .promotion-table td:nth-child(2) { width: 8%; }
 .promotion-manager-page .promotion-table th:nth-child(3),
-.promotion-manager-page .promotion-table td:nth-child(3) { width: 15%; }
+.promotion-manager-page .promotion-table td:nth-child(3) { width: 16%; }
 .promotion-manager-page .promotion-table th:nth-child(4),
 .promotion-manager-page .promotion-table td:nth-child(4) { width: 11%; }
 .promotion-manager-page .promotion-table th:nth-child(5),
@@ -136,10 +137,10 @@
 .promotion-manager-page .promotion-table th:nth-child(7),
 .promotion-manager-page .promotion-table td:nth-child(7) { width: 9%; }
 .promotion-manager-page .promotion-table th:nth-child(8),
-.promotion-manager-page .promotion-table td:nth-child(8) { width: 13%; }
+.promotion-manager-page .promotion-table td:nth-child(8) { width: 10%; }
 
 .promotion-manager-page .coupon-table th:nth-child(1),
-.promotion-manager-page .coupon-table td:nth-child(1) { width: 24%; }
+.promotion-manager-page .coupon-table td:nth-child(1) { width: 25%; }
 .promotion-manager-page .coupon-table th:nth-child(2),
 .promotion-manager-page .coupon-table td:nth-child(2) { width: 10%; }
 .promotion-manager-page .coupon-table th:nth-child(3),
@@ -153,17 +154,28 @@
 .promotion-manager-page .coupon-table th:nth-child(7),
 .promotion-manager-page .coupon-table td:nth-child(7) { width: 8%; }
 .promotion-manager-page .coupon-table th:nth-child(8),
-.promotion-manager-page .coupon-table td:nth-child(8) { width: 10%; }
+.promotion-manager-page .coupon-table td:nth-child(8) { width: 9%; }
+
+.promotion-manager-page .premium-table th:first-child,
+.promotion-manager-page .premium-table td:first-child {
+  padding-left: 14px;
+}
 
 .promotion-manager-page .premium-table td:first-child .fw-bold {
   display: -webkit-box;
-  margin-bottom: 7px !important;
+  max-width: 34ch;
+  margin: 0 0 6px !important;
   color: #24323b !important;
   font-size: 0.9rem;
-  line-height: 1.32;
+  line-height: 1.3;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-wrap: pretty;
+}
+
+.promotion-manager-page .premium-table td:first-child .code-badge {
+  margin-top: 0;
 }
 
 .promotion-manager-page .promotion-table td:nth-child(3),
@@ -191,7 +203,7 @@
 }
 
 .promotion-manager-page .bar-bg {
-  height: 9px;
+  height: 8px;
   background: linear-gradient(90deg, rgba(222, 214, 203, 0.78), rgba(235, 228, 218, 0.95));
 }
 
@@ -208,32 +220,37 @@
 }
 
 .promotion-manager-page .promo-status-badge {
-  min-width: 72px;
+  min-width: 70px;
   height: 27px;
   border-radius: 10px;
   font-size: 0.7rem;
 }
 
+.promotion-manager-page .premium-table th:nth-child(8),
+.promotion-manager-page .premium-table td:nth-child(8) {
+  text-align: left !important;
+}
+
 .promotion-manager-page .action-buttons {
   width: max-content;
   max-width: 100%;
-  margin-left: auto;
+  margin-left: 0;
   padding: 4px;
-  gap: 3px;
+  gap: 2px;
   border-color: rgba(222, 214, 203, 0.7);
   background: rgba(255, 253, 249, 0.9);
   box-shadow: 0 8px 18px rgba(48, 40, 30, 0.05);
 }
 
 .promotion-manager-page .action-buttons button {
-  width: 28px;
+  width: 26px;
   height: 30px;
   color: #7a8796;
 }
 
 .promotion-manager-page .action-buttons button svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 .promotion-manager-page .premium-table td:nth-child(4) .text-xs,
