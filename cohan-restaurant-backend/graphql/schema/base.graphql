@@ -14,7 +14,7 @@ type Subscription {
 }
 
 input UploadOrderItemProofInput {
-  restaurantId: ID!
+  restaurantId: ID
   orderId: ID!
   orderItemId: ID!
   proofImages: [String!]!
