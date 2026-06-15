@@ -12,6 +12,43 @@ const PaymentEventSchema = new Schema(
   { _id: false }
 );
 
+const TransferPaymentSchema = new Schema(
+  {
+    status: {
+      type: String,
+      enum: [
+        "NOT_REQUIRED",
+        "INSTRUCTIONS_SHOWN",
+        "SUBMITTED",
+        "VERIFYING",
+        "VERIFIED",
+        "REJECTED",
+        "FAILED",
+        "EXPIRED",
+      ],
+      default: "NOT_REQUIRED",
+      index: true,
+    },
+    instructionsShownAt: { type: Date },
+    submittedAt: { type: Date },
+    submittedBy: { type: Types.ObjectId, ref: "User" },
+    proofImages: { type: [String], default: [] },
+    proofNote: { type: String, trim: true },
+    customerClaimedPaidAt: { type: Date },
+    verifiedAt: { type: Date },
+    verifiedBy: { type: Types.ObjectId, ref: "User" },
+    rejectedAt: { type: Date },
+    rejectedBy: { type: Types.ObjectId, ref: "User" },
+    rejectReason: { type: String, trim: true },
+    providerTransactionId: { type: String, trim: true },
+    receivedAmount: { type: Number, min: 0 },
+    varianceAmount: { type: Number },
+    matchedBankTransactionId: { type: Types.ObjectId, ref: "BankTransaction", index: true },
+    matchedReconciliationId: { type: Types.ObjectId, ref: "PaymentReconciliation", index: true },
+  },
+  { _id: false }
+);
+
 const PaymentSessionSchema = BaseSchemaModel({
   restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
   orderId: { type: Types.ObjectId, ref: "Order", index: true },
@@ -57,6 +94,7 @@ const PaymentSessionSchema = BaseSchemaModel({
   providerResponseRaw: { type: Schema.Types.Mixed },
   callbackRaw: { type: Schema.Types.Mixed },
   metadata: { type: Schema.Types.Mixed },
+  transfer: { type: TransferPaymentSchema, default: () => ({}) },
 
   events: { type: [PaymentEventSchema], default: [] },
 });
@@ -65,6 +103,7 @@ PaymentSessionSchema.index({ provider: 1, reference: 1 }, { unique: true });
 PaymentSessionSchema.index({ provider: 1, requestId: 1 });
 PaymentSessionSchema.index({ reservationId: 1, createdAt: -1 });
 PaymentSessionSchema.index({ orderId: 1, createdAt: -1 });
+PaymentSessionSchema.index({ "transfer.status": 1, createdAt: -1 });
 
 export default mongoose.models.PaymentSession ||
   mongoose.model("PaymentSession", PaymentSessionSchema);
