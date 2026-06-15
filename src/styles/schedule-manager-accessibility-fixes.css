@@ -25,3 +25,314 @@
 .schedule-readiness-focus-banner.schedule-readiness-focus-banner::after {
   color: #4e5b56 !important;
 }
+
+/* =========================================================
+   UX pass 2: reduce header height, remove leftover blue/purple,
+   and make the 7-day board fit the manager viewport.
+   ========================================================= */
+
+.schedule-container.schedule-container .schedule-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr) !important;
+  gap: 0.66rem 0.76rem !important;
+  align-items: start !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .header-top,
+.schedule-container.schedule-container .schedule-header > .kpi-grid {
+  grid-column: 1 / -1 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel {
+  margin-top: 0 !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type {
+  grid-column: 1 / 2 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) {
+  grid-column: 2 / 3 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__header {
+  margin-bottom: 0.38rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.4rem !important;
+  margin-top: 0.42rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metric {
+  min-height: 50px !important;
+  padding: 0.38rem 0.48rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metric .label {
+  font-size: 0.68rem !important;
+  line-height: 1.2 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metric .value {
+  font-size: 1rem !important;
+  line-height: 1.1 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__body {
+  max-height: 118px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  padding-top: 0.44rem !important;
+  margin-top: 0.42rem !important;
+  border-top: 1px solid rgba(216, 208, 197, 0.68) !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__actions {
+  gap: 0.34rem !important;
+  margin: 0.18rem 0 0.26rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__actions .staff-secondary-btn {
+  min-height: 28px !important;
+  padding: 0.22rem 0.46rem !important;
+  border-radius: 999px !important;
+  font-size: 0.72rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__headline {
+  font-size: 0.74rem !important;
+  line-height: 1.34 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__body {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 0.32rem 0.7rem !important;
+  margin-top: 0.38rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__body ul {
+  margin: 0 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel__link,
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__link {
+  margin-top: 0.46rem !important;
+  min-height: 32px !important;
+}
+
+/* Toolbar: keep publish visible, reduce secondary action noise. */
+.schedule-container.schedule-container .schedule-toolbar {
+  gap: 0.48rem !important;
+  padding-top: 0.62rem !important;
+  padding-bottom: 0.62rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group {
+  gap: 0.38rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions > button,
+.schedule-container.schedule-container .toolbar-group--actions > .schedule-status-badge {
+  min-height: 34px !important;
+  padding: 0 0.58rem !important;
+  border-radius: 10px !important;
+  font-size: 0.78rem !important;
+  white-space: nowrap !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .btn-publish {
+  min-height: 36px !important;
+  padding: 0 0.76rem !important;
+  font-size: 0.82rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--filters select {
+  min-width: 154px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  font-size: 0.78rem !important;
+}
+
+.schedule-container.schedule-container .view-toggles button,
+.schedule-container.schedule-container .date-navigation .nav-btn {
+  min-height: 32px !important;
+  font-size: 0.78rem !important;
+}
+
+.schedule-container.schedule-container .date-navigation .week-label {
+  font-size: 0.82rem !important;
+}
+
+/* Reminder/legend should support the board, not compete with it. */
+.schedule-container.schedule-container .schedule-publish-reminder {
+  margin-top: 0.62rem !important;
+  padding: 0.58rem 0.72rem !important;
+  min-height: 0 !important;
+}
+
+.schedule-container.schedule-container .schedule-publish-reminder .reminder-content strong {
+  font-size: 0.82rem !important;
+}
+
+.schedule-container.schedule-container .schedule-publish-reminder .reminder-content p {
+  font-size: 0.76rem !important;
+}
+
+.schedule-container.schedule-container .schedule-publish-reminder button {
+  min-height: 34px !important;
+  padding: 0 0.74rem !important;
+  border-radius: 999px !important;
+}
+
+.schedule-legend.schedule-legend {
+  margin-top: 0.52rem !important;
+  padding: 0.46rem 0.66rem !important;
+  gap: 0.52rem !important;
+}
+
+.schedule-legend.schedule-legend .legend-item,
+.schedule-legend.schedule-legend .legend-title {
+  font-size: 0.72rem !important;
+}
+
+/* Calendar board: remove horizontal clipping on the 7th day. */
+.schedule-container.schedule-container .schedule-board:not(.month-board) {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  overflow-x: hidden !important;
+  gap: 0.58rem !important;
+  padding: 0.7rem clamp(0.74rem, 1.1vw, 0.95rem) 0.9rem !important;
+}
+
+.schedule-container.schedule-container .schedule-board.month-board {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  overflow-x: hidden !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column {
+  min-width: 0 !important;
+  min-height: 354px !important;
+  border-radius: 15px !important;
+}
+
+.schedule-container.schedule-container .day-header {
+  min-height: 58px !important;
+  padding: 0.54rem 0.58rem !important;
+}
+
+.schedule-container.schedule-container .day-header strong {
+  font-size: 0.9rem !important;
+}
+
+.schedule-container.schedule-container .day-header span,
+.schedule-container.schedule-container .day-header small {
+  font-size: 0.7rem !important;
+}
+
+.schedule-container.schedule-container .day-body {
+  padding: 0.54rem !important;
+  gap: 0.42rem !important;
+}
+
+.schedule-container.schedule-container .shift-slot {
+  min-height: 38px !important;
+  margin-bottom: 0.22rem !important;
+}
+
+.schedule-container.schedule-container .add-shift-btn,
+.schedule-container.schedule-container .empty-shift-slot,
+.schedule-container.schedule-container .more-shifts-btn,
+.schedule-container.schedule-container .day-summary-pill {
+  min-height: 36px !important;
+  padding: 0.38rem 0.44rem !important;
+  border-radius: 11px !important;
+  font-size: 0.78rem !important;
+}
+
+.schedule-container.schedule-container .day-priority,
+.schedule-container.schedule-container [class*="priority"],
+.schedule-container.schedule-container [class*="focused"],
+.schedule-container.schedule-container [class*="highlight"]:not(.shift-card-anchor) {
+  color: #17554d !important;
+  border-color: rgba(31, 106, 96, 0.22) !important;
+  background: #f2faf7 !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column:first-child,
+.schedule-container.schedule-container .schedule-day-column:focus-within {
+  border-color: rgba(31, 106, 96, 0.28) !important;
+  box-shadow: inset 3px 0 0 rgba(31, 106, 96, 0.58), 0 10px 22px rgba(47, 60, 54, 0.08) !important;
+}
+
+/* Availability panel: remove remaining purple CTA and make empty state quieter. */
+.schedule-container.schedule-container .schedule-availability-panel {
+  margin-top: 0.68rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty button,
+.schedule-container.schedule-container .schedule-availability-panel__actions button,
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button {
+  border: 1px solid #24323b !important;
+  background: #24323b !important;
+  color: #fffdfa !important;
+  box-shadow: 0 10px 20px rgba(31, 42, 47, 0.14) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty {
+  padding: 0.7rem 0.78rem !important;
+  border-style: dashed !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty h4 {
+  margin-bottom: 0.16rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__hint {
+  margin-top: 0.32rem !important;
+}
+
+@media (max-width: 1280px) {
+  .schedule-container.schedule-container .schedule-header {
+    grid-template-columns: 1fr !important;
+  }
+
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type,
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .schedule-container.schedule-container .schedule-board:not(.month-board),
+  .schedule-container.schedule-container .schedule-board.month-board {
+    overflow-x: auto !important;
+    grid-template-columns: repeat(7, minmax(150px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metrics,
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__metrics,
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__body {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metrics,
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__metrics,
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__body {
+    grid-template-columns: 1fr !important;
+  }
+
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__body {
+    max-height: none !important;
+  }
+}
