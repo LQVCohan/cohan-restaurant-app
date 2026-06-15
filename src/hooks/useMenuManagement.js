@@ -40,6 +40,8 @@ const FRAG_MENU_ITEM = gql`
     description
     sortOrder
     labels
+    foodType
+    meatTypes
     dietTags
     allergenTags
     tasteProfile {

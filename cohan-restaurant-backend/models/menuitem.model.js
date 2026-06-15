@@ -28,6 +28,33 @@ const menuItemSchema = BaseSchemaModel({
 
   sortOrder: { type: Number, default: 1000 },
   labels: [{ type: String }],
+  foodType: {
+    type: String,
+    enum: [
+      "VEGETARIAN",
+      "NON_VEGETARIAN",
+      "VEGAN",
+      "MIXED",
+      "UNKNOWN",
+    ],
+    default: "UNKNOWN",
+    index: true,
+  },
+  meatTypes: [
+    {
+      type: String,
+      enum: [
+        "BEEF",
+        "PORK",
+        "CHICKEN",
+        "DUCK",
+        "SEAFOOD",
+        "FISH",
+        "LAMB",
+        "OTHER",
+      ],
+    },
+  ],
   dietTags: [
     {
       type: String,
