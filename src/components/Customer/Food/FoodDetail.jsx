@@ -11,7 +11,6 @@ import { io } from "socket.io-client";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Star,
-  Clock,
   ChevronRight,
   Minus,
   Plus,
@@ -1063,11 +1062,6 @@ const FoodDetail = () => {
                 <Star size={16} fill="#FFD700" color="#FFD700" />
                 <span>{foodReviews.length ? averageFoodRating.toFixed(1) : Number(resolvedDish.point || 0).toFixed(1)}</span>
                 <span className="text-gray">({foodReviews.length} đánh giá)</span>
-              </div>
-              <div className="divider"></div>
-              <div className="prep-time">
-                <Clock size={16} />
-                Thời gian chuẩn bị: {resolvedDish.avgPrepTimeMin || 20} phút
               </div>
             </div>
 
