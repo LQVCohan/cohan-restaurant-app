@@ -1,0 +1,218 @@
+/* Customer manager tone unification
+   Warm neutral + sage green + charcoal. Keep amber only for true warning states. */
+
+:root {
+  --customer-ivory: #fffdfa;
+  --customer-cream: #f8f5ee;
+  --customer-soft-sage: #f2faf7;
+  --customer-sage: #1f6a60;
+  --customer-sage-dark: #17554d;
+  --customer-charcoal: #24323b;
+  --customer-muted: #63706c;
+  --customer-border: #d8d0c5;
+  --customer-border-sage: rgba(31, 106, 96, 0.16);
+  --customer-shadow: 0 16px 34px rgba(54, 44, 29, 0.075);
+}
+
+.customer-card {
+  background: linear-gradient(180deg, var(--customer-ivory) 0%, var(--customer-cream) 100%) !important;
+  border-color: rgba(216, 208, 197, 0.86) !important;
+  box-shadow: 0 1px 2px rgba(54, 44, 29, 0.045) !important;
+}
+
+.customer-card:hover {
+  border-color: rgba(31, 106, 96, 0.28) !important;
+  box-shadow: var(--customer-shadow) !important;
+}
+
+.customer-card::before {
+  background: radial-gradient(circle at top left, rgba(31, 106, 96, 0.075), transparent 38%), linear-gradient(90deg, rgba(255, 253, 250, 0.46), transparent 34%) !important;
+}
+
+.customer-card .cc-avatar {
+  background: linear-gradient(145deg, #f2faf7, #fffdfa) !important;
+  color: var(--customer-sage) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 18px rgba(31, 106, 96, 0.1) !important;
+}
+
+.customer-card .cc-status-dot.online,
+.customer-card .cc-status-dot.ordering,
+.customer-card .cc-status-dot.away {
+  background: var(--customer-sage) !important;
+}
+
+.customer-card .cc-status-dot.offline {
+  background: #aeb8b3 !important;
+}
+
+.customer-card .cc-badge.vip,
+.customer-card .cc-badge.regular,
+.customer-card .cc-badge.new {
+  color: var(--customer-sage-dark) !important;
+  background: var(--customer-soft-sage) !important;
+  border-color: var(--customer-border-sage) !important;
+}
+
+.customer-card .cc-badge.guest {
+  color: var(--customer-muted) !important;
+  background: #f3eee6 !important;
+  border-color: rgba(216, 208, 197, 0.9) !important;
+}
+
+.customer-card .cc-stat-box.gold,
+.customer-card .cc-stat-box.blue,
+.customer-card .cc-stat-box.purple {
+  background: rgba(255, 253, 250, 0.82) !important;
+  color: var(--customer-charcoal) !important;
+  border-color: rgba(216, 208, 197, 0.88) !important;
+}
+
+.customer-card .cc-stat-box.gold {
+  background: var(--customer-soft-sage) !important;
+  border-color: var(--customer-border-sage) !important;
+}
+
+.customer-card .cc-stat-box .val {
+  color: var(--customer-charcoal) !important;
+}
+
+.customer-card .cc-stat-box.gold .val {
+  color: var(--customer-sage-dark) !important;
+}
+
+.customer-card .cc-row {
+  background: rgba(248, 245, 238, 0.72) !important;
+}
+
+.customer-card .cc-row.has-copy:hover,
+.customer-card:hover .cc-footer {
+  background: var(--customer-soft-sage) !important;
+  border-color: var(--customer-border-sage) !important;
+}
+
+.customer-card .cc-favs span,
+.cm-chip.cm-chip--food {
+  color: var(--customer-sage-dark) !important;
+  background: var(--customer-soft-sage) !important;
+  border-color: var(--customer-border-sage) !important;
+}
+
+.customer-card .btn-view,
+.customer-modal-footer .btn-primary,
+.customer-card:hover .btn-view {
+  background: var(--customer-charcoal) !important;
+  border-color: var(--customer-charcoal) !important;
+  color: var(--customer-ivory) !important;
+}
+
+.customer-card .cc-copy-mini:hover:not(:disabled),
+.customer-card .cc-copy-btn:hover:not(:disabled),
+.customer-card .cc-copy-mini:focus-visible,
+.customer-card .cc-copy-btn:focus-visible,
+.customer-card .cc-copy-mini.is-copied,
+.customer-card .cc-copy-btn.is-copied {
+  color: var(--customer-sage) !important;
+  background: var(--customer-soft-sage) !important;
+  border-color: var(--customer-border-sage) !important;
+}
+
+.customer-profile-modal.modal-container {
+  background: radial-gradient(circle at 12% 0%, rgba(31, 106, 96, 0.075), transparent 25rem), linear-gradient(180deg, rgba(255, 253, 250, 0.98), rgba(248, 245, 238, 0.97)) !important;
+}
+
+.customer-modal-body.modal-body {
+  background: linear-gradient(rgba(97, 82, 62, 0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(97, 82, 62, 0.014) 1px, transparent 1px), rgba(255, 253, 250, 0.34) !important;
+}
+
+.cm-profile-hero__identity,
+.cm-profile-hero__points,
+.cm-metric-grid article,
+.cm-panel {
+  background: rgba(255, 253, 250, 0.92) !important;
+  border-color: rgba(216, 208, 197, 0.78) !important;
+}
+
+.cm-profile-hero__identity {
+  background: radial-gradient(circle at 4% 0%, rgba(31, 106, 96, 0.08), transparent 16rem), linear-gradient(135deg, rgba(255, 253, 250, 0.98), rgba(248, 245, 238, 0.88)) !important;
+}
+
+.cm-profile-hero__points {
+  background: linear-gradient(150deg, var(--customer-soft-sage), var(--customer-ivory) 58%, var(--customer-cream)) !important;
+}
+
+.cm-profile-hero__points span,
+.cm-profile-hero__points small {
+  color: var(--customer-muted) !important;
+}
+
+.cm-profile-hero__points strong {
+  color: var(--customer-sage-dark) !important;
+}
+
+.cm-profile-tags span,
+.cm-profile-tags .tier-vip,
+.cm-profile-tags .tier-regular,
+.cm-profile-tags .tier-custom,
+.cm-profile-tags .tier-new {
+  color: var(--customer-sage-dark) !important;
+  background: var(--customer-soft-sage) !important;
+  border-color: var(--customer-border-sage) !important;
+}
+
+.cm-profile-tags span:first-child,
+.cm-profile-tags span:nth-child(3) {
+  color: var(--customer-muted) !important;
+  background: #f3eee6 !important;
+  border-color: rgba(216, 208, 197, 0.9) !important;
+}
+
+.cm-metric-grid svg,
+.cm-panel__title svg,
+.notes-header svg,
+.cm-contact-row svg {
+  color: var(--customer-sage) !important;
+  background: var(--customer-soft-sage) !important;
+}
+
+.cm-contact-row,
+.cm-chip,
+.cm-order-row,
+.cm-empty-orders {
+  background: rgba(248, 245, 238, 0.66) !important;
+  border-color: rgba(216, 208, 197, 0.82) !important;
+}
+
+.cm-panel--notes {
+  background: linear-gradient(160deg, var(--customer-ivory), var(--customer-cream) 76%) !important;
+  border-color: rgba(216, 208, 197, 0.82) !important;
+}
+
+.cm-panel--notes .notes-header h3,
+.cm-panel--notes .notes-header button,
+.note-display em {
+  color: var(--customer-sage-dark) !important;
+}
+
+.cm-panel--notes textarea,
+.note-display {
+  background: rgba(255, 253, 250, 0.86) !important;
+  border-color: rgba(216, 208, 197, 0.86) !important;
+  color: var(--customer-charcoal) !important;
+}
+
+.action-row .save {
+  background: var(--customer-sage) !important;
+  color: var(--customer-ivory) !important;
+}
+
+.action-row .cancel,
+.customer-modal-footer .btn-secondary {
+  background: var(--customer-ivory) !important;
+  border-color: rgba(216, 208, 197, 0.9) !important;
+  color: var(--customer-charcoal) !important;
+}
+
+.cm-order-row:hover {
+  border-color: var(--customer-border-sage) !important;
+  box-shadow: 0 10px 22px rgba(31, 106, 96, 0.08) !important;
+}

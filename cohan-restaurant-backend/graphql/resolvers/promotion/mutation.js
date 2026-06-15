@@ -8,6 +8,37 @@ import { requireRestaurantPermission } from "../../../src/services/auth/authoriz
 const toObjId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
 
+const toObjectIdString = (value) => {
+  if (!value) return "";
+  if (typeof value === "object" && value._id) return String(value._id);
+  if (typeof value === "object" && value.id) return String(value.id);
+  return String(value);
+};
+
+const serializePromotion = (promotion) => {
+  if (!promotion) return null;
+  const row = typeof promotion.toObject === "function"
+    ? promotion.toObject({ virtuals: true })
+    : promotion;
+  const id = toObjectIdString(row._id || row.id);
+  if (!id) return null;
+
+  return {
+    ...row,
+    id,
+    restaurantId: row.restaurantId ? toObjectIdString(row.restaurantId) : null,
+    categoryId: row.categoryId ? toObjectIdString(row.categoryId) : null,
+    itemId: row.itemId ? toObjectIdString(row.itemId) : null,
+    giftItemId: row.giftItemId ? toObjectIdString(row.giftItemId) : null,
+    comboItems: Array.isArray(row.comboItems)
+      ? row.comboItems.map((item) => ({
+          itemId: toObjectIdString(item?.itemId),
+          quantity: Number(item?.quantity || 1),
+        })).filter((item) => item.itemId)
+      : [],
+  };
+};
+
 const toOptionalDate = (value, fieldName) => {
   if (!value) return null;
   const next = new Date(value);
@@ -115,7 +146,6 @@ const validatePromotionPayload = (payload) => {
     return;
   }
 
-
   if (payload.promotionType === "COMBO") {
     if (payload.scope !== "ORDER") {
       throw new GraphQLError("COMBO promotion requires ORDER scope");
@@ -171,7 +201,7 @@ const validatePromotionPayload = (payload) => {
 };
 
 const loadPromotionForOutput = async (id) =>
-  Promotion.findById(id).lean({ virtuals: true });
+  serializePromotion(await Promotion.findById(id).lean());
 
 export const PromotionMutation = {
   async createPromotion(_, { input }, ctx) {
@@ -181,7 +211,7 @@ export const PromotionMutation = {
     validatePromotionPayload(payload);
     await requireRestaurantPermission(ctx, payload.restaurantId, PERMISSIONS.PROMOTION_WRITE);
     const created = await Promotion.create(payload);
-    return (await loadPromotionForOutput(created._id)) || created;
+    return (await loadPromotionForOutput(created._id)) || serializePromotion(created);
   },
 
   async updatePromotion(_, { id, input }, ctx) {
@@ -202,7 +232,7 @@ export const PromotionMutation = {
     payload.restaurantId = existing.restaurantId;
     const updated = await Promotion.findByIdAndUpdate(id, payload, { new: true });
     if (!updated) throw new GraphQLError("Promotion not found");
-    return (await loadPromotionForOutput(updated._id)) || updated;
+    return (await loadPromotionForOutput(updated._id)) || serializePromotion(updated);
   },
 
   async deletePromotion(_, { id }, ctx) {
@@ -229,6 +259,6 @@ export const PromotionMutation = {
 
     const updated = await Promotion.findByIdAndUpdate(id, { isActive: Boolean(isActive) }, { new: true });
     if (!updated) throw new GraphQLError("Promotion not found");
-    return (await loadPromotionForOutput(updated._id)) || updated;
+    return (await loadPromotionForOutput(updated._id)) || serializePromotion(updated);
   },
 };

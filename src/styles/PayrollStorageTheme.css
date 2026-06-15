@@ -54,7 +54,7 @@
 }
 
 .payroll-page-compact .header-toolbar {
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr) !important;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.7fr) !important;
   align-items: stretch !important;
   padding: clamp(1.1rem, 2vw, 1.55rem) !important;
 }
@@ -78,11 +78,47 @@
   font-weight: 560 !important;
 }
 
+.payroll-page-compact .quick-stats,
+.payroll-page-compact .payroll-summary-line {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 0.42rem 0.72rem !important;
+  margin-top: 0.82rem !important;
+}
+
+.payroll-page-compact .payroll-summary-line > span:not(:first-child) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  color: #596573;
+  font-size: 0.82rem;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.payroll-page-compact .payroll-summary-line > span:not(:first-child)::before {
+  content: "•";
+  margin-right: 0.72rem;
+  color: rgba(168, 133, 95, 0.7);
+  font-weight: 900;
+}
+
 .payroll-page-compact .cycle-picker-compact,
 .payroll-page-compact .workflow-tabs {
   border-color: rgba(229, 222, 211, 0.95) !important;
   background: rgba(255, 253, 248, 0.74) !important;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.payroll-page-compact .payroll-control-card {
+  align-self: stretch;
+  border: 1px solid rgba(229, 222, 211, 0.9);
+  border-radius: 21px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.78);
 }
 
 .payroll-page-compact .cycle-picker-compact .label,
@@ -159,11 +195,37 @@
   min-height: 540px !important;
 }
 
+.payroll-page-compact .payroll-table-card {
+  min-height: min(620px, calc(100dvh - 330px)) !important;
+}
+
 .payroll-page-compact .table-controls {
   padding: 0.9rem !important;
   border-bottom-color: rgba(229, 222, 211, 0.92) !important;
   background: rgba(255, 253, 248, 0.86) !important;
   backdrop-filter: blur(14px) !important;
+}
+
+.payroll-page-compact .payroll-filter-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(460px, 0.85fr) !important;
+  gap: 0.75rem !important;
+  align-items: center !important;
+}
+
+.payroll-page-compact .payroll-search-controls {
+  display: grid !important;
+  grid-template-columns: minmax(240px, 1fr) 145px 145px !important;
+  gap: 0.6rem !important;
+  width: 100% !important;
+}
+
+.payroll-page-compact .payroll-search-input {
+  min-width: 240px !important;
+}
+
+.payroll-page-compact .payroll-date-input {
+  min-width: 0 !important;
 }
 
 .payroll-page-compact .workflow-tabs {
@@ -186,6 +248,39 @@
   color: #fffdf8 !important;
   background: linear-gradient(135deg, var(--payroll-storage-ink), #34414a) !important;
   box-shadow: 0 10px 20px rgba(36, 48, 63, 0.16) !important;
+}
+
+.payroll-page-compact .payroll-action-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.75rem !important;
+}
+
+.payroll-page-compact .payroll-action-buttons {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+
+.payroll-page-compact .payroll-inline-message {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(83, 108, 97, 0.16);
+  border-radius: 999px;
+  color: var(--payroll-storage-sage);
+  background: rgba(237, 244, 240, 0.72);
+  font-size: 0.78rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.payroll-page-compact .payroll-inline-message.is-muted {
+  color: #7b6a59;
+  border-color: rgba(168, 133, 95, 0.2);
+  background: rgba(234, 223, 204, 0.45);
 }
 
 .payroll-page-compact .table-responsive {
@@ -216,6 +311,20 @@
 .payroll-page-compact .payroll-table tbody td {
   border-bottom-color: rgba(229, 222, 211, 0.62) !important;
   color: #34404a !important;
+}
+
+.payroll-page-compact .numeric-col,
+.payroll-page-compact .numeric-cell,
+.payroll-page-compact .money-col,
+.payroll-page-compact .money-cell {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.payroll-page-compact .money-col.is-strong,
+.payroll-page-compact .net-cell {
+  font-weight: 840 !important;
 }
 
 .payroll-page-compact .payroll-table tbody td.sticky-left {
@@ -291,6 +400,43 @@
     rgba(255, 253, 248, 0.72) !important;
 }
 
+.payroll-page-compact .payroll-empty-state {
+  display: grid;
+  min-height: 335px;
+  place-items: center;
+  padding: 2.2rem 1rem;
+}
+
+.payroll-page-compact .payroll-empty-state .table-empty__content {
+  width: min(100%, 520px);
+  padding: 2rem !important;
+  text-align: center;
+  border-radius: 24px !important;
+}
+
+.payroll-page-compact .payroll-empty-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 0.85rem;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  border-radius: 20px;
+  color: var(--payroll-storage-sage);
+  background:
+    radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.82), transparent 52%),
+    var(--payroll-storage-sage-soft);
+  font-size: 1.8rem;
+  font-weight: 900;
+}
+
+.payroll-page-compact .payroll-empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
 .payroll-page-compact .btn,
 .payroll-page-compact .btn-primary,
 .payroll-page-compact .btn-white,
@@ -307,6 +453,12 @@
   border-color: rgba(213, 200, 184, 0.86) !important;
   font-weight: 780 !important;
   box-shadow: none;
+}
+
+.payroll-page-compact .btn:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.52 !important;
+  filter: grayscale(0.16);
 }
 
 .payroll-page-compact .btn-primary,
@@ -432,13 +584,18 @@
 
 @media (max-width: 1180px) {
   .payroll-page-compact .header-toolbar,
-  .payroll-page-compact .metrics-strip {
+  .payroll-page-compact .metrics-strip,
+  .payroll-page-compact .payroll-filter-row {
     grid-template-columns: 1fr !important;
   }
 
   .payroll-page-compact .header-toolbar .right-actions,
   .payroll-page-compact .table-controls .right-controls {
     justify-content: flex-start !important;
+  }
+
+  .payroll-page-compact .payroll-search-controls {
+    grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(130px, 0.42fr)) !important;
   }
 }
 
@@ -449,7 +606,18 @@
   }
 
   .payroll-page-compact .metrics-strip .metric-group,
-  .payroll-page-compact .metrics-strip--period .metric-group {
+  .payroll-page-compact .metrics-strip--period .metric-group,
+  .payroll-page-compact .payroll-search-controls {
     grid-template-columns: 1fr !important;
+  }
+
+  .payroll-page-compact .payroll-action-row,
+  .payroll-page-compact .payroll-empty-actions {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .payroll-page-compact .payroll-inline-message {
+    white-space: normal;
   }
 }
