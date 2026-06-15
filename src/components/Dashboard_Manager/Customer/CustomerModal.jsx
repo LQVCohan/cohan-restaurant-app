@@ -5,7 +5,6 @@ import {
   Mail,
   Phone,
   Star,
-  Zap,
   ShoppingBag,
   Wallet,
   Edit3,
@@ -25,6 +24,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
 import { RESEND_USER_VERIFICATION, UPDATE_CUSTOMER_NOTE } from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
+import "./CustomerModalPolish.scss";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* ===== Helpers & Utils ===== */
@@ -81,7 +81,6 @@ const GET_CUSTOMER_DETAIL_ANALYTICS = gql`
   }
 `;
 
-// Thêm prop isOpen vào đây để điều khiển modal
 const CustomerModal = ({
   isOpen,
   customer,
@@ -122,7 +121,6 @@ const CustomerModal = ({
     sendMessageState,
   } = useCommunication({ restaurantId });
 
-  // 1. Data Processing
   const recentOrders = useMemo(() => customer?.recentOrders || [], [customer]);
 
   const { data: detailAnalyticsData } = useQuery(GET_CUSTOMER_DETAIL_ANALYTICS, {
@@ -153,12 +151,8 @@ const CustomerModal = ({
 
   const topItems = useMemo(() => {
     if (customer?.favoriteItems?.length > 0) return customer.favoriteItems;
-    if (detailAnalytics?.favoriteFoods?.length) {
-      return detailAnalytics.favoriteFoods.filter(Boolean).slice(0, 5);
-    }
-    if (detailAnalytics?.topDishes?.length) {
-      return detailAnalytics.topDishes.map((dish) => dish?.dishName).filter(Boolean).slice(0, 5);
-    }
+    if (detailAnalytics?.favoriteFoods?.length) return detailAnalytics.favoriteFoods.filter(Boolean).slice(0, 5);
+    if (detailAnalytics?.topDishes?.length) return detailAnalytics.topDishes.map((dish) => dish?.dishName).filter(Boolean).slice(0, 5);
     const itemMap = {};
     recentOrders.forEach((order) => {
       const items = order.items || order.raw?.items || [];
@@ -167,10 +161,7 @@ const CustomerModal = ({
         if (name) itemMap[name] = (itemMap[name] || 0) + (i.quantity || 1);
       });
     });
-    return Object.entries(itemMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map((entry) => entry[0]);
+    return Object.entries(itemMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map((entry) => entry[0]);
   }, [recentOrders, customer?.favoriteItems, detailAnalytics?.favoriteFoods, detailAnalytics?.topDishes]);
 
   const walletStatus = useMemo(() => {
@@ -180,9 +171,12 @@ const CustomerModal = ({
     return { label: "Chưa kích hoạt", cls: "inactive" };
   }, [customer]);
 
-  
-  const joinDate = formatDate(customer?.joinDate);
+  const displayName = customer?.displayName || customer?.name || customer?.fullName || "Khách vãng lai";
+  const customerCode = String(customer?.id || 0).padStart(4, "0");
+  const joinDate = formatDate(customer?.joinDate || customer?.registeredAt || customer?.createdAt);
   const loyaltyDuration = Number(customer?.loyaltyDurationScore ?? detailAnalytics?.loyaltyDurationScore ?? 0);
+  const verificationText = customer?.verificationLabel || (customer?.verificationStatus === "verified" ? "Đã xác minh" : "Chưa xác minh");
+  const isGuestCustomer = Boolean(customer?.isGuest || customer?.isGuestBadge);
 
   useEffect(() => {
     setChatOpen(false);
@@ -208,9 +202,7 @@ const CustomerModal = ({
       else if (result?.status === "NOT_CONFIGURED") showNotification("Email/SMS provider chưa được cấu hình. Tài khoản đã tạo nhưng chưa gửi xác nhận.", "warning");
       else showNotification(result?.message || result?.errors?.[0] || "Không thể gửi xác nhận.", "warning");
       try {
-        await apolloClient.refetchQueries({
-          include: ["GetCustomerListPage", "GetCustomers", "GetUsers"],
-        });
+        await apolloClient.refetchQueries({ include: ["GetCustomerListPage", "GetCustomers", "GetUsers"] });
       } catch (refetchErr) {
         console.warn("Refetch customer verification state failed:", refetchErr);
       }
@@ -226,13 +218,7 @@ const CustomerModal = ({
       return;
     }
     try {
-      const { data } = await saveNotesMut({
-        variables: {
-          customerId: customer.id,
-          restaurantId,
-          noteInternal: tempNotes || "",
-        },
-      });
+      const { data } = await saveNotesMut({ variables: { customerId: customer.id, restaurantId, noteInternal: tempNotes || "" } });
       const persistedNote = data?.updateCustomerNote?.noteInternal ?? tempNotes ?? "";
       setNotes(persistedNote);
       setTempNotes(persistedNote);
@@ -263,9 +249,7 @@ const CustomerModal = ({
             restaurantId,
             channel: "support",
             targetRole: "support",
-            subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${
-              customer?.name || "Khách vãng lai"
-            }`,
+            subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${displayName || "Khách vãng lai"}`,
           },
         },
       });
@@ -285,21 +269,12 @@ const CustomerModal = ({
 
   const handleSendMessage = async (content) => {
     setChatError("");
-
     if (!chatThreadId) {
       setChatError("Chưa có hội thoại để gửi tin.");
       throw new Error("Missing thread");
     }
-
     try {
-      await sendMessage({
-        variables: {
-          input: {
-            threadId: chatThreadId,
-            content,
-          },
-        },
-      });
+      await sendMessage({ variables: { input: { threadId: chatThreadId, content } } });
       await loadThread({ variables: { id: chatThreadId } });
     } catch (err) {
       setChatError(err?.message || "Gửi tin nhắn thất bại.");
@@ -307,286 +282,124 @@ const CustomerModal = ({
     }
   };
 
-  const chatSubtitle = `${customer?.phone || "Chưa có SĐT"}${
-    customer?.email ? ` • ${customer.email}` : ""
-  }`;
+  const chatSubtitle = `${customer?.phone || "Chưa có SĐT"}${customer?.email ? ` • ${customer.email}` : ""}`;
 
   return (
     <Modal
-      isOpen={isOpen} // Sử dụng prop isOpen được truyền vào
+      isOpen={isOpen}
       onClose={onClose}
       title="Chi tiết khách hàng"
-      size="full"
+      size="xl"
+      className="customer-profile-modal"
       closeOnOverlayClick
     >
-      {/* 1. Header chuẩn của Modal mới */}
-      <Modal.Header onClose={onClose}>
-        <div className="flex items-center gap-2">
-          <User size={20} className="text-blue-600" />
-          <span>Hồ sơ khách hàng</span>
-        </div>
-      </Modal.Header>
-
-      {/* 2. Body chứa toàn bộ nội dung chính */}
-      <Modal.Body>
+      <Modal.Body className="customer-modal-body">
         <div className="customer-modal-content">
-          {/* Profile Banner */}
-          <div className="cm-header-modern">
-            <div className="profile-left">
-              <div className="avatar-ring">
-                {customer?.avatar || (
-                  <User size={28} className="text-blue-500" />
-                )}
+          <section className="cm-profile-hero" aria-label="Tổng quan hồ sơ khách hàng">
+            <div className="cm-profile-hero__identity">
+              <div className="cm-avatar-card">
+                <div className="cm-avatar-card__mark">{customer?.avatar || <User size={30} />}</div>
+                <span className={customer?.online ? "is-online" : ""} />
               </div>
-              <div className="info-block">
-                <h2>{customer?.name || "Khách vãng lai"}</h2>
-                <div className="meta-badges">
-                  <span className="badge-id">
-                    #{String(customer?.id || 0).padStart(4, "0")}
-                  </span>
-                  <span className={`badge-tier tier-${rankConfig.variant}`}>
-                    {rankConfig.label}
-                  </span>
+              <div className="cm-profile-hero__copy">
+                <span className="cm-eyebrow">Hồ sơ khách hàng</span>
+                <h2>{displayName}</h2>
+                <div className="cm-profile-tags">
+                  <span>#{customerCode}</span>
+                  <span className={`tier-${rankConfig.variant}`}><Star size={13} />{rankConfig.label}</span>
+                  {isGuestCustomer ? <span>Guest</span> : <span>Đã đăng ký</span>}
+                  <span>{verificationText}</span>
                 </div>
               </div>
             </div>
-            <div className="points-right">
-              <div className="pts-val">{stats.points.toLocaleString()}</div>
-              <div className="pts-lbl">Điểm tích lũy</div>
+            <div className="cm-profile-hero__points">
+              <span>Điểm gắn bó</span>
+              <strong>{stats.points.toLocaleString("vi-VN")}</strong>
+              <small>{loyaltyDuration.toLocaleString("vi-VN")} ngày trong hệ thống</small>
             </div>
-          </div>
+          </section>
 
-          {/* Key Metrics */}
-          <div className="cm-stats-modern">
-            <div className="stat-item">
-              <div className="stat-icon bg-green-100 text-green-600">
-                <TrendingUp size={18} />
-              </div>
-              <div className="stat-value">{formatMoney(stats.total)}</div>
-              <div className="stat-label">Tổng chi tiêu</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon bg-blue-100 text-blue-600">
-                <ShoppingBag size={18} />
-              </div>
-              <div className="stat-value">{stats.count} đơn</div>
-              <div className="stat-label">Tổng đơn hàng</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon bg-purple-100 text-purple-600">
-                <CreditCard size={18} />
-              </div>
-              <div className="stat-value">{formatMoney(stats.avg)}</div>
-              <div className="stat-label">Trung bình/Đơn</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon bg-amber-100 text-amber-600">
-                <Clock size={18} />
-              </div>
-              <div className="stat-value">{joinDate}</div>
-              <div className="stat-label">Ngày tham gia</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon bg-emerald-100 text-emerald-600">
-                <Clock size={18} />
-              </div>
-              <div className="stat-value">
-                {loyaltyDuration} ngày
-              </div>
-              <div className="stat-label">Điểm gắn bó</div>
-            </div>
-          </div>
+          <section className="cm-metric-grid" aria-label="Chỉ số khách hàng">
+            <article><TrendingUp size={18} /><span>Tổng chi tiêu</span><strong>{formatMoney(stats.total)}</strong></article>
+            <article><ShoppingBag size={18} /><span>Tổng đơn hàng</span><strong>{stats.count.toLocaleString("vi-VN")} đơn</strong></article>
+            <article><CreditCard size={18} /><span>Trung bình/đơn</span><strong>{formatMoney(stats.avg)}</strong></article>
+            <article><Clock size={18} /><span>Ngày tham gia</span><strong>{joinDate}</strong></article>
+          </section>
 
-          {/* Insights Row */}
-          <div className="cm-insights-grid">
-            <div className="insight-card">
-              <div className="card-title">
-                <User size={14} /> Thông tin cá nhân
+          <section className="cm-detail-grid">
+            <article className="cm-panel cm-panel--contact">
+              <div className="cm-panel__title"><User size={15} />Thông tin cá nhân</div>
+              <div className="cm-contact-list">
+                <div className="cm-contact-row"><span className={`cm-dot ${customer?.online ? "is-live" : ""}`} /><strong>{customer?.online ? "Hoạt động gần đây" : "Không hoạt động gần đây"}</strong></div>
+                <div className="cm-contact-row">
+                  <UserCheck size={15} />
+                  <strong>{verificationText}</strong>
+                  {customer?.verificationStatus !== "verified" && (
+                    <button type="button" onClick={() => handleResendVerification("AUTO")} disabled={resendingVerification || (!customer?.email && !customer?.phone)}>Nhắc gửi</button>
+                  )}
+                </div>
+                <div className="cm-contact-row"><Mail size={15} /><span>{customer?.email || "—"}</span></div>
+                <div className="cm-contact-row"><Phone size={15} /><span>{customer?.phone || "—"}</span></div>
               </div>
-              <div className="contact-list">
-                <div className="c-item" title="Trạng thái">
-                  <span
-                    className="icon"
-                    style={{ color: customer?.online ? "#16a34a" : "#64748b" }}
-                  >
-                    ●
-                  </span>{" "}
-                  {customer?.online ? "Hoạt động gần đây" : "Không hoạt động gần đây"}
-                </div>
-                <div className="c-item" title="Xác minh">
-                  <UserCheck size={14} className="icon" />{" "}
-                  {customer?.verificationLabel || "Chưa xác minh"}
-                </div>
-                <div className="c-item" title="Email">
-                  <Mail size={14} className="icon" /> {customer?.email || "—"}
-                </div>
-                {customer?.verificationStatus !== "verified" && (
-                  <div className="c-item" title="Nhắc gửi xác nhận">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => handleResendVerification("AUTO")}
-                      disabled={resendingVerification || (!customer?.email && !customer?.phone)}
-                    >
-                      Nhắc gửi xác nhận
+              <div className="cm-wallet-line"><span><Wallet size={15} /> Ví điện tử</span><strong className={`w-badge ${walletStatus.cls}`}>{walletStatus.label}</strong></div>
+            </article>
+
+            <article className="cm-panel cm-panel--favorites">
+              <div className="cm-panel__title"><Star size={15} />Món yêu thích</div>
+              <div className="cm-chip-list">
+                {topItems.length > 0 ? topItems.map((item, idx) => <span key={idx} className="cm-chip cm-chip--food">{item}</span>) : <span className="cm-empty-inline">Chưa có dữ liệu món ăn</span>}
+              </div>
+              <div className="cm-panel__title cm-panel__title--sub"><Tag size={15} />Nhãn</div>
+              <div className="cm-chip-list">
+                {(customer?.refRestaurants || []).slice(0, 2).map((r) => <span className="cm-chip" key={r.id || r.name}>{r.name}</span>)}
+                {!(customer?.refRestaurants || []).length && <span className="cm-chip">Cohan Restaurant</span>}
+              </div>
+            </article>
+
+            <article className="cm-panel cm-panel--orders">
+              <div className="cm-section-header"><div><span>Hoạt động mua hàng</span><h3>Lịch sử gần đây</h3></div><button type="button">Xem tất cả</button></div>
+              <div className="cm-order-list">
+                {recentOrders.length > 0 ? recentOrders.slice(0, 5).map((order, i) => {
+                  const stKey = (order.status || order.raw?.currentStatus || "default").toLowerCase();
+                  const st = STATUS_CONFIG[stKey] || STATUS_CONFIG.default;
+                  return (
+                    <button type="button" key={i} className="cm-order-row" onClick={() => onShowBill && onShowBill(order?.raw || order)}>
+                      <span>{formatDate(order.createdAt || order.raw?.createdAt || order.date)}</span>
+                      <strong>{formatMoney(getEntryAmount(order))}</strong>
+                      <em style={{ color: st.color, backgroundColor: st.bg }}>{st.label}</em>
+                      <ArrowRight size={14} />
                     </button>
-                  </div>
-                )}
-                <div className="c-item" title="Điện thoại">
-                  <Phone size={14} className="icon" /> {customer?.phone || "—"}
-                </div>
+                  );
+                }) : <div className="cm-empty-orders">Chưa có đơn hàng nào</div>}
               </div>
+            </article>
 
-              <div className="wallet-status-block">
-                <span className="w-label flex items-center gap-2">
-                  <Wallet size={14} /> Ví điện tử
-                </span>
-                <span className={`w-badge ${walletStatus.cls}`}>
-                  <span className="dot"></span> {walletStatus.label}
-                </span>
-              </div>
-            </div>
-
-            <div className="insight-card">
-              <div className="card-title text-orange-600">
-                <Star size={14} /> Món yêu thích
-              </div>
-              <div className="chips-container mb-3">
-                {topItems.length > 0 ? (
-                  topItems.map((item, idx) => (
-                    <span key={idx} className="chip fav">
-                      {item}
-                    </span>
-                  ))
-                ) : (
-                  <span className="empty-text">Chưa có dữ liệu món ăn</span>
-                )}
-              </div>
-
-              <div className="card-title mt-auto">
-                <Tag size={14} /> Nhãn (Tags)
-              </div>
-              <div className="chips-container">
-                {(customer?.refRestaurants || []).slice(0, 2).map((r) => (
-                  <span className="chip" key={r.id || r.name}>
-                    {r.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Body: History vs Notes */}
-          <div className="cm-body-split">
-            <div className="orders-section">
-              <div className="section-header">
-                <h3>Lịch sử gần đây</h3>
-                <button className="text-xs text-blue-600 font-medium hover:underline">
-                  Xem tất cả
-                </button>
-              </div>
-              <div className="order-rows">
-                {recentOrders.length > 0 ? (
-                  recentOrders.slice(0, 5).map((order, i) => {
-                    const stKey = (order.status || order.raw?.currentStatus || "default").toLowerCase();
-                    const st = STATUS_CONFIG[stKey] || STATUS_CONFIG.default;
-                    return (
-                      <div
-                        key={i}
-                        className="order-row"
-                        onClick={() => onShowBill && onShowBill(order?.raw || order)}
-                      >
-                        <div className="o-date">
-                          {formatDate(order.createdAt || order.raw?.createdAt || order.date)}
-                        </div>
-                        <div className="o-price">
-                          {formatMoney(getEntryAmount(order))}
-                        </div>
-                        <div className="o-status">
-                          <span
-                            style={{ color: st.color, backgroundColor: st.bg }}
-                          >
-                            {st.label}
-                          </span>
-                        </div>
-                        <div className="o-arrow">
-                          <ArrowRight size={14} />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8 text-gray-400 text-sm">
-                    Chưa có đơn hàng nào
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="notes-section">
-              <div className="notes-header">
-                <h3>
-                  <Edit3 size={14} /> Ghi chú nội bộ
-                </h3>
-                {!isEditingNotes && (
-                  <button onClick={() => setIsEditingNotes(true)}>
-                    Chỉnh sửa
-                  </button>
-                )}
-              </div>
-
+            <article className="cm-panel cm-panel--notes">
+              <div className="notes-header"><h3><Edit3 size={15} />Ghi chú nội bộ</h3>{!isEditingNotes && <button type="button" onClick={() => setIsEditingNotes(true)}>Chỉnh sửa</button>}</div>
               {isEditingNotes ? (
                 <>
-                  <textarea
-                    rows={6}
-                    value={tempNotes}
-                    onChange={(e) => setTempNotes(e.target.value)}
-                    placeholder="Ghi lại lưu ý về khách hàng..."
-                    autoFocus
-                  />
+                  <textarea rows={7} value={tempNotes} onChange={(e) => setTempNotes(e.target.value)} placeholder="Ghi lại lưu ý về khách hàng..." autoFocus />
                   <div className="action-row">
-                    <button className="save" onClick={handleSaveNotes} disabled={savingNotes}>
-                      {savingNotes ? "Đang lưu..." : "Lưu"}
-                    </button>
-                    <button
-                      className="cancel"
-                      onClick={() => {
-                        setIsEditingNotes(false);
-                        setTempNotes(notes);
-                      }}
-                    >
-                      Hủy
-                    </button>
+                    <button type="button" className="save" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? "Đang lưu..." : "Lưu"}</button>
+                    <button type="button" className="cancel" onClick={() => { setIsEditingNotes(false); setTempNotes(notes); }}>Hủy</button>
                   </div>
                 </>
               ) : (
-                <div
-                  className="note-display"
-                  onClick={() => setIsEditingNotes(true)}
-                >
-                  {notes || (
-                    <em className="text-gray-400">Chạm để thêm ghi chú...</em>
-                  )}
-                </div>
+                <button type="button" className="note-display" onClick={() => setIsEditingNotes(true)}>{notes || <em>Chạm để thêm ghi chú...</em>}</button>
               )}
-            </div>
-          </div>
+            </article>
+          </section>
         </div>
       </Modal.Body>
 
-      {/* 3. Footer */}
-      <Modal.Footer>
-        <button className="btn btn-secondary" onClick={onClose}>
-          Đóng
-        </button>
-        <button className="btn btn-primary" onClick={openCustomerChat}>
-          <MessageSquare size={16} className="mr-2" /> Gửi tin nhắn
-        </button>
+      <Modal.Footer className="customer-modal-footer">
+        <button type="button" className="btn btn-secondary" onClick={onClose}>Đóng</button>
+        <button type="button" className="btn btn-primary" onClick={openCustomerChat}><MessageSquare size={16} className="mr-2" /> Gửi tin nhắn</button>
       </Modal.Footer>
 
       <ChatThreadPanel
         open={chatOpen}
-        title={`Nhắn tin: ${customer?.name || "Khách hàng"}`}
+        title={`Nhắn tin: ${displayName || "Khách hàng"}`}
         subtitle={chatSubtitle}
         meId={user?.id}
         messages={thread?.messages || []}
@@ -594,15 +407,8 @@ const CustomerModal = ({
         error={chatError || threadError}
         sending={sendMessageState.loading}
         composerDisabled={!chatThreadId || Boolean(chatError)}
-        composerPlaceholder={
-          chatThreadId
-            ? "Nhập nội dung tin nhắn..."
-            : "Đang khởi tạo hội thoại..."
-        }
-        onClose={() => {
-          setChatOpen(false);
-          setChatError("");
-        }}
+        composerPlaceholder={chatThreadId ? "Nhập nội dung tin nhắn..." : "Đang khởi tạo hội thoại..."}
+        onClose={() => { setChatOpen(false); setChatError(""); }}
         onSend={handleSendMessage}
       />
     </Modal>
