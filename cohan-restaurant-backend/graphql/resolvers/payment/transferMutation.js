@@ -168,10 +168,32 @@ export async function verifyTransferPayment(_parent, { input }, ctx) {
   payment.events.push({ type: "transfer_verified", payload: { by: String(actorId), note: input?.note || "" } });
 
   const session = await mongoose.startSession();
+  const orderIds = orderIdsFrom(payment).map((id) => toId(id)).filter(Boolean);
   try {
     await session.withTransaction(async () => {
       await payment.save({ session });
       await settlePaidOrderPaymentSession({ payment, source: "manual_transfer_verification", session });
+      if (orderIds.length) {
+        await Order.updateMany(
+          { _id: { $in: orderIds }, restaurantId: payment.restaurantId },
+          {
+            $set: {
+              currentStatus: "pending",
+              "payment.status": "paid",
+              customerVisibleNote: "Thanh toán chuyển khoản đã được xác minh. Nhà hàng đang tiếp nhận đơn.",
+            },
+            $push: {
+              statusTimeline: {
+                status: "pending",
+                at: new Date(),
+                byUserId: actorId,
+                note: "Bank transfer verified; order released to restaurant.",
+              },
+            },
+          },
+          { session },
+        );
+      }
     });
   } finally {
     await session.endSession();
@@ -180,6 +202,7 @@ export async function verifyTransferPayment(_parent, { input }, ctx) {
   const updated = await PaymentSession.findById(payment._id);
   await EventLog.log({ restaurantId: payment.restaurantId, actorUserId: actorId, verb: "payment.transfer.verify", object: { kind: "PaymentSession", id: payment._id }, source: "web", status: "success" }).catch(() => {});
   await emitTransferUpdate(ctx, updated, "PAYMENT_VERIFIED");
+  await emitTransferUpdate(ctx, updated, "ORDER_CREATED");
   return sanitizePaymentSessionForClient(updated, { includeRaw: false });
 }
 
