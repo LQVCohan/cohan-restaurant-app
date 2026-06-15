@@ -7,6 +7,7 @@ import "./styles/ManagerTypography.css";
 import "./styles/ManagerTypographySystemOverride.css";
 import "./styles/PayrollStorageTheme.css";
 import "./styles/PayrollManagerPresentation.css";
+import "./styles/PromotionManagerOperationsUX.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 
 import App from "./App.jsx";
