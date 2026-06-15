@@ -8,6 +8,7 @@ import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPer
 import { initScheduleHydrationPolish } from "@/utils/scheduleHydrationPolish.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
 import ScheduleManagement from "./ScheduleManagement";
+import "@/styles/schedule-manager-workspace-final.css";
 
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
