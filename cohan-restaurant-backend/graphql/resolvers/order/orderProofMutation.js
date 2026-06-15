@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireOrderPermission } from "../../../src/services/auth/authorization.service.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { emitCustomerTrackingUpdateIfChanged } from "../../../src/services/orderTracking.service.js";
 import { emitOrderEvent } from "./helper/emitOrderEvent.js";
 
@@ -31,7 +31,7 @@ export const OrderProofMutation = {
     const proofImages = cleanProofImages(input?.proofImages || []);
     const order = await Order.findOne({ _id: orderId, restaurantId });
     if (!order) throw new Error("Order not found");
-    await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
+    await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_UPDATE);
 
     const item = order.items.id(input?.orderItemId);
     if (!item) throw new Error("Order item not found");
