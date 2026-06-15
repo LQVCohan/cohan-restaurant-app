@@ -24,6 +24,7 @@ const files = [
   "supply.graphql",
   "event_log.graphql",
   "payments.graphql",
+  "paymentTransfer.graphql",
   "publicTableSession.graphql",
   "tableCustomer.graphql",
   "printSetting.graphql",
