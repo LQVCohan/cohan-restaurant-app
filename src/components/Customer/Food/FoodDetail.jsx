@@ -503,6 +503,7 @@ const FoodDetail = () => {
       ),
     [resolvedDish?.servingVariants],
   );
+  const shouldShowFoodTypeBadge = foodTypeKey !== "UNKNOWN";
   const shouldShowMeatTypes =
     ["NON_VEGETARIAN", "MIXED"].includes(foodTypeKey) &&
     Array.isArray(resolvedDish?.meatTypes) &&
@@ -1010,9 +1011,11 @@ const FoodDetail = () => {
 
             <section className="fd-food-profile" aria-label="Thông tin món ăn">
               <div className="fd-profile-badges">
-                <span className={`fd-food-type-badge fd-food-type-badge--${foodTypeMeta.className}`}>
-                  {foodTypeMeta.label}
-                </span>
+                {shouldShowFoodTypeBadge ? (
+                  <span className={`fd-food-type-badge fd-food-type-badge--${foodTypeMeta.className}`}>
+                    {foodTypeMeta.label}
+                  </span>
+                ) : null}
                 {(resolvedDish.dietTags || []).map((tag) => (
                   <span className="fd-chip fd-chip--diet" key={`diet-${tag}`}>
                     {formatTagLabel(tag)}

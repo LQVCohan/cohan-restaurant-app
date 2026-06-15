@@ -12,6 +12,7 @@ describe("FoodDetail food classification UI", () => {
     expect(source).toContain('VEGAN: { label: "Thuần chay"');
     expect(source).toContain('MIXED: { label: "Có cả chay và mặn"');
     expect(source).toContain('UNKNOWN: { label: "Chưa phân loại"');
+    expect(source).toContain('const shouldShowFoodTypeBadge = foodTypeKey !== "UNKNOWN"');
     expect(source).toContain("fd-food-type-badge");
     expect(source).toContain("fd-chip--diet");
     expect(source).toContain("fd-chip--allergen");
