@@ -8,11 +8,134 @@ const jwtLikeToken = (roleName) => {
 const makeCart = (items = []) => ({
   id: "test-cart-1",
   totalQuantity: items.reduce((sum, item) => sum + Number(item.quantity || 1), 0),
-  totalAmount: items.reduce((sum, item) => sum + Number(item.price || item.basePrice || 0) * Number(item.quantity || 1), 0),
+  totalAmount: items.reduce((sum, item) => Number(sum) + Number(item.price || item.basePrice || 0) * Number(item.quantity || 1), 0),
   items,
 });
 
 const getUser = (authRole) => (authRole ? TEST_USERS[authRole] : null);
+
+const AI_SETTINGS = {
+  enabled: true,
+  welcomeMessage:
+    "Xin chào, mình là trợ lý A.I của Cohan Restaurant App. Mình có thể hỗ trợ bạn về menu, đặt bàn, đơn hàng, coupon và hướng dẫn sử dụng hệ thống.",
+  starterQuickReplies: [
+    "Gợi ý món bán chạy cho tôi",
+    "Tôi muốn đặt bàn",
+    "Có mã giảm giá nào không?",
+  ],
+  handoffEnabled: true,
+  handoffUnavailableMessage:
+    "Hiện nhà hàng chưa bật hỗ trợ nhân viên qua chatbot. Vui lòng thử lại sau hoặc liên hệ nhà hàng.",
+  lowConfidenceHandoffThreshold: 0.6,
+  fallbackMessage:
+    "Mình chưa đủ thông tin để trả lời chắc chắn. Bạn có muốn gặp nhân viên hỗ trợ không?",
+};
+
+const AI_KNOWLEDGE = [
+  {
+    id: "ai-knowledge-1",
+    title: "Giờ mở cửa nhà hàng",
+    content: "Nhà hàng mở cửa từ 08:00 đến 22:00 hằng ngày.",
+    category: "hours",
+    tags: ["giờ mở cửa", "thông tin"],
+    enabled: true,
+    priority: 10,
+    sourceType: "manual",
+    createdAt: "2026-06-01T08:00:00.000Z",
+    updatedAt: "2026-06-02T08:00:00.000Z",
+  },
+];
+
+const AI_SUGGESTIONS = [
+  {
+    id: "ai-suggestion-1",
+    question: "Có món phù hợp cho 2 người không?",
+    suggestedTitle: "Món phù hợp cho 2 người",
+    suggestedContent: "Gợi ý combo hoặc món bán chạy phù hợp cho 2 người.",
+    category: "menu",
+    tags: ["menu", "combo"],
+    triggerType: "no_knowledge_match",
+    confidence: 0.72,
+    status: "pending",
+    occurrenceCount: 3,
+    lastAskedAt: "2026-06-02T09:00:00.000Z",
+    createdAt: "2026-06-02T09:00:00.000Z",
+  },
+];
+
+const AI_FEEDBACK = [
+  {
+    id: "ai-feedback-1",
+    question: "Nhà hàng có món chay không?",
+    answer: "Mình chưa tìm thấy thông tin món chay.",
+    rating: "not_helpful",
+    reason: "Câu trả lời chưa rõ món chay hiện có.",
+    tags: ["menu", "vegetarian"],
+    sourceTypes: ["knowledge"],
+    confidence: 0.4,
+    status: "new",
+    createdAt: "2026-06-02T10:00:00.000Z",
+  },
+];
+
+const AI_SAFETY_RULES = [
+  {
+    id: "ai-safety-1",
+    ruleType: "handoff_topic",
+    pattern: "khiếu nại nghiêm trọng",
+    responseMessage: "Mình sẽ chuyển bạn cho nhân viên để được hỗ trợ kỹ hơn.",
+    enabled: true,
+    priority: 20,
+    createdAt: "2026-06-02T11:00:00.000Z",
+    updatedAt: "2026-06-02T11:00:00.000Z",
+  },
+];
+
+const AI_EVALUATION_CASES = [
+  {
+    id: "ai-eval-1",
+    question: "Hôm nay nhà hàng mở cửa đến mấy giờ?",
+    expectedBehavior: "Trả lời giờ mở cửa rõ ràng.",
+    category: "hours",
+    tags: ["hours"],
+    enabled: true,
+    createdAt: "2026-06-02T12:00:00.000Z",
+    updatedAt: "2026-06-02T12:00:00.000Z",
+  },
+];
+
+const AI_EVALUATION_RESULT = {
+  caseId: null,
+  question: "Hôm nay nhà hàng mở cửa đến mấy giờ?",
+  expectedBehavior: "Trả lời giờ mở cửa rõ ràng.",
+  category: "hours",
+  tags: ["hours"],
+  answer: "Nhà hàng mở cửa từ 08:00 đến 22:00 hằng ngày.",
+  intent: "opening_hours",
+  confidence: 0.91,
+  isFallback: false,
+  handoffSuggested: false,
+  handoffReason: null,
+  handoffMessage: null,
+  quickReplies: ["Xem thực đơn", "Đặt bàn"],
+  knowledgeMatches: [
+    {
+      id: "ai-knowledge-1",
+      title: "Giờ mở cửa nhà hàng",
+      category: "hours",
+      sourceType: "manual",
+      score: 0.91,
+    },
+  ],
+  safetyResult: {
+    blocked: false,
+    outOfScope: false,
+    disclaimers: [],
+    handoffSuggested: false,
+    matchedRuleIds: [],
+  },
+  sources: [],
+};
 
 export async function installSmokeApiMocks(page, { authRole = null } = {}) {
   const authUser = getUser(authRole);
@@ -127,6 +250,135 @@ function buildGraphqlData(operationName, variables, authUser) {
           paymentRequest: null,
         },
       };
+
+    case "ManagerAiSettings":
+      return { restaurantAiChatbotSettings: AI_SETTINGS };
+    case "UpdateManagerAiSettings":
+      return {
+        updateRestaurantAiChatbotSettings: {
+          ...AI_SETTINGS,
+          ...(variables.input || {}),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    case "AiChatbotAnalytics":
+      return {
+        aiChatbotAnalytics: {
+          totalConversations: 42,
+          totalMessages: 126,
+          openConversations: 5,
+          handoffRequested: 6,
+          resolvedHandoffs: 4,
+          fallbackResponses: 2,
+          lowConfidenceResponses: 3,
+          handoffConversionRate: 0.14,
+          averageMessagesPerConversation: 3,
+          averageHandoffResolutionMinutes: 8.5,
+          topIntents: [
+            { intent: "menu", count: 18 },
+            { intent: "booking", count: 8 },
+            { intent: "coupon", count: 4 },
+          ],
+          messagesByRole: [
+            { role: "customer", count: 70 },
+            { role: "assistant", count: 52 },
+            { role: "staff", count: 4 },
+          ],
+          rateLimitStatus: [
+            { action: "askAiChatbot", max: 20, windowMs: 300000 },
+            { action: "requestAiChatbotHandoff", max: 3, windowMs: 600000 },
+          ],
+          pendingSuggestions: 1,
+          notHelpfulFeedback: 1,
+          activeSafetyRules: 1,
+          evaluationCaseCount: 1,
+          riskySignals: [
+            { code: "PENDING_SUGGESTION_BACKLOG", level: "low", count: 1 },
+          ],
+          recentQualityQueue: [
+            {
+              id: "quality-fallback-1",
+              type: "fallback_response",
+              label: "menu",
+              detail: "Khách hỏi món chay nhưng thiếu tri thức trả lời.",
+              createdAt: "2026-06-02T10:00:00.000Z",
+            },
+            {
+              id: "quality-suggestion-1",
+              type: "pending_suggestion",
+              label: "knowledge",
+              detail: "Gợi ý món phù hợp cho 2 người.",
+              createdAt: "2026-06-02T11:00:00.000Z",
+            },
+          ],
+        },
+      };
+    case "ManagerAiKnowledge":
+      return { restaurantAiChatbotKnowledge: AI_KNOWLEDGE };
+    case "ManagerAiKnowledgeSuggestions":
+      return { restaurantAiChatbotKnowledgeSuggestions: AI_SUGGESTIONS };
+    case "ManagerAiFeedback":
+      return { restaurantAiChatbotAnswerFeedback: AI_FEEDBACK };
+    case "ManagerAiSafetyRules":
+      return { restaurantAiChatbotSafetyRules: AI_SAFETY_RULES };
+    case "ManagerAiEvaluationCases":
+      return { restaurantAiChatbotEvaluationCases: AI_EVALUATION_CASES };
+    case "ExportManagerAiKnowledge":
+      return { exportRestaurantAiChatbotKnowledge: JSON.stringify(AI_KNOWLEDGE, null, 2) };
+    case "EvaluateManagerAiPrompt":
+      return { evaluateRestaurantAiChatbotPrompt: { ...AI_EVALUATION_RESULT, question: variables.input?.message || AI_EVALUATION_RESULT.question } };
+    case "RunManagerAiEvaluationSet":
+      return { runRestaurantAiChatbotEvaluationSet: [AI_EVALUATION_RESULT] };
+    case "ImportManagerAiKnowledge":
+      return { importRestaurantAiChatbotKnowledge: { imported: 1, skipped: 0, errors: [] } };
+    case "CreateManagerAiKnowledge":
+      return { createRestaurantAiChatbotKnowledgeItem: { id: "ai-knowledge-new" } };
+    case "UpdateManagerAiKnowledge":
+      return { updateRestaurantAiChatbotKnowledgeItem: { id: variables.input?.id || "ai-knowledge-1" } };
+    case "DeleteManagerAiKnowledge":
+      return { deleteRestaurantAiChatbotKnowledgeItem: true };
+    case "BulkKnowledgeEnabled":
+      return { bulkUpdateRestaurantAiChatbotKnowledgeEnabled: true };
+    case "BulkDeleteKnowledge":
+      return { bulkDeleteRestaurantAiChatbotKnowledge: true };
+    case "ApproveManagerAiSuggestion":
+      return { approveRestaurantAiChatbotKnowledgeSuggestion: { id: variables.id || "ai-suggestion-1" } };
+    case "DismissManagerAiSuggestion":
+      return { dismissRestaurantAiChatbotKnowledgeSuggestion: true };
+    case "DeleteManagerAiSuggestion":
+      return { deleteRestaurantAiChatbotKnowledgeSuggestion: true };
+    case "BulkDismissManagerAiSuggestions":
+      return { bulkDismissRestaurantAiChatbotKnowledgeSuggestions: true };
+    case "BulkDeleteManagerAiSuggestions":
+      return { bulkDeleteRestaurantAiChatbotKnowledgeSuggestions: true };
+    case "MarkAiFeedbackReviewed":
+      return { markAiChatbotAnswerFeedbackReviewed: true };
+    case "IgnoreAiFeedback":
+      return { ignoreAiChatbotAnswerFeedback: true };
+    case "ConvertAiFeedback":
+      return { convertAiChatbotFeedbackToSuggestion: true };
+    case "BulkAiFeedbackReviewed":
+      return { bulkMarkAiChatbotAnswerFeedbackReviewed: true };
+    case "BulkAiFeedbackIgnore":
+      return { bulkIgnoreAiChatbotAnswerFeedback: true };
+    case "BulkAiFeedbackConvert":
+      return { bulkConvertAiChatbotFeedbackToSuggestion: true };
+    case "CreateManagerAiSafetyRule":
+      return { createRestaurantAiChatbotSafetyRule: { id: "ai-safety-new" } };
+    case "UpdateManagerAiSafetyRule":
+      return { updateRestaurantAiChatbotSafetyRule: { id: variables.input?.id || "ai-safety-1" } };
+    case "DeleteManagerAiSafetyRule":
+      return { deleteRestaurantAiChatbotSafetyRule: true };
+    case "BulkAiSafetyEnabled":
+      return { bulkUpdateRestaurantAiChatbotSafetyRuleEnabled: true };
+    case "BulkAiSafetyDelete":
+      return { bulkDeleteRestaurantAiChatbotSafetyRules: true };
+    case "CreateManagerAiEvalCase":
+      return { createRestaurantAiChatbotEvaluationCase: { id: "ai-eval-new" } };
+    case "UpdateManagerAiEvalCase":
+      return { updateRestaurantAiChatbotEvaluationCase: { id: variables.input?.id || "ai-eval-1" } };
+    case "DeleteManagerAiEvalCase":
+      return { deleteRestaurantAiChatbotEvaluationCase: true };
     default:
       return {};
   }
