@@ -7,6 +7,7 @@ import "./CustomerExperiencePolish.css";
 import "./CustomerOperationsPolish.scss";
 import "./CustomerManagerWorkflow.scss";
 import "./CustomerManagerScale.scss";
+import "./CustomerPaginationSafe.scss";
 
 const CUSTOMER_VISIBLE_PAGE_SIZE = 9;
 
