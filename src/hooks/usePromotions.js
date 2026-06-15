@@ -414,5 +414,6 @@ export const usePromotions = () => {
     updateFilters,
     loading,
     error,
+    refetchPromotions: refetch,
   };
 };
