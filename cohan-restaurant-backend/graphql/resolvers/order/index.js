@@ -2,6 +2,7 @@
 
 import { OrderQuery } from "./query.js";
 import { OrderMutation } from "./mutation.js";
+import { OrderProofMutation } from "./orderProofMutation.js";
 import { withOrderRestaurantAccessGuards } from "./accessGuard.js";
 import { OrderResolvers } from "./types.js";
 import { OrderSubscription } from "./subscription.js";
@@ -20,6 +21,7 @@ export default {
   },
   Mutation: {
     ...GuardedOrderMutation,
+    ...OrderProofMutation,
   },
   Subscription: {
     ...OrderSubscription,

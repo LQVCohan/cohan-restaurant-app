@@ -1,5 +1,6 @@
 scalar DateTime
 scalar JSON
+
 type Query {
   _empty: String
 }
@@ -10,4 +11,16 @@ type Mutation {
 
 type Subscription {
   _empty: String
+}
+
+input UploadOrderItemProofInput {
+  restaurantId: ID!
+  orderId: ID!
+  orderItemId: ID!
+  proofImages: [String!]!
+  note: String
+}
+
+extend type Mutation {
+  uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
 }
