@@ -81,7 +81,11 @@ const formatDate = (value) => {
   if (!value) return "--";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleDateString("vi-VN");
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 const statusLabel = (status) => STATUS_LABELS[status] || status || "Nháp";
@@ -129,6 +133,7 @@ const PayrollManagement = () => {
   const readiness = payroll.payrollReadiness || null;
 
   const effectivePeriodId = selectedPeriodId || currentPeriod?.id || payroll.currentPeriodId || periods[0]?.id || "";
+  const actionDisabled = !effectivePeriodId;
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -148,6 +153,12 @@ const PayrollManagement = () => {
     return { totalPayroll, paidAmount, remaining, progress };
   }, [items, stats]);
 
+  const resetFilters = () => {
+    setSearch("");
+    setActiveStatus("all");
+    setRange(defaultRange);
+  };
+
   const handlePeriodChange = (event) => {
     const nextPeriodId = event.target.value;
     setSelectedPeriodId(nextPeriodId);
@@ -161,6 +172,14 @@ const PayrollManagement = () => {
     downloadCsv(`payroll-${range.start}-${range.end}.csv`, rows, EXPORT_COLUMNS);
   };
 
+  const refreshPayrollData = async () => {
+    await Promise.allSettled([
+      payroll.refetchPeriods?.(),
+      effectivePeriodId ? payroll.refetchDetail?.({ periodId: effectivePeriodId }) : null,
+      effectivePeriodId ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }) : null,
+    ]);
+  };
+
   const runAction = async (label, action) => {
     if (!effectivePeriodId || typeof action !== "function") {
       setActionMessage("Chưa có kỳ lương để thao tác.");
@@ -169,11 +188,7 @@ const PayrollManagement = () => {
     try {
       setActionMessage(`Đang ${label.toLowerCase()}...`);
       await action({ variables: { periodId: effectivePeriodId } });
-      await Promise.allSettled([
-        payroll.refetchPeriods?.(),
-        payroll.refetchDetail?.({ periodId: effectivePeriodId }),
-        payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }),
-      ]);
+      await refreshPayrollData();
       setActionMessage(`${label} thành công.`);
     } catch (error) {
       setActionMessage(error?.message || `${label} không thành công.`);
@@ -189,14 +204,16 @@ const PayrollManagement = () => {
           <p className="page-subtitle">
             Theo dõi kỳ lương, tổng chi phí, trạng thái chi trả và bảng lương nhân viên theo từng nhà hàng.
           </p>
-          <div className="quick-stats">
+          <div className="quick-stats payroll-summary-line">
             <span className="status-dot info">{statusLabel(currentPeriod?.status || "draft")}</span>
-            <span>{formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}</span>
-            <span>{filteredItems.length}/{items.length} nhân viên</span>
+            <span className="payroll-date-range">
+              {formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}
+            </span>
+            <span className="payroll-employee-count">{filteredItems.length}/{items.length} nhân viên</span>
           </div>
         </div>
 
-        <div className="right-actions">
+        <div className="right-actions payroll-control-card">
           <label className="cycle-picker-compact">
             <span className="label">Nhà hàng</span>
             <select
@@ -223,7 +240,7 @@ const PayrollManagement = () => {
           </label>
 
           <div className="actions-row">
-            <button className="btn btn-white" type="button" onClick={() => payroll.refetchPeriods?.()}>
+            <button className="btn btn-white" type="button" onClick={refreshPayrollData}>
               Làm mới
             </button>
             <button className="btn btn-primary" type="button" onClick={handleExportCsv} disabled={!filteredItems.length}>
@@ -263,8 +280,8 @@ const PayrollManagement = () => {
         </aside>
       </section>
 
-      <section className="table-card">
-        <div className="table-controls">
+      <section className="table-card payroll-table-card">
+        <div className="table-controls payroll-filter-row">
           <div className="workflow-tabs" role="tablist" aria-label="Trạng thái bảng lương">
             {STATUS_TABS.map((status) => (
               <button
@@ -277,21 +294,21 @@ const PayrollManagement = () => {
               </button>
             ))}
           </div>
-          <div className="right-controls">
+          <div className="right-controls payroll-search-controls">
             <input
-              className="filter-select"
+              className="filter-select payroll-search-input"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tìm nhân viên, mã, bộ phận..."
             />
             <input
-              className="filter-select"
+              className="filter-select payroll-date-input"
               type="date"
               value={range.start}
               onChange={(event) => setRange((current) => ({ ...current, start: event.target.value }))}
             />
             <input
-              className="filter-select"
+              className="filter-select payroll-date-input"
               type="date"
               value={range.end}
               onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))}
@@ -299,19 +316,21 @@ const PayrollManagement = () => {
           </div>
         </div>
 
-        <div className="table-controls table-controls--secondary">
-          <div className="right-controls">
-            <button className="btn btn-white" type="button" onClick={() => runAction("Tính lại lương", payroll.recalculatePeriod)} disabled={!effectivePeriodId}>
+        <div className="table-controls table-controls--secondary payroll-action-row">
+          <div className="right-controls payroll-action-buttons">
+            <button className="btn btn-white" type="button" onClick={() => runAction("Tính lại lương", payroll.recalculatePeriod)} disabled={actionDisabled}>
               Tính lại
             </button>
-            <button className="btn btn-success" type="button" onClick={() => runAction("Chốt kỳ lương", payroll.finalizePeriod)} disabled={!effectivePeriodId}>
+            <button className="btn btn-success" type="button" onClick={() => runAction("Chốt kỳ lương", payroll.finalizePeriod)} disabled={actionDisabled}>
               Chốt kỳ
             </button>
-            <button className="btn btn-primary" type="button" onClick={() => runAction("Khóa kỳ lương", payroll.lockPeriod)} disabled={!effectivePeriodId}>
+            <button className="btn btn-primary" type="button" onClick={() => runAction("Khóa kỳ lương", payroll.lockPeriod)} disabled={actionDisabled}>
               Khóa kỳ
             </button>
           </div>
-          {actionMessage && <span className="progress-info"><strong>{actionMessage}</strong></span>}
+          <span className={`payroll-inline-message ${actionDisabled ? "is-muted" : ""}`}>
+            {actionMessage || (actionDisabled ? "Chưa có kỳ lương để thao tác" : "Sẵn sàng xử lý kỳ lương")}
+          </span>
         </div>
 
         <div className="table-responsive">
@@ -320,13 +339,13 @@ const PayrollManagement = () => {
               <tr>
                 <th className="sticky-left">Nhân viên</th>
                 <th>Bộ phận</th>
-                <th>Ngày công</th>
-                <th>Giờ công</th>
-                <th>Thu nhập</th>
-                <th>Khấu trừ</th>
-                <th>Thực nhận</th>
-                <th>Đã chi</th>
-                <th>Còn lại</th>
+                <th className="numeric-col">Ngày công</th>
+                <th className="numeric-col">Giờ công</th>
+                <th className="money-col">Thu nhập</th>
+                <th className="money-col">Khấu trừ</th>
+                <th className="money-col is-strong">Thực nhận</th>
+                <th className="money-col">Đã chi</th>
+                <th className="money-col">Còn lại</th>
                 <th>Trạng thái</th>
               </tr>
             </thead>
@@ -350,23 +369,28 @@ const PayrollManagement = () => {
                       </div>
                     </td>
                     <td>{item.department || item.role || "--"}</td>
-                    <td><span className="work-tag">{formatNumber(item.actualWorkDays ?? item.workDays)} ngày</span></td>
-                    <td>{formatNumber(item.totalHours)} giờ</td>
-                    <td>{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
-                    <td className="text-danger">{formatMoney(item.totalDeduction ?? item.deduction)}</td>
-                    <td className="net-cell">{formatMoney(item.netSalary)}</td>
-                    <td className="text-success">{formatMoney(item.paidAmount)}</td>
-                    <td>{formatMoney(item.remainingAmount)}</td>
+                    <td className="numeric-cell"><span className="work-tag">{formatNumber(item.actualWorkDays ?? item.workDays)} ngày</span></td>
+                    <td className="numeric-cell">{formatNumber(item.totalHours)} giờ</td>
+                    <td className="money-cell">{formatMoney(item.grossIncome ?? item.totalIncome)}</td>
+                    <td className="money-cell text-danger">{formatMoney(item.totalDeduction ?? item.deduction)}</td>
+                    <td className="money-cell net-cell">{formatMoney(item.netSalary)}</td>
+                    <td className="money-cell text-success">{formatMoney(item.paidAmount)}</td>
+                    <td className="money-cell">{formatMoney(item.remainingAmount)}</td>
                     <td><span className={`status-dot ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td colSpan={10}>
-                    <div className="table-empty table-empty--rich">
+                    <div className="table-empty table-empty--rich payroll-empty-state">
                       <div className="table-empty__content">
+                        <span className="payroll-empty-icon" aria-hidden="true">₫</span>
                         <strong>Chưa có dữ liệu lương phù hợp</strong>
-                        <span>Hãy chọn kỳ lương, nhà hàng hoặc khoảng thời gian khác để xem bảng lương.</span>
+                        <span>Chọn kỳ lương, nhà hàng hoặc khoảng thời gian khác để xem bảng lương.</span>
+                        <div className="payroll-empty-actions">
+                          <button className="btn btn-white" type="button" onClick={resetFilters}>Bỏ lọc</button>
+                          <button className="btn btn-primary" type="button" onClick={refreshPayrollData}>Làm mới dữ liệu</button>
+                        </div>
                       </div>
                     </div>
                   </td>
