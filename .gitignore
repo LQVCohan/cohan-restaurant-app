@@ -1,5 +1,6 @@
 # Logs
 logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -23,6 +24,21 @@ cohan-restaurant-backend/.env
 cohan-restaurant-backend/.env.*
 !cohan-restaurant-backend/.env.example
 
+# Local test reports and generated artifacts
+playwright-report/
+blob-report/
+test-results/
+playwright/.cache/
+.playwright/
+coverage/
+.nyc_output/
+junit.xml
+junit-results.xml
+*.trace.zip
+*.webm
+*.mp4
+*.har
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -33,15 +49,6 @@ cohan-restaurant-backend/.env.*
 *.njsproj
 *.sln
 *.sw?
-
-# Playwright local artifacts
-playwright-report/
-blob-report/
-test-results/
-.playwright/
-playwright/.cache/
-*.webm
-*.trace.zip
 
 # Backend local upload artifacts
 cohan-restaurant-backend/uploads/
