@@ -34,5 +34,14 @@ cohan-restaurant-backend/.env.*
 *.sln
 *.sw?
 
+# Playwright local artifacts
+playwright-report/
+blob-report/
+test-results/
+.playwright/
+playwright/.cache/
+*.webm
+*.trace.zip
+
 # Backend local upload artifacts
 cohan-restaurant-backend/uploads/
