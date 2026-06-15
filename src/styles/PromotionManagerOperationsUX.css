@@ -1,12 +1,9 @@
-/* Manager-focused polish for Promotion Management tables.
-   Scope is intentionally narrow so other manager pages are not affected. */
-
 .promotion-manager-page {
-  width: min(100%, 1480px);
+  width: min(100%, 1420px);
 }
 
 .promotion-manager-page .main-content-card {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .promotion-manager-page .content-body {
@@ -18,9 +15,8 @@
   max-height: min(68vh, 760px);
   overflow: auto;
   border-radius: 18px;
-  scrollbar-gutter: stable both-edges;
-  background:
-    linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(248, 245, 238, 0.84));
+  scrollbar-gutter: stable;
+  background: linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(248, 245, 238, 0.84));
 }
 
 .promotion-manager-page .table-responsive::-webkit-scrollbar {
@@ -39,16 +35,16 @@
 }
 
 .promotion-manager-page .premium-table {
-  min-width: 1360px;
+  min-width: 1180px;
   table-layout: fixed;
 }
 
 .promotion-manager-page .promotion-table {
-  min-width: 1480px;
+  min-width: 1260px;
 }
 
 .promotion-manager-page .coupon-table {
-  min-width: 1320px;
+  min-width: 1180px;
 }
 
 .promotion-manager-page .premium-table thead {
@@ -60,7 +56,7 @@
   top: 0;
   z-index: 5;
   height: 42px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(206, 195, 181, 0.9);
   background: rgba(248, 245, 238, 0.98);
   color: #6d6258;
@@ -71,11 +67,10 @@
 
 .promotion-manager-page .premium-table th,
 .promotion-manager-page .premium-table td {
-  padding: 12px 14px;
+  padding: 12px;
 }
 
 .promotion-manager-page .premium-table tbody tr {
-  position: relative;
   background: rgba(255, 253, 249, 0.72);
 }
 
@@ -88,74 +83,64 @@
 }
 
 .promotion-manager-page .premium-table tbody td {
-  height: 70px;
+  height: 68px;
   color: #42505c;
   line-height: 1.42;
 }
 
 .promotion-manager-page .premium-table th:first-child,
-.promotion-manager-page .premium-table td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 4;
-  width: 292px;
-  min-width: 292px;
-  max-width: 292px;
-  border-right: 1px solid rgba(222, 214, 203, 0.78);
-  background: linear-gradient(90deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 253, 249, 0.94) 86%, rgba(255, 253, 249, 0) 100%);
-  box-shadow: 10px 0 18px rgba(48, 40, 30, 0.035);
-}
-
-.promotion-manager-page .premium-table th:first-child {
-  z-index: 7;
-  background: linear-gradient(90deg, rgba(248, 245, 238, 1) 0%, rgba(248, 245, 238, 0.96) 86%, rgba(248, 245, 238, 0) 100%);
-}
-
+.promotion-manager-page .premium-table td:first-child,
 .promotion-manager-page .premium-table th:last-child,
 .promotion-manager-page .premium-table td:last-child {
-  position: sticky;
-  right: 0;
-  z-index: 4;
-  width: 176px;
-  min-width: 176px;
-  border-left: 1px solid rgba(222, 214, 203, 0.78);
-  background: linear-gradient(270deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 253, 249, 0.94) 86%, rgba(255, 253, 249, 0) 100%);
-  box-shadow: -10px 0 18px rgba(48, 40, 30, 0.035);
+  position: static;
+  z-index: auto;
+  box-shadow: none;
+  background: transparent;
 }
 
-.promotion-manager-page .premium-table th:last-child {
-  z-index: 7;
-  background: linear-gradient(270deg, rgba(248, 245, 238, 1) 0%, rgba(248, 245, 238, 0.96) 86%, rgba(248, 245, 238, 0) 100%);
+.promotion-manager-page .promotion-table th:nth-child(1),
+.promotion-manager-page .promotion-table td:nth-child(1) {
+  width: 270px;
 }
 
 .promotion-manager-page .promotion-table th:nth-child(2),
 .promotion-manager-page .promotion-table td:nth-child(2) {
-  width: 120px;
+  width: 105px;
 }
 
 .promotion-manager-page .promotion-table th:nth-child(3),
 .promotion-manager-page .promotion-table td:nth-child(3) {
-  width: 180px;
+  width: 168px;
 }
 
 .promotion-manager-page .promotion-table th:nth-child(4),
 .promotion-manager-page .promotion-table td:nth-child(4) {
-  width: 132px;
+  width: 124px;
 }
 
 .promotion-manager-page .promotion-table th:nth-child(5),
 .promotion-manager-page .promotion-table td:nth-child(5) {
-  width: 112px;
+  width: 105px;
 }
 
 .promotion-manager-page .promotion-table th:nth-child(6),
 .promotion-manager-page .promotion-table td:nth-child(6) {
-  width: 158px;
+  width: 148px;
 }
 
 .promotion-manager-page .promotion-table th:nth-child(7),
 .promotion-manager-page .promotion-table td:nth-child(7) {
-  width: 118px;
+  width: 108px;
+}
+
+.promotion-manager-page .promotion-table th:nth-child(8),
+.promotion-manager-page .promotion-table td:nth-child(8) {
+  width: 148px;
+}
+
+.promotion-manager-page .coupon-table th:nth-child(1),
+.promotion-manager-page .coupon-table td:nth-child(1) {
+  width: 260px;
 }
 
 .promotion-manager-page .coupon-table th:nth-child(2),
@@ -180,7 +165,7 @@
 
 .promotion-manager-page .coupon-table th:nth-child(6),
 .promotion-manager-page .coupon-table td:nth-child(6) {
-  width: 158px;
+  width: 150px;
 }
 
 .promotion-manager-page .premium-table td:first-child .fw-bold {
@@ -194,13 +179,8 @@
   overflow: hidden;
 }
 
-.promotion-manager-page .premium-table td:nth-child(2),
-.promotion-manager-page .premium-table td:nth-child(3),
-.promotion-manager-page .premium-table td:nth-child(4) {
-  font-weight: 680;
-}
-
-.promotion-manager-page .premium-table td:nth-child(5) {
+.promotion-manager-page .promotion-table td:nth-child(5),
+.promotion-manager-page .coupon-table td:nth-child(4) {
   color: #17554d !important;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
@@ -214,7 +194,7 @@
 }
 
 .promotion-manager-page .usage-bar {
-  min-width: 118px;
+  min-width: 112px;
 }
 
 .promotion-manager-page .bar-bg {
@@ -223,7 +203,7 @@
 }
 
 .promotion-manager-page .bar-fill {
-  min-width: 10px;
+  min-width: 8px;
   background: linear-gradient(90deg, #17554d, #1f6a60);
 }
 
@@ -234,33 +214,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.promotion-manager-page .premium-table tr:has(.promo-status-badge--draft) td:first-child {
-  box-shadow:
-    inset 4px 0 0 rgba(111, 98, 86, 0.34),
-    10px 0 18px rgba(48, 40, 30, 0.035);
-}
-
-.promotion-manager-page .premium-table tr:has(.promo-status-badge--active) td:first-child {
-  box-shadow:
-    inset 4px 0 0 rgba(31, 106, 96, 0.34),
-    10px 0 18px rgba(48, 40, 30, 0.035);
-}
-
-.promotion-manager-page .premium-table tr:has(.promo-status-badge--expired) td:first-child {
-  box-shadow:
-    inset 4px 0 0 rgba(154, 65, 61, 0.3),
-    10px 0 18px rgba(48, 40, 30, 0.035);
-}
-
 .promotion-manager-page .promo-status-badge {
-  min-width: 78px;
+  min-width: 76px;
   height: 28px;
   border-radius: 11px;
   font-size: 0.72rem;
 }
 
 .promotion-manager-page .action-buttons {
-  position: relative;
   width: max-content;
   margin-left: auto;
   padding: 5px;
@@ -271,49 +232,9 @@
 }
 
 .promotion-manager-page .action-buttons button {
-  position: relative;
-  width: 36px;
-  height: 34px;
+  width: 34px;
+  height: 32px;
   color: #7a8796;
-}
-
-.promotion-manager-page .action-buttons button:hover:not(:disabled) {
-  z-index: 6;
-}
-
-.promotion-manager-page .action-buttons button:hover::after,
-.promotion-manager-page .action-buttons button:focus-visible::after {
-  content: attr(title);
-  position: absolute;
-  right: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(50%);
-  z-index: 20;
-  min-width: max-content;
-  padding: 6px 8px;
-  border: 1px solid rgba(36, 50, 59, 0.1);
-  border-radius: 10px;
-  background: #24323b;
-  color: #fffdf8;
-  font-size: 0.72rem;
-  font-weight: 760;
-  line-height: 1;
-  pointer-events: none;
-  box-shadow: 0 10px 20px rgba(36, 50, 59, 0.18);
-}
-
-.promotion-manager-page .action-buttons button:hover::before,
-.promotion-manager-page .action-buttons button:focus-visible::before {
-  content: "";
-  position: absolute;
-  right: 50%;
-  bottom: calc(100% + 3px);
-  transform: translateX(50%) rotate(45deg);
-  z-index: 19;
-  width: 8px;
-  height: 8px;
-  background: #24323b;
-  pointer-events: none;
 }
 
 .promotion-manager-page .premium-table td:nth-child(4) .text-xs,
@@ -352,17 +273,6 @@
 @media (max-width: 1180px) {
   .promotion-manager-page .table-responsive {
     max-height: none;
-  }
-
-  .promotion-manager-page .premium-table th:first-child,
-  .promotion-manager-page .premium-table td:first-child,
-  .promotion-manager-page .premium-table th:last-child,
-  .promotion-manager-page .premium-table td:last-child {
-    position: static;
-    width: auto;
-    min-width: auto;
-    max-width: none;
-    box-shadow: none;
   }
 
   .promotion-manager-page .premium-table {
