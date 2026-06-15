@@ -3,6 +3,7 @@ import { EventLog, Order, PaymentSession } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
+  createOrderPayment,
   sanitizePaymentSessionForClient,
   settlePaidOrderPaymentSession,
 } from "../../../src/services/payment/paymentSession.service.js";
@@ -63,6 +64,49 @@ async function emitTransferUpdate(ctx, payment, eventName) {
     reference: payment.reference,
     amount: payment.amount,
   }).catch(() => {});
+}
+
+export async function createCustomerTransferPayment(_parent, { input }, ctx) {
+  const actorId = actorIdFrom(ctx);
+  const rid = toId(input?.restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+  const orderIds = Array.isArray(input?.orderIds)
+    ? [...new Set(input.orderIds.map(String).filter(Boolean))]
+    : [];
+  if (!orderIds.length || orderIds.some((id) => !mongoose.isValidObjectId(id))) {
+    throw new Error("Invalid orderIds");
+  }
+  const ownedCount = await Order.countDocuments({
+    _id: { $in: orderIds.map((id) => toId(id)) },
+    restaurantId: rid,
+    userId: actorId,
+    "payment.status": { $ne: "paid" },
+  });
+  if (ownedCount !== orderIds.length) throw new Error("Order not found or not payable");
+
+  const payment = await createOrderPayment({
+    restaurantId: String(rid),
+    orderIds,
+    provider: "bank_transfer",
+    paymentMethod: "bank_transfer",
+    pricing: input?.pricing || null,
+    promotionIds: input?.promotionIds || [],
+    userId: String(actorId),
+    baseApiUrl: process.env.PUBLIC_BASE_URL || process.env.APP_PUBLIC_URL || "http://localhost:4000",
+    clientIp: ctx?.ip || "127.0.0.1",
+  });
+
+  const doc = await PaymentSession.findById(payment._id || payment.id);
+  if (doc) {
+    doc.transfer = doc.transfer || {};
+    doc.transfer.status = "INSTRUCTIONS_SHOWN";
+    doc.transfer.instructionsShownAt = doc.transfer.instructionsShownAt || new Date();
+    doc.events = Array.isArray(doc.events) ? doc.events : [];
+    doc.events.push({ type: "transfer_instructions_shown", payload: { by: String(actorId) } });
+    await doc.save();
+    return sanitizePaymentSessionForClient(doc, { includeRaw: false });
+  }
+  return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 }
 
 export async function submitTransferProof(_parent, { input }, ctx) {
@@ -169,4 +213,4 @@ export async function rejectTransferPayment(_parent, { input }, ctx) {
   return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 }
 
-export default { submitTransferProof, verifyTransferPayment, rejectTransferPayment };
+export default { createCustomerTransferPayment, submitTransferProof, verifyTransferPayment, rejectTransferPayment };
