@@ -1,0 +1,415 @@
+/* =========================================================
+   Schedule workspace final layer
+   Loaded after ScheduleManagement.scss to keep the calendar as the
+   manager's primary workspace and remove duplicated/noisy actions.
+   ========================================================= */
+
+.schedule-container.schedule-container {
+  --workspace-sage: #1f6a60;
+  --workspace-sage-strong: #17554d;
+  --workspace-sage-soft: #dcefe9;
+  --workspace-sage-mist: #f2faf7;
+  --workspace-ink: #24323b;
+  --workspace-cream: #fffdfa;
+  --workspace-warm: #f8f5ee;
+  --workspace-border: rgba(31, 106, 96, 0.18);
+  --workspace-border-strong: rgba(31, 106, 96, 0.32);
+  --workspace-muted: #4e5b56;
+  --workspace-gold: #835b20;
+}
+
+/* Bring the actual work area closer to the first viewport. */
+.schedule-container.schedule-container .schedule-header {
+  padding: 0.78rem 1rem 0.58rem !important;
+  gap: 0.48rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.schedule-container.schedule-container .schedule-header .header-top {
+  margin-bottom: 0 !important;
+  gap: 0.8rem !important;
+}
+
+.schedule-container.schedule-container .title-group .eyebrow-row {
+  margin-bottom: 0.14rem !important;
+}
+
+.schedule-container.schedule-container .title-group h1 {
+  font-size: 1.48rem !important;
+  line-height: 1.05 !important;
+}
+
+.schedule-container.schedule-container .title-group .subtitle {
+  margin-top: 0.12rem !important;
+  font-size: 0.82rem !important;
+  line-height: 1.32 !important;
+}
+
+.schedule-container.schedule-container .header-actions > button,
+.schedule-container.schedule-container .schedule-settings-trigger {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 0.6rem !important;
+  border-radius: 10px !important;
+  font-size: 0.74rem !important;
+}
+
+.schedule-container.schedule-container .schedule-settings-trigger .user-info .name {
+  font-size: 0.72rem !important;
+}
+
+.schedule-container.schedule-container .schedule-settings-trigger .user-info .role {
+  font-size: 0.64rem !important;
+}
+
+/* Executive metrics stay useful but no longer dominate the page. */
+.schedule-container.schedule-container .kpi-grid.compact {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.46rem !important;
+  margin-top: 0 !important;
+}
+
+.schedule-container.schedule-container .kpi-card {
+  min-height: 58px !important;
+  padding: 0.4rem 0.52rem !important;
+  border-radius: 12px !important;
+  border-color: var(--workspace-border) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-icon {
+  width: 1.8rem !important;
+  height: 1.8rem !important;
+  border-radius: 9px !important;
+  background: var(--workspace-sage-mist) !important;
+  color: var(--workspace-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-icon svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .label {
+  font-size: 0.62rem !important;
+  line-height: 1.1 !important;
+  color: var(--workspace-muted) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .value {
+  font-size: 1rem !important;
+  line-height: 1.02 !important;
+  color: var(--workspace-ink) !important;
+}
+
+.schedule-container.schedule-container .kpi-card .kpi-content .hint,
+.schedule-container.schedule-container .schedule-status-card .status-subtext {
+  font-size: 0.62rem !important;
+  line-height: 1.16 !important;
+}
+
+/* Keep only the high-level signal in the header. Details belong in Stats. */
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel {
+  margin-top: 0 !important;
+  padding: 0.44rem 0.54rem !important;
+  border-radius: 12px !important;
+  border-color: var(--workspace-border) !important;
+  background: rgba(255, 253, 250, 0.76) !important;
+  overflow: hidden !important;
+}
+
+.schedule-container.schedule-container .schedule-quality-panel__header {
+  margin-bottom: 0.28rem !important;
+}
+
+.schedule-container.schedule-container .schedule-quality-panel__title {
+  font-size: 0.72rem !important;
+  margin: 0 !important;
+  color: var(--workspace-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .schedule-quality-panel__headline {
+  font-size: 0.68rem !important;
+  line-height: 1.22 !important;
+  margin: 0.08rem 0 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.28rem !important;
+  margin-top: 0.28rem !important;
+}
+
+.schedule-container.schedule-container .schedule-quality-panel__metric {
+  min-height: 36px !important;
+  padding: 0.28rem 0.36rem !important;
+  border-radius: 9px !important;
+}
+
+.schedule-container.schedule-container .schedule-quality-panel__metric .label {
+  font-size: 0.58rem !important;
+  line-height: 1.12 !important;
+}
+
+.schedule-container.schedule-container .schedule-quality-panel__metric .value {
+  font-size: 0.84rem !important;
+  line-height: 1.05 !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__body {
+  display: none !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:first-of-type .schedule-quality-panel__metrics + .schedule-quality-panel__metrics {
+  margin-top: 0.26rem !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__body {
+  display: none !important;
+}
+
+.schedule-container.schedule-container .schedule-header > .schedule-quality-panel:nth-of-type(2) .schedule-quality-panel__link {
+  min-height: 28px !important;
+  margin-top: 0.28rem !important;
+  padding: 0 0.52rem !important;
+  font-size: 0.68rem !important;
+}
+
+/* Toolbar should behave like a command bar, not a second dashboard. */
+.schedule-container.schedule-container .schedule-toolbar {
+  padding: 0.46rem 0.92rem !important;
+  gap: 0.38rem !important;
+  border-left: 3px solid var(--workspace-sage) !important;
+}
+
+.schedule-container.schedule-container .toolbar-group {
+  gap: 0.32rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--view {
+  flex: 1.4 1 430px !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--filters {
+  flex: 0.9 1 260px !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions {
+  flex: 1 1 300px !important;
+  justify-content: flex-end !important;
+}
+
+.schedule-container.schedule-container .view-toggles {
+  padding: 3px !important;
+  border-radius: 11px !important;
+}
+
+.schedule-container.schedule-container .view-toggles button,
+.schedule-container.schedule-container .date-navigation .nav-btn,
+.schedule-container.schedule-container .toolbar-group--filters select,
+.schedule-container.schedule-container .toolbar-group--actions > button,
+.schedule-container.schedule-container .toolbar-group--actions > .schedule-status-badge {
+  min-height: 30px !important;
+  height: 30px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.72rem !important;
+  border-radius: 9px !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions > button:not(.btn-publish) {
+  background: rgba(255, 253, 250, 0.64) !important;
+  box-shadow: none !important;
+  color: var(--workspace-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .btn-publish {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding-inline: 0.7rem !important;
+  background: var(--workspace-ink) !important;
+  border-color: var(--workspace-ink) !important;
+}
+
+.schedule-container.schedule-container .date-navigation .week-label {
+  font-size: 0.76rem !important;
+  font-weight: 850 !important;
+}
+
+/* One publish CTA only: toolbar owns the action, banner becomes a slim reminder. */
+.schedule-container.schedule-container .schedule-publish-reminder {
+  margin-top: 0.42rem !important;
+  padding: 0.44rem 0.6rem !important;
+  border-radius: 12px !important;
+  gap: 0.4rem !important;
+}
+
+.schedule-container.schedule-container .schedule-publish-reminder .reminder-content strong {
+  font-size: 0.74rem !important;
+}
+
+.schedule-container.schedule-container .schedule-publish-reminder .reminder-content p {
+  font-size: 0.68rem !important;
+  line-height: 1.22 !important;
+}
+
+.schedule-container.schedule-container .schedule-publish-reminder button {
+  display: none !important;
+}
+
+/* Legend should not compete with the grid. */
+.schedule-legend.schedule-legend {
+  margin-top: 0.34rem !important;
+  padding: 0.32rem 0.52rem !important;
+  gap: 0.36rem !important;
+  border-radius: 11px !important;
+}
+
+.schedule-legend.schedule-legend .legend-group {
+  gap: 0.34rem !important;
+}
+
+.schedule-legend.schedule-legend .legend-item,
+.schedule-legend.schedule-legend .legend-title {
+  font-size: 0.64rem !important;
+}
+
+/* Seven-day grid fits inside the workspace. */
+.schedule-container.schedule-container .schedule-board:not(.month-board),
+.schedule-container.schedule-container .schedule-board.month-board {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 0.42rem !important;
+  padding: 0.5rem 0.64rem 0.78rem !important;
+  overflow-x: hidden !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column {
+  min-width: 0 !important;
+  min-height: 306px !important;
+  border-radius: 13px !important;
+}
+
+.schedule-container.schedule-container .day-header {
+  min-height: 50px !important;
+  padding: 0.42rem 0.46rem !important;
+}
+
+.schedule-container.schedule-container .day-header strong {
+  font-size: 0.82rem !important;
+}
+
+.schedule-container.schedule-container .day-header span,
+.schedule-container.schedule-container .day-header small {
+  font-size: 0.62rem !important;
+}
+
+.schedule-container.schedule-container .day-body {
+  padding: 0.42rem !important;
+  gap: 0.3rem !important;
+}
+
+.schedule-container.schedule-container .shift-slot {
+  min-height: 31px !important;
+  margin-bottom: 0.14rem !important;
+}
+
+.schedule-container.schedule-container .add-shift-btn,
+.schedule-container.schedule-container .empty-shift-slot,
+.schedule-container.schedule-container .more-shifts-btn,
+.schedule-container.schedule-container .day-summary-pill {
+  min-height: 30px !important;
+  padding: 0.28rem 0.32rem !important;
+  border-radius: 9px !important;
+  font-size: 0.7rem !important;
+}
+
+/* Remove the old blue/purple active markers that came from earlier schedule styles. */
+.schedule-container.schedule-container .day-priority,
+.schedule-container.schedule-container [class*="priority"],
+.schedule-container.schedule-container [class*="focused"],
+.schedule-container.schedule-container [class*="highlight"]:not(.shift-card-anchor),
+.schedule-container.schedule-container .schedule-day-column:first-child .add-shift-btn,
+.schedule-container.schedule-container .schedule-day-column:first-child .empty-shift-slot {
+  color: var(--workspace-sage-strong) !important;
+  border-color: var(--workspace-border-strong) !important;
+  background: var(--workspace-sage-mist) !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-day-column:first-child,
+.schedule-container.schedule-container .schedule-day-column:focus-within {
+  border-color: rgba(31, 106, 96, 0.3) !important;
+  box-shadow: inset 3px 0 0 rgba(31, 106, 96, 0.55), 0 10px 22px rgba(47, 60, 54, 0.08) !important;
+}
+
+/* Availability is secondary to scheduling. Present it as a compact strip even when expanded. */
+.schedule-container.schedule-container .schedule-availability-panel {
+  margin: 0.5rem clamp(1rem, 1.7vw, 1.45rem) 0.78rem !important;
+  padding: 0.62rem 0.7rem !important;
+  border-radius: 14px !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__header {
+  margin-bottom: 0.42rem !important;
+  align-items: center !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__header h3 {
+  font-size: 0.92rem !important;
+  margin: 0 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__header p {
+  font-size: 0.72rem !important;
+  margin-top: 0.12rem !important;
+  line-height: 1.22 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty {
+  padding: 0.54rem 0.6rem !important;
+  border-radius: 11px !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty h4 {
+  font-size: 0.8rem !important;
+  margin: 0 0 0.1rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty p,
+.schedule-container.schedule-container .schedule-availability-panel__hint {
+  font-size: 0.68rem !important;
+  line-height: 1.22 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty button,
+.schedule-container.schedule-container .schedule-availability-panel__actions button,
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button {
+  min-height: 30px !important;
+  padding: 0 0.62rem !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--workspace-ink) !important;
+  background: var(--workspace-ink) !important;
+  color: var(--workspace-cream) !important;
+  font-size: 0.72rem !important;
+}
+
+@media (max-width: 1320px) {
+  .schedule-container.schedule-container .schedule-board:not(.month-board),
+  .schedule-container.schedule-container .schedule-board.month-board {
+    overflow-x: auto !important;
+    grid-template-columns: repeat(7, minmax(136px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .schedule-container.schedule-container .kpi-grid.compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-container.schedule-container .kpi-grid.compact,
+  .schedule-container.schedule-container .schedule-header > .schedule-quality-panel .schedule-quality-panel__metrics {
+    grid-template-columns: 1fr !important;
+  }
+}
