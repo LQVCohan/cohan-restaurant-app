@@ -1,5 +1,5 @@
 // src/pages/CustomerManagement/CustomerList.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SearchX, LayoutGrid, List, Plus, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import CustomerCard from "./CustomerCard";
 import "./CustomerList.scss";
@@ -155,6 +155,8 @@ const CustomerTable = ({ customers, onCustomerClick }) => (
 
 const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const [viewMode, setViewMode] = useState("grid");
+  const listAnchorRef = useRef(null);
+  const didMountRef = useRef(false);
   const totalLoaded = customers?.length || 0;
   const hasCustomers = totalLoaded > 0;
   const page = Math.max(1, Number(pagination?.page || 1));
@@ -165,14 +167,48 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const endItem = totalCount > 0 ? Math.min(totalCount, startItem + totalLoaded - 1) : 0;
   const pageSizeOptions = pagination?.pageSizeOptions || [10, 20, 30, 50];
 
+  const scrollListToTop = () => {
+    window.requestAnimationFrame(() => {
+      listAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    scrollListToTop();
+  }, [page, pageSize, viewMode]);
+
   const managerSummary = useMemo(() => {
     if (loading || pagination?.isLoading) return "Đang tải danh sách khách...";
     if (!totalCount) return "Chưa có khách phù hợp";
     return `Trang ${page}/${totalPages} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
   }, [endItem, loading, page, pagination?.isLoading, startItem, totalCount, totalPages]);
 
+  const handlePreviousPage = () => {
+    scrollListToTop();
+    pagination?.onPrevious?.();
+  };
+
+  const handleNextPage = () => {
+    scrollListToTop();
+    pagination?.onNext?.();
+  };
+
+  const handlePageSizeChange = (event) => {
+    scrollListToTop();
+    pagination?.onPageSizeChange?.(Number(event.target.value));
+  };
+
+  const handleViewModeChange = (nextMode) => {
+    setViewMode(nextMode);
+    scrollListToTop();
+  };
+
   const renderManagerStrip = () => (
-    <div className="cl-manager-strip">
+    <div ref={listAnchorRef} className="cl-manager-strip">
       <div>
         <span className="cl-strip-label">Danh sách khách</span>
         <strong>{managerSummary}</strong>
@@ -183,7 +219,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           <select
             value={pageSize}
             disabled={loading || pagination?.isLoading}
-            onChange={(event) => pagination?.onPageSizeChange?.(Number(event.target.value))}
+            onChange={handlePageSizeChange}
           >
             {pageSizeOptions.map((value) => (
               <option key={value} value={value}>{value}/trang</option>
@@ -194,14 +230,14 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           <button
             type="button"
             className={viewMode === "grid" ? "is-active" : ""}
-            onClick={() => setViewMode("grid")}
+            onClick={() => handleViewModeChange("grid")}
           >
             <LayoutGrid size={14} /> Lưới
           </button>
           <button
             type="button"
             className={viewMode === "table" ? "is-active" : ""}
-            onClick={() => setViewMode("table")}
+            onClick={() => handleViewModeChange("table")}
             disabled={!hasCustomers}
           >
             <List size={14} /> Bảng
@@ -215,7 +251,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     <div className="cl-pagination" aria-label="Phân trang khách hàng từ backend">
       <button
         type="button"
-        onClick={pagination?.onPrevious}
+        onClick={handlePreviousPage}
         disabled={loading || pagination?.isLoading || !pagination?.hasPreviousPage}
       >
         <ChevronLeft size={15} /> Trước
@@ -223,7 +259,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
       <span>Trang <strong>{page}</strong> / {totalPages}</span>
       <button
         type="button"
-        onClick={pagination?.onNext}
+        onClick={handleNextPage}
         disabled={loading || pagination?.isLoading || !pagination?.hasNextPage}
       >
         Sau <ChevronRight size={15} />
