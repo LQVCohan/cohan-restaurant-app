@@ -1,0 +1,27 @@
+/* Final safety layer for warm schedule manager overrides. */
+
+.schedule-container.schedule-container {
+  --schedule-warning: #835b20;
+  --schedule-danger: #9a413d;
+  --schedule-info: #1f6a60;
+}
+
+.schedule-container.schedule-container .schedule-readiness-focus-banner,
+.schedule-readiness-focus-banner.schedule-readiness-focus-banner {
+  border-color: rgba(31, 106, 96, 0.22) !important;
+  background:
+    radial-gradient(circle at 18px 50%, rgba(31, 106, 96, 0.14), transparent 4rem),
+    linear-gradient(135deg, #f2faf7 0%, #fffdfa 100%) !important;
+  color: #17554d !important;
+  box-shadow: 0 10px 24px rgba(31, 106, 96, 0.08) !important;
+}
+
+.schedule-readiness-focus-banner.schedule-readiness-focus-banner::before {
+  background: #1f6a60 !important;
+  color: #fffdfa !important;
+  box-shadow: 0 8px 18px rgba(31, 106, 96, 0.18) !important;
+}
+
+.schedule-readiness-focus-banner.schedule-readiness-focus-banner::after {
+  color: #4e5b56 !important;
+}
