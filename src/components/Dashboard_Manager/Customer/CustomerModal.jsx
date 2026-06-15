@@ -22,8 +22,12 @@ import ChatThreadPanel from "../../../components/common/ChatThreadPanel";
 import useCommunication from "../../../hooks/useCommunication";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
-import { RESEND_USER_VERIFICATION, UPDATE_CUSTOMER_NOTE } from "../../../hooks/useUserManagement";
+import {
+  RESEND_USER_VERIFICATION,
+  UPDATE_CUSTOMER_NOTE,
+} from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
+import "./CustomerModalPolish.scss";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* ===== Helpers & Utils ===== */
@@ -51,7 +55,7 @@ const getEntryAmount = (entry) => {
     return entry.raw.items.reduce(
       (sum, it) =>
         sum + ((it.price || 0) + (it.modifiersPrice || 0)) * (it.quantity || 1),
-      0
+      0,
     );
   }
   return Number(entry?.amount || 0);
@@ -80,7 +84,6 @@ const GET_CUSTOMER_DETAIL_ANALYTICS = gql`
   }
 `;
 
-// Thêm prop isOpen vào đây để điều khiển modal
 const CustomerModal = ({
   isOpen,
   customer,
@@ -91,11 +94,17 @@ const CustomerModal = ({
   const { user, restaurants = [] } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
   const apolloClient = useApolloClient();
-  const [notes, setNotes] = useState(customer?.noteInternal || customer?.notes || "");
+  const [notes, setNotes] = useState(
+    customer?.noteInternal || customer?.notes || "",
+  );
   const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [tempNotes, setTempNotes] = useState(customer?.noteInternal || customer?.notes || "");
-  const [saveNotesMut, { loading: savingNotes }] = useMutation(UPDATE_CUSTOMER_NOTE);
-  const [resendVerificationMut, { loading: resendingVerification }] = useMutation(RESEND_USER_VERIFICATION);
+  const [tempNotes, setTempNotes] = useState(
+    customer?.noteInternal || customer?.notes || "",
+  );
+  const [saveNotesMut, { loading: savingNotes }] =
+    useMutation(UPDATE_CUSTOMER_NOTE);
+  const [resendVerificationMut, { loading: resendingVerification }] =
+    useMutation(RESEND_USER_VERIFICATION);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatThreadId, setChatThreadId] = useState(null);
   const [chatError, setChatError] = useState("");
@@ -121,43 +130,63 @@ const CustomerModal = ({
     sendMessageState,
   } = useCommunication({ restaurantId });
 
-  // 1. Data Processing
   const recentOrders = useMemo(() => customer?.recentOrders || [], [customer]);
 
-  const { data: detailAnalyticsData } = useQuery(GET_CUSTOMER_DETAIL_ANALYTICS, {
-    skip: !isOpen || !customer?.id,
-    variables: { userId: String(customer?.id || ""), restaurantId },
-    fetchPolicy: "network-only",
-    errorPolicy: "all",
-  });
+  const { data: detailAnalyticsData } = useQuery(
+    GET_CUSTOMER_DETAIL_ANALYTICS,
+    {
+      skip: !isOpen || !customer?.id,
+      variables: { userId: String(customer?.id || ""), restaurantId },
+      fetchPolicy: "network-only",
+      errorPolicy: "all",
+    },
+  );
   const detailAnalytics = detailAnalyticsData?.customerDetailAnalytics || null;
 
   const rankConfig = useMemo(
-    () => getRankDisplayConfig(customer?.customerType || customer?.rankName, customer?.rankSettings || []),
+    () =>
+      getRankDisplayConfig(
+        customer?.customerType || customer?.rankName,
+        customer?.rankSettings || [],
+      ),
     [customer?.customerType, customer?.rankName, customer?.rankSettings],
   );
 
   const stats = useMemo(() => {
     const fallbackCount = recentOrders.length;
-    const fallbackTotal = recentOrders.reduce((sum, e) => sum + getEntryAmount(e), 0);
+    const fallbackTotal = recentOrders.reduce(
+      (sum, e) => sum + getEntryAmount(e),
+      0,
+    );
     const total = Number(customer?.totalSpending);
     const count = Number(customer?.totalOrders);
-    const safeCount = Number.isFinite(count) && count >= 0 ? count : fallbackCount;
-    const safeTotal = Number.isFinite(total) && total >= 0 ? total : fallbackTotal;
+    const safeCount =
+      Number.isFinite(count) && count >= 0 ? count : fallbackCount;
+    const safeTotal =
+      Number.isFinite(total) && total >= 0 ? total : fallbackTotal;
     const avg = safeCount > 0 ? safeTotal / safeCount : 0;
-    const points = Number(customer?.loyaltyPoints || detailAnalytics?.rankPoints || 0);
+    const points = Number(
+      customer?.loyaltyPoints || detailAnalytics?.rankPoints || 0,
+    );
 
     return { count: safeCount, total: safeTotal, avg, points };
-  }, [customer?.totalSpending, customer?.totalOrders, customer?.loyaltyPoints, detailAnalytics?.rankPoints, recentOrders]);
+  }, [
+    customer?.totalSpending,
+    customer?.totalOrders,
+    customer?.loyaltyPoints,
+    detailAnalytics?.rankPoints,
+    recentOrders,
+  ]);
 
   const topItems = useMemo(() => {
     if (customer?.favoriteItems?.length > 0) return customer.favoriteItems;
-    if (detailAnalytics?.favoriteFoods?.length) {
+    if (detailAnalytics?.favoriteFoods?.length)
       return detailAnalytics.favoriteFoods.filter(Boolean).slice(0, 5);
-    }
-    if (detailAnalytics?.topDishes?.length) {
-      return detailAnalytics.topDishes.map((dish) => dish?.dishName).filter(Boolean).slice(0, 5);
-    }
+    if (detailAnalytics?.topDishes?.length)
+      return detailAnalytics.topDishes
+        .map((dish) => dish?.dishName)
+        .filter(Boolean)
+        .slice(0, 5);
     const itemMap = {};
     recentOrders.forEach((order) => {
       const items = order.items || order.raw?.items || [];
@@ -170,7 +199,12 @@ const CustomerModal = ({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map((entry) => entry[0]);
-  }, [recentOrders, customer?.favoriteItems, detailAnalytics?.favoriteFoods, detailAnalytics?.topDishes]);
+  }, [
+    recentOrders,
+    customer?.favoriteItems,
+    detailAnalytics?.favoriteFoods,
+    detailAnalytics?.topDishes,
+  ]);
 
   const walletStatus = useMemo(() => {
     const hasWallet = customer?.wallet?.id || customer?.hasWallet;
@@ -179,11 +213,25 @@ const CustomerModal = ({
     return { label: "Chưa kích hoạt", cls: "inactive" };
   }, [customer]);
 
-  const displayName = customer?.displayName || customer?.name || customer?.fullName || "Khách vãng lai";
+  const displayName =
+    customer?.displayName ||
+    customer?.name ||
+    customer?.fullName ||
+    "Khách vãng lai";
   const customerCode = String(customer?.id || 0).padStart(4, "0");
-  const joinDate = formatDate(customer?.joinDate || customer?.registeredAt || customer?.createdAt);
-  const loyaltyDuration = Number(customer?.loyaltyDurationScore ?? detailAnalytics?.loyaltyDurationScore ?? 0);
-  const verificationText = customer?.verificationLabel || (customer?.verificationStatus === "verified" ? "Đã xác minh" : "Chưa xác minh");
+  const joinDate = formatDate(
+    customer?.joinDate || customer?.registeredAt || customer?.createdAt,
+  );
+  const loyaltyDuration = Number(
+    customer?.loyaltyDurationScore ??
+      detailAnalytics?.loyaltyDurationScore ??
+      0,
+  );
+  const verificationText =
+    customer?.verificationLabel ||
+    (customer?.verificationStatus === "verified"
+      ? "Đã xác minh"
+      : "Chưa xác minh");
   const isGuestCustomer = Boolean(customer?.isGuest || customer?.isGuestBadge);
 
   useEffect(() => {
@@ -202,13 +250,29 @@ const CustomerModal = ({
   const handleResendVerification = async (channel = "AUTO") => {
     if (!customer?.id) return;
     try {
-      const { data } = await resendVerificationMut({ variables: { userId: customer.id, channel } });
+      const { data } = await resendVerificationMut({
+        variables: { userId: customer.id, channel },
+      });
       const result = data?.resendUserVerification;
-      if (result?.status === "SENT") showNotification("Đã gửi xác nhận.", "success");
-      else if (result?.status === "ALREADY_VERIFIED") showNotification("Tài khoản đã được xác minh, không cần gửi lại.", "success");
-      else if (result?.status === "COOLDOWN") showNotification("Vui lòng chờ trước khi gửi lại xác nhận.", "warning");
-      else if (result?.status === "NOT_CONFIGURED") showNotification("Email/SMS provider chưa được cấu hình. Tài khoản đã tạo nhưng chưa gửi xác nhận.", "warning");
-      else showNotification(result?.message || result?.errors?.[0] || "Không thể gửi xác nhận.", "warning");
+      if (result?.status === "SENT")
+        showNotification("Đã gửi xác nhận.", "success");
+      else if (result?.status === "ALREADY_VERIFIED")
+        showNotification(
+          "Tài khoản đã được xác minh, không cần gửi lại.",
+          "success",
+        );
+      else if (result?.status === "COOLDOWN")
+        showNotification("Vui lòng chờ trước khi gửi lại xác nhận.", "warning");
+      else if (result?.status === "NOT_CONFIGURED")
+        showNotification(
+          "Email/SMS provider chưa được cấu hình. Tài khoản đã tạo nhưng chưa gửi xác nhận.",
+          "warning",
+        );
+      else
+        showNotification(
+          result?.message || result?.errors?.[0] || "Không thể gửi xác nhận.",
+          "warning",
+        );
       try {
         await apolloClient.refetchQueries({
           include: ["GetCustomerListPage", "GetCustomers", "GetUsers"],
@@ -235,13 +299,17 @@ const CustomerModal = ({
           noteInternal: tempNotes || "",
         },
       });
-      const persistedNote = data?.updateCustomerNote?.noteInternal ?? tempNotes ?? "";
+      const persistedNote =
+        data?.updateCustomerNote?.noteInternal ?? tempNotes ?? "";
       setNotes(persistedNote);
       setTempNotes(persistedNote);
       setIsEditingNotes(false);
       showNotification("Đã lưu ghi chú khách hàng.", "success");
     } catch (err) {
-      showNotification(err?.message || "Không thể lưu ghi chú khách hàng.", "error");
+      showNotification(
+        err?.message || "Không thể lưu ghi chú khách hàng.",
+        "error",
+      );
     }
   };
 
@@ -265,9 +333,7 @@ const CustomerModal = ({
             restaurantId,
             channel: "support",
             targetRole: "support",
-            subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${
-              displayName || "Khách vãng lai"
-            }`,
+            subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${displayName || "Khách vãng lai"}`,
           },
         },
       });
@@ -287,20 +353,13 @@ const CustomerModal = ({
 
   const handleSendMessage = async (content) => {
     setChatError("");
-
     if (!chatThreadId) {
       setChatError("Chưa có hội thoại để gửi tin.");
       throw new Error("Missing thread");
     }
-
     try {
       await sendMessage({
-        variables: {
-          input: {
-            threadId: chatThreadId,
-            content,
-          },
-        },
+        variables: { input: { threadId: chatThreadId, content } },
       });
       await loadThread({ variables: { id: chatThreadId } });
     } catch (err) {
@@ -309,9 +368,7 @@ const CustomerModal = ({
     }
   };
 
-  const chatSubtitle = `${customer?.phone || "Chưa có SĐT"}${
-    customer?.email ? ` • ${customer.email}` : ""
-  }`;
+  const chatSubtitle = `${customer?.phone || "Chưa có SĐT"}${customer?.email ? ` • ${customer.email}` : ""}`;
 
   return (
     <Modal
@@ -324,7 +381,10 @@ const CustomerModal = ({
     >
       <Modal.Body className="customer-modal-body">
         <div className="customer-modal-content">
-          <section className="cm-profile-hero" aria-label="Tổng quan hồ sơ khách hàng">
+          <section
+            className="cm-profile-hero"
+            aria-label="Tổng quan hồ sơ khách hàng"
+          >
             <div className="cm-profile-hero__identity">
               <div className="cm-avatar-card">
                 <div className="cm-avatar-card__mark">
@@ -337,8 +397,15 @@ const CustomerModal = ({
                 <h2>{displayName}</h2>
                 <div className="cm-profile-tags">
                   <span>#{customerCode}</span>
-                  <span className={`tier-${rankConfig.variant}`}><Star size={13} />{rankConfig.label}</span>
-                  {isGuestCustomer ? <span>Guest</span> : <span>Đã đăng ký</span>}
+                  <span className={`tier-${rankConfig.variant}`}>
+                    <Star size={13} />
+                    {rankConfig.label}
+                  </span>
+                  {isGuestCustomer ? (
+                    <span>Guest</span>
+                  ) : (
+                    <span>Đã đăng ký</span>
+                  )}
                   <span>{verificationText}</span>
                 </div>
               </div>
@@ -346,7 +413,9 @@ const CustomerModal = ({
             <div className="cm-profile-hero__points">
               <span>Điểm gắn bó</span>
               <strong>{stats.points.toLocaleString("vi-VN")}</strong>
-              <small>{loyaltyDuration.toLocaleString("vi-VN")} ngày trong hệ thống</small>
+              <small>
+                {loyaltyDuration.toLocaleString("vi-VN")} ngày trong hệ thống
+              </small>
             </div>
           </section>
 
@@ -375,11 +444,20 @@ const CustomerModal = ({
 
           <section className="cm-detail-grid">
             <article className="cm-panel cm-panel--contact">
-              <div className="cm-panel__title"><User size={15} />Thông tin cá nhân</div>
+              <div className="cm-panel__title">
+                <User size={15} />
+                Thông tin cá nhân
+              </div>
               <div className="cm-contact-list">
                 <div className="cm-contact-row">
-                  <span className={`cm-dot ${customer?.online ? "is-live" : ""}`} />
-                  <strong>{customer?.online ? "Hoạt động gần đây" : "Không hoạt động gần đây"}</strong>
+                  <span
+                    className={`cm-dot ${customer?.online ? "is-live" : ""}`}
+                  />
+                  <strong>
+                    {customer?.online
+                      ? "Hoạt động gần đây"
+                      : "Không hoạt động gần đây"}
+                  </strong>
                 </div>
                 <div className="cm-contact-row">
                   <UserCheck size={15} />
@@ -388,7 +466,10 @@ const CustomerModal = ({
                     <button
                       type="button"
                       onClick={() => handleResendVerification("AUTO")}
-                      disabled={resendingVerification || (!customer?.email && !customer?.phone)}
+                      disabled={
+                        resendingVerification ||
+                        (!customer?.email && !customer?.phone)
+                      }
                     >
                       Nhắc gửi
                     </button>
@@ -404,26 +485,46 @@ const CustomerModal = ({
                 </div>
               </div>
               <div className="cm-wallet-line">
-                <span><Wallet size={15} /> Ví điện tử</span>
-                <strong className={`w-badge ${walletStatus.cls}`}>{walletStatus.label}</strong>
+                <span>
+                  <Wallet size={15} /> Ví điện tử
+                </span>
+                <strong className={`w-badge ${walletStatus.cls}`}>
+                  {walletStatus.label}
+                </strong>
               </div>
             </article>
 
             <article className="cm-panel cm-panel--favorites">
-              <div className="cm-panel__title"><Star size={15} />Món yêu thích</div>
+              <div className="cm-panel__title">
+                <Star size={15} />
+                Món yêu thích
+              </div>
               <div className="cm-chip-list">
                 {topItems.length > 0 ? (
-                  topItems.map((item, idx) => <span key={idx} className="cm-chip cm-chip--food">{item}</span>)
+                  topItems.map((item, idx) => (
+                    <span key={idx} className="cm-chip cm-chip--food">
+                      {item}
+                    </span>
+                  ))
                 ) : (
-                  <span className="cm-empty-inline">Chưa có dữ liệu món ăn</span>
+                  <span className="cm-empty-inline">
+                    Chưa có dữ liệu món ăn
+                  </span>
                 )}
               </div>
-              <div className="cm-panel__title cm-panel__title--sub"><Tag size={15} />Nhãn</div>
+              <div className="cm-panel__title cm-panel__title--sub">
+                <Tag size={15} />
+                Nhãn
+              </div>
               <div className="cm-chip-list">
                 {(customer?.refRestaurants || []).slice(0, 2).map((r) => (
-                  <span className="cm-chip" key={r.id || r.name}>{r.name}</span>
+                  <span className="cm-chip" key={r.id || r.name}>
+                    {r.name}
+                  </span>
                 ))}
-                {!(customer?.refRestaurants || []).length && <span className="cm-chip">Cohan Restaurant</span>}
+                {!(customer?.refRestaurants || []).length && (
+                  <span className="cm-chip">Cohan Restaurant</span>
+                )}
               </div>
             </article>
 
@@ -438,18 +539,32 @@ const CustomerModal = ({
               <div className="cm-order-list">
                 {recentOrders.length > 0 ? (
                   recentOrders.slice(0, 5).map((order, i) => {
-                    const stKey = (order.status || order.raw?.currentStatus || "default").toLowerCase();
+                    const stKey = (
+                      order.status ||
+                      order.raw?.currentStatus ||
+                      "default"
+                    ).toLowerCase();
                     const st = STATUS_CONFIG[stKey] || STATUS_CONFIG.default;
                     return (
                       <button
                         type="button"
                         key={i}
                         className="cm-order-row"
-                        onClick={() => onShowBill && onShowBill(order?.raw || order)}
+                        onClick={() =>
+                          onShowBill && onShowBill(order?.raw || order)
+                        }
                       >
-                        <span>{formatDate(order.createdAt || order.raw?.createdAt || order.date)}</span>
+                        <span>
+                          {formatDate(
+                            order.createdAt ||
+                              order.raw?.createdAt ||
+                              order.date,
+                          )}
+                        </span>
                         <strong>{formatMoney(getEntryAmount(order))}</strong>
-                        <em style={{ color: st.color, backgroundColor: st.bg }}>{st.label}</em>
+                        <em style={{ color: st.color, backgroundColor: st.bg }}>
+                          {st.label}
+                        </em>
                         <ArrowRight size={14} />
                       </button>
                     );
@@ -462,8 +577,15 @@ const CustomerModal = ({
 
             <article className="cm-panel cm-panel--notes">
               <div className="notes-header">
-                <h3><Edit3 size={15} />Ghi chú nội bộ</h3>
-                {!isEditingNotes && <button type="button" onClick={() => setIsEditingNotes(true)}>Chỉnh sửa</button>}
+                <h3>
+                  <Edit3 size={15} />
+                  Ghi chú nội bộ
+                </h3>
+                {!isEditingNotes && (
+                  <button type="button" onClick={() => setIsEditingNotes(true)}>
+                    Chỉnh sửa
+                  </button>
+                )}
               </div>
               {isEditingNotes ? (
                 <>
@@ -475,7 +597,12 @@ const CustomerModal = ({
                     autoFocus
                   />
                   <div className="action-row">
-                    <button type="button" className="save" onClick={handleSaveNotes} disabled={savingNotes}>
+                    <button
+                      type="button"
+                      className="save"
+                      onClick={handleSaveNotes}
+                      disabled={savingNotes}
+                    >
                       {savingNotes ? "Đang lưu..." : "Lưu"}
                     </button>
                     <button
@@ -505,8 +632,14 @@ const CustomerModal = ({
       </Modal.Body>
 
       <Modal.Footer className="customer-modal-footer">
-        <button type="button" className="btn btn-secondary" onClick={onClose}>Đóng</button>
-        <button type="button" className="btn btn-primary" onClick={openCustomerChat}>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>
+          Đóng
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={openCustomerChat}
+        >
           <MessageSquare size={16} className="mr-2" /> Gửi tin nhắn
         </button>
       </Modal.Footer>
@@ -521,7 +654,11 @@ const CustomerModal = ({
         error={chatError || threadError}
         sending={sendMessageState.loading}
         composerDisabled={!chatThreadId || Boolean(chatError)}
-        composerPlaceholder={chatThreadId ? "Nhập nội dung tin nhắn..." : "Đang khởi tạo hội thoại..."}
+        composerPlaceholder={
+          chatThreadId
+            ? "Nhập nội dung tin nhắn..."
+            : "Đang khởi tạo hội thoại..."
+        }
         onClose={() => {
           setChatOpen(false);
           setChatError("");
