@@ -33,6 +33,13 @@ extend type PaymentSession {
   transfer: TransferPaymentState
 }
 
+input CreateCustomerTransferPaymentInput {
+  restaurantId: ID!
+  orderIds: [ID!]!
+  pricing: CheckoutPricingInput
+  promotionIds: [ID!]
+}
+
 input SubmitTransferProofInput {
   paymentSessionId: ID!
   proofImages: [String!]!
@@ -54,6 +61,7 @@ input RejectTransferPaymentInput {
 }
 
 extend type Mutation {
+  createCustomerTransferPayment(input: CreateCustomerTransferPaymentInput!): PaymentSession!
   submitTransferProof(input: SubmitTransferProofInput!): PaymentSession!
   verifyTransferPayment(input: VerifyTransferPaymentInput!): PaymentSession!
   rejectTransferPayment(input: RejectTransferPaymentInput!): PaymentSession!
