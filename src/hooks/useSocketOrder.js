@@ -18,6 +18,14 @@ function broadcastMenuAvailabilityEvent(evt, channel = "inventory") {
   );
 }
 
+function isUnverifiedTransferOrder(order) {
+  const payment = order?.payment || {};
+  const method = String(payment.method || payment.provider || "").toLowerCase();
+  const status = String(payment.status || "").toLowerCase();
+  const isTransfer = ["transfer", "bank_transfer"].includes(method);
+  return isTransfer && status !== "paid";
+}
+
 /**
  * Hook kết nối socket.io để lắng nghe các sự kiện order + inventory realtime.
  * Socket sử dụng đúng access token hiện hành từ authStorage, cùng nguồn với Apollo client.
@@ -76,6 +84,10 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
 
     socket.on("orderEvents", (evt) => {
       if (!evt?.type || !evt?.order) return;
+      if (evt.type === "ORDER_CREATED" && isUnverifiedTransferOrder(evt.order)) {
+        console.log("📡 [SOCKET.IO] Hold transfer order until payment verification:", evt.order?.orderCode || evt.order?.id);
+        return;
+      }
       const h = getHandlers();
       console.log("📡 [SOCKET.IO] Order event received:", evt);
 
@@ -84,6 +96,10 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
       switch (evt.type) {
         case "ORDER_CREATED":
           h.onCreated?.(evt.order);
+          break;
+        case "PAYMENT_VERIFIED":
+          h.onCreated?.(evt.order);
+          h.onUpdated?.(evt.order);
           break;
         case "ORDER_UPDATED":
           h.onUpdated?.(evt.order);
