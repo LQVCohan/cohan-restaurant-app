@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import usePayroll from "@/hooks/usePayroll";
+import { useQuery } from "@apollo/client";
+import usePayroll, { QUERY_STAFF_PAYROLL_OVERVIEW } from "@/hooks/usePayroll";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./PayrollManagement.scss";
 
@@ -126,14 +127,31 @@ const PayrollManagement = () => {
     endDate: range.end,
   });
 
+  const runtimeOverviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
+    variables: {
+      startDate: range.start,
+      endDate: range.end,
+      restaurantId: selectedRestaurantId || undefined,
+      periodId: undefined,
+    },
+    skip: !selectedRestaurantId || !range.start || !range.end,
+    fetchPolicy: "cache-and-network",
+  }) || {};
+
   const periods = payroll.periods || [];
   const currentPeriod = payroll.periodDetail?.period || periods.find((period) => period.id === (selectedPeriodId || payroll.currentPeriodId)) || null;
-  const stats = payroll.payrollStats || currentPeriod?.stats || {};
-  const items = payroll.payrollItems || [];
+  const snapshotItems = payroll.payrollItems || [];
+  const runtimeItems = runtimeOverviewQuery.data?.staffPayrollOverview?.items || [];
+  const hasSnapshotItems = snapshotItems.length > 0;
+  const items = hasSnapshotItems ? snapshotItems : runtimeItems;
+  const stats = hasSnapshotItems
+    ? payroll.payrollStats || currentPeriod?.stats || {}
+    : runtimeOverviewQuery.data?.staffPayrollOverview?.stats || payroll.payrollStats || currentPeriod?.stats || {};
   const readiness = payroll.payrollReadiness || null;
 
   const effectivePeriodId = selectedPeriodId || currentPeriod?.id || payroll.currentPeriodId || periods[0]?.id || "";
   const actionDisabled = !effectivePeriodId;
+  const tableLoading = payroll.loading || runtimeOverviewQuery.loading;
 
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -177,6 +195,12 @@ const PayrollManagement = () => {
       payroll.refetchPeriods?.(),
       effectivePeriodId ? payroll.refetchDetail?.({ periodId: effectivePeriodId }) : null,
       effectivePeriodId ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }) : null,
+      runtimeOverviewQuery.refetch?.({
+        startDate: range.start,
+        endDate: range.end,
+        restaurantId: selectedRestaurantId || undefined,
+        periodId: undefined,
+      }),
     ]);
   };
 
@@ -205,7 +229,7 @@ const PayrollManagement = () => {
             Theo dõi kỳ lương, tổng chi phí, trạng thái chi trả và bảng lương nhân viên theo từng nhà hàng.
           </p>
           <div className="quick-stats payroll-summary-line">
-            <span className="status-dot info">{statusLabel(currentPeriod?.status || "draft")}</span>
+            <span className="status-dot info">{statusLabel(hasSnapshotItems ? currentPeriod?.status || "draft" : "draft")}</span>
             <span className="payroll-date-range">
               {formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}
             </span>
@@ -329,7 +353,7 @@ const PayrollManagement = () => {
             </button>
           </div>
           <span className={`payroll-inline-message ${actionDisabled ? "is-muted" : ""}`}>
-            {actionMessage || (actionDisabled ? "Chưa có kỳ lương để thao tác" : "Sẵn sàng xử lý kỳ lương")}
+            {actionMessage || (actionDisabled ? "Chưa có kỳ lương để thao tác" : hasSnapshotItems ? "Sẵn sàng xử lý kỳ lương" : "Đang xem dữ liệu lương tạm tính từ nhân viên")}
           </span>
         </div>
 
@@ -350,7 +374,7 @@ const PayrollManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {payroll.loading && !items.length ? (
+              {tableLoading && !items.length ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`loading-${index}`}>
                     <td className="sticky-left" colSpan={10}>Đang tải dữ liệu lương...</td>
