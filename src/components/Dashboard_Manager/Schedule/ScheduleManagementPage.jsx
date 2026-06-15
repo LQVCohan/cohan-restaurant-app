@@ -10,6 +10,7 @@ import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.j
 import ScheduleManagement from "./ScheduleManagement";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
+import "@/styles/schedule-storage-alignment.css";
 
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
