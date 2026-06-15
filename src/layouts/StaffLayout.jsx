@@ -64,7 +64,7 @@ const StaffLayout = ({ children }) => {
       { label: "Liên lạc", to: "/staff/contacts" },
       { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff" },
       { label: "Phiếu lương", to: "/staff/payslips" },
-      { label: "Đơn nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
+      { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
       { label: "Cài đặt", to: "/staff/settings" },
     ],
@@ -87,7 +87,7 @@ const StaffLayout = ({ children }) => {
           <div className="staff-shell__topbar">
             <div>
               <p className="staff-shell__eyebrow">Khu vực nhân viên</p>
-              <div className="staff-shell__title">Vận hành ca làm</div>
+              <h1 className="staff-shell__title">Vận hành ca làm</h1>
             </div>
             <div className="staff-shell__identity">
               <div className="staff-shell__identity-avatar" aria-hidden="true">{(displayName || "NV").slice(0, 2).toUpperCase()}</div>

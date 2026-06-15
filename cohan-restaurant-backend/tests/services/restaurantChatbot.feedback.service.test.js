@@ -7,7 +7,7 @@ const feedbackStore = [];
 const conversationStore = [];
 const messageStore = [];
 
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args), requireAnyRestaurantPermission: (...args) => permissionSpy(...args), requirePermission: (...args) => permissionSpy(...args), requireAnyPermission: (...args) => permissionSpy(...args) }));
 vi.mock("../../src/services/ai/restaurantChatbotKnowledgeSuggestion.service.js", () => ({ recordKnowledgeGapSuggestion: (...args) => recordSuggestionSpy(...args) }));
 vi.mock("../../models/index.js", () => {
   const toLean = (row) => ({ lean: async () => (row ? { ...row } : null) });
@@ -70,9 +70,9 @@ describe("restaurantChatbotFeedback service", () => {
     await expect(submitAiChatbotAnswerFeedback({ input: { restaurantId: rid2, conversationId: cid, messageId: mid, guestId: "g1", rating: "helpful" }, ctx: {} })).rejects.toMatchObject({ code: "BAD_USER_INPUT" });
   });
 
-  it("list requires REPORT_READ", async () => {
+  it("list requires AI chatbot read", async () => {
     await listRestaurantAiChatbotAnswerFeedback({ restaurantId: rid, filter: { search: "[abc" }, ctx: { user: { id: uid } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), rid, PERMISSIONS.REPORT_READ);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), rid, expect.arrayContaining([PERMISSIONS.AI_CHATBOT_READ]));
   });
 
   it("review/ignore/convert require RESTAURANT_WRITE", async () => {
@@ -80,7 +80,7 @@ describe("restaurantChatbotFeedback service", () => {
     await markAiChatbotAnswerFeedbackReviewed({ id: row.id, ctx: { user: { id: uid } } });
     await ignoreAiChatbotAnswerFeedback({ id: row.id, ctx: { user: { id: uid } } });
     await convertAiChatbotFeedbackToSuggestion({ id: row.id, ctx: { user: { id: uid } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), expect.anything(), PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.anything(), expect.anything(), PERMISSIONS.AI_CHATBOT_MODERATE);
   });
 
   it("convert calls recordKnowledgeGapSuggestion and marks converted", async () => {

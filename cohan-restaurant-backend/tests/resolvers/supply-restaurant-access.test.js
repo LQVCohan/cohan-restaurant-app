@@ -11,6 +11,7 @@ const isValidObjectId = vi.fn(
 
 const Supply = {
   find: vi.fn(),
+  findOne: vi.fn(),
   findById: vi.fn(),
   create: vi.fn(),
   findByIdAndDelete: vi.fn(),
@@ -68,7 +69,7 @@ describe("supply restaurant access hardening", () => {
     expect(Supply.find).not.toHaveBeenCalled();
     expect(StockItem.find).not.toHaveBeenCalled();
 
-    Supply.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "s1", restaurantId: "valid-r1" }) });
+    Supply.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ _id: "s1", restaurantId: "valid-r1" }) });
     requireRestaurantAccess.mockRejectedValueOnce(new Error("denied"));
     await expect(queryResolver.supply(null, { id: "valid-s1" }, ctx)).rejects.toThrow("denied");
     expect(StockItem.find).not.toHaveBeenCalled();
@@ -80,21 +81,21 @@ describe("supply restaurant access hardening", () => {
     expect(findOrCreateSupplyCategory).not.toHaveBeenCalled();
     expect(Supply.create).not.toHaveBeenCalled();
 
-    Supply.findById.mockImplementationOnce(() => ({ select: () => ({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) }) }));
+    Supply.findOne.mockReturnValueOnce({ select: () => ({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) }) });
     requireRestaurantAccess.mockRejectedValueOnce(new Error("denied"));
     await expect(mutationResolver.updateSupply(null, { id: "507f1f77bcf86cd799439011", input: {} }, ctx)).rejects.toThrow("denied");
     expect(mockSession.startTransaction).not.toHaveBeenCalled();
 
     const set = vi.fn();
     const save = vi.fn();
-    Supply.findById.mockImplementationOnce(() => ({ select: () => ({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) }) }));
-    Supply.findById.mockImplementationOnce(() => ({ session: vi.fn().mockResolvedValue({ set, save, restaurantId: "valid-r1", category: "c", sku: "", name: "n", toObject: vi.fn() }) }));
+    Supply.findOne.mockReturnValueOnce({ select: () => ({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) }) });
+    Supply.findOne.mockReturnValueOnce({ session: vi.fn().mockResolvedValue({ set, save, restaurantId: "valid-r1", category: "c", sku: "", name: "n", toObject: vi.fn() }) });
     Supply.find.mockReturnValue({ select: () => ({ lean: () => ({ session: vi.fn().mockResolvedValue([]) }) }) });
     findOrCreateSupplyCategory.mockResolvedValue({ name: "Food" });
     await mutationResolver.updateSupply(null, { id: "507f1f77bcf86cd799439011", input: { restaurantId: "valid-r2", name: "A" } }, ctx);
     expect(set.mock.calls[0][0].restaurantId).toBeUndefined();
 
-    Supply.findById.mockImplementationOnce(() => ({ select: () => ({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) }) }));
+    Supply.findOne.mockReturnValueOnce({ restaurantId: "valid-r1", set: vi.fn(), save: vi.fn() });
     requireRestaurantAccess.mockRejectedValueOnce(new Error("denied"));
     await expect(mutationResolver.deleteSupply(null, { id: "valid-s1" }, ctx)).rejects.toThrow("denied");
     expect(Supply.findByIdAndDelete).not.toHaveBeenCalled();
@@ -110,8 +111,8 @@ describe("supply restaurant access hardening", () => {
     await expect(mutationResolver.adjustSupply(null, { input: { restaurantId: "valid-r1", warehouseId: "valid-w1", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("Warehouse does not belong");
 
     Warehouse.findById.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) });
-    Supply.findById.mockImplementationOnce(() => ({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r2" }) }));
-    await expect(mutationResolver.adjustSupply(null, { input: { restaurantId: "valid-r1", warehouseId: "valid-w1", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("Supply does not belong");
+    Supply.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
+    await expect(mutationResolver.adjustSupply(null, { input: { restaurantId: "valid-r1", warehouseId: "valid-w1", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("Không tìm thấy vật tư đang hoạt động");
     expect(StockItem.findOneAndUpdate).not.toHaveBeenCalled();
 
     requireRestaurantAccess.mockRejectedValueOnce(new Error("denied"));
@@ -128,6 +129,7 @@ describe("supply restaurant access hardening", () => {
     requireRestaurantAccess.mockRejectedValueOnce(new Error("denied"));
     await expect(mutationResolver.stockTransfer(null, { input: { restaurantId: "valid-r1", fromWarehouseId: "valid-w1", toWarehouseId: "valid-w2", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("denied");
 
+    Supply.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) });
     Warehouse.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([{ _id: "w1" }]) });
     await expect(mutationResolver.stockTransfer(null, { input: { restaurantId: "valid-r1", fromWarehouseId: "valid-w1", toWarehouseId: "valid-w2", supplyId: "valid-s1", qty: 1 } }, ctx)).rejects.toThrow("Warehouse does not belong");
   });
@@ -145,6 +147,7 @@ describe("supply restaurant access hardening", () => {
     expect(requireRestaurantAccess).toHaveBeenCalledWith(ctx, "valid-r1");
 
     const save = vi.fn();
+    Supply.findOne.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue({ restaurantId: "valid-r1" }) });
     StockItem.findOne.mockResolvedValue({ onHand: 10, batches: [{ qty: 10 }], save, toObject: vi.fn().mockReturnValue({ ok: true }) });
     await mutationResolver.stockOutbound(null, { input: { restaurantId: "valid-r1", warehouseId: "valid-w1", supplyId: "valid-s1", qty: 4 } }, ctx);
     expect(save).toHaveBeenCalled();

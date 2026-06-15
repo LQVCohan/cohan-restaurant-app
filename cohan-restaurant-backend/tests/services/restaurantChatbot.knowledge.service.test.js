@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const permissionSpy = vi.fn();
 const store = [];
 
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => permissionSpy(...args), requireAnyRestaurantPermission: (...args) => permissionSpy(...args), requirePermission: (...args) => permissionSpy(...args), requireAnyPermission: (...args) => permissionSpy(...args) }));
 vi.mock("../../models/index.js", () => {
   const chain = (rows) => ({ sort: () => ({ limit: () => ({ lean: async () => rows }), lean: async () => rows }), limit: () => ({ lean: async () => rows }), lean: async () => rows });
   const AiChatbotKnowledgeItem = {
@@ -90,24 +90,24 @@ describe("restaurantChatbotKnowledge Phase 18", () => {
     expect(out).toContain("title,content,category,tags,enabled,priority,sourceType");
   });
 
-  it("bulk update/delete enforce RESTAURANT_WRITE", async () => {
+  it("bulk update/delete enforce AI chatbot write", async () => {
     const created = await createRestaurantAiChatbotKnowledgeItem({ input: { restaurantId: rid, title: "A", content: "B" }, ctx: { user: { _id: new mongoose.Types.ObjectId().toString() } } });
     permissionSpy.mockClear();
     await bulkUpdateRestaurantAiChatbotKnowledgeEnabled({ ids: [created.id], enabled: false, ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_WRITE);
     permissionSpy.mockClear();
     await bulkDeleteRestaurantAiChatbotKnowledge({ ids: [created.id], ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_WRITE);
   });
 
   it("import/export enforce expected permissions", async () => {
     const payload = JSON.stringify([{ title: "P", content: "Q" }]);
     await importRestaurantAiChatbotKnowledge({ input: { restaurantId: rid, format: "json", payload }, ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.RESTAURANT_WRITE);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.AI_CHATBOT_WRITE);
 
     permissionSpy.mockClear();
     await exportRestaurantAiChatbotKnowledge({ restaurantId: rid, format: "json", ctx: { user: { _id: "u" } } });
-    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, PERMISSIONS.REPORT_READ);
+    expect(permissionSpy).toHaveBeenCalledWith(expect.any(Object), rid, expect.arrayContaining([PERMISSIONS.AI_CHATBOT_READ]));
   });
 
 });

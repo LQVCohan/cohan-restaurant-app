@@ -5,7 +5,7 @@ const reqPermSpy = vi.fn();
 const caseStore = [];
 
 vi.mock("../../src/services/ai/restaurantChatbot.service.js", () => ({ handleRestaurantChatbotMessage: (...args) => handleSpy(...args) }));
-vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => reqPermSpy(...args) }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({ requireRestaurantPermission: (...args) => reqPermSpy(...args), requireAnyRestaurantPermission: (...args) => reqPermSpy(...args), requirePermission: (...args) => reqPermSpy(...args), requireAnyPermission: (...args) => reqPermSpy(...args) }));
 vi.mock("../../models/index.js", () => ({
   AiChatbotEvaluationCase: {
     find: vi.fn((filter) => ({ sort: () => ({ lean: async () => caseStore.filter((x) => String(x.restaurantId) === String(filter.restaurantId?.toString ? filter.restaurantId.toString() : filter.restaurantId) && (filter.enabled === undefined || typeof filter.enabled !== "boolean" || x.enabled === filter.enabled)) }) })),

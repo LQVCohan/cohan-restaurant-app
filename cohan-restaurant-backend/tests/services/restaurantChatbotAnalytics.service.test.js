@@ -32,7 +32,9 @@ vi.mock("../../models/index.js", () => ({
 
 vi.mock("../../src/services/auth/authorization.service.js", () => ({
   requireRestaurantPermission: mocks.requireRestaurantPermission,
+  requireAnyRestaurantPermission: mocks.requireRestaurantPermission,
   requirePermission: mocks.requirePermission,
+  requireAnyPermission: mocks.requirePermission,
 }));
 
 import { getRestaurantChatbotAnalytics } from "../../src/services/ai/restaurantChatbotAnalytics.service.js";
@@ -76,12 +78,13 @@ describe("restaurantChatbotAnalytics service", () => {
   });
 
   it("blocks guest role", async () => {
+    mocks.requirePermission.mockRejectedValueOnce(new Error("FORBIDDEN"));
     await expect(getRestaurantChatbotAnalytics({ input: {}, ctx: { user: { id: "u1", roleName: "customer" } } })).rejects.toThrow("FORBIDDEN");
   });
 
-  it("requires REPORT_READ permission for restaurant-scoped analytics", async () => {
+  it("requires AI chatbot read permission for restaurant-scoped analytics", async () => {
     await getRestaurantChatbotAnalytics({ input: { restaurantId: "507f1f77bcf86cd799439011" }, ctx: { user: { id: "u1", roleName: "manager" } } });
-    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(expect.any(Object), "507f1f77bcf86cd799439011", "report.read");
+    expect(mocks.requireRestaurantPermission).toHaveBeenCalledWith(expect.any(Object), "507f1f77bcf86cd799439011", expect.arrayContaining(["ai.chatbot.analytics.read"]));
   });
 
 });
