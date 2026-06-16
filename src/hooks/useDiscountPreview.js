@@ -1,4 +1,5 @@
 import { gql } from "@apollo/client";
+import { useCallback } from "react";
 import { useLazyQuery } from "@apollo/client/react";
 
 export const PREVIEW_ORDER_DISCOUNT = gql`
@@ -105,13 +106,16 @@ export function useDiscountPreview() {
     fetchPolicy: "network-only",
   });
 
-  const previewOrderDiscount = async (input) => {
-    const res = await runPreview({
-      variables: { input },
-    });
+  const previewOrderDiscount = useCallback(
+    async (input) => {
+      const res = await runPreview({
+        variables: { input },
+      });
 
-    return res?.data?.previewOrderDiscount || null;
-  };
+      return res?.data?.previewOrderDiscount || null;
+    },
+    [runPreview],
+  );
 
   return {
     previewOrderDiscount,
