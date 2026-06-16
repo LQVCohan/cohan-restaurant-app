@@ -27,6 +27,27 @@ export const PREVIEW_ORDER_DISCOUNT = gql`
         discountValue
         discount
       }
+      eligibleGiftItems {
+        promotionId
+        promotionName
+        promotionCode
+        buyItemId
+        buyItemName
+        giftItemId
+        giftItemName
+        giftItemImage
+        giftItemPrice
+        giftMenuId
+        giftCategoryId
+        giftDefaultServingKey
+        buyQuantity
+        getQuantity
+        purchasedQuantity
+        giftQuantityLimit
+        giftQuantityInOrder
+        missingGiftQuantity
+        message
+      }
       service
       serviceRate
       tax
