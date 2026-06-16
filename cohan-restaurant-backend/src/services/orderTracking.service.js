@@ -81,6 +81,18 @@ function mapItemStatus(itemStatus) {
   return ITEM_PUBLIC_STATUS[String(itemStatus || "").toLowerCase()] || { status: "PENDING", label: "Đang chờ bếp nhận" };
 }
 
+function getItemProofImages(item = {}) {
+  return Array.isArray(item?.proofImages)
+    ? item.proofImages.map((src) => String(src || "").trim()).filter(Boolean)
+    : [];
+}
+
+function requiresItemProofImage(item = {}) {
+  const mode = String(item?.servingVariant?.mode || "").toUpperCase();
+  const unit = String(item?.unit || item?.servingVariant?.sellUnit || "").toLowerCase();
+  return mode === "BY_WEIGHT" || unit === "kg" || Number(item?.weightGrams || 0) > 0;
+}
+
 function normalizeDeliveryStatus(order = {}) {
   return String(order?.shipping?.deliveryStatus || "pending").toLowerCase();
 }
@@ -212,7 +224,17 @@ export function toCustomerTrackingPayload(order = {}) {
     delivery: buildCustomerDeliveryTracking(order),
     items: (order.items || []).map((item) => {
       const mapped = mapItemStatus(item.status);
-      return { name: item.name, quantity: item.quantity, publicStatus: mapped.status, publicStatusLabel: mapped.label };
+      const proofImages = getItemProofImages(item);
+      const requiresProofImage = requiresItemProofImage(item);
+      return {
+        name: item.name,
+        quantity: item.quantity,
+        publicStatus: mapped.status,
+        publicStatusLabel: mapped.label,
+        proofImages,
+        requiresProofImage,
+        proofUploaded: requiresProofImage ? proofImages.length > 0 : false,
+      };
     }),
     payment: {
       status: normalizedPaymentStatus.toUpperCase(),
