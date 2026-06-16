@@ -1,6 +1,7 @@
 // src/graphql/order/index.js
 
 import { OrderQuery } from "./query.js";
+import { OrderCoreRecoveryQuery } from "./queryCoreRecovery.js";
 import { OrderMutation } from "./mutation.js";
 import { OrderProofMutation } from "./orderProofMutation.js";
 import { withOrderRestaurantAccessGuards } from "./accessGuard.js";
@@ -17,6 +18,7 @@ const GuardedOrderMutation = withOrderRestaurantAccessGuards(HardenedOrderMutati
 export default {
   Query: {
     ...OrderQuery,
+    ...OrderCoreRecoveryQuery,
     ...publicTableSessionQuery,
   },
   Mutation: {
