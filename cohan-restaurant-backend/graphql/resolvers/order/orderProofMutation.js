@@ -25,11 +25,12 @@ const requiresByWeightProof = (item = {}) => {
 export const OrderProofMutation = {
   async uploadOrderItemProof(_parent, { input }, ctx) {
     const orderId = toObjectId(input?.orderId);
-    const restaurantId = toObjectId(input?.restaurantId);
-    if (!orderId || !restaurantId) throw new Error("Invalid order or restaurant");
+    if (!orderId) throw new Error("Invalid order");
 
+    const restaurantId = toObjectId(input?.restaurantId);
+    const filter = restaurantId ? { _id: orderId, restaurantId } : { _id: orderId };
     const proofImages = cleanProofImages(input?.proofImages || []);
-    const order = await Order.findOne({ _id: orderId, restaurantId });
+    const order = await Order.findOne(filter);
     if (!order) throw new Error("Order not found");
     await requireRestaurantPermission(ctx, order.restaurantId, PERMISSIONS.ORDER_UPDATE);
 

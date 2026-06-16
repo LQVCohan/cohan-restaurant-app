@@ -1,8 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { gql, useMutation } from "@apollo/client";
 import { Camera, Upload, X, RotateCcw, Trash2 } from "lucide-react";
 import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
 import { normalizeProofImages } from "@/utils/orderProofRules";
 import "./StaffProofCaptureModal.scss";
+
+const UPLOAD_ORDER_ITEM_PROOF = gql`
+  mutation StaffUploadOrderItemProof($input: UploadOrderItemProofInput!) {
+    uploadOrderItemProof(input: $input) {
+      order {
+        id
+        orderCode
+        currentStatus
+        items {
+          _id
+          proofImages
+        }
+      }
+    }
+  }
+`;
 
 export default function StaffProofCaptureModal({
   open,
@@ -18,12 +35,17 @@ export default function StaffProofCaptureModal({
   const [cameraSupported, setCameraSupported] = useState(true);
   const [cameraError, setCameraError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [savingProof, setSavingProof] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [proofImages, setProofImages] = useState([]);
 
   const { upload } = useAvatarUploadLocal();
+  const [uploadOrderItemProof] = useMutation(UPLOAD_ORDER_ITEM_PROOF);
 
   const title = useMemo(() => item?.name || "Món ăn", [item?.name]);
+  const isPersistedOrderItem = Boolean(
+    item?.persisted && item?.orderId && (item?.orderItemId || item?.id),
+  );
 
   const stopStream = () => {
     const stream = streamRef.current;
@@ -39,6 +61,7 @@ export default function StaffProofCaptureModal({
     setProofImages(normalizeProofImages(item?.proofImages));
     setCameraError("");
     setUploadProgress(0);
+    setSavingProof(false);
 
     if (!navigator?.mediaDevices?.getUserMedia) {
       setCameraSupported(false);
@@ -67,7 +90,7 @@ export default function StaffProofCaptureModal({
       })
       .catch(() => {
         setCameraError(
-          "Không thể mở camera (có thể do bị từ chối quyền). Dùng fallback để chụp ảnh."
+          "Không thể mở camera (có thể do bị từ chối quyền). Dùng fallback để chụp ảnh.",
         );
       });
 
@@ -91,7 +114,7 @@ export default function StaffProofCaptureModal({
   };
 
   const handleCaptureFrame = async () => {
-    if (!videoRef.current || !canvasRef.current || uploading) return;
+    if (!videoRef.current || !canvasRef.current || uploading || savingProof) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video.videoWidth || !video.videoHeight) {
@@ -118,6 +141,36 @@ export default function StaffProofCaptureModal({
     if (!file) return;
     await uploadProofFile(file);
     event.target.value = "";
+  };
+
+  const handleSave = async () => {
+    const cleaned = normalizeProofImages(proofImages);
+    if (!cleaned.length) {
+      alert("Vui lòng chụp hoặc tải lên ít nhất một ảnh minh chứng.");
+      return;
+    }
+
+    setSavingProof(true);
+    try {
+      if (isPersistedOrderItem) {
+        await uploadOrderItemProof({
+          variables: {
+            input: {
+              restaurantId: item.restaurantId || undefined,
+              orderId: item.orderId,
+              orderItemId: item.orderItemId || item.id,
+              proofImages: cleaned,
+              note: "Staff updated by-weight item proof image.",
+            },
+          },
+        });
+      }
+      onSave(cleaned);
+    } catch (error) {
+      alert(error?.message || "Không thể lưu ảnh minh chứng vào đơn.");
+    } finally {
+      setSavingProof(false);
+    }
   };
 
   if (!open) return null;
@@ -147,15 +200,18 @@ export default function StaffProofCaptureModal({
         {uploading && (
           <div className="uploading-state">Đang tải ảnh... {uploadProgress}%</div>
         )}
+        {savingProof && (
+          <div className="uploading-state">Đang lưu ảnh minh chứng vào đơn...</div>
+        )}
 
         <div className="staff-proof-actions">
-          <button type="button" onClick={handleCaptureFrame} disabled={uploading}>
+          <button type="button" onClick={handleCaptureFrame} disabled={uploading || savingProof}>
             <Camera size={16} /> Chụp ảnh
           </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || savingProof}
           >
             <Upload size={16} /> Fallback camera/file
           </button>
@@ -165,6 +221,7 @@ export default function StaffProofCaptureModal({
               stopStream();
               setCameraError("");
             }}
+            disabled={savingProof}
           >
             <RotateCcw size={16} /> Tắt camera
           </button>
@@ -187,6 +244,7 @@ export default function StaffProofCaptureModal({
                 <img src={src} alt={`proof-${idx}`} />
                 <button
                   type="button"
+                  disabled={savingProof}
                   onClick={() =>
                     setProofImages((prev) => prev.filter((_, i) => i !== idx))
                   }
@@ -199,16 +257,16 @@ export default function StaffProofCaptureModal({
         </div>
 
         <footer className="staff-proof-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>
+          <button type="button" className="btn-cancel" onClick={onClose} disabled={savingProof}>
             Huỷ
           </button>
           <button
             type="button"
             className="btn-save"
-            onClick={() => onSave(normalizeProofImages(proofImages))}
-            disabled={uploading}
+            onClick={handleSave}
+            disabled={uploading || savingProof}
           >
-            Lưu ảnh ({proofImages.length})
+            {savingProof ? "Đang lưu..." : `Lưu ảnh (${proofImages.length})`}
           </button>
         </footer>
       </div>
