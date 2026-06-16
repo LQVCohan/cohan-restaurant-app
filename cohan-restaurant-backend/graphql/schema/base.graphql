@@ -21,6 +21,12 @@ input UploadOrderItemProofInput {
   note: String
 }
 
+extend type CustomerTrackingItem {
+  proofImages: [String!]!
+  requiresProofImage: Boolean!
+  proofUploaded: Boolean!
+}
+
 extend type Mutation {
   uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
 }
