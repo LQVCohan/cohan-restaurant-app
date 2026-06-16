@@ -21,12 +21,116 @@ input UploadOrderItemProofInput {
   note: String
 }
 
-extend type CustomerTrackingItem {
+type CustomerTrackingTimelineItem {
+  status: String
+  displayMessage: String
+  changedAt: DateTime
+}
+
+type CustomerTrackingDeliveryTimelineItem {
+  status: String
+  label: String
+  at: DateTime
+  note: String
+}
+
+type CustomerTrackingDelivery {
+  orderType: String
+  deliveryStatus: String
+  deliveryStatusLabel: String
+  shippingAddress: String
+  eta: DateTime
+  distance: Float
+  duration: Float
+  driverName: String
+  driverPhone: String
+  driverVehiclePlate: String
+  externalTrackingCode: String
+  timeline: [CustomerTrackingDeliveryTimelineItem!]!
+}
+
+type CustomerTrackingPayment {
+  status: String!
+  canRequestPayment: Boolean!
+  totalAmount: Int!
+}
+
+type CustomerTrackingLatestRequest {
+  requestId: String!
+  type: String!
+  status: String!
+  message: String
+  createdAt: DateTime
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+}
+
+type CustomerTrackingItem {
+  name: String
+  quantity: Float
+  publicStatus: String
+  publicStatusLabel: String
   proofImages: [String!]!
   requiresProofImage: Boolean!
   proofUploaded: Boolean!
 }
 
+type CustomerTracking {
+  trackingCode: String
+  publicStatus: String
+  publicStatusLabel: String
+  customerVisibleNote: String
+  estimatedReadyAt: DateTime
+  timeline: [CustomerTrackingTimelineItem!]!
+  items: [CustomerTrackingItem!]!
+  delivery: CustomerTrackingDelivery
+  payment: CustomerTrackingPayment!
+  latestRequest: CustomerTrackingLatestRequest
+}
+
+type CustomerTrackingActionPayload {
+  success: Boolean!
+  message: String
+  tracking: CustomerTracking
+}
+
+type CustomerServiceRequest {
+  orderId: ID!
+  orderCode: String
+  trackingCode: String
+  tableCode: String
+  requestId: String!
+  type: String!
+  status: String!
+  message: String
+  createdAt: DateTime
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+}
+
+extend type Query {
+  customerTrackOrder(trackingToken: String!): CustomerTracking
+  customerServiceRequests(
+    restaurantId: ID!
+    status: String
+    type: String
+    limit: Int
+  ): [CustomerServiceRequest!]!
+  orderTrackingQrSvg(orderId: ID!): String!
+}
+
 extend type Mutation {
   uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
+  requestPaymentFromTracking(trackingToken: String!): CustomerTrackingActionPayload!
+  callStaffFromTracking(trackingToken: String!, reason: String): CustomerTrackingActionPayload!
+  acknowledgeCustomerServiceRequest(
+    restaurantId: ID!
+    orderId: ID!
+    requestId: String!
+  ): ActionResultPayload!
+  resolveCustomerServiceRequest(
+    restaurantId: ID!
+    orderId: ID!
+    requestId: String!
+  ): ActionResultPayload!
 }
