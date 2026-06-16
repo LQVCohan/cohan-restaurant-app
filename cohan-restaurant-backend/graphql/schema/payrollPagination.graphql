@@ -1,0 +1,26 @@
+type PayrollPaginationInfo {
+  totalCount: Int!
+  limit: Int!
+  offset: Int!
+  page: Int!
+  pageSize: Int!
+  totalPages: Int!
+  hasMore: Boolean!
+}
+
+extend type StaffPayrollOverview {
+  pageInfo: PayrollPaginationInfo!
+}
+
+extend type Query {
+  staffPayrollOverview(
+    startDate: DateTime!
+    endDate: DateTime!
+    restaurantId: ID
+    periodId: ID
+    search: String
+    status: String
+    limit: Int = 10
+    offset: Int = 0
+  ): StaffPayrollOverview!
+}
