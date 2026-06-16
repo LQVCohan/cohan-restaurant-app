@@ -7,6 +7,7 @@ import "@/styles/schedule-sidebar-safe-performance.css";
 import { installScheduleApolloPerformancePatch } from "@/utils/scheduleApolloPerformancePatch.js";
 import { initScheduleHydrationPolish } from "@/utils/scheduleHydrationPolish.js";
 import { initScheduleManagerDomPolish } from "@/utils/scheduleManagerDomPolish.js";
+import { initScheduleManagerAdminPolish } from "@/utils/scheduleManagerAdminPolish.js";
 import ScheduleManagement from "./ScheduleManagement";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
@@ -38,6 +39,7 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
     const hydrationCleanup = initScheduleHydrationPolish?.();
     const domPolishTimer = window.setTimeout(() => {
       window.__scheduleDomPolishCleanup = initScheduleManagerDomPolish?.();
+      window.__scheduleAdminPolishCleanup = initScheduleManagerAdminPolish?.();
     }, 520);
 
     return () => {
@@ -47,6 +49,10 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
       if (typeof window.__scheduleDomPolishCleanup === "function") {
         window.__scheduleDomPolishCleanup();
         window.__scheduleDomPolishCleanup = null;
+      }
+      if (typeof window.__scheduleAdminPolishCleanup === "function") {
+        window.__scheduleAdminPolishCleanup();
+        window.__scheduleAdminPolishCleanup = null;
       }
     };
   }, []);
