@@ -14,6 +14,13 @@ const getDefaultRange = () => {
   };
 };
 
+const toPayrollDateTime = (dateValue, boundary = "start") => {
+  if (!dateValue) return null;
+  if (String(dateValue).includes("T")) return dateValue;
+  const time = boundary === "end" ? "23:59:59.999" : "00:00:00.000";
+  return `${dateValue}T${time}Z`;
+};
+
 export function escapeCsvValue(value) {
   const text = String(value ?? "");
   if (/[",\n\r]/.test(text)) {
@@ -113,6 +120,14 @@ const PayrollManagement = () => {
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
+  const apiRange = useMemo(
+    () => ({
+      startDate: toPayrollDateTime(range.start, "start"),
+      endDate: toPayrollDateTime(range.end, "end"),
+    }),
+    [range.end, range.start],
+  );
+
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -123,18 +138,18 @@ const PayrollManagement = () => {
   const payroll = usePayroll({
     periodId: selectedPeriodId || undefined,
     restaurantId: selectedRestaurantId || undefined,
-    startDate: range.start,
-    endDate: range.end,
+    startDate: apiRange.startDate,
+    endDate: apiRange.endDate,
   });
 
   const runtimeOverviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
     variables: {
-      startDate: range.start,
-      endDate: range.end,
+      startDate: apiRange.startDate,
+      endDate: apiRange.endDate,
       restaurantId: selectedRestaurantId || undefined,
       periodId: undefined,
     },
-    skip: !selectedRestaurantId || !range.start || !range.end,
+    skip: !selectedRestaurantId || !apiRange.startDate || !apiRange.endDate,
     fetchPolicy: "cache-and-network",
   }) || {};
 
@@ -196,8 +211,8 @@ const PayrollManagement = () => {
       effectivePeriodId ? payroll.refetchDetail?.({ periodId: effectivePeriodId }) : null,
       effectivePeriodId ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }) : null,
       runtimeOverviewQuery.refetch?.({
-        startDate: range.start,
-        endDate: range.end,
+        startDate: apiRange.startDate,
+        endDate: apiRange.endDate,
         restaurantId: selectedRestaurantId || undefined,
         periodId: undefined,
       }),
