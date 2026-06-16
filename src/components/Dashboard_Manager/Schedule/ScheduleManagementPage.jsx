@@ -12,6 +12,7 @@ import ScheduleManagement from "./ScheduleManagement";
 import "@/styles/schedule-manager-workspace-final.css";
 import "@/styles/schedule-manager-drawer-workspace.css";
 import "@/styles/schedule-storage-alignment.css";
+import "@/styles/schedule-admin-final-tuning.css";
 
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
@@ -30,8 +31,7 @@ const ScheduleManagementPage = memo(function ScheduleManagementPage() {
     };
 
     window.addEventListener("manager:navigation-query", handleNavigationQuery);
-    return () =>
-      window.removeEventListener("manager:navigation-query", handleNavigationQuery);
+    return () => window.removeEventListener("manager:navigation-query", handleNavigationQuery);
   }, []);
 
   useLayoutEffect(() => {
