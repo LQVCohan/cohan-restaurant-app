@@ -1,0 +1,120 @@
+.giftPanel {
+  margin: 0.7rem 0.85rem 0;
+  padding: 0.72rem;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.09), rgba(249, 115, 22, 0.045)),
+    #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.giftHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-bottom: 0.58rem;
+}
+
+.giftIcon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.9rem;
+  font-weight: 900;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.giftTitle {
+  margin: 0;
+  color: #166534;
+  font-size: 0.84rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.giftSubtitle {
+  margin: 0.12rem 0 0;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.giftList {
+  display: grid;
+  gap: 0.48rem;
+}
+
+.giftItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.58rem;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.giftText {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.giftName {
+  color: #0f172a;
+  font-size: 0.8rem;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.giftMessage {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.giftButton {
+  min-height: 34px;
+  border: 1px solid rgba(22, 101, 52, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 950;
+  padding: 0 0.68rem;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.18);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.giftButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 11px 22px rgba(34, 197, 94, 0.24);
+}
+
+@media (max-width: 520px) {
+  .giftItem {
+    grid-template-columns: 1fr;
+  }
+
+  .giftButton {
+    width: 100%;
+  }
+}
