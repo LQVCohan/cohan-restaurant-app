@@ -22,6 +22,9 @@ export const CUSTOMER_TRACK_ORDER = gql`
         quantity
         publicStatus
         publicStatusLabel
+        proofImages
+        requiresProofImage
+        proofUploaded
       }
       delivery {
         orderType
@@ -62,7 +65,7 @@ export const CUSTOMER_TRACK_ORDER = gql`
 const TRACKING_FIELDS = `
   trackingCode publicStatus publicStatusLabel customerVisibleNote estimatedReadyAt
   timeline { status displayMessage changedAt }
-  items { name quantity publicStatus publicStatusLabel }
+  items { name quantity publicStatus publicStatusLabel proofImages requiresProofImage proofUploaded }
   delivery { orderType deliveryStatus deliveryStatusLabel shippingAddress eta distance duration driverName driverPhone driverVehiclePlate externalTrackingCode timeline { status label at note } }
   payment { status canRequestPayment totalAmount }
   latestRequest { requestId type status message createdAt acknowledgedAt resolvedAt }
@@ -75,7 +78,6 @@ const requestStatusLabel = { PENDING: "Đã gửi yêu cầu", ACKNOWLEDGED: "Nh
 const requestTypeLabel = { STAFF_CALL: "Yêu cầu hỗ trợ", PAYMENT_REQUEST: "Yêu cầu thanh toán" };
 const finalStatuses = new Set(["PAID", "CANCELLED", "DELIVERED", "DELIVERY_CANCELLED", "DELIVERY_FAILED"]);
 const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
-
 
 const formatDistance = (value) => {
   const number = Number(value);
@@ -108,6 +110,29 @@ const resolveLatestTimelineIndex = (timelineItems = []) => {
   });
 
   return latestTime === Number.NEGATIVE_INFINITY ? timelineItems.length - 1 : latestIndex;
+};
+
+const ItemProofPreview = ({ item }) => {
+  const images = Array.isArray(item?.proofImages) ? item.proofImages.filter(Boolean) : [];
+  const requiresProof = Boolean(item?.requiresProofImage);
+  if (!requiresProof && images.length === 0) return null;
+
+  return (
+    <div className="item-proof-preview">
+      <span className={`proof-chip ${images.length ? "proof-chip--done" : "proof-chip--waiting"}`}>
+        {images.length ? "Đã có ảnh cân ký" : "Đang chờ ảnh cân ký"}
+      </span>
+      {images.length > 0 && (
+        <div className="item-proof-gallery" aria-label={`Ảnh minh chứng cân ký của ${item.name}`}>
+          {images.slice(0, 4).map((src, index) => (
+            <a href={src} target="_blank" rel="noreferrer" key={`${src}-${index}`}>
+              <img src={src} alt={`Ảnh cân ký ${item.name} ${index + 1}`} />
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default function PublicOrderTrackingPage() {
@@ -229,7 +254,6 @@ export default function PublicOrderTrackingPage() {
 
         <section className="track-card"><h3>Tiến trình đơn hàng</h3>{timelineItems.length === 0 ? <p>Chưa có cập nhật tiến trình.</p> : <ol className="timeline">{timelineItems.map((item, idx) => <li key={`${item.changedAt}-${idx}`} className={idx === latestTimelineIndex ? "current" : ""}><div><strong>{item.displayMessage}</strong><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("vi-VN") : ""}</p></div></li>)}</ol>}</section>
 
-
         {delivery && (
           <section className="track-card delivery-card">
             <div className="delivery-card__head">
@@ -267,7 +291,7 @@ export default function PublicOrderTrackingPage() {
           </section>
         )}
 
-        <section className="track-card"><h3>Món đã gọi</h3>{(tracking.items || []).length === 0 ? <p>Chưa có món trong đơn.</p> : <ul className="item-list">{tracking.items.map((item, idx) => <li key={`${item.name}-${idx}`}><div><strong>{item.name}</strong><p>Số lượng: {item.quantity}</p></div><span className={`status-badge ${String(item.publicStatus || "").toLowerCase()}`}>{item.publicStatusLabel || "Đang xử lý"}</span></li>)}</ul>}</section>
+        <section className="track-card"><h3>Món đã gọi</h3>{(tracking.items || []).length === 0 ? <p>Chưa có món trong đơn.</p> : <ul className="item-list">{tracking.items.map((item, idx) => <li key={`${item.name}-${idx}`}><div className="item-list__main"><strong>{item.name}</strong><p>Số lượng: {item.quantity}</p><ItemProofPreview item={item} /></div><span className={`status-badge ${String(item.publicStatus || "").toLowerCase()}`}>{item.publicStatusLabel || "Đang xử lý"}</span></li>)}</ul>}</section>
 
         <section className="track-card"><h3>Thanh toán</h3><p className="amount">{Number(tracking.payment?.totalAmount || 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" })}</p><p>Trạng thái: <span className={`status-badge ${paymentStatus.toLowerCase()}`}>{paymentStatusLabel[paymentStatus] || "Đang cập nhật"}</span></p>
           <button type="button" className="primary-btn" disabled={requestingPayment || callingStaff || isCancelled || isPaid || !canRequestPayment || paymentActionLocked} onClick={() => handleActionResult(() => requestPayment({ variables: { trackingToken } }))}>{requestingPayment ? "Đang gửi yêu cầu..." : "Yêu cầu thanh toán"}</button>
