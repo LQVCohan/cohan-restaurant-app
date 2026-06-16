@@ -186,6 +186,13 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
           label: "Tài chính",
           page: "Tài chính",
         },
+        {
+          id: "transfer-review",
+          permissions: ["payment.read"],
+          icon: "🏦",
+          label: "Thanh toán QR",
+          page: "Thanh toán QR",
+        },
       ],
     },
     {
