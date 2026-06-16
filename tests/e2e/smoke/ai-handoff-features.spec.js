@@ -107,6 +107,10 @@ const collectPageErrors = (page) => {
 };
 
 const handoffRoot = (page) => page.locator(".ai-handoff-inbox").first();
+const handoffTabs = (page) => handoffRoot(page).locator(".ai-handoff-inbox__tabs");
+const replyForm = (page) => handoffRoot(page).locator(".ai-handoff-inbox__reply");
+const tabButton = (page, name) => handoffTabs(page).getByRole("button", { name, exact: true });
+const replyButton = (page, name) => replyForm(page).getByRole("button", { name, exact: true });
 
 async function installHandoffMocks(page, { mode = "normal" } = {}) {
   await page.route("**/api/auth/refresh", async (route) => {
@@ -282,18 +286,18 @@ test.describe("AI handoff inbox smoke", () => {
 
     const replyBox = handoffRoot(page).getByLabel("Nội dung phản hồi cho khách");
     await replyBox.fill("Dạ nhà hàng còn bàn cho 4 người lúc 19:00. Mình giữ bàn giúp bạn nhé.");
-    await handoffRoot(page).getByRole("button", { name: "Gửi phản hồi" }).click();
+    await replyButton(page, "Gửi phản hồi").click();
     await expect(replyBox).toHaveValue("");
 
-    await handoffRoot(page).getByRole("button", { name: "Đánh dấu đã xử lý" }).click();
+    await replyButton(page, "Đánh dấu đã xử lý").click();
     await expect(handoffRoot(page).getByText("Chưa có yêu cầu cần hỗ trợ")).toBeVisible();
 
-    await handoffRoot(page).getByRole("button", { name: "Đã xử lý" }).click();
+    await tabButton(page, "Đã xử lý").click();
     await expect(handoffRoot(page).getByText("Yêu cầu đặt bàn đã xử lý")).toBeVisible();
     await handoffRoot(page).locator(".ai-handoff-inbox__item").filter({ hasText: "Yêu cầu đặt bàn đã xử lý" }).click();
     await expect(handoffRoot(page).getByText("Nhà hàng đã xác nhận bàn cho khách.")).toBeVisible();
     await expect(replyBox).toBeDisabled();
-    await expect(handoffRoot(page).getByRole("button", { name: "Đã xử lý" })).toBeDisabled();
+    await expect(replyButton(page, "Đã xử lý")).toBeDisabled();
 
     expect(pageErrors).toEqual([]);
   });
@@ -307,7 +311,7 @@ test.describe("AI handoff inbox smoke", () => {
     await expect(handoffRoot(page).getByText("Khách cần hỗ trợ nhưng thiếu mã hội thoại")).toBeVisible();
     await handoffRoot(page).locator(".ai-handoff-inbox__item").filter({ hasText: "Khách cần hỗ trợ" }).click();
     await expect(handoffRoot(page).getByText("Thiếu thông tin hội thoại để gửi phản hồi")).toBeVisible();
-    await expect(handoffRoot(page).getByRole("button", { name: "Gửi phản hồi" })).toBeDisabled();
+    await expect(replyButton(page, "Gửi phản hồi")).toBeDisabled();
 
     expect(pageErrors).toEqual([]);
   });
