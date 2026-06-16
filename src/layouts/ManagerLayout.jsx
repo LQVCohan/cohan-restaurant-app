@@ -23,6 +23,7 @@ import StorageManagement from "../components/Dashboard_Manager/Storage/StorageMa
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import TransactionManagement from "@/components/Dashboard_Manager/Transactions/TransactionManagement";
+import TransferPaymentReviewPage from "@/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
 import SettingsManagement from "@/components/Dashboard_Manager/Settings/SettingsManagement";
@@ -38,7 +39,7 @@ const MANAGER_CANONICAL_PATH = "/manager";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard", "tables", "orders", "menu", "inventory", "staff", "customers",
-  "customer-analytics", "analytics", "transactions", "reports", "schedules",
+  "customer-analytics", "analytics", "transactions", "transfer-review", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
@@ -80,6 +81,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   reports: ["report.read"],
   finance: ["finance.read", "payment.read"],
   transactions: ["transaction.read", "finance.read", "payment.read"],
+  "transfer-review": ["payment.read", "reconciliation.read"],
   settings: ["system.manage"],
   rates: ["system.manage"],
   setting: ["system.manage"],
@@ -114,6 +116,7 @@ const PAGE_CONFIG = {
   reports: page("Báo cáo", "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ", "📑", ["report", "báo cáo", "xuất file", "csv"]),
   finance: page("Tài chính", "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", "💰", ["finance", "thu", "chi", "công nợ", "profit"]),
   transactions: page("Giao dịch", "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch", "💳", ["transaction", "giao dịch", "payment", "thanh toán", "refund", "đối soát"]),
+  "transfer-review": page("Duyệt chuyển khoản", "Xem bằng chứng chuyển khoản, xác minh hoặc từ chối thanh toán", "🏦", ["transfer", "bank", "chuyển khoản", "xác minh", "duyệt thanh toán"]),
   schedules: page("Lịch làm việc", "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự", "📅", ["schedule", "ca làm", "shift", "lịch"]),
   promotions: page("Khuyến mãi", "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", "🎁", ["promotion", "coupon", "discount", "khuyến mãi"]),
   payroll: page("Bảng lương", "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên", "💼", ["payroll", "salary", "lương", "thưởng", "khấu trừ"]),
@@ -231,6 +234,7 @@ const ManagerLayout = () => {
       case "reports": return <ReportsManagement />;
       case "finance": return <FinanceDashboard />;
       case "transactions": return <TransactionManagement />;
+      case "transfer-review": return <TransferPaymentReviewPage />;
       case "settings":
       case "rates":
       case "setting": return <SettingsManagement />;
