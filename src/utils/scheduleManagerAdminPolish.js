@@ -50,11 +50,15 @@ const normalizeToolbarCopy = (root) => {
   );
 
   navButtons.forEach((button) => {
+    const buttonText = getText(button);
+    if (buttonText.includes("Tuần trước")) button.setAttribute("aria-label", "Xem tuần trước");
+    if (buttonText.includes("Tuần sau")) button.setAttribute("aria-label", "Xem tuần sau");
+
     Array.from(button.childNodes).forEach((node) => {
       if (node.nodeType !== Node.TEXT_NODE) return;
       const text = String(node.nodeValue || "");
-      if (text.trim() === "Trước") node.nodeValue = text.replace("Trước", "Tuần trước");
-      if (text.trim() === "Sau") node.nodeValue = text.replace("Sau", "Tuần sau");
+      if (text.includes("Tuần trước")) node.nodeValue = text.replace("Tuần trước", "Trước");
+      if (text.includes("Tuần sau")) node.nodeValue = text.replace("Tuần sau", "Sau");
     });
   });
 
