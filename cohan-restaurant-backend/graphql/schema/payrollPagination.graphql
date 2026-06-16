@@ -8,12 +8,14 @@ type PayrollPaginationInfo {
   hasMore: Boolean!
 }
 
-extend type StaffPayrollOverview {
+type StaffPayrollOverviewPage {
+  stats: PayrollStats!
+  items: [StaffPayrollItem!]!
   pageInfo: PayrollPaginationInfo!
 }
 
 extend type Query {
-  staffPayrollOverview(
+  staffPayrollOverviewPage(
     startDate: DateTime!
     endDate: DateTime!
     restaurantId: ID
@@ -22,5 +24,5 @@ extend type Query {
     status: String
     limit: Int = 10
     offset: Int = 0
-  ): StaffPayrollOverview!
+  ): StaffPayrollOverviewPage!
 }
