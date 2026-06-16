@@ -11,6 +11,7 @@ const files = [
   "base.graphql",
   "user.graphql",
   "payrollReadiness.graphql",
+  "payrollPagination.graphql",
   "restaurant.graphql",
   "role.graphql",
   "permission.graphql",
