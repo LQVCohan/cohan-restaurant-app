@@ -8,6 +8,7 @@ import TablePaymentRequestNotice from "./TablePaymentRequestNotice";
 import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNotice";
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
 import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
+import EligibleGiftSuggestionPanel from "./EligibleGiftSuggestionPanel";
 import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
 
@@ -40,6 +41,7 @@ function POSContent({ restaurantId }) {
             onOpenPayment={handleOpenPayment}
           />
           <TablePaymentRequestNotice />
+          <EligibleGiftSuggestionPanel />
           <RightPanel />
         </div>
       </div>
