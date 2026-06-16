@@ -1,4 +1,5 @@
 import React from "react";
+import { Search } from "lucide-react";
 import "./ManagerCommandBar.scss";
 
 const ManagerCommandBar = ({
@@ -40,7 +41,7 @@ const ManagerCommandBar = ({
 
           {onSearchChange && (
             <label className="mcb-search" aria-label={searchAriaLabel}>
-              <span>🔍</span>
+              <Search size={16} aria-hidden="true" />
               <input
                 aria-label={searchAriaLabel}
                 value={searchValue}
