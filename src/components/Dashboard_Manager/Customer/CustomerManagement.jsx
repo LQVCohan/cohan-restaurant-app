@@ -1,6 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { Star, Sparkles, UserCheck, Users } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  Download,
+  Gift,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  UserCheck,
+  UserPlus,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 // Components
 import CustomerList from "./CustomerList";
@@ -22,7 +34,8 @@ import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSe
 import "./CustomerManagement.scss";
 import "./CustomerManagerScale.scss";
 
-const CUSTOMER_PAGE_SIZE_OPTIONS = [10, 20, 30, 50, 100];
+const CUSTOMER_PAGE_SIZE = 9;
+const CUSTOMER_PAGE_SIZE_OPTIONS = [CUSTOMER_PAGE_SIZE];
 
 const GET_CUSTOMER_RANK_SETTINGS = gql`
   query GetCustomerRankSettings($restaurantId: ID!) {
@@ -81,8 +94,8 @@ const GET_CUSTOMER_LIST_SUMMARIES = gql`
     }
   }
 `;
-/* ================== Helpers ================== */
 
+/* ================== Helpers ================== */
 const toDateStringVI = (ts) => {
   if (typeof ts === "number" && Number.isFinite(ts)) {
     const ms = String(ts).length === 10 ? ts * 1000 : ts;
@@ -98,7 +111,8 @@ const toDateStringVI = (ts) => {
   return new Date().toLocaleDateString("vi-VN");
 };
 
-const buildTopDishes = (topDishes = []) => (topDishes || []).map((dish) => dish?.dishName).filter(Boolean);
+const buildTopDishes = (topDishes = []) =>
+  (topDishes || []).map((dish) => dish?.dishName).filter(Boolean);
 
 const formatCompactCount = (n) =>
   new Intl.NumberFormat("vi-VN", {
@@ -126,6 +140,7 @@ const createSafeSheetName = (baseName, usedNames) => {
   usedNames.add(candidate);
   return candidate;
 };
+
 const getRankBoundsForFilter = (filterKey, rankSettings) => {
   const ascending = [...normalizeRanks(rankSettings)].sort(
     (a, b) => Number(a.minPoints || 0) - Number(b.minPoints || 0),
@@ -145,6 +160,7 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
       maxPointsExclusive: next ? Number(next.minPoints || 0) : null,
     };
   }
+
   if (filterKey === "frequent" && middle) {
     const next = rankAt(2);
     return {
@@ -153,6 +169,7 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
       maxPointsExclusive: next ? Number(next.minPoints || 0) : null,
     };
   }
+
   if (filterKey === "vip" && top) {
     return {
       rankName: top.name,
@@ -160,6 +177,7 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
       maxPointsExclusive: null,
     };
   }
+
   return null;
 };
 
@@ -176,7 +194,6 @@ const CustomerKpiCards = ({ stats }) => (
 );
 
 /* ================== Main Component ================== */
-
 const CustomerManagement = () => {
   const {
     restaurantOptions,
@@ -204,7 +221,7 @@ const CustomerManagement = () => {
   const [exportError, setExportError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [customerPageSize, setCustomerPageSize] = useState(30);
+  const [customerPageSize, setCustomerPageSize] = useState(CUSTOMER_PAGE_SIZE);
   const [customerPageIndex, setCustomerPageIndex] = useState(0);
   const [customerPageCursors, setCustomerPageCursors] = useState([null]);
 
@@ -256,18 +273,21 @@ const CustomerManagement = () => {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const loadCustomerPageFromBackend = useCallback(async ({ cursor = null, pageSize = customerPageSize } = {}) => {
-    if (!selectedRestaurantId) return null;
-    return getCustomersPage({
-      restaurantId: selectedRestaurantId,
-      includeGuests: true,
-      search: searchDebounced,
-      customerRank: customerRankFilter,
-      limit: pageSize,
-      cursor: cursor || undefined,
-      append: false,
-    });
-  }, [customerPageSize, customerRankFilter, getCustomersPage, searchDebounced, selectedRestaurantId]);
+  const loadCustomerPageFromBackend = useCallback(
+    async ({ cursor = null, pageSize = customerPageSize } = {}) => {
+      if (!selectedRestaurantId) return null;
+      return getCustomersPage({
+        restaurantId: selectedRestaurantId,
+        includeGuests: true,
+        search: searchDebounced,
+        customerRank: customerRankFilter,
+        limit: pageSize,
+        cursor: cursor || undefined,
+        append: false,
+      });
+    },
+    [customerPageSize, customerRankFilter, getCustomersPage, searchDebounced, selectedRestaurantId],
+  );
 
   useEffect(() => {
     setCustomerPageIndex(0);
@@ -276,9 +296,7 @@ const CustomerManagement = () => {
     loadCustomerPageFromBackend({ cursor: null, pageSize: customerPageSize });
   }, [customerPageSize, customerRankFilter, loadCustomerPageFromBackend, searchDebounced, selectedRestaurantId]);
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-  };
+  const handleSearch = (query) => setSearchQuery(query);
 
   const handleFilter = (filterKey) => {
     if (typeof filterKey === "object" && filterKey?.category) {
@@ -297,9 +315,7 @@ const CustomerManagement = () => {
     if (restaurantId) refetchRankSettings?.({ restaurantId });
   };
 
-  const handleCustomerClick = (customer) => {
-    setSelectedCustomer(customer);
-  };
+  const handleCustomerClick = (customer) => setSelectedCustomer(customer);
 
   const handleCustomerNextPage = async () => {
     if (!customerPageInfo?.hasNextPage || !customerPageInfo?.endCursor) return;
@@ -323,7 +339,9 @@ const CustomerManagement = () => {
   };
 
   const handleCustomerPageSizeChange = (size) => {
-    const safeSize = CUSTOMER_PAGE_SIZE_OPTIONS.includes(Number(size)) ? Number(size) : 30;
+    const safeSize = CUSTOMER_PAGE_SIZE_OPTIONS.includes(Number(size))
+      ? Number(size)
+      : CUSTOMER_PAGE_SIZE;
     setCustomerPageSize(safeSize);
     setCustomerPageIndex(0);
     setCustomerPageCursors([null]);
@@ -350,28 +368,15 @@ const CustomerManagement = () => {
     await loadCustomerPageFromBackend({ cursor: null, pageSize: customerPageSize });
     if (selectedRestaurantId) await refetchSummaries();
 
-    if (!createdUser) {
-      return { visibleInCurrentList: null };
-    }
+    if (!createdUser) return { visibleInCurrentList: null };
 
-    const name = (
-      createdUser.fullName ||
-      createdUser.username ||
-      ""
-    ).toLowerCase();
+    const name = (createdUser.fullName || createdUser.username || "").toLowerCase();
     const email = (createdUser.email || "").toLowerCase();
     const phone = createdUser.phone || "";
     const q = (searchQuery || "").trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      name.includes(q) ||
-      email.includes(q) ||
-      phone.includes(searchQuery || "");
+    const matchesSearch = !q || name.includes(q) || email.includes(q) || phone.includes(searchQuery || "");
 
-    const createdUserRankName = resolveCustomerRank(
-      createdUser?.loyaltyPoints,
-      rankSettings,
-    ).name;
+    const createdUserRankName = resolveCustomerRank(createdUser?.loyaltyPoints, rankSettings).name;
     const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
     const baseName = sortedAsc[0]?.name || "Mới";
     const middleName =
@@ -404,11 +409,12 @@ const CustomerManagement = () => {
         date: toDateStringVI(o?.createdAt),
       }));
       const topDishes = buildTopDishes(summary?.topDishes || []);
+      const resolvedRank = resolveCustomerRank(c?.loyaltyPoints, rankSettings);
       return {
         ...c,
         displayName: c.name || "Khách hàng",
-        customerType: resolveCustomerRank(c?.loyaltyPoints, rankSettings).name,
-        rankName: resolveCustomerRank(c?.loyaltyPoints, rankSettings).name,
+        customerType: resolvedRank.name,
+        rankName: resolvedRank.name,
         rankSettings,
         recentOrders,
         favoriteItems: c.favoriteItems?.length ? c.favoriteItems : topDishes,
@@ -463,10 +469,34 @@ const CustomerManagement = () => {
 
   const loading = usersLoading;
   const customerHeaderStats = [
-    { id: "total", icon: "👤", label: "Tổng khách", value: customerTotalCount || customersDecorated.length, tone: "total" },
-    { id: "online", icon: "🟢", label: "Online", value: onlineCount, tone: "online" },
-    { id: "vip", icon: "⭐", label: "VIP", value: quickFilters.find((f) => f.key === "vip")?.count || 0, tone: "vip" },
-    { id: "new", icon: "🆕", label: "Khách mới", value: quickFilters.find((f) => f.key === "new")?.count || 0, tone: "new" },
+    {
+      id: "total",
+      icon: <Users size={18} aria-hidden="true" />,
+      label: "Tổng khách",
+      value: customerTotalCount || customersDecorated.length,
+      tone: "total",
+    },
+    {
+      id: "online",
+      icon: <Activity size={18} aria-hidden="true" />,
+      label: "Đang hoạt động",
+      value: onlineCount,
+      tone: "online",
+    },
+    {
+      id: "vip",
+      icon: <Star size={18} fill="currentColor" aria-hidden="true" />,
+      label: "VIP trong trang",
+      value: quickFilters.find((f) => f.key === "vip")?.count || 0,
+      tone: "vip",
+    },
+    {
+      id: "new",
+      icon: <Sparkles size={18} aria-hidden="true" />,
+      label: "Mới trong trang",
+      value: quickFilters.find((f) => f.key === "new")?.count || 0,
+      tone: "new",
+    },
   ];
   const hasCustomerData = Number(customerTotalCount || 0) > 0;
   const customerTotalPages = Math.max(1, Math.ceil(Number(customerTotalCount || 0) / customerPageSize) || 1);
@@ -516,9 +546,7 @@ const CustomerManagement = () => {
     ];
 
     if (scope === "current_list") {
-      return [
-        { name: "DanhSachHienTai", rows: [header, ...rows.map(toCustomerRow)] },
-      ];
+      return [{ name: "DanhSachHienTai", rows: [header, ...rows.map(toCustomerRow)] }];
     }
 
     if (scope === "customer_type") {
@@ -526,10 +554,7 @@ const CustomerManagement = () => {
       const registeredRows = rows.filter((c) => !c.isGuest);
       return [
         { name: "KhachGuest", rows: [header, ...guestRows.map(toCustomerRow)] },
-        {
-          name: "KhachDangKy",
-          rows: [header, ...registeredRows.map(toCustomerRow)],
-        },
+        { name: "KhachDangKy", rows: [header, ...registeredRows.map(toCustomerRow)] },
       ];
     }
 
@@ -556,7 +581,13 @@ const CustomerManagement = () => {
 
       const rankFilter = getRankBoundsForFilter(activeFilter, rankSettings);
       const visibleRows = exportScope === "filtered_all"
-        ? await getCustomerExportRows({ restaurantId: selectedRestaurantId, includeGuests: true, search: searchDebounced, limit: 1000, customerRank: rankFilter })
+        ? await getCustomerExportRows({
+            restaurantId: selectedRestaurantId,
+            includeGuests: true,
+            search: searchDebounced,
+            limit: 1000,
+            customerRank: rankFilter,
+          })
         : (customersVisible || []);
       if (!visibleRows.length) {
         setExportError("Không có dữ liệu để xuất theo bộ lọc hiện tại.");
@@ -570,9 +601,9 @@ const CustomerManagement = () => {
           ? "danh-sach-hien-tai"
           : exportScope === "filtered_all"
             ? "tat-ca-theo-bo-loc"
-          : exportScope === "customer_type"
-            ? "phan-loai-guest"
-            : "phan-loai-hang";
+            : exportScope === "customer_type"
+              ? "phan-loai-guest"
+              : "phan-loai-hang";
       downloadXlsxWorkbook(
         sheets,
         `customer-export-${scopeSuffix}-${dateSuffix}.xlsx`,
@@ -598,7 +629,7 @@ const CustomerManagement = () => {
         eyebrow="CUSTOMER MANAGER"
         title="Quản lý khách hàng"
         subtitle="Tìm kiếm, phân hạng và chăm sóc khách theo từng chi nhánh."
-        icon="👥"
+        icon={<Users size={20} aria-hidden="true" />}
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={handleRestaurantChange}
         restaurantList={restaurantOptions}
@@ -607,7 +638,11 @@ const CustomerManagement = () => {
         stats={[]}
         statsPlacement="none"
         customControls={<CustomerKpiCards stats={customerHeaderStats} />}
-        primaryAction={{ label: "Thêm khách", icon: "➕", onClick: () => setShowAddModal(true) }}
+        primaryAction={{
+          label: "Thêm khách",
+          icon: <UserPlus size={16} aria-hidden="true" />,
+          onClick: () => setShowAddModal(true),
+        }}
       />
 
       <ManagerCommandBar
@@ -615,25 +650,47 @@ const CustomerManagement = () => {
         onSearchChange={handleSearch}
         searchPlaceholder="Tìm tên, SĐT, mã khách..."
         leftSlot={(
-          <div className="cm-quick-filters">
-            {quickFilters.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => handleFilter(f.key)}
-                className={`cm-pill ${activeFilter === f.key ? "is-active" : ""}`}
-              >
-                <span className="cm-pill-icon">{f.icon}</span>
-                <span className="cm-pill-label">{f.label}</span>
-                <span className="cm-pill-count">{formatCompactCount(f.count)}</span>
-              </button>
-            ))}
+          <div className="cm-quick-filter-wrap">
+            <div className="cm-quick-filters">
+              {quickFilters.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => handleFilter(f.key)}
+                  className={`cm-pill ${activeFilter === f.key ? "is-active" : ""}`}
+                  title="Số lượng trong trang hiện tại"
+                  aria-label={`${f.label}: ${f.count} khách trong trang hiện tại`}
+                >
+                  <span className="cm-pill-icon">{f.icon}</span>
+                  <span className="cm-pill-label">{f.label}</span>
+                  <span className="cm-pill-count">{formatCompactCount(f.count)}</span>
+                </button>
+              ))}
+            </div>
+            <span className="cm-filter-scope-note">Đếm trong trang hiện tại</span>
           </div>
         )}
         actions={[
-          { label: "Xuất Excel", icon: "📥", onClick: () => setShowExportModal(true) },
-          { label: "Gửi ưu đãi", icon: "🎁", onClick: () => setShowPromotionModal(true) },
-          { label: "Phân tích", icon: "📊", onClick: () => (window.location.hash = "#customer-analytics") },
-          { label: "Bộ lọc", icon: "⚙️", variant: showRightSidebar ? "primary" : undefined, onClick: () => setShowRightSidebar((v) => !v) },
+          {
+            label: "Xuất Excel",
+            icon: <Download size={16} aria-hidden="true" />,
+            onClick: () => setShowExportModal(true),
+          },
+          {
+            label: "Gửi ưu đãi",
+            icon: <Gift size={16} aria-hidden="true" />,
+            onClick: () => setShowPromotionModal(true),
+          },
+          {
+            label: "Phân tích",
+            icon: <BarChart3 size={16} aria-hidden="true" />,
+            onClick: () => (window.location.hash = "#customer-analytics"),
+          },
+          {
+            label: "Bộ lọc",
+            icon: <SlidersHorizontal size={16} aria-hidden="true" />,
+            variant: showRightSidebar ? "primary" : undefined,
+            onClick: () => setShowRightSidebar((v) => !v),
+          },
         ]}
       />
 
@@ -663,9 +720,7 @@ const CustomerManagement = () => {
                       onChange={(e) =>
                         setRankDraft((prev) =>
                           prev.map((item, i) =>
-                            i === idx
-                              ? { ...item, name: e.target.value }
-                              : item,
+                            i === idx ? { ...item, name: e.target.value } : item,
                           ),
                         )
                       }
@@ -678,10 +733,7 @@ const CustomerManagement = () => {
                         setRankDraft((prev) =>
                           prev.map((item, i) =>
                             i === idx
-                              ? {
-                                  ...item,
-                                  minPoints: Number(e.target.value || 0),
-                                }
+                              ? { ...item, minPoints: Number(e.target.value || 0) }
                               : item,
                           ),
                         )
@@ -739,8 +791,7 @@ const CustomerManagement = () => {
           <Modal.Body>
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                Chọn phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện
-                tại.
+                Chọn phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện tại.
               </p>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -750,8 +801,7 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("current_list")}
                 />
                 <span>
-                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách
-                  đã tải/đang hiển thị.
+                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách đã tải/đang hiển thị.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -773,8 +823,7 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("customer_type")}
                 />
                 <span>
-                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách
-                  guest và khách đăng ký.
+                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách guest và khách đăng ký.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -785,8 +834,7 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("loyalty_tier")}
                 />
                 <span>
-                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân
-                  thiết, Mới (theo loyalty points).
+                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân thiết, Mới (theo loyalty points).
                 </span>
               </label>
               {exportError ? (
