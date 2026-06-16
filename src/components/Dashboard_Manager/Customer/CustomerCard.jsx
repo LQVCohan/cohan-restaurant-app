@@ -16,7 +16,6 @@ import "./CustomerCard.scss";
 import "./CustomerToneSystem.scss";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
-/* --- Helpers Functions (Giữ nguyên) --- */
 const normalizeEpochToMs = (v) => {
   if (v == null) return null;
   if (v instanceof Date) return v.getTime();
@@ -89,44 +88,45 @@ const STATUS_CONFIG = {
   offline: "offline",
 };
 
+const STATUS_LABELS = {
+  online: "Đang hoạt động",
+  ordering: "Đang đặt món",
+  away: "Tạm rời",
+  offline: "Không hoạt động",
+};
+
 const CustomerCard = ({ customer, onClick }) => {
   const [copiedField, setCopiedField] = useState("");
 
-  // --- Logic ---
   const cleanName = useMemo(
     () => (customer?.name || "Khách hàng").replace("🟡", "").trim(),
     [customer?.name]
   );
 
   const customerCode = customer?.id ? `#${String(customer.id).padStart(4, "0")}` : "Chưa có mã";
+  const statusKey = STATUS_CONFIG[customer?.status] || "offline";
+  const statusLabel = STATUS_LABELS[statusKey] || STATUS_LABELS.offline;
 
   const sortedRecentOrders = useMemo(() => {
     const list = Array.isArray(customer?.recentOrders)
       ? customer.recentOrders
       : [];
     return [...list].sort((a, b) => {
-      const ams =
-        normalizeEpochToMs(a?.raw?.createdAt ?? a?.createdAt ?? a?.date) ?? 0;
-      const bms =
-        normalizeEpochToMs(b?.raw?.createdAt ?? b?.createdAt ?? b?.date) ?? 0;
+      const ams = normalizeEpochToMs(a?.raw?.createdAt ?? a?.createdAt ?? a?.date) ?? 0;
+      const bms = normalizeEpochToMs(b?.raw?.createdAt ?? b?.createdAt ?? b?.date) ?? 0;
       return bms - ams;
     });
   }, [customer?.recentOrders]);
 
   const stats = useMemo(() => {
     const count = sortedRecentOrders.length;
-    const total = sortedRecentOrders.reduce(
-      (sum, entry) => sum + getEntryAmount(entry),
-      0
-    );
+    const total = sortedRecentOrders.reduce((sum, entry) => sum + getEntryAmount(entry), 0);
     const avg = count > 0 ? total / count : 0;
     return { count, total, avg };
   }, [sortedRecentOrders]);
 
   const nearestOrder = sortedRecentOrders[0];
-  const favoriteItems = Array.isArray(customer?.favoriteItems)
-    ? customer.favoriteItems
-    : [];
+  const favoriteItems = Array.isArray(customer?.favoriteItems) ? customer.favoriteItems : [];
 
   const handleOpen = () => onClick?.(customer);
 
@@ -146,7 +146,6 @@ const CustomerCard = ({ customer, onClick }) => {
     window.setTimeout(() => setCopiedField((current) => (current === key ? "" : current)), 1300);
   };
 
-  // --- Handlers ---
   const renderCustomerType = () => {
     const rankConfig = getRankDisplayConfig(
       customer?.customerType || customer?.rankName,
@@ -175,13 +174,11 @@ const CustomerCard = ({ customer, onClick }) => {
       tabIndex={0}
       aria-label={`Mở hồ sơ ${cleanName}`}
     >
-      {/* 1. Header: Avatar & Name */}
       <div className="cc-header">
         <div className="cc-avatar-wrapper">
           <div className="cc-avatar">
             {customer?.avatar ? (
-              typeof customer.avatar === "string" &&
-              customer.avatar.startsWith("http") ? (
+              typeof customer.avatar === "string" && customer.avatar.startsWith("http") ? (
                 <img src={customer.avatar} alt={`Ảnh đại diện của ${cleanName}`} />
               ) : (
                 <span aria-hidden="true">{customer.avatar}</span>
@@ -190,10 +187,11 @@ const CustomerCard = ({ customer, onClick }) => {
               <User size={24} aria-hidden="true" />
             )}
           </div>
-          <div
-            className={`cc-status-dot ${
-              STATUS_CONFIG[customer?.status] || "offline"
-            }`}
+          <span
+            className={`cc-status-dot ${statusKey}`}
+            title={statusLabel}
+            aria-label={statusLabel}
+            role="status"
           />
         </div>
         <div className="cc-info">
@@ -213,9 +211,7 @@ const CustomerCard = ({ customer, onClick }) => {
           <div className="cc-customer-id">{customerCode}</div>
           <div className="cc-badges">
             {renderCustomerType()}
-            {customer?.isGuest && (
-              <span className="cc-badge guest">Vãng lai</span>
-            )}
+            {customer?.isGuest && <span className="cc-badge guest">Vãng lai</span>}
             <span className={`cc-badge ${customer?.verificationStatus === "verified" || customer?.verificationStatus === "email_verified" || customer?.verificationStatus === "phone_verified" ? "regular" : "guest"}`}>
               {customer?.verificationLabel || (customer?.verificationStatus === "verified" ? "Đã xác minh" : "Chưa xác minh")}
             </span>
@@ -223,7 +219,6 @@ const CustomerCard = ({ customer, onClick }) => {
         </div>
       </div>
 
-      {/* 2. Stats Grid */}
       <div className="cc-stats-grid">
         <div className="cc-stat-box gold">
           <div className="val">{customer?.loyaltyPoints || 0}</div>
@@ -235,11 +230,10 @@ const CustomerCard = ({ customer, onClick }) => {
         </div>
         <div className="cc-stat-box purple">
           <div className="val">{formatMoney(stats.avg).replace("₫", "")}</div>
-          <div className="lbl">TB/Đơn</div>
+          <div className="lbl">TB/đơn</div>
         </div>
       </div>
 
-      {/* 3. Body: Contact & Favorites */}
       <div className="cc-body">
         <div className="cc-contact-list">
           <div className={`cc-row ${customer?.email ? "has-copy" : ""}`}>
@@ -274,31 +268,23 @@ const CustomerCard = ({ customer, onClick }) => {
           </div>
         </div>
 
-        {/* Favorite Items Chips */}
         {favoriteItems.length > 0 ? (
           <div className="cc-favs" aria-label="Món thường gọi">
             {favoriteItems.slice(0, 3).map((item, i) => (
               <span key={i}>{item}</span>
             ))}
-            {favoriteItems.length > 3 && (
-              <span>+{favoriteItems.length - 3}</span>
-            )}
+            {favoriteItems.length > 3 && <span>+{favoriteItems.length - 3}</span>}
           </div>
         ) : (
-          <div className="cc-favs cc-empty-favs">
-            Chưa có món yêu thích
-          </div>
+          <div className="cc-favs cc-empty-favs">Chưa có món yêu thích</div>
         )}
       </div>
 
-      {/* 4. Footer: Last Order & Action */}
       <div className="cc-footer">
         {nearestOrder ? (
           <div className="cc-last-order">
             <span className="lo-label">Đơn mới nhất</span>
-            <span className="lo-date">
-              {formatDate(nearestOrder?.raw?.createdAt || nearestOrder?.date)}
-            </span>
+            <span className="lo-date">{formatDate(nearestOrder?.raw?.createdAt || nearestOrder?.date)}</span>
           </div>
         ) : (
           <div className="cc-last-order">
