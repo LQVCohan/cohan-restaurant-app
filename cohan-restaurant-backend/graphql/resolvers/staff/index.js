@@ -69,7 +69,7 @@ const paginatePayrollOverview = (overview, args = {}) => {
   };
 };
 
-const staffPayrollOverview = async (parent, args, ctx, info) => {
+const staffPayrollOverviewPage = async (parent, args, ctx, info) => {
   const overview = await staffQuery.staffPayrollOverview(parent, args, ctx, info);
   return paginatePayrollOverview(overview, args);
 };
@@ -78,7 +78,7 @@ const resolvers = {
   Query: {
     ...staffQuery,
     ...payrollReadinessQuery,
-    staffPayrollOverview,
+    staffPayrollOverviewPage,
   },
   Mutation: {
     ...staffMutation,
