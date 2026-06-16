@@ -25,6 +25,7 @@
 @import "./schedule-command-center-tight.css";
 @import "./schedule-manager-accessibility-warm.css";
 @import "./schedule-manager-accessibility-fixes.css";
+@import "./schedule-admin-final-tuning.css";
 
 .schedule-readiness-focus-banner {
   position: relative;
