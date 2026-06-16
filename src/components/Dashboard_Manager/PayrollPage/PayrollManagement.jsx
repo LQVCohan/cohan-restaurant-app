@@ -18,7 +18,7 @@ const PAYROLL_OVERVIEW_PAGE_QUERY = gql`
     $limit: Int
     $offset: Int
   ) {
-    staffPayrollOverview(
+    staffPayrollOverview: staffPayrollOverviewPage(
       startDate: $startDate
       endDate: $endDate
       restaurantId: $restaurantId
