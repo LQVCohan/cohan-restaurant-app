@@ -60,6 +60,10 @@ input RejectTransferPaymentInput {
   reason: String!
 }
 
+extend type Query {
+  transferPaymentQueue(restaurantId: ID!, status: TransferVerificationStatus, limit: Int): [PaymentSession!]!
+}
+
 extend type Mutation {
   createCustomerTransferPayment(input: CreateCustomerTransferPaymentInput!): PaymentSession!
   submitTransferProof(input: SubmitTransferProofInput!): PaymentSession!
