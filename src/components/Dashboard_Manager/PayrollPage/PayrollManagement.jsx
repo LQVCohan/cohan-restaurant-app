@@ -1,8 +1,41 @@
-import React, { useMemo, useState } from "react";
-import { useQuery } from "@apollo/client";
-import usePayroll, { QUERY_STAFF_PAYROLL_OVERVIEW } from "@/hooks/usePayroll";
+import React, { useEffect, useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
+import usePayroll from "@/hooks/usePayroll";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./PayrollManagement.scss";
+import "../../../styles/PayrollPagination.css";
+
+const PAYROLL_PAGE_SIZE = 8;
+
+const PAYROLL_OVERVIEW_PAGE_QUERY = gql`
+  query PayrollOverviewPage(
+    $startDate: DateTime!
+    $endDate: DateTime!
+    $restaurantId: ID
+    $periodId: ID
+    $search: String
+    $status: String
+    $limit: Int
+    $offset: Int
+  ) {
+    staffPayrollOverview(
+      startDate: $startDate
+      endDate: $endDate
+      restaurantId: $restaurantId
+      periodId: $periodId
+      search: $search
+      status: $status
+      limit: $limit
+      offset: $offset
+    ) {
+      stats { totalPayroll paidAmount remaining progress }
+      pageInfo { totalCount limit offset page pageSize totalPages hasMore }
+      items {
+        id payrollItemId name code role department avatar baseSalary workDays actualWorkDays totalHours hourlyRate allowance bonus otherAddition overtime overtimeNormal overtimeWeekend overtimeHoliday nightShiftExtra overtimeHours overtimeNormalHours overtimeWeekendHours overtimeHolidayHours nightHours overtimeNightHours deduction otherDeduction advance insuranceSocial insuranceHealth insuranceUnemployment insuranceTotal personalIncomeTax grossIncome coefficient totalIncome totalDeduction netSalary policyCode policyEffectiveFrom regionCode minimumWageMonthly minimumWageHourly minimumWageViolation insuranceEligible warningMessages status paidAmount remainingAmount paidAt lateMinutes earlyLeaveMinutes unpaidLeaveDays paidLeaveDays scheduleShiftCount manualAdjustmentTotal periodId
+      }
+    }
+  }
+`;
 
 const getDefaultRange = () => {
   const today = new Date();
@@ -119,6 +152,7 @@ const PayrollManagement = () => {
   const [search, setSearch] = useState("");
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [page, setPage] = useState(1);
 
   const apiRange = useMemo(
     () => ({
@@ -142,41 +176,53 @@ const PayrollManagement = () => {
     endDate: apiRange.endDate,
   });
 
-  const runtimeOverviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
+  const periods = payroll.periods || [];
+  const currentPeriod = payroll.periodDetail?.period || periods.find((period) => period.id === (selectedPeriodId || payroll.currentPeriodId)) || null;
+  const effectivePeriodId = selectedPeriodId || currentPeriod?.id || payroll.currentPeriodId || periods[0]?.id || "";
+  const actionDisabled = !effectivePeriodId;
+  const overviewOffset = Math.max(0, (page - 1) * PAYROLL_PAGE_SIZE);
+  const overviewStatus = activeStatus === "all" ? undefined : activeStatus;
+  const overviewSearch = search.trim() || undefined;
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeStatus, range.end, range.start, search, selectedPeriodId, selectedRestaurantId]);
+
+  const overviewQuery = useQuery(PAYROLL_OVERVIEW_PAGE_QUERY, {
     variables: {
       startDate: apiRange.startDate,
       endDate: apiRange.endDate,
       restaurantId: selectedRestaurantId || undefined,
-      periodId: undefined,
+      periodId: effectivePeriodId || undefined,
+      search: overviewSearch,
+      status: overviewStatus,
+      limit: PAYROLL_PAGE_SIZE,
+      offset: overviewOffset,
     },
     skip: !selectedRestaurantId || !apiRange.startDate || !apiRange.endDate,
     fetchPolicy: "cache-and-network",
   }) || {};
 
-  const periods = payroll.periods || [];
-  const currentPeriod = payroll.periodDetail?.period || periods.find((period) => period.id === (selectedPeriodId || payroll.currentPeriodId)) || null;
-  const snapshotItems = payroll.payrollItems || [];
-  const runtimeItems = runtimeOverviewQuery.data?.staffPayrollOverview?.items || [];
-  const hasSnapshotItems = snapshotItems.length > 0;
-  const items = hasSnapshotItems ? snapshotItems : runtimeItems;
-  const stats = hasSnapshotItems
-    ? payroll.payrollStats || currentPeriod?.stats || {}
-    : runtimeOverviewQuery.data?.staffPayrollOverview?.stats || payroll.payrollStats || currentPeriod?.stats || {};
+  const overview = overviewQuery.data?.staffPayrollOverview || null;
+  const items = overview?.items || [];
+  const pageInfo = overview?.pageInfo || {
+    totalCount: items.length,
+    limit: PAYROLL_PAGE_SIZE,
+    offset: overviewOffset,
+    page,
+    pageSize: items.length,
+    totalPages: Math.max(1, page),
+    hasMore: false,
+  };
+  const stats = overview?.stats || payroll.payrollStats || currentPeriod?.stats || {};
   const readiness = payroll.payrollReadiness || null;
-
-  const effectivePeriodId = selectedPeriodId || currentPeriod?.id || payroll.currentPeriodId || periods[0]?.id || "";
-  const actionDisabled = !effectivePeriodId;
-  const tableLoading = payroll.loading || runtimeOverviewQuery.loading;
-
-  const filteredItems = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return items.filter((item) => {
-      const matchesStatus = activeStatus === "all" || item.status === activeStatus;
-      const haystack = [item.name, item.code, item.department, item.role].join(" ").toLowerCase();
-      const matchesSearch = !keyword || haystack.includes(keyword);
-      return matchesStatus && matchesSearch;
-    });
-  }, [activeStatus, items, search]);
+  const hasSnapshotItems = items.some((item) => item.periodId || item.payrollItemId);
+  const tableLoading = payroll.loading || overviewQuery.loading;
+  const totalPages = Math.max(1, Number(pageInfo.totalPages || 1));
+  const totalCount = Number(pageInfo.totalCount || 0);
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const firstRow = totalCount > 0 ? Number(pageInfo.offset || 0) + 1 : 0;
+  const lastRow = totalCount > 0 ? Math.min(Number(pageInfo.offset || 0) + items.length, totalCount) : 0;
 
   const totals = useMemo(() => {
     const totalPayroll = Number(stats.totalPayroll ?? items.reduce((sum, item) => sum + Number(item.netSalary || 0), 0));
@@ -190,6 +236,7 @@ const PayrollManagement = () => {
     setSearch("");
     setActiveStatus("all");
     setRange(defaultRange);
+    setPage(1);
   };
 
   const handlePeriodChange = (event) => {
@@ -198,11 +245,11 @@ const PayrollManagement = () => {
   };
 
   const handleExportCsv = () => {
-    const rows = filteredItems.map((item) => ({
+    const rows = items.map((item) => ({
       ...item,
       status: statusLabel(item.status),
     }));
-    downloadCsv(`payroll-${range.start}-${range.end}.csv`, rows, EXPORT_COLUMNS);
+    downloadCsv(`payroll-page-${currentPage}-${range.start}-${range.end}.csv`, rows, EXPORT_COLUMNS);
   };
 
   const refreshPayrollData = async () => {
@@ -210,11 +257,15 @@ const PayrollManagement = () => {
       payroll.refetchPeriods?.(),
       effectivePeriodId ? payroll.refetchDetail?.({ periodId: effectivePeriodId }) : null,
       effectivePeriodId ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }) : null,
-      runtimeOverviewQuery.refetch?.({
+      overviewQuery.refetch?.({
         startDate: apiRange.startDate,
         endDate: apiRange.endDate,
         restaurantId: selectedRestaurantId || undefined,
-        periodId: undefined,
+        periodId: effectivePeriodId || undefined,
+        search: overviewSearch,
+        status: overviewStatus,
+        limit: PAYROLL_PAGE_SIZE,
+        offset: overviewOffset,
       }),
     ]);
   };
@@ -234,6 +285,10 @@ const PayrollManagement = () => {
     }
   };
 
+  const goToPage = (nextPage) => {
+    setPage(Math.min(Math.max(1, nextPage), totalPages));
+  };
+
   return (
     <div className="payroll-page-compact">
       <section className="header-toolbar">
@@ -248,7 +303,7 @@ const PayrollManagement = () => {
             <span className="payroll-date-range">
               {formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}
             </span>
-            <span className="payroll-employee-count">{filteredItems.length}/{items.length} nhân viên</span>
+            <span className="payroll-employee-count">{totalCount} nhân viên phù hợp</span>
           </div>
         </div>
 
@@ -282,7 +337,7 @@ const PayrollManagement = () => {
             <button className="btn btn-white" type="button" onClick={refreshPayrollData}>
               Làm mới
             </button>
-            <button className="btn btn-primary" type="button" onClick={handleExportCsv} disabled={!filteredItems.length}>
+            <button className="btn btn-primary" type="button" onClick={handleExportCsv} disabled={!items.length}>
               Xuất CSV
             </button>
           </div>
@@ -395,8 +450,8 @@ const PayrollManagement = () => {
                     <td className="sticky-left" colSpan={10}>Đang tải dữ liệu lương...</td>
                   </tr>
                 ))
-              ) : filteredItems.length ? (
-                filteredItems.map((item) => (
+              ) : items.length ? (
+                items.map((item) => (
                   <tr key={item.id || item.payrollItemId || item.code || item.name}>
                     <td className="sticky-left">
                       <div className="emp-cell">
@@ -437,6 +492,27 @@ const PayrollManagement = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="payroll-pagination-bar" aria-label="Phân trang bảng lương">
+          <div className="payroll-pagination-info">
+            <strong>{totalCount}</strong> nhân viên • Hiển thị {firstRow}-{lastRow} • Trang {currentPage}/{totalPages}
+          </div>
+          <div className="payroll-pagination-actions">
+            <button className="btn btn-white" type="button" onClick={() => goToPage(1)} disabled={currentPage <= 1 || tableLoading}>
+              Đầu
+            </button>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1 || tableLoading}>
+              Trước
+            </button>
+            <span className="payroll-page-pill">{currentPage}</span>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages || tableLoading}>
+              Sau
+            </button>
+            <button className="btn btn-white" type="button" onClick={() => goToPage(totalPages)} disabled={currentPage >= totalPages || tableLoading}>
+              Cuối
+            </button>
+          </div>
         </div>
       </section>
     </div>
