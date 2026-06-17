@@ -21,9 +21,16 @@
 .schedule-container.schedule-container .kpi-card.hours,
 .schedule-container.schedule-container .kpi-card.availability,
 .schedule-container.schedule-container .kpi-card.shifts,
-.schedule-container.schedule-container .kpi-card.status {
+.schedule-container.schedule-container .kpi-card.status,
+.manager-page-shell--schedules .schedule-header .kpi-card,
+.manager-page-shell--schedules .schedule-header .kpi-card.action,
+.manager-page-shell--schedules .schedule-header .kpi-card.action.has-alert,
+.manager-page-shell--schedules .schedule-header .kpi-card.hours,
+.manager-page-shell--schedules .schedule-header .kpi-card.money,
+.manager-page-shell--schedules .schedule-header .kpi-card.status {
   border-left: 1px solid rgba(229, 222, 211, 0.95) !important;
   border-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(255, 253, 248, 0.92) !important;
   box-shadow:
     0 16px 36px rgba(48, 40, 30, 0.055),
     inset 0 1px rgba(255, 255, 255, 0.72) !important;
@@ -42,9 +49,35 @@
 .schedule-container.schedule-container .kpi-card.shifts::before,
 .schedule-container.schedule-container .kpi-card.shifts::after,
 .schedule-container.schedule-container .kpi-card.status::before,
-.schedule-container.schedule-container .kpi-card.status::after {
+.schedule-container.schedule-container .kpi-card.status::after,
+.manager-page-shell--schedules .schedule-header .kpi-card::before,
+.manager-page-shell--schedules .schedule-header .kpi-card::after,
+.manager-page-shell--schedules .schedule-header .kpi-card.action::before,
+.manager-page-shell--schedules .schedule-header .kpi-card.action::after,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert::before,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert::after,
+.manager-page-shell--schedules .schedule-header .kpi-card.hours::before,
+.manager-page-shell--schedules .schedule-header .kpi-card.hours::after,
+.manager-page-shell--schedules .schedule-header .kpi-card.money::before,
+.manager-page-shell--schedules .schedule-header .kpi-card.money::after,
+.manager-page-shell--schedules .schedule-header .kpi-card.status::before,
+.manager-page-shell--schedules .schedule-header .kpi-card.status::after {
   background: linear-gradient(180deg, var(--schedule-qa-sage), #2f7d68) !important;
   border-color: rgba(83, 108, 97, 0.28) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action .kpi-icon,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert .kpi-icon,
+.manager-page-shell--schedules .schedule-header .kpi-card.hours .kpi-icon,
+.manager-page-shell--schedules .schedule-header .kpi-card.money .kpi-icon,
+.manager-page-shell--schedules .schedule-header .kpi-card.status .kpi-icon {
+  background: var(--schedule-qa-sage-soft) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+  border: 1px solid rgba(83, 108, 97, 0.18) !important;
+}
+
+.manager-page-shell--schedules .schedule-header::before {
+  background: linear-gradient(90deg, var(--schedule-qa-sage), #2f7d68) !important;
 }
 
 /* Hide the injected secondary week jumper: toolbar navigation is the single source of truth. */
@@ -125,10 +158,30 @@
 
 /* Empty guidance should feel like help, not warning. */
 .schedule-empty-guidance {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
   border-color: rgba(83, 108, 97, 0.22) !important;
-  background: rgba(237, 244, 240, 0.64) !important;
+  background:
+    radial-gradient(circle at 1rem 50%, rgba(83, 108, 97, 0.12), transparent 4.5rem),
+    rgba(237, 244, 240, 0.64) !important;
   color: var(--schedule-qa-sage-strong) !important;
   font-weight: 760 !important;
+}
+
+.schedule-empty-guidance::before {
+  content: "";
+  flex: 0 0 0.55rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--schedule-qa-sage);
+  box-shadow: 0 0 0 4px rgba(83, 108, 97, 0.12);
+}
+
+.schedule-container.schedule-container .schedule-board:has(.schedule-empty-guidance) .schedule-day-column {
+  min-height: 370px !important;
 }
 
 /* Collapsed availability strip: keep it compact and balanced. */
@@ -149,6 +202,86 @@
   padding-inline: 0.8rem !important;
 }
 
+/* Expanded availability panel: make it read as a manager summary, not a technical form. */
+.schedule-container.schedule-container .schedule-availability-panel:not(:has(.schedule-availability-panel__compact-summary)) {
+  padding: 0.9rem 1rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel:not(:has(.schedule-availability-panel__compact-summary)) .schedule-availability-panel__header {
+  margin-bottom: 0.7rem !important;
+  padding-bottom: 0.68rem !important;
+  border-bottom-color: rgba(229, 222, 211, 0.86) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__header h3 svg {
+  background: var(--schedule-qa-sage-soft) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__status,
+.schedule-container.schedule-container .schedule-availability-panel__status.is-open,
+.schedule-container.schedule-container .schedule-availability-panel__status.is-draft,
+.schedule-container.schedule-container .schedule-availability-panel__status.is-closed,
+.schedule-container.schedule-container .schedule-availability-panel__status.is-locked,
+.schedule-container.schedule-container .schedule-availability-panel__status.is-used_for_schedule,
+.schedule-container.schedule-container .schedule-availability-panel__status.is-expired {
+  border-color: rgba(83, 108, 97, 0.22) !important;
+  background: var(--schedule-qa-sage-soft) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__summary > div,
+.schedule-container.schedule-container .metrics-grid span {
+  min-height: 3rem !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__summary > div::before,
+.schedule-container.schedule-container .metrics-grid span::before {
+  background: var(--schedule-qa-sage) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__summary > div:nth-child(7) {
+  display: none !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__actions button,
+.schedule-container.schedule-container .schedule-availability-panel__empty button {
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background: #fffdf8 !important;
+  color: var(--schedule-qa-sage-strong) !important;
+  box-shadow: 0 8px 18px rgba(48, 40, 30, 0.045) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__actions button:hover:not(:disabled),
+.schedule-container.schedule-container .schedule-availability-panel__empty button:hover:not(:disabled) {
+  border-color: rgba(83, 108, 97, 0.28) !important;
+  background: var(--schedule-qa-sage-soft) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+  transform: translateY(-1px) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__empty,
+.schedule-container.schedule-container .schedule-availability-panel__submission-detail,
+.schedule-container.schedule-container .availability-submission-card {
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(255, 253, 248, 0.72) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__submission-detail-header span {
+  background: var(--schedule-qa-sage-soft) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+}
+
 @media (max-width: 1180px) {
   .schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action::after {
     content: none;
@@ -158,5 +291,15 @@
     width: 2.5rem !important;
     min-width: 2.5rem !important;
     padding-inline: 0 !important;
+  }
+
+  .schedule-container.schedule-container .schedule-availability-panel__summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .schedule-container.schedule-container .schedule-availability-panel__summary {
+    grid-template-columns: 1fr !important;
   }
 }
