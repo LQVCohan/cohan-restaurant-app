@@ -1,0 +1,144 @@
+.payroll-page-compact .header-toolbar {
+  grid-template-columns: minmax(0, 0.95fr) minmax(620px, 0.72fr) !important;
+  gap: clamp(1.25rem, 2.2vw, 2.4rem) !important;
+}
+
+.payroll-page-compact .payroll-control-card {
+  grid-template-columns: minmax(190px, 1fr) minmax(230px, 1.12fr) auto !important;
+  justify-self: end;
+  width: min(100%, 640px) !important;
+  min-height: 94px !important;
+  padding: 0.95rem !important;
+}
+
+.payroll-page-compact .payroll-control-card .cycle-picker-compact {
+  min-width: 0 !important;
+  min-height: 58px !important;
+  padding: 0.48rem 0.58rem !important;
+}
+
+.payroll-page-compact .payroll-control-card .filter-select {
+  height: 38px !important;
+  min-height: 38px !important;
+  font-size: 0.86rem !important;
+  font-weight: 820 !important;
+  text-overflow: ellipsis;
+}
+
+.payroll-page-compact .payroll-control-card .actions-row {
+  min-width: 230px !important;
+}
+
+.payroll-page-compact .payroll-control-card .btn {
+  min-height: 42px !important;
+}
+
+.payroll-page-compact .payroll-summary-line {
+  align-items: center !important;
+}
+
+.payroll-page-compact .payroll-data-mode {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 26px !important;
+  padding: 0.2rem 0.66rem !important;
+  border: 1px solid rgba(83, 108, 97, 0.2) !important;
+  border-radius: 999px !important;
+  background: rgba(237, 244, 240, 0.74) !important;
+  color: var(--payroll-storage-sage, #536c61) !important;
+  font-size: 0.74rem !important;
+  font-weight: 860 !important;
+  letter-spacing: 0.012em;
+}
+
+.payroll-page-compact .payroll-data-mode.is-runtime {
+  border-color: rgba(168, 133, 95, 0.24) !important;
+  background: rgba(255, 247, 237, 0.82) !important;
+  color: var(--payroll-storage-taupe-dark, #735637) !important;
+}
+
+.payroll-page-compact .payroll-data-mode.is-official {
+  border-color: rgba(47, 125, 104, 0.24) !important;
+  background: rgba(237, 244, 240, 0.9) !important;
+  color: var(--payroll-storage-success, #2f7d68) !important;
+}
+
+.payroll-page-compact .payroll-data-mode::before {
+  content: "" !important;
+  display: inline-block !important;
+  width: 0.46rem !important;
+  height: 0.46rem !important;
+  margin-right: 0.42rem !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+  opacity: 0.75;
+}
+
+.payroll-page-compact .payroll-action-row {
+  align-items: center !important;
+}
+
+.payroll-page-compact .payroll-action-buttons {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 0.52rem !important;
+}
+
+.payroll-page-compact .payroll-action-buttons .btn {
+  min-height: 39px !important;
+  border-radius: 12px !important;
+}
+
+.payroll-page-compact .btn-create-period {
+  color: #fffdf8 !important;
+  border-color: rgba(83, 108, 97, 0.44) !important;
+  background: linear-gradient(135deg, var(--payroll-storage-sage, #536c61), var(--payroll-storage-success, #2f7d68)) !important;
+  box-shadow: 0 12px 24px rgba(47, 125, 104, 0.13) !important;
+}
+
+.payroll-page-compact .btn-create-period:not(:disabled):hover {
+  box-shadow: 0 14px 28px rgba(47, 125, 104, 0.2) !important;
+}
+
+.payroll-page-compact .payroll-inline-message {
+  max-width: 520px;
+  white-space: normal !important;
+  text-align: right;
+}
+
+.payroll-page-compact .payroll-table td:last-child .status-dot {
+  min-width: 64px;
+  justify-content: center;
+  padding: 0.36rem 0.58rem !important;
+}
+
+.payroll-page-compact .payroll-table td:last-child .status-dot::before {
+  margin-right: 0.16rem !important;
+}
+
+@media (max-width: 1280px) {
+  .payroll-page-compact .header-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .payroll-page-compact .payroll-control-card {
+    justify-self: stretch;
+    width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .payroll-page-compact .payroll-control-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  .payroll-page-compact .payroll-control-card .actions-row {
+    min-width: 0 !important;
+  }
+
+  .payroll-page-compact .payroll-inline-message {
+    text-align: left;
+  }
+}
