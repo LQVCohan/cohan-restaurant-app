@@ -167,3 +167,32 @@
     flex-direction: column;
   }
 }
+
+.ar-placement-modal__model-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+
+  label {
+    display: grid;
+    gap: 5px;
+    color: #43525a;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  input {
+    border: 1px solid #d8d0c5;
+    border-radius: 10px;
+    padding: 8px 10px;
+    color: #24323b;
+    background: #fffdf9;
+    font-size: 0.88rem;
+
+    &:focus {
+      outline: 3px solid rgba(31, 106, 96, 0.16);
+      border-color: #1f6a60;
+    }
+  }
+}
