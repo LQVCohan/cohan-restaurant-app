@@ -1,0 +1,162 @@
+/* Final QA pass for schedule admin page.
+   Fixes remaining visible rough edges: orange KPI rails, duplicate week jumper,
+   vague today label and cramped utility buttons. */
+
+.schedule-container.schedule-container {
+  --schedule-qa-ink: #24303f;
+  --schedule-qa-sage: #536c61;
+  --schedule-qa-sage-strong: #40564c;
+  --schedule-qa-sage-soft: #edf4f0;
+  --schedule-qa-border: #e5ded3;
+  --schedule-qa-surface: #fffdf8;
+  --schedule-qa-muted: #667085;
+  --schedule-qa-taupe: #eadfcc;
+  --schedule-qa-taupe-strong: #735637;
+}
+
+/* Remove leftover orange rails from KPI cards. */
+.schedule-container.schedule-container .kpi-card,
+.schedule-container.schedule-container .kpi-card.action,
+.schedule-container.schedule-container .kpi-card.has-alert,
+.schedule-container.schedule-container .kpi-card.hours,
+.schedule-container.schedule-container .kpi-card.availability,
+.schedule-container.schedule-container .kpi-card.shifts,
+.schedule-container.schedule-container .kpi-card.status {
+  border-left: 1px solid rgba(229, 222, 211, 0.95) !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  box-shadow:
+    0 16px 36px rgba(48, 40, 30, 0.055),
+    inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.schedule-container.schedule-container .kpi-card::before,
+.schedule-container.schedule-container .kpi-card::after,
+.schedule-container.schedule-container .kpi-card.action::before,
+.schedule-container.schedule-container .kpi-card.action::after,
+.schedule-container.schedule-container .kpi-card.has-alert::before,
+.schedule-container.schedule-container .kpi-card.has-alert::after,
+.schedule-container.schedule-container .kpi-card.hours::before,
+.schedule-container.schedule-container .kpi-card.hours::after,
+.schedule-container.schedule-container .kpi-card.availability::before,
+.schedule-container.schedule-container .kpi-card.availability::after,
+.schedule-container.schedule-container .kpi-card.shifts::before,
+.schedule-container.schedule-container .kpi-card.shifts::after,
+.schedule-container.schedule-container .kpi-card.status::before,
+.schedule-container.schedule-container .kpi-card.status::after {
+  background: linear-gradient(180deg, var(--schedule-qa-sage), #2f7d68) !important;
+  border-color: rgba(83, 108, 97, 0.28) !important;
+}
+
+/* Hide the injected secondary week jumper: toolbar navigation is the single source of truth. */
+.schedule-container.schedule-container .schedule-board-week-jumper[data-dom-polish="true"] {
+  display: none !important;
+}
+
+/* Utility actions are readable but still secondary. */
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action {
+  width: auto !important;
+  min-width: auto !important;
+  height: 2.5rem !important;
+  min-height: 2.5rem !important;
+  padding: 0 0.68rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.36rem !important;
+  overflow: visible !important;
+  font-size: 0 !important;
+  white-space: nowrap !important;
+  border-color: rgba(229, 222, 211, 0.95) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action svg {
+  flex: 0 0 auto !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  margin: 0 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action::after {
+  content: attr(data-short-label);
+  font-size: 0.8rem !important;
+  font-weight: 820 !important;
+  line-height: 1 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-assist-action {
+  min-width: 8.25rem !important;
+  justify-content: center !important;
+}
+
+/* Today should read as today, not as an error state. */
+.manager-page-shell--schedules .day-header.today + .day-body::before,
+.schedule-container.schedule-container .day-header.today + .day-body::before {
+  content: "Hôm nay" !important;
+  border-color: rgba(83, 108, 97, 0.24) !important;
+  background: var(--schedule-qa-sage-soft) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .day-header.today::after,
+.schedule-container.schedule-container .today-badge,
+.schedule-container.schedule-container [class*="today-badge"] {
+  background: var(--schedule-qa-taupe) !important;
+  border-color: rgba(168, 133, 95, 0.28) !important;
+  color: var(--schedule-qa-taupe-strong) !important;
+}
+
+/* Make toolbar navigation feel even and avoid clipped-looking buttons. */
+.schedule-container.schedule-container .schedule-toolbar .date-navigation .nav-btn {
+  min-width: 3.7rem !important;
+  padding-inline: 0.72rem !important;
+  overflow: visible !important;
+}
+
+.schedule-container.schedule-container .schedule-toolbar .date-navigation .nav-btn--today {
+  min-width: 4.75rem !important;
+}
+
+.schedule-container.schedule-container .schedule-toolbar .week-label {
+  min-width: 12.6rem !important;
+  text-align: center !important;
+}
+
+/* Empty guidance should feel like help, not warning. */
+.schedule-empty-guidance {
+  border-color: rgba(83, 108, 97, 0.22) !important;
+  background: rgba(237, 244, 240, 0.64) !important;
+  color: var(--schedule-qa-sage-strong) !important;
+  font-weight: 760 !important;
+}
+
+/* Collapsed availability strip: keep it compact and balanced. */
+.schedule-container.schedule-container .schedule-availability-panel__compact-summary {
+  grid-template-columns: minmax(210px, 0.62fr) minmax(300px, 1fr) auto !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-main {
+  gap: 0.45rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-meta {
+  gap: 0.35rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button {
+  min-height: 34px !important;
+  padding-inline: 0.8rem !important;
+}
+
+@media (max-width: 1180px) {
+  .schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action::after {
+    content: none;
+  }
+
+  .schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action {
+    width: 2.5rem !important;
+    min-width: 2.5rem !important;
+    padding-inline: 0 !important;
+  }
+}
