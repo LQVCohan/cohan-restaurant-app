@@ -145,6 +145,7 @@ const TableManagement = () => {
   const [showFloorModal, setShowFloorModal] = useState(false);
   const [showVrModal, setShowVrModal] = useState(false);
   const [showTable3DModal, setShowTable3DModal] = useState(false);
+  const [simulatorTargetFloor, setSimulatorTargetFloor] = useState(null);
   const [vrForm, setVrForm] = useState({
     vrTourUrl: "",
   });
@@ -449,12 +450,19 @@ const TableManagement = () => {
   const handleOpenArPlacementForTable = (tableRow) => {
     if (!tableRow?.id) return;
     const rawTable = getRawTableById(tablesRaw, tableRow.id);
-    setLiteTable(rawTable || tableRow);
+    const targetTable = rawTable || tableRow;
+    const targetFloorId = targetTable?.floorId ?? tableRow?.floorId;
+    const foundFloor =
+      floors.find((floor) => String(floor.id) === String(targetFloorId)) ||
+      (floorsRaw || []).find((floor) => String(floor.id) === String(targetFloorId));
+    setLiteTable(targetTable);
+    setSimulatorTargetFloor(foundFloor || null);
     setShowTable3DModal(true);
   };
 
   const handleOpen3DSimulatorFromHeader = () => {
     setLiteTable(null);
+    setSimulatorTargetFloor(null);
     setShowTable3DModal(true);
   };
 
@@ -1177,13 +1185,22 @@ const TableManagement = () => {
         open={showTable3DModal}
         onClose={() => setShowTable3DModal(false)}
         onApply={handleApply3DTemplate}
-        currentFloorName={floors.find((f) => String(f.id) === String(currentFloor))?.name}
+        currentFloorName={
+          simulatorTargetFloor?.name ||
+          floors.find((f) => String(f.id) === String(currentFloor))?.name
+        }
         restaurantName={restaurant?.name}
         restaurantId={restaurantId}
         restaurant={restaurant}
         table={liteTable}
-        floor={floors.find((f) => String(f.id) === String(currentFloor))}
-        currentFloorLayout={floors.find((f) => String(f.id) === String(currentFloor))}
+        floor={
+          simulatorTargetFloor ||
+          floors.find((f) => String(f.id) === String(currentFloor))
+        }
+        currentFloorLayout={
+          simulatorTargetFloor ||
+          floors.find((f) => String(f.id) === String(currentFloor))
+        }
         onSaveArPosition={handleSaveArTablePosition}
       />
 
