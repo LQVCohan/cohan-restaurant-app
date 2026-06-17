@@ -1,8 +1,10 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation } from "@apollo/client";
+import { io } from "socket.io-client";
 import Modal from "../../common/Modal";
 import { AuthContext } from "../../../context/AuthContext";
 import { formatCurrency } from "../../../utils/formatters";
+import { getToken } from "../../../lib/authStorage";
 import {
   buildDiscountPricingInput,
   getShippingFeeForDiscountPreview,
@@ -12,6 +14,7 @@ import {
 import "./OrderSummaryModal.scss";
 
 const ORDER_VAT_RATE = 0.1;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 const CREATE_CHECKOUT_ORDERS = gql`
   mutation CreateCheckoutOrders($input: CreateCheckoutOrdersInput!) {
@@ -101,6 +104,16 @@ const isShippingValid = (shipping) => {
   return nameOk && phoneOk && emailOk && addressOk;
 };
 
+const resolveTransferStatus = (session = {}) => {
+  if (String(session?.status || "").toLowerCase() === "success") return "VERIFIED";
+  return String(session?.transfer?.status || "INSTRUCTIONS_SHOWN").toUpperCase();
+};
+
+const shouldPollTransferSession = (session = {}) => {
+  const status = resolveTransferStatus(session);
+  return !["VERIFIED", "REJECTED", "FAILED", "EXPIRED"].includes(status);
+};
+
 export default function OrderSummaryTransferModal({ isOpen, onClose, items = [], onSuccess }) {
   const { user } = useContext(AuthContext) || {};
   const [shipping, setShipping] = useState(() => defaultShipping(user));
@@ -111,6 +124,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
   const [transferSessions, setTransferSessions] = useState([]);
   const [proofBySession, setProofBySession] = useState({});
   const [loading, setLoading] = useState(false);
+  const transferSessionIdsRef = useRef(new Set());
 
   const [createCheckoutOrders] = useMutation(CREATE_CHECKOUT_ORDERS);
   const [createCustomerTransferPayment] = useMutation(CREATE_CUSTOMER_TRANSFER_PAYMENT);
@@ -118,6 +132,83 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
   const [syncPaymentStatus] = useMutation(SYNC_PAYMENT_STATUS);
 
   const totals = useMemo(() => calcTotal(items), [items]);
+
+  useEffect(() => {
+    transferSessionIdsRef.current = new Set(transferSessions.map((session) => String(session?.id || session?._id || "")).filter(Boolean));
+  }, [transferSessions]);
+
+  const mergeTransferSessionUpdate = (updated) => {
+    const updatedId = String(updated?.paymentSessionId || updated?.id || updated?._id || "");
+    if (!updatedId) return;
+    setTransferSessions((prev) => prev.map((session) => {
+      const sessionId = String(session?.id || session?._id || "");
+      if (sessionId !== updatedId) return session;
+      return {
+        ...session,
+        ...updated,
+        id: session.id || updated.id || updated.paymentSessionId,
+        status: updated.status || session.status,
+        transfer: { ...(session.transfer || {}), ...(updated.transfer || {}) },
+      };
+    }));
+  };
+
+  useEffect(() => {
+    if (!isOpen || view !== "transfer" || !user?.id || !transferSessions.length) return undefined;
+    const token = getToken();
+    if (!token) return undefined;
+
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket", "polling"],
+      auth: { token },
+      reconnection: true,
+      reconnectionDelay: 2000,
+      reconnectionAttempts: 10,
+    });
+
+    const handlePaymentEvent = (event) => {
+      const paymentSessionId = String(event?.paymentSessionId || "");
+      if (!paymentSessionId || !transferSessionIdsRef.current.has(paymentSessionId)) return;
+      mergeTransferSessionUpdate(event);
+    };
+
+    socket.on("connect", () => {
+      socket.emit("joinUserChannel", user.id, (ack) => {
+        if (!ack?.ok) {
+          console.warn("[SOCKET.IO] joinUserChannel failed:", ack?.code || "UNKNOWN");
+        }
+      });
+    });
+    socket.on("paymentEvents", handlePaymentEvent);
+    socket.on("connect_error", (err) => {
+      console.warn("[SOCKET.IO] Payment channel connection error:", err?.message || err);
+    });
+
+    return () => {
+      socket.off("paymentEvents", handlePaymentEvent);
+      socket.emit("leaveUserChannel", user.id);
+      socket.disconnect();
+    };
+  }, [isOpen, view, user?.id, transferSessions.length]);
+
+  useEffect(() => {
+    if (!isOpen || view !== "transfer" || !transferSessions.length) return undefined;
+    const pendingSessionIds = transferSessions
+      .filter(shouldPollTransferSession)
+      .map((session) => String(session?.id || session?._id || ""))
+      .filter(Boolean);
+
+    if (!pendingSessionIds.length) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      pendingSessionIds.forEach((sessionId) => {
+        syncPaymentStatus({ variables: { paymentId: sessionId } })
+          .then((result) => mergeTransferSessionUpdate(result?.data?.syncPaymentStatus))
+          .catch(() => {});
+      });
+    }, 10000);
+    return () => window.clearInterval(intervalId);
+  }, [isOpen, view, transferSessions, syncPaymentStatus]);
 
   const createCheckout = async (method) => {
     const checkoutItems = items.map((item) => mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }));
@@ -211,7 +302,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
         variables: { input: { paymentSessionId: sessionId, proofImages, proofNote: form.note || "" } },
       });
       const updated = result?.data?.submitTransferProof;
-      setTransferSessions((prev) => prev.map((session) => (session.id === sessionId ? { ...session, ...updated } : session)));
+      mergeTransferSessionUpdate(updated);
     } catch (err) {
       setError(err?.message || "Không thể gửi bằng chứng chuyển khoản.");
     } finally {
@@ -224,7 +315,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
     try {
       const result = await syncPaymentStatus({ variables: { paymentId: sessionId } });
       const updated = result?.data?.syncPaymentStatus;
-      setTransferSessions((prev) => prev.map((session) => (session.id === sessionId ? { ...session, ...updated } : session)));
+      mergeTransferSessionUpdate(updated);
     } finally {
       setLoading(false);
     }

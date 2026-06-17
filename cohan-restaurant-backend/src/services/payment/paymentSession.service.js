@@ -549,7 +549,9 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
   if (payment.status === "success") {
     payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
     await payment.save();
-    return payment.toObject();
+    const out = payment.toObject();
+    out.realtimeEmitSkipped = true;
+    return out;
   }
 
   payment.status = mapProviderStatus(normalizedProvider, payload);
@@ -761,6 +763,20 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       payment.providerTransactionId = transactionId || payment.providerTransactionId;
       payment.reconciledAt = new Date();
       payment.callbackRaw = payload;
+      payment.transfer = payment.transfer || {};
+      payment.transfer.status = "VERIFIED";
+      payment.transfer.verifiedAt = new Date();
+      payment.transfer.providerTransactionId = transactionId || payment.providerTransactionId;
+      payment.transfer.receivedAmount = amount;
+      payment.transfer.varianceAmount = 0;
+      payment.transfer.rejectReason = undefined;
+      payment.transfer.rejectedAt = undefined;
+      if (Array.isArray(payment.events)) {
+        payment.events.push({
+          type: "transfer_verified",
+          payload: { by: "bank_webhook", provider, transactionId },
+        });
+      }
       await payment.save({ session });
 
       await PaymentReconciliation.create([{
