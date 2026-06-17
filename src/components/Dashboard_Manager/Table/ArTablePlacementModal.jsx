@@ -244,9 +244,7 @@ export default function ArTablePlacementModal({
     }
 
     try {
-      // TODO: package.json hiện chưa khai báo `three`. Không tự thêm dependency theo yêu cầu;
-      // khi dự án cài `three`, nhánh dynamic import này sẽ render model GLB/GLTF trong WebXR.
-      const [{ default: THREE }, { GLTFLoader }] = await Promise.all([
+      const [THREE, { GLTFLoader }] = await Promise.all([
         import(/* @vite-ignore */ "three"),
         import(/* @vite-ignore */ "three/examples/jsm/loaders/GLTFLoader.js"),
       ]);
