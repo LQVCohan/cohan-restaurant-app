@@ -1,0 +1,65 @@
+body.promotion-detail-lock {
+  overflow: hidden;
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-drawer {
+  height: 100dvh;
+  max-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-drawer__header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: clamp(18px, 2vw, 24px) clamp(18px, 2vw, 24px) 14px;
+  border-bottom: 1px solid rgba(222, 214, 203, 0.78);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.12), transparent 18rem),
+    linear-gradient(180deg, #fffdf9, rgba(255, 253, 249, 0.94));
+  backdrop-filter: blur(14px) saturate(125%);
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-drawer__scroll {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px clamp(18px, 2vw, 24px) 18px;
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-drawer__scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-drawer__scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(128, 109, 83, 0.22);
+}
+
+body.promotion-detail-lock .promotion-manager-page .promo-detail-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  padding: 12px clamp(18px, 2vw, 24px) clamp(14px, 2vw, 20px);
+  border-top: 1px solid rgba(222, 214, 203, 0.78);
+  background:
+    linear-gradient(180deg, rgba(248, 245, 238, 0.78), #f8f5ee 44%),
+    #f8f5ee;
+  box-shadow: 0 -16px 32px rgba(42, 36, 27, 0.08);
+}
