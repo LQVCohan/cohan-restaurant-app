@@ -447,6 +447,7 @@ const TableManagement = () => {
   };
 
   const handleOpenArPlacementForTable = (tableRow) => {
+    if (!tableRow?.id) return;
     const rawTable = getRawTableById(tablesRaw, tableRow.id);
     setLiteTable(rawTable || tableRow);
     setShowTable3DModal(true);
@@ -892,6 +893,8 @@ const TableManagement = () => {
                         type="button"
                         className="btn-mini secondary"
                         aria-label={`Đặt vị trí AR cho bàn ${t.number || "chưa có mã"}`}
+                        disabled={!t.id}
+                        title={t.id ? "Đặt vị trí AR cho bàn này" : "Bàn chưa có id để đặt AR"}
                         onClick={(event) => {
                           event.stopPropagation();
                           handleOpenArPlacementForTable(t);
