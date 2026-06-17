@@ -224,6 +224,36 @@
   font-weight: 780;
 }
 
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action {
+  width: 2.5rem !important;
+  min-width: 2.5rem !important;
+  padding-inline: 0 !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  color: var(--admin-sage-strong) !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action svg {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action {
+  font-size: 0 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action svg,
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action * {
+  font-size: 1rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-assist-action {
+  border-color: rgba(83, 108, 97, 0.28) !important;
+  background: var(--admin-sage-soft) !important;
+  color: var(--admin-sage-strong) !important;
+  font-weight: 880 !important;
+}
+
 @media (max-width: 1180px) {
   .schedule-container.schedule-container .schedule-availability-panel__compact-summary {
     grid-template-columns: 1fr !important;
