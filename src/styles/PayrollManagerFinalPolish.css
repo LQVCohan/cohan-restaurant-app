@@ -63,13 +63,36 @@
 
 .payroll-page-compact .payroll-summary-line {
   align-items: center !important;
-  gap: 0.48rem 0.72rem !important;
+  gap: 0.48rem 0.7rem !important;
 }
 
 .payroll-page-compact .payroll-summary-line .status-dot.info {
-  color: #8a5f31 !important;
-  border-color: rgba(168, 133, 95, 0.24) !important;
-  background: rgba(255, 247, 237, 0.78) !important;
+  display: none !important;
+}
+
+.payroll-page-compact .payroll-summary-line > span:not(:first-child)::before {
+  content: none !important;
+  display: none !important;
+}
+
+.payroll-page-compact .payroll-summary-line .payroll-date-range,
+.payroll-page-compact .payroll-summary-line .payroll-employee-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 28px !important;
+  color: #596573 !important;
+  font-size: 0.8rem !important;
+  font-weight: 780 !important;
+  white-space: nowrap !important;
+}
+
+.payroll-page-compact .payroll-summary-line .payroll-date-range::before,
+.payroll-page-compact .payroll-summary-line .payroll-employee-count::before {
+  content: "•" !important;
+  display: inline-flex !important;
+  margin-right: 0.68rem !important;
+  color: rgba(168, 133, 95, 0.72) !important;
+  font-weight: 900 !important;
 }
 
 .payroll-page-compact .payroll-data-mode {
