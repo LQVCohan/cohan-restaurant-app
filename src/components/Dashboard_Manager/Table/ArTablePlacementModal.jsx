@@ -12,6 +12,8 @@ import "./ArTablePlacementModal.scss";
 
 const emptyAnchor = { x: "", y: "" };
 const emptyArPoint = { x: "", z: "" };
+const GLTF_MODEL_PATTERN = /\.(glb|gltf)(?:[?#].*)?$/i;
+
 
 const toPoint = (point, zKey = "y") => {
   const x = Number(point?.x);
@@ -89,6 +91,10 @@ export default function ArTablePlacementModal({
   const [latestHitPoint, setLatestHitPoint] = useState(null);
   const [realArStatus, setRealArStatus] = useState("");
   const [realArError, setRealArError] = useState("");
+  const [arModelStatus, setArModelStatus] = useState("");
+  const [arModelError, setArModelError] = useState("");
+  const [arModelScale, setArModelScale] = useState(1);
+  const [arModelRotation, setArModelRotation] = useState(0);
 
   const canvasRef = useRef(null);
   const xrSessionRef = useRef(null);
@@ -98,6 +104,17 @@ export default function ArTablePlacementModal({
   const xrGlRef = useRef(null);
   const latestHitPointRef = useRef(null);
   const lastHitUpdateAtRef = useRef(0);
+  const arThreeRef = useRef(null);
+  const arModelScaleRef = useRef(1);
+  const arModelRotationRef = useRef(0);
+
+  useEffect(() => {
+    arModelScaleRef.current = Number(arModelScale) || 1;
+  }, [arModelScale]);
+
+  useEffect(() => {
+    arModelRotationRef.current = Number(arModelRotation) || 0;
+  }, [arModelRotation]);
 
   const resetXrRefs = useCallback(() => {
     try {
@@ -110,6 +127,11 @@ export default function ArTablePlacementModal({
     xrRefSpaceRef.current = null;
     xrViewerSpaceRef.current = null;
     xrGlRef.current = null;
+    if (arThreeRef.current) {
+      arThreeRef.current.renderer?.setAnimationLoop?.(null);
+      arThreeRef.current.renderer?.dispose?.();
+      arThreeRef.current = null;
+    }
     setXrSessionActive(false);
     setHitTestReady(false);
   }, []);
@@ -213,6 +235,57 @@ export default function ArTablePlacementModal({
     if (target === "table") setArTablePoint(nextValue);
   };
 
+
+  const setupArModelRenderer = useCallback(async ({ canvas, gl, session }) => {
+    if (!selectedModel?.modelUrl || !GLTF_MODEL_PATTERN.test(selectedModel.modelUrl)) {
+      setArModelStatus("Chưa có model .glb/.gltf để hiển thị trong AR.");
+      setArModelError("");
+      return null;
+    }
+
+    try {
+      const [THREE, { GLTFLoader }] = await Promise.all([
+        import(/* @vite-ignore */ "three"),
+        import(/* @vite-ignore */ "three/examples/jsm/loaders/GLTFLoader.js"),
+      ]);
+      const renderer = new THREE.WebGLRenderer({ canvas, context: gl, alpha: true, antialias: true });
+      renderer.autoClear = false;
+      renderer.xr.enabled = true;
+      await renderer.xr.setSession(session);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera();
+      const reticle = new THREE.Group();
+      reticle.matrixAutoUpdate = false;
+      reticle.visible = false;
+      scene.add(reticle);
+
+      const light = new THREE.HemisphereLight(0xffffff, 0x777777, 1.2);
+      scene.add(light);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(1, 3, 2);
+      scene.add(directionalLight);
+
+      const loader = new GLTFLoader();
+      const gltf = await loader.loadAsync(selectedModel.modelUrl);
+      const model = gltf.scene;
+      model.visible = false;
+      scene.add(model);
+
+      arThreeRef.current = { THREE, renderer, scene, camera, reticle, model };
+      setArModelStatus("Đã tải model AR. Model sẽ bám theo điểm hit-test mới nhất.");
+      setArModelError("");
+      return arThreeRef.current;
+    } catch (error) {
+      console.error(error);
+      setArModelStatus("");
+      setArModelError(
+        "Không tải/render được model AR. Vẫn giữ hit-test point và tọa độ manual; cần cài three hoặc kiểm tra URL model.",
+      );
+      return null;
+    }
+  }, [selectedModel?.modelUrl]);
+
   const handleStartRealAr = async () => {
     if (xrSessionActive) return;
     setRealArError("");
@@ -270,6 +343,7 @@ export default function ArTablePlacementModal({
       setXrSessionActive(true);
       setHitTestReady(true);
       setRealArStatus("Đang quét mặt sàn. Di chuyển điện thoại chậm để hệ thống tìm điểm đặt bàn.");
+      await setupArModelRenderer({ canvas, gl, session });
 
       const onFrame = (_time, frame) => {
         const activeSession = frame.session;
@@ -280,8 +354,9 @@ export default function ArTablePlacementModal({
         activeSession.requestAnimationFrame(onFrame);
 
         if (!activeGl || !activeRefSpace || !activeHitTestSource) return;
+        const threeContext = arThreeRef.current;
         const baseLayer = activeSession.renderState.baseLayer;
-        if (baseLayer?.framebuffer) {
+        if (baseLayer?.framebuffer && !threeContext) {
           activeGl.bindFramebuffer(activeGl.FRAMEBUFFER, baseLayer.framebuffer);
           activeGl.clearColor(0, 0, 0, 0);
           activeGl.clear(activeGl.COLOR_BUFFER_BIT | activeGl.DEPTH_BUFFER_BIT);
@@ -299,6 +374,19 @@ export default function ArTablePlacementModal({
           z: Number(Number(matrix[14] || 0).toFixed(3)),
         };
         latestHitPointRef.current = hitPoint;
+
+        if (threeContext?.model) {
+          threeContext.model.visible = true;
+          threeContext.model.matrixAutoUpdate = false;
+          threeContext.model.matrix.fromArray(matrix);
+          const scale = arModelScaleRef.current;
+          const rotationY = (arModelRotationRef.current * Math.PI) / 180;
+          const adjustment = new threeContext.THREE.Matrix4()
+            .makeRotationY(rotationY)
+            .scale(new threeContext.THREE.Vector3(scale, scale, scale));
+          threeContext.model.matrix.multiply(adjustment);
+          threeContext.renderer.render(threeContext.scene, threeContext.camera);
+        }
 
         const now = Date.now();
         if (now - lastHitUpdateAtRef.current > 250) {
@@ -446,6 +534,29 @@ export default function ArTablePlacementModal({
               Điểm mới nhất: {formatArPoint(latestHitPoint)}
             </span>
           </div>
+          <div className="ar-placement-modal__model-controls">
+            <label>
+              Scale model
+              <input
+                type="number"
+                min="0.05"
+                step="0.05"
+                value={arModelScale}
+                onChange={(e) => setArModelScale(e.target.value)}
+              />
+            </label>
+            <label>
+              Xoay model (độ)
+              <input
+                type="number"
+                step="5"
+                value={arModelRotation}
+                onChange={(e) => setArModelRotation(e.target.value)}
+              />
+            </label>
+          </div>
+          {arModelStatus && <div className="ar-placement-modal__status">{arModelStatus}</div>}
+          {arModelError && <div className="ar-placement-modal__warning">{arModelError}</div>}
           {realArStatus && <div className="ar-placement-modal__status">{realArStatus}</div>}
           {realArError && <div className="ar-placement-modal__warning">{realArError}</div>}
         </div>
