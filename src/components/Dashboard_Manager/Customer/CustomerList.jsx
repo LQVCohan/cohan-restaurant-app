@@ -286,6 +286,18 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     </div>
   );
 
+  const renderBottomPager = () => (
+    <div className="cl-bottom-pagination-bar" aria-label="Phân trang cuối danh sách">
+      <div>
+        <span className="cl-strip-label">Cuối trang</span>
+        <strong>{managerSummary}</strong>
+      </div>
+      <div className="cl-strip-tools">
+        {renderPager(true)}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <>
@@ -334,17 +346,23 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           </div>
         </div>
       ) : viewMode === "table" ? (
-        <CustomerTable customers={visibleCustomers} onCustomerClick={onCustomerClick} />
+        <>
+          <CustomerTable customers={visibleCustomers} onCustomerClick={onCustomerClick} />
+          {renderBottomPager()}
+        </>
       ) : (
-        <div className="cl-grid cl-grid--nine-page">
-          {visibleCustomers.map((customer) => (
-            <CustomerCard
-              key={customer.id}
-              customer={customer}
-              onClick={onCustomerClick}
-            />
-          ))}
-        </div>
+        <>
+          <div className="cl-grid cl-grid--nine-page">
+            {visibleCustomers.map((customer) => (
+              <CustomerCard
+                key={customer.id}
+                customer={customer}
+                onClick={onCustomerClick}
+              />
+            ))}
+          </div>
+          {renderBottomPager()}
+        </>
       )}
     </>
   );
