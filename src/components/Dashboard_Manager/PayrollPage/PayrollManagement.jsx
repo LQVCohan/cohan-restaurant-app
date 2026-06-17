@@ -145,6 +145,19 @@ const getEmployeeInitials = (name = "") => {
   return parts.slice(-2).map((part) => part[0]).join("").toUpperCase();
 };
 
+const getPayrollErrorMessage = (error, fallback = "Thao tác bảng lương không thành công.") =>
+  error?.graphQLErrors?.[0]?.message ||
+  error?.networkError?.result?.errors?.[0]?.message ||
+  error?.networkError?.message ||
+  error?.message ||
+  fallback;
+
+const getMutationResultError = (result) =>
+  result?.errors?.[0]?.message ||
+  result?.error?.message ||
+  result?.data?.errors?.[0]?.message ||
+  null;
+
 const PayrollManagement = () => {
   const defaultRange = useMemo(() => getDefaultRange(), []);
   const [range, setRange] = useState(defaultRange);
@@ -290,12 +303,19 @@ const PayrollManagement = () => {
           },
         },
       });
+      const resultError = getMutationResultError(result);
+      if (resultError) throw new Error(resultError);
+
       const newPeriodId = result?.data?.createPayrollPeriod?.id;
-      if (newPeriodId) setSelectedPeriodId(newPeriodId);
-      await refreshPayrollData(newPeriodId || effectivePeriodId);
+      if (!newPeriodId) {
+        throw new Error("Tạo kỳ lương không thành công. Vui lòng kiểm tra quyền quản lý bảng lương.");
+      }
+
+      setSelectedPeriodId(newPeriodId);
+      await refreshPayrollData(newPeriodId);
       setActionMessage("Đã tạo kỳ lương chính thức.");
     } catch (error) {
-      setActionMessage(error?.message || "Tạo kỳ lương không thành công.");
+      setActionMessage(getPayrollErrorMessage(error, "Tạo kỳ lương không thành công."));
     }
   };
 
@@ -306,11 +326,13 @@ const PayrollManagement = () => {
     }
     try {
       setActionMessage(`Đang ${label.toLowerCase()}...`);
-      await action({ variables: { periodId: effectivePeriodId } });
+      const result = await action({ variables: { periodId: effectivePeriodId } });
+      const resultError = getMutationResultError(result);
+      if (resultError) throw new Error(resultError);
       await refreshPayrollData();
       setActionMessage(`${label} thành công.`);
     } catch (error) {
-      setActionMessage(error?.message || `${label} không thành công.`);
+      setActionMessage(getPayrollErrorMessage(error, `${label} không thành công.`));
     }
   };
 
