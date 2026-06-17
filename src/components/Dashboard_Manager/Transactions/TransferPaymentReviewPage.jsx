@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
@@ -56,6 +56,7 @@ const REJECT_TRANSFER_PAYMENT = gql`
   }
 `;
 
+const POLL_INTERVAL_MS = 15000;
 const fmt = (value, currency = "VND") =>
   Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency });
 const asDate = (value) => (value ? new Date(value).toLocaleString("vi-VN") : "-");
@@ -151,6 +152,7 @@ export default function TransferPaymentReviewPage() {
   const [decision, setDecision] = useState(null);
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const canWrite = hasPermission(user, "payment.write");
 
   const variables = useMemo(() => ({ restaurantId, status: status || null, limit: 50 }), [restaurantId, status]);
@@ -158,12 +160,23 @@ export default function TransferPaymentReviewPage() {
     skip: !restaurantId,
     variables,
     fetchPolicy: "network-only",
+    pollInterval: restaurantId ? POLL_INTERVAL_MS : 0,
+    notifyOnNetworkStatusChange: true,
   });
   const mutationOptions = { onCompleted: () => refetch() };
   const [verifyTransferPayment] = useMutation(VERIFY_TRANSFER_PAYMENT, mutationOptions);
   const [rejectTransferPayment] = useMutation(REJECT_TRANSFER_PAYMENT, mutationOptions);
 
   const rows = data?.transferPaymentQueue || [];
+
+  useEffect(() => {
+    if (data?.transferPaymentQueue) setLastRefreshedAt(new Date());
+  }, [data?.transferPaymentQueue]);
+
+  const handleManualRefresh = async () => {
+    await refetch();
+    setLastRefreshedAt(new Date());
+  };
 
   const submitDecision = async ({ receivedAmount, providerTransactionId, reason }) => {
     if (!decision?.payment?.id) return;
@@ -192,6 +205,9 @@ export default function TransferPaymentReviewPage() {
           <span className="eyebrow">Transfer review</span>
           <h1>Duyệt chuyển khoản</h1>
           <p>Xem bằng chứng chuyển khoản, xác minh payment và release đơn cho nhà hàng xử lý.</p>
+          <p className="helper">
+            Tự động làm mới mỗi 15 giây{lastRefreshedAt ? ` · cập nhật lần cuối ${lastRefreshedAt.toLocaleTimeString("vi-VN")}` : ""}.
+          </p>
         </div>
         <div className="header-actions finance-toolbar">
           <select className="btn-secondary" value={restaurantId} onChange={(event) => setRestaurantId(event.target.value)}>
@@ -202,7 +218,7 @@ export default function TransferPaymentReviewPage() {
             <option value="">Tất cả trạng thái</option>
             {transferStatusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
-          <button className="btn-secondary" onClick={() => refetch()}><RefreshCw size={16} /> Làm mới</button>
+          <button className="btn-secondary" onClick={handleManualRefresh} disabled={loading}><RefreshCw size={16} /> Làm mới</button>
         </div>
       </header>
 
