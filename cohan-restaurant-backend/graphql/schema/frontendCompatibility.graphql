@@ -142,59 +142,6 @@ type ManagerDashboard {
   pendingSupportRequests: [CustomerServiceRequest!]
 }
 
-type StaffSchedulingSummary {
-  totalShiftGroups: Int
-  underStaffedShifts: Int
-  overStaffedShifts: Int
-  highestRiskShift: String
-  notes: [String!]
-}
-
-type StaffSchedulingRoleRecommendation {
-  role: String
-  required: Int
-  assigned: Int
-  delta: Int
-}
-
-type StaffSchedulingCandidate {
-  staffId: ID
-  fullName: String
-  role: String
-  reason: String
-}
-
-type StaffSchedulingShift {
-  shiftKey: String
-  date: String
-  shiftType: String
-  demandLevel: String
-  expectedOrders: Float
-  expectedGuests: Float
-  recommendedTotalStaff: Int
-  currentAssignedStaff: Int
-  deltaStaff: Int
-  status: String
-  severity: String
-  confidence: Float
-  recommendedRoles: [StaffSchedulingRoleRecommendation!]
-  suggestedCandidates: [StaffSchedulingCandidate!]
-}
-
-type StaffSchedulingMeta {
-  method: String
-  basedOnForecast: Boolean
-  fallbackUsed: Boolean
-  generatedAt: DateTime
-  timezone: String
-}
-
-type StaffSchedulingAssistant {
-  summary: StaffSchedulingSummary
-  shifts: [StaffSchedulingShift!]
-  meta: StaffSchedulingMeta
-}
-
 type DemandForecastSummary {
   busiestPeriods: [String!]
   topRisingDishes: [String!]
