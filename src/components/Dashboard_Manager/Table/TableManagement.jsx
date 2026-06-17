@@ -125,6 +125,7 @@ const TableManagement = () => {
         vrUrl: t.vrUrl || "",
         deposit: t.deposit ?? 0,
         visualConfig: t.visualConfig || null,
+        position: t.position || null,
       })),
     [tablesRaw]
   );
@@ -144,6 +145,7 @@ const TableManagement = () => {
   const [showFloorModal, setShowFloorModal] = useState(false);
   const [showVrModal, setShowVrModal] = useState(false);
   const [showTable3DModal, setShowTable3DModal] = useState(false);
+  const [simulatorTargetFloor, setSimulatorTargetFloor] = useState(null);
   const [vrForm, setVrForm] = useState({
     vrTourUrl: "",
   });
@@ -445,6 +447,25 @@ const TableManagement = () => {
     setShowLiteModal(true);
   };
 
+  const handleOpenArPlacementForTable = (tableRow) => {
+    if (!tableRow?.id) return;
+    const rawTable = getRawTableById(tablesRaw, tableRow.id);
+    const targetTable = rawTable || tableRow;
+    const targetFloorId = targetTable?.floorId ?? tableRow?.floorId;
+    const foundFloor =
+      floors.find((floor) => String(floor.id) === String(targetFloorId)) ||
+      (floorsRaw || []).find((floor) => String(floor.id) === String(targetFloorId));
+    setLiteTable(targetTable);
+    setSimulatorTargetFloor(foundFloor || null);
+    setShowTable3DModal(true);
+  };
+
+  const handleOpen3DSimulatorFromHeader = () => {
+    setLiteTable(null);
+    setSimulatorTargetFloor(null);
+    setShowTable3DModal(true);
+  };
+
   const handleOpenAddTableModal = () => {
     setTableForm((prev) => ({
       ...prev,
@@ -516,6 +537,31 @@ const TableManagement = () => {
     }
   };
 
+
+
+  const handleSaveArTablePosition = async ({ position, visualConfigPatch } = {}) => {
+    const targetTable = liteTable || null;
+    if (!targetTable?.id) {
+      showNotification("Vui lòng mở chi tiết một bàn trước khi lưu vị trí AR.", "warning");
+      return;
+    }
+    try {
+      await updateTable({
+        id: targetTable.id,
+        position,
+        visualConfig: {
+          ...(targetTable.visualConfig || {}),
+          ...(visualConfigPatch || {}),
+        },
+      });
+      await refetchTables();
+      showNotification("Đã lưu vị trí bàn từ AR.", "success");
+    } catch (error) {
+      console.error(error);
+      showNotification("Không thể lưu vị trí bàn từ AR.", "error");
+      throw error;
+    }
+  };
 
   const handleApply3DTemplate = (selectedModel, extras = {}) => {
     const mapped = mapModelToTableForm(selectedModel);
@@ -614,7 +660,7 @@ const TableManagement = () => {
         secondaryActions={[
           { label: "Thiết kế sơ đồ", icon: "🗺️", onClick: handleOpenFloorDesigner },
           { label: "VR toàn quán", icon: "🕶️", onClick: () => setShowVrModal(true) },
-          { label: "Mô phỏng 3D", icon: "🪑", onClick: () => setShowTable3DModal(true), disabled: !restaurantId },
+          { label: "Mô phỏng 3D", icon: "🪑", onClick: handleOpen3DSimulatorFromHeader, disabled: !restaurantId },
         ]}
         primaryAction={{ label: "Thêm bàn", icon: "➕", onClick: handleOpenAddTableModal }}
       />
@@ -850,6 +896,19 @@ const TableManagement = () => {
                         }}
                       >
                         Chi tiết
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-mini secondary"
+                        aria-label={`Đặt vị trí AR cho bàn ${t.number || "chưa có mã"}`}
+                        disabled={!t.id}
+                        title={t.id ? "Đặt vị trí AR cho bàn này" : "Bàn chưa có id để đặt AR"}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenArPlacementForTable(t);
+                        }}
+                      >
+                        Đặt AR
                       </button>
                       {t.status === "available" && (
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
@@ -1126,8 +1185,23 @@ const TableManagement = () => {
         open={showTable3DModal}
         onClose={() => setShowTable3DModal(false)}
         onApply={handleApply3DTemplate}
-        currentFloorName={floors.find((f) => String(f.id) === String(currentFloor))?.name}
+        currentFloorName={
+          simulatorTargetFloor?.name ||
+          floors.find((f) => String(f.id) === String(currentFloor))?.name
+        }
         restaurantName={restaurant?.name}
+        restaurantId={restaurantId}
+        restaurant={restaurant}
+        table={liteTable}
+        floor={
+          simulatorTargetFloor ||
+          floors.find((f) => String(f.id) === String(currentFloor))
+        }
+        currentFloorLayout={
+          simulatorTargetFloor ||
+          floors.find((f) => String(f.id) === String(currentFloor))
+        }
+        onSaveArPosition={handleSaveArTablePosition}
       />
 
       {/* 4. Restaurant VR Modal */}
