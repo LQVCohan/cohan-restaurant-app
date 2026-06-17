@@ -2,6 +2,7 @@ import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import { hasPermission } from "@/utils/frontendPermissionAccess";
 import "../Finance/FinanceDashboard.scss";
 
 const TRANSFER_PAYMENT_FIELDS = `
@@ -25,6 +26,7 @@ const TRANSFER_PAYMENT_FIELDS = `
     verifiedAt
     rejectedAt
     rejectReason
+    providerTransactionId
     receivedAmount
     varianceAmount
   }
@@ -57,9 +59,10 @@ const REJECT_TRANSFER_PAYMENT = gql`
 const fmt = (value, currency = "VND") =>
   Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency });
 const asDate = (value) => (value ? new Date(value).toLocaleString("vi-VN") : "-");
+const statusLabel = (value) => String(value || "-").replace(/_/g, " ");
 const transferStatusOptions = ["SUBMITTED", "VERIFYING", "VERIFIED", "REJECTED"];
 
-function TransferDecisionModal({ mode, payment, onClose, onSubmit }) {
+function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit }) {
   const [reason, setReason] = useState("");
   const [receivedAmount, setReceivedAmount] = useState(payment?.amount || "");
   const [providerTransactionId, setProviderTransactionId] = useState(payment?.providerTransactionId || payment?.reference || "");
@@ -79,13 +82,13 @@ function TransferDecisionModal({ mode, payment, onClose, onSubmit }) {
           <>
             <label className="tx-field"><span>Số tiền nhận được</span><input type="number" min="1" value={receivedAmount} onChange={(event) => setReceivedAmount(event.target.value)} /></label>
             <label className="tx-field"><span>Mã giao dịch ngân hàng</span><input value={providerTransactionId} onChange={(event) => setProviderTransactionId(event.target.value)} /></label>
-            <label className="tx-field"><span>Ghi chú</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Tuỳ chọn" /></label>
+            <label className="tx-field"><span>Ghi chú xác minh</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Tuỳ chọn" /></label>
           </>
         ) : (
-          <label className="tx-field"><span>Lý do từ chối</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+          <label className="tx-field"><span>Lý do từ chối *</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Bắt buộc nhập lý do để khách biết cần bổ sung gì" /></label>
         )}
-        <button className={isVerify ? "btn-primary tx-submit" : "btn-danger-soft tx-submit"} disabled={!valid} onClick={() => onSubmit({ receivedAmount: Number(receivedAmount || 0), providerTransactionId, reason })}>
-          {isVerify ? "Xác minh & release đơn" : "Từ chối bằng chứng"}
+        <button className={isVerify ? "btn-primary tx-submit" : "btn-danger-soft tx-submit"} disabled={!valid || submitting} onClick={() => onSubmit({ receivedAmount: Number(receivedAmount || 0), providerTransactionId, reason })}>
+          {submitting ? "Đang xử lý..." : isVerify ? "Xác minh & release đơn" : "Từ chối bằng chứng"}
         </button>
       </div>
     </div>
@@ -96,30 +99,42 @@ function TransferPaymentCard({ payment, canWrite, onVerify, onReject }) {
   const bank = payment?.metadata?.bankTransfer || {};
   const transfer = payment?.transfer || {};
   const proofImages = Array.isArray(transfer.proofImages) ? transfer.proofImages.filter(Boolean) : [];
-  const status = String(transfer.status || payment.status || "PENDING").toUpperCase();
+  const transferStatus = String(transfer.status || "PENDING").toUpperCase();
+  const paymentStatus = String(payment.status || "pending").toUpperCase();
+  const statusClass = transferStatus === "VERIFIED" ? "success" : transferStatus === "REJECTED" ? "danger" : "warning";
+  const bankDetails = [bank.bankName, bank.bankAccountNumber || bank.accountNumber, bank.accountName].filter(Boolean);
   return (
-    <article className="tx-record-card">
+    <article className="tx-record-card transfer-review-card">
       <div>
         <strong>{payment.reference}</strong>
-        <span className={`badge ${status === "VERIFIED" ? "success" : status === "REJECTED" ? "danger" : "warning"}`}>{status}</span>
+        <span className={`badge ${statusClass}`}>{statusLabel(transferStatus)}</span>
       </div>
-      <p>{fmt(payment.amount, payment.currency || "VND")} · {bank.bankName || "bank_transfer"}</p>
-      <small>Submitted {asDate(transfer.submittedAt || payment.updatedAt)} · Claimed paid {asDate(transfer.customerClaimedPaidAt)}</small>
-      <div className="tx-readonly-summary">
-        <span>Nội dung chuyển khoản</span>
-        <strong>{bank.transferContent || payment.reference}</strong>
-        <small>TK {bank.bankAccountNumber || bank.accountNumber || "-"} · {bank.accountName || "-"}</small>
-      </div>
-      {transfer.proofNote && <p>Ghi chú khách: {transfer.proofNote}</p>}
+      <div className="transfer-review-card__amount">{fmt(payment.amount, payment.currency || "VND")}</div>
+      <dl className="transfer-review-card__meta">
+        <div><dt>Trạng thái thanh toán</dt><dd>{statusLabel(paymentStatus)}</dd></div>
+        <div><dt>Mã tham chiếu</dt><dd>{payment.reference || "-"}</dd></div>
+        <div><dt>Mã GD ngân hàng</dt><dd>{transfer.providerTransactionId || payment.providerTransactionId || "-"}</dd></div>
+        <div><dt>Khách gửi bằng chứng</dt><dd>{asDate(transfer.submittedAt || payment.updatedAt)}</dd></div>
+        <div><dt>Khách báo đã trả</dt><dd>{asDate(transfer.customerClaimedPaidAt)}</dd></div>
+        {transfer.receivedAmount != null && <div><dt>Đã nhận</dt><dd>{fmt(transfer.receivedAmount, payment.currency || "VND")}</dd></div>}
+      </dl>
+      {(bank.transferContent || bankDetails.length > 0) && (
+        <div className="tx-readonly-summary">
+          {bank.transferContent && <><span>Nội dung chuyển khoản</span><strong>{bank.transferContent}</strong></>}
+          {bankDetails.length > 0 && <small>{bankDetails.join(" · ")}</small>}
+        </div>
+      )}
+      {transfer.proofNote && <p className="transfer-review-card__note">Ghi chú khách: {transfer.proofNote}</p>}
       {transfer.rejectReason && <p className="finance-error">Lý do từ chối: {transfer.rejectReason}</p>}
-      <div className="tx-cards-grid tx-cards-grid--single">
+      <div className="transfer-proof-grid">
         {proofImages.length ? proofImages.map((src, index) => (
-          <a key={`${src}-${index}`} href={src} target="_blank" rel="noreferrer" className="tx-record-card">
-            Ảnh bằng chứng #{index + 1}
+          <a key={`${src}-${index}`} href={src} target="_blank" rel="noreferrer" className="transfer-proof-thumb">
+            <img src={src} alt={`Bằng chứng chuyển khoản ${index + 1}`} loading="lazy" />
+            <span>Ảnh #{index + 1}</span>
           </a>
         )) : <div className="empty-note">Chưa có ảnh bằng chứng.</div>}
       </div>
-      {canWrite && status !== "VERIFIED" && (
+      {canWrite && transferStatus !== "VERIFIED" && (
         <div className="tx-card-actions">
           <button onClick={() => onVerify(payment)}><ShieldCheck size={14} /> Xác minh</button>
           <button onClick={() => onReject(payment)}><XCircle size={14} /> Từ chối</button>
@@ -134,7 +149,9 @@ export default function TransferPaymentReviewPage() {
   const [restaurantId, setRestaurantId] = useState(restaurants?.[0]?.id || "");
   const [status, setStatus] = useState("SUBMITTED");
   const [decision, setDecision] = useState(null);
-  const canWrite = Boolean(user);
+  const [notice, setNotice] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const canWrite = hasPermission(user, "payment.write");
 
   const variables = useMemo(() => ({ restaurantId, status: status || null, limit: 50 }), [restaurantId, status]);
   const { data, loading, error, refetch } = useQuery(GET_TRANSFER_PAYMENT_QUEUE, {
@@ -150,12 +167,22 @@ export default function TransferPaymentReviewPage() {
 
   const submitDecision = async ({ receivedAmount, providerTransactionId, reason }) => {
     if (!decision?.payment?.id) return;
-    if (decision.mode === "verify") {
-      await verifyTransferPayment({ variables: { input: { paymentSessionId: decision.payment.id, receivedAmount, providerTransactionId, note: reason || "Verified from manager review UI" } } });
-    } else {
-      await rejectTransferPayment({ variables: { input: { paymentSessionId: decision.payment.id, reason } } });
+    setSubmitting(true);
+    setNotice(null);
+    try {
+      if (decision.mode === "verify") {
+        await verifyTransferPayment({ variables: { input: { paymentSessionId: decision.payment.id, receivedAmount, providerTransactionId, note: reason || "Verified from manager review UI" } } });
+        setNotice({ type: "success", text: "Đã xác minh chuyển khoản và làm mới queue." });
+      } else {
+        await rejectTransferPayment({ variables: { input: { paymentSessionId: decision.payment.id, reason: reason.trim() } } });
+        setNotice({ type: "success", text: "Đã từ chối bằng chứng chuyển khoản và làm mới queue." });
+      }
+      setDecision(null);
+    } catch (err) {
+      setNotice({ type: "error", text: err?.message || "Không thể cập nhật giao dịch chuyển khoản." });
+    } finally {
+      setSubmitting(false);
     }
-    setDecision(null);
   };
 
   return (
@@ -179,9 +206,11 @@ export default function TransferPaymentReviewPage() {
         </div>
       </header>
 
+      {notice && <div className={notice.type === "success" ? "finance-success" : "finance-error"}>{notice.text}</div>}
+      {!canWrite && <div className="empty-note">Bạn có quyền xem queue, nhưng không có quyền payment.write nên thao tác xác minh/từ chối đã được ẩn.</div>}
       {error && <div className="finance-error">Không thể tải queue chuyển khoản. Vui lòng thử lại.</div>}
-      {loading && <div className="card-container">Đang tải queue chuyển khoản...</div>}
-      {!loading && rows.length === 0 && <div className="card-container empty-note">Không có giao dịch chuyển khoản cần xử lý.</div>}
+      {loading && <div className="card-container transfer-review-state">Đang tải queue chuyển khoản...</div>}
+      {!loading && !error && rows.length === 0 && <div className="card-container empty-note transfer-review-state">Không có giao dịch chuyển khoản cần xử lý.</div>}
       <section className="tx-cards-grid">
         {rows.map((payment) => (
           <TransferPaymentCard
@@ -193,7 +222,7 @@ export default function TransferPaymentReviewPage() {
           />
         ))}
       </section>
-      {decision && <TransferDecisionModal mode={decision.mode} payment={decision.payment} onClose={() => setDecision(null)} onSubmit={submitDecision} />}
+      {decision && <TransferDecisionModal mode={decision.mode} payment={decision.payment} submitting={submitting} onClose={() => !submitting && setDecision(null)} onSubmit={submitDecision} />}
     </div>
   );
 }
