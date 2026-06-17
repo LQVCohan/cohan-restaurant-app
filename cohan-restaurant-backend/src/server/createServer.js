@@ -27,6 +27,7 @@ import {
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
 import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
+import { emitPaymentRealtime } from "../services/payment/paymentRealtime.service.js";
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
 import { requireRestaurantPermission } from "../services/auth/authorization.service.js";
 import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
@@ -319,6 +320,9 @@ export async function createServer() {
         return reply.code(401).send({ ok: false, message: "Unauthorized webhook" });
       }
       const result = await reconcileBankTransferWebhook({ provider: req.params?.provider || "bank_transfer", payload: req.body || {} });
+      if (result?.matched && result?.payment?.status === "success") {
+        await emitPaymentRealtime({ io: app.io, payment: result.payment, eventType: "PAYMENT_VERIFIED" });
+      }
       return reply.send({ ok: true, result });
     } catch (err) {
       req.log.error({ err }, "bank transfer webhook failed");
@@ -333,6 +337,9 @@ export async function createServer() {
         payload: req.body || {},
         source: "webhook",
       });
+      if (payment?.status === "success") {
+        await emitPaymentRealtime({ io: app.io, payment, eventType: "PAYMENT_VERIFIED" });
+      }
       return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status });
     } catch (err) {
       req.log.error({ err }, "payment webhook failed");
@@ -347,6 +354,9 @@ export async function createServer() {
         payload: req.query || {},
         source: "return",
       });
+      if (payment?.status === "success") {
+        await emitPaymentRealtime({ io: app.io, payment, eventType: "PAYMENT_VERIFIED" });
+      }
       return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status, message: "Payment return captured. Backend remains source of truth." });
     } catch (err) {
       return reply.code(400).send({ ok: false, message: err?.message || "Return processing failed" });
