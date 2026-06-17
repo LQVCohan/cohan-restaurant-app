@@ -1,0 +1,186 @@
+# Order operation schema.
+# Keep order.graphql focused on order DTOs/inputs and keep base.graphql root-only.
+
+input UploadOrderItemProofInput {
+  restaurantId: ID
+  orderId: ID!
+  orderItemId: ID!
+  proofImages: [String!]!
+  note: String
+}
+
+type CustomerTrackingTimelineItem {
+  status: String
+  displayMessage: String
+  changedAt: DateTime
+}
+
+type CustomerTrackingDeliveryTimelineItem {
+  status: String
+  label: String
+  at: DateTime
+  note: String
+}
+
+type CustomerTrackingDelivery {
+  orderType: String
+  deliveryStatus: String
+  deliveryStatusLabel: String
+  shippingAddress: String
+  eta: DateTime
+  distance: Float
+  duration: Float
+  driverName: String
+  driverPhone: String
+  driverVehiclePlate: String
+  externalTrackingCode: String
+  timeline: [CustomerTrackingDeliveryTimelineItem!]!
+}
+
+type CustomerTrackingPayment {
+  status: String!
+  canRequestPayment: Boolean!
+  totalAmount: Int!
+}
+
+type CustomerTrackingLatestRequest {
+  requestId: String!
+  type: String!
+  status: String!
+  message: String
+  createdAt: DateTime
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+}
+
+type CustomerTrackingItem {
+  name: String
+  quantity: Float
+  publicStatus: String
+  publicStatusLabel: String
+  proofImages: [String!]!
+  requiresProofImage: Boolean!
+  proofUploaded: Boolean!
+}
+
+type CustomerTracking {
+  trackingCode: String
+  publicStatus: String
+  publicStatusLabel: String
+  customerVisibleNote: String
+  estimatedReadyAt: DateTime
+  timeline: [CustomerTrackingTimelineItem!]!
+  items: [CustomerTrackingItem!]!
+  delivery: CustomerTrackingDelivery
+  payment: CustomerTrackingPayment!
+  latestRequest: CustomerTrackingLatestRequest
+}
+
+type CustomerTrackingActionPayload {
+  success: Boolean!
+  message: String
+  tracking: CustomerTracking
+}
+
+type CustomerServiceRequest {
+  orderId: ID!
+  orderCode: String
+  trackingCode: String
+  tableCode: String
+  requestId: String!
+  type: String!
+  status: String!
+  message: String
+  createdAt: DateTime
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+}
+
+type OrderSubscriptionEvent {
+  type: String
+  order: Order
+  payload: JSON
+  meta: JSON
+}
+
+extend type Query {
+  # Public customer tracking QR/session endpoints
+  customerTrackOrder(trackingToken: String!): CustomerTracking
+  customerServiceRequests(
+    restaurantId: ID!
+    status: String
+    type: String
+    limit: Int
+  ): [CustomerServiceRequest!]!
+  orderTrackingQrSvg(orderId: ID!): String!
+
+  # Authenticated order management
+  order(id: ID!): Order
+  orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
+  previewOrderDiscount(input: PreviewOrderDiscountInput!): DiscountBreakdown!
+  ordersByRestaurantNow(restaurantId: ID!, limit: Int, cursor: ID): OrdersConnection!
+  ordersByRestaurant(restaurantId: ID!, limit: Int, cursor: ID): OrdersConnection!
+  ordersByTableCode(
+    restaurantId: ID!
+    tableCode: String!
+    limit: Int
+    offset: Int
+  ): OrderList!
+  ordersGroupedByTable(
+    restaurantId: ID!
+    tableId: ID
+    tableCode: String
+  ): [OrderGroup!]!
+  activeTableSessionOrders(
+    restaurantId: ID!
+    tableId: ID!
+  ): ActiveTableSessionOrdersResult!
+}
+
+extend type Mutation {
+  # Public customer tracking actions
+  requestPaymentFromTracking(trackingToken: String!): CustomerTrackingActionPayload!
+  callStaffFromTracking(trackingToken: String!, reason: String): CustomerTrackingActionPayload!
+
+  # Staff/customer service request lifecycle
+  acknowledgeCustomerServiceRequest(
+    restaurantId: ID!
+    orderId: ID!
+    requestId: String!
+  ): ActionResultPayload!
+  resolveCustomerServiceRequest(
+    restaurantId: ID!
+    orderId: ID!
+    requestId: String!
+  ): ActionResultPayload!
+
+  # Order proof/status operations
+  uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
+  updateOrderStatus(input: UpdateOrderStatusInput!): Order!
+  updateOrderItemStatus(input: UpdateOrderItemStatusInput!): UpdateOrderItemStatusPayload!
+  updateOrderItemPriority(input: UpdateOrderItemPriorityInput!): UpdateOrderItemPriorityPayload!
+  updateOrderCustomerByCode(input: UpdateOrderCustomerByCodeInput!): UpdateOrderCustomerByCodePayload!
+
+  # Order creation and payment operations
+  createOrderForTable(input: CreateOrderForTableInput!): CreateOrderForTablePayload!
+  createOffPremiseOrder(input: CreateOffPremiseOrderInput!): CreateOffPremiseOrderPayload!
+  createStaffRemoteOrder(input: CreateStaffRemoteOrderInput!): CreateStaffRemoteOrderPayload!
+  confirmIncomingOrder(input: ConfirmIncomingOrderInput!): ConfirmIncomingOrderPayload!
+  rejectIncomingOrder(input: RejectIncomingOrderInput!): RejectIncomingOrderPayload!
+  createTemporaryBillPrintJob(input: CreateTemporaryBillPrintJobInput!): ActionResultPayload!
+  requestPaymentForOrder(input: RequestPaymentForOrderInput!): ActionResultPayload!
+  requestPaymentForTable(input: RequestPaymentForTableInput!): ActionResultPayload!
+  remindOrderItem(input: RemindOrderItemInput!): ActionResultPayload!
+  createCheckoutOrders(input: CreateCheckoutOrdersInput!): CreateCheckoutOrdersPayload!
+
+  # Order adjustment lifecycle
+  adjustOrderItemQuantity(input: AdjustOrderItemQuantityInput!): Order!
+  requestOrderItemVoid(input: RequestOrderItemVoidInput!): Order!
+  reviewOrderItemVoid(input: ReviewOrderItemVoidInput!): Order!
+  requestOrderItemReturn(input: RequestOrderItemReturnInput!): Order!
+  reviewOrderItemReturn(input: ReviewOrderItemReturnInput!): Order!
+}
+
+extend type Subscription {
+  orderEvents(restaurantId: ID!): OrderSubscriptionEvent
+}
