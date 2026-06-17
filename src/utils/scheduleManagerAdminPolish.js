@@ -78,7 +78,9 @@ const markToolbarActions = (root) => {
   });
 };
 
-const collapseAvailabilityPanel = (root) => {
+const collapseAvailabilityPanelOnce = (root) => {
+  if (root.dataset.adminAvailabilityInitialCollapsed === "true") return;
+
   const panel = root.querySelector(".schedule-availability-panel");
   if (!panel) return;
 
@@ -89,6 +91,8 @@ const collapseAvailabilityPanel = (root) => {
   if (collapseButton && isExpanded && !hasBlockingError) {
     collapseButton.click();
   }
+
+  root.dataset.adminAvailabilityInitialCollapsed = "true";
 };
 
 const markBoardEmptyState = (root) => {
@@ -128,7 +132,7 @@ export const initScheduleManagerAdminPolish = () => {
       normalizeTextLabels(root);
       normalizeToolbarCopy(root);
       markToolbarActions(root);
-      collapseAvailabilityPanel(root);
+      collapseAvailabilityPanelOnce(root);
       markBoardEmptyState(root);
     });
   };
