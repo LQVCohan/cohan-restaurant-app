@@ -223,6 +223,8 @@ const PayrollManagement = () => {
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const firstRow = totalCount > 0 ? Number(pageInfo.offset || 0) + 1 : 0;
   const lastRow = totalCount > 0 ? Math.min(Number(pageInfo.offset || 0) + items.length, totalCount) : 0;
+  const payrollModeLabel = hasSnapshotItems ? "Kỳ lương chính thức" : "Dữ liệu tạm tính";
+  const canCreatePeriod = Boolean(selectedRestaurantId && apiRange.startDate && apiRange.endDate && !tableLoading);
 
   const totals = useMemo(() => {
     const totalPayroll = Number(stats.totalPayroll ?? items.reduce((sum, item) => sum + Number(item.netSalary || 0), 0));
@@ -252,22 +254,49 @@ const PayrollManagement = () => {
     downloadCsv(`payroll-page-${currentPage}-${range.start}-${range.end}.csv`, rows, EXPORT_COLUMNS);
   };
 
-  const refreshPayrollData = async () => {
+  const refreshPayrollData = async (periodIdOverride = effectivePeriodId) => {
     await Promise.allSettled([
       payroll.refetchPeriods?.(),
-      effectivePeriodId ? payroll.refetchDetail?.({ periodId: effectivePeriodId }) : null,
-      effectivePeriodId ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId }) : null,
+      periodIdOverride ? payroll.refetchDetail?.({ periodId: periodIdOverride }) : null,
+      periodIdOverride ? payroll.refetchPayrollReadiness?.({ periodId: periodIdOverride }) : null,
       overviewQuery.refetch?.({
         startDate: apiRange.startDate,
         endDate: apiRange.endDate,
         restaurantId: selectedRestaurantId || undefined,
-        periodId: effectivePeriodId || undefined,
+        periodId: periodIdOverride || undefined,
         search: overviewSearch,
         status: overviewStatus,
         limit: PAYROLL_PAGE_SIZE,
         offset: overviewOffset,
       }),
     ]);
+  };
+
+  const handleCreatePeriod = async () => {
+    if (!selectedRestaurantId || !apiRange.startDate || !apiRange.endDate) {
+      setActionMessage("Chọn nhà hàng và khoảng ngày trước khi tạo kỳ lương.");
+      return;
+    }
+
+    try {
+      setActionMessage("Đang tạo kỳ lương chính thức...");
+      const result = await payroll.createPeriod?.({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            name: `Kỳ lương ${formatDate(range.start)} - ${formatDate(range.end)}`,
+            startDate: apiRange.startDate,
+            endDate: apiRange.endDate,
+          },
+        },
+      });
+      const newPeriodId = result?.data?.createPayrollPeriod?.id;
+      if (newPeriodId) setSelectedPeriodId(newPeriodId);
+      await refreshPayrollData(newPeriodId || effectivePeriodId);
+      setActionMessage("Đã tạo kỳ lương chính thức.");
+    } catch (error) {
+      setActionMessage(error?.message || "Tạo kỳ lương không thành công.");
+    }
   };
 
   const runAction = async (label, action) => {
@@ -300,6 +329,7 @@ const PayrollManagement = () => {
           </p>
           <div className="quick-stats payroll-summary-line">
             <span className="status-dot info">{statusLabel(hasSnapshotItems ? currentPeriod?.status || "draft" : "draft")}</span>
+            <span className={`payroll-data-mode ${hasSnapshotItems ? "is-official" : "is-runtime"}`}>{payrollModeLabel}</span>
             <span className="payroll-date-range">
               {formatDate(currentPeriod?.startDate || range.start)} - {formatDate(currentPeriod?.endDate || range.end)}
             </span>
@@ -412,6 +442,9 @@ const PayrollManagement = () => {
 
         <div className="table-controls table-controls--secondary payroll-action-row">
           <div className="right-controls payroll-action-buttons">
+            <button className="btn btn-create-period" type="button" onClick={handleCreatePeriod} disabled={!canCreatePeriod}>
+              + Tạo kỳ lương
+            </button>
             <button className="btn btn-white" type="button" onClick={() => runAction("Tính lại lương", payroll.recalculatePeriod)} disabled={actionDisabled}>
               Tính lại
             </button>
@@ -423,7 +456,7 @@ const PayrollManagement = () => {
             </button>
           </div>
           <span className={`payroll-inline-message ${actionDisabled ? "is-muted" : ""}`}>
-            {actionMessage || (actionDisabled ? "Chưa có kỳ lương để thao tác" : hasSnapshotItems ? "Sẵn sàng xử lý kỳ lương" : "Đang xem dữ liệu lương tạm tính từ nhân viên")}
+            {actionMessage || (actionDisabled ? "Tạo kỳ lương để tính lại, chốt hoặc khóa kỳ." : hasSnapshotItems ? "Kỳ lương chính thức đã sẵn sàng xử lý." : "Đang xem dữ liệu lương tạm tính từ nhân viên.")}
           </span>
         </div>
 
