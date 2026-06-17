@@ -446,6 +446,17 @@ const TableManagement = () => {
     setShowLiteModal(true);
   };
 
+  const handleOpenArPlacementForTable = (tableRow) => {
+    const rawTable = getRawTableById(tablesRaw, tableRow.id);
+    setLiteTable(rawTable || tableRow);
+    setShowTable3DModal(true);
+  };
+
+  const handleOpen3DSimulatorFromHeader = () => {
+    setLiteTable(null);
+    setShowTable3DModal(true);
+  };
+
   const handleOpenAddTableModal = () => {
     setTableForm((prev) => ({
       ...prev,
@@ -640,7 +651,7 @@ const TableManagement = () => {
         secondaryActions={[
           { label: "Thiết kế sơ đồ", icon: "🗺️", onClick: handleOpenFloorDesigner },
           { label: "VR toàn quán", icon: "🕶️", onClick: () => setShowVrModal(true) },
-          { label: "Mô phỏng 3D", icon: "🪑", onClick: () => setShowTable3DModal(true), disabled: !restaurantId },
+          { label: "Mô phỏng 3D", icon: "🪑", onClick: handleOpen3DSimulatorFromHeader, disabled: !restaurantId },
         ]}
         primaryAction={{ label: "Thêm bàn", icon: "➕", onClick: handleOpenAddTableModal }}
       />
@@ -876,6 +887,17 @@ const TableManagement = () => {
                         }}
                       >
                         Chi tiết
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-mini secondary"
+                        aria-label={`Đặt vị trí AR cho bàn ${t.number || "chưa có mã"}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenArPlacementForTable(t);
+                        }}
+                      >
+                        Đặt AR
                       </button>
                       {t.status === "available" && (
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
