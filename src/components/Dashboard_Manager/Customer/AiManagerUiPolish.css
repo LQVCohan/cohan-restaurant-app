@@ -1,0 +1,240 @@
+/* Final AI manager polish pass: manager pages should feel like one calm admin product. */
+
+/* Settings status cards: replace cryptic text badges and remove orange accent drift. */
+.ai-admin-page--settings .ai-admin-settings-status-strip {
+  border-color: rgba(31, 106, 96, 0.16) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(31, 106, 96, 0.08), transparent 18rem),
+    linear-gradient(180deg, #fffdfa, #f8f5ee) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article::before {
+  background: #dcefe9 !important;
+  color: #1f6a60 !important;
+  border: 1px solid rgba(31, 106, 96, 0.14) !important;
+  font-size: 15px !important;
+  letter-spacing: 0 !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(1)::before {
+  content: "🤖" !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(2)::before {
+  content: "🎧" !important;
+  background: #dcefe9 !important;
+  color: #1f6a60 !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(3)::before {
+  content: "%" !important;
+  background: #eef7f3 !important;
+  color: #17554d !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(4)::before {
+  content: "💬" !important;
+  background: #eef7f3 !important;
+  color: #17554d !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(3)::after,
+.ai-admin-page--settings .ai-admin-settings-status-strip article:nth-of-type(4)::after {
+  background: linear-gradient(90deg, #1f6a60, rgba(31, 106, 96, 0.18)) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview {
+  --ai-preview-accent: #1f6a60;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__window,
+.ai-admin-page--settings .ai-admin-settings-preview__bubble,
+.ai-admin-page--settings .ai-admin-settings-preview__chips span,
+.ai-admin-page--settings .ai-admin-settings-preview__footer {
+  border-color: rgba(31, 106, 96, 0.18) !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__topbar i,
+.ai-admin-page--settings .ai-admin-settings-preview__footer button {
+  background: #1f6a60 !important;
+}
+
+.ai-admin-page--settings .ai-admin-settings-preview__chips span {
+  color: #17554d !important;
+  background: #f2faf7 !important;
+}
+
+/* Analytics: make empty charts look intentional rather than unfinished. */
+.ai-admin-page--analytics .customer-empty-state,
+.ai-admin-page--analytics .ai-admin-empty {
+  min-height: 170px !important;
+  border-color: rgba(31, 106, 96, 0.14) !important;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(31, 106, 96, 0.08), transparent 10rem),
+    #fffdfa !important;
+}
+
+.ai-admin-page--analytics .customer-analytics-panel h3,
+.ai-admin-page--analytics .ai-analytics-card__header h3 {
+  font-size: clamp(23px, 2vw, 30px) !important;
+  line-height: 1.02 !important;
+}
+
+.ai-admin-page--analytics .ai-admin-chip,
+.ai-admin-page--analytics .ai-admin-chip--warning {
+  border-color: rgba(31, 106, 96, 0.16) !important;
+  background: #dcefe9 !important;
+  color: #17554d !important;
+}
+
+/* Knowledge wording polish. */
+.ai-admin-page--knowledge .ai-admin-grid--evaluation .ai-admin-field:first-of-type > span {
+  font-size: 0 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--evaluation .ai-admin-field:first-of-type > span::after {
+  content: "Câu hỏi chạy thử";
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-eval-cases small {
+  text-transform: none !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-eval-cases small,
+.ai-admin-page--knowledge .ai-admin-result-summary span {
+  color: #5f6f67 !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-card__meta span,
+.ai-admin-page--knowledge .ai-admin-tag,
+.ai-admin-page--knowledge .ai-admin-status {
+  border-color: rgba(31, 106, 96, 0.14) !important;
+  background: #f2faf7 !important;
+  color: #17554d !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--safety .ai-admin-guide-card button,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-guide-card button {
+  min-height: 40px !important;
+  padding-inline: 16px !important;
+}
+
+/* Handoff inbox: make it a wide operator console instead of a narrow centered card. */
+.ai-handoff-inbox {
+  max-width: 1280px !important;
+  width: min(100%, 1280px) !important;
+  grid-template-columns: minmax(360px, 420px) minmax(0, 1fr) !important;
+  gap: 20px !important;
+  min-height: calc(100dvh - 104px) !important;
+  padding: 18px 26px 34px !important;
+  background:
+    radial-gradient(circle at 8% 6%, rgba(31, 106, 96, 0.08), transparent 28rem),
+    linear-gradient(180deg, #fffdfa 0%, #f8f5ee 100%) !important;
+}
+
+.ai-handoff-inbox--single {
+  grid-template-columns: minmax(0, 760px) !important;
+}
+
+.ai-handoff-inbox__panel {
+  min-height: calc(100dvh - 140px) !important;
+  border-color: rgba(31, 106, 96, 0.16) !important;
+  background: #fffdfa !important;
+  box-shadow: 0 20px 54px rgba(31, 42, 47, 0.08) !important;
+}
+
+.ai-handoff-inbox__panel-header {
+  min-height: 104px !important;
+  align-items: flex-start !important;
+  padding: 20px 22px !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(31, 106, 96, 0.08), transparent 14rem),
+    #fffdfa !important;
+}
+
+.ai-handoff-inbox__panel-header h2 {
+  font-size: clamp(21px, 2vw, 28px) !important;
+  line-height: 1.08 !important;
+  max-width: 250px;
+}
+
+.ai-handoff-inbox__eyebrow {
+  color: #835b20 !important;
+}
+
+.ai-handoff-inbox__header-actions {
+  align-items: flex-end !important;
+}
+
+.ai-handoff-inbox__restaurant-select {
+  width: 270px !important;
+  background: #fffdfa !important;
+}
+
+.ai-handoff-inbox__tabs {
+  background: #f2faf7 !important;
+  border: 1px solid rgba(31, 106, 96, 0.12) !important;
+}
+
+.ai-handoff-inbox__tabs button.active,
+.ai-handoff-inbox__reply button[type="submit"] {
+  background: #1f6a60 !important;
+  color: #fff !important;
+}
+
+.ai-handoff-inbox__content,
+.ai-handoff-inbox__list {
+  min-height: 0 !important;
+}
+
+.ai-handoff-inbox__content {
+  background:
+    linear-gradient(rgba(31, 106, 96, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 106, 96, 0.018) 1px, transparent 1px),
+    linear-gradient(180deg, #fffdfa 0%, #f8f5ee 100%) !important;
+  background-size: 32px 32px, 32px 32px, auto !important;
+}
+
+.ai-handoff-inbox__empty {
+  margin: 40px auto !important;
+  border-color: rgba(31, 106, 96, 0.22) !important;
+  background: #f2faf7 !important;
+}
+
+.ai-handoff-inbox__reply {
+  position: sticky !important;
+  bottom: 0 !important;
+  border-color: rgba(31, 106, 96, 0.16) !important;
+  background: rgba(255, 253, 250, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.ai-handoff-inbox__reply button[type="button"] {
+  background: #f2faf7 !important;
+  color: #17554d !important;
+}
+
+.ai-handoff-inbox__message {
+  border-color: rgba(31, 106, 96, 0.14) !important;
+}
+
+@media (max-width: 1180px) {
+  .ai-handoff-inbox {
+    grid-template-columns: minmax(330px, 380px) minmax(0, 1fr) !important;
+    padding-inline: 18px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .ai-handoff-inbox {
+    grid-template-columns: 1fr !important;
+    padding: 16px !important;
+  }
+
+  .ai-handoff-inbox__panel,
+  .ai-handoff-inbox__panel-header {
+    min-height: auto !important;
+  }
+}
