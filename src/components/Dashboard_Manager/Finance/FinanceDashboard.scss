@@ -91,6 +91,15 @@ $border: #e2e8f0;
     margin-bottom: 1rem;
   }
 
+  .finance-success {
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+
   // 2. Stats Section
   .stats-section .finance-stats-grid {
     display: grid;
@@ -959,8 +968,12 @@ $border: #e2e8f0;
     margin-top: 0.8rem;
 
     button {
-      border: 1px solid $border;
-      background: #f8fafc;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid #d6d3d1;
+      background: #f8f7f4;
+      color: #292524;
       border-radius: 10px;
       padding: 0.45rem 0.65rem;
       cursor: pointer;
@@ -1086,6 +1099,100 @@ $border: #e2e8f0;
     }
   }
 
+
+  .transfer-review-state {
+    margin: 1rem;
+    color: $text-sec;
+  }
+
+  .transfer-review-card {
+    background: #fffdf8;
+    border-color: #e7e5dd;
+    box-shadow: 0 12px 30px rgba(68, 64, 60, 0.06);
+  }
+
+  .transfer-review-card__amount {
+    margin: 0.8rem 0;
+    color: #365143;
+    font-size: 1.35rem;
+    font-weight: 800;
+  }
+
+  .transfer-review-card__meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin: 0 0 0.9rem;
+
+    div {
+      min-width: 0;
+      padding: 0.65rem;
+      border: 1px solid #e7e5dd;
+      border-radius: 12px;
+      background: #faf9f6;
+    }
+
+    dt {
+      color: #78716c;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    dd {
+      margin: 0.25rem 0 0;
+      color: #292524;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .transfer-review-card__note {
+    min-height: 0;
+    padding: 0.75rem;
+    border-radius: 12px;
+    background: #f4f5ef;
+  }
+
+  .transfer-proof-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+  }
+
+  .transfer-proof-thumb {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    min-height: 150px;
+    border: 1px solid #d6d3d1;
+    border-radius: 14px;
+    background: #f5f5f4;
+    color: #292524;
+    text-decoration: none;
+
+    img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      display: block;
+    }
+
+    span {
+      position: absolute;
+      left: 0.6rem;
+      bottom: 0.6rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(41, 37, 36, 0.78);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+  }
+
   .tx-modal-actions {
     display: flex;
     flex-wrap: wrap;
@@ -1207,6 +1314,11 @@ $border: #e2e8f0;
   .tx-cards-grid--single {
     grid-template-columns: 1fr;
     padding: 0;
+  }
+
+  .transfer-review-card__meta,
+  .transfer-proof-grid {
+    grid-template-columns: 1fr;
   }
 }
 
