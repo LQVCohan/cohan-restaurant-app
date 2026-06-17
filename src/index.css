@@ -17,10 +17,11 @@
 @import "./components/Dashboard_Manager/Customer/AiChatbotStorageTone.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotUnifiedNeutralPalette.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotStorageSagePalette.css";
+@import "./components/Dashboard_Manager/Customer/AiManagerUiPolish.css";
 @import "./components/Customer/BookingTableModal/BookingModal.product.css";
 @import "./components/Customer/TableBooking/TableBooking.product.css";
 @import "./components/Customer/AddressPage/AddressPage.product.css";
-@import "./components/Customer/FavoritePage/FavoritePage.product.css";
+@import "./components/Customer/FavoritePage/AddressPage.product.css";
 @import "./components/Customer/FavoritePage/FavoriteFoodBuilder.product.css";
 @import "./components/Customer/CouponManagement/CouponPage.product.css";
 @import "./components/Customer/HelpPage/HelpPage.product.css";
