@@ -23,6 +23,7 @@ import {
 import "./Table3DSimulatorModal.scss";
 import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
 import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
+import ArTablePlacementModal from "./ArTablePlacementModal";
 import { buildVisualConfigFromModel } from "./tableVisualConfigHelpers";
 
 const MODEL_VIEWER_SRC =
@@ -38,6 +39,11 @@ const Table3DSimulatorModal = ({
   currentFloorName,
   restaurantName,
   restaurantId,
+  table,
+  restaurant,
+  floor,
+  currentFloorLayout,
+  onSaveArPosition,
 }) => {
   const { models: catalogModels, modelsByType, loading, error, reload } = useTable3DModels();
   const [tableType, setTableType] = useState(ALL_TABLE_TYPES);
@@ -49,6 +55,7 @@ const Table3DSimulatorModal = ({
   const viewerRef = useRef(null);
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [cameraModel, setCameraModel] = useState(null);
+  const [showArPlacement, setShowArPlacement] = useState(false);
   const [customModels, setCustomModels] = useState([]);
   const [isOpeningAr, setIsOpeningAr] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -522,8 +529,8 @@ const Table3DSimulatorModal = ({
             >
               📷 Xem thử trong không gian
             </Button>
-            {canOpenAr ? (
-              <div className="table-3d-modal__ar-hint">
+            <div className="table-3d-modal__ar-hint">
+              {canOpenAr ? (
                 <Button
                   type="button"
                   size="sm"
@@ -535,18 +542,24 @@ const Table3DSimulatorModal = ({
                 >
                   {isOpeningAr ? "Đang mở AR..." : "Mở AR trên thiết bị hỗ trợ"}
                 </Button>
-                <span>
-                  AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng
-                  Xem thử trong không gian.
-                </span>
-              </div>
-            ) : (
-              selectedModel && (
-                <div className="table-3d-modal__ar-hint">
-                  {arUnavailableReason}
-                </div>
-              )
-            )}
+              ) : (
+                selectedModel && <span>{arUnavailableReason}</span>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowArPlacement(true)}
+                disabled={!selectedModel?.modelUrl}
+                title={selectedModel?.modelUrl ? "Hiệu chỉnh và lưu vị trí bàn vào sơ đồ" : "Mẫu bàn chưa có modelUrl"}
+              >
+                Đặt vị trí bằng AR
+              </Button>
+              <span>
+                AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng
+                Xem thử trong không gian hoặc nhập tọa độ manual.
+              </span>
+            </div>
             <Button
               variant="primary"
               onClick={() =>
@@ -577,6 +590,16 @@ const Table3DSimulatorModal = ({
         open={!!cameraModel}
         modelItem={cameraModel}
         onClose={() => setCameraModel(null)}
+      />
+      <ArTablePlacementModal
+        open={showArPlacement}
+        onClose={() => setShowArPlacement(false)}
+        table={table}
+        restaurant={restaurant}
+        floor={floor}
+        selectedModel={selectedModel}
+        currentFloorLayout={currentFloorLayout}
+        onSavePosition={onSaveArPosition}
       />
     </Modal>
   );

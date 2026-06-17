@@ -125,6 +125,7 @@ const TableManagement = () => {
         vrUrl: t.vrUrl || "",
         deposit: t.deposit ?? 0,
         visualConfig: t.visualConfig || null,
+        position: t.position || null,
       })),
     [tablesRaw]
   );
@@ -516,6 +517,31 @@ const TableManagement = () => {
     }
   };
 
+
+
+  const handleSaveArTablePosition = async ({ position, visualConfigPatch } = {}) => {
+    const targetTable = liteTable || null;
+    if (!targetTable?.id) {
+      showNotification("Vui lòng mở chi tiết một bàn trước khi lưu vị trí AR.", "warning");
+      return;
+    }
+    try {
+      await updateTable({
+        id: targetTable.id,
+        position,
+        visualConfig: {
+          ...(targetTable.visualConfig || {}),
+          ...(visualConfigPatch || {}),
+        },
+      });
+      await refetchTables();
+      showNotification("Đã lưu vị trí bàn từ AR.", "success");
+    } catch (error) {
+      console.error(error);
+      showNotification("Không thể lưu vị trí bàn từ AR.", "error");
+      throw error;
+    }
+  };
 
   const handleApply3DTemplate = (selectedModel, extras = {}) => {
     const mapped = mapModelToTableForm(selectedModel);
@@ -1128,6 +1154,12 @@ const TableManagement = () => {
         onApply={handleApply3DTemplate}
         currentFloorName={floors.find((f) => String(f.id) === String(currentFloor))?.name}
         restaurantName={restaurant?.name}
+        restaurantId={restaurantId}
+        restaurant={restaurant}
+        table={liteTable}
+        floor={floors.find((f) => String(f.id) === String(currentFloor))}
+        currentFloorLayout={floors.find((f) => String(f.id) === String(currentFloor))}
+        onSaveArPosition={handleSaveArTablePosition}
       />
 
       {/* 4. Restaurant VR Modal */}
