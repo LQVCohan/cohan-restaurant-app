@@ -1,9 +1,9 @@
 .availability-policy-modal {
   width: min(720px, 100%);
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid #dbeafe;
-  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.26);
+  border-radius: 20px;
+  background: #fffdf8;
+  border: 1px solid #e5ded3;
+  box-shadow: 0 30px 70px rgba(48, 40, 30, 0.18);
   padding: 1.1rem;
 
   &__header {
@@ -11,12 +11,13 @@
       margin: 0;
       font-size: 1.05rem;
       font-weight: 850;
-      color: #0f172a;
+      color: #24303f;
     }
+
     p {
       margin: 0.35rem 0 0;
       font-size: 0.86rem;
-      color: #64748b;
+      color: #667085;
     }
   }
 
@@ -28,19 +29,22 @@
 
     > div {
       padding: 0.7rem 0.8rem;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: #f8fafc;
+      border: 1px solid #e5ded3;
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at right top, rgba(83, 108, 97, 0.08), transparent 7rem),
+        #f8f6f1;
       display: grid;
       gap: 0.25rem;
     }
 
     strong {
-      color: #0f172a;
+      color: #24303f;
       font-size: 0.84rem;
     }
+
     span {
-      color: #475569;
+      color: #667085;
       font-size: 0.8rem;
       line-height: 1.45;
     }
@@ -56,19 +60,31 @@
       display: grid;
       gap: 0.35rem;
       font-size: 0.8rem;
-      color: #334155;
-      font-weight: 700;
+      color: #2d3540;
+      font-weight: 740;
     }
 
     input,
     select {
       min-height: 38px;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
+      border: 1px solid #d5c8b8;
+      border-radius: 12px;
       padding: 0.45rem 0.6rem;
       font-size: 0.88rem;
-      color: #0f172a;
-      background: #fff;
+      color: #24303f;
+      background: #fffdf8;
+      outline: none;
+
+      &:focus-visible {
+        border-color: rgba(83, 108, 97, 0.42);
+        box-shadow: 0 0 0 4px rgba(83, 108, 97, 0.12);
+      }
+    }
+
+    small {
+      color: #667085;
+      font-weight: 620;
+      line-height: 1.4;
     }
   }
 
@@ -77,27 +93,41 @@
     justify-content: flex-end;
     gap: 0.6rem;
     margin-top: 1rem;
+
+    button {
+      min-height: 38px;
+      border-radius: 999px;
+      font-weight: 820;
+    }
   }
 }
 
 .availability-review-modal {
   width: min(680px, 100%);
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid #dbeafe;
-  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.26);
+  border-radius: 20px;
+  background: #fffdf8;
+  border: 1px solid #e5ded3;
+  box-shadow: 0 30px 70px rgba(48, 40, 30, 0.18);
   padding: 1.1rem;
 
   h3 {
     margin: 0 0 0.5rem;
+    color: #24303f;
+    font-size: 1.05rem;
+    font-weight: 850;
+  }
+
+  p,
+  li {
+    color: #2d3540;
   }
 
   &__section {
     margin-top: 0.8rem;
     padding: 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #f8fafc;
+    border: 1px solid #e5ded3;
+    border-radius: 14px;
+    background: #f8f6f1;
   }
 
   &__slot-list {
@@ -110,19 +140,35 @@
   &__warning {
     margin-top: 0.75rem;
     padding: 0.65rem 0.75rem;
-    border-radius: 10px;
-    background: #fff7ed;
-    color: #9a3412;
-    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    background: #eadfcc;
+    color: #735637;
+    border: 1px solid rgba(168, 133, 95, 0.28);
+  }
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.8rem;
+    color: #2d3540;
+    font-weight: 740;
   }
 
   textarea {
     width: 100%;
     margin-top: 0.35rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
+    border: 1px solid #d5c8b8;
+    border-radius: 12px;
     padding: 0.5rem 0.65rem;
     min-height: 88px;
+    background: #fffdf8;
+    color: #24303f;
+    outline: none;
+
+    &:focus-visible {
+      border-color: rgba(83, 108, 97, 0.42);
+      box-shadow: 0 0 0 4px rgba(83, 108, 97, 0.12);
+    }
   }
 }
 
