@@ -1,16 +1,14 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useQuery } from "@apollo/client";
 import PayrollManagement from "./PayrollManagement";
 import usePayroll from "@/hooks/usePayroll";
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return {
-    ...actual,
-    useLocation: () => ({ search: "" }),
-  };
-});
+vi.mock("@apollo/client", () => ({
+  gql: (strings, ...values) => String.raw({ raw: strings }, ...values),
+  useQuery: vi.fn(),
+}));
 
 vi.mock("@/hooks/usePayroll", () => ({
   default: vi.fn(),
@@ -18,79 +16,39 @@ vi.mock("@/hooks/usePayroll", () => ({
 
 vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
   default: () => ({
-    restaurantOptions: [{ id: "restaurant-1", name: "Cohan" }],
+    restaurantOptions: [{ id: "restaurant-1", name: "Cohan Restaurant" }],
     selectedRestaurantId: "restaurant-1",
     setSelectedRestaurantId: vi.fn(),
-    selectedRestaurant: { id: "restaurant-1", name: "Cohan" },
+    selectedRestaurant: { id: "restaurant-1", name: "Cohan Restaurant" },
     restaurantsLoading: false,
     hasRestaurants: true,
   }),
 }));
 
-const emptySection = {
-  status: "ready",
-  blockingCount: 0,
-  warningCount: 0,
-  metrics: {},
-  issues: [],
-};
-
-const readyReadiness = {
-  periodId: "period-1",
-  restaurantId: "restaurant-1",
-  status: "draft",
-  readyToFinalize: true,
-  blockingCount: 0,
-  warningCount: 0,
-  sections: {
-    schedule: emptySection,
-    attendance: emptySection,
-    approvals: emptySection,
-    payroll: emptySection,
-  },
-  issues: [],
-};
-
-const blockedReadiness = {
-  ...readyReadiness,
-  readyToFinalize: false,
-  blockingCount: 1,
-  sections: {
-    ...readyReadiness.sections,
-    approvals: {
-      status: "blocked",
-      blockingCount: 1,
-      warningCount: 0,
-      metrics: {},
-      issues: [
-        {
-          code: "OFF_SCHEDULE_ATTENDANCE_PENDING",
-          severity: "error",
-          message: "Còn công ngoài lịch chưa được duyệt.",
-          targetRoute: "off_schedule",
-        },
-      ],
+const emptyOverview = {
+  staffPayrollOverview: {
+    stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+    pageInfo: {
+      totalCount: 0,
+      limit: 8,
+      offset: 0,
+      page: 1,
+      pageSize: 0,
+      totalPages: 1,
+      hasMore: false,
     },
+    items: [],
   },
-  issues: [],
 };
 
 const buildHookValue = (overrides = {}) => ({
   periods: [
     {
       id: "period-1",
-      name: "Ky 1",
+      name: "Kỳ hiện tại",
       restaurantId: "restaurant-1",
-      startDate: "2026-04-01T00:00:00.000Z",
-      endDate: "2026-04-30T00:00:00.000Z",
-      status: "draft",
-    },
-    {
-      id: "period-2",
-      name: "Ky 2",
-      restaurantId: "restaurant-1",
-      startDate: "2026-05-01T00:00:00.000Z",
-      endDate: "2026-05-31T00:00:00.000Z",
+      startDate: "2026-05-25T00:00:00.000Z",
+      endDate: "2026-06-24T23:59:59.999Z",
       status: "draft",
     },
   ],
@@ -99,135 +57,93 @@ const buildHookValue = (overrides = {}) => ({
     period: {
       id: "period-1",
       restaurantId: "restaurant-1",
-      startDate: "2026-04-01T00:00:00.000Z",
-      endDate: "2026-04-30T00:00:00.000Z",
+      startDate: "2026-05-25T00:00:00.000Z",
+      endDate: "2026-06-24T23:59:59.999Z",
       status: "draft",
     },
   },
   payrollItems: [],
-  payrollStats: null,
-  payrollSettings: { restaurantId: "restaurant-1", currentPayrollPeriodId: "period-1" },
-  settingsLoading: false,
-  settingsError: null,
+  payrollStats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+  payrollReadiness: { readyToFinalize: false },
   loading: false,
   error: null,
-  createPeriod: vi.fn(),
-  recalculatePeriod: vi.fn(),
+  createPeriod: vi.fn().mockResolvedValue({ data: { createPayrollPeriod: { id: "period-2" } } }),
+  recalculatePeriod: vi.fn().mockResolvedValue({}),
   finalizePeriod: vi.fn().mockResolvedValue({}),
-  lockPeriod: vi.fn(),
-  markPayrollItemPaid: vi.fn(),
-  batchMarkPayrollPaid: vi.fn(),
-  payrollPayslip: null,
-  payrollPayments: [],
-  refetchPayrollPayslip: vi.fn().mockResolvedValue({}),
-  refetchPayrollPayments: vi.fn().mockResolvedValue({}),
-  refetchPayrollExportRows: vi.fn().mockResolvedValue({ data: { payrollExportRows: [] } }),
-  updateSettings: vi.fn(),
-  upsertAdjustment: vi.fn(),
-  validationResult: { errorCount: 0, warningCount: 0, issues: [] },
-  payrollReadiness: readyReadiness,
-  readinessLoading: false,
-  readinessError: null,
-  refetchValidation: vi.fn().mockResolvedValue({}),
-  refetchPayrollReadiness: vi.fn().mockResolvedValue({ data: { payrollReadiness: readyReadiness } }),
-  refetchDetail: vi.fn().mockResolvedValue({}),
-  refetchPayrollPeriodDetail: vi.fn().mockResolvedValue({}),
+  lockPeriod: vi.fn().mockResolvedValue({}),
   refetchPeriods: vi.fn().mockResolvedValue({}),
-  refetchPayrollPeriods: vi.fn().mockResolvedValue({}),
-  refetchSettings: vi.fn().mockResolvedValue({}),
+  refetchDetail: vi.fn().mockResolvedValue({}),
+  refetchPayrollReadiness: vi.fn().mockResolvedValue({}),
   ...overrides,
 });
 
-describe("PayrollManagement readiness panel", () => {
+describe("PayrollManagement readiness and data mode summary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, "alert").mockImplementation(() => {});
-  });
-
-  it("opens readiness panel and refetches readiness plus validation", async () => {
-    const refetchPayrollReadiness = vi.fn().mockResolvedValue({ data: { payrollReadiness: readyReadiness } });
-    const refetchValidation = vi.fn().mockResolvedValue({});
-    usePayroll.mockReturnValue(buildHookValue({ refetchPayrollReadiness, refetchValidation }));
-
-    render(<PayrollManagement />);
-
-    fireEvent.click(screen.getByText("Kiểm tra trước khi chốt"));
-
-    expect(screen.getByText("Sẵn sàng chốt lương")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(refetchPayrollReadiness).toHaveBeenCalledTimes(1);
-      expect(refetchValidation).toHaveBeenCalledTimes(1);
+    useQuery.mockReturnValue({
+      data: emptyOverview,
+      loading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: emptyOverview }),
     });
   });
 
-  it("disables finalize with React state when readiness is blocked", () => {
-    usePayroll.mockReturnValue(
-      buildHookValue({ payrollReadiness: blockedReadiness }),
-    );
+  it("shows readiness copy when payroll is not ready to finalize", () => {
+    usePayroll.mockReturnValue(buildHookValue({ payrollReadiness: { readyToFinalize: false } }));
 
     render(<PayrollManagement />);
 
-    expect(screen.getByText("Kỳ lương chưa sẵn sàng chốt. Vui lòng xử lý các lỗi trong bảng kiểm tra.")).toBeInTheDocument();
-    expect(screen.getByText("Chốt kỳ")).toBeDisabled();
+    expect(screen.getByText("Kiểm tra dữ liệu trước khi chốt")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu tạm tính")).toBeInTheDocument();
+    expect(screen.getByText("Tạo kỳ lương để tính lại, chốt hoặc khóa kỳ.")).toBeInTheDocument();
   });
 
-  it("dispatches manager:navigate and skips alert for non-payroll readiness issue", () => {
-    usePayroll.mockReturnValue(buildHookValue({ payrollReadiness: blockedReadiness }));
-    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+  it("shows ready-to-finalize copy from payrollReadiness", () => {
+    usePayroll.mockReturnValue(buildHookValue({ payrollReadiness: { readyToFinalize: true } }));
 
     render(<PayrollManagement />);
-    fireEvent.click(screen.getByText("Kiểm tra trước khi chốt"));
 
-    fireEvent.click(screen.getByText("Duyệt công ngoài lịch"));
+    expect(screen.getByText("Kỳ lương sẵn sàng chốt")).toBeInTheDocument();
+  });
 
-    const navCall = dispatchSpy.mock.calls.find(([arg]) => arg?.type === "manager:navigate");
-    expect(navCall).toBeTruthy();
-    expect(navCall[0].detail).toMatchObject({
-      page: "staff",
-      query: {
-        staffPage: "attendance",
-        attendanceTab: "off_schedule",
-        offScheduleStatus: "pending",
+  it("marks official payroll mode when backend returns period snapshot rows", () => {
+    useQuery.mockReturnValue({
+      data: {
+        staffPayrollOverview: {
+          ...emptyOverview.staffPayrollOverview,
+          pageInfo: { ...emptyOverview.staffPayrollOverview.pageInfo, totalCount: 1, pageSize: 1 },
+          items: [
+            {
+              id: "payroll-item-1",
+              payrollItemId: "payroll-item-1",
+              periodId: "period-1",
+              name: "Nguyen A",
+              code: "NV001",
+              role: "Server",
+              department: "Service",
+              actualWorkDays: 0,
+              workDays: 0,
+              totalHours: 0,
+              grossIncome: 0,
+              totalIncome: 0,
+              totalDeduction: 0,
+              netSalary: 0,
+              paidAmount: 0,
+              remainingAmount: 0,
+              status: "draft",
+            },
+          ],
+        },
       },
+      loading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: emptyOverview }),
     });
-    expect(window.alert).not.toHaveBeenCalled();
-  });
-
-  it("finalizes the currently selected period rather than the current applied period", async () => {
-    const finalizePeriod = vi.fn().mockResolvedValue({});
-    usePayroll.mockReturnValue(
-      buildHookValue({
-        finalizePeriod,
-        periods: [
-          {
-            id: "period-1",
-            name: "Ky 1",
-            restaurantId: "restaurant-1",
-            startDate: "2026-04-01T00:00:00.000Z",
-            endDate: "2026-04-30T00:00:00.000Z",
-            status: "paid",
-          },
-          {
-            id: "period-2",
-            name: "Ky 2",
-            restaurantId: "restaurant-1",
-            startDate: "2026-05-01T00:00:00.000Z",
-            endDate: "2026-05-31T00:00:00.000Z",
-            status: "draft",
-          },
-        ],
-      }),
-    );
+    usePayroll.mockReturnValue(buildHookValue());
 
     render(<PayrollManagement />);
 
-    fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: "period-2" } });
-    fireEvent.click(screen.getByText("Chốt kỳ"));
-
-    await waitFor(() => {
-      expect(finalizePeriod).toHaveBeenCalledWith({
-        variables: { periodId: "period-2" },
-      });
-    });
+    expect(screen.getByText("Kỳ lương chính thức")).toBeInTheDocument();
+    expect(screen.getByText("1 nhân viên phù hợp")).toBeInTheDocument();
   });
 });
