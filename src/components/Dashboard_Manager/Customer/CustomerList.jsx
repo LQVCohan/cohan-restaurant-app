@@ -184,6 +184,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const hasNextLocalPage = localPage < localTotalPages;
   const hasPreviousPage = hasPreviousLocalPage || Boolean(pagination?.hasPreviousPage);
   const hasNextPage = hasNextLocalPage || Boolean(pagination?.hasNextPage);
+  const hasPagination = hasCustomers && totalVirtualPageCount > 1;
 
   const scrollListToTop = () => {
     window.requestAnimationFrame(() => {
@@ -260,11 +261,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         <strong>{managerSummary}</strong>
       </div>
       <div className="cl-strip-tools">
-        <div className="cl-page-size cl-page-size--fixed" aria-label="Số khách mỗi trang">
-          <span>Hiển thị</span>
-          <strong>{CUSTOMER_VISIBLE_PAGE_SIZE}/trang</strong>
-        </div>
-        {hasCustomers ? renderPager(true) : null}
+        {hasPagination ? renderPager(true) : null}
         <div className="cl-view-toggle" aria-label="Chế độ xem">
           <button
             type="button"
@@ -286,17 +283,14 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     </div>
   );
 
-  const renderBottomPager = () => (
-    <div className="cl-bottom-pagination-bar" aria-label="Phân trang cuối danh sách">
-      <div>
-        <span className="cl-strip-label">Cuối trang</span>
-        <strong>{managerSummary}</strong>
-      </div>
-      <div className="cl-strip-tools">
+  const renderBottomPager = () => {
+    if (!hasPagination) return null;
+    return (
+      <div className="cl-bottom-pagination-bar" aria-label="Phân trang cuối danh sách">
         {renderPager(true)}
       </div>
-    </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
