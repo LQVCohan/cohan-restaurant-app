@@ -141,11 +141,6 @@ extend type Query {
     tableId: ID
     tableCode: String
   ): [OrderGroup!]!
-  publicActiveTableSessionOrders(
-    restaurantId: ID!
-    tableId: ID!
-    token: String!
-  ): ActiveTableSessionOrdersResult!
 }
 
 extend type Mutation {
