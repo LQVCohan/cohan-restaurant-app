@@ -64,7 +64,9 @@ const markToolbarActions = (root) => {
   actionButtons.forEach((button) => {
     const label = getText(button);
     if (label.includes("Lịch rảnh đã chốt") || label.includes("In lịch tuần")) {
+      const shortLabel = label.includes("Lịch rảnh") ? "Lịch rảnh" : "In lịch";
       button.classList.add("schedule-toolbar-utility-action");
+      button.dataset.shortLabel = shortLabel;
       button.setAttribute("title", label);
       if (!button.getAttribute("aria-label")) button.setAttribute("aria-label", label);
       return;
@@ -98,7 +100,7 @@ const markBoardEmptyState = (root) => {
 
   const guidance = document.createElement("div");
   guidance.className = "schedule-empty-guidance";
-  guidance.textContent = "Tuần này chưa có ca. Bắt đầu bằng Tạo ca hoặc Chia ca tự động.";
+  guidance.textContent = "Tuần này chưa có ca. Hãy tạo ca thủ công hoặc dùng Chia ca tự động.";
   board.prepend(guidance);
 };
 
