@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from "react";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import AppRouter from "./routes/AppRouter";
 import { AuthProvider } from "./context/AuthProvider";
 import { ApolloProvider } from "@apollo/client/react";
@@ -14,6 +14,13 @@ import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
 import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
 import AiChatbotWidget from "./components/common/AiChatbotWidget";
+
+function ScopedAiChatbotWidget() {
+  const location = useLocation();
+  if (location.pathname.startsWith("/manager")) return null;
+  return <AiChatbotWidget />;
+}
+
 function App() {
   return (
     <ApolloProvider client={apolloClient}>
@@ -26,7 +33,7 @@ function App() {
                 <AppRouter />
                 <FoodDetailAvailabilityGlobalMount />
                 <GlobalMenuAvailabilityPrompt />
-                <AiChatbotWidget />
+                <ScopedAiChatbotWidget />
               </CartProvider>
             </CustomerNotificationProvider>
             <NotificationContainer />
