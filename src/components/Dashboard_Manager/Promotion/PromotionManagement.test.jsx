@@ -316,8 +316,8 @@ describe("PromotionManagement", () => {
         expect.objectContaining({
           name: "Promotions",
           rows: expect.arrayContaining([
-            expect.arrayContaining(["Tên chương trình", "Mã"]),
-            expect.arrayContaining(["Combo trua", "TRUA10"]),
+            expect.arrayContaining(["Tên", "Mã", "Loại", "Giá trị"]),
+            expect.arrayContaining(["Combo trua", "TRUA10", "Giảm phần trăm", "10%"]),
           ]),
         }),
       ]),
@@ -336,7 +336,7 @@ describe("PromotionManagement", () => {
     mutationButtons.forEach((button) => expect(button).toBeDisabled());
   });
 
-  it("renders Coupon stack flags under Dùng chồng and status under Trạng thái", () => {
+  it("renders Coupon stack flag and status under the current coupon table columns", () => {
     useCoupons.mockReturnValue(
       buildCouponHookValue({
         coupons: [sampleCoupon],
@@ -349,8 +349,7 @@ describe("PromotionManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: "Coupon" }));
 
     const row = screen.getByText("Coupon Stack").closest("tr");
-    expect(row).toHaveTextContent("+ Promotion");
-    expect(row).toHaveTextContent("+ Coupon");
+    expect(row).toHaveTextContent("Có");
     expect(row).toHaveTextContent("Đang chạy");
   });
 
