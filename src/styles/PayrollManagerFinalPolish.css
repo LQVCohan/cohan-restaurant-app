@@ -1,77 +1,113 @@
 .payroll-page-compact .header-toolbar {
-  grid-template-columns: minmax(0, 0.95fr) minmax(620px, 0.72fr) !important;
-  gap: clamp(1.25rem, 2.2vw, 2.4rem) !important;
+  grid-template-columns: minmax(0, 0.9fr) minmax(680px, 0.78fr) !important;
+  align-items: center !important;
+  gap: clamp(1.15rem, 2.1vw, 2.35rem) !important;
+}
+
+.payroll-page-compact .title-zone {
+  max-width: 680px;
+}
+
+.payroll-page-compact .page-title {
+  letter-spacing: -0.045em !important;
 }
 
 .payroll-page-compact .payroll-control-card {
-  grid-template-columns: minmax(190px, 1fr) minmax(230px, 1.12fr) auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(250px, 1.05fr) minmax(285px, 1.18fr) !important;
+  grid-template-areas:
+    "restaurant period"
+    "actions actions";
   justify-self: end;
-  width: min(100%, 640px) !important;
-  min-height: 94px !important;
-  padding: 0.95rem !important;
+  width: min(100%, 720px) !important;
+  min-height: 118px !important;
+  padding: 0.9rem !important;
+  gap: 0.62rem !important;
+}
+
+.payroll-page-compact .payroll-control-card .cycle-picker-compact:nth-of-type(1) {
+  grid-area: restaurant;
+}
+
+.payroll-page-compact .payroll-control-card .cycle-picker-compact:nth-of-type(2) {
+  grid-area: period;
 }
 
 .payroll-page-compact .payroll-control-card .cycle-picker-compact {
   min-width: 0 !important;
   min-height: 58px !important;
-  padding: 0.48rem 0.58rem !important;
+  padding: 0.5rem 0.62rem !important;
 }
 
 .payroll-page-compact .payroll-control-card .filter-select {
   height: 38px !important;
   min-height: 38px !important;
+  padding-inline: 0.72rem !important;
   font-size: 0.86rem !important;
   font-weight: 820 !important;
   text-overflow: ellipsis;
 }
 
 .payroll-page-compact .payroll-control-card .actions-row {
-  min-width: 230px !important;
+  grid-area: actions;
+  display: flex !important;
+  justify-content: flex-end;
+  min-width: 0 !important;
+  gap: 0.52rem !important;
 }
 
 .payroll-page-compact .payroll-control-card .btn {
-  min-height: 42px !important;
+  min-width: 122px;
+  min-height: 40px !important;
 }
 
 .payroll-page-compact .payroll-summary-line {
   align-items: center !important;
+  gap: 0.48rem 0.72rem !important;
+}
+
+.payroll-page-compact .payroll-summary-line .status-dot.info {
+  color: #8a5f31 !important;
+  border-color: rgba(168, 133, 95, 0.24) !important;
+  background: rgba(255, 247, 237, 0.78) !important;
 }
 
 .payroll-page-compact .payroll-data-mode {
   display: inline-flex !important;
   align-items: center !important;
-  min-height: 26px !important;
-  padding: 0.2rem 0.66rem !important;
+  min-height: 28px !important;
+  padding: 0.24rem 0.78rem !important;
   border: 1px solid rgba(83, 108, 97, 0.2) !important;
   border-radius: 999px !important;
   background: rgba(237, 244, 240, 0.74) !important;
   color: var(--payroll-storage-sage, #536c61) !important;
-  font-size: 0.74rem !important;
-  font-weight: 860 !important;
+  font-size: 0.76rem !important;
+  font-weight: 900 !important;
   letter-spacing: 0.012em;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.78), 0 7px 15px rgba(48, 40, 30, 0.045);
 }
 
 .payroll-page-compact .payroll-data-mode.is-runtime {
-  border-color: rgba(168, 133, 95, 0.24) !important;
-  background: rgba(255, 247, 237, 0.82) !important;
+  border-color: rgba(168, 133, 95, 0.28) !important;
+  background: linear-gradient(180deg, rgba(255, 250, 243, 0.96), rgba(255, 243, 224, 0.82)) !important;
   color: var(--payroll-storage-taupe-dark, #735637) !important;
 }
 
 .payroll-page-compact .payroll-data-mode.is-official {
-  border-color: rgba(47, 125, 104, 0.24) !important;
-  background: rgba(237, 244, 240, 0.9) !important;
+  border-color: rgba(47, 125, 104, 0.28) !important;
+  background: linear-gradient(180deg, rgba(241, 249, 245, 0.96), rgba(226, 241, 235, 0.86)) !important;
   color: var(--payroll-storage-success, #2f7d68) !important;
 }
 
 .payroll-page-compact .payroll-data-mode::before {
   content: "" !important;
   display: inline-block !important;
-  width: 0.46rem !important;
-  height: 0.46rem !important;
-  margin-right: 0.42rem !important;
+  width: 0.48rem !important;
+  height: 0.48rem !important;
+  margin-right: 0.44rem !important;
   border-radius: 999px !important;
   background: currentColor !important;
-  opacity: 0.75;
+  opacity: 0.78;
 }
 
 .payroll-page-compact .payroll-action-row {
@@ -82,7 +118,7 @@
   display: flex !important;
   align-items: center !important;
   flex-wrap: wrap !important;
-  gap: 0.52rem !important;
+  gap: 0.5rem !important;
 }
 
 .payroll-page-compact .payroll-action-buttons .btn {
@@ -91,10 +127,22 @@
 }
 
 .payroll-page-compact .btn-create-period {
+  position: relative;
+  margin-right: 0.82rem !important;
   color: #fffdf8 !important;
   border-color: rgba(83, 108, 97, 0.44) !important;
   background: linear-gradient(135deg, var(--payroll-storage-sage, #536c61), var(--payroll-storage-success, #2f7d68)) !important;
   box-shadow: 0 12px 24px rgba(47, 125, 104, 0.13) !important;
+}
+
+.payroll-page-compact .btn-create-period::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: -0.7rem;
+  width: 1px;
+  height: calc(100% - 14px);
+  background: rgba(132, 116, 94, 0.2);
 }
 
 .payroll-page-compact .btn-create-period:not(:disabled):hover {
@@ -102,43 +150,92 @@
 }
 
 .payroll-page-compact .payroll-inline-message {
-  max-width: 520px;
+  display: inline-flex !important;
+  align-items: center !important;
+  max-width: 560px;
+  min-height: 36px !important;
   white-space: normal !important;
   text-align: right;
+  border-color: rgba(168, 133, 95, 0.2) !important;
+  background: rgba(255, 250, 243, 0.88) !important;
+  color: #725c44 !important;
+}
+
+.payroll-page-compact .payroll-inline-message::before {
+  content: "i";
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.46rem;
+  border-radius: 999px;
+  color: #fffaf2;
+  background: #b99162;
+  font-size: 0.68rem;
+  font-weight: 900;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .payroll-page-compact .payroll-table td:last-child .status-dot {
-  min-width: 64px;
+  min-width: 66px;
   justify-content: center;
-  padding: 0.36rem 0.58rem !important;
+  padding: 0.36rem 0.6rem !important;
 }
 
 .payroll-page-compact .payroll-table td:last-child .status-dot::before {
-  margin-right: 0.16rem !important;
+  margin-right: 0.18rem !important;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1360px) {
   .payroll-page-compact .header-toolbar {
     grid-template-columns: 1fr !important;
+  }
+
+  .payroll-page-compact .title-zone {
+    max-width: none;
   }
 
   .payroll-page-compact .payroll-control-card {
     justify-self: stretch;
     width: 100% !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) auto !important;
   }
 }
 
 @media (max-width: 920px) {
   .payroll-page-compact .payroll-control-card {
     grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "restaurant"
+      "period"
+      "actions";
   }
 
   .payroll-page-compact .payroll-control-card .actions-row {
-    min-width: 0 !important;
+    justify-content: stretch;
+  }
+
+  .payroll-page-compact .payroll-control-card .btn {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .payroll-page-compact .payroll-inline-message {
     text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .payroll-page-compact .payroll-action-buttons {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .payroll-page-compact .btn-create-period {
+    margin-right: 0 !important;
+  }
+
+  .payroll-page-compact .btn-create-period::after {
+    display: none;
   }
 }
