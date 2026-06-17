@@ -337,7 +337,7 @@ export async function createServer() {
         payload: req.body || {},
         source: "webhook",
       });
-      if (payment?.status === "success") {
+      if (payment?.status === "success" && !payment?.realtimeEmitSkipped) {
         await emitPaymentRealtime({ io: app.io, payment, eventType: "PAYMENT_VERIFIED" });
       }
       return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status });
@@ -354,7 +354,7 @@ export async function createServer() {
         payload: req.query || {},
         source: "return",
       });
-      if (payment?.status === "success") {
+      if (payment?.status === "success" && !payment?.realtimeEmitSkipped) {
         await emitPaymentRealtime({ io: app.io, payment, eventType: "PAYMENT_VERIFIED" });
       }
       return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status, message: "Payment return captured. Backend remains source of truth." });

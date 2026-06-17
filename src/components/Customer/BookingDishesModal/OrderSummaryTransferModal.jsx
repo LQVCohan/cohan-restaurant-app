@@ -104,6 +104,16 @@ const isShippingValid = (shipping) => {
   return nameOk && phoneOk && emailOk && addressOk;
 };
 
+const resolveTransferStatus = (session = {}) => {
+  if (String(session?.status || "").toLowerCase() === "success") return "VERIFIED";
+  return String(session?.transfer?.status || "INSTRUCTIONS_SHOWN").toUpperCase();
+};
+
+const shouldPollTransferSession = (session = {}) => {
+  const status = resolveTransferStatus(session);
+  return !["VERIFIED", "REJECTED", "FAILED", "EXPIRED"].includes(status);
+};
+
 export default function OrderSummaryTransferModal({ isOpen, onClose, items = [], onSuccess }) {
   const { user } = useContext(AuthContext) || {};
   const [shipping, setShipping] = useState(() => defaultShipping(user));
@@ -183,15 +193,22 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
 
   useEffect(() => {
     if (!isOpen || view !== "transfer" || !transferSessions.length) return undefined;
+    const pendingSessionIds = transferSessions
+      .filter(shouldPollTransferSession)
+      .map((session) => String(session?.id || session?._id || ""))
+      .filter(Boolean);
+
+    if (!pendingSessionIds.length) return undefined;
+
     const intervalId = window.setInterval(() => {
-      transferSessionIdsRef.current.forEach((sessionId) => {
+      pendingSessionIds.forEach((sessionId) => {
         syncPaymentStatus({ variables: { paymentId: sessionId } })
           .then((result) => mergeTransferSessionUpdate(result?.data?.syncPaymentStatus))
           .catch(() => {});
       });
     }, 10000);
     return () => window.clearInterval(intervalId);
-  }, [isOpen, view, transferSessions.length, syncPaymentStatus]);
+  }, [isOpen, view, transferSessions, syncPaymentStatus]);
 
   const createCheckout = async (method) => {
     const checkoutItems = items.map((item) => mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }));

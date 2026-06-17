@@ -549,7 +549,9 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
   if (payment.status === "success") {
     payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
     await payment.save();
-    return payment.toObject();
+    const out = payment.toObject();
+    out.realtimeEmitSkipped = true;
+    return out;
   }
 
   payment.status = mapProviderStatus(normalizedProvider, payload);
