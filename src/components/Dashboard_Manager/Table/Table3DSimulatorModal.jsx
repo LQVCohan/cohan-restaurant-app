@@ -150,6 +150,12 @@ const Table3DSimulatorModal = ({
   const cameraTarget = `${offset.x}m 0m ${offset.z}m`;
   const canOpenAr = canOpenModelViewerAr(selectedModel);
   const arUnavailableReason = getArUnavailableReason(selectedModel);
+  const canOpenArPlacement = Boolean(table?.id && selectedModel?.modelUrl);
+  const arPlacementTitle = !table?.id
+    ? "Vui lòng mở chi tiết một bàn trước khi đặt vị trí bằng AR"
+    : !selectedModel?.modelUrl
+      ? "Mẫu bàn chưa có modelUrl"
+      : "Hiệu chỉnh và lưu vị trí bàn vào sơ đồ";
   const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
   const isSelectedModelHiddenByFilters = Boolean(
     selectedModel &&
@@ -549,9 +555,11 @@ const Table3DSimulatorModal = ({
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => setShowArPlacement(true)}
-                disabled={!selectedModel?.modelUrl}
-                title={selectedModel?.modelUrl ? "Hiệu chỉnh và lưu vị trí bàn vào sơ đồ" : "Mẫu bàn chưa có modelUrl"}
+                onClick={() => {
+                  if (canOpenArPlacement) setShowArPlacement(true);
+                }}
+                disabled={!canOpenArPlacement}
+                title={arPlacementTitle}
               >
                 Đặt vị trí bằng AR
               </Button>

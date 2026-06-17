@@ -21,17 +21,31 @@ const toPoint = (point, zKey = "y") => {
 };
 
 const getRestaurantLocation = (restaurant) => {
-  const candidates = [
+  const pointCandidates = [
+    restaurant?.address,
     restaurant?.location,
     restaurant?.coordinates,
-    restaurant?.addressLocation,
     restaurant,
   ];
-  for (const item of candidates) {
+
+  for (const item of pointCandidates) {
     const lat = item?.lat ?? item?.latitude;
     const lng = item?.lng ?? item?.longitude;
     if (lat != null && lng != null) return { lat, lng };
   }
+
+  const coordinateCandidates = [
+    restaurant?.location?.coordinates,
+    restaurant?.coordinates,
+  ];
+
+  for (const coordinates of coordinateCandidates) {
+    if (Array.isArray(coordinates) && coordinates.length >= 2) {
+      const [lng, lat] = coordinates;
+      if (lat != null && lng != null) return { lat, lng };
+    }
+  }
+
   return null;
 };
 
@@ -117,7 +131,10 @@ export default function ArTablePlacementModal({
     [arTablePoint, transform],
   );
 
-  const canSave = canPersistArTablePosition({ geofenceState, transform, floorPosition: position });
+  const hasSelectedTable = Boolean(table?.id);
+  const canSave =
+    hasSelectedTable &&
+    canPersistArTablePosition({ geofenceState, transform, floorPosition: position });
 
   const updatePoint = (setter, key, value) => {
     setter((prev) => ({ ...prev, [key]: value }));
@@ -169,6 +186,11 @@ export default function ArTablePlacementModal({
           <p>Mẫu 3D: <strong>{selectedModel?.label || selectedModel?.modelLabel || "Chưa chọn"}</strong></p>
         </div>
 
+        {!hasSelectedTable && (
+          <div className="ar-placement-modal__warning">
+            Chưa chọn bàn để đặt vị trí.
+          </div>
+        )}
         {!checkingXr && !webXrSupported && (
           <div className="ar-placement-modal__warning">
             Thiết bị/trình duyệt chưa hỗ trợ WebXR AR. Có thể nhập tọa độ mock/manual để hiệu chỉnh và lưu khi đang ở nhà hàng.
