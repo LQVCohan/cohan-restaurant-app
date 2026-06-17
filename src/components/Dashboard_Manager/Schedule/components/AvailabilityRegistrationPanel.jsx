@@ -29,6 +29,7 @@ const EMPLOYMENT_TYPE_LABELS = {
   seasonal: "Thời vụ",
   contract: "Hợp đồng",
 };
+
 const SHIFT_TYPE_LABELS = {
   morning: "Ca sáng",
   afternoon: "Ca chiều",
@@ -62,6 +63,7 @@ function formatDateRange(start, end) {
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
     return "—";
   }
+
   return `${new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -79,7 +81,9 @@ function getSubmissionStatusLabel(status) {
 
 function getShiftTypeLabel(shiftType, shiftTemplates = [], shiftConfig = {}) {
   const key = String(shiftType || "").toLowerCase();
-  const template = (shiftTemplates || []).find((item) => String(item?.key || "").toLowerCase() === key);
+  const template = (shiftTemplates || []).find(
+    (item) => String(item?.key || "").toLowerCase() === key,
+  );
   const config = shiftConfig?.[key] || shiftConfig?.[shiftType];
   const label = template?.label || config?.label || SHIFT_TYPE_LABELS[key] || shiftType || "Ca";
   const startTime = template?.startTime || config?.startTime;
@@ -91,6 +95,7 @@ function getSlotStatusLabel(status) {
   const key = String(status || "").toLowerCase();
   return SLOT_STATUS_LABELS[key] || status || "Không rõ";
 }
+
 function formatDateTime(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -146,23 +151,33 @@ export default function AvailabilityRegistrationPanel({
     availabilityCloseTime: "18:00",
     lateChangeRequiresApproval: true,
   });
-  const registrationSchedule = useMemo(() => buildAvailabilityRegistrationSchedule({
-    targetWeekStart,
-    targetWeekEnd,
-    policy: availabilityPolicy,
-  }), [targetWeekStart, targetWeekEnd, availabilityPolicy]);
+
+  const registrationSchedule = useMemo(
+    () =>
+      buildAvailabilityRegistrationSchedule({
+        targetWeekStart,
+        targetWeekEnd,
+        policy: availabilityPolicy,
+      }),
+    [targetWeekStart, targetWeekEnd, availabilityPolicy],
+  );
 
   const windowStatus = String(
-    resolveAvailabilityWindowEffectiveStatus(availabilityWindow || {
-      status: "draft",
-      registrationMode: registrationSchedule.mode,
-      openAt: registrationSchedule.openAt,
-      closeAt: registrationSchedule.closeAt,
-    }) || "unknown",
+    resolveAvailabilityWindowEffectiveStatus(
+      availabilityWindow || {
+        status: "draft",
+        registrationMode: registrationSchedule.mode,
+        openAt: registrationSchedule.openAt,
+        closeAt: registrationSchedule.closeAt,
+      },
+    ) || "unknown",
   ).toLowerCase();
-  const registrationMode = String(availabilityWindow?.registrationMode || registrationSchedule.mode || "manual").toLowerCase();
+  const registrationMode = String(
+    availabilityWindow?.registrationMode || registrationSchedule.mode || "manual",
+  ).toLowerCase();
   const hasWindow = Boolean(availabilityWindow?.id);
   const [showSubmissions, setShowSubmissions] = useState(false);
+
   const submissionSummary = useMemo(() => {
     const totals = {
       total: submissions.length,
@@ -184,25 +199,24 @@ export default function AvailabilityRegistrationPanel({
 
   const statusLabel = hasWindow
     ? WINDOW_STATUS_LABELS[windowStatus] || WINDOW_STATUS_LABELS.unknown
-    : "Chưa tạo window";
+    : "Chưa mở đăng ký";
 
   const canCreate = !hasWindow && selectedRestaurantId && !loading;
   const canOpen =
     hasWindow &&
     selectedRestaurantId &&
     !loading &&
-    (windowStatus === "draft" ||
-      (windowStatus === "closed" && !reopenBlockedReason));
-  const openActionLabel =
-    windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
-  const canClose =
-    hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
+    (windowStatus === "draft" || (windowStatus === "closed" && !reopenBlockedReason));
+  const openActionLabel = windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
+  const canClose = hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
   const canViewSubmissions = hasWindow && selectedRestaurantId && !loading;
   const manualActionsDisabled = registrationMode === "auto";
 
   const openPolicyModal = () => {
     setPolicyDraft({
-      availabilityRegistrationMode: String(availabilityPolicy?.availabilityRegistrationMode || "manual").toLowerCase(),
+      availabilityRegistrationMode: String(
+        availabilityPolicy?.availabilityRegistrationMode || "manual",
+      ).toLowerCase(),
       availabilityOpenDayOffset: Number(availabilityPolicy?.availabilityOpenDayOffset ?? -7),
       availabilityOpenTime: availabilityPolicy?.availabilityOpenTime || "09:00",
       availabilityCloseDayOffset: Number(availabilityPolicy?.availabilityCloseDayOffset ?? -1),
@@ -211,46 +225,38 @@ export default function AvailabilityRegistrationPanel({
     });
     setIsPolicyModalOpen(true);
   };
+
   return (
     <section className="schedule-availability-panel">
-      <div className="schedule-availability-panel__header">
-        <div>
-          <h3>
-            <ClipboardList size={18} /> Đăng ký lịch nhân viên
-          </h3>
-          <p>
-            Quản lý thời gian nhân viên đăng ký lịch rảnh trước khi xếp lịch.
-          </p>
-          <p>
-            Kỳ đăng ký cho tuần {formatDateRange(targetWeekStart, targetWeekEnd)} (
-            {mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
-          </p>
+      {!collapsed ? (
+        <div className="schedule-availability-panel__header">
+          <div>
+            <h3>
+              <ClipboardList size={18} /> Đăng ký lịch nhân viên
+            </h3>
+            <p>Quản lý thời gian nhân viên đăng ký lịch rảnh trước khi xếp lịch.</p>
+            <p>
+              Kỳ đăng ký cho tuần {formatDateRange(targetWeekStart, targetWeekEnd)} (
+              {mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
+            </p>
+          </div>
+          <span className={`schedule-availability-panel__status is-${windowStatus}`}>
+            {statusLabel}
+          </span>
+          {typeof onToggleCollapse === "function" ? (
+            <button
+              type="button"
+              className="btn-collapse-panel icon-only"
+              onClick={onToggleCollapse}
+              aria-label="Thu gọn đăng ký lịch nhân viên"
+              title="Thu gọn đăng ký lịch nhân viên"
+            >
+              <ChevronUp size={16} />
+            </button>
+          ) : null}
         </div>
-        <span
-          className={`schedule-availability-panel__status is-${windowStatus}`}
-        >
-          {statusLabel}
-        </span>
-        {typeof onToggleCollapse === "function" ? (
-          <button
-            type="button"
-            className="btn-collapse-panel icon-only"
-            onClick={onToggleCollapse}
-            aria-label={
-              collapsed
-                ? "Mở rộng đăng ký lịch nhân viên"
-                : "Thu gọn đăng ký lịch nhân viên"
-            }
-            title={
-              collapsed
-                ? "Mở rộng đăng ký lịch nhân viên"
-                : "Thu gọn đăng ký lịch nhân viên"
-            }
-          >
-            {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-          </button>
-        ) : null}
-      </div>
+      ) : null}
+
       {collapsed ? (
         <div className="schedule-availability-panel__compact-summary">
           <div className="schedule-availability-panel__compact-main">
@@ -260,15 +266,18 @@ export default function AvailabilityRegistrationPanel({
             </span>
           </div>
           <div className="schedule-availability-panel__compact-meta">
-            <span>
-              Tuần áp dụng: {formatDateRange(targetWeekStart, targetWeekEnd)}
-            </span>
+            <span>Tuần áp dụng: {formatDateRange(targetWeekStart, targetWeekEnd)}</span>
             <span>
               Đã gửi: {submissionSummary.total} · Chờ duyệt:{" "}
               {submissionSummary.pending + submissionSummary.late_change_requested}
             </span>
           </div>
           <div className="schedule-availability-panel__compact-actions">
+            {!hasWindow ? (
+              <button type="button" onClick={onCreateWindow} disabled={!canCreate}>
+                {loading ? "Đang xử lý..." : "Mở đăng ký tuần tới"}
+              </button>
+            ) : null}
             {canOpen && !manualActionsDisabled ? (
               <button type="button" onClick={onOpenWindow} disabled={!canOpen}>
                 {loading ? "Đang xử lý..." : openActionLabel}
@@ -279,20 +288,20 @@ export default function AvailabilityRegistrationPanel({
               onClick={() => setShowSubmissions((prev) => !prev)}
               disabled={!canViewSubmissions}
             >
-              <Eye size={14} />{" "}
-              {showSubmissions ? "Ẩn đăng ký" : "Xem đăng ký"}
+              <Eye size={14} /> {showSubmissions ? "Ẩn đăng ký" : "Xem đăng ký"}
             </button>
             <button type="button" onClick={openPolicyModal} disabled={policySaving}>
               Thiết lập
             </button>
             {typeof onToggleCollapse === "function" ? (
               <button type="button" className="btn-collapse-panel" onClick={onToggleCollapse}>
-                Mở rộng
+                <ChevronDown size={14} /> Mở rộng
               </button>
             ) : null}
           </div>
         </div>
       ) : null}
+
       {!collapsed ? (
         <>
           {error ? (
@@ -301,7 +310,6 @@ export default function AvailabilityRegistrationPanel({
               <p>{error.message || "Đã có lỗi xảy ra."}</p>
             </div>
           ) : null}
-
 
           {firstWeekGraceActive && nextWeekWindowMissing ? (
             <div className="schedule-availability-panel__empty">
@@ -315,21 +323,17 @@ export default function AvailabilityRegistrationPanel({
           ) : null}
           {!hasWindow ? (
             <div className="schedule-availability-panel__empty">
-              <h4>Chưa có kỳ đăng ký khả dụng</h4>
+              <h4>Chưa mở đăng ký tuần tới</h4>
               <p>
-                Tạo kỳ đăng ký để nhân viên part-time đăng ký thời gian có thể
-                làm và nhân viên toàn thời gian báo ngày không rảnh.
+                Mở đăng ký để nhân viên bán thời gian gửi thời gian có thể làm và
+                nhân viên toàn thời gian báo ngày không rảnh.
               </p>
-              <button
-                type="button"
-                onClick={onCreateWindow}
-                disabled={!canCreate}
-              >
-                {loading ? "Đang xử lý..." : "Tạo kỳ đăng ký cho tuần kế tiếp"}
+              <button type="button" onClick={onCreateWindow} disabled={!canCreate}>
+                {loading ? "Đang xử lý..." : "Mở đăng ký tuần tới"}
               </button>
               {shouldRemindNextWeekRegistration ? (
                 <p className="schedule-availability-panel__hint">
-                  Nên tạo kỳ đăng ký cho tuần kế tiếp để nhân viên gửi lịch rảnh đúng quy trình.
+                  Nên mở đăng ký tuần tới để nhân viên gửi lịch rảnh đúng quy trình.
                 </p>
               ) : null}
             </div>
@@ -339,10 +343,7 @@ export default function AvailabilityRegistrationPanel({
                 <div>
                   <span>Tuần áp dụng</span>
                   <strong>
-                    {formatDateRange(
-                      availabilityWindow.periodStart,
-                      availabilityWindow.periodEnd,
-                    )}
+                    {formatDateRange(availabilityWindow.periodStart, availabilityWindow.periodEnd)}
                   </strong>
                 </div>
                 <div>
@@ -361,29 +362,18 @@ export default function AvailabilityRegistrationPanel({
                   <span>Đối tượng đăng ký lịch rảnh</span>
                   <strong>
                     {(availabilityWindow.targetEmploymentTypes || [])
-                      .map(
-                        (value) =>
-                          EMPLOYMENT_TYPE_LABELS[
-                            String(value || "").toLowerCase()
-                          ],
-                      )
+                      .map((value) => EMPLOYMENT_TYPE_LABELS[String(value || "").toLowerCase()])
                       .filter(Boolean)
                       .join(", ") || "Chưa thiết lập"}
                   </strong>
                 </div>
                 <div>
                   <span>Nhân viên toàn thời gian báo ngày không rảnh</span>
-                  <strong>
-                    {availabilityWindow.allowFullTimeUnavailableException
-                      ? "Có"
-                      : "Không"}
-                  </strong>
+                  <strong>{availabilityWindow.allowFullTimeUnavailableException ? "Có" : "Không"}</strong>
                 </div>
                 <div>
                   <span>Kỳ tạo sẵn</span>
-                  <strong>
-                    {formatDateRange(nextWeekStart, nextWeekEnd)}
-                  </strong>
+                  <strong>{formatDateRange(nextWeekStart, nextWeekEnd)}</strong>
                 </div>
               </div>
 
@@ -418,13 +408,13 @@ export default function AvailabilityRegistrationPanel({
               </div>
               {registrationMode === "manual" ? (
                 <div className="schedule-availability-panel__empty">
-                  <p><strong>Thủ công:</strong> hệ thống chỉ hiển thị khuyến nghị, manager tự bấm mở/đóng.</p>
+                  <p><strong>Thủ công:</strong> hệ thống chỉ hiển thị khuyến nghị, quản lý tự bấm mở/đóng.</p>
                   <p>Khuyến nghị mở đăng ký: <strong>{formatDateTime(registrationSchedule.recommendedOpenAt)}</strong></p>
                   <p>Khuyến nghị đóng đăng ký: <strong>{formatDateTime(registrationSchedule.recommendedCloseAt)}</strong></p>
                 </div>
               ) : (
                 <div className="schedule-availability-panel__empty">
-                  <p><strong>Tự động:</strong> hệ thống tự tính effectiveStatus theo openAt/closeAt.</p>
+                  <p><strong>Tự động:</strong> hệ thống tự cập nhật trạng thái theo giờ mở và giờ đóng.</p>
                 </div>
               )}
               {reopenBlockedReason ? (
@@ -437,30 +427,12 @@ export default function AvailabilityRegistrationPanel({
                 <h4>Tổng quan đăng ký</h4>
                 <div className="metrics-grid">
                   <span>Tổng đăng ký: {submissionSummary.total}</span>
-                  <span>
-                    {SUBMISSION_STATUS_LABELS.late_change_requested}:
-                    {submissionSummary.late_change_requested}
-                  </span>
-                  <span>
-                    {SUBMISSION_STATUS_LABELS.pending}:{" "}
-                    {submissionSummary.pending}
-                  </span>
-                  <span>
-                    {SUBMISSION_STATUS_LABELS.submitted}:{" "}
-                    {submissionSummary.submitted}
-                  </span>
-                  <span>
-                    {SUBMISSION_STATUS_LABELS.approved}:{" "}
-                    {submissionSummary.approved}
-                  </span>
-                  <span>
-                    {SUBMISSION_STATUS_LABELS.rejected}:{" "}
-                    {submissionSummary.rejected}
-                  </span>
-                  <span>
-                    {SUBMISSION_STATUS_LABELS.locked}:{" "}
-                    {submissionSummary.locked}
-                  </span>
+                  <span>{SUBMISSION_STATUS_LABELS.late_change_requested}: {submissionSummary.late_change_requested}</span>
+                  <span>{SUBMISSION_STATUS_LABELS.pending}: {submissionSummary.pending}</span>
+                  <span>{SUBMISSION_STATUS_LABELS.submitted}: {submissionSummary.submitted}</span>
+                  <span>{SUBMISSION_STATUS_LABELS.approved}: {submissionSummary.approved}</span>
+                  <span>{SUBMISSION_STATUS_LABELS.rejected}: {submissionSummary.rejected}</span>
+                  <span>{SUBMISSION_STATUS_LABELS.locked}: {submissionSummary.locked}</span>
                 </div>
               </div>
               {showSubmissions ? (
@@ -478,22 +450,14 @@ export default function AvailabilityRegistrationPanel({
                     <div className="availability-submission-list">
                       {submissions.map((item) => {
                         const availableSlots = (item.slots || []).filter(
-                          (slot) =>
-                            String(slot.status || "").toLowerCase() ===
-                            "available",
+                          (slot) => String(slot.status || "").toLowerCase() === "available",
                         );
-
                         const unavailableSlots = (item.slots || []).filter(
-                          (slot) =>
-                            String(slot.status || "").toLowerCase() ===
-                            "unavailable",
+                          (slot) => String(slot.status || "").toLowerCase() === "unavailable",
                         );
 
                         return (
-                          <article
-                            key={item.id}
-                            className="availability-submission-card"
-                          >
+                          <article key={item.id} className="availability-submission-card">
                             <div className="availability-submission-card__top">
                               <div>
                                 <strong>
@@ -502,61 +466,37 @@ export default function AvailabilityRegistrationPanel({
                                     `Nhân viên ${String(item.employeeId || "").slice(-6)}`}
                                 </strong>
                                 <span>
-                                  {EMPLOYMENT_TYPE_LABELS[
-                                    String(
-                                      item.employmentType || "",
-                                    ).toLowerCase()
-                                  ] ||
+                                  {EMPLOYMENT_TYPE_LABELS[String(item.employmentType || "").toLowerCase()] ||
                                     item.employmentType ||
                                     "Nhân viên"}
                                   {" · "}
-                                  {item.submissionType ===
-                                  "unavailable_exception"
+                                  {item.submissionType === "unavailable_exception"
                                     ? "Báo ngày không rảnh"
                                     : "Đăng ký lịch rảnh"}
                                 </span>
                               </div>
-
-                              <span
-                                className={`availability-submission-status is-${String(
-                                  item.status || "",
-                                ).toLowerCase()}`}
-                              >
+                              <span className={`availability-submission-status is-${String(item.status || "").toLowerCase()}`}>
                                 {getSubmissionStatusLabel(item.status)}
                               </span>
                             </div>
 
                             <div className="availability-submission-card__meta">
-                              <span>
-                                Gửi lúc: {formatDateTime(item.submittedAt)}
-                              </span>
-                              <span>
-                                Ca khả dụng:{" "}
-                                <strong>{availableSlots.length}</strong>
-                              </span>
-                              <span>
-                                Không khả dụng:{" "}
-                                <strong>{unavailableSlots.length}</strong>
-                              </span>
+                              <span>Gửi lúc: {formatDateTime(item.submittedAt)}</span>
+                              <span>Ca khả dụng: <strong>{availableSlots.length}</strong></span>
+                              <span>Không khả dụng: <strong>{unavailableSlots.length}</strong></span>
                             </div>
 
                             <div className="availability-submission-card__slots">
                               {(item.slots || []).length === 0 ? (
-                                <span className="availability-submission-slot is-empty">
-                                  Không có slot chi tiết
-                                </span>
+                                <span className="availability-submission-slot is-empty">Không có slot chi tiết</span>
                               ) : (
                                 item.slots.map((slot, index) => (
                                   <span
                                     key={`${item.id}-${slot.date}-${slot.shiftType}-${index}`}
-                                    className={`availability-submission-slot is-${String(
-                                      slot.status || "",
-                                    ).toLowerCase()}`}
+                                    className={`availability-submission-slot is-${String(slot.status || "").toLowerCase()}`}
                                     title={slot.note || ""}
                                   >
-                                    {formatDateOnly(slot.date)} ·{" "}
-                                    {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} ·{" "}
-                                    {getSlotStatusLabel(slot.status)}
+                                    {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
                                   </span>
                                 ))
                               )}
@@ -568,9 +508,7 @@ export default function AvailabilityRegistrationPanel({
                                 {(item.pendingSlots || []).map((slot, index) => (
                                   <span
                                     key={`${item.id}-pending-${slot.date}-${slot.shiftType}-${index}`}
-                                    className={`availability-submission-slot is-${String(
-                                      slot.status || "",
-                                    ).toLowerCase()}`}
+                                    className={`availability-submission-slot is-${String(slot.status || "").toLowerCase()}`}
                                     title={slot.note || ""}
                                   >
                                     {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
@@ -596,11 +534,12 @@ export default function AvailabilityRegistrationPanel({
                 </div>
               ) : null}
               <p className="schedule-availability-panel__hint">Thay đổi sau khi đóng: {availabilityPolicy?.lateChangeRequiresApproval !== false ? "Cho phép gửi yêu cầu chờ duyệt" : "Không cho gửi"}</p>
-              {hasWindow ? (<p className="schedule-availability-panel__hint">Thay đổi cài đặt này áp dụng cho các kỳ tạo sau. Kỳ hiện tại giữ cấu hình đã tạo.</p>) : null}
+              {hasWindow ? <p className="schedule-availability-panel__hint">Thay đổi cài đặt này áp dụng cho các kỳ tạo sau. Kỳ hiện tại giữ cấu hình đã tạo.</p> : null}
             </>
           )}
         </>
       ) : null}
+
       {reviewDraft ? (
         <div className="publish-confirm-backdrop">
           <div className="availability-review-modal">
@@ -609,73 +548,76 @@ export default function AvailabilityRegistrationPanel({
               const pendingSlots = reviewDraft.item.pendingSlots || [];
               return (
                 <>
-            <h3>{reviewDraft.approved ? "Duyệt thay đổi muộn" : "Từ chối thay đổi muộn"}</h3>
-            <p><strong>{reviewDraft.item.employeeName || reviewDraft.item.employee?.fullName || reviewDraft.item.employeeId}</strong></p>
-            <div className="availability-review-modal__section">
-              <h4>Availability chính thức hiện tại</h4>
-              {officialSlots.length === 0 ? (
-                <p>Chưa có slot chính thức</p>
-              ) : (
-                <ul className="availability-review-modal__slot-list">
-                  {officialSlots.map((slot, index) => (
-                    <li key={`official-${index}`}>
-                      {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="availability-review-modal__section">
-              <h4>Yêu cầu thay đổi muộn</h4>
-              {pendingSlots.length === 0 ? (
-                <p>Không có pending slot</p>
-              ) : (
-                <ul className="availability-review-modal__slot-list">
-                  {pendingSlots.map((slot, index) => (
-                    <li key={`pending-${index}`}>
-                      {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <p className="availability-review-modal__warning">{reviewDraft.approved ? "Duyệt sẽ thay pending slots thành availability chính thức." : "Từ chối sẽ xóa pendingSlots và giữ availability chính thức hiện tại."}</p>
-            <label>
-              {reviewDraft.approved ? "Ghi chú duyệt" : "Lý do từ chối *"}
-              <textarea value={reviewNote} onChange={(e) => { setReviewNote(e.target.value); if (reviewError) setReviewError(""); }} />
-            </label>
-            {reviewError ? <div className="publish-confirm-error">{reviewError}</div> : null}
-            <div className="availability-policy-modal__actions">
-              <button type="button" className="btn-secondary" onClick={() => { setReviewDraft(null); setReviewNote(""); setReviewError(""); }}>Hủy</button>
-              <button type="button" className="btn-primary" disabled={reviewingSubmission} onClick={async () => {
-                if (!reviewDraft.approved && !reviewNote.trim()) { setReviewError("Vui lòng nhập lý do từ chối."); return; }
-                await onReviewSubmission?.(reviewDraft.item.id, reviewDraft.approved, reviewNote);
-                setReviewDraft(null); setReviewNote(""); setReviewError("");
-              }}>Xác nhận</button>
-            </div>
+                  <h3>{reviewDraft.approved ? "Duyệt thay đổi muộn" : "Từ chối thay đổi muộn"}</h3>
+                  <p><strong>{reviewDraft.item.employeeName || reviewDraft.item.employee?.fullName || reviewDraft.item.employeeId}</strong></p>
+                  <div className="availability-review-modal__section">
+                    <h4>Lịch rảnh hiện tại</h4>
+                    {officialSlots.length === 0 ? (
+                      <p>Chưa có slot chính thức</p>
+                    ) : (
+                      <ul className="availability-review-modal__slot-list">
+                        {officialSlots.map((slot, index) => (
+                          <li key={`official-${index}`}>
+                            {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="availability-review-modal__section">
+                    <h4>Yêu cầu thay đổi muộn</h4>
+                    {pendingSlots.length === 0 ? (
+                      <p>Không có yêu cầu chờ xử lý</p>
+                    ) : (
+                      <ul className="availability-review-modal__slot-list">
+                        {pendingSlots.map((slot, index) => (
+                          <li key={`pending-${index}`}>
+                            {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType, shiftTemplates, shiftConfig)} · {getSlotStatusLabel(slot.status)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <p className="availability-review-modal__warning">
+                    {reviewDraft.approved
+                      ? "Duyệt sẽ cập nhật yêu cầu thành lịch rảnh chính thức."
+                      : "Từ chối sẽ xóa yêu cầu chờ xử lý và giữ lịch rảnh hiện tại."}
+                  </p>
+                  <label>
+                    {reviewDraft.approved ? "Ghi chú duyệt" : "Lý do từ chối *"}
+                    <textarea value={reviewNote} onChange={(e) => { setReviewNote(e.target.value); if (reviewError) setReviewError(""); }} />
+                  </label>
+                  {reviewError ? <div className="publish-confirm-error">{reviewError}</div> : null}
+                  <div className="availability-policy-modal__actions">
+                    <button type="button" className="btn-secondary" onClick={() => { setReviewDraft(null); setReviewNote(""); setReviewError(""); }}>Hủy</button>
+                    <button type="button" className="btn-primary" disabled={reviewingSubmission} onClick={async () => {
+                      if (!reviewDraft.approved && !reviewNote.trim()) { setReviewError("Vui lòng nhập lý do từ chối."); return; }
+                      await onReviewSubmission?.(reviewDraft.item.id, reviewDraft.approved, reviewNote);
+                      setReviewDraft(null); setReviewNote(""); setReviewError("");
+                    }}>Xác nhận</button>
+                  </div>
                 </>
               );
             })()}
           </div>
         </div>
       ) : null}
+
       {isPolicyModalOpen ? (
         <div className="publish-confirm-backdrop">
           <div className="availability-policy-modal">
             <div className="availability-policy-modal__header">
               <h3>Thiết lập đăng ký lịch nhân viên</h3>
-              <p>
-                Cấu hình cách hệ thống mở/đóng kỳ đăng ký theo tuần mục tiêu.
-              </p>
+              <p>Cấu hình cách hệ thống mở/đóng kỳ đăng ký theo tuần mục tiêu.</p>
             </div>
             <div className="availability-policy-modal__explain">
               <div>
                 <strong>Tự động</strong>
-                <span>Hệ thống tự tính effectiveStatus theo openAt/closeAt.</span>
+                <span>Hệ thống tự cập nhật trạng thái theo giờ mở và giờ đóng.</span>
               </div>
               <div>
                 <strong>Thủ công</strong>
-                <span>Chỉ hiển thị khuyến nghị, manager tự bấm mở/đóng.</span>
+                <span>Chỉ hiển thị khuyến nghị, quản lý tự bấm mở/đóng.</span>
               </div>
             </div>
             <div className="availability-policy-modal__grid">
@@ -694,7 +636,7 @@ export default function AvailabilityRegistrationPanel({
                 </select>
               </label>
               <label>
-                Ngày mở đăng ký (offset theo target week)
+                Ngày mở đăng ký (theo tuần mục tiêu)
                 <input type="number" value={policyDraft.availabilityOpenDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenDayOffset: Number(event.target.value) }))} placeholder="-7" />
               </label>
               <label>
@@ -702,7 +644,7 @@ export default function AvailabilityRegistrationPanel({
                 <input type="time" value={policyDraft.availabilityOpenTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenTime: event.target.value }))} />
               </label>
               <label>
-                Ngày đóng đăng ký (offset theo target week)
+                Ngày đóng đăng ký (theo tuần mục tiêu)
                 <input type="number" value={policyDraft.availabilityCloseDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseDayOffset: Number(event.target.value) }))} placeholder="-1" />
               </label>
               <label>
