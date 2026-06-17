@@ -168,6 +168,9 @@ export default function TransferPaymentReviewPage() {
   const [rejectTransferPayment] = useMutation(REJECT_TRANSFER_PAYMENT, mutationOptions);
 
   const rows = data?.transferPaymentQueue || [];
+  const hasLoadedQueue = Boolean(data?.transferPaymentQueue);
+  const initialLoading = loading && !hasLoadedQueue;
+  const refreshing = loading && hasLoadedQueue;
 
   useEffect(() => {
     if (data?.transferPaymentQueue) setLastRefreshedAt(new Date());
@@ -206,7 +209,7 @@ export default function TransferPaymentReviewPage() {
           <h1>Duyệt chuyển khoản</h1>
           <p>Xem bằng chứng chuyển khoản, xác minh payment và release đơn cho nhà hàng xử lý.</p>
           <p className="helper">
-            Tự động làm mới mỗi 15 giây{lastRefreshedAt ? ` · cập nhật lần cuối ${lastRefreshedAt.toLocaleTimeString("vi-VN")}` : ""}.
+            Tự động làm mới mỗi 15 giây{lastRefreshedAt ? ` · cập nhật lần cuối ${lastRefreshedAt.toLocaleTimeString("vi-VN")}` : ""}{refreshing ? " · đang làm mới..." : ""}.
           </p>
         </div>
         <div className="header-actions finance-toolbar">
@@ -218,15 +221,15 @@ export default function TransferPaymentReviewPage() {
             <option value="">Tất cả trạng thái</option>
             {transferStatusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
-          <button className="btn-secondary" onClick={handleManualRefresh} disabled={loading}><RefreshCw size={16} /> Làm mới</button>
+          <button className="btn-secondary" onClick={handleManualRefresh} disabled={initialLoading}><RefreshCw size={16} /> Làm mới</button>
         </div>
       </header>
 
       {notice && <div className={notice.type === "success" ? "finance-success" : "finance-error"}>{notice.text}</div>}
       {!canWrite && <div className="empty-note">Bạn có quyền xem queue, nhưng không có quyền payment.write nên thao tác xác minh/từ chối đã được ẩn.</div>}
       {error && <div className="finance-error">Không thể tải queue chuyển khoản. Vui lòng thử lại.</div>}
-      {loading && <div className="card-container transfer-review-state">Đang tải queue chuyển khoản...</div>}
-      {!loading && !error && rows.length === 0 && <div className="card-container empty-note transfer-review-state">Không có giao dịch chuyển khoản cần xử lý.</div>}
+      {initialLoading && <div className="card-container transfer-review-state">Đang tải queue chuyển khoản...</div>}
+      {!initialLoading && !error && rows.length === 0 && <div className="card-container empty-note transfer-review-state">Không có giao dịch chuyển khoản cần xử lý.</div>}
       <section className="tx-cards-grid">
         {rows.map((payment) => (
           <TransferPaymentCard
