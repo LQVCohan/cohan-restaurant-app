@@ -301,6 +301,7 @@ extend type Mutation {
   ): ActionResultPayload!
 
   uploadOrderItemProof(input: UploadOrderItemProofInput!): UpdateOrderItemStatusPayload!
+  cancelOrder(restaurantId: ID!, orderId: ID!, reason: String): CancelOrderPayload!
   createOrderForTable(input: CreateOrderForTableInput!): CreateOrderForTablePayload!
   createOffPremiseOrder(input: CreateOffPremiseOrderInput!): CreateOffPremiseOrderPayload!
   createStaffRemoteOrder(input: CreateStaffRemoteOrderInput!): CreateStaffRemoteOrderPayload!
