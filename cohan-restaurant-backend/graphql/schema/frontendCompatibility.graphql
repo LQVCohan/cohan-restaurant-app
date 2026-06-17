@@ -1,0 +1,414 @@
+# Compatibility schema for legacy frontend documents that are still rendered by
+# customer history and manager dashboard pages. Keep the root fields nullable so
+# the UI can safely fall back to empty states when the matching resolver is not
+# available in a given backend deployment.
+
+type ReportsOverviewBucket {
+  key: String
+  label: String
+  count: Int
+}
+
+type ReportsOverviewTopDish {
+  name: String
+  quantity: Float
+  revenue: Float
+}
+
+type ReportsOverviewRevenueDay {
+  date: String
+  grossRevenue: Float
+  orders: Int
+}
+
+type ReportsOverview {
+  totalOrders: Int
+  grossRevenue: Float
+  byStatus: [ReportsOverviewBucket!]
+  byOrderType: [ReportsOverviewBucket!]
+  topDishes: [ReportsOverviewTopDish!]
+  revenueByDay: [ReportsOverviewRevenueDay!]
+}
+
+type ManagerDashboardStatusCounts {
+  pending: Int
+  preparing: Int
+  completed: Int
+  cancelled: Int
+}
+
+type ManagerDashboardFeedbackSummary {
+  avgRating: Float
+  total: Int
+  negative: Int
+  positive: Int
+}
+
+type ManagerDashboardTrendPoint {
+  key: String
+  current: Float
+  previous: Float
+}
+
+type ManagerDashboardTopDish {
+  dishName: String
+  quantity: Float
+  revenue: Float
+}
+
+type ManagerDashboardFeedbackItem {
+  id: ID
+  customerName: String
+  rating: Float
+  content: String
+  createdAt: DateTime
+  sentiment: String
+}
+
+type ManagerDashboardOccupancyHeatmapPoint {
+  dayLabel: String
+  hourLabel: String
+  occupancyRate: Float
+  staffRequired: Int
+}
+
+type ManagerDashboardStaffPerformance {
+  staffId: ID
+  fullName: String
+  role: String
+  status: String
+  ordersHandled: Int
+  efficiency: Float
+}
+
+type ManagerDashboardRecentOrder {
+  id: ID
+  orderCode: String
+  customerName: String
+  orderType: String
+  tableCode: String
+  status: String
+  total: Float
+  createdAt: DateTime
+  itemNames: [String!]
+}
+
+type ManagerDashboardLowStockItem {
+  id: ID
+  name: String
+  onHand: Float
+  reserved: Float
+}
+
+type ManagerDashboardPendingReservation {
+  id: ID
+  orderCode: String
+  customerName: String
+  customerPhone: String
+  tableCode: String
+  partySize: Int
+  timeTo: DateTime
+  status: String
+  depositStatus: String
+  depositAmount: Float
+  note: String
+  createdAt: DateTime
+}
+
+type ManagerDashboard {
+  restaurantId: ID
+  revenue: Float
+  orders: Int
+  customers: Int
+  tables: Int
+  menuItems: Int
+  activePromotions: Int
+  workingStaff: Int
+  statusCounts: ManagerDashboardStatusCounts
+  feedbackSummary: ManagerDashboardFeedbackSummary
+  revenueTrend: [ManagerDashboardTrendPoint!]
+  orderTrend: [ManagerDashboardTrendPoint!]
+  topDishes: [ManagerDashboardTopDish!]
+  feedbackItems: [ManagerDashboardFeedbackItem!]
+  occupancyHeatmap: [ManagerDashboardOccupancyHeatmapPoint!]
+  staffPerformance: [ManagerDashboardStaffPerformance!]
+  recentOrders: [ManagerDashboardRecentOrder!]
+  lowStockItems: [ManagerDashboardLowStockItem!]
+  pendingOrderCount: Int
+  pendingReservationCount: Int
+  pendingSupportRequestCount: Int
+  pendingOrders: [ManagerDashboardRecentOrder!]
+  pendingReservations: [ManagerDashboardPendingReservation!]
+  pendingSupportRequests: [CustomerServiceRequest!]
+}
+
+type StaffSchedulingSummary {
+  totalShiftGroups: Int
+  underStaffedShifts: Int
+  overStaffedShifts: Int
+  highestRiskShift: String
+  notes: [String!]
+}
+
+type StaffSchedulingRoleRecommendation {
+  role: String
+  required: Int
+  assigned: Int
+  delta: Int
+}
+
+type StaffSchedulingCandidate {
+  staffId: ID
+  fullName: String
+  role: String
+  reason: String
+}
+
+type StaffSchedulingShift {
+  shiftKey: String
+  date: String
+  shiftType: String
+  demandLevel: String
+  expectedOrders: Float
+  expectedGuests: Float
+  recommendedTotalStaff: Int
+  currentAssignedStaff: Int
+  deltaStaff: Int
+  status: String
+  severity: String
+  confidence: Float
+  recommendedRoles: [StaffSchedulingRoleRecommendation!]
+  suggestedCandidates: [StaffSchedulingCandidate!]
+}
+
+type StaffSchedulingMeta {
+  method: String
+  basedOnForecast: Boolean
+  fallbackUsed: Boolean
+  generatedAt: DateTime
+  timezone: String
+}
+
+type StaffSchedulingAssistant {
+  summary: StaffSchedulingSummary
+  shifts: [StaffSchedulingShift!]
+  meta: StaffSchedulingMeta
+}
+
+type DemandForecastSummary {
+  busiestPeriods: [String!]
+  topRisingDishes: [String!]
+  totalRecommendedPrep: Float
+  notes: [String!]
+}
+
+type DemandForecastHourlyPoint {
+  slot: String
+  date: String
+  hourLabel: String
+  expectedOrders: Float
+  expectedGuests: Float
+  demandScore: Float
+  suggestedStaff: Int
+  confidence: Float
+}
+
+type DemandForecastDailyPoint {
+  date: String
+  expectedOrders: Float
+  expectedGuests: Float
+  peakWindow: String
+  confidence: Float
+}
+
+type DemandForecastRisingDish {
+  dishId: ID
+  dishName: String
+  baselineQty: Float
+  forecastQty: Float
+  upliftPct: Float
+  suggestedPrepQty: Float
+  confidence: Float
+  stockRisk: String
+  inventoryNote: String
+}
+
+type DemandForecastPrepPlanItem {
+  dishId: ID
+  dishName: String
+  suggestedPrepQty: Float
+  reason: String
+  inventoryNote: String
+}
+
+type DemandForecastMeta {
+  method: String
+  fallbackUsed: Boolean
+  forecastFallbackUsed: Boolean
+  lowDataFallbackUsed: Boolean
+  aiEnhanced: Boolean
+  generatedAt: DateTime
+  granularity: String
+  timezone: String
+  sampleOrders: Int
+  sampleDays: Int
+}
+
+type DemandForecast {
+  summary: DemandForecastSummary
+  hourlyForecast: [DemandForecastHourlyPoint!]
+  dailyForecast: [DemandForecastDailyPoint!]
+  risingDishes: [DemandForecastRisingDish!]
+  prepPlan: [DemandForecastPrepPlanItem!]
+  meta: DemandForecastMeta
+}
+
+type MenuEngineeringSummary {
+  totalDishes: Int
+  starCount: Int
+  plowhorseCount: Int
+  puzzleCount: Int
+  dogCount: Int
+  avgMarginPct: Float
+  notes: [String!]
+}
+
+type MenuEngineeringDish {
+  dishId: ID
+  dishName: String
+  quantity: Float
+  revenue: Float
+  estimatedCost: Float
+  profit: Float
+  marginPct: Float
+  popularityScore: Float
+  marginScore: Float
+  contributionMargin: Float
+  quadrant: String
+  recommendation: String
+}
+
+type MenuEngineeringMeta {
+  method: String
+  fallbackUsed: Boolean
+  fallbackMarginRate: Float
+  generatedAt: DateTime
+  timezone: String
+  sampleOrders: Int
+  sampleDays: Int
+}
+
+type MenuEngineeringAssistant {
+  summary: MenuEngineeringSummary
+  dishes: [MenuEngineeringDish!]
+  recommendations: [String!]
+  meta: MenuEngineeringMeta
+}
+
+type SmartPromotionSummary {
+  recommendedCampaignCount: Int
+  topOpportunityWindow: String
+  highestPrioritySegment: String
+  notes: [String!]
+}
+
+type SmartPromotionWindow {
+  days: [String!]
+  startHour: Int
+  endHour: Int
+}
+
+type SmartPromotionRecommendation {
+  promotionType: String
+  targetAudience: String
+  conditions: [String!]
+  scope: String
+  discountType: String
+  discountValue: Float
+  minOrderValue: Float
+  maxDiscount: Float
+  stacking: Boolean
+}
+
+type SmartPromotionExpectedKpi {
+  expectedOrdersLiftPct: Float
+  expectedRevenueLiftPct: Float
+  expectedConversionLiftPct: Float
+  expectedAovLiftPct: Float
+  expectedRedemptionRate: Float
+  expectedStockReliefScore: Float
+  confidence: Float
+}
+
+type SmartPromotionCampaign {
+  campaignKey: String
+  title: String
+  objective: String
+  campaignType: String
+  priority: String
+  score: Float
+  targetSegment: String
+  targetOrderType: String
+  targetWindow: SmartPromotionWindow
+  recommendation: SmartPromotionRecommendation
+  expectedKpi: SmartPromotionExpectedKpi
+  guardrails: [String!]
+  reason: String
+}
+
+type SmartPromotionAutoSelectedPromotion {
+  source: String
+  promotionId: ID
+  promotionName: String
+  fitScore: Float
+  fitReason: String
+}
+
+type SmartPromotionSegmentInsight {
+  segment: String
+  recommendedStrategy: String
+  reason: String
+}
+
+type SmartPromotionTimeWindowInsight {
+  window: String
+  demandLevel: String
+  recommendedStrategy: String
+}
+
+type SmartPromotionCouponContext {
+  activeCouponCount: Int
+  nearUsageLimitCount: Int
+}
+
+type SmartPromotionMeta {
+  method: String
+  fallbackUsed: Boolean
+  forecastFallbackUsed: Boolean
+  lowDataFallbackUsed: Boolean
+  aiEnhanced: Boolean
+  generatedAt: DateTime
+  timezone: String
+  sampleOrders: Int
+  sampleDays: Int
+}
+
+type SmartPromotionEngine {
+  summary: SmartPromotionSummary
+  campaigns: [SmartPromotionCampaign!]
+  autoSelectedPromotions: [SmartPromotionAutoSelectedPromotion!]
+  segmentInsights: [SmartPromotionSegmentInsight!]
+  timeWindowInsights: [SmartPromotionTimeWindowInsight!]
+  couponContext: SmartPromotionCouponContext
+  meta: SmartPromotionMeta
+}
+
+extend type Query {
+  ordersByUser(userId: ID!, limit: Int, cursor: ID): OrdersConnection
+  reportsOverview(restaurantId: ID!, startAt: DateTime, endAt: DateTime, limit: Int): ReportsOverview
+  managerDashboard(restaurantId: ID!, range: String): ManagerDashboard
+  staffSchedulingAssistant(restaurantId: ID!, horizonDays: Int): StaffSchedulingAssistant
+  demandForecast(restaurantId: ID!, horizonDays: Int): DemandForecast
+  menuEngineeringAssistant(restaurantId: ID!, lookbackDays: Int): MenuEngineeringAssistant
+  smartPromotionEngine(restaurantId: ID!, lookbackDays: Int, horizonDays: Int): SmartPromotionEngine
+}
