@@ -14,7 +14,6 @@ const emptyAnchor = { x: "", y: "" };
 const emptyArPoint = { x: "", z: "" };
 const GLTF_MODEL_PATTERN = /\.(glb|gltf)(?:[?#].*)?$/i;
 
-
 const toPoint = (point, zKey = "y") => {
   const x = Number(point?.x);
   const second = Number(point?.[zKey]);
@@ -66,6 +65,16 @@ const pointToInputState = (point) => ({
   z: point?.z != null ? String(Number(point.z).toFixed(3)) : "",
 });
 
+const normalizeStoredArPoint = (point) => (
+  point
+    ? {
+        x: Number(Number(point.x || 0).toFixed(3)),
+        y: Number(Number(point.y || 0).toFixed(3)),
+        z: Number(Number(point.z || 0).toFixed(3)),
+      }
+    : null
+);
+
 export default function ArTablePlacementModal({
   open,
   onClose,
@@ -95,6 +104,8 @@ export default function ArTablePlacementModal({
   const [arModelError, setArModelError] = useState("");
   const [arModelScale, setArModelScale] = useState(1);
   const [arModelRotation, setArModelRotation] = useState(0);
+  const [modelPinned, setModelPinned] = useState(false);
+  const [pinnedHitPoint, setPinnedHitPoint] = useState(null);
 
   const canvasRef = useRef(null);
   const xrSessionRef = useRef(null);
@@ -103,6 +114,8 @@ export default function ArTablePlacementModal({
   const xrViewerSpaceRef = useRef(null);
   const xrGlRef = useRef(null);
   const latestHitPointRef = useRef(null);
+  const latestHitMatrixRef = useRef(null);
+  const pinnedHitMatrixRef = useRef(null);
   const lastHitUpdateAtRef = useRef(0);
   const arThreeRef = useRef(null);
   const arModelScaleRef = useRef(1);
@@ -127,6 +140,7 @@ export default function ArTablePlacementModal({
     xrRefSpaceRef.current = null;
     xrViewerSpaceRef.current = null;
     xrGlRef.current = null;
+    latestHitMatrixRef.current = null;
     if (arThreeRef.current) {
       arThreeRef.current.renderer?.setAnimationLoop?.(null);
       arThreeRef.current.renderer?.dispose?.();
@@ -226,15 +240,43 @@ export default function ArTablePlacementModal({
     setter((prev) => ({ ...prev, [key]: value }));
   };
 
-  const fillArPoint = (target) => {
+  const pinCurrentArPoint = useCallback(() => {
     const point = latestHitPointRef.current || latestHitPoint;
+    const matrix = latestHitMatrixRef.current;
+    if (!point || !matrix) {
+      setRealArError("Chưa có điểm hit-test để ghim. Hãy quét mặt sàn thêm vài giây.");
+      return;
+    }
+
+    const storedPoint = normalizeStoredArPoint(point);
+    pinnedHitMatrixRef.current = Array.from(matrix);
+    setPinnedHitPoint(storedPoint);
+    setModelPinned(true);
+    setArTablePoint(pointToInputState(storedPoint));
+    setRealArError("");
+    setRealArStatus("Đã ghim model tại điểm AR hiện tại. Có thể xoay/scale và bấm Chọn vị trí này khi dữ liệu hợp lệ.");
+  }, [latestHitPoint]);
+
+  const clearPinnedArPoint = useCallback(() => {
+    pinnedHitMatrixRef.current = null;
+    setPinnedHitPoint(null);
+    setModelPinned(false);
+    setRealArStatus("Đã bỏ ghim. Model sẽ tiếp tục bám theo điểm hit-test mới nhất.");
+  }, []);
+
+  const fillArPoint = (target) => {
+    const point = pinnedHitPoint || latestHitPointRef.current || latestHitPoint;
     if (!point) return;
     const nextValue = pointToInputState(point);
     if (target === "anchorA") setArAnchorA(nextValue);
     if (target === "anchorB") setArAnchorB(nextValue);
-    if (target === "table") setArTablePoint(nextValue);
+    if (target === "table") {
+      setArTablePoint(nextValue);
+      if (!modelPinned && latestHitMatrixRef.current) {
+        pinCurrentArPoint();
+      }
+    }
   };
-
 
   const setupArModelRenderer = useCallback(async ({ canvas, gl, session }) => {
     if (!selectedModel?.modelUrl || !GLTF_MODEL_PATTERN.test(selectedModel.modelUrl)) {
@@ -273,7 +315,7 @@ export default function ArTablePlacementModal({
       scene.add(model);
 
       arThreeRef.current = { THREE, renderer, scene, camera, reticle, model };
-      setArModelStatus("Đã tải model AR. Model sẽ bám theo điểm hit-test mới nhất.");
+      setArModelStatus("Đã tải model AR. Model sẽ bám theo điểm hit-test mới nhất cho đến khi được ghim.");
       setArModelError("");
       return arThreeRef.current;
     } catch (error) {
@@ -322,7 +364,7 @@ export default function ArTablePlacementModal({
       });
       session.addEventListener("end", () => {
         resetXrRefs();
-        setRealArStatus("Đã kết thúc phiên AR. Điểm hit-test gần nhất vẫn có thể dùng để điền tọa độ.");
+        setRealArStatus("Đã kết thúc phiên AR. Điểm đã ghim hoặc điểm hit-test gần nhất vẫn có thể dùng để lưu.");
       });
 
       session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
@@ -374,11 +416,13 @@ export default function ArTablePlacementModal({
           z: Number(Number(matrix[14] || 0).toFixed(3)),
         };
         latestHitPointRef.current = hitPoint;
+        latestHitMatrixRef.current = Array.from(matrix);
 
         if (threeContext?.model) {
+          const renderMatrix = pinnedHitMatrixRef.current || matrix;
           threeContext.model.visible = true;
           threeContext.model.matrixAutoUpdate = false;
-          threeContext.model.matrix.fromArray(matrix);
+          threeContext.model.matrix.fromArray(renderMatrix);
           const scale = arModelScaleRef.current;
           const rotationY = (arModelRotationRef.current * Math.PI) / 180;
           const adjustment = new threeContext.THREE.Matrix4()
@@ -392,7 +436,9 @@ export default function ArTablePlacementModal({
         if (now - lastHitUpdateAtRef.current > 250) {
           lastHitUpdateAtRef.current = now;
           setLatestHitPoint(hitPoint);
-          setRealArStatus("Đã nhận điểm hit-test từ mặt phẳng thật. Có thể dùng điểm hiện tại cho mốc hoặc vị trí bàn.");
+          if (!pinnedHitMatrixRef.current) {
+            setRealArStatus("Đã nhận điểm hit-test từ mặt phẳng thật. Có thể ghim vị trí hoặc dùng điểm hiện tại cho mốc/vị trí bàn.");
+          }
         }
       };
 
@@ -415,15 +461,29 @@ export default function ArTablePlacementModal({
     if (!canSave || saving) return;
     setSaving(true);
     try {
+      const baseMetadata = buildArPlacementMetadata({
+        arPoint: toPoint(arTablePoint, "z"),
+        floorPosition: position,
+        transform,
+        geofenceState,
+        modelKey: selectedModel?.key || selectedModel?.modelKey,
+      });
+
       await onSavePosition?.({
         position,
-        visualConfigPatch: buildArPlacementMetadata({
-          arPoint: toPoint(arTablePoint, "z"),
-          floorPosition: position,
-          transform,
-          geofenceState,
-          modelKey: selectedModel?.key || selectedModel?.modelKey,
-        }),
+        visualConfigPatch: {
+          ...baseMetadata,
+          arPlacement: {
+            ...(baseMetadata.arPlacement || {}),
+            modelRender: {
+              modelUrl: selectedModel?.modelUrl || null,
+              scale: Number(arModelScale) || 1,
+              rotationDegrees: Number(arModelRotation) || 0,
+              pinned: modelPinned,
+              pinnedArPoint: normalizeStoredArPoint(pinnedHitPoint),
+            },
+          },
+        },
       });
       onClose?.();
     } finally {
@@ -470,7 +530,7 @@ export default function ArTablePlacementModal({
         type="button"
         variant="secondary"
         size="sm"
-        disabled={!latestHitPoint}
+        disabled={!latestHitPoint && !pinnedHitPoint}
         onClick={() => fillArPoint(target)}
       >
         Dùng điểm AR hiện tại
@@ -507,10 +567,10 @@ export default function ArTablePlacementModal({
         <div className="ar-placement-modal__section ar-placement-modal__section--real-ar">
           <div className="ar-placement-modal__section-title">
             <h4>AR thật bằng WebXR hit-test</h4>
-            <span>{hitTestReady ? "Hit-test sẵn sàng" : "Progressive enhancement"}</span>
+            <span>{modelPinned ? "Đã ghim vị trí" : hitTestReady ? "Hit-test sẵn sàng" : "Progressive enhancement"}</span>
           </div>
           <p className="ar-placement-modal__hint">
-            Mở camera AR để lấy điểm mặt sàn thật. Sau đó dùng điểm AR hiện tại cho mốc A, mốc B hoặc vị trí bàn. Nếu thiết bị không hỗ trợ, vẫn có thể nhập tọa độ manual bên dưới.
+            Mở camera AR để lấy điểm mặt sàn thật. Khi bàn ảo ở đúng vị trí, bấm Ghim vị trí bàn để giữ model cố định rồi lưu vào sơ đồ tầng.
           </p>
           <canvas ref={canvasRef} className="ar-placement-modal__xr-canvas" aria-hidden="true" />
           <div className="ar-placement-modal__real-ar-actions">
@@ -530,10 +590,31 @@ export default function ArTablePlacementModal({
             >
               Kết thúc AR
             </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={pinCurrentArPoint}
+              disabled={!latestHitPoint}
+            >
+              Ghim vị trí bàn
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={clearPinnedArPoint}
+              disabled={!modelPinned}
+            >
+              Bỏ ghim
+            </Button>
             <span className="ar-placement-modal__latest-point">
               Điểm mới nhất: {formatArPoint(latestHitPoint)}
             </span>
           </div>
+          {pinnedHitPoint && (
+            <div className="ar-placement-modal__pinned-point">
+              Điểm đã ghim: {formatArPoint(pinnedHitPoint)}
+            </div>
+          )}
           <div className="ar-placement-modal__model-controls">
             <label>
               Scale model
@@ -570,7 +651,7 @@ export default function ArTablePlacementModal({
         <div className="ar-placement-modal__section">
           <h4>2. Tọa độ AR tương ứng</h4>
           <p className="ar-placement-modal__hint">
-            Có thể dùng điểm WebXR hit-test mới nhất hoặc nhập manual nếu thiết bị chưa hỗ trợ AR thật.
+            Có thể dùng điểm đã ghim, điểm WebXR hit-test mới nhất hoặc nhập manual nếu thiết bị chưa hỗ trợ AR thật.
           </p>
           {renderArInputs("AR điểm A", arAnchorA, setArAnchorA, "anchorA")}
           {renderArInputs("AR điểm B", arAnchorB, setArAnchorB, "anchorB")}
