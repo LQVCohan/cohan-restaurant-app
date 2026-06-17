@@ -108,6 +108,13 @@ type CustomerServiceRequest {
   resolvedAt: DateTime
 }
 
+type OrderSubscriptionEvent {
+  type: String
+  order: Order
+  payload: JSON
+  meta: JSON
+}
+
 extend type Query {
   customerTrackOrder(trackingToken: String!): CustomerTracking
   customerServiceRequests(
@@ -117,6 +124,28 @@ extend type Query {
     limit: Int
   ): [CustomerServiceRequest!]!
   orderTrackingQrSvg(orderId: ID!): String!
+
+  order(id: ID!): Order
+  orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
+  previewOrderDiscount(input: PreviewOrderDiscountInput!): DiscountBreakdown!
+  ordersByRestaurantNow(restaurantId: ID!, limit: Int, cursor: ID): OrdersConnection!
+  ordersByRestaurant(restaurantId: ID!, limit: Int, cursor: ID): OrdersConnection!
+  ordersByTableCode(
+    restaurantId: ID!
+    tableCode: String!
+    limit: Int
+    offset: Int
+  ): OrderList!
+  ordersGroupedByTable(
+    restaurantId: ID!
+    tableId: ID
+    tableCode: String
+  ): [OrderGroup!]!
+  publicActiveTableSessionOrders(
+    restaurantId: ID!
+    tableId: ID!
+    token: String!
+  ): ActiveTableSessionOrdersResult!
 }
 
 extend type Mutation {
@@ -133,4 +162,29 @@ extend type Mutation {
     orderId: ID!
     requestId: String!
   ): ActionResultPayload!
+
+  createOrderForTable(input: CreateOrderForTableInput!): CreateOrderForTablePayload!
+  createOffPremiseOrder(input: CreateOffPremiseOrderInput!): CreateOffPremiseOrderPayload!
+  createStaffRemoteOrder(input: CreateStaffRemoteOrderInput!): CreateStaffRemoteOrderPayload!
+  confirmIncomingOrder(input: ConfirmIncomingOrderInput!): ConfirmIncomingOrderPayload!
+  rejectIncomingOrder(input: RejectIncomingOrderInput!): RejectIncomingOrderPayload!
+  createTemporaryBillPrintJob(input: CreateTemporaryBillPrintJobInput!): ActionResultPayload!
+  requestPaymentForOrder(input: RequestPaymentForOrderInput!): ActionResultPayload!
+  requestPaymentForTable(input: RequestPaymentForTableInput!): ActionResultPayload!
+  remindOrderItem(input: RemindOrderItemInput!): ActionResultPayload!
+  createCheckoutOrders(input: CreateCheckoutOrdersInput!): CreateCheckoutOrdersPayload!
+
+  updateOrderStatus(input: UpdateOrderStatusInput!): Order!
+  updateOrderItemStatus(input: UpdateOrderItemStatusInput!): UpdateOrderItemStatusPayload!
+  updateOrderItemPriority(input: UpdateOrderItemPriorityInput!): UpdateOrderItemPriorityPayload!
+  updateOrderCustomerByCode(input: UpdateOrderCustomerByCodeInput!): UpdateOrderCustomerByCodePayload!
+  adjustOrderItemQuantity(input: AdjustOrderItemQuantityInput!): Order!
+  requestOrderItemVoid(input: RequestOrderItemVoidInput!): Order!
+  reviewOrderItemVoid(input: ReviewOrderItemVoidInput!): Order!
+  requestOrderItemReturn(input: RequestOrderItemReturnInput!): Order!
+  reviewOrderItemReturn(input: ReviewOrderItemReturnInput!): Order!
+}
+
+extend type Subscription {
+  orderEvents(restaurantId: ID!): OrderSubscriptionEvent
 }
