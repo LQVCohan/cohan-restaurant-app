@@ -78,38 +78,7 @@ const collapseAvailabilityPanel = (root) => {
 
   if (collapseButton && isExpanded && !hasBlockingError) {
     collapseButton.click();
-    return;
   }
-
-  const compactActions = panel.querySelector(".schedule-availability-panel__compact-actions");
-  if (!compactActions) return;
-
-  const compactText = getText(panel);
-  const missingWindow = compactText.includes("Chưa mở đăng ký");
-  const alreadyHasQuickOpen = compactActions.querySelector(".schedule-availability-quick-open");
-
-  if (!missingWindow || alreadyHasQuickOpen) return;
-
-  const quickOpen = document.createElement("button");
-  quickOpen.type = "button";
-  quickOpen.className = "schedule-availability-quick-open";
-  quickOpen.textContent = "Mở đăng ký tuần tới";
-  quickOpen.addEventListener("click", () => {
-    const expandButton = panel.querySelector(".btn-collapse-panel.icon-only");
-    if (String(expandButton?.getAttribute("aria-label") || "").includes("Mở rộng")) {
-      expandButton.click();
-    }
-
-    window.setTimeout(() => {
-      const createButton = Array.from(panel.querySelectorAll("button")).find((button) =>
-        getText(button).includes("Mở đăng ký tuần tới") ||
-        getText(button).includes("Tạo kỳ đăng ký"),
-      );
-      createButton?.click();
-    }, 80);
-  });
-
-  compactActions.prepend(quickOpen);
 };
 
 const markBoardEmptyState = (root) => {
