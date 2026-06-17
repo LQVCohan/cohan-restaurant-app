@@ -3,15 +3,6 @@ const textReplacements = [
   [/Xung đột và ca cần bổ sung/g, "Cần xử lý trước khi công bố"],
   [/(\d+) lượt xếp ca/g, "$1 phân công"],
   [/Availability tuần mục tiêu/g, "Lịch rảnh tuần tới"],
-  [/Chưa tạo window/g, "Chưa mở đăng ký"],
-  [/Tạo kỳ đăng ký cho tuần kế tiếp/g, "Mở đăng ký tuần tới"],
-  [/Tạo kỳ đăng ký để nhân viên part-time đăng ký thời gian có thể\s*làm và nhân viên toàn thời gian báo ngày không rảnh\./g, "Mở đăng ký để nhân viên bán thời gian gửi thời gian có thể làm và nhân viên toàn thời gian báo ngày không rảnh."],
-  [/Chưa có kỳ đăng ký khả dụng/g, "Chưa mở đăng ký tuần tới"],
-  [/Nên tạo kỳ đăng ký cho tuần kế tiếp/g, "Nên mở đăng ký tuần tới"],
-  [/Availability chính thức hiện tại/g, "Lịch rảnh hiện tại"],
-  [/Không có pending slot/g, "Không có yêu cầu chờ xử lý"],
-  [/Hệ thống tự tính effectiveStatus theo openAt\/closeAt\./g, "Hệ thống tự cập nhật trạng thái theo giờ mở và giờ đóng."],
-  [/manager tự bấm mở\/đóng/g, "quản lý tự bấm mở/đóng"],
 ];
 
 const getText = (node) => node?.textContent?.replace(/\s+/g, " ").trim() || "";
@@ -68,6 +59,23 @@ const normalizeToolbarCopy = (root) => {
   }
 };
 
+const markToolbarActions = (root) => {
+  const actionButtons = Array.from(root.querySelectorAll(".schedule-toolbar .toolbar-group--actions button"));
+  actionButtons.forEach((button) => {
+    const label = getText(button);
+    if (label.includes("Lịch rảnh đã chốt") || label.includes("In lịch tuần")) {
+      button.classList.add("schedule-toolbar-utility-action");
+      button.setAttribute("title", label);
+      if (!button.getAttribute("aria-label")) button.setAttribute("aria-label", label);
+      return;
+    }
+
+    if (label.includes("Chia ca tự động")) {
+      button.classList.add("schedule-toolbar-assist-action");
+    }
+  });
+};
+
 const collapseAvailabilityPanel = (root) => {
   const panel = root.querySelector(".schedule-availability-panel");
   if (!panel) return;
@@ -117,6 +125,7 @@ export const initScheduleManagerAdminPolish = () => {
       if (!root) return;
       normalizeTextLabels(root);
       normalizeToolbarCopy(root);
+      markToolbarActions(root);
       collapseAvailabilityPanel(root);
       markBoardEmptyState(root);
     });
