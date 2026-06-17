@@ -95,7 +95,7 @@ describe("PayrollManagement readiness and data mode summary", () => {
 
     expect(screen.getByText("Kiểm tra dữ liệu trước khi chốt")).toBeInTheDocument();
     expect(screen.getByText("Dữ liệu tạm tính")).toBeInTheDocument();
-    expect(screen.getByText("Tạo kỳ lương để tính lại, chốt hoặc khóa kỳ.")).toBeInTheDocument();
+    expect(screen.getByText("Đang xem dữ liệu lương tạm tính từ nhân viên.")).toBeInTheDocument();
   });
 
   it("shows ready-to-finalize copy from payrollReadiness", () => {
