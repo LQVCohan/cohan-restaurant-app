@@ -1,4 +1,4 @@
-/* Customer list layout: normal-flow top controls, full cards, bottom pagination mirror. */
+/* Customer list layout: normal-flow top controls, full cards, minimal bottom pager. */
 
 .cm-page .cm-layout,
 .cm-page .cl-grid,
@@ -224,22 +224,19 @@
 }
 
 .cm-page .cl-bottom-pagination-bar {
-  display: grid !important;
-  grid-template-columns: minmax(260px, 1fr) auto !important;
-  gap: 0.85rem !important;
-  align-items: center !important;
-  margin: 1rem 0 4.5rem !important;
-  padding: 0.76rem 0.88rem !important;
-  border: 1px solid rgba(216, 208, 197, 0.92) !important;
-  border-radius: 18px !important;
-  background: rgba(255, 253, 250, 0.96) !important;
-  box-shadow: 0 10px 22px rgba(54, 44, 29, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-}
-
-.cm-page .cl-bottom-pagination-bar .cl-strip-tools {
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
+  margin: 0.85rem 0 3.25rem !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.cm-page .cl-bottom-pagination-bar .cl-pagination--inline {
+  box-shadow: 0 8px 18px rgba(54, 44, 29, 0.055) !important;
 }
 
 .cm-page .cm-quick-filter-wrap {
@@ -285,10 +282,6 @@
 
 @media (max-width: 1280px) {
   .cm-page .cl-bottom-pagination-bar {
-    grid-template-columns: 1fr !important;
-  }
-
-  .cm-page .cl-bottom-pagination-bar .cl-strip-tools {
     justify-content: flex-start !important;
   }
 }
