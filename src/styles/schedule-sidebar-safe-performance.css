@@ -1,10 +1,10 @@
 /* =========================================================
    SAFE SCHEDULE SIDEBAR PERFORMANCE
 
-   Do not use :has(), content-visibility or root paint containment here.
-   This only removes expensive animated reflow on the Schedule page.
-   Sidebar still opens normally, but content/header snap once instead of
-   animating left/width/margin over many frames.
+   Keep the schedule page from animating expensive content reflow, but do
+   not override the actual expanded sidebar width. The global manager layout
+   intentionally keeps --sidebar-width at the collapsed rail width; using that
+   variable for the open state makes the sidebar look stuck.
    ========================================================= */
 
 @media (min-width: 769px) {
@@ -25,15 +25,39 @@
   .manager-layout--schedules .sidebar {
     transform: none !important;
     visibility: visible !important;
-    width: var(--sidebar-width, 72px) !important;
-    min-width: var(--sidebar-width, 72px) !important;
-    max-width: var(--sidebar-width, 72px) !important;
+    width: 72px !important;
+    min-width: 72px !important;
+    max-width: 72px !important;
   }
 
-  .manager-layout--schedules.sidebar-open .sidebar {
+  .manager-layout--schedules.sidebar-open .sidebar,
+  .manager-layout--schedules .sidebar.sidebar-open {
     transform: none !important;
-    width: var(--sidebar-width, 272px) !important;
-    min-width: var(--sidebar-width, 272px) !important;
-    max-width: var(--sidebar-width, 272px) !important;
+    visibility: visible !important;
+    width: 304px !important;
+    min-width: 304px !important;
+    max-width: 304px !important;
+    overflow: hidden !important;
+  }
+
+  .manager-layout--schedules.sidebar-open .sidebar .logo-text,
+  .manager-layout--schedules.sidebar-open .sidebar .nav-section-title,
+  .manager-layout--schedules.sidebar-open .sidebar .nav-label,
+  .manager-layout--schedules.sidebar-open .sidebar .sidebar-user .user-info-small,
+  .manager-layout--schedules.sidebar-open .sidebar .sidebar-version,
+  .manager-layout--schedules .sidebar.sidebar-open .logo-text,
+  .manager-layout--schedules .sidebar.sidebar-open .nav-section-title,
+  .manager-layout--schedules .sidebar.sidebar-open .nav-label,
+  .manager-layout--schedules .sidebar.sidebar-open .sidebar-user .user-info-small,
+  .manager-layout--schedules .sidebar.sidebar-open .sidebar-version {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: initial !important;
+    margin: initial !important;
+    overflow: hidden !important;
+    clip: auto !important;
+    white-space: nowrap !important;
+    border: initial !important;
   }
 }
