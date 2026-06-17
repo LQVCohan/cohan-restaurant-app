@@ -145,7 +145,7 @@ describe("AvailabilityRegistrationPanel", () => {
     const modalHeading = screen.getByRole("heading", { name: /Duyệt thay đổi muộn/i });
     const modal = modalHeading.closest(".availability-review-modal");
     expect(modal).toBeInTheDocument();
-    expect(within(modal).getByText("Availability chính thức hiện tại")).toBeInTheDocument();
+    expect(within(modal).getByText("Lịch rảnh hiện tại")).toBeInTheDocument();
     expect(within(modal).getByText("Yêu cầu thay đổi muộn")).toBeInTheDocument();
 
     fireEvent.click(within(modal).getByRole("button", { name: "Xác nhận" }));
@@ -202,7 +202,7 @@ describe("AvailabilityRegistrationPanel", () => {
         shouldRemindNextWeekRegistration
       />,
     );
-    expect(screen.getByRole("button", { name: "Tạo kỳ đăng ký cho tuần kế tiếp" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mở đăng ký tuần tới" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mở đăng ký tuần sau" })).not.toBeInTheDocument();
   });
 
