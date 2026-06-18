@@ -28,6 +28,7 @@ import {
 } from "../../../hooks/useUserManagement";
 import "./CustomerModal.scss";
 import "./CustomerModalPolish.scss";
+import "./CustomerModalPremiumTune.scss";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* ===== Helpers & Utils ===== */
@@ -355,7 +356,7 @@ const CustomerModal = ({
     setChatError("");
     if (!chatThreadId) {
       setChatError("Chưa có hội thoại để gửi tin.");
-      throw new Error("Missing thread");
+      throw new Error("Missing chat thread");
     }
     try {
       await sendMessage({
