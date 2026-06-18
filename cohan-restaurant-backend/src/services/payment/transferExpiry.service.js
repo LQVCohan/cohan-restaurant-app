@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { Order, PaymentSession } from "../../../models/index.js";
 import { emitCustomerTrackingUpdateIfChanged } from "../orderTracking.service.js";
 import { emitPaymentRealtime } from "./paymentRealtime.service.js";
-import { cancelReservationForOrderTx } from "../inventory.service.js";
 
 const EXPIRY_NOTE = "Phiên thanh toán đã hết hạn vì hệ thống chưa ghi nhận giao dịch và chưa có minh chứng thanh toán. Đơn của bạn đã được hủy.";
 const EXPIRE_REASON = "Transfer payment expired before payment proof or bank confirmation.";
@@ -39,10 +38,9 @@ export async function cancelDraftTransferOrdersForExpiredPayment({ payment, now 
     order.statusTimeline.push({ status: "cancelled", at: now, byUserId: payment.userId || undefined, note: EXPIRY_NOTE });
     order.payment = { ...(order.payment || {}), status: "cancelled", requestNote: EXPIRE_REASON };
     await order.save({ session });
-    // Transfer checkout drafts reserve inventory in createCheckoutOrders; only release reserved stock.
-    if (order.orderCode) {
-      await cancelReservationForOrderTx({ restaurantId: order.restaurantId, orderCode: order.orderCode, session }).catch(() => {});
-    }
+    // Inventory is intentionally untouched here. The cancellation path does not have the
+    // warehouseId + normalized inventory lines required by cancelReservationForOrderTx,
+    // and this helper must not guess or mutate onHand/reserved balances blindly.
     emitCustomerTrackingUpdateIfChanged({ ctx: { io }, orderDoc: order, force: true });
     cancelled.push(String(order._id));
   }

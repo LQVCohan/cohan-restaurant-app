@@ -1630,21 +1630,24 @@ export const createReservationPaymentMutation = async (
 export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
   if (!mongoose.isValidObjectId(paymentId))
     throw new Error("Invalid paymentId");
-  await expireStaleTransferPayments({ now: new Date(), paymentId, io: ctx?.io }).catch(() => {});
   const payment = await PaymentSession.findById(paymentId).lean();
   if (!payment) throw new Error("Payment session not found");
   if (String(payment.userId || "") !== String(ctx?.user?.id || "")) {
     await requireRestaurantPermission(ctx, toId(payment.restaurantId), PERMISSIONS.PAYMENT_READ);
   }
 
-  if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
-    return sanitizePaymentSessionForClient(payment, { includeRaw: false });
+  await expireStaleTransferPayments({ now: new Date(), paymentId, io: ctx?.io }).catch(() => {});
+  const currentPayment = await PaymentSession.findById(paymentId).lean();
+  if (!currentPayment) throw new Error("Payment session not found");
+
+  if (currentPayment.provider === "vnpay" && currentPayment.providerResponseRaw?.vnp_TxnRef) {
+    return sanitizePaymentSessionForClient(currentPayment, { includeRaw: false });
   }
-  if (payment.provider === "momo" && payment.providerResponseRaw?.orderId) {
-    return sanitizePaymentSessionForClient(payment, { includeRaw: false });
+  if (currentPayment.provider === "momo" && currentPayment.providerResponseRaw?.orderId) {
+    return sanitizePaymentSessionForClient(currentPayment, { includeRaw: false });
   }
 
-  return sanitizePaymentSessionForClient(payment, { includeRaw: false });
+  return sanitizePaymentSessionForClient(currentPayment, { includeRaw: false });
 };
 export const cancelPaymentSessionMutation = async (_parent, { input }, ctx) => {
   if (!mongoose.isValidObjectId(input?.paymentId)) throw new Error("Invalid paymentId");
