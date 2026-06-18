@@ -132,7 +132,8 @@
 .rbac-permission-catalog::-webkit-scrollbar,
 .rbac-permission-groups::-webkit-scrollbar,
 .rbac-card--permission-detail::-webkit-scrollbar,
-.rbac-permission-group .rbac-chip-list::-webkit-scrollbar {
+.rbac-permission-group .rbac-chip-list::-webkit-scrollbar,
+.rbac-card--form .rbac-permission-checklist__groups::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
@@ -141,7 +142,8 @@
 .rbac-permission-catalog::-webkit-scrollbar-thumb,
 .rbac-permission-groups::-webkit-scrollbar-thumb,
 .rbac-card--permission-detail::-webkit-scrollbar-thumb,
-.rbac-permission-group .rbac-chip-list::-webkit-scrollbar-thumb {
+.rbac-permission-group .rbac-chip-list::-webkit-scrollbar-thumb,
+.rbac-card--form .rbac-permission-checklist__groups::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
   background: rgba(168, 133, 95, 0.28);
@@ -279,11 +281,96 @@
   max-height: min(58dvh, 520px) !important;
 }
 
+.rbac-card--form .rbac-permission-checklist {
+  overflow: hidden;
+  border: 1px solid rgba(213, 200, 184, 0.72);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.7);
+}
+
+.rbac-card--form .rbac-permission-checklist__header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid rgba(213, 200, 184, 0.58);
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 250, 243, 0.9));
+  backdrop-filter: blur(10px);
+}
+
+.rbac-card--form .rbac-permission-checklist__header h4 {
+  font-size: 1rem;
+}
+
 .rbac-card--form .rbac-permission-checklist__groups {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-height: 44dvh;
+  display: block !important;
+  columns: 2 280px;
+  column-gap: 0.85rem;
+  max-height: min(54dvh, 620px);
   overflow: auto;
-  padding-right: 0.35rem;
+  padding: 0.82rem 0.9rem 0.92rem;
+  scrollbar-color: rgba(168, 133, 95, 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+.rbac-card--form .rbac-permission-checklist__groups fieldset {
+  display: inline-block !important;
+  width: 100%;
+  margin: 0 0 0.82rem;
+  padding: 0.72rem 0.72rem 0.62rem !important;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  border-color: rgba(213, 200, 184, 0.72) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.78);
+}
+
+.rbac-card--form .rbac-permission-checklist__groups legend {
+  padding: 0 0.4rem !important;
+  color: var(--rbac-ink, #24303f) !important;
+  font-size: 0.85rem !important;
+  letter-spacing: -0.01em;
+}
+
+.rbac-card--form .rbac-checkbox-row {
+  grid-template-columns: 18px 1fr !important;
+  align-items: start !important;
+  gap: 0.45rem !important;
+  margin: 0.1rem 0 !important;
+  padding: 0.45rem 0.48rem !important;
+  border: 1px solid transparent;
+  border-radius: 12px !important;
+}
+
+.rbac-card--form .rbac-checkbox-row:hover {
+  border-color: rgba(83, 108, 97, 0.18);
+  background: rgba(237, 244, 240, 0.55) !important;
+}
+
+.rbac-card--form .rbac-checkbox-row:has(input:checked) {
+  border-color: rgba(47, 125, 104, 0.24);
+  background: rgba(237, 244, 240, 0.9) !important;
+}
+
+.rbac-card--form .rbac-checkbox-row input {
+  width: 15px !important;
+  height: 15px !important;
+  margin-top: 0.08rem !important;
+}
+
+.rbac-card--form .rbac-checkbox-row strong {
+  display: block;
+  color: #2d3540;
+  font-size: 0.82rem;
+  line-height: 1.18;
+}
+
+.rbac-card--form .rbac-checkbox-row small {
+  display: block;
+  margin-top: 0.08rem;
+  color: #697584 !important;
+  font-size: 0.68rem !important;
+  line-height: 1.14;
 }
 
 .rbac-card--form .rbac-permission-columns {
@@ -333,7 +420,10 @@
     --rbac-catalog-panel: 680px;
   }
 
-  .rbac-card--form .rbac-permission-checklist__groups,
+  .rbac-card--form .rbac-permission-checklist__groups {
+    columns: 1;
+  }
+
   .rbac-card--form .rbac-permission-columns {
     grid-template-columns: 1fr !important;
   }
