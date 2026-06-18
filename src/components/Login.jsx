@@ -654,9 +654,7 @@ const LoginPage = () => {
           <div className="overlay">
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
-              <p>
-                Đăng nhập để tiếp tục đặt món, theo dõi đơn hàng, lưu địa chỉ và nhận ưu đãi từ FoodHub.
-              </p>
+              <p>Đăng nhập để đặt món, theo dõi đơn hàng và nhận ưu đãi.</p>
               <button type="button" className="ghost" onClick={() => togglePanel(false)}>
                 Đăng nhập
               </button>
@@ -664,9 +662,7 @@ const LoginPage = () => {
 
             <div className="overlay-panel overlay-right">
               <h1>Xin chào</h1>
-              <p>
-                Tạo tài khoản để đặt món nhanh hơn, lưu món yêu thích và đồng bộ trải nghiệm của bạn.
-              </p>
+              <p>Tạo tài khoản để đặt món nhanh hơn và lưu món yêu thích.</p>
               <button type="button" className="ghost" onClick={() => togglePanel(true)}>
                 Đăng ký
               </button>
