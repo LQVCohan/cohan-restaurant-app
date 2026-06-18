@@ -1,0 +1,365 @@
+/* Premium tune for customer profile modal: less nested boxing, lighter scrollbar, restrained accents. */
+
+.customer-profile-modal.modal-container {
+  width: min(1180px, calc(100vw - 56px)) !important;
+  max-height: min(860px, calc(100dvh - 44px)) !important;
+  border-radius: 28px !important;
+  border-color: rgba(222, 211, 196, 0.88) !important;
+  background:
+    radial-gradient(circle at 16% -10%, rgba(234, 245, 241, 0.58), transparent 24rem),
+    linear-gradient(180deg, #fffdf8 0%, #f9f2e7 100%) !important;
+  box-shadow: 0 34px 88px rgba(18, 25, 27, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
+}
+
+.customer-profile-modal.modal-container .modal-header {
+  min-height: 50px !important;
+  padding: 0.72rem 1.05rem !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  border-bottom-color: rgba(222, 211, 196, 0.58) !important;
+}
+
+.customer-profile-modal.modal-container .modal-header h2 {
+  color: #203034 !important;
+  font-size: 0.92rem !important;
+  font-weight: 860 !important;
+}
+
+.customer-profile-modal.modal-container .modal-close,
+.customer-profile-modal.modal-container .close-button,
+.customer-profile-modal.modal-container [aria-label="Đóng"] {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 12px !important;
+  background: #fffefa !important;
+  border-color: rgba(222, 211, 196, 0.72) !important;
+  box-shadow: none !important;
+}
+
+.customer-modal-body.modal-body {
+  padding: 0.95rem 1rem !important;
+  max-height: calc(min(860px, calc(100dvh - 44px)) - 108px) !important;
+  background: rgba(255, 253, 248, 0.54) !important;
+  background-image: none !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(105, 115, 111, 0.22) transparent !important;
+}
+
+.customer-modal-body.modal-body::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.customer-modal-body.modal-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.customer-modal-body.modal-body::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+  background: rgba(105, 115, 111, 0.24) !important;
+}
+
+.customer-modal-body.modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(47, 111, 104, 0.32) !important;
+}
+
+.customer-modal-content {
+  max-width: 1128px !important;
+  gap: 0.78rem !important;
+}
+
+.customer-profile-modal .cm-profile-hero {
+  gap: 0.78rem !important;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 276px) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__identity,
+.customer-profile-modal .cm-profile-hero__points,
+.customer-profile-modal .cm-metric-grid article,
+.customer-profile-modal .cm-panel {
+  border-color: rgba(222, 211, 196, 0.72) !important;
+  box-shadow: 0 10px 24px rgba(54, 44, 29, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__identity {
+  min-height: 132px !important;
+  padding: 1rem !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 96% 2%, rgba(255, 253, 248, 0.2), transparent 14rem),
+    linear-gradient(135deg, #1f3035 0%, #23433d 48%, #2f6f68 100%) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__identity::after {
+  opacity: 0.72 !important;
+  right: -4.4rem !important;
+  top: -5.4rem !important;
+}
+
+.customer-profile-modal .cm-profile-hero__identity::before {
+  opacity: 0.5 !important;
+}
+
+.customer-profile-modal .cm-avatar-card__mark {
+  width: 72px !important;
+  height: 72px !important;
+  border-radius: 23px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 12px 24px rgba(7, 18, 22, 0.18) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__copy h2 {
+  font-size: clamp(1.62rem, 2.24vw, 2.22rem) !important;
+  letter-spacing: -0.052em !important;
+}
+
+.customer-profile-modal .cm-eyebrow {
+  background: rgba(255, 253, 248, 0.1) !important;
+  border-color: rgba(255, 253, 248, 0.13) !important;
+  color: rgba(236, 255, 250, 0.92) !important;
+}
+
+.customer-profile-modal .cm-profile-tags span {
+  min-height: 27px !important;
+  padding: 0 0.55rem !important;
+  border-radius: 10px !important;
+  background: rgba(255, 253, 248, 0.11) !important;
+  border-color: rgba(255, 253, 248, 0.15) !important;
+  color: rgba(244, 255, 252, 0.92) !important;
+  font-size: 0.735rem !important;
+}
+
+.customer-profile-modal .cm-profile-tags span:first-child,
+.customer-profile-modal .cm-profile-tags span:nth-child(3) {
+  color: rgba(224, 234, 231, 0.84) !important;
+  background: rgba(255, 253, 248, 0.075) !important;
+}
+
+.customer-profile-modal .cm-profile-tags .tier-vip {
+  color: #fff3c0 !important;
+  background: rgba(255, 243, 192, 0.14) !important;
+  border-color: rgba(255, 243, 192, 0.22) !important;
+}
+
+.customer-profile-modal .cm-profile-tags .tier-new,
+.customer-profile-modal .cm-profile-tags .tier-regular,
+.customer-profile-modal .cm-profile-tags .tier-custom {
+  color: rgba(236, 255, 250, 0.94) !important;
+}
+
+.customer-profile-modal .cm-profile-tags span:last-child {
+  color: #dff8ee !important;
+  background: rgba(223, 248, 238, 0.13) !important;
+  border-color: rgba(223, 248, 238, 0.2) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__points {
+  min-height: 132px !important;
+  border-radius: 22px !important;
+  padding: 1rem !important;
+  background: linear-gradient(150deg, #ffffff 0%, #f5eee2 100%) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__points::after {
+  opacity: 0.48 !important;
+  color: rgba(47, 111, 104, 0.08) !important;
+}
+
+.customer-profile-modal .cm-profile-hero__points strong {
+  color: #205b54 !important;
+  font-size: clamp(2.05rem, 3vw, 3.05rem) !important;
+}
+
+.customer-profile-modal .cm-metric-grid {
+  gap: 0.64rem !important;
+}
+
+.customer-profile-modal .cm-metric-grid article {
+  min-height: 92px !important;
+  padding: 0.78rem !important;
+  border-radius: 20px !important;
+  background: #fffefa !important;
+}
+
+.customer-profile-modal .cm-metric-grid article::after {
+  opacity: 0.45 !important;
+  background: rgba(47, 111, 104, 0.04) !important;
+}
+
+.customer-profile-modal .cm-metric-grid article:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 12px 26px rgba(54, 44, 29, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+}
+
+.customer-profile-modal .cm-metric-grid svg {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 8px !important;
+  color: #2f6f68 !important;
+  background: #eaf5f1 !important;
+}
+
+.customer-profile-modal .cm-metric-grid span,
+.customer-profile-modal .cm-section-header span {
+  color: #69736f !important;
+}
+
+.customer-profile-modal .cm-metric-grid strong {
+  color: #203034 !important;
+  font-size: clamp(0.98rem, 1.18vw, 1.18rem) !important;
+}
+
+.customer-profile-modal .cm-detail-grid {
+  gap: 0.78rem !important;
+}
+
+.customer-profile-modal .cm-panel {
+  padding: 0.9rem !important;
+  border-radius: 21px !important;
+  background: #fffefa !important;
+}
+
+.customer-profile-modal .cm-panel__title,
+.customer-profile-modal .notes-header h3 {
+  margin-bottom: 0.68rem !important;
+  color: #203034 !important;
+}
+
+.customer-profile-modal .cm-panel__title svg,
+.customer-profile-modal .notes-header svg,
+.customer-profile-modal .cm-contact-row svg {
+  color: #2f6f68 !important;
+}
+
+.customer-profile-modal .cm-contact-list {
+  gap: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(222, 211, 196, 0.72) !important;
+  border-radius: 16px !important;
+  background: #fffdf8 !important;
+}
+
+.customer-profile-modal .cm-contact-row {
+  min-height: 38px !important;
+  padding: 0.52rem 0.66rem !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(236, 226, 212, 0.86) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #69736f !important;
+}
+
+.customer-profile-modal .cm-contact-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.customer-profile-modal .cm-contact-row strong {
+  color: #3b4744 !important;
+}
+
+.customer-profile-modal .cm-contact-row button,
+.customer-profile-modal .cm-section-header button,
+.customer-profile-modal .notes-header button {
+  color: #2f6f68 !important;
+  background: #eaf5f1 !important;
+  border: 1px solid rgba(47, 111, 104, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.customer-profile-modal .cm-wallet-line {
+  margin-top: 0.72rem !important;
+  padding-top: 0.72rem !important;
+  border-top-color: rgba(236, 226, 212, 0.86) !important;
+}
+
+.customer-profile-modal .w-badge {
+  border: 1px solid rgba(222, 211, 196, 0.72) !important;
+  background: #f6efe4 !important;
+  color: #69736f !important;
+}
+
+.customer-profile-modal .w-badge.active {
+  border-color: rgba(47, 111, 104, 0.18) !important;
+  background: #eaf5f1 !important;
+  color: #2f6f68 !important;
+}
+
+.customer-profile-modal .cm-panel__title--sub {
+  border-top-color: rgba(236, 226, 212, 0.86) !important;
+}
+
+.customer-profile-modal .cm-chip {
+  min-height: 29px !important;
+  border-radius: 10px !important;
+  background: #f3e9d8 !important;
+  border-color: #e3d3bc !important;
+  color: #665c4e !important;
+  font-weight: 760 !important;
+}
+
+.customer-profile-modal .cm-chip--food {
+  background: #f3e9d8 !important;
+  border-color: #e3d3bc !important;
+  color: #665c4e !important;
+}
+
+.customer-profile-modal .cm-order-row {
+  min-height: 44px !important;
+  background: #fffdf8 !important;
+  border-color: rgba(222, 211, 196, 0.72) !important;
+  border-radius: 13px !important;
+}
+
+.customer-profile-modal .cm-order-row:hover {
+  border-color: rgba(47, 111, 104, 0.22) !important;
+  box-shadow: 0 10px 20px rgba(54, 44, 29, 0.055) !important;
+}
+
+.customer-profile-modal .cm-panel--notes {
+  background: #fffefa !important;
+  border-color: rgba(222, 211, 196, 0.72) !important;
+}
+
+.customer-profile-modal .cm-panel--notes textarea,
+.customer-profile-modal .note-display {
+  min-height: 148px !important;
+  background: #fffdf8 !important;
+  border-color: rgba(222, 211, 196, 0.72) !important;
+}
+
+.customer-profile-modal .note-display em {
+  color: #69736f !important;
+}
+
+.customer-modal-footer.modal-footer {
+  padding: 0.56rem 1.05rem !important;
+  border-top-color: rgba(222, 211, 196, 0.56) !important;
+  background: rgba(255, 253, 248, 0.88) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.customer-modal-footer .btn {
+  min-height: 36px !important;
+  border-radius: 12px !important;
+  padding: 0 0.88rem !important;
+}
+
+.customer-modal-footer .btn-primary {
+  background: #22383d !important;
+  border-color: #22383d !important;
+  box-shadow: 0 8px 18px rgba(34, 56, 61, 0.15) !important;
+}
+
+.customer-modal-footer .btn-primary:hover {
+  background: #1a2d31 !important;
+  border-color: #1a2d31 !important;
+}
+
+.customer-modal-footer .btn-secondary {
+  background: #fffefa !important;
+  border-color: rgba(222, 211, 196, 0.82) !important;
+}
+
+@media (max-width: 1024px) {
+  .customer-profile-modal .cm-profile-hero {
+    grid-template-columns: 1fr !important;
+  }
+}
