@@ -653,10 +653,9 @@ const LoginPage = () => {
         <div className="overlay-container" aria-hidden="true">
           <div className="overlay">
             <div className="overlay-panel overlay-left">
-              <span className="overlay-kicker">FoodHub manager</span>
               <h1>Chào mừng</h1>
               <p>
-                Đăng nhập để giữ dữ liệu đặt bàn, món ăn và vận hành nhà hàng luôn được đồng bộ.
+                Đăng nhập để tiếp tục đặt món, theo dõi đơn hàng, lưu địa chỉ và nhận ưu đãi từ FoodHub.
               </p>
               <button type="button" className="ghost" onClick={() => togglePanel(false)}>
                 Đăng nhập
@@ -664,10 +663,9 @@ const LoginPage = () => {
             </div>
 
             <div className="overlay-panel overlay-right">
-              <span className="overlay-kicker">FoodHub manager</span>
               <h1>Xin chào</h1>
               <p>
-                Tạo tài khoản để bắt đầu quản lý hành trình ẩm thực cùng FoodHub.
+                Tạo tài khoản để đặt món nhanh hơn, lưu món yêu thích và đồng bộ trải nghiệm của bạn.
               </p>
               <button type="button" className="ghost" onClick={() => togglePanel(true)}>
                 Đăng ký
