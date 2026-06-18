@@ -105,6 +105,20 @@ input ImportAiChatbotKnowledgeInput { restaurantId: ID! format: String! payload:
 type ImportAiChatbotKnowledgeResult { imported: Int! skipped: Int! errors: [String!]! }
 type AiKnowledgeEmbeddingRebuildResult { total: Int! updated: Int! skipped: Int! failed: Int! errors: [String!]! }
 
+input GenerateAiChatbotKnowledgeSuggestionsInput {
+  restaurantId: ID!
+  sources: [String!]
+  overwriteExisting: Boolean
+}
+
+type GenerateAiChatbotKnowledgeSuggestionsResult {
+  created: Int!
+  updated: Int!
+  skipped: Int!
+  total: Int!
+  suggestions: [AiChatbotKnowledgeSuggestion!]!
+}
+
 input UpdateAiChatbotKnowledgeItemInput {
   id: ID!
   title: String
@@ -422,6 +436,7 @@ extend type Mutation {
   bulkDeleteRestaurantAiChatbotKnowledge(input: BulkAiChatbotIdsInput!): Boolean!
   importRestaurantAiChatbotKnowledge(input: ImportAiChatbotKnowledgeInput!): ImportAiChatbotKnowledgeResult!
   rebuildRestaurantAiKnowledgeEmbeddings(restaurantId: ID!): AiKnowledgeEmbeddingRebuildResult!
+  generateRestaurantAiChatbotKnowledgeSuggestions(input: GenerateAiChatbotKnowledgeSuggestionsInput!): GenerateAiChatbotKnowledgeSuggestionsResult!
   approveRestaurantAiChatbotKnowledgeSuggestion(id: ID!, input: ApproveAiChatbotKnowledgeSuggestionInput!): AiChatbotKnowledgeItem!
   dismissRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
   deleteRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
