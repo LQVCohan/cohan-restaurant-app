@@ -232,7 +232,7 @@ const StaffKitchenPage = () => {
       .filter((order) => {
         const status = normalizeStatus(order?.currentStatus);
         return (
-          !["served", "completed", "cancelled"].includes(status) &&
+          !["draft", "served", "completed", "cancelled", "failed"].includes(status) &&
           !isRemoteStaffPendingOrder(order)
         );
       })
