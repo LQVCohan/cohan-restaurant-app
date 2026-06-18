@@ -14,7 +14,6 @@ import {
   FacebookFilled,
   EyeInvisibleOutlined,
   EyeTwoTone,
-  IdcardOutlined,
 } from "@ant-design/icons";
 
 import "./Login.scss";
@@ -106,6 +105,14 @@ function splitIdentifier(val) {
   return { username: val };
 }
 
+function buildGeneratedUsername(email) {
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+  const username = normalizedEmail.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return username || `user_${Date.now()}`;
+}
+
 function resolveLoginErrorMessage(error) {
   const gqlErrors = error?.graphQLErrors || [];
   const first = gqlErrors[0];
@@ -177,7 +184,6 @@ const LoginPage = () => {
   const [registerForm, setRegisterForm] = useState({
     fullName: "",
     email: "",
-    username: "",
     password: "",
     confirmPassword: "",
     terms: false,
@@ -286,7 +292,6 @@ const LoginPage = () => {
         setRegisterForm({
           fullName: "",
           email: "",
-          username: "",
           password: "",
           confirmPassword: "",
           terms: false,
@@ -321,12 +326,7 @@ const LoginPage = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (
-      !registerForm.fullName ||
-      !registerForm.email ||
-      !registerForm.username ||
-      !registerForm.password
-    ) {
+    if (!registerForm.fullName || !registerForm.email || !registerForm.password) {
       return showNotification("Vui lòng nhập đầy đủ thông tin", "warning");
     }
     if (registerForm.password !== registerForm.confirmPassword) {
@@ -367,6 +367,7 @@ const LoginPage = () => {
     const variables = {
       i: {
         ...registerForm,
+        username: buildGeneratedUsername(registerForm.email),
         roleId,
         captchaToken: shouldRenderCaptcha ? captchaToken : undefined,
         status: "active",
@@ -460,20 +461,6 @@ const LoginPage = () => {
             </div>
 
             <div className="input-wrapper">
-              <IdcardOutlined className="field-icon" />
-              <input
-                type="text"
-                placeholder="Username (Tên đăng nhập)"
-                aria-label="Username"
-                autoComplete="username"
-                value={registerForm.username}
-                onChange={(e) =>
-                  setRegisterForm({ ...registerForm, username: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="input-wrapper">
               <LockOutlined className="field-icon" />
               <input
                 type="password"
@@ -560,8 +547,8 @@ const LoginPage = () => {
               <UserOutlined className="field-icon" />
               <input
                 type="text"
-                placeholder="Email / Username / SĐT"
-                aria-label="Email, username hoặc số điện thoại"
+                placeholder="Email / SĐT"
+                aria-label="Email hoặc số điện thoại"
                 autoComplete="username"
                 value={loginForm.identifier}
                 onChange={(e) =>
@@ -617,7 +604,7 @@ const LoginPage = () => {
                     setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })
                   }
                 />
-                <span>Ghi nhớ tài khoản (chỉ lưu email/tên đăng nhập/số điện thoại)</span>
+                <span>Ghi nhớ tài khoản (chỉ lưu email/số điện thoại)</span>
               </label>
             </div>
 
