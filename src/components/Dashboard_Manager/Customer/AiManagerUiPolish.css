@@ -136,6 +136,22 @@
   width: 100% !important;
   justify-content: flex-start !important;
   align-items: center !important;
+  overflow: visible !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end button {
+  display: inline-flex !important;
+  visibility: visible !important;
+  align-items: center !important;
+  justify-content: center !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end button:disabled {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 0.9 !important;
 }
 
 .ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary {
