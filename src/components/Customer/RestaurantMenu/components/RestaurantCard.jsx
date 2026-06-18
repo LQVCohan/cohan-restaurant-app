@@ -2,8 +2,15 @@
 import React from "react";
 import "../styles/RestaurantCard.scss";
 
-const RestaurantCard = ({ data, onClick }) => (
+const RestaurantCard = ({ data, onClick, isFavorite = false, onToggleFavorite }) => (
   <article className={`res-card fade-in ${!data.canOrder ? "res-card--paused" : ""}`}>
+    <button
+      type="button"
+      className={`favorite-toggle ${isFavorite ? "is-active" : ""}`}
+      onClick={(event) => { event.stopPropagation(); onToggleFavorite?.(data); }}
+      aria-pressed={isFavorite}
+      aria-label={isFavorite ? `Bỏ yêu thích ${data.name}` : `Lưu yêu thích ${data.name}`}
+    >♥</button>
     <button
       type="button"
       className="res-card__button"

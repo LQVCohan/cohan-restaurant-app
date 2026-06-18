@@ -196,6 +196,26 @@ const CUSTOMER_MENU_ITEM = gql`
     }
   }
 `;
+
+const MY_FOOD_FAVORITES = gql`
+  query MyFoodFavoritesForFoodDetail {
+    myFavorites(type: "food") {
+      id
+      targetId
+    }
+  }
+`;
+
+const TOGGLE_FAVORITE = gql`
+  mutation ToggleFavoriteForFoodDetail($input: ToggleFavoriteInput!) {
+    toggleFavorite(input: $input) {
+      id
+      type
+      targetId
+    }
+  }
+`;
+
 const GET_FOOD_REVIEWS = gql`
   query GetFoodReviewsForFoodDetail(
     $restaurantId: ID!
@@ -445,6 +465,34 @@ const FoodDetail = () => {
     const sum = foodReviews.reduce((acc, row) => acc + Number(row?.rating || 0), 0);
     return sum / foodReviews.length;
   }, [foodReviews]);
+
+  const { data: favoriteData, refetch: refetchFoodFavorite } = useQuery(MY_FOOD_FAVORITES, {
+    skip: !isAuthenticated || !isCustomer,
+    fetchPolicy: "cache-and-network",
+  });
+  const foodFavorite = useMemo(
+    () => (favoriteData?.myFavorites || []).find((favorite) => String(favorite?.targetId) === String(resolvedDish?.id)),
+    [favoriteData?.myFavorites, resolvedDish?.id],
+  );
+  const isFoodFavorited = !!foodFavorite;
+  const [toggleFavoriteMutation, { loading: togglingFavorite }] = useMutation(TOGGLE_FAVORITE, {
+    onCompleted: () => {
+      refetchFoodFavorite?.();
+      showNotification(isFoodFavorited ? "Đã bỏ yêu thích món ăn." : "Đã lưu món ăn vào yêu thích.", "success");
+    },
+    onError: () => showNotification("Không thể cập nhật yêu thích. Vui lòng thử lại.", "error"),
+  });
+
+  const handleToggleFoodFavorite = () => {
+    if (!isAuthenticated || !isCustomer) {
+      const returnPath = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+      showNotification("Vui lòng đăng nhập để lưu món yêu thích.", "warning");
+      navigate("/login", { state: { from: returnPath } });
+      return;
+    }
+    if (!resolvedDish?.id) return;
+    toggleFavoriteMutation({ variables: { input: { type: "food", targetId: resolvedDish.id } } });
+  };
 
   const {
     preferences: customerFoodPreferences,
@@ -998,8 +1046,15 @@ const FoodDetail = () => {
             <div className="info-header">
               <span className="album-tag">Món ăn nhà hàng</span>
               <div className="actions">
-                <button className="btn-icon" type="button">
-                  <Heart size={20} />
+                <button
+                  className={`btn-icon ${isFoodFavorited ? "active-favorite" : ""}`}
+                  type="button"
+                  onClick={handleToggleFoodFavorite}
+                  disabled={togglingFavorite}
+                  aria-pressed={isFoodFavorited}
+                  title={isFoodFavorited ? "Bỏ yêu thích" : "Lưu món yêu thích"}
+                >
+                  <Heart size={20} fill={isFoodFavorited ? "currentColor" : "none"} />
                 </button>
                 <button className="btn-icon" type="button">
                   <Share2 size={20} />
