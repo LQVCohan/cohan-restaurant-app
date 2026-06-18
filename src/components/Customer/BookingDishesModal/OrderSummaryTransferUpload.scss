@@ -1,0 +1,109 @@
+.transfer-proof-upload-card {
+  border: 1px dashed rgba(31, 106, 96, 0.28);
+  border-radius: 16px;
+  padding: 14px;
+  background: #f8fbf7;
+}
+
+.transfer-proof-upload-card input[type="file"] {
+  margin-top: 8px;
+}
+
+.transfer-proof-upload-card small {
+  color: #5f6f66;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.transfer-proof-file-list {
+  display: grid;
+  gap: 10px;
+}
+
+.transfer-proof-file {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(216, 208, 197, 0.9);
+  border-radius: 14px;
+  padding: 9px;
+  background: #fffdfa;
+}
+
+.transfer-proof-file img {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(31, 106, 96, 0.16);
+}
+
+.transfer-proof-file strong,
+.transfer-proof-file span {
+  display: block;
+}
+
+.transfer-proof-file strong {
+  color: #1f2a2f;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transfer-proof-file span {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.transfer-proof-file progress {
+  width: 100%;
+  height: 7px;
+  margin-top: 7px;
+  accent-color: #1f6a60;
+}
+
+.transfer-proof-file button {
+  border: 1px solid rgba(154, 65, 61, 0.18);
+  background: #fff1f0;
+  color: #9a413d;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.transfer-proof-file button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.transfer-proof-url-fallback {
+  border: 1px solid rgba(216, 208, 197, 0.9);
+  border-radius: 14px;
+  padding: 11px 12px;
+  background: #fffdfa;
+}
+
+.transfer-proof-url-fallback summary {
+  cursor: pointer;
+  color: #17554d;
+  font-weight: 800;
+}
+
+.transfer-proof-url-fallback textarea {
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .transfer-proof-file {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .transfer-proof-file button {
+    grid-column: 1 / -1;
+    justify-self: flex-start;
+  }
+}
