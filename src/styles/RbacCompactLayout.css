@@ -39,7 +39,8 @@
 .rbac-grid--roles .rbac-role-list::-webkit-scrollbar,
 .rbac-permission-catalog::-webkit-scrollbar,
 .rbac-permission-groups::-webkit-scrollbar,
-.rbac-card--permission-detail::-webkit-scrollbar {
+.rbac-card--permission-detail::-webkit-scrollbar,
+.rbac-permission-group .rbac-chip-list::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
@@ -47,7 +48,8 @@
 .rbac-grid--roles .rbac-role-list::-webkit-scrollbar-thumb,
 .rbac-permission-catalog::-webkit-scrollbar-thumb,
 .rbac-permission-groups::-webkit-scrollbar-thumb,
-.rbac-card--permission-detail::-webkit-scrollbar-thumb {
+.rbac-card--permission-detail::-webkit-scrollbar-thumb,
+.rbac-permission-group .rbac-chip-list::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
   background: rgba(168, 133, 95, 0.28);
@@ -82,37 +84,54 @@
 .rbac-permission-catalog .rbac-card__header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 4;
   margin: -0.15rem -0.15rem 0.85rem !important;
   padding: 0.15rem 0.15rem 0.75rem !important;
   border-bottom: 1px solid rgba(213, 200, 184, 0.48);
-  background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 253, 248, 0.88));
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 253, 248, 0.9));
   backdrop-filter: blur(10px);
 }
 
 .rbac-permission-groups {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  grid-auto-flow: row dense;
+  grid-auto-flow: row;
+  grid-auto-rows: 160px;
+  align-items: stretch;
   gap: 0.75rem !important;
   min-height: 0 !important;
   overflow: auto !important;
-  padding: 0.05rem 0.35rem 0.2rem 0 !important;
+  padding: 0.12rem 0.42rem 0.35rem 0 !important;
   scrollbar-color: rgba(168, 133, 95, 0.32) transparent;
   scrollbar-width: thin;
 }
 
 .rbac-permission-group {
-  min-height: 116px;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0 !important;
+  height: 160px !important;
+  overflow: hidden !important;
   padding: 0.78rem !important;
 }
 
 .rbac-permission-group__title {
-  margin-bottom: 0.65rem !important;
+  margin-bottom: 0.58rem !important;
 }
 
 .rbac-permission-group__title h4 {
   font-size: 0.95rem;
+}
+
+.rbac-permission-group .rbac-chip-list {
+  display: flex !important;
+  align-content: flex-start;
+  gap: 0.42rem !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding-right: 0.16rem;
+  scrollbar-color: rgba(168, 133, 95, 0.28) transparent;
+  scrollbar-width: thin;
 }
 
 .rbac-chip-list {
@@ -121,19 +140,20 @@
 
 .rbac-chip {
   max-width: none !important;
-  padding: 0.46rem 0.58rem !important;
+  min-width: 0 !important;
+  padding: 0.44rem 0.56rem !important;
   border-radius: 11px !important;
   font-size: 0.72rem !important;
 }
 
 .rbac-chip strong {
-  line-height: 1.18 !important;
+  line-height: 1.16 !important;
 }
 
 .rbac-chip small {
-  margin-top: 0.08rem;
-  font-size: 0.66rem !important;
-  line-height: 1.1 !important;
+  margin-top: 0.06rem;
+  font-size: 0.64rem !important;
+  line-height: 1.08 !important;
 }
 
 .rbac-role-row {
@@ -203,6 +223,11 @@
 
   .rbac-permission-groups {
     grid-template-columns: 1fr !important;
+    grid-auto-rows: 170px;
+  }
+
+  .rbac-permission-group {
+    height: 170px !important;
   }
 }
 
