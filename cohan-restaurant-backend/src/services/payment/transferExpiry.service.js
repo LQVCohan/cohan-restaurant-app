@@ -38,9 +38,10 @@ export async function cancelDraftTransferOrdersForExpiredPayment({ payment, now 
     order.statusTimeline.push({ status: "cancelled", at: now, byUserId: payment.userId || undefined, note: EXPIRY_NOTE });
     order.payment = { ...(order.payment || {}), status: "cancelled", requestNote: EXPIRE_REASON };
     await order.save({ session });
-    // Inventory is intentionally untouched here. The cancellation path does not have the
-    // warehouseId + normalized inventory lines required by cancelReservationForOrderTx,
-    // and this helper must not guess or mutate onHand/reserved balances blindly.
+    // Inventory is intentionally untouched here. Draft transfer expiry only cancels
+    // draft/unpaid order state. This path does not have a proven reservation rollback
+    // context with warehouseId + normalized inventory lines, so it must not guess or
+    // mutate onHand/reserved balances.
     emitCustomerTrackingUpdateIfChanged({ ctx: { io }, orderDoc: order, force: true });
     cancelled.push(String(order._id));
   }
