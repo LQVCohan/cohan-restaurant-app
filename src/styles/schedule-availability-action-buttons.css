@@ -1,0 +1,100 @@
+/* Availability registration actions: align icon + label and make buttons even.
+   Targets both collapsed strip and expanded panel actions. */
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions,
+.schedule-container.schedule-container .schedule-availability-panel__actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.5rem !important;
+  flex-wrap: wrap !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button,
+.schedule-container.schedule-container .schedule-availability-panel__actions button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.42rem !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  min-width: 0 !important;
+  padding: 0 0.88rem !important;
+  border-radius: 999px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  font-size: 0.84rem !important;
+  font-weight: 860 !important;
+  letter-spacing: -0.01em !important;
+  background: #fffefa !important;
+  border: 1px solid #e3dacf !important;
+  color: #40564c !important;
+  box-shadow: none !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button svg,
+.schedule-container.schedule-container .schedule-availability-panel__actions button svg {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  position: static !important;
+  transform: none !important;
+  stroke-width: 2.35 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:hover:not(:disabled),
+.schedule-container.schedule-container .schedule-availability-panel__actions button:hover:not(:disabled) {
+  background: #edf4f0 !important;
+  border-color: rgba(83, 108, 97, 0.3) !important;
+  color: #40564c !important;
+  transform: none !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:focus-visible,
+.schedule-container.schedule-container .schedule-availability-panel__actions button:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(83, 108, 97, 0.13) !important;
+  border-color: rgba(83, 108, 97, 0.42) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:disabled,
+.schedule-container.schedule-container .schedule-availability-panel__actions button:disabled {
+  opacity: 0.48 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* Primary action inside registration controls: opening/closing the registration window. */
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:first-child:not(:disabled),
+.schedule-container.schedule-container .schedule-availability-panel__actions button:first-child:not(:disabled) {
+  background: #24303f !important;
+  border-color: #24303f !important;
+  color: #fffefa !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:first-child:not(:disabled) svg,
+.schedule-container.schedule-container .schedule-availability-panel__actions button:first-child:not(:disabled) svg {
+  color: currentColor !important;
+}
+
+/* Collapse/detail button should not look taller or offset because of the chevron. */
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions .btn-collapse-panel,
+.schedule-container.schedule-container .schedule-availability-panel__actions .btn-collapse-panel {
+  padding-inline: 0.82rem !important;
+}
+
+@media (max-width: 900px) {
+  .schedule-container.schedule-container .schedule-availability-panel__compact-actions,
+  .schedule-container.schedule-container .schedule-availability-panel__actions {
+    justify-content: flex-start !important;
+  }
+
+  .schedule-container.schedule-container .schedule-availability-panel__compact-actions button,
+  .schedule-container.schedule-container .schedule-availability-panel__actions button {
+    min-height: 40px !important;
+    height: 40px !important;
+  }
+}
