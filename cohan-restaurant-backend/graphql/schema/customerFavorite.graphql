@@ -1,0 +1,25 @@
+type CustomerFavorite {
+  id: ID!
+  userId: ID!
+  type: String!
+  targetType: String!
+  targetId: ID!
+  restaurant: Restaurant
+  food: MenuItem
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ToggleFavoriteInput {
+  type: String!
+  targetId: ID!
+}
+
+extend type Query {
+  myFavorites(type: String): [CustomerFavorite!]!
+}
+
+extend type Mutation {
+  toggleFavorite(input: ToggleFavoriteInput!): CustomerFavorite
+  removeFavorite(id: ID!): Boolean!
+}

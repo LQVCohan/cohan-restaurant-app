@@ -1,6 +1,6 @@
 // src/components/Customer/RestaurantMenu/RestaurantMenu.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { gql, useQuery } from "@apollo/client";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
@@ -9,6 +9,8 @@ import { formatCurrency } from "../../../utils/formatters";
 import { useCustomerCartActions } from "../../../hooks/useCustomerCartActions";
 import { buildFoodDetailPath } from "../../../utils/customerFoodNavigation";
 import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
+import { AuthContext } from "@/context/AuthContext";
+import { useNotification } from "@/hooks/useNotification";
 
 // Components Con
 import RestaurantCard from "./components/RestaurantCard";
@@ -38,6 +40,19 @@ const GET_CUSTOMER_RESTAURANTS = gql`
         }
       }
     }
+  }
+`;
+
+
+const MY_RESTAURANT_FAVORITES = gql`
+  query MyRestaurantFavoritesForMenu {
+    myFavorites(type: "restaurant") { id targetId }
+  }
+`;
+
+const TOGGLE_RESTAURANT_FAVORITE = gql`
+  mutation ToggleRestaurantFavoriteForMenu($input: ToggleFavoriteInput!) {
+    toggleFavorite(input: $input) { id type targetId }
   }
 `;
 
@@ -106,6 +121,29 @@ const RestaurantMenu = () => {
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
+  const { showNotification } = useNotification();
+
+  const { data: favoriteData, refetch: refetchRestaurantFavorites } = useQuery(MY_RESTAURANT_FAVORITES, {
+    skip: !isAuthenticated || !user?.id,
+    fetchPolicy: "cache-and-network",
+  });
+  const favoriteRestaurantIds = useMemo(
+    () => new Set((favoriteData?.myFavorites || []).map((favorite) => String(favorite?.targetId))),
+    [favoriteData?.myFavorites],
+  );
+  const [toggleRestaurantFavorite] = useMutation(TOGGLE_RESTAURANT_FAVORITE, {
+    onCompleted: () => refetchRestaurantFavorites?.(),
+    onError: () => showNotification("Không thể cập nhật yêu thích nhà hàng.", "error"),
+  });
+  const handleToggleRestaurantFavorite = (restaurant) => {
+    if (!isAuthenticated || !user?.id) {
+      showNotification("Vui lòng đăng nhập để lưu nhà hàng yêu thích.", "warning");
+      navigate("/login", { state: { from: `/menu${search || ""}` } });
+      return;
+    }
+    toggleRestaurantFavorite({ variables: { input: { type: "restaurant", targetId: restaurant.id } } });
+  };
 
   const {
     data: restaurantsData,
@@ -282,6 +320,8 @@ const RestaurantMenu = () => {
               <RestaurantCard
                 key={res.id}
                 data={res}
+                isFavorite={favoriteRestaurantIds.has(String(res.id))}
+                onToggleFavorite={handleToggleRestaurantFavorite}
                 onClick={() => setSelectedRes(res)}
               />
             ))

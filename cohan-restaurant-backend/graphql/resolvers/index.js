@@ -22,6 +22,7 @@ import attendanceOvertime from "./attendance_overtime/index.js";
 import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
 import cart from "./cart/index.js";
+import customerFavorite from "./customerFavorite/index.js";
 import shippingTracking from "./shippingTracking/index.js";
 import supplier from "./supplier/index.js";
 import promotion from "./promotion/index.js";
@@ -63,6 +64,7 @@ export default {
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
     ...(cart.Query || {}),
+    ...(customerFavorite.Query || {}),
     ...(shippingTracking.Query || {}),
     ...(search.Query || {}),
     ...(supplier.Query || {}),
@@ -105,6 +107,7 @@ export default {
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
     ...(cart.Mutation || {}),
+    ...(customerFavorite.Mutation || {}),
     ...(shippingTracking.Mutation || {}),
     ...(supplier.Mutation || {}),
     ...(eventPackage.Mutation || {}),
@@ -135,6 +138,7 @@ export default {
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
+  ...(customerFavorite.CustomerFavorite ? { CustomerFavorite: customerFavorite.CustomerFavorite } : {}),
   ...(userCoupon.UserCoupon ? { UserCoupon: userCoupon.UserCoupon } : {}),
   ...(couponRedemption.CouponRedemption
     ? { CouponRedemption: couponRedemption.CouponRedemption }

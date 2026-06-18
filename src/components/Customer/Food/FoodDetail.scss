@@ -192,6 +192,18 @@ $charcoal: #27312d;
           background: #f3f4f6;
           color: $text-main;
         }
+
+
+        &.active-favorite {
+          background: #fff1f2;
+          border-color: #fecdd3;
+          color: #e11d48;
+        }
+
+        &:disabled {
+          cursor: wait;
+          opacity: 0.65;
+        }
       }
     }
   }
