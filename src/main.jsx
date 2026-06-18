@@ -10,6 +10,7 @@ import "./styles/PayrollManagerPresentation.css";
 import "./styles/PayrollManagerFinalPolish.css";
 import "./styles/PromotionManagerOperationsUX.css";
 import "./styles/PromotionModalViewportFix.css";
+import "./styles/TableManagerSageUX.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 
 import App from "./App.jsx";
