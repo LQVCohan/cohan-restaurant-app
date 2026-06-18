@@ -17,6 +17,7 @@ import "@/styles/schedule-admin-ui-fixes.css";
 import "@/styles/schedule-color-final-refinement.css";
 import "@/styles/schedule-manager-visual-redesign.css";
 import "@/styles/schedule-manager-final-alignment.css";
+import "@/styles/schedule-availability-action-buttons.css";
 
 const ScheduleManagementPage = memo(function ScheduleManagementPage() {
   const [readinessFocus, setReadinessFocus] = useState("");
