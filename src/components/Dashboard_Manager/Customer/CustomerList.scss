@@ -139,12 +139,15 @@ $cl-text-sub: #64706e;
     &.w-80 {
       width: 80%;
     }
+
     &.w-60 {
       width: 60%;
     }
+
     &.w-50 {
       width: 50%;
     }
+
     &.w-40 {
       width: 40%;
     }
@@ -163,3 +166,4 @@ $cl-text-sub: #64706e;
 }
 
 @import "./CustomerManagerScale.scss";
+@import "./CustomerListExpansion.scss";
