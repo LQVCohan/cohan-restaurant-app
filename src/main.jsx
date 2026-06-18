@@ -18,6 +18,7 @@ import App from "./App.jsx";
 import "./styles/RbacPayrollTheme.css";
 import "./styles/RbacCompactLayout.css";
 import "./styles/HrSageTheme.css";
+import "./styles/HrControlsTheme.css";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
