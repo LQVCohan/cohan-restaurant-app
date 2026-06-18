@@ -2480,6 +2480,7 @@ export const OrderMutation = {
       normalizedPaymentMethodRaw === "e_wallet"
         ? "wallet"
         : normalizedPaymentMethodRaw;
+    const isTransferCheckout = ["transfer", "bank_transfer"].includes(normalizedPaymentMethod);
 
     const session = await mongoose.startSession();
     try {
@@ -2560,14 +2561,17 @@ export const OrderMutation = {
                 items: normalizedItems,
                 totals,
                 note,
-                currentStatus: "pending",
+                currentStatus: isTransferCheckout ? "draft" : "pending",
                 payment: { method: normalizedPaymentMethod, status: "pending" },
+                customerVisibleNote: isTransferCheckout ? "Đơn đang chờ xác minh thanh toán chuyển khoản." : undefined,
                 statusTimeline: [
                   {
-                    status: "pending",
+                    status: isTransferCheckout ? "draft" : "pending",
                     at: new Date(),
                     byUserId: finalUserId ? toId(finalUserId) : undefined,
-                    note: `Created from checkout ${checkoutCode}`,
+                    note: isTransferCheckout
+                      ? `Created from checkout ${checkoutCode}; waiting for bank transfer verification`
+                      : `Created from checkout ${checkoutCode}`,
                   },
                 ],
                 clientMeta: { ...(clientMeta || {}), checkoutCode },
@@ -2577,12 +2581,14 @@ export const OrderMutation = {
           );
 
           createdOrders.push(order);
-          await syncKitchenOrderWorkItemsForKitchenEntry({
-            order,
-            actorUserId: ctx?.user?.id || ctx?.user?._id,
-            now: new Date(),
-            session,
-          });
+          if (!isTransferCheckout) {
+            await syncKitchenOrderWorkItemsForKitchenEntry({
+              order,
+              actorUserId: ctx?.user?.id || ctx?.user?._id,
+              now: new Date(),
+              session,
+            });
+          }
           checkoutTotals.subtotal += Number(totals.subtotal || 0);
           checkoutTotals.promotionDiscount += Number(
             totals.promotionDiscount || 0,
@@ -2709,13 +2715,17 @@ export const OrderMutation = {
           ctx,
           payload: {
             statusFrom: null,
-            statusTo: "pending",
-            note: `Delivery order created from ${checkoutCode}`,
+            statusTo: isTransferCheckout ? "draft" : "pending",
+            note: isTransferCheckout
+              ? `Delivery order created from ${checkoutCode}; waiting for bank transfer verification`
+              : `Delivery order created from ${checkoutCode}`,
           },
         });
       }
       emitCustomerTrackingUpdateIfChanged({ ctx, orderDoc: order, previousPublicStatus: prevPublicStatus, force: true });
-      await emitOrderEvent(ctx, order.restaurantId, "ORDER_CREATED", order);
+      if (!isTransferCheckout) {
+        await emitOrderEvent(ctx, order.restaurantId, "ORDER_CREATED", order);
+      }
     }
 
     const grandTotal = createdOrders.reduce(
