@@ -47,6 +47,8 @@ export const CUSTOMER_TRACK_ORDER = gql`
       }
       payment {
         status
+        method
+        provider
         canRequestPayment
         totalAmount
       }
@@ -67,13 +69,32 @@ const TRACKING_FIELDS = `
   timeline { status displayMessage changedAt }
   items { name quantity publicStatus publicStatusLabel proofImages requiresProofImage proofUploaded }
   delivery { orderType deliveryStatus deliveryStatusLabel shippingAddress eta distance duration driverName driverPhone driverVehiclePlate externalTrackingCode timeline { status label at note } }
-  payment { status canRequestPayment totalAmount }
+  payment { status method provider canRequestPayment totalAmount }
   latestRequest { requestId type status message createdAt acknowledgedAt resolvedAt }
 `;
 export const REQUEST_PAYMENT_FROM_TRACKING = gql`mutation RequestPaymentFromTracking($trackingToken: String!){requestPaymentFromTracking(trackingToken:$trackingToken){success message tracking{${TRACKING_FIELDS}}}}`;
 export const CALL_STAFF_FROM_TRACKING = gql`mutation CallStaffFromTracking($trackingToken: String!,$reason: String){callStaffFromTracking(trackingToken:$trackingToken,reason:$reason){success message tracking{${TRACKING_FIELDS}}}}`;
 
-const paymentStatusLabel = { UNPAID: "Chưa thanh toán", PARTIAL: "Thanh toán một phần", PAYMENT_REQUESTED: "Đang chờ xử lý thanh toán", PAID: "Đã thanh toán" };
+const paymentStatusLabel = { UNPAID: "Chưa thanh toán", PARTIAL: "Thanh toán một phần", PAYMENT_REQUESTED: "Đang chờ xử lý thanh toán", PENDING: "Đang chờ thanh toán", FAILED: "Thanh toán chưa hợp lệ", REJECTED: "Bằng chứng bị từ chối", PAID: "Đã thanh toán" };
+
+const resolveTrackingPaymentPanel = (payment = {}) => {
+  const method = String(payment?.method || payment?.provider || "").toLowerCase();
+  if (!["transfer", "bank_transfer"].includes(method)) return null;
+  const status = String(payment?.status || "").toUpperCase();
+  if (["PAID", "VERIFIED", "SUCCESS"].includes(status)) {
+    return { key: "verified", title: "Đã xác minh thanh toán", description: "Nhà hàng đã nhận đơn và đang xử lý." };
+  }
+  if (["SUBMITTED", "PAYMENT_REQUESTED", "RECEIVED"].includes(status)) {
+    return { key: "submitted", title: "Đã gửi bằng chứng", description: "Bằng chứng đang chờ nhà hàng kiểm tra." };
+  }
+  if (["REJECTED", "FAILED"].includes(status)) {
+    return { key: "rejected", title: "Bằng chứng chưa hợp lệ", description: "Vui lòng quay lại phần thanh toán để gửi lại bằng chứng." };
+  }
+  if (["PENDING", "UNPAID", "PARTIAL"].includes(status)) {
+    return { key: "pending", title: "Đang chờ xác minh chuyển khoản", description: "Nhà hàng sẽ tiếp nhận đơn sau khi thanh toán được xác minh." };
+  }
+  return null;
+};
 const requestStatusLabel = { PENDING: "Đã gửi yêu cầu", ACKNOWLEDGED: "Nhân viên đã nhận yêu cầu", RESOLVED: "Yêu cầu đã được xử lý", CANCELLED: "Yêu cầu đã huỷ" };
 const requestTypeLabel = { STAFF_CALL: "Yêu cầu hỗ trợ", PAYMENT_REQUEST: "Yêu cầu thanh toán" };
 const finalStatuses = new Set(["PAID", "CANCELLED", "DELIVERED", "DELIVERY_CANCELLED", "DELIVERY_FAILED"]);
@@ -228,6 +249,7 @@ export default function PublicOrderTrackingPage() {
   const isPaid = publicStatus === "PAID" || paymentStatus === "PAID";
   const canRequestPayment = Boolean(tracking.payment?.canRequestPayment);
   const paymentAlreadyRequested = paymentStatus === "PAYMENT_REQUESTED";
+  const trackingPaymentPanel = resolveTrackingPaymentPanel(tracking.payment);
   const paymentActionLocked = paymentReqActive || paymentAlreadyRequested;
 
   const timelineItems = Array.isArray(tracking.timeline) ? tracking.timeline : [];
@@ -251,6 +273,17 @@ export default function PublicOrderTrackingPage() {
           {tracking.estimatedReadyAt && <p>Dự kiến sẵn sàng: {new Date(tracking.estimatedReadyAt).toLocaleString("vi-VN")}</p>}
           {tracking.customerVisibleNote && <p className="note">{tracking.customerVisibleNote}</p>}
         </section>
+
+
+        {trackingPaymentPanel && (
+          <section className={`tracking-payment-panel tracking-payment-panel--${trackingPaymentPanel.key}`}>
+            <div>
+              <p className="tracking-payment-eyebrow">Thanh toán</p>
+              <h3>{trackingPaymentPanel.title}</h3>
+              <p>{trackingPaymentPanel.description}</p>
+            </div>
+          </section>
+        )}
 
         <section className="track-card"><h3>Tiến trình đơn hàng</h3>{timelineItems.length === 0 ? <p>Chưa có cập nhật tiến trình.</p> : <ol className="timeline">{timelineItems.map((item, idx) => <li key={`${item.changedAt}-${idx}`} className={idx === latestTimelineIndex ? "current" : ""}><div><strong>{item.displayMessage}</strong><p>{item.changedAt ? new Date(item.changedAt).toLocaleString("vi-VN") : ""}</p></div></li>)}</ol>}</section>
 

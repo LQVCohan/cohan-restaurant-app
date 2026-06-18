@@ -12,7 +12,7 @@ import {
   withOrderBatchOrLegacyFilter,
 } from "../../../utils/orderLifecycle.js";
 
-const INACTIVE_STATUSES = ["cancelled", "completed", "failed"];
+const INACTIVE_STATUSES = ["draft", "cancelled", "completed", "failed"];
 const ACTIVE_VIEW_PAYMENT_FILTER = {
   orderPaymentStatus: { $ne: "paid" },
   "payment.status": { $ne: "paid" },

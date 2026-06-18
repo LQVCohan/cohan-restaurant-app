@@ -184,6 +184,8 @@ type CustomerTrackingDelivery {
 
 type CustomerTrackingPayment {
   status: String!
+  method: String
+  provider: String
   canRequestPayment: Boolean!
   totalAmount: Int!
 }
