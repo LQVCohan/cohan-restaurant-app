@@ -13,6 +13,21 @@ import "./ArTablePlacementModal.scss";
 const emptyAnchor = { x: "", y: "" };
 const emptyArPoint = { x: "", z: "" };
 const GLTF_MODEL_PATTERN = /\.(glb|gltf)(?:[?#].*)?$/i;
+const STEP_ORDER = ["preflight", "floorAnchors", "arAnchors", "placeTable", "review"];
+const STEP_LABELS = {
+  preflight: "1. Kiểm tra thiết bị",
+  floorAnchors: "2. Mốc sơ đồ tầng",
+  arAnchors: "3. Mốc AR",
+  placeTable: "4. Ghim vị trí bàn",
+  review: "5. Kiểm tra và lưu",
+};
+const STEP_HINTS = {
+  preflight: "Kiểm tra thiết bị trước khi mở AR thật.",
+  floorAnchors: "Nhập 2 mốc trên sơ đồ tầng.",
+  arAnchors: "Dùng điểm AR hiện tại cho 2 mốc tương ứng.",
+  placeTable: "Ghim hoặc nhập vị trí bàn AR.",
+  review: "Kiểm tra transform, geofence và Table.position trước khi lưu.",
+};
 const AR_DEBUG_ENABLED = import.meta.env.VITE_AR_DEBUG === "true";
 const AR_DEMO_ALLOW_SAVE_OUTSIDE_GEOFENCE =
   import.meta.env.DEV && import.meta.env.VITE_AR_DEMO_ALLOW_SAVE_OUTSIDE_GEOFENCE === "true";
@@ -77,6 +92,12 @@ const normalizeStoredArPoint = (point) => (
       }
     : null
 );
+
+const resizeXrCanvasToViewport = (canvas) => {
+  if (!canvas || typeof window === "undefined") return;
+  canvas.width = Math.max(window.innerWidth || 1, 1);
+  canvas.height = Math.max(window.innerHeight || 1, 1);
+};
 
 export default function ArTablePlacementModal({
   open,
@@ -176,15 +197,23 @@ export default function ArTablePlacementModal({
       pushCheck("geolocation", "Geolocation API khả dụng", hasGeolocation, "warning", "Không có Geolocation; manual vẫn nhập được nhưng lưu AR cần geofence hợp lệ.");
 
       const hasModelUrl = Boolean(selectedModel?.modelUrl);
-      pushCheck("modelUrl", "Model URL đã chọn", hasModelUrl, "error", "Hãy chọn mẫu có modelUrl.");
+      pushCheck("modelUrl", "Model URL đã chọn", hasModelUrl, "warning", "AR vẫn lấy điểm được, nhưng không render được model nếu thiếu modelUrl.");
       const isGltf = hasModelUrl && GLTF_MODEL_PATTERN.test(selectedModel.modelUrl);
-      pushCheck("modelFormat", "Model là GLB/GLTF", isGltf, "error", "modelUrl cần kết thúc bằng .glb hoặc .gltf.");
+      pushCheck("modelFormat", "Model là GLB/GLTF", isGltf, "warning", "AR vẫn lấy điểm được, nhưng model không render trong WebXR nếu không phải .glb/.gltf.");
 
       const restaurantLocation = getRestaurantLocation(restaurant);
       const lat = Number(restaurantLocation?.lat);
       const lng = Number(restaurantLocation?.lng);
       const restaurantLocationOk = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
-      pushCheck("restaurantLocation", "Tọa độ nhà hàng hợp lệ", restaurantLocationOk, "error", "Thiếu lat/lng hợp lệ của nhà hàng để kiểm tra geofence.");
+      pushCheck(
+        "restaurantLocation",
+        "Tọa độ nhà hàng hợp lệ",
+        restaurantLocationOk,
+        AR_DEMO_ALLOW_SAVE_OUTSIDE_GEOFENCE ? "warning" : "error",
+        AR_DEMO_ALLOW_SAVE_OUTSIDE_GEOFENCE
+          ? "Thiếu lat/lng nhà hàng; demo override DEV có thể cho lưu, nhưng geofence thật chưa xác minh."
+          : "Thiếu lat/lng hợp lệ của nhà hàng để kiểm tra geofence.",
+      );
 
       setArPreflight(checks);
     } catch (error) {
@@ -266,6 +295,18 @@ export default function ArTablePlacementModal({
     [stopRealArSession],
   );
 
+  useEffect(() => {
+    if (!xrSessionActive) return undefined;
+    const handleViewportResize = () => resizeXrCanvasToViewport(canvasRef.current);
+    handleViewportResize();
+    window.addEventListener("resize", handleViewportResize);
+    window.addEventListener("orientationchange", handleViewportResize);
+    return () => {
+      window.removeEventListener("resize", handleViewportResize);
+      window.removeEventListener("orientationchange", handleViewportResize);
+    };
+  }, [xrSessionActive]);
+
   const geofenceState = useMemo(
     () =>
       getRestaurantGeofenceState({
@@ -311,28 +352,89 @@ export default function ArTablePlacementModal({
     canPersistArTablePosition({ geofenceState: effectiveGeofenceState, transform, floorPosition: position });
 
 
-  const getValidationMessages = () => {
-    const messages = [];
-    if (!toPoint(floorAnchorA)) messages.push("Thiếu floor anchor A.");
-    if (!toPoint(floorAnchorB)) messages.push("Thiếu floor anchor B.");
-    if (!toPoint(arAnchorA, "z")) messages.push("Thiếu AR anchor A.");
-    if (!toPoint(arAnchorB, "z")) messages.push("Thiếu AR anchor B.");
+  const validationState = useMemo(() => {
     const arA = toPoint(arAnchorA, "z");
     const arB = toPoint(arAnchorB, "z");
     const floorA = toPoint(floorAnchorA);
     const floorB = toPoint(floorAnchorB);
-    if (arA && arB && Math.hypot(arB.x - arA.x, arB.z - arA.z) < 0.1) messages.push("Hai điểm AR quá gần nhau.");
-    if (floorA && floorB && Math.hypot(floorB.x - floorA.x, floorB.y - floorA.y) < 1) messages.push("Hai điểm sơ đồ quá gần nhau.");
+    const tablePoint = toPoint(arTablePoint, "z");
+    const arPointsTooClose = Boolean(arA && arB && Math.hypot(arB.x - arA.x, arB.z - arA.z) < 0.1);
+    const floorPointsTooClose = Boolean(floorA && floorB && Math.hypot(floorB.x - floorA.x, floorB.y - floorA.y) < 1);
+
+    return {
+      arA,
+      arB,
+      floorA,
+      floorB,
+      tablePoint,
+      hasFloorAnchors: Boolean(floorA && floorB),
+      hasArAnchors: Boolean(arA && arB),
+      arPointsTooClose,
+      floorPointsTooClose,
+    };
+  }, [arAnchorA, arAnchorB, arTablePoint, floorAnchorA, floorAnchorB]);
+
+  const validationMessages = useMemo(() => {
+    const messages = [];
+    if (!validationState.floorA) messages.push("Thiếu floor anchor A.");
+    if (!validationState.floorB) messages.push("Thiếu floor anchor B.");
+    if (!validationState.arA) messages.push("Thiếu AR anchor A.");
+    if (!validationState.arB) messages.push("Thiếu AR anchor B.");
+    if (validationState.arPointsTooClose) messages.push("Hai điểm AR quá gần nhau.");
+    if (validationState.floorPointsTooClose) messages.push("Hai điểm sơ đồ quá gần nhau.");
     if (!transform) messages.push("Chưa tính được transform.");
-    if (!toPoint(arTablePoint, "z")) messages.push("Chưa ghim vị trí bàn.");
+    if (!validationState.tablePoint) messages.push("Chưa có vị trí bàn AR.");
     if (geofenceState?.canSaveArPosition === false && !effectiveGeofenceState?.demoOverride) messages.push("Đang ngoài geofence, không thể lưu trừ khi demo override bật.");
     return messages;
-  };
+  }, [effectiveGeofenceState?.demoOverride, geofenceState?.canSaveArPosition, transform, validationState]);
 
-  const validationMessages = getValidationMessages();
+  const saveDisabledReason = useMemo(() => {
+    if (!hasSelectedTable) return "Chưa chọn bàn.";
+    if (!validationState.tablePoint) return "Chưa có vị trí bàn AR.";
+    if (!validationState.hasFloorAnchors) return "Chưa đủ 2 mốc trên sơ đồ tầng.";
+    if (!validationState.hasArAnchors) return "Chưa đủ 2 mốc AR.";
+    if (validationState.arPointsTooClose) return "Hai điểm AR quá gần nhau.";
+    if (validationState.floorPointsTooClose) return "Hai điểm sơ đồ quá gần nhau.";
+    if (!transform) return "Chưa tính được transform.";
+    if (geofenceState?.canSaveArPosition === false && !effectiveGeofenceState?.demoOverride) {
+      return "Đang ngoài geofence và demo override chưa bật.";
+    }
+    if (!position) return "Chưa tính được Table.position.";
+    return "";
+  }, [effectiveGeofenceState?.demoOverride, geofenceState?.canSaveArPosition, hasSelectedTable, position, transform, validationState]);
+
   const preflightWebXrBlocked = arPreflight.some((item) => item.level === "error" && ["secureContext", "navigatorXr", "immersiveAr", "xrWebGlLayer", "webgl"].includes(item.key));
 
+  const getStepStatus = useCallback((stepKey) => {
+    if (placementStep === stepKey) return "active";
+    if (stepKey === "preflight") {
+      if (preflightWebXrBlocked) return "warning";
+      return arPreflight.length ? "done" : "pending";
+    }
+    if (stepKey === "floorAnchors") {
+      if (validationState.floorPointsTooClose) return "warning";
+      return validationState.hasFloorAnchors ? "done" : "pending";
+    }
+    if (stepKey === "arAnchors") {
+      if (validationState.arPointsTooClose) return "warning";
+      return validationState.hasArAnchors ? "done" : "pending";
+    }
+    if (stepKey === "placeTable") return validationState.tablePoint ? "done" : "pending";
+    if (stepKey === "review") return canSave ? "done" : "pending";
+    return "pending";
+  }, [arPreflight.length, canSave, placementStep, preflightWebXrBlocked, validationState]);
+
+  const getNextRecommendedStep = useCallback(() => {
+    const currentIndex = STEP_ORDER.indexOf(placementStep);
+    return STEP_ORDER[Math.min(currentIndex + 1, STEP_ORDER.length - 1)] || "review";
+  }, [placementStep]);
+
+  const clearSaveErrorIfNeeded = useCallback(() => {
+    setSaveError((prev) => (prev ? "" : prev));
+  }, []);
+
   const updatePoint = (setter, key, value) => {
+    clearSaveErrorIfNeeded();
     setter((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -344,6 +446,7 @@ export default function ArTablePlacementModal({
       return;
     }
 
+    clearSaveErrorIfNeeded();
     const storedPoint = normalizeStoredArPoint(point);
     pinnedHitMatrixRef.current = Array.from(matrix);
     setPinnedHitPoint(storedPoint);
@@ -351,18 +454,20 @@ export default function ArTablePlacementModal({
     setArTablePoint(pointToInputState(storedPoint));
     setRealArError("");
     setRealArStatus("Đã ghim model tại điểm AR hiện tại. Có thể xoay/scale và bấm Chọn vị trí này khi dữ liệu hợp lệ.");
-  }, [latestHitPoint]);
+  }, [clearSaveErrorIfNeeded, latestHitPoint]);
 
   const clearPinnedArPoint = useCallback(() => {
+    clearSaveErrorIfNeeded();
     pinnedHitMatrixRef.current = null;
     setPinnedHitPoint(null);
     setModelPinned(false);
     setRealArStatus("Đã bỏ ghim. Model sẽ tiếp tục bám theo điểm hit-test mới nhất.");
-  }, []);
+  }, [clearSaveErrorIfNeeded]);
 
   const fillArPoint = (target) => {
     const point = pinnedHitPoint || latestHitPointRef.current || latestHitPoint;
     if (!point) return;
+    clearSaveErrorIfNeeded();
     const nextValue = pointToInputState(point);
     if (target === "anchorA") setArAnchorA(nextValue);
     if (target === "anchorB") setArAnchorB(nextValue);
@@ -375,8 +480,13 @@ export default function ArTablePlacementModal({
   };
 
   const setupArModelRenderer = useCallback(async ({ canvas, gl, session }) => {
-    if (!selectedModel?.modelUrl || !GLTF_MODEL_PATTERN.test(selectedModel.modelUrl)) {
-      setArModelStatus("Chưa có model .glb/.gltf để hiển thị trong AR.");
+    if (!selectedModel?.modelUrl) {
+      setArModelStatus("Chưa có modelUrl để hiển thị model trong AR. Vẫn có thể dùng hit-test/manual để lấy tọa độ.");
+      setArModelError("");
+      return null;
+    }
+    if (!GLTF_MODEL_PATTERN.test(selectedModel.modelUrl)) {
+      setArModelStatus("Model hiện tại không phải .glb/.gltf nên không render trong WebXR. Vẫn có thể dùng hit-test/manual để lấy tọa độ.");
       setArModelError("");
       return null;
     }
@@ -442,8 +552,7 @@ export default function ArTablePlacementModal({
 
     try {
       const canvas = canvasRef.current || document.createElement("canvas");
-      canvas.width = Math.max(window.innerWidth || 1, 1);
-      canvas.height = Math.max(window.innerHeight || 1, 1);
+      resizeXrCanvasToViewport(canvas);
       const gl = canvas.getContext("webgl", {
         xrCompatible: true,
         alpha: true,
@@ -655,16 +764,21 @@ export default function ArTablePlacementModal({
         </div>
 
         <div className="ar-placement-modal__steps">
-          {[
-            ["preflight", "1. Kiểm tra thiết bị"],
-            ["floorAnchors", "2. Mốc sơ đồ tầng"],
-            ["arAnchors", "3. Mốc AR"],
-            ["placeTable", "4. Ghim vị trí bàn"],
-            ["review", "5. Kiểm tra và lưu"],
-          ].map(([key, label]) => (
-            <button key={key} type="button" className={placementStep === key ? "active" : ""} onClick={() => setPlacementStep(key)}>{label}</button>
-          ))}
+          {STEP_ORDER.map((key) => {
+            const status = getStepStatus(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`ar-placement-modal__step ar-placement-modal__step--${status}`}
+                onClick={() => setPlacementStep(key)}
+              >
+                {STEP_LABELS[key]}
+              </button>
+            );
+          })}
         </div>
+        <p className="ar-placement-modal__step-hint">{STEP_HINTS[placementStep]}</p>
 
         <div className="ar-placement-modal__section ar-placement-modal__section--preflight">
           <div className="ar-placement-modal__section-title">
@@ -695,9 +809,14 @@ export default function ArTablePlacementModal({
             Thiết bị/trình duyệt chưa hỗ trợ WebXR AR. Có thể nhập tọa độ manual để hiệu chỉnh và lưu khi đang ở nhà hàng.
           </div>
         )}
-        {(locationError || effectiveGeofenceState.warning) && (
+        {locationError && (
           <div className="ar-placement-modal__warning">
-            {effectiveGeofenceState.warning || locationError}
+            {locationError}
+          </div>
+        )}
+        {effectiveGeofenceState.warning && (
+          <div className="ar-placement-modal__warning">
+            {effectiveGeofenceState.warning}
           </div>
         )}
 
@@ -760,7 +879,7 @@ export default function ArTablePlacementModal({
                 min="0.05"
                 step="0.05"
                 value={arModelScale}
-                onChange={(e) => setArModelScale(e.target.value)}
+                onChange={(e) => { clearSaveErrorIfNeeded(); setArModelScale(e.target.value); }}
               />
             </label>
             <label>
@@ -769,7 +888,7 @@ export default function ArTablePlacementModal({
                 type="number"
                 step="5"
                 value={arModelRotation}
-                onChange={(e) => setArModelRotation(e.target.value)}
+                onChange={(e) => { clearSaveErrorIfNeeded(); setArModelRotation(e.target.value); }}
               />
             </label>
           </div>
@@ -794,7 +913,7 @@ export default function ArTablePlacementModal({
           {renderArInputs("AR điểm B", arAnchorB, setArAnchorB, "anchorB")}
           {renderArInputs("Vị trí bàn AR hiện tại", arTablePoint, setArTablePoint, "table")}
           <div className="ar-placement-modal__wizard-actions">
-            <Button type="button" variant="secondary" onClick={() => setPlacementStep("review")}>Sang bước tiếp theo</Button>
+            <Button type="button" variant="secondary" onClick={() => setPlacementStep(getNextRecommendedStep())}>Sang bước tiếp theo</Button>
           </div>
         </div>
 
@@ -809,6 +928,11 @@ export default function ArTablePlacementModal({
             <ul className="ar-placement-modal__validation">
               {validationMessages.map((message) => <li key={message}>{message}</li>)}
             </ul>
+          )}
+          {saveDisabledReason && (
+            <div className="ar-placement-modal__save-reason">
+              Chưa thể lưu: {saveDisabledReason}
+            </div>
           )}
           {saveError && <div className="ar-placement-modal__warning">{saveError}</div>}
         </div>
@@ -847,10 +971,10 @@ export default function ArTablePlacementModal({
               <Button type="button" variant="primary" onClick={pinCurrentArPoint} disabled={!latestHitPoint}>Ghim vị trí bàn</Button>
               <Button type="button" variant="secondary" onClick={clearPinnedArPoint} disabled={!modelPinned}>Bỏ ghim</Button>
               <Button type="button" variant="secondary" onClick={stopRealArSession}>Kết thúc AR</Button>
-              <Button type="button" variant="secondary" onClick={() => setArModelScale((v) => Math.max(0.05, Number((Number(v || 1) - 0.05).toFixed(2))))}>Scale -</Button>
-              <Button type="button" variant="secondary" onClick={() => setArModelScale((v) => Number((Number(v || 1) + 0.05).toFixed(2)))}>Scale +</Button>
-              <Button type="button" variant="secondary" onClick={() => setArModelRotation((v) => Number(v || 0) - 5)}>Xoay trái</Button>
-              <Button type="button" variant="secondary" onClick={() => setArModelRotation((v) => Number(v || 0) + 5)}>Xoay phải</Button>
+              <Button type="button" variant="secondary" onClick={() => { clearSaveErrorIfNeeded(); setArModelScale((v) => Math.max(0.05, Number((Number(v || 1) - 0.05).toFixed(2)))); }}>Scale -</Button>
+              <Button type="button" variant="secondary" onClick={() => { clearSaveErrorIfNeeded(); setArModelScale((v) => Number((Number(v || 1) + 0.05).toFixed(2))); }}>Scale +</Button>
+              <Button type="button" variant="secondary" onClick={() => { clearSaveErrorIfNeeded(); setArModelRotation((v) => Number(v || 0) - 5); }}>Xoay trái</Button>
+              <Button type="button" variant="secondary" onClick={() => { clearSaveErrorIfNeeded(); setArModelRotation((v) => Number(v || 0) + 5); }}>Xoay phải</Button>
             </div>
           </div>
         )}

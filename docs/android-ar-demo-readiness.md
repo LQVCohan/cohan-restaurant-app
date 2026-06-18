@@ -69,3 +69,25 @@ Hai điểm AR cần cách nhau tối thiểu khoảng 0.1m và hai điểm trê
 ## Ghi chú task
 
 Không chạy test/build/lint trong task này theo yêu cầu.
+
+## Cách đọc preflight checklist
+
+- **OK**: điều kiện đã sẵn sàng cho luồng demo tương ứng.
+- **Cảnh báo**: luồng AR hoặc manual vẫn có thể tiếp tục, nhưng có giới hạn cần biết trước khi demo. Ví dụ: thiếu `modelUrl` hoặc model không phải GLB/GLTF thì WebXR vẫn có thể lấy hit-test point, nhưng không render được model bàn.
+- **Lỗi**: cần xử lý trước khi dùng phần liên quan. Các lỗi WebXR/canvas như thiếu secure context, thiếu `navigator.xr`, không hỗ trợ `immersive-ar`, thiếu `XRWebGLLayer`, hoặc không tạo được WebGL context sẽ chặn nút bắt đầu AR thật. Các lỗi geofence/location ảnh hưởng khả năng lưu vị trí, không có nghĩa là manual input bị xóa.
+
+## Khi nào dùng AR native, khi nào dùng AR thật để lưu vị trí
+
+- **AR native để xem mẫu**: dùng khi chỉ muốn xem model bàn trong không gian thật bằng trình xem hệ thống/model-viewer. Luồng này giúp đánh giá kích thước và hình dáng mẫu, nhưng không lưu tọa độ vào sơ đồ.
+- **AR thật để lưu vị trí**: dùng khi cần lấy hit-test point WebXR, hiệu chỉnh với 2 mốc sơ đồ tầng và lưu `Table.position` nếu geofence + transform hợp lệ.
+- **Manual calibration**: dùng khi thiết bị không hỗ trợ WebXR hoặc khi cần nhập mốc thủ công. Manual vẫn cần dữ liệu geofence/override hợp lệ để lưu theo logic frontend hiện tại.
+
+## Lưu ý cho demo Android qua mạng thật
+
+Nếu đang demo bằng điện thoại Android, nên dùng HTTPS tunnel hoặc deploy staging để đảm bảo Chrome chạy trong secure context. HTTP LAN thông thường có thể làm WebXR không khả dụng.
+
+Nếu bật `VITE_AR_DEMO_ALLOW_SAVE_OUTSIDE_GEOFENCE=true`, app vẫn phải chạy trong DEV mode vì production không có hiệu lực với demo override này.
+
+## Nâng cấp sau
+
+Muốn lưu chính xác nhiều bàn theo từng tầng, bước nâng cấp sau nên lưu `arCalibration` theo floor nếu backend floor model/update API có field phù hợp. Task này không sửa backend/schema/database và không tự thêm field mới.
