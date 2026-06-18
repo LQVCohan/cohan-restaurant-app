@@ -231,6 +231,30 @@ const IMPORT_KNOWLEDGE = gql`
     }
   }
 `;
+const GENERATE_KNOWLEDGE_SUGGESTIONS = gql`
+  mutation GenerateManagerAiKnowledgeSuggestions($input: GenerateAiChatbotKnowledgeSuggestionsInput!) {
+    generateRestaurantAiChatbotKnowledgeSuggestions(input: $input) {
+      created
+      updated
+      skipped
+      total
+      suggestions {
+        id
+        question
+        suggestedTitle
+        suggestedContent
+        category
+        tags
+        triggerType
+        confidence
+        status
+        occurrenceCount
+        lastAskedAt
+        createdAt
+      }
+    }
+  }
+`;
 const APPROVE_SUGGESTION = gql`
   mutation ApproveManagerAiSuggestion(
     $id: ID!
@@ -602,6 +626,8 @@ export default function AiChatbotKnowledgePage() {
   const [bulkKnowledgeEnabled] = useMutation(BULK_KNOWLEDGE_ENABLED);
   const [bulkKnowledgeDelete] = useMutation(BULK_KNOWLEDGE_DELETE);
   const [importKnowledge] = useMutation(IMPORT_KNOWLEDGE);
+  const [generateKnowledgeSuggestions, generateKnowledgeSuggestionsState] =
+    useMutation(GENERATE_KNOWLEDGE_SUGGESTIONS);
   const [approveSuggestion] = useMutation(APPROVE_SUGGESTION);
   const [dismissSuggestion] = useMutation(DISMISS_SUGGESTION);
   const [deleteSuggestion] = useMutation(DELETE_SUGGESTION);
@@ -661,8 +687,8 @@ export default function AiChatbotKnowledgePage() {
     setErrorText("");
     setNotice("");
     try {
-      await action();
-      setNotice(successMessage);
+      const actionMessage = await action();
+      setNotice(actionMessage || successMessage);
       setPendingConfirm(null);
       refetchAll();
     } catch (error) {
@@ -900,6 +926,48 @@ export default function AiChatbotKnowledgePage() {
       setImportResult(result?.data?.importRestaurantAiChatbotKnowledge || null);
     }, "Đã nhập tri thức.");
 
+  const generateAutomaticSuggestions = () => {
+    if (!canModerateAi)
+      return block("Thiếu quyền ai.chatbot.moderate để tạo gợi ý tri thức.");
+    if (!effectiveRestaurantId)
+      return block("Chọn nhà hàng trước khi tạo gợi ý tri thức.");
+
+    return runAction(
+      async () => {
+        const result = await generateKnowledgeSuggestions({
+          variables: {
+            input: {
+              restaurantId: effectiveRestaurantId,
+              sources: [
+                "restaurant_info",
+                "opening_hours",
+                "booking",
+                "menu",
+                "payment",
+                "promotions",
+                "delivery_pickup",
+              ],
+              overwriteExisting: false,
+            },
+          },
+        });
+
+        const summary =
+          result?.data?.generateRestaurantAiChatbotKnowledgeSuggestions;
+        setActiveTab("suggestions");
+        suggestionsQuery.refetch?.();
+        knowledgeQuery.refetch?.();
+
+        if (summary) {
+          const message = `Đã tạo ${summary.created} gợi ý mới, cập nhật ${summary.updated}, bỏ qua ${summary.skipped}. Vào tab Gợi ý để duyệt trước khi chatbot sử dụng.`;
+          setNotice(message);
+          return message;
+        }
+      },
+      "Đã tạo gợi ý tri thức tự động.",
+    );
+  };
+
   const selectedAction = (ids, action, message) =>
     runAction(() => action({ variables: { input: { ids } } }), message);
   const disabledWriteTitle = canWriteKnowledge
@@ -928,6 +996,21 @@ export default function AiChatbotKnowledgePage() {
             <span className="ai-admin-selection">
               {selectedKnowledge.length} mục đã chọn
             </span>
+            <button
+              type="button"
+              className="ai-admin-button--secondary"
+              disabled={
+                !canModerateAi ||
+                !effectiveRestaurantId ||
+                generateKnowledgeSuggestionsState.loading
+              }
+              title={disabledModerateTitle}
+              onClick={generateAutomaticSuggestions}
+            >
+              {generateKnowledgeSuggestionsState.loading
+                ? "Đang tạo..."
+                : "Tạo tri thức tự động"}
+            </button>
             <button
               type="button"
               disabled={!canWriteKnowledge}
@@ -1257,6 +1340,11 @@ export default function AiChatbotKnowledgePage() {
             <div className="ai-admin-empty__icon">i</div>
             <h3>Chọn một mục tri thức</h3>
             <p>Chọn một mục tri thức để xem chi tiết hoặc thêm nội dung mới.</p>
+            <p>
+              Hệ thống sẽ đọc thông tin nhà hàng, giờ mở cửa, đặt bàn, thực đơn,
+              thanh toán, khuyến mãi và giao hàng để tạo các gợi ý tri thức.
+              Quản lý cần duyệt trước khi chatbot sử dụng.
+            </p>
             <button type="button" disabled={!canWriteKnowledge} title={disabledWriteTitle} onClick={() => setKnowledgeEditorOpen(true)}>Thêm tri thức</button>
           </article>
         )}
