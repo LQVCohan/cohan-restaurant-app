@@ -115,17 +115,29 @@ export async function submitTransferProof(_parent, { input }, ctx) {
   if (String(payment.userId) !== String(actorId)) {
     await requireRestaurantPermission(ctx, payment.restaurantId, PERMISSIONS.PAYMENT_WRITE);
   }
-  if (payment.status !== "pending") throw new Error("Only pending transfer can receive proof");
+  const currentTransferStatus = String(payment.transfer?.status || "").toUpperCase();
+  const isRejectedResubmission = payment.status === "failed" && currentTransferStatus === "REJECTED";
+  if (payment.status !== "pending" && !isRejectedResubmission) {
+    throw new Error("Only pending or rejected transfer can receive proof");
+  }
 
   const now = new Date();
+  payment.status = "pending";
+  payment.callbackStatus = "received";
   payment.transfer.status = "SUBMITTED";
   payment.transfer.submittedAt = now;
   payment.transfer.submittedBy = actorId;
   payment.transfer.proofImages = cleanImages(input?.proofImages || []);
   payment.transfer.proofNote = String(input?.proofNote || "").trim();
   payment.transfer.customerClaimedPaidAt = input?.customerClaimedPaidAt ? new Date(input.customerClaimedPaidAt) : now;
+  payment.transfer.rejectedAt = undefined;
+  payment.transfer.rejectedBy = undefined;
+  payment.transfer.rejectReason = undefined;
   payment.events = Array.isArray(payment.events) ? payment.events : [];
-  payment.events.push({ type: "transfer_proof_submitted", payload: { by: String(actorId) } });
+  payment.events.push({
+    type: isRejectedResubmission ? "transfer_proof_resubmitted" : "transfer_proof_submitted",
+    payload: { by: String(actorId) },
+  });
   await payment.save();
 
   const orderIds = orderIdsFrom(payment);
