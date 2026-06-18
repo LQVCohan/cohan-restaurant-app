@@ -61,7 +61,7 @@ const fmt = (value, currency = "VND") =>
   Number(value || 0).toLocaleString("vi-VN", { style: "currency", currency });
 const asDate = (value) => (value ? new Date(value).toLocaleString("vi-VN") : "-");
 const statusLabel = (value) => String(value || "-").replace(/_/g, " ");
-const transferStatusOptions = ["SUBMITTED", "VERIFYING", "VERIFIED", "REJECTED"];
+const transferStatusOptions = ["SUBMITTED", "VERIFYING", "VERIFIED", "REJECTED", "FAILED", "EXPIRED"];
 
 function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit }) {
   const [reason, setReason] = useState("");
@@ -86,7 +86,10 @@ function TransferDecisionModal({ mode, payment, submitting, onClose, onSubmit })
             <label className="tx-field"><span>Ghi chú xác minh</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Tuỳ chọn" /></label>
           </>
         ) : (
-          <label className="tx-field"><span>Lý do từ chối *</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Bắt buộc nhập lý do để khách biết cần bổ sung gì" /></label>
+          <>
+            <label className="tx-field"><span>Lý do từ chối *</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Bắt buộc nhập lý do để khách biết cần bổ sung gì" /></label>
+            <p className="helper">Khách có thể gửi lại bằng chứng sau khi bị từ chối.</p>
+          </>
         )}
         <button className={isVerify ? "btn-primary tx-submit" : "btn-danger-soft tx-submit"} disabled={!valid || submitting} onClick={() => onSubmit({ receivedAmount: Number(receivedAmount || 0), providerTransactionId, reason })}>
           {submitting ? "Đang xử lý..." : isVerify ? "Xác minh & release đơn" : "Từ chối bằng chứng"}
