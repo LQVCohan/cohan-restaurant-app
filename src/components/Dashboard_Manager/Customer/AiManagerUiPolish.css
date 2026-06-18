@@ -121,6 +121,30 @@
   padding-inline: 16px !important;
 }
 
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-panel__header {
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  overflow: visible !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-panel__header > div:first-child {
+  min-width: 0 !important;
+  flex: 1 1 260px !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end {
+  width: 100% !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary {
+  background: #dcefe9 !important;
+  border-color: rgba(31, 106, 96, 0.22) !important;
+  color: #17554d !important;
+  box-shadow: 0 8px 18px rgba(31, 106, 96, 0.12) !important;
+}
+
 /* Handoff inbox: make it a wide operator console instead of a narrow centered card. */
 .ai-handoff-inbox {
   max-width: 1280px !important;
