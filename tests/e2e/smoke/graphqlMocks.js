@@ -331,6 +331,31 @@ function buildGraphqlData(operationName, variables, authUser) {
       return { runRestaurantAiChatbotEvaluationSet: [AI_EVALUATION_RESULT] };
     case "ImportManagerAiKnowledge":
       return { importRestaurantAiChatbotKnowledge: { imported: 1, skipped: 0, errors: [] } };
+    case "GenerateManagerAiKnowledgeSuggestions":
+      return {
+        generateRestaurantAiChatbotKnowledgeSuggestions: {
+          created: 3,
+          updated: 0,
+          skipped: 1,
+          total: 4,
+          suggestions: [
+            {
+              id: "auto-suggestion-1",
+              question: "Nhà hàng mở cửa lúc nào?",
+              suggestedTitle: "Giờ mở cửa nhà hàng",
+              suggestedContent: "Nhà hàng mở cửa từ 9:00 đến 22:00 hằng ngày.",
+              category: "opening_hours",
+              tags: ["giờ mở cửa", "nhà hàng"],
+              triggerType: "no_knowledge_match",
+              confidence: 0.96,
+              status: "pending",
+              occurrenceCount: 1,
+              lastAskedAt: "2026-06-02T09:12:00.000Z",
+              createdAt: "2026-06-02T09:12:00.000Z",
+            },
+          ],
+        },
+      };
     case "CreateManagerAiKnowledge":
       return { createRestaurantAiChatbotKnowledgeItem: { id: "ai-knowledge-new" } };
     case "UpdateManagerAiKnowledge":
