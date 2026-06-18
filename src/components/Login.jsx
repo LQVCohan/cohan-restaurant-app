@@ -428,7 +428,6 @@ const LoginPage = () => {
           className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}
         >
           <form className="auth-form auth-form--register" onSubmit={handleRegister}>
-            <span className="auth-eyebrow">FoodHub account</span>
             <h1>Tạo tài khoản</h1>
             <p className="auth-subtitle">hoặc đăng ký bằng email</p>
 
@@ -554,7 +553,6 @@ const LoginPage = () => {
           className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}
         >
           <form className="auth-form auth-form--login" onSubmit={handleLogin}>
-            <span className="auth-eyebrow">FoodHub account</span>
             <h1>Đăng nhập</h1>
             <p className="auth-subtitle">hoặc sử dụng tài khoản của bạn</p>
 
