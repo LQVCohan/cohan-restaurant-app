@@ -151,14 +151,34 @@
 .ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end button:disabled {
   display: inline-flex !important;
   visibility: visible !important;
-  opacity: 0.9 !important;
+  opacity: 0.78 !important;
 }
 
 .ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary {
-  background: #dcefe9 !important;
-  border-color: rgba(31, 106, 96, 0.22) !important;
+  background: #e7f3ee !important;
+  border: 1px solid rgba(31, 106, 96, 0.28) !important;
   color: #17554d !important;
-  box-shadow: 0 8px 18px rgba(31, 106, 96, 0.12) !important;
+  box-shadow: 0 8px 18px rgba(31, 106, 96, 0.1) !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary:hover:not(:disabled) {
+  background: #1f6a60 !important;
+  border-color: #1f6a60 !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 10px 22px rgba(31, 106, 96, 0.2) !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary:focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.24) !important;
+  outline-offset: 2px !important;
+}
+
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary:disabled,
+.ai-admin-page--knowledge .ai-admin-grid--knowledge .ai-admin-actions--end .ai-admin-button--secondary:disabled:hover {
+  background: #edf4ef !important;
+  border-color: rgba(31, 106, 96, 0.16) !important;
+  color: rgba(23, 85, 77, 0.74) !important;
+  box-shadow: none !important;
 }
 
 /* Handoff inbox: make it a wide operator console instead of a narrow centered card. */
