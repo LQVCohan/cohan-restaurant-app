@@ -25,11 +25,27 @@ import {
   verifyMomoCallback,
   verifyVnpayCallback,
 } from "./providers.js";
+import { syncKitchenOrderWorkItemsForKitchenEntry } from "../kitchen/kitchenOrderWorkItem.service.js";
 
 const SUPPORTED = ["momo", "vnpay", "bank_transfer"];
 const RESERVATION_SUPPORTED = ["momo", "vnpay"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 const CLOSED_CHILD_PAYMENT_STATUSES = new Set(["paid", "cancelled"]);
+function isBankTransferPayment(payment = {}) {
+  const provider = String(payment.provider || "").toLowerCase();
+  const paymentMethod = String(payment.paymentMethod || "").toLowerCase();
+  return ["bank_transfer", "transfer"].includes(provider) || ["bank_transfer", "transfer"].includes(paymentMethod);
+}
+function buildVietQrUrl({ bankCode, bankAccountNumber, amount, transferContent, accountName }) {
+  const code = String(bankCode || "").trim();
+  const account = String(bankAccountNumber || "").replace(/\s+/g, "").trim();
+  if (!code || !account) return null;
+  const url = new URL(`https://img.vietqr.io/image/${encodeURIComponent(code)}-${encodeURIComponent(account)}-compact2.png`);
+  if (Number(amount) > 0) url.searchParams.set("amount", String(Math.round(Number(amount))));
+  if (transferContent) url.searchParams.set("addInfo", String(transferContent));
+  if (accountName) url.searchParams.set("accountName", String(accountName));
+  return url.toString();
+}
 const normalizeBankAccountNumber = (value) => String(value || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 const normalizeDescription = (value) => String(value || "").toUpperCase().replace(/\s+/g, " ").trim();
 const normalizeOccurredAt = (value) => {
@@ -376,6 +392,14 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
         accountName: process.env.BANK_TRANSFER_ACCOUNT_NAME || "COHAN RESTAURANT",
         bankCode: process.env.BANK_TRANSFER_BANK_CODE || "VCB",
         transferContent,
+        expectedAmount,
+        qrImageUrl: buildVietQrUrl({
+          bankCode: process.env.BANK_TRANSFER_BANK_CODE || "VCB",
+          bankAccountNumber: process.env.BANK_TRANSFER_ACCOUNT_NUMBER || "1234567890",
+          amount: expectedAmount,
+          transferContent,
+          accountName: process.env.BANK_TRANSFER_ACCOUNT_NAME || "COHAN RESTAURANT",
+        }),
       },
     };
   }
@@ -434,7 +458,46 @@ export async function settlePaidOrderPaymentSession({ payment, source = "callbac
   const invoiceStatus = Number(payment.amount || 0) >= Number(authoritativeTotals.grandTotal || 0) ? "PAID" : "PARTIAL";
   const invoice = await Invoice.create([{ restaurantId: payment.restaurantId, orderIds, number: await generateInvoiceNumber(Invoice, session), issuedAt: now, lines, totals: authoritativeTotals, paid: payment.amount, status: invoiceStatus, currency: "VND", refTransactionId: trx._id, meta: invoiceMeta }], { session }).then((x) => x[0]);
   const cashflow = await Cashflow.create([{ restaurantId: payment.restaurantId, type: "INFLOW", amount: payment.amount, currency: "VND", ref: { kind: "Invoice", id: invoice._id, orderIds }, note: "Thanh toán tự động", occurredAt: now }], { session }).then((x) => x[0]);
-  await Order.updateMany({ _id: { $in: orderIds } }, { $set: { "payment.method": payment.provider, "payment.provider": payment.provider, "payment.status": "paid", "payment.paidAmount": payment.amount, "payment.paidAt": now, "payment.txnRef": payment.providerTransactionId || payment.reference, currentStatus: "completed" } }, { session });
+  const releaseOrderIds = [];
+  for (const order of orders) {
+    const previousStatus = String(order?.currentStatus || "").toLowerCase();
+    const alreadyPaid = String(order?.payment?.status || "").toLowerCase() === "paid";
+    order.payment = {
+      ...(order.payment || {}),
+      method: payment.provider,
+      provider: payment.provider,
+      status: "paid",
+      paidAmount: payment.amount,
+      paidAt: now,
+      txnRef: payment.providerTransactionId || payment.reference,
+    };
+    if (["draft", "failed"].includes(previousStatus) || isBankTransferPayment(payment)) {
+      order.currentStatus = "pending";
+      order.customerVisibleNote = "Nhà hàng đã nhận đơn và đang xử lý.";
+      const lastTimelineStatus = Array.isArray(order.statusTimeline) && order.statusTimeline.length
+        ? String(order.statusTimeline[order.statusTimeline.length - 1]?.status || "").toLowerCase()
+        : "";
+      if (lastTimelineStatus !== "pending") {
+        order.statusTimeline = Array.isArray(order.statusTimeline) ? order.statusTimeline : [];
+        order.statusTimeline.push({
+          status: "pending",
+          at: now,
+          byUserId: payment.userId || undefined,
+          note: `Payment verified via ${source}; order released to restaurant.`,
+        });
+      }
+      if (!alreadyPaid && previousStatus === "draft") releaseOrderIds.push(String(order._id));
+    }
+    await order.save({ session });
+    if (!alreadyPaid && previousStatus === "draft") {
+      await syncKitchenOrderWorkItemsForKitchenEntry({
+        order,
+        actorUserId: payment.userId || null,
+        now,
+        session,
+      });
+    }
+  }
   if (payment?.metadata?.appliedDiscount && payment?.metadata?.discountTotals?.couponId) {
     const rawCouponId = String(payment.metadata.discountTotals.couponId || "");
     if (!mongoose.isValidObjectId(rawCouponId)) throw new Error("Invalid couponId in payment discount metadata");
@@ -477,7 +540,13 @@ export async function settlePaidOrderPaymentSession({ payment, source = "callbac
       }
     }
   }
-  payment.metadata = { ...(payment.metadata || {}), settlement: { paymentTransactionId: trx._id, invoiceId: invoice._id, cashflowId: cashflow._id } };
+  payment.metadata = {
+    ...(payment.metadata || {}),
+    settlement: { paymentTransactionId: trx._id, invoiceId: invoice._id, cashflowId: cashflow._id },
+    release: releaseOrderIds.length
+      ? { releasedAt: now, releasedBy: source, orderIds: releaseOrderIds }
+      : payment?.metadata?.release,
+  };
   await payment.save({ session });
   return payment.metadata.settlement;
 }
@@ -549,7 +618,9 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
   if (payment.status === "success") {
     payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
     await payment.save();
-    return payment.toObject();
+    const out = payment.toObject();
+    out.realtimeEmitSkipped = true;
+    return out;
   }
 
   payment.status = mapProviderStatus(normalizedProvider, payload);
@@ -761,6 +832,20 @@ export async function reconcileBankTransferWebhook({ provider, payload }) {
       payment.providerTransactionId = transactionId || payment.providerTransactionId;
       payment.reconciledAt = new Date();
       payment.callbackRaw = payload;
+      payment.transfer = payment.transfer || {};
+      payment.transfer.status = "VERIFIED";
+      payment.transfer.verifiedAt = new Date();
+      payment.transfer.providerTransactionId = transactionId || payment.providerTransactionId;
+      payment.transfer.receivedAmount = amount;
+      payment.transfer.varianceAmount = 0;
+      payment.transfer.rejectReason = undefined;
+      payment.transfer.rejectedAt = undefined;
+      if (Array.isArray(payment.events)) {
+        payment.events.push({
+          type: "transfer_verified",
+          payload: { by: "bank_webhook", provider, transactionId },
+        });
+      }
       await payment.save({ session });
 
       await PaymentReconciliation.create([{

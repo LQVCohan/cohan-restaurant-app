@@ -45,6 +45,7 @@ const PRIORITY_LABELS = {
   LOW: "Ưu tiên thấp",
 };
 const ORDER_STATUS_LABELS = {
+  draft: "Chờ thanh toán",
   pending: "Chờ xử lý",
   confirmed: "Đã nhận",
   preparing: "Đang chế biến",

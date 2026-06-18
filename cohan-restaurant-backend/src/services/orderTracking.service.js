@@ -238,6 +238,8 @@ export function toCustomerTrackingPayload(order = {}) {
     }),
     payment: {
       status: normalizedPaymentStatus.toUpperCase(),
+      method: order?.payment?.method || null,
+      provider: order?.payment?.provider || null,
       canRequestPayment: ["partial", "unpaid"].includes(normalizedPaymentStatus),
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
