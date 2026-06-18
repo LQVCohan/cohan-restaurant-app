@@ -21,6 +21,7 @@ import {
   UserCoupon,
 } from "../../../models/index.js";
 import { cancelPaymentSession, createOrderPayment, createReservationPayment, sanitizePaymentSessionForClient } from "../../../src/services/payment/paymentSession.service.js";
+import { expireStaleTransferPayments } from "../../../src/services/payment/transferExpiry.service.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -1629,6 +1630,7 @@ export const createReservationPaymentMutation = async (
 export const syncPaymentStatus = async (_parent, { paymentId }, ctx) => {
   if (!mongoose.isValidObjectId(paymentId))
     throw new Error("Invalid paymentId");
+  await expireStaleTransferPayments({ now: new Date(), paymentId, io: ctx?.io }).catch(() => {});
   const payment = await PaymentSession.findById(paymentId).lean();
   if (!payment) throw new Error("Payment session not found");
   if (String(payment.userId || "") !== String(ctx?.user?.id || "")) {

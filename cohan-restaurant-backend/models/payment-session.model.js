@@ -45,6 +45,14 @@ const TransferPaymentSchema = new Schema(
     varianceAmount: { type: Number },
     matchedBankTransactionId: { type: Types.ObjectId, ref: "BankTransaction", index: true },
     matchedReconciliationId: { type: Types.ObjectId, ref: "PaymentReconciliation", index: true },
+    rejectedCount: { type: Number, default: 0, min: 0 },
+    maxRejectedCount: { type: Number, default: 3, min: 1 },
+    lastRejectedAt: { type: Date },
+    lastRejectedReason: { type: String, trim: true },
+    reminderShownAt: { type: Date },
+    pausedAt: { type: Date },
+    resumedAt: { type: Date },
+    proofCycleStartedAt: { type: Date },
   },
   { _id: false }
 );

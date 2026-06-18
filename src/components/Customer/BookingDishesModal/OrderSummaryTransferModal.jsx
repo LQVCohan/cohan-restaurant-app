@@ -37,6 +37,7 @@ const CREATE_CUSTOMER_TRANSFER_PAYMENT = gql`
   mutation CreateCustomerTransferPayment($input: CreateCustomerTransferPaymentInput!) {
     createCustomerTransferPayment(input: $input) {
       id
+      createdAt
       amount
       currency
       reference
@@ -44,7 +45,7 @@ const CREATE_CUSTOMER_TRANSFER_PAYMENT = gql`
       callbackStatus
       metadata
       expiresAt
-      transfer { status rejectReason proofImages submittedAt verifiedAt rejectedAt }
+      transfer { status rejectReason rejectedCount maxRejectedCount lastRejectedReason proofImages proofNote submittedAt verifiedAt rejectedAt pausedAt resumedAt proofCycleStartedAt }
     }
   }
 `;
@@ -53,10 +54,11 @@ const SUBMIT_TRANSFER_PROOF = gql`
   mutation SubmitTransferProof($input: SubmitTransferProofInput!) {
     submitTransferProof(input: $input) {
       id
+      createdAt
       status
       callbackStatus
       expiresAt
-      transfer { status rejectReason proofImages submittedAt verifiedAt rejectedAt }
+      transfer { status rejectReason rejectedCount maxRejectedCount lastRejectedReason proofImages proofNote submittedAt verifiedAt rejectedAt pausedAt resumedAt proofCycleStartedAt }
     }
   }
 `;
@@ -65,10 +67,11 @@ const SYNC_PAYMENT_STATUS = gql`
   mutation SyncPaymentStatus($paymentId: ID!) {
     syncPaymentStatus(paymentId: $paymentId) {
       id
+      createdAt
       status
       callbackStatus
       expiresAt
-      transfer { status rejectReason verifiedAt rejectedAt }
+      transfer { status rejectReason rejectedCount maxRejectedCount lastRejectedReason proofImages proofNote submittedAt verifiedAt rejectedAt pausedAt resumedAt proofCycleStartedAt }
     }
   }
 `;
@@ -111,21 +114,29 @@ const isShippingValid = (shipping) => {
   return nameOk && phoneOk && emailOk && addressOk;
 };
 
-const isTransferSessionExpired = (session = {}) => {
-  if (!session?.expiresAt) return false;
-  const expiresAtMs = new Date(session.expiresAt).getTime();
-  return Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now();
+const getTransferTiming = (session = {}, nowMs = Date.now()) => {
+  const startedRaw = session?.transfer?.proofCycleStartedAt || session?.transfer?.resumedAt || session?.createdAt;
+  const startMs = startedRaw ? new Date(startedRaw).getTime() : NaN;
+  const expiresMs = session?.expiresAt ? new Date(session.expiresAt).getTime() : NaN;
+  const totalMs = Number.isFinite(startMs) && Number.isFinite(expiresMs) ? Math.max(expiresMs - startMs, 0) : 0;
+  const remainingMs = Number.isFinite(expiresMs) ? Math.max(expiresMs - nowMs, 0) : 0;
+  return { totalMs, remainingMs, halfTimeReached: totalMs > 0 && remainingMs <= totalMs * 0.5 };
 };
 
-const resolveTransferStatus = (session = {}) => {
-  if (isTransferSessionExpired(session) && String(session?.status || "").toLowerCase() !== "success") return "EXPIRED";
-  if (String(session?.status || "").toLowerCase() === "success") return "VERIFIED";
-  return String(session?.transfer?.status || "INSTRUCTIONS_SHOWN").toUpperCase();
+const resolveTransferStatus = (session = {}, nowMs = Date.now()) => {
+  const paymentStatus = String(session?.status || "").toLowerCase();
+  const transferStatus = String(session?.transfer?.status || "INSTRUCTIONS_SHOWN").toUpperCase();
+  if (paymentStatus === "success" || transferStatus === "VERIFIED") return "VERIFIED";
+  if (["SUBMITTED", "VERIFYING"].includes(transferStatus)) return transferStatus;
+  if (transferStatus === "FAILED") return "FAILED";
+  if (transferStatus === "EXPIRED" || paymentStatus === "expired") return "EXPIRED";
+  if (session?.expiresAt && new Date(session.expiresAt).getTime() <= nowMs && ["INSTRUCTIONS_SHOWN", "REJECTED"].includes(transferStatus)) return "EXPIRED";
+  return transferStatus || "INSTRUCTIONS_SHOWN";
 };
 
 const shouldPollTransferSession = (session = {}) => {
   const status = resolveTransferStatus(session);
-  return !["VERIFIED", "REJECTED", "FAILED", "EXPIRED"].includes(status);
+  return !["VERIFIED", "FAILED", "EXPIRED"].includes(status);
 };
 
 const TRANSFER_STEPS = [
@@ -146,13 +157,13 @@ const transferStatusLabel = {
 };
 
 const transferStatusDescription = {
-  INSTRUCTIONS_SHOWN: "Vui lòng chuyển khoản đúng số tiền và nội dung, sau đó gửi bằng chứng thanh toán.",
-  SUBMITTED: "Bằng chứng đã được gửi. Hệ thống sẽ cập nhật ngay khi nhà hàng xác minh.",
+  INSTRUCTIONS_SHOWN: "Hệ thống đang tự kiểm tra giao dịch. Khi thanh toán được ghi nhận, đơn của bạn sẽ được xác nhận ngay.",
+  SUBMITTED: "Đã nhận minh chứng. Thời gian chờ đã tạm dừng để nhà hàng kiểm tra.",
   VERIFYING: "Nhà hàng đang kiểm tra giao dịch. Vui lòng chờ trong ít phút.",
   VERIFIED: "Thanh toán đã được xác minh. Nhà hàng đã nhận đơn và đang xử lý.",
   REJECTED: "Bằng chứng chưa hợp lệ. Vui lòng gửi lại ảnh rõ hơn hoặc đúng thông tin chuyển khoản.",
   FAILED: "Thanh toán chưa hợp lệ. Vui lòng kiểm tra lại thông tin hoặc liên hệ nhà hàng.",
-  EXPIRED: "Phiên thanh toán đã hết hạn. Vui lòng tạo lại đơn hoặc phiên thanh toán mới.",
+  EXPIRED: "Phiên thanh toán đã hết hạn vì hệ thống chưa ghi nhận giao dịch và chưa có minh chứng thanh toán. Đơn của bạn đã được hủy.",
 };
 
 const parseProofUrls = (value = "") => String(value || "")
@@ -472,8 +483,8 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
       <header className="transfer-payment-hero">
         <div>
           <p className="transfer-payment-eyebrow">Thanh toán chuyển khoản</p>
-          <h3>Quét QR hoặc chuyển khoản đúng nội dung</h3>
-          <p>Đơn của bạn đang được giữ lại cho đến khi thanh toán được xác minh.</p>
+          <h3>Quét QR để hoàn tất thanh toán</h3>
+          <p>Hệ thống đang tự kiểm tra giao dịch. Khi thanh toán được ghi nhận, đơn của bạn sẽ được xác nhận ngay.</p>
         </div>
 
         <div className="transfer-payment-live">
@@ -508,7 +519,11 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
           const previewUrls = parseProofUrls(proofForm.images);
           const submittedProofImages = Array.isArray(session?.transfer?.proofImages) ? session.transfer.proofImages.filter(Boolean) : [];
           const needsResubmit = status === "REJECTED";
-          const canSubmitProof = ["INSTRUCTIONS_SHOWN", "REJECTED", "FAILED"].includes(status);
+          const rejectedCount = Number(session?.transfer?.rejectedCount || 0);
+          const maxRejectedCount = Number(session?.transfer?.maxRejectedCount || 3);
+          const remainingAttempts = Math.max(maxRejectedCount - rejectedCount, 0);
+          const timing = getTransferTiming(session);
+          const canSubmitProof = ["INSTRUCTIONS_SHOWN", "REJECTED"].includes(status) && rejectedCount < maxRejectedCount;
           const isSubmittingProof = Boolean(submittingProofBySession[sessionId]);
           const isRefreshing = refreshingSessionId === sessionId;
           const expiresAt = session?.expiresAt ? new Date(session.expiresAt) : null;
@@ -553,6 +568,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
                   <TransferInfoRow label="Nội dung chuyển khoản" value={bank.transferContent || session.reference} copyKey={`${copyPrefix}content`} important onCopy={copyToClipboard} copied={copiedField} />
                   <TransferInfoRow label="Mã tham chiếu" value={session.reference} copyKey={`${copyPrefix}reference`} onCopy={copyToClipboard} copied={copiedField} />
                   {expiresAt && <TransferInfoRow label="Hạn thanh toán" value={expiresAt.toLocaleString("vi-VN")} copyKey={`${copyPrefix}expires`} onCopy={copyToClipboard} copied={copiedField} />}
+                  {["INSTRUCTIONS_SHOWN", "REJECTED"].includes(status) && timing.remainingMs > 0 && <TransferInfoRow label="Còn lại" value={`${Math.floor(timing.remainingMs / 60000)}:${String(Math.floor((timing.remainingMs % 60000) / 1000)).padStart(2, "0")}`} copyKey={`${copyPrefix}remaining`} copied={copiedField} />}
                 </div>
               </div>
 
@@ -565,6 +581,15 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
                   <p className={`transfer-status-message transfer-status-message--${status.toLowerCase()}`}>
                     {transferStatusDescription[status]}
                   </p>
+                  {timing.halfTimeReached && timing.remainingMs > 0 && ["INSTRUCTIONS_SHOWN", "REJECTED"].includes(status) && (
+                    <p className="transfer-reminder-banner">Phiên thanh toán sắp hết hạn. Nếu bạn chưa thanh toán, vui lòng chuyển khoản trong thời gian còn lại. Nếu bạn đã chuyển khoản nhưng hệ thống chưa ghi nhận, hãy tải ảnh minh chứng để nhà hàng hỗ trợ xác minh nhanh hơn.</p>
+                  )}
+                  {status === "REJECTED" && rejectedCount > 0 && remainingAttempts > 0 && (
+                    <p className={`transfer-rejected-warning ${remainingAttempts <= 1 ? "is-final" : ""}`}>Minh chứng chưa hợp lệ. Bạn còn {remainingAttempts} lần gửi lại. Vui lòng kiểm tra đúng số tiền, nội dung chuyển khoản và ảnh biên lai trước khi gửi lại.</p>
+                  )}
+                  {rejectedCount >= maxRejectedCount && (
+                    <p className="transfer-terminal-warning">Minh chứng đã bị từ chối quá 3 lần nên phiên thanh toán đã dừng để tránh giữ đơn quá lâu. Vui lòng tạo đơn mới hoặc liên hệ nhà hàng.</p>
+                  )}
 
                   {submittedProofImages.length > 0 && (
                     <div className="transfer-proof-submitted">
@@ -579,7 +604,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
                     </div>
                   )}
 
-                  {(status === "SUBMITTED" || status === "VERIFYING") && <p className="transfer-proof-waiting">Đã gửi bằng chứng. Đang chờ xác minh.</p>}
+                  {(status === "SUBMITTED" || status === "VERIFYING") && <p className="transfer-proof-waiting">Đã nhận minh chứng. Thời gian chờ đã tạm dừng để nhà hàng kiểm tra.</p>}
 
                   {needsResubmit && session.transfer?.rejectReason && (
                     <p className="transfer-reject-reason">Lý do từ chối: {session.transfer.rejectReason}</p>
@@ -587,6 +612,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
 
                   {status !== "EXPIRED" && canSubmitProof && (
                     <>
+                      <p className="transfer-proof-helper">Nếu bạn đã chuyển khoản, hãy tải ảnh minh chứng để nhà hàng kiểm tra thủ công và xử lý nhanh hơn.</p>
                       <div className="transfer-proof-grid">
                         <label>
                           URL ảnh bằng chứng chuyển khoản
@@ -626,7 +652,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
                       <button
                         type="button"
                         className="transfer-proof-primary"
-                        disabled={isSubmittingProof || !previewUrls.length || ["VERIFIED", "SUBMITTED", "VERIFYING", "EXPIRED"].includes(status)}
+                        disabled={isSubmittingProof || !previewUrls.length || !canSubmitProof || ["VERIFIED", "SUBMITTED", "VERIFYING", "EXPIRED", "FAILED"].includes(status)}
                         onClick={() => handleSubmitProof(sessionId)}
                       >
                         {isSubmittingProof ? "Đang gửi..." : needsResubmit ? "Gửi lại bằng chứng" : "Gửi bằng chứng"}

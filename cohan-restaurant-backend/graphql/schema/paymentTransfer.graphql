@@ -27,6 +27,14 @@ type TransferPaymentState {
   varianceAmount: Float
   matchedBankTransactionId: ID
   matchedReconciliationId: ID
+  rejectedCount: Int
+  maxRejectedCount: Int
+  lastRejectedAt: DateTime
+  lastRejectedReason: String
+  reminderShownAt: DateTime
+  pausedAt: DateTime
+  resumedAt: DateTime
+  proofCycleStartedAt: DateTime
 }
 
 extend type PaymentSession {
@@ -61,7 +69,7 @@ input RejectTransferPaymentInput {
 }
 
 extend type Query {
-  transferPaymentQueue(restaurantId: ID!, status: TransferVerificationStatus, limit: Int): [PaymentSession!]!
+  transferPaymentQueue(restaurantId: ID!, status: TransferVerificationStatus, statuses: [TransferVerificationStatus!], limit: Int): [PaymentSession!]!
 }
 
 extend type Mutation {

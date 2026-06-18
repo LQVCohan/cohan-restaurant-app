@@ -25,7 +25,7 @@ function isBankTransferPayment(payment = {}) {
     || ["bank_transfer", "transfer"].includes(paymentMethod);
 }
 
-function buildPaymentEventPayload(payment, eventType) {
+function buildPaymentEventPayload(payment, eventType, message = null) {
   return {
     type: eventType,
     paymentSessionId: stringId(payment._id || payment.id),
@@ -37,17 +37,19 @@ function buildPaymentEventPayload(payment, eventType) {
     provider: payment.provider,
     providerTransactionId: payment.providerTransactionId || null,
     transfer: payment.transfer || null,
+    expiresAt: payment.expiresAt || null,
+    message,
   };
 }
 
-export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VERIFIED" }) {
+export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VERIFIED", message = null }) {
   if (!io || !payment) return;
 
   const paymentPayload = normalizePayment(payment);
   if (!paymentPayload) return;
 
   if (paymentPayload.userId) {
-    io.to(`user_${paymentPayload.userId}`).emit("paymentEvents", buildPaymentEventPayload(paymentPayload, eventType));
+    io.to(`user_${paymentPayload.userId}`).emit("paymentEvents", buildPaymentEventPayload(paymentPayload, eventType, message));
   }
 
   const orderIds = orderIdsFromPayment(paymentPayload);

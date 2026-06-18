@@ -30,6 +30,11 @@ import { syncKitchenOrderWorkItemsForKitchenEntry } from "../kitchen/kitchenOrde
 const SUPPORTED = ["momo", "vnpay", "bank_transfer"];
 const RESERVATION_SUPPORTED = ["momo", "vnpay"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
+const TRANSFER_PAYMENT_TTL_MINUTES_RAW = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10);
+export const TRANSFER_PAYMENT_TTL_MINUTES = Number.isFinite(TRANSFER_PAYMENT_TTL_MINUTES_RAW) && TRANSFER_PAYMENT_TTL_MINUTES_RAW > 0 ? TRANSFER_PAYMENT_TTL_MINUTES_RAW : 10;
+export const TRANSFER_PAYMENT_TTL_MS = TRANSFER_PAYMENT_TTL_MINUTES * 60 * 1000;
+export const TRANSFER_HALF_TIME_RATIO = 0.5;
+export const TRANSFER_MAX_REJECTED_PROOFS = 3;
 const CLOSED_CHILD_PAYMENT_STATUSES = new Set(["paid", "cancelled"]);
 function isBankTransferPayment(payment = {}) {
   const provider = String(payment.provider || "").toLowerCase();
@@ -74,8 +79,8 @@ export function sanitizePaymentSessionForClient(session, { includeRaw = false } 
   return payload;
 }
 function getPaymentSessionTtlMinutes() {
-  const raw = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 15);
-  return Number.isFinite(raw) && raw > 0 ? raw : 15;
+  const raw = Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10;
 }
 export function buildOrderPaymentFingerprint({ orderIds = [], provider, paymentMethod, amount, pricing, promotionIds = [], discountTotals }) {
   return JSON.stringify({
@@ -95,6 +100,7 @@ export function buildOrderPaymentFingerprint({ orderIds = [], provider, paymentM
 }
 export async function expirePendingPaymentSessionIfNeeded(payment, now = new Date()) {
   if (!payment || String(payment.status) !== "pending") return false;
+  if (isBankTransferPayment(payment) && ["SUBMITTED", "VERIFYING", "VERIFIED"].includes(String(payment?.transfer?.status || "").toUpperCase())) return false;
   if (!payment.expiresAt || new Date(payment.expiresAt).getTime() > now.getTime()) return false;
   payment.status = "expired";
   payment.cancelledAt = payment.cancelledAt || now;
@@ -369,6 +375,8 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
       discountTotals,
       promotionIds: normalizedPromotionIds,
       pricing: pricing || null,
+      customerName: orders.find((o) => o?.shipping?.fullName)?.shipping?.fullName || orders.find((o) => o?.customerInfo?.name)?.customerInfo?.name || null,
+      customerPhone: orders.find((o) => o?.shipping?.phone)?.shipping?.phone || orders.find((o) => o?.customerInfo?.phone)?.customerInfo?.phone || null,
     },
   });
 
@@ -384,6 +392,14 @@ export async function createOrderPayment({ restaurantId, orderIds = [], provider
     payment.providerResponseRaw = providerResult.raw;
   } else {
     const transferContent = `TT ${reference}`;
+    payment.transfer = {
+      ...(payment.transfer || {}),
+      status: "INSTRUCTIONS_SHOWN",
+      instructionsShownAt: now,
+      rejectedCount: 0,
+      maxRejectedCount: TRANSFER_MAX_REJECTED_PROOFS,
+      proofCycleStartedAt: now,
+    };
     payment.metadata = {
       ...(payment.metadata || {}),
       bankTransfer: {

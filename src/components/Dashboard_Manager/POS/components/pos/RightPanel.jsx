@@ -5,7 +5,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { gql, useMutation } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
@@ -190,6 +190,36 @@ const formatOrderItemQuantity = (item) => {
 
   return `x${clean}`;
 };
+
+const TRANSFER_QUEUE = gql`
+  query TransferPaymentQueue($restaurantId: ID!, $statuses: [TransferVerificationStatus!], $limit: Int) {
+    transferPaymentQueue(restaurantId: $restaurantId, statuses: $statuses, limit: $limit) {
+      id
+      reference
+      amount
+      currency
+      status
+      callbackStatus
+      createdAt
+      expiresAt
+      metadata
+      transfer { status rejectReason rejectedCount maxRejectedCount proofImages proofNote submittedAt pausedAt resumedAt proofCycleStartedAt }
+    }
+  }
+`;
+
+const VERIFY_TRANSFER_PAYMENT = gql`
+  mutation VerifyTransferPayment($input: VerifyTransferPaymentInput!) {
+    verifyTransferPayment(input: $input) { id status callbackStatus transfer { status verifiedAt } }
+  }
+`;
+
+const REJECT_TRANSFER_PAYMENT = gql`
+  mutation RejectTransferPayment($input: RejectTransferPaymentInput!) {
+    rejectTransferPayment(input: $input) { id status callbackStatus transfer { status rejectedCount maxRejectedCount rejectReason lastRejectedReason } }
+  }
+`;
+
 const M_ENQUEUE_PRINT_JOB = gql`
   mutation EnqueuePrintJob($input: EnqueuePrintJobInput!) {
     enqueuePrintJob(input: $input) {
@@ -273,6 +303,16 @@ export default function RightPanel() {
   const [isPrintQueueOpen, setPrintQueueOpen] = useState(false);
   const [printMode, setPrintMode] = useState("temp");
   const [enqueuePrintJob] = useMutation(M_ENQUEUE_PRINT_JOB);
+  const { data: transferQueueData, refetch: refetchTransferQueue } = useQuery(TRANSFER_QUEUE, {
+    variables: { restaurantId, statuses: ["SUBMITTED", "VERIFYING"], limit: 8 },
+    skip: !restaurantId,
+    pollInterval: 15000,
+    fetchPolicy: "cache-and-network",
+  });
+  const [verifyTransferPayment] = useMutation(VERIFY_TRANSFER_PAYMENT);
+  const [rejectTransferPayment] = useMutation(REJECT_TRANSFER_PAYMENT);
+  const [transferVerifyDraft, setTransferVerifyDraft] = useState(null);
+  const [transferRejectDraft, setTransferRejectDraft] = useState(null);
   const [couponCode, setCouponCode] = useState("");
   const [selectedPromotionIds, setSelectedPromotionIds] = useState([]);
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
@@ -1309,12 +1349,62 @@ export default function RightPanel() {
       ),
     [paymentRequests],
   );
+
+  const transferQueue = transferQueueData?.transferPaymentQueue || [];
+  const handleVerifyTransfer = async () => {
+    if (!transferVerifyDraft?.id) return;
+    try {
+      await verifyTransferPayment({ variables: { input: { paymentSessionId: transferVerifyDraft.id, receivedAmount: Number(transferVerifyDraft.receivedAmount || 0), providerTransactionId: transferVerifyDraft.providerTransactionId || undefined, note: transferVerifyDraft.note || "Tôi xác nhận đã nhận đủ tiền chuyển khoản cho đơn này." } } });
+      showNotification("Đã xác nhận chuyển khoản và release đơn.", "success");
+      setTransferVerifyDraft(null);
+      refetchTransferQueue?.();
+    } catch (err) { showNotification(err?.message || "Không thể xác nhận chuyển khoản.", "error"); }
+  };
+  const handleRejectTransfer = async () => {
+    if (!transferRejectDraft?.id) return;
+    const reason = String(transferRejectDraft.reason || "").trim();
+    if (reason.length < 3) { showNotification("Vui lòng nhập lý do từ chối ít nhất 3 ký tự.", "warning"); return; }
+    try {
+      await rejectTransferPayment({ variables: { input: { paymentSessionId: transferRejectDraft.id, reason } } });
+      showNotification("Đã từ chối minh chứng và thông báo khách.", "success");
+      setTransferRejectDraft(null);
+      refetchTransferQueue?.();
+    } catch (err) { showNotification(err?.message || "Không thể từ chối minh chứng.", "error"); }
+  };
+
+  const renderTransferQueuePanel = () => (
+    <section className={cls.transferReviewPanel}>
+      <div className={cls.transferReviewHeader}>
+        <div><h3>POS chuyển khoản chờ xác minh</h3><p>Kiểm tra minh chứng, gọi khách hoặc xác nhận đã nhận tiền.</p></div>
+        <span>{transferQueue.length} phiên</span>
+      </div>
+      {!transferQueue.length ? <p className={cls.transferReviewEmpty}>Không có chuyển khoản cần POS xử lý.</p> : transferQueue.map((payment) => {
+        const meta = payment.metadata || {}; const transfer = payment.transfer || {};
+        const phone = meta.customerPhone || meta.shippingPhone || "";
+        const rejected = Number(transfer.rejectedCount || 0); const max = Number(transfer.maxRejectedCount || 3);
+        return <article key={payment.id} className={cls.transferReviewCard}>
+          <div className={cls.transferReviewTop}><strong>{payment.reference}</strong><span>{transfer.status}</span></div>
+          <div className={cls.transferReviewMeta}><span>{formatPrice(payment.amount)}</span><span>{meta.customerName || "Khách hàng"}</span><span>{phone || "Chưa có SĐT"}</span></div>
+          <div className={cls.transferReviewMeta}><span>{(meta.orderCodes || []).join(", ") || "Chưa có mã đơn"}</span><span>Còn {Math.max(max - rejected, 0)} lần gửi lại</span></div>
+          {transfer.proofNote ? <p className={cls.transferProofNote}>{transfer.proofNote}</p> : null}
+          {Array.isArray(transfer.proofImages) && transfer.proofImages.length ? <div className={cls.transferProofImages}>{transfer.proofImages.map((src, idx) => <a key={`${src}-${idx}`} href={src} target="_blank" rel="noreferrer"><img src={src} alt={`Minh chứng chuyển khoản ${idx + 1}`} /></a>)}</div> : null}
+          <div className={cls.transferReviewActions}>
+            {phone ? <a className={cls.transferCallBtn} href={`tel:${phone}`}>Gọi ngay</a> : <button className={cls.transferCallBtn} type="button" disabled>Chưa có số điện thoại khách hàng</button>}
+            <button type="button" className={cls.transferVerifyBtn} onClick={() => setTransferVerifyDraft({ id: payment.id, receivedAmount: payment.amount })}>Xác nhận chuyển khoản thành công</button>
+            <button type="button" className={cls.transferRejectBtn} onClick={() => setTransferRejectDraft({ id: payment.id, remaining: Math.max(max - rejected - 1, 0) })}>Từ chối minh chứng</button>
+          </div>
+        </article>;
+      })}
+    </section>
+  );
+
   return (
     <div
       className={`${cls.wrapper} ${pulse ? cls.pulse : ""}`}
       data-pos-order-panel
       data-kind={isOffPremise ? offPremiseKind : "DINE"}
     >
+      {renderTransferQueuePanel()}
       {isOffPremise && (
         <div className={cls.discountBox}>
           <div className={cls.discountTitle}>Ưu đãi / coupon</div>
@@ -1448,6 +1538,8 @@ export default function RightPanel() {
           )}
         </div>
       )}
+      {transferVerifyDraft && <div className={cls.transferModalBackdrop}><div className={cls.transferModal}><h3>Xác nhận đã nhận chuyển khoản</h3><p>Tôi xác nhận đã nhận đủ tiền chuyển khoản cho đơn này.</p><label>Số tiền thực nhận<input type="number" value={transferVerifyDraft.receivedAmount} onChange={(e)=>setTransferVerifyDraft({...transferVerifyDraft, receivedAmount:e.target.value})} /></label><label>Mã giao dịch ngân hàng<input value={transferVerifyDraft.providerTransactionId || ""} onChange={(e)=>setTransferVerifyDraft({...transferVerifyDraft, providerTransactionId:e.target.value})} /></label><label>Ghi chú xác nhận<textarea value={transferVerifyDraft.note || ""} onChange={(e)=>setTransferVerifyDraft({...transferVerifyDraft, note:e.target.value})} /></label><div><button type="button" onClick={()=>setTransferVerifyDraft(null)}>Hủy</button><button type="button" onClick={handleVerifyTransfer}>Xác nhận & release đơn</button></div></div></div>}
+      {transferRejectDraft && <div className={cls.transferModalBackdrop}><div className={cls.transferModal}><h3>Từ chối minh chứng</h3><p>Lý do này sẽ hiển thị cho khách để họ gửi lại đúng thông tin. Sau 3 lần bị từ chối, phiên thanh toán sẽ dừng để tránh giữ đơn quá lâu.</p><label>Lý do từ chối *<textarea value={transferRejectDraft.reason || ""} onChange={(e)=>setTransferRejectDraft({...transferRejectDraft, reason:e.target.value})} /></label><small>Còn {transferRejectDraft.remaining} lần gửi lại sau thao tác này.</small><div><button type="button" onClick={()=>setTransferRejectDraft(null)}>Hủy</button><button type="button" onClick={handleRejectTransfer}>Từ chối minh chứng</button></div></div></div>}
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
