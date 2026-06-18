@@ -40,6 +40,34 @@ function buildPaymentEventPayload(payment, eventType) {
   };
 }
 
+async function releaseBankTransferOrders({ payment, orderIds }) {
+  if (!isBankTransferPayment(payment) || String(payment?.status || "").toLowerCase() !== "success") return;
+  if (!orderIds.length) return;
+
+  const now = new Date();
+  await Order.updateMany(
+    {
+      _id: { $in: orderIds },
+      restaurantId: payment.restaurantId,
+    },
+    {
+      $set: {
+        currentStatus: "pending",
+        "payment.status": "paid",
+        customerVisibleNote: "Thanh toán chuyển khoản đã được xác minh. Nhà hàng đang tiếp nhận đơn.",
+      },
+      $push: {
+        statusTimeline: {
+          status: "pending",
+          at: now,
+          byUserId: null,
+          note: "Bank transfer verified by webhook; order released to restaurant.",
+        },
+      },
+    },
+  );
+}
+
 export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VERIFIED" }) {
   if (!io || !payment) return;
 
@@ -52,6 +80,8 @@ export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VE
 
   const orderIds = orderIdsFromPayment(paymentPayload);
   if (!orderIds.length) return;
+
+  await releaseBankTransferOrders({ payment: paymentPayload, orderIds });
 
   const orders = await Order.find({
     _id: { $in: orderIds },
