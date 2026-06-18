@@ -1,0 +1,79 @@
+/* Subtle final color balance for Schedule Manager.
+   Goal: keep storage alignment, brighten the canvas, reduce over-warm background,
+   make today state sage, and give the urgent KPI a calm but clearer priority. */
+
+.manager-page-shell--schedules,
+.manager-layout--schedules .manager-layout__content,
+.schedule-container.schedule-container {
+  background:
+    radial-gradient(circle at 14% -4%, rgba(83, 108, 97, 0.075), transparent 30rem),
+    radial-gradient(circle at 100% 8%, rgba(168, 133, 95, 0.045), transparent 28rem),
+    linear-gradient(180deg, #faf9f5 0%, #f7f6f2 58%, #f4f2ec 100%) !important;
+}
+
+/* Keep the base surfaces warm, but a little cleaner/brighter. */
+.schedule-container.schedule-container .schedule-header,
+.schedule-container.schedule-container .schedule-toolbar,
+.schedule-container.schedule-container .schedule-day-column,
+.schedule-container.schedule-container .schedule-availability-panel,
+.schedule-container.schedule-container .kpi-card {
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(250, 249, 245, 0.9)),
+    radial-gradient(circle at 12% 0%, rgba(83, 108, 97, 0.04), transparent 24rem) !important;
+}
+
+/* Priority KPI: more readable than neutral cards, but still not orange/warning-heavy. */
+.manager-page-shell--schedules .schedule-header .kpi-card.action.has-alert,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert,
+.schedule-container.schedule-container .kpi-card.action.has-alert,
+.schedule-container.schedule-container .kpi-card.has-alert {
+  border-color: rgba(83, 108, 97, 0.28) !important;
+  background:
+    radial-gradient(circle at 0.9rem 50%, rgba(83, 108, 97, 0.11), transparent 4.5rem),
+    linear-gradient(135deg, #fffdf8 0%, rgba(237, 244, 240, 0.62) 100%) !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action.has-alert::before,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert::before,
+.schedule-container.schedule-container .kpi-card.action.has-alert::before,
+.schedule-container.schedule-container .kpi-card.has-alert::before {
+  background: #536c61 !important;
+  opacity: 0.95 !important;
+}
+
+.manager-page-shell--schedules .schedule-header .kpi-card.action.has-alert .kpi-icon,
+.manager-page-shell--schedules .schedule-header .kpi-card.has-alert .kpi-icon,
+.schedule-container.schedule-container .kpi-card.action.has-alert .kpi-icon,
+.schedule-container.schedule-container .kpi-card.has-alert .kpi-icon {
+  background: #e7f0eb !important;
+  color: #40564c !important;
+  border-color: rgba(83, 108, 97, 0.24) !important;
+}
+
+/* Today is an active state, not a warning. Keep it sage, reserve taupe for real caution states. */
+.schedule-container.schedule-container .day-header.today::after,
+.schedule-container.schedule-container .today-badge,
+.schedule-container.schedule-container [class*="today-badge"] {
+  background: #edf4f0 !important;
+  border-color: rgba(83, 108, 97, 0.26) !important;
+  color: #40564c !important;
+}
+
+.manager-page-shell--schedules .day-header.today + .day-body::before,
+.schedule-container.schedule-container .day-header.today + .day-body::before {
+  background: #edf4f0 !important;
+  border-color: rgba(83, 108, 97, 0.24) !important;
+  color: #40564c !important;
+}
+
+/* Taupe is kept only for caution/revision states, so the palette has clearer hierarchy. */
+.schedule-container.schedule-container .status-chip.locked,
+.schedule-container.schedule-container .status-chip.changed,
+.schedule-container.schedule-container .schedule-status-badge.locked,
+.schedule-container.schedule-container .schedule-status-badge.changed,
+.schedule-container.schedule-container .status-dot.warning,
+.schedule-container.schedule-container .job-dot.job-orange {
+  background: #eadfcc !important;
+  border-color: rgba(168, 133, 95, 0.24) !important;
+  color: #735637 !important;
+}
