@@ -6,6 +6,11 @@ const textReplacements = [
   [/Lịch rảnh đã chốt/g, "Lịch rảnh"],
   [/In lịch tuần/g, "In lịch"],
   [/Tự động xếp ca/g, "Chia ca tự động"],
+  [/Đăng ký lịch nhân viên/g, "Đăng ký lịch rảnh"],
+  [/Tuần áp dụng:/g, "Tuần kế tiếp:"],
+  [/Đã gửi:/g, "Đăng ký:"],
+  [/Chờ duyệt:/g, "chờ duyệt:"],
+  [/Mở rộng/g, "Chi tiết"],
 ];
 
 const getText = (node) => node?.textContent?.replace(/\s+/g, " ").trim() || "";
