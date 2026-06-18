@@ -13,10 +13,6 @@ import {
 } from "../../../utils/orderLifecycle.js";
 
 const INACTIVE_STATUSES = ["draft", "cancelled", "completed", "failed"];
-const ACTIVE_VIEW_PAYMENT_FILTER = {
-  orderPaymentStatus: { $ne: "paid" },
-  "payment.status": { $ne: "paid" },
-};
 
 async function requireQueryRestaurantAccess(ctx, restaurantId) {
   if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) {
@@ -148,7 +144,6 @@ export const OrderCoreRecoveryQuery = {
     const baseFilter = withOrderBatchOrLegacyFilter({
       restaurantId: rid,
       currentStatus: { $nin: INACTIVE_STATUSES },
-      ...ACTIVE_VIEW_PAYMENT_FILTER,
     });
     return buildCursorConnection({ baseFilter, limit, cursor, rid });
   },
@@ -190,7 +185,6 @@ export const OrderCoreRecoveryQuery = {
       tableId: table._id,
       tableCode: safeCode,
       ...orderBatchOrLegacyFilter(),
-      ...ACTIVE_VIEW_PAYMENT_FILTER,
       currentStatus: { $nin: INACTIVE_STATUSES },
     })
       .sort({ createdAt: 1, _id: 1 })
@@ -236,7 +230,6 @@ export const OrderCoreRecoveryQuery = {
         tableId: table._id,
         tableCode: safeCode,
         ...orderBatchOrLegacyFilter(),
-        ...ACTIVE_VIEW_PAYMENT_FILTER,
         currentStatus: { $nin: INACTIVE_STATUSES },
       }).sort({ createdAt: 1, _id: 1 }).lean({ virtuals: true });
 
@@ -244,7 +237,6 @@ export const OrderCoreRecoveryQuery = {
     if (session?._id) {
       orders = await Order.find({
         ...childOrdersForSessionFilter({ restaurantId: rid, parentOrderId: session._id }),
-        ...ACTIVE_VIEW_PAYMENT_FILTER,
         currentStatus: { $nin: INACTIVE_STATUSES },
       }).sort({ createdAt: 1, _id: 1 }).lean({ virtuals: true });
       if (!orders.length) orders = await findLegacyTableOrders();
