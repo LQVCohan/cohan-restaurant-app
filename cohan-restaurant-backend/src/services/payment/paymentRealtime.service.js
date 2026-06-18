@@ -18,6 +18,13 @@ function orderIdsFromPayment(payment = {}) {
   return [...new Set(ids.map(String).filter((id) => mongoose.isValidObjectId(id)))];
 }
 
+function isBankTransferPayment(payment = {}) {
+  const provider = String(payment.provider || "").toLowerCase();
+  const paymentMethod = String(payment.paymentMethod || "").toLowerCase();
+  return ["bank_transfer", "transfer"].includes(provider)
+    || ["bank_transfer", "transfer"].includes(paymentMethod);
+}
+
 function buildPaymentEventPayload(payment, eventType) {
   return {
     type: eventType,
@@ -57,7 +64,9 @@ export async function emitPaymentRealtime({ io, payment, eventType = "PAYMENT_VE
 
     const orderPayload = typeof order.toObject === "function" ? order.toObject() : order;
     io.to(`restaurant_${restaurantId}`).emit("orderEvents", { type: "PAYMENT_VERIFIED", order: orderPayload });
-    io.to(`restaurant_${restaurantId}`).emit("orderEvents", { type: "ORDER_CREATED", order: orderPayload });
+    if (isBankTransferPayment(paymentPayload)) {
+      io.to(`restaurant_${restaurantId}`).emit("orderEvents", { type: "ORDER_CREATED", order: orderPayload });
+    }
     emitCustomerTrackingUpdateIfChanged({ ctx: { io }, orderDoc: order, force: true });
   }
 }

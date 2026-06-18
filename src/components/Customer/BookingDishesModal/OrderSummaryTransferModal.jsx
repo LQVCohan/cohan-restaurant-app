@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation } from "@apollo/client";
 import { io } from "socket.io-client";
 import Modal from "../../common/Modal";
@@ -114,8 +114,19 @@ const shouldPollTransferSession = (session = {}) => {
   return !["VERIFIED", "REJECTED", "FAILED", "EXPIRED"].includes(status);
 };
 
+const transferStatusLabel = {
+  INSTRUCTIONS_SHOWN: "Chưa gửi bằng chứng",
+  SUBMITTED: "Đã gửi bằng chứng, đang chờ xác minh",
+  VERIFYING: "Đang xác minh",
+  VERIFIED: "Đã xác minh thanh toán",
+  REJECTED: "Cần gửi lại bằng chứng",
+  FAILED: "Thanh toán chưa hợp lệ",
+  EXPIRED: "Phiên thanh toán hết hạn",
+};
+
 export default function OrderSummaryTransferModal({ isOpen, onClose, items = [], onSuccess }) {
   const { user } = useContext(AuthContext) || {};
+  const userId = user?.id || user?._id;
   const [shipping, setShipping] = useState(() => defaultShipping(user));
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [view, setView] = useState("summary");
@@ -137,7 +148,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
     transferSessionIdsRef.current = new Set(transferSessions.map((session) => String(session?.id || session?._id || "")).filter(Boolean));
   }, [transferSessions]);
 
-  const mergeTransferSessionUpdate = (updated) => {
+  const mergeTransferSessionUpdate = useCallback((updated) => {
     const updatedId = String(updated?.paymentSessionId || updated?.id || updated?._id || "");
     if (!updatedId) return;
     setTransferSessions((prev) => prev.map((session) => {
@@ -151,10 +162,10 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
         transfer: { ...(session.transfer || {}), ...(updated.transfer || {}) },
       };
     }));
-  };
+  }, []);
 
   useEffect(() => {
-    if (!isOpen || view !== "transfer" || !user?.id || !transferSessions.length) return undefined;
+    if (!isOpen || view !== "transfer" || !userId || !transferSessions.length) return undefined;
     const token = getToken();
     if (!token) return undefined;
 
@@ -173,7 +184,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
     };
 
     socket.on("connect", () => {
-      socket.emit("joinUserChannel", user.id, (ack) => {
+      socket.emit("joinUserChannel", String(userId), (ack) => {
         if (!ack?.ok) {
           console.warn("[SOCKET.IO] joinUserChannel failed:", ack?.code || "UNKNOWN");
         }
@@ -186,10 +197,10 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
 
     return () => {
       socket.off("paymentEvents", handlePaymentEvent);
-      socket.emit("leaveUserChannel", user.id);
+      socket.emit("leaveUserChannel", String(userId));
       socket.disconnect();
     };
-  }, [isOpen, view, user?.id, transferSessions.length]);
+  }, [isOpen, view, userId, transferSessions.length, mergeTransferSessionUpdate]);
 
   useEffect(() => {
     if (!isOpen || view !== "transfer" || !transferSessions.length) return undefined;
@@ -208,7 +219,7 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
       });
     }, 10000);
     return () => window.clearInterval(intervalId);
-  }, [isOpen, view, transferSessions, syncPaymentStatus]);
+  }, [isOpen, view, transferSessions, syncPaymentStatus, mergeTransferSessionUpdate]);
 
   const createCheckout = async (method) => {
     const checkoutItems = items.map((item) => mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }));
@@ -303,6 +314,10 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
       });
       const updated = result?.data?.submitTransferProof;
       mergeTransferSessionUpdate(updated);
+      setProofBySession((prev) => ({
+        ...prev,
+        [sessionId]: { images: "", note: "" },
+      }));
     } catch (err) {
       setError(err?.message || "Không thể gửi bằng chứng chuyển khoản.");
     } finally {
@@ -371,26 +386,33 @@ export default function OrderSummaryTransferModal({ isOpen, onClose, items = [],
       <p>Đơn đã được tạo. Vui lòng chuyển khoản đúng nội dung rồi gửi ảnh bằng chứng. Đơn chỉ được xem là đã thanh toán sau khi nhà hàng xác minh.</p>
       {transferSessions.map((session) => {
         const bank = session?.metadata?.bankTransfer || {};
-        const status = session?.transfer?.status || "INSTRUCTIONS_SHOWN";
+        const status = resolveTransferStatus(session);
+        const needsResubmit = status === "REJECTED";
+        const canSubmitProof = status !== "VERIFIED" && status !== "SUBMITTED";
+        const sessionId = String(session?.id || session?._id || "");
         return (
-          <div className="restaurant-group-card" key={session.id}>
+          <div className="restaurant-group-card" key={sessionId}>
             <h4>Mã chuyển khoản: {session.reference}</h4>
             <p>Số tiền: <strong>{formatCurrency(session.amount)}</strong></p>
             <p>Ngân hàng: {bank.bankName || "Đang cập nhật"}</p>
             <p>Số tài khoản: {bank.bankAccountNumber || "Đang cập nhật"}</p>
             <p>Chủ tài khoản: {bank.accountName || "Đang cập nhật"}</p>
             <p>Nội dung: <strong>{bank.transferContent || session.reference}</strong></p>
-            <p>Trạng thái: <strong>{status}</strong></p>
-            {status === "REJECTED" && <p className="order-summary-error">Lý do từ chối: {session.transfer?.rejectReason}</p>}
-            {status !== "VERIFIED" && status !== "SUBMITTED" && (
+            <p>Trạng thái: <strong>{transferStatusLabel[status] || status}</strong></p>
+            {needsResubmit && (
+              <p className="order-summary-error">
+                Chưa thể xác minh bằng chứng{session.transfer?.rejectReason ? `: ${session.transfer.rejectReason}` : "."} Vui lòng gửi lại ảnh rõ hơn hoặc đúng thông tin chuyển khoản.
+              </p>
+            )}
+            {canSubmitProof && (
               <>
-                <textarea placeholder="Dán URL ảnh bằng chứng, mỗi dòng một ảnh" value={proofBySession[session.id]?.images || ""} onChange={(e) => handleProofChange(session.id, "images", e.target.value)} />
-                <textarea placeholder="Ghi chú chuyển khoản" value={proofBySession[session.id]?.note || ""} onChange={(e) => handleProofChange(session.id, "note", e.target.value)} />
-                <button className="btn btn--success" disabled={loading} onClick={() => handleSubmitProof(session.id)}>Gửi bằng chứng chuyển khoản</button>
+                <textarea placeholder={needsResubmit ? "Dán URL ảnh bằng chứng mới, mỗi dòng một ảnh" : "Dán URL ảnh bằng chứng, mỗi dòng một ảnh"} value={proofBySession[sessionId]?.images || ""} onChange={(e) => handleProofChange(sessionId, "images", e.target.value)} />
+                <textarea placeholder="Ghi chú chuyển khoản" value={proofBySession[sessionId]?.note || ""} onChange={(e) => handleProofChange(sessionId, "note", e.target.value)} />
+                <button className="btn btn--success" disabled={loading} onClick={() => handleSubmitProof(sessionId)}>{needsResubmit ? "Gửi lại bằng chứng chuyển khoản" : "Gửi bằng chứng chuyển khoản"}</button>
               </>
             )}
             {status === "SUBMITTED" && <p>Đã gửi bằng chứng. Đang chờ nhà hàng xác minh.</p>}
-            <button className="btn btn--secondary" disabled={loading} onClick={() => refreshSession(session.id)}>Kiểm tra trạng thái</button>
+            <button className="btn btn--secondary" disabled={loading} onClick={() => refreshSession(sessionId)}>Kiểm tra trạng thái</button>
           </div>
         );
       })}
