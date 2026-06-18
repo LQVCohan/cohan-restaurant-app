@@ -1,0 +1,218 @@
+.rbac-page {
+  --rbac-viewport-panel: clamp(500px, calc(100dvh - 410px), 700px);
+  --rbac-catalog-panel: clamp(520px, calc(100dvh - 310px), 780px);
+}
+
+.rbac-tabs {
+  position: sticky !important;
+  top: 0.75rem;
+  z-index: 6;
+}
+
+.rbac-grid--roles {
+  min-height: 0 !important;
+  height: var(--rbac-viewport-panel) !important;
+  align-items: stretch !important;
+}
+
+.rbac-grid--roles > .rbac-card {
+  display: flex !important;
+  min-height: 0 !important;
+  flex-direction: column !important;
+}
+
+.rbac-grid--roles .rbac-card__header,
+.rbac-permission-catalog .rbac-card__header {
+  flex: 0 0 auto;
+}
+
+.rbac-grid--roles .rbac-role-list {
+  display: grid !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: auto !important;
+  padding: 0.15rem 0.35rem 0.15rem 0 !important;
+  scrollbar-color: rgba(168, 133, 95, 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+.rbac-grid--roles .rbac-role-list::-webkit-scrollbar,
+.rbac-permission-catalog::-webkit-scrollbar,
+.rbac-permission-groups::-webkit-scrollbar,
+.rbac-card--permission-detail::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.rbac-grid--roles .rbac-role-list::-webkit-scrollbar-thumb,
+.rbac-permission-catalog::-webkit-scrollbar-thumb,
+.rbac-permission-groups::-webkit-scrollbar-thumb,
+.rbac-card--permission-detail::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(168, 133, 95, 0.28);
+  background-clip: padding-box;
+}
+
+.rbac-card--permission-detail {
+  min-height: 0 !important;
+  overflow: auto !important;
+  scrollbar-color: rgba(168, 133, 95, 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+.rbac-card--permission-detail .rbac-selected-role {
+  flex: 0 0 auto;
+}
+
+.rbac-card--permission-detail .rbac-permission-columns {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+}
+
+.rbac-permission-catalog {
+  display: flex !important;
+  max-height: var(--rbac-catalog-panel) !important;
+  min-height: 0 !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.rbac-permission-catalog .rbac-card__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -0.15rem -0.15rem 0.85rem !important;
+  padding: 0.15rem 0.15rem 0.75rem !important;
+  border-bottom: 1px solid rgba(213, 200, 184, 0.48);
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 253, 248, 0.88));
+  backdrop-filter: blur(10px);
+}
+
+.rbac-permission-groups {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-flow: row dense;
+  gap: 0.75rem !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding: 0.05rem 0.35rem 0.2rem 0 !important;
+  scrollbar-color: rgba(168, 133, 95, 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+.rbac-permission-group {
+  min-height: 116px;
+  padding: 0.78rem !important;
+}
+
+.rbac-permission-group__title {
+  margin-bottom: 0.65rem !important;
+}
+
+.rbac-permission-group__title h4 {
+  font-size: 0.95rem;
+}
+
+.rbac-chip-list {
+  gap: 0.45rem !important;
+}
+
+.rbac-chip {
+  max-width: none !important;
+  padding: 0.46rem 0.58rem !important;
+  border-radius: 11px !important;
+  font-size: 0.72rem !important;
+}
+
+.rbac-chip strong {
+  line-height: 1.18 !important;
+}
+
+.rbac-chip small {
+  margin-top: 0.08rem;
+  font-size: 0.66rem !important;
+  line-height: 1.1 !important;
+}
+
+.rbac-role-row {
+  padding: 0.78rem 0.9rem !important;
+}
+
+.rbac-role-row__top {
+  align-items: flex-start !important;
+}
+
+.rbac-role-badge {
+  padding: 0.22rem 0.48rem !important;
+  font-size: 0.66rem !important;
+}
+
+.rbac-selected-role {
+  padding: 0.85rem !important;
+}
+
+.rbac-permission-summary {
+  min-height: 150px;
+  padding: 0.8rem !important;
+  overflow: auto;
+}
+
+.rbac-grid--management {
+  min-height: 0 !important;
+}
+
+.rbac-role-list--compact {
+  max-height: min(58dvh, 520px) !important;
+}
+
+.rbac-card--form .rbac-permission-checklist__groups {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 44dvh;
+  overflow: auto;
+  padding-right: 0.35rem;
+}
+
+.rbac-card--form .rbac-permission-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 1280px) {
+  .rbac-page {
+    --rbac-viewport-panel: auto;
+    --rbac-catalog-panel: 720px;
+  }
+
+  .rbac-tabs {
+    position: static !important;
+  }
+
+  .rbac-grid--roles {
+    height: auto !important;
+  }
+
+  .rbac-grid--roles > .rbac-card,
+  .rbac-card--permission-detail {
+    max-height: none !important;
+  }
+
+  .rbac-grid--roles .rbac-role-list {
+    max-height: 460px;
+  }
+
+  .rbac-permission-groups {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .rbac-page {
+    --rbac-catalog-panel: 680px;
+  }
+
+  .rbac-card--form .rbac-permission-checklist__groups,
+  .rbac-card--form .rbac-permission-columns {
+    grid-template-columns: 1fr !important;
+  }
+}
