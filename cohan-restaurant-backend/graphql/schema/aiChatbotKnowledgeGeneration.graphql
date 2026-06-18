@@ -1,0 +1,17 @@
+input GenerateAiChatbotKnowledgeSuggestionsInput {
+  restaurantId: ID!
+  sources: [String!]
+  overwriteExisting: Boolean
+}
+
+type GenerateAiChatbotKnowledgeSuggestionsResult {
+  created: Int!
+  updated: Int!
+  skipped: Int!
+  total: Int!
+  suggestions: [AiChatbotKnowledgeSuggestion!]!
+}
+
+extend type Mutation {
+  generateRestaurantAiChatbotKnowledgeSuggestions(input: GenerateAiChatbotKnowledgeSuggestionsInput!): GenerateAiChatbotKnowledgeSuggestionsResult!
+}
