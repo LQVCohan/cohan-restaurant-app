@@ -150,12 +150,12 @@ const Table3DSimulatorModal = ({
   const cameraTarget = `${offset.x}m 0m ${offset.z}m`;
   const canOpenAr = canOpenModelViewerAr(selectedModel);
   const arUnavailableReason = getArUnavailableReason(selectedModel);
-  const canOpenArPlacement = Boolean(table?.id && selectedModel?.modelUrl);
+  const canOpenArPlacement = Boolean(table?.id);
   const arPlacementTitle = !table?.id
     ? "Vui lòng mở chi tiết một bàn trước khi đặt vị trí bằng AR"
-    : !selectedModel?.modelUrl
-      ? "Mẫu bàn chưa có modelUrl"
-      : "Hiệu chỉnh và lưu vị trí bàn vào sơ đồ";
+    : selectedModel?.modelUrl
+      ? "Hiệu chỉnh và lưu vị trí bàn vào sơ đồ"
+      : "Không có modelUrl; vẫn có thể dùng hit-test hoặc manual calibration để lưu tọa độ";
   const selectedModelAssetSummary = getModelAssetSummary(selectedModel);
   const isSelectedModelHiddenByFilters = Boolean(
     selectedModel &&
@@ -522,7 +522,9 @@ const Table3DSimulatorModal = ({
           <div className="table-3d-modal__guide">
             <p>• Xem 3D: xoay/zoom mẫu bàn trong màn hình.</p>
             <p>• Xem thử bằng camera: overlay thủ công để ước lượng mẫu bàn có hợp không gian thực tế hay không.</p>
-            <p>• Mở AR: dùng AR native trên thiết bị/trình duyệt hỗ trợ.</p>
+            <p>• AR native để xem mẫu: dùng model-viewer trên thiết bị hỗ trợ, chỉ xem mẫu và không lưu tọa độ vào sơ đồ.</p>
+            <p>• AR thật để lưu vị trí: mở WebXR hit-test trong modal đặt vị trí, có thể lưu nếu geofence và calibration hợp lệ.</p>
+            <p>• Manual calibration: nhập tọa độ/mốc thủ công khi thiết bị không hỗ trợ WebXR.</p>
             <p>• Chức năng camera hiện không lấy tọa độ không gian thật và không liên kết với sơ đồ bàn.</p>
           </div>
 
@@ -546,7 +548,7 @@ const Table3DSimulatorModal = ({
                   aria-label="Mở AR native trên thiết bị hỗ trợ"
                   title="Mở AR native bằng trình xem hệ thống trên thiết bị hỗ trợ"
                 >
-                  {isOpeningAr ? "Đang mở AR..." : "Mở AR trên thiết bị hỗ trợ"}
+                  {isOpeningAr ? "Đang mở AR native..." : "AR native để xem mẫu"}
                 </Button>
               ) : (
                 selectedModel && <span>{arUnavailableReason}</span>
@@ -561,11 +563,12 @@ const Table3DSimulatorModal = ({
                 disabled={!canOpenArPlacement}
                 title={arPlacementTitle}
               >
-                Đặt vị trí bằng AR
+                AR thật để lưu vị trí
               </Button>
               <span>
-                AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng
-                Xem thử trong không gian hoặc nhập tọa độ manual.
+                {selectedModel?.modelUrl
+                  ? "AR phụ thuộc thiết bị/trình duyệt. Nếu không hỗ trợ, hãy dùng Xem thử trong không gian hoặc nhập tọa độ manual."
+                  : "Thiếu modelUrl: vẫn mở được modal để nhập manual hoặc lấy hit-test, nhưng không render model bàn."}
               </span>
             </div>
             <Button
