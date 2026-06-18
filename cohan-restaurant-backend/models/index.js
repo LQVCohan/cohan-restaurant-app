@@ -67,6 +67,7 @@ export { default as OrderTracking } from "./order-tracking.model.js";
 export { default as PrintSetting } from "./printSetting.model.js";
 export { default as CustomerRankSetting } from "./customer-rank-setting.model.js";
 export { default as CustomerFavorite } from "./customer-favorite.model.js";
+export { default as CustomerAddress } from "./customer-address.model.js";
 
 export { default as RestaurantCategoryIndex } from "./restaurant-category-index.model.js";
 

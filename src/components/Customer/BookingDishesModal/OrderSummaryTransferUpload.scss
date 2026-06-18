@@ -107,3 +107,26 @@
     justify-self: flex-start;
   }
 }
+
+.saved-address-picker {
+  display: grid;
+  gap: 0.45rem;
+  color: #4b3f33;
+  font-weight: 700;
+}
+
+.saved-address-picker select {
+  width: 100%;
+  border: 1px solid rgba(116, 81, 45, 0.22);
+  border-radius: 12px;
+  background: #fffaf4;
+  padding: 0.75rem 0.85rem;
+  color: #2f241b;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.saved-address-picker select:focus {
+  outline: none;
+  border-color: #b7793b;
+  box-shadow: 0 0 0 3px rgba(183, 121, 59, 0.16);
+}

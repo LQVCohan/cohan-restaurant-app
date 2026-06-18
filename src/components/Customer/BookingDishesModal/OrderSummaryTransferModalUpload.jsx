@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { gql, useMutation } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { io } from "socket.io-client";
 import Modal from "../../common/Modal";
 import { AuthContext } from "../../../context/AuthContext";
@@ -52,6 +52,20 @@ const SYNC_PAYMENT_STATUS = gql`
     syncPaymentStatus(paymentId: $paymentId) {
       id createdAt status callbackStatus expiresAt
       transfer { status rejectReason rejectedCount maxRejectedCount lastRejectedReason proofImages proofNote submittedAt verifiedAt rejectedAt pausedAt resumedAt proofCycleStartedAt }
+    }
+  }
+`;
+
+const MY_CHECKOUT_ADDRESSES = gql`
+  query MyCheckoutAddresses {
+    myAddresses {
+      id
+      label
+      receiverName
+      phone
+      fullAddress
+      note
+      isDefault
     }
   }
 `;
@@ -192,6 +206,7 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
   const userId = user?.id || user?._id;
   const { upload } = useAvatarUploadLocal();
   const [shipping, setShipping] = useState(() => defaultShipping(user));
+  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [view, setView] = useState("summary");
   const [error, setError] = useState("");
@@ -210,8 +225,28 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
   const [createCustomerTransferPayment] = useMutation(CREATE_CUSTOMER_TRANSFER_PAYMENT);
   const [submitTransferProof] = useMutation(SUBMIT_TRANSFER_PROOF);
   const [syncPaymentStatus] = useMutation(SYNC_PAYMENT_STATUS);
+  const { data: addressData } = useQuery(MY_CHECKOUT_ADDRESSES, { skip: !isOpen, fetchPolicy: "cache-and-network" });
+  const savedAddresses = addressData?.myAddresses || [];
 
   const totals = useMemo(() => calcTotal(items), [items]);
+
+  const applySavedAddress = useCallback((address) => {
+    if (!address) return;
+    setSelectedAddressId(address.id);
+    setShipping((prev) => ({
+      ...prev,
+      fullName: address.receiverName || prev.fullName,
+      phone: address.phone || prev.phone,
+      address: address.fullAddress || prev.address,
+      note: prev.note || address.note || "",
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !savedAddresses.length || selectedAddressId) return;
+    const defaultAddress = savedAddresses.find((item) => item.isDefault) || savedAddresses[0];
+    applySavedAddress(defaultAddress);
+  }, [applySavedAddress, isOpen, savedAddresses, selectedAddressId]);
 
   useEffect(() => { proofBySessionRef.current = proofBySession; }, [proofBySession]);
   useEffect(() => () => { Object.values(proofBySessionRef.current || {}).forEach((form) => (form?.files || []).forEach(revokeProofPreview)); }, []);
@@ -440,7 +475,7 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
 
   const renderSummary = () => (
     <>
-      <div className="section"><h3>Thông tin nhận hàng</h3><input value={shipping.fullName} onChange={(e) => setShipping({ ...shipping, fullName: e.target.value })} placeholder="Họ tên" /><input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} placeholder="Số điện thoại" /><input value={shipping.email} onChange={(e) => setShipping({ ...shipping, email: e.target.value })} placeholder="Email" /><input value={shipping.address} onChange={(e) => setShipping({ ...shipping, address: e.target.value })} placeholder="Địa chỉ giao hàng" /><textarea value={shipping.note} onChange={(e) => setShipping({ ...shipping, note: e.target.value })} placeholder="Ghi chú" /></div>
+      <div className="section"><h3>Thông tin nhận hàng</h3>{savedAddresses.length > 0 && <label className="saved-address-picker">Chọn địa chỉ đã lưu<select value={selectedAddressId} onChange={(e) => applySavedAddress(savedAddresses.find((item) => item.id === e.target.value))}><option value="">Chọn nhanh địa chỉ</option>{savedAddresses.map((address) => <option key={address.id} value={address.id}>{address.isDefault ? "Mặc định · " : ""}{address.receiverName} · {address.fullAddress}</option>)}</select></label>}<input value={shipping.fullName} onChange={(e) => setShipping({ ...shipping, fullName: e.target.value })} placeholder="Họ tên" /><input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} placeholder="Số điện thoại" /><input value={shipping.email} onChange={(e) => setShipping({ ...shipping, email: e.target.value })} placeholder="Email" /><input value={shipping.address} onChange={(e) => setShipping({ ...shipping, address: e.target.value })} placeholder="Địa chỉ giao hàng" /><textarea value={shipping.note} onChange={(e) => setShipping({ ...shipping, note: e.target.value })} placeholder="Ghi chú" /></div>
       <div className="section"><h3>Món đã chọn</h3>{items.map((item) => <div className="price-row" key={item.id || item.cartItemId || item.name}><span>{item.name} × {item.quantity || 1}</span><strong>{formatCurrency((Number(item.price || 0) + Number(item.modifiersPrice || 0)) * Number(item.quantity || 1))}</strong></div>)}</div>
       <div className="section"><h3>Phương thức thanh toán</h3><div className="payment-methods-grid">{[["cash", "Tiền mặt", "Thanh toán khi nhận hàng"], ["transfer", "Chuyển khoản / QR", "Gửi bằng chứng để nhà hàng xác minh"], ["wallet", "Ví nội bộ", "Thanh toán bằng số dư ví"]].map(([key, title, desc]) => <button key={key} type="button" className={`payment-method-card ${paymentMethod === key ? "selected" : ""}`} onClick={() => setPaymentMethod(key)}><div className="payment-info"><h4>{title}</h4><p>{desc}</p></div></button>)}</div></div>
       <div className="section"><div className="price-row"><span>Tạm tính</span><strong>{formatCurrency(totals.subtotal + totals.modifiers)}</strong></div><div className="price-row"><span>VAT 10%</span><strong>{formatCurrency(totals.tax)}</strong></div><div className="price-row total"><span>Tổng</span><strong>{formatCurrency(totals.total)}</strong></div></div>

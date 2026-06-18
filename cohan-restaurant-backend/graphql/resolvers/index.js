@@ -41,6 +41,7 @@ import auditLog from "./audit_log/index.js";
 import { rbacAuditLogs } from "./audit_log/rbac.js";
 import systemSetting from "./systemSetting/index.js";
 import backup from "./backup/index.js";
+import customerAddress from "./customerAddress/index.js";
 export default {
   ...baseResolvers,
 
@@ -82,6 +83,7 @@ export default {
     ...(auditLog.Query || {}),
     ...(systemSetting.Query || {}),
     ...(backup.Query || {}),
+    ...(customerAddress.Query || {}),
     rbacAuditLogs,
   },
 
@@ -120,6 +122,7 @@ export default {
     ...(userCoupon.Mutation || {}),
     ...(systemSetting.Mutation || {}),
     ...(backup.Mutation || {}),
+    ...(customerAddress.Mutation || {}),
   },
 
   ...(role.Role ? { Role: role.Role } : {}),

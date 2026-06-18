@@ -1,0 +1,40 @@
+type CustomerAddress {
+  id: ID!
+  userId: ID!
+  label: String!
+  receiverName: String!
+  phone: String!
+  province: String!
+  district: String!
+  ward: String!
+  specificAddress: String!
+  fullAddress: String!
+  note: String
+  isDefault: Boolean!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CustomerAddressInput {
+  label: String
+  receiverName: String!
+  phone: String!
+  province: String!
+  district: String!
+  ward: String!
+  specificAddress: String!
+  fullAddress: String
+  note: String
+  isDefault: Boolean
+}
+
+extend type Query {
+  myAddresses: [CustomerAddress!]!
+}
+
+extend type Mutation {
+  createCustomerAddress(input: CustomerAddressInput!): CustomerAddress!
+  updateCustomerAddress(id: ID!, input: CustomerAddressInput!): CustomerAddress!
+  deleteCustomerAddress(id: ID!): Boolean!
+  setDefaultCustomerAddress(id: ID!): CustomerAddress!
+}
