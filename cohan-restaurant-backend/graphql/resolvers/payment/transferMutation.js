@@ -3,12 +3,16 @@ import { EventLog, Order, PaymentSession } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
+  TRANSFER_MAX_REJECTED_PROOFS,
+  TRANSFER_PAYMENT_TTL_MS,
   createOrderPayment,
   sanitizePaymentSessionForClient,
   settlePaidOrderPaymentSession,
 } from "../../../src/services/payment/paymentSession.service.js";
 import { emitCustomerTrackingUpdateIfChanged } from "../../../src/services/orderTracking.service.js";
 import { emitOrderEvent, emitRestaurantEvent } from "../order/helper/emitOrderEvent.js";
+import { emitPaymentRealtime } from "../../../src/services/payment/paymentRealtime.service.js";
+import { cancelDraftTransferOrdersForExpiredPayment } from "../../../src/services/payment/transferExpiry.service.js";
 
 function toId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -99,8 +103,12 @@ export async function createCustomerTransferPayment(_parent, { input }, ctx) {
   const doc = await PaymentSession.findById(payment._id || payment.id);
   if (doc) {
     doc.transfer = doc.transfer || {};
+    const now = new Date();
     doc.transfer.status = "INSTRUCTIONS_SHOWN";
-    doc.transfer.instructionsShownAt = doc.transfer.instructionsShownAt || new Date();
+    doc.transfer.instructionsShownAt = doc.transfer.instructionsShownAt || now;
+    doc.transfer.rejectedCount = Number(doc.transfer.rejectedCount || 0);
+    doc.transfer.maxRejectedCount = Number(doc.transfer.maxRejectedCount || TRANSFER_MAX_REJECTED_PROOFS);
+    doc.transfer.proofCycleStartedAt = doc.transfer.proofCycleStartedAt || now;
     doc.events = Array.isArray(doc.events) ? doc.events : [];
     doc.events.push({ type: "transfer_instructions_shown", payload: { by: String(actorId) } });
     await doc.save();
@@ -116,7 +124,12 @@ export async function submitTransferProof(_parent, { input }, ctx) {
     await requireRestaurantPermission(ctx, payment.restaurantId, PERMISSIONS.PAYMENT_WRITE);
   }
   const currentTransferStatus = String(payment.transfer?.status || "").toUpperCase();
-  const isRejectedResubmission = payment.status === "failed" && currentTransferStatus === "REJECTED";
+  const rejectedCount = Number(payment.transfer?.rejectedCount || 0);
+  const maxRejectedCount = Number(payment.transfer?.maxRejectedCount || TRANSFER_MAX_REJECTED_PROOFS);
+  const isRejectedResubmission = currentTransferStatus === "REJECTED" && rejectedCount < maxRejectedCount;
+  if (["VERIFIED", "EXPIRED", "FAILED"].includes(currentTransferStatus) || rejectedCount >= maxRejectedCount) {
+    throw new Error("Proof submission is closed for this transfer payment");
+  }
   if (payment.status !== "pending" && !isRejectedResubmission) {
     throw new Error("Only pending or rejected transfer can receive proof");
   }
@@ -130,6 +143,8 @@ export async function submitTransferProof(_parent, { input }, ctx) {
   payment.transfer.proofImages = cleanImages(input?.proofImages || []);
   payment.transfer.proofNote = String(input?.proofNote || "").trim();
   payment.transfer.customerClaimedPaidAt = input?.customerClaimedPaidAt ? new Date(input.customerClaimedPaidAt) : now;
+  payment.transfer.pausedAt = now;
+  payment.transfer.maxRejectedCount = maxRejectedCount;
   payment.transfer.rejectedAt = undefined;
   payment.transfer.rejectedBy = undefined;
   payment.transfer.rejectReason = undefined;
@@ -157,6 +172,7 @@ export async function submitTransferProof(_parent, { input }, ctx) {
   }
   await EventLog.log({ restaurantId: payment.restaurantId, actorUserId: actorId, verb: "payment.transfer.submit_proof", object: { kind: "PaymentSession", id: payment._id }, source: "web", status: "success" }).catch(() => {});
   await emitTransferUpdate(ctx, payment, "PAYMENT_TRANSFER_SUBMITTED");
+  await emitPaymentRealtime({ io: ctx?.io, payment, eventType: "transfer_proof_submitted", message: "Đã nhận minh chứng chuyển khoản. Nhà hàng đang kiểm tra." }).catch(() => {});
   return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 }
 
@@ -174,7 +190,11 @@ export async function verifyTransferPayment(_parent, { input }, ctx) {
   payment.transfer.verifiedAt = new Date();
   payment.transfer.verifiedBy = actorId;
   payment.transfer.providerTransactionId = payment.providerTransactionId;
+  payment.transfer.rejectReason = undefined;
+  payment.transfer.rejectedAt = undefined;
+  payment.transfer.rejectedBy = undefined;
   payment.transfer.receivedAmount = input?.receivedAmount == null ? payment.amount : Number(input.receivedAmount);
+  if (!(Number(payment.transfer.receivedAmount) > 0)) throw new Error("Received amount must be greater than 0");
   payment.transfer.varianceAmount = Number(payment.transfer.receivedAmount || 0) - Number(payment.amount || 0);
   payment.events = Array.isArray(payment.events) ? payment.events : [];
   payment.events.push({ type: "transfer_verified", payload: { by: String(actorId), note: input?.note || "" } });
@@ -214,6 +234,7 @@ export async function verifyTransferPayment(_parent, { input }, ctx) {
   const updated = await PaymentSession.findById(payment._id);
   await EventLog.log({ restaurantId: payment.restaurantId, actorUserId: actorId, verb: "payment.transfer.verify", object: { kind: "PaymentSession", id: payment._id }, source: "web", status: "success" }).catch(() => {});
   await emitTransferUpdate(ctx, updated, "PAYMENT_VERIFIED");
+  await emitPaymentRealtime({ io: ctx?.io, payment: updated, eventType: "payment_verified", message: "Thanh toán chuyển khoản đã được xác minh." }).catch(() => {});
   if (Array.isArray(updated?.metadata?.release?.orderIds) && updated.metadata.release.orderIds.length) {
     await emitTransferUpdate(ctx, updated, "ORDER_CREATED");
   }
@@ -226,27 +247,41 @@ export async function rejectTransferPayment(_parent, { input }, ctx) {
   await requireRestaurantPermission(ctx, payment.restaurantId, PERMISSIONS.PAYMENT_WRITE);
   if (payment.status === "success") throw new Error("Verified payment cannot be rejected");
   const reason = String(input?.reason || "").trim();
-  if (!reason) throw new Error("Reject reason is required");
+  if (reason.length < 3) throw new Error("Reject reason must be at least 3 characters");
+  const now = new Date();
+  const maxRejectedCount = Number(payment.transfer?.maxRejectedCount || TRANSFER_MAX_REJECTED_PROOFS);
+  const rejectedCount = Number(payment.transfer?.rejectedCount || 0) + 1;
+  const terminal = rejectedCount >= maxRejectedCount;
 
   payment.status = "failed";
   payment.callbackStatus = "rejected";
-  payment.transfer.status = "REJECTED";
-  payment.transfer.rejectedAt = new Date();
+  payment.expiresAt = terminal ? payment.expiresAt : new Date(now.getTime() + TRANSFER_PAYMENT_TTL_MS);
+  payment.cancelledAt = terminal ? now : payment.cancelledAt;
+  payment.cancelReason = terminal ? "Transfer proof rejected too many times." : payment.cancelReason;
+  payment.transfer.status = terminal ? "FAILED" : "REJECTED";
+  payment.transfer.rejectedCount = rejectedCount;
+  payment.transfer.maxRejectedCount = maxRejectedCount;
+  payment.transfer.rejectedAt = now;
+  payment.transfer.lastRejectedAt = now;
   payment.transfer.rejectedBy = actorId;
   payment.transfer.rejectReason = reason;
+  payment.transfer.lastRejectedReason = reason;
+  payment.transfer.resumedAt = terminal ? payment.transfer.resumedAt : now;
   payment.events = Array.isArray(payment.events) ? payment.events : [];
-  payment.events.push({ type: "transfer_rejected", payload: { by: String(actorId), reason } });
+  payment.events.push({ type: terminal ? "transfer_proof_max_rejected" : "transfer_proof_rejected", payload: { by: String(actorId), reason, rejectedCount, maxRejectedCount } });
+  if (terminal) await cancelDraftTransferOrdersForExpiredPayment({ payment, now, session: null, io: ctx?.io });
   await payment.save();
 
   const orderIds = orderIdsFrom(payment);
-  if (orderIds.length) {
+  if (orderIds.length && !terminal) {
     await Order.updateMany(
       { _id: { $in: orderIds }, restaurantId: payment.restaurantId, "payment.status": { $ne: "paid" } },
       { $set: { "payment.status": "failed", "payment.requestNote": reason, customerVisibleNote: `Chuyển khoản chưa được xác minh: ${reason}` } },
     );
   }
   await EventLog.log({ restaurantId: payment.restaurantId, actorUserId: actorId, verb: "payment.transfer.reject", object: { kind: "PaymentSession", id: payment._id }, source: "web", status: "success", meta: { reason } }).catch(() => {});
-  await emitTransferUpdate(ctx, payment, "PAYMENT_FAILED");
+  await emitTransferUpdate(ctx, payment, payment.transfer.status === "FAILED" ? "PAYMENT_FAILED" : "PAYMENT_TRANSFER_REJECTED");
+  await emitPaymentRealtime({ io: ctx?.io, payment, eventType: payment.transfer.status === "FAILED" ? "proof_max_rejected" : "proof_rejected", message: reason }).catch(() => {});
   return sanitizePaymentSessionForClient(payment, { includeRaw: false });
 }
 

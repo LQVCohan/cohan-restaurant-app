@@ -28,6 +28,7 @@ import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
 import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments, reconcileBankTransferWebhook } from "../services/payment/paymentSession.service.js";
 import { emitPaymentRealtime } from "../services/payment/paymentRealtime.service.js";
+import { expireStaleTransferPayments } from "../services/payment/transferExpiry.service.js";
 import { resolveAuthenticatedUserFromRequest } from "./authUserResolver.js";
 import { requireRestaurantPermission } from "../services/auth/authorization.service.js";
 import { validateGuestConversationOwnership, isValidConversationId, getAiConversationGuestRoomName } from "../services/ai/restaurantChatbotRealtime.service.js";
@@ -765,6 +766,15 @@ export async function createServer() {
       );
     }
   });
+
+
+  if (process.env.ENABLE_TRANSFER_EXPIRY_SWEEP !== "false") {
+    setInterval(() => {
+      expireStaleTransferPayments({ io: app.io }).catch((err) => {
+        app.log.warn({ err }, "transfer expiry sweep failed");
+      });
+    }, 60 * 1000).unref?.();
+  }
 
   return app;
 }

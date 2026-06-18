@@ -84,14 +84,17 @@ const resolveTrackingPaymentPanel = (payment = {}) => {
   if (["PAID", "VERIFIED", "SUCCESS"].includes(status)) {
     return { key: "verified", title: "Đã xác minh thanh toán", description: "Nhà hàng đã nhận đơn và đang xử lý." };
   }
-  if (["SUBMITTED", "PAYMENT_REQUESTED", "RECEIVED"].includes(status)) {
-    return { key: "submitted", title: "Đã gửi bằng chứng", description: "Bằng chứng đang chờ nhà hàng kiểm tra." };
+  if (["SUBMITTED", "PAYMENT_REQUESTED", "RECEIVED", "VERIFYING"].includes(status)) {
+    return { key: "submitted", title: "Đã nhận minh chứng", description: "Thời gian chờ đã tạm dừng để nhà hàng kiểm tra. Bạn sẽ nhận cập nhật khi POS xác minh hoặc từ chối." };
   }
   if (["REJECTED", "FAILED"].includes(status)) {
-    return { key: "rejected", title: "Bằng chứng chưa hợp lệ", description: "Vui lòng quay lại phần thanh toán để gửi lại bằng chứng." };
+    return { key: "rejected", title: "Minh chứng chưa hợp lệ", description: "Vui lòng kiểm tra lý do từ chối và gửi lại đúng thông tin nếu phiên thanh toán vẫn còn lượt." };
+  }
+  if (["EXPIRED", "CANCELLED"].includes(status)) {
+    return { key: "expired", title: "Phiên thanh toán đã hết hạn", description: "Hệ thống chưa ghi nhận giao dịch và chưa có minh chứng thanh toán. Đơn nháp đã được hủy." };
   }
   if (["PENDING", "UNPAID", "PARTIAL"].includes(status)) {
-    return { key: "pending", title: "Đang chờ xác minh chuyển khoản", description: "Nhà hàng sẽ tiếp nhận đơn sau khi thanh toán được xác minh." };
+    return { key: "pending", title: "Đang chờ xác minh chuyển khoản", description: "Hệ thống tự kiểm tra giao dịch. Nếu đã chuyển khoản nhưng chưa được ghi nhận, hãy gửi minh chứng để nhà hàng xác minh nhanh hơn." };
   }
   return null;
 };

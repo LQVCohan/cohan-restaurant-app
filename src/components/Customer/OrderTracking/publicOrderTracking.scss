@@ -138,3 +138,12 @@
     background: #fff1f0;
   }
 }
+.tracking-payment-panel--submitted,
+.tracking-payment-panel--pending {
+  border-color: rgba(95, 127, 99, .26);
+  background: linear-gradient(135deg, #f7f1e8, #edf3e9);
+}
+.tracking-payment-panel--expired {
+  border-color: rgba(108, 63, 49, .24);
+  background: linear-gradient(135deg, #f8eee7, #f6f1e8);
+}

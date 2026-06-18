@@ -1366,3 +1366,22 @@ $qr-radius-sm: 12px;
     width: 100%;
   }
 }
+.transfer-reminder-banner,
+.transfer-rejected-warning,
+.transfer-terminal-warning,
+.transfer-proof-helper {
+  margin: .75rem 0;
+  padding: .75rem .9rem;
+  border-radius: 14px;
+  color: #2f3a34;
+  background: #f4f0e8;
+  border: 1px solid rgba(104, 128, 106, .24);
+  line-height: 1.5;
+}
+.transfer-rejected-warning.is-final,
+.transfer-terminal-warning {
+  background: #f7ece6;
+  border-color: rgba(122, 74, 52, .24);
+  color: #5f392b;
+}
+.transfer-proof-helper { background: #eef3ea; }
