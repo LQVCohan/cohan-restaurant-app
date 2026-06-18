@@ -130,3 +130,122 @@
   border-color: #b7793b;
   box-shadow: 0 0 0 3px rgba(183, 121, 59, 0.16);
 }
+
+.best-coupon-section {
+  background: linear-gradient(135deg, #fff9ef 0%, #fff 62%);
+  border: 1px solid rgba(183, 121, 59, 0.16);
+  border-radius: 18px;
+}
+
+.coupon-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.coupon-section-heading p {
+  margin: 0 0 0.2rem;
+  color: #9a5b22;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.coupon-section-heading h3 {
+  margin: 0;
+}
+
+.coupon-section-heading span,
+.coupon-empty-state {
+  color: #7a6756;
+  font-weight: 600;
+}
+
+.best-coupon-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.9rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 10px 28px rgba(118, 75, 31, 0.08);
+}
+
+.best-coupon-card + .best-coupon-card {
+  margin-top: 0.75rem;
+}
+
+.best-coupon-card.is-applied {
+  outline: 2px solid rgba(183, 121, 59, 0.28);
+}
+
+.coupon-restaurant-label {
+  display: inline-flex;
+  margin-bottom: 0.3rem;
+  color: #8d6848;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.best-coupon-card h4,
+.best-coupon-card p {
+  margin: 0;
+}
+
+.best-coupon-card p {
+  margin-top: 0.3rem;
+  color: #6d5d4f;
+  font-size: 0.88rem;
+}
+
+.coupon-saving-box {
+  display: grid;
+  gap: 0.15rem;
+  text-align: right;
+}
+
+.coupon-saving-box strong {
+  color: #b42318;
+  font-size: 1rem;
+}
+
+.coupon-saving-box span {
+  color: #7a6756;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.coupon-actions button {
+  border: 0;
+  border-radius: 999px;
+  background: #3b2a1d;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0.6rem 0.9rem;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.coupon-actions button:hover {
+  background: #6f4521;
+  transform: translateY(-1px);
+}
+
+.price-row.discount strong {
+  color: #b42318;
+}
+
+@media (max-width: 640px) {
+  .best-coupon-card {
+    grid-template-columns: 1fr;
+  }
+
+  .coupon-saving-box {
+    text-align: left;
+  }
+}

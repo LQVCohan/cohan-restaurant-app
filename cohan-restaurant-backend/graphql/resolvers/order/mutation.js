@@ -1141,6 +1141,10 @@ function buildDiscountPricing(pricing = {}) {
     taxRate: Math.max(0, Number(pricing?.taxRate || 0)),
     shippingFee: Math.max(0, Number(pricing?.shippingFee || 0)),
     voucherCode: normalizeVoucherCode(pricing?.voucherCode),
+    couponCodesByRestaurant:
+      pricing?.couponCodesByRestaurant && typeof pricing.couponCodesByRestaurant === "object"
+        ? pricing.couponCodesByRestaurant
+        : undefined,
   };
 }
 
@@ -2526,8 +2530,18 @@ export const OrderMutation = {
               ? Math.round(Number(pricing?.shippingFee || 0) / grouped.size)
               : Number(pricing?.shippingFee || 0);
 
+          const couponCodesByRestaurant =
+            pricing?.couponCodesByRestaurant &&
+            typeof pricing.couponCodesByRestaurant === "object"
+              ? pricing.couponCodesByRestaurant
+              : {};
+          const groupVoucherCode =
+            couponCodesByRestaurant[String(restaurantId)] ||
+            couponCodesByRestaurant[String(restaurantId.toString?.() || "")] ||
+            pricing?.voucherCode;
           const groupPricing = buildDiscountPricing({
             ...pricing,
+            voucherCode: groupVoucherCode,
             shippingFee: groupShippingFee,
           });
 
@@ -2536,6 +2550,9 @@ export const OrderMutation = {
             items: normalizedItems,
             pricing: groupPricing,
             promotionIds: normalizePromotionIds(promotionIds),
+            userId: finalUserId,
+            paymentMethod: normalizedPaymentMethod,
+            orderType,
             session,
           });
 

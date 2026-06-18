@@ -647,6 +647,7 @@ input CheckoutPricingInput {
   promotionDiscount: Int
   voucherDiscount: Int
   voucherCode: String
+  couponCodesByRestaurant: JSON
 }
 
 input CreateCheckoutOrdersInput {
