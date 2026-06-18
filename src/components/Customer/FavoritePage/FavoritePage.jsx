@@ -133,7 +133,7 @@ const FavoritePage = () => {
   };
 
   const openItem = (item) => {
-    if (item.type === "restaurant") navigate(`/menu?restaurantId=${item.id}`);
+    if (item.type === "restaurant") navigate(`/cus-menu?restaurantId=${encodeURIComponent(item.id)}`);
     if (item.type === "food") navigate(buildFoodDetailPath(item.id, { restaurantId: item.restaurantId, menuId: item.menuId, categoryId: item.categoryId }));
   };
 

@@ -139,7 +139,7 @@ const RestaurantMenu = () => {
   const handleToggleRestaurantFavorite = (restaurant) => {
     if (!isAuthenticated || !user?.id) {
       showNotification("Vui lòng đăng nhập để lưu nhà hàng yêu thích.", "warning");
-      navigate("/login", { state: { from: `/menu${search || ""}` } });
+      navigate("/login", { state: { from: `/cus-menu${search || ""}` } });
       return;
     }
     toggleRestaurantFavorite({ variables: { input: { type: "restaurant", targetId: restaurant.id } } });
