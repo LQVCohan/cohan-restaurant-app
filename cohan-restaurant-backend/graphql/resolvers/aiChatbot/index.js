@@ -25,6 +25,7 @@ import {
   deleteRestaurantAiChatbotKnowledgeSuggestion,
   bulkDismissRestaurantAiChatbotKnowledgeSuggestions,
   bulkDeleteRestaurantAiChatbotKnowledgeSuggestions,
+  generateRestaurantAiChatbotKnowledgeSuggestions,
 } from "../../../src/services/ai/restaurantChatbotKnowledgeSuggestion.service.js";
 import {
   submitAiChatbotAnswerFeedback,
@@ -143,6 +144,7 @@ const Mutation = {
   bulkDeleteRestaurantAiChatbotKnowledge: async (_, { input }, ctx) => bulkDeleteRestaurantAiChatbotKnowledge({ ids: input?.ids || [], ctx }),
   importRestaurantAiChatbotKnowledge: async (_, { input }, ctx) => importRestaurantAiChatbotKnowledge({ input, ctx }),
   rebuildRestaurantAiKnowledgeEmbeddings: async (_, { restaurantId }, ctx) => rebuildRestaurantAiKnowledgeEmbeddings({ restaurantId, ctx }),
+  generateRestaurantAiChatbotKnowledgeSuggestions: async (_, { input }, ctx) => generateRestaurantAiChatbotKnowledgeSuggestions({ input, ctx }),
   approveRestaurantAiChatbotKnowledgeSuggestion: async (_, { id, input }, ctx) => approveRestaurantAiChatbotKnowledgeSuggestion({ id, input, ctx }),
   dismissRestaurantAiChatbotKnowledgeSuggestion: async (_, { id }, ctx) => dismissRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }),
   deleteRestaurantAiChatbotKnowledgeSuggestion: async (_, { id }, ctx) => deleteRestaurantAiChatbotKnowledgeSuggestion({ id, ctx }),
