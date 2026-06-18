@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { gql, useLazyQuery, useMutation } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
-import { useNotification } from "@/hooks/useNotification"; // Hook thông báo (tuỳ project bạn)
+import { useNotification } from "@/hooks/useNotification";
 import { getRoleHomeRoute, resolveRoleName } from "@/routes/routeGuard";
 import { isAccountVerified } from "@/utils/accountVerification";
 import {
@@ -14,23 +14,16 @@ import {
   FacebookFilled,
   EyeInvisibleOutlined,
   EyeTwoTone,
-  PhoneOutlined,
   IdcardOutlined,
 } from "@ant-design/icons";
 
-// Import file SCSS đã cấu hình Scope
 import "./Login.scss";
 
-// Lấy Site Key từ biến môi trường
 const CAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "";
 const CAPTCHA_ENABLED =
   String(import.meta.env.VITE_ENABLE_RECAPTCHA ?? "true").toLowerCase() !== "false";
 const shouldRenderCaptcha = CAPTCHA_ENABLED && Boolean(CAPTCHA_SITE_KEY);
 const captchaConfigMissing = CAPTCHA_ENABLED && !CAPTCHA_SITE_KEY;
-
-// ==========================================
-// 1. GRAPHQL QUERIES & MUTATIONS
-// ==========================================
 
 const LOGIN_MUTATION = gql`
   mutation login(
@@ -94,7 +87,6 @@ const CREATE_USER_MUTATION = gql`
   }
 `;
 
-// Lấy Role Customer để gán khi đăng ký
 const ROLES_QUERY = gql`
   query Roles($search: String) {
     role(search: $search) {
@@ -105,17 +97,12 @@ const ROLES_QUERY = gql`
   }
 `;
 
-// ==========================================
-// 2. HELPER FUNCTIONS
-// ==========================================
-
-// Hàm tách định danh (Email/Phone/Username)
 function splitIdentifier(val) {
   val = (val || "").trim();
   if (val.includes("@")) return { email: val };
-  // Regex đơn giản cho số điện thoại VN
-  if (/^(\+?84|0)\d{8,12}$/.test(val))
+  if (/^(\+?84|0)\d{8,12}$/.test(val)) {
     return { phone: val.replace(/\s+/g, "") };
+  }
   return { username: val };
 }
 
@@ -125,10 +112,7 @@ function resolveLoginErrorMessage(error) {
   const code = first?.extensions?.code || "";
   const msg = String(first?.message || "").toLowerCase();
 
-  if (
-    code === "UNAUTHENTICATED" ||
-    msg.includes("invalid credentials")
-  ) {
+  if (code === "UNAUTHENTICATED" || msg.includes("invalid credentials")) {
     return "Sai tài khoản hoặc mật khẩu.";
   }
 
@@ -150,10 +134,6 @@ function resolveLoginErrorMessage(error) {
 
   return "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.";
 }
-
-// ==========================================
-// 3. MAIN COMPONENT
-// ==========================================
 
 const safeRedirectPath = (candidate, fallback) => {
   if (typeof candidate !== "string") return fallback;
@@ -186,7 +166,43 @@ const LoginPage = () => {
   } = useContext(AuthContext);
   const { showNotification } = useNotification();
 
+  const [isRightPanelActive, setIsRightPanelActive] = useState(false);
+  const [mobileMode, setMobileMode] = useState("login");
+  const [loginForm, setLoginForm] = useState({
+    identifier: "",
+    password: "",
+    rememberSession: true,
+    rememberIdentifier: true,
+  });
+  const [registerForm, setRegisterForm] = useState({
+    fullName: "",
+    email: "",
+    username: "",
+    password: "",
+    confirmPassword: "",
+    terms: false,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
 
+  const recaptchaLoginRef = useRef(null);
+  const recaptchaRegisterRef = useRef(null);
+
+  const [loadRoles] = useLazyQuery(ROLES_QUERY, {
+    fetchPolicy: "network-only",
+  });
+
+  const resetCaptcha = () => {
+    setCaptchaToken("");
+    recaptchaLoginRef.current?.reset();
+    recaptchaRegisterRef.current?.reset();
+  };
+
+  const togglePanel = (isRegister) => {
+    setIsRightPanelActive(isRegister);
+    setMobileMode(isRegister ? "register" : "login");
+    resetCaptcha();
+  };
 
   useEffect(() => {
     if (loading || !isAuthenticated || !user) return;
@@ -208,72 +224,32 @@ const LoginPage = () => {
     }));
   }, [rememberedLoginIdentifier]);
 
-  // --- STATE ---
-  const [isRightPanelActive, setIsRightPanelActive] = useState(false); // Controls Sliding Animation
-  const [mobileMode, setMobileMode] = useState("login"); // 'login' | 'register' (Cho mobile)
-
-  // Form Data
-  const [loginForm, setLoginForm] = useState({
-    identifier: "",
-    password: "",
-    rememberSession: true,
-    rememberIdentifier: true,
-  });
-  const [registerForm, setRegisterForm] = useState({
-    fullName: "",
-    email: "",
-    username: "",
-    password: "",
-    confirmPassword: "",
-    terms: false,
-  });
-
-  // UI State
-  const [showPassword, setShowPassword] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-
-  // Refs cho Captcha (để reset thủ công)
-  const recaptchaLoginRef = useRef(null);
-  const recaptchaRegisterRef = useRef(null);
-
-  // Chỉ lấy role khi cần đăng ký để tránh query sớm lúc chưa đăng nhập/khởi động
-  const [loadRoles] = useLazyQuery(ROLES_QUERY, {
-    fetchPolicy: "network-only",
-  });
-
-  // --- MUTATIONS ---
-  const [loginMutation, { loading: loginLoading }] = useMutation(
-    LOGIN_MUTATION,
-    {
-      errorPolicy: "none",
-      onError: (error) => {
-        showNotification(resolveLoginErrorMessage(error), "error");
-        resetCaptcha();
-      },
-      onCompleted: (data) => {
-        const token = data?.login?.token;
-        const user = data?.login?.user;
-        if (!token || !user) {
-          showNotification(
-            "Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản/mật khẩu.",
-            "error",
-          );
-          resetCaptcha();
-          return;
-        }
-        // Lưu token vào Context/LocalStorage
-        authLogin(token, user, null, {
-          persistSession: loginForm.rememberSession,
-          rememberIdentifier: loginForm.rememberIdentifier,
-          identifier: loginForm.identifier,
-        });
-        showNotification(
-          `Chào mừng ${user.fullName || user.username}!`,
-          "success",
-        );
-      },
+  const [loginMutation, { loading: loginLoading }] = useMutation(LOGIN_MUTATION, {
+    errorPolicy: "none",
+    onError: (error) => {
+      showNotification(resolveLoginErrorMessage(error), "error");
+      resetCaptcha();
     },
-  );
+    onCompleted: (data) => {
+      const token = data?.login?.token;
+      const loggedInUser = data?.login?.user;
+      if (!token || !loggedInUser) {
+        showNotification(
+          "Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản/mật khẩu.",
+          "error",
+        );
+        resetCaptcha();
+        return;
+      }
+
+      authLogin(token, loggedInUser, null, {
+        persistSession: loginForm.rememberSession,
+        rememberIdentifier: loginForm.rememberIdentifier,
+        identifier: loginForm.identifier,
+      });
+      showNotification(`Chào mừng ${loggedInUser.fullName || loggedInUser.username}.`, "success");
+    },
+  });
 
   const [registerMutation, { loading: registerLoading }] = useMutation(
     CREATE_USER_MUTATION,
@@ -285,9 +261,15 @@ const LoginPage = () => {
       },
       onCompleted: (data) => {
         const createdUser = data?.createUser?.user;
-        const needsVerification = createdUser?.status === "pending" || (createdUser && !isAccountVerified(createdUser));
+        const needsVerification =
+          createdUser?.status === "pending" ||
+          (createdUser && !isAccountVerified(createdUser));
+
         if (needsVerification) {
-          showNotification("Đăng ký thành công. Vui lòng xác minh tài khoản trước khi đăng nhập.", "success");
+          showNotification(
+            "Đăng ký thành công. Vui lòng xác minh tài khoản trước khi đăng nhập.",
+            "success",
+          );
           navigate("/verify-email", {
             replace: true,
             state: {
@@ -297,10 +279,10 @@ const LoginPage = () => {
             },
           });
         } else {
-          showNotification("Đăng ký thành công! Hãy đăng nhập ngay.", "success");
-          togglePanel(false); // Chuyển về tab Login
+          showNotification("Đăng ký thành công. Hãy đăng nhập ngay.", "success");
+          togglePanel(false);
         }
-        // Reset form đăng ký
+
         setRegisterForm({
           fullName: "",
           email: "",
@@ -312,21 +294,6 @@ const LoginPage = () => {
       },
     },
   );
-
-  // --- HANDLERS ---
-
-  const resetCaptcha = () => {
-    setCaptchaToken("");
-    recaptchaLoginRef.current?.reset();
-    recaptchaRegisterRef.current?.reset();
-  };
-
-  // Hàm chuyển đổi Tab (Login <-> Register)
-  const togglePanel = (isRegister) => {
-    setIsRightPanelActive(isRegister);
-    setMobileMode(isRegister ? "register" : "login");
-    resetCaptcha(); // Quan trọng: Reset Captcha để tránh lỗi token cũ
-  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -340,7 +307,6 @@ const LoginPage = () => {
       );
     }
     if (shouldRenderCaptcha && !captchaToken) {
-      // Captcha is enabled and rendered, so submission is intentionally blocked until solved.
       return showNotification("Vui lòng xác thực Captcha", "warning");
     }
 
@@ -355,7 +321,6 @@ const LoginPage = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    // Validate cơ bản
     if (
       !registerForm.fullName ||
       !registerForm.email ||
@@ -368,10 +333,7 @@ const LoginPage = () => {
       return showNotification("Mật khẩu xác nhận không khớp", "error");
     }
     if (!registerForm.terms) {
-      return showNotification(
-        "Bạn cần đồng ý với điều khoản sử dụng",
-        "warning",
-      );
+      return showNotification("Bạn cần đồng ý với điều khoản sử dụng", "warning");
     }
     if (captchaConfigMissing) {
       return showNotification(
@@ -380,22 +342,20 @@ const LoginPage = () => {
       );
     }
     if (shouldRenderCaptcha && !captchaToken) {
-      // Captcha is enabled and rendered, so submission is intentionally blocked until solved.
       return showNotification("Vui lòng xác thực Captcha", "warning");
     }
 
-    // Lấy Role ID (Customer) ngay thời điểm submit để tránh query nền khi chưa cần
     let roleId;
     try {
       const { data } = await loadRoles({
         variables: { search: "customer" },
       });
       roleId =
-        data?.role?.find((r) => r.slug === "customer")?.id ||
-        data?.role?.[0]?.id;
+        data?.role?.find((r) => r.slug === "customer")?.id || data?.role?.[0]?.id;
     } catch {
       roleId = undefined;
     }
+
     if (!roleId) {
       showNotification(
         "Không thể tải quyền mặc định cho tài khoản mới. Vui lòng thử lại.",
@@ -417,20 +377,41 @@ const LoginPage = () => {
     registerMutation({ variables });
   };
 
-  // ==========================================
-  // 4. RENDER UI
-  // ==========================================
+  const renderCaptcha = (ref) => (
+    <div className="captcha-container">
+      {shouldRenderCaptcha ? (
+        <ReCAPTCHA
+          ref={ref}
+          sitekey={CAPTCHA_SITE_KEY}
+          size="normal"
+          onChange={setCaptchaToken}
+        />
+      ) : captchaConfigMissing ? (
+        <p className="captcha-message captcha-message--danger">
+          Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.
+        </p>
+      ) : (
+        import.meta.env.DEV && (
+          <p className="captcha-message">Captcha đang tắt ở môi trường dev.</p>
+        )
+      )}
+    </div>
+  );
+
   return (
     <div className="login-page-wrapper">
-      {/* MOBILE SWITCHER (Chỉ hiện trên màn hình nhỏ do CSS xử lý) */}
-      <div className="mobile-switcher">
+      <div className="login-bg-grain" aria-hidden="true" />
+
+      <div className="mobile-switcher" aria-label="Chuyển chế độ đăng nhập">
         <button
+          type="button"
           className={mobileMode === "login" ? "active" : ""}
           onClick={() => togglePanel(false)}
         >
           Đăng nhập
         </button>
         <button
+          type="button"
           className={mobileMode === "register" ? "active" : ""}
           onClick={() => togglePanel(true)}
         >
@@ -438,43 +419,26 @@ const LoginPage = () => {
         </button>
       </div>
 
-      <div
+      <section
         className={`container ${isRightPanelActive ? "right-panel-active" : ""}`}
         id="container"
+        aria-label="FoodHub account access"
       >
-        {/* =========================================
-            FORM ĐĂNG KÝ (SIGN UP CONTAINER)
-            Lớp overlay sẽ trượt ra để lộ phần này
-           ========================================= */}
         <div
           className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}
         >
-          <form onSubmit={handleRegister}>
+          <form className="auth-form auth-form--register" onSubmit={handleRegister}>
+            <span className="auth-eyebrow">FoodHub account</span>
             <h1>Tạo tài khoản</h1>
-
-            <div className="social-container">
-              <a
-                href="#"
-                className="social"
-                onClick={(e) => e.preventDefault()}
-              >
-                <FacebookFilled style={{ color: "#3b5998" }} />
-              </a>
-              <a
-                href="#"
-                className="social"
-                onClick={(e) => e.preventDefault()}
-              >
-                <GoogleOutlined style={{ color: "#db4437" }} />
-              </a>
-            </div>
-            <p className="social-text">hoặc đăng ký bằng email</p>
+            <p className="auth-subtitle">hoặc đăng ký bằng email</p>
 
             <div className="input-wrapper">
               <UserOutlined className="field-icon" />
               <input
                 type="text"
                 placeholder="Họ và tên"
+                aria-label="Họ và tên"
+                autoComplete="name"
                 value={registerForm.fullName}
                 onChange={(e) =>
                   setRegisterForm({ ...registerForm, fullName: e.target.value })
@@ -487,6 +451,8 @@ const LoginPage = () => {
               <input
                 type="email"
                 placeholder="Email"
+                aria-label="Email"
+                autoComplete="email"
                 value={registerForm.email}
                 onChange={(e) =>
                   setRegisterForm({ ...registerForm, email: e.target.value })
@@ -499,6 +465,8 @@ const LoginPage = () => {
               <input
                 type="text"
                 placeholder="Username (Tên đăng nhập)"
+                aria-label="Username"
+                autoComplete="username"
                 value={registerForm.username}
                 onChange={(e) =>
                   setRegisterForm({ ...registerForm, username: e.target.value })
@@ -511,6 +479,8 @@ const LoginPage = () => {
               <input
                 type="password"
                 placeholder="Mật khẩu"
+                aria-label="Mật khẩu"
+                autoComplete="new-password"
                 value={registerForm.password}
                 onChange={(e) =>
                   setRegisterForm({ ...registerForm, password: e.target.value })
@@ -523,6 +493,8 @@ const LoginPage = () => {
               <input
                 type="password"
                 placeholder="Nhập lại mật khẩu"
+                aria-label="Nhập lại mật khẩu"
+                autoComplete="new-password"
                 value={registerForm.confirmPassword}
                 onChange={(e) =>
                   setRegisterForm({
@@ -533,102 +505,66 @@ const LoginPage = () => {
               />
             </div>
 
-            {/* Checkbox Terms */}
-            <div
-              style={{
-                width: "100%",
-                textAlign: "left",
-                margin: "5px 0",
-                fontSize: "12px",
-                paddingLeft: "5px",
-              }}
+            <label className="check-card check-card--terms">
+              <input
+                type="checkbox"
+                checked={registerForm.terms}
+                onChange={(e) =>
+                  setRegisterForm({
+                    ...registerForm,
+                    terms: e.target.checked,
+                  })
+                }
+              />
+              <span>Tôi đồng ý với chính sách & điều khoản</span>
+            </label>
+
+            {renderCaptcha(recaptchaRegisterRef)}
+
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={registerLoading || captchaConfigMissing}
             >
-              <label
-                style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={registerForm.terms}
-                  onChange={(e) =>
-                    setRegisterForm({
-                      ...registerForm,
-                      terms: e.target.checked,
-                    })
-                  }
-                  style={{ width: "auto", margin: 0 }}
-                />
-                <span style={{ color: "#636e72" }}>
-                  Tôi đồng ý với chính sách & điều khoản
-                </span>
-              </label>
-            </div>
-
-            {/* CAPTCHA REGISTER */}
-            <div className="captcha-container">
-              {shouldRenderCaptcha ? (
-                <ReCAPTCHA
-                  ref={recaptchaRegisterRef}
-                  sitekey={CAPTCHA_SITE_KEY}
-                  size="normal"
-                  onChange={setCaptchaToken}
-                />
-              ) : captchaConfigMissing ? (
-                <p style={{ color: "#c0392b", fontSize: 12 }}>
-                  Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.
-                </p>
-              ) : (
-                import.meta.env.DEV && (
-                  <p style={{ color: "#636e72", fontSize: 12 }}>
-                    Captcha đang tắt ở môi trường dev.
-                  </p>
-                )
-              )}
-            </div>
-
-            <button className="btn-primary" disabled={registerLoading || captchaConfigMissing}>
               {registerLoading ? "Đang tạo..." : "Đăng ký ngay"}
             </button>
+
+            <div className="social-container" aria-label="Đăng ký bằng mạng xã hội">
+              <a
+                href="#"
+                className="social social-facebook"
+                aria-label="Đăng ký bằng Facebook"
+                onClick={(e) => e.preventDefault()}
+              >
+                <FacebookFilled />
+              </a>
+              <a
+                href="#"
+                className="social social-google"
+                aria-label="Đăng ký bằng Google"
+                onClick={(e) => e.preventDefault()}
+              >
+                <GoogleOutlined />
+              </a>
+            </div>
           </form>
         </div>
 
-        {/* =========================================
-            FORM ĐĂNG NHẬP (SIGN IN CONTAINER)
-            Mặc định hiển thị
-           ========================================= */}
         <div
           className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}
         >
-          <form onSubmit={handleLogin}>
+          <form className="auth-form auth-form--login" onSubmit={handleLogin}>
+            <span className="auth-eyebrow">FoodHub account</span>
             <h1>Đăng nhập</h1>
-
-            <div className="social-container">
-              <a
-                href="#"
-                className="social"
-                onClick={(e) => e.preventDefault()}
-              >
-                <FacebookFilled style={{ color: "#3b5998" }} />
-              </a>
-              <a
-                href="#"
-                className="social"
-                onClick={(e) => e.preventDefault()}
-              >
-                <GoogleOutlined style={{ color: "#db4437" }} />
-              </a>
-            </div>
-            <p className="social-text">hoặc sử dụng tài khoản của bạn</p>
+            <p className="auth-subtitle">hoặc sử dụng tài khoản của bạn</p>
 
             <div className="input-wrapper">
               <UserOutlined className="field-icon" />
               <input
                 type="text"
                 placeholder="Email / Username / SĐT"
+                aria-label="Email, username hoặc số điện thoại"
+                autoComplete="username"
                 value={loginForm.identifier}
                 onChange={(e) =>
                   setLoginForm({ ...loginForm, identifier: e.target.value })
@@ -641,6 +577,8 @@ const LoginPage = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Mật khẩu"
+                aria-label="Mật khẩu"
+                autoComplete="current-password"
                 value={loginForm.password}
                 onChange={(e) =>
                   setLoginForm({ ...loginForm, password: e.target.value })
@@ -649,53 +587,21 @@ const LoginPage = () => {
               <button
                 type="button"
                 className="toggle-pw-btn"
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? (
-                  <EyeTwoTone twoToneColor="#FF6B6B" />
-                ) : (
-                  <EyeInvisibleOutlined />
-                )}
+                {showPassword ? <EyeTwoTone /> : <EyeInvisibleOutlined />}
               </button>
             </div>
 
-            <a
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              style={{
-                fontSize: "13px",
-                color: "#333",
-                textDecoration: "none",
-                margin: "8px 0",
-              }}
-            >
+            <a href="#" className="forgot-link" onClick={(e) => e.preventDefault()}>
               Quên mật khẩu?
             </a>
 
-            {/* CAPTCHA LOGIN */}
-            <div className="captcha-container">
-              {shouldRenderCaptcha ? (
-                <ReCAPTCHA
-                  ref={recaptchaLoginRef}
-                  sitekey={CAPTCHA_SITE_KEY}
-                  size="normal"
-                  onChange={setCaptchaToken}
-                />
-              ) : captchaConfigMissing ? (
-                <p style={{ color: "#c0392b", fontSize: 12 }}>
-                  Captcha chưa được cấu hình. Vui lòng kiểm tra VITE_RECAPTCHA_SITE_KEY.
-                </p>
-              ) : (
-                import.meta.env.DEV && (
-                  <p style={{ color: "#636e72", fontSize: 12 }}>
-                    Captcha đang tắt ở môi trường dev.
-                  </p>
-                )
-              )}
-            </div>
+            {renderCaptcha(recaptchaLoginRef)}
 
-            <div style={{ width: "100%", margin: "8px 0", fontSize: 13, color: "#444" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div className="remember-card">
+              <label className="check-row">
                 <input
                   type="checkbox"
                   checked={loginForm.rememberSession}
@@ -703,9 +609,9 @@ const LoginPage = () => {
                     setLoginForm({ ...loginForm, rememberSession: e.target.checked })
                   }
                 />
-                Duy trì đăng nhập tối đa 30 ngày trên thiết bị này
+                <span>Duy trì đăng nhập tối đa 30 ngày trên thiết bị này</span>
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label className="check-row">
                 <input
                   type="checkbox"
                   checked={loginForm.rememberIdentifier}
@@ -713,48 +619,65 @@ const LoginPage = () => {
                     setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })
                   }
                 />
-                Ghi nhớ tài khoản (chỉ lưu email/tên đăng nhập/số điện thoại)
+                <span>Ghi nhớ tài khoản (chỉ lưu email/tên đăng nhập/số điện thoại)</span>
               </label>
             </div>
 
-            <button className="btn-primary" disabled={loginLoading || captchaConfigMissing}>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loginLoading || captchaConfigMissing}
+            >
               {loginLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
+
+            <div className="social-container" aria-label="Đăng nhập bằng mạng xã hội">
+              <a
+                href="#"
+                className="social social-facebook"
+                aria-label="Đăng nhập bằng Facebook"
+                onClick={(e) => e.preventDefault()}
+              >
+                <FacebookFilled />
+              </a>
+              <a
+                href="#"
+                className="social social-google"
+                aria-label="Đăng nhập bằng Google"
+                onClick={(e) => e.preventDefault()}
+              >
+                <GoogleOutlined />
+              </a>
+            </div>
           </form>
         </div>
 
-        {/* =========================================
-            OVERLAY CONTAINER (PHẦN TRƯỢT)
-            Chứa Pattern đồ ăn/bút viết và nút chuyển đổi
-           ========================================= */}
-        <div className="overlay-container">
+        <div className="overlay-container" aria-hidden="true">
           <div className="overlay">
-            {/* PANEL TRÁI (Hiện khi đang ở form Đăng Ký -> Mời Đăng Nhập) */}
             <div className="overlay-panel overlay-left">
-              <h1>Chào mừng!</h1>
+              <span className="overlay-kicker">FoodHub manager</span>
+              <h1>Chào mừng</h1>
               <p>
-                Để duy trì kết nối với chúng tôi, vui lòng đăng nhập bằng thông
-                tin cá nhân của bạn.
+                Đăng nhập để giữ dữ liệu đặt bàn, món ăn và vận hành nhà hàng luôn được đồng bộ.
               </p>
-              <button className="ghost" onClick={() => togglePanel(false)}>
+              <button type="button" className="ghost" onClick={() => togglePanel(false)}>
                 Đăng nhập
               </button>
             </div>
 
-            {/* PANEL PHẢI (Hiện khi đang ở form Đăng Nhập -> Mời Đăng Ký) */}
             <div className="overlay-panel overlay-right">
-              <h1>Xin chào!</h1>
+              <span className="overlay-kicker">FoodHub manager</span>
+              <h1>Xin chào</h1>
               <p>
-                Nhập thông tin cá nhân và bắt đầu hành trình ẩm thực cùng
-                FoodHub.
+                Tạo tài khoản để bắt đầu quản lý hành trình ẩm thực cùng FoodHub.
               </p>
-              <button className="ghost" onClick={() => togglePanel(true)}>
+              <button type="button" className="ghost" onClick={() => togglePanel(true)}>
                 Đăng ký
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
