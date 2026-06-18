@@ -11,6 +11,37 @@ const toNumber = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const aiKnowledgeNoticeMessageGuardPlugin = () => ({
+  name: "ai-knowledge-notice-message-guard",
+  enforce: "pre",
+  transform(code, id) {
+    const filePath = id.split("?")[0];
+    const targetPath = path.join(
+      "src",
+      "components",
+      "Dashboard_Manager",
+      "Customer",
+      "AiChatbotKnowledgePage.jsx",
+    );
+    if (!path.normalize(filePath).endsWith(targetPath)) return null;
+
+    const unsafeSnippet = `      const actionMessage = await action();
+      setNotice(actionMessage || successMessage);`;
+    const safeSnippet = `      const actionMessage = await action();
+      setNotice(
+        typeof actionMessage === "string" && actionMessage.trim()
+          ? actionMessage
+          : successMessage,
+      );`;
+
+    if (!code.includes(unsafeSnippet)) return null;
+    return {
+      code: code.replace(unsafeSnippet, safeSnippet),
+      map: null,
+    };
+  },
+});
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const mergedEnv = { ...process.env, ...env };
@@ -28,7 +59,7 @@ export default defineConfig(({ mode }) => {
     .filter(Boolean);
 
   return {
-    plugins: [react()],
+    plugins: [aiKnowledgeNoticeMessageGuardPlugin(), react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
