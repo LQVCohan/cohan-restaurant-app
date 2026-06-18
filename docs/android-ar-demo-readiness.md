@@ -56,7 +56,7 @@ Nếu từ chối quyền camera/location, AR hoặc geofence có thể không h
 
 ### `modelUrl` không phải GLB/GLTF
 
-Luồng render AR thật chỉ tải model `.glb` hoặc `.gltf`. Hãy chọn mẫu khác hoặc cập nhật catalog model.
+Luồng render AR thật chỉ tải model `.glb` hoặc `.gltf`. Thiếu `modelUrl` hoặc model không phải GLB/GLTF chỉ ảnh hưởng phần render model trong WebXR; người dùng vẫn có thể dùng hit-test/manual calibration để lấy và lưu tọa độ nếu các điều kiện lưu khác hợp lệ.
 
 ### Đang ngoài geofence
 
