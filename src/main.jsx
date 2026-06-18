@@ -16,9 +16,11 @@ import "./styles/RbacPayrollTheme.css";
 import "./styles/RbacCompactLayout.css";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
+import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
 
 void initFrontendErrorTracking();
 installAuthenticatedTable3DTransport();
+installRbacVietnameseLabels();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
