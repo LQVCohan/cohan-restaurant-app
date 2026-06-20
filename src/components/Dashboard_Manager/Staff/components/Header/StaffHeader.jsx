@@ -17,12 +17,28 @@ const StaffHeader = ({
   onSearchChange,
   pendingLeaveCount = 0,
 }) => {
-  const statsData = useMemo(() => ([
-    { id: "total", icon: "👥", label: "Tổng nhân viên", value: stats.totalStaff || 0 },
-    { id: "active", icon: "🟢", label: "Đang trực tuyến", value: stats.activeStaff || 0, suffix: "nhân viên" },
-    { id: "leave", icon: "📅", label: "Đang nghỉ phép", value: stats.onLeaveStaff || 0, suffix: "hồ sơ" },
-    { id: "rate", icon: "⭐", label: "Hiệu suất TB", value: (Math.round((stats.avgRate || 0) * 10) / 10).toFixed(1), suffix: "/5.0" },
-  ]), [stats]);
+  const statsData = useMemo(() => {
+    const parsedAverageRate = Number(stats.avgRate);
+    const hasAverageRate =
+      stats.avgRate !== null &&
+      stats.avgRate !== undefined &&
+      Number.isFinite(parsedAverageRate);
+
+    return [
+      { id: "total", icon: "👥", label: "Tổng nhân viên", value: stats.totalStaff || 0 },
+      { id: "active", icon: "🟢", label: "Đang trực tuyến", value: stats.activeStaff || 0, suffix: "nhân viên" },
+      { id: "leave", icon: "📅", label: "Đang nghỉ phép", value: stats.onLeaveStaff || 0, suffix: "hồ sơ" },
+      {
+        id: "rate",
+        icon: "⭐",
+        label: "Hiệu suất TB",
+        value: hasAverageRate
+          ? (Math.round(parsedAverageRate * 10) / 10).toFixed(1)
+          : "—",
+        suffix: hasAverageRate ? "/5.0" : "chưa có dữ liệu",
+      },
+    ];
+  }, [stats]);
 
   return <ManagementPageHeader
     className="staff-page-header"
