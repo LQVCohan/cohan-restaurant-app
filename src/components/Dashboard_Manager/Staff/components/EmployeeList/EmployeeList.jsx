@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   SearchX,
+  RotateCcw,
 } from "lucide-react";
 import EmployeeItem from "./EmployeeItem";
 import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
@@ -17,6 +18,7 @@ const EmployeeList = ({
   selectedEmployee,
   focusedEmployeeId = "",
   onEmployeeSelect,
+  onEmployeeAction,
   roleList = [],
   loading = false,
   error = null,
@@ -33,14 +35,11 @@ const EmployeeList = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // --- LOGIC LỌC ---
   const filteredEmployees = useMemo(() => {
     return dataSource.filter((employee) => {
       const matchesSearch = matchesEmployeeSearch(employee, searchQuery);
-
       const matchesDepartment =
         departmentFilter === "all" || employee.department === departmentFilter;
-
       const matchesEmploymentStatus =
         employmentStatusFilter === "all" || employee.employmentStatus === employmentStatusFilter;
       const matchesAccountStatus =
@@ -69,7 +68,6 @@ const EmployeeList = ({
     roleFilter,
   ]);
 
-  // --- LOGIC PHÂN TRANG ---
   const hasActiveFilters = Boolean(
     searchQuery ||
       departmentFilter !== "all" ||
@@ -83,13 +81,15 @@ const EmployeeList = ({
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
+  const rangeStart = filteredEmployees.length
+    ? (currentPage - 1) * itemsPerPage + 1
+    : 0;
+  const rangeEnd = Math.min(currentPage * itemsPerPage, filteredEmployees.length);
 
-  // Reset về trang 1 khi filter đổi
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, departmentFilter, employmentStatusFilter, accountStatusFilter, verificationFilter, roleFilter]);
 
-  // Clamp trang hiện tại khi tổng trang thay đổi
   useEffect(() => {
     if (totalPages === 0 && currentPage !== 1) {
       setCurrentPage(1);
@@ -100,12 +100,17 @@ const EmployeeList = ({
     }
   }, [totalPages, currentPage]);
 
-  // --- HANDLERS ---
-  const handleActionClick = () => {};
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDepartmentFilter("all");
+    setEmploymentStatusFilter("all");
+    setAccountStatusFilter("all");
+    setVerificationFilter("all");
+    setRoleFilter("all");
+  };
 
   return (
     <div className="employee-list-card fade-in">
-      {/* 1. HEADER & SEARCH BAR */}
       <div className="list-header-wrapper">
         <div className="header-title-box">
           <div className="icon-box">
@@ -113,7 +118,11 @@ const EmployeeList = ({
           </div>
           <div>
             <h3 className="title">Danh sách nhân sự</h3>
-            <p className="subtitle">{dataSource.length} hồ sơ nhân viên</p>
+            <p className="subtitle" aria-live="polite">
+              {filteredEmployees.length === dataSource.length
+                ? `${dataSource.length} hồ sơ nhân viên`
+                : `${filteredEmployees.length}/${dataSource.length} hồ sơ phù hợp`}
+            </p>
           </div>
         </div>
 
@@ -123,15 +132,13 @@ const EmployeeList = ({
             type="text"
             placeholder="Tìm tên, SĐT, email..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
             aria-label="Tìm nhân viên theo tên, số điện thoại hoặc email"
           />
         </div>
       </div>
 
-      {/* 2. FILTERS TOOLBAR */}
       <div className="filters-toolbar">
-        {/* Tabs Status */}
         <div className="status-tabs" aria-label="Lọc theo trạng thái lao động">
           {[
             { key: "all", label: "Tất cả" },
@@ -150,12 +157,11 @@ const EmployeeList = ({
           ))}
         </div>
 
-        {/* Dept Filter Dropdown */}
         <div className="filter-select-wrapper">
           <Filter size={16} className="filter-icon" />
           <select
             value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
+            onChange={(event) => setDepartmentFilter(event.target.value)}
             className="custom-select"
             aria-label="Lọc theo bộ phận"
           >
@@ -167,11 +173,12 @@ const EmployeeList = ({
             ))}
           </select>
         </div>
+
         <div className="filter-select-wrapper">
           <Filter size={16} className="filter-icon" />
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(event) => setRoleFilter(event.target.value)}
             className="custom-select"
             aria-label="Lọc theo vai trò"
           >
@@ -188,7 +195,7 @@ const EmployeeList = ({
           <Filter size={16} className="filter-icon" />
           <select
             value={accountStatusFilter}
-            onChange={(e) => setAccountStatusFilter(e.target.value)}
+            onChange={(event) => setAccountStatusFilter(event.target.value)}
             className="custom-select"
             aria-label="Lọc theo trạng thái tài khoản"
           >
@@ -203,7 +210,7 @@ const EmployeeList = ({
           <Filter size={16} className="filter-icon" />
           <select
             value={verificationFilter}
-            onChange={(e) => setVerificationFilter(e.target.value)}
+            onChange={(event) => setVerificationFilter(event.target.value)}
             className="custom-select"
             aria-label="Lọc theo xác minh"
           >
@@ -213,17 +220,28 @@ const EmployeeList = ({
             <option value="unverified">Chưa xác minh</option>
           </select>
         </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="clear-filters-btn"
+            onClick={clearFilters}
+            title="Xóa toàn bộ bộ lọc"
+            aria-label="Xóa toàn bộ bộ lọc"
+          >
+            <RotateCcw size={15} />
+            <span>Xóa lọc</span>
+          </button>
+        )}
       </div>
 
-      {/* 3. TABLE HEADER */}
       <div className="table-header-row">
         <div className="th col-main">Thông tin nhân viên</div>
         <div className="th col-role">Vị trí</div>
         <div className="th col-contact">Liên hệ</div>
-        <div className="th col-actions"></div>
+        <div className="th col-actions">Thao tác</div>
       </div>
 
-      {/* 4. LIST CONTENT */}
       <div className="list-body custom-scrollbar">
         {loading ? (
           <div className="list-skeleton" aria-label="Đang tải danh sách nhân viên">
@@ -252,14 +270,12 @@ const EmployeeList = ({
         ) : paginatedEmployees.length > 0 ? (
           paginatedEmployees.map((employee) => (
             <EmployeeItem
-              key={employee.id}
+              key={employee.id || employee.email}
               employee={employee}
               isSelected={selectedEmployee?.id === employee.id}
-              isFocusedFromSchedule={
-                focusedEmployeeId === String(employee.id)
-              }
-              onClick={() => onEmployeeSelect(employee)}
-              onAction={handleActionClick}
+              isFocusedFromSchedule={focusedEmployeeId === String(employee.id)}
+              onClick={() => onEmployeeSelect?.(employee)}
+              onAction={onEmployeeAction}
             />
           ))
         ) : (
@@ -273,36 +289,43 @@ const EmployeeList = ({
                 ? "Thử đổi bộ lọc hoặc kiểm tra nhà hàng đang chọn."
                 : "Nhà hàng này chưa có hồ sơ nhân viên đang hiển thị."}
             </p>
+            {hasActiveFilters && (
+              <button type="button" className="retry-btn" onClick={clearFilters}>
+                Xóa bộ lọc
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* 5. PAGINATION */}
-      {totalPages > 1 && (
+      {filteredEmployees.length > 0 && (
         <div className="list-footer">
           <span className="page-info">
-            Trang {currentPage} / {totalPages}
+            Hiển thị {rangeStart}–{rangeEnd} / {filteredEmployees.length} nhân viên
           </span>
-          <div className="pagination-controls" aria-label="Chuyển trang danh sách nhân viên">
-            <button
-              className="pagi-btn"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              type="button"
-              aria-label="Trang trước"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              className="pagi-btn"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              type="button"
-              aria-label="Trang sau"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+          {totalPages > 1 && (
+            <div className="pagination-controls" aria-label="Chuyển trang danh sách nhân viên">
+              <button
+                className="pagi-btn"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                type="button"
+                aria-label="Trang trước"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span className="page-info">Trang {currentPage}/{totalPages}</span>
+              <button
+                className="pagi-btn"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                type="button"
+                aria-label="Trang sau"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
