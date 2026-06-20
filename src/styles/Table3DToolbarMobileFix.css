@@ -1,0 +1,11 @@
+@media (max-width: 560px) {
+  .table-3d-toolbar button .btn__text {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .table-3d-toolbar button .btn__text > span {
+    display: none !important;
+  }
+}
