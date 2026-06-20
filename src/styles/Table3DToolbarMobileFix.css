@@ -9,3 +9,7 @@
     display: none !important;
   }
 }
+
+.camera-placement-modal__control-group:last-of-type .btn__text::after {
+  content: "Khôi phục mặc định" !important;
+}
