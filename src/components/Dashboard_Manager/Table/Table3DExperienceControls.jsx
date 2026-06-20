@@ -33,46 +33,76 @@ export function Table3DToolbar({
   resetView,
 }) {
   return (
-    <div className="table-3d-toolbar" aria-label="Điều khiển mẫu 3D">
+    <div className="table-3d-toolbar" aria-label="Điều khiển mô hình 3D">
       <div className="table-3d-toolbar__group">
-        <Button size="sm" variant="secondary" onClick={() => rotateModel(-15)} title="Xoay mẫu sang trái">
-          <RotateCcw size={15} /><span>Xoay trái</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => rotateModel(-15)}
+          title="Xoay mô hình sang trái"
+        >
+          <RotateCcw size={15} />
+          <span>Xoay trái</span>
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => rotateModel(15)} title="Xoay mẫu sang phải">
-          <RotateCw size={15} /><span>Xoay phải</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => rotateModel(15)}
+          title="Xoay mô hình sang phải"
+        >
+          <RotateCw size={15} />
+          <span>Xoay phải</span>
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => zoomModel(-0.2)} title="Phóng to mẫu">
-          <ZoomIn size={15} /><span>Phóng to</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => zoomModel(-0.2)}
+          title="Phóng to mô hình"
+        >
+          <ZoomIn size={15} />
+          <span>Phóng to</span>
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => zoomModel(0.2)} title="Thu nhỏ mẫu">
-          <ZoomOut size={15} /><span>Thu nhỏ</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => zoomModel(0.2)}
+          title="Thu nhỏ mô hình"
+        >
+          <ZoomOut size={15} />
+          <span>Thu nhỏ</span>
         </Button>
-        <Button size="sm" variant="secondary" onClick={fitModelToView} title="Đưa mẫu về giữa và vừa khung hình">
-          <Maximize2 size={15} /><span>Vừa khung</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={fitModelToView}
+          title="Đưa mô hình về giữa và căn vừa khung xem"
+        >
+          <Maximize2 size={15} />
+          <span>Căn vừa khung</span>
         </Button>
       </div>
 
       <details className="table-3d-position-controls">
         <summary>
           <Crosshair size={15} />
-          Hiệu chỉnh vị trí
+          Điều chỉnh mô hình
           <ChevronDown size={14} />
         </summary>
         <div className="table-3d-position-controls__panel">
           <Button size="sm" variant="secondary" onClick={() => shiftModel(-0.1, 0)}>
-            <MoveLeft size={15} /> Trái
+            <MoveLeft size={15} /> Sang trái
           </Button>
           <Button size="sm" variant="secondary" onClick={() => shiftModel(0.1, 0)}>
-            <MoveRight size={15} /> Phải
+            <MoveRight size={15} /> Sang phải
           </Button>
           <Button size="sm" variant="secondary" onClick={() => shiftModel(0, -0.1)}>
-            <MoveUp size={15} /> Lên
+            <MoveUp size={15} /> Lên trên
           </Button>
           <Button size="sm" variant="secondary" onClick={() => shiftModel(0, 0.1)}>
-            <MoveDown size={15} /> Xuống
+            <MoveDown size={15} /> Xuống dưới
           </Button>
           <label className="scale-range">
-            <span>Tỷ lệ {scale.toFixed(2)}</span>
+            <span>Kích thước: {scale.toFixed(2)}</span>
             <input
               type="range"
               min="0.5"
@@ -80,9 +110,12 @@ export function Table3DToolbar({
               step="0.05"
               value={scale}
               onChange={(event) => onScaleChange(Number(event.target.value))}
+              aria-label="Điều chỉnh kích thước mô hình"
             />
           </label>
-          <Button size="sm" variant="secondary" onClick={resetView}>Đặt lại</Button>
+          <Button size="sm" variant="secondary" onClick={resetView}>
+            Khôi phục mặc định
+          </Button>
         </div>
       </details>
     </div>
@@ -91,10 +124,10 @@ export function Table3DToolbar({
 
 export function Table3DReadiness({ arStatus, readinessItems }) {
   return (
-    <div className="table-3d-readiness" aria-label="Kiểm tra khả năng AR">
+    <div className="table-3d-readiness" aria-label="Khả năng sử dụng AR">
       <div className="table-3d-readiness__head">
         <div>
-          <strong>Kiểm tra trước khi dùng AR</strong>
+          <strong>Khả năng sử dụng AR</strong>
           <span>{arStatus.description}</span>
         </div>
         <span className={`table-3d-ar-status table-3d-ar-status--${arStatus.tone}`}>
@@ -103,7 +136,12 @@ export function Table3DReadiness({ arStatus, readinessItems }) {
       </div>
       <div className="table-3d-readiness__items">
         {readinessItems.map((item) => (
-          <div key={item.id} className={`table-3d-readiness__item ${item.ready ? "is-ready" : "is-limited"}`}>
+          <div
+            key={item.id}
+            className={`table-3d-readiness__item ${
+              item.ready ? "is-ready" : "is-limited"
+            }`}
+          >
             {item.ready ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
             <div>
               <strong>{item.label}</strong>
@@ -119,13 +157,27 @@ export function Table3DReadiness({ arStatus, readinessItems }) {
 export function Table3DQuickGuide() {
   return (
     <div className="table-3d-quick-guide">
-      <div><span>1</span><strong>Chọn mẫu</strong></div>
-      <div><span>2</span><strong>Xem trong không gian</strong></div>
-      <div><span>3</span><strong>Đặt và xác nhận vị trí</strong></div>
+      <div>
+        <span>1</span>
+        <strong>Chọn mẫu bàn</strong>
+      </div>
+      <div>
+        <span>2</span>
+        <strong>Xem thử bằng camera</strong>
+      </div>
+      <div>
+        <span>3</span>
+        <strong>Đặt bàn vào sơ đồ</strong>
+      </div>
       <details>
-        <summary><Info size={14} />Chi tiết kỹ thuật</summary>
+        <summary>
+          <Info size={14} />
+          AR hoạt động thế nào?
+        </summary>
         <p>
-          AR của thiết bị chỉ dùng để xem mẫu. Chế độ đặt bàn bằng AR dùng WebXR hit-test khi được hỗ trợ và vẫn cho phép nhập vị trí thủ công.
+          Chế độ xem AR chỉ giúp bạn quan sát mẫu bàn trong không gian thực. Muốn lưu
+          vị trí vào sơ đồ tầng, hãy dùng chức năng Đặt bàn bằng AR hoặc nhập tọa độ
+          thủ công khi thiết bị chưa hỗ trợ.
         </p>
       </details>
     </div>
@@ -153,9 +205,15 @@ export function Table3DActionBar({
         variant="secondary"
         onClick={onOpenCamera}
         disabled={!selectedModel || !canPreviewCamera}
-        title={!selectedModel ? "Chọn mẫu bàn trước" : !canPreviewCamera ? "Thiết bị không cung cấp camera cho trình duyệt" : "Xem mẫu bằng camera, không lưu vị trí"}
+        title={
+          !selectedModel
+            ? "Hãy chọn một mẫu bàn trước"
+            : !canPreviewCamera
+              ? "Thiết bị hoặc trình duyệt chưa cho phép sử dụng camera"
+              : "Xem thử mẫu bàn bằng camera, không lưu vị trí"
+        }
       >
-        <Camera size={16} /> Xem trong không gian
+        <Camera size={16} /> Xem bằng camera
       </Button>
 
       <Button
@@ -175,9 +233,9 @@ export function Table3DActionBar({
           variant="secondary"
           onClick={onToggleArOptions}
           aria-expanded={showArOptions}
-          title="Mở thêm tùy chọn AR"
+          title="Mở thêm tùy chọn xem AR"
         >
-          <MoreHorizontal size={16} /> Tùy chọn
+          <MoreHorizontal size={16} /> Thêm tùy chọn
         </Button>
         {showArOptions ? (
           <div className="table-3d-more-actions__menu">
@@ -187,12 +245,20 @@ export function Table3DActionBar({
               variant="secondary"
               onClick={onOpenNativeAr}
               disabled={!canLaunchNativeAr || isOpeningAr}
-              title={canLaunchNativeAr ? "Mở mẫu bằng trình xem AR của thiết bị" : arUnavailableReason}
+              title={
+                canLaunchNativeAr
+                  ? "Mở mẫu bàn bằng trình xem AR của thiết bị"
+                  : arUnavailableReason
+              }
             >
-              {isOpeningAr ? <Loader2 size={15} className="spin" /> : <Smartphone size={15} />}
-              {isOpeningAr ? "Đang mở AR..." : "Mở AR của thiết bị"}
+              {isOpeningAr ? (
+                <Loader2 size={15} className="spin" />
+              ) : (
+                <Smartphone size={15} />
+              )}
+              {isOpeningAr ? "Đang mở AR..." : "Xem bằng AR trên thiết bị"}
             </Button>
-            <p>Chế độ này chỉ xem mẫu, không lưu vị trí bàn vào sơ đồ.</p>
+            <p>Chức năng này chỉ dùng để xem mẫu bàn và không lưu vị trí vào sơ đồ.</p>
           </div>
         ) : null}
       </div>
@@ -203,7 +269,7 @@ export function Table3DActionBar({
         onClick={onApply}
         disabled={!selectedModel}
       >
-        <Check size={16} /> Dùng mẫu bàn này
+        <Check size={16} /> Chọn mẫu này
       </Button>
     </div>
   );
