@@ -83,7 +83,11 @@ const hasRestaurantMatch = (staff, restaurantIds) => {
   return staffRestaurantIds.some((id) => allowedIds.includes(id));
 };
 
-const noop = () => {};
+const getActionErrorMessage = (error, fallback) =>
+  error?.graphQLErrors?.[0]?.message ||
+  error?.networkError?.result?.errors?.[0]?.message ||
+  error?.message ||
+  fallback;
 
 const StaffManagement = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -115,6 +119,10 @@ const StaffManagement = () => {
     roleListError,
     createStaff,
     updateStaff,
+    softDeleteStaff,
+    setStaffEmploymentStatus,
+    setStaffAccountStatus,
+    resendStaffVerification,
     setFilters,
     refetchStaffList,
     staffListLoading,
@@ -202,6 +210,12 @@ const StaffManagement = () => {
           getStaffRoleDisplayLabel(staff.role) ||
           getStaffRoleDisplayLabel(staff.roleName) ||
           getStaffRoleDisplayLabel(staff.role?.slug);
+        const avatarUrl =
+          staff.avatarUrl ||
+          staff.avatar ||
+          staff.photoUrl ||
+          staff.profileImage ||
+          "";
 
         return {
           id: staff.id,
@@ -219,7 +233,8 @@ const StaffManagement = () => {
           email: staff.email,
           phone: staff.phone,
           username: staff.username,
-          avatar: staff.avatarUrl,
+          avatar: avatarUrl,
+          avatarUrl,
           startDate: staff.dateJoined
             ? new Date(staff.dateJoined).toLocaleDateString("vi-VN")
             : "---",
@@ -314,6 +329,97 @@ const StaffManagement = () => {
     [closeModal, refetchStaffList, selectedEmployee?.id, showNotification, updateStaff],
   );
 
+  const handleDeleteEmployee = useCallback(
+    async (employeeId) => {
+      const employee = mappedStaff.find((item) => String(item.id) === String(employeeId));
+      const employeeName = employee?.name || "nhân viên này";
+      const confirmed = window.confirm(
+        `Ngừng hiển thị ${employeeName} khỏi danh sách nhân sự? Dữ liệu lịch sử vẫn được giữ lại.`,
+      );
+      if (!confirmed) return;
+
+      try {
+        await softDeleteStaff(employeeId);
+        await refetchStaffList?.();
+        if (String(selectedEmployee?.id) === String(employeeId)) {
+          setSelectedEmployee(null);
+        }
+        showNotification(`Đã ngừng hiển thị ${employeeName}.`, "success");
+      } catch (error) {
+        showNotification(
+          getActionErrorMessage(error, "Không thể cập nhật trạng thái nhân viên."),
+          "error",
+        );
+      }
+    },
+    [mappedStaff, refetchStaffList, selectedEmployee?.id, showNotification, softDeleteStaff],
+  );
+
+  const handleEmploymentStatusChange = useCallback(
+    async (employeeId, status, successMessage) => {
+      try {
+        await setStaffEmploymentStatus(employeeId, status);
+        await refetchStaffList?.();
+        showNotification(successMessage, "success");
+      } catch (error) {
+        showNotification(
+          getActionErrorMessage(error, "Không thể cập nhật trạng thái lao động."),
+          "error",
+        );
+      }
+    },
+    [refetchStaffList, setStaffEmploymentStatus, showNotification],
+  );
+
+  const handleAccountStatusChange = useCallback(
+    async (employeeId, status, successMessage) => {
+      try {
+        await setStaffAccountStatus(employeeId, status);
+        await refetchStaffList?.();
+        showNotification(successMessage, "success");
+      } catch (error) {
+        showNotification(
+          getActionErrorMessage(error, "Không thể cập nhật trạng thái tài khoản."),
+          "error",
+        );
+      }
+    },
+    [refetchStaffList, setStaffAccountStatus, showNotification],
+  );
+
+  const handleResendVerification = useCallback(
+    async (employee, channel) => {
+      if (!employee?.id) return;
+      try {
+        const result = await resendStaffVerification(employee.id, channel);
+        showNotification(
+          result?.message || `Đã gửi yêu cầu xác minh cho ${employee.name}.`,
+          "success",
+        );
+      } catch (error) {
+        showNotification(
+          getActionErrorMessage(error, "Không thể gửi lại thông tin xác minh."),
+          "error",
+        );
+      }
+    },
+    [resendStaffVerification, showNotification],
+  );
+
+  const handleEmployeeAction = useCallback(
+    (employee, action) => {
+      setSelectedEmployee(employee);
+      if (action === "edit") {
+        openModal("editEmployee");
+        return;
+      }
+      if (action === "delete") {
+        void handleDeleteEmployee(employee.id);
+      }
+    },
+    [handleDeleteEmployee, openModal],
+  );
+
   useEffect(() => {
     if (!selectedEmployee) return;
     const nextSelectedEmployee = mappedStaff.find((item) => item.id === selectedEmployee.id);
@@ -346,16 +452,27 @@ const StaffManagement = () => {
           selectedEmployee={selectedEmployee}
           focusedEmployeeId={focusedEmployeeId}
           onEmployeeSelect={setSelectedEmployee}
+          onEmployeeAction={handleEmployeeAction}
           onEditEmployee={() => openModal("editEmployee")}
           onViewHistory={() => openModal("workHistory")}
-          onDeleteEmployee={noop}
-          onSetOnLeave={noop}
-          onSetWorking={noop}
-          onSetResigned={noop}
-          onLockAccount={noop}
-          onUnlockAccount={noop}
-          onCalculateSalary={noop}
-          onResendVerification={noop}
+          onDeleteEmployee={handleDeleteEmployee}
+          onSetOnLeave={(employeeId) =>
+            handleEmploymentStatusChange(employeeId, "ON_LEAVE", "Đã chuyển nhân viên sang trạng thái nghỉ phép.")
+          }
+          onSetWorking={(employeeId) =>
+            handleEmploymentStatusChange(employeeId, "WORKING", "Đã chuyển nhân viên sang trạng thái đang làm việc.")
+          }
+          onSetResigned={(employeeId) =>
+            handleEmploymentStatusChange(employeeId, "RESIGNED", "Đã cập nhật nhân viên nghỉ việc.")
+          }
+          onLockAccount={(employeeId) =>
+            handleAccountStatusChange(employeeId, "blocked", "Đã khóa tài khoản nhân viên.")
+          }
+          onUnlockAccount={(employeeId) =>
+            handleAccountStatusChange(employeeId, "active", "Đã mở khóa tài khoản nhân viên.")
+          }
+          onCalculateSalary={undefined}
+          onResendVerification={handleResendVerification}
           roleList={roleList}
           loading={isLoading}
           error={staffListError}
@@ -385,6 +502,11 @@ const StaffManagement = () => {
     currentPage,
     currentTime,
     focusedEmployeeId,
+    handleAccountStatusChange,
+    handleDeleteEmployee,
+    handleEmployeeAction,
+    handleEmploymentStatusChange,
+    handleResendVerification,
     isLoading,
     mappedStaff,
     openModal,
