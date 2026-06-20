@@ -10,15 +10,22 @@ let savedHtmlStyle = null;
 
 const STRUCTURED_MODAL_CHILD_NAMES = new Set(["ModalHeader", "ModalBody", "ModalFooter"]);
 
-const isStructuredModalChild = (child) => {
-  if (!React.isValidElement(child)) return false;
+const getModalChildDisplayName = (child) => {
+  if (!React.isValidElement(child)) return "";
   const childType = child.type;
-  const displayName = childType?.displayName || childType?.name || "";
-  return STRUCTURED_MODAL_CHILD_NAMES.has(displayName);
+  return childType?.displayName || childType?.name || "";
 };
+
+const isStructuredModalChild = (child) =>
+  STRUCTURED_MODAL_CHILD_NAMES.has(getModalChildDisplayName(child));
 
 const hasStructuredModalChildren = (children) =>
   React.Children.toArray(children).some(isStructuredModalChild);
+
+const hasStructuredModalHeader = (children) =>
+  React.Children.toArray(children).some(
+    (child) => getModalChildDisplayName(child) === "ModalHeader"
+  );
 
 const isJsdomRuntime = () =>
   typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "");
@@ -155,6 +162,7 @@ const Modal = ({
     onClose?.();
   }, [onBeforeClose, onClose]);
   const shouldAutoWrapBody = autoWrapBody && !hasStructuredModalChildren(children);
+  const usesStructuredHeader = hasStructuredModalHeader(children);
 
   // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
@@ -236,7 +244,7 @@ const Modal = ({
         ref={modalRef}
         tabIndex={-1}
       >
-        {(title || onClose) && (
+        {!usesStructuredHeader && (title || onClose) && (
           <header className="modal-header">
             {title ? <h2 id={titleId}>{title}</h2> : <span />}
             {onClose && (
@@ -259,8 +267,22 @@ const Modal = ({
   return createPortal(modalContent, document.body);
 };
 
-Modal.Header = function ModalHeader({ children, className = "" }) {
-  return <header className={`modal-header ${className}`}>{children}</header>;
+Modal.Header = function ModalHeader({ children, className = "", onClose }) {
+  return (
+    <header className={`modal-header ${className}`}>
+      {children}
+      {onClose && (
+        <button
+          type="button"
+          className="modal-close"
+          onClick={onClose}
+          aria-label="Đóng"
+        >
+          <X size={20} />
+        </button>
+      )}
+    </header>
+  );
 };
 Modal.Header.displayName = "ModalHeader";
 
