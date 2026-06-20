@@ -1,5 +1,6 @@
 import { gql, useMutation } from "@apollo/client";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useAvatarUploadLocal } from "./useAvatarUploadLocal";
 
 const operationSource = [
   "mutation UpdateStaff" + "Avatar($userId: ID!, $input: UpdateAvatarInput!) {",
@@ -16,6 +17,8 @@ const operationSource = [
 const UPDATE_STAFF_AVATAR = gql(operationSource);
 
 const useStaffAvatar = () => {
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const { upload } = useAvatarUploadLocal();
   const [mutateAvatar, state] = useMutation(UPDATE_STAFF_AVATAR);
 
   const updateStaffAvatar = useCallback(
@@ -41,6 +44,20 @@ const useStaffAvatar = () => {
     [mutateAvatar],
   );
 
+  const uploadStaffAvatar = useCallback(
+    async (userId, file, onProgress) => {
+      if (!file) throw new Error("Vui lòng chọn ảnh đại diện.");
+      setUploadingFile(true);
+      try {
+        const uploadedUrl = await upload(file, onProgress);
+        return await updateStaffAvatar(userId, { fileUrl: uploadedUrl });
+      } finally {
+        setUploadingFile(false);
+      }
+    },
+    [updateStaffAvatar, upload],
+  );
+
   const removeStaffAvatar = useCallback(
     (userId) => updateStaffAvatar(userId, {}),
     [updateStaffAvatar],
@@ -48,8 +65,9 @@ const useStaffAvatar = () => {
 
   return {
     updateStaffAvatar,
+    uploadStaffAvatar,
     removeStaffAvatar,
-    uploadingAvatar: state.loading,
+    uploadingAvatar: uploadingFile || state.loading,
     avatarError: state.error,
   };
 };
