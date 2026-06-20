@@ -49,12 +49,12 @@ const LocalImagePicker = ({
   disabled = false,
   ownerKey,
   purpose = "menu-image",
-  label = "Chọn ảnh",
-  helperText = "Ảnh sẽ được tự resize và nén trước khi lưu cục bộ.",
-  placeholder = "Chưa có ảnh",
+  label = "Chọn ảnh món",
+  helperText = "Hỗ trợ JPG, PNG và WEBP. Ảnh sẽ được nén trước khi tải lên hệ thống.",
+  placeholder = "Chưa có ảnh món",
   previewVariant = LOCAL_IMAGE_VARIANTS.PREVIEW,
   allowUrl = true,
-  urlPlaceholder = "https://example.com/image.jpg hoặc local-image://...",
+  urlPlaceholder = "Dán đường dẫn ảnh tại đây",
   syncToServer = true,
   onStatusChange,
   maxFileSizeMb = 8,
@@ -86,10 +86,10 @@ const LocalImagePicker = ({
       event.stopPropagation();
 
       const message = isSaving
-        ? "Ảnh món đang được tải lên. Vui lòng đợi hoàn tất trước khi lưu."
-        : "Ảnh món chưa được đồng bộ lên server. Hãy tải lại ảnh hoặc xóa ảnh đang lỗi trước khi lưu.";
+        ? "Ảnh món vẫn đang được tải lên. Vui lòng đợi hoàn tất trước khi lưu món."
+        : "Ảnh món chưa tải lên thành công. Hãy chọn lại ảnh hoặc xóa ảnh lỗi trước khi lưu món.";
       setError(message);
-      setStatsText("Không thể lưu món khi ảnh vẫn đang chờ đồng bộ.");
+      setStatsText("Chưa thể lưu món khi ảnh chưa tải lên hoàn tất.");
       onStatusChange?.("error");
     };
 
@@ -105,13 +105,13 @@ const LocalImagePicker = ({
   };
 
   const validateFile = (file) => {
-    if (!file) return "Vui lòng chọn một tệp ảnh.";
+    if (!file) return "Vui lòng chọn ảnh món.";
     if (!allowedImageTypes.includes(file.type)) {
-      return "Định dạng ảnh chưa được hỗ trợ. Hãy dùng JPG, PNG hoặc WEBP.";
+      return "Định dạng ảnh không được hỗ trợ. Vui lòng dùng JPG, PNG hoặc WEBP.";
     }
     const maxBytes = Number(maxFileSizeMb || 8) * 1024 * 1024;
     if (file.size > maxBytes) {
-      return `Ảnh vượt quá ${maxFileSizeMb}MB. Vui lòng chọn ảnh nhẹ hơn.`;
+      return `Dung lượng ảnh vượt quá ${maxFileSizeMb}MB. Vui lòng chọn ảnh nhỏ hơn.`;
     }
     return "";
   };
@@ -143,22 +143,24 @@ const LocalImagePicker = ({
       if (stats) {
         const optimizedBytes =
           Number(stats.thumbSize || 0) + Number(stats.previewSize || 0);
-        syncMessage = `Đã tối ưu: ${formatBytes(stats.originalSize)} → ${formatBytes(optimizedBytes)}`;
+        syncMessage = `Đã giảm dung lượng từ ${formatBytes(stats.originalSize)} xuống ${formatBytes(optimizedBytes)}`;
       }
 
       if (!syncToServer) {
         onChange?.(saved.uri);
-        setStatsText(syncMessage || "Đã tối ưu ảnh.");
+        setStatsText(syncMessage || "Ảnh đã được tối ưu.");
         onStatusChange?.("localOnly");
         return;
       }
 
       const uploadFile = createPreviewUploadFile(saved);
       if (!uploadFile) {
-        throw new Error("Không thể tạo tệp ảnh tối ưu để tải lên server.");
+        throw new Error("Không thể chuẩn bị ảnh để tải lên hệ thống.");
       }
 
-      setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đang đồng bộ lên server...`);
+      setStatsText(
+        `${syncMessage || "Ảnh đã được tối ưu"}. Đang tải lên hệ thống...`,
+      );
       const uploadResult = await uploadImage(uploadFile, {
         folder: "menu-images",
         type: purpose,
@@ -166,21 +168,22 @@ const LocalImagePicker = ({
       });
 
       if (!uploadResult?.url) {
-        throw uploadResult?.error || new Error("Không thể đồng bộ ảnh lên server.");
+        throw uploadResult?.error || new Error("Không thể tải ảnh lên hệ thống.");
       }
 
       onChange?.(uploadResult.url);
       setLocalPreviewValue("");
       setError("");
-      setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đã đồng bộ server.`);
+      setStatsText(
+        `${syncMessage || "Ảnh đã được tối ưu"}. Tải ảnh thành công.`,
+      );
       onStatusChange?.("synced");
     } catch (err) {
-      // Keep the local preview so the user can see the selected file, but do not
-      // write local-image:// into the form when server sync is required. This
-      // prevents saving an image URL that other devices/pages cannot resolve.
       onStatusChange?.("error");
-      setError(err?.message || "Không thể tải ảnh lên server.");
-      setStatsText("Ảnh chưa được lưu. Vui lòng chọn lại hoặc kiểm tra kết nối server.");
+      setError(err?.message || "Không thể tải ảnh lên hệ thống.");
+      setStatsText(
+        "Ảnh chưa được lưu. Vui lòng chọn lại ảnh hoặc kiểm tra kết nối.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -218,7 +221,7 @@ const LocalImagePicker = ({
       <div className="lip-preview">
         <LocalImageView
           src={displayValue}
-          alt="Preview"
+          alt="Ảnh món xem trước"
           variant={previewVariant}
           fallback={fallback}
         />
@@ -247,7 +250,7 @@ const LocalImagePicker = ({
               onClick={handleClear}
               disabled={disabled || isSaving}
             >
-              <X size={16} /> Xóa ảnh khỏi form
+              <X size={16} /> Xóa ảnh
             </button>
           )}
         </div>
@@ -259,6 +262,7 @@ const LocalImagePicker = ({
             value={value || ""}
             onChange={handleUrlChange}
             placeholder={urlPlaceholder}
+            aria-label="Đường dẫn ảnh món"
             disabled={disabled || isSaving}
           />
         )}
