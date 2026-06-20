@@ -12,7 +12,8 @@ const StaffAvatarModal = ({
   onClose,
   onSubmit,
 }) => {
-  const [fileBase64, setFileBase64] = useState("");
+  const [previewDataUrl, setPreviewDataUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [removed, setRemoved] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -28,12 +29,13 @@ const StaffAvatarModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    setFileBase64("");
+    setPreviewDataUrl("");
+    setSelectedFile(null);
     setRemoved(false);
     setSubmitError("");
   }, [employee?.id, isOpen]);
 
-  const hasChange = Boolean(fileBase64 || (removed && currentAvatar));
+  const hasChange = Boolean(selectedFile || (removed && currentAvatar));
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -43,8 +45,8 @@ const StaffAvatarModal = ({
     try {
       await onSubmit?.({
         employee,
-        fileBase64: fileBase64 || null,
-        remove: removed && !fileBase64,
+        file: selectedFile,
+        remove: removed && !selectedFile,
       });
       onClose?.();
     } catch (error) {
@@ -78,16 +80,18 @@ const StaffAvatarModal = ({
         <StaffAvatarField
           name={employeeName}
           currentAvatar={currentAvatar}
-          value={fileBase64}
+          value={previewDataUrl}
           removed={removed}
           disabled={loading}
-          onChange={(nextValue) => {
-            setFileBase64(nextValue);
+          onChange={(nextValue, file) => {
+            setPreviewDataUrl(nextValue);
+            setSelectedFile(file || null);
             setRemoved(false);
             setSubmitError("");
           }}
           onRemove={() => {
-            setFileBase64("");
+            setPreviewDataUrl("");
+            setSelectedFile(null);
             setRemoved(Boolean(currentAvatar));
             setSubmitError("");
           }}
