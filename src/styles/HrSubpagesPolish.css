@@ -1,0 +1,521 @@
+.staff-page-container .attendance-management-page,
+.staff-page-container .leave-form-container,
+.staff-page-container .leave-list-container,
+.staff-page-container .staff-performance-page {
+  color: var(--hr-text, #2d3540) !important;
+}
+
+/* Attendance */
+.staff-page-container .attendance-management-page {
+  gap: 0.9rem !important;
+}
+
+.staff-page-container .attendance-management-page .page-header {
+  align-items: center !important;
+  padding: 0.88rem 1rem !important;
+  border: 1px solid var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.97), rgba(248, 246, 241, 0.92)) !important;
+  box-shadow: 0 12px 28px rgba(48, 40, 30, 0.055) !important;
+}
+
+.staff-page-container .attendance-management-page .page-header .page-title {
+  color: var(--hr-ink, #24303f) !important;
+  font-size: 1.28rem !important;
+  letter-spacing: -0.025em;
+}
+
+.staff-page-container .attendance-management-page .page-header .page-subtitle {
+  color: var(--hr-muted, #5c6874) !important;
+  font-weight: 600 !important;
+}
+
+.staff-page-container .attendance-management-page .page-header .date-picker,
+.staff-page-container .attendance-management-page .page-header .btn {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  border-color: rgba(213, 200, 184, 0.9) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .attendance-management-page .page-header .btn.btn-primary {
+  color: #fffdf8 !important;
+  border-color: rgba(83, 108, 97, 0.5) !important;
+  background: linear-gradient(135deg, var(--hr-sage, #536c61), var(--hr-sage-dark, #2f7d68)) !important;
+  box-shadow: 0 10px 22px rgba(47, 125, 104, 0.14) !important;
+}
+
+.staff-page-container .attendance-management-page .stats-grid {
+  gap: 0.72rem !important;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card {
+  min-height: 86px !important;
+  padding: 0.88rem 1rem !important;
+  border: 1px solid var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+  box-shadow: 0 10px 24px rgba(48, 40, 30, 0.045) !important;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 14px 28px rgba(48, 40, 30, 0.07) !important;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card .icon-box {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 13px !important;
+  color: var(--hr-sage, #536c61) !important;
+  background: var(--hr-sage-soft, #edf4f0) !important;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card .label {
+  color: var(--hr-muted, #5c6874) !important;
+  font-weight: 760 !important;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card .value {
+  color: var(--hr-ink, #24303f) !important;
+  font-size: 1.32rem !important;
+}
+
+.staff-page-container .attendance-management-page .quick-action-section {
+  padding: 0.95rem 1rem !important;
+  border: 1px solid rgba(168, 133, 95, 0.3) !important;
+  border-left: 4px solid var(--hr-taupe, #a8855f) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg, rgba(255, 250, 243, 0.96), rgba(255, 253, 248, 0.94)) !important;
+  box-shadow: 0 12px 28px rgba(48, 40, 30, 0.055) !important;
+}
+
+.staff-page-container .attendance-management-page .quick-action-section .icon-flash {
+  color: var(--hr-taupe, #a8855f) !important;
+  background: rgba(255, 247, 237, 0.92) !important;
+  border-color: rgba(168, 133, 95, 0.24) !important;
+}
+
+.staff-page-container .attendance-management-page .quick-action-section h4,
+.staff-page-container .attendance-management-page .quick-action-section label {
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .attendance-management-page .quick-action-section p {
+  color: var(--hr-muted, #5c6874) !important;
+}
+
+.staff-page-container .attendance-management-page .quick-action-section select,
+.staff-page-container .attendance-management-page .quick-action-section input {
+  min-height: 38px !important;
+  border-color: rgba(213, 200, 184, 0.9) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .attendance-management-page .btn-quick.in {
+  color: #276d5a !important;
+  border-color: rgba(47, 125, 104, 0.4) !important;
+  background: rgba(237, 244, 240, 0.94) !important;
+}
+
+.staff-page-container .attendance-management-page .btn-quick.out {
+  color: #9e3f3f !important;
+  border-color: rgba(181, 71, 71, 0.36) !important;
+  background: rgba(255, 244, 242, 0.92) !important;
+}
+
+.staff-page-container .attendance-management-page .table-section {
+  border: 1px solid var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 20px !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  box-shadow: 0 14px 30px rgba(48, 40, 30, 0.055) !important;
+}
+
+.staff-page-container .attendance-management-page .table-toolbar {
+  border-bottom-color: rgba(213, 200, 184, 0.58) !important;
+  background: rgba(248, 246, 241, 0.86) !important;
+}
+
+.staff-page-container .attendance-management-page .table-toolbar .tab-btn.active {
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, var(--hr-ink, #24303f), #35424c) !important;
+}
+
+.staff-page-container .attendance-management-page .table-toolbar input {
+  border-color: rgba(213, 200, 184, 0.88) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+.staff-page-container .attendance-management-page .attendance-table thead th {
+  color: #556066 !important;
+  background: rgba(248, 246, 241, 0.96) !important;
+  border-bottom-color: rgba(213, 200, 184, 0.58) !important;
+}
+
+.staff-page-container .attendance-management-page .attendance-table tbody tr:hover {
+  background: rgba(237, 244, 240, 0.62) !important;
+}
+
+/* Leave request form */
+.staff-page-container .leave-form-container {
+  max-width: 860px !important;
+  border: 1px solid var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  box-shadow: 0 18px 38px rgba(48, 40, 30, 0.075) !important;
+}
+
+.staff-page-container .leave-form-container .form-header-section {
+  padding: 1rem 1.25rem !important;
+  border-bottom-color: rgba(213, 200, 184, 0.6) !important;
+  background: linear-gradient(135deg, rgba(237, 244, 240, 0.86), rgba(255, 253, 248, 0.96)) !important;
+}
+
+.staff-page-container .leave-form-container .form-header-section .title {
+  color: var(--hr-ink, #24303f) !important;
+  font-size: 1.12rem !important;
+}
+
+.staff-page-container .leave-form-container .main-form {
+  padding: 1.25rem !important;
+}
+
+.staff-page-container .leave-form-container .form-section {
+  margin-bottom: 1.2rem !important;
+}
+
+.staff-page-container .leave-form-container .section-title {
+  color: var(--hr-sage, #536c61) !important;
+  border-bottom-color: rgba(83, 108, 97, 0.22) !important;
+}
+
+.staff-page-container .leave-form-container .form-group label {
+  color: var(--hr-ink, #24303f) !important;
+  font-weight: 760 !important;
+}
+
+.staff-page-container .leave-form-container select,
+.staff-page-container .leave-form-container input[type="search"],
+.staff-page-container .leave-form-container input[type="date"],
+.staff-page-container .leave-form-container textarea {
+  min-height: 40px !important;
+  border-color: rgba(213, 200, 184, 0.88) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .leave-form-container select:focus,
+.staff-page-container .leave-form-container input:focus,
+.staff-page-container .leave-form-container textarea:focus {
+  border-color: var(--hr-sage, #536c61) !important;
+  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.14) !important;
+}
+
+.staff-page-container .leave-form-container .leave-types-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.58rem !important;
+}
+
+.staff-page-container .leave-form-container .radio-card {
+  min-height: 48px !important;
+  padding: 0.62rem 0.72rem !important;
+  border-color: rgba(213, 200, 184, 0.82) !important;
+  border-radius: 13px !important;
+  color: var(--hr-text, #2d3540) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.staff-page-container .leave-form-container .radio-card:hover {
+  border-color: rgba(83, 108, 97, 0.28) !important;
+  background: rgba(237, 244, 240, 0.56) !important;
+}
+
+.staff-page-container .leave-form-container .radio-card.selected {
+  color: #276d5a !important;
+  border-color: rgba(47, 125, 104, 0.4) !important;
+  background: rgba(237, 244, 240, 0.96) !important;
+  box-shadow: inset 0 0 0 1px rgba(47, 125, 104, 0.08) !important;
+}
+
+.staff-page-container .leave-form-container .total-days-bar {
+  color: #6a4d2e !important;
+  border-color: rgba(168, 133, 95, 0.34) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 247, 237, 0.92) !important;
+}
+
+.staff-page-container .leave-form-container .form-footer {
+  padding: 0.9rem 1.25rem !important;
+  border-top-color: rgba(213, 200, 184, 0.58) !important;
+  background: rgba(248, 246, 241, 0.86) !important;
+}
+
+.staff-page-container .leave-form-container .form-footer .btn {
+  min-height: 40px !important;
+  border-radius: 12px !important;
+}
+
+.staff-page-container .leave-form-container .form-footer .btn-primary {
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, var(--hr-sage, #536c61), var(--hr-sage-dark, #2f7d68)) !important;
+  box-shadow: 0 10px 22px rgba(47, 125, 104, 0.14) !important;
+}
+
+/* Leave request list */
+.staff-page-container .leave-list-container {
+  border: 1px solid var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  box-shadow: 0 16px 34px rgba(48, 40, 30, 0.06) !important;
+}
+
+.staff-page-container .leave-list-container .dashboard-header {
+  padding: 1rem 1.2rem !important;
+  border-bottom-color: rgba(213, 200, 184, 0.58) !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(248, 246, 241, 0.9)) !important;
+}
+
+.staff-page-container .leave-list-container .dashboard-header h3 {
+  color: var(--hr-ink, #24303f) !important;
+  letter-spacing: -0.02em;
+}
+
+.staff-page-container .leave-list-container .dashboard-header p,
+.staff-page-container .leave-list-container .stat-card .label {
+  color: var(--hr-muted, #5c6874) !important;
+}
+
+.staff-page-container .leave-list-container .stat-card {
+  min-width: 126px !important;
+  border-color: rgba(213, 200, 184, 0.78) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+}
+
+.staff-page-container .leave-list-container .stat-card.pending {
+  color: #6a4d2e !important;
+  border-color: rgba(168, 133, 95, 0.28) !important;
+  background: rgba(255, 247, 237, 0.9) !important;
+}
+
+.staff-page-container .leave-list-container .stat-card.approved {
+  color: #276d5a !important;
+  border-color: rgba(47, 125, 104, 0.24) !important;
+  background: rgba(237, 244, 240, 0.94) !important;
+}
+
+.staff-page-container .leave-list-container .controls-bar {
+  padding: 0.72rem 1rem !important;
+  border-bottom-color: rgba(213, 200, 184, 0.58) !important;
+  background: rgba(248, 246, 241, 0.84) !important;
+}
+
+.staff-page-container .leave-list-container .tab-btn.active {
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, var(--hr-ink, #24303f), #35424c) !important;
+  box-shadow: 0 8px 18px rgba(36, 48, 63, 0.12) !important;
+}
+
+.staff-page-container .leave-list-container .search-box input {
+  min-height: 38px !important;
+  border-color: rgba(213, 200, 184, 0.88) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+.staff-page-container .leave-list-container .leave-table thead th {
+  color: #556066 !important;
+  background: rgba(248, 246, 241, 0.96) !important;
+  border-bottom-color: rgba(213, 200, 184, 0.58) !important;
+}
+
+.staff-page-container .leave-list-container .leave-table tbody tr:hover {
+  background: rgba(237, 244, 240, 0.62) !important;
+}
+
+.staff-page-container .leave-list-container .leave-table .avatar {
+  background: linear-gradient(135deg, var(--hr-sage, #536c61), var(--hr-taupe, #a8855f)) !important;
+}
+
+.staff-page-container .leave-list-container .leave-type {
+  color: var(--hr-sage, #536c61) !important;
+  background: rgba(237, 244, 240, 0.82) !important;
+}
+
+/* Performance */
+.staff-page-container .staff-performance-page {
+  gap: 0.88rem !important;
+}
+
+.staff-page-container .staff-performance-page .performance-hero {
+  padding: 1rem 1.1rem !important;
+  border-color: var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.97), rgba(248, 246, 241, 0.9)) !important;
+  box-shadow: 0 14px 30px rgba(48, 40, 30, 0.055) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-hero .eyebrow {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.staff-page-container .staff-performance-page .performance-hero .eyebrow::after {
+  content: "HIỆU SUẤT NHÂN SỰ";
+  display: inline-flex;
+  min-height: 25px;
+  align-items: center;
+  padding: 0.12rem 0.62rem;
+  border: 1px solid rgba(83, 108, 97, 0.18);
+  border-radius: 999px;
+  color: var(--hr-sage, #536c61);
+  background: rgba(237, 244, 240, 0.8);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.staff-page-container .staff-performance-page .performance-hero h2,
+.staff-page-container .staff-performance-page .overview-card h3 {
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-hero p {
+  color: var(--hr-muted, #5c6874) !important;
+}
+
+.staff-page-container .staff-performance-page .btn-primary {
+  color: #fffdf8 !important;
+  border-color: rgba(83, 108, 97, 0.46) !important;
+  background: linear-gradient(135deg, var(--hr-sage, #536c61), var(--hr-sage-dark, #2f7d68)) !important;
+  box-shadow: 0 10px 22px rgba(47, 125, 104, 0.14) !important;
+}
+
+.staff-page-container .staff-performance-page .btn-secondary {
+  color: var(--hr-ink, #24303f) !important;
+  border-color: rgba(213, 200, 184, 0.86) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-formula-panel,
+.staff-page-container .staff-performance-page .performance-controls,
+.staff-page-container .staff-performance-page .kpi-card,
+.staff-page-container .staff-performance-page .overview-card,
+.staff-page-container .staff-performance-page .score-formula-card,
+.staff-page-container .staff-performance-page .adjustment-history-card {
+  border-color: var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-formula-panel summary,
+.staff-page-container .staff-performance-page .performance-formula-panel .formula-note {
+  color: var(--hr-sage, #536c61) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-formula-panel pre {
+  color: #496257 !important;
+  border-color: rgba(83, 108, 97, 0.22) !important;
+  background: rgba(237, 244, 240, 0.76) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-controls {
+  padding: 0.8rem 0.9rem !important;
+  border: 1px solid var(--hr-line, rgba(229, 222, 211, 0.92)) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 24px rgba(48, 40, 30, 0.04) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-controls label {
+  color: var(--hr-muted, #5c6874) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-controls input,
+.staff-page-container .staff-performance-page .performance-controls select {
+  border-color: rgba(213, 200, 184, 0.88) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-kpis {
+  gap: 0.72rem !important;
+}
+
+.staff-page-container .staff-performance-page .kpi-card {
+  border-radius: 17px !important;
+  box-shadow: 0 10px 24px rgba(48, 40, 30, 0.045) !important;
+}
+
+.staff-page-container .staff-performance-page .kpi-card svg {
+  color: var(--hr-sage, #536c61) !important;
+  background: var(--hr-sage-soft, #edf4f0) !important;
+}
+
+.staff-page-container .staff-performance-page .kpi-card span,
+.staff-page-container .staff-performance-page .overview-card span,
+.staff-page-container .staff-performance-page .overview-empty {
+  color: var(--hr-muted, #5c6874) !important;
+}
+
+.staff-page-container .staff-performance-page .kpi-card strong,
+.staff-page-container .staff-performance-page .overview-card strong {
+  color: var(--hr-ink, #24303f) !important;
+}
+
+.staff-page-container .staff-performance-page .performance-overview {
+  gap: 0.72rem !important;
+}
+
+.staff-page-container .staff-performance-page .overview-card {
+  border-radius: 17px !important;
+  box-shadow: 0 10px 24px rgba(48, 40, 30, 0.04) !important;
+}
+
+.staff-page-container .staff-performance-page .overview-item-button:hover:not(:disabled) {
+  background: rgba(237, 244, 240, 0.62) !important;
+}
+
+.staff-page-container .attendance-management-page button:focus-visible,
+.staff-page-container .leave-form-container button:focus-visible,
+.staff-page-container .leave-list-container button:focus-visible,
+.staff-page-container .staff-performance-page button:focus-visible,
+.staff-page-container .attendance-management-page input:focus-visible,
+.staff-page-container .leave-form-container input:focus-visible,
+.staff-page-container .leave-list-container input:focus-visible,
+.staff-page-container .staff-performance-page input:focus-visible,
+.staff-page-container .staff-performance-page select:focus-visible {
+  outline: 3px solid rgba(83, 108, 97, 0.18) !important;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1180px) {
+  .staff-page-container .leave-form-container .leave-types-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .staff-page-container .staff-performance-page .performance-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .staff-page-container .attendance-management-page .page-header,
+  .staff-page-container .attendance-management-page .quick-action-section,
+  .staff-page-container .leave-list-container .dashboard-header,
+  .staff-page-container .leave-list-container .controls-bar,
+  .staff-page-container .staff-performance-page .performance-hero,
+  .staff-page-container .staff-performance-page .performance-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .staff-page-container .attendance-management-page .stats-grid,
+  .staff-page-container .leave-form-container .leave-types-grid,
+  .staff-page-container .staff-performance-page .performance-kpis,
+  .staff-page-container .staff-performance-page .performance-overview {
+    grid-template-columns: 1fr !important;
+  }
+}
