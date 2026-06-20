@@ -14,11 +14,25 @@ export const getLogoutUrl = () => toApiAuthUrl("/logout");
 
 export function toApiAssetUrl(path: string | null | undefined) {
   if (!path) return "";
-  if (/^(https?:)?\/\//.test(path) || path.startsWith("data:image") || path.startsWith("blob:")) {
-    return path;
+
+  const value = String(path).trim();
+  if (!value) return "";
+
+  // Local image URIs are resolved by LocalImageView/useLocalImageUrl and must
+  // never be rewritten as an HTTP URL.
+  if (
+    value.startsWith("local-image://") ||
+    /^(https?:)?\/\//.test(value) ||
+    value.startsWith("data:image") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
   }
 
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  // Windows-style paths can be returned by local upload adapters. Convert
+  // them before joining with the API origin so browsers receive a valid URL.
+  const safePath = value.replace(/\\/g, "/");
+  const normalizedPath = safePath.startsWith("/") ? safePath : `/${safePath}`;
   const gqlUrl = getGraphqlUrl();
   if (gqlUrl.startsWith("/")) return normalizedPath;
 
