@@ -34,7 +34,7 @@ const INVENTORY_FILTER_LABELS = {
   low_stock: "Nguyên liệu sắp hết",
   out_of_stock: "Đã hết nguyên liệu",
   needs_check: "Cần kiểm tra tồn kho",
-  not_tracked: "Thiếu công thức kho",
+  not_tracked: "Chưa thiết lập định lượng nguyên liệu",
 };
 
 const Toolbar = ({
@@ -316,7 +316,7 @@ const Toolbar = ({
           >
             <option value="all">Mọi vấn đề</option>
             <option value="missing_info">
-              Thiếu khẩu vị hoặc dị ứng ({forYouMetadataCounts.missing || 0})
+              Thiếu thông tin tư vấn món ({forYouMetadataCounts.missing || 0})
             </option>
             <option value="low_stock">
               Nguyên liệu sắp hết ({inventoryFilterCounts.low_stock || 0})
@@ -328,7 +328,7 @@ const Toolbar = ({
               Cần kiểm tra tồn kho ({inventoryFilterCounts.needs_check || 0})
             </option>
             <option value="not_tracked">
-              Thiếu công thức kho ({inventoryFilterCounts.not_tracked || 0})
+              Chưa thiết lập định lượng ({inventoryFilterCounts.not_tracked || 0})
             </option>
           </select>
           <FiChevronDown className="select-arrow" />
@@ -429,12 +429,12 @@ const Toolbar = ({
           )}
           {forYouMetadataFilter !== "all" && (
             <span className="chip">
-              Thiếu khẩu vị hoặc dị ứng
+              Thiếu thông tin tư vấn món
               <button
                 type="button"
                 className="chip-x"
-                aria-label="Bỏ bộ lọc khẩu vị và dị ứng"
-                title="Bỏ bộ lọc khẩu vị và dị ứng"
+                aria-label="Bỏ bộ lọc thông tin tư vấn món"
+                title="Bỏ bộ lọc thông tin tư vấn món"
                 onClick={() => onForYouMetadataFilterChange?.("all")}
               >
                 <FiX />
@@ -457,7 +457,8 @@ const Toolbar = ({
           )}
           {(minPrice || maxPrice) && (
             <span className="chip">
-              Giá: {formatCurrency(minPrice) || "0đ"} - {formatCurrency(maxPrice) || "không giới hạn"}
+              Giá: {formatCurrency(minPrice) || "0đ"} -{" "}
+              {formatCurrency(maxPrice) || "không giới hạn"}
               <button
                 type="button"
                 className="chip-x"
