@@ -10,13 +10,15 @@ import {
 } from "@/config/table3dCameraPlacementStorage";
 import "./TableCameraPlacementPreviewModal.scss";
 
-const CAMERA_ERROR_MESSAGE = "Vui lòng cấp quyền camera hoặc mở bằng HTTPS.";
-const CAMERA_UNSUPPORTED_MESSAGE = "Thiết bị/trình duyệt chưa hỗ trợ camera preview.";
+const CAMERA_ERROR_MESSAGE =
+  "Không thể mở camera. Hãy cấp quyền camera và kiểm tra kết nối HTTPS.";
+const CAMERA_UNSUPPORTED_MESSAGE =
+  "Thiết bị hoặc trình duyệt này chưa hỗ trợ xem thử bằng camera.";
 
 const CAMERA_FALLBACK_TIPS = [
-  "Thử Chrome/Safari mobile nếu thiết bị hiện tại không mở được camera.",
-  "Nếu model hỗ trợ, bạn vẫn có thể thử AR native từ màn mô phỏng 3D.",
-  "Bạn có thể dùng preview 3D thường để kiểm tra hình dáng mẫu bàn.",
+  "Thử mở trang bằng Chrome hoặc Safari trên điện thoại.",
+  "Bạn vẫn có thể xem mô hình 3D trực tiếp trong cửa sổ trước.",
+  "Nếu mẫu hỗ trợ, hãy thử chế độ AR trên thiết bị.",
 ];
 
 const SCALE_PRESETS = [
@@ -44,14 +46,16 @@ const formatDimensions = (dimensions) => {
   if (!dimensions || typeof dimensions !== "object") return "";
   const diameter = dimensions.diameterCm ?? dimensions.diameter;
   const height = dimensions.heightCm ?? dimensions.height;
-  if (diameter) return `Ø ${diameter} cm${height ? ` x cao ${height} cm` : ""}`;
+  if (diameter) {
+    return `Ø ${diameter} cm${height ? ` × cao ${height} cm` : ""}`;
+  }
 
   const parts = [
     dimensions.widthCm ?? dimensions.width,
     dimensions.depthCm ?? dimensions.depth,
     height,
   ].filter(Boolean);
-  return parts.length ? `${parts.join(" x ")} cm` : "";
+  return parts.length ? `${parts.join(" × ")} cm` : "";
 };
 
 const TableCameraPlacementPreviewModal = ({
@@ -75,7 +79,8 @@ const TableCameraPlacementPreviewModal = ({
       return {
         name: overrideModelSummary.name || "Mẫu bàn",
         seats: overrideModelSummary.seats || 4,
-        areaLabel: overrideModelSummary.areaLabel || getTableAreaLabel("standard"),
+        areaLabel:
+          overrideModelSummary.areaLabel || getTableAreaLabel("standard"),
         shape: overrideModelSummary.shape || "rect",
         shapeLabel: overrideModelSummary.shapeLabel || "Bàn chữ nhật",
         dimensions: overrideModelSummary.dimensions || "",
@@ -85,10 +90,14 @@ const TableCameraPlacementPreviewModal = ({
     }
 
     const shape = getShapeFromModel(modelItem);
-    const area = modelItem?.customModelSpec?.area || mapTable3DTypeToArea(modelItem?.tableType);
+    const area =
+      modelItem?.customModelSpec?.area ||
+      mapTable3DTypeToArea(modelItem?.tableType);
     return {
-      name: modelItem?.label || modelItem?.customModelSpec?.name || "Mẫu bàn",
-      seats: modelItem?.customModelSpec?.capacity || modelItem?.capacity || 4,
+      name:
+        modelItem?.label || modelItem?.customModelSpec?.name || "Mẫu bàn",
+      seats:
+        modelItem?.customModelSpec?.capacity || modelItem?.capacity || 4,
       areaLabel: getTableAreaLabel(area),
       shape,
       shapeLabel: shapeLabelMap[shape] || "Bàn chữ nhật",
@@ -103,11 +112,16 @@ const TableCameraPlacementPreviewModal = ({
 
   useEffect(() => {
     if (!open) return undefined;
-    setPlacement(normalizeCameraPlacement(initialPlacement || DEFAULT_CAMERA_PLACEMENT));
+    setPlacement(
+      normalizeCameraPlacement(initialPlacement || DEFAULT_CAMERA_PLACEMENT),
+    );
     setCameraError("");
     setThumbnailFailed(false);
 
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
       setCameraError(CAMERA_UNSUPPORTED_MESSAGE);
       return undefined;
     }
@@ -115,7 +129,10 @@ const TableCameraPlacementPreviewModal = ({
     const videoNode = videoRef.current;
     let stopped = false;
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false })
+      .getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      })
       .then((stream) => {
         if (stopped) {
           stream.getTracks().forEach((track) => track.stop());
@@ -160,8 +177,10 @@ const TableCameraPlacementPreviewModal = ({
   const handlePointerMove = (event) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const dxPercent = ((event.clientX - drag.startX) / drag.rect.width) * 100;
-    const dyPercent = ((event.clientY - drag.startY) / drag.rect.height) * 100;
+    const dxPercent =
+      ((event.clientX - drag.startX) / drag.rect.width) * 100;
+    const dyPercent =
+      ((event.clientY - drag.startY) / drag.rect.height) * 100;
     setPlacement((prev) => ({
       ...prev,
       x: clamp(drag.startPlacement.x + dxPercent, 5, 95),
@@ -171,40 +190,53 @@ const TableCameraPlacementPreviewModal = ({
 
   const handlePointerUp = (event) => {
     event.currentTarget.releasePointerCapture?.(event.pointerId);
-    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) return;
+    if (!dragRef.current || dragRef.current.pointerId !== event.pointerId) {
+      return;
+    }
     dragRef.current = null;
   };
 
   const updatePlacement = (updater) => {
     setPlacement((current) =>
-      normalizeCameraPlacement(typeof updater === "function" ? updater(current) : updater),
+      normalizeCameraPlacement(
+        typeof updater === "function" ? updater(current) : updater,
+      ),
     );
   };
 
-  const overlayHasThumbnail = Boolean(modelSummary.thumbnailUrl && !thumbnailFailed);
+  const overlayHasThumbnail = Boolean(
+    modelSummary.thumbnailUrl && !thumbnailFailed,
+  );
 
   return (
     <Modal isOpen={open} onClose={onClose} size="xl">
       <div className="camera-placement-modal">
         <div className="camera-placement-modal__header">
-          <h3>📷 Xem thử bàn trong không gian</h3>
+          <h3>Xem thử bàn bằng camera</h3>
           <p>
-            Chức năng này chỉ hiển thị mẫu bàn lên camera để ước lượng xem có hợp
-            không gian thực tế hay không. Không lưu vị trí vào sơ đồ bàn.
+            Đặt hình mẫu bàn lên khung camera để ước lượng kích thước và mức độ
+            phù hợp với không gian thực tế. Chế độ này không lưu vị trí vào sơ đồ
+            bàn.
           </p>
           <ol className="camera-placement-modal__steps">
-            <li>Đưa camera tới khu vực muốn thử đặt bàn.</li>
-            <li>Kéo, xoay, phóng to/thu nhỏ mẫu bàn để tự căn chỉnh.</li>
-            <li>Đóng cửa sổ khi đã xem xong; vị trí này không liên kết với sơ đồ bàn.</li>
+            <li>Hướng camera vào khu vực bạn muốn thử đặt bàn.</li>
+            <li>Kéo, xoay và thay đổi kích thước mẫu bàn cho phù hợp.</li>
+            <li>Đóng cửa sổ khi xem xong; vị trí thử sẽ không được lưu.</li>
           </ol>
           <div className="camera-placement-modal__warning">
-            Đây là overlay thủ công, chưa phải AR nhận diện mặt phẳng và không tạo tọa độ
-            không gian thật để lưu vào hệ thống.
+            Đây là chế độ xem thử bằng hình ảnh. Hệ thống chưa nhận diện mặt phẳng
+            và không tạo tọa độ không gian thực để lưu vào sơ đồ.
           </div>
         </div>
 
         <div className="camera-placement-modal__preview" ref={previewRef}>
-          <video ref={videoRef} autoPlay playsInline muted className="camera-placement-modal__video" />
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="camera-placement-modal__video"
+          />
           <div
             className={`camera-placement-modal__overlay shape-${modelSummary.shape}`}
             style={{
@@ -217,26 +249,33 @@ const TableCameraPlacementPreviewModal = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            aria-label="Overlay mô hình bàn để xem thử trong camera"
+            aria-label="Mẫu bàn dùng để xem thử trong khung camera"
           >
             {overlayHasThumbnail ? (
               <img
                 src={modelSummary.thumbnailUrl}
-                alt={`Thumbnail ${modelSummary.name}`}
+                alt={`Ảnh xem trước của ${modelSummary.name}`}
                 className="camera-placement-modal__thumbnail"
                 draggable="false"
                 onError={() => setThumbnailFailed(true)}
               />
             ) : (
-              <div className="camera-placement-modal__shape-preview" aria-hidden="true" />
+              <div
+                className="camera-placement-modal__shape-preview"
+                aria-hidden="true"
+              />
             )}
             <div className="camera-placement-modal__overlay-info">
               <strong>{modelSummary.name}</strong>
               <span>{modelSummary.seats} ghế</span>
               <span>{modelSummary.areaLabel}</span>
               <span>{modelSummary.shapeLabel}</span>
-              {modelSummary.dimensions && <span>{modelSummary.dimensions}</span>}
-              {modelSummary.shape === "booth" && <em className="sofa-badge">Sofa</em>}
+              {modelSummary.dimensions && (
+                <span>{modelSummary.dimensions}</span>
+              )}
+              {modelSummary.shape === "booth" && (
+                <em className="sofa-badge">Ghế sofa</em>
+              )}
             </div>
           </div>
           {cameraError && (
@@ -250,71 +289,250 @@ const TableCameraPlacementPreviewModal = ({
             </div>
           )}
           <div className="camera-placement-modal__hint">
-            Kéo mẫu bàn để đặt thử. Các nút xoay/phóng to chỉ giúp căn overlay bằng mắt.
+            Kéo mẫu bàn để đổi vị trí. Dùng các nút bên dưới để xoay, phóng to
+            hoặc thu nhỏ.
           </div>
         </div>
 
         <div className="camera-placement-modal__controls">
-          <div className="camera-placement-modal__control-group" aria-label="Preset scale">
-            <span>Preset scale:</span>
+          <div
+            className="camera-placement-modal__control-group"
+            aria-label="Chọn nhanh kích thước mẫu bàn"
+          >
+            <span>Kích thước nhanh:</span>
             {SCALE_PRESETS.map((preset) => (
               <Button
                 key={preset.label}
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => updatePlacement((p) => ({ ...p, scale: preset.value }))}
+                onClick={() =>
+                  updatePlacement((current) => ({
+                    ...current,
+                    scale: preset.value,
+                  }))
+                }
               >
                 {preset.label}
               </Button>
             ))}
           </div>
-          <div className="camera-placement-modal__control-group" aria-label="Điều chỉnh nhanh">
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, scale: p.scale - 0.1 }))}>Thu nhỏ</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, scale: p.scale + 0.1 }))}>Phóng to</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, rotation: p.rotation - 15 }))}>Xoay -15°</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, rotation: p.rotation + 15 }))}>Xoay +15°</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, rotation: p.rotation + 90 }))}>Xoay 90°</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, rotation: p.rotation + 180 }))}>Lật hướng</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, x: 50, y: 50 }))}>Căn giữa</Button>
+          <div
+            className="camera-placement-modal__control-group"
+            aria-label="Điều chỉnh nhanh mẫu bàn"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  scale: current.scale - 0.1,
+                }))
+              }
+            >
+              Thu nhỏ
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  scale: current.scale + 0.1,
+                }))
+              }
+            >
+              Phóng to
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  rotation: current.rotation - 15,
+                }))
+              }
+            >
+              Xoay trái 15°
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  rotation: current.rotation + 15,
+                }))
+              }
+            >
+              Xoay phải 15°
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  rotation: current.rotation + 90,
+                }))
+              }
+            >
+              Xoay 90°
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  rotation: current.rotation + 180,
+                }))
+              }
+            >
+              Đổi hướng
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  x: 50,
+                  y: 50,
+                }))
+              }
+            >
+              Căn giữa
+            </Button>
           </div>
-          <div className="camera-placement-modal__control-group" aria-label="Di chuyển">
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, x: p.x - 2 }))}>←</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, x: p.x + 2 }))}>→</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, y: p.y - 2 }))}>↑</Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement((p) => ({ ...p, y: p.y + 2 }))}>↓</Button>
+          <div
+            className="camera-placement-modal__control-group"
+            aria-label="Di chuyển mẫu bàn"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              aria-label="Di chuyển sang trái"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  x: current.x - 2,
+                }))
+              }
+            >
+              ←
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              aria-label="Di chuyển sang phải"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  x: current.x + 2,
+                }))
+              }
+            >
+              →
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              aria-label="Di chuyển lên trên"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  y: current.y - 2,
+                }))
+              }
+            >
+              ↑
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              aria-label="Di chuyển xuống dưới"
+              onClick={() =>
+                updatePlacement((current) => ({
+                  ...current,
+                  y: current.y + 2,
+                }))
+              }
+            >
+              ↓
+            </Button>
           </div>
           <label className="camera-placement-modal__opacity-control">
-            <span>Độ trong suốt overlay: {Math.round(placement.opacity * 100)}%</span>
+            <span>Độ rõ của mẫu: {Math.round(placement.opacity * 100)}%</span>
             <input
               type="range"
               min="0.35"
               max="1"
               step="0.01"
               value={placement.opacity}
-              onChange={(event) => updatePlacement((p) => ({ ...p, opacity: Number(event.target.value) }))}
+              aria-label="Điều chỉnh độ rõ của mẫu bàn"
+              onChange={(event) =>
+                updatePlacement((current) => ({
+                  ...current,
+                  opacity: Number(event.target.value),
+                }))
+              }
             />
           </label>
-          <div className="camera-placement-modal__control-group" aria-label="Reset overlay">
-            <Button type="button" size="sm" variant="secondary" onClick={() => updatePlacement({ ...DEFAULT_CAMERA_PLACEMENT })}>Reset overlay</Button>
+          <div
+            className="camera-placement-modal__control-group"
+            aria-label="Khôi phục vị trí mẫu bàn"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                updatePlacement({ ...DEFAULT_CAMERA_PLACEMENT })
+              }
+            >
+              Khôi phục mặc định
+            </Button>
           </div>
         </div>
 
         <p className="camera-placement-modal__stats">
-          x: {placement.x.toFixed(1)}% • y: {placement.y.toFixed(1)}% • scale: {placement.scale.toFixed(2)} • rotation: {placement.rotation.toFixed(0)}° • opacity: {placement.opacity.toFixed(2)}
+          Ngang: {placement.x.toFixed(1)}% · Dọc: {placement.y.toFixed(1)}% · Kích
+          thước: {placement.scale.toFixed(2)} · Góc xoay:{" "}
+          {placement.rotation.toFixed(0)}° · Độ rõ:{" "}
+          {Math.round(placement.opacity * 100)}%
         </p>
         <p className="camera-placement-modal__note">
-          Thông số trên chỉ là vị trí overlay trong khung hình hiện tại, không phải tọa độ thực tế và không dùng để cập nhật sơ đồ bàn.
+          Các thông số trên chỉ áp dụng cho hình mẫu trong khung camera hiện tại,
+          không phải tọa độ thực tế và không cập nhật sơ đồ bàn.
         </p>
         {modelSummary.hasModelUrl && (
           <p className="camera-placement-modal__note">
-            Model này có thể thử AR native từ màn mô phỏng 3D nếu thiết bị hỗ trợ.
+            Mẫu này cũng có thể được mở bằng AR trên thiết bị nếu trình duyệt hỗ
+            trợ.
           </p>
         )}
-        {backendConfigNote && <p className="camera-placement-modal__note">{backendConfigNote}</p>}
+        {backendConfigNote && (
+          <p className="camera-placement-modal__note">{backendConfigNote}</p>
+        )}
 
         <div className="camera-placement-modal__actions">
-          <Button type="button" variant="primary" onClick={onClose}>Đóng xem thử</Button>
+          <Button type="button" variant="primary" onClick={onClose}>
+            Đóng xem thử
+          </Button>
         </div>
       </div>
     </Modal>
