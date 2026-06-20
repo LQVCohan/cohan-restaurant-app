@@ -1141,11 +1141,50 @@ function buildDiscountPricing(pricing = {}) {
     taxRate: Math.max(0, Number(pricing?.taxRate || 0)),
     shippingFee: Math.max(0, Number(pricing?.shippingFee || 0)),
     voucherCode: normalizeVoucherCode(pricing?.voucherCode),
-    couponCodesByRestaurant:
-      pricing?.couponCodesByRestaurant && typeof pricing.couponCodesByRestaurant === "object"
-        ? pricing.couponCodesByRestaurant
-        : undefined,
   };
+}
+
+
+function normalizeCheckoutCouponSelections(couponSelections = []) {
+  if (!Array.isArray(couponSelections)) return new Map();
+  const selections = new Map();
+
+  for (const selection of couponSelections) {
+    const restaurantId = toId(selection?.restaurantId);
+    const couponCode = normalizeVoucherCode(selection?.couponCode);
+    if (!restaurantId || !couponCode) continue;
+    selections.set(String(restaurantId), couponCode);
+  }
+
+  return selections;
+}
+
+function resolveRankFromLoyaltyPoints(points = 0) {
+  const value = Number(points || 0);
+  if (value >= 20) return "VIP";
+  if (value >= 5) return "OFTEN";
+  return "NEW";
+}
+
+async function resolveCheckoutCustomerRank(userId, session) {
+  if (!userId || !mongoose.isValidObjectId(userId)) return null;
+  const userDoc = await User.findById(toId(userId))
+    .select("customerRank customerType loyaltyPoints totalSpending")
+    .session(session)
+    .lean();
+
+  if (!userDoc) return null;
+  if (userDoc.customerRank) return String(userDoc.customerRank);
+  if (userDoc.customerType) return String(userDoc.customerType);
+  if (typeof userDoc.loyaltyPoints === "number") {
+    return resolveRankFromLoyaltyPoints(userDoc.loyaltyPoints);
+  }
+
+  const points = Math.max(
+    0,
+    Math.floor((Number(userDoc.totalSpending) || 0) / RANK_POINT_DIVISOR),
+  );
+  return resolveRankFromLoyaltyPoints(points);
 }
 
 function normalizePromotionIds(promotionIds = []) {
@@ -2385,6 +2424,7 @@ export const OrderMutation = {
       idempotencyKey,
       pricing,
       promotionIds,
+      couponSelections,
     } = input || {};
     const authUserId = assertCustomerRemoteCheckoutAuth(ctx, userId);
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
@@ -2485,11 +2525,13 @@ export const OrderMutation = {
         ? "wallet"
         : normalizedPaymentMethodRaw;
     const isTransferCheckout = ["transfer", "bank_transfer"].includes(normalizedPaymentMethod);
+    const couponSelectionMap = normalizeCheckoutCouponSelections(couponSelections);
 
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
         finalUserId = authUserId;
+        const checkoutCustomerRank = await resolveCheckoutCustomerRank(finalUserId, session);
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
           const { restaurant, availability } = await getPublicRestaurantOrThrow(
@@ -2530,15 +2572,9 @@ export const OrderMutation = {
               ? Math.round(Number(pricing?.shippingFee || 0) / grouped.size)
               : Number(pricing?.shippingFee || 0);
 
-          const couponCodesByRestaurant =
-            pricing?.couponCodesByRestaurant &&
-            typeof pricing.couponCodesByRestaurant === "object"
-              ? pricing.couponCodesByRestaurant
-              : {};
           const groupVoucherCode =
-            couponCodesByRestaurant[String(restaurantId)] ||
-            couponCodesByRestaurant[String(restaurantId.toString?.() || "")] ||
-            pricing?.voucherCode;
+            couponSelectionMap.get(String(restaurantId)) ||
+            (grouped.size === 1 ? pricing?.voucherCode : undefined);
           const groupPricing = buildDiscountPricing({
             ...pricing,
             voucherCode: groupVoucherCode,
@@ -2553,6 +2589,7 @@ export const OrderMutation = {
             userId: finalUserId,
             paymentMethod: normalizedPaymentMethod,
             orderType,
+            customerRank: checkoutCustomerRank,
             session,
           });
 

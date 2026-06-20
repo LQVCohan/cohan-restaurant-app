@@ -616,9 +616,11 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
 
   const createCheckout = async (method) => {
     const checkoutItems = items.map((item) => mapCartItemToOrderItemInput(item, { includeCartHoldRef: true }));
-    const selectedCouponCodes = Object.values(selectedCouponCodeMap).filter(Boolean);
+    const couponSelections = Object.entries(selectedCouponCodeMap)
+      .filter(([, couponCode]) => Boolean(couponCode))
+      .map(([restaurantId, couponCode]) => ({ restaurantId, couponCode }));
     const result = await createCheckoutOrders({
-      variables: { input: { orderType, items: checkoutItems, shipping, paymentMethod: method, pricing: buildDiscountPricingInput({ taxRate: ORDER_VAT_RATE, serviceRate: 0, shippingFee: shippingFeeTotal, couponCode: selectedCouponCodes.length === 1 && cartGroups.length === 1 ? selectedCouponCodes[0] : "", couponCodesByRestaurant: selectedCouponCodeMap }), idempotencyKey: `checkout-${Date.now()}`, note: shipping.note || undefined } },
+      variables: { input: { orderType, items: checkoutItems, shipping, paymentMethod: method, pricing: buildDiscountPricingInput({ taxRate: ORDER_VAT_RATE, serviceRate: 0, shippingFee: shippingFeeTotal }), couponSelections, idempotencyKey: `checkout-${Date.now()}`, note: shipping.note || undefined } },
     });
     return result?.data?.createCheckoutOrders;
   };
@@ -638,7 +640,8 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
       const checkoutResult = await createCheckout(paymentMethod === "transfer" ? "transfer" : paymentMethod);
       const checkout = checkoutResult?.checkout;
       const orders = checkoutResult?.orders || [];
-      setReceipt({ checkoutCode: checkout?.checkoutCode, orderIds: checkout?.orderIds || orders.map((order) => order.id), orderCodes: orders.map((order) => order.orderCode).filter(Boolean), orders, totalPaid: checkout?.grandTotal || totals.total, paymentMethod });
+      const backendGrandTotal = checkout?.grandTotal ?? orders.reduce((sum, order) => sum + Number(order?.totals?.grandTotal || 0), 0);
+      setReceipt({ checkoutCode: checkout?.checkoutCode, orderIds: checkout?.orderIds || orders.map((order) => order.id), orderCodes: orders.map((order) => order.orderCode).filter(Boolean), orders, totalPaid: backendGrandTotal, paymentMethod });
       onSuccess?.();
       if (paymentMethod === "transfer") {
         const sessions = [];
