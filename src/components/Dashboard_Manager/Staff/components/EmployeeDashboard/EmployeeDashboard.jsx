@@ -1,5 +1,5 @@
 import React from "react";
-import EmployeeList from "../EmployeeList/EmployeeList"; // Kiểm tra lại đường dẫn import của bạn nếu cần
+import EmployeeList from "../EmployeeList/EmployeeList";
 import EmployeeDetail from "../EmployeeDetail/EmployeeDetail";
 import "./EmployeeDashboard.scss";
 
@@ -8,6 +8,7 @@ const EmployeeDashboard = ({
   selectedEmployee,
   focusedEmployeeId,
   onEmployeeSelect,
+  onEmployeeAction,
   onEditEmployee,
   onViewHistory,
   onDeleteEmployee,
@@ -25,13 +26,13 @@ const EmployeeDashboard = ({
 }) => {
   return (
     <div className="employee-dashboard">
-      {/* CỘT TRÁI: Danh sách (Chiếm 40%) */}
       <div className="dashboard-left">
         <EmployeeList
           employees={employees}
           selectedEmployee={selectedEmployee}
           focusedEmployeeId={focusedEmployeeId}
           onEmployeeSelect={onEmployeeSelect}
+          onEmployeeAction={onEmployeeAction}
           roleList={roleList}
           loading={loading}
           error={error}
@@ -39,7 +40,6 @@ const EmployeeDashboard = ({
         />
       </div>
 
-      {/* CỘT PHẢI: Chi tiết (Chiếm 60%) */}
       <div className="dashboard-right">
         <EmployeeDetail
           employee={selectedEmployee}
