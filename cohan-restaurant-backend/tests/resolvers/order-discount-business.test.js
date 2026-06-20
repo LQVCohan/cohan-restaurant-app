@@ -486,10 +486,10 @@ describe("order discount business safety", () => {
 
       expect(contextSrc).toMatch(/select\("loyaltyRank customerType loyaltyPoints totalSpending"\)/);
       expect(contextSrc).not.toMatch(/customerRank/);
-      expect(rankSrc).toMatch(/CustomerRankSetting\.findOne\(\{ restaurantId: toId\(restaurantId\) \}\)/);
-      expect(rankSrc).toMatch(/sort\(\(a, b\) => Number\(b\.minPoints\) - Number\(a\.minPoints\)\)/);
-      expect(rankSrc).toMatch(/points >= Number\(rank\.minPoints\)/);
-      expect(rankSrc).toMatch(/normalizeRankAliasAscii/);
+      expect(rankSrc).toMatch(/getEffectiveCustomerRankSetting\(\{/);
+      expect(rankSrc).toMatch(/resolveCustomerRankByPoints\(\{/);
+      expect(rankSrc).toMatch(/buildCustomerRankAliases\(matchedRank\.name\)/);
+      expect(rankSrc).not.toMatch(/CustomerRankSetting\.findOne/);
       expect(rankSrc).not.toMatch(/resolveLoyaltyRankFromPoints/);
       expect(rankSrc).not.toMatch(/resolveCustomerTypeFromLoyaltyPoints/);
     });

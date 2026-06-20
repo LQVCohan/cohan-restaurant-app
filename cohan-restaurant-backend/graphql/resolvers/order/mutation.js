@@ -14,7 +14,6 @@ import {
   CheckoutSession,
   Coupon,
   Customer,
-  CustomerRankSetting,
   User,
   WalletTransaction,
   PrintSetting,
@@ -36,6 +35,11 @@ import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import {
+  buildCustomerRankAliases,
+  getEffectiveCustomerRankSetting,
+  resolveCustomerRankByPoints,
+} from "../../../src/services/customerRankSetting.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { hasRole } from "../../../utils/authz.js";
 import { applyCartDerivedFields, computeCartTotalAmount } from "../../../models/cartDerivedFields.js";
@@ -326,6 +330,8 @@ async function syncCustomerMetricsByOrderUser(userId) {
     0,
     Math.floor((Number(totalSpending) || 0) / RANK_POINT_DIVISOR),
   );
+  // customerType is legacy/manual customer data. Current coupon rank
+  // eligibility is resolved from CustomerRankSetting per restaurant.
   await Customer.findByIdAndUpdate(uid, {
     totalSpending,
     totalOrders,
@@ -1156,27 +1162,6 @@ function normalizeCheckoutCouponSelections(couponSelections = []) {
   return selections;
 }
 
-function normalizeRankAlias(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function normalizeRankAliasAscii(value) {
-  return normalizeRankAlias(value)
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function uniqueRankAliases(values = []) {
-  return [...new Set(values.map(normalizeRankAlias).filter(Boolean))];
-}
-
-function addRankAlias(aliases, value) {
-  const normalized = normalizeRankAlias(value);
-  const ascii = normalizeRankAliasAscii(value);
-  if (normalized) aliases.push(normalized);
-  if (ascii && ascii !== normalized) aliases.push(ascii);
-}
-
 async function loadCheckoutUserRankContext(userId, session) {
   if (!userId || !mongoose.isValidObjectId(userId)) return null;
   const userDoc = await User.findById(toId(userId))
@@ -1196,28 +1181,27 @@ async function loadCheckoutUserRankContext(userId, session) {
 async function resolveCheckoutCustomerRankAliases({ userContext, restaurantId, session }) {
   if (!userContext) return [];
 
-  const aliases = [];
-  addRankAlias(aliases, userContext.loyaltyRank);
-  addRankAlias(aliases, userContext.customerType);
+  const aliases = [
+    ...buildCustomerRankAliases(userContext.loyaltyRank),
+    ...buildCustomerRankAliases(userContext.customerType),
+  ];
 
   const points = Number.isFinite(Number(userContext.loyaltyPoints))
     ? Number(userContext.loyaltyPoints)
     : Math.max(0, Math.floor((Number(userContext.totalSpending || 0) || 0) / RANK_POINT_DIVISOR));
 
-  const rankSetting = restaurantId && mongoose.isValidObjectId(restaurantId)
-    ? await CustomerRankSetting.findOne({ restaurantId: toId(restaurantId) }).session(session).lean()
-    : null;
+  const rankSetting = await getEffectiveCustomerRankSetting({
+    restaurantId,
+    session,
+  });
+  const matchedRank = resolveCustomerRankByPoints({
+    ranks: rankSetting.ranks,
+    points,
+  });
 
-  const matchedRank = Array.isArray(rankSetting?.ranks)
-    ? [...rankSetting.ranks]
-      .filter((rank) => Number.isFinite(Number(rank?.minPoints)))
-      .sort((a, b) => Number(b.minPoints) - Number(a.minPoints))
-      .find((rank) => points >= Number(rank.minPoints))
-    : null;
+  if (matchedRank?.name) aliases.push(...buildCustomerRankAliases(matchedRank.name));
 
-  if (matchedRank?.name) addRankAlias(aliases, matchedRank.name);
-
-  return uniqueRankAliases(aliases);
+  return [...new Set(aliases.filter(Boolean))];
 }
 
 function normalizePromotionIds(promotionIds = []) {
