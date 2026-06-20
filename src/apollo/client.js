@@ -198,6 +198,12 @@ const cache = new InMemoryCache({
         thumbImage: imageFieldPolicy,
       },
     },
+    MenuItemSearchSuggestion: {
+      keyFields: ["id"],
+      fields: {
+        thumbImage: imageFieldPolicy,
+      },
+    },
     CartItem: {
       keyFields: ["id"],
       fields: {
