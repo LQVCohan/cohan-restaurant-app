@@ -45,10 +45,10 @@ const getInventoryWarningCta = (item, availability) => {
   if (isNotTracked) {
     return {
       type: "recipe_missing",
-      label: "Bổ sung công thức",
-      title: "Chưa có công thức kho",
+      label: "Thiết lập định lượng",
+      title: "Chưa thiết lập định lượng nguyên liệu",
       description:
-        "Thêm công thức để hệ thống tự kiểm tra nguyên liệu và số lượng có thể bán.",
+        "Khai báo nguyên liệu và định lượng để hệ thống tự tính số lượng món còn có thể bán.",
       action: "recipe",
     };
   }
@@ -69,7 +69,7 @@ const getInventoryWarningCta = (item, availability) => {
       label: "Kiểm tra tồn kho",
       title: "Món đang hết hàng",
       description:
-        "Kiểm tra công thức và tồn kho nguyên liệu trước khi mở bán lại.",
+        "Kiểm tra định lượng và tồn kho nguyên liệu trước khi mở bán lại.",
       action: "inventory",
     };
   }
@@ -329,14 +329,14 @@ const MenuItemCard = ({
 
           <div className="variants-list">
             <div className="list-header">
-              <span>Tùy chọn bán ({variants.length || 1})</span>
+              <span>Cách chế biến ({variants.length || 1})</span>
               <span>Giá bán</span>
             </div>
 
             <div className="list-content">
               {variants.length === 0 ? (
                 <div className="variant-row single">
-                  <span>Giá tiêu chuẩn</span>
+                  <span>Cách chế biến mặc định</span>
                   <span className="price">
                     {formatPrice(item.basePrice || 0)}
                   </span>
@@ -358,7 +358,7 @@ const MenuItemCard = ({
               {remainingCount > 0 && (
                 <div className="variant-more">
                   <MoreHorizontal size={14} />
-                  <span>Còn {remainingCount} tùy chọn khác</span>
+                  <span>Còn {remainingCount} cách chế biến khác</span>
                 </div>
               )}
             </div>
@@ -376,7 +376,7 @@ const MenuItemCard = ({
                   event.stopPropagation();
                   onEdit?.();
                 }}
-                title="Chỉnh sửa thông tin và tùy chọn bán"
+                title="Chỉnh sửa thông tin và cách chế biến"
               >
                 <Edit3 size={16} /> <span>Chỉnh sửa</span>
               </button>
