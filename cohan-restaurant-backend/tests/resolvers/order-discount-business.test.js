@@ -51,6 +51,7 @@ const getNamedFunctionSnippet = (src, functionName) => {
   return src.slice(actualStart, end);
 };
 const ORDER_SCHEMA_PATH = "graphql/schema/order.graphql";
+const ORDER_TRACKING_SCHEMA_PATH = "graphql/schema/orderTracking.graphql";
 const ORDER_MUTATION_PATH = "graphql/resolvers/order/mutation.js";
 const ORDER_QUERY_PATH = "graphql/resolvers/order/query.js";
 
@@ -253,7 +254,7 @@ describe("order discount business safety", () => {
       const src = read(ORDER_MUTATION_PATH);
       const checkoutStart = src.indexOf("createCheckoutOrders");
       expect(checkoutStart).toBeGreaterThanOrEqual(0);
-      const checkoutSrc = src.slice(checkoutStart, checkoutStart + 9000);
+      const checkoutSrc = src.slice(checkoutStart);
 
       expect(checkoutSrc).toMatch(/assertCustomerRemoteCheckoutAuth\(ctx, userId\)/);
       expect(checkoutSrc).toMatch(/assertCartHoldCheckoutAllowed\(\{/);
@@ -332,7 +333,7 @@ describe("order discount business safety", () => {
 
   describe("order discount preview schema", () => {
     it("exposes DiscountBreakdown and PreviewOrderDiscountInput", () => {
-      const schema = read(ORDER_SCHEMA_PATH);
+      const schema = `${read(ORDER_SCHEMA_PATH)}\n${read(ORDER_TRACKING_SCHEMA_PATH)}`;
 
       expect(schema).toMatch(/type DiscountBreakdown\s*\{/);
       expect(schema).toMatch(/input PreviewOrderDiscountInput\s*\{/);
@@ -466,4 +467,29 @@ describe("order discount business safety", () => {
       expect(hasSharedPricingHelper || hasFallbackPreviewBuilder).toBe(true);
     });
   });
+  describe("checkout coupon selections", () => {
+    it("defines explicit per-restaurant couponSelections input", () => {
+      const schema = read(ORDER_SCHEMA_PATH);
+
+      expect(schema).toMatch(/input CheckoutCouponSelectionInput/);
+      expect(schema).toMatch(/restaurantId:\s*ID!/);
+      expect(schema).toMatch(/couponCode:\s*String!/);
+      expect(schema).toMatch(/couponSelections:\s*\[CheckoutCouponSelectionInput!\]/);
+    });
+
+    it("passes full coupon context and only the current restaurant coupon into checkout discount calculation", () => {
+      const src = read(ORDER_MUTATION_PATH);
+      const checkoutStart = src.indexOf("async createCheckoutOrders");
+      expect(checkoutStart).toBeGreaterThanOrEqual(0);
+      const checkoutSrc = src.slice(checkoutStart, checkoutStart + 12000);
+
+      expect(checkoutSrc).toMatch(/normalizeCheckoutCouponSelections\(couponSelections\)/);
+      expect(checkoutSrc).toMatch(/couponSelectionMap\.get\(String\(restaurantId\)\)/);
+      expect(checkoutSrc).toMatch(/grouped\.size === 1 \? pricing\?\.voucherCode : undefined/);
+      expect(checkoutSrc).toMatch(/userId:\s*finalUserId/);
+      expect(checkoutSrc).toMatch(/paymentMethod:\s*normalizedPaymentMethod/);
+      expect(checkoutSrc).toMatch(/orderType,[\s\S]*customerRank:\s*checkoutCustomerRank/);
+    });
+  });
+
 });

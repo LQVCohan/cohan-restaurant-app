@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import {
   Coupon,
+  Category,
   CouponRedemption,
   Invoice,
   Order,
@@ -343,6 +344,122 @@ function getLineQuantity(item) {
 
 function getLineSubtotal(item) {
   return roundVnd(item?.lineSubtotal);
+}
+
+
+function normalizeCategoryConstraintIds(value) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  return [...new Set(source.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
+function normalizeCategoryConstraintNames(value) {
+  return normalizeConstraintArray(value);
+}
+
+function getItemCategoryCandidateIds(item = {}) {
+  return [
+    item.categoryId,
+    item.category?.id,
+    item.category?._id,
+    item.menuItem?.categoryId,
+    item.menuItem?.category?.id,
+    item.menuItem?.category?._id,
+    item.categorySnapshot?.id,
+    item.categorySnapshot?._id,
+    item.snapshot?.categoryId,
+    item.snapshot?.category?.id,
+    item.snapshot?.category?._id,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
+function normalizeCategoryName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getItemCategoryCandidateNames(item = {}, categoryNameById = new Map()) {
+  const names = [];
+  const categoryValue = item.category;
+  if (typeof categoryValue === "string") names.push(categoryValue);
+  else if (categoryValue?.name) names.push(categoryValue.name);
+
+  names.push(
+    item.categoryName,
+    item.menuItem?.categoryName,
+    item.menuItem?.category?.name,
+    item.categorySnapshot?.name,
+    item.snapshot?.categoryName,
+    item.snapshot?.category?.name,
+  );
+
+  for (const id of getItemCategoryCandidateIds(item)) {
+    if (categoryNameById.has(id)) names.push(categoryNameById.get(id));
+  }
+
+  return [...new Set(names.map(normalizeCategoryName).filter(Boolean))];
+}
+
+async function resolveCategoryNamesByIds({ categoryIds = [], restaurantId, session }) {
+  const ids = [...new Set(categoryIds.filter((id) => mongoose.isValidObjectId(id)))];
+  if (!ids.length) return new Map();
+
+  const restaurantObjectId = mongoose.isValidObjectId(restaurantId)
+    ? new mongoose.Types.ObjectId(restaurantId)
+    : restaurantId;
+
+  const docs = await Category.find({
+    restaurantId: restaurantObjectId,
+    _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
+  }).session(session);
+
+  return new Map(
+    (docs || []).map((doc) => [String(doc._id || doc.id), normalizeCategoryName(doc.name)]),
+  );
+}
+
+function itemMatchesCouponCategory({ item, categoryIds, categoryNames, categoryNameById }) {
+  const itemCategoryIds = getItemCategoryCandidateIds(item);
+  const itemCategoryNames = getItemCategoryCandidateNames(item, categoryNameById);
+
+  return (
+    itemCategoryIds.some((id) => categoryIds.includes(id)) ||
+    itemCategoryNames.some((name) => categoryNames.includes(name))
+  );
+}
+
+async function calculateCouponEligibleSubtotal({ coupon, items = [], restaurantId, session }) {
+  const constraints = coupon?.constraints || {};
+  const categoryIds = normalizeCategoryConstraintIds(constraints.categoryIds);
+  const categoryNames = normalizeCategoryConstraintNames(constraints.categories);
+  const hasConstraints = categoryIds.length > 0 || categoryNames.length > 0;
+
+  if (!hasConstraints) {
+    return { hasConstraints: false, eligibleSubtotal: 0 };
+  }
+
+  const itemCategoryIds = items.flatMap((item) => getItemCategoryCandidateIds(item));
+  const categoryNameById = await resolveCategoryNamesByIds({
+    categoryIds: itemCategoryIds,
+    restaurantId,
+    session,
+  });
+
+  const eligibleSubtotal = roundVnd(
+    items.reduce((sum, item) => {
+      const status = String(item?.status || "");
+      if (status === "cancelled" || status === "returned") return sum;
+      if (!itemMatchesCouponCategory({ item, categoryIds, categoryNames, categoryNameById })) return sum;
+      return sum + getLineSubtotal(item);
+    }, 0),
+  );
+
+  return { hasConstraints: true, eligibleSubtotal };
 }
 
 function getUnitPriceFromLine(item) {
@@ -798,12 +915,28 @@ export async function calculateDiscountBreakdown({
     }
 
     if (shouldApplyVoucher) {
+      const categoryScope = await calculateCouponEligibleSubtotal({
+        coupon,
+        items,
+        restaurantId: rid,
+        session,
+      });
+      const couponEligibleSubtotal = categoryScope.hasConstraints
+        ? categoryScope.eligibleSubtotal
+        : subtotal;
+
+      if (categoryScope.hasConstraints && couponEligibleSubtotal <= 0) {
+        throw new Error("Invalid coupon: no eligible items for category constraints");
+      }
+
       voucherDiscount = calcDiscountAmount({
         discountType: coupon.discountType,
         discountValue: coupon.discountValue,
-        subtotal,
+        subtotal: couponEligibleSubtotal,
         maxDiscount: coupon.maxDiscount,
       });
+      coupon.couponEligibleSubtotal = couponEligibleSubtotal;
+      coupon.couponCategoryScoped = categoryScope.hasConstraints;
     } else {
       coupon = null;
       voucherDiscount = 0;
@@ -844,6 +977,8 @@ export async function calculateDiscountBreakdown({
     appliedCoupons: coupon ? [String(coupon._id)] : [],
     voucherCode: code || undefined,
     couponId: coupon?._id,
+    couponEligibleSubtotal: coupon?.couponEligibleSubtotal,
+    couponCategoryScoped: Boolean(coupon?.couponCategoryScoped),
     discountReason: coupon ? `coupon:${coupon._id}` : undefined,
     tax,
     service,
