@@ -139,7 +139,7 @@ const StaffManagement = () => {
   });
 
   const {
-    updateStaffAvatar,
+    uploadStaffAvatar,
     removeStaffAvatar,
     uploadingAvatar,
   } = useStaffAvatar();
@@ -355,7 +355,7 @@ const StaffManagement = () => {
   );
 
   const handleAvatarSubmit = useCallback(
-    async ({ employee, fileBase64, remove }) => {
+    async ({ employee, file, remove }) => {
       if (!employee?.id) {
         throw new Error("Chưa chọn nhân viên để cập nhật ảnh đại diện.");
       }
@@ -363,7 +363,7 @@ const StaffManagement = () => {
       try {
         const updated = remove
           ? await removeStaffAvatar(employee.id)
-          : await updateStaffAvatar(employee.id, { fileBase64 });
+          : await uploadStaffAvatar(employee.id, file);
         const nextAvatarUrl = updated?.avatarUrl || "";
 
         setSelectedEmployee((current) => {
@@ -400,7 +400,7 @@ const StaffManagement = () => {
       refetchStaffList,
       removeStaffAvatar,
       showNotification,
-      updateStaffAvatar,
+      uploadStaffAvatar,
     ],
   );
 
