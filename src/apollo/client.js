@@ -8,7 +8,7 @@ import {
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { clearAuth, getToken, setAuth } from "@/lib/authStorage";
-import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+import { getGraphqlUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
 /* ---------------- HTTP link ---------------- */
@@ -19,8 +19,7 @@ const httpLink = new HttpLink({
 
 /* ---------------- Auth link ---------------- */
 const authLink = setContext((_, { headers }) => {
-  const token =
-    getToken();
+  const token = getToken();
 
   return {
     headers: {
@@ -125,24 +124,35 @@ const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) 
     dispatchOutOfStockPrompt({ operation, graphQLError: outOfStockError });
   }
 
-  const unauthenticated = (graphQLErrors || []).some((e) => e?.extensions?.code === "UNAUTHENTICATED") || networkError?.statusCode === 401;
+  const unauthenticated =
+    (graphQLErrors || []).some(
+      (e) => e?.extensions?.code === "UNAUTHENTICATED",
+    ) || networkError?.statusCode === 401;
   if (unauthenticated && !operation.getContext()._retry) {
     operation.setContext({ _retry: true });
     return new ApolloLink((obs) => {
-      refreshAccessTokenOnce().then((payload) => {
-        if (!payload?.token) {
-          clearAuth();
-          return obs.error(networkError || new Error("Unauthenticated"));
-        }
-        setAuth({ token: payload.token });
-        forward(operation).subscribe(obs);
-      }).catch((err) => obs.error(err));
+      refreshAccessTokenOnce()
+        .then((payload) => {
+          if (!payload?.token) {
+            clearAuth();
+            return obs.error(networkError || new Error("Unauthenticated"));
+          }
+          setAuth({ token: payload.token });
+          forward(operation).subscribe(obs);
+        })
+        .catch((err) => obs.error(err));
     }).request(operation);
   }
 });
 
 /* ---------------- Link + Cache ---------------- */
 const link = ApolloLink.from([errorLink, idempotencyLink, authLink, httpLink]);
+
+const imageFieldPolicy = {
+  read(existing) {
+    return toApiAssetUrl(existing);
+  },
+};
 
 const cache = new InMemoryCache({
   typePolicies: {
@@ -163,7 +173,7 @@ const cache = new InMemoryCache({
             }
 
             const seen = new Set(
-              (existing?.edges ?? []).map((e) => e?.cursor).filter(Boolean)
+              (existing?.edges ?? []).map((e) => e?.cursor).filter(Boolean),
             );
             const mergedEdges = [
               ...(existing?.edges ?? []),
@@ -180,6 +190,23 @@ const cache = new InMemoryCache({
             };
           },
         },
+      },
+    },
+    MenuItem: {
+      keyFields: ["id"],
+      fields: {
+        thumbImage: imageFieldPolicy,
+      },
+    },
+    CartItem: {
+      keyFields: ["id"],
+      fields: {
+        thumbImage: imageFieldPolicy,
+      },
+    },
+    OrderItem: {
+      fields: {
+        thumbImage: imageFieldPolicy,
       },
     },
     Order: {
