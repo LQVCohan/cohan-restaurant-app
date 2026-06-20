@@ -4,6 +4,25 @@ import { toApiAssetUrl } from "@/lib/apiBaseUrl";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
 
+const IMAGE_STYLE = {
+  width: "100%",
+  height: "100%",
+  display: "block",
+  objectFit: "cover",
+  objectPosition: "center",
+};
+
+const FALLBACK_STYLE = {
+  width: "100%",
+  height: "100%",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  lineHeight: 1,
+  fontWeight: 850,
+  letterSpacing: "-0.03em",
+};
+
 const isImageReference = (value) => {
   if (typeof value !== "string") return false;
   const normalized = value.trim();
@@ -58,6 +77,7 @@ const CustomerAvatarMedia = ({
         src={imageSrc}
         alt={alt || `Ảnh đại diện của ${name || "khách hàng"}`}
         className={className || undefined}
+        style={IMAGE_STYLE}
         loading="lazy"
         decoding="async"
         onError={() => setImageFailed(true)}
@@ -65,9 +85,17 @@ const CustomerAvatarMedia = ({
     );
   }
 
-  if (typeof candidate === "string" && candidate.trim() && !isImageReference(candidate)) {
+  if (
+    typeof candidate === "string" &&
+    candidate.trim() &&
+    !isImageReference(candidate)
+  ) {
     return (
-      <span className={className || undefined} aria-hidden="true">
+      <span
+        className={className || undefined}
+        style={FALLBACK_STYLE}
+        aria-hidden="true"
+      >
         {candidate.trim()}
       </span>
     );
@@ -76,13 +104,23 @@ const CustomerAvatarMedia = ({
   const initials = getInitials(name);
   if (initials) {
     return (
-      <span className={className || undefined} aria-label={`Ảnh đại diện của ${name}`}>
+      <span
+        className={className || undefined}
+        style={FALLBACK_STYLE}
+        aria-label={`Ảnh đại diện của ${name}`}
+      >
         {initials}
       </span>
     );
   }
 
-  return <User size={iconSize} className={className || undefined} aria-hidden="true" />;
+  return (
+    <User
+      size={iconSize}
+      className={className || undefined}
+      aria-hidden="true"
+    />
+  );
 };
 
 export default CustomerAvatarMedia;
