@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
 import LocalImageView from "./LocalImageView";
 import { useImageUploadLocal } from "../../hooks/useImageUploadLocal";
@@ -9,6 +9,13 @@ import {
 } from "../../utils/localImageStore";
 import "./LocalImagePicker.scss";
 
+const DEFAULT_ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 const formatBytes = (bytes = 0) => {
   const value = Number(bytes || 0);
   if (!Number.isFinite(value) || value <= 0) return "0KB";
@@ -17,22 +24,20 @@ const formatBytes = (bytes = 0) => {
 };
 
 const getSyncedFileName = (saved) => {
-  const baseName = String(saved?.originalName || "menu-image")
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "menu-image";
-
+  const baseName =
+    String(saved?.originalName || "menu-image")
+      .replace(/\.[a-z0-9]+$/i, "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "menu-image";
   const extension = String(saved?.mimeType || "image/webp").includes("jpeg")
     ? "jpg"
     : "webp";
-
   return `${baseName}.${extension}`;
 };
 
 const createPreviewUploadFile = (saved) => {
   const blob = saved?.previewBlob || saved?.thumbBlob;
   if (!blob) return null;
-
   return new File([blob], getSyncedFileName(saved), {
     type: saved.mimeType || blob.type || "image/webp",
     lastModified: Date.now(),
@@ -53,22 +58,53 @@ const LocalImagePicker = ({
   urlPlaceholder = "https://example.com/image.jpg hoặc local-image://...",
   syncToServer = true,
   onStatusChange,
+  maxFileSizeMb = 8,
+  allowedImageTypes = DEFAULT_ALLOWED_IMAGE_TYPES,
 }) => {
   const inputRef = useRef(null);
   const { uploadImage } = useImageUploadLocal();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [statsText, setStatsText] = useState("");
+  const [localPreviewValue, setLocalPreviewValue] = useState("");
+
+  useEffect(() => {
+    if (value && !String(value).startsWith("local-image://")) {
+      setLocalPreviewValue("");
+    }
+  }, [value]);
+
+  const displayValue = localPreviewValue || value || "";
 
   const handlePickFile = () => {
     if (disabled || isSaving) return;
     inputRef.current?.click();
   };
 
+  const validateFile = (file) => {
+    if (!file) return "Vui lòng chọn một tệp ảnh.";
+    if (!allowedImageTypes.includes(file.type)) {
+      return "Định dạng ảnh chưa được hỗ trợ. Hãy dùng JPG, PNG, WEBP hoặc GIF.";
+    }
+    const maxBytes = Number(maxFileSizeMb || 8) * 1024 * 1024;
+    if (file.size > maxBytes) {
+      return `Ảnh vượt quá ${maxFileSizeMb}MB. Vui lòng chọn ảnh nhẹ hơn.`;
+    }
+    return "";
+  };
+
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
+      setStatsText("");
+      onStatusChange?.("error");
+      return;
+    }
 
     setIsSaving(true);
     setError("");
@@ -77,9 +113,9 @@ const LocalImagePicker = ({
 
     try {
       const saved = await saveLocalImage(file, { ownerKey, purpose });
-      let nextValue = saved.uri;
-      let syncMessage = "";
+      setLocalPreviewValue(saved.uri);
 
+      let syncMessage = "";
       const stats = await getLocalImageStats(saved.uri);
       if (stats) {
         const optimizedBytes =
@@ -87,40 +123,40 @@ const LocalImagePicker = ({
         syncMessage = `Đã tối ưu: ${formatBytes(stats.originalSize)} → ${formatBytes(optimizedBytes)}`;
       }
 
-      if (syncToServer) {
-        const uploadFile = createPreviewUploadFile(saved);
-        if (uploadFile) {
-          try {
-            setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đang đồng bộ lên server...`);
-            const uploadResult = await uploadImage(uploadFile, {
-              folder: "menu-images",
-              type: purpose,
-              context: ownerKey,
-            });
-
-            if (uploadResult?.url) {
-              nextValue = uploadResult.url;
-              syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Đã đồng bộ server.`;
-              onStatusChange?.("synced");
-            } else {
-              syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Upload server lỗi, tạm dùng ảnh local.`;
-              onStatusChange?.("localOnly");
-              setError(uploadResult?.error?.message || "Không thể đồng bộ ảnh lên server.");
-            }
-          } catch (uploadError) {
-            syncMessage = `${syncMessage || "Đã tối ưu ảnh"}. Upload server lỗi, tạm dùng ảnh local.`;
-            onStatusChange?.("error");
-            setError(uploadError?.message || "Không thể đồng bộ ảnh lên server.");
-          }
-        }
+      if (!syncToServer) {
+        onChange?.(saved.uri);
+        setStatsText(syncMessage || "Đã tối ưu ảnh.");
+        onStatusChange?.("localOnly");
+        return;
       }
 
-      onChange?.(nextValue);
-      if (!syncToServer) onStatusChange?.("localOnly");
-      setStatsText(syncMessage || "Đã tối ưu ảnh.");
+      const uploadFile = createPreviewUploadFile(saved);
+      if (!uploadFile) {
+        throw new Error("Không thể tạo tệp ảnh tối ưu để tải lên server.");
+      }
+
+      setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đang đồng bộ lên server...`);
+      const uploadResult = await uploadImage(uploadFile, {
+        folder: "menu-images",
+        type: purpose,
+        context: ownerKey,
+      });
+
+      if (!uploadResult?.url) {
+        throw uploadResult?.error || new Error("Không thể đồng bộ ảnh lên server.");
+      }
+
+      onChange?.(uploadResult.url);
+      setLocalPreviewValue("");
+      setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đã đồng bộ server.`);
+      onStatusChange?.("synced");
     } catch (err) {
+      // Keep the local preview so the user can see the selected file, but do not
+      // write local-image:// into the form when server sync is required. This
+      // prevents saving an image URL that other devices/pages cannot resolve.
       onStatusChange?.("error");
-      setError(err?.message || "Không thể lưu ảnh cục bộ.");
+      setError(err?.message || "Không thể tải ảnh lên server.");
+      setStatsText("Ảnh chưa được lưu. Vui lòng chọn lại hoặc kiểm tra kết nối server.");
     } finally {
       setIsSaving(false);
     }
@@ -128,8 +164,7 @@ const LocalImagePicker = ({
 
   const handleClear = () => {
     if (disabled || isSaving) return;
-    // Không xóa blob ngay tại đây vì ảnh cũ có thể đang được menu/món đã lưu sử dụng.
-    // Cleanup dài hạn được xử lý bởi pruneLocalImages/deleteStaleLocalImages trong localImageStore.
+    setLocalPreviewValue("");
     onChange?.("");
     onStatusChange?.("idle");
     setStatsText("");
@@ -137,6 +172,7 @@ const LocalImagePicker = ({
   };
 
   const handleUrlChange = (event) => {
+    setLocalPreviewValue("");
     setError("");
     setStatsText("");
     onStatusChange?.("idle");
@@ -151,10 +187,10 @@ const LocalImagePicker = ({
   );
 
   return (
-    <div className="local-image-picker">
+    <div className={`local-image-picker ${isSaving ? "is-uploading" : ""}`}>
       <div className="lip-preview">
         <LocalImageView
-          src={value}
+          src={displayValue}
           alt="Preview"
           variant={previewVariant}
           fallback={fallback}
@@ -174,10 +210,10 @@ const LocalImagePicker = ({
             ) : (
               <UploadCloud size={16} />
             )}
-            {isSaving ? "Đang tối ưu/đồng bộ..." : label}
+            {isSaving ? "Đang tải ảnh..." : label}
           </button>
 
-          {value && (
+          {(displayValue || value) && (
             <button
               type="button"
               className="lip-btn lip-btn-ghost"
@@ -193,7 +229,7 @@ const LocalImagePicker = ({
           <input
             type="text"
             className="lip-url-input"
-            value={value || ""}
+            value={localPreviewValue ? value || "" : value || ""}
             onChange={handleUrlChange}
             placeholder={urlPlaceholder}
             disabled={disabled || isSaving}
@@ -207,7 +243,7 @@ const LocalImagePicker = ({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={allowedImageTypes.join(",")}
         hidden
         onChange={handleFileChange}
       />
