@@ -124,15 +124,23 @@ const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
 const EXCEL_INVALID_SHEET_NAME_CHARS = /[\[\]:*?/\\]/g;
 
 const createSafeSheetName = (baseName, usedNames) => {
-  const rawName = String(baseName || "").replace(EXCEL_INVALID_SHEET_NAME_CHARS, "").trim();
-  const fallback = "Rank";
-  const normalizedBase = (rawName || fallback).slice(0, EXCEL_SHEET_NAME_MAX_LENGTH);
+  const rawName = String(baseName || "")
+    .replace(EXCEL_INVALID_SHEET_NAME_CHARS, "")
+    .trim();
+  const fallback = "HangKhach";
+  const normalizedBase = (rawName || fallback).slice(
+    0,
+    EXCEL_SHEET_NAME_MAX_LENGTH,
+  );
   let candidate = normalizedBase;
   let seq = 2;
 
   while (usedNames.has(candidate)) {
     const suffix = ` - ${seq}`;
-    const maxBaseLength = Math.max(1, EXCEL_SHEET_NAME_MAX_LENGTH - suffix.length);
+    const maxBaseLength = Math.max(
+      1,
+      EXCEL_SHEET_NAME_MAX_LENGTH - suffix.length,
+    );
     candidate = `${normalizedBase.slice(0, maxBaseLength)}${suffix}`;
     seq += 1;
   }
@@ -184,10 +192,15 @@ const getRankBoundsForFilter = (filterKey, rankSettings) => {
 const CustomerKpiCards = ({ stats }) => (
   <div className="cm-header-kpis" aria-label="Chỉ số khách hàng">
     {stats.map((item) => (
-      <div key={item.id} className={`cm-header-kpi tone-${item.tone || "default"}`}>
+      <div
+        key={item.id}
+        className={`cm-header-kpi tone-${item.tone || "default"}`}
+      >
         <span className="cm-header-kpi__icon">{item.icon}</span>
         <span className="cm-header-kpi__label">{item.label}</span>
-        <strong className="cm-header-kpi__value">{formatCompactCount(item.value)}</strong>
+        <strong className="cm-header-kpi__value">
+          {formatCompactCount(item.value)}
+        </strong>
       </div>
     ))}
   </div>
@@ -251,7 +264,9 @@ const CustomerManagement = () => {
   );
 
   const summaryUserIds = useMemo(
-    () => [...new Set((customerPageItems || []).map((c) => c?.id).filter(Boolean))],
+    () => [
+      ...new Set((customerPageItems || []).map((c) => c?.id).filter(Boolean)),
+    ],
     [customerPageItems],
   );
   const { data: summaryData, refetch: refetchSummaries } = useQuery(
@@ -286,15 +301,30 @@ const CustomerManagement = () => {
         append: false,
       });
     },
-    [customerPageSize, customerRankFilter, getCustomersPage, searchDebounced, selectedRestaurantId],
+    [
+      customerPageSize,
+      customerRankFilter,
+      getCustomersPage,
+      searchDebounced,
+      selectedRestaurantId,
+    ],
   );
 
   useEffect(() => {
     setCustomerPageIndex(0);
     setCustomerPageCursors([null]);
     if (!selectedRestaurantId) return;
-    loadCustomerPageFromBackend({ cursor: null, pageSize: customerPageSize });
-  }, [customerPageSize, customerRankFilter, loadCustomerPageFromBackend, searchDebounced, selectedRestaurantId]);
+    loadCustomerPageFromBackend({
+      cursor: null,
+      pageSize: customerPageSize,
+    });
+  }, [
+    customerPageSize,
+    customerRankFilter,
+    loadCustomerPageFromBackend,
+    searchDebounced,
+    selectedRestaurantId,
+  ]);
 
   const handleSearch = (query) => setSearchQuery(query);
 
@@ -327,7 +357,10 @@ const CustomerManagement = () => {
       copy[nextIndex] = nextCursor;
       return copy;
     });
-    await loadCustomerPageFromBackend({ cursor: nextCursor, pageSize: customerPageSize });
+    await loadCustomerPageFromBackend({
+      cursor: nextCursor,
+      pageSize: customerPageSize,
+    });
   };
 
   const handleCustomerPreviousPage = async () => {
@@ -335,7 +368,10 @@ const CustomerManagement = () => {
     const previousIndex = customerPageIndex - 1;
     const previousCursor = customerPageCursors[previousIndex] || null;
     setCustomerPageIndex(previousIndex);
-    await loadCustomerPageFromBackend({ cursor: previousCursor, pageSize: customerPageSize });
+    await loadCustomerPageFromBackend({
+      cursor: previousCursor,
+      pageSize: customerPageSize,
+    });
   };
 
   const handleCustomerPageSizeChange = (size) => {
@@ -365,23 +401,41 @@ const CustomerManagement = () => {
   const refreshCustomerListAfterCreate = async (createdUser = null) => {
     setCustomerPageIndex(0);
     setCustomerPageCursors([null]);
-    await loadCustomerPageFromBackend({ cursor: null, pageSize: customerPageSize });
+    await loadCustomerPageFromBackend({
+      cursor: null,
+      pageSize: customerPageSize,
+    });
     if (selectedRestaurantId) await refetchSummaries();
 
     if (!createdUser) return { visibleInCurrentList: null };
 
-    const name = (createdUser.fullName || createdUser.username || "").toLowerCase();
+    const name = (
+      createdUser.fullName ||
+      createdUser.username ||
+      ""
+    ).toLowerCase();
     const email = (createdUser.email || "").toLowerCase();
     const phone = createdUser.phone || "";
     const q = (searchQuery || "").trim().toLowerCase();
-    const matchesSearch = !q || name.includes(q) || email.includes(q) || phone.includes(searchQuery || "");
+    const matchesSearch =
+      !q ||
+      name.includes(q) ||
+      email.includes(q) ||
+      phone.includes(searchQuery || "");
 
-    const createdUserRankName = resolveCustomerRank(createdUser?.loyaltyPoints, rankSettings).name;
-    const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
+    const createdUserRankName = resolveCustomerRank(
+      createdUser?.loyaltyPoints,
+      rankSettings,
+    ).name;
+    const sortedAsc = [...rankSettings].sort(
+      (a, b) => a.minPoints - b.minPoints,
+    );
     const baseName = sortedAsc[0]?.name || "Mới";
     const middleName =
-      (sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1])?.name ||
-      "Thân thiết";
+      (sortedAsc.length > 2
+        ? sortedAsc[sortedAsc.length - 2]
+        : sortedAsc[1]
+      )?.name || "Thân thiết";
     const topName = sortedAsc[sortedAsc.length - 1]?.name || "VIP";
     const matchesFilter =
       activeFilter === "all" ||
@@ -417,7 +471,9 @@ const CustomerManagement = () => {
         rankName: resolvedRank.name,
         rankSettings,
         recentOrders,
-        favoriteItems: c.favoriteItems?.length ? c.favoriteItems : topDishes,
+        favoriteItems: c.favoriteItems?.length
+          ? c.favoriteItems
+          : topDishes,
         topDishes,
         isGuestBadge: c.isGuest ? "GUEST" : "",
       };
@@ -430,9 +486,14 @@ const CustomerManagement = () => {
   );
 
   const tierFilters = useMemo(() => {
-    const sortedAsc = [...rankSettings].sort((a, b) => a.minPoints - b.minPoints);
+    const sortedAsc = [...rankSettings].sort(
+      (a, b) => a.minPoints - b.minPoints,
+    );
     const base = sortedAsc[0];
-    const middle = sortedAsc.length > 2 ? sortedAsc[sortedAsc.length - 2] : sortedAsc[1];
+    const middle =
+      sortedAsc.length > 2
+        ? sortedAsc[sortedAsc.length - 2]
+        : sortedAsc[1];
     const top = sortedAsc[sortedAsc.length - 1];
     return {
       topName: top?.name || "VIP",
@@ -445,19 +506,35 @@ const CustomerManagement = () => {
 
   const quickFilters = useMemo(() => {
     const total = customersDecorated.length || 0;
-    const vip = customersDecorated.filter((c) => c.customerType === tierFilters.topName).length;
-    const isNew = customersDecorated.filter((c) => c.customerType === tierFilters.baseName).length;
-    const often = customersDecorated.filter((c) => c.customerType === tierFilters.middleName).length;
+    const vip = customersDecorated.filter(
+      (c) => c.customerType === tierFilters.topName,
+    ).length;
+    const isNew = customersDecorated.filter(
+      (c) => c.customerType === tierFilters.baseName,
+    ).length;
+    const often = customersDecorated.filter(
+      (c) => c.customerType === tierFilters.middleName,
+    ).length;
 
     return [
-      { key: "all", label: "Tất cả", icon: <Users size={16} />, count: total },
+      {
+        key: "all",
+        label: "Tất cả",
+        icon: <Users size={16} />,
+        count: total,
+      },
       {
         key: "vip",
         label: tierFilters.topName,
         icon: <Star size={16} fill="currentColor" />,
         count: vip,
       },
-      { key: "new", label: tierFilters.baseName, icon: <Sparkles size={16} />, count: isNew },
+      {
+        key: "new",
+        label: tierFilters.baseName,
+        icon: <Sparkles size={16} />,
+        count: isNew,
+      },
       {
         key: "frequent",
         label: tierFilters.middleName,
@@ -472,7 +549,7 @@ const CustomerManagement = () => {
     {
       id: "total",
       icon: <Users size={18} aria-hidden="true" />,
-      label: "Tổng khách",
+      label: "Tổng khách hàng",
       value: customerTotalCount || customersDecorated.length,
       tone: "total",
     },
@@ -486,20 +563,23 @@ const CustomerManagement = () => {
     {
       id: "vip",
       icon: <Star size={18} fill="currentColor" aria-hidden="true" />,
-      label: "VIP trong trang",
+      label: "Khách VIP",
       value: quickFilters.find((f) => f.key === "vip")?.count || 0,
       tone: "vip",
     },
     {
       id: "new",
       icon: <Sparkles size={18} aria-hidden="true" />,
-      label: "Mới trong trang",
+      label: "Khách mới",
       value: quickFilters.find((f) => f.key === "new")?.count || 0,
       tone: "new",
     },
   ];
   const hasCustomerData = Number(customerTotalCount || 0) > 0;
-  const customerTotalPages = Math.max(1, Math.ceil(Number(customerTotalCount || 0) / customerPageSize) || 1);
+  const customerTotalPages = Math.max(
+    1,
+    Math.ceil(Number(customerTotalCount || 0) / customerPageSize) || 1,
+  );
   const customerPagination = {
     page: customerPageIndex + 1,
     totalPages: customerTotalPages,
@@ -524,37 +604,48 @@ const CustomerManagement = () => {
     Number(customer.loyaltyPoints || 0),
     Number(customer.totalOrders || 0),
     Number(customer.totalSpending || 0),
-    customer.online ? "Online" : "Offline",
-    customer.isGuest ? "Guest" : "Registered",
+    customer.online ? "Đang hoạt động" : "Không hoạt động",
+    customer.isGuest ? "Khách vãng lai" : "Có tài khoản",
     customer.lastLoginAt ? toDateStringVI(customer.lastLoginAt) : "",
   ];
 
   const buildScopeSheets = (scope, rows, ranks) => {
     const header = [
       "STT",
-      "Mã KH",
+      "Mã khách hàng",
       "Tên khách hàng",
       "Số điện thoại",
       "Email",
-      "Hạng khách",
+      "Hạng khách hàng",
       "Điểm tích lũy",
-      "Tổng đơn",
+      "Tổng đơn hàng",
       "Tổng chi tiêu",
-      "Trạng thái online",
-      "Loại khách hàng",
+      "Trạng thái hoạt động",
+      "Loại tài khoản",
       "Đăng nhập gần nhất",
     ];
 
     if (scope === "current_list") {
-      return [{ name: "DanhSachHienTai", rows: [header, ...rows.map(toCustomerRow)] }];
+      return [
+        {
+          name: "TrangHienTai",
+          rows: [header, ...rows.map(toCustomerRow)],
+        },
+      ];
     }
 
     if (scope === "customer_type") {
       const guestRows = rows.filter((c) => c.isGuest);
       const registeredRows = rows.filter((c) => !c.isGuest);
       return [
-        { name: "KhachGuest", rows: [header, ...guestRows.map(toCustomerRow)] },
-        { name: "KhachDangKy", rows: [header, ...registeredRows.map(toCustomerRow)] },
+        {
+          name: "KhachVangLai",
+          rows: [header, ...guestRows.map(toCustomerRow)],
+        },
+        {
+          name: "KhachCoTaiKhoan",
+          rows: [header, ...registeredRows.map(toCustomerRow)],
+        },
       ];
     }
 
@@ -570,7 +661,10 @@ const CustomerManagement = () => {
     return normalizeRanks(ranks).map((rank) => {
       const customersByRank = groupedByRank.get(rank.name) || [];
       const safeSheetName = createSafeSheetName(rank?.name, usedSheetNames);
-      return { name: safeSheetName, rows: [header, ...customersByRank.map(toCustomerRow)] };
+      return {
+        name: safeSheetName,
+        rows: [header, ...customersByRank.map(toCustomerRow)],
+      };
     });
   };
 
@@ -580,17 +674,18 @@ const CustomerManagement = () => {
       setExportError("");
 
       const rankFilter = getRankBoundsForFilter(activeFilter, rankSettings);
-      const visibleRows = exportScope === "filtered_all"
-        ? await getCustomerExportRows({
-            restaurantId: selectedRestaurantId,
-            includeGuests: true,
-            search: searchDebounced,
-            limit: 1000,
-            customerRank: rankFilter,
-          })
-        : (customersVisible || []);
+      const visibleRows =
+        exportScope === "filtered_all"
+          ? await getCustomerExportRows({
+              restaurantId: selectedRestaurantId,
+              includeGuests: true,
+              search: searchDebounced,
+              limit: 1000,
+              customerRank: rankFilter,
+            })
+          : customersVisible || [];
       if (!visibleRows.length) {
-        setExportError("Không có dữ liệu để xuất theo bộ lọc hiện tại.");
+        setExportError("Không có khách hàng phù hợp để xuất.");
         return;
       }
 
@@ -598,19 +693,19 @@ const CustomerManagement = () => {
       const dateSuffix = new Date().toISOString().slice(0, 10);
       const scopeSuffix =
         exportScope === "current_list"
-          ? "danh-sach-hien-tai"
+          ? "trang-hien-tai"
           : exportScope === "filtered_all"
-            ? "tat-ca-theo-bo-loc"
+            ? "theo-bo-loc"
             : exportScope === "customer_type"
-              ? "phan-loai-guest"
-              : "phan-loai-hang";
+              ? "theo-loai-tai-khoan"
+              : "theo-hang-khach-hang";
       downloadXlsxWorkbook(
         sheets,
-        `customer-export-${scopeSuffix}-${dateSuffix}.xlsx`,
+        `danh-sach-khach-hang-${scopeSuffix}-${dateSuffix}.xlsx`,
       );
       setShowExportModal(false);
     } catch (err) {
-      setExportError(err?.message || "Xuất Excel thất bại.");
+      setExportError(err?.message || "Không thể xuất tệp Excel.");
     } finally {
       setExporting(false);
     }
@@ -622,24 +717,28 @@ const CustomerManagement = () => {
   }, [rankSettingsData]);
 
   return (
-    <div className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""} ${hasCustomerData ? "has-customer-data" : "is-customer-empty"}`}>
+    <div
+      className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""} ${hasCustomerData ? "has-customer-data" : "is-customer-empty"}`}
+    >
       <ManagementPageHeader
         density="compact"
         showTimeWidget={false}
-        eyebrow="CUSTOMER MANAGER"
+        eyebrow="KHÁCH HÀNG"
         title="Quản lý khách hàng"
-        subtitle="Tìm kiếm, phân hạng và chăm sóc khách theo từng chi nhánh."
+        subtitle="Tìm kiếm, phân hạng và chăm sóc khách hàng theo từng chi nhánh."
         icon={<Users size={20} aria-hidden="true" />}
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={handleRestaurantChange}
         restaurantList={restaurantOptions}
         restaurantDisabled={restaurantsLoading || !hasRestaurants}
-        restaurantPlaceholder={restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"}
+        restaurantPlaceholder={
+          restaurantsLoading ? "Đang tải nhà hàng..." : "Chưa có nhà hàng"
+        }
         stats={[]}
         statsPlacement="none"
         customControls={<CustomerKpiCards stats={customerHeaderStats} />}
         primaryAction={{
-          label: "Thêm khách",
+          label: "Thêm khách hàng",
           icon: <UserPlus size={16} aria-hidden="true" />,
           onClick: () => setShowAddModal(true),
         }}
@@ -648,8 +747,8 @@ const CustomerManagement = () => {
       <ManagerCommandBar
         searchValue={searchQuery}
         onSearchChange={handleSearch}
-        searchPlaceholder="Tìm tên, SĐT, mã khách..."
-        leftSlot={(
+        searchPlaceholder="Tìm theo tên, số điện thoại hoặc mã khách..."
+        leftSlot={
           <div className="cm-quick-filter-wrap">
             <div className="cm-quick-filters">
               {quickFilters.map((f) => (
@@ -657,18 +756,22 @@ const CustomerManagement = () => {
                   key={f.key}
                   onClick={() => handleFilter(f.key)}
                   className={`cm-pill ${activeFilter === f.key ? "is-active" : ""}`}
-                  title="Số lượng trong trang hiện tại"
-                  aria-label={`${f.label}: ${f.count} khách trong trang hiện tại`}
+                  title="Số lượng khách hàng trên trang hiện tại"
+                  aria-label={`${f.label}: ${f.count} khách hàng trên trang hiện tại`}
                 >
                   <span className="cm-pill-icon">{f.icon}</span>
                   <span className="cm-pill-label">{f.label}</span>
-                  <span className="cm-pill-count">{formatCompactCount(f.count)}</span>
+                  <span className="cm-pill-count">
+                    {formatCompactCount(f.count)}
+                  </span>
                 </button>
               ))}
             </div>
-            <span className="cm-filter-scope-note">Đếm trong trang hiện tại</span>
+            <span className="cm-filter-scope-note">
+              Số liệu trên trang hiện tại
+            </span>
           </div>
-        )}
+        }
         actions={[
           {
             label: "Xuất Excel",
@@ -681,12 +784,12 @@ const CustomerManagement = () => {
             onClick: () => setShowPromotionModal(true),
           },
           {
-            label: "Phân tích",
+            label: "Xem phân tích",
             icon: <BarChart3 size={16} aria-hidden="true" />,
             onClick: () => (window.location.hash = "#customer-analytics"),
           },
           {
-            label: "Bộ lọc",
+            label: "Lọc",
             icon: <SlidersHorizontal size={16} aria-hidden="true" />,
             variant: showRightSidebar ? "primary" : undefined,
             onClick: () => setShowRightSidebar((v) => !v),
@@ -712,7 +815,7 @@ const CustomerManagement = () => {
                 onApplyFilters={handleFilter}
               />
               <div className="cm-rank-settings">
-                <h4>Cài đặt mốc rank</h4>
+                <h4>Ngưỡng hạng khách hàng</h4>
                 {rankDraft.map((rank, idx) => (
                   <div key={`${rank.name}-${idx}`} className="cm-rank-row">
                     <input
@@ -720,7 +823,9 @@ const CustomerManagement = () => {
                       onChange={(e) =>
                         setRankDraft((prev) =>
                           prev.map((item, i) =>
-                            i === idx ? { ...item, name: e.target.value } : item,
+                            i === idx
+                              ? { ...item, name: e.target.value }
+                              : item,
                           ),
                         )
                       }
@@ -733,7 +838,10 @@ const CustomerManagement = () => {
                         setRankDraft((prev) =>
                           prev.map((item, i) =>
                             i === idx
-                              ? { ...item, minPoints: Number(e.target.value || 0) }
+                              ? {
+                                  ...item,
+                                  minPoints: Number(e.target.value || 0),
+                                }
                               : item,
                           ),
                         )
@@ -746,7 +854,7 @@ const CustomerManagement = () => {
                   onClick={handleSaveRankSettings}
                   disabled={savingRank}
                 >
-                  Lưu mốc rank
+                  {savingRank ? "Đang lưu..." : "Lưu ngưỡng hạng"}
                 </button>
               </div>
             </>
@@ -785,13 +893,13 @@ const CustomerManagement = () => {
           onClose={() => {
             if (!exporting) setShowExportModal(false);
           }}
-          title="Xuất danh sách khách hàng (.xlsx)"
+          title="Xuất danh sách khách hàng"
           size="md"
         >
           <Modal.Body>
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                Chọn phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện tại.
+                Chọn phạm vi dữ liệu cần xuất sang tệp Excel.
               </p>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -801,7 +909,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("current_list")}
                 />
                 <span>
-                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách đã tải/đang hiển thị.
+                  <strong>Trang hiện tại</strong> — xuất khách hàng đang hiển thị
+                  vào một trang tính.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -812,7 +921,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("filtered_all")}
                 />
                 <span>
-                  <strong>Tất cả theo bộ lọc hiện tại</strong> — gọi backend và xuất tối đa 1000 khách đầu tiên theo filter.
+                  <strong>Toàn bộ kết quả theo bộ lọc</strong> — xuất tối đa
+                  1.000 khách hàng phù hợp.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -823,7 +933,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("customer_type")}
                 />
                 <span>
-                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách guest và khách đăng ký.
+                  <strong>Theo loại tài khoản</strong> — tách khách vãng lai và
+                  khách có tài khoản thành hai trang tính.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
@@ -834,7 +945,8 @@ const CustomerManagement = () => {
                   onChange={() => setExportScope("loyalty_tier")}
                 />
                 <span>
-                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân thiết, Mới (theo loyalty points).
+                  <strong>Theo hạng khách hàng</strong> — mỗi hạng được xuất
+                  thành một trang tính.
                 </span>
               </label>
               {exportError ? (
@@ -855,7 +967,7 @@ const CustomerManagement = () => {
               onClick={handleExportExcel}
               disabled={exporting}
             >
-              {exporting ? "Đang xuất..." : "Xuất .xlsx"}
+              {exporting ? "Đang xuất..." : "Xuất tệp Excel"}
             </button>
           </Modal.Footer>
         </Modal>
