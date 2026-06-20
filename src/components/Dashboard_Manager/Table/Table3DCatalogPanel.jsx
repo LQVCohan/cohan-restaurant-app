@@ -19,6 +19,12 @@ const TABLE_TYPE_LABELS = {
   "bar-table": "Bàn bar",
   "outdoor-table": "Bàn ngoài trời",
 };
+const MODEL_BADGE_LABELS = {
+  Custom: "Tùy chỉnh",
+  Upload: "Tải lên",
+  Online: "Trực tuyến",
+  Placeholder: "Bản minh họa",
+};
 
 export default function Table3DCatalogPanel({
   tableType,
@@ -123,7 +129,7 @@ export default function Table3DCatalogPanel({
                 <div className="model-item__badges">
                   {getModelAssetBadges(model).map((badge) => (
                     <span key={`${model.key}-${badge}`} className="model-badge">
-                      {badge}
+                      {MODEL_BADGE_LABELS[badge] || badge}
                     </span>
                   ))}
                 </div>
