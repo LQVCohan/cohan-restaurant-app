@@ -10,6 +10,15 @@ import {
 import { isCustomTableModel } from "@/config/table3dCustomModelStorage";
 
 const ALL_TABLE_TYPES = "all";
+const TABLE_TYPE_LABELS = {
+  "round-table": "Bàn tròn",
+  "rect-2-seat": "Bàn chữ nhật 2 chỗ",
+  "rect-4-seat": "Bàn chữ nhật 4 chỗ",
+  "vip-table": "Bàn VIP",
+  "booth-sofa": "Bàn booth / sofa",
+  "bar-table": "Bàn bar",
+  "outdoor-table": "Bàn ngoài trời",
+};
 
 export default function Table3DCatalogPanel({
   tableType,
@@ -36,47 +45,47 @@ export default function Table3DCatalogPanel({
     <aside className="table-3d-modal__sidebar">
       <div className="table-3d-catalog-heading">
         <div>
-          <span>Thư viện mẫu</span>
-          <strong>{filteredModels.length} mẫu</strong>
+          <span>Thư viện mẫu bàn</span>
+          <strong>{filteredModels.length} mẫu phù hợp</strong>
         </div>
         <Button variant="secondary" size="sm" onClick={onCreateCustomModel}>
-          Tạo mẫu
+          Tạo mẫu mới
         </Button>
       </div>
 
-      <label htmlFor="table-3d-type">Phạm vi mẫu bàn</label>
+      <label htmlFor="table-3d-type">Loại bàn</label>
       <select
         id="table-3d-type"
         value={tableType}
         onChange={(event) => onTableTypeChange(event.target.value)}
       >
-        <option value={ALL_TABLE_TYPES}>Tất cả mẫu bàn</option>
+        <option value={ALL_TABLE_TYPES}>Tất cả loại bàn</option>
         {TABLE_3D_TYPE_OPTIONS.map((item) => (
           <option key={item.value} value={item.value}>
-            {item.label}
+            {TABLE_TYPE_LABELS[item.value] || item.label}
           </option>
         ))}
       </select>
 
-      <div className="table-3d-modal__filters" aria-label="Bộ lọc catalog 3D">
+      <div className="table-3d-modal__filters" aria-label="Bộ lọc mẫu bàn 3D">
         <label className="table-3d-search-field">
           <Search size={15} aria-hidden="true" />
           <input
             type="search"
             value={catalogSearch}
             onChange={(event) => onCatalogSearchChange(event.target.value)}
-            placeholder="Tìm tên hoặc tag"
+            placeholder="Tìm theo tên hoặc từ khóa"
             aria-label="Tìm mẫu bàn 3D"
           />
         </label>
         <select
           value={assetFilter}
           onChange={(event) => onAssetFilterChange(event.target.value)}
-          aria-label="Lọc theo trạng thái model 3D"
+          aria-label="Lọc theo dữ liệu mô hình 3D"
         >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="model">Có model 3D</option>
-          <option value="placeholder">Chỉ mô phỏng</option>
+          <option value="all">Tất cả mẫu</option>
+          <option value="model">Có mô hình 3D</option>
+          <option value="placeholder">Chưa có mô hình 3D</option>
         </select>
       </div>
 
@@ -84,7 +93,7 @@ export default function Table3DCatalogPanel({
         {loading && !filteredModels.length ? (
           <div className="table-3d-catalog-loading" role="status">
             <Loader2 size={18} className="spin" />
-            <span>Đang tải thư viện mẫu...</span>
+            <span>Đang tải thư viện mẫu bàn...</span>
           </div>
         ) : null}
 
@@ -104,13 +113,13 @@ export default function Table3DCatalogPanel({
             >
               <img
                 src={model.thumbnailUrl || TABLE_3D_PLACEHOLDER_THUMB}
-                alt={`Ảnh xem trước ${model.label}`}
+                alt={`Ảnh xem trước của ${model.label}`}
                 loading="lazy"
                 onError={onThumbnailError}
               />
               <div>
                 <strong>{model.label}</strong>
-                <span>{model.capacity} ghế</span>
+                <span>Sức chứa: {model.capacity} ghế</span>
                 <div className="model-item__badges">
                   {getModelAssetBadges(model).map((badge) => (
                     <span key={`${model.key}-${badge}`} className="model-badge">
@@ -118,7 +127,7 @@ export default function Table3DCatalogPanel({
                     </span>
                   ))}
                 </div>
-                {dimensionsLabel && <span>{dimensionsLabel}</span>}
+                {dimensionsLabel && <span>Kích thước: {dimensionsLabel}</span>}
               </div>
               {isCustomTableModel(model) && (
                 <Button
@@ -126,9 +135,13 @@ export default function Table3DCatalogPanel({
                   variant={isDeletePending ? "danger" : "secondary"}
                   type="button"
                   onClick={(event) => onDeleteCustomModel(event, model)}
-                  title={isDeletePending ? "Nhấn lại để xác nhận xóa" : "Xóa mẫu tùy chỉnh"}
+                  title={
+                    isDeletePending
+                      ? "Bấm lần nữa để xóa mẫu này"
+                      : "Xóa mẫu bàn tùy chỉnh"
+                  }
                 >
-                  {isDeletePending ? "Xác nhận" : "Xóa"}
+                  {isDeletePending ? "Xác nhận xóa" : "Xóa"}
                 </Button>
               )}
             </div>
@@ -138,42 +151,50 @@ export default function Table3DCatalogPanel({
         {!loading && !filteredModels.length && (
           <div className="model-empty">
             <Search size={20} aria-hidden="true" />
-            <strong>Không tìm thấy mẫu phù hợp</strong>
-            <span>Đổi từ khóa hoặc trạng thái model để xem thêm mẫu.</span>
+            <strong>Không tìm thấy mẫu bàn phù hợp</strong>
+            <span>Hãy thử đổi từ khóa, loại bàn hoặc trạng thái mô hình.</span>
           </div>
         )}
       </div>
 
       {isSelectedModelHiddenByFilters && (
         <p className="table-3d-modal__filter-note">
-          Mẫu đang xem không nằm trong bộ lọc hiện tại.
+          Mẫu đang chọn đã bị ẩn bởi bộ lọc hiện tại.
         </p>
       )}
 
       <details className="table-3d-tech-details">
         <summary>
           <Info size={15} aria-hidden="true" />
-          Thông tin kỹ thuật
+          Thông tin mô hình
           <ChevronDown size={15} aria-hidden="true" />
         </summary>
         <div className="table-3d-modal__meta">
-          <p><b>Model 3D:</b> {selectedModelAssetSummary.has3DModel ? "Có" : "Chưa có"}</p>
-          <p><b>AR native:</b> {selectedModelAssetSummary.arReady ? "Có thể thử" : "Chưa khả dụng"}</p>
           <p>
-            <b>Nguồn:</b>{" "}
+            <b>Mô hình 3D:</b>{" "}
+            {selectedModelAssetSummary.has3DModel ? "Đã có" : "Chưa có"}
+          </p>
+          <p>
+            <b>Xem bằng AR:</b>{" "}
+            {selectedModelAssetSummary.arReady ? "Có thể sử dụng" : "Chưa khả dụng"}
+          </p>
+          <p>
+            <b>Nguồn mô hình:</b>{" "}
             {selectedModelAssetSummary.sourceUrl?.startsWith("http") ? (
               <a href={selectedModelAssetSummary.sourceUrl} target="_blank" rel="noreferrer">
                 {selectedModelAssetSummary.source}
               </a>
-            ) : selectedModelAssetSummary.source}
+            ) : (
+              selectedModelAssetSummary.source
+            )}
           </p>
-          <p><b>Giấy phép:</b> {selectedModelAssetSummary.license}</p>
+          <p><b>Giấy phép sử dụng:</b> {selectedModelAssetSummary.license}</p>
           {selectedModelAssetSummary.dimensions && (
             <p><b>Kích thước:</b> {selectedModelAssetSummary.dimensions}</p>
           )}
-          <p><b>Mã model:</b> {selectedModelAssetSummary.modelKey}</p>
+          <p><b>Mã mô hình:</b> {selectedModelAssetSummary.modelKey}</p>
           <Button variant="secondary" size="sm" onClick={onReload}>
-            Tải lại thư viện online
+            Tải lại thư viện trực tuyến
           </Button>
         </div>
       </details>
