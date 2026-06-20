@@ -33,13 +33,18 @@ const resolveLocalAvatarPath = (avatarUrl) => {
   }
 
   const relativePath = normalized.slice(LOCAL_UPLOAD_PREFIX.length);
-  if (!relativePath || relativePath.startsWith("/") || relativePath.includes("\\")) {
+  if (
+    !relativePath ||
+    relativePath.startsWith("/") ||
+    relativePath.includes("\\") ||
+    relativePath.includes("?") ||
+    relativePath.includes("#")
+  ) {
     return null;
   }
 
   const segments = relativePath.split("/").filter(Boolean);
-  const isDedicatedAvatar =
-    segments.length === 2 && segments[0] === "avatars";
+  const isDedicatedAvatar = segments.length === 2 && segments[0] === "avatars";
   const isRootUpload = segments.length === 1;
   if (!isDedicatedAvatar && !isRootUpload) return null;
 
@@ -71,7 +76,7 @@ export function normalizeAvatarFileUrl(rawInputUrl) {
   }
 
   if (rawUrl.startsWith("/")) {
-    if (!rawUrl.startsWith(LOCAL_UPLOAD_PREFIX) || hasPathTraversal(rawUrl)) {
+    if (!resolveLocalAvatarPath(rawUrl)) {
       throw badInput("Đường dẫn ảnh đại diện không được hỗ trợ.");
     }
     return rawUrl;
