@@ -109,16 +109,14 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
               const meta = CATEGORY_META[key];
               const isActive = category === key;
               return (
-                <button
-                  type="button"
+                <div
                   key={key}
                   className={`cf-cat-item ${isActive ? "active" : ""}`}
                   onClick={() => setCategory(key)}
-                  aria-pressed={isActive}
                 >
                   {meta.icon}
                   <span>{meta.label}</span>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -150,12 +148,10 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
               const meta = STATUS_META[key];
               const isChecked = status[key];
               return (
-                <button
-                  type="button"
+                <div
                   key={key}
                   className="cf-status-row"
                   onClick={() => toggleStatus(key)}
-                  aria-pressed={isChecked}
                 >
                   <div className="cf-status-info">
                     <div
@@ -168,7 +164,7 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
                   <div className={`cf-checkbox ${isChecked ? "checked" : ""}`}>
                     {isChecked && <Check size={14} strokeWidth={3} />}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
