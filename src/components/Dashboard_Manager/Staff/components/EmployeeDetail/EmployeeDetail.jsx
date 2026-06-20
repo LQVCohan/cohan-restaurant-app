@@ -12,6 +12,7 @@ import {
   Edit,
   History,
   ShieldCheck,
+  Camera,
 } from "lucide-react";
 import {
   getStaffActionAvailability,
@@ -43,6 +44,7 @@ const ACCOUNT_STATUS_LABELS = {
 const EmployeeDetail = ({
   employee,
   onEdit,
+  onEditAvatar,
   onViewHistory,
   onCalculateSalary,
   onDelete,
@@ -218,6 +220,16 @@ const EmployeeDetail = ({
           >
             <Edit size={18} />
             <span>Sửa</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onEditAvatar}
+            disabled={!onEditAvatar}
+            title="Cập nhật ảnh đại diện"
+          >
+            <Camera size={18} />
+            <span>Ảnh</span>
           </button>
           <button
             type="button"
