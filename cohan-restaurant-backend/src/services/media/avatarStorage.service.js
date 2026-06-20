@@ -17,6 +17,11 @@ const ensureDirSync = (directory) => {
   if (!fs.existsSync(directory)) fs.mkdirSync(directory, { recursive: true });
 };
 
+const getUploadRoot = () =>
+  path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads"));
+
+const getAvatarDirectory = () => path.join(getUploadRoot(), "avatars");
+
 const hasPathTraversal = (pathname = "") =>
   pathname.split("/").some((part) => part === "..");
 
@@ -72,6 +77,12 @@ export function normalizeAvatarFileUrl(rawInputUrl) {
 }
 
 export async function saveBase64Avatar(fileBase64, userId) {
+  if (String(process.env.UPLOAD_MODE || "local").toLowerCase() !== "local") {
+    throw badInput(
+      "Máy chủ đang dùng lưu trữ đám mây. Vui lòng tải ảnh qua dịch vụ upload trước.",
+    );
+  }
+
   const match = String(fileBase64 || "").match(
     /^data:(image\/[a-zA-Z0-9+.-]+);base64,([A-Za-z0-9+/=]+)$/,
   );
@@ -95,7 +106,7 @@ export async function saveBase64Avatar(fileBase64, userId) {
       .rotate()
       .resize(512, 512, {
         fit: "cover",
-        position: "centre",
+        position: "center",
         withoutEnlargement: true,
       })
       .webp({ quality: 84 })
@@ -104,12 +115,12 @@ export async function saveBase64Avatar(fileBase64, userId) {
     throw badInput("Không thể xử lý tệp ảnh đã chọn.");
   }
 
-  const uploadsDir = path.join(process.cwd(), "uploads", "avatars");
+  const uploadsDir = getAvatarDirectory();
   ensureDirSync(uploadsDir);
 
   const safeUserId = String(userId || "user").replace(/[^a-zA-Z0-9_-]/g, "");
   const filename = `${safeUserId}-${Date.now()}.webp`;
-  fs.writeFileSync(path.join(uploadsDir, filename), optimized);
+  fs.writeFileSync(path.join(uploadsDir, filename), optimized, { flag: "wx" });
 
   return `${LOCAL_AVATAR_PREFIX}${filename}`;
 }
@@ -121,8 +132,8 @@ export function deleteLocalAvatar(avatarUrl) {
   }
 
   const filename = path.basename(normalized);
-  const absolutePath = path.join(process.cwd(), "uploads", "avatars", filename);
-  const expectedDirectory = path.join(process.cwd(), "uploads", "avatars");
+  const expectedDirectory = getAvatarDirectory();
+  const absolutePath = path.join(expectedDirectory, filename);
   if (path.dirname(absolutePath) !== expectedDirectory) return false;
 
   try {
@@ -146,4 +157,9 @@ export async function resolveAvatarUpdate({ input = {}, userId }) {
   return null;
 }
 
-export { AVATAR_MAX_FILE_SIZE_BYTES, LOCAL_AVATAR_PREFIX };
+export {
+  AVATAR_MAX_FILE_SIZE_BYTES,
+  LOCAL_AVATAR_PREFIX,
+  getAvatarDirectory,
+  getUploadRoot,
+};
