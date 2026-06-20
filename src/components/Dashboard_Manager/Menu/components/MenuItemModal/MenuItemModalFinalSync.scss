@@ -55,7 +55,7 @@ $mmf-danger-soft: #fbefed;
     }
 
     &::after {
-      content: "Hoàn thiện thông tin món, khẩu vị và biến thể giá trong một luồng.";
+      content: "Cập nhật thông tin món, cách chế biến, giá bán và định lượng nguyên liệu.";
       display: block !important;
       margin-top: 4px !important;
       color: $mmf-muted !important;
@@ -197,6 +197,7 @@ $mmf-danger-soft: #fbefed;
 
   > .modal-footer {
     &::before {
+      content: "Nhập tên món, chọn danh mục và thêm ít nhất một cách chế biến trước khi lưu." !important;
       color: $mmf-muted !important;
     }
 
