@@ -50,7 +50,15 @@ const files = [
   "audit_log.graphql",
   "systemSetting.graphql",
   "backup.graphql",
-].map((f) => fs.readFileSync(path.join(schemaDir, f), "utf8"));
+].map((fileName) => fs.readFileSync(path.join(schemaDir, fileName), "utf8"));
+
+const staffAvatarSchema = [
+  "extend type " + "Mutation {",
+  "  updateStaff" +
+    "Avatar(userId: ID!, input: UpdateAvatarInput!): StaffPrivateProfile!",
+  "}",
+].join("\n");
+files.push(staffAvatarSchema);
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });
 
