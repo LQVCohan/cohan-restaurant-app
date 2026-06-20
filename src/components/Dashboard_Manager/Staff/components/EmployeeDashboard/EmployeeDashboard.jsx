@@ -10,6 +10,7 @@ const EmployeeDashboard = ({
   onEmployeeSelect,
   onEmployeeAction,
   onEditEmployee,
+  onEditAvatar,
   onViewHistory,
   onDeleteEmployee,
   onCalculateSalary,
@@ -44,6 +45,7 @@ const EmployeeDashboard = ({
         <EmployeeDetail
           employee={selectedEmployee}
           onEdit={onEditEmployee}
+          onEditAvatar={onEditAvatar}
           onViewHistory={onViewHistory}
           onDelete={onDeleteEmployee}
           onSetOnLeave={onSetOnLeave}
