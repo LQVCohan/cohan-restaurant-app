@@ -82,11 +82,19 @@ const StaffAvatarField = ({
         <div>
           <strong>Ảnh đại diện nhân viên</strong>
           <p>JPG, PNG hoặc WEBP. Dung lượng tối đa 2 MB.</p>
-          {fileName ? <span className="staff-avatar-field__file">Đã chọn: {fileName}</span> : null}
-          {removed && currentAvatar && !value ? (
-            <span className="staff-avatar-field__file is-removed">Ảnh hiện tại sẽ được xóa sau khi lưu.</span>
+          {fileName ? (
+            <span className="staff-avatar-field__file">Đã chọn: {fileName}</span>
           ) : null}
-          {error ? <span className="staff-avatar-field__error" role="alert">{error}</span> : null}
+          {removed && currentAvatar && !value ? (
+            <span className="staff-avatar-field__file is-removed">
+              Ảnh hiện tại sẽ được xóa sau khi lưu.
+            </span>
+          ) : null}
+          {error ? (
+            <span className="staff-avatar-field__error" role="alert">
+              {error}
+            </span>
+          ) : null}
         </div>
 
         <div className="staff-avatar-field__actions">
@@ -95,6 +103,7 @@ const StaffAvatarField = ({
             id={inputId}
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            aria-label="Chọn ảnh đại diện nhân viên"
             onChange={handleFileChange}
             disabled={disabled}
             hidden
