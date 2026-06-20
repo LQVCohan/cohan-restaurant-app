@@ -13,7 +13,6 @@ const DEFAULT_ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/gif",
 ];
 
 const formatBytes = (bytes = 0) => {
@@ -61,6 +60,7 @@ const LocalImagePicker = ({
   maxFileSizeMb = 8,
   allowedImageTypes = DEFAULT_ALLOWED_IMAGE_TYPES,
 }) => {
+  const rootRef = useRef(null);
   const inputRef = useRef(null);
   const { uploadImage } = useImageUploadLocal();
   const [isSaving, setIsSaving] = useState(false);
@@ -74,6 +74,29 @@ const LocalImagePicker = ({
     }
   }, [value]);
 
+  useEffect(() => {
+    const form = rootRef.current?.closest("form");
+    if (!form || !syncToServer) return undefined;
+
+    const blockUnsyncedSubmit = (event) => {
+      const hasPendingLocalPreview = Boolean(localPreviewValue);
+      if (!isSaving && !hasPendingLocalPreview && !error) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const message = isSaving
+        ? "Ảnh món đang được tải lên. Vui lòng đợi hoàn tất trước khi lưu."
+        : "Ảnh món chưa được đồng bộ lên server. Hãy tải lại ảnh hoặc xóa ảnh đang lỗi trước khi lưu.";
+      setError(message);
+      setStatsText("Không thể lưu món khi ảnh vẫn đang chờ đồng bộ.");
+      onStatusChange?.("error");
+    };
+
+    form.addEventListener("submit", blockUnsyncedSubmit, true);
+    return () => form.removeEventListener("submit", blockUnsyncedSubmit, true);
+  }, [error, isSaving, localPreviewValue, onStatusChange, syncToServer]);
+
   const displayValue = localPreviewValue || value || "";
 
   const handlePickFile = () => {
@@ -84,7 +107,7 @@ const LocalImagePicker = ({
   const validateFile = (file) => {
     if (!file) return "Vui lòng chọn một tệp ảnh.";
     if (!allowedImageTypes.includes(file.type)) {
-      return "Định dạng ảnh chưa được hỗ trợ. Hãy dùng JPG, PNG, WEBP hoặc GIF.";
+      return "Định dạng ảnh chưa được hỗ trợ. Hãy dùng JPG, PNG hoặc WEBP.";
     }
     const maxBytes = Number(maxFileSizeMb || 8) * 1024 * 1024;
     if (file.size > maxBytes) {
@@ -148,6 +171,7 @@ const LocalImagePicker = ({
 
       onChange?.(uploadResult.url);
       setLocalPreviewValue("");
+      setError("");
       setStatsText(`${syncMessage || "Đã tối ưu ảnh"}. Đã đồng bộ server.`);
       onStatusChange?.("synced");
     } catch (err) {
@@ -187,7 +211,10 @@ const LocalImagePicker = ({
   );
 
   return (
-    <div className={`local-image-picker ${isSaving ? "is-uploading" : ""}`}>
+    <div
+      ref={rootRef}
+      className={`local-image-picker ${isSaving ? "is-uploading" : ""} ${error ? "has-error" : ""}`}
+    >
       <div className="lip-preview">
         <LocalImageView
           src={displayValue}
@@ -229,7 +256,7 @@ const LocalImagePicker = ({
           <input
             type="text"
             className="lip-url-input"
-            value={localPreviewValue ? value || "" : value || ""}
+            value={value || ""}
             onChange={handleUrlChange}
             placeholder={urlPlaceholder}
             disabled={disabled || isSaving}
