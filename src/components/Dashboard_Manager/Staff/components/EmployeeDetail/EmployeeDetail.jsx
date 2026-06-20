@@ -18,11 +18,26 @@ import {
   getStaffDetailStatusInfo,
 } from "../../staffStatus";
 import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
+import StaffAvatarMedia from "../StaffAvatarMedia";
 import "./EmployeeDetail.scss";
 
 const getDepartmentLabel = (department) => {
   const option = DEPARTMENT_OPTIONS.find((item) => item.value === department);
   return option?.label?.replace(/^\S+\s*/, "") || "Khác";
+};
+
+const EMPLOYMENT_STATUS_LABELS = {
+  WORKING: "Đang làm việc",
+  ON_LEAVE: "Đang nghỉ phép",
+  RESIGNED: "Đã nghỉ việc",
+  SUSPENDED: "Tạm đình chỉ",
+};
+
+const ACCOUNT_STATUS_LABELS = {
+  active: "Đang hoạt động",
+  inactive: "Ngừng hoạt động",
+  blocked: "Đã khóa",
+  pending: "Chờ xác minh",
 };
 
 const EmployeeDetail = ({
@@ -54,11 +69,6 @@ const EmployeeDetail = ({
     );
   }
 
-  const getAvatarColor = (name) => {
-    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-    return colors[(name?.length || 0) % colors.length];
-  };
-
   const statusInfo = getStaffDetailStatusInfo(employee);
   const { canSetOnLeave, canSetWorking, canSetResigned, canLock, canUnlock } =
     getStaffActionAvailability(employee);
@@ -70,26 +80,28 @@ const EmployeeDetail = ({
       ? `${Number(resolvedBaseSalary).toLocaleString("vi-VN")} đ`
       : "Chưa thiết lập";
 
+  const employmentStatusLabel =
+    EMPLOYMENT_STATUS_LABELS[employee.employmentStatus] ||
+    employee.employmentStatus ||
+    "Đang làm việc";
+  const accountStatusLabel =
+    ACCOUNT_STATUS_LABELS[String(employee.accountStatus || "").toLowerCase()] ||
+    employee.accountStatus ||
+    "Đang hoạt động";
+
   return (
     <div className="employee-detail-card fade-in">
       <div className="detail-header">
-        <div className="cover-image"></div>
+        <div className="cover-image" />
         <div className="header-content">
           <div className="avatar-wrapper">
-            {employee.avatar ? (
-              <img
-                src={employee.avatar}
-                alt={employee.name}
-                className="avatar-img"
-              />
-            ) : (
-              <div
-                className="avatar-placeholder"
-                style={{ backgroundColor: getAvatarColor(employee.name) }}
-              >
-                {employee.name.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <StaffAvatarMedia
+              employee={employee}
+              name={employee.name}
+              className="avatar-img"
+              eager
+              iconSize={30}
+            />
             <span
               className={`status-dot ${statusInfo.color}`}
               title={statusInfo.label}
@@ -111,8 +123,8 @@ const EmployeeDetail = ({
           <h4 className="section-title">Thông tin liên hệ</h4>
           <div className="info-list">
             <InfoRow icon={User} label="Mã NV" value={employee.code} />
-            <InfoRow icon={Phone} label="Điện thoại" value={employee.phone} />
-            <InfoRow icon={Mail} label="Email" value={employee.email} isLink />
+            <InfoRow icon={Phone} label="Điện thoại" value={employee.phone} linkType="tel" />
+            <InfoRow icon={Mail} label="Email" value={employee.email} linkType="mailto" />
             <InfoRow icon={User} label="Xác minh" value={employee.verificationLabel || "Chưa xác minh"} />
             <InfoRow icon={MapPin} label="Địa chỉ" value={employee.address} />
           </div>
@@ -166,8 +178,8 @@ const EmployeeDetail = ({
             <span className={`status-chip ${statusInfo.color}`}>{statusInfo.label}</span>
           </div>
           <div className="account-status-grid">
-            <InfoRow icon={User} label="Trạng thái lao động" value={employee.employmentStatus || "WORKING"} />
-            <InfoRow icon={User} label="Trạng thái tài khoản" value={employee.accountStatus || "active"} />
+            <InfoRow icon={User} label="Trạng thái lao động" value={employmentStatusLabel} />
+            <InfoRow icon={User} label="Trạng thái tài khoản" value={accountStatusLabel} />
             <InfoRow icon={Mail} label="Email" value={employee.emailVerified ? "Đã xác minh" : "Chưa xác minh"} />
             <InfoRow icon={Phone} label="SĐT" value={employee.phoneVerified ? "Đã xác minh" : "Chưa xác minh"} />
           </div>
@@ -186,7 +198,7 @@ const EmployeeDetail = ({
               type="button"
               className="btn btn-secondary"
               onClick={() => onResendVerification?.(employee, verificationChannel)}
-              disabled={!employee.canResendVerification}
+              disabled={!employee.canResendVerification || !onResendVerification}
             >
               <Mail size={16} />
               <span>Gửi lại xác minh</span>
@@ -198,16 +210,20 @@ const EmployeeDetail = ({
       <div className="detail-footer">
         <div className="main-actions">
           <button
+            type="button"
             className="btn btn-primary-soft"
             onClick={onEdit}
+            disabled={!onEdit}
             title="Chỉnh sửa"
           >
             <Edit size={18} />
             <span>Sửa</span>
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={onViewHistory}
+            disabled={!onViewHistory}
             title="Lịch sử"
           >
             <History size={18} />
@@ -216,41 +232,46 @@ const EmployeeDetail = ({
 
         <div className="main-actions">
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => onSetOnLeave?.(employee.id)}
-            disabled={!canSetOnLeave}
+            disabled={!canSetOnLeave || !onSetOnLeave}
             title="Chuyển sang tạm nghỉ"
           >
             <span>🏖️</span>
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => onSetWorking?.(employee.id)}
-            disabled={!canSetWorking}
+            disabled={!canSetWorking || !onSetWorking}
             title="Chuyển sang đang làm việc"
           >
             <span>✅</span>
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => onSetResigned?.(employee.id)}
-            disabled={!canSetResigned}
+            disabled={!canSetResigned || !onSetResigned}
             title="Chuyển sang nghỉ việc"
           >
             <span>🚪</span>
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => onLockAccount?.(employee.id)}
-            disabled={!canLock}
+            disabled={!canLock || !onLockAccount}
             title="Khóa tài khoản"
           >
             <span>🔒</span>
           </button>
           <button
+            type="button"
             className="btn btn-secondary"
             onClick={() => onUnlockAccount?.(employee.id)}
-            disabled={!canUnlock}
+            disabled={!canUnlock || !onUnlockAccount}
             title="Mở khóa tài khoản"
           >
             <span>🔓</span>
@@ -259,9 +280,12 @@ const EmployeeDetail = ({
 
         <div className="danger-actions">
           <button
+            type="button"
             className="btn btn-danger-ghost"
-            onClick={() => onDelete(employee.id)}
-            title="Xóa nhân viên"
+            onClick={() => onDelete?.(employee.id)}
+            disabled={!onDelete}
+            title="Ngừng hiển thị nhân viên"
+            aria-label={`Ngừng hiển thị ${employee.name}`}
           >
             <Trash2 size={18} />
           </button>
@@ -271,8 +295,10 @@ const EmployeeDetail = ({
   );
 };
 
-const InfoRow = ({ icon, label, value, isLink, isHighlight }) => {
+const InfoRow = ({ icon, label, value, linkType, isHighlight }) => {
   const IconComponent = icon;
+  const displayValue = value || "---";
+  const href = value && linkType ? `${linkType}:${value}` : "";
 
   return (
     <div className="info-row">
@@ -281,13 +307,13 @@ const InfoRow = ({ icon, label, value, isLink, isHighlight }) => {
       </div>
       <div className="info-content">
         <span className="info-label">{label}</span>
-        {isLink ? (
-          <a href={`mailto:${value}`} className="info-value link">
-            {value || "---"}
+        {href ? (
+          <a href={href} className="info-value link">
+            {displayValue}
           </a>
         ) : (
           <span className={`info-value ${isHighlight ? "highlight" : ""}`}>
-            {value || "---"}
+            {displayValue}
           </span>
         )}
       </div>
