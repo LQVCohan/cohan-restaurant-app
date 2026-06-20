@@ -117,7 +117,11 @@ const StaffAvatarModal = ({
             className="staff-avatar-modal__button is-primary"
             disabled={!hasChange || loading}
           >
-            {loading ? <LoadingSpinner size="sm" /> : <Save size={16} />}
+            {loading ? (
+              <LoadingSpinner size="small" color="white" />
+            ) : (
+              <Save size={16} />
+            )}
             <span>{loading ? "Đang lưu..." : "Lưu ảnh"}</span>
           </button>
         </div>
