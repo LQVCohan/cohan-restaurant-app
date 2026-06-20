@@ -20,9 +20,8 @@ const StaffHeader = ({
   const statsData = useMemo(() => {
     const parsedAverageRate = Number(stats.avgRate);
     const hasAverageRate =
-      stats.avgRate !== null &&
-      stats.avgRate !== undefined &&
-      Number.isFinite(parsedAverageRate);
+      Number.isFinite(parsedAverageRate) &&
+      (stats.avgRateAvailable === true || parsedAverageRate > 0);
 
     return [
       { id: "total", icon: "👥", label: "Tổng nhân viên", value: stats.totalStaff || 0 },
