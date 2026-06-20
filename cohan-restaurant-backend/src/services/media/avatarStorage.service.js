@@ -8,6 +8,7 @@ const AVATAR_ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const AVATAR_MAX_FILE_SIZE_BYTES = Number(
   process.env.AVATAR_MAX_FILE_SIZE_BYTES || 2 * 1024 * 1024,
 );
+const LOCAL_UPLOAD_PREFIX = "/uploads/";
 const LOCAL_AVATAR_PREFIX = "/uploads/avatars/";
 
 const badInput = (message) =>
@@ -25,6 +26,37 @@ const getAvatarDirectory = () => path.join(getUploadRoot(), "avatars");
 const hasPathTraversal = (pathname = "") =>
   pathname.split("/").some((part) => part === "..");
 
+const resolveLocalAvatarPath = (avatarUrl) => {
+  const normalized = String(avatarUrl || "").trim();
+  if (!normalized.startsWith(LOCAL_UPLOAD_PREFIX) || hasPathTraversal(normalized)) {
+    return null;
+  }
+
+  const relativePath = normalized.slice(LOCAL_UPLOAD_PREFIX.length);
+  if (!relativePath || relativePath.startsWith("/") || relativePath.includes("\\")) {
+    return null;
+  }
+
+  const segments = relativePath.split("/").filter(Boolean);
+  const isDedicatedAvatar =
+    segments.length === 2 && segments[0] === "avatars";
+  const isRootUpload = segments.length === 1;
+  if (!isDedicatedAvatar && !isRootUpload) return null;
+
+  const uploadRoot = getUploadRoot();
+  const absolutePath = path.resolve(uploadRoot, ...segments);
+  const relativeToRoot = path.relative(uploadRoot, absolutePath);
+  if (
+    relativeToRoot.startsWith("..") ||
+    path.isAbsolute(relativeToRoot) ||
+    !relativeToRoot
+  ) {
+    return null;
+  }
+
+  return absolutePath;
+};
+
 export function normalizeAvatarFileUrl(rawInputUrl) {
   const rawUrl = String(rawInputUrl || "").trim();
   const lower = rawUrl.toLowerCase();
@@ -39,7 +71,7 @@ export function normalizeAvatarFileUrl(rawInputUrl) {
   }
 
   if (rawUrl.startsWith("/")) {
-    if (!rawUrl.startsWith("/uploads/") || hasPathTraversal(rawUrl)) {
+    if (!rawUrl.startsWith(LOCAL_UPLOAD_PREFIX) || hasPathTraversal(rawUrl)) {
       throw badInput("Đường dẫn ảnh đại diện không được hỗ trợ.");
     }
     return rawUrl;
@@ -126,15 +158,8 @@ export async function saveBase64Avatar(fileBase64, userId) {
 }
 
 export function deleteLocalAvatar(avatarUrl) {
-  const normalized = String(avatarUrl || "").trim();
-  if (!normalized.startsWith(LOCAL_AVATAR_PREFIX) || hasPathTraversal(normalized)) {
-    return false;
-  }
-
-  const filename = path.basename(normalized);
-  const expectedDirectory = getAvatarDirectory();
-  const absolutePath = path.join(expectedDirectory, filename);
-  if (path.dirname(absolutePath) !== expectedDirectory) return false;
+  const absolutePath = resolveLocalAvatarPath(avatarUrl);
+  if (!absolutePath) return false;
 
   try {
     if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
@@ -160,6 +185,8 @@ export async function resolveAvatarUpdate({ input = {}, userId }) {
 export {
   AVATAR_MAX_FILE_SIZE_BYTES,
   LOCAL_AVATAR_PREFIX,
+  LOCAL_UPLOAD_PREFIX,
   getAvatarDirectory,
   getUploadRoot,
+  resolveLocalAvatarPath,
 };
