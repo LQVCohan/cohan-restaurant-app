@@ -1159,32 +1159,49 @@ function normalizeCheckoutCouponSelections(couponSelections = []) {
   return selections;
 }
 
-function resolveRankFromLoyaltyPoints(points = 0) {
+function normalizeRankAlias(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function uniqueRankAliases(values = []) {
+  return [...new Set(values.map(normalizeRankAlias).filter(Boolean))];
+}
+
+function resolveCustomerTypeFromLoyaltyPoints(points = 0) {
   const value = Number(points || 0);
   if (value >= 20) return "VIP";
   if (value >= 5) return "OFTEN";
   return "NEW";
 }
 
-async function resolveCheckoutCustomerRank(userId, session) {
-  if (!userId || !mongoose.isValidObjectId(userId)) return null;
+function resolveLoyaltyRankFromPoints(points = 0) {
+  const value = Number(points || 0);
+  if (value >= 30) return "platinum";
+  if (value >= 15) return "gold";
+  if (value >= 5) return "silver";
+  return "basic";
+}
+
+async function resolveCheckoutCustomerRankAliases(userId, session) {
+  if (!userId || !mongoose.isValidObjectId(userId)) return [];
   const userDoc = await User.findById(toId(userId))
-    .select("customerRank customerType loyaltyPoints totalSpending")
+    .select("loyaltyRank customerType loyaltyPoints totalSpending")
     .session(session)
     .lean();
 
-  if (!userDoc) return null;
-  if (userDoc.customerRank) return String(userDoc.customerRank);
-  if (userDoc.customerType) return String(userDoc.customerType);
-  if (typeof userDoc.loyaltyPoints === "number") {
-    return resolveRankFromLoyaltyPoints(userDoc.loyaltyPoints);
-  }
+  if (!userDoc) return [];
 
-  const points = Math.max(
-    0,
-    Math.floor((Number(userDoc.totalSpending) || 0) / RANK_POINT_DIVISOR),
-  );
-  return resolveRankFromLoyaltyPoints(points);
+  const aliases = [userDoc.loyaltyRank, userDoc.customerType];
+  const hasLoyaltyRank = Boolean(normalizeRankAlias(userDoc.loyaltyRank));
+  const hasCustomerType = Boolean(normalizeRankAlias(userDoc.customerType));
+  const points = typeof userDoc.loyaltyPoints === "number"
+    ? userDoc.loyaltyPoints
+    : Math.max(0, Math.floor((Number(userDoc.totalSpending) || 0) / RANK_POINT_DIVISOR));
+
+  if (!hasLoyaltyRank) aliases.push(resolveLoyaltyRankFromPoints(points));
+  if (!hasCustomerType) aliases.push(resolveCustomerTypeFromLoyaltyPoints(points));
+
+  return uniqueRankAliases(aliases);
 }
 
 function normalizePromotionIds(promotionIds = []) {
@@ -2531,7 +2548,7 @@ export const OrderMutation = {
     try {
       await session.withTransaction(async () => {
         finalUserId = authUserId;
-        const checkoutCustomerRank = await resolveCheckoutCustomerRank(finalUserId, session);
+        const checkoutCustomerRanks = await resolveCheckoutCustomerRankAliases(finalUserId, session);
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
           const { restaurant, availability } = await getPublicRestaurantOrThrow(
@@ -2589,7 +2606,7 @@ export const OrderMutation = {
             userId: finalUserId,
             paymentMethod: normalizedPaymentMethod,
             orderType,
-            customerRank: checkoutCustomerRank,
+            customerRanks: checkoutCustomerRanks,
             session,
           });
 

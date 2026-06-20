@@ -514,11 +514,15 @@ export function matchesPaymentMethod(constraints = {}, paymentMethod) {
   );
 }
 
-export function matchesCustomerRank(constraints = {}, customerRank) {
-  return matchesConstraintValue(
-    normalizeConstraintArray(constraints.customerRanks),
-    customerRank,
+export function matchesCustomerRank(constraints = {}, customerRanks = []) {
+  const allowed = normalizeConstraintArray(constraints.customerRanks);
+  if (!allowed.length) return true;
+
+  const actual = normalizeConstraintArray(
+    Array.isArray(customerRanks) ? customerRanks : [customerRanks],
   );
+
+  return actual.some((rank) => allowed.includes(rank));
 }
 
 export async function checkFirstOrderOnly({
@@ -591,6 +595,7 @@ export async function assertCouponEligibility({
   orderType,
   paymentMethod,
   customerRank,
+  customerRanks,
   now = new Date(),
   session,
 }) {
@@ -631,10 +636,15 @@ export async function assertCouponEligibility({
     );
   }
 
-  const customerRanks = normalizeConstraintArray(constraints.customerRanks);
-  if (customerRanks.length && !matchesCustomerRank(constraints, customerRank)) {
+  const allowedCustomerRanks = normalizeConstraintArray(constraints.customerRanks);
+  const actualCustomerRanks = normalizeConstraintArray(
+    Array.isArray(customerRanks)
+      ? customerRanks
+      : [customerRanks ?? customerRank],
+  );
+  if (allowedCustomerRanks.length && !matchesCustomerRank(constraints, actualCustomerRanks)) {
     throw new Error(
-      customerRank
+      actualCustomerRanks.length
         ? "Invalid coupon: customer rank is not eligible"
         : "Invalid coupon: customer rank is required for this coupon",
     );
@@ -696,6 +706,7 @@ export async function calculateDiscountBreakdown({
   orderType,
   paymentMethod,
   customerRank,
+  customerRanks,
 }) {
   const subtotal = roundVnd(
     items.reduce(
@@ -881,6 +892,7 @@ export async function calculateDiscountBreakdown({
       orderType,
       paymentMethod,
       customerRank,
+      customerRanks,
       now,
       session,
     });

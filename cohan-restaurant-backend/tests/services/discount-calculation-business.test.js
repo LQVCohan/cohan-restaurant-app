@@ -1069,4 +1069,67 @@ describe("discount calculation business", () => {
     expect(result.voucherDiscount).toBe(10000);
   });
 
+
+  it("allows loyaltyRank alias for customerRanks constraints", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-gold", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["gold"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "GOLD" },
+      customerRanks: ["gold"],
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("allows customerType alias for customerRanks constraints case-insensitively", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-vip", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["vip"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "VIP" },
+      customerRanks: ["VIP"],
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("allows any matching alias when loyaltyRank and customerType are both present", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-often", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["often"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "OFTEN" },
+      customerRanks: ["gold", "often"],
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("rejects coupons when none of the customer rank aliases match", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-platinum", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["platinum"] } }));
+
+    await expect(calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "PLAT" },
+      customerRanks: ["gold", "often"],
+    })).rejects.toThrow(/Invalid coupon: customer rank is not eligible/);
+  });
+
+  it("does not require rank aliases when coupon has no customerRanks constraint", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-open", isActive: true, discountType: "PERCENT", discountValue: 10 }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "OPEN" },
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
 });

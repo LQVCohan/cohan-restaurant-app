@@ -173,6 +173,8 @@ const normalizeCoupon = (item) => ({
   paymentMethods: normalizeConstraintArray(item.constraints?.paymentMethods),
   firstOrderOnly: toBoolean(item.constraints?.firstOrderOnly, false),
   customerRanks: normalizeConstraintArray(item.constraints?.customerRanks),
+  categoryIds: normalizeConstraintArray(item.categoryIds ?? item.constraints?.categoryIds),
+  categories: normalizeConstraintArray(item.categories ?? item.constraints?.categories),
   isActive: Boolean(item.isActive),
   restaurantId: item.restaurantId || "",
 });
@@ -216,6 +218,8 @@ const buildCouponInput = (couponData, restaurantId) => ({
     paymentMethods: normalizeConstraintArray(couponData.paymentMethods),
     firstOrderOnly: Boolean(couponData.firstOrderOnly),
     customerRanks: normalizeConstraintArray(couponData.customerRanks),
+    categoryIds: normalizeConstraintArray(couponData.categoryIds),
+    categories: normalizeConstraintArray(couponData.categories),
   },
   publishAt: couponData.publishAt
     ? toVietnamDateTimeISO(couponData.publishAt)

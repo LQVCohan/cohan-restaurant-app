@@ -477,6 +477,21 @@ describe("order discount business safety", () => {
       expect(schema).toMatch(/couponSelections:\s*\[CheckoutCouponSelectionInput!\]/);
     });
 
+
+
+    it("resolves checkout customer rank aliases from real user fields", () => {
+      const src = read(ORDER_MUTATION_PATH);
+      const rankSrc = getNamedFunctionSnippet(src, "resolveCheckoutCustomerRankAliases");
+
+      expect(rankSrc).toMatch(/select\("loyaltyRank customerType loyaltyPoints totalSpending"\)/);
+      expect(rankSrc).not.toMatch(/customerRank/);
+      expect(rankSrc).toMatch(/userDoc\.loyaltyRank/);
+      expect(rankSrc).toMatch(/userDoc\.customerType/);
+      expect(rankSrc).toMatch(/resolveLoyaltyRankFromPoints\(points\)/);
+      expect(rankSrc).toMatch(/resolveCustomerTypeFromLoyaltyPoints\(points\)/);
+      expect(rankSrc).toMatch(/uniqueRankAliases\(aliases\)/);
+    });
+
     it("passes full coupon context and only the current restaurant coupon into checkout discount calculation", () => {
       const src = read(ORDER_MUTATION_PATH);
       const checkoutStart = src.indexOf("async createCheckoutOrders");
@@ -488,7 +503,7 @@ describe("order discount business safety", () => {
       expect(checkoutSrc).toMatch(/grouped\.size === 1 \? pricing\?\.voucherCode : undefined/);
       expect(checkoutSrc).toMatch(/userId:\s*finalUserId/);
       expect(checkoutSrc).toMatch(/paymentMethod:\s*normalizedPaymentMethod/);
-      expect(checkoutSrc).toMatch(/orderType,[\s\S]*customerRank:\s*checkoutCustomerRank/);
+      expect(checkoutSrc).toMatch(/orderType,[\s\S]*customerRanks:\s*checkoutCustomerRanks/);
     });
   });
 

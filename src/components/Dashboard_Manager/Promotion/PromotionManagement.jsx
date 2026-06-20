@@ -1101,7 +1101,7 @@ export default function PromotionManagement() {
       {renderDetailDrawer()}
 
       {isModalOpen && canWritePromotion && <PromotionModal promotion={editingPromotion} restaurants={promotionRestaurants} defaultRestaurantId={selectedRestaurantId} categories={categories} menuItems={menuItems} onSave={handleSavePromotion} onClose={() => { setIsModalOpen(false); setEditingPromotion(null); }} />}
-      {isCouponModalOpen && canWriteCoupon && <CouponModal coupon={editingCoupon} onSave={handleSaveCoupon} onClose={() => { setIsCouponModalOpen(false); setEditingCoupon(null); }} />}
+      {isCouponModalOpen && canWriteCoupon && <CouponModal coupon={editingCoupon} categories={categories} restaurantId={selectedRestaurantId} onSave={handleSaveCoupon} onClose={() => { setIsCouponModalOpen(false); setEditingCoupon(null); }} />}
       {isCouponPackageModalOpen && canWriteCoupon && <CouponPackageModal couponPackage={editingCouponPackage} availableCoupons={allCoupons} onSave={handleSaveCouponPackage} onClose={() => { setIsCouponPackageModalOpen(false); setEditingCouponPackage(null); }} />}
     </div>
   );

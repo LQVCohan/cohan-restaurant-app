@@ -61,6 +61,8 @@ describe("useCoupons input builders", () => {
       paymentMethods: [],
       firstOrderOnly: false,
       customerRanks: [],
+      categoryIds: [],
+      categories: [],
     });
   });
   it("normalizes coupon stacking constraints from coupon constraints", () => {

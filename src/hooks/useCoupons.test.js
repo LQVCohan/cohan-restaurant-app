@@ -17,6 +17,8 @@ describe("useCoupons coupon constraint normalization", () => {
         orderTypes: ["dine_in", "delivery"],
         paymentMethods: ["cash", "e_wallet"],
         firstOrderOnly: true,
+        categoryIds: "cat-food,cat-drink",
+        categories: "Food, Drink",
       },
     });
 
@@ -25,6 +27,8 @@ describe("useCoupons coupon constraint normalization", () => {
       orderTypes: ["dine_in", "delivery"],
       paymentMethods: ["cash", "e_wallet"],
       firstOrderOnly: true,
+      categoryIds: ["cat-food", "cat-drink"],
+      categories: ["Food", "Drink"],
       stackable: true,
       combinableWithPromotions: true,
       priority: 3,
@@ -52,6 +56,8 @@ describe("useCoupons coupon constraint normalization", () => {
         orderTypes: ["takeaway"],
         paymentMethods: ["card", "bank_transfer"],
         firstOrderOnly: true,
+        categoryIds: "cat-food,cat-drink",
+        categories: ["Food", "Drink"],
         status: "active",
       },
       "restaurant-1",
@@ -68,6 +74,8 @@ describe("useCoupons coupon constraint normalization", () => {
       paymentMethods: ["card", "bank_transfer"],
       firstOrderOnly: true,
       customerRanks: [],
+      categoryIds: ["cat-food", "cat-drink"],
+      categories: ["Food", "Drink"],
     });
   });
 });

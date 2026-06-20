@@ -51,4 +51,14 @@ describe("Coupon modal stacking config", () => {
       "firstOrderOnly: Boolean(formData.firstOrderOnly)",
     );
   });
+
+  it("exposes category scope controls for coupon item categories", () => {
+    expect(source).toContain("Phạm vi danh mục áp dụng");
+    expect(source).toContain('name="categoryScope"');
+    expect(source).toContain("Chỉ danh mục được chọn");
+    expect(source).toContain("Vui lòng chọn ít nhất một danh mục áp dụng.");
+    expect(source).toContain("categoryIds: selectedIds");
+    expect(source).toContain("categories: selectedNames");
+  });
+
 });
