@@ -1,5 +1,5 @@
 // src/hooks/useAvatarUploadLocal.js
-import { getGraphqlUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
+import { getApiBaseUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { getToken, setAuth } from "@/lib/authStorage";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
@@ -16,11 +16,8 @@ const getAuthHeader = async () => {
 
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
-const getUploadApiBase = () => {
-  const graphqlUrl = getGraphqlUrl();
-  return graphqlUrl.replace(/\/graphql\/?$/, "").replace(/\/$/, "");
-};
 
+const getUploadApiBase = () => getApiBaseUrl();
 const normalizeUploadedUrl = (url) => toApiAssetUrl(url);
 
 export function useAvatarUploadLocal() {
