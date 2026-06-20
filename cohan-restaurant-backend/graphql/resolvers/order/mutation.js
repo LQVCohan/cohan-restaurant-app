@@ -14,6 +14,7 @@ import {
   CheckoutSession,
   Coupon,
   Customer,
+  CustomerRankSetting,
   User,
   WalletTransaction,
   PrintSetting,
@@ -325,14 +326,10 @@ async function syncCustomerMetricsByOrderUser(userId) {
     0,
     Math.floor((Number(totalSpending) || 0) / RANK_POINT_DIVISOR),
   );
-  const customerType =
-    loyaltyPoints >= 20 ? "VIP" : loyaltyPoints >= 5 ? "OFTEN" : "NEW";
-
   await Customer.findByIdAndUpdate(uid, {
     totalSpending,
     totalOrders,
     loyaltyPoints,
-    customerType,
   });
 }
 
@@ -1163,43 +1160,62 @@ function normalizeRankAlias(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizeRankAliasAscii(value) {
+  return normalizeRankAlias(value)
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
 function uniqueRankAliases(values = []) {
   return [...new Set(values.map(normalizeRankAlias).filter(Boolean))];
 }
 
-function resolveCustomerTypeFromLoyaltyPoints(points = 0) {
-  const value = Number(points || 0);
-  if (value >= 20) return "VIP";
-  if (value >= 5) return "OFTEN";
-  return "NEW";
+function addRankAlias(aliases, value) {
+  const normalized = normalizeRankAlias(value);
+  const ascii = normalizeRankAliasAscii(value);
+  if (normalized) aliases.push(normalized);
+  if (ascii && ascii !== normalized) aliases.push(ascii);
 }
 
-function resolveLoyaltyRankFromPoints(points = 0) {
-  const value = Number(points || 0);
-  if (value >= 30) return "platinum";
-  if (value >= 15) return "gold";
-  if (value >= 5) return "silver";
-  return "basic";
-}
-
-async function resolveCheckoutCustomerRankAliases(userId, session) {
-  if (!userId || !mongoose.isValidObjectId(userId)) return [];
+async function loadCheckoutUserRankContext(userId, session) {
+  if (!userId || !mongoose.isValidObjectId(userId)) return null;
   const userDoc = await User.findById(toId(userId))
     .select("loyaltyRank customerType loyaltyPoints totalSpending")
     .session(session)
     .lean();
 
-  if (!userDoc) return [];
+  if (!userDoc) return null;
+  return {
+    loyaltyRank: userDoc.loyaltyRank,
+    customerType: userDoc.customerType,
+    loyaltyPoints: userDoc.loyaltyPoints,
+    totalSpending: userDoc.totalSpending,
+  };
+}
 
-  const aliases = [userDoc.loyaltyRank, userDoc.customerType];
-  const hasLoyaltyRank = Boolean(normalizeRankAlias(userDoc.loyaltyRank));
-  const hasCustomerType = Boolean(normalizeRankAlias(userDoc.customerType));
-  const points = typeof userDoc.loyaltyPoints === "number"
-    ? userDoc.loyaltyPoints
-    : Math.max(0, Math.floor((Number(userDoc.totalSpending) || 0) / RANK_POINT_DIVISOR));
+async function resolveCheckoutCustomerRankAliases({ userContext, restaurantId, session }) {
+  if (!userContext) return [];
 
-  if (!hasLoyaltyRank) aliases.push(resolveLoyaltyRankFromPoints(points));
-  if (!hasCustomerType) aliases.push(resolveCustomerTypeFromLoyaltyPoints(points));
+  const aliases = [];
+  addRankAlias(aliases, userContext.loyaltyRank);
+  addRankAlias(aliases, userContext.customerType);
+
+  const points = Number.isFinite(Number(userContext.loyaltyPoints))
+    ? Number(userContext.loyaltyPoints)
+    : Math.max(0, Math.floor((Number(userContext.totalSpending || 0) || 0) / RANK_POINT_DIVISOR));
+
+  const rankSetting = restaurantId && mongoose.isValidObjectId(restaurantId)
+    ? await CustomerRankSetting.findOne({ restaurantId: toId(restaurantId) }).session(session).lean()
+    : null;
+
+  const matchedRank = Array.isArray(rankSetting?.ranks)
+    ? [...rankSetting.ranks]
+      .filter((rank) => Number.isFinite(Number(rank?.minPoints)))
+      .sort((a, b) => Number(b.minPoints) - Number(a.minPoints))
+      .find((rank) => points >= Number(rank.minPoints))
+    : null;
+
+  if (matchedRank?.name) addRankAlias(aliases, matchedRank.name);
 
   return uniqueRankAliases(aliases);
 }
@@ -2548,7 +2564,7 @@ export const OrderMutation = {
     try {
       await session.withTransaction(async () => {
         finalUserId = authUserId;
-        const checkoutCustomerRanks = await resolveCheckoutCustomerRankAliases(finalUserId, session);
+        const checkoutUserRankContext = await loadCheckoutUserRankContext(finalUserId, session);
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
           const { restaurant, availability } = await getPublicRestaurantOrThrow(
@@ -2588,6 +2604,12 @@ export const OrderMutation = {
             orderType === "delivery" && grouped.size > 1
               ? Math.round(Number(pricing?.shippingFee || 0) / grouped.size)
               : Number(pricing?.shippingFee || 0);
+
+          const checkoutCustomerRanks = await resolveCheckoutCustomerRankAliases({
+            userContext: checkoutUserRankContext,
+            restaurantId,
+            session,
+          });
 
           const groupVoucherCode =
             couponSelectionMap.get(String(restaurantId)) ||

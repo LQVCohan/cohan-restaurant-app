@@ -61,4 +61,13 @@ describe("Coupon modal stacking config", () => {
     expect(source).toContain("categories: selectedNames");
   });
 
+
+  it("keeps customer rank constraints and exposes rank controls", () => {
+    expect(source).toContain("Hạng khách hàng áp dụng");
+    expect(source).toContain("customerRanks: toArray(coupon?.customerRanks ?? coupon?.constraints?.customerRanks).map(normalizeRankValue)");
+    expect(source).toContain("customerRanks: toArray(formData.customerRanks).map(normalizeRankValue)");
+    expect(source).toContain("Hạng cũ không còn trong cấu hình");
+    expect(source).toContain("Không chọn hạng nào nghĩa là coupon áp dụng cho tất cả khách hàng.");
+  });
+
 });

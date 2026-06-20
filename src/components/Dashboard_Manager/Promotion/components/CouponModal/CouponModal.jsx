@@ -43,6 +43,7 @@ const getCategoryId = (category) => String(category?.id || category?._id || "").
 const getCategoryName = (category) => String(category?.name || "").trim();
 const getCouponCategoryIds = (coupon) => toArray(coupon?.categoryIds ?? coupon?.constraints?.categoryIds);
 const getCouponCategoryNames = (coupon) => toArray(coupon?.categories ?? coupon?.constraints?.categories);
+const normalizeRankValue = (value) => String(value || "").trim().toLowerCase();
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -122,13 +123,14 @@ const buildInitialFormData = (coupon) => {
   orderTypes: toArray(coupon?.orderTypes),
   paymentMethods: toArray(coupon?.paymentMethods),
   firstOrderOnly: Boolean(coupon?.firstOrderOnly),
+  customerRanks: toArray(coupon?.customerRanks ?? coupon?.constraints?.customerRanks).map(normalizeRankValue),
   categoryScope: categoryIds.length || categories.length ? "selected" : "all",
   categoryIds,
   categories,
 });
 };
 
-const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = "" }) => {
+const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = "", customerRankOptions = [] }) => {
   const [formData, setFormData] = useState(buildInitialFormData(coupon));
   const [errors, setErrors] = useState({});
   const discountPreview = getCouponPreview(formData);
@@ -136,6 +138,15 @@ const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = 
   const selectedCategoryIds = toArray(formData.categoryIds);
   const missingCategoryIds = selectedCategoryIds.filter(
     (id) => !categoryOptions.some((category) => getCategoryId(category) === id),
+  );
+  const rankOptions = Array.isArray(customerRankOptions)
+    ? customerRankOptions
+      .map((rank) => ({ ...rank, value: normalizeRankValue(rank?.value || rank?.name || rank?.label) }))
+      .filter((rank) => rank.value)
+    : [];
+  const selectedCustomerRanks = toArray(formData.customerRanks).map(normalizeRankValue);
+  const legacyCustomerRanks = selectedCustomerRanks.filter(
+    (rank) => !rankOptions.some((option) => option.value === rank),
   );
 
   useEffect(() => {
@@ -197,6 +208,22 @@ const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = 
       };
     });
     if (errors.categoryIds) setErrors((prev) => ({ ...prev, categoryIds: "" }));
+  };
+
+  const handleCustomerRankCheckboxChange = (rankValue) => (event) => {
+    const { checked } = event.target;
+    const value = normalizeRankValue(rankValue);
+    if (!value) return;
+
+    setFormData((prev) => {
+      const currentValues = toArray(prev.customerRanks).map(normalizeRankValue);
+      return {
+        ...prev,
+        customerRanks: checked
+          ? [...new Set([...currentValues, value])]
+          : currentValues.filter((rank) => rank !== value),
+      };
+    });
   };
 
   const handleMultiCheckboxChange = (fieldName, optionValue) => (event) => {
@@ -284,6 +311,7 @@ const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = 
       orderTypes: toArray(formData.orderTypes),
       paymentMethods: toArray(formData.paymentMethods),
       firstOrderOnly: Boolean(formData.firstOrderOnly),
+      customerRanks: toArray(formData.customerRanks).map(normalizeRankValue),
       categoryScope: formData.categoryScope,
       categoryIds: selectedIds,
       categories: selectedNames,
@@ -642,6 +670,63 @@ const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = 
                 </label>
               </div>
             </div>
+
+
+            <div className="form-section">
+              <h3 className="section-title">
+                <ClipboardList size={18} /> Hạng khách hàng áp dụng
+              </h3>
+
+              <div className="customer-rank-scope-panel">
+                <p className="rank-helper-note">
+                  Không chọn hạng nào nghĩa là coupon áp dụng cho tất cả khách hàng.
+                </p>
+
+                {rankOptions.length > 0 ? (
+                  <div className="rank-checkbox-list">
+                    {rankOptions.map((rank) => (
+                      <label className="rank-checkbox-row" key={rank.value}>
+                        <input
+                          type="checkbox"
+                          checked={selectedCustomerRanks.includes(rank.value)}
+                          onChange={handleCustomerRankCheckboxChange(rank.value)}
+                        />
+                        <span>
+                          <strong>{rank.label || rank.value}</strong>
+                          <small>
+                            {Number.isFinite(Number(rank.minPoints)) ? `Từ ${rank.minPoints} điểm` : "Không có ngưỡng điểm"}
+                            {rank.benefits ? ` · ${rank.benefits}` : ""}
+                          </small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rank-empty-note">
+                    Chưa tải được hạng khách hàng cho nhà hàng hiện tại{restaurantId ? "" : " vì chưa chọn nhà hàng"}.
+                  </p>
+                )}
+
+                {legacyCustomerRanks.length > 0 && (
+                  <div className="legacy-rank-box">
+                    <p>Hạng cũ không còn trong cấu hình</p>
+                    <div className="legacy-rank-list">
+                      {legacyCustomerRanks.map((rank) => (
+                        <label className="rank-checkbox-row legacy" key={rank}>
+                          <input
+                            type="checkbox"
+                            checked={selectedCustomerRanks.includes(rank)}
+                            onChange={handleCustomerRankCheckboxChange(rank)}
+                          />
+                          <span><strong>{rank}</strong></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="form-section">
               <h3 className="section-title">
                 <ClipboardList size={18} /> Cấu hình dùng chồng
