@@ -20,9 +20,9 @@ import "../../MenuManagementUsability.scss";
 
 const STATUS_OPTIONS = [
   { value: "available", label: "Đang bán" },
-  { value: "unavailable", label: "Tạm dừng" },
-  { value: "out_of_stock", label: "Hết hàng" },
-  { value: "hidden", label: "Đang ẩn" },
+  { value: "unavailable", label: "Tạm ngưng bán" },
+  { value: "out_of_stock", label: "Hết món" },
+  { value: "hidden", label: "Ẩn khỏi thực đơn" },
 ];
 
 const STATUS_LABELS = STATUS_OPTIONS.reduce((acc, option) => {
@@ -31,10 +31,10 @@ const STATUS_LABELS = STATUS_OPTIONS.reduce((acc, option) => {
 }, {});
 
 const INVENTORY_FILTER_LABELS = {
-  low_stock: "Sắp hết nguyên liệu",
-  out_of_stock: "Hết nguyên liệu",
-  needs_check: "Cần kiểm kho",
-  not_tracked: "Thiếu công thức",
+  low_stock: "Nguyên liệu sắp hết",
+  out_of_stock: "Đã hết nguyên liệu",
+  needs_check: "Cần kiểm tra tồn kho",
+  not_tracked: "Thiếu công thức kho",
 };
 
 const Toolbar = ({
@@ -90,10 +90,16 @@ const Toolbar = ({
   };
 
   const hasActiveFilters =
-    searchTerm || currentCategory || statusFilter || minPrice || maxPrice || inventoryFilter !== "all" || forYouMetadataFilter !== "all";
+    searchTerm ||
+    currentCategory ||
+    statusFilter ||
+    minPrice ||
+    maxPrice ||
+    inventoryFilter !== "all" ||
+    forYouMetadataFilter !== "all";
 
   const formatCurrency = (val) =>
-    val ? parseInt(val, 10).toLocaleString("vi-VN") + "đ" : "";
+    val ? `${parseInt(val, 10).toLocaleString("vi-VN")}đ` : "";
 
   const issueFilterValue =
     forYouMetadataFilter === "missing"
@@ -122,11 +128,10 @@ const Toolbar = ({
       case "available":
         return <FiCheck className="select-icon" />;
       case "unavailable":
+      case "out_of_stock":
         return <FiAlertCircle className="select-icon" />;
       case "hidden":
         return <FiEyeOff className="select-icon" />;
-      case "out_of_stock":
-        return <FiAlertCircle className="select-icon" />;
       default:
         return <FiCheck className="select-icon select-icon--muted" />;
     }
@@ -136,22 +141,33 @@ const Toolbar = ({
   const handleAddMenuGroup = onAddMenuGroup || onAddCategory;
 
   return (
-    <section className="toolbar-container toolbar-container--manager" aria-label="Tìm và lọc món ăn">
+    <section
+      className="toolbar-container toolbar-container--manager"
+      aria-label="Tìm kiếm và lọc món ăn"
+    >
       <div className="toolbar-top">
         <div className="search-wrapper">
           <FiSearch className="search-icon" />
-          <label className="toolbar-sr-label" htmlFor="menu-search-input">Tìm món</label>
+          <label className="toolbar-sr-label" htmlFor="menu-search-input">
+            Tìm món ăn
+          </label>
           <input
             id="menu-search-input"
             type="text"
             className="search-input"
-            placeholder="Tìm tên món, mô tả hoặc ghi chú..."
-            aria-label="Tìm món"
+            placeholder="Tìm theo tên món, mô tả hoặc ghi chú"
+            aria-label="Tìm món ăn"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
           />
           {searchTerm && (
-            <button type="button" className="clear-btn" aria-label="Xóa từ khóa tìm kiếm" title="Xóa tìm kiếm" onClick={() => onSearchChange("")}>
+            <button
+              type="button"
+              className="clear-btn"
+              aria-label="Xóa từ khóa tìm kiếm"
+              title="Xóa từ khóa"
+              onClick={() => onSearchChange("")}
+            >
               <FiX />
             </button>
           )}
@@ -180,22 +196,38 @@ const Toolbar = ({
           </div>
 
           {onBulkPriceEdit && (
-            <button type="button" className="btn btn-secondary" onClick={onBulkPriceEdit}>
-              <FiDollarSign /> <span className="hide-mobile">Sửa giá</span>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onBulkPriceEdit}
+            >
+              <FiDollarSign /> <span className="hide-mobile">Cập nhật giá</span>
             </button>
           )}
           {onCreatePromotion && (
-            <button type="button" className="btn btn-secondary" onClick={onCreatePromotion}>
-              <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onCreatePromotion}
+            >
+              <FiGift /> <span className="hide-mobile">Tạo khuyến mãi</span>
             </button>
           )}
           {handleAddDishCategory && (
-            <button type="button" className="btn btn-secondary" onClick={handleAddDishCategory}>
-              <FiTag /> <span className="hide-mobile">Danh mục</span>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleAddDishCategory}
+            >
+              <FiTag /> <span className="hide-mobile">Danh mục món</span>
             </button>
           )}
           {handleAddMenuGroup && (
-            <button type="button" className="btn btn-primary" onClick={handleAddMenuGroup}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleAddMenuGroup}
+            >
               <FiFolderPlus /> <span className="hide-mobile">Nhóm thực đơn</span>
             </button>
           )}
@@ -203,39 +235,46 @@ const Toolbar = ({
       </div>
 
       <div className="toolbar-filters toolbar-filters--single-row">
-        <span className="filter-section-label">Bộ lọc</span>
+        <span className="filter-section-label">Lọc món</span>
+
         <div className="select-wrapper">
           <FiSliders className="select-icon" />
-          <label className="toolbar-sr-label" htmlFor="menu-sort-select">Sắp xếp món</label>
+          <label className="toolbar-sr-label" htmlFor="menu-sort-select">
+            Sắp xếp món ăn
+          </label>
           <select
             id="menu-sort-select"
-            aria-label="Sắp xếp món"
+            aria-label="Sắp xếp món ăn"
             className={`custom-select ${sortOption !== "default" ? "active" : ""}`}
             value={sortOption}
             onChange={(e) => onSortChange?.(e.target.value)}
           >
-            <option value="default">Mặc định</option>
-            <option value="name_asc">Tên A-Z</option>
-            <option value="name_desc">Tên Z-A</option>
-            <option value="price_asc">Giá thấp trước</option>
-            <option value="price_desc">Giá cao trước</option>
+            <option value="default">Thứ tự mặc định</option>
+            <option value="name_asc">Tên từ A đến Z</option>
+            <option value="name_desc">Tên từ Z đến A</option>
+            <option value="price_asc">Giá từ thấp đến cao</option>
+            <option value="price_desc">Giá từ cao đến thấp</option>
           </select>
           <FiChevronDown className="select-arrow" />
         </div>
 
         <div className="select-wrapper">
           <FiTag className="select-icon" />
-          <label className="toolbar-sr-label" htmlFor="menu-category-select">Danh mục</label>
+          <label className="toolbar-sr-label" htmlFor="menu-category-select">
+            Danh mục món
+          </label>
           <select
             id="menu-category-select"
-            aria-label="Lọc theo danh mục"
+            aria-label="Lọc theo danh mục món"
             className={`custom-select ${currentCategory ? "active" : ""}`}
             value={currentCategory}
             onChange={(e) => onCategoryChange(e.target.value)}
           >
-            <option value="">Tất cả danh mục</option>
+            <option value="">Mọi danh mục</option>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
             ))}
           </select>
           <FiChevronDown className="select-arrow" />
@@ -243,7 +282,9 @@ const Toolbar = ({
 
         <div className="select-wrapper">
           {renderStatusIcon()}
-          <label className="toolbar-sr-label" htmlFor="menu-status-select">Trạng thái bán</label>
+          <label className="toolbar-sr-label" htmlFor="menu-status-select">
+            Trạng thái bán
+          </label>
           <select
             id="menu-status-select"
             aria-label="Lọc theo trạng thái bán"
@@ -251,9 +292,11 @@ const Toolbar = ({
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value)}
           >
-            <option value="">Tất cả trạng thái</option>
+            <option value="">Mọi trạng thái</option>
             {STATUS_OPTIONS.map((status) => (
-              <option key={status.value} value={status.value}>{status.label}</option>
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
             ))}
           </select>
           <FiChevronDown className="select-arrow" />
@@ -261,7 +304,9 @@ const Toolbar = ({
 
         <div className="select-wrapper">
           <FiAlertCircle className="select-icon" />
-          <label className="toolbar-sr-label" htmlFor="menu-issue-select">Vấn đề cần xử lý</label>
+          <label className="toolbar-sr-label" htmlFor="menu-issue-select">
+            Vấn đề cần xử lý
+          </label>
           <select
             id="menu-issue-select"
             aria-label="Lọc theo vấn đề cần xử lý"
@@ -269,12 +314,22 @@ const Toolbar = ({
             value={issueFilterValue}
             onChange={(e) => handleIssueFilterChange(e.target.value)}
           >
-            <option value="all">Tất cả vấn đề</option>
-            <option value="missing_info">Thiếu khẩu vị/dị ứng ({forYouMetadataCounts.missing || 0})</option>
-            <option value="low_stock">Sắp hết nguyên liệu ({inventoryFilterCounts.low_stock || 0})</option>
-            <option value="out_of_stock">Hết nguyên liệu ({inventoryFilterCounts.out_of_stock || 0})</option>
-            <option value="needs_check">Cần kiểm kho ({inventoryFilterCounts.needs_check || 0})</option>
-            <option value="not_tracked">Thiếu công thức ({inventoryFilterCounts.not_tracked || 0})</option>
+            <option value="all">Mọi vấn đề</option>
+            <option value="missing_info">
+              Thiếu khẩu vị hoặc dị ứng ({forYouMetadataCounts.missing || 0})
+            </option>
+            <option value="low_stock">
+              Nguyên liệu sắp hết ({inventoryFilterCounts.low_stock || 0})
+            </option>
+            <option value="out_of_stock">
+              Đã hết nguyên liệu ({inventoryFilterCounts.out_of_stock || 0})
+            </option>
+            <option value="needs_check">
+              Cần kiểm tra tồn kho ({inventoryFilterCounts.needs_check || 0})
+            </option>
+            <option value="not_tracked">
+              Thiếu công thức kho ({inventoryFilterCounts.not_tracked || 0})
+            </option>
           </select>
           <FiChevronDown className="select-arrow" />
         </div>
@@ -285,7 +340,7 @@ const Toolbar = ({
           onClick={() => setShowFilters(!showFilters)}
           aria-expanded={showFilters}
         >
-          <FiFilter /> Giá
+          <FiFilter /> Khoảng giá
         </button>
 
         <div className="result-count">
@@ -295,56 +350,131 @@ const Toolbar = ({
 
       <div className={`advanced-panel ${showFilters ? "open" : ""}`}>
         <div className="price-inputs">
-          <label>Khoảng giá:</label>
+          <label>Giá bán</label>
           <input
             id="menu-min-price"
             type="number"
-            aria-label="Giá thấp nhất"
-            placeholder="Từ"
+            aria-label="Giá bán tối thiểu"
+            placeholder="Từ giá"
             value={priceRange.min}
-            onChange={(e) => setPriceRange((p) => ({ ...p, min: e.target.value }))}
+            onChange={(e) =>
+              setPriceRange((current) => ({ ...current, min: e.target.value }))
+            }
           />
           <span className="separator">-</span>
           <input
             id="menu-max-price"
             type="number"
-            aria-label="Giá cao nhất"
-            placeholder="Đến"
+            aria-label="Giá bán tối đa"
+            placeholder="Đến giá"
             value={priceRange.max}
-            onChange={(e) => setPriceRange((p) => ({ ...p, max: e.target.value }))}
+            onChange={(e) =>
+              setPriceRange((current) => ({ ...current, max: e.target.value }))
+            }
           />
-          <button type="button" className="btn-apply" onClick={handlePriceRangeSubmit}>Áp dụng</button>
+          <button
+            type="button"
+            className="btn-apply"
+            onClick={handlePriceRangeSubmit}
+          >
+            Áp dụng
+          </button>
         </div>
       </div>
 
       {hasActiveFilters && (
         <div className="active-chips-area">
-          <span className="label">Đang lọc:</span>
+          <span className="label">Đang áp dụng</span>
           {searchTerm && (
-            <span className="chip">Tìm: "{searchTerm}" <button type="button" className="chip-x" aria-label="Xóa lọc tìm kiếm" title="Xóa lọc tìm kiếm" onClick={() => onSearchChange("")}><FiX /></button></span>
+            <span className="chip">
+              Từ khóa: “{searchTerm}”
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Bỏ từ khóa tìm kiếm"
+                title="Bỏ từ khóa tìm kiếm"
+                onClick={() => onSearchChange("")}
+              >
+                <FiX />
+              </button>
+            </span>
           )}
           {currentCategory && (
-            <span className="chip">Danh mục đã chọn <button type="button" className="chip-x" aria-label="Xóa lọc danh mục" title="Xóa lọc danh mục" onClick={() => onCategoryChange("")}><FiX /></button></span>
+            <span className="chip">
+              Danh mục đã chọn
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Bỏ bộ lọc danh mục"
+                title="Bỏ bộ lọc danh mục"
+                onClick={() => onCategoryChange("")}
+              >
+                <FiX />
+              </button>
+            </span>
           )}
           {statusFilter && (
-            <span className="chip">{STATUS_LABELS[statusFilter] || statusFilter}<button type="button" className="chip-x" aria-label="Xóa lọc trạng thái" title="Xóa lọc trạng thái" onClick={() => onStatusFilterChange("")}><FiX /></button></span>
+            <span className="chip">
+              {STATUS_LABELS[statusFilter] || statusFilter}
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Bỏ bộ lọc trạng thái"
+                title="Bỏ bộ lọc trạng thái"
+                onClick={() => onStatusFilterChange("")}
+              >
+                <FiX />
+              </button>
+            </span>
           )}
           {forYouMetadataFilter !== "all" && (
-            <span className="chip">Thiếu khẩu vị/dị ứng<button type="button" className="chip-x" aria-label="Xóa lọc khẩu vị" title="Xóa lọc khẩu vị" onClick={() => onForYouMetadataFilterChange?.("all")}><FiX /></button></span>
+            <span className="chip">
+              Thiếu khẩu vị hoặc dị ứng
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Bỏ bộ lọc khẩu vị và dị ứng"
+                title="Bỏ bộ lọc khẩu vị và dị ứng"
+                onClick={() => onForYouMetadataFilterChange?.("all")}
+              >
+                <FiX />
+              </button>
+            </span>
           )}
           {inventoryFilter !== "all" && (
-            <span className="chip">{INVENTORY_FILTER_LABELS[inventoryFilter] || inventoryFilter}<button type="button" className="chip-x" aria-label="Xóa lọc tồn kho" title="Xóa lọc tồn kho" onClick={() => onInventoryFilterChange?.("all")}><FiX /></button></span>
+            <span className="chip">
+              {INVENTORY_FILTER_LABELS[inventoryFilter] || inventoryFilter}
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Bỏ bộ lọc tồn kho"
+                title="Bỏ bộ lọc tồn kho"
+                onClick={() => onInventoryFilterChange?.("all")}
+              >
+                <FiX />
+              </button>
+            </span>
           )}
           {(minPrice || maxPrice) && (
             <span className="chip">
-              Giá: {formatCurrency(minPrice) || "0"} - {formatCurrency(maxPrice) || "∞"}
-              <button type="button" className="chip-x" aria-label="Xóa lọc giá" title="Xóa lọc giá" onClick={() => {
-                setPriceRange({ min: "", max: "" });
-                onPriceRangeChange({ minPrice: "", maxPrice: "" });
-              }}><FiX /></button>
+              Giá: {formatCurrency(minPrice) || "0đ"} - {formatCurrency(maxPrice) || "không giới hạn"}
+              <button
+                type="button"
+                className="chip-x"
+                aria-label="Bỏ bộ lọc giá"
+                title="Bỏ bộ lọc giá"
+                onClick={() => {
+                  setPriceRange({ min: "", max: "" });
+                  onPriceRangeChange({ minPrice: "", maxPrice: "" });
+                }}
+              >
+                <FiX />
+              </button>
             </span>
           )}
-          <button type="button" className="clear-all-text" onClick={clearFilters}>Xóa bộ lọc</button>
+          <button type="button" className="clear-all-text" onClick={clearFilters}>
+            Xóa tất cả bộ lọc
+          </button>
         </div>
       )}
     </section>
