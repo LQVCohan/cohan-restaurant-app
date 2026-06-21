@@ -1,6 +1,7 @@
 import { gql, useMutation } from "@apollo/client";
 import { useCallback, useState } from "react";
 import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+import { emitStaffDataChanged } from "@/utils/staffSyncEvents";
 import { useAvatarUploadLocal } from "./useAvatarUploadLocal";
 
 const operationSource = [
@@ -68,6 +69,14 @@ const useStaffAvatar = () => {
       if (!updated?.id) {
         throw new Error("Không thể cập nhật ảnh đại diện nhân viên.");
       }
+
+      emitStaffDataChanged({
+        action: updated.avatarUrl ? "avatar-updated" : "avatar-removed",
+        employeeId: updated.id,
+        restaurantId: updated.restaurantForStaff || "",
+        avatarUrl: updated.avatarUrl || "",
+      });
+
       return updated;
     },
     [mutateAvatar],
