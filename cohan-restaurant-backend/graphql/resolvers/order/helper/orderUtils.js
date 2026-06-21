@@ -59,8 +59,9 @@ export function normalizeItem(input) {
 
   const servingVariant = input.servingVariant || null;
   const basePrice = input.basePrice != null ? Number(input.basePrice) : null;
+  const usesServerHydration = Boolean(input.cartId || input.cartItemId);
 
-  if (!servingVariant && basePrice == null) {
+  if (!servingVariant && basePrice == null && !usesServerHydration) {
     throw new Error("Item must have basePrice or servingVariant");
   }
 
