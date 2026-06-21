@@ -2,44 +2,114 @@ export function getGraphqlUrl() {
   return import.meta.env.VITE_API_URL || "http://localhost:4000/graphql";
 }
 
-export function toApiUrl(pathname: string) {
-  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  const graphqlUrl = getGraphqlUrl();
+const stripGraphqlSuffix = (value: string) =>
+  String(value || "").replace(/\/graphql\/?$/, "").replace(/\/$/, "");
 
-  if (graphqlUrl.startsWith("/")) {
-    return normalizedPath;
+export function getApiBaseUrl() {
+  const gqlUrl = getGraphqlUrl();
+  const baseWithoutGraphql = stripGraphqlSuffix(gqlUrl);
+
+  if (baseWithoutGraphql.startsWith("/")) {
+    if (baseWithoutGraphql === "/api" || baseWithoutGraphql.endsWith("/api")) {
+      return baseWithoutGraphql;
+    }
+    return `${baseWithoutGraphql}/api`.replace(/\/+/g, "/");
   }
 
-  const baseUrl = graphqlUrl.endsWith("/graphql")
-    ? graphqlUrl.slice(0, -"/graphql".length)
-    : graphqlUrl.replace(/\/$/, "");
+  try {
+    const parsed = new URL(baseWithoutGraphql);
+    const pathname = parsed.pathname.replace(/\/$/, "");
+    parsed.pathname =
+      pathname === "/api" || pathname.endsWith("/api")
+        ? pathname
+        : `${pathname}/api`.replace(/\/+/g, "/");
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return `${baseWithoutGraphql}/api`.replace(/\/+/g, "/");
+  }
+}
 
-  return `${baseUrl}${normalizedPath}`;
+export function toApiUrl(pathname: string) {
+  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const pathWithoutDuplicateApiPrefix =
+    normalizedPath === "/api"
+      ? ""
+      : normalizedPath.startsWith("/api/")
+        ? normalizedPath.slice(4)
+        : normalizedPath;
+
+  return `${getApiBaseUrl()}${pathWithoutDuplicateApiPrefix}`;
 }
 
 export function toApiAuthUrl(pathname: "/refresh" | "/logout") {
-  const gqlUrl = getGraphqlUrl();
-  if (gqlUrl.startsWith("/")) return `/api/auth${pathname}`;
-  const base = gqlUrl.endsWith("/graphql") ? gqlUrl.slice(0, -"/graphql".length) : gqlUrl;
-  return `${base}/api/auth${pathname}`;
+  return toApiUrl(`/auth${pathname}`);
 }
 
 export const getRefreshUrl = () => toApiAuthUrl("/refresh");
 export const getLogoutUrl = () => toApiAuthUrl("/logout");
 
+const normalizeLocalUploadPath = (pathname: string) => {
+  if (pathname.startsWith("/api/uploads/")) return pathname;
+  if (pathname === "/uploads") return "/api/uploads";
+  if (pathname.startsWith("/uploads/")) return `/api${pathname}`;
+  return pathname;
+};
+
 export function toApiAssetUrl(path: string | null | undefined) {
   if (!path) return "";
-  if (/^(https?:)?\/\//.test(path) || path.startsWith("data:image") || path.startsWith("blob:")) {
-    return path;
+
+  const value = String(path).trim();
+  if (!value) return "";
+
+  // Local image URIs are resolved by LocalImageView/useLocalImageUrl and must
+  // never be rewritten as an HTTP URL.
+  if (
+    value.startsWith("local-image://") ||
+    value.startsWith("data:image") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
   }
 
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const gqlUrl = getGraphqlUrl();
+  const apiBase = getApiBaseUrl();
+
+  if (/^https?:\/\//.test(value)) {
+    try {
+      const assetUrl = new URL(value);
+      const graphqlOrigin = gqlUrl.startsWith("/") ? null : new URL(gqlUrl).origin;
+
+      // The local Fastify upload plugin is mounted at /api, while historical
+      // upload responses were emitted as /uploads/*. Repair those URLs only
+      // when they point to the same API origin; external/S3 URLs stay intact.
+      if (graphqlOrigin && assetUrl.origin === graphqlOrigin) {
+        assetUrl.pathname = normalizeLocalUploadPath(assetUrl.pathname);
+      }
+      return assetUrl.toString();
+    } catch {
+      return value;
+    }
+  }
+
+  if (value.startsWith("//")) return value;
+
+  // Windows-style paths can be returned by local upload adapters. Convert
+  // them before joining with the API origin so browsers receive a valid URL.
+  const safePath = value.replace(/\\/g, "/");
+  const normalizedPath = normalizeLocalUploadPath(
+    safePath.startsWith("/") ? safePath : `/${safePath}`,
+  );
+
   if (gqlUrl.startsWith("/")) return normalizedPath;
 
-  const base = gqlUrl.endsWith("/graphql")
-    ? gqlUrl.slice(0, -"/graphql".length)
-    : gqlUrl.replace(/\/$/, "");
-
-  return `${base}${normalizedPath}`;
+  try {
+    const parsedApiBase = new URL(apiBase);
+    // Assets outside /uploads should resolve from the API origin, not from the
+    // /api route prefix.
+    return `${parsedApiBase.origin}${normalizedPath}`;
+  } catch {
+    return normalizedPath;
+  }
 }
