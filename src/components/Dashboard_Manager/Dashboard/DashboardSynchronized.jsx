@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { AuthContext } from "@/context/AuthContext";
 import {
   DASHBOARD_RESTAURANT_CHANGED_EVENT,
@@ -12,6 +19,8 @@ const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
 
 const DashboardSynchronized = () => {
+  const shellRef = useRef(null);
+  const [portalTarget, setPortalTarget] = useState(null);
   const { restaurants = [] } = useContext(AuthContext) || {};
   const fallbackRestaurantId = useMemo(
     () =>
@@ -47,6 +56,21 @@ const DashboardSynchronized = () => {
       );
   }, [fallbackRestaurantId]);
 
+  useEffect(() => {
+    const sideStack = shellRef.current?.querySelector(".dashboard-side-stack");
+    if (!sideStack) return undefined;
+
+    const mountNode = document.createElement("div");
+    mountNode.className = "dashboard-staff-roster-portal-slot";
+    sideStack.prepend(mountNode);
+    setPortalTarget(mountNode);
+
+    return () => {
+      setPortalTarget(null);
+      mountNode.remove();
+    };
+  }, []);
+
   const openStaffPage = () => {
     window.dispatchEvent(
       new CustomEvent("manager:navigate", {
@@ -62,19 +86,17 @@ const DashboardSynchronized = () => {
   };
 
   return (
-    <div className="dashboard-synchronized-shell">
+    <div ref={shellRef} className="dashboard-synchronized-shell">
       <Dashboard />
-      <section
-        className="dashboard-synchronized-staff"
-        aria-label="Nhân sự đồng bộ từ trang quản lý nhân viên"
-      >
-        <div className="manager-dashboard manager-dashboard--staff-sync">
-          <DashboardStaffRoster
-            restaurantId={restaurantId}
-            onOpenStaff={openStaffPage}
-          />
-        </div>
-      </section>
+      {portalTarget
+        ? createPortal(
+            <DashboardStaffRoster
+              restaurantId={restaurantId}
+              onOpenStaff={openStaffPage}
+            />,
+            portalTarget,
+          )
+        : null}
     </div>
   );
 };
