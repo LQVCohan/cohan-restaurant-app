@@ -29,7 +29,21 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "e_wallet", label: "Ví điện tử" },
 ];
 
-const toArray = (value) => (Array.isArray(value) ? value : []);
+const toArray = (value) => {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+
+  return [...new Set(source.map((item) => String(item || "").trim()).filter(Boolean))];
+};
+
+const getCategoryId = (category) => String(category?.id || category?._id || "").trim();
+const getCategoryName = (category) => String(category?.name || "").trim();
+const getCouponCategoryIds = (coupon) => toArray(coupon?.categoryIds ?? coupon?.constraints?.categoryIds);
+const getCouponCategoryNames = (coupon) => toArray(coupon?.categories ?? coupon?.constraints?.categories);
+const normalizeRankValue = (value) => String(value || "").trim().toLowerCase();
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -79,7 +93,11 @@ const getCouponPreview = (formData) => {
   };
 };
 
-const buildInitialFormData = (coupon) => ({
+const buildInitialFormData = (coupon) => {
+  const categoryIds = getCouponCategoryIds(coupon);
+  const categories = getCouponCategoryNames(coupon);
+
+  return ({
   name: coupon?.name || "",
   code: coupon?.code || "",
   category: coupon?.category || "",
@@ -105,23 +123,107 @@ const buildInitialFormData = (coupon) => ({
   orderTypes: toArray(coupon?.orderTypes),
   paymentMethods: toArray(coupon?.paymentMethods),
   firstOrderOnly: Boolean(coupon?.firstOrderOnly),
+  customerRanks: toArray(coupon?.customerRanks ?? coupon?.constraints?.customerRanks).map(normalizeRankValue),
+  categoryScope: categoryIds.length || categories.length ? "selected" : "all",
+  categoryIds,
+  categories,
 });
+};
 
-const CouponModal = ({ coupon, onSave, onClose }) => {
+const CouponModal = ({ coupon, onSave, onClose, categories = [], restaurantId = "", customerRankOptions = [] }) => {
   const [formData, setFormData] = useState(buildInitialFormData(coupon));
   const [errors, setErrors] = useState({});
   const discountPreview = getCouponPreview(formData);
+  const categoryOptions = Array.isArray(categories) ? categories : [];
+  const selectedCategoryIds = toArray(formData.categoryIds);
+  const missingCategoryIds = selectedCategoryIds.filter(
+    (id) => !categoryOptions.some((category) => getCategoryId(category) === id),
+  );
+  const rankOptions = Array.isArray(customerRankOptions)
+    ? customerRankOptions
+      .map((rank) => ({ ...rank, value: normalizeRankValue(rank?.value || rank?.name || rank?.label) }))
+      .filter((rank) => rank.value)
+    : [];
+  const selectedCustomerRanks = toArray(formData.customerRanks).map(normalizeRankValue);
+  const legacyCustomerRanks = selectedCustomerRanks.filter(
+    (rank) => !rankOptions.some((option) => option.value === rank),
+  );
 
   useEffect(() => {
     setFormData(buildInitialFormData(coupon));
     setErrors({});
   }, [coupon]);
 
+  useEffect(() => {
+    if (formData.categoryScope !== "selected") return;
+    const currentIds = toArray(formData.categoryIds);
+    const currentNames = toArray(formData.categories).map((name) => name.toLowerCase());
+    if (currentIds.length || !currentNames.length || !categoryOptions.length) return;
+
+    const restoredCategories = categoryOptions.filter((category) => currentNames.includes(getCategoryName(category).toLowerCase()));
+    if (!restoredCategories.length) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      categoryIds: restoredCategories.map(getCategoryId).filter(Boolean),
+      categories: restoredCategories.map(getCategoryName).filter(Boolean),
+    }));
+  }, [categoryOptions, formData.categoryIds, formData.categories, formData.categoryScope]);
+
   const handleInputChange = (event) => {
     const { checked, name, type, value } = event.target;
     const nextValue = type === "checkbox" ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handleCategoryScopeChange = (event) => {
+    const nextScope = event.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      categoryScope: nextScope,
+      categoryIds: nextScope === "all" ? [] : prev.categoryIds,
+      categories: nextScope === "all" ? [] : prev.categories,
+    }));
+    if (errors.categoryIds) setErrors((prev) => ({ ...prev, categoryIds: "" }));
+  };
+
+  const handleCategoryCheckboxChange = (category) => (event) => {
+    const { checked } = event.target;
+    const categoryId = getCategoryId(category);
+    const categoryName = getCategoryName(category);
+    if (!categoryId) return;
+
+    setFormData((prev) => {
+      const currentIds = toArray(prev.categoryIds);
+      const currentNames = toArray(prev.categories);
+      return {
+        ...prev,
+        categoryIds: checked
+          ? [...new Set([...currentIds, categoryId])]
+          : currentIds.filter((id) => id !== categoryId),
+        categories: checked && categoryName
+          ? [...new Set([...currentNames, categoryName])]
+          : currentNames.filter((name) => name !== categoryName),
+      };
+    });
+    if (errors.categoryIds) setErrors((prev) => ({ ...prev, categoryIds: "" }));
+  };
+
+  const handleCustomerRankCheckboxChange = (rankValue) => (event) => {
+    const { checked } = event.target;
+    const value = normalizeRankValue(rankValue);
+    if (!value) return;
+
+    setFormData((prev) => {
+      const currentValues = toArray(prev.customerRanks).map(normalizeRankValue);
+      return {
+        ...prev,
+        customerRanks: checked
+          ? [...new Set([...currentValues, value])]
+          : currentValues.filter((rank) => rank !== value),
+      };
+    });
   };
 
   const handleMultiCheckboxChange = (fieldName, optionValue) => (event) => {
@@ -145,6 +247,7 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
     if (!formData.discountType) nextErrors.discountType = "Chọn loại";
     if (!formData.discountValue) nextErrors.discountValue = "Nhập giá trị";
     if (!formData.startDate) nextErrors.startDate = "Chọn ngày";
+    if (formData.categoryScope === "selected" && toArray(formData.categoryIds).length === 0) nextErrors.categoryIds = "Vui lòng chọn ít nhất một danh mục áp dụng.";
     if (!formData.endDate) nextErrors.endDate = "Chọn ngày";
     if (
       formData.startDate &&
@@ -179,6 +282,11 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
       status = "scheduled";
     }
 
+    const selectedIds = formData.categoryScope === "selected" ? toArray(formData.categoryIds) : [];
+    const selectedNames = formData.categoryScope === "selected"
+      ? selectedIds.map((id) => getCategoryName(categoryOptions.find((category) => getCategoryId(category) === id))).filter(Boolean)
+      : [];
+
     const formattedData = {
       ...formData,
       discountValue: parseFloat(formData.discountValue),
@@ -203,6 +311,10 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
       orderTypes: toArray(formData.orderTypes),
       paymentMethods: toArray(formData.paymentMethods),
       firstOrderOnly: Boolean(formData.firstOrderOnly),
+      customerRanks: toArray(formData.customerRanks).map(normalizeRankValue),
+      categoryScope: formData.categoryScope,
+      categoryIds: selectedIds,
+      categories: selectedNames,
     };
 
     onSave(formattedData);
@@ -418,6 +530,85 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
               </div>
             </div>
 
+
+
+            <div className="form-section">
+              <h3 className="section-title">
+                <ClipboardList size={18} /> Phạm vi danh mục áp dụng
+              </h3>
+
+              <div className="coupon-category-scope-panel">
+                <div className="category-scope-options" role="radiogroup" aria-label="Phạm vi danh mục áp dụng">
+                  <label className={`scope-option ${formData.categoryScope === "all" ? "active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="categoryScope"
+                      value="all"
+                      checked={formData.categoryScope === "all"}
+                      onChange={handleCategoryScopeChange}
+                    />
+                    <span>
+                      <strong>Toàn bộ món</strong>
+                      <small>Coupon áp dụng trên toàn bộ subtotal hợp lệ của đơn.</small>
+                    </span>
+                  </label>
+                  <label className={`scope-option ${formData.categoryScope === "selected" ? "active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="categoryScope"
+                      value="selected"
+                      checked={formData.categoryScope === "selected"}
+                      onChange={handleCategoryScopeChange}
+                    />
+                    <span>
+                      <strong>Chỉ danh mục được chọn</strong>
+                      <small>Coupon chỉ tính giảm trên món thuộc các danh mục này.</small>
+                    </span>
+                  </label>
+                </div>
+
+                {formData.categoryScope === "selected" && (
+                  <div className="category-picker-box">
+                    {categoryOptions.length > 0 ? (
+                      <div className="category-checkbox-list">
+                        {categoryOptions.map((category) => {
+                          const categoryId = getCategoryId(category);
+                          const categoryName = getCategoryName(category);
+                          return (
+                            <label className="category-checkbox-row" key={categoryId || categoryName}>
+                              <input
+                                type="checkbox"
+                                checked={selectedCategoryIds.includes(categoryId)}
+                                onChange={handleCategoryCheckboxChange(category)}
+                                disabled={!categoryId}
+                              />
+                              <span>
+                                <strong>{categoryName || "Danh mục chưa đặt tên"}</strong>
+                                {Number(category.menuItemCount || 0) > 0 && <small>{category.menuItemCount} món</small>}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="category-empty-note">
+                        Chưa tải được danh mục cho nhà hàng hiện tại{restaurantId ? "" : " vì chưa chọn nhà hàng"}.
+                      </p>
+                    )}
+                    {missingCategoryIds.length > 0 && (
+                      <p className="category-warning-note">
+                        Một số danh mục cũ không còn tồn tại: {missingCategoryIds.join(", ")}.
+                      </p>
+                    )}
+                    {errors.categoryIds && <span className="err-msg">{errors.categoryIds}</span>}
+                    <p className="category-preview-note">
+                      Ưu đãi chỉ áp dụng trên tổng giá trị các món thuộc danh mục đã chọn.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="form-section">
               <h3 className="section-title">
                 <ClipboardList size={18} /> Điều kiện đủ điều kiện
@@ -479,6 +670,63 @@ const CouponModal = ({ coupon, onSave, onClose }) => {
                 </label>
               </div>
             </div>
+
+
+            <div className="form-section">
+              <h3 className="section-title">
+                <ClipboardList size={18} /> Hạng khách hàng áp dụng
+              </h3>
+
+              <div className="customer-rank-scope-panel">
+                <p className="rank-helper-note">
+                  Không chọn hạng nào nghĩa là coupon áp dụng cho tất cả khách hàng.
+                </p>
+
+                {rankOptions.length > 0 ? (
+                  <div className="rank-checkbox-list">
+                    {rankOptions.map((rank) => (
+                      <label className="rank-checkbox-row" key={rank.value}>
+                        <input
+                          type="checkbox"
+                          checked={selectedCustomerRanks.includes(rank.value)}
+                          onChange={handleCustomerRankCheckboxChange(rank.value)}
+                        />
+                        <span>
+                          <strong>{rank.label || rank.value}</strong>
+                          <small>
+                            {Number.isFinite(Number(rank.minPoints)) ? `Từ ${rank.minPoints} điểm` : "Không có ngưỡng điểm"}
+                            {rank.benefits ? ` · ${rank.benefits}` : ""}
+                          </small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rank-empty-note">
+                    Chưa tải được hạng khách hàng cho nhà hàng hiện tại{restaurantId ? "" : " vì chưa chọn nhà hàng"}.
+                  </p>
+                )}
+
+                {legacyCustomerRanks.length > 0 && (
+                  <div className="legacy-rank-box">
+                    <p>Hạng cũ không còn trong cấu hình</p>
+                    <div className="legacy-rank-list">
+                      {legacyCustomerRanks.map((rank) => (
+                        <label className="rank-checkbox-row legacy" key={rank}>
+                          <input
+                            type="checkbox"
+                            checked={selectedCustomerRanks.includes(rank)}
+                            onChange={handleCustomerRankCheckboxChange(rank)}
+                          />
+                          <span><strong>{rank}</strong></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="form-section">
               <h3 className="section-title">
                 <ClipboardList size={18} /> Cấu hình dùng chồng

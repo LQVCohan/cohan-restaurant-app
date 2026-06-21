@@ -649,6 +649,30 @@ input CheckoutPricingInput {
   voucherCode: String
 }
 
+
+input CheckoutCouponEligibilityInput {
+  restaurantId: ID!
+  couponCodes: [String!]!
+  items: [CheckoutCartItemInput!]!
+  orderType: String
+  paymentMethod: String
+}
+
+type CheckoutCouponEligibility {
+  couponCode: String!
+  eligible: Boolean!
+  reasonCode: String
+  reason: String
+  subtotal: Float!
+  eligibleSubtotal: Float!
+  estimatedDiscount: Float!
+}
+
+input CheckoutCouponSelectionInput {
+  restaurantId: ID!
+  couponCode: String!
+}
+
 input CreateCheckoutOrdersInput {
   orderType: OrderType!
   items: [CheckoutCartItemInput!]!
@@ -663,6 +687,7 @@ input CreateCheckoutOrdersInput {
   clientMeta: JSON
   warehouseId: ID
   promotionIds: [ID!]
+  couponSelections: [CheckoutCouponSelectionInput!]
 }
 
 type CheckoutSession {
@@ -780,4 +805,9 @@ input OrderFilterInput {
 type OrderList {
   items: [Order!]!
   totalCount: Int!
+}
+
+
+extend type Query {
+  checkoutCouponEligibilities(input: CheckoutCouponEligibilityInput!): [CheckoutCouponEligibility!]!
 }

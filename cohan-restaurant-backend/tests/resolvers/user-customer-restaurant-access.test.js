@@ -3,6 +3,9 @@ import { GraphQLError } from "graphql";
 const requireRoleMock = vi.hoisted(() => vi.fn());
 const requireRestaurantAccessMock = vi.hoisted(() => vi.fn());
 const requirePermissionMock = vi.hoisted(() => vi.fn());
+const customerRankSettingServiceMocks = vi.hoisted(() => ({
+  getEffectiveCustomerRankSetting: vi.fn(),
+}));
 
 const modelMocks = vi.hoisted(() => ({
   User: { findById: vi.fn() },
@@ -29,6 +32,7 @@ vi.mock("../../src/services/auth/authorization.service.js", () => ({
 vi.mock("../../src/constants/permissions.js", () => ({
   PERMISSIONS: { CUSTOMER_READ: "customer.read" },
 }));
+vi.mock("../../src/services/customerRankSetting.service.js", () => customerRankSettingServiceMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
@@ -113,7 +117,7 @@ describe("user/customer restaurant access guards", () => {
 
   it("customerRankSettings allowed returns default ranks when no doc", async () => {
     requireRestaurantAccessMock.mockResolvedValue(undefined);
-    modelMocks.CustomerRankSetting.findOne.mockReturnValue({ lean: async () => null });
+    customerRankSettingServiceMocks.getEffectiveCustomerRankSetting.mockResolvedValue({ restaurantId: "valid-r1", ranks: [{ name: "Mới", minPoints: 0, benefits: "" }, { name: "Thân thiết", minPoints: 5, benefits: "Ưu đãi dịp đặc biệt" }, { name: "VIP", minPoints: 20, benefits: "Ưu tiên đặt bàn" }], isDefault: true });
     const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
 
     const result = await UserQuery.customerRankSettings(

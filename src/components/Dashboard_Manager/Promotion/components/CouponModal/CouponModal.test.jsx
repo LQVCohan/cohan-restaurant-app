@@ -51,4 +51,23 @@ describe("Coupon modal stacking config", () => {
       "firstOrderOnly: Boolean(formData.firstOrderOnly)",
     );
   });
+
+  it("exposes category scope controls for coupon item categories", () => {
+    expect(source).toContain("Phạm vi danh mục áp dụng");
+    expect(source).toContain('name="categoryScope"');
+    expect(source).toContain("Chỉ danh mục được chọn");
+    expect(source).toContain("Vui lòng chọn ít nhất một danh mục áp dụng.");
+    expect(source).toContain("categoryIds: selectedIds");
+    expect(source).toContain("categories: selectedNames");
+  });
+
+
+  it("keeps customer rank constraints and exposes rank controls", () => {
+    expect(source).toContain("Hạng khách hàng áp dụng");
+    expect(source).toContain("customerRanks: toArray(coupon?.customerRanks ?? coupon?.constraints?.customerRanks).map(normalizeRankValue)");
+    expect(source).toContain("customerRanks: toArray(formData.customerRanks).map(normalizeRankValue)");
+    expect(source).toContain("Hạng cũ không còn trong cấu hình");
+    expect(source).toContain("Không chọn hạng nào nghĩa là coupon áp dụng cho tất cả khách hàng.");
+  });
+
 });

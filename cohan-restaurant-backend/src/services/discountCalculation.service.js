@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import {
   Coupon,
+  Category,
   CouponRedemption,
   Invoice,
   Order,
@@ -9,6 +10,18 @@ import {
 
 const toNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const roundVnd = (v) => Math.max(0, Math.round(toNum(v, 0)));
+
+export class CouponEligibilityError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = "CouponEligibilityError";
+    this.code = code;
+  }
+}
+
+function throwCouponEligibilityError(code, message) {
+  throw new CouponEligibilityError(code, message);
+}
 function normalizeScope(value) {
   return String(value || "")
     .trim()
@@ -345,6 +358,122 @@ function getLineSubtotal(item) {
   return roundVnd(item?.lineSubtotal);
 }
 
+
+function normalizeCategoryConstraintIds(value) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  return [...new Set(source.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
+function normalizeCategoryConstraintNames(value) {
+  return normalizeConstraintArray(value);
+}
+
+function getItemCategoryCandidateIds(item = {}) {
+  return [
+    item.categoryId,
+    item.category?.id,
+    item.category?._id,
+    item.menuItem?.categoryId,
+    item.menuItem?.category?.id,
+    item.menuItem?.category?._id,
+    item.categorySnapshot?.id,
+    item.categorySnapshot?._id,
+    item.snapshot?.categoryId,
+    item.snapshot?.category?.id,
+    item.snapshot?.category?._id,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
+function normalizeCategoryName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getItemCategoryCandidateNames(item = {}, categoryNameById = new Map()) {
+  const names = [];
+  const categoryValue = item.category;
+  if (typeof categoryValue === "string") names.push(categoryValue);
+  else if (categoryValue?.name) names.push(categoryValue.name);
+
+  names.push(
+    item.categoryName,
+    item.menuItem?.categoryName,
+    item.menuItem?.category?.name,
+    item.categorySnapshot?.name,
+    item.snapshot?.categoryName,
+    item.snapshot?.category?.name,
+  );
+
+  for (const id of getItemCategoryCandidateIds(item)) {
+    if (categoryNameById.has(id)) names.push(categoryNameById.get(id));
+  }
+
+  return [...new Set(names.map(normalizeCategoryName).filter(Boolean))];
+}
+
+async function resolveCategoryNamesByIds({ categoryIds = [], restaurantId, session }) {
+  const ids = [...new Set(categoryIds.filter((id) => mongoose.isValidObjectId(id)))];
+  if (!ids.length) return new Map();
+
+  const restaurantObjectId = mongoose.isValidObjectId(restaurantId)
+    ? new mongoose.Types.ObjectId(restaurantId)
+    : restaurantId;
+
+  const docs = await Category.find({
+    restaurantId: restaurantObjectId,
+    _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
+  }).session(session);
+
+  return new Map(
+    (docs || []).map((doc) => [String(doc._id || doc.id), normalizeCategoryName(doc.name)]),
+  );
+}
+
+function itemMatchesCouponCategory({ item, categoryIds, categoryNames, categoryNameById }) {
+  const itemCategoryIds = getItemCategoryCandidateIds(item);
+  const itemCategoryNames = getItemCategoryCandidateNames(item, categoryNameById);
+
+  return (
+    itemCategoryIds.some((id) => categoryIds.includes(id)) ||
+    itemCategoryNames.some((name) => categoryNames.includes(name))
+  );
+}
+
+async function calculateCouponEligibleSubtotal({ coupon, items = [], restaurantId, session }) {
+  const constraints = coupon?.constraints || {};
+  const categoryIds = normalizeCategoryConstraintIds(constraints.categoryIds);
+  const categoryNames = normalizeCategoryConstraintNames(constraints.categories);
+  const hasConstraints = categoryIds.length > 0 || categoryNames.length > 0;
+
+  if (!hasConstraints) {
+    return { hasConstraints: false, eligibleSubtotal: 0 };
+  }
+
+  const itemCategoryIds = items.flatMap((item) => getItemCategoryCandidateIds(item));
+  const categoryNameById = await resolveCategoryNamesByIds({
+    categoryIds: itemCategoryIds,
+    restaurantId,
+    session,
+  });
+
+  const eligibleSubtotal = roundVnd(
+    items.reduce((sum, item) => {
+      const status = String(item?.status || "");
+      if (status === "cancelled" || status === "returned") return sum;
+      if (!itemMatchesCouponCategory({ item, categoryIds, categoryNames, categoryNameById })) return sum;
+      return sum + getLineSubtotal(item);
+    }, 0),
+  );
+
+  return { hasConstraints: true, eligibleSubtotal };
+}
+
 function getUnitPriceFromLine(item) {
   const quantity = getLineQuantity(item);
   const lineSubtotal = getLineSubtotal(item);
@@ -397,11 +526,15 @@ export function matchesPaymentMethod(constraints = {}, paymentMethod) {
   );
 }
 
-export function matchesCustomerRank(constraints = {}, customerRank) {
-  return matchesConstraintValue(
-    normalizeConstraintArray(constraints.customerRanks),
-    customerRank,
+export function matchesCustomerRank(constraints = {}, customerRanks = []) {
+  const allowed = normalizeConstraintArray(constraints.customerRanks);
+  if (!allowed.length) return true;
+
+  const actual = normalizeConstraintArray(
+    Array.isArray(customerRanks) ? customerRanks : [customerRanks],
   );
+
+  return actual.some((rank) => allowed.includes(rank));
 }
 
 export async function checkFirstOrderOnly({
@@ -415,7 +548,8 @@ export async function checkFirstOrderOnly({
     : null;
 
   if (!uid) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "CUSTOMER_LOGIN_REQUIRED",
       "Invalid coupon: first-order eligibility requires an authenticated customer",
     );
   }
@@ -436,7 +570,8 @@ export async function checkFirstOrderOnly({
   }).session(session);
 
   if (paidOrderCount > 0) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "FIRST_ORDER_ONLY",
       "Invalid coupon: only valid for the customer's first order",
     );
   }
@@ -448,7 +583,8 @@ export async function checkFirstOrderOnly({
   }).session(session);
 
   if (paidInvoiceCount > 0) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "FIRST_ORDER_ONLY",
       "Invalid coupon: only valid for the customer's first order",
     );
   }
@@ -460,7 +596,8 @@ export async function checkFirstOrderOnly({
   }).session(session);
 
   if (couponRedemptionCount > 0) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "FIRST_ORDER_ONLY",
       "Invalid coupon: only valid for the customer's first order",
     );
   }
@@ -474,28 +611,31 @@ export async function assertCouponEligibility({
   orderType,
   paymentMethod,
   customerRank,
+  customerRanks,
   now = new Date(),
   session,
 }) {
   if (!coupon || !inWindow(coupon, now)) {
-    throw new Error("Invalid coupon: not found or not active");
+    throwCouponEligibilityError("COUPON_NOT_ACTIVE", "Invalid coupon: not found or not active");
   }
 
   if (subtotal < Math.max(0, toNum(coupon.minOrderValue))) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "MIN_ORDER_NOT_MET",
       `Invalid coupon: minimum order value is ${Math.max(0, toNum(coupon.minOrderValue))}`,
     );
   }
 
   const maxUsage = toNum(coupon.maxUsage);
   if (maxUsage > 0 && toNum(coupon.used) >= maxUsage) {
-    throw new Error("Invalid coupon: usage limit reached");
+    throwCouponEligibilityError("USAGE_LIMIT_REACHED", "Invalid coupon: usage limit reached");
   }
 
   const constraints = coupon.constraints || {};
   const orderTypes = normalizeConstraintArray(constraints.orderTypes);
   if (orderTypes.length && !matchesOrderType(constraints, orderType)) {
-    throw new Error(
+    throwCouponEligibilityError(
+      orderType ? "ORDER_TYPE_NOT_ELIGIBLE" : "ORDER_TYPE_REQUIRED",
       orderType
         ? "Invalid coupon: order type is not eligible"
         : "Invalid coupon: order type is required for this coupon",
@@ -507,17 +647,24 @@ export async function assertCouponEligibility({
     paymentMethods.length &&
     !matchesPaymentMethod(constraints, paymentMethod)
   ) {
-    throw new Error(
+    throwCouponEligibilityError(
+      paymentMethod ? "PAYMENT_METHOD_NOT_ELIGIBLE" : "PAYMENT_METHOD_REQUIRED",
       paymentMethod
         ? "Invalid coupon: payment method is not eligible"
         : "Invalid coupon: payment method is required for this coupon",
     );
   }
 
-  const customerRanks = normalizeConstraintArray(constraints.customerRanks);
-  if (customerRanks.length && !matchesCustomerRank(constraints, customerRank)) {
-    throw new Error(
-      customerRank
+  const allowedCustomerRanks = normalizeConstraintArray(constraints.customerRanks);
+  const actualCustomerRanks = normalizeConstraintArray(
+    Array.isArray(customerRanks)
+      ? customerRanks
+      : [customerRanks ?? customerRank],
+  );
+  if (allowedCustomerRanks.length && !matchesCustomerRank(constraints, actualCustomerRanks)) {
+    throwCouponEligibilityError(
+      actualCustomerRanks.length ? "CUSTOMER_RANK_NOT_ELIGIBLE" : "CUSTOMER_RANK_REQUIRED",
+      actualCustomerRanks.length
         ? "Invalid coupon: customer rank is not eligible"
         : "Invalid coupon: customer rank is required for this coupon",
     );
@@ -530,7 +677,8 @@ export async function assertCouponEligibility({
   const perUserLimit = toNum(constraints.perUserLimit, 0);
   if (perUserLimit > 0) {
     if (!uid) {
-      throw new Error(
+      throwCouponEligibilityError(
+        "CUSTOMER_LOGIN_REQUIRED",
         "Invalid coupon: authenticated customer is required for per-user limit",
       );
     }
@@ -540,7 +688,7 @@ export async function assertCouponEligibility({
       userId: uid,
     }).session(session);
     if (userRedemptionCount >= perUserLimit) {
-      throw new Error("Invalid coupon: per-user usage limit reached");
+      throwCouponEligibilityError("PER_USER_LIMIT_REACHED", "Invalid coupon: per-user usage limit reached");
     }
   }
 
@@ -579,6 +727,7 @@ export async function calculateDiscountBreakdown({
   orderType,
   paymentMethod,
   customerRank,
+  customerRanks,
 }) {
   const subtotal = roundVnd(
     items.reduce(
@@ -764,6 +913,7 @@ export async function calculateDiscountBreakdown({
       orderType,
       paymentMethod,
       customerRank,
+      customerRanks,
       now,
       session,
     });
@@ -798,12 +948,28 @@ export async function calculateDiscountBreakdown({
     }
 
     if (shouldApplyVoucher) {
+      const categoryScope = await calculateCouponEligibleSubtotal({
+        coupon,
+        items,
+        restaurantId: rid,
+        session,
+      });
+      const couponEligibleSubtotal = categoryScope.hasConstraints
+        ? categoryScope.eligibleSubtotal
+        : subtotal;
+
+      if (categoryScope.hasConstraints && couponEligibleSubtotal <= 0) {
+        throwCouponEligibilityError("NO_ELIGIBLE_CATEGORY_ITEMS", "Invalid coupon: no eligible items for category constraints");
+      }
+
       voucherDiscount = calcDiscountAmount({
         discountType: coupon.discountType,
         discountValue: coupon.discountValue,
-        subtotal,
+        subtotal: couponEligibleSubtotal,
         maxDiscount: coupon.maxDiscount,
       });
+      coupon.couponEligibleSubtotal = couponEligibleSubtotal;
+      coupon.couponCategoryScoped = categoryScope.hasConstraints;
     } else {
       coupon = null;
       voucherDiscount = 0;
@@ -844,6 +1010,8 @@ export async function calculateDiscountBreakdown({
     appliedCoupons: coupon ? [String(coupon._id)] : [],
     voucherCode: code || undefined,
     couponId: coupon?._id,
+    couponEligibleSubtotal: coupon?.couponEligibleSubtotal,
+    couponCategoryScoped: Boolean(coupon?.couponCategoryScoped),
     discountReason: coupon ? `coupon:${coupon._id}` : undefined,
     tax,
     service,

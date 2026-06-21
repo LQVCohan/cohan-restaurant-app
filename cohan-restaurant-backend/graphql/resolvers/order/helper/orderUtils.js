@@ -25,15 +25,13 @@ function assertPositive(n, field) {
 
 function assertInteger(n, field) {
   const x = assertNumber(n, field);
-  // JS integer check
   if (!Number.isInteger(x)) {
     throw new Error(
-      `${field} must be an integer in standard unit. Conversion failed (expected grams as integer).`
+      `${field} must be an integer in standard unit. Conversion failed (expected grams as integer).`,
     );
   }
   return x;
 }
-
 
 function normalizePriority(value) {
   const key = String(value || "").toUpperCase();
@@ -49,25 +47,24 @@ function normalizeServingKey(raw) {
 export function normalizeItem(input) {
   if (!input) throw new Error("Invalid item");
 
-  // ✅ servingKey is REQUIRED (no servingVariantId anymore)
   const servingKey =
     normalizeServingKey(input.servingKey) ||
     normalizeServingKey(input.servingVariantKey);
 
   if (!servingKey) {
     throw new Error(
-      "servingKey is required. Conversion failed (missing servingKey for stable serving variant)."
+      "servingKey is required. Conversion failed (missing servingKey for stable serving variant).",
     );
   }
 
   const servingVariant = input.servingVariant || null;
   const basePrice = input.basePrice != null ? Number(input.basePrice) : null;
+  const usesServerHydration = Boolean(input.cartId || input.cartItemId);
 
-  if (!servingVariant && basePrice == null) {
+  if (!servingVariant && basePrice == null && !usesServerHydration) {
     throw new Error("Item must have basePrice or servingVariant");
   }
 
-  // servingVariant snapshot validation (nếu có)
   if (servingVariant) {
     const nameOk = typeof servingVariant.name === "string";
     const priceNum = Number(servingVariant.price);
@@ -82,51 +79,51 @@ export function normalizeItem(input) {
   }
 
   const mode = servingVariant?.mode ?? null;
-
-  // quantity / weightGrams rule
   let quantity = Number(input.quantity ?? 1);
   const weightGramsRaw = input.weightGrams;
 
   if (mode === "BY_WEIGHT") {
-    // ✅ must be integer grams
     const grams = assertInteger(weightGramsRaw, "weightGrams");
     if (!(grams > 0)) {
       throw new Error(
-        "weightGrams must be > 0. Conversion failed (expected integer grams)."
+        "weightGrams must be > 0. Conversion failed (expected integer grams).",
       );
     }
-
-    // quantity chỉ để UI/đếm line
     quantity = 1;
-
-    // set back normalized
     input.weightGrams = grams;
   } else {
-    // PORTION hoặc fallback basePrice
     if (!(Number.isFinite(quantity) && quantity > 0)) {
       throw new Error("quantity must be > 0");
     }
 
-    // weightGrams optional; nếu truyền thì cũng phải là integer grams để thống nhất chuẩn
     if (weightGramsRaw != null) {
       const grams = assertInteger(weightGramsRaw, "weightGrams");
       if (!(grams > 0)) {
         throw new Error(
-          "weightGrams must be > 0 when provided. Conversion failed (expected integer grams)."
+          "weightGrams must be > 0 when provided. Conversion failed (expected integer grams).",
         );
       }
       input.weightGrams = grams;
     }
   }
 
-  const modifiers = Array.isArray(input.modifiers)
-    ? input.modifiers.map((m) => ({
-        optionId: m.optionId,
-        optionName: m.optionName,
-        groupId: m.groupId,
-        price: Number(m.price || 0),
-      }))
-    : [];
+  const modifierSource = Array.isArray(input.selectedModifiers)
+    ? input.selectedModifiers
+    : Array.isArray(input.modifiers)
+      ? input.modifiers
+      : [];
+
+  const selectedModifiers = modifierSource.map((modifier) => ({
+    groupId: modifier.groupId,
+    optionId: modifier.optionId,
+  }));
+
+  const modifiers = modifierSource.map((modifier) => ({
+    optionId: modifier.optionId,
+    optionName: modifier.optionName,
+    groupId: modifier.groupId,
+    price: Number(modifier.price || 0),
+  }));
 
   return {
     dishId: input.dishId || input.id,
@@ -140,14 +137,9 @@ export function normalizeItem(input) {
       ? input.proofImages.filter(Boolean)
       : [],
 
-    // ✅ new stable key
     servingKey,
-
     basePrice,
-
-    // ❌ remove servingVariantId usage (keep field if your Order model still has it, but should be null)
     servingVariantId: null,
-
     servingVariant: servingVariant
       ? {
           name: servingVariant.name,
@@ -161,9 +153,10 @@ export function normalizeItem(input) {
       mode === "BY_WEIGHT"
         ? assertInteger(input.weightGrams, "weightGrams")
         : input.weightGrams != null
-        ? assertInteger(input.weightGrams, "weightGrams")
-        : null,
+          ? assertInteger(input.weightGrams, "weightGrams")
+          : null,
 
+    selectedModifiers,
     modifiers,
     note: input.note || null,
     priority: normalizePriority(input.priority),
@@ -176,8 +169,8 @@ export function computeTotals(items = []) {
 
   for (const item of items) {
     const modifiersPrice = (item.modifiers || []).reduce(
-      (s, m) => s + (m.price || 0),
-      0
+      (sum, modifier) => sum + (modifier.price || 0),
+      0,
     );
 
     const unitPrice = item.servingVariant?.price ?? item.basePrice ?? 0;
@@ -191,14 +184,14 @@ export function computeTotals(items = []) {
       const grams = assertInteger(item.weightGrams, "weightGrams");
       if (!(grams > 0)) {
         throw new Error(
-          `weightGrams missing/invalid for BY_WEIGHT item ${item.name}`
+          `weightGrams missing/invalid for BY_WEIGHT item ${item.name}`,
         );
       }
       const kg = grams / 1000;
       lineSubtotal = Math.round(unitPrice * kg + modifiersPrice);
     } else {
-      const q = assertPositive(item.quantity, "quantity");
-      lineSubtotal = Math.round(unitPrice * q + modifiersPrice);
+      const quantityValue = assertPositive(item.quantity, "quantity");
+      lineSubtotal = Math.round(unitPrice * quantityValue + modifiersPrice);
     }
 
     item.modifiersPrice = modifiersPrice;

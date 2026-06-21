@@ -35,6 +35,11 @@ import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import { hydrateCheckoutOrderItems } from "../../../src/services/orderItemHydration.service.js";
+import {
+  loadCustomerRankContext,
+  resolveCustomerRankAliasesForRestaurant,
+} from "../../../src/services/customerRankSetting.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { hasRole } from "../../../utils/authz.js";
 import { applyCartDerivedFields, computeCartTotalAmount } from "../../../models/cartDerivedFields.js";
@@ -325,14 +330,12 @@ async function syncCustomerMetricsByOrderUser(userId) {
     0,
     Math.floor((Number(totalSpending) || 0) / RANK_POINT_DIVISOR),
   );
-  const customerType =
-    loyaltyPoints >= 20 ? "VIP" : loyaltyPoints >= 5 ? "OFTEN" : "NEW";
-
+  // customerType is legacy/manual customer data. Current coupon rank
+  // eligibility is resolved from CustomerRankSetting per restaurant.
   await Customer.findByIdAndUpdate(uid, {
     totalSpending,
     totalOrders,
     loyaltyPoints,
-    customerType,
   });
 }
 
@@ -1143,6 +1146,24 @@ function buildDiscountPricing(pricing = {}) {
     voucherCode: normalizeVoucherCode(pricing?.voucherCode),
   };
 }
+
+
+function normalizeCheckoutCouponSelections(couponSelections = []) {
+  if (!Array.isArray(couponSelections)) return new Map();
+  const selections = new Map();
+
+  for (const selection of couponSelections) {
+    const restaurantId = toId(selection?.restaurantId);
+    const couponCode = normalizeVoucherCode(selection?.couponCode);
+    if (!restaurantId || !couponCode) continue;
+    selections.set(String(restaurantId), couponCode);
+  }
+
+  return selections;
+}
+
+const loadCheckoutUserRankContext = loadCustomerRankContext;
+const resolveCheckoutCustomerRankAliases = resolveCustomerRankAliasesForRestaurant;
 
 function normalizePromotionIds(promotionIds = []) {
   return Array.isArray(promotionIds)
@@ -2381,6 +2402,7 @@ export const OrderMutation = {
       idempotencyKey,
       pricing,
       promotionIds,
+      couponSelections,
     } = input || {};
     const authUserId = assertCustomerRemoteCheckoutAuth(ctx, userId);
     if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
@@ -2481,11 +2503,13 @@ export const OrderMutation = {
         ? "wallet"
         : normalizedPaymentMethodRaw;
     const isTransferCheckout = ["transfer", "bank_transfer"].includes(normalizedPaymentMethod);
+    const couponSelectionMap = normalizeCheckoutCouponSelections(couponSelections);
 
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
         finalUserId = authUserId;
+        const checkoutUserRankContext = await loadCheckoutUserRankContext(finalUserId, session);
         for (const group of grouped.values()) {
           const { restaurantId, entries } = group;
           const { restaurant, availability } = await getPublicRestaurantOrThrow(
@@ -2515,7 +2539,7 @@ export const OrderMutation = {
             if (released) releasedCartItems.push(released);
           }
 
-          await hydrateOrderItems({
+          const hydratedItems = await hydrateCheckoutOrderItems({
             restaurantId,
             items: normalizedItems,
             session,
@@ -2526,16 +2550,30 @@ export const OrderMutation = {
               ? Math.round(Number(pricing?.shippingFee || 0) / grouped.size)
               : Number(pricing?.shippingFee || 0);
 
+          const checkoutCustomerRanks = await resolveCheckoutCustomerRankAliases({
+            userContext: checkoutUserRankContext,
+            restaurantId,
+            session,
+          });
+
+          const groupVoucherCode =
+            couponSelectionMap.get(String(restaurantId)) ||
+            (grouped.size === 1 ? pricing?.voucherCode : undefined);
           const groupPricing = buildDiscountPricing({
             ...pricing,
+            voucherCode: groupVoucherCode,
             shippingFee: groupShippingFee,
           });
 
           const totals = await calculateDiscountBreakdown({
             restaurantId: restaurantId,
-            items: normalizedItems,
+            items: hydratedItems,
             pricing: groupPricing,
             promotionIds: normalizePromotionIds(promotionIds),
+            userId: finalUserId,
+            paymentMethod: normalizedPaymentMethod,
+            orderType,
+            customerRanks: checkoutCustomerRanks,
             session,
           });
 
@@ -2558,7 +2596,7 @@ export const OrderMutation = {
                 parentOrderCode: checkoutCode,
                 orderType,
                 shipping: shippingObj,
-                items: normalizedItems,
+                items: hydratedItems,
                 totals,
                 note,
                 currentStatus: isTransferCheckout ? "draft" : "pending",
@@ -2605,7 +2643,7 @@ export const OrderMutation = {
             await incrementPromotionUsageOnce({ totals, session });
           }
 
-          const lines = buildInventoryLinesFromItems(normalizedItems);
+          const lines = buildInventoryLinesFromItems(hydratedItems);
           if (lines.length) {
             const whId = await resolveWarehouseIdOrDefault(
               restaurantId,

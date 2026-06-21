@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import mongoose from "mongoose";
 vi.mock("../../models/index.js", () => ({
+  Category: { find: vi.fn() },
   Coupon: { findOne: vi.fn() },
   CouponRedemption: { countDocuments: vi.fn() },
   Invoice: { countDocuments: vi.fn() },
@@ -12,6 +13,7 @@ vi.mock("../../models/index.js", () => ({
 }));
 
 import {
+  Category,
   Coupon,
   CouponRedemption,
   Invoice,
@@ -29,6 +31,7 @@ const rid = new mongoose.Types.ObjectId();
 beforeEach(() => {
   vi.clearAllMocks();
   Promotion.find.mockReturnValue(chainList([]));
+  Category.find.mockReturnValue(chainList([]));
   CouponRedemption.countDocuments.mockReturnValue(chain(0));
   Invoice.countDocuments.mockReturnValue(chain(0));
   Order.countDocuments.mockReturnValue(chain(0));
@@ -946,4 +949,187 @@ describe("discount calculation business", () => {
       discount: 10000,
     });
   });
+  it("applies unrestricted coupon to full subtotal", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-full", isActive: true, discountType: "PERCENT", discountValue: 10 }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryId: new mongoose.Types.ObjectId() }, { lineSubtotal: 50000, categoryId: new mongoose.Types.ObjectId() }],
+      pricing: { voucherCode: "FULL" },
+    });
+
+    expect(result.voucherDiscount).toBe(15000);
+    expect(result.couponCategoryScoped).toBe(false);
+  });
+
+  it("applies categoryIds coupon only to matching item subtotal", async () => {
+    const foodId = new mongoose.Types.ObjectId();
+    const drinkId = new mongoose.Types.ObjectId();
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-food", isActive: true, discountType: "PERCENT", discountValue: 20, constraints: { categoryIds: [String(foodId)] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryId: foodId }, { lineSubtotal: 50000, categoryId: drinkId }],
+      pricing: { voucherCode: "FOOD20" },
+    });
+
+    expect(result.couponEligibleSubtotal).toBe(100000);
+    expect(result.voucherDiscount).toBe(20000);
+  });
+
+  it("matches categories by name case-insensitively", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-drink", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { categories: " drink " } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryName: "Food" }, { lineSubtotal: 50000, category: { name: "DRINK" } }],
+      pricing: { voucherCode: "DRINK10" },
+    });
+
+    expect(result.couponEligibleSubtotal).toBe(50000);
+    expect(result.voucherDiscount).toBe(5000);
+  });
+
+  it("uses OR logic when categoryIds and categories both exist", async () => {
+    const foodId = new mongoose.Types.ObjectId();
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-or", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { categoryIds: [String(foodId)], categories: ["drink"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryId: foodId }, { lineSubtotal: 50000, categoryName: "Drink" }, { lineSubtotal: 25000, categoryName: "Dessert" }],
+      pricing: { voucherCode: "OR10" },
+    });
+
+    expect(result.couponEligibleSubtotal).toBe(150000);
+    expect(result.voucherDiscount).toBe(15000);
+  });
+
+  it("rejects category-scoped coupon when no items match", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-none", isActive: true, discountType: "AMOUNT", discountValue: 10000, constraints: { categories: ["food"] } }));
+
+    await expect(calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 50000, categoryName: "Drink" }],
+      pricing: { voucherCode: "NOPE" },
+    })).rejects.toThrow(/Invalid coupon: no eligible items for category constraints/);
+  });
+
+  it("caps percent category coupon by maxDiscount against eligible subtotal", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-cap", isActive: true, discountType: "PERCENT", discountValue: 50, maxDiscount: 10000, constraints: { categories: ["food"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryName: "Food" }, { lineSubtotal: 100000, categoryName: "Drink" }],
+      pricing: { voucherCode: "CAP" },
+    });
+
+    expect(result.couponEligibleSubtotal).toBe(100000);
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("checks minOrderValue against full subtotal but discounts eligible subtotal", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-min", isActive: true, discountType: "PERCENT", discountValue: 10, minOrderValue: 120000, constraints: { categories: ["food"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 50000, categoryName: "Food" }, { lineSubtotal: 100000, categoryName: "Drink" }],
+      pricing: { voucherCode: "MIN" },
+    });
+
+    expect(result.couponEligibleSubtotal).toBe(50000);
+    expect(result.voucherDiscount).toBe(5000);
+  });
+
+  it("excludes cancelled and returned matching items from eligible subtotal", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-active", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { categories: ["food"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryName: "Food" }, { lineSubtotal: 50000, categoryName: "Food", status: "cancelled" }, { lineSubtotal: 50000, categoryName: "Food", status: "returned" }],
+      pricing: { voucherCode: "ACTIVE" },
+    });
+
+    expect(result.couponEligibleSubtotal).toBe(100000);
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("resolves category name from Category model when item only has categoryId", async () => {
+    const foodId = new mongoose.Types.ObjectId();
+    Category.find.mockReturnValue(chainList([{ _id: foodId, name: "Food" }]));
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-db", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { categories: ["food"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000, categoryId: foodId }, { lineSubtotal: 50000, categoryName: "Drink" }],
+      pricing: { voucherCode: "DB" },
+    });
+
+    expect(Category.find).toHaveBeenCalledWith({ restaurantId: rid, _id: { $in: [foodId] } });
+    expect(result.couponEligibleSubtotal).toBe(100000);
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+
+  it("allows loyaltyRank alias for customerRanks constraints", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-gold", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["gold"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "GOLD" },
+      customerRanks: ["gold"],
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("allows customerType alias for customerRanks constraints case-insensitively", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-vip", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["vip"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "VIP" },
+      customerRanks: ["VIP"],
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("allows any matching alias when loyaltyRank and customerType are both present", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-often", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["often"] } }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "OFTEN" },
+      customerRanks: ["gold", "often"],
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
+  it("rejects coupons when none of the customer rank aliases match", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-platinum", isActive: true, discountType: "PERCENT", discountValue: 10, constraints: { customerRanks: ["platinum"] } }));
+
+    await expect(calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "PLAT" },
+      customerRanks: ["gold", "often"],
+    })).rejects.toThrow(/Invalid coupon: customer rank is not eligible/);
+  });
+
+  it("does not require rank aliases when coupon has no customerRanks constraint", async () => {
+    Coupon.findOne.mockReturnValue(chain({ _id: "c-open", isActive: true, discountType: "PERCENT", discountValue: 10 }));
+
+    const result = await calculateDiscountBreakdown({
+      restaurantId: rid,
+      items: [{ lineSubtotal: 100000 }],
+      pricing: { voucherCode: "OPEN" },
+    });
+
+    expect(result.voucherDiscount).toBe(10000);
+  });
+
 });

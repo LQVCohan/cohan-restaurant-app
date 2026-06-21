@@ -33,7 +33,14 @@ export function getApiBaseUrl() {
 
 export function toApiUrl(pathname: string) {
   const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  return `${getApiBaseUrl()}${normalizedPath}`;
+  const pathWithoutDuplicateApiPrefix =
+    normalizedPath === "/api"
+      ? ""
+      : normalizedPath.startsWith("/api/")
+        ? normalizedPath.slice(4)
+        : normalizedPath;
+
+  return `${getApiBaseUrl()}${pathWithoutDuplicateApiPrefix}`;
 }
 
 export function toApiAuthUrl(pathname: "/refresh" | "/logout") {

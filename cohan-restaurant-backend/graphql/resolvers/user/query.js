@@ -4,7 +4,6 @@ import {
   Role,
   Customer,
   Order,
-  CustomerRankSetting,
   WalletTransaction,
 } from "../../../models/index.js";
 import { GraphQLError } from "graphql";
@@ -13,6 +12,7 @@ import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import { getEffectiveCustomerRankSetting } from "../../../src/services/customerRankSetting.service.js";
 import {
   sanitizeAdminUserListItem,
   sanitizeAuthUser,
@@ -908,17 +908,11 @@ export const UserQuery = {
     }
     const rid = toObjectId(restaurantId);
     await requireRestaurantAccess(ctx, rid);
-    const doc = await CustomerRankSetting.findOne({ restaurantId: rid }).lean();
-    return (
-      doc || {
-        restaurantId,
-        ranks: [
-          { name: "Mới", minPoints: 0, benefits: "" },
-          { name: "Thân thiết", minPoints: 5, benefits: "Ưu đãi dịp đặc biệt" },
-          { name: "VIP", minPoints: 20, benefits: "Ưu tiên đặt bàn" },
-        ],
-      }
-    );
+    const setting = await getEffectiveCustomerRankSetting({ restaurantId: rid });
+    return {
+      restaurantId: setting.restaurantId,
+      ranks: setting.ranks,
+    };
   },
 
   async myWalletTransactions(

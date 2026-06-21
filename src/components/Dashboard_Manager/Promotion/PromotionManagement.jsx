@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 import {
   AlertTriangle,
   BarChart3,
@@ -36,6 +37,21 @@ import ManagementPageHeader from "../shared/ManagementPageHeader";
 import ManagerCommandBar from "../shared/ManagerCommandBar";
 import "./PromotionManagement.scss";
 import "./PromotionDrawerFix.scss";
+
+const GET_CUSTOMER_RANK_SETTINGS = gql`
+  query PromotionCustomerRankSettings($restaurantId: ID!) {
+    customerRankSettings(restaurantId: $restaurantId) {
+      restaurantId
+      ranks {
+        name
+        minPoints
+        benefits
+      }
+    }
+  }
+`;
+
+const normalizeRankValue = (value) => String(value || "").trim().toLowerCase();
 
 const STATUS_TABS = [
   { id: "all", label: "Tất cả" },
@@ -225,6 +241,24 @@ export default function PromotionManagement() {
     duplicateCouponPackage,
     resolveStatus,
   } = useCoupons(selectedRestaurantId);
+
+  const { data: customerRankSettingsData } = useQuery(GET_CUSTOMER_RANK_SETTINGS, {
+    skip: !selectedRestaurantId,
+    variables: { restaurantId: selectedRestaurantId },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const customerRankOptions = useMemo(
+    () => (customerRankSettingsData?.customerRankSettings?.ranks || [])
+      .map((rank) => ({
+        value: normalizeRankValue(rank?.name),
+        label: String(rank?.name || "").trim(),
+        minPoints: rank?.minPoints,
+        benefits: rank?.benefits || "",
+      }))
+      .filter((rank) => rank.value && rank.label),
+    [customerRankSettingsData],
+  );
 
   const {
     analytics: couponAnalytics,
@@ -1101,7 +1135,7 @@ export default function PromotionManagement() {
       {renderDetailDrawer()}
 
       {isModalOpen && canWritePromotion && <PromotionModal promotion={editingPromotion} restaurants={promotionRestaurants} defaultRestaurantId={selectedRestaurantId} categories={categories} menuItems={menuItems} onSave={handleSavePromotion} onClose={() => { setIsModalOpen(false); setEditingPromotion(null); }} />}
-      {isCouponModalOpen && canWriteCoupon && <CouponModal coupon={editingCoupon} onSave={handleSaveCoupon} onClose={() => { setIsCouponModalOpen(false); setEditingCoupon(null); }} />}
+      {isCouponModalOpen && canWriteCoupon && <CouponModal coupon={editingCoupon} categories={categories} restaurantId={selectedRestaurantId} customerRankOptions={customerRankOptions} onSave={handleSaveCoupon} onClose={() => { setIsCouponModalOpen(false); setEditingCoupon(null); }} />}
       {isCouponPackageModalOpen && canWriteCoupon && <CouponPackageModal couponPackage={editingCouponPackage} availableCoupons={allCoupons} onSave={handleSaveCouponPackage} onClose={() => { setIsCouponPackageModalOpen(false); setEditingCouponPackage(null); }} />}
     </div>
   );
