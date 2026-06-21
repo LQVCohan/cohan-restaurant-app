@@ -65,7 +65,7 @@ export const mapCartItemToOrderItemInput = (
       sellUnit: item.servingVariant?.sellUnit || "portion",
     },
     quantity: Number(item.quantity || 1),
-    selectedModifiers: (item.modifiers || item.selectedModifiers || []).map(
+    selectedModifiers: (item.selectedModifiers || item.modifiers || []).map(
       (modifier) => ({
         groupId: modifier.groupId,
         optionId: modifier.optionId,
@@ -74,6 +74,11 @@ export const mapCartItemToOrderItemInput = (
     note: item.note || item.description || undefined,
     priority: item.priority || "MEDIUM",
   };
+
+  const weightGrams = Number(item.weightGrams);
+  if (item.weightGrams != null && Number.isFinite(weightGrams) && weightGrams > 0) {
+    payload.weightGrams = Math.round(weightGrams);
+  }
 
   if (includeCartHoldRef) {
     const cartId = item.backendCartId || item.cartId;
