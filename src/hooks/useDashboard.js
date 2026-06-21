@@ -2,6 +2,10 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import {
+  STAFF_DATA_CHANGED_EVENT,
+  isSameRestaurantEvent,
+} from "../utils/staffSyncEvents";
 
 const GET_MANAGER_DASHBOARD = gql`
   query GetManagerDashboard($restaurantId: ID!, $range: String) {
@@ -121,7 +125,7 @@ export const useDashboard = () => {
           id: getRestaurantId(restaurant),
         }))
         .filter((restaurant) => restaurant.id),
-    [restaurants]
+    [restaurants],
   );
 
   const { data, loading, error, refetch } = useQuery(GET_MANAGER_DASHBOARD, {
@@ -129,7 +133,8 @@ export const useDashboard = () => {
     variables: { restaurantId: selectedRestaurantId, range },
     fetchPolicy: "network-only",
     notifyOnNetworkStatusChange: true,
-    pollInterval: selectedRestaurantId && process.env.NODE_ENV !== "test" ? 30000 : 0,
+    pollInterval:
+      selectedRestaurantId && process.env.NODE_ENV !== "test" ? 30000 : 0,
   });
 
   useEffect(() => {
@@ -140,7 +145,7 @@ export const useDashboard = () => {
 
       const normalizedCurrentId = String(currentId || "");
       const hasCurrentRestaurant = restaurantOptions.some(
-        (restaurant) => restaurant.id === normalizedCurrentId
+        (restaurant) => restaurant.id === normalizedCurrentId,
       );
 
       if (normalizedCurrentId && hasCurrentRestaurant) {
@@ -154,7 +159,7 @@ export const useDashboard = () => {
   const rawDashboard = data?.managerDashboard;
   const hasStaleDashboard = Boolean(
     rawDashboard &&
-      String(rawDashboard.restaurantId ?? "") !== selectedRestaurantId
+      String(rawDashboard.restaurantId ?? "") !== selectedRestaurantId,
   );
   const dashboard = hasStaleDashboard ? null : rawDashboard;
   const dashboardLoading = loading || hasStaleDashboard;
@@ -178,29 +183,45 @@ export const useDashboard = () => {
   }, [dashboard]);
 
   const selectedRestaurant = useMemo(
-    () => restaurantOptions.find((x) => x.id === selectedRestaurantId) || null,
-    [restaurantOptions, selectedRestaurantId]
+    () =>
+      restaurantOptions.find((x) => x.id === selectedRestaurantId) || null,
+    [restaurantOptions, selectedRestaurantId],
   );
 
   useEffect(() => {
     if (!selectedRestaurantId || typeof window === "undefined") return undefined;
+
+    const refreshCurrentDashboard = () =>
+      refetch({ restaurantId: selectedRestaurantId, range });
+
     const handleFocus = () => {
-      if (selectedRestaurantId) {
-        refetch({ restaurantId: selectedRestaurantId, range });
-      }
+      void refreshCurrentDashboard();
     };
+    const handleStaffDataChanged = (event) => {
+      if (!isSameRestaurantEvent(event, selectedRestaurantId)) return;
+      void refreshCurrentDashboard();
+    };
+
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [refetch, selectedRestaurantId, range]);
+    window.addEventListener(STAFF_DATA_CHANGED_EVENT, handleStaffDataChanged);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener(STAFF_DATA_CHANGED_EVENT, handleStaffDataChanged);
+    };
+  }, [range, refetch, selectedRestaurantId]);
 
   const handleRestaurantChange = useCallback(
     (restaurantId) => {
       const nextRestaurantId = String(restaurantId ?? "");
-      if (restaurantOptions.some((restaurant) => restaurant.id === nextRestaurantId)) {
+      if (
+        restaurantOptions.some(
+          (restaurant) => restaurant.id === nextRestaurantId,
+        )
+      ) {
         setSelectedRestaurantId(nextRestaurantId);
       }
     },
-    [restaurantOptions]
+    [restaurantOptions],
   );
 
   const handleSwitchToPOS = useCallback(() => {
