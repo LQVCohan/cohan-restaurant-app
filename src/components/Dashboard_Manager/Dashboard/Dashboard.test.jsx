@@ -36,7 +36,12 @@ const baseDashboard = {
     menuItems: 24,
     promotions: 1,
     staff: 8,
-    statusCounts: { pending: 2, preparing: 3, completed: 10, cancelled: 1 },
+    statusCounts: {
+      pending: 2,
+      preparing: 3,
+      completed: 10,
+      cancelled: 1,
+    },
   },
   handleRestaurantChange: vi.fn(),
   handleSwitchToPOS: vi.fn(),
@@ -95,15 +100,25 @@ describe("Dashboard manager command center", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the manager title, restaurant filter, range filter, and recent orders focus area", () => {
+  it("renders the manager title, filters, and clear operational sections", () => {
     renderDashboard();
 
-    expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Dashboard quản lý" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn nhà hàng")).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn khoảng thời gian")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Cần tiếp nhận" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Hỗ trợ khách hàng" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Đơn hàng gần đây" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Đơn và đặt bàn chờ xác nhận",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Yêu cầu hỗ trợ khách hàng" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Đơn hàng gần đây" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("12.500.000 ₫")).toBeInTheDocument();
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("#ORD-1001")).toBeInTheDocument();
@@ -113,7 +128,9 @@ describe("Dashboard manager command center", () => {
   it("shows meaningful empty revenue copy instead of fake trend data when revenueTrend is empty", () => {
     renderDashboard({ revenueTrend: [] });
 
-    expect(screen.getByText("Chưa có doanh thu trong khoảng thời gian này.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Chưa có doanh thu trong khoảng thời gian này."),
+    ).toBeInTheDocument();
     expect(screen.queryByText("0.0%")).not.toBeInTheDocument();
     expect(screen.queryByText("Chưa có kỳ đối chiếu")).not.toBeInTheDocument();
   });
@@ -121,12 +138,14 @@ describe("Dashboard manager command center", () => {
   it("renders loading skeleton states without replacing the whole dashboard with a spinner", () => {
     renderDashboard({ loading: true, recentOrders: [], revenueTrend: [] });
 
-    expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeInTheDocument();
-    expect(screen.getByText("Đang tải dữ liệu doanh thu...")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Dashboard quản lý" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Đang tải dữ liệu doanh thu..."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Đang tải dữ liệu đơn hàng")).toBeInTheDocument();
   });
-
-
 
   it("shows restaurant loading copy before empty assigned state", () => {
     renderDashboard({
@@ -139,13 +158,17 @@ describe("Dashboard manager command center", () => {
     const restaurantSelect = screen.getByLabelText("Chọn nhà hàng");
     expect(restaurantSelect).toBeDisabled();
     expect(screen.getAllByText("Đang tải nhà hàng...").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Không có nhà hàng được gán")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Không có nhà hàng được gán"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders error state with retry action", () => {
     renderDashboard({ error: new Error("Mất kết nối") });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Không thể tải dữ liệu dashboard");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Không thể tải dữ liệu dashboard",
+    );
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
   });
 });
