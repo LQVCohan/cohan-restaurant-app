@@ -1,5 +1,10 @@
 import React from "react";
-import { ShoppingBag, Monitor, Utensils, TableProperties } from "lucide-react";
+import {
+  ShoppingBag,
+  Monitor,
+  Utensils,
+  TableProperties,
+} from "lucide-react";
 import "./RecentOrders.scss";
 
 const MAX_ORDERS = 6;
@@ -12,9 +17,9 @@ const formatMoney = (value) =>
   }).format(Number(value || 0));
 
 const formatTime = (value) => {
-  if (!value) return "—";
+  if (!value) return "Chưa có thời gian";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "Chưa có thời gian";
 
   return new Intl.DateTimeFormat("vi-VN", {
     hour: "2-digit",
@@ -25,13 +30,13 @@ const formatTime = (value) => {
 };
 
 const STATUS_LABEL = {
-  pending: "Chờ xử lý",
-  confirmed: "Chờ xử lý",
-  customer_attached: "Chờ xử lý",
+  pending: "Chờ xác nhận",
+  confirmed: "Đã xác nhận",
+  customer_attached: "Chờ xác nhận",
   preparing: "Đang chuẩn bị",
-  ready: "Đang chuẩn bị",
-  served: "Đang chuẩn bị",
-  completed: "Hoàn thành",
+  ready: "Sẵn sàng phục vụ",
+  served: "Đã phục vụ",
+  completed: "Đã hoàn thành",
   cancelled: "Đã hủy",
 };
 
@@ -44,6 +49,17 @@ const STATUS_CLASS = {
   served: "preparing",
   completed: "completed",
   cancelled: "cancelled",
+};
+
+const ORDER_TYPE_LABEL = {
+  DINE_IN: "Dùng tại bàn",
+  TAKEAWAY: "Mang đi",
+  DELIVERY: "Giao hàng",
+  PICKUP: "Nhận tại quầy",
+  dine_in: "Dùng tại bàn",
+  takeaway: "Mang đi",
+  delivery: "Giao hàng",
+  pickup: "Nhận tại quầy",
 };
 
 const RecentOrders = ({
@@ -82,15 +98,17 @@ const RecentOrders = ({
   return (
     <div className={shellClass}>
       {!loading && safeOrders.length > MAX_ORDERS ? (
-        <p className="order-limit-note">Hiển thị {MAX_ORDERS} đơn gần nhất</p>
+        <p className="order-limit-note">
+          Đang hiển thị {MAX_ORDERS} đơn gần nhất
+        </p>
       ) : null}
 
       <div className={bodyClass}>
         {!loading && visibleOrders.length > 1 ? (
           <div className="order-table-head" aria-hidden="true">
-            <span>Đơn / khách</span>
+            <span>Đơn hàng và khách</span>
             <span>Trạng thái</span>
-            <span>Giá trị / giờ</span>
+            <span>Giá trị và thời gian</span>
           </div>
         ) : null}
 
@@ -114,49 +132,49 @@ const RecentOrders = ({
             </div>
 
             <div className="empty-state__content">
-              <h4>Chưa có đơn hàng trong khoảng thời gian này</h4>
+              <h4>Chưa có đơn hàng trong khoảng thời gian đã chọn</h4>
               <p>
-                Mở POS để tạo đơn mới hoặc kiểm tra menu và bàn trước giờ vận
-                hành.
+                Có thể mở màn hình bán hàng để tạo đơn mới hoặc kiểm tra thực đơn
+                và bàn trước giờ phục vụ.
               </p>
             </div>
 
             {hasEmptyActions ? (
               <div className="empty-state__actions">
                 {typeof onOpenPOS === "function" ? (
-                <button
-                  type="button"
-                  className="empty-action empty-action--primary"
-                  onClick={onOpenPOS}
-                  aria-label="Mở POS để tạo đơn mới"
-                >
-                  <Monitor size={15} />
-                  <span>Mở POS</span>
-                </button>
+                  <button
+                    type="button"
+                    className="empty-action empty-action--primary"
+                    onClick={onOpenPOS}
+                    aria-label="Mở màn hình bán hàng để tạo đơn mới"
+                  >
+                    <Monitor size={15} />
+                    <span>Mở màn hình bán hàng</span>
+                  </button>
                 ) : null}
 
                 {typeof onGoToMenu === "function" ? (
-                <button
-                  type="button"
-                  className="empty-action"
-                  onClick={onGoToMenu}
-                  aria-label="Đi tới quản lý menu để kiểm tra món"
-                >
-                  <Utensils size={15} />
-                  <span>Quản lý menu</span>
-                </button>
+                  <button
+                    type="button"
+                    className="empty-action"
+                    onClick={onGoToMenu}
+                    aria-label="Đi tới trang quản lý món ăn"
+                  >
+                    <Utensils size={15} />
+                    <span>Quản lý món ăn</span>
+                  </button>
                 ) : null}
 
                 {typeof onGoToTables === "function" ? (
-                <button
-                  type="button"
-                  className="empty-action"
-                  onClick={onGoToTables}
-                  aria-label="Đi tới quản lý bàn để kiểm tra bàn"
-                >
-                  <TableProperties size={15} />
-                  <span>Quản lý bàn</span>
-                </button>
+                  <button
+                    type="button"
+                    className="empty-action"
+                    onClick={onGoToTables}
+                    aria-label="Đi tới trang quản lý bàn"
+                  >
+                    <TableProperties size={15} />
+                    <span>Quản lý bàn</span>
+                  </button>
                 ) : null}
               </div>
             ) : null}
@@ -167,8 +185,15 @@ const RecentOrders = ({
           visibleOrders.map((order) => {
             const statusRaw = String(order?.status || "").toLowerCase();
             const statusClass = STATUS_CLASS[statusRaw] || "unknown";
-            const displayCode = order?.orderCode ? `#${order.orderCode}` : "Đơn chưa có mã";
-            const tableOrType = order?.tableCode || order?.tableName || order?.orderType || "Tại quầy";
+            const displayCode = order?.orderCode
+              ? `#${order.orderCode}`
+              : "Đơn chưa có mã";
+            const orderType =
+              ORDER_TYPE_LABEL[order?.orderType] ||
+              order?.orderType ||
+              "Dùng tại quầy";
+            const tableOrType =
+              order?.tableCode || order?.tableName || orderType;
 
             return (
               <div
@@ -180,12 +205,12 @@ const RecentOrders = ({
                     {displayCode}
                   </p>
                   <p className="order-meta">
-                    {order.customerName || "Khách"} • {tableOrType}
+                    {order.customerName || "Khách lẻ"} • {tableOrType}
                   </p>
                 </div>
 
                 <div className={`status-pill status-pill--${statusClass}`}>
-                  {STATUS_LABEL[statusRaw] || "Không xác định"}
+                  {STATUS_LABEL[statusRaw] || "Chưa xác định"}
                 </div>
 
                 <div className="order-row__side">
