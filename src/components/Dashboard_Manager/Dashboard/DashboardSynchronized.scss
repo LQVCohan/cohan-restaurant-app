@@ -1,0 +1,44 @@
+.dashboard-synchronized-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-synchronized-staff {
+  min-width: 0;
+}
+
+.dashboard-synchronized-staff .manager-dashboard {
+  min-height: 0;
+  padding: 0;
+  display: block;
+}
+
+.dashboard-synchronized-staff .dashboard-staff-roster {
+  padding: 14px;
+}
+
+.dashboard-synchronized-staff .dashboard-staff-roster__list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+
+.dashboard-synchronized-staff .dashboard-staff-roster__item {
+  border: 1px solid transparent;
+  background: rgba(247, 245, 239, 0.48);
+}
+
+.dashboard-synchronized-staff .dashboard-staff-roster__item:hover {
+  border-color: var(--dash-border);
+}
+
+@media (max-width: 980px) {
+  .dashboard-synchronized-staff .dashboard-staff-roster__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .dashboard-synchronized-staff .dashboard-staff-roster__list {
+    grid-template-columns: 1fr;
+  }
+}
