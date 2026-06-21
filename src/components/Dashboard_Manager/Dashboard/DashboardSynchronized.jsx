@@ -57,16 +57,28 @@ const DashboardSynchronized = () => {
   }, [fallbackRestaurantId]);
 
   useEffect(() => {
-    const sideStack = shellRef.current?.querySelector(".dashboard-side-stack");
-    if (!sideStack) return undefined;
+    const shell = shellRef.current;
+    const sideStack = shell?.querySelector(".dashboard-side-stack");
+    if (!shell || !sideStack) return undefined;
 
     const mountNode = document.createElement("div");
     mountNode.className = "dashboard-staff-roster-portal-slot";
-    sideStack.prepend(mountNode);
+
+    const ensureMounted = () => {
+      const currentSideStack = shell.querySelector(".dashboard-side-stack");
+      if (currentSideStack && mountNode.parentNode !== currentSideStack) {
+        currentSideStack.prepend(mountNode);
+      }
+    };
+
+    ensureMounted();
     setPortalTarget(mountNode);
 
+    const observer = new MutationObserver(ensureMounted);
+    observer.observe(shell, { childList: true, subtree: true });
+
     return () => {
-      setPortalTarget(null);
+      observer.disconnect();
       mountNode.remove();
     };
   }, []);
