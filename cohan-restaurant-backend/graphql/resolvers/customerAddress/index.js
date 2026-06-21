@@ -12,11 +12,27 @@ const requireUserId = (user) => {
 
 const clean = (value) => String(value ?? "").trim();
 
+function normalizePhoneNumber(value) {
+  const raw = String(value ?? "").trim();
+  const normalized = raw.replace(/[\s().-]/g, "");
+
+  if (!/^\+?\d{7,15}$/.test(normalized)) {
+    throw new GraphQLError("Invalid phone number", {
+      extensions: {
+        code: "BAD_USER_INPUT",
+        field: "phone",
+      },
+    });
+  }
+
+  return normalized;
+}
+
 const normalizeInput = (input = {}, existing = {}) => {
   const next = {
     label: ["home", "office", "other"].includes(input.label) ? input.label : existing.label || "home",
     receiverName: clean(input.receiverName ?? existing.receiverName),
-    phone: clean(input.phone ?? existing.phone),
+    phone: normalizePhoneNumber(input.phone ?? existing.phone),
     province: clean(input.province ?? existing.province),
     district: clean(input.district ?? existing.district),
     ward: clean(input.ward ?? existing.ward),

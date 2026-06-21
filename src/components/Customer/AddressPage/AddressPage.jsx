@@ -14,6 +14,7 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
+import { isValidPhoneNumber, normalizePhoneNumber } from "../../../utils/phoneNumber";
 import "./AddressPage.scss";
 
 // --- Dữ liệu địa lý tạm cho UI chọn tỉnh/quận/phường ---
@@ -117,6 +118,41 @@ const SET_DEFAULT_CUSTOMER_ADDRESS = gql`
   }
 `;
 
+const normalizeLocationName = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/đ/g, "d");
+
+const findLocationOption = (options = {}, value) => {
+  const target = normalizeLocationName(value);
+  if (!target) return "";
+  return Object.keys(options).find((key) => normalizeLocationName(options[key]?.name) === target) || "";
+};
+
+const findWardOption = (wards = [], value) => {
+  const target = normalizeLocationName(value);
+  if (!target) return "";
+  return wards.find((ward) => normalizeLocationName(ward) === target) || "";
+};
+
+const mapReverseGeocodeToGeo = (address = {}) => {
+  const province = findLocationOption(LOCATION_DATA, address.cityName);
+  const districtOptions = province ? LOCATION_DATA[province]?.districts || {} : {};
+  const district = findLocationOption(districtOptions, address.districtName);
+  const wards = province && district ? LOCATION_DATA[province]?.districts?.[district]?.wards || [] : [];
+  const ward = findWardOption(wards, address.wardName);
+
+  return {
+    province,
+    district,
+    ward,
+    specificAddress: String(address.street || "").trim(),
+  };
+};
+
 const AddressPage = () => {
   const { data, loading, error, refetch } = useQuery(MY_ADDRESSES, { fetchPolicy: "cache-and-network" });
   const [createAddress, { loading: creating }] = useMutation(CREATE_CUSTOMER_ADDRESS);
@@ -127,6 +163,8 @@ const AddressPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingLoc, setLoadingLoc] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Form State
   const [formData, setFormData] = useState({
@@ -167,6 +205,9 @@ const AddressPage = () => {
       specificAddress: "",
     });
     setGeo({ province: "", district: "", ward: "" });
+    setLocationMessage("");
+    setFieldErrors({});
+    setFormError("");
     setShowModal(true);
   };
 
@@ -186,6 +227,9 @@ const AddressPage = () => {
       district: item.district || "",
       ward: item.ward || "",
     });
+    setLocationMessage("");
+    setFieldErrors({});
+    setFormError("");
     setShowModal(true);
   };
 
@@ -215,8 +259,14 @@ const AddressPage = () => {
   const handleSave = async () => {
     // Validate
     setFormError("");
+    setFieldErrors({});
+    const normalizedPhone = normalizePhoneNumber(formData.phone);
     if (!formData.receiverName || !formData.phone || !formData.specificAddress) {
       setFormError("Vui lòng điền tên, số điện thoại và địa chỉ cụ thể.");
+      return;
+    }
+    if (!isValidPhoneNumber(normalizedPhone)) {
+      setFieldErrors({ phone: "Số điện thoại không hợp lệ." });
       return;
     }
     if (!geo.province || !geo.district || !geo.ward) {
@@ -233,7 +283,7 @@ const AddressPage = () => {
     const input = {
       label: formData.label,
       receiverName: formData.receiverName,
-      phone: formData.phone,
+      phone: normalizedPhone,
       note: formData.note,
       isDefault: formData.isDefault,
       ...geo,
@@ -255,27 +305,65 @@ const AddressPage = () => {
   };
 
   const handleGetCurrentLocation = () => {
+    setFormError("");
+    setLocationMessage("");
+
+    if (!("geolocation" in navigator)) {
+      setLocationMessage("Trình duyệt không hỗ trợ lấy vị trí hiện tại.");
+      setLoadingLoc(false);
+      return;
+    }
+
     setLoadingLoc(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setTimeout(() => {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords || {};
+          const response = await fetch(
+            `/api/reverse-geocode?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(longitude)}`,
+          );
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result?.ok) {
+            throw new Error(result?.message || "reverse_geocode_failed");
+          }
+
+          const mapped = mapReverseGeocodeToGeo(result.address || {});
+          if (mapped.province && mapped.district && mapped.ward && mapped.specificAddress) {
+            setGeo({
+              province: mapped.province,
+              district: mapped.district,
+              ward: mapped.ward,
+            });
             setFormData((prev) => ({
               ...prev,
-              specificAddress: "20 Cộng Hòa",
+              specificAddress: mapped.specificAddress,
             }));
-            setGeo({ province: "79", district: "761", ward: "Phường 12" });
-            setLoadingLoc(false);
-          }, 1000);
-        },
-        () => {
-          alert("Không thể lấy vị trí.");
+            setLocationMessage("Đã lấy được vị trí hiện tại và gợi ý địa chỉ từ bản đồ.");
+            return;
+          }
+
+          setLocationMessage(
+            "Đã lấy được vị trí hiện tại. Vui lòng chọn tỉnh, quận/huyện, phường/xã và nhập địa chỉ cụ thể.",
+          );
+        } catch {
+          setLocationMessage(
+            "Đã lấy được vị trí hiện tại. Vui lòng chọn tỉnh, quận/huyện, phường/xã và nhập địa chỉ cụ thể.",
+          );
+        } finally {
           setLoadingLoc(false);
-        },
-      );
-    } else {
-      setLoadingLoc(false);
-    }
+        }
+      },
+      (geoError) => {
+        const denied = geoError?.code === geoError?.PERMISSION_DENIED;
+        setLocationMessage(
+          denied
+            ? "Bạn chưa cấp quyền truy cập vị trí."
+            : "Không thể xác định vị trí hiện tại. Vui lòng nhập địa chỉ thủ công.",
+        );
+        setLoadingLoc(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
   };
 
   const getIconByLabel = (label) => {
@@ -429,11 +517,13 @@ const AddressPage = () => {
                         type="text"
                         placeholder="09xx..."
                         value={formData.phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
-                        }
+                        onChange={(e) => {
+                          setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                          setFormData({ ...formData, phone: e.target.value });
+                        }}
                       />
                     </div>
+                    {fieldErrors.phone && <span className="input-error-text">{fieldErrors.phone}</span>}
                   </div>
                 </div>
               </div>
@@ -443,6 +533,7 @@ const AddressPage = () => {
                 <div className="geo-header">
                   <label>Khu vực vận chuyển</label>
                   <button
+                    type="button"
                     className="btn-geo-sm"
                     onClick={handleGetCurrentLocation}
                     disabled={loadingLoc}
@@ -450,6 +541,8 @@ const AddressPage = () => {
                     {loadingLoc ? "Đang tìm..." : "📍 Định vị tôi"}
                   </button>
                 </div>
+
+                {locationMessage && <p className="geo-inline-message" role="status">{locationMessage}</p>}
 
                 <div className="geo-grid">
                   <div className="select-wrapper">

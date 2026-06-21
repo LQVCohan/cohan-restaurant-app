@@ -4,6 +4,7 @@ import { io } from "socket.io-client";
 import Modal from "../../common/Modal";
 import { AuthContext } from "../../../context/AuthContext";
 import { formatCurrency } from "../../../utils/formatters";
+import { isValidPhoneNumber, normalizePhoneNumber } from "../../../utils/phoneNumber";
 import { getToken } from "../../../lib/authStorage";
 import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
 import {
@@ -142,7 +143,7 @@ const mergeCouponLists = (...lists) => {
 
 const defaultShipping = (user = {}) => ({
   fullName: user?.fullName || "",
-  phone: user?.phone || "",
+  phone: normalizePhoneNumber(user?.phone || ""),
   email: user?.email || "",
   address: "",
   note: "",
@@ -171,7 +172,8 @@ const calcTotal = (items = []) => {
 
 const isShippingValid = (shipping) => {
   const nameOk = String(shipping.fullName || "").trim().length >= 2;
-  const phoneOk = /^(\+?\d{7,15})$/.test(String(shipping.phone || "").trim());
+  const normalizedPhone = normalizePhoneNumber(shipping.phone);
+  const phoneOk = isValidPhoneNumber(normalizedPhone);
   const email = String(shipping.email || "").trim();
   const emailOk = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const addressOk = shipping.deliveryMethod !== "delivery" || String(shipping.address || "").trim().length > 5;
@@ -387,10 +389,10 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
     setSelectedAddressId(address.id);
     setShipping((prev) => ({
       ...prev,
-      fullName: address.receiverName || prev.fullName,
-      phone: address.phone || prev.phone,
-      address: address.fullAddress || prev.address,
-      note: prev.note || address.note || "",
+      fullName: address.receiverName || "",
+      phone: normalizePhoneNumber(address.phone || ""),
+      address: address.fullAddress || "",
+      note: address.note || "",
     }));
   }, []);
 
@@ -543,8 +545,12 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
     const couponSelections = Object.entries(selectedCouponCodeMap)
       .filter(([, couponCode]) => Boolean(couponCode))
       .map(([restaurantId, couponCode]) => ({ restaurantId, couponCode }));
+    const normalizedShipping = {
+      ...shipping,
+      phone: normalizePhoneNumber(shipping.phone),
+    };
     const result = await createCheckoutOrders({
-      variables: { input: { orderType, items: checkoutItems, shipping, paymentMethod: method, pricing: buildDiscountPricingInput({ taxRate: ORDER_VAT_RATE, serviceRate: 0, shippingFee: shippingFeeTotal }), couponSelections, idempotencyKey: `checkout-${Date.now()}`, note: shipping.note || undefined } },
+      variables: { input: { orderType, items: checkoutItems, shipping: normalizedShipping, paymentMethod: method, pricing: buildDiscountPricingInput({ taxRate: ORDER_VAT_RATE, serviceRate: 0, shippingFee: shippingFeeTotal }), couponSelections, idempotencyKey: `checkout-${Date.now()}`, note: normalizedShipping.note || undefined } },
     });
     return result?.data?.createCheckoutOrders;
   };
@@ -555,6 +561,7 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
       setError("Vui lòng nhập họ tên, số điện thoại và địa chỉ giao hàng hợp lệ.");
       return;
     }
+    setShipping((prev) => ({ ...prev, phone: normalizePhoneNumber(prev.phone) }));
     if (!paymentMethod) {
       setError("Vui lòng chọn phương thức thanh toán.");
       return;
