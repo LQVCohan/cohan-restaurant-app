@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import {
   STAFF_DATA_CHANGED_EVENT,
+  emitDashboardRestaurantChanged,
   isSameRestaurantEvent,
+  readDashboardRestaurantId,
 } from "../utils/staffSyncEvents";
 
 const GET_MANAGER_DASHBOARD = gql`
@@ -114,7 +116,9 @@ const getRestaurantId = (restaurant) =>
 export const useDashboard = () => {
   const navigate = useNavigate();
   const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState(() =>
+    readDashboardRestaurantId(),
+  );
   const [range, setRange] = useState("week");
 
   const restaurantOptions = useMemo(
@@ -155,6 +159,10 @@ export const useDashboard = () => {
       return restaurantOptions[0].id;
     });
   }, [restaurantOptions, restaurantsLoading]);
+
+  useEffect(() => {
+    emitDashboardRestaurantChanged(selectedRestaurantId);
+  }, [selectedRestaurantId]);
 
   const rawDashboard = data?.managerDashboard;
   const hasStaleDashboard = Boolean(
