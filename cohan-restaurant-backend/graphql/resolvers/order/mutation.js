@@ -35,6 +35,7 @@ import { markTableStatus } from "./helper/tableUtils.js";
 import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
+import { hydrateCheckoutOrderItems } from "../../../src/services/orderItemHydration.service.js";
 import {
   loadCustomerRankContext,
   resolveCustomerRankAliasesForRestaurant,
@@ -2538,7 +2539,7 @@ export const OrderMutation = {
             if (released) releasedCartItems.push(released);
           }
 
-          await hydrateOrderItems({
+          const hydratedItems = await hydrateCheckoutOrderItems({
             restaurantId,
             items: normalizedItems,
             session,
@@ -2566,7 +2567,7 @@ export const OrderMutation = {
 
           const totals = await calculateDiscountBreakdown({
             restaurantId: restaurantId,
-            items: normalizedItems,
+            items: hydratedItems,
             pricing: groupPricing,
             promotionIds: normalizePromotionIds(promotionIds),
             userId: finalUserId,
@@ -2595,7 +2596,7 @@ export const OrderMutation = {
                 parentOrderCode: checkoutCode,
                 orderType,
                 shipping: shippingObj,
-                items: normalizedItems,
+                items: hydratedItems,
                 totals,
                 note,
                 currentStatus: isTransferCheckout ? "draft" : "pending",
@@ -2642,7 +2643,7 @@ export const OrderMutation = {
             await incrementPromotionUsageOnce({ totals, session });
           }
 
-          const lines = buildInventoryLinesFromItems(normalizedItems);
+          const lines = buildInventoryLinesFromItems(hydratedItems);
           if (lines.length) {
             const whId = await resolveWarehouseIdOrDefault(
               restaurantId,

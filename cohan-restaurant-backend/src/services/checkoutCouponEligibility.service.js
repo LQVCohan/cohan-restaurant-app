@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
-import { Coupon, MenuItem } from "../../models/index.js";
+import { Coupon } from "../../models/index.js";
 import { calculateDiscountBreakdown } from "./discountCalculation.service.js";
+import { hydrateCheckoutOrderItems } from "./orderItemHydration.service.js";
 import {
   loadCustomerRankContext,
   resolveCustomerRankAliasesForRestaurant,
@@ -38,7 +39,9 @@ export function normalizeCheckoutCouponCodes(couponCodes = []) {
   ].slice(0, MAX_COUPON_CODES);
 }
 
-function reasonCodeFromError(error) {
+const ELIGIBILITY_REASON_CODES = new Set(Object.keys(REASON_MESSAGES));
+
+function legacyReasonCodeFromMessage(error) {
   const message = String(error?.message || "").toLowerCase();
   if (message.includes("not found") || message.includes("not active")) return "COUPON_NOT_ACTIVE";
   if (message.includes("minimum order value")) return "MIN_ORDER_NOT_MET";
@@ -56,6 +59,13 @@ function reasonCodeFromError(error) {
   return "UNKNOWN";
 }
 
+function reasonCodeFromError(error) {
+  const structuredCode = error?.code || error?.extensions?.code;
+  if (ELIGIBILITY_REASON_CODES.has(structuredCode)) return structuredCode;
+  const legacyCode = legacyReasonCodeFromMessage(error);
+  return ELIGIBILITY_REASON_CODES.has(legacyCode) ? legacyCode : "UNKNOWN";
+}
+
 function buildResult({ couponCode, eligible, reasonCode, subtotal = 0, eligibleSubtotal = 0, estimatedDiscount = 0 }) {
   return {
     couponCode,
@@ -68,50 +78,6 @@ function buildResult({ couponCode, eligible, reasonCode, subtotal = 0, eligibleS
   };
 }
 
-function resolveMenuItemId(input = {}) {
-  return input.dishId || input.menuItemId || input.menuId || input.id || input._id || null;
-}
-
-async function hydrateEligibilityItems({ restaurantId, items = [], session }) {
-  const rid = mongoose.isValidObjectId(restaurantId) ? new mongoose.Types.ObjectId(restaurantId) : null;
-  if (!rid || !Array.isArray(items) || !items.length) return [];
-
-  const requestedIds = [
-    ...new Set(items.map(resolveMenuItemId).filter(Boolean).map(String)),
-  ].filter((id) => mongoose.isValidObjectId(id));
-  if (!requestedIds.length) return [];
-
-  const query = MenuItem.find({
-    restaurantId: rid,
-    _id: { $in: requestedIds.map((id) => new mongoose.Types.ObjectId(id)) },
-  }).select("_id name categoryId basePrice defaultServingKey status");
-  const docs = await (session ? query.session(session) : query).lean();
-  const byId = new Map((docs || []).map((doc) => [String(doc._id), doc]));
-
-  return items.map((input) => {
-    const id = resolveMenuItemId(input);
-    const doc = byId.get(String(id || ""));
-    if (!doc) return null;
-    const quantity = Math.max(0, Number(input.quantity || 0));
-    const unitPrice = Math.max(0, Number(doc.basePrice || 0));
-    if (quantity <= 0) return null;
-    return {
-      dishId: doc._id,
-      menuId: input.menuId || doc._id,
-      categoryId: doc.categoryId,
-      menuItem: { _id: doc._id, categoryId: doc.categoryId, name: doc.name },
-      name: doc.name,
-      quantity,
-      servingKey: input.servingKey || doc.defaultServingKey || "portion",
-      servingVariant: input.servingVariant || { key: input.servingKey || doc.defaultServingKey || "portion", mode: "PORTION", price: unitPrice },
-      basePrice: unitPrice,
-      unitPrice,
-      modifiersPrice: 0,
-      lineSubtotal: Math.round(unitPrice * quantity),
-      status: String(input.status || "pending"),
-    };
-  }).filter(Boolean);
-}
 
 export async function evaluateCheckoutCouponEligibilities({
   userId,
@@ -128,11 +94,17 @@ export async function evaluateCheckoutCouponEligibilities({
   if (!rid) throw new Error("Invalid restaurantId");
 
   const codes = normalizeCheckoutCouponCodes(couponCodes);
-  const hydratedItems = await hydrateEligibilityItems({ restaurantId: rid, items, session });
-  const subtotal = hydratedItems.reduce((sum, item) => sum + Number(item.lineSubtotal || 0), 0);
-
-  if (!hydratedItems.length) {
-    return codes.map((couponCode) => buildResult({ couponCode, eligible: false, reasonCode: "INVALID_ITEMS" }));
+  let hydratedItems = [];
+  let subtotal = 0;
+  try {
+    hydratedItems = await hydrateCheckoutOrderItems({ restaurantId: rid, items, session });
+    subtotal = hydratedItems.reduce((sum, item) => sum + Number(item.lineSubtotal || 0), 0);
+  } catch (error) {
+    return codes.map((couponCode) => buildResult({
+      couponCode,
+      eligible: false,
+      reasonCode: "INVALID_ITEMS",
+    }));
   }
 
   const query = Coupon.find({ restaurantId: rid, code: { $in: codes } });

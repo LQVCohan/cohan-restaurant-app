@@ -10,6 +10,18 @@ import {
 
 const toNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const roundVnd = (v) => Math.max(0, Math.round(toNum(v, 0)));
+
+export class CouponEligibilityError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = "CouponEligibilityError";
+    this.code = code;
+  }
+}
+
+function throwCouponEligibilityError(code, message) {
+  throw new CouponEligibilityError(code, message);
+}
 function normalizeScope(value) {
   return String(value || "")
     .trim()
@@ -536,7 +548,8 @@ export async function checkFirstOrderOnly({
     : null;
 
   if (!uid) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "CUSTOMER_LOGIN_REQUIRED",
       "Invalid coupon: first-order eligibility requires an authenticated customer",
     );
   }
@@ -557,7 +570,8 @@ export async function checkFirstOrderOnly({
   }).session(session);
 
   if (paidOrderCount > 0) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "FIRST_ORDER_ONLY",
       "Invalid coupon: only valid for the customer's first order",
     );
   }
@@ -569,7 +583,8 @@ export async function checkFirstOrderOnly({
   }).session(session);
 
   if (paidInvoiceCount > 0) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "FIRST_ORDER_ONLY",
       "Invalid coupon: only valid for the customer's first order",
     );
   }
@@ -581,7 +596,8 @@ export async function checkFirstOrderOnly({
   }).session(session);
 
   if (couponRedemptionCount > 0) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "FIRST_ORDER_ONLY",
       "Invalid coupon: only valid for the customer's first order",
     );
   }
@@ -600,24 +616,26 @@ export async function assertCouponEligibility({
   session,
 }) {
   if (!coupon || !inWindow(coupon, now)) {
-    throw new Error("Invalid coupon: not found or not active");
+    throwCouponEligibilityError("COUPON_NOT_ACTIVE", "Invalid coupon: not found or not active");
   }
 
   if (subtotal < Math.max(0, toNum(coupon.minOrderValue))) {
-    throw new Error(
+    throwCouponEligibilityError(
+      "MIN_ORDER_NOT_MET",
       `Invalid coupon: minimum order value is ${Math.max(0, toNum(coupon.minOrderValue))}`,
     );
   }
 
   const maxUsage = toNum(coupon.maxUsage);
   if (maxUsage > 0 && toNum(coupon.used) >= maxUsage) {
-    throw new Error("Invalid coupon: usage limit reached");
+    throwCouponEligibilityError("USAGE_LIMIT_REACHED", "Invalid coupon: usage limit reached");
   }
 
   const constraints = coupon.constraints || {};
   const orderTypes = normalizeConstraintArray(constraints.orderTypes);
   if (orderTypes.length && !matchesOrderType(constraints, orderType)) {
-    throw new Error(
+    throwCouponEligibilityError(
+      orderType ? "ORDER_TYPE_NOT_ELIGIBLE" : "ORDER_TYPE_REQUIRED",
       orderType
         ? "Invalid coupon: order type is not eligible"
         : "Invalid coupon: order type is required for this coupon",
@@ -629,7 +647,8 @@ export async function assertCouponEligibility({
     paymentMethods.length &&
     !matchesPaymentMethod(constraints, paymentMethod)
   ) {
-    throw new Error(
+    throwCouponEligibilityError(
+      paymentMethod ? "PAYMENT_METHOD_NOT_ELIGIBLE" : "PAYMENT_METHOD_REQUIRED",
       paymentMethod
         ? "Invalid coupon: payment method is not eligible"
         : "Invalid coupon: payment method is required for this coupon",
@@ -643,7 +662,8 @@ export async function assertCouponEligibility({
       : [customerRanks ?? customerRank],
   );
   if (allowedCustomerRanks.length && !matchesCustomerRank(constraints, actualCustomerRanks)) {
-    throw new Error(
+    throwCouponEligibilityError(
+      actualCustomerRanks.length ? "CUSTOMER_RANK_NOT_ELIGIBLE" : "CUSTOMER_RANK_REQUIRED",
       actualCustomerRanks.length
         ? "Invalid coupon: customer rank is not eligible"
         : "Invalid coupon: customer rank is required for this coupon",
@@ -657,7 +677,8 @@ export async function assertCouponEligibility({
   const perUserLimit = toNum(constraints.perUserLimit, 0);
   if (perUserLimit > 0) {
     if (!uid) {
-      throw new Error(
+      throwCouponEligibilityError(
+        "CUSTOMER_LOGIN_REQUIRED",
         "Invalid coupon: authenticated customer is required for per-user limit",
       );
     }
@@ -667,7 +688,7 @@ export async function assertCouponEligibility({
       userId: uid,
     }).session(session);
     if (userRedemptionCount >= perUserLimit) {
-      throw new Error("Invalid coupon: per-user usage limit reached");
+      throwCouponEligibilityError("PER_USER_LIMIT_REACHED", "Invalid coupon: per-user usage limit reached");
     }
   }
 
@@ -938,7 +959,7 @@ export async function calculateDiscountBreakdown({
         : subtotal;
 
       if (categoryScope.hasConstraints && couponEligibleSubtotal <= 0) {
-        throw new Error("Invalid coupon: no eligible items for category constraints");
+        throwCouponEligibilityError("NO_ELIGIBLE_CATEGORY_ITEMS", "Invalid coupon: no eligible items for category constraints");
       }
 
       voucherDiscount = calcDiscountAmount({

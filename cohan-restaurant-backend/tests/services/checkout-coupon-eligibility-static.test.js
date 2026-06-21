@@ -37,6 +37,9 @@ describe("checkout coupon eligibility wiring", () => {
     expect(src).toContain("calculateDiscountBreakdown");
     expect(src).toContain("loadCustomerRankContext");
     expect(src).toContain("resolveCustomerRankAliasesForRestaurant");
+    expect(src).toContain("hydrateCheckoutOrderItems");
+    expect(src).not.toContain("basePrice");
+    expect(src).not.toContain("modifiersPrice: 0");
     expect(src).not.toContain("CouponRedemption.create");
   });
 });

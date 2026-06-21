@@ -263,3 +263,39 @@
   font-size: 0.82rem;
   font-weight: 700;
 }
+
+.coupon-restaurant-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.coupon-restaurant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.coupon-status-pill {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 0.35rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+}
+
+.coupon-clear-button {
+  border: 0;
+  background: transparent;
+  color: #b45309;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.best-coupon-card.is-disabled {
+  opacity: 0.78;
+}
