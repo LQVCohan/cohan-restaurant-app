@@ -34,34 +34,42 @@ const CARD_CONFIG = {
     label: "Doanh thu",
     icon: DollarSign,
     tone: "primary",
-    help: "Theo bộ lọc thời gian",
+    help: "Theo khoảng thời gian đã chọn",
     format: formatCurrency,
   },
   orders: {
-    label: "Đơn hàng",
+    label: "Tổng đơn hàng",
     icon: ShoppingBag,
     tone: "success",
-    help: "Tổng đơn trong kỳ",
+    help: "Tất cả đơn trong khoảng thời gian đã chọn",
   },
   processing: {
-    label: "Đang xử lý",
+    label: "Đơn đang xử lý",
     icon: ChefHat,
     tone: "warning",
-    help: "Chờ bếp hoặc phục vụ",
+    help: "Đơn chờ xác nhận hoặc đang chuẩn bị",
   },
   alerts: {
-    label: "Cảnh báo",
+    label: "Cảnh báo cần xử lý",
     icon: AlertTriangle,
     tone: "neutral",
-    help: "Tồn kho và vận hành",
+    help: "Cảnh báo về tồn kho hoặc vận hành",
   },
   customers: { label: "Khách hàng", icon: Users, tone: "neutral" },
-  tables: { label: "Số bàn", icon: TableProperties, tone: "neutral" },
-  menuItems: { label: "Số món", icon: Utensils, tone: "neutral" },
-  promotions: { label: "Khuyến mãi hoạt động", icon: Percent, tone: "warning" },
-  staff: { label: "Nhân sự", icon: Users, tone: "neutral" },
-  completed: { label: "Đơn hoàn thành", icon: CircleCheck, tone: "success" },
-  cancelled: { label: "Đơn hủy", icon: CircleX, tone: "danger" },
+  tables: { label: "Bàn đang quản lý", icon: TableProperties, tone: "neutral" },
+  menuItems: { label: "Món trong thực đơn", icon: Utensils, tone: "neutral" },
+  promotions: {
+    label: "Khuyến mãi đang áp dụng",
+    icon: Percent,
+    tone: "warning",
+  },
+  staff: {
+    label: "Nhân viên đang làm việc",
+    icon: Users,
+    tone: "neutral",
+  },
+  completed: { label: "Đơn đã hoàn thành", icon: CircleCheck, tone: "success" },
+  cancelled: { label: "Đơn đã hủy", icon: CircleX, tone: "danger" },
 };
 
 const ORDER_BY_VARIANT = {
@@ -78,11 +86,16 @@ const ORDER_BY_VARIANT = {
 };
 
 const StatSkeleton = ({ variant }) => (
-  <article className={`stat-card stat-card--skeleton stat-card--${variant}`} aria-hidden="true">
+  <article
+    className={`stat-card stat-card--skeleton stat-card--${variant}`}
+    aria-hidden="true"
+  >
     <span className="icon-badge" />
     <span className="stat-skeleton stat-skeleton--label" />
     <span className="stat-skeleton stat-skeleton--value" />
-    {variant === "summary" ? <span className="stat-skeleton stat-skeleton--help" /> : null}
+    {variant === "summary" ? (
+      <span className="stat-skeleton stat-skeleton--help" />
+    ) : null}
   </article>
 );
 
@@ -97,7 +110,12 @@ const StatCard = ({ label, value, icon: Icon, tone, variant, help }) => (
   </article>
 );
 
-const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) => {
+const StatsGrid = ({
+  stats,
+  isLoading,
+  variant = "compact",
+  alertsCount = 0,
+}) => {
   const statusCounts = stats?.statusCounts || {};
   const keys = ORDER_BY_VARIANT[variant] || ORDER_BY_VARIANT.compact;
 
@@ -106,7 +124,9 @@ const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) =
       return (statusCounts.pending || 0) + (statusCounts.preparing || 0);
     }
     if (key === "alerts") return alertsCount;
-    if (["completed", "cancelled"].includes(key)) return statusCounts[key] ?? 0;
+    if (["completed", "cancelled"].includes(key)) {
+      return statusCounts[key] ?? 0;
+    }
     return stats?.[key] ?? 0;
   };
 
@@ -121,21 +141,30 @@ const StatsGrid = ({ stats, isLoading, variant = "compact", alertsCount = 0 }) =
       ...baseConfig,
       icon: count > 0 ? AlertTriangle : CircleCheck,
       tone: count > 0 ? "danger" : "success",
-      help: count > 0 ? "Cần theo dõi" : "Vận hành ổn định",
+      help:
+        count > 0
+          ? "Có nội dung cần kiểm tra"
+          : "Chưa có cảnh báo cần xử lý",
     };
   };
 
   return (
     <section
       className={`stats-grid-container stats-grid-container--${variant}`}
-      aria-label={variant === "summary" ? "Chỉ số vận hành chính" : "Thông tin thiết lập vận hành"}
+      aria-label={
+        variant === "summary"
+          ? "Các chỉ số vận hành chính"
+          : "Các số liệu vận hành cơ bản"
+      }
     >
       {keys.map((key) => {
         if (isLoading) return <StatSkeleton key={key} variant={variant} />;
 
         const config = getCardConfig(key);
         const rawValue = getValue(key);
-        const formattedValue = config.format ? config.format(rawValue) : rawValue;
+        const formattedValue = config.format
+          ? config.format(rawValue)
+          : rawValue;
 
         return (
           <StatCard
