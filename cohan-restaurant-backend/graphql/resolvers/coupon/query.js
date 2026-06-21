@@ -4,6 +4,7 @@ import { Coupon, VoucherPackage } from "../../../models/index.js";
 import { requireRoles } from "../../guards.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { evaluateCheckoutCouponEligibilities } from "../../../src/services/checkoutCouponEligibility.service.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -80,6 +81,19 @@ export const CouponQuery = {
       restaurantId: rid,
       ...buildActiveQuery(true),
     }).lean({ virtuals: true });
+  },
+
+
+  async checkoutCouponEligibilities(_, { input } = {}, ctx) {
+    const userId = ctx?.user?.id || ctx?.user?._id || null;
+    return evaluateCheckoutCouponEligibilities({
+      userId,
+      restaurantId: input?.restaurantId,
+      couponCodes: input?.couponCodes || [],
+      items: input?.items || [],
+      orderType: input?.orderType,
+      paymentMethod: input?.paymentMethod,
+    });
   },
 
   async voucherPackages(_, { restaurantId, activeOnly = true, now } = {}, ctx) {

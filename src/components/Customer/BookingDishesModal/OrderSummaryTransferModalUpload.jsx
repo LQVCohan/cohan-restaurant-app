@@ -18,12 +18,7 @@ import "./OrderSummaryTransferUpload.scss";
 import {
   buildCouponConditionText,
   buildRestaurantCartGroups,
-  calculateCouponDiscount,
-  calculateCouponEligibleSubtotalFrontend,
-  getCouponIneligibilityReason,
-  getItemLineTotal,
   normalizeId,
-  pickBestCouponForGroup,
 } from "./utils/checkoutCouponPreview";
 
 const ORDER_VAT_RATE = 0.1;
@@ -117,6 +112,20 @@ const MY_CHECKOUT_COUPONS = gql`
   }
 `;
 
+const CHECKOUT_COUPON_ELIGIBILITIES = gql`
+  query CheckoutCouponEligibilities($input: CheckoutCouponEligibilityInput!) {
+    checkoutCouponEligibilities(input: $input) {
+      couponCode
+      eligible
+      reasonCode
+      reason
+      subtotal
+      eligibleSubtotal
+      estimatedDiscount
+    }
+  }
+`;
+
 const MY_CHECKOUT_ADDRESSES = gql`
   query MyCheckoutAddresses {
     myAddresses {
@@ -139,6 +148,26 @@ const mergeCouponLists = (...lists) => {
     map.set(key, { ...(map.get(key) || {}), ...coupon });
   });
   return Array.from(map.values());
+};
+
+const normalizeCouponCode = (value) => String(value || "").trim().toUpperCase();
+
+const buildEligibilityContextKey = ({ group, orderType, paymentMethod }) => JSON.stringify({
+  restaurantId: group.restaurantId,
+  orderType: orderType || "",
+  paymentMethod: paymentMethod || "",
+  items: (group.items || []).map((item) => ({
+    id: item.id || item._id || item.dishId || item.menuId || item.menuItemId || item.cartItemId || item.name || "",
+    quantity: Number(item.quantity || 1),
+    servingKey: item.servingKey || "",
+    modifiers: item.selectedModifiers || item.modifiers || [],
+  })),
+});
+
+const getEligibilityRecord = ({ eligibilityByRestaurant, restaurantId, couponCode, contextKey }) => {
+  const bucket = eligibilityByRestaurant[restaurantId];
+  if (!bucket || bucket.contextKey !== contextKey) return null;
+  return bucket.byCode?.[normalizeCouponCode(couponCode)] || null;
 };
 
 const defaultShipping = (user = {}) => ({
@@ -283,6 +312,10 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [checkoutCouponsByRestaurant, setCheckoutCouponsByRestaurant] = useState({});
   const [selectedCouponCodesByRestaurant, setSelectedCouponCodesByRestaurant] = useState({});
+  const [couponSelectionSourceByRestaurant, setCouponSelectionSourceByRestaurant] = useState({});
+  const [eligibilityByRestaurant, setEligibilityByRestaurant] = useState({});
+  const [eligibilityLoadingByRestaurant, setEligibilityLoadingByRestaurant] = useState({});
+  const [eligibilityErrorByRestaurant, setEligibilityErrorByRestaurant] = useState({});
   const [couponLoading, setCouponLoading] = useState(false);
   const [view, setView] = useState("summary");
   const [error, setError] = useState("");
@@ -336,46 +369,133 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
     return () => { active = false; };
   }, [apolloClient, cartGroups, isOpen]);
 
+  const eligibilityContextByRestaurant = useMemo(() => Object.fromEntries(
+    cartGroups.map((group) => [group.restaurantId, buildEligibilityContextKey({ group, orderType, paymentMethod })]),
+  ), [cartGroups, orderType, paymentMethod]);
+
+  useEffect(() => {
+    if (!isOpen || !cartGroups.length) {
+      setEligibilityByRestaurant({});
+      setEligibilityLoadingByRestaurant({});
+      setEligibilityErrorByRestaurant({});
+      return undefined;
+    }
+
+    let active = true;
+    cartGroups.forEach((group) => {
+      const coupons = checkoutCouponsByRestaurant[group.restaurantId] || [];
+      const couponCodes = [...new Set(coupons.map((coupon) => normalizeCouponCode(coupon.code)).filter(Boolean))];
+      const contextKey = eligibilityContextByRestaurant[group.restaurantId];
+      if (!couponCodes.length || !contextKey) {
+        setEligibilityByRestaurant((prev) => ({ ...prev, [group.restaurantId]: { contextKey, byCode: {} } }));
+        return;
+      }
+
+      setEligibilityLoadingByRestaurant((prev) => ({ ...prev, [group.restaurantId]: true }));
+      setEligibilityErrorByRestaurant((prev) => ({ ...prev, [group.restaurantId]: "" }));
+      apolloClient.query({
+        query: CHECKOUT_COUPON_ELIGIBILITIES,
+        variables: {
+          input: {
+            restaurantId: group.restaurantId,
+            couponCodes,
+            items: group.items.map((item) => mapCartItemToOrderItemInput(item, { includeCartHoldRef: true })),
+            orderType,
+            paymentMethod,
+          },
+        },
+        fetchPolicy: "network-only",
+      }).then((result) => {
+        if (!active || eligibilityContextByRestaurant[group.restaurantId] !== contextKey) return;
+        const byCode = Object.fromEntries((result?.data?.checkoutCouponEligibilities || []).map((item) => [normalizeCouponCode(item.couponCode), item]));
+        setEligibilityByRestaurant((prev) => ({ ...prev, [group.restaurantId]: { contextKey, byCode } }));
+      }).catch(() => {
+        if (!active) return;
+        setEligibilityErrorByRestaurant((prev) => ({
+          ...prev,
+          [group.restaurantId]: "Không thể xác minh ưu đãi lúc này. Bạn vẫn có thể tiếp tục thanh toán không dùng coupon.",
+        }));
+        setEligibilityByRestaurant((prev) => ({ ...prev, [group.restaurantId]: { contextKey, byCode: {} } }));
+      }).finally(() => {
+        if (active) setEligibilityLoadingByRestaurant((prev) => ({ ...prev, [group.restaurantId]: false }));
+      });
+    });
+
+    return () => { active = false; };
+  }, [apolloClient, cartGroups, checkoutCouponsByRestaurant, eligibilityContextByRestaurant, isOpen, orderType, paymentMethod]);
+
   const bestCouponsByRestaurant = useMemo(() => {
     const next = {};
     cartGroups.forEach((group) => {
-      next[group.restaurantId] = pickBestCouponForGroup({
-        coupons: checkoutCouponsByRestaurant[group.restaurantId] || [],
-        group,
-        orderType,
-        paymentMethod,
-        formatCurrency,
-      });
+      const contextKey = eligibilityContextByRestaurant[group.restaurantId];
+      const coupons = checkoutCouponsByRestaurant[group.restaurantId] || [];
+      const eligibleCoupons = coupons.map((coupon) => {
+        const eligibility = getEligibilityRecord({
+          eligibilityByRestaurant,
+          restaurantId: group.restaurantId,
+          couponCode: coupon.code,
+          contextKey,
+        });
+        return eligibility?.eligible ? { coupon, eligibility } : null;
+      }).filter(Boolean);
+      next[group.restaurantId] = eligibleCoupons.sort((a, b) => {
+        const discountDiff = Number(b.eligibility.estimatedDiscount || 0) - Number(a.eligibility.estimatedDiscount || 0);
+        if (discountDiff) return discountDiff;
+        const minDiff = Number(a.coupon.minOrderValue || 0) - Number(b.coupon.minOrderValue || 0);
+        if (minDiff) return minDiff;
+        return normalizeCouponCode(a.coupon.code).localeCompare(normalizeCouponCode(b.coupon.code));
+      })[0] || null;
     });
     return next;
-  }, [cartGroups, checkoutCouponsByRestaurant, orderType, paymentMethod]);
+  }, [cartGroups, checkoutCouponsByRestaurant, eligibilityByRestaurant, eligibilityContextByRestaurant]);
 
   useEffect(() => {
     setSelectedCouponCodesByRestaurant((prev) => {
       let changed = false;
       const next = { ...prev };
       cartGroups.forEach((group) => {
-        if (Object.prototype.hasOwnProperty.call(next, group.restaurantId)) return;
+        const contextKey = eligibilityContextByRestaurant[group.restaurantId];
+        const selectedCode = next[group.restaurantId];
+        const selectedEligibility = selectedCode ? getEligibilityRecord({ eligibilityByRestaurant, restaurantId: group.restaurantId, couponCode: selectedCode, contextKey }) : null;
+        const source = couponSelectionSourceByRestaurant[group.restaurantId];
+
+        if (selectedCode && (!selectedEligibility || !selectedEligibility.eligible)) {
+          next[group.restaurantId] = null;
+          changed = true;
+          return;
+        }
+
+        if (selectedCode || source === "manual" || source === "none" || eligibilityLoadingByRestaurant[group.restaurantId] || eligibilityErrorByRestaurant[group.restaurantId]) return;
         const best = bestCouponsByRestaurant[group.restaurantId];
         if (best?.coupon?.code) {
           next[group.restaurantId] = best.coupon.code;
           changed = true;
+          setCouponSelectionSourceByRestaurant((prevSource) => ({ ...prevSource, [group.restaurantId]: "auto" }));
         }
       });
       return changed ? next : prev;
     });
-  }, [bestCouponsByRestaurant, cartGroups]);
+  }, [bestCouponsByRestaurant, cartGroups, couponSelectionSourceByRestaurant, eligibilityByRestaurant, eligibilityContextByRestaurant, eligibilityErrorByRestaurant, eligibilityLoadingByRestaurant]);
 
   const selectedCouponDetails = useMemo(() => cartGroups.map((group) => {
     const selectedCode = selectedCouponCodesByRestaurant[group.restaurantId];
     if (!selectedCode) return null;
-    const coupon = (checkoutCouponsByRestaurant[group.restaurantId] || []).find((item) => String(item.code || "").toUpperCase() === String(selectedCode || "").toUpperCase());
+    const contextKey = eligibilityContextByRestaurant[group.restaurantId];
+    const eligibility = getEligibilityRecord({ eligibilityByRestaurant, restaurantId: group.restaurantId, couponCode: selectedCode, contextKey });
+    if (!eligibility?.eligible) return null;
+    const coupon = (checkoutCouponsByRestaurant[group.restaurantId] || []).find((item) => normalizeCouponCode(item.code) === normalizeCouponCode(selectedCode));
     if (!coupon) return null;
-    const reason = getCouponIneligibilityReason({ coupon, group, orderType, paymentMethod, formatCurrency });
-    if (reason) return null;
-    const categoryScope = calculateCouponEligibleSubtotalFrontend({ coupon, items: group.items, fallbackSubtotal: group.subtotal });
-    return { restaurantId: group.restaurantId, coupon, eligibleSubtotal: categoryScope.eligibleSubtotal, hasCategoryConstraints: categoryScope.hasConstraints, estimatedDiscount: calculateCouponDiscount(coupon, categoryScope.eligibleSubtotal), group };
-  }).filter(Boolean), [cartGroups, checkoutCouponsByRestaurant, orderType, paymentMethod, selectedCouponCodesByRestaurant]);
+    return {
+      restaurantId: group.restaurantId,
+      coupon,
+      eligibility,
+      eligibleSubtotal: Number(eligibility.eligibleSubtotal || 0),
+      hasCategoryConstraints: Number(eligibility.eligibleSubtotal || 0) !== Number(eligibility.subtotal || 0),
+      estimatedDiscount: Number(eligibility.estimatedDiscount || 0),
+      group,
+      contextKey,
+    };
+  }).filter(Boolean), [cartGroups, checkoutCouponsByRestaurant, eligibilityByRestaurant, eligibilityContextByRestaurant, selectedCouponCodesByRestaurant]);
 
   const selectedCouponCodeMap = useMemo(() => Object.fromEntries(selectedCouponDetails.map((item) => [item.restaurantId, item.coupon.code])), [selectedCouponDetails]);
   const couponDiscountTotal = useMemo(() => selectedCouponDetails.reduce((sum, item) => sum + Number(item.estimatedDiscount || 0), 0), [selectedCouponDetails]);
@@ -640,8 +760,8 @@ export default function OrderSummaryTransferModalUpload({ isOpen, onClose, items
     <>
       <div className="section"><h3>Thông tin nhận hàng</h3>{savedAddresses.length > 0 && <label className="saved-address-picker">Chọn địa chỉ đã lưu<select value={selectedAddressId} onChange={(e) => applySavedAddress(savedAddresses.find((item) => item.id === e.target.value))}><option value="">Chọn nhanh địa chỉ</option>{savedAddresses.map((address) => <option key={address.id} value={address.id}>{address.isDefault ? "Mặc định · " : ""}{address.receiverName} · {address.fullAddress}</option>)}</select></label>}<input value={shipping.fullName} onChange={(e) => setShipping({ ...shipping, fullName: e.target.value })} placeholder="Họ tên" /><input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} placeholder="Số điện thoại" /><input value={shipping.email} onChange={(e) => setShipping({ ...shipping, email: e.target.value })} placeholder="Email" /><input value={shipping.address} onChange={(e) => setShipping({ ...shipping, address: e.target.value })} placeholder="Địa chỉ giao hàng" /><textarea value={shipping.note} onChange={(e) => setShipping({ ...shipping, note: e.target.value })} placeholder="Ghi chú" /></div>
       <div className="section"><h3>Món đã chọn</h3>{items.map((item) => <div className="price-row" key={item.id || item.cartItemId || item.name}><span>{item.name} × {item.quantity || 1}</span><strong>{formatCurrency((Number(item.price || 0) + Number(item.modifiersPrice || 0)) * Number(item.quantity || 1))}</strong></div>)}</div>
-      <div className="section best-coupon-section"><div className="coupon-section-heading"><div><p>Ưu đãi đề xuất</p><h3>Coupon có thể áp dụng</h3></div>{couponLoading && <span>Đang kiểm tra...</span>}</div>{cartGroups.length === 0 || (!couponLoading && !Object.values(bestCouponsByRestaurant).some(Boolean)) ? <p className="coupon-empty-state">Chưa có ưu đãi phù hợp cho đơn này.</p> : cartGroups.map((group) => { const best = bestCouponsByRestaurant[group.restaurantId]; const selectedCode = selectedCouponCodesByRestaurant[group.restaurantId]; const isApplied = Boolean(selectedCode && best?.coupon?.code && String(selectedCode).toUpperCase() === String(best.coupon.code).toUpperCase()); return <article className={`best-coupon-card ${isApplied ? "is-applied" : ""}`} key={group.restaurantId}>{best ? <><div><span className="coupon-restaurant-label">Nhà hàng {group.restaurantId.slice(-6)}</span><h4>{best.coupon.name || best.coupon.code}</h4><p>{buildCouponConditionText(best.coupon, formatCurrency)}</p>{best.hasCategoryConstraints && <p className="coupon-category-scope">Áp dụng trên món thuộc danh mục phù hợp: {formatCurrency(best.eligibleSubtotal)}</p>}</div><div className="coupon-saving-box"><span>Giảm giá ước tính</span><strong>-{formatCurrency(best.estimatedDiscount)}</strong><span>{best.coupon.code}</span></div><div className="coupon-actions">{isApplied ? <button type="button" onClick={() => setSelectedCouponCodesByRestaurant((prev) => ({ ...prev, [group.restaurantId]: null }))}>Bỏ áp dụng</button> : <button type="button" onClick={() => setSelectedCouponCodesByRestaurant((prev) => ({ ...prev, [group.restaurantId]: best.coupon.code }))}>Áp dụng tạm tính</button>}</div></> : <p className="coupon-empty-state">Chưa có ưu đãi phù hợp cho nhà hàng này.</p>}</article>; })}<p className="coupon-preview-note">Ưu đãi và tổng tiền được tạm tính. Hệ thống sẽ xác nhận lại điều kiện coupon khi tạo đơn.</p></div>
-      <div className="section"><h3>Phương thức thanh toán</h3><div className="payment-methods-grid">{[["cash", "Tiền mặt", "Thanh toán khi nhận hàng"], ["transfer", "Chuyển khoản / QR", "Gửi bằng chứng để nhà hàng xác minh"], ["wallet", "Ví nội bộ", "Thanh toán bằng số dư ví"]].map(([key, title, desc]) => <button key={key} type="button" className={`payment-method-card ${paymentMethod === key ? "selected" : ""}`} onClick={() => setPaymentMethod(key)}><div className="payment-info"><h4>{title}</h4><p>{desc}</p></div></button>)}</div></div>
+      <div className="section best-coupon-section"><div className="coupon-section-heading"><div><p>Ưu đãi đề xuất</p><h3>Coupon có thể áp dụng</h3></div>{(couponLoading || Object.values(eligibilityLoadingByRestaurant).some(Boolean)) && <span>Đang xác minh...</span>}</div>{Object.values(eligibilityErrorByRestaurant).filter(Boolean).map((message, index) => <p className="coupon-empty-state" key={`eligibility-error-${index}`}>{message}</p>)}{cartGroups.length === 0 || (!couponLoading && !Object.values(bestCouponsByRestaurant).some(Boolean) && !Object.values(eligibilityLoadingByRestaurant).some(Boolean)) ? <p className="coupon-empty-state">Chưa có ưu đãi phù hợp cho đơn này.</p> : cartGroups.map((group) => { const best = bestCouponsByRestaurant[group.restaurantId]; const selectedCode = selectedCouponCodesByRestaurant[group.restaurantId]; const contextKey = eligibilityContextByRestaurant[group.restaurantId]; const isVerifying = Boolean(eligibilityLoadingByRestaurant[group.restaurantId]); const coupons = checkoutCouponsByRestaurant[group.restaurantId] || []; const ineligible = coupons.map((coupon) => ({ coupon, eligibility: getEligibilityRecord({ eligibilityByRestaurant, restaurantId: group.restaurantId, couponCode: coupon.code, contextKey }) })).find((item) => item.eligibility && !item.eligibility.eligible); const display = best || ineligible; const isApplied = Boolean(selectedCode && display?.coupon?.code && normalizeCouponCode(selectedCode) === normalizeCouponCode(display.coupon.code)); return <article className={`best-coupon-card ${isApplied ? "is-applied" : ""}`} key={group.restaurantId}>{display ? <><div><span className="coupon-restaurant-label">Nhà hàng {group.restaurantId.slice(-6)}</span><h4>{display.coupon.name || display.coupon.code}</h4><p>{buildCouponConditionText(display.coupon, formatCurrency)}</p>{isVerifying ? <p className="coupon-category-scope">Đang xác minh ưu đãi với hệ thống...</p> : display.eligibility?.eligible ? <p className="coupon-category-scope">Có thể áp dụng · Áp dụng trên phần hợp lệ: {formatCurrency(display.eligibility.eligibleSubtotal)}</p> : <p className="coupon-category-scope">Không đủ điều kiện: {display.eligibility?.reason || "Không thể xác minh ưu đãi."}</p>}</div><div className="coupon-saving-box"><span>Giảm giá ước tính</span><strong>-{formatCurrency(display.eligibility?.eligible ? display.eligibility.estimatedDiscount : 0)}</strong><span>{display.coupon.code}</span></div><div className="coupon-actions">{isApplied ? <button type="button" onClick={() => { setSelectedCouponCodesByRestaurant((prev) => ({ ...prev, [group.restaurantId]: null })); setCouponSelectionSourceByRestaurant((prev) => ({ ...prev, [group.restaurantId]: "none" })); }}>Bỏ áp dụng</button> : <button type="button" disabled={!display.eligibility?.eligible || isVerifying} onClick={() => { setSelectedCouponCodesByRestaurant((prev) => ({ ...prev, [group.restaurantId]: display.coupon.code })); setCouponSelectionSourceByRestaurant((prev) => ({ ...prev, [group.restaurantId]: "manual" })); }}>Áp dụng tạm tính</button>}</div></> : <p className="coupon-empty-state">{isVerifying ? "Đang xác minh ưu đãi cho nhà hàng này..." : "Chưa có ưu đãi phù hợp cho nhà hàng này."}</p>}</article>; })}<p className="coupon-preview-note">Ưu đãi và tổng tiền được tạm tính. Hệ thống sẽ xác nhận lại điều kiện coupon khi tạo đơn.</p></div>
+            <div className="section"><h3>Phương thức thanh toán</h3><div className="payment-methods-grid">{[["cash", "Tiền mặt", "Thanh toán khi nhận hàng"], ["transfer", "Chuyển khoản / QR", "Gửi bằng chứng để nhà hàng xác minh"], ["wallet", "Ví nội bộ", "Thanh toán bằng số dư ví"]].map(([key, title, desc]) => <button key={key} type="button" className={`payment-method-card ${paymentMethod === key ? "selected" : ""}`} onClick={() => setPaymentMethod(key)}><div className="payment-info"><h4>{title}</h4><p>{desc}</p></div></button>)}</div></div>
       <div className="section"><div className="price-row"><span>Tạm tính</span><strong>{formatCurrency(totals.subtotal + totals.modifiers)}</strong></div><div className="price-row"><span>Phí giao hàng</span><strong>{formatCurrency(shippingFeeTotal)}</strong></div><div className="price-row discount"><span>Giảm giá ước tính</span><strong>-{formatCurrency(couponDiscountTotal)}</strong></div><div className="price-row"><span>VAT 10%</span><strong>{formatCurrency(estimatedTax)}</strong></div><div className="price-row total"><span>Tổng tạm tính</span><strong>{formatCurrency(estimatedGrandTotal)}</strong></div></div>
     </>
   );

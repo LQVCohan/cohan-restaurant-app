@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import User from "../../models/user.model.js";
 import {
   CustomerRankSetting,
   DEFAULT_CUSTOMER_RANKS,
@@ -65,4 +66,52 @@ export function buildCustomerRankAliases(value) {
   const normalized = normalizeCustomerRankAlias(value);
   const ascii = normalizeCustomerRankAliasAscii(value);
   return [...new Set([normalized, ascii].filter(Boolean))];
+}
+
+
+const RANK_POINT_DIVISOR = 1_000_000;
+
+export async function loadCustomerRankContext(userId, session) {
+  if (!userId || !mongoose.isValidObjectId(userId)) return null;
+  const query = User.findById(new mongoose.Types.ObjectId(userId))
+    .select("loyaltyRank customerType loyaltyPoints totalSpending");
+  const userDoc = await (session ? query.session(session) : query).lean();
+
+  if (!userDoc) return null;
+  return {
+    loyaltyRank: userDoc.loyaltyRank,
+    customerType: userDoc.customerType,
+    loyaltyPoints: userDoc.loyaltyPoints,
+    totalSpending: userDoc.totalSpending,
+  };
+}
+
+export async function resolveCustomerRankAliasesForRestaurant({
+  userContext,
+  restaurantId,
+  session,
+}) {
+  if (!userContext) return [];
+
+  const aliases = [
+    ...buildCustomerRankAliases(userContext.loyaltyRank),
+    ...buildCustomerRankAliases(userContext.customerType),
+  ];
+
+  const points = Number.isFinite(Number(userContext.loyaltyPoints))
+    ? Number(userContext.loyaltyPoints)
+    : Math.max(
+      0,
+      Math.floor((Number(userContext.totalSpending || 0) || 0) / RANK_POINT_DIVISOR),
+    );
+
+  const rankSetting = await getEffectiveCustomerRankSetting({ restaurantId, session });
+  const matchedRank = resolveCustomerRankByPoints({
+    ranks: rankSetting.ranks,
+    points,
+  });
+
+  if (matchedRank?.name) aliases.push(...buildCustomerRankAliases(matchedRank.name));
+
+  return [...new Set(aliases.filter(Boolean))];
 }

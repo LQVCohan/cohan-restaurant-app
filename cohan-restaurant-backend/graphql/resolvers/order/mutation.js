@@ -36,9 +36,8 @@ import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 import { calculateDiscountBreakdown } from "../../../src/services/discountCalculation.service.js";
 import {
-  buildCustomerRankAliases,
-  getEffectiveCustomerRankSetting,
-  resolveCustomerRankByPoints,
+  loadCustomerRankContext,
+  resolveCustomerRankAliasesForRestaurant,
 } from "../../../src/services/customerRankSetting.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { hasRole } from "../../../utils/authz.js";
@@ -1162,47 +1161,8 @@ function normalizeCheckoutCouponSelections(couponSelections = []) {
   return selections;
 }
 
-async function loadCheckoutUserRankContext(userId, session) {
-  if (!userId || !mongoose.isValidObjectId(userId)) return null;
-  const userDoc = await User.findById(toId(userId))
-    .select("loyaltyRank customerType loyaltyPoints totalSpending")
-    .session(session)
-    .lean();
-
-  if (!userDoc) return null;
-  return {
-    loyaltyRank: userDoc.loyaltyRank,
-    customerType: userDoc.customerType,
-    loyaltyPoints: userDoc.loyaltyPoints,
-    totalSpending: userDoc.totalSpending,
-  };
-}
-
-async function resolveCheckoutCustomerRankAliases({ userContext, restaurantId, session }) {
-  if (!userContext) return [];
-
-  const aliases = [
-    ...buildCustomerRankAliases(userContext.loyaltyRank),
-    ...buildCustomerRankAliases(userContext.customerType),
-  ];
-
-  const points = Number.isFinite(Number(userContext.loyaltyPoints))
-    ? Number(userContext.loyaltyPoints)
-    : Math.max(0, Math.floor((Number(userContext.totalSpending || 0) || 0) / RANK_POINT_DIVISOR));
-
-  const rankSetting = await getEffectiveCustomerRankSetting({
-    restaurantId,
-    session,
-  });
-  const matchedRank = resolveCustomerRankByPoints({
-    ranks: rankSetting.ranks,
-    points,
-  });
-
-  if (matchedRank?.name) aliases.push(...buildCustomerRankAliases(matchedRank.name));
-
-  return [...new Set(aliases.filter(Boolean))];
-}
+const loadCheckoutUserRankContext = loadCustomerRankContext;
+const resolveCheckoutCustomerRankAliases = resolveCustomerRankAliasesForRestaurant;
 
 function normalizePromotionIds(promotionIds = []) {
   return Array.isArray(promotionIds)
