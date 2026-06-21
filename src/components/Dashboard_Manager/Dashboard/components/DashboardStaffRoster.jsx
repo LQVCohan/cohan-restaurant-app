@@ -58,13 +58,15 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
       skip: !restaurantId || !canReadStaff,
       fetchPolicy: "cache-and-network",
       notifyOnNetworkStatusChange: true,
+      pollInterval: restaurantId && canReadStaff ? 30000 : 0,
     },
   );
 
   const staff = useMemo(() => {
     const rows = Array.isArray(data?.staffList) ? data.staffList : [];
     return [...rows].sort((left, right) => {
-      const onlineDifference = Number(Boolean(right?.isOnline)) - Number(Boolean(left?.isOnline));
+      const onlineDifference =
+        Number(Boolean(right?.isOnline)) - Number(Boolean(left?.isOnline));
       if (onlineDifference) return onlineDifference;
       return String(left?.fullName || "").localeCompare(
         String(right?.fullName || ""),
