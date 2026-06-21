@@ -88,7 +88,6 @@ export function normalizeItem(input) {
         "weightGrams must be > 0. Conversion failed (expected integer grams).",
       );
     }
-
     quantity = 1;
     input.weightGrams = grams;
   } else {
@@ -173,16 +172,40 @@ export function computeTotals(items = []) {
       0,
     );
 
-    const basePrice = Number(item.basePrice || item.servingVariant?.price || 0);
-    const quantity = item.servingVariant?.mode === "BY_WEIGHT"
-      ? Number(item.weightGrams || 0) / 1000
-      : Number(item.quantity || 1);
+    const unitPrice = item.servingVariant?.price ?? item.basePrice ?? 0;
+    if (!(Number.isFinite(unitPrice) && unitPrice >= 0)) {
+      throw new Error(`Invalid unit price for ${item.name}`);
+    }
 
-    subtotal += (basePrice + modifiersPrice) * quantity;
+    let lineSubtotal = 0;
+
+    if (item.servingVariant?.mode === "BY_WEIGHT") {
+      const grams = assertInteger(item.weightGrams, "weightGrams");
+      if (!(grams > 0)) {
+        throw new Error(
+          `weightGrams missing/invalid for BY_WEIGHT item ${item.name}`,
+        );
+      }
+      const kg = grams / 1000;
+      lineSubtotal = Math.round(unitPrice * kg + modifiersPrice);
+    } else {
+      const quantityValue = assertPositive(item.quantity, "quantity");
+      lineSubtotal = Math.round(unitPrice * quantityValue + modifiersPrice);
+    }
+
+    item.modifiersPrice = modifiersPrice;
+    item.lineSubtotal = lineSubtotal;
+
+    if (!["cancelled", "returned"].includes(item.status)) {
+      subtotal += lineSubtotal;
+    }
   }
 
   return {
     subtotal,
-    total: subtotal,
+    discount: 0,
+    tax: 0,
+    service: 0,
+    grandTotal: subtotal,
   };
 }
