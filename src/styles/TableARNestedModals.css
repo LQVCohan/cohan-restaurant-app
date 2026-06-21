@@ -1,0 +1,377 @@
+/* Final UX polish for nested camera-preview and AR-placement workflows. */
+
+body:has(.camera-placement-modal) .modal-overlay,
+body:has(.ar-placement-modal) .modal-overlay {
+  z-index: 1120 !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: max(0.65rem, env(safe-area-inset-top)) 1rem max(0.75rem, env(safe-area-inset-bottom)) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.18), transparent 28rem),
+    rgba(21, 29, 32, 0.68) !important;
+  backdrop-filter: blur(10px) saturate(108%) !important;
+}
+
+body:has(.camera-placement-modal) .modal-container,
+body:has(.ar-placement-modal) .modal-container {
+  width: min(96vw, 980px) !important;
+  max-height: min(96dvh, 900px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 253, 249, 0.72) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.09), transparent 20rem),
+    linear-gradient(180deg, #fffdf9, #f8f5ee) !important;
+  box-shadow: 0 34px 92px rgba(12, 20, 22, 0.36) !important;
+}
+
+body:has(.camera-placement-modal) .modal-container > .modal-body,
+body:has(.ar-placement-modal) .modal-container > .modal-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 0 !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31, 106, 96, 0.24) transparent;
+}
+
+body:has(.camera-placement-modal) .modal-container > .modal-body::-webkit-scrollbar,
+body:has(.ar-placement-modal) .modal-container > .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+body:has(.camera-placement-modal) .modal-container > .modal-body::-webkit-scrollbar-thumb,
+body:has(.ar-placement-modal) .modal-container > .modal-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(31, 106, 96, 0.22);
+}
+
+.camera-placement-modal,
+.ar-placement-modal {
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: clamp(0.85rem, 1.3vw, 1.1rem) !important;
+  color: #24323b !important;
+  font-family: Geist, Outfit, Inter, system-ui, sans-serif !important;
+}
+
+.camera-placement-modal__header {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.camera-placement-modal__header h3 {
+  margin: 0 !important;
+  color: #24323b !important;
+  font-size: clamp(1rem, 1.35vw, 1.2rem) !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.camera-placement-modal__header p {
+  max-width: 70ch;
+  margin: 0 !important;
+  color: #667085 !important;
+  font-size: 0.84rem !important;
+  line-height: 1.45 !important;
+}
+
+.camera-placement-modal__steps {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none;
+  counter-reset: camera-step;
+}
+
+.camera-placement-modal__steps li {
+  position: relative;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem;
+  border-radius: 12px;
+  background: rgba(248, 245, 238, 0.82);
+  color: #42505c;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  counter-increment: camera-step;
+}
+
+.camera-placement-modal__steps li::before {
+  content: counter(camera-step);
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #dcefe9;
+  color: #17554d;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.camera-placement-modal__warning {
+  margin: 0 !important;
+  border-color: rgba(131, 91, 32, 0.24) !important;
+  background: #fbf1df !important;
+  color: #835b20 !important;
+}
+
+.camera-placement-modal__preview {
+  height: clamp(300px, 54dvh, 560px) !important;
+  border: 1px solid rgba(222, 214, 203, 0.34);
+  border-radius: 18px !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.camera-placement-modal__hint {
+  top: 0.7rem !important;
+  left: 0.7rem !important;
+  right: auto !important;
+  max-width: min(560px, calc(100% - 1.4rem));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px !important;
+  background: rgba(21, 29, 32, 0.72) !important;
+  backdrop-filter: blur(8px);
+}
+
+.camera-placement-modal__controls {
+  gap: 0.55rem !important;
+  margin-top: 0.75rem !important;
+}
+
+.camera-placement-modal__control-group,
+.camera-placement-modal__opacity-control {
+  border: 1px solid rgba(222, 214, 203, 0.78);
+  border-radius: 14px !important;
+  background: rgba(255, 253, 249, 0.76) !important;
+}
+
+.camera-placement-modal__control-group:first-child > span {
+  font-size: 0 !important;
+}
+
+.camera-placement-modal__control-group:first-child > span::after {
+  content: "Kích thước nhanh:";
+  font-size: 0.78rem;
+}
+
+.camera-placement-modal__control-group:last-of-type .btn__text {
+  font-size: 0 !important;
+}
+
+.camera-placement-modal__control-group:last-of-type .btn__text::after {
+  content: "Đặt lại lớp xem thử";
+  font-size: 0.78rem;
+}
+
+.camera-placement-modal__stats {
+  padding: 0.55rem 0.65rem;
+  border-radius: 11px;
+  background: rgba(248, 245, 238, 0.76);
+  color: #667085 !important;
+  font-size: 0.74rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-placement-modal__note {
+  max-width: 76ch;
+  margin: 0.45rem 0 0 !important;
+  color: #667085 !important;
+  font-size: 0.76rem !important;
+  line-height: 1.45 !important;
+}
+
+.camera-placement-modal__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  justify-content: flex-end;
+  margin: 0.8rem -1.1rem -1.1rem !important;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid rgba(222, 214, 203, 0.82);
+  background: linear-gradient(180deg, rgba(248, 245, 238, 0.86), #f8f5ee 54%);
+  box-shadow: 0 -12px 28px rgba(48, 40, 30, 0.06);
+}
+
+.camera-placement-modal__actions button {
+  min-width: 150px;
+  border-radius: 12px !important;
+}
+
+/* AR placement wizard */
+.ar-placement-modal__intro,
+.ar-placement-modal__mode-labels {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+}
+
+.ar-placement-modal__intro,
+.ar-placement-modal__mode-labels article,
+.ar-placement-modal__section {
+  border-color: rgba(222, 214, 203, 0.78) !important;
+  background: rgba(255, 253, 249, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.ar-placement-modal__steps {
+  position: sticky;
+  top: -1px;
+  z-index: 6;
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  padding: 0.55rem 0 !important;
+  background: linear-gradient(180deg, #fffdf9 72%, rgba(255, 253, 249, 0));
+  scrollbar-width: none;
+}
+
+.ar-placement-modal__steps::-webkit-scrollbar { display: none; }
+
+.ar-placement-modal__steps button {
+  flex: 0 0 auto;
+  min-height: 34px !important;
+  border-radius: 11px !important;
+  white-space: nowrap;
+}
+
+.ar-placement-modal__section {
+  margin-top: 0.75rem !important;
+  border-radius: 18px !important;
+}
+
+.ar-placement-modal__section h4 {
+  letter-spacing: -0.02em;
+}
+
+.ar-placement-modal__checklist {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ar-placement-modal__check {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  border-color: rgba(222, 214, 203, 0.72) !important;
+}
+
+.ar-placement-modal__check small {
+  grid-column: 2 !important;
+}
+
+.ar-placement-modal__row input,
+.ar-placement-modal__model-controls input {
+  min-height: 40px;
+  border-color: rgba(206, 195, 181, 0.84) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 253, 249, 0.94) !important;
+}
+
+.ar-placement-modal__real-ar-actions button,
+.ar-placement-modal__wizard-actions button {
+  border-radius: 12px !important;
+}
+
+.ar-placement-modal__xr-canvas {
+  height: clamp(150px, 24dvh, 260px) !important;
+  border-radius: 16px !important;
+}
+
+.ar-placement-modal__save-reason,
+.ar-placement-modal__validation {
+  border-radius: 12px;
+}
+
+@media (max-width: 760px) {
+  body:has(.camera-placement-modal) .modal-overlay,
+  body:has(.ar-placement-modal) .modal-overlay {
+    align-items: stretch !important;
+    padding: 0 !important;
+  }
+
+  body:has(.camera-placement-modal) .modal-container,
+  body:has(.ar-placement-modal) .modal-container {
+    width: 100vw !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .camera-placement-modal,
+  .ar-placement-modal {
+    padding: 0.72rem !important;
+  }
+
+  .camera-placement-modal__steps,
+  .ar-placement-modal__intro,
+  .ar-placement-modal__mode-labels,
+  .ar-placement-modal__checklist {
+    grid-template-columns: 1fr !important;
+  }
+
+  .camera-placement-modal__steps {
+    display: flex !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .camera-placement-modal__steps::-webkit-scrollbar { display: none; }
+
+  .camera-placement-modal__steps li {
+    min-width: min(76vw, 260px);
+  }
+
+  .camera-placement-modal__preview {
+    height: min(48dvh, 420px) !important;
+    min-height: 280px;
+  }
+
+  .camera-placement-modal__control-group {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .camera-placement-modal__control-group > span {
+    grid-column: 1 / -1;
+  }
+
+  .camera-placement-modal__actions {
+    margin-inline: -0.72rem !important;
+    margin-bottom: -0.72rem !important;
+    padding-inline: 0.72rem;
+  }
+
+  .camera-placement-modal__actions button {
+    width: 100%;
+  }
+
+  .ar-placement-modal__row,
+  .ar-placement-modal__row--ar,
+  .ar-placement-modal__model-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ar-placement-modal__xr-canvas {
+    height: min(32dvh, 260px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .camera-placement-modal__preview {
+    height: min(42dvh, 340px) !important;
+    min-height: 240px;
+  }
+
+  .camera-placement-modal__overlay {
+    width: 150px !important;
+    min-height: 82px !important;
+  }
+
+  .camera-placement-modal__overlay-info span:nth-of-type(n + 3) {
+    display: none;
+  }
+}

@@ -8,6 +8,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
+import StaffAvatarMedia from "../StaffAvatarMedia";
 import "./EmployeeItem.scss";
 
 const EmployeeItem = ({
@@ -17,19 +18,6 @@ const EmployeeItem = ({
   onClick,
   onAction,
 }) => {
-  // --- HELPERS ---
-  const getAvatarColor = (name) => {
-    const colors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#8b5cf6",
-      "#ec4899",
-    ];
-    return colors[(name?.length || 0) % colors.length];
-  };
-
   const getDeptConfig = (dept) => {
     const option = DEPARTMENT_OPTIONS.find((item) => item.value === dept);
     const map = {
@@ -46,9 +34,17 @@ const EmployeeItem = ({
     return option ? { ...mapped, label: option.label.replace(/^\S+\s*/, "") } : mapped;
   };
 
-  const handleActionClick = (e, type) => {
-    e.stopPropagation();
-    if (onAction) onAction(e, type);
+  const handleActionClick = (event, type) => {
+    event.stopPropagation();
+    onAction?.(employee, type);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick?.();
+    }
   };
 
   const deptInfo = getDeptConfig(employee.department);
@@ -64,29 +60,25 @@ const EmployeeItem = ({
       className={`employee-row-item ${isSelected ? "selected" : ""} ${isInactive ? "dimmed" : ""} ${isFocusedFromSchedule ? "is-focused-from-schedule" : ""}`}
       data-employee-id={employee.id}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-pressed={Boolean(isSelected)}
+      aria-label={`Xem hồ sơ ${employeeName}`}
       title={employeeName}
     >
-      {/* 1. INFO COLUMN */}
       <div className="col-main">
         <div className="avatar-wrapper">
-          {employee.avatar ? (
-            <img
-              src={employee.avatar}
-              alt={employeeName}
-              className="avatar-img"
-            />
-          ) : (
-            <div
-              className="avatar-placeholder"
-              style={{ backgroundColor: getAvatarColor(employeeName) }}
-            >
-              {employeeName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          {/* Status Indicator Dot */}
-          <span className={`status-dot ${employee.status}`} />
+          <StaffAvatarMedia
+            employee={employee}
+            name={employeeName}
+            className="avatar-img"
+            eager={Boolean(isSelected)}
+          />
+          <span
+            className={`status-dot ${employee.status}`}
+            title={employee.status === "active" ? "Đang hoạt động" : "Không hoạt động"}
+          />
         </div>
 
         <div className="info-content">
@@ -95,7 +87,6 @@ const EmployeeItem = ({
         </div>
       </div>
 
-      {/* 2. ROLE & DEPT COLUMN */}
       <div className="col-role">
         <div className="role-text" title={employeeRole}>
           <Briefcase size={12} className="icon" />
@@ -104,7 +95,6 @@ const EmployeeItem = ({
         <span className={`dept-badge ${deptInfo.color}`}>{deptInfo.label}</span>
       </div>
 
-      {/* 3. CONTACT COLUMN (Desktop mostly) */}
       <div className="col-contact">
         <div className={`contact-row ${employee.email ? "" : "is-missing"}`} title={employeeEmail}>
           <Mail size={12} />
@@ -116,30 +106,34 @@ const EmployeeItem = ({
         </div>
       </div>
 
-      {/* 4. ACTIONS COLUMN */}
       <div className="col-actions">
         <div className="action-buttons">
           <button
             className="btn-icon edit"
-            onClick={(e) => handleActionClick(e, "edit")}
+            onClick={(event) => handleActionClick(event, "edit")}
             title="Chỉnh sửa nhân viên"
-            aria-label="Chỉnh sửa nhân viên"
+            aria-label={`Chỉnh sửa ${employeeName}`}
             type="button"
           >
             <Edit size={16} />
           </button>
           <button
             className="btn-icon delete"
-            onClick={(e) => handleActionClick(e, "delete")}
-            title="Xóa nhân viên"
-            aria-label="Xóa nhân viên"
+            onClick={(event) => handleActionClick(event, "delete")}
+            title="Ngừng hiển thị nhân viên"
+            aria-label={`Ngừng hiển thị ${employeeName}`}
             type="button"
           >
             <Trash2 size={16} />
           </button>
         </div>
-        {/* Mobile menu trigger (optional) */}
-        <button className="btn-icon mobile-menu" title="Mở thao tác" aria-label="Mở thao tác" type="button">
+        <button
+          className="btn-icon mobile-menu"
+          title="Mở thao tác"
+          aria-label={`Mở thao tác cho ${employeeName}`}
+          type="button"
+          onClick={(event) => handleActionClick(event, "edit")}
+        >
           <MoreHorizontal size={18} />
         </button>
       </div>

@@ -29,6 +29,7 @@ import {
 import "./CustomerModal.scss";
 import "./CustomerModalPolish.scss";
 import "./CustomerModalPremiumTune.scss";
+import CustomerAvatarMedia from "./CustomerAvatarMedia";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
 /* ===== Helpers & Utils ===== */
@@ -389,7 +390,11 @@ const CustomerModal = ({
             <div className="cm-profile-hero__identity">
               <div className="cm-avatar-card">
                 <div className="cm-avatar-card__mark">
-                  {customer?.avatar || <User size={30} />}
+                  <CustomerAvatarMedia
+                    customer={customer}
+                    name={displayName}
+                    iconSize={30}
+                  />
                 </div>
                 <span className={customer?.online ? "is-online" : ""} />
               </div>

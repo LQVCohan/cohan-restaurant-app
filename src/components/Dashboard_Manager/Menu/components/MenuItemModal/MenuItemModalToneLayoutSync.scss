@@ -1,0 +1,637 @@
+// Final modal shell + layout synchronization for MenuItemModal.
+// The common Modal renders a default close header before the structured header.
+// This stylesheet visually merges both headers, targets the actual modal root,
+// and keeps the manager menu ivory/sage design language consistent.
+
+$menu-modal-bg: #f5f4ef;
+$menu-modal-paper: #fffdf9;
+$menu-modal-panel: rgba(255, 255, 255, 0.88);
+$menu-modal-border: #e5ded3;
+$menu-modal-border-strong: rgba(128, 109, 83, 0.24);
+$menu-modal-ink: #24303f;
+$menu-modal-muted: #667085;
+$menu-modal-sage: #1f6a60;
+$menu-modal-sage-dark: #17554d;
+$menu-modal-sage-soft: #e8f4ef;
+$menu-modal-warning: #9a5b20;
+$menu-modal-warning-soft: #fbf1e3;
+$menu-modal-danger: #b54747;
+$menu-modal-danger-soft: #fbefed;
+
+.modal-overlay .modal-container.menu-item-modal-modern {
+  width: min(96vw, 1180px) !important;
+  height: min(90dvh, 820px) !important;
+  max-height: min(92dvh, 840px) !important;
+  min-height: 620px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(128, 109, 83, 0.2) !important;
+  border-radius: 28px !important;
+  color: $menu-modal-ink !important;
+  background:
+    radial-gradient(circle at 7% -8%, rgba(168, 133, 95, 0.14), transparent 25rem),
+    radial-gradient(circle at 96% 0%, rgba($menu-modal-sage, 0.12), transparent 27rem),
+    linear-gradient(180deg, #f8f6f1, $menu-modal-bg) !important;
+  box-shadow:
+    0 34px 86px rgba(48, 40, 30, 0.27),
+    0 8px 20px rgba(48, 40, 30, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+
+  // Keep the default Modal close button, but remove its empty visual row.
+  > .modal-header:first-of-type {
+    position: absolute !important;
+    inset: 0 0 auto auto !important;
+    z-index: 12 !important;
+    width: 76px !important;
+    height: 82px !important;
+    min-height: 0 !important;
+    padding: 20px 22px !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+
+    > span {
+      display: none !important;
+    }
+
+    .modal-close,
+    .btn-close {
+      width: 38px !important;
+      height: 38px !important;
+      border: 1px solid $menu-modal-border !important;
+      border-radius: 13px !important;
+      background: rgba(255, 253, 249, 0.94) !important;
+      color: $menu-modal-muted !important;
+      box-shadow: 0 8px 18px rgba(48, 40, 30, 0.08) !important;
+      pointer-events: auto !important;
+
+      &:hover {
+        border-color: rgba($menu-modal-danger, 0.24) !important;
+        background: $menu-modal-danger-soft !important;
+        color: $menu-modal-danger !important;
+      }
+    }
+  }
+
+  // Structured header containing the add/edit title.
+  > .modal-header:nth-of-type(2) {
+    position: relative !important;
+    z-index: 4 !important;
+    min-height: 82px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 16px 82px 16px 24px !important;
+    border-bottom: 1px solid rgba(128, 109, 83, 0.16) !important;
+    background:
+      linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(248, 246, 241, 0.92)) !important;
+    color: $menu-modal-ink !important;
+    font-size: 1.18rem !important;
+    font-weight: 880 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.035em !important;
+    box-shadow: 0 10px 24px rgba(48, 40, 30, 0.045) !important;
+
+    &::before {
+      content: "VẬN HÀNH THỰC ĐƠN";
+      display: inline-flex;
+      width: fit-content;
+      margin-bottom: 2px;
+      padding: 3px 8px;
+      border: 1px solid rgba($menu-modal-sage, 0.16);
+      border-radius: 999px;
+      background: $menu-modal-sage-soft;
+      color: $menu-modal-sage-dark;
+      font-size: 0.62rem;
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: 0.07em;
+    }
+
+    &::after {
+      content: "Hoàn thiện thông tin món, khẩu vị và biến thể giá trong một luồng.";
+      color: $menu-modal-muted;
+      font-size: 0.78rem;
+      font-weight: 620;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+  }
+
+  > .modal-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  > .modal-footer {
+    flex: 0 0 auto !important;
+    min-height: 66px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 12px 22px !important;
+    border-top: 1px solid rgba(128, 109, 83, 0.16) !important;
+    background: rgba(255, 253, 249, 0.96) !important;
+    box-shadow: 0 -14px 30px rgba(48, 40, 30, 0.05) !important;
+    backdrop-filter: blur(12px) saturate(122%);
+
+    &::before {
+      content: "Điền tên món, danh mục và ít nhất một biến thể giá trước khi lưu.";
+      margin-right: auto;
+      color: $menu-modal-muted;
+      font-size: 0.76rem;
+      font-weight: 620;
+      line-height: 1.4;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+      min-height: 42px !important;
+      padding: 9px 16px !important;
+      border-radius: 13px !important;
+      font-weight: 850 !important;
+    }
+
+    .btn-secondary {
+      border: 1px solid $menu-modal-border !important;
+      background: $menu-modal-paper !important;
+      color: $menu-modal-ink !important;
+
+      &:hover:not(:disabled) {
+        border-color: rgba($menu-modal-sage, 0.32) !important;
+        background: $menu-modal-sage-soft !important;
+        color: $menu-modal-sage-dark !important;
+      }
+    }
+
+    .btn-primary {
+      border: 1px solid $menu-modal-sage !important;
+      background: linear-gradient(180deg, #23776c, $menu-modal-sage-dark) !important;
+      color: #fff !important;
+      box-shadow: 0 12px 24px rgba($menu-modal-sage, 0.2) !important;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 16px 30px rgba($menu-modal-sage, 0.25) !important;
+      }
+    }
+  }
+
+  .modern-form-layout {
+    display: grid !important;
+    grid-template-columns: minmax(430px, 0.94fr) minmax(440px, 1.06fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  .modern-form-layout > .left-col,
+  .modern-form-layout > .right-col {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba($menu-modal-sage, 0.34) transparent;
+
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background: rgba($menu-modal-sage, 0.32);
+      background-clip: padding-box;
+    }
+  }
+
+  .modern-form-layout > .left-col {
+    overflow-y: auto !important;
+    padding: 22px 22px 30px !important;
+    border-right: 1px solid rgba(128, 109, 83, 0.16) !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(255, 253, 249, 0.94)) !important;
+  }
+
+  .modern-form-layout > .right-col {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 22px !important;
+    background:
+      radial-gradient(circle at top right, rgba($menu-modal-sage, 0.12), transparent 23rem),
+      linear-gradient(180deg, rgba(248, 246, 241, 0.9), rgba(245, 244, 239, 0.98)) !important;
+  }
+
+  .col-title {
+    height: auto !important;
+    min-height: 32px !important;
+    margin: 0 0 14px !important;
+    color: $menu-modal-sage-dark !important;
+    font-size: 0.76rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.07em !important;
+    text-transform: uppercase !important;
+
+    svg {
+      color: $menu-modal-sage !important;
+    }
+  }
+
+  .modern-form-layout > .left-col > .form-group,
+  .modern-form-layout > .left-col > .row-2-col,
+  .for-you-meta-section,
+  .recipe-tracking-card,
+  .method-card {
+    border: 1px solid rgba(128, 109, 83, 0.15) !important;
+    border-radius: 18px !important;
+    background: $menu-modal-panel !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 12px 28px rgba(48, 40, 30, 0.065) !important;
+  }
+
+  .modern-form-layout > .left-col > .form-group,
+  .modern-form-layout > .left-col > .row-2-col {
+    margin-bottom: 12px !important;
+    padding: 14px !important;
+  }
+
+  .modern-form-layout > .left-col > .row-2-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+
+    .form-group {
+      margin-bottom: 0 !important;
+    }
+  }
+
+  .form-group {
+    gap: 7px !important;
+    margin-bottom: 14px !important;
+
+    label {
+      color: $menu-modal-ink !important;
+      font-size: 0.81rem !important;
+      font-weight: 760 !important;
+    }
+  }
+
+  .modern-input,
+  .modern-select,
+  .modern-textarea,
+  .lip-url-input {
+    border: 1px solid $menu-modal-border !important;
+    border-radius: 13px !important;
+    background: $menu-modal-paper !important;
+    color: $menu-modal-ink !important;
+    font-weight: 680 !important;
+    box-shadow: 0 1px 2px rgba(48, 40, 30, 0.03) !important;
+
+    &:hover:not(:disabled) {
+      border-color: rgba($menu-modal-sage, 0.34) !important;
+    }
+
+    &:focus {
+      outline: 0 !important;
+      border-color: rgba($menu-modal-sage, 0.48) !important;
+      background: #fff !important;
+      box-shadow: 0 0 0 4px rgba($menu-modal-sage, 0.13) !important;
+    }
+  }
+
+  .local-image-picker {
+    grid-template-columns: 126px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .lip-preview {
+    min-height: 118px !important;
+    border: 1px solid rgba($menu-modal-sage, 0.16) !important;
+    border-radius: 16px !important;
+    background: $menu-modal-sage-soft !important;
+  }
+
+  .lip-preview img,
+  .lip-preview-placeholder {
+    min-height: 118px !important;
+  }
+
+  .lip-btn {
+    min-height: 38px !important;
+    border-radius: 12px !important;
+    font-weight: 820 !important;
+  }
+
+  .lip-btn-primary {
+    border: 1px solid $menu-modal-sage !important;
+    background: linear-gradient(180deg, #23776c, $menu-modal-sage-dark) !important;
+    color: #fff !important;
+  }
+
+  .lip-btn-ghost {
+    border-color: $menu-modal-border !important;
+    background: $menu-modal-paper !important;
+    color: $menu-modal-ink !important;
+
+    &:hover:not(:disabled) {
+      background: $menu-modal-danger-soft !important;
+      color: $menu-modal-danger !important;
+    }
+  }
+
+  .lip-helper {
+    color: $menu-modal-muted !important;
+  }
+
+  .header-action {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    margin: -22px -22px 14px !important;
+    padding: 16px 22px 12px !important;
+    border-bottom: 1px solid rgba(128, 109, 83, 0.12) !important;
+    background: linear-gradient(180deg, rgba(248, 246, 241, 0.99), rgba(248, 246, 241, 0.88)) !important;
+    backdrop-filter: blur(10px) saturate(122%);
+
+    .col-title {
+      margin: 0 !important;
+    }
+
+    .btn-add-variant {
+      min-height: 38px !important;
+      padding: 8px 13px !important;
+      border: 1px solid rgba($menu-modal-sage, 0.24) !important;
+      border-radius: 13px !important;
+      background: $menu-modal-sage-soft !important;
+      color: $menu-modal-sage-dark !important;
+      font-weight: 850 !important;
+      box-shadow: 0 8px 18px rgba($menu-modal-sage, 0.08) !important;
+
+      &:hover:not(:disabled) {
+        border-color: rgba($menu-modal-sage, 0.38) !important;
+        background: #f2faf7 !important;
+        transform: translateY(-1px) !important;
+      }
+    }
+  }
+
+  .recipe-tracking-card {
+    flex: 0 0 auto !important;
+    margin-bottom: 14px !important;
+    padding: 14px !important;
+
+    &.tracked {
+      border-color: rgba($menu-modal-sage, 0.22) !important;
+      background: $menu-modal-sage-soft !important;
+    }
+
+    &.missing_ingredients,
+    &.not_tracked {
+      border-color: rgba($menu-modal-warning, 0.24) !important;
+      background: $menu-modal-warning-soft !important;
+    }
+
+    &__title {
+      color: $menu-modal-warning !important;
+      font-weight: 850 !important;
+    }
+
+    &.tracked .recipe-tracking-card__title {
+      color: $menu-modal-sage-dark !important;
+    }
+
+    &__cta {
+      border-color: rgba($menu-modal-warning, 0.24) !important;
+      border-radius: 12px !important;
+      color: $menu-modal-warning !important;
+      background: $menu-modal-paper !important;
+    }
+  }
+
+  .methods-scroll-container {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 2px 4px 12px 0 !important;
+  }
+
+  .method-card {
+    margin: 0 0 12px !important;
+    padding: 15px !important;
+
+    &:hover {
+      border-color: rgba($menu-modal-sage, 0.25) !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 18px 40px rgba(48, 40, 30, 0.1) !important;
+    }
+
+    .badge-index {
+      border: 1px solid rgba($menu-modal-sage, 0.18) !important;
+      background: $menu-modal-sage-soft !important;
+      color: $menu-modal-sage-dark !important;
+    }
+
+    .method-grid {
+      grid-template-columns: 1.4fr 0.8fr 0.8fr !important;
+      gap: 10px !important;
+    }
+  }
+
+  .for-you-meta-section {
+    padding: 14px !important;
+  }
+
+  .for-you-meta-section__header {
+    padding-bottom: 10px !important;
+    border-bottom: 1px dashed rgba(128, 109, 83, 0.18) !important;
+  }
+
+  .for-you-option-group__title,
+  .for-you-meta-preview__title {
+    color: $menu-modal-sage-dark !important;
+    font-weight: 850 !important;
+  }
+
+  .for-you-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+  }
+
+  .for-you-option-grid--compact {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .for-you-option-card {
+    position: relative !important;
+    min-height: 82px !important;
+    padding: 12px 38px 11px 12px !important;
+    border: 1px solid $menu-modal-border !important;
+    border-radius: 16px !important;
+    background: $menu-modal-paper !important;
+
+    input[type="checkbox"] {
+      position: absolute !important;
+      top: 12px !important;
+      right: 12px !important;
+      flex: 0 0 auto !important;
+      width: 17px !important;
+      height: 17px !important;
+      margin: 0 !important;
+      accent-color: $menu-modal-sage !important;
+    }
+
+    &:hover {
+      border-color: rgba($menu-modal-sage, 0.3) !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 10px 22px rgba(48, 40, 30, 0.07) !important;
+    }
+  }
+
+  .for-you-option-card--compact {
+    min-height: 48px !important;
+  }
+
+  .for-you-option-card--selected {
+    border-color: rgba($menu-modal-sage, 0.5) !important;
+    background: $menu-modal-sage-soft !important;
+    box-shadow: 0 0 0 3px rgba($menu-modal-sage, 0.12) !important;
+  }
+
+  .for-you-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+
+    label {
+      min-height: 58px !important;
+      padding: 11px 12px !important;
+      border: 1px solid $menu-modal-border !important;
+      border-radius: 16px !important;
+      background: $menu-modal-paper !important;
+
+      input[type="checkbox"] {
+        width: 17px !important;
+        height: 17px !important;
+        accent-color: $menu-modal-sage !important;
+      }
+    }
+  }
+
+  .for-you-meta-preview {
+    border-color: rgba($menu-modal-sage, 0.24) !important;
+    border-radius: 16px !important;
+    background: $menu-modal-sage-soft !important;
+  }
+
+  .for-you-meta-help {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.68) !important;
+  }
+
+  .toast-wrapper {
+    right: 24px !important;
+    bottom: 82px !important;
+  }
+}
+
+@media (max-width: 1040px) {
+  .modal-overlay .modal-container.menu-item-modal-modern {
+    width: min(96vw, 900px) !important;
+
+    .modern-form-layout {
+      display: flex !important;
+      flex-direction: column !important;
+      overflow-y: auto !important;
+    }
+
+    .modern-form-layout > .left-col,
+    .modern-form-layout > .right-col {
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    .modern-form-layout > .left-col {
+      border-right: 0 !important;
+      border-bottom: 1px solid rgba(128, 109, 83, 0.16) !important;
+    }
+
+    .modern-form-layout > .right-col {
+      min-height: 430px !important;
+    }
+
+    .methods-scroll-container {
+      overflow: visible !important;
+    }
+  }
+}
+
+@media (max-width: 720px) {
+  .modal-overlay .modal-container.menu-item-modal-modern {
+    width: 100% !important;
+    height: 94dvh !important;
+    min-height: 0 !important;
+    max-height: 94dvh !important;
+    border-radius: 24px 24px 0 0 !important;
+
+    > .modal-header:nth-of-type(2) {
+      min-height: 76px !important;
+      padding: 13px 66px 13px 16px !important;
+      font-size: 1.05rem !important;
+
+      &::after {
+        display: none;
+      }
+    }
+
+    > .modal-header:first-of-type {
+      width: 64px !important;
+      height: 76px !important;
+      padding: 17px 16px !important;
+    }
+
+    > .modal-footer {
+      flex-wrap: wrap !important;
+      padding: 10px 14px !important;
+
+      &::before {
+        flex-basis: 100%;
+        order: -1;
+      }
+
+      .btn-secondary,
+      .btn-primary {
+        flex: 1 1 0 !important;
+      }
+    }
+
+    .modern-form-layout > .left-col,
+    .modern-form-layout > .right-col {
+      padding: 16px !important;
+    }
+
+    .modern-form-layout > .left-col > .row-2-col,
+    .for-you-option-grid,
+    .for-you-option-grid--compact,
+    .for-you-meta-grid,
+    .method-card .method-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .local-image-picker {
+      grid-template-columns: 1fr !important;
+    }
+
+    .header-action {
+      margin: -16px -16px 12px !important;
+      padding: 14px 16px 10px !important;
+    }
+  }
+}

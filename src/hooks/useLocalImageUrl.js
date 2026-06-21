@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toApiAssetUrl } from "../lib/apiBaseUrl";
 import {
   createLocalImageObjectUrl,
   isLocalImageUri,
@@ -6,7 +7,7 @@ import {
 } from "../utils/localImageStore";
 
 const useLocalImageUrl = (src, variant = LOCAL_IMAGE_VARIANTS.PREVIEW) => {
-  const [resolvedSrc, setResolvedSrc] = useState(src || "");
+  const [resolvedSrc, setResolvedSrc] = useState(src ? toApiAssetUrl(src) : "");
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,7 +25,7 @@ const useLocalImageUrl = (src, variant = LOCAL_IMAGE_VARIANTS.PREVIEW) => {
       }
 
       if (!isLocalImageUri(src)) {
-        setResolvedSrc(src);
+        setResolvedSrc(toApiAssetUrl(src));
         setIsResolving(false);
         return;
       }

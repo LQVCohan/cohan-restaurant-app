@@ -20,36 +20,37 @@ export const MENU_ITEM_INVENTORY_STATUS = {
 
 const STATUS_RULES = {
   available: {
-    label: "Sẵn sàng",
+    label: "Đang bán",
     badgeClassName: "available",
     visibility: MENU_ITEM_VISIBILITY.CUSTOMER_VISIBLE,
     orderability: MENU_ITEM_ORDERABILITY.ORDERABLE,
     customerMessage: "Khách có thể đặt món này.",
-    staffMessage: "Món đang mở bán.",
+    staffMessage: "Món đang được mở bán.",
   },
   out_of_stock: {
-    label: "Hết hàng",
+    label: "Hết món",
     badgeClassName: "out-of-stock",
     visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
     orderability: MENU_ITEM_ORDERABILITY.BLOCKED,
-    customerMessage: "Tạm hết hàng, khách chưa thể đặt.",
-    staffMessage: "Món hết hàng. Cần kiểm tra nguyên liệu hoặc recipe.",
+    customerMessage: "Món hiện đã hết và chưa thể đặt.",
+    staffMessage:
+      "Món đã hết. Hãy kiểm tra tồn kho và định lượng nguyên liệu trước khi mở bán lại.",
   },
   unavailable: {
-    label: "Tạm dừng",
+    label: "Tạm ngưng bán",
     badgeClassName: "unavailable",
     visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
     orderability: MENU_ITEM_ORDERABILITY.BLOCKED,
-    customerMessage: "Món tạm dừng phục vụ.",
-    staffMessage: "Món tạm dừng vì lý do vận hành.",
+    customerMessage: "Món đang tạm ngưng phục vụ.",
+    staffMessage: "Món đang tạm ngưng bán vì lý do vận hành.",
   },
   hidden: {
-    label: "Ẩn khỏi menu",
+    label: "Ẩn khỏi thực đơn",
     badgeClassName: "hidden",
     visibility: MENU_ITEM_VISIBILITY.HIDDEN,
     orderability: MENU_ITEM_ORDERABILITY.BLOCKED,
-    customerMessage: "Món không hiển thị cho khách.",
-    staffMessage: "Món đang bị ẩn khỏi menu khách hàng.",
+    customerMessage: "Món không hiển thị trên thực đơn của khách.",
+    staffMessage: "Món đang được ẩn khỏi thực đơn dành cho khách.",
   },
 };
 
@@ -70,30 +71,31 @@ const getInventoryOverride = (item = {}) => {
       badgeClassName: "out-of-stock",
       visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
       orderability: MENU_ITEM_ORDERABILITY.BLOCKED,
-      customerMessage: "Món tạm hết nguyên liệu, khách chưa thể đặt.",
-      staffMessage: stockWarnings[0] || "Món không đủ nguyên liệu để bán.",
+      customerMessage: "Món tạm hết nguyên liệu và chưa thể đặt.",
+      staffMessage: stockWarnings[0] || "Không đủ nguyên liệu để tiếp tục bán món này.",
     };
   }
 
   if (inventoryStatus === MENU_ITEM_INVENTORY_STATUS.LOW_STOCK) {
     return {
-      label: "Sắp hết",
+      label: "Nguyên liệu sắp hết",
       badgeClassName: "out-of-stock",
       visibility: MENU_ITEM_VISIBILITY.CUSTOMER_VISIBLE,
       orderability: MENU_ITEM_ORDERABILITY.ORDERABLE,
-      customerMessage: "Món vẫn đặt được nhưng số lượng còn ít.",
-      staffMessage: stockWarnings[0] || "Nguyên liệu của món đang gần mức tối thiểu.",
+      customerMessage: "Món vẫn có thể đặt nhưng số lượng còn ít.",
+      staffMessage:
+        stockWarnings[0] || "Nguyên liệu của món đang gần mức tồn kho tối thiểu.",
     };
   }
 
   if (inventoryStatus === MENU_ITEM_INVENTORY_STATUS.ERROR) {
     return {
-      label: "Cần kiểm kho",
+      label: "Cần kiểm tra tồn kho",
       badgeClassName: "unavailable",
       visibility: MENU_ITEM_VISIBILITY.STAFF_ONLY,
       orderability: MENU_ITEM_ORDERABILITY.NEEDS_STOCK_CHECK,
-      customerMessage: "Món cần kiểm tra tồn kho trước khi bán.",
-      staffMessage: stockWarnings[0] || "Không thể kiểm tra tồn kho món.",
+      customerMessage: "Cần kiểm tra tồn kho trước khi bán món này.",
+      staffMessage: stockWarnings[0] || "Hệ thống chưa xác định được tồn kho của món.",
     };
   }
 
@@ -103,7 +105,8 @@ const getInventoryOverride = (item = {}) => {
 export const getMenuItemAvailability = (item = {}) => {
   const status = item?.status || "unavailable";
   const inventoryOverride = getInventoryOverride(item);
-  const baseRule = inventoryOverride || STATUS_RULES[status] || STATUS_RULES.unavailable;
+  const baseRule =
+    inventoryOverride || STATUS_RULES[status] || STATUS_RULES.unavailable;
 
   const hasRecipeVariants =
     Array.isArray(item?.servingVariants) && item.servingVariants.length > 0;
@@ -124,12 +127,15 @@ export const getMenuItemAvailability = (item = {}) => {
   }
 
   if (status === "available" && !hasRecipeVariants) {
-    warnings.push("Món chưa có biến thể/recipe đầy đủ để kiểm tra tồn kho chính xác.");
+    warnings.push(
+      "Món chưa có cách chế biến và định lượng nguyên liệu để kiểm tra tồn kho chính xác.",
+    );
   }
 
   return {
     status,
-    inventoryStatus: item?.inventoryStatus || MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED,
+    inventoryStatus:
+      item?.inventoryStatus || MENU_ITEM_INVENTORY_STATUS.NOT_TRACKED,
     maxAvailable: Number.isFinite(Number(item?.maxAvailable))
       ? Number(item.maxAvailable)
       : 0,
@@ -141,7 +147,9 @@ export const getMenuItemAvailability = (item = {}) => {
 };
 
 export const shouldShowMenuItemToCustomer = (item) =>
-  getMenuItemAvailability(item).visibility === MENU_ITEM_VISIBILITY.CUSTOMER_VISIBLE;
+  getMenuItemAvailability(item).visibility ===
+  MENU_ITEM_VISIBILITY.CUSTOMER_VISIBLE;
 
 export const canCustomerOrderMenuItem = (item) =>
-  getMenuItemAvailability(item).orderability === MENU_ITEM_ORDERABILITY.ORDERABLE;
+  getMenuItemAvailability(item).orderability ===
+  MENU_ITEM_ORDERABILITY.ORDERABLE;

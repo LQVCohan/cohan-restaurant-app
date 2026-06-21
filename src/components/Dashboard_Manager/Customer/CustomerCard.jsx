@@ -1,7 +1,6 @@
 // src/components/CustomerManagement/CustomerCard.jsx
 import React, { useMemo, useState } from "react";
 import {
-  User,
   Phone,
   Mail,
   ChevronRight,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import "./CustomerCard.scss";
 import "./CustomerToneSystem.scss";
+import CustomerAvatarMedia from "./CustomerAvatarMedia";
 import { getRankDisplayConfig } from "./customerRankUtils";
 
 const normalizeEpochToMs = (v) => {
@@ -54,7 +54,7 @@ const getEntryAmount = (entry) => {
         sum +
         (Number(it?.price || 0) + Number(it?.modifiersPrice || 0)) *
           Number(it?.quantity || 1),
-      0
+      0,
     );
   }
   return Number(entry?.amount) || 0;
@@ -62,23 +62,9 @@ const getEntryAmount = (entry) => {
 
 const copyText = async (text) => {
   const value = String(text || "").trim();
-  if (!value) return false;
-
-  if (navigator?.clipboard?.writeText) {
-    await navigator.clipboard.writeText(value);
-    return true;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = value;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  document.body.removeChild(textarea);
-  return copied;
+  if (!value || !navigator?.clipboard?.writeText) return false;
+  await navigator.clipboard.writeText(value);
+  return true;
 };
 
 const STATUS_CONFIG = {
@@ -90,8 +76,8 @@ const STATUS_CONFIG = {
 
 const STATUS_LABELS = {
   online: "Đang hoạt động",
-  ordering: "Đang đặt món",
-  away: "Tạm rời",
+  ordering: "Đang gọi món",
+  away: "Tạm vắng",
   offline: "Không hoạt động",
 };
 
@@ -100,10 +86,12 @@ const CustomerCard = ({ customer, onClick }) => {
 
   const cleanName = useMemo(
     () => (customer?.name || "Khách hàng").replace("🟡", "").trim(),
-    [customer?.name]
+    [customer?.name],
   );
 
-  const customerCode = customer?.id ? `#${String(customer.id).padStart(4, "0")}` : "Chưa có mã";
+  const customerCode = customer?.id
+    ? `#${String(customer.id).padStart(4, "0")}`
+    : "Chưa có mã khách";
   const statusKey = STATUS_CONFIG[customer?.status] || "offline";
   const statusLabel = STATUS_LABELS[statusKey] || STATUS_LABELS.offline;
 
@@ -112,21 +100,28 @@ const CustomerCard = ({ customer, onClick }) => {
       ? customer.recentOrders
       : [];
     return [...list].sort((a, b) => {
-      const ams = normalizeEpochToMs(a?.raw?.createdAt ?? a?.createdAt ?? a?.date) ?? 0;
-      const bms = normalizeEpochToMs(b?.raw?.createdAt ?? b?.createdAt ?? b?.date) ?? 0;
+      const ams =
+        normalizeEpochToMs(a?.raw?.createdAt ?? a?.createdAt ?? a?.date) ?? 0;
+      const bms =
+        normalizeEpochToMs(b?.raw?.createdAt ?? b?.createdAt ?? b?.date) ?? 0;
       return bms - ams;
     });
   }, [customer?.recentOrders]);
 
   const stats = useMemo(() => {
     const count = sortedRecentOrders.length;
-    const total = sortedRecentOrders.reduce((sum, entry) => sum + getEntryAmount(entry), 0);
+    const total = sortedRecentOrders.reduce(
+      (sum, entry) => sum + getEntryAmount(entry),
+      0,
+    );
     const avg = count > 0 ? total / count : 0;
     return { count, total, avg };
   }, [sortedRecentOrders]);
 
   const nearestOrder = sortedRecentOrders[0];
-  const favoriteItems = Array.isArray(customer?.favoriteItems) ? customer.favoriteItems : [];
+  const favoriteItems = Array.isArray(customer?.favoriteItems)
+    ? customer.favoriteItems
+    : [];
 
   const handleOpen = () => onClick?.(customer);
 
@@ -143,7 +138,10 @@ const CustomerCard = ({ customer, onClick }) => {
     const copied = await copyText(value);
     if (!copied) return;
     setCopiedField(key);
-    window.setTimeout(() => setCopiedField((current) => (current === key ? "" : current)), 1300);
+    window.setTimeout(
+      () => setCopiedField((current) => (current === key ? "" : current)),
+      1300,
+    );
   };
 
   const renderCustomerType = () => {
@@ -159,7 +157,9 @@ const CustomerCard = ({ customer, onClick }) => {
     };
 
     return (
-      <span className={`cc-badge ${rankConfig.variant === "custom" ? "regular" : rankConfig.variant}`}>
+      <span
+        className={`cc-badge ${rankConfig.variant === "custom" ? "regular" : rankConfig.variant}`}
+      >
         {iconMap[rankConfig.iconKey] || iconMap.zap} {rankConfig.label}
       </span>
     );
@@ -172,20 +172,16 @@ const CustomerCard = ({ customer, onClick }) => {
       onKeyDown={handleCardKeyDown}
       role="button"
       tabIndex={0}
-      aria-label={`Mở hồ sơ ${cleanName}`}
+      aria-label={`Mở hồ sơ khách hàng ${cleanName}`}
     >
       <div className="cc-header">
         <div className="cc-avatar-wrapper">
           <div className="cc-avatar">
-            {customer?.avatar ? (
-              typeof customer.avatar === "string" && customer.avatar.startsWith("http") ? (
-                <img src={customer.avatar} alt={`Ảnh đại diện của ${cleanName}`} />
-              ) : (
-                <span aria-hidden="true">{customer.avatar}</span>
-              )
-            ) : (
-              <User size={24} aria-hidden="true" />
-            )}
+            <CustomerAvatarMedia
+              customer={customer}
+              name={cleanName}
+              iconSize={24}
+            />
           </div>
           <span
             className={`cc-status-dot ${statusKey}`}
@@ -202,8 +198,8 @@ const CustomerCard = ({ customer, onClick }) => {
               className={`cc-copy-mini ${copiedField === "id" ? "is-copied" : ""}`}
               onClick={(event) => handleCopyField(event, "id", customer?.id)}
               disabled={!customer?.id}
-              aria-label={`Sao chép mã khách ${customerCode}`}
-              title="Sao chép mã khách"
+              aria-label={`Sao chép mã khách hàng ${customerCode}`}
+              title="Sao chép mã khách hàng"
             >
               {copiedField === "id" ? <Check size={13} /> : <Copy size={13} />}
             </button>
@@ -211,9 +207,22 @@ const CustomerCard = ({ customer, onClick }) => {
           <div className="cc-customer-id">{customerCode}</div>
           <div className="cc-badges">
             {renderCustomerType()}
-            {customer?.isGuest && <span className="cc-badge guest">Vãng lai</span>}
-            <span className={`cc-badge ${customer?.verificationStatus === "verified" || customer?.verificationStatus === "email_verified" || customer?.verificationStatus === "phone_verified" ? "regular" : "guest"}`}>
-              {customer?.verificationLabel || (customer?.verificationStatus === "verified" ? "Đã xác minh" : "Chưa xác minh")}
+            {customer?.isGuest && (
+              <span className="cc-badge guest">Vãng lai</span>
+            )}
+            <span
+              className={`cc-badge ${
+                customer?.verificationStatus === "verified" ||
+                customer?.verificationStatus === "email_verified" ||
+                customer?.verificationStatus === "phone_verified"
+                  ? "regular"
+                  : "guest"
+              }`}
+            >
+              {customer?.verificationLabel ||
+                (customer?.verificationStatus === "verified"
+                  ? "Đã xác minh"
+                  : "Chưa xác minh")}
             </span>
           </div>
         </div>
@@ -230,7 +239,7 @@ const CustomerCard = ({ customer, onClick }) => {
         </div>
         <div className="cc-stat-box purple">
           <div className="val">{formatMoney(stats.avg).replace("₫", "")}</div>
-          <div className="lbl">TB/đơn</div>
+          <div className="lbl">TB mỗi đơn</div>
         </div>
       </div>
 
@@ -238,31 +247,47 @@ const CustomerCard = ({ customer, onClick }) => {
         <div className="cc-contact-list">
           <div className={`cc-row ${customer?.email ? "has-copy" : ""}`}>
             <Mail aria-hidden="true" />
-            <span title={customer?.email || "Chưa có email"}>{customer?.email || "Chưa có email"}</span>
+            <span title={customer?.email || "Chưa có email"}>
+              {customer?.email || "Chưa có email"}
+            </span>
             {customer?.email && (
               <button
                 type="button"
                 className={`cc-copy-btn ${copiedField === "email" ? "is-copied" : ""}`}
-                onClick={(event) => handleCopyField(event, "email", customer.email)}
+                onClick={(event) =>
+                  handleCopyField(event, "email", customer.email)
+                }
                 aria-label={`Sao chép email của ${cleanName}`}
                 title="Sao chép email"
               >
-                {copiedField === "email" ? <Check size={13} /> : <Copy size={13} />}
+                {copiedField === "email" ? (
+                  <Check size={13} />
+                ) : (
+                  <Copy size={13} />
+                )}
               </button>
             )}
           </div>
           <div className={`cc-row ${customer?.phone ? "has-copy" : ""}`}>
             <Phone aria-hidden="true" />
-            <span title={customer?.phone || "Chưa có SĐT"}>{customer?.phone || "Chưa có SĐT"}</span>
+            <span title={customer?.phone || "Chưa có số điện thoại"}>
+              {customer?.phone || "Chưa có số điện thoại"}
+            </span>
             {customer?.phone && (
               <button
                 type="button"
                 className={`cc-copy-btn ${copiedField === "phone" ? "is-copied" : ""}`}
-                onClick={(event) => handleCopyField(event, "phone", customer.phone)}
+                onClick={(event) =>
+                  handleCopyField(event, "phone", customer.phone)
+                }
                 aria-label={`Sao chép số điện thoại của ${cleanName}`}
                 title="Sao chép số điện thoại"
               >
-                {copiedField === "phone" ? <Check size={13} /> : <Copy size={13} />}
+                {copiedField === "phone" ? (
+                  <Check size={13} />
+                ) : (
+                  <Copy size={13} />
+                )}
               </button>
             )}
           </div>
@@ -273,7 +298,9 @@ const CustomerCard = ({ customer, onClick }) => {
             {favoriteItems.slice(0, 3).map((item, i) => (
               <span key={i}>{item}</span>
             ))}
-            {favoriteItems.length > 3 && <span>+{favoriteItems.length - 3}</span>}
+            {favoriteItems.length > 3 && (
+              <span>+{favoriteItems.length - 3}</span>
+            )}
           </div>
         ) : (
           <div className="cc-favs cc-empty-favs">Chưa có món yêu thích</div>
@@ -283,12 +310,14 @@ const CustomerCard = ({ customer, onClick }) => {
       <div className="cc-footer">
         {nearestOrder ? (
           <div className="cc-last-order">
-            <span className="lo-label">Đơn mới nhất</span>
-            <span className="lo-date">{formatDate(nearestOrder?.raw?.createdAt || nearestOrder?.date)}</span>
+            <span className="lo-label">Đơn gần nhất</span>
+            <span className="lo-date">
+              {formatDate(nearestOrder?.raw?.createdAt || nearestOrder?.date)}
+            </span>
           </div>
         ) : (
           <div className="cc-last-order">
-            <span className="lo-label">Tham gia</span>
+            <span className="lo-label">Ngày tham gia</span>
             <span className="lo-date">{formatDate(customer?.joinDate)}</span>
           </div>
         )}
@@ -297,12 +326,12 @@ const CustomerCard = ({ customer, onClick }) => {
           <button
             className="btn-view"
             type="button"
-            title="Xem chi tiết"
+            title="Mở hồ sơ khách hàng"
             onClick={(event) => {
               event.stopPropagation();
               handleOpen();
             }}
-            aria-label={`Xem chi tiết ${cleanName}`}
+            aria-label={`Mở hồ sơ khách hàng ${cleanName}`}
           >
             Xem hồ sơ
             <ChevronRight size={16} aria-hidden="true" />

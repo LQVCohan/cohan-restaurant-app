@@ -1,0 +1,267 @@
+/* Final alignment cleanup for Schedule Manager.
+   Focus: remove duplicate/unclear actions, remove colored side rails, align toolbar and
+   availability strip, and keep Vietnamese labels clean. */
+
+.schedule-container.schedule-container .schedule-header .header-actions .schedule-header-auto-action-duplicate {
+  display: none !important;
+}
+
+/* Remove leftover blue/green decorative rails from toolbar and cards that make layout look patched. */
+.schedule-container.schedule-container .schedule-toolbar::before,
+.schedule-container.schedule-container .schedule-toolbar::after,
+.manager-page-shell--schedules .schedule-toolbar::before,
+.manager-page-shell--schedules .schedule-toolbar::after {
+  content: none !important;
+  display: none !important;
+}
+
+.schedule-container.schedule-container .schedule-toolbar,
+.manager-page-shell--schedules .schedule-toolbar {
+  border-left: 1px solid #e5ded3 !important;
+  box-shadow: 0 14px 34px rgba(48, 40, 30, 0.055) !important;
+}
+
+/* Make the toolbar read as one clean command bar. */
+.schedule-container.schedule-container .schedule-toolbar {
+  grid-template-columns: minmax(330px, 0.78fr) minmax(220px, 0.44fr) minmax(400px, auto) !important;
+  align-items: center !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--view {
+  display: grid !important;
+  gap: 0.54rem !important;
+  align-content: center !important;
+}
+
+.schedule-container.schedule-container .date-navigation {
+  margin-top: 0 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--filters {
+  justify-self: center !important;
+  align-self: center !important;
+  width: min(100%, 240px) !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--filters select {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions {
+  justify-self: end !important;
+  align-self: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+}
+
+/* Utility labels are short and readable; avoid pseudo text fighting real text. */
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action {
+  font-size: 0.82rem !important;
+  min-width: auto !important;
+  padding: 0 0.72rem !important;
+  gap: 0.38rem !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-utility-action::after {
+  content: none !important;
+}
+
+.schedule-container.schedule-container .toolbar-group--actions .schedule-toolbar-assist-action {
+  min-width: 8rem !important;
+  padding-inline: 0.78rem !important;
+}
+
+/* Today should appear once: keep the header badge, remove the extra body pill. */
+.manager-page-shell--schedules .day-header.today + .day-body::before,
+.schedule-container.schedule-container .day-header.today + .day-body::before {
+  content: none !important;
+  display: none !important;
+}
+
+.schedule-container.schedule-container .day-header.today {
+  min-height: 76px !important;
+}
+
+.schedule-container.schedule-container .day-header.today small,
+.schedule-container.schedule-container .day-header.today::after,
+.schedule-container.schedule-container .today-badge,
+.schedule-container.schedule-container [class*="today-badge"] {
+  background: #edf4f0 !important;
+  border: 1px solid rgba(83, 108, 97, 0.26) !important;
+  color: #40564c !important;
+  font-weight: 850 !important;
+}
+
+.schedule-container.schedule-container .day-header.today + .day-body {
+  padding-top: 0.68rem !important;
+}
+
+/* Availability strip: compact summary card, not an input-like form row. */
+.schedule-container.schedule-container .schedule-availability-panel {
+  background: #fffefa !important;
+  border: 1px solid #e3dacf !important;
+  border-radius: 18px !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel:has(.schedule-availability-panel__compact-summary) {
+  padding: 0.72rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-summary {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1fr) auto !important;
+  min-height: 72px !important;
+  gap: 1rem !important;
+  align-items: center !important;
+  border: 1px solid rgba(229, 222, 211, 0.95) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 1rem 50%, rgba(83, 108, 97, 0.075), transparent 6rem),
+    linear-gradient(135deg, #fffefa 0%, #faf8f2 100%) !important;
+  padding: 0.8rem 0.92rem !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-main {
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  grid-template-areas:
+    "status title";
+  align-items: center !important;
+  column-gap: 0.7rem !important;
+  row-gap: 0.18rem !important;
+  min-width: 0 !important;
+  white-space: normal !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-main strong {
+  grid-area: title !important;
+  color: #24303f !important;
+  font-size: 0.96rem !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+  min-width: 0 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-main .schedule-availability-panel__status {
+  grid-area: status !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__status {
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding-inline: 0.72rem !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(83, 108, 97, 0.24) !important;
+  background: #edf4f0 !important;
+  color: #40564c !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-meta {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.22rem !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-meta span {
+  min-height: auto !important;
+  display: block !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: #667085 !important;
+  font-size: 0.82rem !important;
+  line-height: 1.35 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-meta span:first-child {
+  color: #24303f !important;
+  font-size: 0.9rem !important;
+  font-weight: 850 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-meta span:last-child {
+  color: #667085 !important;
+  font-weight: 700 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.42rem !important;
+  flex-wrap: nowrap !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button {
+  white-space: nowrap !important;
+  min-height: 36px !important;
+  border-radius: 999px !important;
+  padding: 0 0.84rem !important;
+  background: #fffefa !important;
+  border: 1px solid #e3dacf !important;
+  color: #40564c !important;
+  box-shadow: none !important;
+  font-size: 0.82rem !important;
+  font-weight: 850 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:hover:not(:disabled) {
+  background: #edf4f0 !important;
+  border-color: rgba(83, 108, 97, 0.3) !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions button:disabled {
+  opacity: 0.52 !important;
+}
+
+.schedule-container.schedule-container .schedule-availability-panel__compact-actions .btn-collapse-panel {
+  padding-inline: 0.72rem !important;
+}
+
+/* Better empty guidance copy spacing. */
+.schedule-empty-guidance {
+  padding-inline: 0.88rem !important;
+  letter-spacing: 0 !important;
+}
+
+@media (max-width: 1240px) {
+  .schedule-container.schedule-container .schedule-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .schedule-container.schedule-container .toolbar-group--filters {
+    justify-self: stretch !important;
+    width: 100% !important;
+  }
+
+  .schedule-container.schedule-container .toolbar-group--actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .schedule-container.schedule-container .schedule-availability-panel__compact-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .schedule-container.schedule-container .schedule-availability-panel__compact-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .schedule-container.schedule-container .schedule-availability-panel__compact-meta span {
+    white-space: normal !important;
+  }
+}

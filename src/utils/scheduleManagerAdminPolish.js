@@ -3,6 +3,14 @@ const textReplacements = [
   [/Xung đột và ca cần bổ sung/g, "Cần xử lý trước khi công bố"],
   [/(\d+) lượt xếp ca/g, "$1 phân công"],
   [/Availability tuần mục tiêu/g, "Lịch rảnh tuần tới"],
+  [/Lịch rảnh đã chốt/g, "Lịch rảnh"],
+  [/In lịch tuần/g, "In lịch"],
+  [/Tự động xếp ca/g, "Chia ca tự động"],
+  [/Đăng ký lịch nhân viên/g, "Đăng ký lịch rảnh"],
+  [/Tuần áp dụng:/g, "Tuần kế tiếp:"],
+  [/Đã gửi:/g, "Đăng ký:"],
+  [/Chờ duyệt:/g, "chờ duyệt:"],
+  [/Mở rộng/g, "Chi tiết"],
 ];
 
 const getText = (node) => node?.textContent?.replace(/\s+/g, " ").trim() || "";
@@ -35,6 +43,18 @@ const normalizeTextLabels = (root) => {
   textNodes.forEach(replaceInTextNode);
 };
 
+const hideDuplicateHeaderAutoAction = (root) => {
+  const headerButtons = Array.from(root.querySelectorAll(".schedule-header .header-actions button"));
+  headerButtons.forEach((button) => {
+    const label = getText(button);
+    if (label.includes("Chia ca tự động") || label.includes("Tự động xếp ca")) {
+      button.classList.add("schedule-header-auto-action-duplicate");
+      button.setAttribute("aria-hidden", "true");
+      button.tabIndex = -1;
+    }
+  });
+};
+
 const normalizeToolbarCopy = (root) => {
   const navButtons = Array.from(
     root.querySelectorAll(".schedule-toolbar .date-navigation .nav-btn"),
@@ -63,12 +83,14 @@ const markToolbarActions = (root) => {
   const actionButtons = Array.from(root.querySelectorAll(".schedule-toolbar .toolbar-group--actions button"));
   actionButtons.forEach((button) => {
     const label = getText(button);
-    if (label.includes("Lịch rảnh đã chốt") || label.includes("In lịch tuần")) {
+    if (label.includes("Lịch rảnh") || label.includes("In lịch")) {
       const shortLabel = label.includes("Lịch rảnh") ? "Lịch rảnh" : "In lịch";
       button.classList.add("schedule-toolbar-utility-action");
       button.dataset.shortLabel = shortLabel;
-      button.setAttribute("title", label);
-      if (!button.getAttribute("aria-label")) button.setAttribute("aria-label", label);
+      button.setAttribute("title", shortLabel === "Lịch rảnh" ? "Lịch rảnh nhân viên" : "In lịch tuần");
+      if (!button.getAttribute("aria-label")) {
+        button.setAttribute("aria-label", shortLabel === "Lịch rảnh" ? "Xem lịch rảnh nhân viên" : "In lịch tuần");
+      }
       return;
     }
 
@@ -104,7 +126,7 @@ const markBoardEmptyState = (root) => {
 
   const guidance = document.createElement("div");
   guidance.className = "schedule-empty-guidance";
-  guidance.textContent = "Tuần này chưa có ca. Hãy tạo ca thủ công hoặc dùng Chia ca tự động.";
+  guidance.textContent = "Tuần này chưa có ca. Hãy tạo ca thủ công hoặc dùng chia ca tự động.";
   board.prepend(guidance);
 };
 
@@ -130,6 +152,7 @@ export const initScheduleManagerAdminPolish = () => {
       const root = findScheduleRoot();
       if (!root) return;
       normalizeTextLabels(root);
+      hideDuplicateHeaderAutoAction(root);
       normalizeToolbarCopy(root);
       markToolbarActions(root);
       collapseAvailabilityPanelOnce(root);

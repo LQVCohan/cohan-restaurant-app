@@ -1,0 +1,45 @@
+// Final page-level spacing fix for the menu operation strip.
+// Keeps the "Việc cần xử lý" bar as its own strip above the card grid,
+// with enough breathing room so it does not stick to the card footer area.
+
+.mm-page-container .mm-menu-results-shell,
+.mm-page-container .mm-menu-results-shell--sparse {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.mm-page-container .mm-sparse-guidance {
+  order: -1 !important;
+  margin: 0 0 2px !important;
+  min-height: 52px !important;
+  align-items: center !important;
+}
+
+.mm-page-container .mm-grid--grid + .mm-sparse-guidance,
+.mm-page-container .mm-grid--list + .mm-sparse-guidance {
+  margin-top: 0 !important;
+}
+
+.mm-page-container .mm-grid--grid,
+.mm-page-container .mm-grid--grid.mm-grid--sparse,
+.mm-page-container .mm-grid--list {
+  order: 1 !important;
+}
+
+.mm-page-container .mm-body__content {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+@media (max-width: 760px) {
+  .mm-page-container .mm-menu-results-shell,
+  .mm-page-container .mm-menu-results-shell--sparse {
+    gap: 12px !important;
+  }
+
+  .mm-page-container .mm-sparse-guidance {
+    align-items: flex-start !important;
+  }
+}

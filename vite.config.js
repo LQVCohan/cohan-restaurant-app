@@ -42,6 +42,43 @@ const aiKnowledgeNoticeMessageGuardPlugin = () => ({
   },
 });
 
+const staffPerformanceMonthRangeGuardPlugin = () => ({
+  name: "staff-performance-month-range-guard",
+  enforce: "pre",
+  transform(code, id) {
+    const filePath = id.split("?")[0];
+    const targetPath = path.join("src", "components", "Dashboard_Manager", "Staff", "components", "Performance", "StaffPerformancePage.jsx");
+    if (!path.normalize(filePath).endsWith(targetPath)) return null;
+    if (code.includes("const getMonthRange =")) return null;
+
+    const marker = "const ADJUSTMENT_TOLERANCE = 0.01;";
+    const helper = [
+      "const formatDateInputValue = (date) => {",
+      "  const year = date.getFullYear();",
+      "  const month = String(date.getMonth() + 1).padStart(2, \"0\");",
+      "  const day = String(date.getDate()).padStart(2, \"0\");",
+      "  return year + \"-\" + month + \"-\" + day;",
+      "};",
+      "",
+      "const getMonthRange = (baseDate = new Date()) => {",
+      "  const year = baseDate.getFullYear();",
+      "  const month = baseDate.getMonth();",
+      "  return {",
+      "    periodStart: formatDateInputValue(new Date(year, month, 1)),",
+      "    periodEnd: formatDateInputValue(new Date(year, month + 1, 0)),",
+      "  };",
+      "};",
+      "",
+    ].join("\n");
+
+    if (!code.includes(marker)) return null;
+    return {
+      code: code.replace(marker, helper + marker),
+      map: null,
+    };
+  },
+});
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const mergedEnv = { ...process.env, ...env };
@@ -59,7 +96,7 @@ export default defineConfig(({ mode }) => {
     .filter(Boolean);
 
   return {
-    plugins: [aiKnowledgeNoticeMessageGuardPlugin(), react()],
+    plugins: [aiKnowledgeNoticeMessageGuardPlugin(), staffPerformanceMonthRangeGuardPlugin(), react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

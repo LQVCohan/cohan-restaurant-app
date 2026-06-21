@@ -1,5 +1,5 @@
 // src/hooks/useAvatarUploadLocal.js
-import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+import { getApiBaseUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { getToken, setAuth } from "@/lib/authStorage";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
@@ -16,10 +16,9 @@ const getAuthHeader = async () => {
 
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
-const getUploadApiBase = () => {
-  const graphqlUrl = getGraphqlUrl();
-  return graphqlUrl.replace(/\/graphql\/?$/, "").replace(/\/$/, "");
-};
+
+const getUploadApiBase = () => getApiBaseUrl();
+const normalizeUploadedUrl = (url) => toApiAssetUrl(url);
 
 export function useAvatarUploadLocal() {
   const uploadViaSignedUrl = async (file, onProgress) => {
@@ -85,7 +84,7 @@ export function useAvatarUploadLocal() {
       throw new Error(completeData?.message || "Upload completion failed");
     }
 
-    return completeData.url;
+    return normalizeUploadedUrl(completeData.url);
   };
 
   const uploadViaLocalApi = async (file, onProgress) => {
@@ -121,7 +120,7 @@ export function useAvatarUploadLocal() {
         }
 
         if (status >= 200 && status < 300 && res?.ok && res?.url) {
-          resolve(res.url);
+          resolve(normalizeUploadedUrl(res.url));
         } else {
           reject(
             new Error(

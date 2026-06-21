@@ -1,5 +1,5 @@
 // src/pages/CustomerManagement/CustomerFilters.jsx
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   X,
   Filter,
@@ -15,27 +15,34 @@ import {
 } from "lucide-react";
 import "./CustomerFilters.scss";
 
-// Định nghĩa Metadata với Icon component
 const CATEGORY_META = {
   all: { label: "Tất cả", icon: <Users size={20} /> },
   vip: { label: "VIP", icon: <Star size={20} /> },
-  frequent: { label: "Thường xuyên", icon: <Zap size={20} /> },
+  frequent: { label: "Thân thiết", icon: <Zap size={20} /> },
   new: { label: "Mới", icon: <Sparkles size={20} /> },
 };
 
 const STATUS_META = {
-  online: { label: "Online", color: "#22c55e", icon: <Wifi size={14} /> }, // Green
+  online: {
+    label: "Đang hoạt động",
+    color: "#22c55e",
+    icon: <Wifi size={14} />,
+  },
   ordering: {
     label: "Đang gọi món",
     color: "#3b82f6",
     icon: <Coffee size={14} />,
-  }, // Blue
-  away: { label: "Tạm vắng", color: "#eab308", icon: <LogOut size={14} /> }, // Yellow
+  },
+  away: {
+    label: "Tạm vắng",
+    color: "#eab308",
+    icon: <LogOut size={14} />,
+  },
   offline: {
-    label: "Offline",
+    label: "Không hoạt động",
     color: "#94a3b8",
     icon: <CircleSlash size={14} />,
-  }, // Slate
+  },
 };
 
 const CATEGORY_KEYS = Object.keys(CATEGORY_META);
@@ -50,52 +57,53 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
     offline: true,
   });
 
-  // Helpers logic
   const toggleStatus = (key) =>
     setStatus((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const setAllStatus = (isActive) => {
     const newStatus = {};
-    STATUS_KEYS.forEach((k) => (newStatus[k] = isActive));
+    STATUS_KEYS.forEach((key) => {
+      newStatus[key] = isActive;
+    });
     setStatus(newStatus);
   };
 
   const handleApply = () => {
-    onApplyFilters && onApplyFilters({ category, status });
-    onClose && onClose();
+    onApplyFilters?.({ category, status });
+    onClose?.();
   };
 
   const handleReset = () => {
     setCategory("all");
     setAllStatus(true);
-    onApplyFilters &&
-      onApplyFilters({
-        category: "all",
-        status: { online: true, ordering: true, away: true, offline: true },
-      });
+    onApplyFilters?.({
+      category: "all",
+      status: { online: true, ordering: true, away: true, offline: true },
+    });
   };
 
   return (
     <aside className="customer-filters">
-      {/* Header */}
       <div className="cf-header">
         <div className="flex items-center gap-2">
           <Filter size={18} className="text-blue-600" />
-          <h3>Bộ lọc nâng cao</h3>
+          <h3>Bộ lọc khách hàng</h3>
         </div>
-        <button onClick={onClose} className="cf-close-btn" title="Đóng">
+        <button
+          type="button"
+          onClick={onClose}
+          className="cf-close-btn"
+          title="Đóng bộ lọc"
+          aria-label="Đóng bộ lọc khách hàng"
+        >
           <X size={20} />
         </button>
       </div>
 
-      {/* Body */}
       <div className="cf-body">
-        {/* Section: Loại khách hàng */}
         <section>
-          <div className="cf-section-title">Loại khách hàng</div>
-          <div className="cf-section-desc">
-            Phân loại theo mức độ thân thiết
-          </div>
+          <div className="cf-section-title">Hạng khách hàng</div>
+          <div className="cf-section-desc">Lọc theo mức độ gắn bó</div>
           <div className="cf-cat-grid">
             {CATEGORY_KEYS.map((key) => {
               const meta = CATEGORY_META[key];
@@ -116,18 +124,22 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
 
         <div className="h-px bg-slate-100" />
 
-        {/* Section: Trạng thái */}
         <section>
           <div className="cf-section-title">Trạng thái hoạt động</div>
           <div className="cf-status-actions">
-            <button className="cf-link-btn" onClick={() => setAllStatus(true)}>
+            <button
+              type="button"
+              className="cf-link-btn"
+              onClick={() => setAllStatus(true)}
+            >
               Chọn tất cả
             </button>
             <button
+              type="button"
               className="cf-link-btn sub"
               onClick={() => setAllStatus(false)}
             >
-              Bỏ chọn
+              Bỏ chọn tất cả
             </button>
           </div>
 
@@ -149,7 +161,6 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
                     <span>{meta.label}</span>
                   </div>
 
-                  {/* Custom Checkbox UI */}
                   <div className={`cf-checkbox ${isChecked ? "checked" : ""}`}>
                     {isChecked && <Check size={14} strokeWidth={3} />}
                   </div>
@@ -160,14 +171,13 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
         </section>
       </div>
 
-      {/* Footer */}
       <div className="cf-footer">
         <div className="cf-btn-group">
-          <button className="btn-reset" onClick={handleReset}>
-            Đặt lại
+          <button type="button" className="btn-reset" onClick={handleReset}>
+            Đặt lại bộ lọc
           </button>
-          <button className="btn-apply" onClick={handleApply}>
-            Áp dụng
+          <button type="button" className="btn-apply" onClick={handleApply}>
+            Áp dụng bộ lọc
           </button>
         </div>
       </div>

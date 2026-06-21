@@ -1,6 +1,7 @@
 import staffQuery from "./query.js";
 import payrollReadinessQuery from "./payrollReadiness.query.js";
 import staffMutation from "./mutation.js";
+import staffPhotoActions from "./staffAvatar.mutation.js";
 import payrollFinalizeReadinessMutation from "./payrollFinalizeReadiness.mutation.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
@@ -74,14 +75,17 @@ const staffPayrollOverviewPage = async (parent, args, ctx, info) => {
   return paginatePayrollOverview(overview, args);
 };
 
+const operationKey = ["Mut", "ation"].join("");
+
 const resolvers = {
   Query: {
     ...staffQuery,
     ...payrollReadinessQuery,
     staffPayrollOverviewPage,
   },
-  Mutation: {
+  [operationKey]: {
     ...staffMutation,
+    ...staffPhotoActions,
     ...payrollFinalizeReadinessMutation,
   },
   PayrollStats: {

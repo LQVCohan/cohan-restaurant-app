@@ -139,12 +139,6 @@
   border-color: rgba(255, 243, 192, 0.22) !important;
 }
 
-.customer-profile-modal .cm-profile-tags .tier-new,
-.customer-profile-modal .cm-profile-tags .tier-regular,
-.customer-profile-modal .cm-profile-tags .tier-custom {
-  color: rgba(236, 255, 250, 0.94) !important;
-}
-
 .customer-profile-modal .cm-profile-tags span:last-child {
   color: #dff8ee !important;
   background: rgba(223, 248, 238, 0.13) !important;
@@ -159,8 +153,8 @@
 }
 
 .customer-profile-modal .cm-profile-hero__points::after {
-  opacity: 0.48 !important;
-  color: rgba(47, 111, 104, 0.08) !important;
+  content: none !important;
+  display: none !important;
 }
 
 .customer-profile-modal .cm-profile-hero__points strong {
@@ -286,19 +280,14 @@
   border-top-color: rgba(236, 226, 212, 0.86) !important;
 }
 
-.customer-profile-modal .cm-chip {
+.customer-profile-modal .cm-chip,
+.customer-profile-modal .cm-chip--food {
   min-height: 29px !important;
   border-radius: 10px !important;
   background: #f3e9d8 !important;
   border-color: #e3d3bc !important;
   color: #665c4e !important;
   font-weight: 760 !important;
-}
-
-.customer-profile-modal .cm-chip--food {
-  background: #f3e9d8 !important;
-  border-color: #e3d3bc !important;
-  color: #665c4e !important;
 }
 
 .customer-profile-modal .cm-order-row {

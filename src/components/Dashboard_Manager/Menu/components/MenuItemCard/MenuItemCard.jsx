@@ -20,21 +20,20 @@ import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./MenuItemCard.scss";
 
 const STATUS_OPTIONS = [
-  { value: "available", label: "Sẵn sàng" },
-  { value: "unavailable", label: "Tạm dừng" },
-  { value: "out_of_stock", label: "Hết hàng" },
-  { value: "hidden", label: "Ẩn khỏi menu" },
+  { value: "available", label: "Đang bán" },
+  { value: "unavailable", label: "Tạm ngưng bán" },
+  { value: "out_of_stock", label: "Hết món" },
+  { value: "hidden", label: "Ẩn khỏi thực đơn" },
 ];
 
 const getInventoryWarningCta = (item, availability) => {
   const inventoryStatus = String(item?.inventoryStatus || "").toLowerCase();
   const warnings = Array.isArray(item?.stockWarnings) ? item.stockWarnings : [];
-  const stockShortages = Array.isArray(item?.stockShortages) ? item.stockShortages : [];
-  const warningText = [
-    ...warnings,
-    ...(availability?.warnings || []),
-  ]
-    .map((w) => String(w || "").toLowerCase())
+  const stockShortages = Array.isArray(item?.stockShortages)
+    ? item.stockShortages
+    : [];
+  const warningText = [...warnings, ...(availability?.warnings || [])]
+    .map((warning) => String(warning || "").toLowerCase())
     .join(" ");
 
   const isNotTracked =
@@ -46,9 +45,10 @@ const getInventoryWarningCta = (item, availability) => {
   if (isNotTracked) {
     return {
       type: "recipe_missing",
-      label: "Bổ sung công thức",
-      title: "Món thiếu công thức kho",
-      description: "Thêm công thức để hệ thống tự kiểm tra nguyên liệu và tồn kho.",
+      label: "Thiết lập định lượng",
+      title: "Chưa thiết lập định lượng nguyên liệu",
+      description:
+        "Khai báo nguyên liệu và định lượng để hệ thống tự tính số lượng món còn có thể bán.",
       action: "recipe",
     };
   }
@@ -58,7 +58,7 @@ const getInventoryWarningCta = (item, availability) => {
       type: "ingredients_missing",
       label: "Xem nguyên liệu thiếu",
       title: "Thiếu nguyên liệu",
-      description: "Một số nguyên liệu không đủ để bán món này.",
+      description: "Một số nguyên liệu hiện không đủ để tiếp tục bán món này.",
       action: "inventory",
     };
   }
@@ -68,7 +68,8 @@ const getInventoryWarningCta = (item, availability) => {
       type: "out_of_stock",
       label: "Kiểm tra tồn kho",
       title: "Món đang hết hàng",
-      description: "Kiểm tra công thức hoặc tồn kho nguyên liệu trước khi mở bán lại.",
+      description:
+        "Kiểm tra định lượng và tồn kho nguyên liệu trước khi mở bán lại.",
       action: "inventory",
     };
   }
@@ -78,7 +79,7 @@ const getInventoryWarningCta = (item, availability) => {
       type: "low_stock",
       label: "Kiểm tra nguyên liệu",
       title: "Nguyên liệu sắp hết",
-      description: "Nên kiểm tra tồn kho trước giờ cao điểm.",
+      description: "Nên kiểm tra tồn kho trước khung giờ cao điểm.",
       action: "inventory",
     };
   }
@@ -112,7 +113,6 @@ const MenuItemCard = ({
     MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT,
   );
 
-
   useEffect(() => {
     if (!isStatusMenuOpen) return undefined;
 
@@ -129,6 +129,7 @@ const MenuItemCard = ({
   useEffect(() => {
     if (updatingStatus) setIsStatusMenuOpen(false);
   }, [updatingStatus]);
+
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -152,13 +153,13 @@ const MenuItemCard = ({
   const baseDisplayPrice = variants[0]?.price ?? item.basePrice ?? 0;
   const quickNote =
     item?.status === "hidden"
-      ? "Đang ẩn trên app khách"
+      ? "Đang ẩn với khách"
       : item?.status === "out_of_stock"
-        ? "Hết món trong ca"
+        ? "Tạm hết món"
         : item?.status === "unavailable"
           ? "Tạm ngưng bán"
           : availability.orderability === "orderable"
-            ? "Còn hàng"
+            ? "Có thể đặt món"
             : availability.label;
 
   const renderFallbackImage = () => (
@@ -176,7 +177,7 @@ const MenuItemCard = ({
       return (
         <LocalImageView
           src={item.thumbImage}
-          alt={item.name}
+          alt={`Ảnh món ${item.name}`}
           variant={LOCAL_IMAGE_VARIANTS.THUMB}
           fallback={renderFallbackImage()}
           onError={() => setImgError(true)}
@@ -186,13 +187,11 @@ const MenuItemCard = ({
     return renderFallbackImage();
   };
 
-  const renderStatusBadge = () => {
-    return (
-      <div className={`status-badge ${availability.badgeClassName}`}>
-        {availability.label}
-      </div>
-    );
-  };
+  const renderStatusBadge = () => (
+    <div className={`status-badge ${availability.badgeClassName}`}>
+      {availability.label}
+    </div>
+  );
 
   const canUpdateItem =
     typeof canUpdateItemProp === "boolean"
@@ -204,13 +203,15 @@ const MenuItemCard = ({
 
   const canQuickChangeStatus =
     canUpdateItem && typeof onStatusChange === "function";
-
-  const hasActions = onEdit || onDelete || canViewHistory || canQuickChangeStatus;
+  const hasActions =
+    onEdit || onDelete || canViewHistory || canQuickChangeStatus;
   const primaryWarning = availability.warnings?.[0];
-  const warningCta = canUpdateItem ? getInventoryWarningCta(item, availability) : null;
+  const warningCta = canUpdateItem
+    ? getInventoryWarningCta(item, availability)
+    : null;
 
-  const handleWarningCtaClick = (e) => {
-    e.stopPropagation();
+  const handleWarningCtaClick = (event) => {
+    event.stopPropagation();
     if (!warningCta) return;
     if (warningCta.action === "recipe") {
       onOpenRecipeIssue?.(item);
@@ -221,25 +222,26 @@ const MenuItemCard = ({
 
   return (
     <>
-      <article className={`menu-item-card ${selected ? "is-selected" : ""}`.trim()}>
+      <article
+        className={`menu-item-card ${selected ? "is-selected" : ""}`.trim()}
+      >
         {typeof onSelectToggle === "function" && (
           <label
             className="card-select-checkbox"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
+            onClick={(event) => event.stopPropagation()}
           >
             <input
               type="checkbox"
               checked={selected}
               aria-label={`Chọn món ${item?.name || ""} để thao tác hàng loạt`}
-              onChange={(e) => {
-                e.stopPropagation();
-                onSelectToggle(item, e.target.checked);
+              onChange={(event) => {
+                event.stopPropagation();
+                onSelectToggle(item, event.target.checked);
               }}
             />
           </label>
         )}
+
         <div className="card-image-wrapper">
           {renderImage()}
           <div className="badge-wrapper">{renderStatusBadge()}</div>
@@ -262,35 +264,40 @@ const MenuItemCard = ({
               {item.name}
             </h3>
             <div className="menu-item-card__meta-row">
-              <strong className="menu-item-card__price">{formatPrice(baseDisplayPrice)}</strong>
-              <span className={`menu-item-card__quick-note menu-item-card__quick-note--${item?.status || "available"}`}>
+              <strong className="menu-item-card__price">
+                {formatPrice(baseDisplayPrice)}
+              </strong>
+              <span
+                className={`menu-item-card__quick-note menu-item-card__quick-note--${item?.status || "available"}`}
+              >
                 {quickNote}
               </span>
             </div>
           </div>
 
-          {forYouMetadata?.status && (
-            forYouMetadata.status === "missing" && canUpdateItem ? (
+          {forYouMetadata?.status &&
+            (forYouMetadata.status === "missing" && canUpdateItem ? (
               <button
                 type="button"
                 className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status} menu-item-card__for-you-badge--actionable`}
-                title="Bấm để bổ sung nhanh thông tin khẩu vị và dị ứng."
-                onClick={(e) => {
-                  e.stopPropagation();
+                title="Bổ sung thông tin khẩu vị và thành phần dị ứng"
+                onClick={(event) => {
+                  event.stopPropagation();
                   onEditForYou?.(item);
                 }}
               >
-                ⚠ Chưa khai báo khẩu vị
+                Thiếu thông tin tư vấn
               </button>
             ) : (
               <span
                 className={`menu-item-card__for-you-badge menu-item-card__for-you-badge--${forYouMetadata.status}`}
                 title={forYouMetadata.label}
               >
-                {forYouMetadata.status === "ready" ? "✨ Đã khai báo khẩu vị" : "⚠ Chưa khai báo khẩu vị"}
+                {forYouMetadata.status === "ready"
+                  ? "Đã đủ thông tin tư vấn"
+                  : "Thiếu thông tin tư vấn"}
               </span>
-            )
-          )}
+            ))}
 
           {primaryWarning && (
             <div className="availability-warning" title={primaryWarning}>
@@ -299,11 +306,14 @@ const MenuItemCard = ({
             </div>
           )}
 
-
-
           {warningCta && (
-            <div className="menu-item-card__warning-cta" title={warningCta.title}>
-              <div className="menu-item-card__warning-cta-title">{warningCta.title}</div>
+            <div
+              className="menu-item-card__warning-cta"
+              title={warningCta.title}
+            >
+              <div className="menu-item-card__warning-cta-title">
+                {warningCta.title}
+              </div>
               <div className="menu-item-card__warning-cta-description">
                 {warningCta.description}
               </div>
@@ -319,24 +329,28 @@ const MenuItemCard = ({
 
           <div className="variants-list">
             <div className="list-header">
-              <span>Biến thể ({variants.length || 1})</span>
+              <span>Cách chế biến ({variants.length || 1})</span>
               <span>Giá bán</span>
             </div>
 
             <div className="list-content">
               {variants.length === 0 ? (
                 <div className="variant-row single">
-                  <span>Giá cơ bản</span>
+                  <span>Cách chế biến mặc định</span>
                   <span className="price">
                     {formatPrice(item.basePrice || 0)}
                   </span>
                 </div>
               ) : (
-                visibleMethods.map((m) => (
-                  <div key={m.key || m.name} className="variant-row">
-                    <span className="v-name">{m.name || m.key}</span>
-                    <div className="dotted-line"></div>
-                    <span className="v-price">{formatPrice(m.price)}</span>
+                visibleMethods.map((method) => (
+                  <div key={method.key || method.name} className="variant-row">
+                    <span className="v-name">
+                      {method.name || method.key}
+                    </span>
+                    <div className="dotted-line" />
+                    <span className="v-price">
+                      {formatPrice(method.price)}
+                    </span>
                   </div>
                 ))
               )}
@@ -344,7 +358,7 @@ const MenuItemCard = ({
               {remainingCount > 0 && (
                 <div className="variant-more">
                   <MoreHorizontal size={14} />
-                  <span>Và {remainingCount} biến thể khác...</span>
+                  <span>Còn {remainingCount} cách chế biến khác</span>
                 </div>
               )}
             </div>
@@ -357,26 +371,26 @@ const MenuItemCard = ({
               <button
                 type="button"
                 className="action-btn edit"
-                aria-label="Chỉnh sửa món"
-                onClick={(e) => {
-                  e.stopPropagation();
+                aria-label="Chỉnh sửa món ăn"
+                onClick={(event) => {
+                  event.stopPropagation();
                   onEdit?.();
                 }}
-                title="Chỉnh sửa món & biến thể"
+                title="Chỉnh sửa thông tin và cách chế biến"
               >
-                <Edit3 size={16} /> <span>Chi tiết / sửa</span>
+                <Edit3 size={16} /> <span>Chỉnh sửa</span>
               </button>
             )}
 
             {canViewHistory && (
               <>
-                {(onEdit || onDelete) && <div className="divider"></div>}
+                {(onEdit || onDelete) && <div className="divider" />}
                 <button
                   type="button"
                   className="action-btn history"
-                  aria-label="Xem lịch sử món"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  aria-label="Xem lịch sử thay đổi của món"
+                  onClick={(event) => {
+                    event.stopPropagation();
                     setIsHistoryOpen(true);
                   }}
                   title="Xem lịch sử thay đổi"
@@ -386,25 +400,30 @@ const MenuItemCard = ({
               </>
             )}
 
-
             {canQuickChangeStatus && (
               <>
-                {(onEdit || canViewHistory || onDelete) && <div className="divider"></div>}
-                <div className="status-dropdown" ref={statusMenuRef} onClick={(e) => e.stopPropagation()}>
+                {(onEdit || canViewHistory || onDelete) && (
+                  <div className="divider" />
+                )}
+                <div
+                  className="status-dropdown"
+                  ref={statusMenuRef}
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <button
                     type="button"
                     className="action-btn status-trigger"
                     disabled={updatingStatus}
-                    aria-label="Mở menu trạng thái món"
+                    aria-label="Mở danh sách trạng thái bán"
                     aria-haspopup="menu"
                     aria-expanded={isStatusMenuOpen}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsStatusMenuOpen((prev) => !prev);
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsStatusMenuOpen((current) => !current);
                     }}
-                    title="Cập nhật trạng thái nhanh"
+                    title="Cập nhật trạng thái bán"
                   >
-                    <MoreHorizontal size={16} /> <span>Bật/tắt bán</span>
+                    <MoreHorizontal size={16} /> <span>Trạng thái</span>
                   </button>
 
                   {isStatusMenuOpen && (
@@ -419,16 +438,22 @@ const MenuItemCard = ({
                             disabled={updatingStatus || isCurrent}
                             role="menuitem"
                             aria-disabled={updatingStatus || isCurrent}
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={(event) => {
+                              event.stopPropagation();
                               if (updatingStatus || isCurrent) return;
                               onStatusChange(item, option.value);
                               setIsStatusMenuOpen(false);
                             }}
-                            title={isCurrent ? `Đang ở trạng thái ${option.label}` : `Chuyển sang ${option.label}`}
+                            title={
+                              isCurrent
+                                ? `Trạng thái hiện tại: ${option.label}`
+                                : `Chuyển sang trạng thái: ${option.label}`
+                            }
                           >
                             <span>{option.label}</span>
-                            {isCurrent && <span className="status-check">✓</span>}
+                            {isCurrent && (
+                              <span className="status-check">✓</span>
+                            )}
                           </button>
                         );
                       })}
@@ -437,15 +462,16 @@ const MenuItemCard = ({
                 </div>
               </>
             )}
+
             {onDelete && (
               <>
-                {(onEdit || canViewHistory) && <div className="divider"></div>}
+                {(onEdit || canViewHistory) && <div className="divider" />}
                 <button
                   type="button"
                   className="action-btn delete"
-                  aria-label="Xóa món"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  aria-label="Xóa món ăn"
+                  onClick={(event) => {
+                    event.stopPropagation();
                     onDelete?.();
                   }}
                   title="Xóa món ăn"
