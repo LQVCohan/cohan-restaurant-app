@@ -42,7 +42,7 @@ const getRoleLabel = (staff) =>
   staff?.role?.name ||
   staff?.role?.slug ||
   staff?.department ||
-  "Nhân viên";
+  "Chưa cập nhật chức danh";
 
 const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
   const { user } = useContext(AuthContext);
@@ -109,12 +109,12 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
     <article className="dashboard-card dashboard-card--side dashboard-staff-roster">
       <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
-          <h3>Nhân sự đang làm việc</h3>
-          <p>Ảnh và trạng thái được đồng bộ từ hồ sơ nhân viên.</p>
+          <h3>Nhân viên đang làm việc</h3>
+          <p>Danh sách nhân viên thuộc nhà hàng đang chọn.</p>
         </div>
         <span className="dashboard-staff-roster__count">
           <UsersRound size={14} />
-          {loading && !staff.length ? "..." : staff.length}
+          {loading && !staff.length ? "..." : `${staff.length} người`}
         </span>
       </div>
 
@@ -126,7 +126,7 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
         </div>
       ) : error ? (
         <div className="dashboard-staff-roster__state is-error">
-          Không thể tải danh sách nhân sự.
+          Không thể tải danh sách nhân viên.
         </div>
       ) : visibleStaff.length ? (
         <div className="dashboard-staff-roster__list">
@@ -141,11 +141,11 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
                 />
                 <span
                   className={`dashboard-staff-roster__presence ${employee.isOnline ? "is-online" : ""}`}
-                  title={employee.isOnline ? "Đang trực tuyến" : "Ngoại tuyến"}
+                  title={employee.isOnline ? "Đang trực tuyến" : "Không trực tuyến"}
                 />
               </div>
               <div className="dashboard-staff-roster__identity">
-                <strong>{employee.fullName || "Nhân viên"}</strong>
+                <strong>{employee.fullName || "Chưa cập nhật tên"}</strong>
                 <span>{getRoleLabel(employee)}</span>
               </div>
               {employee.isOnline ? (
@@ -160,14 +160,14 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
         </div>
       ) : (
         <div className="dashboard-staff-roster__state">
-          Chưa có nhân viên ở trạng thái đang làm việc.
+          Chưa có nhân viên nào ở trạng thái đang làm việc.
         </div>
       )}
 
       <div className="dashboard-staff-roster__footer">
-        <span>{onlineCount} nhân viên đang trực tuyến</span>
+        <span>{onlineCount} người đang trực tuyến</span>
         <button type="button" onClick={onOpenStaff} disabled={!onOpenStaff}>
-          Quản lý nhân sự
+          Xem toàn bộ nhân viên
           <ArrowRight size={15} />
         </button>
       </div>
