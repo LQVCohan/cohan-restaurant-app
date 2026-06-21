@@ -2,6 +2,21 @@ export function getGraphqlUrl() {
   return import.meta.env.VITE_API_URL || "http://localhost:4000/graphql";
 }
 
+export function toApiUrl(pathname: string) {
+  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const graphqlUrl = getGraphqlUrl();
+
+  if (graphqlUrl.startsWith("/")) {
+    return normalizedPath;
+  }
+
+  const baseUrl = graphqlUrl.endsWith("/graphql")
+    ? graphqlUrl.slice(0, -"/graphql".length)
+    : graphqlUrl.replace(/\/$/, "");
+
+  return `${baseUrl}${normalizedPath}`;
+}
+
 export function toApiAuthUrl(pathname: "/refresh" | "/logout") {
   const gqlUrl = getGraphqlUrl();
   if (gqlUrl.startsWith("/")) return `/api/auth${pathname}`;

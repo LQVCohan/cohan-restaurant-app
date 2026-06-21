@@ -14,6 +14,7 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
+import { toApiUrl } from "../../../lib/apiBaseUrl";
 import { isValidPhoneNumber, normalizePhoneNumber } from "../../../utils/phoneNumber";
 import "./AddressPage.scss";
 
@@ -124,7 +125,11 @@ const normalizeLocationName = (value) =>
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
-    .replace(/đ/g, "d");
+    .replace(/đ/g, "d")
+    .replace(/\b(thanh pho|tp\.?|tinh|quan|huyen|thi xa|thi tran|phuong|xa)\b/g, "")
+    .replace(/[.,-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 const findLocationOption = (options = {}, value) => {
   const target = normalizeLocationName(value);
@@ -318,10 +323,33 @@ const AddressPage = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { latitude, longitude } = position.coords || {};
-          const response = await fetch(
-            `/api/reverse-geocode?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(longitude)}`,
-          );
+          const latitude = Number(position?.coords?.latitude);
+          const longitude = Number(position?.coords?.longitude);
+          const validCoordinates =
+            Number.isFinite(latitude) &&
+            Number.isFinite(longitude) &&
+            latitude >= -90 &&
+            latitude <= 90 &&
+            longitude >= -180 &&
+            longitude <= 180;
+
+          if (!validCoordinates) {
+            setLocationMessage("Không thể xác định vị trí hiện tại. Vui lòng nhập địa chỉ thủ công.");
+            return;
+          }
+
+          const query = new URLSearchParams({
+            lat: String(latitude),
+            lng: String(longitude),
+          });
+          const reverseGeocodeUrl = toApiUrl(`/api/reverse-geocode?${query.toString()}`);
+          const response = await fetch(reverseGeocodeUrl, {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              Accept: "application/json",
+            },
+          });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result?.ok) {
             throw new Error(result?.message || "reverse_geocode_failed");
