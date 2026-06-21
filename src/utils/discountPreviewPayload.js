@@ -54,16 +54,7 @@ export const mapCartItemToOrderItemInput = (
     name: item.name || "",
     unit: item.unit || "phần",
     image: typeof item.image === "string" ? item.image : undefined,
-    basePrice: Number.isFinite(unitPrice) ? unitPrice : 0,
     servingKey,
-    servingVariant: {
-      key: servingKey,
-      name: item.servingVariant?.name || item.servingName || "Phần",
-      mode: item.servingVariant?.mode || item.servingMode || "PORTION",
-      price: Number.isFinite(unitPrice) ? unitPrice : 0,
-      sellQty: item.servingVariant?.sellQty || 1,
-      sellUnit: item.servingVariant?.sellUnit || "portion",
-    },
     quantity: Number(item.quantity || 1),
     selectedModifiers: (item.selectedModifiers || item.modifiers || []).map(
       (modifier) => ({
@@ -78,6 +69,18 @@ export const mapCartItemToOrderItemInput = (
   const weightGrams = Number(item.weightGrams);
   if (item.weightGrams != null && Number.isFinite(weightGrams) && weightGrams > 0) {
     payload.weightGrams = Math.round(weightGrams);
+  }
+
+  if (!includeCartHoldRef) {
+    payload.basePrice = Number.isFinite(unitPrice) ? unitPrice : 0;
+    payload.servingVariant = {
+      key: servingKey,
+      name: item.servingVariant?.name || item.servingName || "Phần",
+      mode: item.servingVariant?.mode || item.servingMode || "PORTION",
+      price: Number.isFinite(unitPrice) ? unitPrice : 0,
+      sellQty: item.servingVariant?.sellQty || 1,
+      sellUnit: item.servingVariant?.sellUnit || "portion",
+    };
   }
 
   if (includeCartHoldRef) {
