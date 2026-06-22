@@ -1,3 +1,6 @@
+@import "./OrderKitchenModeFix.css";
+@import "./NewOrderModalPromotionTheme.css";
+
 .manager-layout.manager-layout--orders,
 .manager-layout.manager-layout--orders .manager-layout__main,
 .manager-layout.manager-layout--orders .manager-layout__content {
