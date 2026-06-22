@@ -1,0 +1,105 @@
+name: prompt5-cleanup-generator
+
+on:
+  push:
+    branches:
+      - automation/prompt5-cleanup-trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-cleanup-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trigger branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate cleaned order mutation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("cohan-restaurant-backend/graphql/resolvers/order/mutation.js")
+          text = source.read_text(encoding="utf-8")
+
+          import_block = """  Warehouse,
+            Recipe,
+            Ingredient,
+            ModifierGroup,
+            CheckoutSession,"""
+          replacement = """  Warehouse,
+            CheckoutSession,"""
+          if import_block not in text:
+              raise SystemExit("Expected hydration model imports were not found")
+          text = text.replace(import_block, replacement, 1)
+
+          start_marker = """/** =========================
+           * Unit conversion to ingredient.baseUnit
+           * ========================= */"""
+          end_marker = """/** =========================
+           * Totals from hydrated items
+           * ========================= */"""
+          if start_marker not in text or end_marker not in text:
+              raise SystemExit("Expected obsolete hydration block markers were not found")
+
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          text = text[:start] + end_marker + text[end + len(end_marker):]
+
+          forbidden = [
+              "function convertToBaseUnitQty(",
+              "function normalizeItemWeightGrams(",
+              "function validateIncomingOrderItems(",
+              "function computeFactorFromVariant(",
+              "function normalizeSelectedModifiers(",
+              "function getApplicableGroupsForDish(",
+              "function validateGroupSelection(",
+              "function buildModifierSnapshotsForItem(",
+              "function computeUnitPriceFromModifiers(",
+              "function computeLineSubtotal(",
+              "function applyModifierInventoryRules(",
+              "async function hydrateOrderItems(",
+          ]
+          remaining = [item for item in forbidden if item in text]
+          if remaining:
+              raise SystemExit(f"Obsolete helpers still present: {remaining}")
+
+          Path("/tmp/mutation.cleaned.js").write_text(text, encoding="utf-8")
+          PY
+
+      - name: Reset to main and restore cleaned file
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/mutation.cleaned.js cohan-restaurant-backend/graphql/resolvers/order/mutation.js
+          git diff --check
+
+      - name: Create cleanup pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: codex/prompt5-remove-dead-hydration
+          base: main
+          commit-message: Remove obsolete hydration helpers from order resolver
+          title: "Prompt 5: remove dead hydration code from order resolver"
+          body: |
+            ## Summary
+            - Remove the unused local order-item hydration implementation from `order/mutation.js`.
+            - Keep the live inventory-line validators and cart-hold checkout logic unchanged.
+            - Remove the now-unused `Recipe`, `Ingredient`, and `ModifierGroup` imports.
+            - Continue using `hydrateCheckoutOrderItems` from the shared hydration service.
+
+            ## Scope
+            - No checkout pricing changes.
+            - No coupon eligibility changes.
+            - No inventory reservation changes.
+            - No address, payment, rank, or promotion changes.
+
+            ## Testing
+            Not run, per request to skip tests.
+          add-paths: |
+            cohan-restaurant-backend/graphql/resolvers/order/mutation.js
