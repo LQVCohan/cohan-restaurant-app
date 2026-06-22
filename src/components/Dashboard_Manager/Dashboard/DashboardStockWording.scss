@@ -1,0 +1,30 @@
+.dashboard-card--alerts .dashboard-card__head h3,
+.dashboard-card--alerts .dashboard-card__head p {
+  font-size: 0;
+}
+
+.dashboard-card--alerts .dashboard-card__head h3::after {
+  content: "Cảnh báo tồn kho";
+  font-size: 15px;
+}
+
+.dashboard-card--alerts .dashboard-card__head p::after {
+  content: "Mặt hàng sắp hết cần kiểm tra.";
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dashboard-card--alerts-healthy .dashboard-empty h4,
+.dashboard-card--alerts-healthy .dashboard-empty p {
+  font-size: 0;
+}
+
+.dashboard-card--alerts-healthy .dashboard-empty h4::after {
+  content: "Tồn kho ổn định";
+  font-size: 13px;
+}
+
+.dashboard-card--alerts-healthy .dashboard-empty p::after {
+  content: "Không có mặt hàng sắp hết.";
+  font-size: 12px;
+}
