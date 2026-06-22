@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
+import { isSingleRestaurantRole } from "@/utils/restaurantAssignment";
 import {
   readStorageValue,
 } from "@/lib/browserStorage";
@@ -28,7 +28,7 @@ const AUTH_ERROR_CODES = new Set([
   "TOKEN_REVOKED",
   "UNAUTHORIZED",
 ]);
-const isStaffAccessRole = (roleName) => isStaffOperationalRole(roleName);
+const isStaffAccessRole = (roleName) => isSingleRestaurantRole(roleName);
 
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
@@ -299,10 +299,7 @@ export const AuthProvider = ({ children }) => {
   );
   const { data: mgrData, loading: managerRestaurantsLoading } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
-    skip:
-      !managerId ||
-      roleName === "admin" ||
-      !["manager", "hr", "accountant"].includes(roleName),
+    skip: !managerId || roleName !== "manager",
   });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
@@ -435,7 +432,7 @@ export const AuthProvider = ({ children }) => {
 
   const restaurantsLoading =
     (roleName === "admin" && adminRestaurantsLoading) ||
-    (["manager", "hr", "accountant"].includes(roleName) && managerRestaurantsLoading);
+    (roleName === "manager" && managerRestaurantsLoading);
 
   useEffect(() => {
     if (isStaffAccessRole(roleName)) {
@@ -457,7 +454,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    if (["manager", "hr", "accountant"].includes(roleName)) {
+    if (roleName === "manager") {
       if (mgrData?.restaurantsByManager) {
         setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
         return;
