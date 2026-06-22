@@ -12,6 +12,7 @@ const files = [
   "user.graphql",
   "payrollReadiness.graphql",
   "payrollPagination.graphql",
+  "managerDashboard.graphql",
   "restaurant.graphql",
   "role.graphql",
   "permission.graphql",
@@ -53,12 +54,11 @@ const files = [
   "backup.graphql",
 ].map((fileName) => fs.readFileSync(path.join(schemaDir, fileName), "utf8"));
 
-const staffAvatarSchema = [
-  "extend type " + "Mutation {",
-  "  updateStaff" +
-    "Avatar(userId: ID!, input: UpdateAvatarInput!): StaffPrivateProfile!",
-  "}",
-].join("\n");
+const staffAvatarSchema = `
+extend type Mutation {
+  updateStaffAvatar(userId: ID!, input: UpdateAvatarInput!): StaffPrivateProfile!
+}
+`;
 files.push(staffAvatarSchema);
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });
