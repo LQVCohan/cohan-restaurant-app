@@ -190,10 +190,7 @@ export default function DashboardActionQueue({
       <div className="dashboard-card__head">
         <div>
           <h3>Yêu cầu chờ xác nhận</h3>
-          <p>
-            Danh sách cần xử lý hiện tại, không phụ thuộc khoảng thời gian đã
-            chọn.
-          </p>
+          <p>Đơn hàng và đặt bàn cần xử lý, không theo bộ lọc thời gian.</p>
         </div>
         <span className="queue-count">
           <ClipboardList size={14} />
@@ -267,7 +264,7 @@ export default function DashboardActionQueue({
                       >
                         {busyKey === `order-confirm:${order.id}`
                           ? "Đang xác nhận..."
-                          : "Xác nhận đơn"}
+                          : "Xác nhận"}
                       </button>
                       <button
                         type="button"
@@ -275,14 +272,14 @@ export default function DashboardActionQueue({
                         disabled={Boolean(busyKey)}
                         onClick={() => setRejectTarget(order)}
                       >
-                        Từ chối đơn
+                        Từ chối
                       </button>
                       <button
                         type="button"
                         className="queue-btn queue-btn--ghost"
                         onClick={onOpenOrders}
                       >
-                        Xem đơn hàng
+                        Chi tiết
                       </button>
                     </div>
                   </div>
@@ -345,7 +342,7 @@ export default function DashboardActionQueue({
                       >
                         {busyKey === `reservation-confirm:${reservation.id}`
                           ? "Đang xác nhận..."
-                          : "Xác nhận đặt bàn"}
+                          : "Xác nhận"}
                       </button>
                       <button
                         type="button"
@@ -355,14 +352,14 @@ export default function DashboardActionQueue({
                       >
                         {busyKey === `reservation-cancel:${reservation.id}`
                           ? "Đang từ chối..."
-                          : "Từ chối đặt bàn"}
+                          : "Từ chối"}
                       </button>
                       <button
                         type="button"
                         className="queue-btn queue-btn--ghost"
                         onClick={onOpenTables}
                       >
-                        Xem sơ đồ bàn
+                        Sơ đồ bàn
                       </button>
                     </div>
                   </div>
@@ -370,7 +367,7 @@ export default function DashboardActionQueue({
               })
             ) : (
               <p className="dashboard-queue-section__empty">
-                Chưa có yêu cầu đặt bàn chờ xác nhận.
+                Không có yêu cầu đặt bàn mới.
               </p>
             )}
           </section>
