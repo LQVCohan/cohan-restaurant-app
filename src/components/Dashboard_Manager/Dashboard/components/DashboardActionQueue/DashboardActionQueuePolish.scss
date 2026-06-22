@@ -22,10 +22,80 @@
 
 .dashboard-card--action-queue .dashboard-queue-item__actions {
   max-width: 238px;
+  min-width: 0;
 }
 
-.dashboard-card--action-queue .queue-btn {
+.dashboard-card--action-queue .queue-btn,
+.dashboard-card--support-queue .queue-btn {
   white-space: nowrap;
+}
+
+/* Short visual labels keep the action row compact; accessible text remains in the DOM. */
+.dashboard-card--action-queue
+  .dashboard-queue-item__actions
+  .queue-btn:not(:disabled),
+.dashboard-card--support-queue
+  .dashboard-support-item__actions
+  .queue-btn:not(:disabled) {
+  font-size: 0;
+}
+
+.dashboard-card--action-queue
+  .dashboard-queue-item__actions
+  .queue-btn:not(:disabled)::after,
+.dashboard-card--support-queue
+  .dashboard-support-item__actions
+  .queue-btn:not(:disabled)::after {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.dashboard-card--action-queue
+  .dashboard-queue-item__actions
+  .queue-btn:nth-child(1):not(:disabled)::after {
+  content: "Xác nhận";
+}
+
+.dashboard-card--action-queue
+  .dashboard-queue-item__actions
+  .queue-btn:nth-child(2):not(:disabled)::after {
+  content: "Từ chối";
+}
+
+.dashboard-card--action-queue
+  .dashboard-queue-item__actions
+  .queue-btn:nth-child(3):not(:disabled)::after {
+  content: "Chi tiết";
+}
+
+.dashboard-card--support-queue
+  .dashboard-support-item__actions
+  .queue-btn:nth-child(1):not(:disabled)::after {
+  content: "Tiếp nhận";
+}
+
+.dashboard-card--support-queue
+  .dashboard-support-item__actions
+  .queue-btn:nth-child(2):not(:disabled)::after {
+  content: "Hoàn tất";
+}
+
+.dashboard-support-open {
+  font-size: 0;
+}
+
+.dashboard-support-open::after {
+  content: "Xem yêu cầu hỗ trợ";
+  font-size: 13px;
+}
+
+.dashboard-staff-roster__footer button {
+  font-size: 0;
+}
+
+.dashboard-staff-roster__footer button::before {
+  content: "Xem nhân viên";
+  font-size: 12px;
 }
 
 .queue-age {
@@ -58,6 +128,16 @@
   color: var(--dash-danger) !important;
   background: var(--dash-danger-soft);
   border-color: rgba(186, 81, 75, 0.28);
+}
+
+.revenue-compact-empty--simple {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  align-content: center;
+}
+
+.revenue-compact-empty--simple .revenue-compact-empty__text {
+  line-height: 1.45;
 }
 
 @media (max-width: 1320px) {
