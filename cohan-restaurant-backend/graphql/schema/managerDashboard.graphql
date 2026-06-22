@@ -1,0 +1,79 @@
+type ManagerDashboardStatusCounts {
+  pending: Int
+  preparing: Int
+  completed: Int
+  cancelled: Int
+}
+
+type ManagerDashboardTrendPoint {
+  key: String
+  current: Float
+  previous: Float
+}
+
+type ManagerDashboardTopDish {
+  dishName: String
+  quantity: Float
+  revenue: Float
+}
+
+type ManagerDashboardRecentOrder {
+  id: ID
+  orderCode: String
+  customerName: String
+  orderType: String
+  tableCode: String
+  status: String
+  total: Float
+  createdAt: DateTime
+  itemNames: [String!]
+}
+
+type ManagerDashboardLowStockItem {
+  id: ID
+  name: String
+  onHand: Float
+  reserved: Float
+}
+
+type ManagerDashboardPendingReservation {
+  id: ID
+  orderCode: String
+  customerName: String
+  customerPhone: String
+  tableCode: String
+  partySize: Int
+  timeTo: DateTime
+  status: String
+  depositStatus: String
+  depositAmount: Float
+  note: String
+  createdAt: DateTime
+}
+
+type ManagerDashboard {
+  restaurantId: ID
+  revenue: Float
+  orders: Int
+  customers: Int
+  tables: Int
+  menuItems: Int
+  activePromotions: Int
+  workingStaff: Int
+  statusCounts: ManagerDashboardStatusCounts
+  revenueTrend: [ManagerDashboardTrendPoint!]
+  orderTrend: [ManagerDashboardTrendPoint!]
+  topDishes: [ManagerDashboardTopDish!]
+  recentOrders: [ManagerDashboardRecentOrder!]
+  lowStockItems: [ManagerDashboardLowStockItem!]
+  pendingOrderCount: Int
+  pendingReservationCount: Int
+  pendingSupportRequestCount: Int
+  pendingOrders: [ManagerDashboardRecentOrder!]
+  pendingReservations: [ManagerDashboardPendingReservation!]
+  pendingSupportRequests: [CustomerServiceRequest!]
+}
+
+extend type Query {
+  managerDashboard(restaurantId: ID!, range: String): ManagerDashboard
+}
