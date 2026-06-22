@@ -51,9 +51,12 @@ export const getRefreshUrl = () => toApiAuthUrl("/refresh");
 export const getLogoutUrl = () => toApiAuthUrl("/logout");
 
 const normalizeLocalUploadPath = (pathname: string) => {
-  if (pathname.startsWith("/api/uploads/")) return pathname;
-  if (pathname === "/uploads") return "/api/uploads";
-  if (pathname.startsWith("/uploads/")) return `/api${pathname}`;
+  // upload.route.js is currently exposed by Fastify at /uploads/*.
+  // Older frontend code incorrectly rewrote those assets to /api/uploads/*,
+  // which produces a 404 even when the file exists on disk.
+  if (pathname === "/api/uploads") return "/uploads";
+  if (pathname.startsWith("/api/uploads/")) return pathname.slice(4);
+  if (pathname === "/uploads" || pathname.startsWith("/uploads/")) return pathname;
   return pathname;
 };
 
@@ -81,9 +84,8 @@ export function toApiAssetUrl(path: string | null | undefined) {
       const assetUrl = new URL(value);
       const graphqlOrigin = gqlUrl.startsWith("/") ? null : new URL(gqlUrl).origin;
 
-      // The local Fastify upload plugin is mounted at /api, while historical
-      // upload responses were emitted as /uploads/*. Repair those URLs only
-      // when they point to the same API origin; external/S3 URLs stay intact.
+      // Normalize only same-origin local upload URLs. External object storage
+      // and CDN URLs must remain unchanged.
       if (graphqlOrigin && assetUrl.origin === graphqlOrigin) {
         assetUrl.pathname = normalizeLocalUploadPath(assetUrl.pathname);
       }
@@ -106,8 +108,6 @@ export function toApiAssetUrl(path: string | null | undefined) {
 
   try {
     const parsedApiBase = new URL(apiBase);
-    // Assets outside /uploads should resolve from the API origin, not from the
-    // /api route prefix.
     return `${parsedApiBase.origin}${normalizedPath}`;
   } catch {
     return normalizedPath;
