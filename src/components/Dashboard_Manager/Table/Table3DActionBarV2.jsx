@@ -2,6 +2,7 @@ import React from "react";
 import {
   Camera,
   Check,
+  Info,
   Loader2,
   ScanLine,
   Smartphone,
@@ -59,15 +60,23 @@ export default function Table3DActionBarV2({
         {isOpeningAr ? "Đang mở AR..." : "Xem AR trên thiết bị"}
       </Button>
 
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={onOpenArPlacement}
-        disabled={!canOpenArPlacement}
-        title={arPlacementTitle}
-      >
-        <ScanLine size={16} /> {placementActionLabel}
-      </Button>
+      <div className="table-3d-position-action">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onOpenArPlacement}
+          disabled={!canOpenArPlacement}
+          title={arPlacementTitle}
+        >
+          <ScanLine size={16} />
+          {canOpenArPlacement ? placementActionLabel : "Chưa chọn bàn"}
+        </Button>
+        {!canOpenArPlacement && (
+          <span className="table-3d-position-action__hint">
+            <Info size={13} /> Mở chi tiết một bàn trước để lưu vị trí.
+          </span>
+        )}
+      </div>
 
       <Button
         variant="primary"
