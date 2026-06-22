@@ -1,0 +1,115 @@
+/* Targeted presentation fixes for the table 3D modal. */
+
+.table-3d-modal__title-row > .table-3d-ar-status {
+  display: none !important;
+}
+
+.table-3d-stage {
+  overflow: hidden;
+  border-radius: 17px;
+}
+
+.table-3d-modal .table-3d-viewer {
+  transform: scale(1.07);
+  transform-origin: center;
+}
+
+.table-3d-modal .table-3d-toolbar button,
+.table-3d-modal .table-3d-position-controls > summary {
+  min-height: 38px !important;
+  padding-inline: 0.72rem !important;
+  gap: 0.42rem !important;
+}
+
+.table-3d-modal .model-item {
+  min-height: 70px !important;
+  align-items: center !important;
+}
+
+.table-3d-modal .model-item__content {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.1rem;
+}
+
+.table-3d-modal .model-item__content > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+}
+
+.table-3d-modal .model-item__badges {
+  margin-top: 0.18rem;
+  margin-bottom: 0 !important;
+}
+
+.table-3d-readiness:not([open]) {
+  min-height: 50px;
+}
+
+.table-3d-position-action {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.table-3d-position-action > button {
+  width: 100%;
+  min-height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.38rem !important;
+  border-radius: 11px !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
+
+.table-3d-position-action__hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.24rem;
+  color: #8a6a3a;
+  font-size: 0.64rem;
+  font-weight: 690;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.table-3d-modal__warning--catalog {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+}
+
+.table-3d-modal__warning--catalog > button {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 30px !important;
+  margin-top: 0.1rem;
+  border-color: rgba(131, 91, 32, 0.22) !important;
+  background: rgba(255, 253, 249, 0.78) !important;
+  color: #835b20 !important;
+}
+
+.table-3d-modal__warning--catalog > span {
+  font-size: 0.71rem !important;
+  line-height: 1.4 !important;
+}
+
+.table-3d-modal__warning--catalog > span::after {
+  content: none !important;
+}
+
+@media (max-width: 560px) {
+  .table-3d-modal .table-3d-viewer {
+    transform: scale(1.03);
+  }
+
+  .table-3d-position-action__hint {
+    font-size: 0.68rem;
+  }
+}
