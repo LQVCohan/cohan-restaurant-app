@@ -1,0 +1,635 @@
+/* Camera preview modal repair: structured header/body/footer, explicit camera states,
+   compact controls and responsive sizing. Loaded after previous table modal styles. */
+
+body:has(.camera-placement-shell) .modal-overlay {
+  z-index: 1120 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: clamp(0.65rem, 1.4vw, 1rem) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.18), transparent 30rem),
+    rgba(21, 29, 32, 0.7) !important;
+  backdrop-filter: blur(10px) saturate(108%) !important;
+}
+
+body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
+  width: min(94vw, 960px) !important;
+  height: min(94dvh, 900px) !important;
+  max-height: min(94dvh, 900px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 253, 249, 0.74) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.08), transparent 18rem),
+    linear-gradient(180deg, #fffdf9, #f8f5ee) !important;
+  box-shadow:
+    0 34px 92px rgba(12, 20, 22, 0.38),
+    0 0 0 1px rgba(255, 253, 249, 0.72) !important;
+}
+
+.camera-placement-shell > .camera-placement-modal__modal-header {
+  min-height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid rgba(222, 214, 203, 0.86) !important;
+  background: rgba(255, 253, 249, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.camera-placement-modal__title-block {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.camera-placement-modal__title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.camera-placement-modal__title-row > svg {
+  flex: 0 0 auto;
+  color: #1f6a60;
+}
+
+.camera-placement-modal__title-row h2 {
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  color: #24323b !important;
+  font-size: clamp(1rem, 1.35vw, 1.18rem) !important;
+  font-weight: 860 !important;
+  letter-spacing: -0.035em !important;
+  line-height: 1.15 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-placement-modal__title-block p {
+  max-width: 72ch;
+  margin: 0 !important;
+  color: #667085 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.35 !important;
+}
+
+.camera-placement-modal__status {
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.52rem;
+  border: 1px solid rgba(138, 129, 119, 0.22);
+  border-radius: 9px;
+  background: rgba(248, 245, 238, 0.9);
+  color: #667085;
+  font-size: 0.68rem;
+  font-weight: 820;
+  white-space: nowrap;
+}
+
+.camera-placement-modal__status--ready {
+  border-color: rgba(31, 106, 96, 0.22);
+  background: #dcefe9;
+  color: #17554d;
+}
+
+.camera-placement-modal__status--requesting {
+  border-color: rgba(49, 95, 125, 0.2);
+  background: #edf4f8;
+  color: #315f7d;
+}
+
+.camera-placement-modal__status--error,
+.camera-placement-modal__status--unsupported {
+  border-color: rgba(154, 65, 61, 0.22);
+  background: #faece8;
+  color: #9a413d;
+}
+
+.camera-placement-shell > .camera-placement-modal__body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 0 !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31, 106, 96, 0.25) transparent;
+}
+
+.camera-placement-shell > .camera-placement-modal__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.camera-placement-shell > .camera-placement-modal__body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(31, 106, 96, 0.23);
+}
+
+.camera-placement-modal {
+  display: grid !important;
+  gap: 0.72rem !important;
+  padding: 0.82rem 0.95rem 1rem !important;
+  overflow: visible !important;
+}
+
+.camera-placement-modal__workflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.46rem;
+}
+
+.camera-placement-modal__workflow > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.5rem 0.58rem;
+  border-radius: 11px;
+  background: rgba(248, 245, 238, 0.78);
+}
+
+.camera-placement-modal__workflow span {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #dcefe9;
+  color: #17554d;
+  font-size: 0.67rem;
+  font-weight: 860;
+}
+
+.camera-placement-modal__workflow strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #42505c;
+  font-size: 0.74rem;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-placement-modal__model-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.58rem 0.68rem;
+  border: 1px solid rgba(222, 214, 203, 0.76);
+  border-radius: 13px;
+  background: rgba(255, 253, 249, 0.72);
+}
+
+.camera-placement-modal__model-summary > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.camera-placement-modal__model-summary strong {
+  overflow: hidden;
+  color: #24323b;
+  font-size: 0.85rem;
+  font-weight: 820;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-placement-modal__model-summary > div > span {
+  overflow: hidden;
+  color: #667085;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-placement-modal__estimate-badge {
+  flex: 0 0 auto;
+  padding: 0.28rem 0.52rem;
+  border: 1px solid rgba(131, 91, 32, 0.18);
+  border-radius: 9px;
+  background: #fbf1df;
+  color: #835b20;
+  font-size: 0.68rem;
+  font-weight: 820;
+}
+
+.camera-placement-modal__preview {
+  position: relative !important;
+  width: 100% !important;
+  height: clamp(260px, 42dvh, 440px) !important;
+  min-height: 240px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(222, 214, 203, 0.54) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(49, 95, 125, 0.22), transparent 16rem),
+    #172126 !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+}
+
+.camera-placement-modal__video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  background: transparent !important;
+}
+
+.camera-placement-modal__camera-state {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(21, 29, 32, 0.82);
+  color: #fffdf9;
+  text-align: center;
+  backdrop-filter: blur(9px);
+}
+
+.camera-placement-modal__camera-state > svg {
+  color: #9ed2c8;
+}
+
+.camera-placement-modal__camera-state strong {
+  max-width: 44ch;
+  font-size: 0.92rem;
+}
+
+.camera-placement-modal__camera-state span,
+.camera-placement-modal__camera-state li {
+  color: rgba(255, 253, 249, 0.76);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.camera-placement-modal__camera-state ul {
+  margin: 0;
+  padding-left: 1rem;
+  text-align: left;
+}
+
+.camera-placement-modal__camera-state--error {
+  background: rgba(32, 26, 25, 0.88);
+}
+
+.camera-placement-modal__overlay {
+  position: absolute !important;
+  z-index: 4 !important;
+  width: clamp(150px, 23vw, 240px) !important;
+  min-height: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  gap: 0.25rem !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: #fffdf9 !important;
+  cursor: grab !important;
+  touch-action: none !important;
+  user-select: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.camera-placement-modal__overlay:active {
+  cursor: grabbing !important;
+}
+
+.camera-placement-modal__thumbnail,
+.camera-placement-modal__shape-preview {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 88px !important;
+  max-height: 180px !important;
+  object-fit: contain !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  filter: drop-shadow(0 16px 16px rgba(0, 0, 0, 0.28));
+  pointer-events: none;
+}
+
+.camera-placement-modal__shape-preview {
+  aspect-ratio: 1.6 / 1;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.74), transparent 18px),
+    linear-gradient(135deg, rgba(79, 148, 138, 0.88), rgba(31, 106, 96, 0.82)) !important;
+}
+
+.camera-placement-modal__overlay-label {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.24rem 0.46rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(21, 29, 32, 0.72);
+  color: #fffdf9;
+  font-size: 0.68rem;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(7px);
+}
+
+.camera-placement-modal__hint {
+  top: 0.65rem !important;
+  left: 0.65rem !important;
+  right: auto !important;
+  max-width: min(520px, calc(100% - 1.3rem)) !important;
+  padding: 0.42rem 0.56rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  background: rgba(21, 29, 32, 0.7) !important;
+  color: rgba(255, 253, 249, 0.88) !important;
+  font-size: 0.72rem !important;
+  line-height: 1.35 !important;
+  backdrop-filter: blur(8px);
+}
+
+.camera-placement-modal__primary-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.55rem;
+}
+
+.camera-placement-modal__quick-size,
+.camera-placement-modal__quick-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(222, 214, 203, 0.76);
+  border-radius: 13px;
+  background: rgba(255, 253, 249, 0.72);
+}
+
+.camera-placement-modal__quick-size > span {
+  color: #42505c;
+  font-size: 0.74rem;
+  font-weight: 760;
+}
+
+.camera-placement-modal__quick-size button,
+.camera-placement-modal__quick-actions button,
+.camera-placement-modal__advanced-panel button {
+  min-height: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.32rem !important;
+  border-radius: 10px !important;
+  font-size: 0.74rem !important;
+}
+
+.camera-placement-modal__advanced-controls {
+  border: 1px solid rgba(222, 214, 203, 0.76);
+  border-radius: 14px;
+  background: rgba(255, 253, 249, 0.7);
+}
+
+.camera-placement-modal__advanced-controls > summary {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.58rem 0.68rem;
+  color: #42505c;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  list-style: none;
+}
+
+.camera-placement-modal__advanced-controls > summary::-webkit-details-marker {
+  display: none;
+}
+
+.camera-placement-modal__advanced-controls > summary svg {
+  transition: transform 180ms ease;
+}
+
+.camera-placement-modal__advanced-controls[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.camera-placement-modal__advanced-panel {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0 0.68rem 0.68rem;
+}
+
+.camera-placement-modal__move-controls {
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.camera-placement-modal__move-controls > span {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 740;
+}
+
+.camera-placement-modal__opacity-control {
+  display: grid !important;
+  gap: 0.38rem !important;
+  padding: 0.5rem 0 !important;
+  background: transparent !important;
+}
+
+.camera-placement-modal__opacity-control span {
+  color: #42505c;
+  font-size: 0.74rem;
+  font-weight: 760;
+}
+
+.camera-placement-modal__opacity-control input {
+  width: 100%;
+  accent-color: #1f6a60;
+}
+
+.camera-placement-modal__stats {
+  margin: 0 !important;
+  padding: 0.48rem 0.58rem !important;
+  border-radius: 10px !important;
+  background: rgba(248, 245, 238, 0.76) !important;
+  color: #667085 !important;
+  font-size: 0.71rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.camera-placement-modal__notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.62rem 0.68rem;
+  border: 1px solid rgba(131, 91, 32, 0.2);
+  border-radius: 13px;
+  background: #fbf1df;
+  color: #835b20;
+}
+
+.camera-placement-modal__notice > svg {
+  margin-top: 0.08rem;
+}
+
+.camera-placement-modal__notice p,
+.camera-placement-modal__note {
+  margin: 0 !important;
+  font-size: 0.73rem !important;
+  line-height: 1.42 !important;
+}
+
+.camera-placement-shell > .camera-placement-modal__footer {
+  min-height: 62px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.8rem !important;
+  padding: 0.72rem 1rem !important;
+  border-top: 1px solid rgba(222, 214, 203, 0.86) !important;
+  background: linear-gradient(180deg, rgba(248, 245, 238, 0.9), #f8f5ee) !important;
+  box-shadow: 0 -12px 28px rgba(48, 40, 30, 0.06) !important;
+}
+
+.camera-placement-modal__footer > span {
+  color: #667085;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.camera-placement-modal__footer button {
+  min-width: 138px;
+  border-radius: 11px !important;
+}
+
+@media (max-width: 760px) {
+  body:has(.camera-placement-shell) .modal-overlay {
+    align-items: stretch !important;
+    padding: 0 !important;
+  }
+
+  body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .camera-placement-shell > .camera-placement-modal__modal-header {
+    min-height: 58px !important;
+    padding: 0.62rem 0.72rem !important;
+  }
+
+  .camera-placement-modal__title-block p {
+    max-width: 68vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .camera-placement-modal__workflow {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .camera-placement-modal__workflow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .camera-placement-modal__workflow > div {
+    min-width: min(72vw, 240px);
+    scroll-snap-align: start;
+  }
+
+  .camera-placement-modal__preview {
+    height: min(38dvh, 340px) !important;
+    min-height: 230px !important;
+  }
+
+  .camera-placement-modal__primary-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .camera-placement-modal__quick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .camera-placement-modal__quick-actions button {
+    width: 100%;
+    justify-content: center !important;
+  }
+
+  .camera-placement-modal__move-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .camera-placement-modal__move-controls > span {
+    grid-column: 1 / -1;
+  }
+
+  .camera-placement-shell > .camera-placement-modal__footer {
+    padding: 0.62rem 0.72rem !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .camera-placement-modal__status {
+    max-width: 122px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .camera-placement-modal__title-block p {
+    display: none;
+  }
+
+  .camera-placement-modal {
+    padding: 0.68rem !important;
+  }
+
+  .camera-placement-modal__model-summary > div > span {
+    max-width: 62vw;
+  }
+
+  .camera-placement-modal__preview {
+    height: min(34dvh, 290px) !important;
+    min-height: 210px !important;
+  }
+
+  .camera-placement-modal__overlay {
+    width: clamp(130px, 44vw, 190px) !important;
+  }
+
+  .camera-placement-modal__quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .camera-placement-modal__footer > span {
+    display: none;
+  }
+
+  .camera-placement-modal__footer button {
+    width: 100%;
+  }
+}
