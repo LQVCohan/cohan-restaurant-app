@@ -113,9 +113,18 @@ const formatMoney = (value) =>
 const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
 
+const getDashboardErrorMessage = (error) => {
+  if (!error) return "";
+  if (error?.networkError) {
+    return "Không thể kết nối tới máy chủ. Vui lòng kiểm tra backend và thử lại.";
+  }
+  return "Dữ liệu tổng quan chưa sẵn sàng. Vui lòng khởi động lại backend và thử lại.";
+};
+
 export const useDashboard = () => {
   const navigate = useNavigate();
-  const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
+  const { restaurants = [], restaurantsLoading = false } =
+    useContext(AuthContext) || {};
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(() =>
     readDashboardRestaurantId(),
   );
@@ -171,6 +180,10 @@ export const useDashboard = () => {
   );
   const dashboard = hasStaleDashboard ? null : rawDashboard;
   const dashboardLoading = loading || hasStaleDashboard;
+  const dashboardError = useMemo(
+    () => (error ? new Error(getDashboardErrorMessage(error)) : null),
+    [error],
+  );
 
   const stats = useMemo(() => {
     return {
@@ -249,7 +262,7 @@ export const useDashboard = () => {
     stats,
     loading: dashboardLoading,
     restaurantsLoading,
-    error,
+    error: dashboardError,
     range,
     setRange,
     revenueTrend: dashboard?.revenueTrend || [],
@@ -272,3 +285,5 @@ export const useDashboard = () => {
     handleGenerateReport,
   };
 };
+
+export { GET_MANAGER_DASHBOARD, getDashboardErrorMessage };
