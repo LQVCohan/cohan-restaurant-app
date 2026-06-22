@@ -42,6 +42,8 @@ import { rbacAuditLogs } from "./audit_log/rbac.js";
 import systemSetting from "./systemSetting/index.js";
 import backup from "./backup/index.js";
 import customerAddress from "./customerAddress/index.js";
+import dashboard from "./dashboard/index.js";
+
 export default {
   ...baseResolvers,
 
@@ -84,6 +86,7 @@ export default {
     ...(systemSetting.Query || {}),
     ...(backup.Query || {}),
     ...(customerAddress.Query || {}),
+    ...(dashboard.Query || {}),
     rbacAuditLogs,
   },
 
@@ -141,7 +144,9 @@ export default {
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
-  ...(customerFavorite.CustomerFavorite ? { CustomerFavorite: customerFavorite.CustomerFavorite } : {}),
+  ...(customerFavorite.CustomerFavorite
+    ? { CustomerFavorite: customerFavorite.CustomerFavorite }
+    : {}),
   ...(userCoupon.UserCoupon ? { UserCoupon: userCoupon.UserCoupon } : {}),
   ...(couponRedemption.CouponRedemption
     ? { CouponRedemption: couponRedemption.CouponRedemption }
@@ -159,6 +164,8 @@ export default {
     ? { StaffAttendanceRecord: attendanceOvertime.StaffAttendanceRecord }
     : {}),
   ...(auditLog.AuditLog ? { AuditLog: auditLog.AuditLog } : {}),
-  ...(systemSetting.SystemSetting ? { SystemSetting: systemSetting.SystemSetting } : {}),
+  ...(systemSetting.SystemSetting
+    ? { SystemSetting: systemSetting.SystemSetting }
+    : {}),
   ...(backup.BackupRun ? { BackupRun: backup.BackupRun } : {}),
 };
