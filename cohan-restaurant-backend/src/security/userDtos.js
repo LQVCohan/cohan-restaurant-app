@@ -167,11 +167,7 @@ export function staffBelongsToRestaurant(user, restaurantId) {
   if (!restaurantId) return true;
   const source = toPlainObject(user);
   if (!source) return false;
-  if (idEquals(source.restaurantForStaff, restaurantId)) return true;
-  if (Array.isArray(source.refRestaurants)) {
-    return source.refRestaurants.some((restaurant) => idEquals(restaurant, restaurantId));
-  }
-  return false;
+  return idEquals(source.restaurantForStaff, restaurantId);
 }
 
 export function resolveStaffPrivateProfileScope(user, restaurantId) {
