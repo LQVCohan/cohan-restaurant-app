@@ -14,13 +14,13 @@ export default function Table3DActionBarV2({
   onOpenCamera,
   canOpenArPlacement,
   arPlacementTitle,
-  placementActionLabel,
+  placementActionLabel = "Thiết lập vị trí bàn",
   onOpenArPlacement,
   canLaunchNativeAr,
   isOpeningAr,
   arUnavailableReason,
   onOpenNativeAr,
-  applyActionLabel,
+  applyActionLabel = "Áp dụng mẫu này",
   onApply,
 }) {
   return (
