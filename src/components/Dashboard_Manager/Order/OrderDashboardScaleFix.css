@@ -1,0 +1,264 @@
+.manager-layout.manager-layout--orders,
+.manager-layout.manager-layout--orders .manager-layout__main,
+.manager-layout.manager-layout--orders .manager-layout__content {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 252, 0.74), transparent 36rem),
+    radial-gradient(circle at 88% 6%, rgba(31, 106, 96, 0.055), transparent 34rem),
+    radial-gradient(circle at 70% 100%, rgba(190, 179, 160, 0.1), transparent 42rem),
+    linear-gradient(180deg, #f8f7f2 0%, #f4f1ea 50%, #efebe3 100%) !important;
+}
+
+.manager-layout.manager-layout--orders .manager-layout__content {
+  padding: clamp(1rem, 2vw, 1.5rem) !important;
+  padding-bottom: max(96px, clamp(1rem, 2vw, 1.5rem)) !important;
+}
+
+.manager-layout.manager-layout--orders .manager-page-shell--orders,
+.manager-layout.manager-layout--orders .manager-page-shell--orders .manager-page-shell__body {
+  width: min(100%, 1360px) !important;
+  max-width: 1360px !important;
+  min-width: 0;
+  margin: 0 auto !important;
+}
+
+.manager-layout.manager-layout--orders
+  .manager-page-shell--orders
+  .om-container:not(.om-container--focus) {
+  width: 100% !important;
+  min-height: 100% !important;
+  overflow: visible !important;
+  background: transparent !important;
+  color: #24303f;
+  font-size: 14px;
+}
+
+.manager-layout.manager-layout--orders
+  .manager-page-shell--orders
+  .om-container:not(.om-container--focus)::before {
+  display: none !important;
+  content: none !important;
+}
+
+.manager-layout.manager-layout--orders
+  .manager-page-shell--orders
+  .om-container:not(.om-container--focus)
+  .om-wrapper {
+  width: 100% !important;
+  max-width: 1360px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  gap: 14px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header {
+  min-height: 64px !important;
+  padding: 10px 12px !important;
+  border-radius: 20px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-controls-row {
+  grid-template-columns: minmax(320px, 1fr) minmax(210px, 250px) auto auto auto !important;
+  gap: 10px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  :is(.mph-search, .mph-select, .mph-icon-btn, .mph-btn) {
+  min-height: 42px !important;
+  height: 42px !important;
+  font-size: 13px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-panel {
+  gap: 12px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-card {
+  min-height: 88px !important;
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
+  gap: 13px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-card__icon {
+  flex-basis: 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  font-size: 1.1rem !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-card__label {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-kpi-card__value {
+  margin-top: 6px !important;
+  font-size: clamp(1.6rem, 2.1vw, 2rem) !important;
+  line-height: 1 !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-toolbar {
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-filter-group {
+  gap: 10px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-field__label {
+  margin-bottom: 2px;
+  font-size: 11px !important;
+  letter-spacing: 0.06em !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  :is(.om-select-input, .om-select-wrapper .om-select, .om-size-control select, .om-btn-outline, .om-btn-primary) {
+  min-height: 42px !important;
+  height: 42px !important;
+  font-size: 13px !important;
+  border-radius: 12px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .om-content {
+  overflow: visible !important;
+  padding: 0 0 24px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  :is(.om-grid, .om-skeleton-grid) {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus) {
+  min-height: 390px !important;
+  border-radius: 22px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .oc-header {
+  padding: 16px 16px 13px 22px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  :is(.oc-table-tag, .oc-time-badge) {
+  min-height: 36px !important;
+  font-size: 13px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .oc-info-section {
+  gap: 9px !important;
+  padding: 14px 16px 0 22px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .oc-guest {
+  font-size: 13px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .oc-item-row {
+  padding: 11px !important;
+  border-radius: 14px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .item-name {
+  font-size: 14px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .oc-footer {
+  padding: 14px 16px 16px 22px !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .oc-card:not(.mode-focus)
+  .oc-btn {
+  min-height: 44px !important;
+  font-size: 13px !important;
+}
+
+@media (max-width: 1180px) {
+  .manager-layout.manager-layout--orders
+    .om-container:not(.om-container--focus)
+    .management-page-header
+    .mph-controls-row {
+    display: flex !important;
+    flex-wrap: wrap;
+  }
+
+  .manager-layout.manager-layout--orders
+    .om-container:not(.om-container--focus)
+    :is(.om-grid, .om-skeleton-grid) {
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout.manager-layout--orders .manager-layout__content {
+    padding: 0.85rem !important;
+  }
+
+  .manager-layout.manager-layout--orders
+    .om-container:not(.om-container--focus)
+    :is(.om-grid, .om-skeleton-grid) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-layout.manager-layout--orders
+    .om-container:not(.om-container--focus)
+    .om-kpi-card {
+    min-height: 78px !important;
+    padding: 12px 14px !important;
+  }
+}
