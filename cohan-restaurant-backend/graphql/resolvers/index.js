@@ -43,7 +43,6 @@ import systemSetting from "./systemSetting/index.js";
 import backup from "./backup/index.js";
 import customerAddress from "./customerAddress/index.js";
 import dashboard from "./dashboard/index.js";
-import analytics from "./analytics/index.js";
 
 export default {
   ...baseResolvers,
@@ -88,7 +87,6 @@ export default {
     ...(backup.Query || {}),
     ...(customerAddress.Query || {}),
     ...(dashboard.Query || {}),
-    ...(analytics.Query || {}),
     rbacAuditLogs,
   },
 
@@ -170,7 +168,4 @@ export default {
     ? { SystemSetting: systemSetting.SystemSetting }
     : {}),
   ...(backup.BackupRun ? { BackupRun: backup.BackupRun } : {}),
-  ...(analytics.ManagerDashboard
-    ? { ManagerDashboard: analytics.ManagerDashboard }
-    : {}),
 };
