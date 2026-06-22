@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { Restaurant, User } from "../../models/index.js";
+import { User } from "../../models/index.js";
 
 function permissionCodeOf(permission) {
   const code = permission?.code || permission?.permissionCode || permission?.slug || permission?.name;
@@ -18,6 +18,9 @@ function uniquePermissionCodes(permissions = []) {
 
 async function resolveManagedRestaurantIds(userId, roleName) {
   if (roleName !== "manager") return [];
+  const models = await import("../../models/index.js");
+  const Restaurant = models.Restaurant;
+  if (typeof Restaurant?.find !== "function") return [];
   const restaurants = await Restaurant.find({ managerId: userId })
     .select({ _id: 1 })
     .lean();
