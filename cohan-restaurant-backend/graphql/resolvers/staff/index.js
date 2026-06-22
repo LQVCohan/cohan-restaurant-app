@@ -3,6 +3,15 @@ import payrollReadinessQuery from "./payrollReadiness.query.js";
 import staffMutation from "./mutation.js";
 import staffPhotoActions from "./staffAvatar.mutation.js";
 import payrollFinalizeReadinessMutation from "./payrollFinalizeReadiness.mutation.js";
+import {
+  requireAuth,
+  requireRestaurantAccess,
+  requireRoles,
+} from "../../guards.js";
+import {
+  SCHEDULE_WRITE_ROLES,
+  SHIFT_ACK_ADMIN_ROLES,
+} from "../../../src/services/scheduling/schedulingPermission.service.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
   const numeric = Number(value);
@@ -75,6 +84,49 @@ const staffPayrollOverviewPage = async (parent, args, ctx, info) => {
   return paginatePayrollOverview(overview, args);
 };
 
+function wrapMutation(operation, authorize) {
+  if (typeof operation !== "function") return operation;
+  return async function scopedMutation(parent, args, ctx, info) {
+    await authorize(args || {}, ctx);
+    return operation.call(this, parent, args, ctx, info);
+  };
+}
+
+async function authorizeScheduleWrite(args, ctx) {
+  requireAuth(ctx);
+  requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+  const restaurantId = args?.restaurantId || args?.input?.restaurantId;
+  if (!restaurantId) throw new Error("restaurantId is required");
+  await requireRestaurantAccess(ctx, restaurantId);
+}
+
+async function authorizeAcknowledgementExpiry(args, ctx) {
+  requireAuth(ctx);
+  const restaurantId = args?.restaurantId;
+  if (!restaurantId) {
+    requireRoles(ctx, ["ADMIN"]);
+    return;
+  }
+  requireRoles(ctx, SHIFT_ACK_ADMIN_ROLES);
+  await requireRestaurantAccess(ctx, restaurantId);
+}
+
+const guardedStaffMutation = {
+  ...staffMutation,
+  updateSchedulingPolicy: wrapMutation(
+    staffMutation.updateSchedulingPolicy,
+    authorizeScheduleWrite,
+  ),
+  startSchedulingOperations: wrapMutation(
+    staffMutation.startSchedulingOperations,
+    authorizeScheduleWrite,
+  ),
+  expirePendingShiftAcknowledgements: wrapMutation(
+    staffMutation.expirePendingShiftAcknowledgements,
+    authorizeAcknowledgementExpiry,
+  ),
+};
+
 const operationKey = ["Mut", "ation"].join("");
 
 const resolvers = {
@@ -84,7 +136,7 @@ const resolvers = {
     staffPayrollOverviewPage,
   },
   [operationKey]: {
-    ...staffMutation,
+    ...guardedStaffMutation,
     ...staffPhotoActions,
     ...payrollFinalizeReadinessMutation,
   },
