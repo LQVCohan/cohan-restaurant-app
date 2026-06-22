@@ -155,3 +155,116 @@
   color: #fff;
   box-shadow: 0 10px 22px rgba(31, 106, 96, 0.2);
 }
+
+.om-container:not(.om-container--focus) .management-page-header .mph-search:focus-within,
+.om-container:not(.om-container--focus) .management-page-header .mph-select:focus-visible,
+.om-container:not(.om-container--focus) .management-page-header .mph-icon-btn:focus-visible,
+.om-container:not(.om-container--focus) .management-page-header .mph-btn:focus-visible {
+  border-color: rgba(31, 106, 96, 0.34);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.14);
+}
+
+.om-container:not(.om-container--focus) .management-page-header .mph-icon-btn:hover,
+.om-container:not(.om-container--focus) .management-page-header .mph-select:hover,
+.om-container:not(.om-container--focus) .management-page-header .mph-search:hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  background: var(--om-sage-mist);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card,
+.om-container:not(.om-container--focus) .om-toolbar,
+.om-container:not(.om-container--focus) .om-state,
+.om-container:not(.om-container--focus) .om-skeleton-card {
+  border-color: rgba(128, 109, 83, 0.15);
+  background: rgba(255, 253, 249, 0.8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 14px 36px rgba(42, 36, 27, 0.075);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card:hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  box-shadow: 0 18px 42px rgba(42, 36, 27, 0.1);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card__label,
+.om-container:not(.om-container--focus) .om-field__label {
+  color: var(--om-muted);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card__value {
+  color: var(--om-ink);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card--neutral .om-kpi-card__icon,
+.om-container:not(.om-container--focus) .om-kpi-card--accent .om-kpi-card__icon,
+.om-container:not(.om-container--focus) .om-kpi-card--success .om-kpi-card__icon {
+  border: 1px solid rgba(31, 106, 96, 0.16);
+  background: var(--om-sage-mist);
+  color: var(--om-sage-dark);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card--warning .om-kpi-card__icon {
+  border: 1px solid rgba(131, 91, 32, 0.18);
+  background: var(--om-warning-soft);
+  color: var(--om-warning);
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card--danger .om-kpi-card__icon {
+  border: 1px solid rgba(154, 65, 61, 0.18);
+  background: var(--om-danger-soft);
+  color: var(--om-danger);
+}
+
+.om-container:not(.om-container--focus) .om-select-input,
+.om-container:not(.om-container--focus) .om-select-wrapper .om-select,
+.om-container:not(.om-container--focus) .om-size-control select {
+  border-color: var(--om-border);
+  background: rgba(255, 253, 249, 0.88);
+  color: var(--om-ink);
+}
+
+.om-container:not(.om-container--focus) .om-select-input:hover,
+.om-container:not(.om-container--focus) .om-select-wrapper .om-select:hover,
+.om-container:not(.om-container--focus) .om-size-control select:hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  background: var(--om-sage-mist);
+}
+
+.om-container:not(.om-container--focus) .om-select-input:focus-visible,
+.om-container:not(.om-container--focus) .om-select-wrapper .om-select:focus-visible,
+.om-container:not(.om-container--focus) .om-size-control select:focus-visible {
+  border-color: rgba(31, 106, 96, 0.34);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.14);
+}
+
+.om-container:not(.om-container--focus) .om-select-icon-left,
+.om-container:not(.om-container--focus) .om-select-icon-right {
+  color: var(--om-sage-dark);
+}
+
+.om-container:not(.om-container--focus) .om-btn-primary {
+  border-color: var(--om-sage);
+  background: var(--om-sage);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 106, 96, 0.2);
+}
+
+.om-container:not(.om-container--focus) .om-btn-primary:hover {
+  border-color: var(--om-sage-dark);
+  background: var(--om-sage-dark);
+  box-shadow: 0 14px 28px rgba(31, 106, 96, 0.24);
+}
+
+.om-container:not(.om-container--focus) .om-btn-outline {
+  border-color: rgba(31, 106, 96, 0.16);
+  background: var(--om-sage-mist);
+  color: var(--om-sage-dark);
+}
+
+.om-container:not(.om-container--focus) .om-btn-outline:hover {
+  border-color: rgba(31, 106, 96, 0.28);
+  background: var(--om-sage-soft);
+}
