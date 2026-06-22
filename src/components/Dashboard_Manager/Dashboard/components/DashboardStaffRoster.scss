@@ -14,11 +14,28 @@
     background: var(--dash-accent-soft);
     font-size: 12px;
     font-weight: 850;
+    white-space: nowrap;
   }
 
   &__list {
     display: grid;
     gap: 4px;
+  }
+
+  &__group-label {
+    margin: 2px 0 1px;
+    color: var(--dash-success);
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  &__group-label--muted {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px solid var(--dash-border);
+    color: var(--dash-text-sub);
   }
 
   &__item {
@@ -71,6 +88,7 @@
 
     &.is-online {
       background: var(--dash-success);
+      box-shadow: 0 0 0 2px rgba(77, 117, 102, 0.12);
     }
   }
 
@@ -128,6 +146,7 @@
       font-size: 12px;
       font-weight: 820;
       cursor: pointer;
+      white-space: nowrap;
 
       &:hover:not(:disabled) {
         text-decoration: underline;
