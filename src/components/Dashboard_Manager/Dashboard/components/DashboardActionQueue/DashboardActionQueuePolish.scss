@@ -5,6 +5,19 @@
     var(--dash-surface);
 }
 
+.dashboard-compact-header > div:first-child,
+.dashboard-card__head > div:first-child {
+  min-width: 0;
+}
+
+.dashboard-compact-header__actions,
+.dashboard-card__head > :last-child,
+.queue-count,
+.orders-pill,
+.alert-count {
+  flex-shrink: 0;
+}
+
 .dashboard-queue-item__title-row {
   display: flex;
   align-items: center;
@@ -146,6 +159,16 @@
   }
 }
 
+@media (max-width: 900px) {
+  .dashboard-filterbar__context {
+    width: 100%;
+    margin-left: 0;
+    padding: 10px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--dash-border);
+  }
+}
+
 @media (max-width: 760px) {
   .dashboard-card--action-queue .dashboard-queue-item {
     grid-template-columns: 1fr;
@@ -173,5 +196,9 @@
 @media (max-width: 560px) {
   .dashboard-queue-item__title-row {
     align-items: flex-start;
+  }
+
+  .dashboard-card__head {
+    flex-wrap: wrap;
   }
 }
