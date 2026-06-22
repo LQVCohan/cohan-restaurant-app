@@ -4,7 +4,6 @@ import Button from "@/components/common/Button";
 import {
   TABLE_3D_PLACEHOLDER_THUMB,
   TABLE_3D_TYPE_OPTIONS,
-  formatDimensionsCm,
   getModelAssetBadges,
 } from "@/config/table3dCatalog";
 import { isCustomTableModel } from "@/config/table3dCustomModelStorage";
@@ -24,6 +23,26 @@ const MODEL_BADGE_LABELS = {
   Upload: "Tải lên",
   Online: "Trực tuyến",
   Placeholder: "Bản minh họa",
+};
+const BADGE_PRIORITY = ["3D", "AR", "Custom", "Online", "Upload", "Placeholder"];
+
+const getCompactBadges = (model) => {
+  const badges = getModelAssetBadges(model);
+  return [...badges]
+    .sort((left, right) => {
+      const leftIndex = BADGE_PRIORITY.indexOf(left);
+      const rightIndex = BADGE_PRIORITY.indexOf(right);
+      return (leftIndex === -1 ? 99 : leftIndex) - (rightIndex === -1 ? 99 : rightIndex);
+    })
+    .slice(0, 2);
+};
+
+const getFriendlyCatalogError = (error) => {
+  const message = typeof error === "string" ? error : error?.message || "";
+  if (/catalog|online|network|fetch/i.test(message)) {
+    return "Không tải được thư viện trực tuyến. Hệ thống đang dùng dữ liệu dự phòng.";
+  }
+  return message || "Không tải được thư viện mẫu bàn.";
 };
 
 export default function Table3DCatalogPanel({
@@ -104,7 +123,7 @@ export default function Table3DCatalogPanel({
         ) : null}
 
         {filteredModels.map((model) => {
-          const dimensionsLabel = formatDimensionsCm(model.dimensionsCm);
+          const compactBadges = getCompactBadges(model);
           const isDeletePending = pendingDeleteModelKey === model.key;
 
           return (
@@ -123,17 +142,16 @@ export default function Table3DCatalogPanel({
                 loading="lazy"
                 onError={onThumbnailError}
               />
-              <div>
+              <div className="model-item__content">
                 <strong>{model.label}</strong>
                 <span>Sức chứa: {model.capacity} ghế</span>
                 <div className="model-item__badges">
-                  {getModelAssetBadges(model).map((badge) => (
+                  {compactBadges.map((badge) => (
                     <span key={`${model.key}-${badge}`} className="model-badge">
                       {MODEL_BADGE_LABELS[badge] || badge}
                     </span>
                   ))}
                 </div>
-                {dimensionsLabel && <span>Kích thước: {dimensionsLabel}</span>}
               </div>
               {isCustomTableModel(model) && (
                 <Button
@@ -206,9 +224,12 @@ export default function Table3DCatalogPanel({
       </details>
 
       {error && (
-        <div className="table-3d-modal__warning" role="alert">
+        <div className="table-3d-modal__warning table-3d-modal__warning--catalog" role="alert">
           <AlertTriangle size={16} />
-          <span>{error}</span>
+          <span>{getFriendlyCatalogError(error)}</span>
+          <Button variant="secondary" size="sm" onClick={onReload}>
+            Tải lại
+          </Button>
         </div>
       )}
     </aside>
