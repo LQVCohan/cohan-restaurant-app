@@ -30,24 +30,31 @@ const DashboardSynchronized = () => {
   }, [fallbackRestaurantId]);
 
   useEffect(() => {
+    setPortalTarget(null);
+    if (!restaurantId) return undefined;
+
     const shell = shellRef.current;
     const sideStack = shell?.querySelector(".dashboard-side-stack");
     if (!shell || !sideStack) return undefined;
+
     const mountNode = document.createElement("div");
     mountNode.className = "dashboard-staff-roster-portal-slot";
     const ensureMounted = () => {
       const currentSideStack = shell.querySelector(".dashboard-side-stack");
       if (currentSideStack && mountNode.parentNode !== currentSideStack) currentSideStack.prepend(mountNode);
     };
+
     ensureMounted();
     setPortalTarget(mountNode);
     const observer = new MutationObserver(ensureMounted);
     observer.observe(shell, { childList: true, subtree: true });
+
     return () => {
       observer.disconnect();
       mountNode.remove();
+      setPortalTarget(null);
     };
-  }, []);
+  }, [restaurantId]);
 
   const openStaffPage = () => {
     window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "staff", source: "dashboard-staff-roster" } }));
