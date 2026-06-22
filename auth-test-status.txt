@@ -1,2 +1,0 @@
-frontend_status=0
-backend_status=0
