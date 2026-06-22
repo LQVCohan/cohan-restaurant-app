@@ -4,18 +4,23 @@ on:
   push:
     branches:
       - codex/complete-restaurant-auth-hardening
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.event.head_commit.message != 'Apply restaurant auth hardening'
+    if: github.event_name != 'push' || github.event.head_commit.message != 'Apply restaurant auth hardening'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: codex/complete-restaurant-auth-hardening
+          ref: ${{ github.head_ref || 'codex/complete-restaurant-auth-hardening' }}
+          fetch-depth: 0
       - name: Apply targeted source updates
         run: node scripts/apply-restaurant-auth-hardening.mjs
       - name: Commit generated patch
