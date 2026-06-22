@@ -61,7 +61,7 @@
 }
 
 .dashboard-card--action-queue .dashboard-queue-item {
-  grid-template-columns: minmax(0, 1fr) minmax(178px, auto);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
 }
 
@@ -76,80 +76,46 @@
 }
 
 .dashboard-card--action-queue .dashboard-queue-item__actions {
-  max-width: 228px;
   min-width: 0;
+  max-width: 270px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .dashboard-card--action-queue .queue-btn,
 .dashboard-card--support-queue .queue-btn {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px !important;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
-.dashboard-card--action-queue
-  .dashboard-queue-item__actions
-  .queue-btn:not(:disabled),
-.dashboard-card--support-queue
-  .dashboard-support-item__actions
-  .queue-btn:not(:disabled) {
-  font-size: 0;
-}
-
-.dashboard-card--action-queue
-  .dashboard-queue-item__actions
-  .queue-btn:not(:disabled)::after,
-.dashboard-card--support-queue
-  .dashboard-support-item__actions
-  .queue-btn:not(:disabled)::after {
-  font-size: 12px;
-  line-height: 1;
-}
-
-.dashboard-card--action-queue
-  .dashboard-queue-item__actions
-  .queue-btn:nth-child(1):not(:disabled)::after {
-  content: "Xác nhận";
-}
-
-.dashboard-card--action-queue
-  .dashboard-queue-item__actions
-  .queue-btn:nth-child(2):not(:disabled)::after {
-  content: "Từ chối";
-}
-
-.dashboard-card--action-queue
-  .dashboard-queue-item__actions
-  .queue-btn:nth-child(3):not(:disabled)::after {
-  content: "Chi tiết";
-}
-
-.dashboard-card--support-queue
-  .dashboard-support-item__actions
-  .queue-btn:nth-child(1):not(:disabled)::after {
-  content: "Tiếp nhận";
-}
-
-.dashboard-card--support-queue
-  .dashboard-support-item__actions
-  .queue-btn:nth-child(2):not(:disabled)::after {
-  content: "Hoàn tất";
+.dashboard-card--action-queue .queue-btn::before,
+.dashboard-card--action-queue .queue-btn::after,
+.dashboard-card--support-queue .queue-btn::before,
+.dashboard-card--support-queue .queue-btn::after {
+  display: none !important;
+  content: none !important;
 }
 
 .dashboard-support-open {
-  font-size: 0;
+  font-size: 13px !important;
 }
 
-.dashboard-support-open::after {
-  content: "Xem yêu cầu hỗ trợ";
-  font-size: 13px;
+.dashboard-support-open::before,
+.dashboard-support-open::after,
+.dashboard-staff-roster__footer button::before,
+.dashboard-staff-roster__footer button::after {
+  display: none !important;
+  content: none !important;
 }
 
 .dashboard-staff-roster__footer button {
-  font-size: 0;
-}
-
-.dashboard-staff-roster__footer button::before {
-  content: "Xem nhân viên";
-  font-size: 12px;
+  font-size: 12px !important;
 }
 
 .queue-age {
