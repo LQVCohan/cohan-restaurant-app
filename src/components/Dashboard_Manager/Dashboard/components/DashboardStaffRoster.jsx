@@ -62,6 +62,12 @@ const getRoleLabel = (staff) => {
   return ROLE_LABELS[normalizedLabel] || rawLabel || "Chưa cập nhật chức danh";
 };
 
+const compareByName = (left, right) =>
+  String(left?.fullName || "").localeCompare(
+    String(right?.fullName || ""),
+    "vi",
+  );
+
 const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
   const { user } = useContext(AuthContext);
   const canReadStaff = hasPermission(user, "staff.read");
@@ -80,21 +86,22 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
     },
   );
 
-  const staff = useMemo(() => {
+  const { staff, onlineCount, visibleStaff } = useMemo(() => {
     const rows = Array.isArray(data?.staffList) ? data.staffList : [];
-    return [...rows].sort((left, right) => {
-      const onlineDifference =
-        Number(Boolean(right?.isOnline)) - Number(Boolean(left?.isOnline));
-      if (onlineDifference) return onlineDifference;
-      return String(left?.fullName || "").localeCompare(
-        String(right?.fullName || ""),
-        "vi",
-      );
-    });
-  }, [data?.staffList]);
+    const onlineStaff = rows
+      .filter((item) => item?.isOnline === true)
+      .sort(compareByName);
+    const offlineStaff = rows
+      .filter((item) => item?.isOnline !== true)
+      .sort(compareByName);
+    const orderedStaff = [...onlineStaff, ...offlineStaff];
 
-  const visibleStaff = staff.slice(0, 6);
-  const onlineCount = staff.filter((item) => item?.isOnline).length;
+    return {
+      staff: orderedStaff,
+      onlineCount: onlineStaff.length,
+      visibleStaff: orderedStaff.slice(0, 6),
+    };
+  }, [data?.staffList]);
 
   useEffect(() => {
     if (!restaurantId || !canReadStaff) return undefined;
@@ -128,7 +135,7 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
       <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
           <h3>Nhân viên của nhà hàng</h3>
-          <p>Danh sách nhân viên đang công tác tại nhà hàng đã chọn.</p>
+          <p>Ưu tiên người đang trực tuyến, sau đó sắp xếp theo tên.</p>
         </div>
         <span className="dashboard-staff-roster__count">
           <UsersRound size={14} />
@@ -148,33 +155,54 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
         </div>
       ) : visibleStaff.length ? (
         <div className="dashboard-staff-roster__list">
-          {visibleStaff.map((employee) => (
-            <div className="dashboard-staff-roster__item" key={employee.id}>
-              <div className="dashboard-staff-roster__avatar-wrap">
-                <StaffAvatarMedia
-                  employee={employee}
-                  name={employee.fullName}
-                  className="dashboard-staff-roster__avatar"
-                  iconSize={18}
-                />
-                <span
-                  className={`dashboard-staff-roster__presence ${employee.isOnline ? "is-online" : ""}`}
-                  title={employee.isOnline ? "Đang trực tuyến" : "Không trực tuyến"}
-                />
-              </div>
-              <div className="dashboard-staff-roster__identity">
-                <strong>{employee.fullName || "Chưa cập nhật tên"}</strong>
-                <span>{getRoleLabel(employee)}</span>
-              </div>
-              {employee.isOnline ? (
-                <Wifi
-                  size={14}
-                  className="dashboard-staff-roster__online-icon"
-                  aria-label="Đang trực tuyến"
-                />
-              ) : null}
-            </div>
-          ))}
+          {onlineCount > 0 ? (
+            <p className="dashboard-staff-roster__group-label">
+              Đang trực tuyến
+            </p>
+          ) : null}
+          {visibleStaff.map((employee, index) => {
+            const isFirstOffline =
+              onlineCount > 0 && index === Math.min(onlineCount, 6);
+
+            return (
+              <React.Fragment key={employee.id}>
+                {isFirstOffline ? (
+                  <p className="dashboard-staff-roster__group-label dashboard-staff-roster__group-label--muted">
+                    Nhân viên khác
+                  </p>
+                ) : null}
+                <div className="dashboard-staff-roster__item">
+                  <div className="dashboard-staff-roster__avatar-wrap">
+                    <StaffAvatarMedia
+                      employee={employee}
+                      name={employee.fullName}
+                      className="dashboard-staff-roster__avatar"
+                      iconSize={18}
+                    />
+                    <span
+                      className={`dashboard-staff-roster__presence ${employee.isOnline ? "is-online" : ""}`}
+                      title={
+                        employee.isOnline
+                          ? "Đang trực tuyến"
+                          : "Không trực tuyến"
+                      }
+                    />
+                  </div>
+                  <div className="dashboard-staff-roster__identity">
+                    <strong>{employee.fullName || "Chưa cập nhật tên"}</strong>
+                    <span>{getRoleLabel(employee)}</span>
+                  </div>
+                  {employee.isOnline ? (
+                    <Wifi
+                      size={14}
+                      className="dashboard-staff-roster__online-icon"
+                      aria-label="Đang trực tuyến"
+                    />
+                  ) : null}
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       ) : (
         <div className="dashboard-staff-roster__state">
