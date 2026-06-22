@@ -155,10 +155,13 @@ export const useManagerPerformanceDashboard = ({
       skip: shouldSkip,
       variables: { input },
       fetchPolicy: "network-only",
-    }
+    },
   );
 
   const dashboard = data?.managerPerformanceDashboard || DEFAULT_DASHBOARD;
+  const hasScoreData =
+    Number(dashboard?.scoringOverview?.highestScore || 0) > 0 ||
+    Number(dashboard?.scoringOverview?.averageScore || 0) > 0;
 
   return {
     dashboard,
@@ -168,6 +171,7 @@ export const useManagerPerformanceDashboard = ({
     isEmpty:
       !loading &&
       !error &&
+      !hasScoreData &&
       dashboard.incidentOverview.totalIncidents === 0 &&
       dashboard.topRiskEmployees.length === 0,
   };
