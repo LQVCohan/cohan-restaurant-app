@@ -10,6 +10,7 @@ import DashboardStaffRoster from "./components/DashboardStaffRoster";
 import "./DashboardSynchronized.scss";
 import "./DashboardEmptyState.scss";
 import "./DashboardStockWording.scss";
+import "./DashboardLabelReset.scss";
 
 const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
