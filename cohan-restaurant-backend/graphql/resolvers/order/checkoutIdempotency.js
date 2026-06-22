@@ -27,11 +27,24 @@ export function withCheckoutIdempotency(mutations = {}) {
 
       const key = normalizeCheckoutIdempotencyKey(input);
       const requestFingerprint = fingerprintCheckoutInput(input);
-      const claimResult = await claimCheckout({
-        key,
-        userId,
-        requestFingerprint,
-      });
+      let claimResult;
+
+      try {
+        claimResult = await claimCheckout({
+          key,
+          userId,
+          requestFingerprint,
+        });
+      } catch (error) {
+        if (error?.extensions?.code === "CHECKOUT_IN_PROGRESS") {
+          const recovered = await loadCheckoutResult({ key, claim: null });
+          if (recovered) {
+            await markCheckoutCompleted({ key, result: recovered });
+            return recovered;
+          }
+        }
+        throw error;
+      }
 
       if (!claimResult.owner) {
         const existing = await loadCheckoutResult({
