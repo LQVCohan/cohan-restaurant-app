@@ -152,7 +152,9 @@ export const canAccessRoute = (userOrRole, pathname) => {
   if (!normalizedRole || typeof pathname !== "string") return false;
 
   for (const rule of ROUTE_ACCESS_RULES) {
-    if (rule.test(pathname)) return rule.allow.includes(normalizedRole);
+    if (rule.test.test(pathname)) {
+      return rule.allow.includes(normalizedRole);
+    }
   }
   return true;
 };
