@@ -22,7 +22,17 @@ jobs:
           ref: ${{ github.head_ref || 'codex/complete-restaurant-auth-hardening' }}
           fetch-depth: 0
       - name: Apply targeted source updates
-        run: node scripts/apply-restaurant-auth-hardening.mjs
+        run: |
+          set +e
+          node scripts/apply-restaurant-auth-hardening.mjs > /tmp/auth-hardening.log 2>&1
+          status=$?
+          cat /tmp/auth-hardening.log
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            cp /tmp/auth-hardening.log auth-hardening-error.log
+          else
+            rm -f auth-hardening-error.log
+          fi
       - name: Commit generated patch
         run: |
           git config user.name "github-actions[bot]"
