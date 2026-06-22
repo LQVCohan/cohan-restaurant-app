@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { User } from "../../models/index.js";
+import { Restaurant, User } from "../../models/index.js";
 
 function permissionCodeOf(permission) {
   const code = permission?.code || permission?.permissionCode || permission?.slug || permission?.name;
@@ -14,6 +14,14 @@ function uniquePermissionCodes(permissions = []) {
         .filter(Boolean),
     ),
   );
+}
+
+async function resolveManagedRestaurantIds(userId, roleName) {
+  if (roleName !== "manager") return [];
+  const restaurants = await Restaurant.find({ managerId: userId })
+    .select({ _id: 1 })
+    .lean();
+  return restaurants.map((restaurant) => restaurant._id);
 }
 
 export async function resolveAuthenticatedUserFromRequest(request) {
@@ -49,20 +57,22 @@ export async function resolveAuthenticatedUserFromRequest(request) {
       : [];
     const effectivePermissions = [...parentPermissions, ...rolePermissions];
     const effectivePermissionCodes = uniquePermissionCodes(effectivePermissions);
+    const roleName = String(userDoc.role?.slug || userDoc.role?.name || "").toLowerCase();
+    const managedRestaurantIds = await resolveManagedRestaurantIds(userDoc._id, roleName);
 
     return {
       id: String(userDoc._id),
       email: userDoc.email,
       fullName: userDoc.fullName,
       role: userDoc.role,
-      roleName: String(userDoc.role?.slug || userDoc.role?.name || "").toLowerCase(),
+      roleName,
       userType: userDoc.userType,
       status: userDoc.status,
       provider: userDoc.provider,
       refRestaurants: userDoc.refRestaurants,
       restaurantForStaff: userDoc.restaurantForStaff,
       restaurantId: userDoc.restaurantId,
-      restaurantIds: userDoc.restaurantIds,
+      managedRestaurantIds,
       permissions: rolePermissions,
       effectivePermissions,
       effectivePermissionCodes,
