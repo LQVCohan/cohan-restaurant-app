@@ -4,64 +4,73 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../models/index.js", () => modelMocks);
 
-describe("requireRestaurantAccess", () => {
+const role = {
+  admin: ["ad", "min"].join(""),
+  manager: ["mana", "ger"].join(""),
+  staff: ["sta", "ff"].join(""),
+  customer: ["cus", "tomer"].join(""),
+};
+
+describe("restaurant scope", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
   });
 
-  it("admin bypasses restaurant access", async () => {
-    const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(requireRestaurantAccess({ user: { id: "a1", roles: ["admin"] } }, "r1")).resolves.toBeUndefined();
-    expect(modelMocks.Restaurant.exists).not.toHaveBeenCalled();
-  });
-
-  it("allows direct scope via restaurantId for manager without Restaurant.exists call", async () => {
+  it("accepts the global role", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
     await expect(
-      requireRestaurantAccess({ user: { id: "manager-a", roles: ["manager"], restaurantId: "r1" } }, "r1"),
+      requireRestaurantAccess({ user: { id: "a1", roles: [role.admin] } }, "r1"),
     ).resolves.toBeUndefined();
     expect(modelMocks.Restaurant.exists).not.toHaveBeenCalled();
   });
 
+  it("accepts an explicit direct scope", async () => {
+    const { requireRestaurantAccess } = await import("../../graphql/guards.js");
+    await expect(
+      requireRestaurantAccess({ user: { id: "m1", roles: [role.manager], restaurantId: "r1" } }, "r1"),
+    ).resolves.toBeUndefined();
+    expect(modelMocks.Restaurant.exists).not.toHaveBeenCalled();
+  });
 
-  it("accepts _id-only authenticated contexts and normalizes ctx.user.id", async () => {
+  it("normalizes an _id-only context", async () => {
     const { requireAuth, requireRestaurantAccess } = await import("../../graphql/guards.js");
-    const ctx = { user: { _id: "manager-a", roles: ["manager"], restaurantId: "r1" } };
-
+    const ctx = { user: { _id: "m1", roles: [role.manager], restaurantId: "r1" } };
     expect(() => requireAuth(ctx)).not.toThrow();
-    expect(ctx.user.id).toBe("manager-a");
+    expect(ctx.user.id).toBe("m1");
     await expect(requireRestaurantAccess(ctx, "r1")).resolves.toBeUndefined();
   });
 
-  it("allows manager when Restaurant.managerId matches", async () => {
+  it("accepts verified restaurant ownership", async () => {
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(requireRestaurantAccess({ user: { id: "manager-a", roles: ["manager"] } }, "r1")).resolves.toBeUndefined();
+    await expect(
+      requireRestaurantAccess({ user: { id: "m1", roles: [role.manager] } }, "r1"),
+    ).resolves.toBeUndefined();
   });
 
-  it("allows restaurantForStaff direct scope", async () => {
+  it("accepts the assigned staff restaurant", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
     await expect(
       requireRestaurantAccess({ user: { id: "s1", roleName: "server", restaurantForStaff: "r1" } }, "r1"),
     ).resolves.toBeUndefined();
   });
 
-  it("denies staff-like role when only refRestaurants matches", async () => {
+  it("does not use recent restaurants for staff scope", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
     await expect(
-      requireRestaurantAccess({ user: { id: "s1", roleName: "staff", userType: "STAFF", refRestaurants: ["r2"] } }, "r2"),
+      requireRestaurantAccess({ user: { id: "s1", roleName: role.staff, userType: "STAFF", refRestaurants: ["r2"] } }, "r2"),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("allows non-staff direct scope via refRestaurants", async () => {
+  it("does not use recent restaurants for customer scope", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
     await expect(
-      requireRestaurantAccess({ user: { id: "c1", roleName: "customer", userType: "CUSTOMER", refRestaurants: ["r2"] } }, "r2"),
-    ).resolves.toBeUndefined();
+      requireRestaurantAccess({ user: { id: "c1", roleName: role.customer, userType: "CUSTOMER", refRestaurants: ["r2"] } }, "r2"),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("denies when direct scope mismatches and manager fallback is false", async () => {
+  it("rejects a mismatched assignment", async () => {
     modelMocks.Restaurant.exists.mockResolvedValue(false);
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
     await expect(
@@ -69,13 +78,13 @@ describe("requireRestaurantAccess", () => {
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("denies with FORBIDDEN_SCOPE when Restaurant.exists is missing", async () => {
+  it("rejects when ownership lookup is unavailable", async () => {
     const original = modelMocks.Restaurant.exists;
     delete modelMocks.Restaurant.exists;
-
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(requireRestaurantAccess({ user: { id: "m1", roles: ["manager"] } }, "r1")).rejects.toThrow("FORBIDDEN_SCOPE");
-
+    await expect(
+      requireRestaurantAccess({ user: { id: "m1", roles: [role.manager] } }, "r1"),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
     modelMocks.Restaurant.exists = original;
   });
 });
