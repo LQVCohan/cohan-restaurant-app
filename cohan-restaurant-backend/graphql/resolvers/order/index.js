@@ -9,11 +9,13 @@ import { OrderResolvers } from "./types.js";
 import { OrderSubscription } from "./subscription.js";
 import { withTablePaymentRequestLifecycle } from "./tablePaymentRequestLifecycle.js";
 import { withOrderConflictHardening } from "./orderConflictHardening.js";
+import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
 
 const LifecycleOrderMutation = withTablePaymentRequestLifecycle(OrderMutation);
 const HardenedOrderMutation = withOrderConflictHardening(LifecycleOrderMutation);
-const GuardedOrderMutation = withOrderRestaurantAccessGuards(HardenedOrderMutation);
+const IdempotentOrderMutation = withCheckoutIdempotency(HardenedOrderMutation);
+const GuardedOrderMutation = withOrderRestaurantAccessGuards(IdempotentOrderMutation);
 
 export default {
   Query: {
