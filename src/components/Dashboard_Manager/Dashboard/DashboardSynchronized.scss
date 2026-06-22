@@ -31,9 +31,284 @@
   border-color: var(--dash-border);
 }
 
+/*
+ * Dashboard UX polish
+ * Keep the existing data flow intact while improving information hierarchy,
+ * scanability and the balance of the lower operational area.
+ */
+.dashboard-synchronized-shell {
+  .dashboard-card {
+    border-radius: 16px;
+    box-shadow: 0 7px 20px rgba(70, 62, 50, 0.055);
+  }
+
+  .dashboard-card:hover {
+    box-shadow: 0 10px 26px rgba(70, 62, 50, 0.075);
+  }
+
+  .dashboard-card__head h3,
+  .performance-panel__header h3 {
+    letter-spacing: -0.012em;
+  }
+
+  .dashboard-card__head p {
+    color: var(--dash-text-sub);
+    line-height: 1.45;
+  }
+
+  /* KPI cards: reduce orange dominance and strengthen long-session readability. */
+  .stat-card--summary {
+    min-height: 108px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    box-shadow: 0 8px 22px rgba(70, 62, 50, 0.06);
+  }
+
+  .stat-card--summary .icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+
+  .stat-card--primary .icon-badge {
+    color: var(--dash-primary);
+    background: var(--dash-accent-soft);
+  }
+
+  .stat-card--primary.stat-card--summary::before {
+    background: radial-gradient(
+      circle,
+      rgba(85, 101, 95, 0.16),
+      transparent 70%
+    );
+  }
+
+  .stat-card--primary.stat-card--summary::after {
+    background: var(--dash-primary);
+  }
+
+  .stat-card--success .icon-badge {
+    color: var(--dash-success);
+    background: var(--dash-success-soft);
+  }
+
+  .stat-card--warning .icon-badge {
+    color: var(--dash-warning);
+    background: var(--dash-warning-soft);
+  }
+
+  .stat-card--danger .icon-badge {
+    color: var(--dash-danger);
+    background: var(--dash-danger-soft);
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--dash-text-sub);
+  }
+
+  .stat-value {
+    color: var(--dash-text);
+  }
+
+  .stat-help {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--dash-text-sub);
+  }
+
+  /* Support is an operational state, not a separate blue product area. */
+  .dashboard-card--support-queue {
+    border-color: var(--dash-border);
+    background: linear-gradient(
+      180deg,
+      var(--dash-accent-soft),
+      var(--dash-surface) 58%
+    );
+  }
+
+  .queue-count--support {
+    color: var(--dash-accent-strong);
+    background: var(--dash-accent-soft);
+    border-color: var(--dash-border);
+  }
+
+  .dashboard-support-open {
+    border-color: var(--dash-border);
+    color: var(--dash-primary);
+    background: var(--dash-accent-soft);
+    transition:
+      border-color 140ms ease,
+      background-color 140ms ease,
+      transform 140ms ease,
+      box-shadow 140ms ease;
+  }
+
+  .dashboard-support-open:hover {
+    border-color: var(--dash-accent);
+    background: var(--dash-success-soft);
+    transform: translateY(-1px);
+    box-shadow: var(--dash-shadow-sm);
+  }
+
+  .dashboard-support-open:focus-visible,
+  .queue-btn:focus-visible {
+    outline: 3px solid rgba(111, 127, 122, 0.28);
+    outline-offset: 2px;
+  }
+
+  /* Destructive actions remain clear without competing with the primary action. */
+  .queue-btn--danger {
+    color: var(--dash-danger);
+    background: var(--dash-danger-soft);
+    border-color: rgba(186, 81, 75, 0.25);
+  }
+
+  .queue-btn--danger:hover:not(:disabled) {
+    border-color: rgba(186, 81, 75, 0.42);
+  }
+
+  .queue-btn--ghost {
+    background: rgba(255, 253, 248, 0.78);
+  }
+
+  .dashboard-queue-item,
+  .dashboard-support-item {
+    border-radius: 14px;
+    transition:
+      border-color 140ms ease,
+      box-shadow 140ms ease,
+      background-color 140ms ease;
+  }
+
+  .dashboard-queue-item:hover,
+  .dashboard-support-item:hover {
+    border-color: rgba(111, 127, 122, 0.34);
+    box-shadow: 0 6px 16px rgba(70, 62, 50, 0.045);
+  }
+
+  /* Muted state colors are easier to scan for long manager sessions. */
+  .alert-count--warning {
+    color: var(--dash-warning);
+    background: var(--dash-warning-soft);
+    border-color: rgba(138, 99, 63, 0.28);
+  }
+
+  .alert-count--healthy {
+    color: var(--dash-success);
+    background: var(--dash-success-soft);
+    border-color: rgba(77, 117, 102, 0.24);
+  }
+
+  .dashboard-empty {
+    color: var(--dash-success);
+    background: var(--dash-success-soft);
+    border-color: rgba(77, 117, 102, 0.24);
+  }
+
+  .dashboard-empty::before {
+    color: var(--dash-success);
+    background: rgba(77, 117, 102, 0.12);
+  }
+
+  .dashboard-empty h4,
+  .dashboard-empty p {
+    color: var(--dash-success);
+  }
+
+  .dashboard-empty--loading {
+    background: rgba(247, 245, 239, 0.68);
+    border-color: var(--dash-border);
+  }
+
+  .dashboard-empty--loading h4 {
+    color: var(--dash-text);
+  }
+
+  .dashboard-empty--loading p {
+    color: var(--dash-text-sub);
+  }
+
+  .dashboard-staff-roster__list {
+    gap: 3px;
+  }
+
+  .dashboard-staff-roster__item {
+    padding: 6px 7px;
+  }
+}
+
+/*
+ * Wide screens: keep the workflow column continuous and move support, alerts
+ * and revenue into one balanced row. This removes the large empty block that
+ * appeared on the left while the narrow right rail kept growing vertically.
+ */
+@media (min-width: 1201px) {
+  .dashboard-synchronized-shell .dashboard-operations-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  .dashboard-synchronized-shell .dashboard-main-stack {
+    grid-column: 1 / span 8;
+    grid-row: 1;
+  }
+
+  .dashboard-synchronized-shell .dashboard-side-stack {
+    display: contents;
+  }
+
+  .dashboard-synchronized-shell .dashboard-staff-roster-portal-slot {
+    grid-column: 9 / -1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .dashboard-synchronized-shell
+    .dashboard-staff-roster-portal-slot
+    > .dashboard-staff-roster {
+    height: 100%;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--support-queue {
+    grid-column: 1 / span 4;
+    grid-row: 2;
+    align-self: stretch;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--alerts {
+    grid-column: 5 / span 4;
+    grid-row: 2;
+    align-self: stretch;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card--revenue {
+    grid-column: 9 / -1;
+    grid-row: 2;
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 961px) {
+  .dashboard-synchronized-shell .dashboard-side-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 980px) {
   .dashboard-synchronized-staff .dashboard-staff-roster__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-synchronized-shell .stat-card--summary {
+    min-height: 100px;
+  }
+
+  .dashboard-synchronized-shell .dashboard-card__head {
+    gap: 8px;
   }
 }
 
