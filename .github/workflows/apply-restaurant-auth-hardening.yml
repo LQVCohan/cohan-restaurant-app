@@ -21,6 +21,15 @@ jobs:
         with:
           ref: ${{ github.head_ref || 'codex/complete-restaurant-auth-hardening' }}
           fetch-depth: 0
+      - name: Repair patch script syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/apply-restaurant-auth-hardening.mjs')
+          s = p.read_text()
+          s = s.replace('id: `${roleName}-1`', 'id: roleName + "-1"')
+          p.write_text(s)
+          PY
       - name: Apply targeted source updates
         run: |
           set +e
