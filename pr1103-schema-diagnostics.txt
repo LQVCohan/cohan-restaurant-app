@@ -1,5 +1,5 @@
 OK aiChatbot.graphql
-FAIL aiChatbotKnowledgeGeneration.graphql: Syntax Error: Unexpected <EOF>.
+OK aiChatbotKnowledgeGeneration.graphql
 OK attendance_overtime.graphql
 OK audit_log.graphql
 OK availability.graphql
@@ -45,4 +45,4 @@ OK tableCustomer.graphql
 OK table_event.graphql
 OK user.graphql
 OK user_coupon.graphql
-failures=1
+failures=0
