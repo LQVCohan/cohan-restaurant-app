@@ -5,6 +5,7 @@ import { DASHBOARD_RESTAURANT_CHANGED_EVENT, readDashboardRestaurantId } from "@
 import Dashboard from "./Dashboard";
 import DashboardStaffRoster from "./components/DashboardStaffRoster";
 import "./DashboardSynchronized.scss";
+import "./DashboardEmptyState.scss";
 
 const getRestaurantId = (restaurant) => String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
 
