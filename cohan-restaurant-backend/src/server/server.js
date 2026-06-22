@@ -1,8 +1,15 @@
 // src/server.js
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { connectDB } from "../../config/db.js";
 import { createServer } from "./createServer.js";
 import { loadEnv, validateEnv } from "../config/env.js";
 import process from "process";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const backendRoot = path.resolve(__dirname, "../..");
+const defaultUploadDir = path.join(backendRoot, "uploads");
 
 const startServer = async () => {
   try {
@@ -13,6 +20,12 @@ const startServer = async () => {
       );
     }
 
+    // Keep local uploads in one stable directory regardless of whether the
+    // backend is started from the repository root or from its own package.
+    if (!process.env.UPLOAD_DIR) {
+      process.env.UPLOAD_DIR = defaultUploadDir;
+    }
+
     const env = validateEnv();
 
     await connectDB();
@@ -21,6 +34,7 @@ const startServer = async () => {
     const address = await app.listen({ port: env.PORT, host: env.HOST });
 
     console.log(`🚀 Server running at ${address}`);
+    console.log(`📁 Upload directory: ${process.env.UPLOAD_DIR}`);
   } catch (err) {
     console.error("❌ Failed to start server:", err);
     process.exit(1);
