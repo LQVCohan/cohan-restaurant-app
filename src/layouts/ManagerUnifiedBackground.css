@@ -3,6 +3,7 @@
 @import "../components/Dashboard_Manager/Order/OrderDashboardScaleFix.css";
 @import "../components/Dashboard_Manager/Order/OrderKitchenModeFix.css";
 @import "../components/Dashboard_Manager/Order/NewOrderModalPromotionTheme.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteSync.css";
 
 /* Unified manager workspace background.
    Applies a neutral premium workspace canvas to every manager sidebar page, except Orders.
