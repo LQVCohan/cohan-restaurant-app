@@ -18,6 +18,40 @@ jobs:
         with:
           ref: codex/auth-rbac-clean
           fetch-depth: 0
+      - name: Migrate review tests to authorization service
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('cohan-restaurant-backend/tests/resolvers/review-access.test.js')
+          s = p.read_text()
+          s = s.replace(
+              'const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn(), requirePermission: vi.fn() }));',
+              'const authorizationMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn(), requirePermission: vi.fn() }));',
+          )
+          s = s.replace(
+              'vi.mock("../../graphql/guards.js", () => guardMocks);',
+              'vi.mock("../../src/services/auth/authorization.service.js", () => authorizationMocks);',
+          )
+          s = s.replace(
+              '''    guardMocks.requireRestaurantAccess.mockResolvedValue();
+              guardMocks.requirePermission.mockImplementation((ctx) => {
+                if (!ctx?.user) throw new Error("UNAUTHENTICATED");
+                if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
+              });''',
+              '''    authorizationMocks.requireRestaurantPermission.mockImplementation(async (ctx) => {
+                if (!ctx?.user) throw new Error("UNAUTHENTICATED");
+                if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
+                return true;
+              });
+              authorizationMocks.requirePermission.mockImplementation(async (ctx) => {
+                if (!ctx?.user) throw new Error("UNAUTHENTICATED");
+                if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
+                return true;
+              });''',
+          )
+          s = s.replace('guardMocks.requireRestaurantAccess', 'authorizationMocks.requireRestaurantPermission')
+          p.write_text(s)
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -43,6 +77,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add auth-frontend-test-output.txt auth-backend-test-output.txt auth-test-status.txt
+          git add -A
           git commit -m "Record auth test output"
           git push origin HEAD:codex/auth-rbac-clean
