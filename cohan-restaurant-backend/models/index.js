@@ -77,6 +77,7 @@ export { default as IngredientRecent } from "./ingredient-recent.model.js";
 export { default as RestaurantInfoDraft } from "./restaurant-info-draft.model.js";
 
 export { default as CheckoutSession } from "./checkout-session.model.js";
+export { default as CheckoutRequestLock } from "./checkout-request-lock.model.js";
 export { default as WalletTransaction } from "./wallet-transaction.model.js";
 export { default as PayrollSetting } from "./payroll-setting.model.js";
 export { default as PayrollPeriod } from "./payroll-period.model.js";
@@ -87,7 +88,7 @@ export { default as PayrollPayout } from "./payroll-payout.model.js";
 export { default as PayrollPayoutBatch } from "./payroll-payout-batch.model.js";
 export { default as EmployeeBankAccount } from "./employee-bank-account.model.js";
 export { default as RestaurantPayoutAccount } from "./restaurant-payout-account.model.js";
-export { default as EmployeeCodeCounter } from "./employee-code-counter.model.js";
+export { default as EmployeeCodeCounter } from "./employeeCodeCounter.model.js";
 export { default as AttendanceCorrectionRequest } from "./attendanceCorrectionRequest.model.js";
 export { default as OvertimeRequest } from "./overtime-request.model.js";
 export { default as SchedulingPolicy } from "./schedulingPolicy.model.js";
