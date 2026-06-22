@@ -37,12 +37,30 @@ const DASHBOARD_STAFF_ROSTER_QUERY = gql`
   }
 `;
 
-const getRoleLabel = (staff) =>
-  staff?.positionTitle ||
-  staff?.role?.name ||
-  staff?.role?.slug ||
-  staff?.department ||
-  "Chưa cập nhật chức danh";
+const ROLE_LABELS = {
+  bartender: "Nhân viên pha chế",
+  cashier: "Thu ngân",
+  chef: "Bếp trưởng",
+  cleaner: "Nhân viên vệ sinh",
+  cook: "Nhân viên bếp",
+  host: "Nhân viên đón khách",
+  manager: "Quản lý",
+  server: "Nhân viên phục vụ",
+  waiter: "Nhân viên phục vụ",
+  waitress: "Nhân viên phục vụ",
+};
+
+const getRoleLabel = (staff) => {
+  const rawLabel =
+    staff?.positionTitle ||
+    staff?.role?.name ||
+    staff?.role?.slug ||
+    staff?.department ||
+    "";
+  const normalizedLabel = String(rawLabel).trim().toLowerCase();
+
+  return ROLE_LABELS[normalizedLabel] || rawLabel || "Chưa cập nhật chức danh";
+};
 
 const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
   const { user } = useContext(AuthContext);
@@ -109,12 +127,12 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
     <article className="dashboard-card dashboard-card--side dashboard-staff-roster">
       <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
-          <h3>Nhân viên đang làm việc</h3>
-          <p>Danh sách nhân viên thuộc nhà hàng đang chọn.</p>
+          <h3>Nhân viên của nhà hàng</h3>
+          <p>Danh sách nhân viên đang công tác tại nhà hàng đã chọn.</p>
         </div>
         <span className="dashboard-staff-roster__count">
           <UsersRound size={14} />
-          {loading && !staff.length ? "..." : `${staff.length} người`}
+          {loading && !staff.length ? "..." : `${staff.length} nhân viên`}
         </span>
       </div>
 
@@ -160,14 +178,14 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
         </div>
       ) : (
         <div className="dashboard-staff-roster__state">
-          Chưa có nhân viên nào ở trạng thái đang làm việc.
+          Chưa có nhân viên đang công tác tại nhà hàng này.
         </div>
       )}
 
       <div className="dashboard-staff-roster__footer">
         <span>{onlineCount} người đang trực tuyến</span>
         <button type="button" onClick={onOpenStaff} disabled={!onOpenStaff}>
-          Xem toàn bộ nhân viên
+          Xem tất cả nhân viên
           <ArrowRight size={15} />
         </button>
       </div>
