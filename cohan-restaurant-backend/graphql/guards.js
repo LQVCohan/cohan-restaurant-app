@@ -1,8 +1,9 @@
 import { normalizeRole, resolveUserRoles } from "../src/services/scheduling/schedulingPermission.service.js";
 
-const STAFF_SUBROLES = new Set([
-  "STAFF", "SERVER", "SUPERVISOR", "HOST", "CASHIER", "CHEF", "COOK",
-  "KITCHEN_HELPER", "CLEANER", "SHIPPER", "STOREKEEPER", "BARTENDER",
+const RESTAURANT_SCOPED_ROLES = new Set([
+  "HR", "ACCOUNTANT", "STAFF", "SERVER", "SUPERVISOR", "HOST", "CASHIER",
+  "CHEF", "COOK", "KITCHEN_HELPER", "CLEANER", "SHIPPER", "STOREKEEPER",
+  "BARTENDER",
 ]);
 
 function restaurantIdToString(value) {
@@ -16,14 +17,13 @@ function restaurantIdToString(value) {
 function hasDirectRestaurantScope(ctx, restaurantId) {
   const user = ctx?.user || {};
   const roles = resolveUserRoles(user);
-  const isStaffLike = roles.some((role) => STAFF_SUBROLES.has(role));
+  const isRestaurantScopedRole = roles.some((role) => RESTAURANT_SCOPED_ROLES.has(role));
   const target = restaurantIdToString(restaurantId);
   if (!target) return false;
 
   const scopedIds = [
     user.restaurantId,
-    user.restaurantForStaff,
-    ...(!isStaffLike && Array.isArray(user.refRestaurants) ? user.refRestaurants : []),
+    ...(isRestaurantScopedRole ? [user.restaurantForStaff] : []),
     ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : []),
   ];
 
@@ -86,17 +86,13 @@ export function requireRoles(ctx, allowed = []) {
 
 export function requireRestaurantScope(ctx, restaurantId) {
   requireAuth(ctx);
-  // tuỳ mô hình: admin bỏ qua; manager cần đúng restaurantId
   const roles = resolveUserRoles(ctx.user);
   if (roles.includes("ADMIN")) return;
-  if (
-    !ctx.user.restaurantId ||
-    String(ctx.user.restaurantId) !== String(restaurantId)
-  ) {
-    const err = new Error("FORBIDDEN_SCOPE");
-    err.statusCode = 403;
-    throw err;
-  }
+  if (hasDirectRestaurantScope(ctx, restaurantId)) return;
+
+  const err = new Error("FORBIDDEN_SCOPE");
+  err.statusCode = 403;
+  throw err;
 }
 
 export async function requireRestaurantAccess(ctx, restaurantId) {
@@ -108,18 +104,6 @@ export async function requireRestaurantAccess(ctx, restaurantId) {
 
   if (roles.includes("MANAGER") && await managerOwnsRestaurant(ctx, restaurantId)) {
     return;
-  }
-
-  // Preserve prior intent that scoped staff-like roles are restaurant-bound.
-  const isStaffLike = roles.some((role) => STAFF_SUBROLES.has(role));
-  if (isStaffLike) {
-    const scopedRestaurantId = ctx?.user?.restaurantForStaff;
-    if (!scopedRestaurantId) {
-      const err = new Error("FORBIDDEN_SCOPE");
-      err.statusCode = 403;
-      throw err;
-    }
-    if (String(scopedRestaurantId) === String(restaurantId || "")) return;
   }
 
   const err = new Error("FORBIDDEN_SCOPE");
