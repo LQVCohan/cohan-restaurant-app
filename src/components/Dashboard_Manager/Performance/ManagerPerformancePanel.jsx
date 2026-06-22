@@ -4,11 +4,11 @@ import { useManagerPerformanceDashboard } from "@/hooks/useManagerPerformanceDas
 import "./ManagerPerformancePanel.scss";
 
 const ACTION_LABELS = {
-  review_overdue_incidents: "Xử lý incident quá hạn",
-  apply_or_waive_eligible_incidents: "Duyệt áp điểm hoặc miễn trừ",
-  review_low_score_employees: "Kiểm tra nhân viên điểm thấp",
-  check_repeated_off_schedule: "Kiểm tra làm ngoài lịch lặp lại",
-  check_repeated_corrections: "Kiểm tra sửa công lặp lại",
+  review_overdue_incidents: "Xử lý sự cố quá hạn",
+  apply_or_waive_eligible_incidents: "Duyệt trừ điểm hoặc miễn trừ",
+  review_low_score_employees: "Kiểm tra nhân viên có điểm thấp",
+  check_repeated_off_schedule: "Kiểm tra tình trạng làm ngoài lịch nhiều lần",
+  check_repeated_corrections: "Kiểm tra tình trạng sửa công nhiều lần",
 };
 
 const formatScore = (value) => Number(value || 0).toFixed(1).replace(/\.0$/, "");
@@ -21,7 +21,8 @@ const ManagerPerformancePanel = ({
   compactWhenHealthy = false,
 }) => {
   const navigate = useNavigate();
-  const { dashboard, loading, error, isEmpty } = useManagerPerformanceDashboard({ restaurantId });
+  const { dashboard, loading, error, isEmpty } =
+    useManagerPerformanceDashboard({ restaurantId });
 
   const incidentOverview = dashboard?.incidentOverview || {};
   const scoringOverview = dashboard?.scoringOverview || {};
@@ -37,62 +38,133 @@ const ManagerPerformancePanel = ({
   const hasIncidentSignals =
     Number(incidentOverview.pendingReviewCount || 0) > 0 ||
     Number(incidentOverview.overdueCount || 0) > 0;
-  const isHealthyCompact = summaryOnly && compactWhenHealthy && actionableItems.length === 0 && !hasIncidentSignals;
+  const isHealthyCompact =
+    summaryOnly &&
+    compactWhenHealthy &&
+    actionableItems.length === 0 &&
+    !hasIncidentSignals;
   const hasAppealOverview =
     appealOverview &&
-    (appealOverview.pendingCount !== undefined || appealOverview.acceptedCount !== undefined);
+    (appealOverview.pendingCount !== undefined ||
+      appealOverview.acceptedCount !== undefined);
 
   const renderPanelHeader = () => (
     <div className="performance-panel__header">
-      <h3>Hiệu suất</h3>
-      {showViewAll ? <button type="button" className="btn-link" onClick={() => navigate("/manager#staff")}>Xem chi tiết</button> : null}
+      <h3>Hiệu suất nhân viên</h3>
+      {showViewAll ? (
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => navigate("/manager#staff")}
+        >
+          Xem chi tiết
+        </button>
+      ) : null}
     </div>
   );
 
   const renderPanelState = (stateClass, message, role) => (
-    <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
+    <div
+      className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}
+    >
       {renderPanelHeader()}
-      <div className={stateClass} role={role}>{message}</div>
+      <div className={stateClass} role={role}>
+        {message}
+      </div>
     </div>
   );
 
   if (!restaurantId && restaurantLoading) {
-    return renderPanelState("performance-loading", "Đang tải dữ liệu hiệu suất...", "status");
+    return renderPanelState(
+      "performance-loading",
+      "Đang tải dữ liệu hiệu suất nhân viên...",
+      "status",
+    );
   }
   if (!restaurantId) {
-    return renderPanelState("performance-empty", "Chưa có nhà hàng được chọn để xem hiệu suất.");
+    return renderPanelState(
+      "performance-empty",
+      "Hãy chọn nhà hàng để xem hiệu suất nhân viên.",
+    );
   }
-  if (loading) return renderPanelState("performance-loading", "Đang tải dữ liệu hiệu suất...", "status");
-  if (error) return renderPanelState("performance-error", "Không thể tải dữ liệu. Vui lòng thử lại.");
-  if (isEmpty) return renderPanelState("performance-empty", "Chưa có dữ liệu để hiển thị.");
+  if (loading) {
+    return renderPanelState(
+      "performance-loading",
+      "Đang tải dữ liệu hiệu suất nhân viên...",
+      "status",
+    );
+  }
+  if (error) {
+    return renderPanelState(
+      "performance-error",
+      "Không thể tải dữ liệu hiệu suất. Vui lòng thử lại.",
+    );
+  }
+  if (isEmpty) {
+    return renderPanelState(
+      "performance-empty",
+      "Chưa có dữ liệu hiệu suất nhân viên.",
+    );
+  }
 
   return (
-    <div className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}>
+    <div
+      className={`performance-panel ${summaryOnly ? "performance-panel--summary" : ""}`}
+    >
       {renderPanelHeader()}
 
       {isHealthyCompact ? (
         <div className="performance-summary-note performance-summary-note--compact">
-          <p>Chưa có cảnh báo hiệu suất rõ ràng.</p>
+          <p>Không có vấn đề hiệu suất cần xử lý.</p>
         </div>
       ) : (
         <>
           <div className="performance-kpi-grid">
-            <div className="kpi-card"><span>Điểm trung bình</span><strong>{scoringOverview?.averageScore !== undefined ? formatScore(scoringOverview.averageScore) : "--"}</strong></div>
-            <div className="kpi-card"><span>Số nhân viên cần chú ý</span><strong>{scoringOverview?.lowScoreEmployeeCount ?? "--"}</strong></div>
-            <div className="kpi-card"><span>Incident cần xử lý</span><strong>{incidentOverview ? `${incidentOverview.pendingReviewCount || 0} / ${incidentOverview.eligibleCount || 0}` : "--"}</strong></div>
-            <div className="kpi-card"><span>Tổng incident</span><strong>{incidentOverview?.totalIncidents ?? 0}</strong></div>
+            <div className="kpi-card">
+              <span>Điểm trung bình</span>
+              <strong>
+                {scoringOverview?.averageScore !== undefined
+                  ? formatScore(scoringOverview.averageScore)
+                  : "--"}
+              </strong>
+            </div>
+            <div className="kpi-card">
+              <span>Nhân viên cần chú ý</span>
+              <strong>{scoringOverview?.lowScoreEmployeeCount ?? "--"}</strong>
+            </div>
+            <div className="kpi-card">
+              <span>Sự cố chờ xử lý</span>
+              <strong>
+                {incidentOverview
+                  ? `${incidentOverview.pendingReviewCount || 0} / ${incidentOverview.eligibleCount || 0}`
+                  : "--"}
+              </strong>
+            </div>
+            <div className="kpi-card">
+              <span>Tổng số sự cố</span>
+              <strong>{incidentOverview?.totalIncidents ?? 0}</strong>
+            </div>
             {hasAppealOverview ? (
-              <div className="kpi-card"><span>Appeal chờ duyệt</span><strong>{appealOverview.pendingCount ?? 0}</strong></div>
+              <div className="kpi-card">
+                <span>Yêu cầu xem xét chờ duyệt</span>
+                <strong>{appealOverview.pendingCount ?? 0}</strong>
+              </div>
             ) : null}
           </div>
 
           {summaryOnly ? (
             <div className="performance-summary-note">
-              {actionableItems.length > 0 ? <p>Có {actionableItems.reduce((s, i) => s + Number(i.count || 0), 0)} mục hiệu suất cần xử lý.</p> : <p>Chưa có cảnh báo hiệu suất rõ ràng.</p>}
+              {actionableItems.length > 0 ? (
+                <p>
+                  Có {actionableItems.reduce((sum, item) => sum + Number(item.count || 0), 0)} vấn đề hiệu suất cần xử lý.
+                </p>
+              ) : (
+                <p>Không có vấn đề hiệu suất cần xử lý.</p>
+              )}
             </div>
           ) : (
             <div className="performance-section">
-              <h4>Khuyến nghị hành động</h4>
+              <h4>Việc cần xử lý</h4>
               {actionableItems.length ? (
                 <ul className="action-list">
                   {actionableItems.map((item) => (
@@ -103,7 +175,7 @@ const ManagerPerformancePanel = ({
                   ))}
                 </ul>
               ) : (
-                <p className="action-list__empty">Không có khuyến nghị cần xử lý.</p>
+                <p className="action-list__empty">Không có việc cần xử lý.</p>
               )}
             </div>
           )}
