@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ClipboardList, X } from "lucide-react";
+import "./DashboardActionQueuePolish.scss";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("vi-VN", {
@@ -12,12 +13,41 @@ const formatDateTime = (value) => {
   if (!value) return "Chưa có thời gian";
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "Chưa có thời gian";
-  return date.toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-  });
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${day}/${month}, ${hour}:${minute}`;
+};
+
+const getQueueAge = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+
+  const elapsedMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - date.getTime()) / 60000),
+  );
+
+  if (elapsedMinutes < 15) {
+    return { label: "Mới nhận", tone: "new" };
+  }
+  if (elapsedMinutes < 60) {
+    return { label: `Chờ ${elapsedMinutes} phút`, tone: "waiting" };
+  }
+  if (elapsedMinutes < 1440) {
+    return {
+      label: `Quá hạn ${Math.floor(elapsedMinutes / 60)} giờ`,
+      tone: "overdue",
+    };
+  }
+
+  return {
+    label: `Quá hạn ${Math.floor(elapsedMinutes / 1440)} ngày`,
+    tone: "overdue",
+  };
 };
 
 const ORDER_TYPE_LABELS = {
@@ -147,12 +177,23 @@ export default function DashboardActionQueue({
     [counts, orders.length, reservations.length],
   );
 
+  const cardClassName = [
+    "dashboard-card",
+    "dashboard-card--action-queue",
+    totalCount > 0 ? "dashboard-card--action-queue-active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <article className="dashboard-card dashboard-card--action-queue">
+    <article className={cardClassName}>
       <div className="dashboard-card__head">
         <div>
           <h3>Yêu cầu chờ xác nhận</h3>
-          <p>Xử lý đơn hàng và yêu cầu đặt bàn mới ngay tại đây.</p>
+          <p>
+            Danh sách cần xử lý hiện tại, không phụ thuộc khoảng thời gian đã
+            chọn.
+          </p>
         </div>
         <span className="queue-count">
           <ClipboardList size={14} />
@@ -191,11 +232,21 @@ export default function DashboardActionQueue({
                   ORDER_TYPE_LABELS[order.orderType] ||
                   order.orderType ||
                   "Chưa xác định hình thức";
+                const queueAge = getQueueAge(order.createdAt);
 
                 return (
                   <div className="dashboard-queue-item" key={order.id}>
                     <div className="dashboard-queue-item__main">
-                      <strong>#{order.orderCode || order.id}</strong>
+                      <div className="dashboard-queue-item__title-row">
+                        <strong>#{order.orderCode || order.id}</strong>
+                        {queueAge ? (
+                          <span
+                            className={`queue-age queue-age--${queueAge.tone}`}
+                          >
+                            {queueAge.label}
+                          </span>
+                        ) : null}
+                      </div>
                       <p>
                         {orderType}
                         {order.tableCode ? ` • Bàn ${order.tableCode}` : ""}
@@ -257,11 +308,21 @@ export default function DashboardActionQueue({
                 const depositLabel =
                   DEPOSIT_STATUS_LABELS[reservation.depositStatus] ||
                   "Chưa có thông tin đặt cọc";
+                const queueAge = getQueueAge(reservation.createdAt);
 
                 return (
                   <div className="dashboard-queue-item" key={reservation.id}>
                     <div className="dashboard-queue-item__main">
-                      <strong>#{reservation.orderCode || reservation.id}</strong>
+                      <div className="dashboard-queue-item__title-row">
+                        <strong>#{reservation.orderCode || reservation.id}</strong>
+                        {queueAge ? (
+                          <span
+                            className={`queue-age queue-age--${queueAge.tone}`}
+                          >
+                            {queueAge.label}
+                          </span>
+                        ) : null}
+                      </div>
                       <p>
                         {reservation.customerName || "Khách chưa xác định"} •{" "}
                         {reservation.customerPhone || "Chưa có số điện thoại"}
