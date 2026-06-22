@@ -15,11 +15,11 @@ const formatDateTime = (value) => {
 
 const REQUEST_TYPE_LABELS = {
   SUPPORT: "Yêu cầu hỗ trợ",
-  HANDOFF: "Chatbot chuyển cho nhân viên",
+  HANDOFF: "Trợ lý AI chuyển cho nhân viên",
   CALL_STAFF: "Gọi nhân viên",
   PAYMENT: "Hỗ trợ thanh toán",
   support: "Yêu cầu hỗ trợ",
-  handoff: "Chatbot chuyển cho nhân viên",
+  handoff: "Trợ lý AI chuyển cho nhân viên",
   call_staff: "Gọi nhân viên",
   payment: "Hỗ trợ thanh toán",
 };
@@ -45,16 +45,18 @@ export default function DashboardSupportQueue({
   onResolve,
   onOpenHandoff,
 }) {
+  const requestCount = Number(count || requests.length || 0);
+
   return (
     <article className="dashboard-card dashboard-card--support-queue">
       <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
-          <h3>Yêu cầu hỗ trợ khách hàng</h3>
-          <p>Các yêu cầu khách cần nhân viên tiếp nhận từ chatbot hoặc tại bàn.</p>
+          <h3>Yêu cầu hỗ trợ</h3>
+          <p>Các yêu cầu từ trợ lý AI hoặc khách tại bàn cần nhân viên xử lý.</p>
         </div>
         <span className="queue-count queue-count--support">
           <Headphones size={14} />
-          {loading ? "Đang tải" : `${count || requests.length} yêu cầu chờ`}
+          {loading ? "Đang tải" : `${requestCount} yêu cầu`}
         </span>
       </div>
 
@@ -86,8 +88,7 @@ export default function DashboardSupportQueue({
                       ? `Mã theo dõi ${request.trackingCode} • `
                       : ""}
                     {request.tableCode ? `Bàn ${request.tableCode} • ` : ""}
-                    {typeLabel} • {statusLabel} •{" "}
-                    {formatDateTime(request.createdAt)}
+                    {typeLabel} • {statusLabel} • {formatDateTime(request.createdAt)}
                   </span>
                 </div>
                 <div className="dashboard-support-item__actions">
@@ -118,8 +119,8 @@ export default function DashboardSupportQueue({
         </div>
       ) : (
         <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
-          <h4>Không có yêu cầu hỗ trợ đang chờ</h4>
-          <p>Yêu cầu mới từ chatbot hoặc khách tại bàn sẽ xuất hiện tại đây.</p>
+          <h4>Hiện không có yêu cầu hỗ trợ</h4>
+          <p>Yêu cầu mới sẽ hiển thị tại đây.</p>
         </div>
       )}
 
@@ -128,7 +129,7 @@ export default function DashboardSupportQueue({
         className="dashboard-support-open"
         onClick={onOpenHandoff}
       >
-        Mở danh sách hỗ trợ từ AI
+        Xem tất cả yêu cầu hỗ trợ
       </button>
     </article>
   );
