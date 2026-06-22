@@ -11,7 +11,10 @@ const ACTION_LABELS = {
   check_repeated_corrections: "Kiểm tra tình trạng sửa công nhiều lần",
 };
 
-const formatScore = (value) => Number(value || 0).toFixed(1).replace(/\.0$/, "");
+const formatScore = (value) =>
+  Number(value || 0)
+    .toFixed(1)
+    .replace(/\.0$/, "");
 
 const ManagerPerformancePanel = ({
   restaurantId,
@@ -38,9 +41,13 @@ const ManagerPerformancePanel = ({
   const hasIncidentSignals =
     Number(incidentOverview.pendingReviewCount || 0) > 0 ||
     Number(incidentOverview.overdueCount || 0) > 0;
+  const hasScoreData =
+    Number(scoringOverview?.highestScore || 0) > 0 ||
+    Number(scoringOverview?.averageScore || 0) > 0;
   const isHealthyCompact =
     summaryOnly &&
     compactWhenHealthy &&
+    hasScoreData &&
     actionableItems.length === 0 &&
     !hasIncidentSignals;
   const hasAppealOverview =
@@ -103,7 +110,7 @@ const ManagerPerformancePanel = ({
   if (isEmpty) {
     return renderPanelState(
       "performance-empty",
-      "Chưa có dữ liệu hiệu suất nhân viên.",
+      "Chưa có nhân viên hoặc dữ liệu đánh giá trong tháng này.",
     );
   }
 
@@ -115,7 +122,11 @@ const ManagerPerformancePanel = ({
 
       {isHealthyCompact ? (
         <div className="performance-summary-note performance-summary-note--compact">
-          <p>Không có vấn đề hiệu suất cần xử lý.</p>
+          <div className="performance-summary-score">
+            <span>Điểm trung bình</span>
+            <strong>{formatScore(scoringOverview.averageScore)}</strong>
+          </div>
+          <p>Không có vấn đề hiệu suất cần xử lý trong tháng này.</p>
         </div>
       ) : (
         <>
@@ -156,7 +167,12 @@ const ManagerPerformancePanel = ({
             <div className="performance-summary-note">
               {actionableItems.length > 0 ? (
                 <p>
-                  Có {actionableItems.reduce((sum, item) => sum + Number(item.count || 0), 0)} vấn đề hiệu suất cần xử lý.
+                  Có{" "}
+                  {actionableItems.reduce(
+                    (sum, item) => sum + Number(item.count || 0),
+                    0,
+                  )}{" "}
+                  vấn đề hiệu suất cần xử lý.
                 </p>
               ) : (
                 <p>Không có vấn đề hiệu suất cần xử lý.</p>
