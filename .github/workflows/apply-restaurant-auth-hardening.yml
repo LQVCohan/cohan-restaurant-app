@@ -29,12 +29,12 @@ jobs:
           cat /tmp/auth-hardening.log
           if [ "$status" -ne 0 ]; then
             git reset --hard HEAD
-            cp /tmp/auth-hardening.log auth-hardening-error.log
-            printf 'status=failure\n' > auth-hardening-result.log
+            cp /tmp/auth-hardening.log auth-hardening-error.txt
+            printf 'status=failure\n' > auth-hardening-result.txt
           else
-            rm -f auth-hardening-error.log
-            printf 'status=success\n' > auth-hardening-result.log
-            git diff --stat >> auth-hardening-result.log
+            rm -f auth-hardening-error.txt
+            printf 'status=success\n' > auth-hardening-result.txt
+            git diff --stat >> auth-hardening-result.txt
           fi
       - name: Commit generated patch
         run: |
