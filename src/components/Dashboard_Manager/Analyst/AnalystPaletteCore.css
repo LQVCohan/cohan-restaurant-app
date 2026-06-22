@@ -1,0 +1,107 @@
+/* Dashboard stone/slate + Promotion sage palette for manager analytics. */
+.manager-analyst-page {
+  --analyst-surface: #fffdf8;
+  --analyst-surface-soft: rgba(255, 253, 248, 0.84);
+  --analyst-surface-muted: #f8f5ee;
+  --analyst-border: var(--manager-border, rgba(213, 204, 190, 0.78));
+  --analyst-text: var(--manager-text, #1f2a2b);
+  --analyst-muted: var(--manager-muted, #63706d);
+  --analyst-primary: var(--manager-primary, #2d3a43);
+  --analyst-accent: #1f6a60;
+  --analyst-accent-dark: #17554d;
+  --analyst-accent-soft: #dcefe9;
+  --analyst-accent-mist: #f2faf7;
+  --analyst-success: var(--manager-success, #4d7566);
+  --analyst-success-soft: var(--manager-success-soft, #edf5f1);
+  --analyst-warning: var(--manager-warm, #8a633f);
+  --analyst-warning-soft: #fbf1df;
+  --analyst-danger: var(--manager-danger, #ba514b);
+  --analyst-danger-soft: #faece8;
+  --analyst-shadow-sm: 0 8px 20px rgba(70, 62, 50, 0.05);
+  --analyst-shadow-md: 0 14px 32px rgba(70, 62, 50, 0.07);
+  --analyst-shadow-lg: 0 20px 48px rgba(70, 62, 50, 0.1);
+  width: 100%;
+  max-width: 1400px;
+  min-height: 100dvh;
+  padding: var(--spacing-5, 18px) 0 0;
+  color: var(--analyst-text);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.manager-analyst-page .analyst-header {
+  background:
+    radial-gradient(circle at 92% -22%, rgba(31, 106, 96, 0.13), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 245, 239, 0.92)),
+    var(--analyst-surface);
+  border-color: var(--analyst-border);
+  border-radius: 24px;
+  box-shadow: var(--analyst-shadow-lg);
+}
+
+.manager-analyst-page .analyst-header .status-chip,
+.manager-analyst-page .analytics-section__eyebrow {
+  color: var(--analyst-accent-dark);
+}
+
+.manager-analyst-page .analyst-header .status-chip {
+  background: var(--analyst-accent-mist);
+  border-color: rgba(31, 106, 96, 0.18);
+}
+
+.manager-analyst-page :is(
+  .analyst-header h1,
+  .analytics-section__title,
+  .compact-card-header h3,
+  .widget-header h4,
+  .chart-header h3,
+  .kpi-value
+) {
+  color: var(--analyst-text);
+}
+
+.manager-analyst-page :is(
+  .analyst-header p,
+  .analytics-section__subtitle,
+  .compact-card-header p,
+  .widget-header .subtitle,
+  .chart-header p,
+  .kpi-label,
+  .comparison-text,
+  .target-label
+) {
+  color: var(--analyst-muted);
+}
+
+.manager-analyst-page .analyst-header :is(.picker-wrap, .btn-icon, .btn-primary) {
+  border-color: var(--analyst-border);
+  background: rgba(255, 253, 248, 0.9);
+  box-shadow: var(--analyst-shadow-sm);
+}
+
+.manager-analyst-page .analyst-header .picker-wrap,
+.manager-analyst-page .analyst-header .btn-icon:hover:not(:disabled) {
+  color: var(--analyst-accent-dark);
+}
+
+.manager-analyst-page .analyst-header :is(.picker-wrap:hover, .btn-icon:hover:not(:disabled)) {
+  border-color: rgba(31, 106, 96, 0.28);
+  background: var(--analyst-accent-mist);
+}
+
+.manager-analyst-page .analyst-header .picker-wrap select {
+  color: var(--analyst-text);
+}
+
+.manager-analyst-page :is(.grid-item, .action-center-panel, .kpi-insight-card) {
+  background: var(--analyst-surface-soft);
+  border-color: var(--analyst-border);
+  box-shadow: var(--analyst-shadow-sm);
+}
+
+.manager-analyst-page :is(.grid-item, .kpi-insight-card):hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  box-shadow: var(--analyst-shadow-md);
+}

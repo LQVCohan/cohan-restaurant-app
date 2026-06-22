@@ -1,0 +1,58 @@
+.manager-analyst-page :is(.analyst-empty-data, .analyst-empty-page, .analytics-empty-state) {
+  color: var(--analyst-muted);
+  background: var(--analyst-surface-soft);
+  border-color: var(--analyst-border);
+}
+
+.manager-analyst-page :is(.analytics-empty-state__icon, .empty-icon) {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+}
+
+.manager-analyst-page :is(
+  .ghost-refresh,
+  .queue-actions button,
+  .empty-state-inline button,
+  .mini-bcg-insight button
+) {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-mist);
+  border-color: rgba(31, 106, 96, 0.2);
+}
+
+.manager-analyst-page :is(
+  .ghost-refresh:hover:not(:disabled),
+  .queue-actions button:hover,
+  .empty-state-inline button:hover,
+  .mini-bcg-insight button:hover
+) {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+  border-color: rgba(31, 106, 96, 0.32);
+}
+
+.manager-analyst-page .queue-list li {
+  border-color: var(--analyst-border);
+}
+.manager-analyst-page .queue-badge {
+  color: var(--analyst-text);
+  background: var(--analyst-surface-muted);
+}
+.manager-analyst-page .queue-badge.acknowledged {
+  color: var(--analyst-success);
+  background: var(--analyst-success-soft);
+}
+
+.manager-analyst-page :is(
+  .picker-wrap select,
+  .btn-icon,
+  .btn-primary,
+  .ghost-refresh,
+  .action-card button,
+  .queue-actions button,
+  .feedback-analysis-widget button,
+  .staff-performance-widget button
+):focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.2);
+  outline-offset: 2px;
+}

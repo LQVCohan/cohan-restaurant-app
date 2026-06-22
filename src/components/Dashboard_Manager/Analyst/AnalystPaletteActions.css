@@ -1,0 +1,64 @@
+.manager-analyst-page .action-center-panel--primary {
+  background:
+    linear-gradient(90deg, rgba(31, 106, 96, 0.12), transparent 12px),
+    radial-gradient(circle at 0 0, rgba(31, 106, 96, 0.1), transparent 18rem),
+    var(--analyst-surface-soft);
+}
+
+.manager-analyst-page .action-center-count {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+}
+
+.manager-analyst-page .action-card {
+  border-color: var(--analyst-border);
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.manager-analyst-page :is(.action-card button, .analytics-empty-state button, .inline-nav) {
+  color: var(--analyst-accent-dark);
+}
+
+.manager-analyst-page .action-card--info {
+  border-color: rgba(31, 106, 96, 0.2);
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(242, 250, 247, 0.88));
+}
+.manager-analyst-page .action-card--info::before {
+  background: var(--analyst-accent);
+}
+.manager-analyst-page :is(.action-card--info .action-card__icon, .priority-badge--info) {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+}
+
+.manager-analyst-page .action-card--warning {
+  border-color: rgba(138, 99, 63, 0.24);
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(251, 241, 223, 0.84));
+}
+.manager-analyst-page .action-card--warning::before {
+  background: var(--analyst-warning);
+}
+.manager-analyst-page :is(.action-card--warning .action-card__icon, .priority-badge--warning, .queue-badge.pending) {
+  color: var(--analyst-warning);
+  background: var(--analyst-warning-soft);
+}
+
+.manager-analyst-page :is(.action-card--critical, .analyst-error) {
+  border-color: rgba(186, 81, 75, 0.24);
+  background: var(--analyst-danger-soft);
+}
+.manager-analyst-page .action-card--critical::before {
+  background: var(--analyst-danger);
+}
+.manager-analyst-page :is(.action-card--critical .action-card__icon, .priority-badge--critical) {
+  color: var(--analyst-danger);
+  background: var(--analyst-danger-soft);
+}
+
+.manager-analyst-page .low-stock-compact {
+  background: var(--analyst-warning-soft);
+  border-color: rgba(138, 99, 63, 0.2);
+}
+.manager-analyst-page .low-stock-compact__head :is(span, strong) {
+  color: var(--analyst-warning);
+}

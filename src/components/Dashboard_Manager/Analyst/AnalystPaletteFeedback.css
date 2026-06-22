@@ -1,0 +1,39 @@
+.manager-analyst-page :is(.feedback-analysis-widget, .feedback-analysis-widget .widget-header) {
+  background: transparent;
+}
+.manager-analyst-page :is(.rating-badge, .filter-tabs button.active) {
+  background: var(--analyst-primary);
+}
+.manager-analyst-page .filter-tabs {
+  border-color: var(--analyst-border);
+}
+.manager-analyst-page .filter-tabs button {
+  color: var(--analyst-muted);
+}
+.manager-analyst-page .filter-tabs button:hover:not(.active) {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-mist);
+}
+.manager-analyst-page :is(.filter-tabs button.attention.active, .ai-daily-summary) {
+  color: var(--analyst-warning);
+  background: var(--analyst-warning-soft);
+  border-color: rgba(138, 99, 63, 0.2);
+}
+.manager-analyst-page .feedback-item:not(:last-child)::before {
+  background: var(--analyst-border);
+}
+.manager-analyst-page .feedback-analysis-widget .tag {
+  color: var(--analyst-muted);
+  background: var(--analyst-surface-muted);
+}
+
+.manager-analyst-page .staff-performance-widget .progress-bg {
+  background: var(--analyst-surface-muted);
+}
+.manager-analyst-page .staff-performance-widget .progress-fill {
+  background: var(--analyst-accent);
+}
+.manager-analyst-page .staff-performance-widget .filter-row button.active {
+  color: #fff;
+  background: var(--analyst-primary);
+}

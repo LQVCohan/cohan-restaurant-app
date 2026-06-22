@@ -1,0 +1,39 @@
+.manager-analyst-page .kpi-insight-card:first-child {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.13), transparent 12rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(242, 250, 247, 0.94));
+  border-color: rgba(31, 106, 96, 0.24);
+}
+
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(1) .icon-wrapper {
+  color: #1f6a60 !important;
+  background-color: rgba(31, 106, 96, 0.1) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(1) .progress-fill {
+  background-color: #1f6a60 !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(2) .icon-wrapper {
+  color: #6f7f7a !important;
+  background-color: rgba(111, 127, 122, 0.11) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(2) .progress-fill {
+  background-color: #6f7f7a !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(3) .icon-wrapper {
+  color: #8a633f !important;
+  background-color: rgba(138, 99, 63, 0.1) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(3) .progress-fill {
+  background-color: #8a633f !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(4) .icon-wrapper {
+  color: #4d7566 !important;
+  background-color: rgba(77, 117, 102, 0.1) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(4) .progress-fill {
+  background-color: #4d7566 !important;
+}
+
+.manager-analyst-page .kpi-insight-card :is(.progress-track, .trend-badge.flat) {
+  background: var(--analyst-surface-muted);
+}

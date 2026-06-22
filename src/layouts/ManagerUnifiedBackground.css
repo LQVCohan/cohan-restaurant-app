@@ -4,161 +4,19 @@
 @import "../components/Dashboard_Manager/Order/OrderKitchenModeFix.css";
 @import "../components/Dashboard_Manager/Order/NewOrderModalPromotionTheme.css";
 @import "../components/Dashboard_Manager/Order/OrderInteractionFix.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteCore.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteKpi.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteActions.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteStates.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteRevenue.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteFeedback.css";
+@import "../components/Dashboard_Manager/Analyst/AnalystPaletteMatrix.css";
 
-/* Unified manager workspace background.
-   Applies a neutral premium workspace canvas to every manager sidebar page, except Orders.
-   Orders keeps its dedicated operational layout/background. */
-
-:root {
-  --manager-bg-base: #f8f7f2;
-  --manager-bg-mid: #f4f1ea;
-  --manager-bg-end: #efebe3;
-  --manager-bg-pearl: rgba(255, 255, 252, 0.74);
-  --manager-bg-warm-stone: rgba(190, 179, 160, 0.13);
-  --manager-bg-cool-stone: rgba(116, 128, 133, 0.045);
-  --manager-grid-line: rgba(96, 90, 82, 0.022);
-  --manager-surface: rgba(255, 253, 248, 0.78);
-  --manager-border: rgba(213, 204, 190, 0.78);
-  --manager-text: #1f2a2b;
-  --manager-muted: #63706d;
-  --manager-primary: #2d3a43;
-  --manager-primary-hover: #22303a;
-  --manager-accent: #6f7f7a;
-  --manager-accent-soft: #edf1ee;
-  --manager-success: #4d7566;
-  --manager-success-soft: #edf5f1;
-  --manager-warm: #8a633f;
-  --manager-danger: #ba514b;
-}
-
-.manager-layout:not(.manager-layout--orders),
-.manager-layout:not(.manager-layout--orders) .manager-layout__main,
-.manager-layout:not(.manager-layout--orders) .manager-layout__content,
-.manager-layout:not(.manager-layout--orders) .manager-page-shell,
-.manager-layout:not(.manager-layout--orders) .manager-page-shell__body {
-  background:
-    radial-gradient(
-      circle at 12% 0%,
-      var(--manager-bg-pearl),
-      transparent 36rem
-    ),
-    radial-gradient(
-      circle at 88% 6%,
-      var(--manager-bg-cool-stone),
-      transparent 34rem
-    ),
-    radial-gradient(
-      circle at 70% 100%,
-      var(--manager-bg-warm-stone),
-      transparent 42rem
-    ),
-    linear-gradient(
-      180deg,
-      var(--manager-bg-base) 0%,
-      var(--manager-bg-mid) 50%,
-      var(--manager-bg-end) 100%
-    ) !important;
-}
-
-.manager-layout:not(.manager-layout--orders) .manager-layout__content {
-  isolation: isolate;
-}
-
-.manager-layout:not(.manager-layout--orders) .manager-layout__content::before {
-  content: "";
-  position: fixed;
-  inset: var(--manager-header-height, 64px) 0 0 var(--sidebar-width, 72px);
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.42;
-  background-image:
-    linear-gradient(var(--manager-grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--manager-grid-line) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: linear-gradient(
-    180deg,
-    #000 0%,
-    rgba(0, 0, 0, 0.14) 74%,
-    transparent 100%
-  );
-}
-
-.manager-layout:not(.manager-layout--orders) .manager-page-shell,
-.manager-layout:not(.manager-layout--orders) .manager-page-shell__body {
-  position: relative;
-  z-index: 1;
-}
-
-.manager-layout:not(.manager-layout--orders) .manager-page-shell {
-  width: min(100%, 1500px);
-}
-
-/* Important: many manager modules set a full-page background on their root component.
-   Keep cards/panels intact, but make the first page wrapper transparent so the shared
-   Dashboard background is continuous and no centered page block is visible. */
-.manager-layout:not(.manager-layout--orders)
-  .manager-page-shell__body
-  > :where(div, main, section, article) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-.manager-layout:not(.manager-layout--orders)
-  .manager-page-shell__body
-  > :where(div, main, section, article)::before {
-  background-image: none !important;
-}
-
-/* Known full-page manager roots that previously painted their own canvas. */
-.manager-layout:not(.manager-layout--orders)
-  :where(
-    .manager-dashboard,
-    .tm-container,
-    .menu-management,
-    .menu-management-page,
-    .staff-management,
-    .schedule-management-page,
-    .cm-page,
-    .customer-management,
-    .customer-analytics-page,
-    .manager-analyst,
-    .reports-management,
-    .finance-dashboard,
-    .transaction-management,
-    .promotion-management,
-    .payroll-management,
-    .review-management,
-    .settings-management,
-    .backup-management,
-    .print-management,
-    .rbac-management,
-    .restaurant-info-management,
-    .ai-handoff-inbox,
-    .ai-chatbot-analytics-page,
-    .ai-chatbot-settings-page,
-    .ai-chatbot-knowledge-page,
-    .storage-management
-  ) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-}
-
-.manager-layout:not(.manager-layout--orders) .manager-page-shell__empty {
-  min-height: 320px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(120, 113, 108, 0.16);
-  border-radius: 24px;
-  background: var(--manager-surface);
-  box-shadow: 0 16px 36px rgba(70, 62, 50, 0.07);
-  color: var(--manager-text);
-}
-
-@media (max-width: 768px) {
-  .manager-layout:not(.manager-layout--orders)
-    .manager-layout__content::before {
-    inset: var(--manager-header-height, 64px) 0 0 0;
-  }
-}
+:root{--manager-bg-base:#f8f7f2;--manager-bg-mid:#f4f1ea;--manager-bg-end:#efebe3;--manager-bg-pearl:rgba(255,255,252,.74);--manager-bg-warm-stone:rgba(190,179,160,.13);--manager-bg-cool-stone:rgba(116,128,133,.045);--manager-grid-line:rgba(96,90,82,.022);--manager-surface:rgba(255,253,248,.78);--manager-border:rgba(213,204,190,.78);--manager-text:#1f2a2b;--manager-muted:#63706d;--manager-primary:#2d3a43;--manager-primary-hover:#22303a;--manager-accent:#6f7f7a;--manager-accent-soft:#edf1ee;--manager-success:#4d7566;--manager-success-soft:#edf5f1;--manager-warm:#8a633f;--manager-danger:#ba514b}
+.manager-layout:not(.manager-layout--orders),.manager-layout:not(.manager-layout--orders) .manager-layout__main,.manager-layout:not(.manager-layout--orders) .manager-layout__content,.manager-layout:not(.manager-layout--orders) .manager-page-shell,.manager-layout:not(.manager-layout--orders) .manager-page-shell__body{background:radial-gradient(circle at 12% 0,var(--manager-bg-pearl),transparent 36rem),radial-gradient(circle at 88% 6%,var(--manager-bg-cool-stone),transparent 34rem),radial-gradient(circle at 70% 100%,var(--manager-bg-warm-stone),transparent 42rem),linear-gradient(180deg,var(--manager-bg-base) 0%,var(--manager-bg-mid) 50%,var(--manager-bg-end) 100%)!important}
+.manager-layout:not(.manager-layout--orders) .manager-layout__content{isolation:isolate}.manager-layout:not(.manager-layout--orders) .manager-layout__content:before{content:"";position:fixed;inset:var(--manager-header-height,64px) 0 0 var(--sidebar-width,72px);z-index:0;pointer-events:none;opacity:.42;background-image:linear-gradient(var(--manager-grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--manager-grid-line) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.14) 74%,transparent 100%)}
+.manager-layout:not(.manager-layout--orders) :is(.manager-page-shell,.manager-page-shell__body){position:relative;z-index:1}.manager-layout:not(.manager-layout--orders) .manager-page-shell{width:min(100%,1500px)}
+.manager-layout:not(.manager-layout--orders) .manager-page-shell__body>:where(div,main,section,article){background:transparent!important;background-color:transparent!important;background-image:none!important}.manager-layout:not(.manager-layout--orders) .manager-page-shell__body>:where(div,main,section,article):before{background-image:none!important}
+.manager-layout:not(.manager-layout--orders) :where(.manager-dashboard,.tm-container,.menu-management,.menu-management-page,.staff-management,.schedule-management-page,.cm-page,.customer-management,.customer-analytics-page,.manager-analyst,.reports-management,.finance-dashboard,.transaction-management,.promotion-management,.payroll-management,.review-management,.settings-management,.backup-management,.print-management,.rbac-management,.restaurant-info-management,.ai-handoff-inbox,.ai-chatbot-analytics-page,.ai-chatbot-settings-page,.ai-chatbot-knowledge-page,.storage-management){background:transparent!important;background-color:transparent!important;background-image:none!important}
+.manager-layout:not(.manager-layout--orders) .manager-page-shell__empty{min-height:320px;display:grid;place-items:center;border:1px solid rgba(120,113,108,.16);border-radius:24px;background:var(--manager-surface);box-shadow:0 16px 36px rgba(70,62,50,.07);color:var(--manager-text)}
+@media(max-width:768px){.manager-layout:not(.manager-layout--orders) .manager-layout__content:before{inset:var(--manager-header-height,64px) 0 0 0}}
