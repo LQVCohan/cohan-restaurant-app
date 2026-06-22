@@ -41,8 +41,10 @@ jobs:
               keep.append(value)
             elif any(token in value for token in ('AssertionError:', 'SyntaxError:', 'TypeError:', 'ReferenceError:', 'Cannot find package')):
               keep.append(value)
-          Path('backend-test-summary.txt').write_text('\n'.join(keep[-500:]) + f'\nbackend_status={status}\n')
+          Path('backend-test-summary.txt').write_text('\n'.join(keep[-500:]) + '\n')
           PY
+          echo "backend_status=$status" >> backend-test-summary.txt
+          exit 0
       - name: Commit summary
         run: |
           git config user.name "github-actions[bot]"
