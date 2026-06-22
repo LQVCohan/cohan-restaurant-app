@@ -41,7 +41,7 @@ class MockUser {
   }
 }
 
-vi.mock("../../models/index.js", () => ({ User: MockUser }));
+vi.mock("../../models/index.js", () => ({ User: MockUser, Restaurant: { exists: vi.fn() } }));
 vi.mock("../../lib/mailer.js", () => ({
   mailer: { sendMail: mailerSendMail },
   buildVerifyMail: (args) => ({ to: args.to, subject: "verify", text: args.link, html: args.link }),
