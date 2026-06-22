@@ -1,6 +1,7 @@
 import React from "react";
 import { ShoppingBag, Monitor } from "lucide-react";
 import "./RecentOrders.scss";
+import "./RecentOrdersPolish.scss";
 
 const MAX_ORDERS = 6;
 
