@@ -1,0 +1,55 @@
+.dashboard-card--action-queue-active {
+  border-color: rgba(138, 99, 63, 0.32);
+  background:
+    linear-gradient(180deg, rgba(246, 239, 230, 0.72), var(--dash-surface) 54%),
+    var(--dash-surface);
+}
+
+.dashboard-queue-item__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard-queue-item__title-row > strong {
+  min-width: 0;
+}
+
+.queue-age {
+  display: inline-flex !important;
+  align-items: center;
+  width: fit-content;
+  margin: 0 !important;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  font-weight: 850;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.queue-age--new {
+  color: var(--dash-success) !important;
+  background: var(--dash-success-soft);
+  border-color: rgba(77, 117, 102, 0.22);
+}
+
+.queue-age--waiting {
+  color: var(--dash-warning) !important;
+  background: var(--dash-warning-soft);
+  border-color: rgba(138, 99, 63, 0.24);
+}
+
+.queue-age--overdue {
+  color: var(--dash-danger) !important;
+  background: var(--dash-danger-soft);
+  border-color: rgba(186, 81, 75, 0.28);
+}
+
+@media (max-width: 560px) {
+  .dashboard-queue-item__title-row {
+    align-items: flex-start;
+  }
+}
