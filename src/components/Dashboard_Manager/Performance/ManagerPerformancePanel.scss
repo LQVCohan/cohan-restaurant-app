@@ -1,6 +1,7 @@
 .performance-panel {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .performance-panel__header {
@@ -8,9 +9,11 @@
   justify-content: space-between;
   gap: 10px;
   align-items: center;
+  min-width: 0;
 
   h3 {
     margin: 0;
+    min-width: 0;
     font-size: 16px;
     letter-spacing: -0.015em;
     color: #1f2933;
@@ -18,6 +21,7 @@
 }
 
 .performance-panel .btn-link {
+  flex-shrink: 0;
   border: 0;
   background: transparent;
   color: #b45309;
@@ -25,8 +29,11 @@
   font-size: 13px;
   cursor: pointer;
   padding: 0;
+  white-space: nowrap;
 
-  &:hover { text-decoration: underline; }
+  &:hover {
+    text-decoration: underline;
+  }
 
   &:focus-visible {
     outline: 3px solid rgba(180, 83, 9, 0.22);
@@ -52,23 +59,97 @@
   font-size: 12px;
 }
 
-.performance-panel .kpi-card { display: grid; gap: 3px; }
-.performance-panel .kpi-card span { color: #78716c; font-weight: 680; line-height: 1.25; }
-.performance-panel .kpi-card strong { font-size: 17px; color: #1f2933; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.performance-panel .performance-summary-note p { margin: 0; color: #57534e; line-height: 1.35; }
+.performance-panel .kpi-card {
+  display: grid;
+  gap: 3px;
+}
+
+.performance-panel .kpi-card span {
+  color: #78716c;
+  font-weight: 680;
+  line-height: 1.25;
+}
+
+.performance-panel .kpi-card strong {
+  font-size: 17px;
+  color: #1f2933;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.performance-panel .performance-summary-note p {
+  margin: 0;
+  color: #57534e;
+  line-height: 1.35;
+}
 
 .performance-panel .performance-summary-note--compact {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 14px;
 }
 
-.performance-panel .performance-summary-note--compact p { color: #166534; }
-.performance-panel .performance-section h4 { margin: 0 0 8px; font-size: 14px; color: #1f2933; }
-.performance-panel .action-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.performance-panel .action-list li { display: flex; justify-content: space-between; gap: 10px; align-items: center; color: #44403c; }
-.performance-panel .action-list li strong { color: #1f2933; font-variant-numeric: tabular-nums; }
-.performance-panel .action-list__empty { margin: 0; color: #78716c; }
+.performance-panel .performance-summary-note--compact p {
+  color: #166534;
+}
+
+.performance-summary-score {
+  min-width: 82px;
+  display: grid;
+  gap: 2px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(22, 101, 52, 0.18);
+}
+
+.performance-summary-score span {
+  color: #4b755f;
+  font-size: 10px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.performance-summary-score strong {
+  color: #166534;
+  font-size: 22px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.performance-panel .performance-section h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #1f2933;
+}
+
+.performance-panel .action-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.performance-panel .action-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  color: #44403c;
+}
+
+.performance-panel .action-list li strong {
+  color: #1f2933;
+  font-variant-numeric: tabular-nums;
+}
+
+.performance-panel .action-list__empty {
+  margin: 0;
+  color: #78716c;
+}
 
 .performance-empty,
 .performance-loading,
@@ -93,5 +174,18 @@
 }
 
 @media (max-width: 768px) {
-  .performance-panel .performance-kpi-grid { grid-template-columns: 1fr; }
+  .performance-panel .performance-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-panel .performance-summary-note--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-summary-score {
+    padding-right: 0;
+    padding-bottom: 8px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(22, 101, 52, 0.18);
+  }
 }
