@@ -135,12 +135,12 @@ export default function DashboardActionQueue({
     () => [
       {
         key: "orders",
-        title: "Đơn đặt món chờ xác nhận",
+        title: "Đơn hàng chờ xác nhận",
         count: counts.orders || orders.length,
       },
       {
         key: "reservations",
-        title: "Yêu cầu đặt bàn chờ xác nhận",
+        title: "Đặt bàn chờ xác nhận",
         count: counts.reservations || reservations.length,
       },
     ],
@@ -151,8 +151,8 @@ export default function DashboardActionQueue({
     <article className="dashboard-card dashboard-card--action-queue">
       <div className="dashboard-card__head">
         <div>
-          <h3>Đơn và đặt bàn chờ xác nhận</h3>
-          <p>Xác nhận hoặc từ chối các yêu cầu mới ngay tại đây.</p>
+          <h3>Yêu cầu chờ xác nhận</h3>
+          <p>Xử lý đơn hàng và yêu cầu đặt bàn mới ngay tại đây.</p>
         </div>
         <span className="queue-count">
           <ClipboardList size={14} />
@@ -163,7 +163,7 @@ export default function DashboardActionQueue({
       {loading ? (
         <div className="dashboard-empty dashboard-empty--compact dashboard-empty--loading">
           <h4>Đang tải yêu cầu chờ xác nhận</h4>
-          <p>Hệ thống đang kiểm tra đơn đặt món và yêu cầu đặt bàn mới.</p>
+          <p>Hệ thống đang kiểm tra đơn hàng và yêu cầu đặt bàn mới.</p>
         </div>
       ) : error ? (
         <div className="dashboard-empty dashboard-empty--compact dashboard-empty--error">
@@ -173,7 +173,7 @@ export default function DashboardActionQueue({
       ) : empty ? (
         <div className="dashboard-empty dashboard-empty--compact dashboard-empty--healthy">
           <h4>Không có yêu cầu nào đang chờ</h4>
-          <p>Đơn đặt món và yêu cầu đặt bàn mới sẽ xuất hiện tại đây.</p>
+          <p>Đơn hàng và yêu cầu đặt bàn mới sẽ hiển thị tại đây.</p>
         </div>
       ) : (
         <div className="dashboard-queue-sections">
@@ -239,7 +239,7 @@ export default function DashboardActionQueue({
               })
             ) : (
               <p className="dashboard-queue-section__empty">
-                Chưa có đơn đặt món chờ xác nhận.
+                Chưa có đơn hàng chờ xác nhận.
               </p>
             )}
           </section>
@@ -319,7 +319,7 @@ export default function DashboardActionQueue({
       {rejectTarget ? (
         <ReasonModal
           title={`Từ chối đơn #${rejectTarget.orderCode || rejectTarget.id}`}
-          placeholder="Nhập lý do từ chối để nhân viên hoặc khách hàng có thể hiểu rõ."
+          placeholder="Nhập lý do từ chối để nhân viên hoặc khách hàng hiểu rõ."
           confirmLabel="Xác nhận từ chối"
           busy={rejectBusy}
           onClose={() => setRejectTarget(null)}
