@@ -1,0 +1,202 @@
+/* Final repair pass for the main table 3D modal. */
+
+body:has(.table-3d-modal__title-row) .table-3d-modal__layout {
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-modal__sidebar {
+  padding: 0.82rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-modal__models {
+  gap: 0.5rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .model-item {
+  grid-template-columns: 56px minmax(0, 1fr) auto !important;
+  min-height: 78px;
+  padding: 0.48rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .model-item img {
+  width: 56px !important;
+  height: 56px !important;
+}
+
+body:has(.table-3d-modal__title-row) .model-item strong {
+  font-size: 0.82rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .model-item span {
+  font-size: 0.71rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .model-item__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-block: 0.16rem;
+}
+
+body:has(.table-3d-modal__title-row) .model-badge {
+  padding: 0.1rem 0.34rem;
+  border-radius: 6px;
+  font-size: 0.62rem !important;
+}
+
+.table-3d-readiness {
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.table-3d-readiness > summary {
+  min-height: 52px;
+  cursor: pointer;
+  padding: 0.62rem 0.72rem;
+  list-style: none;
+}
+
+.table-3d-readiness > summary::-webkit-details-marker {
+  display: none;
+}
+
+.table-3d-readiness > summary::after {
+  content: "Xem chi tiết";
+  flex: 0 0 auto;
+  color: #667085;
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.table-3d-readiness[open] > summary::after {
+  content: "Thu gọn";
+}
+
+.table-3d-readiness__items {
+  padding: 0 0.72rem 0.72rem;
+}
+
+.table-3d-modal__footer--clear-actions {
+  grid-template-columns: repeat(3, minmax(0, auto)) minmax(170px, 1fr) !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.table-3d-modal__footer--clear-actions > button {
+  min-height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.38rem !important;
+  border-radius: 11px !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
+
+.table-3d-modal__footer--clear-actions > button:not(.table-3d-apply-button) {
+  border-color: rgba(222, 214, 203, 0.9) !important;
+  background: rgba(255, 253, 249, 0.9) !important;
+  color: #42505c !important;
+  box-shadow: none !important;
+}
+
+.table-3d-modal__footer--clear-actions > button:not(.table-3d-apply-button):hover:not(:disabled) {
+  border-color: rgba(31, 106, 96, 0.28) !important;
+  background: #f2faf7 !important;
+  color: #17554d !important;
+}
+
+.table-3d-modal__footer--clear-actions .table-3d-apply-button {
+  justify-self: end;
+  min-width: 170px;
+  border-color: #17554d !important;
+  background: linear-gradient(180deg, #1f6a60, #17554d) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 12px 24px rgba(31, 106, 96, 0.18) !important;
+}
+
+.table-3d-modal__footer--clear-actions button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.48 !important;
+}
+
+.table-3d-modal__sidebar > .table-3d-modal__warning {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 0.45rem !important;
+  padding: 0.6rem !important;
+  border-color: rgba(131, 91, 32, 0.2) !important;
+  border-radius: 12px !important;
+  background: #fbf1df !important;
+  color: #835b20 !important;
+}
+
+.table-3d-modal__sidebar > .table-3d-modal__warning span {
+  font-size: 0 !important;
+}
+
+.table-3d-modal__sidebar > .table-3d-modal__warning span::after {
+  content: "Không tải được thư viện trực tuyến. Hệ thống đang dùng dữ liệu dự phòng.";
+  font-size: 0.71rem;
+  line-height: 1.4;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-quick-guide {
+  gap: 0.36rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-quick-guide > div {
+  min-height: 34px;
+  padding: 0.38rem 0.48rem !important;
+}
+
+body:has(.table-3d-modal__title-row) .table-3d-quick-guide > div strong {
+  font-size: 0.69rem !important;
+}
+
+@media (max-width: 1120px) {
+  body:has(.table-3d-modal__title-row) .table-3d-modal__layout {
+    grid-template-columns: minmax(225px, 260px) minmax(0, 1fr) !important;
+  }
+
+  .table-3d-modal__footer--clear-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .table-3d-modal__footer--clear-actions > button,
+  .table-3d-modal__footer--clear-actions .table-3d-apply-button {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 860px) {
+  body:has(.table-3d-modal__title-row) .table-3d-modal__layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  body:has(.table-3d-modal__title-row) .table-3d-modal__sidebar {
+    order: 2 !important;
+  }
+
+  body:has(.table-3d-modal__title-row) .table-3d-modal__viewer-wrap {
+    order: 1 !important;
+  }
+
+  .table-3d-readiness > summary::after {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .table-3d-modal__footer--clear-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .table-3d-modal__footer--clear-actions > button {
+    width: 100% !important;
+  }
+}
