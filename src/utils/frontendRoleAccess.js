@@ -88,8 +88,18 @@ export const isManagerRole = (role) =>
 export const isHrRole = (role) => HR_ROLES.has(resolveUserRoleName(role));
 export const isAccountantRole = (role) =>
   ACCOUNTANT_ROLES.has(resolveUserRoleName(role));
-export const isStaffOperationalRole = (role) =>
-  STAFF_OPERATIONAL_ROLES.has(resolveUserRoleName(role));
+
+// HR and accountant accounts are restaurant-scoped staff for restaurant
+// selection even though they are not operational floor roles. AuthProvider
+// uses this helper to retain restaurantForStaff and select the assigned branch.
+export const isStaffOperationalRole = (role) => {
+  const normalized = resolveUserRoleName(role);
+  return (
+    STAFF_OPERATIONAL_ROLES.has(normalized) ||
+    HR_ROLES.has(normalized) ||
+    ACCOUNTANT_ROLES.has(normalized)
+  );
+};
 export const isCustomerRole = (role) =>
   CUSTOMER_ROLES.has(resolveUserRoleName(role));
 
@@ -142,7 +152,7 @@ export const canAccessRoute = (userOrRole, pathname) => {
   if (!normalizedRole || typeof pathname !== "string") return false;
 
   for (const rule of ROUTE_ACCESS_RULES) {
-    if (rule.test.test(pathname)) return rule.allow.includes(normalizedRole);
+    if (rule.test(pathname)) return rule.allow.includes(normalizedRole);
   }
   return true;
 };
