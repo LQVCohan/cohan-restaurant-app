@@ -18,6 +18,7 @@ import "./styles/Table3DModalWorkflow.css";
 import "./styles/TableARNestedModals.css";
 import "./styles/Table3DToolbarMobileFix.css";
 import "./styles/TableCameraPreviewRepair.css";
+import "./styles/Table3DMainModalRepair.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 
 import App from "./App.jsx";
