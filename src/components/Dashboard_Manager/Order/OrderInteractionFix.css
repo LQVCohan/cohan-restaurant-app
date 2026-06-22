@@ -1,0 +1,69 @@
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-btn.mph-btn--primary {
+  border-color: #1f6a60 !important;
+  background: #1f6a60 !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(31, 106, 96, 0.18) !important;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-btn.mph-btn--primary
+  :is(svg, span) {
+  color: inherit !important;
+  stroke: currentColor;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-btn.mph-btn--primary:hover:not(:disabled) {
+  border-color: #17554d !important;
+  background: #17554d !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(31, 106, 96, 0.24) !important;
+  transform: translateY(-1px);
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-btn.mph-btn--primary:active:not(:disabled) {
+  border-color: #12473f !important;
+  background: #12473f !important;
+  color: #ffffff !important;
+  box-shadow: 0 7px 16px rgba(31, 106, 96, 0.2) !important;
+  transform: translateY(0);
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-btn.mph-btn--primary:focus-visible {
+  border-color: #17554d !important;
+  background: #17554d !important;
+  color: #ffffff !important;
+  outline: 3px solid rgba(31, 106, 96, 0.2) !important;
+  outline-offset: 2px;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  .management-page-header
+  .mph-btn.mph-btn--primary:disabled {
+  border-color: #a9b9b5 !important;
+  background: #a9b9b5 !important;
+  color: #f7faf9 !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  transform: none;
+}
