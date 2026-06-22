@@ -1,3 +1,5 @@
+@import "./Table3DMainModalTuning.css";
+
 /* Final repair pass for the main table 3D modal. */
 
 body:has(.table-3d-modal__title-row) .table-3d-modal__layout {
