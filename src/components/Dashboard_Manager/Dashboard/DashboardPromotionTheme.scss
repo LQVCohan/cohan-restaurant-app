@@ -1,0 +1,58 @@
+.manager-dashboard {
+  --dash-bg: #f5f4ef;
+  --dash-surface: #fffdf9;
+  --dash-border: #ded6cb;
+  --dash-text: #24303f;
+  --dash-text-sub: #667085;
+  --dash-primary: #1f6a60;
+  --dash-primary-dark: #17554d;
+  --dash-accent: #1f6a60;
+  --dash-accent-strong: #17554d;
+  --dash-accent-soft: #dcefe9;
+  --dash-success: #1f6a60;
+  --dash-success-soft: #f2faf7;
+  --dash-warning: #835b20;
+  --dash-warning-soft: #fbf1df;
+  --dash-danger: #9a413d;
+  --dash-danger-soft: #faece8;
+  --dash-shadow-sm: 0 8px 22px rgba(42, 36, 27, 0.055);
+  --dash-shadow-md: 0 14px 36px rgba(42, 36, 27, 0.075);
+  --dash-shadow-lg: 0 20px 46px rgba(42, 36, 27, 0.1);
+  color: var(--dash-text);
+  background: linear-gradient(180deg, #f8f5ee 0%, #f5f4ef 54%, #f2f1ec 100%);
+  border-radius: 26px 26px 0 0;
+  padding: 18px;
+}
+
+.dashboard-compact-header,
+.dashboard-filterbar,
+.dashboard-system-overview,
+.dashboard-card,
+.stat-card {
+  border-color: rgba(128, 109, 83, 0.15);
+  background: rgba(255, 253, 249, 0.8);
+  box-shadow: 0 14px 36px rgba(42, 36, 27, 0.075);
+}
+
+.dashboard-btn--primary,
+.queue-btn--primary {
+  border-color: #1f6a60;
+  background: #1f6a60;
+  color: #fff;
+}
+
+.dashboard-btn--primary:hover:not(:disabled),
+.queue-btn--primary:hover:not(:disabled) {
+  border-color: #17554d;
+  background: #17554d;
+}
+
+.dashboard-btn--ghost,
+.dashboard-support-open,
+.dashboard-staff-roster__count,
+.queue-count,
+.orders-pill {
+  border-color: rgba(31, 106, 96, 0.14);
+  background: #f2faf7;
+  color: #17554d;
+}
