@@ -144,3 +144,106 @@
   background: rgba(255, 253, 249, 0.82);
   color: #3c4650;
 }
+
+.stat-card--primary .icon-badge,
+.stat-card--success .icon-badge,
+.stat-card--neutral .icon-badge {
+  border-color: rgba(31, 106, 96, 0.16);
+  background: #f2faf7;
+  color: #17554d;
+}
+
+.stat-card--primary.stat-card--summary::before,
+.stat-card--success.stat-card--summary::before {
+  background: radial-gradient(circle, rgba(31, 106, 96, 0.16), transparent 70%);
+}
+
+.stat-card--primary.stat-card--summary::after,
+.stat-card--success.stat-card--summary::after {
+  background: #1f6a60;
+}
+
+.stat-card--warning .icon-badge {
+  border-color: rgba(131, 91, 32, 0.18);
+  background: #fbf1df;
+  color: #835b20;
+}
+
+.stat-card--warning.stat-card--summary::after {
+  background: #835b20;
+}
+
+.stat-card--danger .icon-badge {
+  border-color: rgba(154, 65, 61, 0.18);
+  background: #faece8;
+  color: #9a413d;
+}
+
+.stat-card--danger.stat-card--summary {
+  border-color: rgba(154, 65, 61, 0.22);
+  background: rgba(255, 253, 249, 0.82);
+}
+
+.stat-card--danger.stat-card--summary::after {
+  background: #9a413d;
+}
+
+.stat-label,
+.stat-help,
+.dashboard-card__head p,
+.dashboard-section-title p,
+.performance-panel .kpi-card span,
+.performance-panel .performance-summary-note p,
+.revenue-chart-widget .widget-title {
+  color: #667085;
+}
+
+.stat-value,
+.dashboard-card__head h3,
+.dashboard-section-title h2,
+.performance-panel__header h3,
+.performance-panel .kpi-card strong,
+.revenue-chart-widget .total-amount {
+  color: #24303f;
+}
+
+.performance-panel .performance-summary-note--compact {
+  border-color: rgba(31, 106, 96, 0.16);
+  background: #f2faf7;
+}
+
+.performance-panel .performance-summary-note--compact p,
+.performance-summary-score strong,
+.performance-summary-score span,
+.dashboard-staff-roster__group-label,
+.dashboard-staff-roster__online-icon,
+.dashboard-staff-roster__footer button {
+  color: #17554d;
+}
+
+.performance-summary-score {
+  border-color: rgba(31, 106, 96, 0.18);
+}
+
+.dashboard-empty--healthy,
+.dashboard-card--alerts-healthy .dashboard-empty,
+.dashboard-staff-roster__presence.is-online {
+  border-color: rgba(31, 106, 96, 0.18);
+  background: #f2faf7;
+  color: #17554d;
+}
+
+.revenue-chart-empty__icon,
+.revenue-compact-empty__icon,
+.empty-icon--operation {
+  border-color: rgba(31, 106, 96, 0.16);
+  background: #f2faf7;
+  color: #17554d;
+}
+
+@media (max-width: 768px) {
+  .manager-dashboard {
+    padding: 12px;
+    border-radius: 20px 20px 0 0;
+  }
+}
