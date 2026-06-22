@@ -88,3 +88,5 @@ jobs:
             No tests were run, per request.
           add-paths: |
             cohan-restaurant-backend/graphql/resolvers/order/mutation.js
+
+# Triggered after the workflow file already existed on this branch.
