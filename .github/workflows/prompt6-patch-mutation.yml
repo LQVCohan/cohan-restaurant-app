@@ -1,0 +1,79 @@
+name: prompt6-patch-mutation
+
+on:
+  push:
+    branches:
+      - automation/prompt6-patch-mutation
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/prompt6-checkout-idempotency-v2
+          fetch-depth: 0
+
+      - name: Replace removed hydration call
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("cohan-restaurant-backend/graphql/resolvers/order/mutation.js")
+          text = path.read_text(encoding="utf-8")
+
+          old = '''        const nextItems = oldItems.map((x) => {
+          if (String(x._id) !== String(orderItemId)) return x;
+          return {
+            ...x,
+            quantity: nextQuantity,
+          };
+        });
+
+        await hydrateOrderItems({
+          restaurantId: order.restaurantId,
+          items: nextItems,
+          session,
+        });
+'''
+
+          new = '''        const nextItemInputs = oldItems.map((x) => {
+          if (String(x._id) !== String(orderItemId)) return x;
+          return {
+            ...x,
+            quantity: nextQuantity,
+          };
+        });
+
+        const nextItems = await hydrateCheckoutOrderItems({
+          restaurantId: order.restaurantId,
+          items: nextItemInputs,
+          session,
+        });
+'''
+
+          if old not in text:
+              raise SystemExit("Expected quantity-adjustment hydration block was not found")
+
+          text = text.replace(old, new, 1)
+          if "hydrateOrderItems({" in text:
+              raise SystemExit("Obsolete hydrateOrderItems call still exists")
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit target branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cohan-restaurant-backend/graphql/resolvers/order/mutation.js
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Use shared hydration for quantity adjustments"
+          git push origin HEAD:codex/prompt6-checkout-idempotency-v2
