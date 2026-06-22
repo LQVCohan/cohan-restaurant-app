@@ -1,0 +1,60 @@
+name: PR 1103 schema diagnostics
+
+on:
+  push:
+    branches:
+      - codex/auth-rbac-clean
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.event.head_commit.message != 'Record PR 1103 schema diagnostics'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/auth-rbac-clean
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
+      - run: npm --prefix cohan-restaurant-backend ci
+      - name: Parse every GraphQL schema file
+        run: |
+          node --input-type=module <<'NODE' > pr1103-schema-diagnostics.txt
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { createRequire } from 'node:module';
+          const require = createRequire(path.resolve('cohan-restaurant-backend/package.json'));
+          const { parse } = require('graphql');
+          const dir = path.resolve('cohan-restaurant-backend/graphql/schema');
+          const files = fs.readdirSync(dir).filter((name) => name.endsWith('.graphql')).sort();
+          let failures = 0;
+          for (const file of files) {
+            const source = fs.readFileSync(path.join(dir, file), 'utf8');
+            if (!source.trim()) {
+              failures += 1;
+              console.log(`EMPTY ${file}`);
+              continue;
+            }
+            try {
+              parse(source);
+              console.log(`OK ${file}`);
+            } catch (error) {
+              failures += 1;
+              console.log(`FAIL ${file}: ${error.message}`);
+            }
+          }
+          console.log(`failures=${failures}`);
+          NODE
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pr1103-schema-diagnostics.txt
+          git commit -m "Record PR 1103 schema diagnostics"
+          git push origin HEAD:codex/auth-rbac-clean
