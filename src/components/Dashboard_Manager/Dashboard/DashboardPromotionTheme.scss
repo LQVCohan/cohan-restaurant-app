@@ -19,7 +19,10 @@
   --dash-shadow-md: 0 14px 36px rgba(42, 36, 27, 0.075);
   --dash-shadow-lg: 0 20px 46px rgba(42, 36, 27, 0.1);
   color: var(--dash-text);
-  background: linear-gradient(180deg, #f8f5ee 0%, #f5f4ef 54%, #f2f1ec 100%);
+  background:
+    radial-gradient(circle at 6% -8%, rgba(31, 106, 96, 0.1), transparent 30rem),
+    radial-gradient(circle at 96% 4%, rgba(168, 133, 95, 0.09), transparent 28rem),
+    linear-gradient(180deg, #f8f5ee 0%, #f5f4ef 54%, #f2f1ec 100%);
   border-radius: 26px 26px 0 0;
   padding: 18px;
 }
@@ -28,10 +31,27 @@
 .dashboard-filterbar,
 .dashboard-system-overview,
 .dashboard-card,
-.stat-card {
+.stat-card,
+.performance-panel .kpi-card,
+.performance-panel .performance-summary-note,
+.performance-panel .action-list li,
+.performance-panel .action-list__empty,
+.performance-empty,
+.performance-loading,
+.performance-error {
   border-color: rgba(128, 109, 83, 0.15);
   background: rgba(255, 253, 249, 0.8);
   box-shadow: 0 14px 36px rgba(42, 36, 27, 0.075);
+}
+
+.dashboard-compact-header {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.11), transparent 18rem),
+    rgba(255, 253, 249, 0.84);
+}
+
+.dashboard-compact-header::before {
+  background: radial-gradient(circle, rgba(31, 106, 96, 0.12), transparent 68%);
 }
 
 .dashboard-btn--primary,
@@ -39,6 +59,7 @@
   border-color: #1f6a60;
   background: #1f6a60;
   color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 106, 96, 0.2);
 }
 
 .dashboard-btn--primary:hover:not(:disabled),
@@ -55,4 +76,71 @@
   border-color: rgba(31, 106, 96, 0.14);
   background: #f2faf7;
   color: #17554d;
+}
+
+.dashboard-card--support-queue {
+  border-color: rgba(31, 106, 96, 0.15);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.08), transparent 16rem),
+    rgba(255, 253, 249, 0.8);
+}
+
+.dashboard-card--action-queue-active {
+  border-color: rgba(131, 91, 32, 0.2);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(131, 91, 32, 0.08), transparent 18rem),
+    rgba(255, 253, 249, 0.82);
+}
+
+.dashboard-queue-item,
+.dashboard-support-item,
+.dashboard-staff-roster__item,
+.dashboard-card--action-queue .dashboard-queue-section__empty,
+.dashboard-empty,
+.revenue-compact-empty,
+.revenue-chart-empty {
+  border-color: rgba(128, 109, 83, 0.15);
+  background: rgba(255, 253, 249, 0.78);
+}
+
+.dashboard-queue-item:hover,
+.dashboard-support-item:hover,
+.dashboard-staff-roster__item:hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  background: #f2faf7;
+}
+
+.queue-age--new,
+.alert-count--healthy,
+.status-pill--completed,
+.revenue-chart-widget .growth-badge.positive {
+  border-color: rgba(31, 106, 96, 0.18) !important;
+  background: #f2faf7 !important;
+  color: #17554d !important;
+}
+
+.queue-age--waiting,
+.alert-count--warning,
+.status-pill--pending,
+.status-pill--preparing {
+  border-color: rgba(131, 91, 32, 0.18) !important;
+  background: #fbf1df !important;
+  color: #835b20 !important;
+}
+
+.queue-age--overdue,
+.queue-btn--danger,
+.status-pill--cancelled,
+.revenue-chart-widget .growth-badge.negative,
+.performance-error {
+  border-color: rgba(154, 65, 61, 0.2) !important;
+  background: #faece8 !important;
+  color: #9a413d !important;
+}
+
+.queue-btn--ghost,
+.revenue-chart-widget .comparison-note {
+  border-color: #ded6cb;
+  background: rgba(255, 253, 249, 0.82);
+  color: #3c4650;
 }
