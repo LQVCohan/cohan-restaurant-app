@@ -110,7 +110,7 @@ const ManagerPerformancePanel = ({
   if (isEmpty) {
     return renderPanelState(
       "performance-empty",
-      "Chưa có nhân viên hoặc dữ liệu đánh giá trong tháng này.",
+      "Chưa phát sinh dữ liệu đánh giá hoặc điều chỉnh điểm trong tháng này.",
     );
   }
 

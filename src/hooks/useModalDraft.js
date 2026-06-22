@@ -106,7 +106,12 @@ export default function useModalDraft({
   }, [draftIdentity]);
 
   const getSanitizedData = useCallback(() => {
-    const safeValue = typeof sanitize === "function" ? sanitize(formValue) : formValue;
+    const resolvedFormValue =
+      typeof formValue === "function" ? formValue() : formValue;
+    const safeValue =
+      typeof sanitize === "function"
+        ? sanitize(resolvedFormValue)
+        : resolvedFormValue;
     return safeValue && typeof safeValue === "object" ? safeValue : null;
   }, [formValue, sanitize]);
 

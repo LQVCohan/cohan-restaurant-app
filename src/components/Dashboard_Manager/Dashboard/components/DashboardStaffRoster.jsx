@@ -135,7 +135,7 @@ const DashboardStaffRoster = ({ restaurantId, onOpenStaff }) => {
       <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
           <h3>Nhân viên của nhà hàng</h3>
-          <p>Ưu tiên người đang trực tuyến, sau đó sắp xếp theo tên.</p>
+          <p>Theo dõi nhanh trạng thái trực tuyến và chức danh.</p>
         </div>
         <span className="dashboard-staff-roster__count">
           <UsersRound size={14} />
