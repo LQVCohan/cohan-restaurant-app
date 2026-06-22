@@ -2,11 +2,28 @@ import { describe, expect, it } from "vitest";
 import {
   MENU_MANAGEMENT_ACTIONS,
   canAccessMenuManagementAction,
+  isRestaurantScopedRole,
+  isStaffOperationalRole,
 } from "./frontendRoleAccess";
 
 const userWith = (...codes) => ({
   roleName: "staff",
   effectivePermissionCodes: codes,
+});
+
+describe("restaurant-scoped frontend roles", () => {
+  it("keeps HR and accountant out of operational floor roles", () => {
+    expect(isStaffOperationalRole("hr")).toBe(false);
+    expect(isStaffOperationalRole("accountant")).toBe(false);
+  });
+
+  it("maps HR, accountant and operational staff to an assigned restaurant", () => {
+    expect(isRestaurantScopedRole("hr")).toBe(true);
+    expect(isRestaurantScopedRole("accountant")).toBe(true);
+    expect(isRestaurantScopedRole("server")).toBe(true);
+    expect(isRestaurantScopedRole("manager")).toBe(false);
+    expect(isRestaurantScopedRole("customer")).toBe(false);
+  });
 });
 
 describe("MenuManagement frontend permission mapping", () => {

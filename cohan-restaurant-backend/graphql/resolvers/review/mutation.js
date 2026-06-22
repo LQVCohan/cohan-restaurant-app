@@ -1,5 +1,5 @@
 import { Notification, Restaurant, Review, ReviewHelpful, ReviewReaction, ReviewReport } from "../../../models/index.js";
-import { requirePermission, requireRestaurantAccess } from "../../guards.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { logReviewEvent } from "../../../utils/logReview.js";
 import {
   REVIEW_REACTION_TYPES,
@@ -160,8 +160,7 @@ export default {
       const normalized = normalizeReviewInput({ ...before.toObject(), ...input, rating: input.rating ?? before.rating, content: input.content ?? before.content });
       Object.assign(patch, normalized, analyzeReviewText(normalized.title, normalized.content));
     } else {
-      requirePermission(ctx, "review.moderate");
-      await requireRestaurantAccess(ctx, before.restaurantId);
+      await requireRestaurantPermission(ctx, before.restaurantId, "review.moderate");
       const requestedKeys = Object.keys(input || {});
       const forbiddenKeys = requestedKeys.filter((key) => key !== "moderationNote");
       if (forbiddenKeys.length) {
@@ -198,8 +197,7 @@ export default {
     if (!REVIEW_STATUSES.includes(status)) throw badUserInput("Trạng thái review không hợp lệ.");
     const before = await Review.findById(id);
     if (!before) throw new Error("Review not found");
-    requirePermission(ctx, "review.moderate");
-    await requireRestaurantAccess(ctx, before.restaurantId);
+    await requireRestaurantPermission(ctx, before.restaurantId, "review.moderate");
 
     const adminAction = isAdmin(ctx);
     const trimmedReason = String(reason || "").trim();
@@ -308,8 +306,7 @@ export default {
   resolveReviewReport: async (_, { id, input = {} }, ctx) => {
     const report = await ReviewReport.findById(id);
     if (!report) throw new Error("Report not found");
-    requirePermission(ctx, "review.report.resolve");
-    await requireRestaurantAccess(ctx, report.restaurantId);
+    await requireRestaurantPermission(ctx, report.restaurantId, "review.report.resolve");
     const status = ["resolved", "rejected"].includes(input.status) ? input.status : "resolved";
     report.status = status;
     report.resolutionNote = String(input.resolutionNote || "").trim();

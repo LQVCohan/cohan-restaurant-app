@@ -698,7 +698,7 @@ describe("requireRestaurantAccess role matrix", () => {
     "allows %s through restaurantForStaff",
     async (roleName) => {
       const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-      await expect(requireRestaurantAccess({ user: { id: `${roleName}-1`, roleName, restaurantForStaff: RESTAURANT_ID } }, RESTAURANT_ID)).resolves.toBeUndefined();
+      await expect(requireRestaurantAccess({ user: { id: roleName + "-1", roleName, restaurantForStaff: RESTAURANT_ID } }, RESTAURANT_ID)).resolves.toBeUndefined();
     },
   );
 

@@ -60,14 +60,9 @@ describe("authorization.service RBAC", () => {
     ).rejects.toThrow("FORBIDDEN");
   });
 
-  it("allows manager to manage staff inside assigned restaurant scope", async () => {
-    const ctx = {
-      user: {
-        id: "manager-1",
-        roleName: "manager",
-        refRestaurants: [RESTAURANT_ID],
-      },
-    };
+  it("allows manager to manage staff inside a restaurant they own", async () => {
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
+    const ctx = { user: { id: "manager-1", roleName: "manager" } };
     await expect(requireRestaurantPermission(ctx, RESTAURANT_ID, "staff.write")).resolves.toBe(true);
   });
 
@@ -76,12 +71,23 @@ describe("authorization.service RBAC", () => {
       user: {
         id: "manager-1",
         roleName: "manager",
-        refRestaurants: ["rest-other-1"],
       },
     };
     await expect(requireRestaurantPermission(ctx, RESTAURANT_ID, "staff.write")).rejects.toMatchObject({
       statusCode: 403,
     });
+  });
+
+  it("allows HR read permission only in the assigned restaurant", async () => {
+    const ctx = { user: { id: "hr-1", roleName: "hr", restaurantForStaff: RESTAURANT_ID } };
+    await expect(requireRestaurantPermission(ctx, RESTAURANT_ID, "staff.read")).resolves.toBe(true);
+    await expect(requireRestaurantPermission(ctx, "rest-other-1", "staff.read")).rejects.toThrow("FORBIDDEN_SCOPE");
+  });
+
+  it("allows accountant finance permission only in the assigned restaurant", async () => {
+    const ctx = { user: { id: "acc-1", roleName: "accountant", restaurantForStaff: RESTAURANT_ID } };
+    await expect(requireRestaurantPermission(ctx, RESTAURANT_ID, "finance.read")).resolves.toBe(true);
+    await expect(requireRestaurantPermission(ctx, "rest-other-1", "finance.read")).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
   it("returns 403 when user lacks the requested restaurant permission", async () => {

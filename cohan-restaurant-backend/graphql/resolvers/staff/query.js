@@ -77,7 +77,6 @@ import {
 import { mapSchedulePublicationOutput } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
 import {
   requireAuth,
-  requireRestaurantScope,
   requireRestaurantAccess,
   requireRoles,
 } from "../../guards.js";

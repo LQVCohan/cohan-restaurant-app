@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
 import { Notification, Review, ReviewComment, ReviewCommentReaction, EventLog } from "../../../models/index.js";
-import { requirePermission, requireRestaurantAccess } from "../../guards.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { REVIEW_REACTION_TYPES, buildReactionIncPayload, clampReactionSummary, deriveCustomerIdentity, forbidden, unauthenticated } from "../../../src/services/reviewHardening.service.js";
 
 function roleSlug(user) { return String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase(); }
@@ -51,12 +51,10 @@ export default {
       throw forbidden();
     }
     if (review.status !== "published" && type !== "customer") {
-      requirePermission(ctx, "review.reply");
-      await requireRestaurantAccess(ctx, review.restaurantId);
+      await requireRestaurantPermission(ctx, review.restaurantId, "review.reply");
     }
     if (wantsOfficial) {
-      requirePermission(ctx, "review.reply");
-      await requireRestaurantAccess(ctx, review.restaurantId);
+      await requireRestaurantPermission(ctx, review.restaurantId, "review.reply");
     }
     if (parentId) {
       const parent = await ReviewComment.findById(parentId);
@@ -99,7 +97,7 @@ export default {
       patch.isEdited = true;
     }
     if (isOwner(ctx, comment)) delete patch.status;
-    else { requirePermission(ctx, "review.moderate"); await requireRestaurantAccess(ctx, comment.restaurantId); if (input.status) patch.status = input.status; }
+    else { await requireRestaurantPermission(ctx, comment.restaurantId, "review.moderate"); if (input.status) patch.status = input.status; }
     patch.updatedBy = ctx?.user?.id || ctx?.user?._id || null;
     await comment.updateOne(patch);
     const updated = await ReviewComment.findById(id);
@@ -110,7 +108,7 @@ export default {
   deleteReviewComment: async (_, { id }, ctx) => {
     const comment = await ReviewComment.findById(id);
     if (!comment) return false;
-    if (!isOwner(ctx, comment)) { requirePermission(ctx, "review.delete"); await requireRestaurantAccess(ctx, comment.restaurantId); }
+    if (!isOwner(ctx, comment)) { await requireRestaurantPermission(ctx, comment.restaurantId, "review.delete"); }
     const { reviewId, restaurantId, parentId } = comment;
     await comment.updateOne({ status: "deleted", updatedBy: ctx?.user?.id || ctx?.user?._id || null });
     if (parentId) await ReviewComment.updateOne({ _id: parentId, repliesCount: { $gt: 0 } }, { $inc: { repliesCount: -1 } });
@@ -122,8 +120,7 @@ export default {
   setReviewCommentStatus: async (_, { id, status }, ctx) => {
     const comment = await ReviewComment.findById(id);
     if (!comment) throw new Error("Comment không tồn tại");
-    requirePermission(ctx, "review.moderate");
-    await requireRestaurantAccess(ctx, comment.restaurantId);
+    await requireRestaurantPermission(ctx, comment.restaurantId, "review.moderate");
     await comment.updateOne({ status, updatedBy: ctx?.user?.id || ctx?.user?._id || null });
     const updated = await ReviewComment.findById(id);
     await logComment({ restaurantId: updated.restaurantId, verb: "review.comment.status", object: { kind: "ReviewComment", id }, actorUserId: ctx?.user?.id, meta: { status } });

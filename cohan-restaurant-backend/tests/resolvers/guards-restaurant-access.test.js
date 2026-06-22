@@ -1,81 +1,65 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 const modelMocks = vi.hoisted(() => ({
   Restaurant: { exists: vi.fn() },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
 
-describe("requireRestaurantAccess", () => {
+const RESTAURANT_ID = "r1";
+
+describe("requireRestaurantAccess role matrix", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    modelMocks.Restaurant.exists.mockResolvedValue(false);
   });
 
-  it("admin bypasses restaurant access", async () => {
+  it("allows admin across all restaurants", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(requireRestaurantAccess({ user: { id: "a1", roles: ["admin"] } }, "r1")).resolves.toBeUndefined();
+    await expect(requireRestaurantAccess({ user: { id: "a1", roleName: "admin" } }, RESTAURANT_ID)).resolves.toBeUndefined();
     expect(modelMocks.Restaurant.exists).not.toHaveBeenCalled();
   });
 
-  it("allows direct scope via restaurantId for manager without Restaurant.exists call", async () => {
-    const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(
-      requireRestaurantAccess({ user: { id: "manager-a", roles: ["manager"], restaurantId: "r1" } }, "r1"),
-    ).resolves.toBeUndefined();
-    expect(modelMocks.Restaurant.exists).not.toHaveBeenCalled();
-  });
-
-
-  it("accepts _id-only authenticated contexts and normalizes ctx.user.id", async () => {
-    const { requireAuth, requireRestaurantAccess } = await import("../../graphql/guards.js");
-    const ctx = { user: { _id: "manager-a", roles: ["manager"], restaurantId: "r1" } };
-
-    expect(() => requireAuth(ctx)).not.toThrow();
-    expect(ctx.user.id).toBe("manager-a");
-    await expect(requireRestaurantAccess(ctx, "r1")).resolves.toBeUndefined();
-  });
-
-  it("allows manager when Restaurant.managerId matches", async () => {
+  it("allows manager only when Restaurant.managerId matches", async () => {
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(requireRestaurantAccess({ user: { id: "manager-a", roles: ["manager"] } }, "r1")).resolves.toBeUndefined();
+    await expect(requireRestaurantAccess({ user: { id: "m1", roleName: "manager" } }, RESTAURANT_ID)).resolves.toBeUndefined();
+    expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({ _id: RESTAURANT_ID, managerId: "m1" });
   });
 
-  it("allows restaurantForStaff direct scope", async () => {
+  it("does not treat manager refRestaurants as authorization", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(
-      requireRestaurantAccess({ user: { id: "s1", roleName: "server", restaurantForStaff: "r1" } }, "r1"),
-    ).resolves.toBeUndefined();
+    await expect(requireRestaurantAccess({ user: { id: "m1", roleName: "manager", refRestaurants: [RESTAURANT_ID] } }, RESTAURANT_ID)).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("denies staff-like role when only refRestaurants matches", async () => {
+  it.each(["hr", "accountant", "staff", "server", "supervisor", "cashier", "chef", "storekeeper"])(
+    "allows %s through restaurantForStaff",
+    async (roleName) => {
+      const { requireRestaurantAccess } = await import("../../graphql/guards.js");
+      await expect(requireRestaurantAccess({ user: { id: roleName + "-1", roleName, restaurantForStaff: RESTAURANT_ID } }, RESTAURANT_ID)).resolves.toBeUndefined();
+    },
+  );
+
+  it("denies restaurant-scoped roles outside their assigned restaurant", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(
-      requireRestaurantAccess({ user: { id: "s1", roleName: "staff", userType: "STAFF", refRestaurants: ["r2"] } }, "r2"),
-    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(requireRestaurantAccess({ user: { id: "hr1", roleName: "hr", restaurantForStaff: "other" } }, RESTAURANT_ID)).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("allows non-staff direct scope via refRestaurants", async () => {
+  it("denies customer access from refRestaurants", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(
-      requireRestaurantAccess({ user: { id: "c1", roleName: "customer", userType: "CUSTOMER", refRestaurants: ["r2"] } }, "r2"),
-    ).resolves.toBeUndefined();
+    await expect(requireRestaurantAccess({ user: { id: "c1", roleName: "customer", refRestaurants: [RESTAURANT_ID] } }, RESTAURANT_ID)).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("denies when direct scope mismatches and manager fallback is false", async () => {
-    modelMocks.Restaurant.exists.mockResolvedValue(false);
+  it("denies customer access from restaurantId or restaurantIds fields", async () => {
     const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(
-      requireRestaurantAccess({ user: { id: "s1", roleName: "server", restaurantForStaff: "r1" } }, "r2"),
-    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(requireRestaurantAccess({ user: { id: "c1", roleName: "customer", restaurantId: RESTAURANT_ID, restaurantIds: [RESTAURANT_ID] } }, RESTAURANT_ID)).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("denies with FORBIDDEN_SCOPE when Restaurant.exists is missing", async () => {
-    const original = modelMocks.Restaurant.exists;
-    delete modelMocks.Restaurant.exists;
-
-    const { requireRestaurantAccess } = await import("../../graphql/guards.js");
-    await expect(requireRestaurantAccess({ user: { id: "m1", roles: ["manager"] } }, "r1")).rejects.toThrow("FORBIDDEN_SCOPE");
-
-    modelMocks.Restaurant.exists = original;
+  it("normalizes _id-only authenticated contexts", async () => {
+    const { requireAuth } = await import("../../graphql/guards.js");
+    const ctx = { user: { _id: "u1" } };
+    expect(() => requireAuth(ctx)).not.toThrow();
+    expect(ctx.user.id).toBe("u1");
   });
 });
