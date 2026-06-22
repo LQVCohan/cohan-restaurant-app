@@ -1,0 +1,48 @@
+name: Auth hardening diagnostics
+
+on:
+  push:
+    branches:
+      - codex/auth-rbac-clean
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnostics:
+    if: github.event_name != 'push' || github.event.head_commit.message != 'Record auth test output'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/auth-rbac-clean
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Install backend dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+      - name: Capture frontend unit output
+        run: |
+          set +e
+          npm run test:unit > auth-frontend-test-output.txt 2>&1
+          echo "frontend_status=$?" > auth-test-status.txt
+      - name: Capture backend test output
+        run: |
+          set +e
+          npm --prefix cohan-restaurant-backend run test --if-present > auth-backend-test-output.txt 2>&1
+          echo "backend_status=$?" >> auth-test-status.txt
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add auth-frontend-test-output.txt auth-backend-test-output.txt auth-test-status.txt
+          git commit -m "Record auth test output"
+          git push origin HEAD:codex/auth-rbac-clean
