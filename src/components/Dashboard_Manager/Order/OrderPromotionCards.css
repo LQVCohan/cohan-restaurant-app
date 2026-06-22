@@ -2,7 +2,7 @@
   border-color: rgba(128, 109, 83, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.42), transparent 28%),
-    rgba(255, 253, 249, 0.9);
+    rgba(255, 253, 249, 0.92);
   color: var(--om-ink);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.82),
@@ -14,12 +14,36 @@
   box-shadow: 0 20px 44px rgba(42, 36, 27, 0.12);
 }
 
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-strip {
+  background: var(--om-sage);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).pending .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).confirmed .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).preparing .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).warning .oc-status-strip {
+  background: var(--om-warning);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).ready .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).served .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).completed .oc-status-strip {
+  background: var(--om-sage);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).cancelled .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).failed .oc-status-strip,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus).danger .oc-status-strip {
+  background: var(--om-danger);
+}
+
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-header {
   border-bottom-color: rgba(31, 106, 96, 0.12);
   background: var(--om-sage-mist);
 }
 
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-table-tag {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-table-tag,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .qty-badge {
   border-color: rgba(31, 106, 96, 0.16);
   background: var(--om-sage-soft);
   color: var(--om-sage-dark);
@@ -29,7 +53,8 @@
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-pill--pending,
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-pill--confirmed,
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-pill--preparing,
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-time-badge.warning {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-time-badge.warning,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-note-badge--void {
   border-color: rgba(131, 91, 32, 0.18);
   background: var(--om-warning-soft);
   color: var(--om-warning);
@@ -38,7 +63,8 @@
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-pill--ready,
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-pill--served,
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-pill--completed,
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-time-badge.fresh {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-time-badge.fresh,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-note-badge--payment {
   border-color: rgba(31, 106, 96, 0.18);
   background: var(--om-sage-mist);
   color: var(--om-sage-dark);
@@ -53,85 +79,99 @@
 }
 
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-order-code,
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-guest svg {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-guest svg,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-batch-title,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .item-meta .method {
   color: var(--om-sage-dark);
 }
 
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-guest,
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-batch-code {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-batch-code,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .item-meta,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-total .label {
   color: var(--om-muted);
 }
 
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.primary {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .item-name,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-total .value {
+  color: var(--om-ink);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-note-badge,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-note-box,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .item-meta .mod,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-more-items {
+  border-color: rgba(31, 106, 96, 0.12);
+  background: var(--om-sage-mist);
+  color: var(--om-text);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-progress-track {
+  background: rgba(31, 106, 96, 0.12);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-progress-fill {
+  background: linear-gradient(90deg, var(--om-sage), #79a89e);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-item-row {
+  border-color: rgba(128, 109, 83, 0.14);
+  background: rgba(255, 253, 249, 0.76);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-item-row:hover {
+  border-color: rgba(31, 106, 96, 0.22);
+  background: var(--om-sage-mist);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-footer {
+  border-top-color: rgba(31, 106, 96, 0.12);
+  background: rgba(242, 250, 247, 0.74);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.primary,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.success {
   border-color: var(--om-sage);
   background: var(--om-sage);
   color: #fff;
+  box-shadow: 0 10px 20px rgba(31, 106, 96, 0.18);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.primary:hover,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.success:hover {
+  border-color: var(--om-sage-dark);
+  background: var(--om-sage-dark);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.primary-outline {
+  border-color: rgba(31, 106, 96, 0.24);
+  background: var(--om-sage-mist);
+  color: var(--om-sage-dark);
 }
 
 .om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.secondary {
   border-color: var(--om-border);
-  background: rgba(255, 253, 249, 0.86);
+  background: rgba(255, 253, 249, 0.9);
   color: var(--om-text);
 }
 
-.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.secondary.cancel {
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.secondary:hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  background: var(--om-sage-mist);
+}
+
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.secondary.cancel,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-btn.cancel {
   border-color: rgba(154, 65, 61, 0.2);
   background: var(--om-danger-soft);
   color: var(--om-danger);
 }
 
-@media (max-width: 1180px) {
-  .om-container:not(.om-container--focus) .management-page-header {
-    grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header .mph-controls-row {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header .mph-search {
-    flex: 1 1 280px;
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header .mph-select {
-    flex: 0 1 190px;
-  }
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-status-label,
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-loading-bar {
+  background: var(--om-sage-mist);
 }
 
-@media (max-width: 760px) {
-  .om-container:not(.om-container--focus) .om-wrapper {
-    padding: 12px;
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header {
-    grid-template-columns: 1fr;
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header .mph-left {
-    padding: 0 0 10px;
-    border-right: 0;
-    border-bottom: 1px solid rgba(128, 109, 83, 0.16);
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header .mph-subtitle {
-    max-width: none;
-  }
-
-  .om-container:not(.om-container--focus) .management-page-header .mph-search,
-  .om-container:not(.om-container--focus) .management-page-header .mph-select,
-  .om-container:not(.om-container--focus) .management-page-header .mph-btn {
-    width: 100%;
-    flex-basis: 100%;
-  }
-}
-
-@media (max-width: 520px) {
-  .om-container:not(.om-container--focus) .management-page-header .mph-icon-btn {
-    flex: 1 1 calc(50% - 4px);
-  }
-
-  .om-container:not(.om-container--focus) .om-kpi-panel {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.om-container:not(.om-container--focus) .oc-card:not(.mode-focus) .oc-loading-bar .bar {
+  background: rgba(31, 106, 96, 0.28);
 }
