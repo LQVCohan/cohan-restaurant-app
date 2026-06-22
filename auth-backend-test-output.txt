@@ -5,50 +5,15 @@
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.8 [39m[90m/home/runner/work/cohan-restaurant-app/cohan-restaurant-app/cohan-restaurant-backend[39m
 
- [31m❯[39m tests/resolvers/review-access.test.js [2m([22m[2m16 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 227[2mms[22m[39m
-     [32m✓[39m public reviews force published and no guard[32m 148[2mms[22m[39m
-[31m     [31m×[31m staff pending reviews with restaurantId requires guard first[39m[32m 9[2mms[22m[39m
-     [32m✓[39m non-admin staff pending without restaurantId throws[32m 3[2mms[22m[39m
-     [32m✓[39m review pending denies public allows owner/staff scoped[32m 3[2mms[22m[39m
-     [32m✓[39m createReview requires login and publishes with backend-derived createdBy[32m 34[2mms[22m[39m
-     [32m✓[39m createReview with valid staff sets canonical staffId/staffName[32m 3[2mms[22m[39m
-     [32m✓[39m createReview with invalid staff restaurant throws clear error[32m 1[2mms[22m[39m
-     [32m✓[39m createReview without staffId stores null/empty staff fields[32m 1[2mms[22m[39m
-     [32m✓[39m updateReview owner sanitizes forbidden fields[32m 1[2mms[22m[39m
-     [32m✓[39m setReviewStatus only allows staff scoped report-backed moderation[32m 2[2mms[22m[39m
-     [32m✓[39m updateReview with valid staffId refreshes staffName snapshot[32m 1[2mms[22m[39m
-     [32m✓[39m updateReview with only staffName does not persist raw staffName[32m 1[2mms[22m[39m
-     [32m✓[39m updateReview with staffId null clears staff fields[32m 1[2mms[22m[39m
-     [32m✓[39m increment/react review block unpublished[32m 1[2mms[22m[39m
-     [32m✓[39m reviewComments unpublished denies public before comment db[32m 8[2mms[22m[39m
-     [32m✓[39m createReviewComment derives restaurantId and validates parent[32m 6[2mms[22m[39m
- [32m✓[39m tests/resolvers/review-transparent-flow.test.js [2m([22m[2m12 tests[22m[2m)[22m[32m 183[2mms[22m[39m
- [32m✓[39m tests/resolvers/review-blockers.resolver.test.js [2m([22m[2m6 tests[22m[2m)[22m[33m 438[2mms[22m[39m
-     [33m[2m✓[22m[39m creates a customer comment without authorName in input and derives identity [33m 422[2mms[22m[39m
- [32m✓[39m tests/resolvers/guards-restaurant-access.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 44[2mms[22m[39m
- [32m✓[39m tests/services/authorization.service.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/resolvers/review-transparent-flow.test.js [2m([22m[2m12 tests[22m[2m)[22m[32m 217[2mms[22m[39m
+ [32m✓[39m tests/resolvers/review-access.test.js [2m([22m[2m16 tests[22m[2m)[22m[32m 181[2mms[22m[39m
+ [32m✓[39m tests/resolvers/review-blockers.resolver.test.js [2m([22m[2m6 tests[22m[2m)[22m[33m 439[2mms[22m[39m
+     [33m[2m✓[22m[39m creates a customer comment without authorName in input and derives identity [33m 427[2mms[22m[39m
+ [32m✓[39m tests/resolvers/guards-restaurant-access.test.js [2m([22m[2m15 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m tests/services/authorization.service.test.js [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
 
-[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+[2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m60 passed[39m[22m[90m (60)[39m
+[2m   Start at [22m 19:23:44
+[2m   Duration [22m 841ms[2m (transform 551ms, setup 65ms, import 529ms, tests 906ms, environment 1ms)[22m
 
-[41m[1m FAIL [22m[49m tests/resolvers/review-access.test.js[2m > [22mreview/reviewComment access hardening[2m > [22mstaff pending reviews with restaurantId requires guard first
-[31m[1mGraphQLError[22m: Forbidden[39m
-[36m [2m❯[22m forbidden graphql/resolvers/review/query.js:[2m11:52[22m[39m
-    [90m  9|[39m function isStaffLike(user) { const role = roleSlug(user); return role.…
-    [90m 10|[39m function isOwner(ctx, doc) { const uid = ctx?.user?.id || ctx?.user?._…
-    [90m 11|[39m function forbidden(message = "Forbidden") { return new GraphQLError(me…
-    [90m   |[39m                                                    [31m^[39m
-    [90m 12|[39m async function requireReviewModerationAccess(ctx, review) { await requ…
-    [90m 13|[39m
-[90m [2m❯[22m Object.reviews graphql/resolvers/review/query.js:[2m54:78[22m[39m
-[90m [2m❯[22m tests/resolvers/review-access.test.js:[2m68:5[22m[39m
-
-[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
-
-
-[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (5)[39m
-[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m59 passed[39m[22m[90m (60)[39m
-[2m   Start at [22m 19:21:43
-[2m   Duration [22m 838ms[2m (transform 390ms, setup 81ms, import 427ms, tests 904ms, environment 1ms)[22m
-
-
-::error file=/home/runner/work/cohan-restaurant-app/cohan-restaurant-app/cohan-restaurant-backend/graphql/resolvers/review/query.js,title=tests/resolvers/review-access.test.js > review/reviewComment access hardening > staff pending reviews with restaurantId requires guard first,line=11,column=52::GraphQLError: Forbidden%0A ❯ forbidden graphql/resolvers/review/query.js:11:52%0A ❯ Object.reviews graphql/resolvers/review/query.js:54:78%0A ❯ tests/resolvers/review-access.test.js:68:5%0A%0A⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯%0ASerialized Error: { extensions: { code: 'FORBIDDEN' } }%0A
