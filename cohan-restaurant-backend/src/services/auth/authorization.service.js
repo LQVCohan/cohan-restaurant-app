@@ -1,5 +1,8 @@
 import { GraphQLError } from "graphql";
-import { requireRestaurantAccess } from "../../../graphql/guards.js";
+import {
+  hasPermission as hasContextPermission,
+  requireRestaurantAccess,
+} from "../../../graphql/guards.js";
 import { hasRole } from "../../../utils/authz.js";
 
 export const MANAGER_STAFF_PERMISSION_WHITELIST = Object.freeze([
@@ -139,6 +142,7 @@ export async function hasPermission(user, permissionCode) {
   const code = normalizePermissionCode(permissionCode);
   if (!code) return false;
   if (hasRole(user, ["admin"])) return true;
+  if (hasContextPermission({ user }, code)) return true;
 
   const permissions = await getUserEffectivePermissions(user);
   const codes = permissions.map(permissionKey);
