@@ -17,15 +17,14 @@ function restaurantIdToString(value) {
 function hasDirectRestaurantScope(ctx, restaurantId) {
   const user = ctx?.user || {};
   const roles = resolveUserRoles(user);
+  const isManager = roles.includes("MANAGER");
   const isRestaurantScopedRole = roles.some((role) => RESTAURANT_SCOPED_ROLES.has(role));
   const target = restaurantIdToString(restaurantId);
-  if (!target || !isRestaurantScopedRole) return false;
+  if (!target || (!isManager && !isRestaurantScopedRole)) return false;
 
-  const scopedIds = [
-    user.restaurantForStaff,
-    user.restaurantId,
-    ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : []),
-  ];
+  const scopedIds = isManager
+    ? [user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])]
+    : [user.restaurantForStaff, user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])];
 
   return scopedIds.some((id) => restaurantIdToString(id) === target);
 }
@@ -36,7 +35,8 @@ async function managerOwnsRestaurant(ctx, restaurantId) {
 
   try {
     const models = await import("../models/index.js");
-    const Restaurant = models.Restaurant;
+    const descriptor = Object.getOwnPropertyDescriptor(models, "Restaurant");
+    const Restaurant = descriptor?.value;
     if (typeof Restaurant?.exists !== "function") return false;
 
     return Boolean(await Restaurant.exists({ _id: restaurantId, managerId }));
