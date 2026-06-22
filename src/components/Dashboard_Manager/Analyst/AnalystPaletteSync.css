@@ -1,0 +1,425 @@
+/*
+ * Manager analyst palette synchronization.
+ *
+ * Uses the calm slate/stone workspace from Dashboard and the sage accent used
+ * by Promotion. Saturated colors remain reserved for warning and danger data.
+ */
+.manager-analyst-page {
+  --analyst-surface: var(--manager-surface-solid, #fffdf8);
+  --analyst-surface-soft: rgba(255, 253, 248, 0.82);
+  --analyst-surface-muted: #f8f5ee;
+  --analyst-border: var(--manager-border, rgba(213, 204, 190, 0.78));
+  --analyst-border-strong: #cec3b5;
+  --analyst-text: var(--manager-text, #1f2a2b);
+  --analyst-muted: var(--manager-muted, #63706d);
+  --analyst-primary: var(--manager-primary, #2d3a43);
+  --analyst-primary-hover: var(--manager-primary-hover, #22303a);
+  --analyst-accent: #1f6a60;
+  --analyst-accent-dark: #17554d;
+  --analyst-accent-soft: #dcefe9;
+  --analyst-accent-mist: #f2faf7;
+  --analyst-success: var(--manager-success, #4d7566);
+  --analyst-success-soft: var(--manager-success-soft, #edf5f1);
+  --analyst-warning: var(--manager-warm, #8a633f);
+  --analyst-warning-soft: #fbf1df;
+  --analyst-danger: var(--manager-danger, #ba514b);
+  --analyst-danger-soft: #faece8;
+  --analyst-shadow-sm: var(--manager-shadow-sm, 0 8px 20px rgba(70, 62, 50, 0.05));
+  --analyst-shadow-md: var(--manager-shadow-md, 0 14px 32px rgba(70, 62, 50, 0.07));
+  --analyst-shadow-lg: var(--manager-shadow-lg, 0 20px 48px rgba(70, 62, 50, 0.1));
+
+  width: 100%;
+  max-width: 1400px;
+  min-height: 100dvh;
+  padding: var(--spacing-5, 18px) 0 0;
+  color: var(--analyst-text);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.manager-analyst-page .analyst-header {
+  background:
+    radial-gradient(circle at 92% -22%, rgba(31, 106, 96, 0.13), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 245, 239, 0.92)),
+    var(--analyst-surface);
+  border-color: var(--analyst-border);
+  border-radius: 24px;
+  box-shadow: var(--analyst-shadow-lg);
+}
+
+.manager-analyst-page .analyst-header .status-chip,
+.manager-analyst-page .analytics-section__eyebrow {
+  color: var(--analyst-accent-dark);
+}
+
+.manager-analyst-page .analyst-header .status-chip {
+  background: var(--analyst-accent-mist);
+  border-color: rgba(31, 106, 96, 0.18);
+}
+
+.manager-analyst-page .analyst-header h1,
+.manager-analyst-page .analytics-section__title,
+.manager-analyst-page .compact-card-header h3,
+.manager-analyst-page :is(.widget-header, .chart-header) :is(h3, h4),
+.manager-analyst-page :is(.header-info, .header-left, .header-content) :is(h3, h4, h5),
+.manager-analyst-page .kpi-insight-card .kpi-value {
+  color: var(--analyst-text);
+}
+
+.manager-analyst-page .analyst-header p,
+.manager-analyst-page .analytics-section__subtitle,
+.manager-analyst-page .compact-card-header p,
+.manager-analyst-page :is(.widget-header, .chart-header) :is(p, .subtitle),
+.manager-analyst-page :is(.header-info, .header-left, .header-content) :is(p, .subtitle),
+.manager-analyst-page .kpi-insight-card :is(.kpi-label, .comparison-text, .target-label) {
+  color: var(--analyst-muted);
+}
+
+.manager-analyst-page .analyst-header :is(.picker-wrap, .btn-icon, .btn-primary) {
+  border-color: var(--analyst-border);
+  background: rgba(255, 253, 248, 0.9);
+  box-shadow: var(--analyst-shadow-sm);
+}
+
+.manager-analyst-page .analyst-header .picker-wrap {
+  color: var(--analyst-accent-dark);
+}
+
+.manager-analyst-page .analyst-header .picker-wrap:hover,
+.manager-analyst-page .analyst-header .btn-icon:hover:not(:disabled) {
+  color: var(--analyst-accent-dark);
+  border-color: rgba(31, 106, 96, 0.28);
+  background: var(--analyst-accent-mist);
+}
+
+.manager-analyst-page .analyst-header .picker-wrap select {
+  color: var(--analyst-text);
+}
+
+.manager-analyst-page :is(.grid-item, .action-center-panel, .kpi-insight-card) {
+  background: var(--analyst-surface-soft);
+  border-color: var(--analyst-border);
+  box-shadow: var(--analyst-shadow-sm);
+}
+
+.manager-analyst-page .grid-item:hover,
+.manager-analyst-page .kpi-insight-card:hover {
+  border-color: rgba(31, 106, 96, 0.24);
+  box-shadow: var(--analyst-shadow-md);
+}
+
+.manager-analyst-page .kpi-insight-card:first-child {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.13), transparent 12rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(242, 250, 247, 0.94));
+  border-color: rgba(31, 106, 96, 0.24);
+}
+
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(1) .icon-wrapper {
+  color: #1f6a60 !important;
+  background-color: rgba(31, 106, 96, 0.1) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(1) .progress-fill {
+  background-color: #1f6a60 !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(1) .card-decor {
+  background: radial-gradient(circle at top right, rgba(31, 106, 96, 0.16), transparent 70%) !important;
+}
+
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(2) .icon-wrapper {
+  color: #6f7f7a !important;
+  background-color: rgba(111, 127, 122, 0.11) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(2) .progress-fill {
+  background-color: #6f7f7a !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(2) .card-decor {
+  background: radial-gradient(circle at top right, rgba(111, 127, 122, 0.15), transparent 70%) !important;
+}
+
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(3) .icon-wrapper {
+  color: #8a633f !important;
+  background-color: rgba(138, 99, 63, 0.1) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(3) .progress-fill {
+  background-color: #8a633f !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(3) .card-decor {
+  background: radial-gradient(circle at top right, rgba(138, 99, 63, 0.14), transparent 70%) !important;
+}
+
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(4) .icon-wrapper {
+  color: #4d7566 !important;
+  background-color: rgba(77, 117, 102, 0.1) !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(4) .progress-fill {
+  background-color: #4d7566 !important;
+}
+.manager-analyst-page .kpi-section .kpi-insight-card:nth-child(4) .card-decor {
+  background: radial-gradient(circle at top right, rgba(77, 117, 102, 0.14), transparent 70%) !important;
+}
+
+.manager-analyst-page .kpi-insight-card .progress-track,
+.manager-analyst-page .kpi-insight-card .trend-badge.flat {
+  background: var(--analyst-surface-muted);
+}
+
+.manager-analyst-page .action-center-panel--primary {
+  background:
+    linear-gradient(90deg, rgba(31, 106, 96, 0.12), transparent 12px),
+    radial-gradient(circle at 0 0, rgba(31, 106, 96, 0.1), transparent 18rem),
+    var(--analyst-surface-soft);
+}
+
+.manager-analyst-page .action-center-count {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+}
+
+.manager-analyst-page .action-card {
+  border-color: var(--analyst-border);
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.manager-analyst-page .action-card button,
+.manager-analyst-page .analytics-empty-state button,
+.manager-analyst-page .inline-nav {
+  color: var(--analyst-accent-dark);
+}
+
+.manager-analyst-page .action-card--warning {
+  border-color: rgba(138, 99, 63, 0.24);
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(251, 241, 223, 0.84));
+}
+.manager-analyst-page .action-card--warning::before {
+  background: var(--analyst-warning);
+}
+.manager-analyst-page .action-card--warning .action-card__icon,
+.manager-analyst-page .priority-badge--warning,
+.manager-analyst-page .queue-badge.pending {
+  color: var(--analyst-warning);
+  background: var(--analyst-warning-soft);
+}
+
+.manager-analyst-page .action-card--info {
+  border-color: rgba(31, 106, 96, 0.2);
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(242, 250, 247, 0.88));
+}
+.manager-analyst-page .action-card--info::before {
+  background: var(--analyst-accent);
+}
+.manager-analyst-page .action-card--info .action-card__icon,
+.manager-analyst-page .priority-badge--info {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+}
+
+.manager-analyst-page .action-card--critical,
+.manager-analyst-page .analyst-error {
+  border-color: rgba(186, 81, 75, 0.24);
+  background: var(--analyst-danger-soft);
+}
+.manager-analyst-page .action-card--critical::before {
+  background: var(--analyst-danger);
+}
+.manager-analyst-page .action-card--critical .action-card__icon,
+.manager-analyst-page .priority-badge--critical {
+  color: var(--analyst-danger);
+  background: var(--analyst-danger-soft);
+}
+
+.manager-analyst-page :is(.analyst-empty-data, .analyst-empty-page, .analytics-empty-state) {
+  color: var(--analyst-muted);
+  background: var(--analyst-surface-soft);
+  border-color: var(--analyst-border);
+}
+
+.manager-analyst-page .analytics-empty-state__icon,
+.manager-analyst-page .revenue-analytics-card .empty-icon {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+}
+
+.manager-analyst-page .ghost-refresh,
+.manager-analyst-page .queue-actions button,
+.manager-analyst-page .revenue-analytics-card .empty-state-inline button,
+.manager-analyst-page .menu-matrix-widget .mini-bcg-insight button {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-mist);
+  border-color: rgba(31, 106, 96, 0.2);
+}
+
+.manager-analyst-page .ghost-refresh:hover:not(:disabled),
+.manager-analyst-page .queue-actions button:hover,
+.manager-analyst-page .revenue-analytics-card .empty-state-inline button:hover,
+.manager-analyst-page .menu-matrix-widget .mini-bcg-insight button:hover {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-soft);
+  border-color: rgba(31, 106, 96, 0.32);
+}
+
+.manager-analyst-page .low-stock-compact {
+  background: var(--analyst-warning-soft);
+  border-color: rgba(138, 99, 63, 0.2);
+}
+.manager-analyst-page .low-stock-compact__head :is(span, strong) {
+  color: var(--analyst-warning);
+}
+
+.manager-analyst-page .queue-list li {
+  border-color: var(--analyst-border);
+}
+.manager-analyst-page .queue-badge {
+  color: var(--analyst-text);
+  background: var(--analyst-surface-muted);
+}
+.manager-analyst-page .queue-badge.acknowledged {
+  color: var(--analyst-success);
+  background: var(--analyst-success-soft);
+}
+
+.manager-analyst-page .revenue-analytics-card .revenue-summary-strip div,
+.manager-analyst-page :is(.matrix-empty-state, .state-message, .empty-state-inline, .heatmap-empty-state),
+.manager-analyst-page .menu-matrix-widget :is(.mini-bcg-insight, .chart-area) {
+  color: var(--analyst-muted);
+  background: var(--analyst-surface-soft);
+  border-color: var(--analyst-border);
+}
+
+.manager-analyst-page .revenue-analytics-card .empty-state-inline {
+  background:
+    radial-gradient(circle at 50% 0, rgba(31, 106, 96, 0.09), transparent 14rem),
+    var(--analyst-surface-soft);
+}
+
+.manager-analyst-page .revenue-analytics-card .chart-skeleton,
+.manager-analyst-page .revenue-analytics-card .revenue-summary-strip div {
+  border-color: var(--analyst-border);
+}
+.manager-analyst-page .revenue-analytics-card .chart-skeleton span {
+  background: linear-gradient(90deg, rgba(220, 239, 233, 0.7), rgba(242, 250, 247, 0.48), rgba(220, 239, 233, 0.7));
+}
+
+.manager-analyst-page .menu-matrix-widget .mini-bcg-insight {
+  background:
+    radial-gradient(circle at 100% 0, rgba(31, 106, 96, 0.09), transparent 12rem),
+    var(--analyst-surface-soft);
+}
+.manager-analyst-page .menu-matrix-widget .q-puzzle {
+  background: rgba(111, 127, 122, 0.07);
+}
+.manager-analyst-page .menu-matrix-widget .q-star {
+  background: rgba(31, 106, 96, 0.08);
+}
+.manager-analyst-page .menu-matrix-widget .q-dog {
+  background: rgba(99, 112, 109, 0.07);
+}
+.manager-analyst-page .menu-matrix-widget .q-plowhorse {
+  background: rgba(138, 99, 63, 0.07);
+}
+.manager-analyst-page .menu-matrix-widget .dish-dot.star {
+  background: var(--analyst-accent);
+}
+.manager-analyst-page .menu-matrix-widget .dish-dot.plowhorse {
+  background: var(--analyst-warning);
+}
+.manager-analyst-page .menu-matrix-widget .dish-dot.puzzle {
+  background: var(--manager-accent, #6f7f7a);
+}
+.manager-analyst-page .menu-matrix-widget .tooltip {
+  background: var(--analyst-primary);
+  box-shadow: 0 12px 24px rgba(45, 58, 67, 0.2);
+}
+
+.manager-analyst-page .feedback-analysis-widget,
+.manager-analyst-page .feedback-analysis-widget .widget-header {
+  background: transparent;
+}
+.manager-analyst-page .feedback-analysis-widget .rating-badge,
+.manager-analyst-page .feedback-analysis-widget .filter-tabs button.active {
+  background: var(--analyst-primary);
+}
+.manager-analyst-page .feedback-analysis-widget .filter-tabs {
+  border-color: var(--analyst-border);
+}
+.manager-analyst-page .feedback-analysis-widget .filter-tabs button {
+  color: var(--analyst-muted);
+}
+.manager-analyst-page .feedback-analysis-widget .filter-tabs button:hover:not(.active) {
+  background: var(--analyst-accent-mist);
+  color: var(--analyst-accent-dark);
+}
+.manager-analyst-page .feedback-analysis-widget .filter-tabs button.attention.active,
+.manager-analyst-page .feedback-analysis-widget .ai-daily-summary {
+  color: var(--analyst-warning);
+  background: var(--analyst-warning-soft);
+  border-color: rgba(138, 99, 63, 0.2);
+}
+.manager-analyst-page .feedback-analysis-widget .feedback-item:not(:last-child)::before {
+  background: var(--analyst-border);
+}
+.manager-analyst-page .feedback-analysis-widget .tag {
+  color: var(--analyst-muted);
+  background: var(--analyst-surface-muted);
+}
+
+.manager-analyst-page :is(.smart-heatmap-widget, .staff-performance-widget) .filter-row button {
+  color: var(--analyst-muted);
+  background: transparent;
+  border-color: transparent;
+}
+.manager-analyst-page :is(.smart-heatmap-widget, .staff-performance-widget) .filter-row button:hover:not(.active) {
+  color: var(--analyst-accent-dark);
+  background: var(--analyst-accent-mist);
+}
+.manager-analyst-page :is(.smart-heatmap-widget, .staff-performance-widget) .filter-row button.active {
+  color: #fff;
+  background: var(--analyst-primary);
+  border-color: var(--analyst-primary);
+}
+.manager-analyst-page .staff-performance-widget .progress-bg {
+  background: var(--analyst-surface-muted);
+}
+.manager-analyst-page .staff-performance-widget .progress-fill {
+  background: var(--analyst-accent);
+}
+
+.manager-analyst-page :is(
+  .demand-forecast-widget,
+  .staff-scheduling-assistant-widget,
+  .menu-engineering-assistant-widget,
+  .smart-promotion-engine-widget
+) :is(button, a) {
+  accent-color: var(--analyst-accent);
+}
+
+.manager-analyst-page :is(
+  .demand-forecast-widget,
+  .staff-scheduling-assistant-widget,
+  .menu-engineering-assistant-widget,
+  .smart-promotion-engine-widget
+) :is(.summary-card, .list-block, .list-section, .forecast-item, .campaign-card, .campaign-item, li) {
+  border-color: var(--analyst-border);
+}
+
+.manager-analyst-page :is(
+  .picker-wrap select,
+  .btn-icon,
+  .btn-primary,
+  .ghost-refresh,
+  .action-card button,
+  .queue-actions button,
+  .feedback-analysis-widget button,
+  .staff-performance-widget button
+):focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.2);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1180px) {
+  .manager-analyst-page {
+    padding-inline: 0;
+  }
+}
