@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 import { MenuItem } from "../../models/index.js";
 import {
   OrderItemHydrationError,
-  hydrateCheckoutOrderItems as hydrateLegacyCheckoutOrderItems,
-} from "./orderItemHydration.legacy.js";
+  hydrateCheckoutOrderItems as hydrateCoreCheckoutOrderItems,
+} from "./orderItemHydration.core.js";
 
 export { OrderItemHydrationError };
 
@@ -91,7 +91,7 @@ export async function hydrateCheckoutOrderItems({
 
   await assertMenuItemsAvailable({ restaurantId, items, session });
 
-  const hydratedItems = await hydrateLegacyCheckoutOrderItems({
+  const hydratedItems = await hydrateCoreCheckoutOrderItems({
     restaurantId,
     items,
     session,
