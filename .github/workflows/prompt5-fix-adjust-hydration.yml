@@ -1,0 +1,90 @@
+name: prompt5-fix-adjust-hydration
+
+on:
+  push:
+    branches:
+      - automation/prompt5-fix-adjust-hydration
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-fix-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trigger branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch quantity adjustment hydration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("cohan-restaurant-backend/graphql/resolvers/order/mutation.js")
+          text = source.read_text(encoding="utf-8")
+
+          old = '''        const nextItems = oldItems.map((x) => {
+          if (String(x._id) !== String(orderItemId)) return x;
+          return {
+            ...x,
+            quantity: nextQuantity,
+          };
+        });
+
+        await hydrateOrderItems({
+          restaurantId: order.restaurantId,
+          items: nextItems,
+          session,
+        });
+'''
+
+          new = '''        const nextItemInputs = oldItems.map((x) => {
+          if (String(x._id) !== String(orderItemId)) return x;
+          return {
+            ...x,
+            quantity: nextQuantity,
+          };
+        });
+
+        const nextItems = await hydrateCheckoutOrderItems({
+          restaurantId: order.restaurantId,
+          items: nextItemInputs,
+          session,
+        });
+'''
+
+          if old not in text:
+              raise SystemExit("Expected quantity-adjustment hydration block was not found")
+
+          text = text.replace(old, new, 1)
+
+          if "hydrateOrderItems({" in text:
+              raise SystemExit("Obsolete hydrateOrderItems call still exists")
+
+          Path("/tmp/mutation.fixed.js").write_text(text, encoding="utf-8")
+          PY
+
+      - name: Reset to main and restore fixed file
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/mutation.fixed.js cohan-restaurant-backend/graphql/resolvers/order/mutation.js
+          git diff --check
+
+      - name: Create fix pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: codex/prompt5-fix-adjust-hydration
+          base: main
+          commit-message: Use shared hydration for quantity adjustments
+          title: "Prompt 5: fix quantity adjustment hydration"
+          body: |
+            Replace the removed local `hydrateOrderItems` call in `adjustOrderItemQuantity` with the shared `hydrateCheckoutOrderItems` service and use its returned hydrated items for totals and inventory reservations.
+
+            No tests were run, per request.
+          add-paths: |
+            cohan-restaurant-backend/graphql/resolvers/order/mutation.js
