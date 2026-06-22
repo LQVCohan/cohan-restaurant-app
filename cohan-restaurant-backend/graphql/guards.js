@@ -18,13 +18,16 @@ function hasDirectRestaurantScope(ctx, restaurantId) {
   const user = ctx?.user || {};
   const roles = resolveUserRoles(user);
   const isRestaurantScopedRole = roles.some((role) => RESTAURANT_SCOPED_ROLES.has(role));
+  const isManager = roles.includes("MANAGER");
   const target = restaurantIdToString(restaurantId);
   if (!target) return false;
 
   const scopedIds = [
     user.restaurantId,
     ...(isRestaurantScopedRole ? [user.restaurantForStaff] : []),
-    ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : []),
+    ...(isManager && Array.isArray(user.managedRestaurantIds)
+      ? user.managedRestaurantIds
+      : []),
   ];
 
   return scopedIds.some((id) => restaurantIdToString(id) === target);
@@ -84,6 +87,8 @@ export function requireRoles(ctx, allowed = []) {
   }
 }
 
+// Compatibility guard for legacy synchronous resolver paths. Manager scope is
+// limited to the owned restaurant ids resolved into the authenticated context.
 export function requireRestaurantScope(ctx, restaurantId) {
   requireAuth(ctx);
   const roles = resolveUserRoles(ctx.user);
