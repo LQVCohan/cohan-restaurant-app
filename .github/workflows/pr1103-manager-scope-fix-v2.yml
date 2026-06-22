@@ -1,0 +1,68 @@
+name: PR 1103 manager scope patch v2
+
+on:
+  push:
+    branches:
+      - codex/auth-rbac-clean
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply manager scope compatibility v2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/auth-rbac-clean
+          fetch-depth: 0
+      - name: Patch guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('cohan-restaurant-backend/graphql/guards.js')
+          source = path.read_text()
+          replacement = '''function hasDirectRestaurantScope(ctx, restaurantId) {
+            const user = ctx?.user || {};
+            const roles = resolveUserRoles(user);
+            const isManager = roles.includes("MANAGER");
+            const isRestaurantScopedRole = roles.some((role) => RESTAURANT_SCOPED_ROLES.has(role));
+            const target = restaurantIdToString(restaurantId);
+            if (!target || (!isManager && !isRestaurantScopedRole)) return false;
+
+            const scopedIds = isManager
+              ? [user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])]
+              : [user.restaurantForStaff, user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])];
+
+            return scopedIds.some((id) => restaurantIdToString(id) === target);
+          }
+
+          async function managerOwnsRestaurant'''
+          source, count = re.subn(
+            r'function hasDirectRestaurantScope\(ctx, restaurantId\) \{.*?\n\}\n\nasync function managerOwnsRestaurant',
+            replacement,
+            source,
+            count=1,
+            flags=re.S,
+          )
+          if count != 1:
+            raise SystemExit('guard function not found')
+          source = source.replace(
+            '    const Restaurant = models.Restaurant;\n    if (typeof Restaurant?.exists !== "function") return false;',
+            '    const descriptor = Object.getOwnPropertyDescriptor(models, "Restaurant");\n    const Restaurant = descriptor?.value;\n    if (typeof Restaurant?.exists !== "function") return false;',
+          )
+          path.write_text(source)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cohan-restaurant-backend/graphql/guards.js
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Apply manager scope compatibility v2"
+          git pull --rebase origin codex/auth-rbac-clean
+          git push origin HEAD:codex/auth-rbac-clean
