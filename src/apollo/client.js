@@ -31,8 +31,9 @@ const authLink = setContext((_, { headers }) => {
 
 function makeClientIdempotencyKey(operationName = "order") {
   const randomPart =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
+    typeof globalThis.crypto !== "undefined" &&
+    typeof globalThis.crypto.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
       : `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   return `${operationName}:${randomPart}`;
 }
@@ -46,18 +47,84 @@ function shouldAttachIdempotency(operationName = "") {
   ].includes(operationName);
 }
 
+const checkoutIdempotencyMemory = new Map();
+const CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX = "checkout-idempotency:";
+
+function canonicalizeIdempotencyValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeIdempotencyValue);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.keys(value)
+    .filter((key) => key !== "idempotencyKey")
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = canonicalizeIdempotencyValue(value[key]);
+      return acc;
+    }, {});
+}
+
+function hashIdempotencyPayload(value) {
+  const serialized = JSON.stringify(canonicalizeIdempotencyValue(value));
+  let hash = 2166136261;
+
+  for (let index = 0; index < serialized.length; index += 1) {
+    hash ^= serialized.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return `${(hash >>> 0).toString(16)}:${serialized.length}`;
+}
+
+function readStoredCheckoutKey(storageKey) {
+  if (typeof window === "undefined") {
+    return checkoutIdempotencyMemory.get(storageKey) || null;
+  }
+
+  try {
+    return window.sessionStorage.getItem(storageKey);
+  } catch {
+    return checkoutIdempotencyMemory.get(storageKey) || null;
+  }
+}
+
+function storeCheckoutKey(storageKey, key) {
+  checkoutIdempotencyMemory.set(storageKey, key);
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(storageKey, key);
+  } catch {
+    // The in-memory fallback still keeps retries stable for this page session.
+  }
+}
+
+function getStableCheckoutIdempotencyKey(input) {
+  const fingerprint = hashIdempotencyPayload(input);
+  const storageKey = `${CHECKOUT_IDEMPOTENCY_STORAGE_PREFIX}${fingerprint}`;
+  const stored = readStoredCheckoutKey(storageKey);
+  if (stored) return stored;
+
+  const key = makeClientIdempotencyKey("CreateCheckoutOrders");
+  storeCheckoutKey(storageKey, key);
+  return key;
+}
+
 const idempotencyLink = new ApolloLink((operation, forward) => {
   const operationName = operation?.operationName || "";
   const input = operation?.variables?.input;
 
   if (shouldAttachIdempotency(operationName) && input && typeof input === "object") {
+    const isCustomerCheckout = operationName === "CreateCheckoutOrders";
     const hasTopLevelKey = Boolean(input.idempotencyKey);
     const hasClientMetaKey = Boolean(input.clientMeta?.idempotencyKey);
-    if (!hasTopLevelKey && !hasClientMetaKey) {
-      const key = makeClientIdempotencyKey(operationName);
+
+    if (isCustomerCheckout || (!hasTopLevelKey && !hasClientMetaKey)) {
+      const key = isCustomerCheckout
+        ? getStableCheckoutIdempotencyKey(input)
+        : makeClientIdempotencyKey(operationName);
       const nextInput = {
         ...input,
-        ...(operationName === "CreateCheckoutOrders" ? { idempotencyKey: key } : {}),
+        ...(isCustomerCheckout ? { idempotencyKey: key } : {}),
         clientMeta: {
           ...(input.clientMeta || {}),
           idempotencyKey: key,
