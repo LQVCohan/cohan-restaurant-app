@@ -97,7 +97,7 @@ describe("shift acknowledgement query resolvers", () => {
     await query.shiftAcknowledgements(
       null,
       { restaurantId: "rest-1", status: "declined" },
-      { user: { id: "manager-1", roles: ["manager"], refRestaurants: ["rest-1"] } },
+      { user: { id: "manager-1", roles: ["manager"], restaurantIds: ["rest-1"] } },
     );
 
     expect(modelMocks.findMock).toHaveBeenCalledWith({

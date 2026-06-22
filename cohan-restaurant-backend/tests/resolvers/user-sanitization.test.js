@@ -211,17 +211,17 @@ describe("user DTO sanitizers", () => {
     expect(out.verificationLastStatus).toBeUndefined();
   });
 
-  it("recognizes direct and refRestaurants staff restaurant membership", () => {
+  it("recognizes only assigned staff restaurant membership", () => {
     expect(staffBelongsToRestaurant({ restaurantForStaff: "restaurant-1" }, "restaurant-1")).toBe(true);
     expect(staffBelongsToRestaurant({ restaurantForStaff: "restaurant-2" }, "restaurant-1")).toBe(false);
-    expect(staffBelongsToRestaurant({ refRestaurants: [{ _id: "restaurant-1" }] }, "restaurant-1")).toBe(true);
+    expect(staffBelongsToRestaurant({ refRestaurants: [{ _id: "restaurant-1" }] }, "restaurant-1")).toBe(false);
   });
 
   it("does not authorize against a caller supplied restaurant unrelated to target staff", async () => {
     await expect(
       sanitizeStaffPrivateProfile(
         { _id: "staff-b", fullName: "Staff B", restaurantForStaff: "restaurant-b", baseSalary: 100 },
-        { user: { id: "manager-a", roleName: "manager", restaurantForStaff: "restaurant-a" } },
+        { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
         { restaurantId: "restaurant-a" },
       ),
     ).rejects.toThrow("Staff not found");
@@ -230,7 +230,7 @@ describe("user DTO sanitizers", () => {
   it("allows a manager with staff.read to read staff in the manager restaurant", async () => {
     const out = await sanitizeStaffPrivateProfile(
       { _id: "staff-a", fullName: "Staff A", restaurantForStaff: "restaurant-a", baseSalary: 100 },
-      { user: { id: "manager-a", roleName: "manager", restaurantForStaff: "restaurant-a" } },
+      { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
       { restaurantId: "restaurant-a" },
     );
     expect(out.baseSalary).toBe(100);
@@ -239,14 +239,14 @@ describe("user DTO sanitizers", () => {
   it("uses target staff restaurant when restaurantId is omitted", async () => {
     const out = await sanitizeStaffPrivateProfile(
       { _id: "staff-a", fullName: "Staff A", restaurantForStaff: "restaurant-a", baseSalary: 100 },
-      { user: { id: "manager-a", roleName: "manager", restaurantForStaff: "restaurant-a" } },
+      { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
     );
     expect(out.baseSalary).toBe(100);
 
     await expect(
       sanitizeStaffPrivateProfile(
         { _id: "staff-b", fullName: "Staff B", restaurantForStaff: "restaurant-b", baseSalary: 100 },
-        { user: { id: "manager-a", roleName: "manager", restaurantForStaff: "restaurant-a" } },
+        { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });

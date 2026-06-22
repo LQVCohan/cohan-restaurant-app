@@ -269,7 +269,7 @@ describe("shift acknowledgement mutation resolvers", () => {
     const result = await mutation.reviewShiftAcknowledgement(
       null,
       { input: { acknowledgementId: "ack-1", classification: "valid" } },
-      { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+      { user: { id: "mgr-1", roles: ["manager"], restaurantIds: ["r1"] } },
     );
 
     expect(result.declineClassification).toBe("valid");
@@ -292,7 +292,7 @@ describe("shift acknowledgement mutation resolvers", () => {
     const result = await mutation.reviewShiftAcknowledgement(
       null,
       { input: { acknowledgementId: "ack-2", classification: "invalid" } },
-      { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+      { user: { id: "mgr-1", roles: ["manager"], restaurantIds: ["r1"] } },
     );
 
     expect(result.declineClassification).toBe("invalid");
@@ -315,7 +315,7 @@ describe("shift acknowledgement mutation resolvers", () => {
       mutation.reviewShiftAcknowledgement(
         null,
         { input: { acknowledgementId: "ack-late", classification: "valid" } },
-        { user: { id: "mgr-1", roles: ["manager"], refRestaurants: ["r1"] } },
+        { user: { id: "mgr-1", roles: ["manager"], restaurantIds: ["r1"] } },
       ),
     ).rejects.toThrow("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
     expect(doc.save).not.toHaveBeenCalled();

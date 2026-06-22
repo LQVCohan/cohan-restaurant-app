@@ -32,6 +32,9 @@ function unlockedPayroll() {
 }
 
 function ctx(id, userType, restaurantId = RESTAURANT_ID) {
+  const normalizedRole = String(userType || "").toUpperCase();
+  if (normalizedRole === "ADMIN") return { user: { id, userType } };
+  if (normalizedRole === "MANAGER") return { user: { id, userType, restaurantId } };
   return { user: { id, userType, restaurantForStaff: restaurantId } };
 }
 

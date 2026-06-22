@@ -53,7 +53,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     const result = await assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",
@@ -86,7 +86,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",
@@ -105,7 +105,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
       staffUserId: "staff-1",
       roleId: "role-admin",
       restaurantId: "restaurant-1",
@@ -132,7 +132,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
       staffUserId: "staff-1",
       roleId: "role-storekeeper",
       restaurantId: "restaurant-1",
@@ -154,7 +154,7 @@ describe("staffRoleAssignment.service", () => {
       const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
       await expect(assignStaffRoleWithinRestaurant({
-        actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+        actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
         staffUserId: "staff-1",
         roleId: `role-${code}`,
         restaurantId: "restaurant-1",
@@ -199,7 +199,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", refRestaurants: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",
@@ -210,8 +210,8 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     for (const actor of [
-      { id: "staff-actor", roleName: "staff", refRestaurants: ["restaurant-1"] },
-      { id: "customer-actor", roleName: "customer", refRestaurants: ["restaurant-1"] },
+      { id: "staff-actor", roleName: "staff", restaurantIds: ["restaurant-1"] },
+      { id: "customer-actor", roleName: "customer", restaurantIds: ["restaurant-1"] },
     ]) {
       await expect(assignStaffRoleWithinRestaurant({
         actor,
