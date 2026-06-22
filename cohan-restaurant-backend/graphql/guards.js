@@ -1,4 +1,5 @@
 import { normalizeRole, resolveUserRoles } from "../src/services/scheduling/schedulingPermission.service.js";
+import { REVIEW_ROLE_PERMISSION_DEFAULTS } from "../src/services/auth/reviewPermissionDefaults.js";
 
 const RESTAURANT_SCOPED_ROLES = new Set([
   "HR", "ACCOUNTANT", "STAFF", "SERVER", "SUPERVISOR", "HOST", "CASHIER",
@@ -133,10 +134,8 @@ function collectPermissionCodes(user = {}) {
 }
 
 const LEGACY_ROLE_PERMISSION_MAP = {
-  manager: ["review.read", "review.reply", "review.moderate", "review.delete", "review.report.read", "review.report.resolve", "review.export", "review.analytics.read"],
+  ...REVIEW_ROLE_PERMISSION_DEFAULTS,
   admin: ["*"],
-  staff: ["review.read", "review.reply"],
-  supervisor: ["review.read", "review.reply", "review.moderate", "review.report.read"],
 };
 
 export function hasPermission(ctx, permission) {
