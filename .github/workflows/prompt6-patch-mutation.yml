@@ -77,3 +77,5 @@ jobs:
           fi
           git commit -m "Use shared hydration for quantity adjustments"
           git push origin HEAD:codex/prompt6-checkout-idempotency-v2
+
+# trigger
