@@ -1,0 +1,18 @@
+.dashboard-support-open,
+.dashboard-staff-roster__footer button,
+.dashboard-card--action-queue .queue-btn,
+.dashboard-card--support-queue .queue-btn {
+  font-size: 12px;
+}
+
+.dashboard-support-open {
+  font-size: 13px;
+}
+
+.dashboard-support-open::after,
+.dashboard-staff-roster__footer button::before,
+.dashboard-card--action-queue .queue-btn::after,
+.dashboard-card--support-queue .queue-btn::after {
+  display: none !important;
+  content: "" !important;
+}
