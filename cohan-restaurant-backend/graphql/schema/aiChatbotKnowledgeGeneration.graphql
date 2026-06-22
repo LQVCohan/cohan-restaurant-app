@@ -1,3 +1,2 @@
-# Compatibility placeholder.
-# The AI knowledge generation mutation is defined in aiChatbot.graphql because
-# the runtime backend schema loader uses an explicit schema file allowlist.
+# Placeholder schema file. The mutation is defined in aiChatbot.graphql.
+scalar AIChatbotKnowledgeGenerationPlaceholder
