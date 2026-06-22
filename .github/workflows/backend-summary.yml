@@ -3,18 +3,20 @@ name: Backend test summary
 on:
   push:
     branches: [codex/auth-rbac-clean]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   summarize:
-    if: github.event.head_commit.message != 'Record backend test summary'
+    if: github.event_name != 'push' || github.event.head_commit.message != 'Record backend test summary'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: codex/auth-rbac-clean
+          ref: ${{ github.head_ref || 'codex/auth-rbac-clean' }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
