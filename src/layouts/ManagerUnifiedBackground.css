@@ -1,5 +1,6 @@
 @import "../components/Dashboard_Manager/Order/OrderPromotionTheme.css";
 @import "../components/Dashboard_Manager/Order/OrderPromotionCards.css";
+@import "../components/Dashboard_Manager/Order/OrderDashboardScaleFix.css";
 
 /* Unified manager workspace background.
    Applies a neutral premium workspace canvas to every manager sidebar page, except Orders.
