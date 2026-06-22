@@ -37,6 +37,9 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../utils/authz.js", () => ({ requireRole: requireRoleMock }));
+vi.mock("../../src/services/customerRankSetting.service.js", () => ({
+  getEffectiveCustomerRankSetting: vi.fn(async () => ({ ranks: [], isDefault: true })),
+}));
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((id) => /^valid-/.test(String(id))),
