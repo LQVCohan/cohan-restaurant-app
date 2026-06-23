@@ -7,18 +7,21 @@ const toShortNumber = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
 
+const methodLabel = (method = "") => ({
+  time_series_v1: "Dựa trên lịch sử đơn hàng",
+  demand_forecast_v1: "Dựa trên nhu cầu theo giờ",
+}[method] || "Dựa trên dữ liệu vận hành");
+
 const MetaStrip = ({ meta }) => {
   if (!meta) return null;
   const lowData = meta.lowDataFallbackUsed || meta.fallbackUsed || Number(meta.sampleOrders || 0) < 20;
   return (
     <div className="ai-meta-strip">
-      {lowData ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-      <span>Phương pháp: {meta.method || "-"}</span>
-      <span>Mẫu đơn: {meta.sampleOrders ?? "-"}</span>
-      <span>Số ngày: {meta.sampleDays ?? "-"}</span>
-      <span>AI hỗ trợ: {meta.aiEnhanced ? "có" : "không"}</span>
-      <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
-      {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+      {lowData ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+      <span>{methodLabel(meta.method)}</span>
+      <span>{meta.sampleOrders ?? "-"} đơn trong {meta.sampleDays ?? "-"} ngày</span>
+      {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
+      {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
     </div>
   );
 };
@@ -46,7 +49,7 @@ const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
           </div>
         </div>
         <span className={`meta-pill ${forecast?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {forecast?.meta?.aiEnhanced ? "AI hỗ trợ" : forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo định lượng"}
+          {forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo theo đơn"}
         </span>
       </div>
       <MetaStrip meta={forecast?.meta} />
