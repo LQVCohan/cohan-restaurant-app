@@ -13,12 +13,12 @@ const MetaStrip = ({ meta }) => {
   return (
     <div className="ai-meta-strip">
       {lowData ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-      <span>method: {meta.method || "-"}</span>
-      <span>sampleOrders: {meta.sampleOrders ?? "-"}</span>
-      <span>sampleDays: {meta.sampleDays ?? "-"}</span>
-      <span>aiEnhanced: {meta.aiEnhanced ? "yes" : "no"}</span>
-      <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
-      {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+      <span>Phương pháp: {meta.method || "-"}</span>
+      <span>Mẫu đơn: {meta.sampleOrders ?? "-"}</span>
+      <span>Số ngày: {meta.sampleDays ?? "-"}</span>
+      <span>AI hỗ trợ: {meta.aiEnhanced ? "có" : "không"}</span>
+      <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
+      {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
     </div>
   );
 };
@@ -52,7 +52,7 @@ const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
       <MetaStrip meta={forecast?.meta} />
 
       {loading ? (
-        <div className="state-message">Đang tính forecast từ dữ liệu đơn hàng...</div>
+        <div className="state-message">Đang tính dự báo từ dữ liệu đơn hàng...</div>
       ) : null}
 
       {!loading && !forecast?.hourlyForecast?.length ? (
