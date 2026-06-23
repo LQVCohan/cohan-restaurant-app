@@ -76,7 +76,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
 
           <div className="insight-row">
             <span>
-              <CircleDollarSign size={14} /> Margin trung bình: <strong>{nf(summary.avgMarginPct)}%</strong>
+              <CircleDollarSign size={14} /> Biên lợi nhuận TB: <strong>{nf(summary.avgMarginPct)}%</strong>
             </span>
             <span>
               <Target size={14} /> Tổng món phân tích: <strong>{nf(summary.totalDishes)}</strong>
@@ -96,7 +96,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
                     <span className={`quadrant ${dish.quadrant}`}>{quadrantLabel[dish.quadrant] || dish.quadrant}</span>
                   </div>
                   <div className="dish-sub">
-                    DT {nf(dish.revenue)}đ • LN {nf(dish.profit)}đ • Margin {nf(dish.marginPct)}%
+                    DT {nf(dish.revenue)}đ • LN {nf(dish.profit)}đ • Biên {nf(dish.marginPct)}%
                   </div>
                 </li>
               ))}
