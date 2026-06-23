@@ -1,9 +1,9 @@
 name: PR 1107 diagnostics
 
 on:
-  push:
+  pull_request:
     branches:
-      - codex/post-rbac-ci-stabilization
+      - main
   workflow_dispatch:
 
 permissions:
