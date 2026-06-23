@@ -151,7 +151,9 @@ const TableCameraPlacementPreviewModal = ({
 
     window.requestAnimationFrame(() => {
       const scrollContainer = contentRef.current?.closest(".modal-body");
-      scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+      if (typeof scrollContainer?.scrollTo === "function") {
+      scrollContainer.scrollTo({ top: 0, behavior: "auto" });
+    }
     });
   }, [open, initialPlacement]);
 

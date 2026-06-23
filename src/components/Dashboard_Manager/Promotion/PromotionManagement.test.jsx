@@ -12,6 +12,18 @@ const useCouponAnalytics = vi.hoisted(() => vi.fn());
 const usePromotionAnalytics = vi.hoisted(() => vi.fn());
 const statsCardMock = vi.hoisted(() => vi.fn());
 
+vi.mock("@apollo/client", async () => {
+  const actual = await vi.importActual("@apollo/client");
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({
+      data: { customerRankSettings: { ranks: [] } },
+      loading: false,
+      error: null,
+    })),
+  };
+});
+
 vi.mock("@/hooks/usePromotions", () => ({
   usePromotions: vi.fn(),
 }));

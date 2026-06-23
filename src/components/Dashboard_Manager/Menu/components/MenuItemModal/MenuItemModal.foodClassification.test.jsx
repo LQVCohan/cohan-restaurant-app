@@ -10,8 +10,8 @@ describe("MenuItemModal food classification controls", () => {
     expect(source).toContain('foodType: "UNKNOWN"');
     expect(source).toContain("const FOOD_TYPE_OPTIONS");
     expect(source).toContain("const MEAT_TYPE_OPTIONS");
-    expect(source).toContain("Phân loại món ăn");
-    expect(source).toContain("Loại thịt / đạm động vật");
+    expect(source).toContain("Nhóm món ăn");
+    expect(source).toContain("Thành phần thịt hoặc hải sản");
     expect(source).toContain('["NON_VEGETARIAN", "MIXED"].includes(formData.foodType)');
     expect(source).toContain('handleInputChange("foodType"');
     expect(source).toContain('toggleArrayValue("meatTypes"');

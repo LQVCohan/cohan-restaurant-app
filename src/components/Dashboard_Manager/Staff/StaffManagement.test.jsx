@@ -17,6 +17,7 @@ vi.mock("@apollo/client", async () => {
       loading: false,
       error: null,
     }),
+    useMutation: () => [vi.fn(), { loading: false, error: null }],
   };
 });
 

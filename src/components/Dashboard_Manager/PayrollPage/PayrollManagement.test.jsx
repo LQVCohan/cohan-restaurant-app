@@ -204,8 +204,8 @@ describe("PayrollManagement current manager payroll UI", () => {
         variables: {
           input: expect.objectContaining({
             restaurantId: "restaurant-1",
-            startDate: expect.stringMatching(/^2026-05-25T00:00:00\.000Z$/),
-            endDate: expect.stringMatching(/^2026-06-24T23:59:59\.999Z$/),
+            startDate: expect.stringMatching(/^2026-05-26T00:00:00\.000Z$/),
+            endDate: expect.stringMatching(/^2026-06-25T23:59:59\.999Z$/),
           }),
         },
       });

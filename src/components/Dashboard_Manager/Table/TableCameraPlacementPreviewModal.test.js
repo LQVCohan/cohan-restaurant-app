@@ -139,23 +139,23 @@ describe("TableCameraPlacementPreviewModal", () => {
   it("shows unsupported camera guidance without crashing", async () => {
     renderCameraModal();
 
-    expect(await screen.findByText("Thiết bị/trình duyệt chưa hỗ trợ camera preview.")).toBeInTheDocument();
-    expect(screen.getByText("Thử Chrome/Safari mobile nếu thiết bị hiện tại không mở được camera.")).toBeInTheDocument();
-    expect(screen.getByText("Bạn có thể dùng preview 3D thường để kiểm tra hình dáng mẫu bàn.")).toBeInTheDocument();
+    expect(await screen.findByText("Thiết bị hoặc trình duyệt này chưa hỗ trợ xem thử bằng camera.")).toBeInTheDocument();
+    expect(screen.getByText("Thử Chrome hoặc Safari phiên bản mới nhất.")).toBeInTheDocument();
+    expect(screen.getByText("Mở trang bằng HTTPS hoặc localhost.")).toBeInTheDocument();
   });
 
   it("renders thumbnail overlay and falls back when thumbnail fails", async () => {
     renderCameraModal();
 
-    const thumbnail = await screen.findByAltText("Thumbnail Bàn thumbnail");
+    const thumbnail = await screen.findByAltText("Mẫu Bàn thumbnail");
     expect(thumbnail).toHaveAttribute("src", "https://cdn.example.com/thumb.png");
 
     fireEvent.error(thumbnail);
 
     await waitFor(() => {
-      expect(screen.queryByAltText("Thumbnail Bàn thumbnail")).not.toBeInTheDocument();
+      expect(screen.queryByAltText("Mẫu Bàn thumbnail")).not.toBeInTheDocument();
     });
-    expect(screen.getByLabelText("Overlay mô hình bàn để xem thử trong camera")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mẫu bàn dùng để ước lượng trong khung camera")).toBeInTheDocument();
   });
 
   it("updates the manual preview opacity", async () => {
@@ -165,7 +165,7 @@ describe("TableCameraPlacementPreviewModal", () => {
 
     fireEvent.change(await screen.findByRole("slider"), { target: { value: "0.42" } });
 
-    expect(screen.getByText(/opacity: 0.42/)).toBeInTheDocument();
+    expect(screen.getByText(/Độ rõ của mẫu: 42%/)).toBeInTheDocument();
   });
 });
 

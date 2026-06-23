@@ -44,7 +44,7 @@ describe("MenuItemCard", () => {
     expect(screen.getByRole("heading", { name: "Bún bò Huế" })).toBeInTheDocument();
     expect(screen.getByText("Món nước")).toBeInTheDocument();
     expect(screen.getAllByText(/65.000/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Sẵn sàng")).toBeInTheDocument();
+    expect(screen.getByText("Đang bán")).toBeInTheDocument();
     expect(screen.queryByText("cat-raw-456")).not.toBeInTheDocument();
     expect(screen.queryByText("raw-id-123")).not.toBeInTheDocument();
   });
@@ -53,8 +53,8 @@ describe("MenuItemCard", () => {
     const onStatusChange = vi.fn();
     renderCard({ onStatusChange });
 
-    fireEvent.click(screen.getByRole("button", { name: "Mở menu trạng thái món" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Tạm dừng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mở danh sách trạng thái bán" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Tạm ngưng bán" }));
 
     expect(onStatusChange).toHaveBeenCalledWith(expect.objectContaining({ name: "Bún bò Huế" }), "unavailable");
   });
