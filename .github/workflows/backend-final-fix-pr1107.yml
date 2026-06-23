@@ -9,28 +9,38 @@ permissions:
 
 jobs:
   patch:
+    if: github.event.head_commit.message != 'Fix remaining backend test fixture'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: codex/post-rbac-ci-stabilization
+          fetch-depth: 0
       - name: Patch missing mock
         run: |
           python3 - <<'PY'
           from pathlib import Path
           path = Path('cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js')
           source = path.read_text()
-          source = source.replace(
-              'emitCustomerTrackingUpdateIfChanged: vi.fn(),\n          }));',
-              'emitCustomerTrackingUpdateIfChanged: vi.fn(),\n            updatePublicStatusHistory: vi.fn(),\n          }));',
-              1,
-          )
-          path.write_text(source)
+          old = '''vi.mock("../../src/services/orderTracking.service.js", () => ({
+            emitCustomerTrackingUpdateIfChanged: vi.fn(),
+          }));'''
+          new = '''vi.mock("../../src/services/orderTracking.service.js", () => ({
+            emitCustomerTrackingUpdateIfChanged: vi.fn(),
+            updatePublicStatusHistory: vi.fn(),
+          }));'''
+          if old in source:
+              source = source.replace(old, new)
+              path.write_text(source)
           PY
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js
+          if git diff --cached --quiet; then
+            exit 0
+          fi
           git commit -m "Fix remaining backend test fixture"
+          git pull --rebase origin codex/post-rbac-ci-stabilization
           git push origin HEAD:codex/post-rbac-ci-stabilization
