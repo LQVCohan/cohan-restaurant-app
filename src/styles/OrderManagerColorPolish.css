@@ -141,11 +141,12 @@
 
 .oc-card:not(.mode-focus).pending .oc-status-strip,
 .oc-card:not(.mode-focus).warning .oc-status-strip {
-  background: #d58935 !important;
+  background: var(--oc-card-alert-color, #d58935) !important;
 }
 
-.oc-card:not(.mode-focus).danger .oc-status-strip {
-  background: #bd5b43 !important;
+.oc-card:not(.mode-focus).danger .oc-status-strip,
+.oc-card:not(.mode-focus).critical .oc-status-strip {
+  background: var(--oc-card-alert-color, #bd5b43) !important;
 }
 
 .oc-card:not(.mode-focus).ready .oc-status-strip,
@@ -199,6 +200,27 @@
   color: #fffaf3 !important;
   background: #bd5b43 !important;
   border-color: #a94835 !important;
+}
+
+.oc-card:not(.mode-focus) .oc-time-badge.oc-time-badge--custom {
+  color: var(--oc-time-color, #0f5d56) !important;
+  background: var(--oc-time-bg, #edf7f4) !important;
+  border-color: var(--oc-time-border, rgba(15, 93, 86, 0.16)) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-time-badge.oc-time-badge--custom.danger,
+.oc-card:not(.mode-focus) .oc-time-badge.oc-time-badge--custom.critical,
+.oc-card.mode-focus .oc-time-badge.oc-time-badge--custom.danger,
+.oc-card.mode-focus .oc-time-badge.oc-time-badge--custom.critical {
+  color: var(--oc-time-contrast, #fffdf8) !important;
+  background: var(--oc-time-solid, #bd5b43) !important;
+  border-color: var(--oc-time-solid, #bd5b43) !important;
+}
+
+.oc-card.mode-focus .oc-time-badge.oc-time-badge--custom {
+  color: var(--oc-time-color, #e2e8f0) !important;
+  background: var(--oc-time-bg, rgba(255, 255, 255, 0.08)) !important;
+  border-color: var(--oc-time-border, rgba(226, 232, 240, 0.14)) !important;
 }
 
 .oc-card:not(.mode-focus) .oc-item-row,
