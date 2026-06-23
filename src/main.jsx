@@ -35,6 +35,8 @@ import "./components/Dashboard_Manager/Table/TableManagementPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementFinalQC.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
+import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoLayoutFix.scss";
+import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
