@@ -1,248 +1,249 @@
-import React, { useContext, useEffect } from "react";
+import React, { useCallback, useContext, useEffect, useMemo } from "react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
+
+// ponytail: static nav config should not be rebuilt for every manager page render.
+const NAVIGATION_SECTIONS = [
+  {
+    title: "Tổng quan",
+    items: [
+      {
+        id: "dashboard",
+        icon: "📊",
+        label: "Dashboard",
+        page: "Tổng quan",
+        permissions: ["dashboard.read", "report.read"],
+      },
+      {
+        id: "analytics",
+        icon: "📈",
+        label: "Phân tích kinh doanh",
+        page: "Phân tích kinh doanh",
+        permissions: ["report.read"],
+      },
+    ],
+  },
+  {
+    title: "Quản lý",
+    items: [
+      {
+        id: "orders",
+        permissions: ["order.read"],
+        icon: "🛒",
+        label: "Đơn hàng",
+        page: "Đơn hàng",
+      },
+      {
+        id: "menu",
+        permissions: ["menu.read"],
+        icon: "📋",
+        label: "Thực đơn",
+        page: "Thực đơn",
+      },
+      {
+        id: "inventory",
+        permissions: ["inventory.read", "stock.read"],
+        icon: "📦",
+        label: "Kho hàng",
+        page: "Kho hàng",
+      },
+      {
+        id: "tables",
+        permissions: ["table.read"],
+        icon: "🪑",
+        label: "Bàn ăn",
+        page: "Bàn ăn",
+      },
+      {
+        id: "restaurant-info-management",
+        permissions: ["restaurant.read"],
+        icon: "🏪",
+        label: "Quản lý thông tin nhà hàng",
+        page: "Quản lý thông tin nhà hàng",
+      },
+    ],
+  },
+  {
+    title: "Nhân sự",
+    items: [
+      {
+        id: "staff",
+        permissions: ["staff.read"],
+        icon: "👥",
+        label: "Nhân viên",
+        page: "Nhân viên",
+      },
+      {
+        id: "rbac",
+        permissions: ["role.read", "permission.read", "staff.write"],
+        icon: "🛡️",
+        label: "Phân quyền nhân viên",
+        page: "Phân quyền nhân viên",
+      },
+      {
+        id: "schedules",
+        permissions: ["shift.read"],
+        icon: "📅",
+        label: "Lịch làm việc",
+        page: "Lịch làm việc",
+      },
+      {
+        id: "payroll",
+        permissions: ["payroll.read"],
+        icon: "💰",
+        label: "Lương thưởng",
+        page: "Lương thưởng",
+      },
+    ],
+  },
+  {
+    title: "Khách hàng",
+    items: [
+      {
+        id: "customers",
+        permissions: ["customer.read"],
+        icon: "👤",
+        label: "Khách hàng",
+        page: "Khách hàng",
+      },
+      {
+        id: "customer-analytics",
+        permissions: ["report.read"],
+        icon: "🧠",
+        label: "Phân tích khách hàng",
+        page: "Phân tích khách hàng",
+      },
+      {
+        id: "promotions",
+        permissions: ["promotion.read", "coupon.read"],
+        icon: "🎁",
+        label: "Khuyến mãi",
+        page: "Chương trình khuyến mãi",
+      },
+      {
+        id: "ai-handoff",
+        permissions: ["ai.chatbot.handoff", "ai.chatbot.moderate"],
+        icon: "🤖",
+        label: "Handoff AI",
+        page: "Handoff AI",
+      },
+      {
+        id: "ai-chatbot-analytics",
+        permissions: ["ai.chatbot.analytics.read", "ai.chatbot.read"],
+        icon: "📡",
+        label: "AI Chatbot Analytics",
+        page: "AI Chatbot Analytics",
+      },
+      {
+        id: "ai-chatbot-settings",
+        permissions: ["ai.chatbot.write"],
+        icon: "⚙️",
+        label: "AI Chatbot Settings",
+        page: "AI Chatbot Settings",
+      },
+      {
+        id: "ai-chatbot-knowledge",
+        permissions: [
+          "ai.chatbot.read",
+          "ai.chatbot.write",
+          "ai.chatbot.moderate",
+          "ai.chatbot.evaluate",
+        ],
+        icon: "📚",
+        label: "AI Chatbot Knowledge",
+        page: "AI Chatbot Knowledge",
+      },
+      {
+        id: "reviews",
+        permissions: ["review.read", "report.read"],
+        icon: "⭐",
+        label: "Đánh giá",
+        page: "Đánh giá",
+      },
+    ],
+  },
+  {
+    title: "Báo cáo",
+    items: [
+      {
+        id: "reports",
+        permissions: ["report.read"],
+        icon: "📊",
+        label: "Báo cáo tổng hợp",
+        page: "Báo cáo",
+      },
+      {
+        id: "finance",
+        permissions: ["payment.read"],
+        icon: "💳",
+        label: "Tài chính",
+        page: "Tài chính",
+      },
+      {
+        id: "transfer-review",
+        permissions: ["payment.read"],
+        icon: "🏦",
+        label: "Thanh toán QR",
+        page: "Thanh toán QR",
+      },
+    ],
+  },
+  {
+    title: "Hệ thống",
+    items: [
+      {
+        id: "settings",
+        permissions: ["system.manage"],
+        icon: "⚙️",
+        label: "Cài đặt",
+        page: "Cài đặt",
+      },
+      {
+        id: "system-users",
+        roles: ["admin"],
+        icon: "👤",
+        label: "Người dùng hệ thống",
+        page: "Người dùng hệ thống",
+      },
+      {
+        id: "print-management",
+        permissions: ["print.read", "report.read"],
+        icon: "🖨️",
+        label: "Quản lý in ấn",
+        page: "Quản lý in ấn",
+      },
+      {
+        id: "backup",
+        permissions: ["system.manage"],
+        icon: "💾",
+        label: "Sao lưu",
+        page: "Sao lưu",
+      },
+    ],
+  },
+];
 
 const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);
   const sidebarUserName = user?.fullName || user?.name || "Quản lý";
   const sidebarUserRole =
     user?.role?.name || user?.roleName || "Đang hoạt động";
-  // Navigation items data
-  const navigationSections = [
-    {
-      title: "Tổng quan",
-      items: [
-        {
-          id: "dashboard",
-          icon: "📊",
-          label: "Dashboard",
-          page: "Tổng quan",
-          permissions: ["dashboard.read", "report.read"],
-        },
-        {
-          id: "analytics",
-          icon: "📈",
-          label: "Phân tích kinh doanh",
-          page: "Phân tích kinh doanh",
-          permissions: ["report.read"],
-        },
-      ],
-    },
-    {
-      title: "Quản lý",
-      items: [
-        {
-          id: "orders",
-          permissions: ["order.read"],
-          icon: "🛒",
-          label: "Đơn hàng",
-          page: "Đơn hàng",
-        },
-        {
-          id: "menu",
-          permissions: ["menu.read"],
-          icon: "📋",
-          label: "Thực đơn",
-          page: "Thực đơn",
-        },
-        {
-          id: "inventory",
-          permissions: ["inventory.read", "stock.read"],
-          icon: "📦",
-          label: "Kho hàng",
-          page: "Kho hàng",
-        },
-        {
-          id: "tables",
-          permissions: ["table.read"],
-          icon: "🪑",
-          label: "Bàn ăn",
-          page: "Bàn ăn",
-        },
-        {
-          id: "restaurant-info-management",
-          permissions: ["restaurant.read"],
-          icon: "🏪",
-          label: "Quản lý thông tin nhà hàng",
-          page: "Quản lý thông tin nhà hàng",
-        },
-      ],
-    },
-    {
-      title: "Nhân sự",
-      items: [
-        {
-          id: "staff",
-          permissions: ["staff.read"],
-          icon: "👥",
-          label: "Nhân viên",
-          page: "Nhân viên",
-        },
-        {
-          id: "rbac",
-          permissions: ["role.read", "permission.read", "staff.write"],
-          icon: "🛡️",
-          label: "Phân quyền nhân viên",
-          page: "Phân quyền nhân viên",
-        },
-        {
-          id: "schedules",
-          permissions: ["shift.read"],
-          icon: "📅",
-          label: "Lịch làm việc",
-          page: "Lịch làm việc",
-        },
-        {
-          id: "payroll",
-          permissions: ["payroll.read"],
-          icon: "💰",
-          label: "Lương thưởng",
-          page: "Lương thưởng",
-        },
-      ],
-    },
-    {
-      title: "Khách hàng",
-      items: [
-        {
-          id: "customers",
-          permissions: ["customer.read"],
-          icon: "👤",
-          label: "Khách hàng",
-          page: "Khách hàng",
-        },
-        {
-          id: "customer-analytics",
-          permissions: ["report.read"],
-          icon: "🧠",
-          label: "Phân tích khách hàng",
-          page: "Phân tích khách hàng",
-        },
-        {
-          id: "promotions",
-          permissions: ["promotion.read", "coupon.read"],
-          icon: "🎁",
-          label: "Khuyến mãi",
-          page: "Chương trình khuyến mãi",
-        },
-        {
-          id: "ai-handoff",
-          permissions: ["ai.chatbot.handoff", "ai.chatbot.moderate"],
-          icon: "🤖",
-          label: "Handoff AI",
-          page: "Handoff AI",
-        },
-        {
-          id: "ai-chatbot-analytics",
-          permissions: ["ai.chatbot.analytics.read", "ai.chatbot.read"],
-          icon: "📡",
-          label: "AI Chatbot Analytics",
-          page: "AI Chatbot Analytics",
-        },
-        {
-          id: "ai-chatbot-settings",
-          permissions: ["ai.chatbot.write"],
-          icon: "⚙️",
-          label: "AI Chatbot Settings",
-          page: "AI Chatbot Settings",
-        },
-        {
-          id: "ai-chatbot-knowledge",
-          permissions: [
-            "ai.chatbot.read",
-            "ai.chatbot.write",
-            "ai.chatbot.moderate",
-            "ai.chatbot.evaluate",
-          ],
-          icon: "📚",
-          label: "AI Chatbot Knowledge",
-          page: "AI Chatbot Knowledge",
-        },
-        {
-          id: "reviews",
-          permissions: ["review.read", "report.read"],
-          icon: "⭐",
-          label: "Đánh giá",
-          page: "Đánh giá",
-        },
-      ],
-    },
-    {
-      title: "Báo cáo",
-      items: [
-        {
-          id: "reports",
-          permissions: ["report.read"],
-          icon: "📊",
-          label: "Báo cáo tổng hợp",
-          page: "Báo cáo",
-        },
-        {
-          id: "finance",
-          permissions: ["payment.read"],
-          icon: "💳",
-          label: "Tài chính",
-          page: "Tài chính",
-        },
-        {
-          id: "transfer-review",
-          permissions: ["payment.read"],
-          icon: "🏦",
-          label: "Thanh toán QR",
-          page: "Thanh toán QR",
-        },
-      ],
-    },
-    {
-      title: "Hệ thống",
-      items: [
-        {
-          id: "settings",
-          permissions: ["system.manage"],
-          icon: "⚙️",
-          label: "Cài đặt",
-          page: "Cài đặt",
-        },
-        {
-          id: "system-users",
-          roles: ["admin"],
-          icon: "👤",
-          label: "Người dùng hệ thống",
-          page: "Người dùng hệ thống",
-        },
-        {
-          id: "print-management",
-          permissions: ["print.read", "report.read"],
-          icon: "🖨️",
-          label: "Quản lý in ấn",
-          page: "Quản lý in ấn",
-        },
-        {
-          id: "backup",
-          permissions: ["system.manage"],
-          icon: "💾",
-          label: "Sao lưu",
-          page: "Sao lưu",
-        },
-      ],
-    },
-  ];
 
-  const visibleSections = filterNavigationByPermissionAccess(
-    navigationSections,
-    user,
+  const visibleSections = useMemo(
+    () => filterNavigationByPermissionAccess(NAVIGATION_SECTIONS, user),
+    [user],
   );
 
   // Handle navigation item click
-  const handleItemClick = (item) => {
+  const handleItemClick = useCallback((item) => {
     onPageChange(item.id);
 
     if (window.innerWidth <= 768) {
       onClose();
     }
-  };
+  }, [onClose, onPageChange]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
