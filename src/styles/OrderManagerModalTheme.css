@@ -1,0 +1,373 @@
+/* Order manager modal theme sync.
+   Aligns order-page modals with OrderManagement color system: warm cream surfaces,
+   restaurant green primary actions, muted earth warnings, readable secondary text. */
+
+:root {
+  --order-cream-0: #fffdf8;
+  --order-cream-1: #fbf6ed;
+  --order-cream-2: #f3eadc;
+  --order-line: rgba(116, 88, 54, 0.16);
+  --order-line-strong: rgba(116, 88, 54, 0.24);
+  --order-ink: #24303f;
+  --order-muted: #5d6678;
+  --order-green: #0f6f66;
+  --order-green-deep: #07544e;
+  --order-green-soft: #edf7f4;
+  --order-gold: #a8855f;
+  --order-gold-soft: #f6ead9;
+  --order-danger: #bd5b43;
+  --order-danger-soft: #f8e2da;
+  --order-warning: #d58935;
+  --order-warning-soft: #fff0d1;
+  --order-shadow: 0 26px 64px rgba(36, 48, 63, 0.22);
+}
+
+/* Shared/common Modal used by NewOrderModal and OrderSettingsModal */
+.modal-container:has(.new-order-modal),
+.modal-container:has(.osm-layout) {
+  border-color: var(--order-line) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(168, 133, 95, 0.12), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(250, 246, 239, 0.98)) !important;
+  box-shadow: var(--order-shadow), inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+.modal-container:has(.new-order-modal) .modal-header,
+.modal-container:has(.osm-layout) .modal-header {
+  border-bottom-color: var(--order-line) !important;
+  background:
+    linear-gradient(90deg, rgba(230, 244, 239, 0.82), rgba(250, 242, 230, 0.72)) !important;
+}
+
+.modal-container:has(.new-order-modal) .modal-header h2,
+.modal-container:has(.osm-layout) .modal-header h2,
+.modal-container:has(.new-order-modal) .modal-header h3,
+.modal-container:has(.osm-layout) .modal-header h3 {
+  color: var(--order-ink) !important;
+  letter-spacing: -0.035em;
+}
+
+.modal-container:has(.new-order-modal) .modal-close,
+.modal-container:has(.osm-layout) .modal-close {
+  color: var(--order-green) !important;
+  background: rgba(237, 247, 244, 0.86) !important;
+  border-color: rgba(15, 93, 86, 0.16) !important;
+}
+
+.modal-container:has(.new-order-modal) .modal-close:hover,
+.modal-container:has(.osm-layout) .modal-close:hover {
+  color: #fffdf8 !important;
+  background: var(--order-green) !important;
+}
+
+/* Order settings modal */
+.modal-container:has(.osm-layout) .modal-body {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(15, 93, 86, 0.06), transparent 24rem),
+    linear-gradient(180deg, var(--order-cream-0), var(--order-cream-1)) !important;
+}
+
+.osm-section,
+.osm-preview__sticky,
+.mockCard {
+  border-color: var(--order-line) !important;
+  background: rgba(255, 253, 248, 0.88) !important;
+  box-shadow: 0 16px 38px rgba(74, 55, 34, 0.08), inset 0 1px rgba(255, 255, 255, 0.82) !important;
+}
+
+.osm-section__header .icon {
+  color: var(--order-green) !important;
+  background: var(--order-green-soft) !important;
+}
+
+.osm-section__header h4,
+.mockCard__id {
+  color: var(--order-ink) !important;
+}
+
+.osm-section__header p,
+.osm-presets span,
+.osm-preview .preview-title,
+.osm-preview__actions .btn-reset,
+.color-input-wrapper .hex-code {
+  color: var(--order-muted) !important;
+}
+
+.osm-time-inputs .input-wrapper,
+.osm-colors-grid .color-input-wrapper,
+.osm-chip-options .chip-radio,
+.osm-presets .preset-btn {
+  border-color: var(--order-line) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+}
+
+.osm-time-inputs .input-wrapper:focus-within,
+.osm-chip-options .chip-radio.active,
+.osm-presets .preset-btn:hover {
+  border-color: rgba(15, 93, 86, 0.38) !important;
+  box-shadow: 0 0 0 4px rgba(15, 93, 86, 0.12) !important;
+}
+
+.osm-chip-options .chip-radio.active {
+  color: var(--order-green) !important;
+  background: var(--order-green-soft) !important;
+}
+
+/* Order detail modal */
+.om-overlay,
+.om-actionDialogOverlay,
+.hm-overlay {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(168, 133, 95, 0.16), transparent 24rem),
+    rgba(36, 48, 63, 0.46) !important;
+  backdrop-filter: blur(5px) saturate(1.04) !important;
+}
+
+.om-modal-box,
+.om-actionDialog,
+.hm-modal {
+  border: 1px solid var(--order-line) !important;
+  border-radius: 1.2rem !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(168, 133, 95, 0.11), transparent 20rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(250, 246, 239, 0.98)) !important;
+  box-shadow: var(--order-shadow), inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+.om-header,
+.om-footer,
+.om-actionDialog__header,
+.hm-header {
+  border-color: var(--order-line) !important;
+  background:
+    linear-gradient(90deg, rgba(230, 244, 239, 0.8), rgba(250, 242, 230, 0.74)) !important;
+}
+
+.om-body,
+.om-actionDialog__body,
+.hm-body {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(15, 93, 86, 0.06), transparent 24rem),
+    linear-gradient(180deg, var(--order-cream-0), var(--order-cream-1)) !important;
+}
+
+.om-header .title,
+.om-section .section-header h3,
+.info-card .info-row,
+.itemCard__header .itemName,
+.total-summary .grand-total,
+.om-actionDialog__header,
+.hm-header__title,
+.hm-card__code,
+.hm-card__total,
+.hm-empty h3 {
+  color: var(--order-ink) !important;
+}
+
+.om-header__meta,
+.info-card .info-row label,
+.total-summary .summary-row,
+.om-actionDialog__hint,
+.hm-header__subtitle,
+.hm-stat-label,
+.hm-card__meta,
+.hm-empty__text,
+.hm-btn-loadmore {
+  color: var(--order-muted) !important;
+}
+
+.info-card,
+.itemCard,
+.total-summary,
+.om-actionDialog__field textarea,
+.om-actionDialog__field input,
+.om-actionDialog__field select,
+.hm-card,
+.hm-filters,
+.hm-card__items,
+.hm-item-tag {
+  border-color: var(--order-line) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+}
+
+.itemCard:hover,
+.hm-card:hover {
+  border-color: rgba(15, 93, 86, 0.3) !important;
+  box-shadow: 0 16px 34px rgba(74, 55, 34, 0.1) !important;
+}
+
+.om-progress,
+.hm-stats,
+.order-note-box,
+.hm-card__discount,
+.total-summary .discount-meta-card {
+  border-color: rgba(168, 133, 95, 0.28) !important;
+  background: linear-gradient(90deg, rgba(255, 240, 209, 0.76), rgba(255, 253, 248, 0.72)) !important;
+}
+
+.om-progress__track {
+  background: rgba(15, 93, 86, 0.12) !important;
+}
+
+.om-progress__fill {
+  background: linear-gradient(90deg, var(--order-green), var(--order-gold)) !important;
+}
+
+.text-gold,
+.om-header__meta svg,
+.om-section .text-link-btn,
+.hm-header__icon,
+.hm-dot,
+.hm-loading,
+.hm-card__total svg,
+.hm-item-tag b {
+  color: var(--order-gold) !important;
+}
+
+.status-badge.pending,
+.hm-badge--served,
+.hm-badge--completed,
+.hm-badge--cancelled {
+  border: 1px solid transparent !important;
+}
+
+.status-badge.pending,
+.hm-badge--served {
+  color: #7a4a15 !important;
+  background: var(--order-warning-soft) !important;
+  border-color: #e9bd74 !important;
+}
+
+.status-badge.preparing,
+.status-badge.confirmed {
+  color: #7b4218 !important;
+  background: #f8dfc2 !important;
+  border-color: #d7a36c !important;
+}
+
+.status-badge.ready,
+.status-badge.served,
+.hm-badge--completed {
+  color: #1f6f45 !important;
+  background: #dff2e7 !important;
+  border-color: #a8d9b5 !important;
+}
+
+.status-badge.cancelled,
+.hm-badge--cancelled {
+  color: #9c3f31 !important;
+  background: var(--order-danger-soft) !important;
+  border-color: #dfa79c !important;
+}
+
+.om-btn.primary,
+.om-actionDialog__button--primary,
+.hm-chip--active,
+.hm-btn-view:hover {
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, var(--order-green) 0%, var(--order-green-deep) 100%) !important;
+  border-color: rgba(15, 93, 86, 0.52) !important;
+  box-shadow: 0 12px 26px rgba(15, 93, 86, 0.2) !important;
+}
+
+.om-btn.secondary,
+.om-btn.ghost,
+.hm-chip,
+.hm-btn-view,
+.hm-btn-loadmore,
+.om-actionDialog__button--secondary {
+  color: var(--order-green) !important;
+  background: var(--order-green-soft) !important;
+  border-color: rgba(15, 93, 86, 0.16) !important;
+}
+
+.om-actionDialog__button--danger {
+  color: #fffdf8 !important;
+  background: var(--order-danger) !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.hm-modal .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(168, 133, 95, 0.42) !important;
+}
+
+/* ItemModal uses CSS modules. Vite keeps local names in generated class names, so use scoped substring selectors. */
+[class*="ItemModal"][class*="overlay"] {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(168, 133, 95, 0.16), transparent 24rem),
+    rgba(36, 48, 63, 0.46) !important;
+  backdrop-filter: blur(5px) saturate(1.04) !important;
+}
+
+[class*="ItemModal"][class*="modal"] {
+  border: 1px solid var(--order-line) !important;
+  border-radius: 1.15rem !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(250, 246, 239, 0.98)) !important;
+  box-shadow: var(--order-shadow), inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+[class*="ItemModal"][class*="header"] {
+  border-bottom-color: var(--order-line) !important;
+  background: linear-gradient(90deg, rgba(230, 244, 239, 0.8), rgba(250, 242, 230, 0.74)) !important;
+}
+
+[class*="ItemModal"][class*="body"] {
+  background: linear-gradient(180deg, var(--order-cream-0), var(--order-cream-1)) !important;
+}
+
+[class*="ItemModal"][class*="gridInfo"],
+[class*="ItemModal"][class*="recipeContent"],
+[class*="ItemModal"][class*="actionBox"],
+[class*="ItemModal"][class*="statusBox"] {
+  border-color: var(--order-line) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+}
+
+[class*="ItemModal"][class*="priceHighlight"] {
+  color: var(--order-gold) !important;
+}
+
+[class*="ItemModal"][class*="badge"][class*="pending"] {
+  color: #7a4a15 !important;
+  background: var(--order-warning-soft) !important;
+}
+
+[class*="ItemModal"][class*="badge"][class*="preparing"],
+[class*="ItemModal"][class*="badge"][class*="confirmed"] {
+  color: #7b4218 !important;
+  background: #f8dfc2 !important;
+}
+
+[class*="ItemModal"][class*="badge"][class*="ready"],
+[class*="ItemModal"][class*="badge"][class*="served"] {
+  color: #1f6f45 !important;
+  background: #dff2e7 !important;
+}
+
+[class*="ItemModal"][class*="badge"][class*="cancelled"] {
+  color: #9c3f31 !important;
+  background: var(--order-danger-soft) !important;
+}
+
+@media (max-width: 720px) {
+  .om-modal-box,
+  .hm-modal {
+    width: min(100%, calc(100vw - 20px)) !important;
+    max-height: calc(100dvh - 20px) !important;
+  }
+
+  .hm-header,
+  .om-header,
+  .om-footer {
+    padding-inline: 1rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .om-modal-box,
+  .hm-modal,
+  .om-actionDialog,
+  [class*="ItemModal"][class*="modal"] {
+    animation: none !important;
+  }
+}
