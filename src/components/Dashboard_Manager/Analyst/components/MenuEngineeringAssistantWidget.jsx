@@ -17,12 +17,24 @@ const methodLabel = (method = "") => ({
   menu_engineering_v1: "Dựa trên doanh thu và biên lợi nhuận",
 }[method] || "Dựa trên dữ liệu bán món");
 
+const normalizeSuggestion = (value = "") =>
+  String(value)
+    .replace(/Tối ưu\s*cost\/portion\s*cho/gi, "Rà soát định lượng cho")
+    .replace(/cost\/portion/gi, "định lượng và chi phí")
+    .replace(/Đẩy truyền thông cho/gi, "Tăng hiển thị cho")
+    .replace(/để tăng độ phổ biến/gi, "để tăng lượt gọi món")
+    .replace(/để tăng lợi nhuận/gi, "để cải thiện lợi nhuận")
+    .replace(/\bSTAR\b/g, "chủ lực")
+    .replace(/\bPLOWHORSE\b/g, "bán tốt")
+    .replace(/\bPUZZLE\b/g, "lời cao, bán chậm")
+    .replace(/\bDOG\b/g, "cần xem lại")
+    .trim();
+
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
-    {meta.fallbackUsed ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+    {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm tra lại</span> : null}
     <span>{methodLabel(meta.method)}</span>
     <span>{meta.sampleOrders ?? "-"} đơn trong {meta.sampleDays ?? "-"} ngày</span>
-    {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
     {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
@@ -45,8 +57,8 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
             <p>Phân loại món theo doanh thu, biên lợi nhuận và tốc độ bán</p>
           </div>
         </div>
-        <button type="button" className={`meta-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "data"}`} onClick={() => onNavigate?.("menu")}>
-          {assistant?.meta?.fallbackUsed ? "Ước tính chi phí" : "Mở menu"}
+        <button type="button" className="meta-pill data" onClick={() => onNavigate?.("menu")}>
+          Mở menu
         </button>
       </div>
       <MetaStrip meta={assistant?.meta} />
@@ -79,14 +91,14 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
               <CircleDollarSign size={14} /> Biên lợi nhuận TB: <strong>{nf(summary.avgMarginPct)}%</strong>
             </span>
             <span>
-              <Target size={14} /> Tổng món phân tích: <strong>{nf(summary.totalDishes)}</strong>
+              <Target size={14} /> Món phân tích: <strong>{nf(summary.totalDishes)}</strong>
             </span>
           </div>
 
           {hasDishData ? (
           <div className="list-section">
             <h4>
-              <TrendingUp size={16} /> Top món theo doanh thu
+              <TrendingUp size={16} /> Món theo doanh thu
             </h4>
             <ul>
               {dishes.slice(0, 5).map((dish) => (
@@ -96,7 +108,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
                     <span className={`quadrant ${dish.quadrant}`}>{quadrantLabel[dish.quadrant] || dish.quadrant}</span>
                   </div>
                   <div className="dish-sub">
-                    DT {nf(dish.revenue)}đ • LN {nf(dish.profit)}đ • Biên {nf(dish.marginPct)}%
+                    Doanh thu {nf(dish.revenue)}đ • Lợi nhuận {nf(dish.profit)}đ • Biên {nf(dish.marginPct)}%
                   </div>
                 </li>
               ))}
@@ -115,7 +127,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
             <ul>
               {(recommendations.length ? recommendations : summary.notes || []).slice(0, 4).map((note, idx) => (
                 <li key={`${idx}-${note}`} className="note-item">
-                  {note}
+                  {normalizeSuggestion(note)}
                 </li>
               ))}
             </ul>
