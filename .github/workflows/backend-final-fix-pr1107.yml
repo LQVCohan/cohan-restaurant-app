@@ -1,0 +1,36 @@
+name: Backend final test patch
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/post-rbac-ci-stabilization
+      - name: Patch missing mock
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js')
+          source = path.read_text()
+          source = source.replace(
+              'emitCustomerTrackingUpdateIfChanged: vi.fn(),\n          }));',
+              'emitCustomerTrackingUpdateIfChanged: vi.fn(),\n            updatePublicStatusHistory: vi.fn(),\n          }));',
+              1,
+          )
+          path.write_text(source)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js
+          git commit -m "Fix remaining backend test fixture"
+          git push origin HEAD:codex/post-rbac-ci-stabilization
