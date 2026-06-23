@@ -14,7 +14,7 @@ const StaffPerformance = ({ staffList = [], loading }) => {
     <div className="widget-card staff-performance-widget">
       <div className="widget-header">
         <div className="header-left">
-          <h4>Hiệu Suất & Phân Bổ</h4>
+          <h4>Hiệu suất và phân bổ</h4>
           <span className="subtitle">Theo dữ liệu đơn hàng thực</span>
         </div>
         <div className="header-actions">
