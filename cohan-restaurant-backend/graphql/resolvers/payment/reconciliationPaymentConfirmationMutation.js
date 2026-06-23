@@ -36,6 +36,12 @@ function appendPaymentEvent(payment, event) {
   payment.events.push(event);
 }
 
+async function refetchPaymentSession(payment) {
+  const query = PaymentSession.findById(payment._id);
+  if (query && typeof query.lean === "function") return query.lean();
+  return typeof payment.toObject === "function" ? payment.toObject() : payment;
+}
+
 async function confirmBankTransferPaymentFromReconciliation({
   reconciliation,
   bankTransactionId,
@@ -86,6 +92,8 @@ async function confirmBankTransferPaymentFromReconciliation({
     providerTransactionId,
     receivedAmount,
     varianceAmount: 0,
+    matchedBankTransactionId: bankTransaction?._id || bankTransactionId || payment.transfer?.matchedBankTransactionId,
+    matchedReconciliationId: reconciliation?._id || reconciliation?.id || payment.transfer?.matchedReconciliationId,
     rejectReason: undefined,
     rejectedAt: undefined,
   };
@@ -95,6 +103,7 @@ async function confirmBankTransferPaymentFromReconciliation({
     payload: {
       by: source,
       bankTransactionId: toStringId(bankTransaction?._id || bankTransactionId),
+      reconciliationId: toStringId(reconciliation?._id || reconciliation?.id),
       providerTransactionId,
     },
   });
@@ -105,8 +114,7 @@ async function confirmBankTransferPaymentFromReconciliation({
     await settlePaidOrderPaymentSession({ payment, source });
   }
 
-  const confirmedPayment = await PaymentSession.findById(payment._id).lean?.()
-    || (typeof payment.toObject === "function" ? payment.toObject() : payment);
+  const confirmedPayment = await refetchPaymentSession(payment);
 
   await emitPaymentRealtime({
     io: ctx?.io,
