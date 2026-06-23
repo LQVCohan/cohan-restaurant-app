@@ -14,22 +14,19 @@ export async function withFinanceOperationLock(key, operation) {
 
   const previous = activeLocks.get(normalizedKey) || Promise.resolve();
   let release;
-  const current = new Promise((resolve) => {
+  const gate = new Promise((resolve) => {
     release = resolve;
   });
-  activeLocks.set(normalizedKey, previous.then(() => current, () => current));
+  const currentTail = previous.catch(() => {}).then(() => gate);
+  activeLocks.set(normalizedKey, currentTail);
 
   try {
     await previous.catch(() => {});
     return await operation();
   } finally {
     release();
-    if (activeLocks.get(normalizedKey) === current) {
+    if (activeLocks.get(normalizedKey) === currentTail) {
       activeLocks.delete(normalizedKey);
-    } else {
-      activeLocks.get(normalizedKey)?.finally?.(() => {
-        if (activeLocks.get(normalizedKey) === current) activeLocks.delete(normalizedKey);
-      });
     }
   }
 }
