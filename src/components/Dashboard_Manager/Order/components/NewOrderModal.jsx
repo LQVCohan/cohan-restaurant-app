@@ -28,6 +28,7 @@ import { useNotification } from "@/hooks/useNotification";
 import useModalDraft from "../../../../hooks/useModalDraft";
 
 import "./NewOrderModal.scss";
+import "./NewOrderModalPolish.scss";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("vi-VN", {
