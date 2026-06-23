@@ -24,10 +24,21 @@
   }
 
   .operations-intel-grid,
-  .growth-grid,
   .product-customer-grid,
   .operations-grid {
     align-items: stretch;
+  }
+
+  .growth-grid {
+    align-items: start;
+
+    .grid-item {
+      min-height: auto;
+
+      > .widget-card {
+        min-height: auto;
+      }
+    }
   }
 
   .demand-forecast .list-section ul,
@@ -58,6 +69,28 @@
     background: rgba(255, 253, 248, 0.74) !important;
     border-color: var(--ana-border, #d9d2c4) !important;
     color: var(--ana-text-sub, #63706d) !important;
+  }
+
+  .analytics-action-empty {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+
+    strong {
+      color: var(--ana-text, #1f2a2b);
+      font-size: 0.92rem;
+      font-weight: 850;
+    }
+
+    p {
+      max-width: 34ch;
+      margin: 0;
+      color: var(--ana-text-sub, #63706d);
+      line-height: 1.45;
+    }
   }
 
   .ai-meta-strip span,
@@ -180,6 +213,14 @@
   .feedback-analysis-widget .rating-badge {
     background: var(--ana-primary, #2d3a43) !important;
     box-shadow: 0 10px 22px rgba(45, 58, 67, 0.16) !important;
+  }
+
+  .widget-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
   }
 
   .progress-fill {
