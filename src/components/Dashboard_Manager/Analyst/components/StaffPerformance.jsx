@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Users, BarChart2 } from "lucide-react";
+import { ArrowRight, Users, BarChart2 } from "lucide-react";
 import "./StaffPerformance.scss";
+
+const goStaff = () => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "staff", source: "manager-analytics" } }));
 
 const StaffPerformance = ({ staffList = [], loading }) => {
   const [filter, setFilter] = useState("all");
@@ -31,9 +33,11 @@ const StaffPerformance = ({ staffList = [], loading }) => {
       <div className="staff-scroll-area">
         {loading ? <div className="empty-state">Đang tải...</div> : null}
         {!loading && !hasRealPerformanceData ? (
-          <div className="empty-state neutral">
+          <div className="empty-state neutral analytics-action-empty">
             <BarChart2 size={16} />
-            <p>Chưa có dữ liệu hiệu suất nhân viên trong kỳ này.</p>
+            <strong>Chưa có dữ liệu hiệu suất</strong>
+            <p>Hiệu suất sẽ được tính khi nhân viên xử lý đơn trong kỳ.</p>
+            <button type="button" className="widget-cta" onClick={goStaff}>Xem nhân viên <ArrowRight size={14} /></button>
           </div>
         ) : null}
         {!loading && hasRealPerformanceData &&
