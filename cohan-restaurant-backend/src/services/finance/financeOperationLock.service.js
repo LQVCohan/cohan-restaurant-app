@@ -12,20 +12,17 @@ export async function withFinanceOperationLock(key, operation) {
   if (!normalizedKey) throw new Error("FINANCE_OPERATION_LOCK_KEY_REQUIRED");
   if (typeof operation !== "function") throw new Error("FINANCE_OPERATION_REQUIRED");
 
-  const previous = activeLocks.get(normalizedKey) || Promise.resolve();
-  let release;
-  const gate = new Promise((resolve) => {
-    release = resolve;
-  });
-  const currentTail = previous.catch(() => {}).then(() => gate);
-  activeLocks.set(normalizedKey, currentTail);
+  const previous = activeLocks.get(normalizedKey);
+
+  const run = previous
+    ? previous.catch(() => {}).then(operation)
+    : (async () => operation())();
+  activeLocks.set(normalizedKey, run);
 
   try {
-    await previous.catch(() => {});
-    return await operation();
+    return await run;
   } finally {
-    release();
-    if (activeLocks.get(normalizedKey) === currentTail) {
+    if (activeLocks.get(normalizedKey) === run) {
       activeLocks.delete(normalizedKey);
     }
   }

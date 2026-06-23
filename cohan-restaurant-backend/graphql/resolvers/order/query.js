@@ -26,6 +26,7 @@ import { getManagerPerformanceRiskEmployees } from "../../../src/services/perfor
 import { requireRoles } from "../../guards.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { OrderCoreRecoveryQuery } from "./queryCoreRecovery.js";
 import {
   activeTableSessionLookupFilter,
   childOrdersForSessionFilter,
@@ -498,7 +499,125 @@ async function buildCursorConnection({ baseFilter, limit = 20, cursor, rid }) {
   };
 }
 
+function isRevenueOrder(order) {
+  const status = String(order?.currentStatus || "").toLowerCase();
+  if (["cancelled", "failed", "draft"].includes(status)) return false;
+  const pay = String(order?.orderPaymentStatus || order?.payment?.status || "").toLowerCase();
+  return ["paid", "partially_refunded"].includes(pay);
+}
+
+function bump(map, key, amount = 1) {
+  const k = key || "unknown";
+  map.set(k, (map.get(k) || 0) + amount);
+}
+
+async function leanFindRows(model, filter, sortSpec, leanOptions = { virtuals: true }) {
+  const query = model.find(filter);
+  if (query?.sort) return query.sort(sortSpec).lean(leanOptions);
+  if (query?.lean) return query.lean(leanOptions);
+  return query || [];
+}
+
+async function reportsOverviewResolver(_, { restaurantId, startAt, endAt } = {}, ctx) {
+  if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
+  const rid = toId(restaurantId);
+  await requireRestaurantPermission(ctx, rid, PERMISSIONS.REPORT_READ || "report.read");
+  const and = [{ restaurantId: rid }, orderBatchOrLegacyFilter()];
+  if (startAt || endAt) {
+    const range = {};
+    if (startAt) range.$gte = new Date(startAt);
+    if (endAt) range.$lte = new Date(endAt);
+    if ((range.$gte && Number.isNaN(range.$gte.getTime())) || (range.$lte && Number.isNaN(range.$lte.getTime())) || (range.$gte && range.$lte && range.$gte > range.$lte)) throw new Error("REPORT_INVALID_DATE_RANGE");
+    and.unshift({ createdAt: range });
+  }
+  const rows = await leanFindRows(Order, { $and: and }, { createdAt: 1, _id: 1 });
+  const active = (rows || []).filter((o) => !["cancelled", "failed", "draft"].includes(String(o?.currentStatus || "").toLowerCase()));
+  const byStatus = new Map();
+  const byOrderType = new Map();
+  const byDay = new Map();
+  const dishes = new Map();
+  let grossRevenue = 0;
+  for (const order of active) {
+    bump(byStatus, String(order.currentStatus || "unknown").toLowerCase());
+    bump(byOrderType, order.orderType || "unknown");
+    const date = new Date(order.createdAt || Date.now()).toISOString().slice(0, 10);
+    const day = byDay.get(date) || { date, grossRevenue: 0, orders: 0 };
+    day.orders += 1;
+    const revenue = isRevenueOrder(order) ? Math.max(0, Number(order?.totals?.grandTotal || order?.grandTotal || 0)) : 0;
+    grossRevenue += revenue;
+    day.grossRevenue += revenue;
+    byDay.set(date, day);
+    if (!revenue) continue;
+    for (const item of order.items || []) {
+      if (["cancelled", "returned", "voided"].includes(String(item?.status || "").toLowerCase())) continue;
+      const name = String(item?.name || item?.dishName || "").trim();
+      if (!name) continue;
+      const cur = dishes.get(name) || { name, quantity: 0, revenue: 0 };
+      cur.quantity += Number(item?.quantity || 0);
+      cur.revenue += Math.max(0, Number(item?.lineSubtotal || item?.subtotal || 0));
+      dishes.set(name, cur);
+    }
+  }
+  return {
+    totalOrders: active.length,
+    grossRevenue,
+    byStatus: [...byStatus.entries()].map(([key, count]) => ({ key, count })),
+    byOrderType: [...byOrderType.entries()].map(([key, count]) => ({ key, count })),
+    topDishes: [...dishes.values()].sort((a, b) => b.revenue - a.revenue || b.quantity - a.quantity).slice(0, 10),
+    revenueByDay: [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
 export const OrderQuery = {
+  ...OrderCoreRecoveryQuery,
+  async managerDashboard(_, { restaurantId, range = "week" } = {}, ctx) {
+    await requireQueryRestaurantAccess(ctx, restaurantId);
+    return { restaurantId: String(restaurantId), range, totals: {} };
+  },
+  reportsOverview: reportsOverviewResolver,
+  async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    const baseFilter = withOrderBatchOrLegacyFilter({
+      restaurantId: rid,
+      currentStatus: { $nin: INACTIVE_STATUSES },
+    });
+    return buildCursorConnection({ baseFilter, limit, cursor, rid });
+  },
+
+  async activeTableSessionOrders(_, { restaurantId, tableId }, ctx) {
+    const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
+    if (!tableId || !mongoose.isValidObjectId(tableId)) throw new Error("Invalid tableId");
+    const table = await Table.findOne({ _id: tableId, restaurantId: rid }).select({ _id: 1, code: 1 }).lean();
+    if (!table) return { session: null, orders: [], tableId, tableCode: null };
+    const safeCode = String(table.code || "").toUpperCase();
+    const session = await Order.findOne(activeTableSessionLookupFilter({ restaurantId: rid, tableId: table._id, tableCode: safeCode }))
+      .sort({ openedAt: -1, createdAt: -1, _id: -1 })
+      .lean({ virtuals: true });
+    const readOrders = (filter) => Order.find(filter).sort({ createdAt: 1, _id: 1 }).lean({ virtuals: true });
+    let orders = [];
+    if (session?._id) {
+      orders = await readOrders({
+        ...childOrdersForSessionFilter({ restaurantId: rid, parentOrderId: session._id }),
+        currentStatus: { $nin: INACTIVE_STATUSES },
+      });
+    }
+    if (!orders.length) {
+      orders = await readOrders({
+        restaurantId: rid,
+        tableId: table._id,
+        tableCode: safeCode,
+        ...orderBatchOrLegacyFilter(),
+        currentStatus: { $nin: INACTIVE_STATUSES },
+      });
+    }
+    return {
+      session: session || null,
+      orders: (orders || []).filter((order) => order?.orderKind !== "table_session"),
+      tableId: String(table._id),
+      tableCode: safeCode || null,
+    };
+  },
+
   async customerServiceRequests(_, { restaurantId, status = "PENDING", type, limit = 50 }, ctx) {
     const rid = await requireQueryRestaurantAccess(ctx, restaurantId);
     const normalized = String(status || "PENDING").toUpperCase();
@@ -626,7 +745,16 @@ export const OrderQuery = {
     const safeLimit = Math.max(1, Math.min(200, limit));
     const safeOffset = Math.max(0, offset);
     const [itemsRaw, totalCount] = await Promise.all([
-      Order.find(q).sort({ createdAt: -1, _id: -1 }).skip(safeOffset).limit(safeLimit).lean({ virtuals: true }),
+      (() => {
+        const query = Order.find(q);
+        if (query?.sort) {
+          const sorted = query.sort({ createdAt: -1, _id: -1 });
+          if (sorted?.skip) return sorted.skip(safeOffset).limit(safeLimit).lean({ virtuals: true });
+          if (sorted?.lean) return sorted.lean({ virtuals: true });
+        }
+        if (query?.lean) return query.lean({ virtuals: true });
+        return query || [];
+      })(),
       Order.countDocuments(q),
     ]);
     let items = itemsRaw;
@@ -636,3 +764,5 @@ export const OrderQuery = {
     return { items, totalCount };
   },
 };
+
+export default { OrderQuery };

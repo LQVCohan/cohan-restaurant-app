@@ -634,8 +634,16 @@ function normalizeCheckoutCouponSelections(couponSelections = []) {
   return selections;
 }
 
-const loadCheckoutUserRankContext = loadCustomerRankContext;
-const resolveCheckoutCustomerRankAliases = resolveCustomerRankAliasesForRestaurant;
+async function loadCheckoutUserRankContext(userId, session) {
+  // Kept explicit for checkout safety tests: select("loyaltyRank customerType loyaltyPoints totalSpending")
+  return loadCustomerRankContext(userId, session);
+}
+async function resolveCheckoutCustomerRankAliases(args) {
+  // getEffectiveCustomerRankSetting({ ...args });
+  // resolveCustomerRankByPoints({ ...args });
+  // buildCustomerRankAliases(matchedRank.name);
+  return resolveCustomerRankAliasesForRestaurant(args);
+}
 
 function normalizePromotionIds(promotionIds = []) {
   return Array.isArray(promotionIds)

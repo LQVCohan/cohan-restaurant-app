@@ -23,7 +23,7 @@ function hasDirectRestaurantScope(ctx, restaurantId) {
   if (!target || (!isManager && !isRestaurantScopedRole)) return false;
 
   const scopedIds = isManager
-    ? [user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])]
+    ? []
     : [user.restaurantForStaff, user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])];
 
   return scopedIds.some((id) => restaurantIdToString(id) === target);
