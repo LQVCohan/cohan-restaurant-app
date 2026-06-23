@@ -1,11 +1,40 @@
 {
   "version": 1,
   "skills": {
+    "figma-implement-design": {
+      "source": "openai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/figma-implement-design/SKILL.md",
+      "localPath": ".agents/skills/figma-implement-design/SKILL.md",
+      "computedHash": "bbe710bffd7adedf9a646cb1a7980d991ecbcf72"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "localPath": ".agents/skills/frontend-design/SKILL.md",
+      "computedHash": "f69d775b67ac1d5156636f761264061e1782f372"
+    },
+    "ponytail": {
+      "source": "DietrichGebert/ponytail",
+      "sourceType": "github",
+      "skillPath": "skills/ponytail/SKILL.md",
+      "localPath": ".agents/skills/ponytail/SKILL.md",
+      "computedHash": "5814d4f63255cf3ce3a82d6fa863b70e3323ed82"
+    },
     "redesign-existing-projects": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/redesign-skill/SKILL.md",
+      "localPath": ".agents/skills/redesign-existing-projects/SKILL.md",
       "computedHash": "47eced3e960a2c961d3cbee11fa1216264f589344b586a5cbd03967cd6b9c54b"
+    },
+    "wcag-ui-audit": {
+      "source": "accesslint/claude-marketplace",
+      "sourceType": "github",
+      "skillPath": "wcag-ui-audit/SKILL.md",
+      "localPath": ".agents/skills/wcag-ui-audit/SKILL.md",
+      "computedHash": "3778c5d3f6de1edd75a0c4cd435d07740d1fa2f6"
     }
   }
 }
