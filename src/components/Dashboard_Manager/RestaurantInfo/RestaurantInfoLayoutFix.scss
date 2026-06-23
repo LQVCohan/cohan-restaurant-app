@@ -1,0 +1,142 @@
+/* Restaurant Info layout repair after QC screenshot.
+   Fixes tab/content overlap, form density, and preview scaling without changing data flow. */
+
+.restaurant-management-container {
+  .modern-form .ant-tabs-nav::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .modern-form .ant-tabs-nav {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 4.15rem !important;
+    padding: 0.88rem 1rem 0.55rem !important;
+    overflow: visible !important;
+  }
+
+  .modern-form .ant-tabs-nav-wrap {
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0.18rem !important;
+  }
+
+  .modern-form .ant-tabs-nav-list {
+    gap: 0.45rem !important;
+    min-width: max-content !important;
+  }
+
+  .modern-form .ant-tabs-tab {
+    margin: 0 !important;
+    min-height: 2.42rem !important;
+    padding: 0 0.78rem !important;
+    white-space: nowrap !important;
+  }
+
+  .modern-form .ant-tabs-content-holder {
+    border-top: 1px solid rgba(116, 88, 54, 0.1) !important;
+  }
+
+  .modern-form .form-content-padding {
+    padding: 1.25rem 1.25rem 1.45rem !important;
+  }
+
+  .modern-form .ant-form-item {
+    margin-bottom: 1.08rem !important;
+  }
+
+  .modern-form .ant-form-item-label {
+    padding-bottom: 0.34rem !important;
+  }
+
+  .modern-form .ant-form-item-label label {
+    min-height: 1.25rem !important;
+    line-height: 1.25rem !important;
+  }
+
+  .modern-form .ant-input,
+  .modern-form .ant-input-affix-wrapper,
+  .modern-form .ant-select-selector {
+    min-height: 2.58rem !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .modern-form textarea.ant-input {
+    min-height: 7.8rem !important;
+    padding-bottom: 2.6rem !important;
+  }
+
+  .modern-form .ai-textarea-wrapper .ai-btn {
+    bottom: 0.65rem !important;
+    right: 0.65rem !important;
+    z-index: 2 !important;
+  }
+
+  .modern-form .hero-uploader-section {
+    margin-bottom: 3rem !important;
+  }
+
+  .modern-form .hero-uploader-section .cover-image-area {
+    height: clamp(160px, 16vw, 190px) !important;
+  }
+
+  .preview-wrapper {
+    transform: none !important;
+    max-width: 390px !important;
+    margin-inline: auto !important;
+  }
+
+  .preview-stage {
+    justify-content: center !important;
+  }
+
+  .desktop-preview-card {
+    width: min(100%, 365px) !important;
+    padding: 0.78rem 0.68rem 0.82rem !important;
+    border-radius: 1.9rem !important;
+    box-shadow: 0 18px 42px rgba(36, 48, 63, 0.18) !important;
+  }
+
+  .desktop-preview-card::before {
+    width: 4.25rem !important;
+    height: 0.26rem !important;
+    margin-bottom: 0.62rem !important;
+  }
+
+  .desktop-preview-card .desktop-iframe {
+    height: min(610px, calc(100vh - 255px)) !important;
+    min-height: 480px !important;
+    border-radius: 1.25rem !important;
+  }
+
+  @media (min-width: 1280px) {
+    .main-layout > .ant-col:first-child {
+      flex: 0 0 64% !important;
+      max-width: 64% !important;
+    }
+
+    .main-layout > .ant-col:last-child {
+      flex: 0 0 36% !important;
+      max-width: 36% !important;
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .preview-wrapper {
+      max-width: 430px !important;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .modern-form .ant-tabs-nav {
+      min-height: 3.7rem !important;
+      padding-inline: 0.8rem !important;
+    }
+
+    .modern-form .form-content-padding {
+      padding: 1rem !important;
+    }
+  }
+}
