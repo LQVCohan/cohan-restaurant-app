@@ -479,19 +479,14 @@ describe("order discount business safety", () => {
 
 
 
-    it("resolves checkout customer rank aliases from restaurant rank settings", () => {
+    it("delegates checkout rank resolution to the centralized rank service", () => {
       const src = read(ORDER_MUTATION_PATH);
-      const contextSrc = getNamedFunctionSnippet(src, "loadCheckoutUserRankContext");
-      const rankSrc = getNamedFunctionSnippet(src, "resolveCheckoutCustomerRankAliases");
 
-      expect(contextSrc).toMatch(/select\("loyaltyRank customerType loyaltyPoints totalSpending"\)/);
-      expect(contextSrc).not.toMatch(/customerRank/);
-      expect(rankSrc).toMatch(/getEffectiveCustomerRankSetting\(\{/);
-      expect(rankSrc).toMatch(/resolveCustomerRankByPoints\(\{/);
-      expect(rankSrc).toMatch(/buildCustomerRankAliases\(matchedRank\.name\)/);
-      expect(rankSrc).not.toMatch(/CustomerRankSetting\.findOne/);
-      expect(rankSrc).not.toMatch(/resolveLoyaltyRankFromPoints/);
-      expect(rankSrc).not.toMatch(/resolveCustomerTypeFromLoyaltyPoints/);
+      expect(src).toMatch(/const loadCheckoutUserRankContext = loadCustomerRankContext/);
+      expect(src).toMatch(/const resolveCheckoutCustomerRankAliases = resolveCustomerRankAliasesForRestaurant/);
+      expect(src).toMatch(/loadCheckoutUserRankContext\(finalUserId, session\)/);
+      expect(src).toMatch(/resolveCheckoutCustomerRankAliases\(\{/);
+      expect(src).not.toMatch(/CustomerRankSetting\.findOne/);
     });
 
     it("passes full coupon context and only the current restaurant coupon into checkout discount calculation", () => {

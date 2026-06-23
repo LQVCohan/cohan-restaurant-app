@@ -26,6 +26,23 @@ vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
 vi.mock("../../src/services/payment/paymentSession.service.js", () => paymentSessionMocks);
 vi.mock("../../src/services/orderTracking.service.js", () => trackingMocks);
 vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => emitMocks);
+vi.mock("../../src/services/payment/paymentRealtime.service.js", () => ({
+  emitPaymentRealtime: vi.fn(),
+}));
+vi.mock("../../src/services/payment/transferExpiry.service.js", () => ({
+  cancelDraftTransferOrdersForExpiredPayment: vi.fn(),
+}));
+vi.mock("mongoose", () => ({
+  default: {
+    isValidObjectId: vi.fn(() => true),
+    Types: {
+      ObjectId: function ObjectId(value) {
+        this.value = value;
+        this.toString = () => String(value);
+      },
+    },
+  },
+}));
 
 function paymentDoc(overrides = {}) {
   return {

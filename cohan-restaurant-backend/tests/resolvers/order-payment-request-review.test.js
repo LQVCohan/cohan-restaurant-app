@@ -42,8 +42,37 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => ({ emitOrderEvent: emitOrderEventMock }));
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/customerRankSetting.service.js", () => ({
+  loadCustomerRankContext: vi.fn(),
+  resolveCustomerRankAliasesForRestaurant: vi.fn(),
+}));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  requireRestaurantPermission: vi.fn(async () => true),
+}));
+vi.mock("../../src/services/payment/transferExpiry.service.js", () => ({
+  expireStaleTransferPayments: vi.fn(),
+}));
+vi.mock("../../src/services/discountCalculation.service.js", () => ({
+  calculateDiscountBreakdown: vi.fn(),
+}));
+vi.mock("../../src/services/finance/financePermission.service.js", () => ({
+  requireFinanceWrite: vi.fn(),
+  requireReconciliationWrite: vi.fn(),
+  requireRefundWrite: vi.fn(),
+}));
+vi.mock("../../src/services/finance/financeAudit.service.js", () => ({
+  writeFinanceAudit: vi.fn(),
+}));
+vi.mock("../../src/services/finance/reconciliationMatching.service.js", () => ({
+  chooseAutoMatch: vi.fn(),
+  findReconciliationCandidates: vi.fn(),
+  serializeCandidates: vi.fn(),
+}));
+vi.mock("../../src/services/orderTracking.service.js", () => ({
+  emitCustomerTrackingUpdateIfChanged: vi.fn(),
+}));
 vi.mock("../../utils/generateInvoiceNumber.ts", () => ({ generateInvoiceNumber: vi.fn().mockResolvedValue("INV-001") }));
-vi.mock("../../src/services/payment/paymentSession.service.js", () => ({ createReservationPayment: vi.fn() }));
+vi.mock("../../src/services/payment/paymentSession.service.js", () => ({ cancelPaymentSession: vi.fn(), createOrderPayment: vi.fn(), createReservationPayment: vi.fn(), sanitizePaymentSessionForClient: vi.fn((value) => value) }));
 vi.mock("mongoose", () => {
   const startSession = vi.fn(async () => ({
     startTransaction: vi.fn(),
@@ -67,7 +96,7 @@ describe("payment request + confirm guards", () => {
       _id: "65f000000000000000000777",
       roles: ["manager"],
       roleName: "manager",
-      refRestaurants: ["65f000000000000000000099"],
+      restaurantIds: ["65f000000000000000000099"],
     },
   };
 
