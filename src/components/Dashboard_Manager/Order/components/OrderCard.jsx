@@ -8,7 +8,6 @@ import {
   Check,
   MoreHorizontal,
   AlertTriangle,
-  Utensils,
   StickyNote,
 } from "lucide-react";
 import "./OrderCard.scss";
@@ -56,10 +55,32 @@ const ORDER_STATUS_LABELS = {
   failed: "Thất bại",
 };
 
+const DEFAULT_TIME_THRESHOLDS = {
+  warn: 10,
+  danger: 20,
+  critical: 30,
+};
+
+const DEFAULT_TIME_COLORS = {
+  ok: "#16a34a",
+  warn: "#eab308",
+  danger: "#f97316",
+  critical: "#b91c1c",
+};
+
+const TIME_STATUS_COLOR_KEYS = {
+  ok: "ok",
+  warning: "warn",
+  danger: "danger",
+  critical: "critical",
+};
+
 const getOrderStatusLabel = (status) => {
   const key = String(status || "").toLowerCase();
   return ORDER_STATUS_LABELS[key] || status || "Không rõ";
 };
+
+const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
 
 const getBatchTitle = (order) => {
   if (order?.orderType !== "dine_in" || !order?.tableCode) return null;
@@ -75,15 +96,79 @@ const minutesSince = (createdAt) => {
     : Math.floor((Date.now() - d.getTime()) / 60000);
 };
 
+const toPositiveNumber = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+};
+
+const normalizeTimeThresholds = (settings) => {
+  const warn = toPositiveNumber(settings?.warn, DEFAULT_TIME_THRESHOLDS.warn);
+  const dangerRaw = toPositiveNumber(
+    settings?.danger,
+    DEFAULT_TIME_THRESHOLDS.danger,
+  );
+  const danger = dangerRaw > warn ? dangerRaw : warn + 5;
+  const criticalRaw = toPositiveNumber(
+    settings?.critical,
+    DEFAULT_TIME_THRESHOLDS.critical,
+  );
+  const critical = criticalRaw > danger ? criticalRaw : danger + 5;
+
+  return { warn, danger, critical };
+};
+
+const sanitizeColor = (value, fallback) => {
+  const color = String(value || "").trim();
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  return fallback;
+};
+
+const normalizeTimeColors = (colors) => ({
+  ok: sanitizeColor(colors?.ok, DEFAULT_TIME_COLORS.ok),
+  warn: sanitizeColor(colors?.warn, DEFAULT_TIME_COLORS.warn),
+  danger: sanitizeColor(colors?.danger, DEFAULT_TIME_COLORS.danger),
+  critical: sanitizeColor(colors?.critical, DEFAULT_TIME_COLORS.critical),
+});
+
+const withAlpha = (hex, alphaHex = "22") =>
+  /^#[0-9a-f]{6}$/i.test(hex) ? `${hex}${alphaHex}` : hex;
+
+const getTimeStatus = (minutes, thresholds) => {
+  if (minutes >= thresholds.critical) return "critical";
+  if (minutes >= thresholds.danger) return "danger";
+  if (minutes >= thresholds.warn) return "warning";
+  return "ok";
+};
+
+const getTimeStatusColor = (status, colors) => {
+  const key = TIME_STATUS_COLOR_KEYS[status] || "ok";
+  return colors[key] || DEFAULT_TIME_COLORS[key] || DEFAULT_TIME_COLORS.ok;
+};
+
+const isClosedOrderStatus = (status) =>
+  ["cancelled", "failed", "served", "completed"].includes(
+    normalizeStatus(status),
+  );
+
 /* --- SUB-COMPONENT: TIME BADGE --- */
-const TimeBadge = ({ minutes }) => {
-  let statusClass = "fresh";
-  if (minutes >= 30) statusClass = "critical";
-  else if (minutes >= 20) statusClass = "danger";
-  else if (minutes >= 10) statusClass = "warning";
+const TimeBadge = ({ minutes, thresholds, colors }) => {
+  const statusClass = getTimeStatus(minutes, thresholds);
+  const statusColor = getTimeStatusColor(statusClass, colors);
+  const isStrongStatus = ["danger", "critical"].includes(statusClass);
+  const visualClass = statusClass === "ok" ? "fresh" : statusClass;
 
   return (
-    <div className={`oc-time-badge ${statusClass}`}>
+    <div
+      className={`oc-time-badge ${visualClass} oc-time-badge--custom`}
+      style={{
+        "--oc-time-color": statusColor,
+        "--oc-time-bg": withAlpha(statusColor, "18"),
+        "--oc-time-border": withAlpha(statusColor, "55"),
+        "--oc-time-solid": statusColor,
+        "--oc-time-contrast": isStrongStatus ? "#fffdf8" : statusColor,
+      }}
+      title={`Ngưỡng: cảnh báo ${thresholds.warn}p, nguy hiểm ${thresholds.danger}p, khẩn cấp ${thresholds.critical}p`}
+    >
       <Clock size={12} strokeWidth={2.5} />
       <span>{minutes > 0 ? `${minutes}p` : "Mới"}</span>
     </div>
@@ -100,10 +185,26 @@ const OrderCard = ({
   onRejectOrder,
   isRemoteStaffPending = false,
   onMessageCustomer,
+  timeThresholds,
+  timeColors,
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const normalizedThresholds = useMemo(
+    () => normalizeTimeThresholds(timeThresholds),
+    [timeThresholds],
+  );
+  const normalizedColors = useMemo(
+    () => normalizeTimeColors(timeColors),
+    [timeColors],
+  );
 
-  const { mergedItems, progress, ageMinutes, statusColorClass } = useMemo(() => {
+  const {
+    mergedItems,
+    progress,
+    ageMinutes,
+    statusColorClass,
+    timeStatus,
+  } = useMemo(() => {
     const items = mergeDuplicateItems(order?.items || []);
     const age = minutesSince(order?.createdAt);
 
@@ -114,20 +215,32 @@ const OrderCard = ({
       0,
     );
     const prog = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
+    const currentTimeStatus = getTimeStatus(age, normalizedThresholds);
 
     let colorClass = "normal";
-    if (order?.currentStatus === "cancelled") colorClass = "cancelled";
-    else if (order?.currentStatus === "served") colorClass = "completed";
-    else if (age >= 20) colorClass = "danger";
-    else if (age >= 10) colorClass = "warning";
+    if (order?.currentStatus === "cancelled" || order?.currentStatus === "failed") {
+      colorClass = "cancelled";
+    } else if (
+      order?.currentStatus === "served" ||
+      order?.currentStatus === "completed"
+    ) {
+      colorClass = "completed";
+    } else if (currentTimeStatus === "critical") {
+      colorClass = "critical";
+    } else if (currentTimeStatus === "danger") {
+      colorClass = "danger";
+    } else if (currentTimeStatus === "warning") {
+      colorClass = "warning";
+    }
 
     return {
       mergedItems: items,
       progress: prog,
       ageMinutes: age,
       statusColorClass: colorClass,
+      timeStatus: currentTimeStatus,
     };
-  }, [order]);
+  }, [order, normalizedThresholds]);
 
   const MAX_ITEMS = isFocusMode ? 20 : 4;
   const visibleItems = mergedItems.slice(0, MAX_ITEMS);
@@ -158,6 +271,8 @@ const OrderCard = ({
   const batchTitle = getBatchTitle(order);
   const progressStep = Math.max(0, Math.min(100, Math.round(progress / 10) * 10));
   const orderDisplayCode = order?.orderCode || order?.id || "Chưa có mã";
+  const alertColor = getTimeStatusColor(timeStatus, normalizedColors);
+  const shouldUseTimeAlertColor = !isClosedOrderStatus(order?.currentStatus);
 
   const handleCardKeyDown = (e) => {
     if (["Enter", " "].includes(e.key)) {
@@ -304,6 +419,11 @@ const OrderCard = ({
       className={`oc-card ${
         isFocusMode ? "mode-focus" : ""
       } ${statusColorClass} ${order?.currentStatus}`}
+      style={
+        shouldUseTimeAlertColor
+          ? { "--oc-card-alert-color": alertColor }
+          : undefined
+      }
       onClick={() => onViewOrder?.(order)}
       onKeyDown={handleCardKeyDown}
       role="button"
@@ -331,7 +451,11 @@ const OrderCard = ({
           </span>
         </div>
 
-        <TimeBadge minutes={ageMinutes} />
+        <TimeBadge
+          minutes={ageMinutes}
+          thresholds={normalizedThresholds}
+          colors={normalizedColors}
+        />
       </div>
       {batchTitle && (
         <div className="oc-batch-info">
