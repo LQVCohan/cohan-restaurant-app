@@ -1,0 +1,30 @@
+name: PR 1107 backend targeted diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
+      - run: npm --prefix cohan-restaurant-backend ci
+      - name: Run remaining backend tests
+        run: |
+          set +e
+          npm --prefix cohan-restaurant-backend test -- tests/resolvers/order-payment-request-review.test.js tests/resolvers/payment-transfer-resubmit.test.js > backend-targeted-pr1107.txt 2>&1
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-targeted-pr1107
+          path: backend-targeted-pr1107.txt
+          retention-days: 1
