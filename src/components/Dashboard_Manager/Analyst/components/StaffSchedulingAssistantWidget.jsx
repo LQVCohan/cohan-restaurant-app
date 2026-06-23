@@ -27,7 +27,8 @@ const normalizeReason = (reason = "") =>
     .replaceAll("no overlap in current window", "không trùng ca hiện tại")
     .replaceAll("performance fallback", "chưa đủ dữ liệu hiệu suất")
     .replaceAll("recent performance", "hiệu suất gần đây")
-    .replaceAll("part-time employee availability unknown", "chưa có lịch khả dụng của nhân viên part-time")
+    .replaceAll("part-time employee availability unknown", "chưa có lịch rảnh của nhân viên part-time")
+    .replaceAll("availability", "lịch rảnh")
     .replaceAll(/\s{2,}/g, " ")
     .trim();
 const methodLabel = (method = "") => ({
@@ -36,10 +37,9 @@ const methodLabel = (method = "") => ({
 
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
-    {meta.fallbackUsed ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+    {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm tra lại</span> : null}
     <span>{methodLabel(meta.method)}</span>
     <span>{meta.basedOnForecast ? "Có dùng dự báo nhu cầu" : "Dựa trên lịch hiện tại"}</span>
-    {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
     {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
@@ -63,8 +63,8 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading, onNavigate }) => {
             <p>Đề xuất nhân sự theo nhu cầu từng ca</p>
           </div>
         </div>
-        <button type="button" className={`mode-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "forecast"}`} onClick={() => onNavigate?.("schedules")}>
-          {assistant?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Mở lịch làm"}
+        <button type="button" className="mode-pill forecast" onClick={() => onNavigate?.("schedules")}>
+          Mở lịch làm
         </button>
       </div>
       <MetaStrip meta={assistant?.meta} />
