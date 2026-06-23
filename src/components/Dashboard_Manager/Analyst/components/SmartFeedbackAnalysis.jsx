@@ -14,7 +14,7 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
       <div className="widget-header">
         <div className="header-top">
           <div>
-            <h4>Phân Tích & Phản Hồi</h4>
+            <h4>Phân tích phản hồi</h4>
             <span className="subtitle">Review thật từ khách hàng</span>
           </div>
           <div className="rating-badge">
@@ -55,7 +55,7 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
                     </div>
                     <div className="rating-row">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={12} fill={i < review.rating ? "#f59e0b" : "#e2e8f0"} stroke="none" />
+                        <Star key={i} size={12} fill={i < review.rating ? "#8a633f" : "#d9d2c4"} stroke="none" />
                       ))}
                     </div>
                   </div>
