@@ -104,7 +104,7 @@ describe("Dashboard manager command center", () => {
     renderDashboard();
 
     expect(
-      screen.getByRole("heading", { name: "Dashboard quản lý" }),
+      screen.getByRole("heading", { name: "Tổng quan vận hành" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn nhà hàng")).toBeInTheDocument();
     expect(screen.getByLabelText("Chọn khoảng thời gian")).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("Dashboard manager command center", () => {
     renderDashboard({ revenueTrend: [] });
 
     expect(
-      screen.getByText("Chưa có doanh thu trong khoảng thời gian này."),
+      screen.getByText("Chưa có dữ liệu doanh thu trong thời gian này."),
     ).toBeInTheDocument();
     expect(screen.queryByText("0.0%")).not.toBeInTheDocument();
     expect(screen.queryByText("Chưa có kỳ đối chiếu")).not.toBeInTheDocument();
@@ -139,7 +139,7 @@ describe("Dashboard manager command center", () => {
     renderDashboard({ loading: true, recentOrders: [], revenueTrend: [] });
 
     expect(
-      screen.getByRole("heading", { name: "Dashboard quản lý" }),
+      screen.getByRole("heading", { name: "Tổng quan vận hành" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Đang tải dữ liệu doanh thu..."),
@@ -167,7 +167,7 @@ describe("Dashboard manager command center", () => {
     renderDashboard({ error: new Error("Mất kết nối") });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Không thể tải dữ liệu dashboard",
+      "Không thể tải dữ liệu tổng quan",
     );
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeInTheDocument();
   });
