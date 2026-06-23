@@ -177,6 +177,11 @@
     border-color: var(--ana-primary, #2d3a43) !important;
   }
 
+  .feedback-analysis-widget .rating-badge {
+    background: var(--ana-primary, #2d3a43) !important;
+    box-shadow: 0 10px 22px rgba(45, 58, 67, 0.16) !important;
+  }
+
   .progress-fill {
     background: var(--ana-accent, #6f7f7a) !important;
   }
