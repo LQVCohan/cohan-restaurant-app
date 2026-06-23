@@ -3,6 +3,7 @@ import payrollReadinessQuery from "./payrollReadiness.query.js";
 import staffMutation from "./mutation.js";
 import staffPhotoActions from "./staffAvatar.mutation.js";
 import payrollFinalizeReadinessMutation from "./payrollFinalizeReadiness.mutation.js";
+import payrollProtectedAttendanceMutation from "./payrollProtectedAttendance.mutation.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
   const numeric = Number(value);
@@ -87,6 +88,7 @@ const resolvers = {
     ...staffMutation,
     ...staffPhotoActions,
     ...payrollFinalizeReadinessMutation,
+    ...payrollProtectedAttendanceMutation,
   },
   PayrollStats: {
     totalPayroll: (source) => toFiniteNumber(source?.totalPayroll),
