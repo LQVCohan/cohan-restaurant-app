@@ -21,6 +21,9 @@ const guardMocks = vi.hoisted(() => ({
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/checkoutCouponEligibility.service.js", () => ({
+  evaluateCheckoutCouponEligibilities: vi.fn(),
+}));
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((value) => String(value || "").startsWith("valid-")),
@@ -32,7 +35,6 @@ vi.mock("mongoose", () => ({
     },
   },
 }));
-
 
 function makeRestaurantQuery(restaurant = {}) {
   return {
@@ -73,7 +75,9 @@ describe("public/customer permission flows", () => {
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
     modelMocks.MenuItem.find.mockReturnValue(findChain([]));
     modelMocks.MenuItem.findOne.mockReturnValue(findOneChain(null));
-    modelMocks.Restaurant.findById.mockReturnValue(findOneChain({ _id: "valid-r1", businessStatus: "active", publicationStatus: "published" }));
+    modelMocks.Restaurant.findById.mockReturnValue(
+      findOneChain({ _id: "valid-r1", businessStatus: "active", publicationStatus: "published" }),
+    );
     modelMocks.Category.find.mockReturnValue(findChain([]));
     modelMocks.Promotion.find.mockReturnValue(findChain([]));
     modelMocks.Coupon.find.mockReturnValue(findChain([]));
@@ -92,21 +96,15 @@ describe("public/customer permission flows", () => {
           acceptsTableOrders: true,
           acceptsReservations: true,
         },
-        orderPolicy: {
-          allowWhenClosed: true,
-        },
-        reservationPolicy: {
-          allowWhenClosed: true,
-        },
+        orderPolicy: { allowWhenClosed: true },
+        reservationPolicy: { allowWhenClosed: true },
       }),
     });
   });
 
   it("lets public customers browse available menu items without menu.read", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
-
     await MenuQuery.menuItems(null, { restaurantId: "valid-r1" }, {});
-
     expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
     expect(modelMocks.MenuItem.find).toHaveBeenCalledWith({
       restaurantId: "valid-r1",
@@ -116,13 +114,11 @@ describe("public/customer permission flows", () => {
 
   it("requires menu.read for internal menu item status queries", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
-
     await MenuQuery.menuItemsConnection(
       null,
       { filter: { restaurantId: "valid-r1", status: "hidden" } },
       { user: { id: "manager-1" } },
     );
-
     expect(authMocks.requireRestaurantPermission).toHaveBeenCalledWith(
       expect.anything(),
       "valid-r1",
@@ -136,22 +132,22 @@ describe("public/customer permission flows", () => {
 
   it("lets public customers browse active promotions without promotion.read", async () => {
     const { PromotionQuery } = await import("../../graphql/resolvers/promotion/query.js");
-
-    await PromotionQuery.promotionsByRestaurant(null, { restaurantId: "valid-r1", activeOnly: true }, {});
-
+    await PromotionQuery.promotionsByRestaurant(
+      null,
+      { restaurantId: "valid-r1", activeOnly: true },
+      {},
+    );
     expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
     expect(modelMocks.Promotion.find).toHaveBeenCalledWith(expect.objectContaining({ isActive: true }));
   });
 
   it("requires promotion.read when listing inactive/admin promotions", async () => {
     const { PromotionQuery } = await import("../../graphql/resolvers/promotion/query.js");
-
     await PromotionQuery.promotionsByRestaurant(
       null,
       { restaurantId: "valid-r1", activeOnly: false },
       { user: { id: "manager-1" } },
     );
-
     expect(authMocks.requireRestaurantPermission).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -161,22 +157,18 @@ describe("public/customer permission flows", () => {
 
   it("lets public customers browse active coupons without coupon.read", async () => {
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
-
     await CouponQuery.coupons(null, { restaurantId: "valid-r1", activeOnly: true }, {});
-
     expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
     expect(modelMocks.Coupon.find).toHaveBeenCalledWith(expect.objectContaining({ isActive: true }));
   });
 
   it("requires coupon.read for inactive/admin coupon listings", async () => {
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
-
     await CouponQuery.coupons(
       null,
       { restaurantId: "valid-r1", activeOnly: false },
       { user: { id: "manager-1" } },
     );
-
     expect(authMocks.requireRestaurantPermission).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -186,22 +178,24 @@ describe("public/customer permission flows", () => {
 
   it("lets public customers browse active voucher packages without coupon.read", async () => {
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
-
-    await CouponQuery.voucherPackages(null, { restaurantId: "valid-r1", activeOnly: true }, {});
-
+    await CouponQuery.voucherPackages(
+      null,
+      { restaurantId: "valid-r1", activeOnly: true },
+      {},
+    );
     expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
-    expect(modelMocks.VoucherPackage.find).toHaveBeenCalledWith(expect.objectContaining({ isActive: true }));
+    expect(modelMocks.VoucherPackage.find).toHaveBeenCalledWith(
+      expect.objectContaining({ isActive: true }),
+    );
   });
 
   it("requires coupon.read for inactive/admin voucher package listings", async () => {
     const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
-
     await CouponQuery.voucherPackages(
       null,
       { restaurantId: "valid-r1", activeOnly: false },
       { user: { id: "manager-1" } },
     );
-
     expect(authMocks.requireRestaurantPermission).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -209,9 +203,8 @@ describe("public/customer permission flows", () => {
     );
   });
 
-  it("lets public customers query customerMenuCategories with active + sorted + orderable categories only", async () => {
+  it("lets public customers query active sorted orderable categories", async () => {
     const { CategoryQuery } = await import("../../graphql/resolvers/category/query.js");
-
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
     modelMocks.Category.find.mockReturnValue({
       sort: vi.fn().mockReturnValue({
@@ -234,56 +227,102 @@ describe("public/customer permission flows", () => {
     );
 
     expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
-    expect(rows.map((x) => x.id || String(x._id))).toEqual(["valid-c2", "valid-c1"]);
-    expect(rows.every((x) => x.isActive !== false)).toBe(true);
-    expect(rows.every((x) => x.menuItemCount > 0)).toBe(true);
+    expect(rows.map((item) => item.id || String(item._id))).toEqual(["valid-c2", "valid-c1"]);
+    expect(rows.every((item) => item.isActive !== false)).toBe(true);
+    expect(rows.every((item) => item.menuItemCount > 0)).toBe(true);
   });
-  it("lets public users query customerMenuItem for available item", async () => {
+
+  it("lets public users query an available customerMenuItem", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
     modelMocks.MenuItem.findOne.mockReturnValue(
-      findOneChain({ _id: "valid-m1", id: "valid-m1", restaurantId: "valid-r1", status: "available", menuId: "valid-menu-1" }),
+      findOneChain({
+        _id: "valid-m1",
+        id: "valid-m1",
+        restaurantId: "valid-r1",
+        status: "available",
+        menuId: "valid-menu-1",
+      }),
     );
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
-    const row = await MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {});
+    const row = await MenuQuery.customerMenuItem(
+      null,
+      { id: "valid-m1", restaurantId: "valid-r1" },
+      {},
+    );
     expect(row?.id).toBe("valid-m1");
     expect(authMocks.requireRestaurantPermission).not.toHaveBeenCalled();
   });
 
-  it("returns null for unavailable or out_of_stock customerMenuItem", async () => {
+  it("returns null for unavailable or out-of-stock customerMenuItem", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
     modelMocks.MenuItem.findOne.mockReturnValue(findOneChain(null));
-    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+    await expect(
+      MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {}),
+    ).resolves.toBeNull();
     modelMocks.MenuItem.findOne.mockReturnValue(
-      findOneChain({ _id: "valid-m1", restaurantId: "valid-r1", status: "available", inventoryStatus: "OUT_OF_STOCK" }),
+      findOneChain({
+        _id: "valid-m1",
+        restaurantId: "valid-r1",
+        status: "available",
+        inventoryStatus: "OUT_OF_STOCK",
+      }),
     );
-    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+    await expect(
+      MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {}),
+    ).resolves.toBeNull();
   });
 
-  it("returns null when restaurant is missing/inactive/not published for customerMenuItem", async () => {
+  it("returns null for a missing, inactive or hidden restaurant", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
     modelMocks.MenuItem.findOne.mockReturnValue(
-      findOneChain({ _id: "valid-m1", id: "valid-m1", restaurantId: "valid-r1", status: "available", menuId: "valid-menu-1" }),
+      findOneChain({
+        _id: "valid-m1",
+        id: "valid-m1",
+        restaurantId: "valid-r1",
+        status: "available",
+        menuId: "valid-menu-1",
+      }),
     );
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
 
     modelMocks.Restaurant.findById.mockReturnValueOnce(findOneChain(null));
-    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+    await expect(
+      MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {}),
+    ).resolves.toBeNull();
 
     modelMocks.Restaurant.findById.mockReturnValueOnce(
-      findOneChain({ _id: "valid-r1", businessStatus: "inactive", publicationStatus: "published" }),
+      findOneChain({
+        _id: "valid-r1",
+        businessStatus: "inactive",
+        publicationStatus: "published",
+      }),
     );
-    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+    await expect(
+      MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {}),
+    ).resolves.toBeNull();
 
     modelMocks.Restaurant.findById.mockReturnValueOnce(
-      findOneChain({ _id: "valid-r1", businessStatus: "active", publicationStatus: "hidden" }),
+      findOneChain({
+        _id: "valid-r1",
+        businessStatus: "active",
+        publicationStatus: "hidden",
+      }),
     );
-    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toBeNull();
+    await expect(
+      MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {}),
+    ).resolves.toBeNull();
   });
 
-  it("still returns customerMenuItem when restaurant is closed but publicly visible", async () => {
+  it("returns customerMenuItem when restaurant is closed but publicly visible", async () => {
     const { MenuQuery } = await import("../../graphql/resolvers/menu/query.js");
     modelMocks.MenuItem.findOne.mockReturnValue(
-      findOneChain({ _id: "valid-m1", id: "valid-m1", restaurantId: "valid-r1", status: "available", menuId: "valid-menu-1" }),
+      findOneChain({
+        _id: "valid-m1",
+        id: "valid-m1",
+        restaurantId: "valid-r1",
+        status: "available",
+        menuId: "valid-menu-1",
+      }),
     );
     modelMocks.Menu.findOne.mockReturnValue(findOneChain({ _id: "valid-menu-1" }));
     modelMocks.Restaurant.findById.mockReturnValue(
@@ -296,7 +335,8 @@ describe("public/customer permission flows", () => {
       }),
     );
 
-    await expect(MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {})).resolves.toMatchObject({ id: "valid-m1" });
+    await expect(
+      MenuQuery.customerMenuItem(null, { id: "valid-m1", restaurantId: "valid-r1" }, {}),
+    ).resolves.toMatchObject({ id: "valid-m1" });
   });
-
 });
