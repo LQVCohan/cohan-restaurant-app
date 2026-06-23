@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid3X3 } from "lucide-react";
+import { ArrowRight, Grid3X3 } from "lucide-react";
 import "./SmartOccupancyHeatmap.scss";
 
 const SmartOccupancyHeatmap = ({ points = [], loading }) => {
@@ -7,12 +7,13 @@ const SmartOccupancyHeatmap = ({ points = [], loading }) => {
   const days = [...new Set(points.map((p) => p.dayLabel))];
   const byKey = new Map(points.map((p) => [`${p.dayLabel}-${p.hourLabel}`, p]));
   const hasHeatmapData = points.some((p) => Number(p.occupancyRate || 0) > 0);
+  const goOrders = () => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "orders", source: "manager-analytics" } }));
 
   return (
     <div className="widget-card smart-heatmap-widget">
       <div className="widget-header">
         <div className="header-info">
-          <h4>Mật Độ & Dự Báo</h4>
+          <h4>Mật độ và dự báo</h4>
         </div>
       </div>
       <div className="heatmap-scroll-wrapper">
@@ -54,10 +55,11 @@ const SmartOccupancyHeatmap = ({ points = [], loading }) => {
             ))}
           </div>
         ) : (
-          <div className="empty-state compact">
+          <div className="empty-state compact analytics-action-empty">
             <Grid3X3 size={16} />
-            <p>Chưa đủ dữ liệu để tạo bản đồ mật độ.</p>
-            <span>Cần thêm đơn theo nhiều khung giờ để phân tích chính xác.</span>
+            <strong>Chưa đủ dữ liệu mật độ</strong>
+            <p>Cần thêm đơn theo nhiều khung giờ để phân tích chính xác.</p>
+            <button type="button" className="widget-cta" onClick={goOrders}>Xem đơn hàng <ArrowRight size={14} /></button>
           </div>
         )}
       </div>
