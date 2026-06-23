@@ -8,20 +8,20 @@ const nf = (value) =>
   }).format(Number(value || 0));
 
 const quadrantLabel = {
-  star: "STAR • Món chủ lực",
-  plowhorse: "PLOWHORSE • Bán tốt, lời thấp",
-  puzzle: "PUZZLE • Lời cao, bán chậm",
-  dog: "DOG • Cần xem lại",
+  star: "Chủ lực",
+  plowhorse: "Bán tốt, lời thấp",
+  puzzle: "Lời cao, bán chậm",
+  dog: "Cần xem lại",
 };
 
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
     {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-    <span>method: {meta.method || "-"}</span>
-    <span>sampleOrders: {meta.sampleOrders ?? "-"}</span>
-    <span>sampleDays: {meta.sampleDays ?? "-"}</span>
-    <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
-    {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    <span>Phương pháp: {meta.method || "-"}</span>
+    <span>Mẫu đơn: {meta.sampleOrders ?? "-"}</span>
+    <span>Số ngày: {meta.sampleDays ?? "-"}</span>
+    <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
+    {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
 
@@ -40,7 +40,7 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
           </div>
           <div>
             <h3>Trợ lý tối ưu menu</h3>
-            <p>Phân loại STAR / PLOWHORSE / PUZZLE / DOG theo dữ liệu thực tế</p>
+            <p>Phân loại món theo doanh thu, biên lợi nhuận và tốc độ bán</p>
           </div>
         </div>
         <button type="button" className={`meta-pill ${assistant?.meta?.fallbackUsed ? "fallback" : "data"}`} onClick={() => onNavigate?.("menu")}>
@@ -55,19 +55,19 @@ const MenuEngineeringAssistantWidget = ({ assistant, loading, onNavigate }) => {
         <>
           <div className="summary-grid">
             <div className="summary-item">
-              <span>STAR</span>
+              <span>Chủ lực</span>
               <strong>{nf(summary.starCount)}</strong>
             </div>
             <div className="summary-item">
-              <span>PLOWHORSE</span>
+              <span>Bán tốt</span>
               <strong>{nf(summary.plowhorseCount)}</strong>
             </div>
             <div className="summary-item">
-              <span>PUZZLE</span>
+              <span>Lời cao</span>
               <strong>{nf(summary.puzzleCount)}</strong>
             </div>
             <div className="summary-item">
-              <span>DOG</span>
+              <span>Cần xem lại</span>
               <strong>{nf(summary.dogCount)}</strong>
             </div>
           </div>
