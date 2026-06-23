@@ -15,10 +15,10 @@ const tokenMap = {
   low: "Thấp",
   active_now: "Đang còn hiệu lực",
   segment_fit: "Phù hợp nhóm khách mục tiêu",
-  scope_fit: "Phù hợp phạm vi áp dụng",
+  scope_fit: "Phù hợp với phạm vi áp dụng",
   aov_missing: "Thiếu dữ liệu giá trị đơn trung bình",
   usage_capacity_ok: "Còn lượt sử dụng",
-  stacking_guardrail_fit: "Phù hợp giới hạn cộng dồn",
+  stacking_guardrail_fit: "Không vượt giới hạn cộng dồn",
   discount_type_match: "Loại ưu đãi phù hợp",
   existing_promotion: "Khuyến mãi đang có",
   existing_coupon: "Voucher đang có",
@@ -34,7 +34,7 @@ const getTokenLabel = (value, fallback = "") => {
 const normalizeOrderType = (value) =>
   orderTypeMap[String(value || "").toUpperCase()] ||
   getTokenLabel(value) ||
-  "Loại đơn cần review";
+  "Loại đơn cần kiểm tra";
 
 const normalizePriority = (value) =>
   priorityMap[String(value || "").toUpperCase()] ||
@@ -43,15 +43,15 @@ const normalizePriority = (value) =>
 
 const normalizeSegment = (value) =>
   getTokenLabel(value) ||
-  "Nhóm khách cần review";
+  "Nhóm khách cần kiểm tra";
 
 const normalizeToken = (token = "") => {
   const cleaned = token.trim().toLowerCase();
   if (!cleaned) return "";
   if (tokenMap[cleaned]) return tokenMap[cleaned];
   if (cleaned.includes("existing_promotion") || cleaned.includes("existing_coupon")) return "";
-  if (/^[a-z]+(_[a-z]+)+$/.test(cleaned) || /^[a-z_]+$/.test(cleaned)) return "Điều kiện hệ thống phù hợp";
-  return "";
+  if (/^[a-z]+(_[a-z]+)+$/.test(cleaned) || /^[a-z_]+$/.test(cleaned)) return "Có thể áp dụng với điều kiện hiện tại";
+  return token.trim();
 };
 const normalizeText = (value = "") =>
   String(value)
@@ -59,18 +59,20 @@ const normalizeText = (value = "") =>
     .flatMap((item) => item.split(","))
     .map((token) => normalizeToken(token))
     .filter(Boolean)
+    .filter((item, idx, arr) => arr.indexOf(item) === idx)
     .join(", ");
 const roleTarget = (segment) => normalizeText(segment) || "Khách có khả năng quay lại";
+const methodLabel = (method = "") => ({
+  smart_promo_v1: "Dựa trên đơn hàng và voucher hiện có",
+}[method] || "Dựa trên dữ liệu khuyến mãi");
 
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
-    {(meta.lowDataFallbackUsed || meta.fallbackUsed) ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-    <span>Phương pháp: {meta.method || "-"}</span>
-    <span>Mẫu đơn: {meta.sampleOrders ?? "-"}</span>
-    <span>Số ngày: {meta.sampleDays ?? "-"}</span>
-    <span>AI hỗ trợ: {meta.aiEnhanced ? "có" : "không"}</span>
-    <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
-    {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    {(meta.lowDataFallbackUsed || meta.fallbackUsed) ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+    <span>{methodLabel(meta.method)}</span>
+    <span>{meta.sampleOrders ?? "-"} đơn trong {meta.sampleDays ?? "-"} ngày</span>
+    {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
+    {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
 
@@ -88,14 +90,14 @@ const SmartPromotionEngineWidget = ({ engine, loading, onNavigate }) => {
           <div><h3>Gợi ý khuyến mãi thông minh</h3><p>Đề xuất chiến dịch theo giờ vắng, tệp khách và bối cảnh vận hành</p></div>
         </div>
         <button type="button" className={`meta-pill ${engine?.meta?.fallbackUsed ? "fallback" : "data"}`} onClick={() => onNavigate?.("promotions")}>
-          {engine?.meta?.aiEnhanced ? "AI hỗ trợ" : engine?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Mở khuyến mãi"}
+          {engine?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Mở khuyến mãi"}
         </button>
       </div>
       <MetaStrip meta={engine?.meta} />
 
       {loading ? <div className="state-message">Đang phân tích chiến dịch khuyến mãi phù hợp...</div> : null}
       {!loading && !campaigns.length ? <div className="state-message warning">Chưa đủ dữ liệu để đề xuất chiến dịch rõ ràng.</div> : null}
-      {!loading && Number(engine?.meta?.sampleOrders || 0) < 20 ? <div className="state-message warning">Dữ liệu còn ít, nên review thủ công trước khi chạy chiến dịch.</div> : null}
+      {!loading && Number(engine?.meta?.sampleOrders || 0) < 20 ? <div className="state-message warning">Dữ liệu đơn hàng còn ít, nên kiểm tra thủ công trước khi áp dụng.</div> : null}
 
       {!loading && campaigns.length ? (
         <>
@@ -114,7 +116,7 @@ const SmartPromotionEngineWidget = ({ engine, loading, onNavigate }) => {
             {topCampaigns.map((campaign) => {
               const windowLabel = campaign?.targetWindow
                 ? `${campaign.targetWindow.startHour}:00-${campaign.targetWindow.endHour}:00`
-                : "Khung giờ cần review";
+                : "Khung giờ cần kiểm tra";
               return (
               <div className="campaign-item" key={campaign.campaignKey}>
                 <div className="item-head"><strong>{campaign.title}</strong><span className={`priority ${(campaign.priority || "").toLowerCase()}`}>{normalizePriority(campaign.priority)}</span></div>
@@ -126,7 +128,7 @@ const SmartPromotionEngineWidget = ({ engine, loading, onNavigate }) => {
                 <div className="group-line"><strong>Lưu ý an toàn:</strong> {normalizeText(campaign.reason || "Theo dõi KPI sau 24h để tinh chỉnh chiến dịch")}.</div>
                 {campaign.expectedKpi?.confidence != null ? <div className="group-line"><strong>Độ tin cậy:</strong> {formatNumber(campaign.expectedKpi.confidence)}</div> : null}
                 {campaign.guardrails?.length ? <div className="guardrail"><ShieldCheck size={14} /> {normalizeText(campaign.guardrails[0])}</div> : null}
-                <button type="button" className="widget-cta" onClick={() => onNavigate?.("promotions", { campaignKey: campaign.campaignKey })}>Đi sang module khuyến mãi</button>
+                <button type="button" className="widget-cta" onClick={() => onNavigate?.("promotions", { campaignKey: campaign.campaignKey })}>Đi sang khuyến mãi</button>
               </div>
             );})}
           </div>
