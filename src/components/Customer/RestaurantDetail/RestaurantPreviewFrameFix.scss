@@ -1,0 +1,157 @@
+/* Restaurant detail live-preview fit repair.
+   Scoped by the disabled preview back button, so customer detail pages keep their normal layout. */
+
+.restaurant-detail-page:has(.btn-back:disabled) {
+  min-height: 100vh !important;
+  padding-bottom: 0 !important;
+  overflow-x: hidden !important;
+  background: #fffaf3 !important;
+
+  .rd-hero {
+    padding-bottom: 0 !important;
+  }
+
+  .hero-cover,
+  .hero-cover.fallback-cover {
+    height: clamp(132px, 30vw, 168px) !important;
+  }
+
+  .hero-cover .btn-back {
+    top: 0.78rem !important;
+    left: 50% !important;
+    width: 2.05rem !important;
+    height: 2.05rem !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    transform: translateX(-50%) !important;
+    color: #24303f !important;
+    background: rgba(255, 253, 248, 0.9) !important;
+    border: 1px solid rgba(116, 88, 54, 0.12) !important;
+    box-shadow: 0 8px 18px rgba(36, 48, 63, 0.12) !important;
+    opacity: 1 !important;
+  }
+
+  .hero-cover .btn-back svg {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+
+  .fallback-cover-copy {
+    left: 1rem !important;
+    right: 1rem !important;
+    bottom: 2.35rem !important;
+    max-width: calc(100% - 2rem) !important;
+  }
+
+  .fallback-cover-copy span {
+    padding: 0.28rem 0.5rem !important;
+    font-size: 0.58rem !important;
+  }
+
+  .fallback-cover-copy strong {
+    font-size: clamp(1.06rem, 7vw, 1.38rem) !important;
+  }
+
+  .hero-content.container,
+  .container {
+    padding-left: 0.78rem !important;
+    padding-right: 0.78rem !important;
+  }
+
+  .res-info-card {
+    display: block !important;
+    margin-top: -2.15rem !important;
+    padding: 1rem !important;
+    border-radius: 1.25rem !important;
+    box-shadow: 0 12px 28px rgba(36, 48, 63, 0.13) !important;
+  }
+
+  .res-info-card .avatar-wrapper {
+    margin-bottom: 0.72rem !important;
+  }
+
+  .res-info-card .avatar-wrapper img,
+  .res-info-card .avatar-wrapper .avatar-fallback {
+    width: 4.55rem !important;
+    height: 4.55rem !important;
+    border-radius: 1rem !important;
+    border-width: 0.24rem !important;
+  }
+
+  .res-info-card .avatar-wrapper .avatar-fallback span {
+    font-size: 1.4rem !important;
+  }
+
+  .res-info-card .avatar-wrapper .avatar-fallback small {
+    font-size: 0.54rem !important;
+  }
+
+  .res-info-card .info-text .bread-crumbs {
+    max-width: 100% !important;
+    margin-bottom: 0.55rem !important;
+    padding: 0.32rem 0.55rem !important;
+    font-size: 0.58rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .res-info-card .info-text .res-name {
+    margin-bottom: 0.58rem !important;
+    font-size: clamp(1.42rem, 9vw, 1.86rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  .res-info-card .info-text .res-meta {
+    gap: 0.38rem !important;
+    margin-bottom: 0.58rem !important;
+  }
+
+  .res-info-card .info-text .res-meta .rating,
+  .res-info-card .info-text .res-meta .cuisine,
+  .res-info-card .info-text .res-meta .status,
+  .res-info-card .info-text .profile-summary .summary-chip {
+    min-height: 1.85rem !important;
+    padding: 0.34rem 0.55rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .res-info-card .info-text .res-address {
+    margin-top: 0.3rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .res-info-card .info-text .profile-summary {
+    gap: 0.38rem !important;
+    margin-top: 0.62rem !important;
+  }
+
+  .res-info-card .action-group {
+    display: none !important;
+  }
+
+  .rd-tabs {
+    display: none !important;
+  }
+
+  .rd-container {
+    display: none !important;
+  }
+
+  .mobile-action-bar {
+    position: sticky !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 20 !important;
+    padding: 0.6rem 0.78rem 0.72rem !important;
+    background: linear-gradient(180deg, rgba(255, 250, 243, 0), #fffaf3 35%) !important;
+  }
+
+  .btn-book-mobile {
+    min-height: 2.75rem !important;
+    border-radius: 0.82rem !important;
+    font-size: 0.86rem !important;
+  }
+}
