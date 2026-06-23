@@ -70,6 +70,7 @@ vi.mock("../../src/services/finance/reconciliationMatching.service.js", () => ({
 }));
 vi.mock("../../src/services/orderTracking.service.js", () => ({
   emitCustomerTrackingUpdateIfChanged: vi.fn(),
+  updatePublicStatusHistory: vi.fn(),
 }));
 vi.mock("../../utils/generateInvoiceNumber.ts", () => ({ generateInvoiceNumber: vi.fn().mockResolvedValue("INV-001") }));
 vi.mock("../../src/services/payment/paymentSession.service.js", () => ({ cancelPaymentSession: vi.fn(), createOrderPayment: vi.fn(), createReservationPayment: vi.fn(), sanitizePaymentSessionForClient: vi.fn((value) => value) }));
