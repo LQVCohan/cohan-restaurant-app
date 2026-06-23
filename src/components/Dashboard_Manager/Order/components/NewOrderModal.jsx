@@ -3,14 +3,18 @@ import {
   Bookmark,
   ChefHat,
   ChevronDown,
+  ClipboardList,
+  Clock3,
   Eraser,
   Image as ImageIcon,
   Layers,
   Loader,
   Minus,
   Plus,
+  ReceiptText,
   Search,
   ShoppingCart,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
@@ -30,6 +34,21 @@ const formatCurrency = (value) =>
     style: "currency",
     currency: "VND",
   }).format(Number(value || 0));
+
+const MENU_SKELETON_COUNT = 8;
+
+const MenuSkeleton = () => (
+  <div className="menu-skeleton-grid" aria-label="Đang tải thực đơn">
+    {Array.from({ length: MENU_SKELETON_COUNT }).map((_, index) => (
+      <article className="menu-skeleton-card" key={`menu-skeleton-${index}`}>
+        <span className="menu-skeleton-card__image" />
+        <span className="menu-skeleton-card__title" />
+        <span className="menu-skeleton-card__meta" />
+        <span className="menu-skeleton-card__price" />
+      </article>
+    ))}
+  </div>
+);
 
 const DishCard = ({ dish, onAdd }) => {
   const [showMethods, setShowMethods] = useState(false);
@@ -77,12 +96,13 @@ const DishCard = ({ dish, onAdd }) => {
         }}
         role="button"
         tabIndex={0}
+        aria-label={`Thêm ${dish?.name || "món"} vào đơn`}
       >
         <div className="dish-card__thumb">
           {imageUrl ? (
             <img src={imageUrl} alt={dish?.name || "Món ăn"} loading="lazy" />
           ) : (
-            <div className="dish-card__thumb--placeholder">
+            <div className="dish-card__thumb--placeholder" aria-hidden="true">
               <ImageIcon size={24} />
             </div>
           )}
@@ -100,7 +120,7 @@ const DishCard = ({ dish, onAdd }) => {
               </span>
             ) : null}
             {Number(dish?.basePrice || 0) === 0 ? (
-              <span className="badge badge--warning">Giá thay đổi</span>
+              <span className="badge badge--warning">Giá theo cách chế biến</span>
             ) : null}
           </div>
 
@@ -129,7 +149,7 @@ const DishCard = ({ dish, onAdd }) => {
           onClick={(event) => event.stopPropagation()}
         >
           <div className="dish-card__methods-title">
-            Chọn cách chế biến
+            <span>Chọn cách chế biến</span>
             <button
               type="button"
               onClick={() => setShowMethods(false)}
@@ -342,6 +362,28 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     });
   }, [itemsWithPrice, query, selectedCategoryId]);
 
+  const selectedSessionLabel =
+    sessions.find((session) => session.value === selectedTimeSlot)?.label ||
+    "ca hiện tại";
+  const selectedFloorLabel =
+    activeLevel === null
+      ? "Tất cả tầng"
+      : (floors || []).find((floor) => Number(floor?.level) === Number(activeLevel))
+          ?.name || `Tầng ${activeLevel}`;
+  const activeCategoryLabel =
+    categoryOptions.find((category) => category.id === selectedCategoryId)?.name ||
+    "Tất cả danh mục";
+  const cartQuantity = currentOrder.reduce(
+    (sum, item) => sum + Number(item?.quantity || 0),
+    0,
+  );
+  const hasActiveFilters = Boolean(query.trim()) || Boolean(selectedCategoryId);
+
+  const resetFilters = () => {
+    setQuery("");
+    setSelectedCategoryId("");
+  };
+
   const handleTableChange = (event) => {
     const tableCode = event.target.value;
     setCurrentTable(
@@ -351,11 +393,11 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
 
   const handleSaveOrder = async () => {
     if (!currentTable) {
-      showNotification("Vui lòng chọn bàn!", "error");
+      showNotification("Vui lòng chọn bàn.", "error");
       return;
     }
     if (!currentOrder.length) {
-      showNotification("Chọn ít nhất 1 món!", "error");
+      showNotification("Chọn ít nhất 1 món.", "error");
       return;
     }
 
@@ -363,7 +405,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     try {
       const result = await saveOrder({ persist: true, restaurantId });
       if (result?.success) {
-        showNotification("Tạo đơn hàng thành công!", "success");
+        showNotification("Tạo đơn hàng thành công.", "success");
         clearDraft();
         await onSuccess?.();
         closeModalNow();
@@ -394,10 +436,42 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
         <div className="new-order-modal-layout">
           <section className="new-order-modal__menu-col">
             <div className="new-order-modal__controls">
+              <div className="new-order-modal__header">
+                <div className="new-order-modal__headline">
+                  <span className="new-order-modal__eyebrow">
+                    <ReceiptText size={14} /> Gọi món tại bàn
+                  </span>
+                  <h3>Tạo order nhanh, kiểm soát món rõ ràng</h3>
+                  <p>
+                    Chọn tầng, bàn và ca phục vụ. Mỗi món được thêm vào giỏ để
+                    kiểm tra lại số lượng trước khi lưu đơn.
+                  </p>
+                </div>
+
+                <div className="new-order-modal__summary-strip" aria-live="polite">
+                  <div className="summary-pill">
+                    <span>Bàn</span>
+                    <b>{currentTable?.code || "Chưa chọn"}</b>
+                  </div>
+                  <div className="summary-pill">
+                    <span>Món</span>
+                    <b>{cartQuantity}</b>
+                  </div>
+                  <div className="summary-pill summary-pill--total">
+                    <span>Tạm tính</span>
+                    <b>{formatCurrency(totals.subtotal)}</b>
+                  </div>
+                </div>
+              </div>
+
               <div className="controls__row controls__row--top">
                 <div className="form-group">
+                  <label className="sr-only" htmlFor="new-order-floor">
+                    Lọc theo tầng
+                  </label>
                   <Layers size={16} className="form-group__icon" />
                   <select
+                    id="new-order-floor"
                     value={activeLevel ?? ""}
                     onChange={(event) => {
                       setActiveLevel(
@@ -418,8 +492,12 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                 </div>
 
                 <div className="form-group">
+                  <label className="sr-only" htmlFor="new-order-table">
+                    Chọn bàn
+                  </label>
                   <Bookmark size={16} className="form-group__icon" />
                   <select
+                    id="new-order-table"
                     value={currentTable?.code || ""}
                     onChange={handleTableChange}
                     className="form-group__select"
@@ -437,8 +515,12 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                 </div>
 
                 <div className="form-group">
+                  <label className="sr-only" htmlFor="new-order-category">
+                    Lọc theo danh mục
+                  </label>
                   <ChefHat size={16} className="form-group__icon" />
                   <select
+                    id="new-order-category"
                     value={selectedCategoryId}
                     onChange={(event) =>
                       setSelectedCategoryId(event.target.value)
@@ -461,7 +543,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   disabled={currentOrder.length === 0}
                 >
                   <ShoppingCart size={20} />
-                  <span>Giỏ hàng</span>
+                  <span>Xem giỏ</span>
                   {currentOrder.length > 0 ? (
                     <span className="cart-toggle__badge">
                       {currentOrder.length}
@@ -476,12 +558,13 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Tìm món ăn..."
+                    placeholder="Tìm món ăn, từ khóa, danh mục..."
                     className="searchbox__input"
+                    aria-label="Tìm món ăn"
                   />
                 </div>
 
-                <div className="new-order-modal__sessions">
+                <div className="new-order-modal__sessions" aria-label="Ca phục vụ">
                   {sessions.map((session) => (
                     <button
                       type="button"
@@ -501,14 +584,43 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
             </div>
 
             <div className="new-order-modal__grid-wrapper">
-              {itemsLoading ? (
-                <div className="loading-overlay">
-                  <Loader className="spinner" size={32} />
-                  <span>Đang tải thực đơn...</span>
+              <div className="menu-section-meta">
+                <div>
+                  <span>
+                    <Clock3 size={14} /> Thực đơn {selectedSessionLabel}
+                  </span>
+                  <strong>
+                    {itemsLoading
+                      ? "Đang tải món"
+                      : `${filteredDishes.length} món phù hợp`}
+                  </strong>
                 </div>
+
+                <div className="menu-section-meta__tags">
+                  <span>{selectedFloorLabel}</span>
+                  <span>{activeCategoryLabel}</span>
+                  {hasActiveFilters ? (
+                    <button type="button" onClick={resetFilters}>
+                      Xóa lọc
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {itemsLoading ? (
+                <MenuSkeleton />
               ) : filteredDishes.length === 0 ? (
-                <div className="empty-state">
-                  <span>Không tìm thấy món phù hợp.</span>
+                <div className="empty-state empty-state--menu" aria-live="polite">
+                  <div className="empty-state__icon">
+                    <Search size={22} />
+                  </div>
+                  <strong>Không có món phù hợp</strong>
+                  <span>Thử đổi từ khóa, danh mục hoặc ca phục vụ.</span>
+                  {hasActiveFilters ? (
+                    <button type="button" onClick={resetFilters}>
+                      Xóa bộ lọc
+                    </button>
+                  ) : null}
                 </div>
               ) : (
                 <div className="menu-grid">
@@ -525,6 +637,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
               <aside
                 className="cart-panel"
                 onClick={(event) => event.stopPropagation()}
+                aria-label="Giỏ hàng đơn mới"
               >
                 <div className="cart-panel__header">
                   <div className="cart-panel__title">
@@ -535,7 +648,11 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                       <span className="cart-panel__table">
                         Bàn {currentTable.code}
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="cart-panel__table cart-panel__table--muted">
+                        Chưa chọn bàn
+                      </span>
+                    )}
                   </div>
                   <div className="cart-panel__header-actions">
                     <button
@@ -543,6 +660,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                       className="cart-panel__clear"
                       onClick={() => setCurrentOrder([])}
                       title="Xóa tất cả"
+                      disabled={currentOrder.length === 0}
                     >
                       <Eraser size={14} /> Xóa
                     </button>
@@ -558,8 +676,23 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                 </div>
 
                 <div className="cart-panel__body">
+                  <div className="cart-panel__context">
+                    <span>
+                      <SlidersHorizontal size={14} /> {selectedFloorLabel}
+                    </span>
+                    <span>
+                      <ClipboardList size={14} /> {activeCategoryLabel}
+                    </span>
+                  </div>
+
                   {currentOrder.length === 0 ? (
-                    <div className="empty-state">Giỏ hàng trống</div>
+                    <div className="empty-state empty-state--cart">
+                      <div className="empty-state__icon">
+                        <ShoppingCart size={22} />
+                      </div>
+                      <strong>Giỏ hàng trống</strong>
+                      <span>Thêm món từ thực đơn để tạo đơn mới.</span>
+                    </div>
                   ) : (
                     currentOrder.map((item) => (
                       <div key={item._lineId} className="order-item">
@@ -569,11 +702,11 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                           </p>
                           {item.method || item.cookingOption ? (
                             <p className="order-item__method">
-                              ({item.method || item.cookingOption})
+                              {item.method || item.cookingOption}
                             </p>
                           ) : null}
                           <div className="order-item__prices">
-                            {formatCurrency(item.price)}
+                            <span>{formatCurrency(item.price)}</span>
                             <span className="order-item__line-total">
                               {formatCurrency(item.price * item.quantity)}
                             </span>
@@ -618,6 +751,10 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                 <div className="cart-panel__footer">
                   <div className="order-totals">
                     <div className="order-totals__line">
+                      <span>Số món</span>
+                      <span>{cartQuantity}</span>
+                    </div>
+                    <div className="order-totals__line">
                       <span>Tạm tính</span>
                       <span>{formatCurrency(totals.subtotal)}</span>
                     </div>
@@ -632,13 +769,14 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                     className="save-button"
                     onClick={handleSaveOrder}
                     disabled={!canSave}
+                    aria-busy={isSaving}
                   >
                     {isSaving ? (
                       <Loader className="spinner" size={20} />
                     ) : (
                       <Plus size={20} />
                     )}
-                    {isSaving ? "Đang xử lý..." : "Lưu đơn hàng"}
+                    {isSaving ? "Đang lưu" : "Lưu đơn hàng"}
                   </button>
                 </div>
               </aside>
