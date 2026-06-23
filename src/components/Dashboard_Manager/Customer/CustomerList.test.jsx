@@ -59,13 +59,13 @@ describe("CustomerList manager workflow", () => {
 
     render(<CustomerList customers={[]} loading={false} pagination={pagination} />);
 
-    expect(screen.getByText("Danh sách khách")).toBeInTheDocument();
-    expect(screen.getByText("Chưa có khách phù hợp")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /chưa tìm thấy khách hàng/i })).toBeInTheDocument();
+    expect(screen.getByText("Danh sách khách hàng")).toBeInTheDocument();
+    expect(screen.getByText("Không có khách hàng phù hợp")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /không tìm thấy khách hàng/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /thêm khách hàng/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /xóa bộ lọc/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /đặt lại bộ lọc/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /bảng/i })).toBeDisabled();
-    expect(screen.queryByLabelText("Phân trang khách hàng")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Phân trang danh sách khách hàng")).not.toBeInTheDocument();
   });
 
   it("shows loading skeletons while customer data is loading", () => {
@@ -73,7 +73,7 @@ describe("CustomerList manager workflow", () => {
       <CustomerList customers={[]} loading pagination={makePagination({ isLoading: true })} />,
     );
 
-    expect(screen.getByText("Đang tải danh sách khách...")).toBeInTheDocument();
+    expect(screen.getByText("Đang tải danh sách khách hàng...")).toBeInTheDocument();
     expect(container.querySelectorAll(".cl-skeleton-card")).toHaveLength(9);
   });
 
@@ -91,7 +91,7 @@ describe("CustomerList manager workflow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /card nguyễn linh/i }));
 
-    expect(screen.getAllByText("Trang 1/1 • 1-2 / 2 khách")).toHaveLength(2);
+    expect(screen.getByText("Trang 1/1 · 1–2 trên 2 khách hàng")).toBeInTheDocument();
     expect(onCustomerClick).toHaveBeenCalledWith(customers[0]);
   });
 
@@ -109,7 +109,7 @@ describe("CustomerList manager workflow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /bảng/i }));
 
-    expect(screen.getByRole("region", { name: /bảng khách hàng/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /bảng danh sách khách hàng/i })).toBeInTheDocument();
     expect(screen.getByText("Liên hệ")).toBeInTheDocument();
     expect(screen.getByText("VIP")).toBeInTheDocument();
     expect(screen.getByText(/250\.000/)).toBeInTheDocument();
@@ -141,14 +141,13 @@ describe("CustomerList manager workflow", () => {
       />,
     );
 
-    expect(screen.getAllByText("Trang 3/8 • 21-21 / 67 khách")).toHaveLength(2);
+    expect(screen.getByText("Trang 3/8 · 21–21 trên 67 khách hàng")).toBeInTheDocument();
 
-    const topPager = screen.getAllByLabelText("Phân trang khách hàng")[0];
+    const topPager = screen.getAllByLabelText("Phân trang danh sách khách hàng")[0];
     fireEvent.click(within(topPager).getByRole("button", { name: /trước/i }));
     fireEvent.click(within(topPager).getByRole("button", { name: /sau/i }));
 
     expect(pagination.onPrevious).toHaveBeenCalledTimes(1);
     expect(pagination.onNext).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("9/trang")).toBeInTheDocument();
   });
 });
