@@ -203,3 +203,195 @@
   outline: 3px solid rgba(15, 111, 102, 0.22) !important;
   outline-offset: 3px !important;
 }
+
+/* QC premium pass: stronger hierarchy, clearer actions, balanced form/preview. */
+.restaurant-management-container .management-page-header.density-compact {
+  grid-template-columns: minmax(250px, 0.72fr) minmax(600px, 1.28fr);
+  padding: 20px 22px;
+  border-radius: 24px;
+}
+
+.restaurant-management-container .management-page-header.density-compact .mph-left {
+  min-height: 112px;
+  padding-right: 22px;
+}
+
+.restaurant-management-container .management-page-header.density-compact .mph-controls-row {
+  grid-template-columns: minmax(180px, 0.92fr) minmax(170px, 0.82fr) auto auto;
+  gap: 10px;
+  padding: 0.34rem;
+  border: 1px solid rgba(116, 88, 54, 0.1);
+  border-radius: 1rem;
+  background: rgba(255, 253, 248, 0.56);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.restaurant-management-container .management-page-header.density-compact .mph-select,
+.restaurant-management-container .management-page-header.density-compact .mph-btn {
+  min-height: 2.55rem;
+  border-radius: 0.82rem;
+}
+
+.restaurant-management-container .management-page-header.density-compact .mph-btn--primary {
+  min-width: 138px;
+  font-weight: 850;
+}
+
+.restaurant-management-container .management-page-header.density-compact .mph-btn--secondary {
+  min-width: 108px;
+  font-weight: 800;
+}
+
+.restaurant-management-container .management-page-header.density-compact .mph-footer-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding-top: 0.35rem;
+  border-top: 1px dashed rgba(116, 88, 54, 0.14);
+}
+
+.restaurant-management-container .profile-completion-card {
+  padding: 20px 22px !important;
+}
+
+.restaurant-management-container .profile-completion-card__header span {
+  color: var(--manager-accent-deep) !important;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.restaurant-management-container .profile-completion-card ul {
+  gap: 10px 12px !important;
+}
+
+.restaurant-management-container .profile-completion-card li {
+  color: #4f5d6e !important;
+  font-size: 0.86rem !important;
+  font-weight: 760 !important;
+}
+
+.restaurant-management-container .profile-completion-card li span {
+  box-shadow: inset 0 0 0 1px rgba(168, 133, 95, 0.16);
+}
+
+.restaurant-management-container .profile-completion-card li.is-done {
+  color: #0f5d56 !important;
+}
+
+.restaurant-management-container .quick-metrics-grid {
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+}
+
+.restaurant-management-container .quick-metrics-grid .metric-card {
+  min-height: 112px;
+  border-radius: 20px;
+}
+
+.restaurant-management-container .quick-metrics-grid .metric-card .ant-card-body {
+  position: relative;
+  z-index: 1;
+  gap: 8px;
+  padding: 18px 20px 16px 22px !important;
+}
+
+.restaurant-management-container .quick-metrics-grid .metric-card .ant-badge {
+  width: 0.7rem;
+  height: 0.7rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.82);
+  box-shadow: 0 7px 16px rgba(48, 40, 30, 0.08);
+}
+
+.restaurant-management-container .quick-metrics-grid .metric-value {
+  font-size: clamp(2rem, 2.4vw, 2.55rem) !important;
+  line-height: 0.96 !important;
+}
+
+.restaurant-management-container .main-layout > .ant-col:first-child .edit-card {
+  box-shadow: 0 26px 60px rgba(48, 40, 30, 0.15), inset 0 1px rgba(255, 255, 255, 0.88) !important;
+}
+
+.restaurant-management-container .preview-wrapper {
+  transform: scale(0.98);
+  transform-origin: top center;
+}
+
+.restaurant-management-container .desktop-preview-card {
+  box-shadow: 0 20px 46px rgba(36, 48, 63, 0.2) !important;
+}
+
+.restaurant-management-container .modern-form .ant-tabs-nav::after {
+  content: "Thông tin khách nhìn thấy đầu tiên";
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0.36rem 0.7rem;
+  border: 1px solid rgba(116, 88, 54, 0.12);
+  border-radius: 999px;
+  color: var(--manager-muted);
+  background: rgba(255, 253, 248, 0.72);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.restaurant-management-container .modern-form .form-content-padding {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.7), rgba(251, 246, 237, 0.48));
+}
+
+.restaurant-management-container .modern-form .ant-row {
+  row-gap: 4px;
+}
+
+.restaurant-management-container .modern-form .ant-form-item-label {
+  padding-bottom: 0.28rem !important;
+}
+
+.restaurant-management-container .modern-form .ant-input,
+.restaurant-management-container .modern-form .ant-select-selector,
+.restaurant-management-container .modern-form textarea.ant-input {
+  min-height: 2.7rem !important;
+}
+
+.restaurant-management-container .modern-form textarea.ant-input {
+  line-height: 1.55 !important;
+}
+
+.restaurant-management-container .category-card {
+  box-shadow: 0 18px 42px rgba(48, 40, 30, 0.11), inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+.restaurant-management-container .category-card .ant-card-body {
+  padding: 18px 20px 20px !important;
+}
+
+.restaurant-management-container .category-chips .ant-tag {
+  min-height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.65rem;
+}
+
+@media (min-width: 1280px) {
+  .restaurant-management-container .main-layout > .ant-col:first-child {
+    flex: 0 0 63% !important;
+    max-width: 63% !important;
+  }
+
+  .restaurant-management-container .main-layout > .ant-col:last-child {
+    flex: 0 0 37% !important;
+    max-width: 37% !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .restaurant-management-container .management-page-header.density-compact,
+  .restaurant-management-container .management-page-header.density-compact .mph-controls-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .restaurant-management-container .preview-wrapper {
+    transform: none;
+  }
+}
