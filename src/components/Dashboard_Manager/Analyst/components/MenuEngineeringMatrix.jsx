@@ -10,13 +10,14 @@ const classify = (pop, profit) => {
 };
 
 const quadrantLabel = {
-  star: "STAR",
-  plowhorse: "PLOWHORSE",
-  puzzle: "PUZZLE",
-  dog: "DOG",
+  star: "Chủ lực",
+  plowhorse: "Bán tốt",
+  puzzle: "Lời cao",
+  dog: "Cần xem lại",
 };
 
 const clampDot = (value) => Math.max(8, Math.min(92, Number(value || 0)));
+const goMenu = () => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "menu", source: "manager-analytics" } }));
 
 const MenuEngineeringMatrix = ({ dishes = [] }) => {
   const mapped = useMemo(() => {
@@ -51,10 +52,11 @@ const MenuEngineeringMatrix = ({ dishes = [] }) => {
         </div>
       </div>
       {mapped.length === 0 ? (
-        <div className="matrix-empty-state">
+        <div className="matrix-empty-state analytics-action-empty">
           <LayoutGrid size={18} />
           <strong>Chưa đủ dữ liệu menu</strong>
-          <p>Cần thêm món đã bán để phân loại STAR / PLOWHORSE / PUZZLE / DOG.</p>
+          <p>Cần thêm món đã bán để phân loại nhóm chủ lực, bán tốt, lời cao hoặc cần xem lại.</p>
+          <button type="button" className="widget-cta" onClick={goMenu}>Mở quản lý menu <ArrowRight size={14} /></button>
         </div>
       ) : hasCompactData ? (
         <div className="mini-bcg-insight" data-testid="mini-bcg-insight">
@@ -70,7 +72,7 @@ const MenuEngineeringMatrix = ({ dishes = [] }) => {
               <span key={key}>{label}: <strong>{counts[key] || 0}</strong></span>
             ))}
           </div>
-          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "menu", source: "manager-analytics" } }))}>
+          <button type="button" onClick={goMenu}>
             Xem menu <ArrowRight size={14} />
           </button>
         </div>
