@@ -54,7 +54,7 @@ const renderLogin = () => render(
 
 const getLoginForm = () => screen.getAllByRole("heading", { name: "Đăng nhập" })
   .map((heading) => heading.closest("form"))
-  .find((form) => form && within(form).queryByPlaceholderText("Email / Username / SĐT"));
+  .find((form) => form && within(form).queryByPlaceholderText("Email / SĐT"));
 const getRegisterForm = () => screen.getByRole("heading", { name: "Tạo tài khoản" }).closest("form");
 const getPrimaryLoginButton = () => within(getLoginForm()).getByRole("button", { name: "Đăng nhập" });
 
@@ -80,7 +80,7 @@ describe("Login captcha config", () => {
 
     const loginForm = getLoginForm();
     expect(screen.queryByTestId("mock-captcha")).not.toBeInTheDocument();
-    fireEvent.change(within(loginForm).getByPlaceholderText("Email / Username / SĐT"), { target: { value: "user1" } });
+    fireEvent.change(within(loginForm).getByPlaceholderText("Email / SĐT"), { target: { value: "user1" } });
     fireEvent.change(within(loginForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
     fireEvent.submit(loginForm);
 
@@ -113,7 +113,6 @@ describe("Login captcha config", () => {
     const registerForm = getRegisterForm();
     fireEvent.change(within(registerForm).getByPlaceholderText("Họ và tên"), { target: { value: "Tester" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Email"), { target: { value: "tester@example.com" } });
-    fireEvent.change(within(registerForm).getByPlaceholderText("Username (Tên đăng nhập)"), { target: { value: "tester" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Nhập lại mật khẩu"), { target: { value: "123456" } });
     fireEvent.click(within(registerForm).getByRole("checkbox"));
@@ -121,5 +120,6 @@ describe("Login captcha config", () => {
 
     await waitFor(() => expect(mocks.registerMutationMock).toHaveBeenCalledTimes(1));
     expect(mocks.registerMutationMock.mock.calls[0][0].variables.i.captchaToken).toBeUndefined();
+    expect(mocks.registerMutationMock.mock.calls[0][0].variables.i.username).toBe("tester_example_com");
   });
 });
