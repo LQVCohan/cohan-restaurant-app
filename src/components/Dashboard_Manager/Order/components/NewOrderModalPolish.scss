@@ -345,8 +345,41 @@
   height: 142px;
 }
 
+.cart-overlay {
+  z-index: 80 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+  background: rgba(36, 48, 63, 0.2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.cart-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(36, 48, 63, 0.12), rgba(36, 48, 63, 0.2) 55%, rgba(36, 48, 63, 0.28)),
+    radial-gradient(circle at 20% 18%, rgba(168, 133, 95, 0.12), transparent 24rem);
+  pointer-events: none;
+}
+
 .cart-panel {
-  width: min(452px, 92%);
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(452px, 92%) !important;
+  height: 100% !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(0) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(248, 246, 241, 0.98)) !important;
+  box-shadow:
+    -26px 0 56px rgba(36, 48, 63, 0.22),
+    inset 1px 0 rgba(255, 255, 255, 0.72) !important;
 }
 
 .cart-panel__header,
@@ -467,6 +500,10 @@
   .menu-grid:has(.dish-card:nth-child(1):last-child),
   .menu-grid:has(.dish-card:nth-child(2):last-child) {
     grid-template-columns: 1fr;
+  }
+
+  .cart-panel {
+    width: 100% !important;
   }
 
   .dish-card {
