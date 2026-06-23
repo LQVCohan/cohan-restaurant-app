@@ -392,6 +392,31 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     },
   });
 
+  const profileChecklist = useMemo(() => {
+    const checks = [
+      { key: "name", label: "Tên nhà hàng", done: Boolean(restaurantForm.name?.trim()) },
+      { key: "cover", label: "Ảnh bìa", done: Boolean(restaurantForm.coverImage) },
+      { key: "avatar", label: "Logo / ảnh đại diện", done: Boolean(restaurantForm.avatar) },
+      { key: "contact", label: "Liên hệ", done: Boolean(restaurantForm.phone?.trim() && restaurantForm.email?.trim()) },
+      { key: "hours", label: "Giờ mở cửa", done: Boolean(restaurantForm.openingHours?.trim() && restaurantForm.closingHours?.trim()) },
+      { key: "address", label: "Địa chỉ", done: Boolean(restaurantForm.line1?.trim() && restaurantForm.city?.trim()) },
+      { key: "story", label: "Câu chuyện thương hiệu", done: Boolean(restaurantForm.customerInfo?.story?.trim()) },
+    ];
+    const completed = checks.filter((item) => item.done).length;
+    return { checks, percent: Math.round((completed / checks.length) * 100) };
+  }, [restaurantForm]);
+
+  const quickProfileFacts = useMemo(() => [
+    { label: "Trạng thái", value: restaurantForm.status === "active" ? "Đang hoạt động" : "Tạm ngưng" },
+    { label: "Ẩm thực", value: restaurantForm.cuisineType || "Chưa chọn" },
+    {
+      label: "Giờ phục vụ",
+      value: restaurantForm.openingHours && restaurantForm.closingHours
+        ? `${restaurantForm.openingHours}–${restaurantForm.closingHours}`
+        : "Chưa cập nhật",
+    },
+  ], [restaurantForm.closingHours, restaurantForm.cuisineType, restaurantForm.openingHours, restaurantForm.status]);
+
   // --- QUERY HOOKS ---
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
@@ -1441,7 +1466,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 <>
                   <Form.Item label="Tiện ích cơ bản">
                     <div className="amenities-grid">
-                      <div
+                      <button
+                        type="button"
                         className={`amenity-card ${restaurantForm.amenities?.wifi ? "active" : ""}`}
                         onClick={() =>
                           setRestaurantForm((p) => ({
@@ -1454,8 +1480,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         }
                       >
                         <WifiOutlined /> <span>Free Wifi</span>
-                      </div>
-                      <div
+                      </button>
+                      <button
+                        type="button"
                         className={`amenity-card ${restaurantForm.amenities?.parking ? "active" : ""}`}
                         onClick={() =>
                           setRestaurantForm((p) => ({
@@ -1468,8 +1495,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         }
                       >
                         <CarOutlined /> <span>Đỗ xe</span>
-                      </div>
-                      <div
+                      </button>
+                      <button
+                        type="button"
                         className={`amenity-card ${restaurantForm.amenities?.card ? "active" : ""}`}
                         onClick={() =>
                           setRestaurantForm((p) => ({
@@ -1482,7 +1510,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         }
                       >
                         <CreditCardOutlined /> <span>Thẻ VISA/Master</span>
-                      </div>
+                      </button>
                     </div>
                   </Form.Item>
 
@@ -1716,6 +1744,37 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         footerLeft={<span>{restaurantForm.status === "active" ? "Đang hoạt động" : "Tạm ngưng"}</span>}
         footerRight={<span>{isDirty ? "Có thay đổi chưa lưu" : "Đã đồng bộ"}</span>}
       />
+
+      <section className="profile-focus-panel" aria-labelledby="restaurant-profile-focus-title">
+        <div className="profile-focus-panel__copy">
+          <span className="profile-focus-panel__eyebrow">Mặt tiền số của nhà hàng</span>
+          <h2 id="restaurant-profile-focus-title">
+            {restaurantForm.name || "Chọn nhà hàng để bắt đầu hoàn thiện hồ sơ"}
+          </h2>
+          <p>Ưu tiên các thông tin khách nhìn thấy đầu tiên: hình ảnh, địa chỉ, giờ phục vụ và câu chuyện thương hiệu.</p>
+          <div className="profile-focus-panel__facts" aria-label="Tóm tắt hồ sơ">
+            {quickProfileFacts.map((item) => (
+              <span key={item.label}><strong>{item.label}</strong>{item.value}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="profile-completion-card" aria-label="Tiến độ hoàn thiện hồ sơ">
+          <div className="profile-completion-card__header">
+            <span>Hoàn thiện hồ sơ</span>
+            <strong>{profileChecklist.percent}%</strong>
+          </div>
+          <Progress percent={profileChecklist.percent} showInfo={false} strokeColor="#8f6a42" trailColor="#eadfce" />
+          <ul>
+            {profileChecklist.checks.map((item) => (
+              <li key={item.key} className={item.done ? "is-done" : ""}>
+                <span aria-hidden="true">{item.done ? "✓" : "•"}</span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <div className="quick-metrics-grid">
         <Card variant="borderless" className="metric-card">
