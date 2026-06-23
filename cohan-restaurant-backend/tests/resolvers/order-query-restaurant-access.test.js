@@ -13,7 +13,7 @@ const modelMocks = vi.hoisted(() => ({
   MenuItem: { countDocuments: vi.fn() },
   StockItem: { find: vi.fn() },
   Supply: { find: vi.fn() },
-  Promotion: { countDocuments: vi.fn() },
+  Promotion: { countDocuments: vi.fn(), find: vi.fn() },
   Staff: { countDocuments: vi.fn(), find: vi.fn() },
   Review: { find: vi.fn() },
   KitchenOrderWorkItem: { find: vi.fn() },
@@ -21,21 +21,44 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 const guardMocks = vi.hoisted(() => ({
+  requireAuth: vi.fn(),
   requireRestaurantAccess: vi.fn(),
   requireRoles: vi.fn(),
 }));
 
+const authorizationMocks = vi.hoisted(() => ({
+  requireRestaurantPermission: vi.fn(),
+}));
+
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => authorizationMocks);
+vi.mock("../../src/constants/permissions.js", () => ({
+  PERMISSIONS: { ORDER_READ: "order.read" },
+}));
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../models/tableCustomer.model.js", () => ({
-  default: { find: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) },
+  default: {
+    find: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }),
+    }),
+  },
 }));
 vi.mock("../../graphql/resolvers/order/helper/tableUtils.js", () => ({
   resolveTableSafe: vi.fn(),
 }));
+vi.mock("../../src/services/orderItemPricing.service.js", () => ({ buildPricedOrderItems: vi.fn() }));
 vi.mock("../../src/services/ai/demandForecast.service.js", () => ({ buildDemandForecast: vi.fn() }));
 vi.mock("../../src/services/ai/menuEngineeringAssistant.service.js", () => ({ buildMenuEngineeringAssistant: vi.fn() }));
 vi.mock("../../src/services/ai/smartPromotionEngine.service.js", () => ({ buildSmartPromotionEngine: vi.fn() }));
+vi.mock("../../src/services/performance/staffPerformanceReporting.service.js", () => ({ listStaffPerformanceSummaries: vi.fn() }));
+vi.mock("../../src/services/performance/managerPerformanceDashboard.service.js", () => ({ getManagerPerformanceRiskEmployees: vi.fn() }));
+vi.mock("../../src/services/discountCalculation.service.js", () => ({ calculateDiscountBreakdown: vi.fn() }));
+vi.mock("../../src/services/orderTracking.service.js", () => ({
+  ensureOrderTracking: vi.fn(),
+  computePublicOrderStatus: vi.fn(),
+  toCustomerTrackingPayload: vi.fn(),
+  buildOrderTrackingQrDataUrl: vi.fn(),
+}));
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((value) => String(value || "").startsWith("valid-")),
@@ -48,455 +71,179 @@ vi.mock("mongoose", () => ({
   },
 }));
 
-function buildLeanSelectChain(rows = []) {
-  return {
-    select: vi.fn().mockReturnThis(),
-    lean: vi.fn().mockResolvedValue(rows),
-  };
-}
-
 function buildFindChain(rows = []) {
-  return {
-    sort: vi.fn().mockReturnThis(),
-    skip: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    gt: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    lean: vi.fn().mockResolvedValue(rows),
+  const chain = {
+    sort: vi.fn(() => chain),
+    skip: vi.fn(() => chain),
+    limit: vi.fn(() => chain),
+    where: vi.fn(() => chain),
+    gt: vi.fn(() => chain),
+    select: vi.fn(() => chain),
+    lean: vi.fn(async () => rows),
   };
+  return chain;
 }
 
-describe("OrderQuery restaurant access guard", () => {
+function buildSingleChain(row) {
+  const chain = {
+    sort: vi.fn(() => chain),
+    select: vi.fn(() => chain),
+    lean: vi.fn(async () => row),
+  };
+  return chain;
+}
+
+const managerCtx = { user: { id: "manager-1", roleName: "manager" } };
+
+describe("order query restaurant access", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    guardMocks.requireAuth.mockImplementation(() => undefined);
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
     guardMocks.requireRoles.mockImplementation(() => undefined);
-    modelMocks.Order.findOne.mockReset();
-    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(buildLeanSelectChain([]));
+    authorizationMocks.requireRestaurantPermission.mockResolvedValue(true);
+    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(buildFindChain([]));
   });
 
-  it("order(id) returns null for invalid id without querying", async () => {
+  it("order(id) returns null for an invalid id without querying", async () => {
     const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-
-    const result = await OrderQuery.order(
-      null,
-      { id: "bad-id" },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(result).toBeNull();
+    await expect(OrderQuery.order(null, { id: "bad-id" }, managerCtx)).resolves.toBeNull();
     expect(modelMocks.Order.findById).not.toHaveBeenCalled();
-    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(authorizationMocks.requireRestaurantPermission).not.toHaveBeenCalled();
   });
 
-  it("order(id) returns null when order is not found", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Order.findById.mockReturnValue({
-      lean: vi.fn().mockResolvedValue(null),
-    });
-
-    const result = await OrderQuery.order(
-      null,
-      { id: "valid-order-1" },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(result).toBeNull();
-    expect(modelMocks.Order.findById).toHaveBeenCalledWith("valid-order-1");
-    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
-  });
-
-  it("order(id) enforces restaurant access and returns order", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+  it("order(id) authorizes the stored restaurant", async () => {
     const order = { _id: "valid-order-2", restaurantId: "valid-r6" };
-    modelMocks.Order.findById.mockReturnValue({
-      lean: vi.fn().mockResolvedValue(order),
-    });
+    modelMocks.Order.findById.mockReturnValue({ lean: vi.fn().mockResolvedValue(order) });
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
 
-    const result = await OrderQuery.order(
-      null,
-      { id: "valid-order-2" },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
+    await expect(OrderQuery.order(null, { id: "valid-order-2" }, managerCtx)).resolves.toBe(order);
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      managerCtx,
       "valid-r6",
+      "order.read",
     );
-    expect(result).toBe(order);
   });
 
-  it("order(id) propagates access denied errors", async () => {
-    guardMocks.requireRestaurantAccess.mockRejectedValue(
-      new Error("FORBIDDEN_SCOPE"),
-    );
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+  it("order(id) propagates restaurant authorization failures", async () => {
+    authorizationMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
     modelMocks.Order.findById.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        _id: "valid-order-3",
-        restaurantId: "valid-r7",
-      }),
+      lean: vi.fn().mockResolvedValue({ _id: "valid-order-3", restaurantId: "valid-r7" }),
     });
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
 
-    await expect(
-      OrderQuery.order(
-        null,
-        { id: "valid-order-3" },
-        { user: { id: "staff-1", roleName: "manager" } },
-      ),
-    ).rejects.toThrow("FORBIDDEN_SCOPE");
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
-      "valid-r7",
+    await expect(OrderQuery.order(null, { id: "valid-order-3" }, managerCtx)).rejects.toThrow(
+      "FORBIDDEN_SCOPE",
     );
   });
 
-  it("guards ordersByRestaurantNow and continues query when access is allowed", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    const chain = buildFindChain([{ _id: "row-1", restaurantId: "valid-r1" }]);
+  it("orders(filter) requires restaurant permission for scoped listings", async () => {
+    const chain = buildFindChain([]);
     modelMocks.Order.find.mockReturnValue(chain);
-
-    const result = await OrderQuery.ordersByRestaurantNow(
-      null,
-      { restaurantId: "valid-r1", limit: 1 },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ value: "valid-r1" }),
-    );
-    expect(modelMocks.Order.find).toHaveBeenCalled();
-    expect(modelMocks.Order.find.mock.calls[0][0]).toMatchObject({
-      $and: [
-        expect.objectContaining({
-          restaurantId: expect.objectContaining({ value: "valid-r1" }),
-        }),
-        expect.objectContaining({ $or: expect.any(Array) }),
-      ],
-    });
-    expect(result.edges).toHaveLength(1);
-  });
-
-
-  it("enriches ordersByRestaurantNow work items only within the requested restaurant", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    const chain = buildFindChain([
-      {
-        _id: "valid-order-tenant",
-        restaurantId: "valid-r1",
-        items: [{ _id: "item-1", name: "Phở bò", status: "pending" }],
-      },
-    ]);
-    modelMocks.Order.find.mockReturnValue(chain);
-    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(
-      buildLeanSelectChain([
-        {
-          restaurantId: "valid-other-restaurant",
-          orderId: "valid-order-tenant",
-          orderItemId: "item-1",
-          station: "bar",
-          timeLevel: "very_late",
-          unaccepted: true,
-        },
-      ]),
-    );
-
-    const result = await OrderQuery.ordersByRestaurantNow(
-      null,
-      { restaurantId: "valid-r1", limit: 1 },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(modelMocks.KitchenOrderWorkItem.find).toHaveBeenCalledWith({
-      restaurantId: expect.objectContaining({ value: "valid-r1" }),
-      orderId: { $in: ["valid-order-tenant"] },
-    });
-    expect(result.edges[0].node.items[0]).not.toHaveProperty("station", "bar");
-    expect(result.edges[0].node.items[0]).not.toHaveProperty("timeLevel", "very_late");
-    expect(result.edges[0].node.items[0]).not.toHaveProperty("unaccepted", true);
-  });
-
-  it("enriches ordersByRestaurantNow items with same-restaurant KitchenOrderWorkItem metadata", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    const chain = buildFindChain([
-      {
-        _id: "valid-order-tenant",
-        restaurantId: "valid-r1",
-        items: [{ _id: "item-1", name: "Trà đào", status: "preparing" }],
-      },
-    ]);
-    modelMocks.Order.find.mockReturnValue(chain);
-    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(
-      buildLeanSelectChain([
-        {
-          restaurantId: "valid-r1",
-          orderId: "valid-order-tenant",
-          orderItemId: "item-1",
-          station: "bar",
-          targetPrepMinutes: 10,
-          timeLevel: "late",
-          unaccepted: false,
-        },
-      ]),
-    );
-
-    const result = await OrderQuery.ordersByRestaurantNow(
-      null,
-      { restaurantId: "valid-r1", limit: 1 },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(result.edges[0].node.items[0]).toMatchObject({
-      station: "bar",
-      targetPrepMinutes: 10,
-      timeLevel: "late",
-      unaccepted: false,
-    });
-  });
-
-  it("blocks ordersByRestaurantNow when access is denied", async () => {
-    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-
-    await expect(
-      OrderQuery.ordersByRestaurantNow(
-        null,
-        { restaurantId: "valid-r2", limit: 10 },
-        { user: { id: "staff-1", roleName: "manager" } },
-      ),
-    ).rejects.toThrow("FORBIDDEN_SCOPE");
-
-    expect(modelMocks.Order.find).not.toHaveBeenCalled();
-  });
-
-  it("guards managerDashboard by restaurant", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Order.find
-      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
-      .mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) })
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) })
-      .mockReturnValueOnce(buildFindChain([]))
-      .mockReturnValueOnce(buildFindChain([]));
-    modelMocks.Reservation.find.mockReturnValue(buildFindChain([]));
-    modelMocks.Reservation.countDocuments.mockResolvedValue(0);
     modelMocks.Order.countDocuments.mockResolvedValue(0);
-    modelMocks.Table.find.mockReturnValue(buildFindChain([]));
-    modelMocks.Table.countDocuments.mockResolvedValue(0);
-    modelMocks.MenuItem.countDocuments.mockResolvedValue(0);
-    modelMocks.Customer.countDocuments.mockResolvedValue(0);
-    modelMocks.Promotion.countDocuments.mockResolvedValue(0);
-    modelMocks.Staff.countDocuments.mockResolvedValue(0);
-    modelMocks.StockItem.find.mockReturnValue({ limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
-    modelMocks.Staff.find.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
-    modelMocks.Review.find.mockReturnValue({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]), limit: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) }) });
-
-    const res = await OrderQuery.managerDashboard(
-      null,
-      { restaurantId: "valid-r3", range: "week" },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ value: "valid-r3" }),
-    );
-    expect(res.restaurantId).toBe("valid-r3");
-  });
-
-  it("guards reportsOverview by restaurant", async () => {
     const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Order.find.mockReturnValue(buildFindChain([]));
-
-    await OrderQuery.reportsOverview(
-      null,
-      { restaurantId: "valid-r4", limit: 20 },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ value: "valid-r4" }),
-    );
-  });
-
-  it("orders(filter) enforces restaurant scope or ADMIN for global listing", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-
-    modelMocks.Order.find.mockReturnValue(buildFindChain([]));
-    modelMocks.Order.countDocuments.mockResolvedValue(0);
 
     await OrderQuery.orders(
       null,
       { filter: { restaurantId: "valid-r5" }, limit: 10, offset: 0 },
-      { user: { id: "manager-1", roleName: "manager" } },
+      managerCtx,
     );
 
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      managerCtx,
       expect.objectContaining({ value: "valid-r5" }),
+      "order.read",
     );
     expect(guardMocks.requireRoles).not.toHaveBeenCalled();
+    expect(modelMocks.Order.find).toHaveBeenCalled();
+  });
 
-    vi.clearAllMocks();
+  it("orders(filter) requires ADMIN for global listings", async () => {
     modelMocks.Order.find.mockReturnValue(buildFindChain([]));
     modelMocks.Order.countDocuments.mockResolvedValue(0);
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
 
     await OrderQuery.orders(
       null,
       { filter: { status: "pending" }, limit: 10, offset: 0 },
-      { user: { id: "manager-1", roleName: "manager" } },
+      managerCtx,
     );
 
-    expect(guardMocks.requireRoles).toHaveBeenCalledWith(
-      expect.anything(),
-      ["ADMIN"],
-    );
-    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(modelMocks.Order.find).toHaveBeenCalled();
+    expect(guardMocks.requireRoles).toHaveBeenCalledWith(managerCtx, ["ADMIN"]);
+    expect(authorizationMocks.requireRestaurantPermission).not.toHaveBeenCalled();
   });
 
-  it("orders(filter: {}) rejects non-admin/global listing when requireRoles throws", async () => {
+  it("orders(filter) rejects malformed restaurant ids before querying", async () => {
     const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    guardMocks.requireRoles.mockImplementation(() => {
-      throw new Error("FORBIDDEN");
-    });
-
-    await expect(
-      OrderQuery.orders(
-        null,
-        { filter: { status: "pending" }, limit: 10, offset: 0 },
-        { user: { id: "staff-1", roleName: "manager" } },
-      ),
-    ).rejects.toThrow("FORBIDDEN");
-
-    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
-    expect(modelMocks.Order.find).not.toHaveBeenCalled();
-    expect(modelMocks.Order.countDocuments).not.toHaveBeenCalled();
-  });
-
-  it("orders(filter) with valid restaurantId does not require ADMIN", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    guardMocks.requireRoles.mockImplementation(() => {
-      throw new Error("should not call requireRoles");
-    });
-    modelMocks.Order.find.mockReturnValue(buildFindChain([]));
-    modelMocks.Order.countDocuments.mockResolvedValue(0);
-
-    await OrderQuery.orders(
-      null,
-      { filter: { restaurantId: "valid-r5" }, limit: 10, offset: 0 },
-      { user: { id: "manager-1", roleName: "manager" } },
-    );
-
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ value: "valid-r5" }),
-    );
-    expect(guardMocks.requireRoles).not.toHaveBeenCalled();
-    expect(modelMocks.Order.find).toHaveBeenCalled();
-    expect(modelMocks.Order.find.mock.calls[0][0]).toHaveProperty("$and");
-    expect(modelMocks.Order.countDocuments).toHaveBeenCalled();
-  });
-
-  it("orders(filter) throws on invalid restaurantId and skips query", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-
     await expect(
       OrderQuery.orders(
         null,
         { filter: { restaurantId: "bad-id" }, limit: 10, offset: 0 },
-        { user: { id: "manager-1", roleName: "manager" } },
+        managerCtx,
       ),
     ).rejects.toThrow("Invalid restaurantId");
-
-    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
     expect(modelMocks.Order.find).not.toHaveBeenCalled();
-    expect(modelMocks.Order.countDocuments).not.toHaveBeenCalled();
   });
 
-  it("activeTableSessionOrders returns child orders when active session has linked children", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Table.findOne.mockReturnValue({
-      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
-    });
-    modelMocks.Order.findOne.mockReturnValue({
-      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-1", orderKind: "table_session" }) }),
-    });
-    modelMocks.Order.find
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "child-1", orderKind: "order_batch" }]) }) });
-
-    const out = await OrderQuery.activeTableSessionOrders(
-      null,
-      { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1", roleName: "manager" } },
+  it("ordersByRestaurantNow uses the recovery resolver and restaurant permission", async () => {
+    modelMocks.Order.find.mockReturnValue(
+      buildFindChain([{ _id: "valid-order-1", restaurantId: "valid-r1", items: [] }]),
     );
-    expect(out.orders.map((o) => o._id)).toEqual(["child-1"]);
+    const { OrderCoreRecoveryQuery } = await import(
+      "../../graphql/resolvers/order/queryCoreRecovery.js"
+    );
+
+    const result = await OrderCoreRecoveryQuery.ordersByRestaurantNow(
+      null,
+      { restaurantId: "valid-r1", limit: 1 },
+      managerCtx,
+    );
+
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      managerCtx,
+      expect.objectContaining({ value: "valid-r1" }),
+      "order.read",
+    );
+    expect(result.edges).toHaveLength(1);
   });
 
-  it("activeTableSessionOrders falls back to legacy table orders when child query is empty", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Table.findOne.mockReturnValue({
-      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
-    });
-    modelMocks.Order.findOne.mockReturnValue({
-      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-2", orderKind: "table_session" }) }),
-    });
-    modelMocks.Order.find
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) })
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "legacy-1", orderKind: "order_batch" }]) }) });
+  it("activeTableSessionOrders returns linked child orders", async () => {
+    modelMocks.Table.findOne.mockReturnValue(
+      buildSingleChain({ _id: "valid-table-1", code: "T1" }),
+    );
+    modelMocks.Order.findOne.mockReturnValue(
+      buildSingleChain({ _id: "valid-session-1", orderKind: "table_session" }),
+    );
+    modelMocks.Order.find.mockReturnValue(
+      buildFindChain([{ _id: "valid-child-1", orderKind: "order_batch" }]),
+    );
+    const { OrderCoreRecoveryQuery } = await import(
+      "../../graphql/resolvers/order/queryCoreRecovery.js"
+    );
 
-    const out = await OrderQuery.activeTableSessionOrders(
+    const result = await OrderCoreRecoveryQuery.activeTableSessionOrders(
       null,
       { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1", roleName: "manager" } },
+      managerCtx,
     );
-    expect(out.orders.map((o) => o._id)).toEqual(["legacy-1"]);
+
+    expect(result.orders.map((order) => order._id)).toEqual(["valid-child-1"]);
   });
 
-  it("activeTableSessionOrders returns empty orders when both child and legacy are empty", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Table.findOne.mockReturnValue({
-      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
-    });
-    modelMocks.Order.findOne.mockReturnValue({
-      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-3", orderKind: "table_session" }) }),
-    });
-    modelMocks.Order.find
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) })
-      .mockReturnValueOnce({ sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
-    const out = await OrderQuery.activeTableSessionOrders(
-      null,
-      { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1", roleName: "manager" } },
+  it("managerDashboard checks the selected restaurant before loading data", async () => {
+    guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
+    const { default: dashboardResolver } = await import(
+      "../../graphql/resolvers/dashboard/index.js"
     );
-    expect(out.orders).toEqual([]);
-  });
 
-  it("activeTableSessionOrders never returns table_session rows in orders[]", async () => {
-    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
-    modelMocks.Table.findOne.mockReturnValue({
-      select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "valid-table-1", code: "T1" }) }),
-    });
-    modelMocks.Order.findOne.mockReturnValue({
-      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "sess-4", orderKind: "table_session" }) }),
-    });
-    modelMocks.Order.find.mockReturnValueOnce({
-      sort: vi.fn().mockReturnValue({
-        lean: vi.fn().mockResolvedValue([
-          { _id: "sess-row", orderKind: "table_session" },
-          { _id: "child-2", orderKind: "order_batch" },
-        ]),
-      }),
-    });
-    const out = await OrderQuery.activeTableSessionOrders(
-      null,
-      { restaurantId: "valid-r1", tableId: "valid-table-1" },
-      { user: { id: "m1", roleName: "manager" } },
-    );
-    expect(out.orders.map((o) => o._id)).toEqual(["child-2"]);
+    await expect(
+      dashboardResolver.Query.managerDashboard(
+        null,
+        { restaurantId: "valid-r3", range: "week" },
+        managerCtx,
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.Order.find).not.toHaveBeenCalled();
   });
 });
