@@ -26,16 +26,21 @@ const normalizeReason = (reason = "") =>
     .replaceAll("matching department", "đúng bộ phận")
     .replaceAll("no overlap in current window", "không trùng ca hiện tại")
     .replaceAll("performance fallback", "chưa đủ dữ liệu hiệu suất")
+    .replaceAll("recent performance", "hiệu suất gần đây")
+    .replaceAll("part-time employee availability unknown", "chưa có lịch khả dụng của nhân viên part-time")
     .replaceAll(/\s{2,}/g, " ")
     .trim();
+const methodLabel = (method = "") => ({
+  staff_scheduling_v1: "Dựa trên lịch làm và dự báo nhu cầu",
+}[method] || "Dựa trên lịch làm và vai trò nhân sự");
 
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
-    {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-    <span>Phương pháp: {meta.method || "-"}</span>
-    <span>Dựa trên dự báo: {meta.basedOnForecast ? "có" : "không"}</span>
-    <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
-    {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    {meta.fallbackUsed ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+    <span>{methodLabel(meta.method)}</span>
+    <span>{meta.basedOnForecast ? "Có dùng dự báo nhu cầu" : "Dựa trên lịch hiện tại"}</span>
+    {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
+    {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
 
@@ -115,7 +120,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading, onNavigate }) => {
                       <span className="shift-key">{formatShiftKey(shift.shiftKey)}</span>
                       <span className="shift-delta">{missingCount > 0 ? `Đang thiếu ${missingCount}` : "Thiếu nhẹ"}</span>
                     </div>
-                    <p>{missingCount > 0 ? `Cần bổ sung ${missingCount} người cho ${formatShiftKey(shift.shiftKey)}: ${missingRolesList.join(", ") || "theo tổng headcount"}.` : "Thiếu nhẹ theo tổng headcount."}</p>
+                    <p>{missingCount > 0 ? `Cần bổ sung ${missingCount} người cho ${formatShiftKey(shift.shiftKey)}: ${missingRolesList.join(", ") || "theo tổng nhân sự cần có"}.` : "Thiếu nhẹ theo tổng nhân sự cần có."}</p>
                   </li>
                 );
               })}
