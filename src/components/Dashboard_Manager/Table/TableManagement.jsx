@@ -643,7 +643,7 @@ const TableManagement = () => {
       <ManagementPageHeader
         density="compact"
         showTimeWidget={false}
-        eyebrow="TABLE MANAGER"
+        eyebrow="QUẢN LÝ BÀN"
         title="Quản lý bàn"
         subtitle="Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ."
         icon="🍽️"
@@ -897,30 +897,17 @@ const TableManagement = () => {
                       >
                         Chi tiết
                       </button>
-                      <button
-                        type="button"
-                        className="btn-mini secondary"
-                        aria-label={`Đặt vị trí AR cho bàn ${t.number || "chưa có mã"}`}
-                        disabled={!t.id}
-                        title={t.id ? "Đặt vị trí AR cho bàn này" : "Bàn chưa có id để đặt AR"}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleOpenArPlacementForTable(t);
-                        }}
-                      >
-                        Đặt AR
-                      </button>
                       {t.status === "available" && (
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
                       )}
                       {t.status === "occupied" && (
-                        renderQuickAction(t, "payment_pending", "T.Toán", "btn-mini warning")
+                        renderQuickAction(t, "payment_pending", "Thanh toán", "btn-mini warning")
                       )}
                       {t.status === "payment_pending" && (
-                        renderQuickAction(t, "cleaning", "Dọn", "btn-mini primary")
+                        renderQuickAction(t, "cleaning", "Dọn bàn", "btn-mini primary")
                       )}
                       {t.status === "cleaning" && (
-                        renderQuickAction(t, "available", "Xong", "btn-mini secondary")
+                        renderQuickAction(t, "available", "Hoàn tất", "btn-mini secondary")
                       )}
                       {t.status === "reserved" && (
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
@@ -970,6 +957,8 @@ const TableManagement = () => {
         onBeforeClose={() => !tableSaving}
         closeOnEscape={!tableSaving}
         autoWrapBody={false}
+        size="lg"
+        className="tm-modal tm-modal--add-table"
       >
         <Modal.Header>Thêm bàn mới</Modal.Header>
         <Modal.Body className="tm-form tm-form--add-table">
@@ -977,7 +966,7 @@ const TableManagement = () => {
             <h4>Thiết lập thông tin bàn</h4>
             <p>Điền thông tin cơ bản để tạo bàn mới trong khu vực quản lý.</p>
           </div>
-          <div className="tm-form-section">
+          <div className="tm-form-section tm-form-section--basic">
             <div className="tm-form-section-title">Thông tin cơ bản</div>
             <div className="tm-form-grid">
               <div className={`tm-field ${tableErrors.number ? "is-invalid" : ""}`}>
@@ -1026,11 +1015,6 @@ const TableManagement = () => {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-          <div className="tm-form-section">
-            <div className="tm-form-section-title">Vị trí phục vụ</div>
-            <div className="tm-form-grid">
               <div className={`tm-field ${tableErrors.floorId ? "is-invalid" : ""}`}>
                 <label htmlFor="tm-add-table-floor">Tầng *</label>
                 <select
@@ -1127,6 +1111,8 @@ const TableManagement = () => {
         }
         onBeforeClose={() => !floorSaving}
         closeOnEscape={!floorSaving}
+        size="sm"
+        className="tm-modal tm-modal--floor"
       >
         <Modal.Header>Thêm tầng mới</Modal.Header>
         <Modal.Body className="tm-form tm-form--add-floor">
@@ -1209,6 +1195,8 @@ const TableManagement = () => {
         isOpen={showVrModal}
         onClose={() => vrDraft.requestCloseWithDraft(() => setShowVrModal(false))}
         title="Cấu hình VR toàn quán"
+        size="lg"
+        className="tm-modal tm-modal--vr"
       >
         <div className="tm-form tm-form--vr">
           <div className="tm-form-header">
