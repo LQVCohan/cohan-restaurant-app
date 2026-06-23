@@ -17,10 +17,9 @@ const MetaStrip = ({ meta }) => {
   const lowData = meta.lowDataFallbackUsed || meta.fallbackUsed || Number(meta.sampleOrders || 0) < 20;
   return (
     <div className="ai-meta-strip">
-      {lowData ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+      {lowData ? <span className="verify-badge">Cần kiểm tra lại</span> : null}
       <span>{methodLabel(meta.method)}</span>
       <span>{meta.sampleOrders ?? "-"} đơn trong {meta.sampleDays ?? "-"} ngày</span>
-      {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
       {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
     </div>
   );
@@ -49,7 +48,7 @@ const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
           </div>
         </div>
         <span className={`meta-pill ${forecast?.meta?.fallbackUsed ? "fallback" : "data"}`}>
-          {forecast?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Dự báo theo đơn"}
+          {forecast?.meta?.fallbackUsed ? "Tham khảo" : "Dự báo theo đơn"}
         </span>
       </div>
       <MetaStrip meta={forecast?.meta} />
@@ -73,7 +72,7 @@ const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
               <strong>{busiest[0] || topSlot?.slot || "N/A"}</strong>
               <p>
                 {topSlot
-                  ? `~${toShortNumber(topSlot.expectedOrders)} đơn • ${toShortNumber(topSlot.expectedGuests)} khách • ${toShortNumber(topSlot.suggestedStaff)} NV`
+                  ? `~${toShortNumber(topSlot.expectedOrders)} đơn • ${toShortNumber(topSlot.expectedGuests)} khách • ${toShortNumber(topSlot.suggestedStaff)} nhân sự`
                   : "Chưa đủ dữ liệu"}
               </p>
             </div>
@@ -94,7 +93,7 @@ const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
 
           <div className="list-section">
             <h4>
-              <TrendingUp size={16} /> Top món có xu hướng tăng
+              <TrendingUp size={16} /> Món có xu hướng tăng
             </h4>
             <ul>
               {rising.slice(0, 4).map((dish) => (
@@ -118,7 +117,7 @@ const DemandForecastWidget = ({ forecast, loading, onNavigate }) => {
 
           <div className="list-section">
             <h4>
-              <ChefHat size={16} /> Kế hoạch chuẩn bị đề xuất
+              <ChefHat size={16} /> Kế hoạch chuẩn bị
             </h4>
             <ul>
               {prepPlan.slice(0, 4).map((item) => (
