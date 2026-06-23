@@ -17,7 +17,7 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
         <div className="header-top">
           <div>
             <h4>Phân tích phản hồi</h4>
-            <span className="subtitle">Review thật từ khách hàng</span>
+            <span className="subtitle">Đánh giá thật từ khách hàng</span>
           </div>
           <div className="rating-badge">
             <span className="score">{summary?.avgRating || 0}</span>
@@ -31,7 +31,7 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
         <div className="ai-daily-summary">
           <Sparkles size={14} className="sparkle-icon" />
           <p>
-            Tổng {summary?.total || 0} review • Tích cực {summary?.positive || 0} • Tiêu cực {summary?.negative || 0}
+            Tổng {summary?.total || 0} đánh giá • Tích cực {summary?.positive || 0} • Tiêu cực {summary?.negative || 0}
           </p>
         </div>
         <div className="filter-tabs">
