@@ -32,10 +32,10 @@ const normalizeReason = (reason = "") =>
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
     {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-    <span>method: {meta.method || "-"}</span>
-    <span>basedOnForecast: {meta.basedOnForecast ? "yes" : "no"}</span>
-    <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
-    {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    <span>Phương pháp: {meta.method || "-"}</span>
+    <span>Dựa trên dự báo: {meta.basedOnForecast ? "có" : "không"}</span>
+    <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
+    {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
 
@@ -124,7 +124,7 @@ const StaffSchedulingAssistantWidget = ({ assistant, loading, onNavigate }) => {
 
           <div className="list-block">
             <h4>
-              <UserPlus2 size={16} /> Gợi ý nhân sự lấp ca (gợi ý tham khảo)
+              <UserPlus2 size={16} /> Gợi ý nhân sự lấp ca
             </h4>
             <h4 className="subheading">
               Nhân sự có thể xếp ca
