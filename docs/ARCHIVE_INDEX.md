@@ -1,0 +1,66 @@
+# Archived Documentation Index
+
+Các tài liệu dưới đây đã được tổng hợp vào bộ tài liệu chuẩn trong `docs/`. File gốc được xoá để giảm nhiễu, nhưng nội dung chính đã được phân loại lại theo nhóm.
+
+| File cũ | Tài liệu thay thế |
+| --- | --- |
+| `cohan-restaurant-backend/HOTFIX_ACTIVE_SESSION_KEY_INDEX.md` | `docs/OPERATIONS_GUIDE.md` |
+| `cohan-restaurant-backend/docs/order-parent-child-lifecycle.md` | `docs/MODULES_GUIDE.md` |
+| `cohan-restaurant-backend/docs/upload-storage-migration.md` | `docs/OPERATIONS_GUIDE.md` |
+| `docs/DEMO_READINESS_CHECKLIST.md` | `docs/QA_GUIDE.md` |
+| `docs/DEPLOYMENT_SINGLE_SERVER.md` | `docs/OPERATIONS_GUIDE.md` |
+| `docs/SYSTEM_STRUCTURE.md` | `docs/PROJECT_OVERVIEW.md` |
+| `docs/TESTING_GUIDE.md` | `docs/QA_GUIDE.md` |
+| `docs/ai-chatbot-analysis.md` | `docs/MODULES_GUIDE.md` |
+| `docs/ai-chatbot-manual-qa.md` | `docs/QA_GUIDE.md` |
+| `docs/ai-chatbot-release-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/ai-chatbot-staging-verification.md` | `docs/MODULES_GUIDE.md` |
+| `docs/android-ar-demo-readiness.md` | `docs/QA_GUIDE.md` |
+| `docs/coupon-promotion-demo-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/coupon-promotion-final-report.md` | `docs/DEMO_GUIDE.md` |
+| `docs/coupon-promotion-smoke-test.md` | `docs/QA_GUIDE.md` |
+| `docs/delivery-order-tracking-status-only.md` | `docs/MODULES_GUIDE.md` |
+| `docs/demo-schedule-attendance-payroll-readiness.md` | `docs/QA_GUIDE.md` |
+| `docs/demo-scheduling-attendance-performance.md` | `docs/DEMO_GUIDE.md` |
+| `docs/environment/setup.md` | `docs/OPERATIONS_GUIDE.md` |
+| `docs/final-demo-manager-flow.md` | `docs/DEMO_GUIDE.md` |
+| `docs/menu-local-image-strategy.md` | `docs/MODULES_GUIDE.md` |
+| `docs/menu-management-demo-data.md` | `docs/DEMO_GUIDE.md` |
+| `docs/menu-management-qa-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/mock-legacy-cleanup-audit.md` | `docs/QA_GUIDE.md` |
+| `docs/modal-draft-audit-2026-04-09.md` | `docs/QA_GUIDE.md` |
+| `docs/nearby-restaurant-search.md` | `docs/MODULES_GUIDE.md` |
+| `docs/payment-online-reconciliation-demo.md` | `docs/DEMO_GUIDE.md` |
+| `docs/performance/staff-performance-quality-logic.md` | `docs/MODULES_GUIDE.md` |
+| `docs/phase2-attendance-published-shift-binding-audit.md` | `docs/QA_GUIDE.md` |
+| `docs/phase2-pr4-attendance-exception-audit.md` | `docs/QA_GUIDE.md` |
+| `docs/phase3-attendance-overtime-correction-audit-2026-05-01.md` | `docs/QA_GUIDE.md` |
+| `docs/phase4-performance-scoring-policy.md` | `docs/MODULES_GUIDE.md` |
+| `docs/production-readiness-hardening-audit.md` | `docs/QA_GUIDE.md` |
+| `docs/rbac-audit-log.md` | `docs/QA_GUIDE.md` |
+| `docs/rbac-final-report.md` | `docs/DEMO_GUIDE.md` |
+| `docs/rbac-permission-matrix.md` | `docs/MODULES_GUIDE.md` |
+| `docs/regression/scheduling-mandatory-roles-regression-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/regression/staff-performance-quality-regression-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/restaurant-config-backup-import.md` | `docs/OPERATIONS_GUIDE.md` |
+| `docs/review-module-advanced-production.md` | `docs/QA_GUIDE.md` |
+| `docs/review-module-demo-script.md` | `docs/DEMO_GUIDE.md` |
+| `docs/review-module-e2e-smoke.md` | `docs/QA_GUIDE.md` |
+| `docs/review-module-graduation-demo.md` | `docs/DEMO_GUIDE.md` |
+| `docs/review-module-production-hardening.md` | `docs/QA_GUIDE.md` |
+| `docs/review-module-qa-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/schedule-incident-roadmap.md` | `docs/MODULES_GUIDE.md` |
+| `docs/schedule-management-business-audit.md` | `docs/QA_GUIDE.md` |
+| `docs/staff-performance-calculation-system.md` | `docs/MODULES_GUIDE.md` |
+| `docs/staff-shell-followup.md` | `docs/MODULES_GUIDE.md` |
+| `docs/thesis-demo-checklist.md` | `docs/QA_GUIDE.md` |
+| `docs/uc22-print-management-report-notes.md` | `docs/MODULES_GUIDE.md` |
+| `src/docs/Testcase_POS.md` | `docs/QA_GUIDE.md` |
+| `src/docs/design-system.md` | `docs/MODULES_GUIDE.md` |
+| `src/docs/modal-audit-2026-04-07.md` | `docs/QA_GUIDE.md` |
+| `src/docs/order-flow-idea.md` | `docs/MODULES_GUIDE.md` |
+| `src/docs/order-manager.md` | `docs/MODULES_GUIDE.md` |
+| `src/docs/pos-test-audit-2026-04-14.md` | `docs/QA_GUIDE.md` |
+| `src/docs/reservation-flow.md` | `docs/MODULES_GUIDE.md` |
+| `src/docs/runbook-operations.md` | `docs/OPERATIONS_GUIDE.md` |
+| `src/drafts/README.md` | `docs/MODULES_GUIDE.md` |
