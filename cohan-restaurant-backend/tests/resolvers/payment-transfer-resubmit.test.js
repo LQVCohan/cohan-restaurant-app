@@ -14,12 +14,19 @@ const modelMocks = vi.hoisted(() => ({
 }));
 const authMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn() }));
 const paymentSessionMocks = vi.hoisted(() => ({
+  TRANSFER_MAX_REJECTED_PROOFS: 3,
+  TRANSFER_PAYMENT_TTL_MS: 15 * 60 * 1000,
   createOrderPayment: vi.fn(),
   sanitizePaymentSessionForClient: vi.fn((value) => value),
   settlePaidOrderPaymentSession: vi.fn(),
 }));
-const trackingMocks = vi.hoisted(() => ({ emitCustomerTrackingUpdateIfChanged: vi.fn() }));
-const emitMocks = vi.hoisted(() => ({ emitOrderEvent: vi.fn(), emitRestaurantEvent: vi.fn() }));
+const trackingMocks = vi.hoisted(() => ({
+  emitCustomerTrackingUpdateIfChanged: vi.fn(),
+}));
+const emitMocks = vi.hoisted(() => ({
+  emitOrderEvent: vi.fn(),
+  emitRestaurantEvent: vi.fn(),
+}));
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
@@ -76,18 +83,33 @@ describe("submitTransferProof retry behavior", () => {
   it("keeps first proof submission as pending SUBMITTED", async () => {
     const payment = paymentDoc();
     modelMocks.PaymentSession.findById.mockResolvedValue(payment);
-    const { submitTransferProof } = await import("../../graphql/resolvers/payment/transferMutation.js");
+    const { submitTransferProof } = await import(
+      "../../graphql/resolvers/payment/transferMutation.js"
+    );
 
-    const result = await submitTransferProof(null, {
-      input: { paymentSessionId: ids.payment, proofImages: ["https://example.test/proof.jpg"], proofNote: "paid" },
-    }, { user: { id: ids.user }, io: { to: vi.fn() } });
+    const result = await submitTransferProof(
+      null,
+      {
+        input: {
+          paymentSessionId: ids.payment,
+          proofImages: ["https://example.test/proof.jpg"],
+          proofNote: "paid",
+        },
+      },
+      { user: { id: ids.user }, io: { to: vi.fn() } },
+    );
 
     expect(result).toBe(payment);
     expect(payment.status).toBe("pending");
     expect(payment.callbackStatus).toBe("received");
     expect(payment.transfer.status).toBe("SUBMITTED");
-    expect(payment.transfer.proofImages).toEqual(["https://example.test/proof.jpg"]);
-    expect(payment.events.at(-1)).toMatchObject({ type: "transfer_proof_submitted", payload: { by: ids.user } });
+    expect(payment.transfer.proofImages).toEqual([
+      "https://example.test/proof.jpg",
+    ]);
+    expect(payment.events.at(-1)).toMatchObject({
+      type: "transfer_proof_submitted",
+      payload: { by: ids.user },
+    });
     expect(payment.save).toHaveBeenCalled();
   });
 
@@ -106,11 +128,21 @@ describe("submitTransferProof retry behavior", () => {
       events: [{ type: "transfer_rejected", payload: { reason: "Ảnh mờ" } }],
     });
     modelMocks.PaymentSession.findById.mockResolvedValue(payment);
-    const { submitTransferProof } = await import("../../graphql/resolvers/payment/transferMutation.js");
+    const { submitTransferProof } = await import(
+      "../../graphql/resolvers/payment/transferMutation.js"
+    );
 
-    await submitTransferProof(null, {
-      input: { paymentSessionId: ids.payment, proofImages: ["new.jpg"], proofNote: "new proof" },
-    }, { user: { id: ids.user }, io: { to: vi.fn() } });
+    await submitTransferProof(
+      null,
+      {
+        input: {
+          paymentSessionId: ids.payment,
+          proofImages: ["new.jpg"],
+          proofNote: "new proof",
+        },
+      },
+      { user: { id: ids.user }, io: { to: vi.fn() } },
+    );
 
     expect(payment.status).toBe("pending");
     expect(payment.callbackStatus).toBe("received");
@@ -120,10 +152,19 @@ describe("submitTransferProof retry behavior", () => {
     expect(payment.transfer.rejectedAt).toBeUndefined();
     expect(payment.transfer.rejectedBy).toBeUndefined();
     expect(payment.transfer.rejectReason).toBeUndefined();
-    expect(payment.events.at(-1)).toMatchObject({ type: "transfer_proof_resubmitted", payload: { by: ids.user } });
+    expect(payment.events.at(-1)).toMatchObject({
+      type: "transfer_proof_resubmitted",
+      payload: { by: ids.user },
+    });
     expect(modelMocks.Order.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ _id: { $in: [ids.order] }, restaurantId: ids.restaurant, "payment.status": { $ne: "paid" } }),
-      expect.objectContaining({ $set: expect.objectContaining({ "payment.status": "pending" }) }),
+      expect.objectContaining({
+        _id: { $in: [ids.order] },
+        restaurantId: ids.restaurant,
+        "payment.status": { $ne: "paid" },
+      }),
+      expect.objectContaining({
+        $set: expect.objectContaining({ "payment.status": "pending" }),
+      }),
     );
   });
 });
