@@ -1,5 +1,5 @@
 .manager-analyst-page {
-  --ana-page-max: 1260px;
+  --ana-page-max: 1480px;
   --ana-card-bg: rgba(255, 253, 248, 0.9);
   --ana-card-bg-soft: rgba(255, 253, 248, 0.72);
   --ana-hairline: rgba(107, 91, 67, 0.14);
@@ -7,7 +7,7 @@
   --ana-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   width: min(100%, var(--ana-page-max));
-  padding: clamp(18px, 2vw, 28px) clamp(14px, 1.8vw, 24px) 64px;
+  padding: clamp(18px, 1.7vw, 28px) clamp(16px, 2vw, 34px) 64px;
 
   &::after {
     content: "";
@@ -89,7 +89,7 @@
       position: relative;
       margin-bottom: 14px;
       padding-left: 14px;
-      max-width: 760px;
+      max-width: 860px;
 
       &::before {
         content: "";
@@ -180,7 +180,7 @@
 
   .kpi-section {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+    gap: 16px;
   }
 
   .kpi-insight-card {
@@ -211,8 +211,8 @@
   }
 
   .action-center-grid {
-    grid-template-columns: minmax(0, 1.28fr) minmax(330px, 0.82fr);
-    gap: 16px;
+    grid-template-columns: minmax(0, 1.42fr) minmax(360px, 0.78fr);
+    gap: 18px;
   }
 
   .action-center-panel {
@@ -229,7 +229,7 @@
   .action-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
 
   .action-card {
@@ -291,17 +291,27 @@
     }
   }
 
-  .operations-intel-grid,
-  .growth-grid,
+  .operations-intel-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .growth-grid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    gap: 18px;
+    align-items: start;
+  }
+
   .operations-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 18px;
     align-items: start;
   }
 
   .product-customer-grid {
-    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
-    gap: 16px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(380px, 0.8fr);
+    gap: 18px;
     align-items: stretch;
   }
 
@@ -314,7 +324,7 @@
   }
 
   .widget-card {
-    padding: clamp(15px, 1.25vw, 19px) !important;
+    padding: clamp(15px, 1.2vw, 19px) !important;
   }
 
   .widget-head,
@@ -558,6 +568,10 @@
   .progress-bg,
   .progress-track {
     background: var(--ana-accent-soft, #edf1ee) !important;
+  }
+
+  @media (max-width: 1500px) {
+    --ana-page-max: 1360px;
   }
 
   @media (max-width: 1280px) {
