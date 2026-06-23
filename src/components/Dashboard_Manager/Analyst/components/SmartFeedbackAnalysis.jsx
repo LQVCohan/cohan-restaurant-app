@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Star, Sparkles } from "lucide-react";
+import { ArrowRight, Star, Sparkles } from "lucide-react";
 import "./SmartFeedbackAnalysis.scss";
+
+const goReviews = () => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "reviews", source: "manager-analytics" } }));
 
 const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
   const [filter, setFilter] = useState("all");
@@ -41,7 +43,13 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
       <div className="feedback-scroll-area">
         <div className="feedback-list">
           {loading ? <div className="empty-state">Đang tải đánh giá...</div> : null}
-          {!loading && filtered.length === 0 ? <div className="empty-state">Không có đánh giá phù hợp.</div> : null}
+          {!loading && filtered.length === 0 ? (
+            <div className="empty-state analytics-action-empty">
+              <strong>Không có đánh giá phù hợp</strong>
+              <p>Đánh giá mới sẽ xuất hiện tại đây sau khi khách gửi phản hồi.</p>
+              <button type="button" className="widget-cta" onClick={goReviews}>Mở đánh giá <ArrowRight size={14} /></button>
+            </div>
+          ) : null}
           {!loading &&
             filtered.map((review) => (
               <div key={review.id} className="feedback-item">
