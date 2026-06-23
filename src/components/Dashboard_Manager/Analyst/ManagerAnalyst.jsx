@@ -422,7 +422,7 @@ const ManagerAnalyst = () => {
         icon: Megaphone,
         title: "Chiến dịch cần duyệt",
         description: "Có gợi ý khuyến mãi thông minh cần quản lý xác nhận trước khi triển khai.",
-        cta: "Đi sang khuyến mãi",
+        cta: "Mở khuyến mãi",
         onClick: () => navigateManager("promotions"),
       });
     }
@@ -639,10 +639,10 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section" id="smart-growth-section">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Tăng trưởng và thực đơn</span>
-              <h3 className="analytics-section__title">Tăng trưởng và menu</h3>
+              <span className="analytics-section__eyebrow">Tăng trưởng doanh thu</span>
+              <h3 className="analytics-section__title">Khuyến mãi và tối ưu menu</h3>
               <p className="analytics-section__subtitle">
-                Gợi ý khuyến mãi và tối ưu menu để tăng doanh thu.
+                Gợi ý chiến dịch và điều chỉnh thực đơn để tăng doanh thu.
               </p>
             </div>
             <div className="analytics-section__body growth-grid">
@@ -665,8 +665,8 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Chất lượng và hiệu suất</span>
-              <h3 className="analytics-section__title">Chất lượng và hiệu suất</h3>
+              <span className="analytics-section__eyebrow">Trải nghiệm và hiệu suất</span>
+              <h3 className="analytics-section__title">Chất lượng vận hành</h3>
               <p className="analytics-section__subtitle">
                 Theo dõi phản hồi, mật độ vận hành và hiệu suất nhân sự.
               </p>
