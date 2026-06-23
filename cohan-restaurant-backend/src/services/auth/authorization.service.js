@@ -55,6 +55,17 @@ const AI_CHATBOT_MANAGER_PERMISSIONS = [
   "ai.chatbot.analytics.read",
 ];
 
+const REVIEW_MANAGER_PERMISSIONS = [
+  "review.read",
+  "review.reply",
+  "review.moderate",
+  "review.delete",
+  "review.report.read",
+  "review.report.resolve",
+  "review.export",
+  "review.analytics.read",
+];
+
 const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
     "restaurant.read", "restaurant.write", "menu.read", "menu.write",
@@ -66,9 +77,12 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "reservation.update", "reservation.cancel", "promotion.read", "promotion.write",
     "coupon.read", "coupon.write", "customer.read", "customer.update", "role.read", "permission.read",
     ...AI_CHATBOT_MANAGER_PERMISSIONS,
+    ...REVIEW_MANAGER_PERMISSIONS,
   ],
   hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"],
   accountant: ["payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "report.read", "report.export", "payroll.read"],
+  staff: ["review.read", "review.reply"],
+  supervisor: ["review.read", "review.reply", "review.moderate", "review.report.read"],
 });
 
 function getLegacyRolePermissionCodes(user) {

@@ -33,7 +33,7 @@ vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({
 describe("availability resolver", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelMocks.Restaurant.exists.mockResolvedValue(null);
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
 
   it("creates availability window successfully", async () => {
@@ -68,7 +68,7 @@ describe("availability resolver", () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), status: "open", openAt: new Date(Date.now()-1000), closeAt: new Date(Date.now()+100000), lateChangeRequiresApproval: true });
     modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ submissionType: "weekly_availability", slots: [{ status: "available" }] });
-    const res = await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [{ date: new Date(), shiftType: "morning", status: "available" }] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
+    const res = await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [{ date: new Date(), shiftType: "morning", status: "available" }] } }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } });
     expect(res.slots[0].status).toBe("available");
   });
 
@@ -76,14 +76,14 @@ describe("availability resolver", () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), status: "open", openAt: new Date(Date.now()-1000), closeAt: new Date(Date.now()+100000), lateChangeRequiresApproval: true });
     modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ submissionType: "unavailable_exception", slots: [{ status: "unavailable" }] });
-    const res = await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "full_time", submissionType: "unavailable_exception", slots: [{ date: new Date(), shiftType: "evening", status: "unavailable" }] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
+    const res = await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "full_time", submissionType: "unavailable_exception", slots: [{ date: new Date(), shiftType: "evening", status: "unavailable" }] } }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } });
     expect(res.slots[0].status).toBe("unavailable");
   });
 
   it("blocks direct submit after close when late change is disabled", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", status: "closed", openAt: new Date(Date.now()-100000), closeAt: new Date(Date.now()-1000), lateChangeRequiresApproval: false });
-    await expect(mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("AVAILABILITY_WINDOW_CLOSED");
+    await expect(mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [] } }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } })).rejects.toThrow("AVAILABILITY_WINDOW_CLOSED");
   });
 
   it("marks closed-window submit as late_change_requested when enabled", async () => {
@@ -114,7 +114,7 @@ describe("availability resolver", () => {
           slots: [],
         },
       },
-      { user: { id: "e1", roles: [], restaurantId: "r1" } },
+      { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } },
     );
 
     expect(res.status).toBe("late_change_requested");
@@ -149,7 +149,7 @@ describe("availability resolver", () => {
           slots: [],
         },
       },
-      { user: { id: "e1", roles: [], restaurantId: "r1" } },
+      { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } },
     );
 
     expect(
@@ -206,7 +206,7 @@ describe("availability resolver", () => {
       mutation.submitStaffAvailability(
         null,
         { input: { availabilityWindowId: "w1", employeeId: "e1", submissionType: "weekly_availability", slots: [] } },
-        { user: { id: "e1", roles: [], restaurantId: "r1" } },
+        { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } },
       ),
     ).rejects.toThrow("AVAILABILITY_WINDOW_LOCKED_FOR_SCHEDULE");
 
@@ -220,7 +220,7 @@ describe("availability resolver", () => {
       mutation.submitStaffAvailability(
         null,
         { input: { availabilityWindowId: "w2", employeeId: "e1", submissionType: "weekly_availability", slots: [] } },
-        { user: { id: "e1", roles: [], restaurantId: "r1" } },
+        { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } },
       ),
     ).rejects.toThrow("AVAILABILITY_WINDOW_CANCELLED");
   });
@@ -324,7 +324,7 @@ describe("availability resolver", () => {
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1" });
     modelMocks.StaffAvailabilitySubmission.findOne.mockResolvedValue({ _id: "s1", employeeId: "e1" });
 
-    const res = await query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
+    const res = await query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } });
 
     expect(res._id).toBe("s1");
     expect(modelMocks.StaffAvailabilitySubmission.findOne).toHaveBeenCalledWith({ availabilityWindowId: "w1", employeeId: "e1" });
@@ -334,7 +334,7 @@ describe("availability resolver", () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1" });
 
-    await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e2" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e2" }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN");
   });
 
   it("allows manager in restaurant scope to view employee submission", async () => {
@@ -351,26 +351,26 @@ describe("availability resolver", () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r2" });
 
-    await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
   it("blocks staff from listing all submissions", async () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
-    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN");
   });
 
   it("blocks HR and accountant from availability window admin mutations", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     const input = { restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), openAt: new Date(), closeAt: new Date() };
-    await expect(mutation.createAvailabilityWindow(null, { input }, { user: { id: "h1", userType: "HR", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
-    await expect(mutation.createAvailabilityWindow(null, { input }, { user: { id: "a1", roleName: "accountant", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(mutation.createAvailabilityWindow(null, { input }, { user: { id: "h1", userType: "HR", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(mutation.createAvailabilityWindow(null, { input }, { user: { id: "a1", roleName: "accountant", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN");
   });
 
   it("allows HR but blocks accountant from submission list", async () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
     modelMocks.StaffAvailabilitySubmission.find.mockResolvedValue([{ _id: "s1" }]);
-    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "h1", userType: "hr", restaurantId: "r1" } })).resolves.toEqual([{ _id: "s1" }]);
-    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "a1", roleName: "accountant", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "h1", userType: "hr", restaurantForStaff: "r1" } })).resolves.toEqual([{ _id: "s1" }]);
+    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "a1", roleName: "accountant", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN");
   });
 
   it("blocks HR and accountant outside restaurant scope from list", async () => {
@@ -379,14 +379,14 @@ describe("availability resolver", () => {
       query.staffAvailabilitySubmissions(
         null,
         { windowId: "w1", restaurantId: "r1" },
-        { user: { id: "h1", userType: "hr", restaurantId: "r2" } },
+        { user: { id: "h1", userType: "hr", restaurantForStaff: "r2" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
     await expect(
       query.staffAvailabilitySubmissions(
         null,
         { windowId: "w1", restaurantId: "r1" },
-        { user: { id: "a1", roleName: "accountant", restaurantId: "r2" } },
+        { user: { id: "a1", roleName: "accountant", restaurantForStaff: "r2" } },
       ),
     ).rejects.toThrow("FORBIDDEN");
   });
@@ -397,7 +397,7 @@ describe("availability resolver", () => {
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", status: "closed", openAt: new Date(Date.now()-1000), closeAt: new Date(Date.now()-1000), lateChangeRequiresApproval: true, periodStart: new Date(), periodEnd: new Date() });
     modelMocks.StaffAvailabilitySubmission.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
     modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ status: "late_change_requested" });
-    await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [{ date: new Date(), shiftType: "morning", status: "available" }] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
+    await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots: [{ date: new Date(), shiftType: "morning", status: "available" }] } }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } });
     const update = modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls.at(-1)[1];
     expect(update.$set.pendingSlots).toHaveLength(1);
     expect(update.$set.status).toBe("late_change_requested");

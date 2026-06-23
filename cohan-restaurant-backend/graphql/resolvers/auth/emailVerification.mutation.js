@@ -34,7 +34,8 @@ function idString(value) {
 function targetRestaurantIds(target) {
   const ids = [
     target?.restaurantForStaff,
-    ...(Array.isArray(target?.refRestaurants) ? target.refRestaurants : []),
+    target?.restaurantId,
+    ...(Array.isArray(target?.restaurantIds) ? target.restaurantIds : []),
   ]
     .map(idString)
     .filter(Boolean);

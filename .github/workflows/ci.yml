@@ -29,10 +29,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
+
+      - name: Install backend schema dependencies
+        run: npm --prefix cohan-restaurant-backend ci
 
       - name: Check unresolved conflict markers
         run: npm run check:conflicts

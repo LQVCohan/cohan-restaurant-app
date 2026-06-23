@@ -30,12 +30,9 @@ const ensureAuth = (ctx) => {
 };
 
 const getUserRestaurantIds = (user) => {
-  const ids = [];
-  if (user?.restaurantForStaff) ids.push(String(user.restaurantForStaff));
-  if (Array.isArray(user?.refRestaurants)) {
-    user.refRestaurants.forEach((id) => ids.push(String(id)));
-  }
-  return [...new Set(ids.filter(Boolean))];
+  const ids = [user?.restaurantForStaff, user?.restaurantId];
+  if (Array.isArray(user?.restaurantIds)) ids.push(...user.restaurantIds);
+  return [...new Set(ids.map((id) => String(id || "")).filter(Boolean))];
 };
 
 const canAccessThread = (thread, user) => {
@@ -69,17 +66,18 @@ const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
 
   const users = await User.find({
     userType: { $in: userTypes },
-    $or: [
-      { restaurantForStaff: thread.restaurantId },
-      { refRestaurants: thread.restaurantId },
-    ],
+    restaurantForStaff: thread.restaurantId,
   })
     .select("_id")
     .lean();
 
-  return users
-    .map((u) => String(u._id))
-    .filter((id) => id !== String(senderId));
+  const recipientIds = users.map((u) => String(u._id));
+  if (["management", "manager", "support"].includes(String(thread.targetRole || "").toLowerCase())) {
+    const restaurant = await Restaurant.findById(thread.restaurantId).select("managerId").lean();
+    if (restaurant?.managerId) recipientIds.push(String(restaurant.managerId));
+  }
+
+  return [...new Set(recipientIds)].filter((id) => id !== String(senderId));
 };
 
 const toThreadOutput = (thread, userId) => {
@@ -97,10 +95,18 @@ function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
 
-async function requireRestaurantScopeIfProvided(ctx, restaurantId) {
+async function requireRestaurantScopeIfProvided(ctx, restaurantId, { allowCustomerPublic = false } = {}) {
   if (!restaurantId) return null;
   const rid = toId(restaurantId);
   if (!rid) throw badInput("Invalid restaurantId");
+
+  const isCustomer = roleSlug(ctx?.user) === "customer" || String(ctx?.user?.userType || "").toUpperCase() === "CUSTOMER";
+  if (allowCustomerPublic && isCustomer) {
+    const exists = await Restaurant.exists({ _id: rid });
+    if (!exists) throw badInput("Invalid restaurantId");
+    return rid;
+  }
+
   await requireRestaurantAccess(ctx, rid);
   return rid;
 }
@@ -112,13 +118,19 @@ const buildNotificationCondition = async (ctx, { restaurantId, unreadOnly = fals
   const uid = toId(user.id);
   const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
   const userRole = roleSlug(user);
-  const roleCondition = { toRole: userRole };
-  if (rid) roleCondition.restaurantId = rid;
-  else if (!roleSlug(user).includes("admin")) {
-    const scopedIds = getUserRestaurantIds(user).map(toId).filter(Boolean);
-    roleCondition.restaurantId = { $in: scopedIds };
+  const isCustomer = userRole === "customer" || String(user?.userType || "").toUpperCase() === "CUSTOMER";
+  const cond = isCustomer
+    ? { toUserId: uid }
+    : { $or: [{ toUserId: uid }, { toRole: userRole }] };
+
+  if (!isCustomer) {
+    const roleCondition = cond.$or[1];
+    if (rid) roleCondition.restaurantId = rid;
+    else if (!userRole.includes("admin")) {
+      const scopedIds = getUserRestaurantIds(user).map(toId).filter(Boolean);
+      roleCondition.restaurantId = { $in: scopedIds };
+    }
   }
-  const cond = { $or: [{ toUserId: uid }, roleCondition] };
   if (rid) cond.restaurantId = rid;
   if (unreadOnly) cond.readAt = null;
   return cond;
@@ -138,7 +150,7 @@ const Query = {
     ensureAuth(ctx);
     const user = ctx.user;
     const uid = toId(user.id);
-    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, restaurantId, { allowCustomerPublic: true });
 
     const cond = { status: normalizeChatThreadStatus(status) };
     if (rid) cond.restaurantId = rid;
@@ -199,7 +211,7 @@ const Mutation = {
     ensureAuth(ctx);
     const user = ctx.user;
     const senderId = toId(user.id);
-    const rid = await requireRestaurantScopeIfProvided(ctx, input?.restaurantId);
+    const rid = await requireRestaurantScopeIfProvided(ctx, input?.restaurantId, { allowCustomerPublic: true });
 
     if (!rid) throw badInput("Invalid restaurantId");
 

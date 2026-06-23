@@ -42,6 +42,23 @@ const FOOD_PREFERENCE_SUGAR = [0, 30, 50, 70, 100];
 const FOOD_PREFERENCE_SPICE = ["Không", "Vừa", "Nồng", "Rất cay"];
 const WALLET_ALLOWED_PROVIDERS = ["internal"];
 const WALLET_ALLOWED_CURRENCIES = ["VND"];
+const RESTAURANT_SCOPED_ROLE_SLUGS = new Set([
+  "hr", "accountant", "staff", "server", "supervisor", "host", "cashier",
+  "chef", "cook", "kitchen_helper", "cleaner", "shipper", "storekeeper", "bartender",
+]);
+
+function roleSlugOf(role) {
+  return String(role?.slug || role?.name || role || "").trim().toLowerCase();
+}
+
+function assertRestaurantAssignmentForRole(role, restaurantForStaff) {
+  const slug = roleSlugOf(role);
+  if (RESTAURANT_SCOPED_ROLE_SLUGS.has(slug) && !restaurantForStaff) {
+    throw new GraphQLError("restaurantForStaff is required for restaurant-scoped roles", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+}
 const AVATAR_ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const AVATAR_MAX_FILE_SIZE_BYTES = Number(process.env.AVATAR_MAX_FILE_SIZE_BYTES || 2 * 1024 * 1024);
 
@@ -300,7 +317,9 @@ export const UserMutation = {
     if (!role) throw new GraphQLError("Role not found");
     const u = await User.findById(userId);
     if (!u) throw new GraphQLError("User not found");
+    assertRestaurantAssignmentForRole(role, u.restaurantForStaff);
     u.role = roleId;
+    if (roleSlugOf(role) === "customer") u.restaurantForStaff = null;
     await u.save();
     return sanitizeUserForClient(u);
   },
@@ -959,36 +978,6 @@ export const UserMutation = {
       });
     }
 
-    const actorRestaurantIds = new Set(
-      [
-        authUser?.restaurantForStaff,
-        authUser?.restaurantId,
-        ...(Array.isArray(authUser?.restaurantIds) ? authUser.restaurantIds : []),
-        ...(Array.isArray(authUser?.refRestaurants) ? authUser.refRestaurants : []),
-      ]
-        .map((id) => String(id || ""))
-        .filter(Boolean),
-    );
-    const targetRestaurantIds = new Set(
-      [
-        u?.restaurantForStaff,
-        ...(Array.isArray(u?.refRestaurants) ? u.refRestaurants : []),
-      ]
-        .map((id) => String(id || ""))
-        .filter(Boolean),
-    );
-
-    if (actorRestaurantIds.size && targetRestaurantIds.size) {
-      const inScope = [...targetRestaurantIds].some((id) =>
-        actorRestaurantIds.has(id),
-      );
-      if (!inScope) {
-        throw new GraphQLError("FORBIDDEN_SCOPE", {
-          extensions: { code: "FORBIDDEN" },
-        });
-      }
-    }
-
     const updates = {};
     if (typeof input.fullName === "string")
       updates.fullName = input.fullName.trim();
@@ -1081,10 +1070,27 @@ export const UserMutation = {
     if (typeof input.isGuest === "boolean") updates.isGuest = input.isGuest;
     if (input.guestExpiresAt)
       updates.guestExpiresAt = new Date(input.guestExpiresAt);
+    let nextRoleDoc = null;
+    if (input.roleId) {
+      if (!mongoose.isValidObjectId(input.roleId)) {
+        throw new GraphQLError("Invalid roleId", { extensions: { code: "BAD_USER_INPUT" } });
+      }
+      nextRoleDoc = await Role.findById(input.roleId).lean();
+      if (!nextRoleDoc) {
+        throw new GraphQLError("Role not found", { extensions: { code: "BAD_USER_INPUT" } });
+      }
+    } else if (u.role) {
+      nextRoleDoc = await Role.findById(u.role).lean();
+    }
+
+    const nextRoleSlug = roleSlugOf(nextRoleDoc);
     if (Array.isArray(input.refRestaurantIds)) {
-      updates.refRestaurants = input.refRestaurantIds.map(
-        (id) => new mongoose.Types.ObjectId(id),
-      );
+      if (nextRoleSlug !== "customer") {
+        throw new GraphQLError("refRestaurantIds is customer history and cannot be assigned to staff roles", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      updates.refRestaurants = input.refRestaurantIds.map((id) => new mongoose.Types.ObjectId(id));
     }
 
     if (Object.prototype.hasOwnProperty.call(input, "restaurantForStaff")) {
@@ -1101,20 +1107,14 @@ export const UserMutation = {
       }
     }
 
-    if (input.roleId) {
-      if (!mongoose.isValidObjectId(input.roleId)) {
-        throw new GraphQLError("Invalid roleId", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-      const roleDoc = await Role.findById(input.roleId).lean();
-      if (!roleDoc) {
-        throw new GraphQLError("Role not found", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-      updates.role = input.roleId;
-    }
+    const finalRestaurantForStaff = Object.prototype.hasOwnProperty.call(updates, "restaurantForStaff")
+      ? updates.restaurantForStaff
+      : u.restaurantForStaff;
+    assertRestaurantAssignmentForRole(nextRoleDoc, finalRestaurantForStaff);
+
+    if (input.roleId) updates.role = input.roleId;
+    if (nextRoleSlug === "customer") updates.restaurantForStaff = null;
+    else if (nextRoleSlug && !RESTAURANT_SCOPED_ROLE_SLUGS.has(nextRoleSlug)) updates.restaurantForStaff = null;
 
     u.set(updates);
     await u.save();

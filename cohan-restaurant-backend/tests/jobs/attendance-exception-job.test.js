@@ -249,7 +249,14 @@ describe("attendance exception detection job", () => {
           endDate: "2026-05-11T23:59:59.999Z",
         },
       },
-      { user: { id: actorId, userType: role, restaurantForStaff: restaurantId } },
+      {
+      user:
+        role === "ADMIN"
+          ? { id: actorId, userType: role }
+          : role === "MANAGER"
+            ? { id: actorId, userType: role, restaurantId }
+            : { id: actorId, userType: role, restaurantForStaff: restaurantId },
+    },
     );
 
     expect(result.noShowCreated).toBe(1);
@@ -268,7 +275,14 @@ describe("attendance exception detection job", () => {
             endDate: "2026-05-11T23:59:59.999Z",
           },
         },
-        { user: { id: actorId, userType: role, restaurantForStaff: restaurantId } },
+        {
+      user:
+        role === "ADMIN"
+          ? { id: actorId, userType: role }
+          : role === "MANAGER"
+            ? { id: actorId, userType: role, restaurantId }
+            : { id: actorId, userType: role, restaurantForStaff: restaurantId },
+    },
       ),
     ).rejects.toThrow("FORBIDDEN");
   });

@@ -2,19 +2,19 @@ import { GraphQLError } from "graphql";
 import Review from "../../../models/review.model.js";
 import { EventLog, ReviewComment, ReviewReport } from "../../../models/index.js";
 import { generateReviewInsight } from "../../../src/services/reviewInsight.service.js";
-import { requirePermission, requireRestaurantAccess } from "../../guards.js";
+import { requirePermission, requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
 function roleSlug(user) { return String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase(); }
 function isAdmin(user) { return roleSlug(user).includes("admin"); }
 function isStaffLike(user) { const role = roleSlug(user); return role.includes("staff") || role.includes("manager") || role.includes("admin"); }
 function isOwner(ctx, doc) { const uid = ctx?.user?.id || ctx?.user?._id; return uid && String(doc?.customerId || doc?.createdBy || doc?.userId) === String(uid); }
 function forbidden(message = "Forbidden") { return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } }); }
-async function requireReviewModerationAccess(ctx, review) { requirePermission(ctx, "review.read"); await requireRestaurantAccess(ctx, review.restaurantId); }
+async function requireReviewModerationAccess(ctx, review) { await requireRestaurantPermission(ctx, review.restaurantId, "review.read"); }
 
 async function canManageRestaurant(ctx, restaurantId, permission = "review.read") {
   if (!ctx?.user) return false;
   if (isAdmin(ctx.user)) return true;
-  try { requirePermission(ctx, permission); await requireRestaurantAccess(ctx, restaurantId); return true; } catch (_) { return false; }
+  try { await requireRestaurantPermission(ctx, restaurantId, permission); return true; } catch (_) { return false; }
 }
 
 function dateFilter(dateFrom, dateTo) {
@@ -93,9 +93,11 @@ export default {
   },
 
   reviewReports: async (_, { restaurantId, status, reason, limit = 20, skip = 0 }, ctx) => {
-    requirePermission(ctx, "review.report.read");
-    if (restaurantId) await requireRestaurantAccess(ctx, restaurantId);
-    else if (!isAdmin(ctx?.user)) throw forbidden("restaurantId is required");
+    if (restaurantId) await requireRestaurantPermission(ctx, restaurantId, "review.report.read");
+    else {
+      if (!isAdmin(ctx?.user)) throw forbidden("restaurantId is required");
+      await requirePermission(ctx, "review.report.read");
+    }
     const filter = {};
     if (restaurantId) filter.restaurantId = restaurantId;
     if (status) filter.status = status;
@@ -107,9 +109,11 @@ export default {
   },
 
   reviewReportStats: async (_, { restaurantId }, ctx) => {
-    requirePermission(ctx, "review.report.read");
-    if (restaurantId) await requireRestaurantAccess(ctx, restaurantId);
-    else if (!isAdmin(ctx?.user)) throw forbidden("restaurantId is required");
+    if (restaurantId) await requireRestaurantPermission(ctx, restaurantId, "review.report.read");
+    else {
+      if (!isAdmin(ctx?.user)) throw forbidden("restaurantId is required");
+      await requirePermission(ctx, "review.report.read");
+    }
     const match = restaurantId ? { restaurantId } : {};
     const rows = await ReviewReport.aggregate([{ $match: match }, { $group: { _id: { status: "$status", reason: "$reason" }, count: { $sum: 1 } } }]);
     const byStatus = {}; const byReason = {}; let total = 0;
@@ -118,9 +122,11 @@ export default {
   },
 
   reviewAnalytics: async (_, { restaurantId, targetType, dateFrom, dateTo }, ctx) => {
-    requirePermission(ctx, "review.analytics.read");
-    if (restaurantId) await requireRestaurantAccess(ctx, restaurantId);
-    else if (!isAdmin(ctx?.user)) throw forbidden("restaurantId is required");
+    if (restaurantId) await requireRestaurantPermission(ctx, restaurantId, "review.analytics.read");
+    else {
+      if (!isAdmin(ctx?.user)) throw forbidden("restaurantId is required");
+      await requirePermission(ctx, "review.analytics.read");
+    }
     const match = { ...dateFilter(dateFrom, dateTo) };
     if (restaurantId) match.restaurantId = restaurantId;
     if (targetType) match.targetType = targetType;

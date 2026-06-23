@@ -41,7 +41,7 @@ class MockUser {
   }
 }
 
-vi.mock("../../models/index.js", () => ({ User: MockUser }));
+vi.mock("../../models/index.js", () => ({ User: MockUser, Restaurant: { exists: vi.fn() } }));
 vi.mock("../../lib/mailer.js", () => ({
   mailer: { sendMail: mailerSendMail },
   buildVerifyMail: (args) => ({ to: args.to, subject: "verify", text: args.link, html: args.link }),
@@ -216,18 +216,18 @@ describe("accountVerification.service", () => {
 });
 
 describe("emailVerification resend scope", () => {
-  it("allows manager when any target refRestaurant is in scope", async () => {
+  it("allows manager for assigned staff in scope", async () => {
     const { assertCanResendForTarget } = await emailVerificationResolverPromise;
     await expect(assertCanResendForTarget(
       { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-b"] } },
-      { _id: "customer-1", userType: "CUSTOMER", refRestaurants: ["restaurant-a", { _id: "restaurant-b" }] },
+      { _id: "staff-1", userType: "STAFF", restaurantForStaff: "restaurant-b" },
     )).resolves.toBe(true);
   });
 
-  it("denies manager when no target restaurant is in scope", async () => {
+  it("does not use customer history as privileged scope", async () => {
     const { assertCanResendForTarget } = await emailVerificationResolverPromise;
     await expect(assertCanResendForTarget(
-      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-a"] } },
+      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-b"] } },
       { _id: "customer-1", userType: "CUSTOMER", refRestaurants: ["restaurant-b"] },
     )).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
   });

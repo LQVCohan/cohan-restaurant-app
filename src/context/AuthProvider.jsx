@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import { isStaffOperationalRole } from "@/utils/frontendRoleAccess";
+import { isRestaurantScopedRole } from "@/utils/frontendRoleAccess";
 import {
   readStorageValue,
 } from "@/lib/browserStorage";
@@ -28,7 +28,7 @@ const AUTH_ERROR_CODES = new Set([
   "TOKEN_REVOKED",
   "UNAUTHORIZED",
 ]);
-const isStaffAccessRole = (roleName) => isStaffOperationalRole(roleName);
+const isRestaurantScopedAccessRole = (roleName) => isRestaurantScopedRole(roleName);
 
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
@@ -167,7 +167,7 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
   )
     .trim()
     .toLowerCase();
-  const isStaffUser = isStaffAccessRole(roleName);
+  const isStaffUser = isRestaurantScopedAccessRole(roleName);
 
   const restaurantForStaff =
     rawUser?.restaurantForStaff?.id ||
@@ -301,8 +301,7 @@ export const AuthProvider = ({ children }) => {
     variables: { managerId, limit: 50 },
     skip:
       !managerId ||
-      roleName === "admin" ||
-      !["manager", "hr", "accountant"].includes(roleName),
+      roleName !== "manager",
   });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
@@ -435,10 +434,10 @@ export const AuthProvider = ({ children }) => {
 
   const restaurantsLoading =
     (roleName === "admin" && adminRestaurantsLoading) ||
-    (["manager", "hr", "accountant"].includes(roleName) && managerRestaurantsLoading);
+    (roleName === "manager" && managerRestaurantsLoading);
 
   useEffect(() => {
-    if (isStaffAccessRole(roleName)) {
+    if (isRestaurantScopedAccessRole(roleName)) {
       const staffRestaurantId = user?.restaurantForStaff?.id || user?.restaurantForStaff || null;
       if (staffRestaurantId) {
         setRestaurants([{ id: staffRestaurantId }]);
@@ -457,7 +456,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    if (["manager", "hr", "accountant"].includes(roleName)) {
+    if (roleName === "manager") {
       if (mgrData?.restaurantsByManager) {
         setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
         return;
@@ -484,23 +483,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, [roleName]);
 
-  const { data: urrData, error: urrError } = useQuery(GET_USER_REFRESTAURANTS, {
+  const { error: recentRestaurantsError } = useQuery(GET_USER_REFRESTAURANTS, {
     variables: { userId: user?.id },
-    skip: user?.roleName !== "customer",
-    onCompleted: (urrData) => {
-      setRefRestaurant(urrData.refRestaurants || []);
+    skip: !user?.id || roleName !== "customer",
+    onCompleted: (data) => {
+      if (roleName !== "customer") return;
+      const recentRestaurants = data?.refRestaurants || [];
+      setRefRestaurant(recentRestaurants);
+      setRestaurants(recentRestaurants);
     },
   });
   useEffect(() => {
-    if (urrError) {
+    if (recentRestaurantsError && roleName === "customer") {
       setRefRestaurant([]);
+      setRestaurants([]);
     }
-  }, [urrError]);
-  useEffect(() => {
-    if (urrData && urrData.refRestaurants) {
-      setRestaurants(urrData.refRestaurants);
-    }
-  }, [urrData]);
+  }, [recentRestaurantsError, roleName]);
   // ✅ Lấy token từ storage khi khởi động
 
   useEffect(() => {

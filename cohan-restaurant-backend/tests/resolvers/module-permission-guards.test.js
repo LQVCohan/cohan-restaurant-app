@@ -32,7 +32,7 @@ describe("module permission guards", () => {
         id: "manager-1",
         roleName: "manager",
         role: role("manager", [PERMISSIONS.MENU_WRITE]),
-        refRestaurants: [RESTAURANT_ID],
+        restaurantIds: [RESTAURANT_ID],
       },
     };
 
@@ -47,7 +47,7 @@ describe("module permission guards", () => {
         id: "manager-1",
         roleName: "manager",
         role: role("manager", [PERMISSIONS.MENU_WRITE]),
-        refRestaurants: [OTHER_RESTAURANT_ID],
+        restaurantIds: [OTHER_RESTAURANT_ID],
       },
     };
 

@@ -14,12 +14,12 @@ const mocks = vi.hoisted(() => ({
   Reservation: { findOne: vi.fn() },
   Notification: { create: vi.fn() },
 }));
-const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn(), requirePermission: vi.fn() }));
+const authorizationMocks = vi.hoisted(() => ({ requireRestaurantPermission: vi.fn(), requirePermission: vi.fn() }));
 const logMocks = vi.hoisted(() => ({ logReviewEvent: vi.fn() }));
 
 vi.mock("../../models/index.js", () => mocks);
 vi.mock("../../models/review.model.js", () => ({ default: mocks.Review }));
-vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => authorizationMocks);
 vi.mock("../../utils/logReview.js", () => logMocks);
 vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true) } }));
 
@@ -33,10 +33,15 @@ const chain = (rows) => ({
 describe("review/reviewComment access hardening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    guardMocks.requireRestaurantAccess.mockResolvedValue();
-    guardMocks.requirePermission.mockImplementation((ctx) => {
+    authorizationMocks.requireRestaurantPermission.mockImplementation(async (ctx) => {
       if (!ctx?.user) throw new Error("UNAUTHENTICATED");
       if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
+      return true;
+    });
+    authorizationMocks.requirePermission.mockImplementation(async (ctx) => {
+      if (!ctx?.user) throw new Error("UNAUTHENTICATED");
+      if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
+      return true;
     });
     mocks.Review.countDocuments.mockResolvedValue(1);
     mocks.Review.find.mockReturnValue(chain([]));
@@ -59,15 +64,15 @@ describe("review/reviewComment access hardening", () => {
   it("public reviews force published and no guard", async () => {
     const q = (await import("../../graphql/resolvers/review/query.js")).default;
     await q.reviews(null, { restaurantId: "valid-r1" }, {});
-    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(authorizationMocks.requireRestaurantPermission).not.toHaveBeenCalled();
     expect(mocks.Review.find).toHaveBeenCalledWith(expect.objectContaining({ $or: expect.any(Array) }));
   });
 
   it("staff pending reviews with restaurantId requires guard first", async () => {
     const q = (await import("../../graphql/resolvers/review/query.js")).default;
     await q.reviews(null, { restaurantId: "valid-r1", status: "pending" }, { user: { roleName: "manager" } });
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
-    expect(guardMocks.requireRestaurantAccess.mock.invocationCallOrder[0]).toBeLessThan(mocks.Review.find.mock.invocationCallOrder[0]);
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalled();
+    expect(authorizationMocks.requireRestaurantPermission.mock.invocationCallOrder[0]).toBeLessThan(mocks.Review.find.mock.invocationCallOrder[0]);
   });
 
   it("non-admin staff pending without restaurantId throws", async () => {
@@ -122,7 +127,7 @@ describe("review/reviewComment access hardening", () => {
     mocks.Review.findById.mockResolvedValue({ _id: "valid-rv1", createdBy: "u1", restaurantId: "valid-r1", status: "published" });
     await expect(m.setReviewStatus(null, { id: "valid-rv1", status: "reported" }, { user: { id: "u1", roleName: "customer" } })).rejects.toThrow();
     await m.setReviewStatus(null, { id: "valid-rv1", status: "reported" }, { user: { id: "m1", roleName: "manager" } });
-    expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalled();
   });
 
   it("updateReview with valid staffId refreshes staffName snapshot", async () => {

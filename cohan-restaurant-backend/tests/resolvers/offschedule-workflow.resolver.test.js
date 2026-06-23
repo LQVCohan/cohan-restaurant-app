@@ -81,7 +81,7 @@ describe('off-schedule workflow visibility', () => {
         user: {
           id: '507f1f77bcf86cd799439015',
           userType: 'MANAGER',
-          restaurantForStaff: '507f1f77bcf86cd799439011',
+          restaurantId: '507f1f77bcf86cd799439011',
         },
       },
     );
@@ -93,7 +93,7 @@ describe('off-schedule workflow visibility', () => {
     const save = vi.fn();
     modelMocks.Timesheet.findById.mockResolvedValue({ _id: 't1', employeeId: '507f1f77bcf86cd799439012', restaurantId: '507f1f77bcf86cd799439011', isOffSchedule: true, approved: false, offScheduleApprovalStatus: 'pending', save, toObject() { return this; } });
     modelMocks.Staff.findById.mockReturnValue({ populate: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439012', fullName: 'A' }) });
-    const result = await Mutation.approveOffScheduleAttendance({}, { timesheetId: '507f1f77bcf86cd799439014', note: 'ok' }, { user: { id: '507f1f77bcf86cd799439015', userType: 'MANAGER', restaurantForStaff: '507f1f77bcf86cd799439011' } });
+    const result = await Mutation.approveOffScheduleAttendance({}, { timesheetId: '507f1f77bcf86cd799439014', note: 'ok' }, { user: { id: '507f1f77bcf86cd799439015', userType: 'MANAGER', restaurantId: '507f1f77bcf86cd799439011' } });
     expect(result.approved).toBe(true);
     expect(result.offScheduleApprovalStatus).toBe('approved');
     expect(save).toHaveBeenCalled();

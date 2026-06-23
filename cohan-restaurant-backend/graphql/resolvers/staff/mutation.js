@@ -107,7 +107,6 @@ import {
   requireAuth,
   requireRestaurantAccess,
   requireRoles,
-  requireRestaurantScope,
 } from "../../guards.js";
 import {
   ATTENDANCE_REVIEW_ROLES,
@@ -3057,7 +3056,7 @@ const mutationResolvers = {
     const now = new Date();
     const filter = { status: "pending", deadlineAt: { $lt: now } };
     if (restaurantId) {
-      requireRestaurantScope(ctx, restaurantId);
+      await requireRestaurantAccess(ctx, restaurantId);
       filter.restaurantId = toObjectId(restaurantId) || restaurantId;
     }
     const res = await ShiftAcknowledgement.updateMany(filter, {
