@@ -15,11 +15,12 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
   const completedOrders = orderData.reduce((sum, x) => sum + Number(x.current || 0), 0);
   const growth = totalPrevious > 0 ? ((totalCurrent - totalPrevious) / totalPrevious) * 100 : null;
   const hasCurrentRevenue = data.some((x) => Number(x.current || 0) > 0);
-  const hasRevenueData = data.some((x) => Number(x.current || 0) > 0 || Number(x.previous || 0) > 0);
+  const hasPreviousRevenue = data.some((x) => Number(x.previous || 0) > 0);
+  const shouldDrawChart = hasCurrentRevenue;
   const shouldShowGrowth = hasCurrentRevenue && growth !== null;
 
   useEffect(() => {
-    if (!hasRevenueData) {
+    if (!shouldDrawChart) {
       if (chartInstance.current) {
         chartInstance.current.destroy();
         chartInstance.current = null;
@@ -45,7 +46,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
             pointHoverRadius: 5,
             tension: 0.35,
           },
-          {
+          ...(hasPreviousRevenue ? [{
             label: "Kỳ trước",
             data: data.map((x) => x.previous),
             borderColor: "#cfc7ba",
@@ -53,7 +54,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
             borderDash: [5, 5],
             pointRadius: 0,
             tension: 0.35,
-          },
+          }] : []),
         ],
       },
       options: {
@@ -78,7 +79,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
       chartInstance.current?.destroy();
       chartInstance.current = null;
     };
-  }, [data, hasRevenueData]);
+  }, [data, hasPreviousRevenue, shouldDrawChart]);
 
   return (
     <div className="revenue-analytics-card">
@@ -110,14 +111,14 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
         </div>
       </div>
 
-      <div className={`chart-container ${hasRevenueData ? "has-data" : "is-empty"}`}>
+      <div className={`chart-container ${shouldDrawChart ? "has-data" : "is-empty"}`}>
         {loading ? <div className="chart-skeleton"><span /><span /><span /></div> : null}
-        {!loading && hasRevenueData ? <canvas ref={chartRef}></canvas> : null}
-        {!loading && !hasRevenueData ? (
+        {!loading && shouldDrawChart ? <canvas ref={chartRef}></canvas> : null}
+        {!loading && !shouldDrawChart ? (
           <div className="empty-state-inline" data-testid="revenue-empty-compact">
             <span className="empty-icon"><BarChart3 size={18} /></span>
-            <strong>Chưa có doanh thu trong kỳ</strong>
-            <p>Dữ liệu sẽ xuất hiện khi có đơn hoàn tất và thanh toán thành công.</p>
+            <strong>Chưa có doanh thu trong kỳ này</strong>
+            <p>{hasPreviousRevenue ? "Kỳ trước có dữ liệu, nhưng kỳ này chưa ghi nhận đơn hoàn tất nên tạm ẩn đường xu hướng để tránh hiểu nhầm." : "Dữ liệu sẽ xuất hiện khi có đơn hoàn tất và thanh toán thành công."}</p>
             <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "orders", source: "manager-analytics" } }))}>Xem đơn hàng</button>
           </div>
         ) : null}
