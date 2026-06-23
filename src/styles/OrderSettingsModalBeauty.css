@@ -1,0 +1,383 @@
+/* Premium polish for the Order Settings modal.
+   Visual-only layer: no business logic changes. */
+
+.modal-container:has(.osm-layout) {
+  width: min(94vw, 1060px) !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+}
+
+.modal-container:has(.osm-layout) .modal-header {
+  min-height: 62px !important;
+  padding: 16px 22px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.12), transparent 18rem),
+    linear-gradient(90deg, rgba(237, 247, 244, 0.96), rgba(255, 247, 235, 0.9)) !important;
+}
+
+.modal-container:has(.osm-layout) .modal-header h2,
+.modal-container:has(.osm-layout) .modal-header h3 {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  font-size: 1rem !important;
+  font-weight: 850 !important;
+  color: #24303f !important;
+}
+
+.modal-container:has(.osm-layout) .modal-body {
+  padding: 0 !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(168, 133, 95, 0.11), transparent 28rem),
+    linear-gradient(180deg, #fffdf8 0%, #f8f2e8 100%) !important;
+}
+
+.modal-container:has(.osm-layout) .modal-footer {
+  padding: 16px 22px !important;
+  border-top: 1px solid rgba(116, 88, 54, 0.14) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 253, 248, 0.92), rgba(248, 242, 231, 0.96)) !important;
+  box-shadow: 0 -14px 34px rgba(74, 55, 34, 0.06) !important;
+}
+
+.osm-layout {
+  grid-template-columns: minmax(0, 1fr) 300px !important;
+  gap: 1rem !important;
+  padding: 0 !important;
+  background:
+    linear-gradient(90deg, rgba(255, 253, 248, 0.92), rgba(255, 253, 248, 0.68) 68%, rgba(245, 237, 224, 0.88) 68%) !important;
+}
+
+.osm-form {
+  gap: 0.9rem !important;
+  padding: 1rem !important;
+}
+
+.osm-section {
+  position: relative !important;
+  padding: 1.05rem !important;
+  border: 1px solid rgba(116, 88, 54, 0.15) !important;
+  border-radius: 16px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 246, 239, 0.88)) !important;
+  box-shadow:
+    0 16px 34px rgba(74, 55, 34, 0.075),
+    inset 0 1px rgba(255, 255, 255, 0.9) !important;
+}
+
+.osm-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 100% 0%, rgba(15, 111, 102, 0.045), transparent 11rem);
+  pointer-events: none;
+}
+
+.osm-section__header {
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  margin-bottom: 0.95rem !important;
+}
+
+.osm-section__header .icon {
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0.55rem !important;
+  border: 1px solid rgba(15, 93, 86, 0.12) !important;
+  border-radius: 12px !important;
+  color: #0f6f66 !important;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.85), transparent 2rem),
+    linear-gradient(135deg, #dff4ef 0%, #f5ead9 100%) !important;
+  box-shadow: 0 9px 18px rgba(15, 93, 86, 0.08) !important;
+}
+
+.osm-section__header h4 {
+  margin-bottom: 0.18rem !important;
+  color: #24303f !important;
+  font-size: 0.96rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.osm-section__header p {
+  color: #687384 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.45 !important;
+}
+
+.osm-time-inputs {
+  gap: 0.72rem !important;
+}
+
+.osm-time-inputs .input-group label,
+.osm-colors-grid .color-picker-item label {
+  margin-bottom: 0.38rem !important;
+  color: #596579 !important;
+  font-size: 0.72rem !important;
+  font-weight: 780 !important;
+  letter-spacing: 0.045em !important;
+}
+
+.osm-time-inputs .input-wrapper,
+.osm-colors-grid .color-input-wrapper {
+  min-height: 2.55rem !important;
+  border: 1px solid rgba(116, 88, 54, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+.osm-time-inputs .input-wrapper input {
+  color: #24303f !important;
+  font-size: 0.98rem !important;
+  font-weight: 760 !important;
+}
+
+.osm-time-inputs .input-wrapper span {
+  color: #7990a3 !important;
+  font-weight: 720 !important;
+}
+
+.osm-time-inputs .input-wrapper:focus-within,
+.osm-colors-grid .color-input-wrapper:focus-within {
+  border-color: rgba(15, 93, 86, 0.38) !important;
+  box-shadow:
+    0 0 0 4px rgba(15, 93, 86, 0.12),
+    inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+.osm-colors-grid {
+  gap: 0.82rem !important;
+  margin-bottom: 0.85rem !important;
+}
+
+.osm-colors-grid .color-input-wrapper {
+  gap: 0.65rem !important;
+  padding: 0.28rem 0.75rem 0.28rem 0.28rem !important;
+}
+
+.osm-colors-grid input[type="color"] {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 16px rgba(36, 48, 63, 0.08) !important;
+}
+
+.osm-colors-grid .hex-code {
+  color: #536071 !important;
+  font-size: 0.78rem !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.015em !important;
+}
+
+.osm-presets {
+  padding-top: 0.8rem !important;
+  border-top: 1px dashed rgba(116, 88, 54, 0.16) !important;
+}
+
+.osm-presets > span {
+  color: #687384 !important;
+  font-weight: 750 !important;
+}
+
+.osm-presets .preset-btn {
+  min-height: 2rem !important;
+  padding: 0.35rem 0.72rem !important;
+  border: 1px solid rgba(116, 88, 54, 0.15) !important;
+  border-radius: 999px !important;
+  color: #435064 !important;
+  background: rgba(255, 253, 248, 0.78) !important;
+  font-weight: 720 !important;
+}
+
+.osm-presets .preset-btn:hover {
+  transform: translateY(-1px) !important;
+  border-color: rgba(15, 93, 86, 0.32) !important;
+  color: #0f5d56 !important;
+  background: #edf7f4 !important;
+}
+
+.osm-chip-options {
+  gap: 0.68rem !important;
+}
+
+.osm-chip-options .chip-radio {
+  min-height: 2.85rem !important;
+  padding: 0.72rem 0.85rem !important;
+  border: 1px solid rgba(116, 88, 54, 0.16) !important;
+  border-radius: 12px !important;
+  color: #435064 !important;
+  background: rgba(255, 253, 248, 0.78) !important;
+}
+
+.osm-chip-options .chip-radio:hover {
+  border-color: rgba(15, 93, 86, 0.28) !important;
+  background: rgba(237, 247, 244, 0.62) !important;
+}
+
+.osm-chip-options .chip-radio.active {
+  border-color: rgba(15, 111, 102, 0.38) !important;
+  color: #0f5d56 !important;
+  background:
+    linear-gradient(90deg, rgba(223, 244, 239, 0.96), rgba(237, 247, 244, 0.7)) !important;
+  box-shadow:
+    0 0 0 4px rgba(15, 93, 86, 0.08),
+    inset 0 1px rgba(255, 255, 255, 0.9) !important;
+}
+
+.osm-chip-options .chip-radio input {
+  accent-color: #0f6f66 !important;
+}
+
+.osm-preview {
+  padding: 1rem 1rem 1rem 0 !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(15, 93, 86, 0.08), transparent 18rem),
+    linear-gradient(180deg, rgba(250, 246, 239, 0.68), rgba(244, 236, 224, 0.78)) !important;
+}
+
+.osm-preview__sticky {
+  top: 16px !important;
+  padding: 1rem !important;
+  border: 1px solid rgba(116, 88, 54, 0.15) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(250, 246, 239, 0.78)) !important;
+  box-shadow:
+    0 18px 38px rgba(74, 55, 34, 0.09),
+    inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+.osm-preview .preview-title {
+  margin-bottom: 0.9rem !important;
+  color: #7a6d5e !important;
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.osm-preview .preview-container {
+  margin-bottom: 0.85rem !important;
+}
+
+.mockCard {
+  max-width: 255px !important;
+  border: 1px solid rgba(116, 88, 54, 0.16) !important;
+  border-radius: 14px !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 18px 36px rgba(36, 48, 63, 0.12) !important;
+}
+
+.mockCard__header {
+  padding: 0.78rem 0.85rem !important;
+  background: linear-gradient(90deg, rgba(237, 247, 244, 0.86), rgba(255, 253, 248, 0.82)) !important;
+}
+
+.mockCard__id {
+  font-size: 1rem !important;
+  color: #24303f !important;
+}
+
+.mockCard__timer {
+  min-height: 1.8rem !important;
+  padding-inline: 0.65rem !important;
+  border-radius: 9px !important;
+  box-shadow: 0 8px 16px rgba(15, 93, 86, 0.16) !important;
+}
+
+.mockCard__body {
+  background: #fffdf8 !important;
+}
+
+.mockItem {
+  border-radius: 9px !important;
+  background: rgba(237, 247, 244, 0.55) !important;
+}
+
+.mockItem .qty,
+.qty {
+  color: #0f5d56 !important;
+  background: #dff2ec !important;
+}
+
+.mockItem.note {
+  color: #8b4b1f !important;
+  background: #fff0d1 !important;
+  border-color: #e9bd74 !important;
+}
+
+.mockCard__hint {
+  color: #7a8797 !important;
+  background: rgba(243, 234, 220, 0.42) !important;
+}
+
+.osm-preview__actions .btn-reset {
+  min-height: 2.2rem !important;
+  padding-inline: 0.85rem !important;
+  border: 1px solid rgba(116, 88, 54, 0.15) !important;
+  border-radius: 999px !important;
+  color: #536071 !important;
+  background: rgba(255, 253, 248, 0.72) !important;
+}
+
+.osm-preview__actions .btn-reset:hover {
+  color: #0f5d56 !important;
+  background: #edf7f4 !important;
+}
+
+.modal-container:has(.osm-layout) .btn,
+.modal-container:has(.osm-layout) .btn--secondary,
+.modal-container:has(.osm-layout) .btn--primary {
+  min-height: 2.55rem !important;
+  padding: 0 1.12rem !important;
+  border-radius: 12px !important;
+  font-weight: 820 !important;
+}
+
+.modal-container:has(.osm-layout) .btn--secondary {
+  color: #526071 !important;
+  background: rgba(245, 247, 249, 0.92) !important;
+  border: 1px solid rgba(116, 88, 54, 0.12) !important;
+}
+
+.modal-container:has(.osm-layout) .btn--secondary:hover {
+  color: #24303f !important;
+  background: #fffdf8 !important;
+}
+
+.modal-container:has(.osm-layout) .btn--primary {
+  color: #fffdf8 !important;
+  background:
+    linear-gradient(135deg, #ffefe0 0%, #ffd7bc 100%) !important;
+  border: 1px solid rgba(213, 137, 53, 0.18) !important;
+  color: #c05621 !important;
+  box-shadow: 0 12px 24px rgba(213, 137, 53, 0.12) !important;
+}
+
+.modal-container:has(.osm-layout) .btn--primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 16px 30px rgba(213, 137, 53, 0.18) !important;
+}
+
+.modal-container:has(.osm-layout) button:focus-visible,
+.modal-container:has(.osm-layout) input:focus-visible {
+  outline: 3px solid rgba(15, 93, 86, 0.22) !important;
+  outline-offset: 3px !important;
+}
+
+@media (max-width: 900px) {
+  .osm-layout {
+    grid-template-columns: 1fr !important;
+    background: linear-gradient(180deg, #fffdf8, #f8f2e8) !important;
+  }
+
+  .osm-preview {
+    padding: 0 1rem 1rem !important;
+  }
+
+  .osm-preview__sticky {
+    position: static !important;
+  }
+}
