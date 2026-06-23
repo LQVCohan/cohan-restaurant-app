@@ -32,6 +32,7 @@ import "./styles/OrderManagerColorPolish.css";
 import "./styles/OrderManagerModalTheme.css";
 import "./styles/OrderSettingsModalBeauty.css";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
+import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
