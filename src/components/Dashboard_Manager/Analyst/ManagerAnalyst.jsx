@@ -27,6 +27,7 @@ import StaffSchedulingAssistantWidget from "./components/StaffSchedulingAssistan
 import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistantWidget";
 import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
 import "./ManagerAnalyst.scss";
+import "./ManagerAnalystPolish.scss";
 
 const formatVnd = (value) =>
   `${new Intl.NumberFormat("vi-VN").format(Number(value || 0))}đ`;
@@ -44,7 +45,6 @@ const calculateTrendProgress = (trend = []) => {
   if (!totals.previous) return null;
   return clamp((totals.current / totals.previous) * 100);
 };
-
 
 const REQUEST_STATUS_LABELS = {
   PENDING: "Chờ xử lý",
@@ -244,7 +244,6 @@ const ManagerAnalyst = () => {
     serviceRequests,
     operationsRequestsLoading,
     operationsRequestsError,
-    operationsSummary,
     refetchOperationsRequests,
   } = useAnalyst();
 
@@ -254,22 +253,28 @@ const ManagerAnalyst = () => {
   const orderProgress = calculateTrendProgress(orderTrend);
   const revenueTrendDelta = calculateTrendDelta(revenueTrend);
   const orderTrendDelta = calculateTrendDelta(orderTrend);
+  const revenueValue = Number(kpiData[0]?.value || 0);
+  const orderValue = Number(kpiData[2]?.value || 0);
+  const hasRevenueThisPeriod = revenueValue > 0;
+  const hasOrdersThisPeriod = orderValue > 0;
 
   const displayKpis = useMemo(
     () => [
       {
         ...kpiData[0],
-        value: formatVnd(kpiData[0]?.value),
-        progress: revenueProgress,
+        value: hasRevenueThisPeriod ? formatVnd(revenueValue) : "Chưa có",
+        progress: hasRevenueThisPeriod ? revenueProgress : null,
         progressLabel: "So với kỳ trước",
         period:
           loading
             ? "Đang tải..."
-            : revenueProgress === null
-              ? "Chưa có kỳ so sánh"
-              : "So với kỳ trước theo doanh thu",
+            : !hasRevenueThisPeriod
+              ? "Chưa có doanh thu trong kỳ này"
+              : revenueProgress === null
+                ? "Chưa có kỳ so sánh"
+                : "So với kỳ trước theo doanh thu",
         trendValue: revenueTrendDelta,
-        showTrend: revenueTrendDelta !== null,
+        showTrend: hasRevenueThisPeriod && revenueTrendDelta !== null,
       },
       {
         ...kpiData[1],
@@ -284,17 +289,19 @@ const ManagerAnalyst = () => {
       },
       {
         ...kpiData[2],
-        value: Number(kpiData[2]?.value || 0),
-        progress: orderProgress,
+        value: hasOrdersThisPeriod ? orderValue : "Chưa có",
+        progress: hasOrdersThisPeriod ? orderProgress : null,
         progressLabel: "So với kỳ trước",
         period:
           loading
             ? "Đang tải..."
-            : orderProgress === null
-              ? "Chưa có kỳ so sánh"
-              : "So với kỳ trước theo đơn hàng",
+            : !hasOrdersThisPeriod
+              ? "Chưa có đơn trong kỳ này"
+              : orderProgress === null
+                ? "Chưa có kỳ so sánh"
+                : "So với kỳ trước theo đơn hàng",
         trendValue: orderTrendDelta,
-        showTrend: orderTrendDelta !== null,
+        showTrend: hasOrdersThisPeriod && orderTrendDelta !== null,
       },
       {
         ...kpiData[3],
@@ -326,12 +333,16 @@ const ManagerAnalyst = () => {
     ],
     [
       feedbackSummary,
+      hasOrdersThisPeriod,
+      hasRevenueThisPeriod,
       kpiData,
       loading,
-      revenueProgress,
       orderProgress,
-      revenueTrendDelta,
       orderTrendDelta,
+      orderValue,
+      revenueProgress,
+      revenueTrendDelta,
+      revenueValue,
     ]
   );
 
@@ -343,7 +354,6 @@ const ManagerAnalyst = () => {
   const getRestaurantLabel = (restaurant) =>
     restaurant?.name || restaurant?.restaurantName || "Nhà hàng chưa đặt tên";
 
-
   const actionItems = useMemo(() => {
     const processingOrders = Number(statusCounts?.pending || 0) + Number(statusCounts?.preparing || 0);
     const underStaffed = Number(staffSchedulingAssistant?.summary?.underStaffedShifts || 0);
@@ -354,7 +364,7 @@ const ManagerAnalyst = () => {
     if (underStaffed > 0) {
       items.push({
         level: "critical",
-        badge: "Critical",
+        badge: "Khẩn cấp",
         source: "Nhân sự",
         icon: Users,
         title: `${underStaffed} ca thiếu người`,
@@ -367,7 +377,7 @@ const ManagerAnalyst = () => {
     if (processingOrders > 0) {
       items.push({
         level: processingOrders > 6 ? "critical" : "warning",
-        badge: processingOrders > 6 ? "Critical" : "Warning",
+        badge: processingOrders > 6 ? "Khẩn cấp" : "Cần chú ý",
         source: "Đơn hàng",
         icon: ShoppingBag,
         title: `${processingOrders} đơn đang xử lý`,
@@ -380,7 +390,7 @@ const ManagerAnalyst = () => {
     if (safeLowStockItems.length > 0) {
       items.push({
         level: "warning",
-        badge: "Warning",
+        badge: "Cần chú ý",
         source: "Tồn kho",
         icon: AlertTriangle,
         title: `${safeLowStockItems.length} nguyên liệu tồn kho thấp`,
@@ -394,7 +404,7 @@ const ManagerAnalyst = () => {
       const label = typeof peakSlot === "string" ? peakSlot : peakSlot.label || peakSlot.timeRange || peakSlot.hourLabel || peakSlot.peakWindow || peakSlot.hour || "khung giờ cao điểm";
       items.push({
         level: "warning",
-        badge: "Warning",
+        badge: "Cần chú ý",
         source: "Dự báo nhu cầu",
         icon: Clock3,
         title: `Chuẩn bị cao điểm ${label}`,
@@ -407,25 +417,24 @@ const ManagerAnalyst = () => {
     if (campaign) {
       items.push({
         level: "info",
-        badge: "Info",
-        source: "Tăng trưởng",
+        badge: "Thông tin",
+        source: "Khuyến mãi",
         icon: Megaphone,
-        title: "Campaign cần review",
+        title: "Chiến dịch cần duyệt",
         description: "Có gợi ý khuyến mãi thông minh cần quản lý xác nhận trước khi triển khai.",
         cta: "Đi sang khuyến mãi",
         onClick: () => navigateManager("promotions"),
       });
     }
 
-
     if (!items.length) {
       items.push({
         level: "info",
-        badge: "Info",
+        badge: "Thông tin",
         source: "Vận hành",
         icon: Sparkles,
         title: "Chưa có cảnh báo ưu tiên",
-        description: "Dữ liệu hiện tại chưa ghi nhận đơn, nhân sự, tồn kho hoặc campaign cần xử lý gấp.",
+        description: "Dữ liệu hiện tại chưa ghi nhận đơn, nhân sự, tồn kho hoặc chiến dịch cần xử lý gấp.",
         cta: "Xem đơn hàng",
         onClick: () => navigateManager("orders"),
       });
@@ -440,8 +449,8 @@ const ManagerAnalyst = () => {
         <header className="analyst-header">
           <div className="header-titles">
             <span className="status-chip"><Sparkles size={13} /> Cập nhật theo kỳ đã chọn</span>
-            <h1>Phân tích vận hành</h1>
-            <p>Theo dõi doanh thu, nhu cầu, nhân sự, menu và cảnh báo trong ca.</p>
+            <h1>Phân tích kinh doanh</h1>
+            <p>Theo dõi doanh thu, nhu cầu, nhân sự, thực đơn và cảnh báo trong ca.</p>
           </div>
           <div className="header-actions">
             <button
@@ -475,8 +484,8 @@ const ManagerAnalyst = () => {
       <header className="analyst-header">
         <div className="header-titles">
           <span className="status-chip"><Sparkles size={13} /> Cập nhật theo kỳ đã chọn</span>
-          <h1>Phân tích vận hành</h1>
-          <p>Theo dõi doanh thu, nhu cầu, nhân sự, menu và cảnh báo trong ca.</p>
+          <h1>Phân tích kinh doanh</h1>
+          <p>Theo dõi doanh thu, nhu cầu, nhân sự, thực đơn và cảnh báo trong ca.</p>
         </div>
 
         <div className="header-actions">
@@ -549,7 +558,7 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section analytics-section--kpis">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Executive KPI strip</span>
+              <span className="analytics-section__eyebrow">Chỉ số điều hành</span>
               <h3 className="analytics-section__title">Tổng quan điều hành</h3>
               <p className="analytics-section__subtitle">Các chỉ số chính theo nhà hàng và khoảng thời gian đã chọn.</p>
             </div>
@@ -572,7 +581,7 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section analytics-section--action-center">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Today operations cockpit</span>
+              <span className="analytics-section__eyebrow">Vận hành trong ngày</span>
               <h3 className="analytics-section__title">Vận hành hôm nay</h3>
               <p className="analytics-section__subtitle">Ưu tiên ca, hàng đợi khách, đơn gần đây và tồn kho thấp trong một cockpit gọn.</p>
             </div>
@@ -589,7 +598,7 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section analytics-section--revenue">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Revenue pulse</span>
+              <span className="analytics-section__eyebrow">Theo dõi doanh thu</span>
               <h3 className="analytics-section__title">Nhịp doanh thu</h3>
               <p className="analytics-section__subtitle">
                 Đường xu hướng doanh thu theo khoảng thời gian đã chọn.
@@ -604,7 +613,7 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section" id="demand-forecast-section">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Forecast & staffing</span>
+              <span className="analytics-section__eyebrow">Dự báo và phân ca</span>
               <h3 className="analytics-section__title">Dự báo nhu cầu và phân ca</h3>
               <p className="analytics-section__subtitle">
                 Dự báo nhu cầu và gợi ý phân ca theo khung giờ.
@@ -630,7 +639,7 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section" id="smart-growth-section">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Growth & menu intelligence</span>
+              <span className="analytics-section__eyebrow">Tăng trưởng và thực đơn</span>
               <h3 className="analytics-section__title">Tăng trưởng và menu</h3>
               <p className="analytics-section__subtitle">
                 Gợi ý khuyến mãi và tối ưu menu để tăng doanh thu.
@@ -656,7 +665,7 @@ const ManagerAnalyst = () => {
 
           <section className="analytics-section">
             <div className="analytics-section__header">
-              <span className="analytics-section__eyebrow">Quality & performance</span>
+              <span className="analytics-section__eyebrow">Chất lượng và hiệu suất</span>
               <h3 className="analytics-section__title">Chất lượng và hiệu suất</h3>
               <p className="analytics-section__subtitle">
                 Theo dõi phản hồi, mật độ vận hành và hiệu suất nhân sự.
