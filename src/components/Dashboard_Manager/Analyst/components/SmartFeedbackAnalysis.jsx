@@ -10,6 +10,8 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
     if (filter === "all") return feedbacks;
     return feedbacks.filter((x) => x.sentiment === filter);
   }, [feedbacks, filter]);
+  const totalReviews = Number(summary?.total || 0);
+  const hasReviews = totalReviews > 0;
 
   return (
     <div className="widget-card feedback-analysis-widget">
@@ -17,21 +19,23 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
         <div className="header-top">
           <div>
             <h4>Phân tích phản hồi</h4>
-            <span className="subtitle">Đánh giá thật từ khách hàng</span>
+            <span className="subtitle">Ý kiến thật từ khách hàng</span>
           </div>
-          <div className="rating-badge">
-            <span className="score">{summary?.avgRating || 0}</span>
-            <div className="stars">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star key={n} size={8} fill="#fff" stroke="none" />
-              ))}
-            </div>
+          <div className={`rating-badge ${hasReviews ? "" : "is-empty"}`}>
+            <span className="score">{hasReviews ? summary?.avgRating || 0 : "—"}</span>
+            {hasReviews ? (
+              <div className="stars">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star key={n} size={8} fill="#fff" stroke="none" />
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="ai-daily-summary">
           <Sparkles size={14} className="sparkle-icon" />
           <p>
-            Tổng {summary?.total || 0} đánh giá • Tích cực {summary?.positive || 0} • Tiêu cực {summary?.negative || 0}
+            Tổng {totalReviews} đánh giá • Tích cực {summary?.positive || 0} • Tiêu cực {summary?.negative || 0}
           </p>
         </div>
         <div className="filter-tabs">
@@ -45,9 +49,9 @@ const SmartFeedbackAnalysis = ({ summary, feedbacks = [], loading }) => {
           {loading ? <div className="empty-state">Đang tải đánh giá...</div> : null}
           {!loading && filtered.length === 0 ? (
             <div className="empty-state analytics-action-empty">
-              <strong>Không có đánh giá phù hợp</strong>
-              <p>Đánh giá mới sẽ xuất hiện tại đây sau khi khách gửi phản hồi.</p>
-              <button type="button" className="widget-cta" onClick={goReviews}>Mở đánh giá <ArrowRight size={14} /></button>
+              <strong>Không có phản hồi phù hợp</strong>
+              <p>Phản hồi mới sẽ xuất hiện tại đây sau khi khách gửi đánh giá.</p>
+              <button type="button" className="widget-cta" onClick={goReviews}>Xem phản hồi <ArrowRight size={14} /></button>
             </div>
           ) : null}
           {!loading &&
