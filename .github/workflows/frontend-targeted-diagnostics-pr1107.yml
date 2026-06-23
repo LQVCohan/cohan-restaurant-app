@@ -1,0 +1,40 @@
+name: PR 1107 frontend targeted diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Run remaining frontend tests
+        run: |
+          set +e
+          npx vitest run \
+            src/components/Login.test.jsx \
+            src/components/Dashboard_Manager/Customer/CustomerList.test.jsx \
+            src/components/Dashboard_Manager/Dashboard/Dashboard.test.jsx \
+            src/components/Dashboard_Manager/PayrollPage/PayrollManagement.test.jsx \
+            src/components/Dashboard_Manager/Promotion/PromotionManagement.test.jsx \
+            src/components/Dashboard_Manager/Staff/StaffManagement.test.jsx \
+            src/components/Dashboard_Manager/Table/TableCameraPlacementPreviewModal.test.js \
+            src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.test.jsx \
+            src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.foodClassification.test.jsx \
+            > frontend-targeted-pr1107.txt 2>&1
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-targeted-pr1107
+          path: frontend-targeted-pr1107.txt
+          retention-days: 1
