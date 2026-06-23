@@ -1,0 +1,233 @@
+/* Order manager color polish.
+   Scope-only overrides for the manager order board: warmer surfaces, clearer status colors,
+   stronger contrast, and calmer warning/danger accents. */
+
+.om-container:not(.om-container--focus) {
+  color: #24303f !important;
+  background:
+    radial-gradient(circle at 6% 0%, rgba(195, 154, 104, 0.22), transparent 30rem),
+    radial-gradient(circle at 88% 10%, rgba(15, 93, 86, 0.08), transparent 28rem),
+    linear-gradient(rgba(116, 88, 54, 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(116, 88, 54, 0.024) 1px, transparent 1px),
+    linear-gradient(180deg, #fbf6ed 0%, #f3eadc 100%) !important;
+  background-size: auto, auto, 34px 34px, 34px 34px, auto !important;
+}
+
+.om-container:not(.om-container--focus)::before {
+  opacity: 0.1 !important;
+}
+
+.om-container:not(.om-container--focus) .management-page-header,
+.om-container:not(.om-container--focus) .om-kpi-card,
+.om-container:not(.om-container--focus) .om-toolbar {
+  border-color: rgba(116, 88, 54, 0.16) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 244, 235, 0.9)) !important;
+  box-shadow:
+    0 18px 42px rgba(74, 55, 34, 0.1),
+    inset 0 1px rgba(255, 255, 255, 0.82) !important;
+}
+
+.om-container:not(.om-container--focus) .management-page-header {
+  border-left: 4px solid rgba(15, 93, 86, 0.34) !important;
+}
+
+.om-container:not(.om-container--focus) .mph-title,
+.om-container:not(.om-container--focus) .om-kpi-card__value,
+.om-container:not(.om-container--focus) .om-field__label {
+  color: #24303f !important;
+}
+
+.om-container:not(.om-container--focus) .mph-subtitle,
+.om-container:not(.om-container--focus) .om-kpi-card__label,
+.om-container:not(.om-container--focus) .om-size-control span {
+  color: #5d6678 !important;
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card__icon {
+  color: #0f5d56 !important;
+  background: linear-gradient(135deg, #e6f4ef 0%, #f6ead9 100%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 93, 86, 0.1),
+    0 10px 18px rgba(36, 48, 63, 0.06) !important;
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card--warning .om-kpi-card__icon,
+.om-container:not(.om-container--focus) .om-kpi-card--accent .om-kpi-card__icon {
+  color: #8b4b1f !important;
+  background: linear-gradient(135deg, #fff2da 0%, #f6ddbf 100%) !important;
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card--success .om-kpi-card__icon {
+  color: #1f7a4b !important;
+  background: linear-gradient(135deg, #ddf2e4 0%, #f2f8ed 100%) !important;
+}
+
+.om-container:not(.om-container--focus) .om-kpi-card--danger .om-kpi-card__icon {
+  color: #a24737 !important;
+  background: linear-gradient(135deg, #f9e4dc 0%, #fff1e9 100%) !important;
+}
+
+.om-container:not(.om-container--focus) .om-select-input,
+.om-container:not(.om-container--focus) .om-select-wrapper .om-select,
+.om-container:not(.om-container--focus) .om-size-control select {
+  border-color: rgba(116, 88, 54, 0.22) !important;
+  color: #24303f !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+}
+
+.om-container:not(.om-container--focus) .om-select-icon-left,
+.om-container:not(.om-container--focus) .om-select-icon-right {
+  color: rgba(15, 93, 86, 0.75) !important;
+}
+
+.om-container:not(.om-container--focus) .om-btn-primary {
+  border-color: rgba(15, 93, 86, 0.64) !important;
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, #0f6f66 0%, #07544e 100%) !important;
+  box-shadow: 0 14px 28px rgba(15, 93, 86, 0.22) !important;
+}
+
+.om-container:not(.om-container--focus) .om-btn-outline {
+  color: #0f5d56 !important;
+  background: rgba(236, 248, 244, 0.88) !important;
+  border-color: rgba(15, 93, 86, 0.2) !important;
+}
+
+.oc-card:not(.mode-focus) {
+  border: 1px solid rgba(116, 88, 54, 0.14) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(250, 246, 239, 0.94)) !important;
+  box-shadow:
+    0 18px 38px rgba(74, 55, 34, 0.11),
+    inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+.oc-card:not(.mode-focus):hover {
+  border-color: rgba(15, 93, 86, 0.24) !important;
+  box-shadow:
+    0 24px 52px rgba(74, 55, 34, 0.16),
+    0 0 0 1px rgba(15, 93, 86, 0.04) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-header {
+  background:
+    linear-gradient(90deg, rgba(230, 244, 239, 0.7), rgba(250, 242, 230, 0.6)) !important;
+  border-bottom-color: rgba(116, 88, 54, 0.1) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-table-tag {
+  border-color: rgba(15, 93, 86, 0.16) !important;
+  color: #0f5d56 !important;
+  background: #dff2ec !important;
+}
+
+.oc-card:not(.mode-focus) .oc-table-tag.takeaway {
+  color: #7a4a15 !important;
+  background: #fff0d1 !important;
+}
+
+.oc-card:not(.mode-focus) .oc-order-code,
+.oc-card:not(.mode-focus) .oc-batch-code,
+.oc-card:not(.mode-focus) .oc-guest {
+  color: #5d6678 !important;
+}
+
+.oc-card:not(.mode-focus) .oc-batch-title,
+.oc-card:not(.mode-focus) .oc-item-name,
+.oc-card:not(.mode-focus) .oc-total-value {
+  color: #24303f !important;
+}
+
+.oc-card:not(.mode-focus).pending .oc-status-strip,
+.oc-card:not(.mode-focus).warning .oc-status-strip {
+  background: #d58935 !important;
+}
+
+.oc-card:not(.mode-focus).danger .oc-status-strip {
+  background: #bd5b43 !important;
+}
+
+.oc-card:not(.mode-focus).ready .oc-status-strip,
+.oc-card:not(.mode-focus).served .oc-status-strip,
+.oc-card:not(.mode-focus).completed .oc-status-strip {
+  background: #1f7a4b !important;
+}
+
+.oc-status-pill--pending {
+  color: #7a4a15 !important;
+  background: #fff0d1 !important;
+  border-color: #e9bd74 !important;
+}
+
+.oc-status-pill--confirmed,
+.oc-status-pill--preparing {
+  color: #7b4218 !important;
+  background: #f8dfc2 !important;
+  border-color: #d7a36c !important;
+}
+
+.oc-status-pill--ready,
+.oc-status-pill--served,
+.oc-status-pill--completed {
+  color: #1f6f45 !important;
+  background: #dff2e7 !important;
+  border-color: #a8d9b5 !important;
+}
+
+.oc-status-pill--cancelled,
+.oc-status-pill--failed {
+  color: #9c3f31 !important;
+  background: #f8e2da !important;
+  border-color: #dfa79c !important;
+}
+
+.oc-card:not(.mode-focus) .oc-time-badge {
+  color: #0f5d56 !important;
+  background: #edf7f4 !important;
+  border-color: rgba(15, 93, 86, 0.16) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-time-badge.warning {
+  color: #7a4a15 !important;
+  background: #fff0d1 !important;
+  border-color: #e9bd74 !important;
+}
+
+.oc-card:not(.mode-focus) .oc-time-badge.danger,
+.oc-card:not(.mode-focus) .oc-time-badge.critical {
+  color: #fffaf3 !important;
+  background: #bd5b43 !important;
+  border-color: #a94835 !important;
+}
+
+.oc-card:not(.mode-focus) .oc-item-row,
+.oc-card:not(.mode-focus) .oc-note-badge,
+.oc-card:not(.mode-focus) .oc-note-box {
+  border-color: rgba(116, 88, 54, 0.12) !important;
+  background: rgba(255, 253, 248, 0.74) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-total-row {
+  background: linear-gradient(90deg, rgba(230, 244, 239, 0.72), rgba(255, 253, 248, 0.58)) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-btn.primary,
+.oc-card:not(.mode-focus) .oc-btn.success {
+  color: #fffdf8 !important;
+  background: linear-gradient(135deg, #0f6f66 0%, #07544e 100%) !important;
+  box-shadow: 0 12px 24px rgba(15, 93, 86, 0.22) !important;
+}
+
+.oc-card:not(.mode-focus) .oc-btn.secondary.cancel {
+  color: #9c3f31 !important;
+  background: #f8e2da !important;
+  border-color: #dfa79c !important;
+}
+
+.oc-card:not(.mode-focus) .oc-btn.secondary,
+.oc-card:not(.mode-focus) .oc-btn.primary-outline {
+  color: #0f5d56 !important;
+  background: #edf7f4 !important;
+  border-color: rgba(15, 93, 86, 0.18) !important;
+}
