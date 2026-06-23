@@ -30,6 +30,7 @@ import "./styles/HrBoardCardsTheme.css";
 import "./styles/HrSubpagesPolish.css";
 import "./styles/OrderManagerColorPolish.css";
 import "./styles/OrderManagerModalTheme.css";
+import "./styles/OrderSettingsModalBeauty.css";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
