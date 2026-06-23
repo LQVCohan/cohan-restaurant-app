@@ -1,10 +1,16 @@
-$primary-orange: #f97316;
-$primary-orange-dark: #c2410c;
-$text-primary: #1f160f;
-$text-secondary: #7a6b5b;
-$border: rgba(214, 196, 170, 0.72);
-
 .revenue-analytics-card {
+  --rev-text: var(--ana-text, #1f2a2b);
+  --rev-muted: var(--ana-text-sub, #63706d);
+  --rev-border: var(--ana-border, #d9d2c4);
+  --rev-surface: rgba(255, 253, 248, 0.74);
+  --rev-accent: var(--ana-accent, #6f7f7a);
+  --rev-accent-strong: var(--ana-accent-strong, #55655f);
+  --rev-accent-soft: var(--ana-accent-soft, #edf1ee);
+  --rev-success: var(--ana-success, #4d7566);
+  --rev-success-soft: var(--ana-success-soft, #edf5f1);
+  --rev-danger: var(--ana-danger, #ba514b);
+  --rev-danger-soft: var(--ana-danger-soft, #f7eceb);
+
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -21,16 +27,16 @@ $border: rgba(214, 196, 170, 0.72);
     .header-info {
       h3 {
         margin: 0;
-        color: $text-primary;
+        color: var(--rev-text);
         font-size: 1.02rem;
-        font-weight: 900;
+        font-weight: 850;
         letter-spacing: -0.02em;
       }
 
       p {
         max-width: 58ch;
         margin: 3px 0 0;
-        color: $text-secondary;
+        color: var(--rev-muted);
         font-size: 0.82rem;
         line-height: 1.45;
         text-wrap: pretty;
@@ -43,17 +49,20 @@ $border: rgba(214, 196, 170, 0.72);
       gap: 5px;
       padding: 5px 9px;
       border-radius: 999px;
+      border: 1px solid transparent;
       font-size: 0.78rem;
-      font-weight: 900;
+      font-weight: 820;
 
       &.up {
-        color: #166534;
-        background: #dcfce7;
+        color: var(--rev-success);
+        background: var(--rev-success-soft);
+        border-color: rgba(77, 117, 102, 0.18);
       }
 
       &.down {
-        color: #991b1b;
-        background: #fee2e2;
+        color: var(--rev-danger);
+        background: var(--rev-danger-soft);
+        border-color: rgba(186, 81, 75, 0.18);
       }
     }
   }
@@ -65,24 +74,24 @@ $border: rgba(214, 196, 170, 0.72);
 
     div {
       padding: 10px 12px;
-      border: 1px solid $border;
+      border: 1px solid var(--rev-border);
       border-radius: 15px;
-      background: rgba(255, 247, 237, 0.54);
+      background: var(--rev-surface);
     }
 
     span {
       display: block;
-      color: $text-secondary;
+      color: var(--rev-muted);
       font-size: 0.73rem;
-      font-weight: 800;
+      font-weight: 760;
     }
 
     strong {
       display: block;
       margin-top: 3px;
-      color: $text-primary;
+      color: var(--rev-text);
       font-size: 1rem;
-      font-weight: 900;
+      font-weight: 850;
       font-variant-numeric: tabular-nums;
     }
   }
@@ -110,12 +119,12 @@ $border: rgba(214, 196, 170, 0.72);
     gap: 7px;
     padding: 18px;
     text-align: center;
-    color: $text-secondary;
-    border: 1px solid rgba(214, 196, 170, 0.72);
+    color: var(--rev-muted);
+    border: 1px solid var(--rev-border);
     border-radius: 16px;
     background:
-      radial-gradient(circle at 50% 0, rgba(249, 115, 22, 0.09), transparent 14rem),
-      rgba(255, 253, 248, 0.74);
+      radial-gradient(circle at 50% 0, rgba(111, 127, 122, 0.1), transparent 14rem),
+      var(--rev-surface);
 
     .empty-icon {
       display: inline-flex;
@@ -123,15 +132,15 @@ $border: rgba(214, 196, 170, 0.72);
       justify-content: center;
       width: 36px;
       height: 36px;
-      color: $primary-orange-dark;
-      background: #ffedd5;
+      color: var(--rev-accent-strong);
+      background: var(--rev-accent-soft);
       border-radius: 13px;
     }
 
     strong {
-      color: $text-primary;
+      color: var(--rev-text);
       font-size: 0.94rem;
-      font-weight: 900;
+      font-weight: 850;
     }
 
     p {
@@ -145,16 +154,16 @@ $border: rgba(214, 196, 170, 0.72);
       margin-top: 2px;
       height: 32px;
       padding: 0 12px;
-      border: 1px solid rgba(249, 115, 22, 0.24);
+      border: 1px solid rgba(111, 127, 122, 0.22);
       border-radius: 999px;
-      color: $primary-orange-dark;
-      background: #fff7ed;
-      font-weight: 900;
+      color: var(--rev-accent-strong);
+      background: var(--rev-accent-soft);
+      font-weight: 820;
       cursor: pointer;
-      transition: transform 0.18s ease, background 0.18s ease;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 
       &:hover {
-        background: #ffedd5;
+        border-color: rgba(111, 127, 122, 0.34);
         transform: translateY(-1px);
       }
     }
@@ -167,12 +176,12 @@ $border: rgba(214, 196, 170, 0.72);
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     padding: 16px;
-    border: 1px solid $border;
+    border: 1px solid var(--rev-border);
     border-radius: 16px;
 
     span {
       border-radius: 12px;
-      background: linear-gradient(90deg, rgba(255, 237, 213, 0.7), rgba(255, 247, 237, 0.45), rgba(255, 237, 213, 0.7));
+      background: linear-gradient(90deg, rgba(237, 241, 238, 0.86), rgba(255, 253, 248, 0.48), rgba(237, 241, 238, 0.86));
       animation: revenue-skeleton 1.3s ease-in-out infinite;
 
       &:nth-child(1) { height: 52%; }
