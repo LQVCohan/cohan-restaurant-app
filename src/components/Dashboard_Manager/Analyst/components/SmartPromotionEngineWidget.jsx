@@ -65,12 +65,12 @@ const roleTarget = (segment) => normalizeText(segment) || "Khách có khả năn
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
     {(meta.lowDataFallbackUsed || meta.fallbackUsed) ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-    <span>method: {meta.method || "-"}</span>
-    <span>sampleOrders: {meta.sampleOrders ?? "-"}</span>
-    <span>sampleDays: {meta.sampleDays ?? "-"}</span>
-    <span>aiEnhanced: {meta.aiEnhanced ? "yes" : "no"}</span>
-    <span>fallbackUsed: {meta.fallbackUsed ? "yes" : "no"}</span>
-    {meta.generatedAt ? <span>generatedAt: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    <span>Phương pháp: {meta.method || "-"}</span>
+    <span>Mẫu đơn: {meta.sampleOrders ?? "-"}</span>
+    <span>Số ngày: {meta.sampleDays ?? "-"}</span>
+    <span>AI hỗ trợ: {meta.aiEnhanced ? "có" : "không"}</span>
+    <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
+    {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
 
@@ -85,7 +85,7 @@ const SmartPromotionEngineWidget = ({ engine, loading, onNavigate }) => {
       <div className="widget-head">
         <div className="title-wrap">
           <div className="icon-wrap"><Sparkles size={18} /></div>
-          <div><h3>Gợi ý khuyến mãi thông minh</h3><p>Đề xuất campaign theo giờ vắng, tệp khách và bối cảnh vận hành</p></div>
+          <div><h3>Gợi ý khuyến mãi thông minh</h3><p>Đề xuất chiến dịch theo giờ vắng, tệp khách và bối cảnh vận hành</p></div>
         </div>
         <button type="button" className={`meta-pill ${engine?.meta?.fallbackUsed ? "fallback" : "data"}`} onClick={() => onNavigate?.("promotions")}>
           {engine?.meta?.aiEnhanced ? "AI hỗ trợ" : engine?.meta?.fallbackUsed ? "Dữ liệu tham khảo" : "Mở khuyến mãi"}
@@ -94,15 +94,15 @@ const SmartPromotionEngineWidget = ({ engine, loading, onNavigate }) => {
       <MetaStrip meta={engine?.meta} />
 
       {loading ? <div className="state-message">Đang phân tích chiến dịch khuyến mãi phù hợp...</div> : null}
-      {!loading && !campaigns.length ? <div className="state-message warning">Chưa đủ dữ liệu để đề xuất campaign rõ ràng.</div> : null}
-      {!loading && Number(engine?.meta?.sampleOrders || 0) < 20 ? <div className="state-message warning">Dữ liệu còn ít, nên review thủ công trước khi chạy campaign.</div> : null}
+      {!loading && !campaigns.length ? <div className="state-message warning">Chưa đủ dữ liệu để đề xuất chiến dịch rõ ràng.</div> : null}
+      {!loading && Number(engine?.meta?.sampleOrders || 0) < 20 ? <div className="state-message warning">Dữ liệu còn ít, nên review thủ công trước khi chạy chiến dịch.</div> : null}
 
       {!loading && campaigns.length ? (
         <>
           <div className="summary-row">
             <span><Clock3 size={14} /> Cửa sổ cơ hội: <strong>{summary.topOpportunityWindow}</strong></span>
             <span><Users2 size={14} /> Nhóm khách ưu tiên: <strong>{normalizeSegment(summary.highestPrioritySegment)}</strong></span>
-            <span><BadgePercent size={14} /> Số campaign: <strong>{summary.recommendedCampaignCount}</strong></span>
+            <span><BadgePercent size={14} /> Số chiến dịch: <strong>{summary.recommendedCampaignCount}</strong></span>
           </div>
 
           <div className="coupon-context">
@@ -124,7 +124,7 @@ const SmartPromotionEngineWidget = ({ engine, loading, onNavigate }) => {
                 <div className="group-line"><strong>Ưu đãi đề xuất:</strong> {discountTypeMap[campaign.recommendation?.discountType] || campaign.recommendation?.discountType} {formatNumber(campaign.recommendation?.discountValue)} • Đơn tối thiểu {formatNumber(campaign.recommendation?.minOrderValue)}đ • Giảm tối đa {formatNumber(campaign.recommendation?.maxDiscount)}đ.</div>
                 {!!campaign.recommendation?.conditions?.length ? <div className="group-line"><strong>Điều kiện áp dụng:</strong> {campaign.recommendation.conditions.slice(0, 2).map(normalizeText).join(" • ")}.</div> : null}
                 <div className="group-line"><strong>Lưu ý an toàn:</strong> {normalizeText(campaign.reason || "Theo dõi KPI sau 24h để tinh chỉnh chiến dịch")}.</div>
-                {campaign.expectedKpi?.confidence != null ? <div className="group-line"><strong>confidence:</strong> {formatNumber(campaign.expectedKpi.confidence)}</div> : null}
+                {campaign.expectedKpi?.confidence != null ? <div className="group-line"><strong>Độ tin cậy:</strong> {formatNumber(campaign.expectedKpi.confidence)}</div> : null}
                 {campaign.guardrails?.length ? <div className="guardrail"><ShieldCheck size={14} /> {normalizeText(campaign.guardrails[0])}</div> : null}
                 <button type="button" className="widget-cta" onClick={() => onNavigate?.("promotions", { campaignKey: campaign.campaignKey })}>Đi sang module khuyến mãi</button>
               </div>
