@@ -13,8 +13,10 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
   const totalCurrent = data.reduce((sum, x) => sum + Number(x.current || 0), 0);
   const totalPrevious = data.reduce((sum, x) => sum + Number(x.previous || 0), 0);
   const completedOrders = orderData.reduce((sum, x) => sum + Number(x.current || 0), 0);
-  const growth = totalPrevious > 0 ? ((totalCurrent - totalPrevious) / totalPrevious) * 100 : 0;
+  const growth = totalPrevious > 0 ? ((totalCurrent - totalPrevious) / totalPrevious) * 100 : null;
+  const hasCurrentRevenue = data.some((x) => Number(x.current || 0) > 0);
   const hasRevenueData = data.some((x) => Number(x.current || 0) > 0 || Number(x.previous || 0) > 0);
+  const shouldShowGrowth = hasCurrentRevenue && growth !== null;
 
   useEffect(() => {
     if (!hasRevenueData) {
@@ -35,8 +37,8 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
           {
             label: "Kỳ này",
             data: data.map((x) => x.current),
-            borderColor: "#f97316",
-            backgroundColor: "rgba(249, 115, 22, 0.08)",
+            borderColor: "#6f7f7a",
+            backgroundColor: "rgba(111, 127, 122, 0.1)",
             fill: true,
             borderWidth: 3,
             pointRadius: 2.5,
@@ -46,7 +48,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
           {
             label: "Kỳ trước",
             data: data.map((x) => x.previous),
-            borderColor: "#cbd5e1",
+            borderColor: "#cfc7ba",
             borderWidth: 2,
             borderDash: [5, 5],
             pointRadius: 0,
@@ -59,7 +61,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
         maintainAspectRatio: false,
         interaction: { intersect: false, mode: "index" },
         plugins: {
-          legend: { labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+          legend: { labels: { color: "#63706d", boxWidth: 10, boxHeight: 10, usePointStyle: true } },
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${formatVnd(ctx.raw)}`,
@@ -67,8 +69,8 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { color: "#78716c" } },
-          y: { beginAtZero: true, grid: { color: "rgba(120, 113, 108, 0.14)" }, ticks: { color: "#78716c" } },
+          x: { grid: { display: false }, ticks: { color: "#63706d" } },
+          y: { beginAtZero: true, grid: { color: "rgba(128, 109, 83, 0.14)" }, ticks: { color: "#63706d" } },
         },
       },
     });
@@ -85,7 +87,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
           <h3>Nhịp doanh thu</h3>
           <p>Doanh thu kỳ này so với kỳ trước, chỉ tính dữ liệu đã ghi nhận.</p>
         </div>
-        {hasRevenueData ? (
+        {shouldShowGrowth ? (
           <div className={`growth-indicator ${growth >= 0 ? "up" : "down"}`}>
             {growth >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
             <span>{Math.abs(growth).toFixed(1)}% so với kỳ trước</span>
@@ -96,11 +98,11 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
       <div className="revenue-summary-strip">
         <div>
           <span>Tổng doanh thu</span>
-          <strong>{formatVnd(totalCurrent)}</strong>
+          <strong>{totalCurrent > 0 ? formatVnd(totalCurrent) : "Chưa có"}</strong>
         </div>
         <div>
           <span>Đơn hoàn tất</span>
-          <strong>{new Intl.NumberFormat("vi-VN").format(completedOrders)}</strong>
+          <strong>{completedOrders > 0 ? new Intl.NumberFormat("vi-VN").format(completedOrders) : "Chưa có"}</strong>
         </div>
         <div>
           <span>Khoảng thời gian</span>
