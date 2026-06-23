@@ -46,9 +46,11 @@ jobs:
                 expect(src).toMatch(/resolveCheckoutCustomerRankAliases\(\{/);
                 expect(src).not.toMatch(/CustomerRankSetting\.findOne/);
               });'''
-          if old not in s:
+          if old in s:
+              s = s.replace(old, new)
+          elif new not in s:
               raise SystemExit('order discount expectation block not found')
-          p.write_text(s.replace(old, new))
+          p.write_text(s)
 
           p = Path('cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js')
           s = p.read_text()
@@ -121,6 +123,17 @@ jobs:
               s = s.replace(marker, marker + mocks)
           p.write_text(s)
           PY
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cohan-restaurant-backend/tests/resolvers/order-discount-business.test.js cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js cohan-restaurant-backend/tests/resolvers/payment-transfer-resubmit.test.js
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Apply PR 1107 backend test fixes"
+          git pull --rebase origin codex/post-rbac-ci-stabilization
+          git push origin HEAD:codex/post-rbac-ci-stabilization
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -129,11 +142,3 @@ jobs:
       - run: npm --prefix cohan-restaurant-backend ci
       - name: Run affected backend tests
         run: npm --prefix cohan-restaurant-backend test -- tests/resolvers/order-discount-business.test.js tests/resolvers/order-payment-request-review.test.js tests/resolvers/payment-transfer-resubmit.test.js
-      - name: Commit fixes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cohan-restaurant-backend/tests/resolvers/order-discount-business.test.js cohan-restaurant-backend/tests/resolvers/order-payment-request-review.test.js cohan-restaurant-backend/tests/resolvers/payment-transfer-resubmit.test.js
-          git commit -m "Apply PR 1107 backend test fixes"
-          git pull --rebase origin codex/post-rbac-ci-stabilization
-          git push origin HEAD:codex/post-rbac-ci-stabilization
