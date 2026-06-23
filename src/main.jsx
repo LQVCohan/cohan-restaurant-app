@@ -37,6 +37,7 @@ import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPo
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoLayoutFix.scss";
 import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
+import { installRestaurantInfoCopyTuning } from "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoCopyTuning.js";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
@@ -44,6 +45,7 @@ import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
 void initFrontendErrorTracking();
 installAuthenticatedTable3DTransport();
 installRbacVietnameseLabels();
+installRestaurantInfoCopyTuning();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
