@@ -246,8 +246,11 @@ export const useDashboard = () => {
   );
 
   const handleSwitchToPOS = useCallback(() => {
-    navigate("/manager/dashboard/POS");
-  }, [navigate]);
+    const query = selectedRestaurantId
+      ? `?restaurantId=${encodeURIComponent(selectedRestaurantId)}`
+      : "";
+    navigate(`/manager/dashboard/POS${query}`);
+  }, [navigate, selectedRestaurantId]);
 
   const handleGenerateReport = useCallback(() => {
     if (selectedRestaurantId) {

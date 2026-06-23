@@ -81,10 +81,16 @@ export default function POSLayout() {
     }
 
     const storedId = localStorage.getItem(lockKey);
+    const requestedId = new URLSearchParams(window.location.search || "").get("restaurantId");
     const storedIsValid =
       storedId &&
       restaurantOptions.some(
         (restaurant) => restaurant.id === String(storedId),
+      );
+    const requestedIsValid =
+      requestedId &&
+      restaurantOptions.some(
+        (restaurant) => restaurant.id === String(requestedId),
       );
 
     if (storedIsValid) {
@@ -95,6 +101,12 @@ export default function POSLayout() {
 
     if (storedId && !storedIsValid) {
       localStorage.removeItem(lockKey);
+    }
+
+    if (requestedIsValid) {
+      setSelectedRestaurantId(String(requestedId));
+      setIsLocked(false);
+      return;
     }
 
     if (restaurantOptions.length === 1) {

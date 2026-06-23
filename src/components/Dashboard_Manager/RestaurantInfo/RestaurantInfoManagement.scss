@@ -689,3 +689,179 @@ $radius-lg: 16px;
     }
   }
 }
+
+// Focused profile summary: helps managers prioritize the customer-facing restaurant profile.
+.restaurant-management-container {
+  .profile-focus-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.62fr);
+    gap: 16px;
+    align-items: stretch;
+    margin: 0 0 16px;
+  }
+
+  .profile-focus-panel__copy,
+  .profile-completion-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(143, 106, 66, 0.2);
+    border-radius: 24px;
+    background: rgba(255, 253, 248, 0.92);
+    box-shadow: 0 18px 42px rgba(84, 55, 30, 0.1);
+  }
+
+  .profile-focus-panel__copy {
+    padding: clamp(18px, 3vw, 26px);
+    background:
+      radial-gradient(circle at 88% 18%, rgba(184, 147, 101, 0.18), transparent 30%),
+      linear-gradient(135deg, #fffdf8 0%, #f5ead9 100%);
+
+    h2 {
+      max-width: 760px;
+      margin: 8px 0;
+      color: #33261a;
+      font-size: clamp(1.45rem, 3vw, 2.25rem);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+      text-wrap: balance;
+    }
+
+    p {
+      max-width: 68ch;
+      margin: 0;
+      color: #6f5a44;
+      font-weight: 560;
+      line-height: 1.58;
+      text-wrap: pretty;
+    }
+  }
+
+  .profile-focus-panel__eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    border-radius: 999px;
+    background: #efe0cd;
+    color: #6f4b2a;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .profile-focus-panel__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+
+    span {
+      display: grid;
+      min-width: min(180px, 100%);
+      gap: 2px;
+      border: 1px solid rgba(143, 106, 66, 0.16);
+      border-radius: 16px;
+      background: rgba(255, 250, 243, 0.78);
+      padding: 10px 12px;
+      color: #3a2a1c;
+      font-weight: 760;
+    }
+
+    strong {
+      color: #8f6a42;
+      font-size: 0.72rem;
+      font-weight: 820;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  }
+
+  .profile-completion-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 18px;
+  }
+
+  .profile-completion-card__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    color: #6f5a44;
+    font-weight: 760;
+
+    strong {
+      color: #33261a;
+      font-size: clamp(1.6rem, 3vw, 2.25rem);
+      line-height: 1;
+      letter-spacing: -0.05em;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .profile-completion-card ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .profile-completion-card li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: #766451;
+    font-size: 0.82rem;
+    font-weight: 680;
+
+    span {
+      display: inline-grid;
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      place-items: center;
+      border-radius: 999px;
+      background: #f1e4d2;
+      color: #8f6a42;
+      font-size: 0.72rem;
+      font-weight: 900;
+    }
+
+    &.is-done {
+      color: #3f6b3f;
+
+      span {
+        background: #e3f0df;
+        color: #2f6b35;
+      }
+    }
+  }
+
+  .amenities-grid .amenity-card {
+    appearance: none;
+    font: inherit;
+    text-align: left;
+
+    &:focus-visible {
+      outline: 3px solid rgba(143, 106, 66, 0.22);
+      outline-offset: 3px;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .profile-focus-panel {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .profile-completion-card ul {
+      grid-template-columns: 1fr;
+    }
+  }
+}

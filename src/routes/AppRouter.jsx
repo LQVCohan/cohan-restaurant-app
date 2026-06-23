@@ -1,4 +1,4 @@
-import React, { useEffect, useContext } from "react";
+import React, { Suspense, lazy, useEffect, useContext } from "react";
 import { Routes, Route, Navigate, useLocation, Outlet } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
@@ -31,7 +31,6 @@ import {
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import ManagerLayout from "../layouts/ManagerLayout";
 import StaffLayout from "../layouts/StaffLayout";
-import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 
 import StaffOrdering from "../components/Staff/StaffOrderingScoped";
@@ -65,6 +64,9 @@ import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPa
 import FoodDetail from "@/components/Customer/Food/FoodDetail";
 import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
 import { isAccountVerified } from "@/utils/accountVerification";
+
+// ponytail: POS is heavy; load it only when the dashboard POS route is opened.
+const POSLayout = lazy(() => import("@/components/Dashboard_Manager/POS/components/pos/POSLayout"));
 
 const useAuth = () => {
   const { token, user, loading, isAuthenticated, sessionState, sessionWarning } = useContext(AuthContext);
@@ -151,6 +153,10 @@ const withPrivateRoute = (children, allowedRoles, requireVerifiedEmail = true) =
   </PrivateRoute>
 );
 
+const withLazyRoute = (children) => (
+  <Suspense fallback={null}>{children}</Suspense>
+);
+
 const withStaffLayout = (children) => <StaffLayout>{children}</StaffLayout>;
 
 const AppRouter = () => (
@@ -179,7 +185,7 @@ const AppRouter = () => (
     <Route path="/staff/settings" element={withPrivateRoute(withStaffLayout(<StaffSettingsPage />), STAFF_SHARED_ROLES)} />
 
     <Route path="/manager" element={withPrivateRoute(<ManagerLayout><Dashboard /></ManagerLayout>, ["manager", "admin", "hr", "accountant"])} />
-    <Route path="/manager/dashboard/POS" element={withPrivateRoute(<POSLayout />, ["manager", "admin"])} />
+    <Route path="/manager/dashboard/POS" element={withPrivateRoute(withLazyRoute(<POSLayout />), ["manager", "admin"])} />
     <Route path="/manager/floor-map/:restaurantId" element={withPrivateRoute(<FloorPlanDesigner />, ["manager", "admin"], false)} />
     <Route path="/manager/performance" element={withPrivateRoute(<Navigate to="/manager#staff" replace />, ["manager", "admin"])} />
     <Route path="/manager/restaurants/categories" element={withPrivateRoute(<ManagerRestaurantInfoManagement />, ["manager", "admin"])} />

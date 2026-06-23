@@ -113,7 +113,6 @@ describe("Login captcha config", () => {
     const registerForm = getRegisterForm();
     fireEvent.change(within(registerForm).getByPlaceholderText("Họ và tên"), { target: { value: "Tester" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Email"), { target: { value: "tester@example.com" } });
-    fireEvent.change(within(registerForm).getByPlaceholderText("Username (Tên đăng nhập)"), { target: { value: "tester" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Mật khẩu"), { target: { value: "123456" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Nhập lại mật khẩu"), { target: { value: "123456" } });
     fireEvent.click(within(registerForm).getByRole("checkbox"));

@@ -112,6 +112,8 @@ const StorageManagement = () => {
 
   const shouldFetchStockForKpi = restaurantReady;
   const shouldFetchMovementsForAudit = restaurantReady && activeTab === "inventory";
+  // ponytail: recipes are heavy; fetch them only when the recipe tab is visible.
+  const recipeRestaurantId = activeTab === "recipes" ? currentRestaurant : null;
 
   const {
     data: stockData,
@@ -163,7 +165,7 @@ const StorageManagement = () => {
     addRecipe: addRecipeHandler,
     updateRecipe: updateRecipeHandler,
     deleteRecipe: deleteRecipeHandler,
-  } = useRecipes(currentRestaurant, recipeTimeSlot, {
+  } = useRecipes(recipeRestaurantId, recipeTimeSlot, {
     search: recipeSearch,
     categoryId: recipeCategoryId,
   });

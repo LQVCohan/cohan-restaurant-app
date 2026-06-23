@@ -2,6 +2,8 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 
+const getRestaurantId = (restaurant) => restaurant?.id || restaurant?._id || "";
+
 const GET_ANALYST_DASHBOARD = gql`
   query GetAnalystDashboard($restaurantId: ID!, $range: String) {
     managerDashboard(restaurantId: $restaurantId, range: $range) {
@@ -323,7 +325,6 @@ const GET_ANALYST_OPERATIONS_REQUESTS = gql`
 export const useAnalyst = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
   const restaurantOptions = Array.isArray(restaurants) ? restaurants : [];
-  const getRestaurantId = (restaurant) => restaurant?.id || restaurant?._id || "";
   const [restaurantId, setRestaurantId] = useState("");
   const [range, setRange] = useState("week");
 
@@ -364,16 +365,23 @@ export const useAnalyst = () => {
   const smartPromotionEngine = data?.smartPromotionEngine;
   const pendingServiceRequests = operationsRequestsData?.pendingServiceRequests || [];
   const acknowledgedServiceRequests = operationsRequestsData?.acknowledgedServiceRequests || [];
-  const serviceRequests = [...pendingServiceRequests, ...acknowledgedServiceRequests]
-    .filter(Boolean)
-    .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
-  const operationsSummary = {
-    processingOrders: Number(analyst?.statusCounts?.pending || 0) + Number(analyst?.statusCounts?.preparing || 0),
-    pendingRequestsCount: pendingServiceRequests.length,
-    acknowledgedRequestsCount: acknowledgedServiceRequests.length,
-    openRequestsCount: serviceRequests.length,
-    lowStockCount: (analyst?.lowStockItems || []).length,
-  };
+  const serviceRequests = useMemo(
+    () =>
+      [...pendingServiceRequests, ...acknowledgedServiceRequests]
+        .filter(Boolean)
+        .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()),
+    [pendingServiceRequests, acknowledgedServiceRequests]
+  );
+  const operationsSummary = useMemo(
+    () => ({
+      processingOrders: Number(analyst?.statusCounts?.pending || 0) + Number(analyst?.statusCounts?.preparing || 0),
+      pendingRequestsCount: pendingServiceRequests.length,
+      acknowledgedRequestsCount: acknowledgedServiceRequests.length,
+      openRequestsCount: serviceRequests.length,
+      lowStockCount: (analyst?.lowStockItems || []).length,
+    }),
+    [analyst, pendingServiceRequests.length, acknowledgedServiceRequests.length, serviceRequests.length]
+  );
 
   const selectedRestaurant = useMemo(
     () => restaurantOptions.find((restaurant) => getRestaurantId(restaurant) === restaurantId) || null,

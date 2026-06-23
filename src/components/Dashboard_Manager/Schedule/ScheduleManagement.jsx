@@ -1608,6 +1608,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
     [rawStaffList],
   );
 
+  // ponytail: one lookup map beats repeated staff.find calls across schedule rows.
+  const staffById = useMemo(
+    () => new Map(staff.map((person) => [String(person.id), person])),
+    [staff],
+  );
+
   const staffShifts = useMemo(
     () => shiftsData?.staffShifts || [],
     [shiftsData?.staffShifts],
@@ -1640,9 +1646,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       bucket.records.push(row);
       bucket.staffIds.push(row.employeeId);
 
-      const staffItem = staff.find(
-        (item) => String(item.id) === String(row.employeeId),
-      );
+      const staffItem = staffById.get(String(row.employeeId));
       if (staffItem?.job && !bucket.essentialJobs.includes(staffItem.job)) {
         bucket.essentialJobs.push(staffItem.job);
       }
@@ -1653,7 +1657,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         left.date.localeCompare(right.date) ||
         left.shiftType.localeCompare(right.shiftType),
     );
-  }, [staffShifts, staff]);
+  }, [staffShifts, staffById]);
   const shiftRowsById = useMemo(() => {
     const rows = staffShifts;
     const map = new Map();
@@ -3203,8 +3207,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .join("\n\n");
 
       const employeeName =
-        staff.find((person) => String(person.id) === String(employeeId))
-          ?.name || "nhân viên";
+        staffById.get(String(employeeId))?.name || "nhân viên";
 
       const reason = await new Promise((resolve, reject) => {
         assignmentOverrideResolverRef.current = { resolve, reject };
@@ -3295,8 +3298,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           eligibleStaffIds.push(staffId);
         } catch (error) {
           const employeeName =
-            staff.find((person) => String(person.id) === String(staffId))
-              ?.name || `#${staffId}`;
+            staffById.get(String(staffId))?.name || `#${staffId}`;
           validationFailures.push(
             `${employeeName}: ${getGraphQLErrorMessage(error, "Không thể tạo ca cho nhân viên.")}`,
           );
@@ -3344,8 +3346,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .filter((row) => row.result.status === "rejected")
         .map((row) => {
           const employeeName =
-            staff.find((person) => String(person.id) === String(row.staffId))
-              ?.name || `#${row.staffId}`;
+            staffById.get(String(row.staffId))?.name || `#${row.staffId}`;
           return `${employeeName}: ${getGraphQLErrorMessage(row.result.reason, "Không thể tạo ca cho nhân viên.")}`;
         });
 
@@ -3514,8 +3515,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       await refetchScheduleLogs?.();
 
       const employeeName =
-        staff.find((person) => String(person.id) === String(staffId))?.name ||
-        "Nhân viên";
+        staffById.get(String(staffId))?.name || "Nhân viên";
 
       showNotification(
         `Đã xóa ${employeeName} khỏi ca và gửi thông báo cho nhân viên.`,
@@ -3541,9 +3541,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       throw new Error(message);
     }
 
-    const selectedStaff = staff.find(
-      (person) => String(person.id) === String(staffId),
-    );
+    const selectedStaff = staffById.get(String(staffId));
 
     if (!selectedStaff) {
       const message = "Không tìm thấy nhân viên cần thêm vào ca.";
@@ -3713,10 +3711,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }
 
       if (result.failedCount > 0) {
-        const staffById = new Map(
-          staff.map((person) => [String(person.id), person]),
-        );
-
         const errorText = result.errors
           .map((error) => {
             const person = staffById.get(String(error.employeeId || ""));
@@ -5372,8 +5366,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   ack.employeeName || shiftRow?.employeeName || "Nhân viên";
                 const personCode =
                   ack.employeeCode ||
-                  staff.find((item) => String(item.id) === String(ack.employeeId))
-                    ?.employeeCode ||
+                  staffById.get(String(ack.employeeId))?.employeeCode ||
                   "";
                 const shiftTypeLabel = (
                   ack.shiftType ||

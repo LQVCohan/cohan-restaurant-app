@@ -1,39 +1,41 @@
-import React, { useState, useEffect, useMemo, useContext } from "react";
+import React, { Suspense, lazy, useState, useEffect, useMemo, useContext } from "react";
 import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
-import Dashboard from "../components/Dashboard_Manager/Dashboard";
-import ManagerAnalyst from "../components/Dashboard_Manager/Analyst/ManagerAnalyst";
-import ReportsManagement from "../components/Dashboard_Manager/Reports/ReportsManagement";
-import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
-import ScheduleManagementPage from "../components/Dashboard_Manager/Schedule/ScheduleManagementPage";
-import OrderManagement from "../components/Dashboard_Manager/Order/OrderManagement";
-import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
-import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
-import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
-import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
-import AiChatbotAnalyticsPage from "../components/Dashboard_Manager/Customer/AiChatbotAnalyticsPage";
-import AiChatbotSettingsPage from "../components/Dashboard_Manager/Customer/AiChatbotSettingsPage";
-import AiChatbotKnowledgePage from "../components/Dashboard_Manager/Customer/AiChatbotKnowledgePage";
-import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
-import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
 import "./ManagerUnifiedBackground.css";
 import "../components/Dashboard_Manager/Customer/AiChatbotAdminDashboardScale.scss";
-import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
-import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
-import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
-import TransactionManagement from "@/components/Dashboard_Manager/Transactions/TransactionManagement";
-import TransferPaymentReviewPage from "@/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage";
-import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
-import RbacManagement from "@/components/Dashboard_Manager/RBAC/RbacManagement";
-import SettingsManagement from "@/components/Dashboard_Manager/Settings/SettingsManagement";
-import BackupManagement from "@/components/Dashboard_Manager/Backup/BackupManagement";
-import SystemUserManagement from "@/components/Dashboard_Manager/SystemUsers/SystemUserManagement";
-import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
-import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
+
+// ponytail: split manager pages at the layout boundary; Sidebar/Header stay eager.
+const Dashboard = lazy(() => import("../components/Dashboard_Manager/Dashboard"));
+const ManagerAnalyst = lazy(() => import("../components/Dashboard_Manager/Analyst/ManagerAnalyst"));
+const ReportsManagement = lazy(() => import("../components/Dashboard_Manager/Reports/ReportsManagement"));
+const StaffManagement = lazy(() => import("../components/Dashboard_Manager/Staff/StaffManagement"));
+const ScheduleManagementPage = lazy(() => import("../components/Dashboard_Manager/Schedule/ScheduleManagementPage"));
+const OrderManagement = lazy(() => import("../components/Dashboard_Manager/Order/OrderManagement"));
+const MenuManagement = lazy(() => import("../components/Dashboard_Manager/Menu/MenuManagement"));
+const TableManagement = lazy(() => import("../components/Dashboard_Manager/Table/TableManagement"));
+const CustomerManagement = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerManagement"));
+const CustomerAnalyticsPage = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerAnalyticsPage"));
+const AiChatbotAnalyticsPage = lazy(() => import("../components/Dashboard_Manager/Customer/AiChatbotAnalyticsPage"));
+const AiChatbotSettingsPage = lazy(() => import("../components/Dashboard_Manager/Customer/AiChatbotSettingsPage"));
+const AiChatbotKnowledgePage = lazy(() => import("../components/Dashboard_Manager/Customer/AiChatbotKnowledgePage"));
+const PromotionManagement = lazy(() => import("../components/Dashboard_Manager/Promotion/PromotionManagement"));
+const PayrollManagement = lazy(() => import("../components/Dashboard_Manager/PayrollPage/PayrollManagement"));
+const StorageManagement = lazy(() => import("../components/Dashboard_Manager/Storage/StorageManagement"));
+const ReviewManagement = lazy(() => import("../components/Dashboard_Manager/Review/ReviewManagement"));
+const FinanceDashboard = lazy(() => import("@/components/Dashboard_Manager/Finance/FinanceDashboard"));
+const TransactionManagement = lazy(() => import("@/components/Dashboard_Manager/Transactions/TransactionManagement"));
+const TransferPaymentReviewPage = lazy(() => import("@/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage"));
+const PrintManagement = lazy(() => import("@/components/Dashboard_Manager/PrintManagement/PrintManagement"));
+const RbacManagement = lazy(() => import("@/components/Dashboard_Manager/RBAC/RbacManagement"));
+const SettingsManagement = lazy(() => import("@/components/Dashboard_Manager/Settings/SettingsManagement"));
+const BackupManagement = lazy(() => import("@/components/Dashboard_Manager/Backup/BackupManagement"));
+const SystemUserManagement = lazy(() => import("@/components/Dashboard_Manager/SystemUsers/SystemUserManagement"));
+const ManagerRestaurantInfoManagement = lazy(() => import("@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx").then((module) => ({ default: module.ManagerRestaurantInfoManagement })));
+const AiHandoffInbox = lazy(() => import("@/components/communication/AiHandoffInbox"));
 
 const MANAGER_CANONICAL_PATH = "/manager";
 
@@ -136,6 +138,7 @@ const PAGE_CONFIG = {
 };
 
 const PermissionFallback = () => <div className="manager-page-shell__empty">Bạn không có quyền truy cập chức năng này.</div>;
+const PageLoadingFallback = () => <div className="manager-page-shell__empty">Đang tải trang quản trị...</div>;
 
 const ManagerLayout = () => {
   const { user } = useContext(AuthContext);
@@ -276,7 +279,11 @@ const ManagerLayout = () => {
         </div>
         <main className="manager-layout__content">
           <section className={`manager-page-shell manager-page-shell--${currentPage}`}>
-            <div className="manager-page-shell__body">{renderContent()}</div>
+            <div className="manager-page-shell__body">
+              <Suspense fallback={<PageLoadingFallback />}>
+                {renderContent()}
+              </Suspense>
+            </div>
           </section>
         </main>
       </div>

@@ -20,7 +20,8 @@ import "./Login.scss";
 
 const CAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "";
 const CAPTCHA_ENABLED =
-  String(import.meta.env.VITE_ENABLE_RECAPTCHA ?? "true").toLowerCase() !== "false";
+  String(import.meta.env.VITE_ENABLE_RECAPTCHA ?? "true").toLowerCase() !==
+  "false";
 const shouldRenderCaptcha = CAPTCHA_ENABLED && Boolean(CAPTCHA_SITE_KEY);
 const captchaConfigMissing = CAPTCHA_ENABLED && !CAPTCHA_SITE_KEY;
 
@@ -109,7 +110,9 @@ function buildGeneratedUsername(email) {
   const normalizedEmail = String(email || "")
     .trim()
     .toLowerCase();
-  const username = normalizedEmail.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const username = normalizedEmail
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
   return username || `user_${Date.now()}`;
 }
 
@@ -220,7 +223,14 @@ const LoginPage = () => {
 
     if (location.pathname === redirectTo) return;
     navigate(redirectTo, { replace: true });
-  }, [isAuthenticated, loading, location.pathname, location?.state, navigate, user]);
+  }, [
+    isAuthenticated,
+    loading,
+    location.pathname,
+    location?.state,
+    navigate,
+    user,
+  ]);
 
   useEffect(() => {
     if (!rememberedLoginIdentifier) return;
@@ -230,32 +240,38 @@ const LoginPage = () => {
     }));
   }, [rememberedLoginIdentifier]);
 
-  const [loginMutation, { loading: loginLoading }] = useMutation(LOGIN_MUTATION, {
-    errorPolicy: "none",
-    onError: (error) => {
-      showNotification(resolveLoginErrorMessage(error), "error");
-      resetCaptcha();
-    },
-    onCompleted: (data) => {
-      const token = data?.login?.token;
-      const loggedInUser = data?.login?.user;
-      if (!token || !loggedInUser) {
-        showNotification(
-          "Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản/mật khẩu.",
-          "error",
-        );
+  const [loginMutation, { loading: loginLoading }] = useMutation(
+    LOGIN_MUTATION,
+    {
+      errorPolicy: "none",
+      onError: (error) => {
+        showNotification(resolveLoginErrorMessage(error), "error");
         resetCaptcha();
-        return;
-      }
+      },
+      onCompleted: (data) => {
+        const token = data?.login?.token;
+        const loggedInUser = data?.login?.user;
+        if (!token || !loggedInUser) {
+          showNotification(
+            "Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản/mật khẩu.",
+            "error",
+          );
+          resetCaptcha();
+          return;
+        }
 
-      authLogin(token, loggedInUser, null, {
-        persistSession: loginForm.rememberSession,
-        rememberIdentifier: loginForm.rememberIdentifier,
-        identifier: loginForm.identifier,
-      });
-      showNotification(`Chào mừng ${loggedInUser.fullName || loggedInUser.username}.`, "success");
+        authLogin(token, loggedInUser, null, {
+          persistSession: loginForm.rememberSession,
+          rememberIdentifier: loginForm.rememberIdentifier,
+          identifier: loginForm.identifier,
+        });
+        showNotification(
+          `Chào mừng ${loggedInUser.fullName || loggedInUser.username}.`,
+          "success",
+        );
+      },
     },
-  });
+  );
 
   const [registerMutation, { loading: registerLoading }] = useMutation(
     CREATE_USER_MUTATION,
@@ -285,7 +301,10 @@ const LoginPage = () => {
             },
           });
         } else {
-          showNotification("Đăng ký thành công. Hãy đăng nhập ngay.", "success");
+          showNotification(
+            "Đăng ký thành công. Hãy đăng nhập ngay.",
+            "success",
+          );
           togglePanel(false);
         }
 
@@ -326,14 +345,21 @@ const LoginPage = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!registerForm.fullName || !registerForm.email || !registerForm.password) {
+    if (
+      !registerForm.fullName ||
+      !registerForm.email ||
+      !registerForm.password
+    ) {
       return showNotification("Vui lòng nhập đầy đủ thông tin", "warning");
     }
     if (registerForm.password !== registerForm.confirmPassword) {
       return showNotification("Mật khẩu xác nhận không khớp", "error");
     }
     if (!registerForm.terms) {
-      return showNotification("Bạn cần đồng ý với điều khoản sử dụng", "warning");
+      return showNotification(
+        "Bạn cần đồng ý với điều khoản sử dụng",
+        "warning",
+      );
     }
     if (captchaConfigMissing) {
       return showNotification(
@@ -351,7 +377,8 @@ const LoginPage = () => {
         variables: { search: "customer" },
       });
       roleId =
-        data?.role?.find((r) => r.slug === "customer")?.id || data?.role?.[0]?.id;
+        data?.role?.find((r) => r.slug === "customer")?.id ||
+        data?.role?.[0]?.id;
     } catch {
       roleId = undefined;
     }
@@ -402,6 +429,9 @@ const LoginPage = () => {
   return (
     <div className="login-page-wrapper">
       <div className="login-bg-grain" aria-hidden="true" />
+      <a className="login-skip-link" href="#login-form-title">
+        Bỏ qua đến form đăng nhập
+      </a>
 
       <div className="mobile-switcher" aria-label="Chuyển chế độ đăng nhập">
         <button
@@ -423,18 +453,36 @@ const LoginPage = () => {
       <section
         className={`container ${isRightPanelActive ? "right-panel-active" : ""}`}
         id="container"
-        aria-label="FoodHub account access"
+        aria-label="Đăng nhập và đăng ký FoodHub"
       >
         <div
           className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}
         >
-          <form className="auth-form auth-form--register" onSubmit={handleRegister}>
+          <form
+            className="auth-form auth-form--register"
+            onSubmit={handleRegister}
+          >
+            <span className="overlay-kicker">Thành viên mới</span>
             <h1>Tạo tài khoản</h1>
-            <p className="auth-subtitle">hoặc đăng ký bằng email</p>
+            <p className="auth-subtitle">
+              Đặt món nhanh hơn, lưu địa chỉ và theo dõi ưu đãi trong một tài
+              khoản.
+            </p>
+            <div
+              className="auth-trust-strip"
+              aria-label="Lợi ích khi tạo tài khoản"
+            >
+              <span>Lưu món yêu thích</span>
+              <span>Theo dõi đơn</span>
+            </div>
 
+            <label className="field-label" htmlFor="register-full-name">
+              Họ và tên
+            </label>
             <div className="input-wrapper">
               <UserOutlined className="field-icon" />
               <input
+                id="register-full-name"
                 type="text"
                 placeholder="Họ và tên"
                 aria-label="Họ và tên"
@@ -446,9 +494,13 @@ const LoginPage = () => {
               />
             </div>
 
+            <label className="field-label" htmlFor="register-email">
+              Email
+            </label>
             <div className="input-wrapper">
               <MailOutlined className="field-icon" />
               <input
+                id="register-email"
                 type="email"
                 placeholder="Email"
                 aria-label="Email"
@@ -460,9 +512,13 @@ const LoginPage = () => {
               />
             </div>
 
+            <label className="field-label" htmlFor="register-password">
+              Mật khẩu
+            </label>
             <div className="input-wrapper">
               <LockOutlined className="field-icon" />
               <input
+                id="register-password"
                 type="password"
                 placeholder="Mật khẩu"
                 aria-label="Mật khẩu"
@@ -474,9 +530,13 @@ const LoginPage = () => {
               />
             </div>
 
+            <label className="field-label" htmlFor="register-confirm-password">
+              Nhập lại mật khẩu
+            </label>
             <div className="input-wrapper">
               <LockOutlined className="field-icon" />
               <input
+                id="register-confirm-password"
                 type="password"
                 placeholder="Nhập lại mật khẩu"
                 aria-label="Nhập lại mật khẩu"
@@ -515,23 +575,26 @@ const LoginPage = () => {
               {registerLoading ? "Đang tạo..." : "Đăng ký ngay"}
             </button>
 
-            <div className="social-container" aria-label="Đăng ký bằng mạng xã hội">
-              <a
-                href="#"
+            <div
+              className="social-container"
+              aria-label="Đăng ký bằng mạng xã hội"
+            >
+              <button
+                type="button"
                 className="social social-facebook"
-                aria-label="Đăng ký bằng Facebook"
-                onClick={(e) => e.preventDefault()}
+                aria-label="Đăng ký bằng Facebook sắp ra mắt"
+                disabled
               >
                 <FacebookFilled />
-              </a>
-              <a
-                href="#"
+              </button>
+              <button
+                type="button"
                 className="social social-google"
-                aria-label="Đăng ký bằng Google"
-                onClick={(e) => e.preventDefault()}
+                aria-label="Đăng ký bằng Google sắp ra mắt"
+                disabled
               >
                 <GoogleOutlined />
-              </a>
+              </button>
             </div>
           </form>
         </div>
@@ -540,15 +603,30 @@ const LoginPage = () => {
           className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}
         >
           <form className="auth-form auth-form--login" onSubmit={handleLogin}>
-            <h1>Đăng nhập</h1>
-            <p className="auth-subtitle">hoặc sử dụng tài khoản của bạn</p>
+            <span className="overlay-kicker">FoodHub Manager</span>
+            <h1 id="login-form-title">Đăng nhập</h1>
+            <p className="auth-subtitle">
+              Quay lại bảng điều hành, POS và vận hành nhà hàng trong vài giây.
+            </p>
+            <div
+              className="auth-trust-strip"
+              aria-label="Tính năng sau khi đăng nhập"
+            >
+              <span>POS realtime</span>
+              <span>Đồng bộ đơn</span>
+              <span>Bảo mật ca làm</span>
+            </div>
 
+            <label className="field-label" htmlFor="login-identifier">
+              Email, username hoặc số điện thoại
+            </label>
             <div className="input-wrapper">
               <UserOutlined className="field-icon" />
               <input
+                id="login-identifier"
                 type="text"
-                placeholder="Email / SĐT"
-                aria-label="Email hoặc số điện thoại"
+                placeholder="Email / Username / SĐT"
+                aria-label="Email, username hoặc số điện thoại"
                 autoComplete="username"
                 value={loginForm.identifier}
                 onChange={(e) =>
@@ -557,9 +635,13 @@ const LoginPage = () => {
               />
             </div>
 
+            <label className="field-label" htmlFor="login-password">
+              Mật khẩu
+            </label>
             <div className="input-wrapper">
               <LockOutlined className="field-icon" />
               <input
+                id="login-password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Mật khẩu"
                 aria-label="Mật khẩu"
@@ -579,7 +661,11 @@ const LoginPage = () => {
               </button>
             </div>
 
-            <a href="#" className="forgot-link" onClick={(e) => e.preventDefault()}>
+            <a
+              href="#"
+              className="forgot-link"
+              onClick={(e) => e.preventDefault()}
+            >
               Quên mật khẩu?
             </a>
 
@@ -591,7 +677,10 @@ const LoginPage = () => {
                   type="checkbox"
                   checked={loginForm.rememberSession}
                   onChange={(e) =>
-                    setLoginForm({ ...loginForm, rememberSession: e.target.checked })
+                    setLoginForm({
+                      ...loginForm,
+                      rememberSession: e.target.checked,
+                    })
                   }
                 />
                 <span>Duy trì đăng nhập tối đa 30 ngày trên thiết bị này</span>
@@ -601,7 +690,10 @@ const LoginPage = () => {
                   type="checkbox"
                   checked={loginForm.rememberIdentifier}
                   onChange={(e) =>
-                    setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })
+                    setLoginForm({
+                      ...loginForm,
+                      rememberIdentifier: e.target.checked,
+                    })
                   }
                 />
                 <span>Ghi nhớ tài khoản (chỉ lưu email/số điện thoại)</span>
@@ -616,23 +708,26 @@ const LoginPage = () => {
               {loginLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
 
-            <div className="social-container" aria-label="Đăng nhập bằng mạng xã hội">
-              <a
-                href="#"
+            <div
+              className="social-container"
+              aria-label="Đăng nhập bằng mạng xã hội"
+            >
+              <button
+                type="button"
                 className="social social-facebook"
-                aria-label="Đăng nhập bằng Facebook"
-                onClick={(e) => e.preventDefault()}
+                aria-label="Đăng nhập bằng Facebook sắp ra mắt"
+                disabled
               >
                 <FacebookFilled />
-              </a>
-              <a
-                href="#"
+              </button>
+              <button
+                type="button"
                 className="social social-google"
-                aria-label="Đăng nhập bằng Google"
-                onClick={(e) => e.preventDefault()}
+                aria-label="Đăng nhập bằng Google sắp ra mắt"
+                disabled
               >
                 <GoogleOutlined />
-              </a>
+              </button>
             </div>
           </form>
         </div>
@@ -642,7 +737,11 @@ const LoginPage = () => {
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
               <p>Đăng nhập để đặt món, theo dõi đơn hàng và nhận ưu đãi.</p>
-              <button type="button" className="ghost" onClick={() => togglePanel(false)}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => togglePanel(false)}
+              >
                 Đăng nhập
               </button>
             </div>
@@ -650,7 +749,11 @@ const LoginPage = () => {
             <div className="overlay-panel overlay-right">
               <h1>Xin chào</h1>
               <p>Tạo tài khoản để đặt món nhanh hơn và lưu món yêu thích.</p>
-              <button type="button" className="ghost" onClick={() => togglePanel(true)}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => togglePanel(true)}
+              >
                 Đăng ký
               </button>
             </div>

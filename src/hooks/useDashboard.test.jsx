@@ -1,14 +1,16 @@
 import React from "react";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "./useDashboard";
 
+const navigateMock = vi.fn();
+
 vi.mock("react-router-dom", async (importOriginal) => ({
   ...(await importOriginal()),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock("@apollo/client", async (importOriginal) => {
@@ -33,6 +35,7 @@ const createWrapper = (getContextValue) =>
 describe("useDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    navigateMock.mockClear();
     refetchMock.mockResolvedValue({ data: {} });
     useQuery.mockReturnValue({
       data: null,
@@ -100,5 +103,22 @@ describe("useDashboard", () => {
       completed: 0,
       cancelled: 0,
     });
+  });
+
+  it("opens POS with the selected dashboard restaurant in the URL", async () => {
+    const { result } = renderHook(() => useDashboard(), {
+      wrapper: createWrapper(() => ({
+        restaurants: [{ id: "res-1", name: "Cohan Quận 1" }],
+        restaurantsLoading: false,
+      })),
+    });
+
+    await waitFor(() => expect(result.current.selectedRestaurantId).toBe("res-1"));
+
+    act(() => result.current.handleSwitchToPOS());
+
+    expect(navigateMock).toHaveBeenCalledWith(
+      "/manager/dashboard/POS?restaurantId=res-1",
+    );
   });
 });
