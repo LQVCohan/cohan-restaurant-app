@@ -13,15 +13,17 @@ const quadrantLabel = {
   puzzle: "Lời cao, bán chậm",
   dog: "Cần xem lại",
 };
+const methodLabel = (method = "") => ({
+  menu_engineering_v1: "Dựa trên doanh thu và biên lợi nhuận",
+}[method] || "Dựa trên dữ liệu bán món");
 
 const MetaStrip = ({ meta }) => meta ? (
   <div className="ai-meta-strip">
-    {meta.fallbackUsed ? <span className="verify-badge">Cần kiểm chứng thủ công</span> : null}
-    <span>Phương pháp: {meta.method || "-"}</span>
-    <span>Mẫu đơn: {meta.sampleOrders ?? "-"}</span>
-    <span>Số ngày: {meta.sampleDays ?? "-"}</span>
-    <span>Dữ liệu dự phòng: {meta.fallbackUsed ? "có" : "không"}</span>
-    {meta.generatedAt ? <span>Cập nhật: {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
+    {meta.fallbackUsed ? <span className="verify-badge">Cần quản lý kiểm tra lại</span> : null}
+    <span>{methodLabel(meta.method)}</span>
+    <span>{meta.sampleOrders ?? "-"} đơn trong {meta.sampleDays ?? "-"} ngày</span>
+    {meta.fallbackUsed ? <span>Dữ liệu tham khảo</span> : null}
+    {meta.generatedAt ? <span>Cập nhật {new Date(meta.generatedAt).toLocaleString("vi-VN")}</span> : null}
   </div>
 ) : null;
 
