@@ -1,0 +1,150 @@
+/* Hover/focus short guides for table configuration modal. */
+.talite-help-target {
+  position: relative !important;
+  outline: none;
+}
+
+.talite-help-target::before {
+  content: "?";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 999px;
+  color: #126d61;
+  background: #edf5f1;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1;
+  vertical-align: middle;
+  opacity: 0.86;
+}
+
+.talite-help-target[data-guide]::after {
+  content: attr(data-guide);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 9px);
+  z-index: 30;
+  width: max-content;
+  max-width: min(300px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid rgba(83, 108, 97, 0.24);
+  border-radius: 12px;
+  color: #24312f;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: 0 16px 36px rgba(31, 42, 43, 0.16);
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px) scale(0.98);
+  transform-origin: left bottom;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  white-space: normal;
+}
+
+.talite-help-target[data-guide-placement="bottom"]::after {
+  top: calc(100% + 9px);
+  bottom: auto;
+  transform-origin: left top;
+}
+
+.talite-help-target:hover::after,
+.talite-help-target:focus-visible::after,
+.talite-help-target:focus-within::after {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.talite-help-target:hover::before,
+.talite-help-target:focus-visible::before,
+.talite-help-target:focus-within::before {
+  color: #fff;
+  background: #536c61;
+  border-color: #536c61;
+}
+
+.talite-group-header.talite-help-target,
+.talite-info.talite-help-target,
+.talite-vr-block.talite-help-target {
+  cursor: help;
+}
+
+.talite-group-header.talite-help-target::before,
+.talite-info.talite-help-target::before,
+.talite-vr-block.talite-help-target::before {
+  position: absolute;
+  right: 38px;
+  top: 9px;
+  margin-left: 0;
+}
+
+.talite-group-header.talite-help-target::after,
+.talite-info.talite-help-target::after,
+.talite-vr-block.talite-help-target::after {
+  left: auto;
+  right: 10px;
+  max-width: 340px;
+  transform-origin: right bottom;
+}
+
+.talite-group-header.talite-help-target[data-guide-placement="bottom"]::after,
+.talite-info.talite-help-target[data-guide-placement="bottom"]::after,
+.talite-vr-block.talite-help-target[data-guide-placement="bottom"]::after {
+  transform-origin: right top;
+}
+
+.talite-body .grid2 > div.talite-help-target,
+.talite-body .talite-promo-box.talite-help-target,
+.talite-body .talite-quick.talite-help-target {
+  border-radius: 12px;
+}
+
+.talite-body .grid2 > div.talite-help-target:focus-within,
+.talite-body .grid2 > div.talite-help-target:hover {
+  background: rgba(237, 245, 241, 0.28);
+  box-shadow: 0 0 0 4px rgba(83, 108, 97, 0.06);
+}
+
+.talite-body button.talite-help-target::before,
+.talite-section-nav button.talite-help-target::before,
+.talite-close.talite-help-target::before {
+  display: none;
+}
+
+.talite-body button.talite-help-target::after,
+.talite-footer button.talite-help-target::after,
+.talite-section-nav button.talite-help-target::after {
+  left: 50%;
+  transform: translate(-50%, 4px) scale(0.98);
+  transform-origin: center bottom;
+  text-align: center;
+}
+
+.talite-body button.talite-help-target:hover::after,
+.talite-footer button.talite-help-target:hover::after,
+.talite-section-nav button.talite-help-target:hover::after,
+.talite-body button.talite-help-target:focus-visible::after,
+.talite-footer button.talite-help-target:focus-visible::after,
+.talite-section-nav button.talite-help-target:focus-visible::after {
+  transform: translate(-50%, 0) scale(1);
+}
+
+@media (max-width: 760px) {
+  .talite-help-target[data-guide]::after {
+    max-width: min(260px, 82vw);
+    font-size: 0.74rem;
+  }
+
+  .talite-group-header.talite-help-target::before,
+  .talite-info.talite-help-target::before,
+  .talite-vr-block.talite-help-target::before {
+    right: 12px;
+  }
+}
