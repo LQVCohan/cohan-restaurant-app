@@ -77,7 +77,7 @@ const Footer = () => {
             <ul>
               <li><a href="/restaurants">Nhà hàng</a></li>
               <li><a href="/for-you">Gợi ý cho bạn</a></li>
-              <li><a href="/coupons/featured">Ưu đãi</a></li>
+              <li><a href="/restaurants">Ưu đãi</a></li>
               <li><a href="/contact">Đối tác nhà hàng</a></li>
             </ul>
           </nav>
@@ -98,15 +98,7 @@ const Footer = () => {
             <form onSubmit={handleNewsletterSubmit} className="newsletter-form">
               <div className="input-group">
                 <Icon name="mail" size={16} className="input-icon" />
-                <input
-                  type="email"
-                  aria-label="Email nhận ưu đãi"
-                  placeholder="Email của bạn..."
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  required
-                />
+                <input type="email" aria-label="Email nhận ưu đãi" placeholder="Email của bạn..." value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} disabled={isSubmitting} required />
                 <button type="submit" disabled={isSubmitting} className={submitStatus} aria-label="Đăng ký nhận tin">
                   {submitStatus === "processing" ? <Icon name="loader" className="spin" /> : submitStatus === "success" ? <Icon name="check" /> : <Icon name="send" />}
                 </button>
@@ -131,9 +123,7 @@ const Footer = () => {
               <span><Icon name="mapPin" size={14} /> TP. Hồ Chí Minh</span>
               <span><Icon name="phone" size={14} /> 1900 1234</span>
             </div>
-            <button onClick={scrollToTop} className="scroll-top-btn" aria-label="Lên đầu trang">
-              <Icon name="arrowUp" size={16} />
-            </button>
+            <button onClick={scrollToTop} className="scroll-top-btn" aria-label="Lên đầu trang"><Icon name="arrowUp" size={16} /></button>
           </div>
         </div>
       </div>
