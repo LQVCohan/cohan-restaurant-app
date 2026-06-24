@@ -196,7 +196,7 @@ describe("TableManagement operations UI", () => {
     await renderTableManagement();
 
     const occupiedCard = screen.getByText("VIP-02").closest("article");
-    const paymentAction = within(occupiedCard).getByRole("button", { name: "T.Toán" });
+    const paymentAction = within(occupiedCard).getByRole("button", { name: "Thanh toán" });
 
     expect(paymentAction).toBeDisabled();
     expect(paymentAction).toHaveAttribute(
