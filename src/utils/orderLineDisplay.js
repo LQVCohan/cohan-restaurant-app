@@ -15,6 +15,9 @@ export const getOrderLineDisplay = (item = {}, options = {}) => {
     : numberOrZero(item.unitPrice ?? item.price ?? item.basePrice);
   const totalPrice = numberOrZero(item.totalPrice ?? item.lineSubtotal) || unitPrice * quantity;
   const originalPrice = combo ? numberOrZero(snapshot.originalPrice) : 0;
+  const lineOriginalPrice = combo && originalPrice > 0 ? originalPrice * quantity : 0;
+  const unitDiscountAmount = combo && originalPrice > unitPrice ? originalPrice - unitPrice : 0;
+  const discountAmount = unitDiscountAmount * quantity;
   const childMultiplier = options.mode === "kitchen" ? quantity : 1;
 
   const childItems = combo
@@ -37,7 +40,9 @@ export const getOrderLineDisplay = (item = {}, options = {}) => {
     totalPrice,
     childItems,
     originalPrice,
-    discountAmount: combo && originalPrice > unitPrice ? originalPrice - unitPrice : 0,
+    lineOriginalPrice,
+    unitDiscountAmount,
+    discountAmount,
     note: item.note || snapshot.note || "",
   };
 };
