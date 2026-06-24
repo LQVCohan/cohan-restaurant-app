@@ -23,6 +23,7 @@ import SearchPage from "../pages/SearchPage.jsx";
 import ContactPage from "@/pages/ContactPage.jsx";
 import CheckoutPage from "@/pages/CheckoutPage.jsx";
 import CartPage from "@/pages/CartPage.jsx";
+import WalletPage from "@/pages/WalletPage.jsx";
 import TableCurrentSessionPage from "@/components/Customer/TableCurrentSession/TableCurrentSessionPage";
 import {
   AdminRestaurantInfoManagement,
@@ -66,7 +67,6 @@ import FoodDetail from "@/components/Customer/Food/FoodDetail";
 import AiHandoffInbox from "@/components/communication/AiHandoffInbox";
 import { isAccountVerified } from "@/utils/accountVerification";
 
-// ponytail: POS is heavy; load it only when the dashboard POS route is opened.
 const POSLayout = lazy(() => import("@/components/Dashboard_Manager/POS/components/pos/POSLayout"));
 
 const useAuth = () => {
@@ -116,27 +116,17 @@ const CustomerLayout = () => (
   </MainLayout>
 );
 
-
-
 const StaffAwareNotificationsRoute = () => {
   const { user } = useContext(AuthContext);
   const role = resolveRoleName(user);
-
-  if (STAFF_OPERATIONAL_ROLES.has(role)) {
-    return <Navigate to="/staff/notifications" replace />;
-  }
-
+  if (STAFF_OPERATIONAL_ROLES.has(role)) return <Navigate to="/staff/notifications" replace />;
   return <NotificationsPage />;
 };
 
 const StaffAwareProfileRoute = () => {
   const { user } = useContext(AuthContext);
   const role = resolveRoleName(user);
-
-  if (STAFF_OPERATIONAL_ROLES.has(role)) {
-    return <Navigate to="/staff/profile" replace />;
-  }
-
+  if (STAFF_OPERATIONAL_ROLES.has(role)) return <Navigate to="/staff/profile" replace />;
   return <ProfilePage />;
 };
 
@@ -154,10 +144,7 @@ const withPrivateRoute = (children, allowedRoles, requireVerifiedEmail = true) =
   </PrivateRoute>
 );
 
-const withLazyRoute = (children) => (
-  <Suspense fallback={null}>{children}</Suspense>
-);
-
+const withLazyRoute = (children) => <Suspense fallback={null}>{children}</Suspense>;
 const withStaffLayout = (children) => <StaffLayout>{children}</StaffLayout>;
 
 const AppRouter = () => (
@@ -208,6 +195,7 @@ const AppRouter = () => (
       <Route path="/owner/:id" element={withPrivateRoute(<OwnerProfilePage />, ["manager", "admin"])} />
       <Route path="/for-you" element={withPrivateRoute(<ForYou />, ["customer"])} />
       <Route path="/cart" element={<CartPage />} />
+      <Route path="/wallet" element={withPrivateRoute(<WalletPage />, ["customer"])} />
       <Route path="/orders" element={withPrivateRoute(<OrdersPage />, ["customer", "manager", "admin"])} />
       <Route path="/track-delivery/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
       <Route path="/restaurants" element={<RestaurantsList />} />
@@ -215,7 +203,6 @@ const AppRouter = () => (
       <Route path="/restaurant/:id/layout" element={<TableBooking />} />
       <Route path="/table/:restaurantId/:tableId" element={<TableCurrentSessionPage />} />
       <Route path="/vr/table/:tableId" element={<VRViewer />} />
-      {/* Remote food ordering: guests may browse menu/detail/reviews/AI, but checkout requires a customer account because backend cart holds are user-bound. */}
       <Route path="/cus-menu" element={<RestaurantMenu />} />
       <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer"])} />
       <Route path="/food/:foodId" element={<FoodDetail />} />
