@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Gift, TrendingUp, WalletCards } from "lucide-react";
 import "./LoyaltyWalletCard.scss";
 
@@ -14,6 +15,7 @@ const getTier = (points = 0) => {
 };
 
 export default function LoyaltyWalletCard({ user }) {
+  const navigate = useNavigate();
   const points = Number(user?.loyaltyPoints || 0);
   const totalOrders = Number(user?.totalOrders || 0);
   const totalSpending = Number(user?.totalSpending || 0);
@@ -29,6 +31,7 @@ export default function LoyaltyWalletCard({ user }) {
           <h2>{tier.label}</h2>
           <span>{points.toLocaleString("vi-VN")} điểm thưởng</span>
         </div>
+        <button type="button" className="loyalty-wallet-card__wallet-link" onClick={() => navigate("/wallet")}>Mở ví</button>
       </div>
 
       <div className="loyalty-wallet-card__progress">
@@ -49,9 +52,9 @@ export default function LoyaltyWalletCard({ user }) {
         </article>
         <article>
           <WalletCards size={18} />
-          <span>Ví</span>
-          <strong>{wallet?.status ? `${wallet.status}` : "Chưa kích hoạt"}</strong>
-          {wallet?.balance != null && <small>{formatVND(wallet.balance)}</small>}
+          <span>Ví Cohan</span>
+          <strong>{wallet?.balance != null ? formatVND(wallet.balance) : "Chưa kích hoạt"}</strong>
+          {wallet?.status && <small>{wallet.status}</small>}
         </article>
       </div>
     </section>
