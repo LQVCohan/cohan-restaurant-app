@@ -106,34 +106,18 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
               {isGlobal ? "Danh mục phổ biến" : "Thực đơn nhà hàng"}
             </h3>
           </div>
-          <button
-            type="button"
-            className="categories__view-all"
-            onClick={() => navigate("/restaurants")}
-          >
+          <button type="button" className="categories__view-all" onClick={() => navigate("/restaurants")}>
             Xem tất cả <span>›</span>
           </button>
         </div>
 
-        {error && (
-          <div className="categories__error">
-            Không tải được danh mục. Bạn vẫn có thể khám phá nhà hàng bên dưới.
-          </div>
-        )}
-
-        {showSuggestionHint && (
-          <div className="categories__hint">
-            Danh mục đang được cập nhật. Các gợi ý bên dưới giúp bạn bắt đầu nhanh hơn.
-          </div>
-        )}
+        {error && <div className="categories__error">Không tải được danh mục. Bạn vẫn có thể khám phá nhà hàng bên dưới.</div>}
+        {showSuggestionHint && <div className="categories__hint">Danh mục đang được cập nhật. Các gợi ý bên dưới giúp bạn bắt đầu nhanh hơn.</div>}
 
         <div className="categories__grid">
           {loading && !hasData
             ? Array.from({ length: 6 }).map((_, idx) => (
-                <div
-                  key={`skeleton-${idx}`}
-                  className="categories__card categories__card--skeleton"
-                >
+                <div key={`skeleton-${idx}`} className="categories__card categories__card--skeleton">
                   <div className="skeleton-icon" />
                   <div className="skeleton-text-lg" />
                   <div className="skeleton-text-sm" />
@@ -147,12 +131,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                   onClick={() => handleCategoryClick(category)}
                 >
                   <div className="categories__image-wrapper">
-                    <img
-                      src={getCategoryImage(category)}
-                      alt={`Danh mục ${category.name}`}
-                      className="categories__image"
-                      loading="lazy"
-                    />
+                    <img src={getCategoryImage(category)} alt={`Danh mục ${category.name}`} className="categories__image" loading="lazy" />
                   </div>
                   <div className="categories__info">
                     <h4 className="categories__name">{category.name}</h4>
@@ -167,21 +146,6 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                 </button>
               ))}
         </div>
-      </div>
-
-      <div className="categories__wave-bottom">
-        <svg
-          viewBox="0 0 1440 320"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
-          className="wave-svg"
-        >
-          <path
-            fill="#fff7ed"
-            fillOpacity="1"
-            d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,202.7C1248,181,1344,171,1392,165.3L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,96,48,320L0,320Z"
-          ></path>
-        </svg>
       </div>
     </section>
   );
