@@ -28,6 +28,35 @@ const normalizeCurrentStory = (value = "") => {
   return text.replace(/\.{2,}/g, ".");
 };
 
+const countVietnameseWords = (value = "") =>
+  cleanText(value)
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+const countSentences = (value = "") =>
+  cleanText(value)
+    .split(/[.!?。]+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean).length;
+
+const validateRewriteText = (value = "") => {
+  const text = cleanText(value);
+  const wordCount = countVietnameseWords(text);
+  const sentenceCount = countSentences(text);
+
+  if (!text) return { ok: false, reason: "empty text" };
+  if (wordCount < 28) return { ok: false, reason: `too short (${wordCount} words)` };
+  if (sentenceCount < 2) return { ok: false, reason: `not enough sentences (${sentenceCount})` };
+  if (/mang đến trải nghiệm\.?$/i.test(text)) {
+    return { ok: false, reason: "unfinished generic sentence" };
+  }
+  if (/chưa\s*(chọn|cập nhật)/i.test(text)) {
+    return { ok: false, reason: "contains placeholder wording" };
+  }
+
+  return { ok: true, reason: "ok" };
+};
+
 const buildFallbackRewrite = ({ restaurantName, cuisineType, currentText, chefName }) => {
   const name = cleanText(restaurantName) || "Nhà hàng";
   const cuisine = normalizeCuisine(cuisineType);
@@ -37,7 +66,7 @@ const buildFallbackRewrite = ({ restaurantName, cuisineType, currentText, chefNa
   const sentences = [
     `${name} là điểm hẹn ${cuisine}, mang đến trải nghiệm ấm cúng, chỉn chu và dễ nhớ cho thực khách.`,
     story || "Không gian và món ăn được chuẩn bị cẩn thận để mỗi lần ghé thăm đều tạo cảm giác gần gũi, tin cậy.",
-    chef ? `Bếp trưởng ${chef} phụ trách hương vị và chất lượng phục vụ trong từng món ăn.` : "",
+    chef ? `Bếp trưởng ${chef} phụ trách hương vị và chất lượng phục vụ trong từng món ăn.` : "Đội ngũ nhà hàng luôn chú trọng chất lượng phục vụ để khách cảm thấy thoải mái từ lúc đặt bàn đến khi dùng bữa.",
   ].filter(Boolean);
 
   return clampText(sentences.join(" "));
@@ -46,8 +75,10 @@ const buildFallbackRewrite = ({ restaurantName, cuisineType, currentText, chefNa
 const buildPrompt = ({ restaurantName, cuisineType, currentText, chefName, tone }) => `
 Bạn là copywriter F&B cao cấp. Hãy viết lại mô tả ngắn cho hồ sơ nhà hàng bằng tiếng Việt.
 
-Yêu cầu:
-- 2 đến 3 câu, tối đa 120 từ.
+Yêu cầu bắt buộc:
+- Viết đủ 2 câu hoàn chỉnh, khoảng 45 đến 90 từ.
+- Mỗi câu phải có chủ ngữ, vị ngữ và kết thúc bằng dấu chấm.
+- Không trả về câu cụt như "mang đến trải nghiệm".
 - Tự nhiên, tin cậy, phù hợp ứng dụng đặt bàn/đặt món.
 - Không dùng emoji, không dùng dấu ngoặc kép, không phóng đại quá mức.
 - Giữ đúng thông tin đã có, không tự bịa địa chỉ/giải thưởng.
@@ -60,7 +91,20 @@ Loại ẩm thực: ${normalizeCuisine(cuisineType)}
 Bếp trưởng/phụ trách bếp: ${cleanText(chefName) || "Chưa cập nhật"}
 Mô tả hiện tại: ${normalizeCurrentStory(currentText) || "Chưa có mô tả"}
 
-Chỉ trả về nội dung mô tả đã viết lại.
+Chỉ trả về đúng đoạn mô tả hoàn chỉnh, không giải thích thêm.
+`.trim();
+
+const buildRepairPrompt = ({ restaurantName, cuisineType, chefName, tone }, badText) => `
+Đoạn sau quá ngắn hoặc chưa hoàn chỉnh: ${cleanText(badText) || "(trống)"}
+
+Hãy viết lại thành mô tả hồ sơ nhà hàng bằng tiếng Việt.
+Yêu cầu: đúng 2 câu hoàn chỉnh, 45 đến 90 từ, không emoji, không dấu ngoặc kép, không nhắc "Chưa chọn ẩm thực".
+Tên nhà hàng: ${cleanText(restaurantName) || "Nhà hàng"}
+Loại ẩm thực: ${normalizeCuisine(cuisineType)}
+Bếp trưởng/phụ trách bếp: ${cleanText(chefName) || "Chưa cập nhật"}
+Tone: ${cleanText(tone) || "ấm áp, chuyên nghiệp, đáng tin cậy"}
+
+Chỉ trả về mô tả hoàn chỉnh.
 `.trim();
 
 const extractGeminiText = (payload) => {
@@ -76,7 +120,7 @@ const getModelTimeoutMs = () => {
   return Number.isFinite(timeout) && timeout >= 5000 ? timeout : 30000;
 };
 
-const callGeminiModel = async ({ apiKey, model, input }) => {
+const requestGemini = async ({ apiKey, model, prompt }) => {
   const controller = new AbortController();
   const timeoutMs = getModelTimeoutMs();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -90,13 +134,13 @@ const callGeminiModel = async ({ apiKey, model, input }) => {
         contents: [
           {
             role: "user",
-            parts: [{ text: buildPrompt(input) }],
+            parts: [{ text: prompt }],
           },
         ],
         generationConfig: {
-          temperature: 0.55,
-          topP: 0.85,
-          maxOutputTokens: 180,
+          temperature: 0.72,
+          topP: 0.9,
+          maxOutputTokens: 260,
         },
       }),
     });
@@ -123,6 +167,34 @@ const callGeminiModel = async ({ apiKey, model, input }) => {
   }
 };
 
+const callGeminiModel = async ({ apiKey, model, input }) => {
+  const firstText = await requestGemini({
+    apiKey,
+    model,
+    prompt: buildPrompt(input),
+  });
+
+  const firstValidation = validateRewriteText(firstText);
+  if (firstValidation.ok) return firstText;
+
+  const repairedText = await requestGemini({
+    apiKey,
+    model,
+    prompt: buildRepairPrompt(input, firstText),
+  });
+  const repairedValidation = validateRewriteText(repairedText);
+
+  if (!repairedValidation.ok) {
+    const error = new Error(
+      `${model}: invalid rewrite after retry (${firstValidation.reason}; ${repairedValidation.reason})`,
+    );
+    error.status = "invalid_output";
+    throw error;
+  }
+
+  return repairedText;
+};
+
 export async function rewriteRestaurantProfileDescription(input = {}) {
   const apiKey =
     process.env.GEMINI_API_KEY ||
@@ -146,9 +218,10 @@ export async function rewriteRestaurantProfileDescription(input = {}) {
   for (const model of DEFAULT_GEMINI_REWRITE_MODELS) {
     try {
       const text = await callGeminiModel({ apiKey, model, input });
+      const validation = validateRewriteText(text);
 
-      if (!text) {
-        attemptedErrors.push(`${model}: empty text`);
+      if (!validation.ok) {
+        attemptedErrors.push(`${model}: ${validation.reason}`);
         continue;
       }
 
