@@ -127,7 +127,6 @@
     }
   }
 
-  /* Các card này đang lặp lại nội dung KPI và đẩy bảng xuống quá xa. */
   .performance-overview {
     display: none !important;
   }
@@ -301,9 +300,25 @@
   }
 }
 
-/* Review modal must behave like a real app modal, not a dimmed panel inside the staff content. */
+/* Review modal: ManagerLayout uses transform/contain, so fixed children get trapped unless the parent stacking context is relaxed while this modal is open. */
 body:has(.performance-modal-overlay) {
   overflow: hidden !important;
+}
+
+.manager-layout:has(.performance-modal-overlay) {
+  isolation: auto !important;
+}
+
+.manager-layout:has(.performance-modal-overlay) .manager-layout__main,
+.manager-layout:has(.performance-modal-overlay) .manager-layout__content {
+  transform: none !important;
+  contain: none !important;
+  overflow: visible !important;
+  z-index: 2147482000 !important;
+}
+
+.manager-layout:has(.performance-modal-overlay) .manager-layout__content {
+  position: static !important;
 }
 
 .performance-modal-overlay {
@@ -318,7 +333,7 @@ body:has(.performance-modal-overlay) {
   overflow: auto !important;
   background:
     radial-gradient(circle at 50% 20%, rgba(83, 108, 97, 0.2), transparent 32rem),
-    rgba(18, 25, 27, 0.74) !important;
+    rgba(18, 25, 27, 0.78) !important;
   backdrop-filter: blur(5px) saturate(0.95) !important;
 }
 
