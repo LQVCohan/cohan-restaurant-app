@@ -12,6 +12,17 @@ const scoreTextFallback = (value) => {
   return `${Math.round(number)}/100`;
 };
 
+const formatDateFallback = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+};
+
 const AVATAR_COLORS = [
   "#536c61",
   "#126d61",
@@ -45,9 +56,11 @@ const installGlobalFormatter = (name, formatter) => {
 installGlobalFormatter("formatPercent", formatPercentFallback);
 installGlobalFormatter("scoreText", scoreTextFallback);
 installGlobalFormatter("getAvatarColor", getAvatarColorFallback);
+installGlobalFormatter("formatDate", formatDateFallback);
 
 export {
   formatPercentFallback as formatPercent,
   scoreTextFallback as scoreText,
   getAvatarColorFallback as getAvatarColor,
+  formatDateFallback as formatDate,
 };
