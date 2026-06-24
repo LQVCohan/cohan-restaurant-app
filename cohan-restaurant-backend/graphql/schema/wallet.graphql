@@ -1,0 +1,69 @@
+type WalletSummary {
+  wallet: Wallet!
+  balance: Float!
+  currency: String!
+  status: String!
+  lifetimeTopup: Float!
+  lifetimePayment: Float!
+  lifetimeRefund: Float!
+  lifetimeAdjustment: Float!
+  transactionCount: Int!
+}
+
+type WalletOperationResult {
+  ok: Boolean!
+  message: String
+  wallet: Wallet!
+  transaction: WalletTransaction
+  paymentTransactionId: ID
+  refundId: ID
+  orderIds: [ID!]
+  amount: Float
+}
+
+input WalletTransactionFilterInput {
+  type: WalletTransactionType
+  status: WalletTransactionStatus
+  limit: Int = 30
+}
+
+input WalletTopupInput {
+  amount: Float!
+  provider: String = "sandbox"
+  reference: String
+  metadata: JSON
+}
+
+input PayOrdersWithWalletInput {
+  restaurantId: ID!
+  orderIds: [ID!]!
+  idempotencyKey: String
+}
+
+input RefundToWalletInput {
+  restaurantId: ID!
+  userId: ID!
+  orderIds: [ID!]
+  amount: Float!
+  reason: String!
+  referenceType: String
+  referenceId: ID
+}
+
+input AdjustWalletBalanceInput {
+  userId: ID!
+  amount: Float!
+  reason: String!
+}
+
+extend type Query {
+  myWallet: WalletSummary!
+  myWalletTransactions(input: WalletTransactionFilterInput): [WalletTransaction!]!
+}
+
+extend type Mutation {
+  createWalletTopup(input: WalletTopupInput!): WalletOperationResult!
+  payOrdersWithWallet(input: PayOrdersWithWalletInput!): WalletOperationResult!
+  refundToWallet(input: RefundToWalletInput!): WalletOperationResult!
+  adjustWalletBalance(input: AdjustWalletBalanceInput!): WalletOperationResult!
+}
