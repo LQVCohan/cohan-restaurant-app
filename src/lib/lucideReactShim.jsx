@@ -30,240 +30,32 @@ const createIcon = (name) => {
 };
 
 const iconNames = [
-  "Accessibility", "Activity", "AlarmClock", "AlertCircle", "AlertOctagon", "AlertTriangle", "Archive",
-  "ArrowDown", "ArrowDownRight", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowUpRight", "BadgeCheck", "Ban",
-  "Banknote", "BarChart", "BarChart2", "BarChart3", "Beef", "Bell", "BellOff", "BookOpen", "Bot", "Box", "Boxes",
-  "Briefcase", "Building", "Building2", "Calculator", "Calendar", "CalendarCheck", "CalendarCheck2", "CalendarClock",
-  "CalendarDays", "CalendarRange", "Camera", "Carrot", "ChartNoAxesColumnIncreasing", "Check", "CheckCheck",
-  "CheckCircle", "CheckCircle2", "ChefHat", "ChevronDown", "ChevronLeft", "ChevronRight", "ChevronUp", "ChevronsUpDown",
-  "Circle", "CircleCheck", "CircleDollarSign", "CircleHelp", "CirclePause", "CirclePlay", "CirclePlus", "Clipboard",
-  "ClipboardCheck", "ClipboardList", "Clock", "Clock3", "CloudUpload", "Coffee", "Coins", "Columns3", "Copy", "CreditCard",
-  "Crown", "Database", "DollarSign", "Dot", "Download", "Edit", "Edit2", "Edit3", "Ellipsis", "EllipsisVertical",
-  "ExternalLink", "Eye", "EyeOff", "File", "FileDown", "FileImage", "FilePlus2", "FileSpreadsheet", "FileText", "FileUp",
-  "Filter", "FilterX", "Fish", "Flag", "Gauge", "Gift", "Grid", "Grid2X2", "Grid3X3", "GripVertical", "Hash",
-  "Headphones", "Heart", "HelpCircle", "Home", "Image", "ImagePlus", "Inbox", "Info", "Key", "KeyRound", "Languages",
-  "Layers", "LayoutGrid", "Link", "List", "ListFilter", "Loader", "Loader2", "Lock", "LockKeyhole", "LogOut", "Mail",
-  "Map", "MapPin", "MapPinned", "Maximize2", "Megaphone", "Menu", "MessageCircle", "MessageSquare", "Minimize2", "Minus",
-  "Monitor", "Moon", "MoreHorizontal", "MoreVertical", "Move", "Navigation", "Package", "PackageOpen", "PackageSearch",
-  "PanelLeftClose", "PanelLeftOpen", "Paperclip", "Pause", "PauseCircle", "Percent", "Phone", "PieChart", "Pin", "Pizza",
-  "Play", "PlayCircle", "Plus", "Printer", "QrCode", "Receipt", "RefreshCcw", "RefreshCw", "RotateCcw", "RotateCw",
-  "Save", "Search", "SearchX", "Send", "Settings", "Shield", "ShieldAlert", "ShieldCheck", "ShoppingBag", "ShoppingCart",
-  "SlidersHorizontal", "Soup", "Sparkle", "Sparkles", "SquarePen", "Star", "Store", "Sun", "Sunrise", "Table", "Table2",
-  "Tag", "Tags", "Ticket", "Timer", "Trash", "Trash2", "TrendingDown", "TrendingUp", "Truck", "Undo2", "Unlock", "Upload",
-  "User", "UserCheck", "UserCog", "UserMinus", "UserPlus", "UserRound", "UserX", "Users", "Utensils", "Video",
-  "Wallet", "Warehouse", "Wifi", "Wine", "X", "XCircle", "Zap", "ZoomIn", "ZoomOut",
+  "Accessibility", "Activity", "AlarmClock", "AlertCircle", "AlertOctagon", "AlertTriangle", "Archive", "ArrowDown", "ArrowDownRight", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowUpRight", "BadgeCheck", "Ban", "Banknote", "BarChart", "BarChart2", "BarChart3", "Beef", "Bell", "BellOff", "BookOpen", "Bot", "Box", "Boxes", "Briefcase", "Building", "Building2", "Calculator", "Calendar", "CalendarCheck", "CalendarCheck2", "CalendarClock", "CalendarDays", "CalendarRange", "Camera", "Carrot", "ChartNoAxesColumnIncreasing", "Check", "CheckCheck", "CheckCircle", "CheckCircle2", "ChefHat", "ChevronDown", "ChevronLeft", "ChevronRight", "ChevronUp", "ChevronsUpDown", "Circle", "CircleCheck", "CircleDollarSign", "CircleHelp", "CirclePause", "CirclePlay", "CirclePlus", "Clipboard", "ClipboardCheck", "ClipboardList", "Clock", "Clock3", "CloudUpload", "Coffee", "Coins", "Columns3", "Copy", "CreditCard", "Crown", "Database", "DollarSign", "Dot", "Download", "Edit", "Edit2", "Edit3", "Ellipsis", "EllipsisVertical", "ExternalLink", "Eye", "EyeOff", "File", "FileDown", "FileImage", "FilePlus2", "FileSpreadsheet", "FileText", "FileUp", "Filter", "FilterX", "Fish", "Flag", "Gauge", "Gift", "Grid", "Grid2X2", "Grid3X3", "GripVertical", "Hash", "Headphones", "Heart", "HelpCircle", "Home", "Image", "ImagePlus", "Inbox", "Info", "Key", "KeyRound", "Languages", "Layers", "LayoutGrid", "Link", "List", "ListFilter", "Loader", "Loader2", "Lock", "LockKeyhole", "LogOut", "Mail", "Map", "MapPin", "MapPinned", "Maximize2", "Megaphone", "Menu", "MessageCircle", "MessageSquare", "Minimize2", "Minus", "Monitor", "Moon", "MoreHorizontal", "MoreVertical", "Move", "Navigation", "Package", "PackageOpen", "PackageSearch", "PanelLeftClose", "PanelLeftOpen", "Paperclip", "Pause", "PauseCircle", "Percent", "Phone", "PieChart", "Pin", "Pizza", "Play", "PlayCircle", "Plus", "Printer", "QrCode", "Receipt", "RefreshCcw", "RefreshCw", "RotateCcw", "RotateCw", "Save", "Search", "SearchX", "Send", "Settings", "Shield", "ShieldAlert", "ShieldCheck", "ShoppingBag", "ShoppingCart", "SlidersHorizontal", "Soup", "Sparkle", "Sparkles", "SquarePen", "Star", "Store", "Sun", "Sunrise", "Table", "Table2", "Tag", "Tags", "Ticket", "Timer", "Trash", "Trash2", "TrendingDown", "TrendingUp", "Truck", "Undo2", "Unlock", "Upload", "User", "UserCheck", "UserCog", "UserMinus", "UserPlus", "UserRound", "UserX", "Users", "Utensils", "Video", "Wallet", "Warehouse", "Wifi", "Wine", "X", "XCircle", "Zap", "ZoomIn", "ZoomOut",
 ];
 
-export const Accessibility = createIcon("Accessibility");
-export const Activity = createIcon("Activity");
-export const AlarmClock = createIcon("AlarmClock");
-export const AlertCircle = createIcon("AlertCircle");
-export const AlertOctagon = createIcon("AlertOctagon");
-export const AlertTriangle = createIcon("AlertTriangle");
-export const Archive = createIcon("Archive");
-export const ArrowDown = createIcon("ArrowDown");
-export const ArrowDownRight = createIcon("ArrowDownRight");
-export const ArrowLeft = createIcon("ArrowLeft");
-export const ArrowRight = createIcon("ArrowRight");
-export const ArrowUp = createIcon("ArrowUp");
-export const ArrowUpRight = createIcon("ArrowUpRight");
-export const BadgeCheck = createIcon("BadgeCheck");
-export const Ban = createIcon("Ban");
-export const Banknote = createIcon("Banknote");
-export const BarChart = createIcon("BarChart");
-export const BarChart2 = createIcon("BarChart2");
-export const BarChart3 = createIcon("BarChart3");
-export const Beef = createIcon("Beef");
-export const Bell = createIcon("Bell");
-export const BellOff = createIcon("BellOff");
-export const BookOpen = createIcon("BookOpen");
-export const Bot = createIcon("Bot");
-export const Box = createIcon("Box");
-export const Boxes = createIcon("Boxes");
-export const Briefcase = createIcon("Briefcase");
-export const Building = createIcon("Building");
-export const Building2 = createIcon("Building2");
-export const Calculator = createIcon("Calculator");
-export const Calendar = createIcon("Calendar");
-export const CalendarCheck = createIcon("CalendarCheck");
-export const CalendarCheck2 = createIcon("CalendarCheck2");
-export const CalendarClock = createIcon("CalendarClock");
-export const CalendarDays = createIcon("CalendarDays");
-export const CalendarRange = createIcon("CalendarRange");
-export const Camera = createIcon("Camera");
-export const Carrot = createIcon("Carrot");
-export const ChartNoAxesColumnIncreasing = createIcon("ChartNoAxesColumnIncreasing");
-export const Check = createIcon("Check");
-export const CheckCheck = createIcon("CheckCheck");
-export const CheckCircle = createIcon("CheckCircle");
-export const CheckCircle2 = createIcon("CheckCircle2");
-export const ChefHat = createIcon("ChefHat");
-export const ChevronDown = createIcon("ChevronDown");
-export const ChevronLeft = createIcon("ChevronLeft");
-export const ChevronRight = createIcon("ChevronRight");
-export const ChevronUp = createIcon("ChevronUp");
-export const ChevronsUpDown = createIcon("ChevronsUpDown");
-export const Circle = createIcon("Circle");
-export const CircleCheck = createIcon("CircleCheck");
-export const CircleDollarSign = createIcon("CircleDollarSign");
-export const CircleHelp = createIcon("CircleHelp");
-export const CirclePause = createIcon("CirclePause");
-export const CirclePlay = createIcon("CirclePlay");
-export const CirclePlus = createIcon("CirclePlus");
-export const Clipboard = createIcon("Clipboard");
-export const ClipboardCheck = createIcon("ClipboardCheck");
-export const ClipboardList = createIcon("ClipboardList");
-export const Clock = createIcon("Clock");
-export const Clock3 = createIcon("Clock3");
-export const CloudUpload = createIcon("CloudUpload");
-export const Coffee = createIcon("Coffee");
-export const Coins = createIcon("Coins");
-export const Columns3 = createIcon("Columns3");
-export const Copy = createIcon("Copy");
-export const CreditCard = createIcon("CreditCard");
-export const Crown = createIcon("Crown");
-export const Database = createIcon("Database");
-export const DollarSign = createIcon("DollarSign");
-export const Dot = createIcon("Dot");
-export const Download = createIcon("Download");
-export const Edit = createIcon("Edit");
-export const Edit2 = createIcon("Edit2");
-export const Edit3 = createIcon("Edit3");
-export const Ellipsis = createIcon("Ellipsis");
-export const EllipsisVertical = createIcon("EllipsisVertical");
-export const ExternalLink = createIcon("ExternalLink");
-export const Eye = createIcon("Eye");
-export const EyeOff = createIcon("EyeOff");
-export const File = createIcon("File");
-export const FileDown = createIcon("FileDown");
-export const FileImage = createIcon("FileImage");
-export const FilePlus2 = createIcon("FilePlus2");
-export const FileSpreadsheet = createIcon("FileSpreadsheet");
-export const FileText = createIcon("FileText");
-export const FileUp = createIcon("FileUp");
-export const Filter = createIcon("Filter");
-export const FilterX = createIcon("FilterX");
-export const Fish = createIcon("Fish");
-export const Flag = createIcon("Flag");
-export const Gauge = createIcon("Gauge");
-export const Gift = createIcon("Gift");
-export const Grid = createIcon("Grid");
-export const Grid2X2 = createIcon("Grid2X2");
-export const Grid3X3 = createIcon("Grid3X3");
-export const GripVertical = createIcon("GripVertical");
-export const Hash = createIcon("Hash");
-export const Headphones = createIcon("Headphones");
-export const Heart = createIcon("Heart");
-export const HelpCircle = createIcon("HelpCircle");
-export const Home = createIcon("Home");
-export const Image = createIcon("Image");
-export const ImagePlus = createIcon("ImagePlus");
-export const Inbox = createIcon("Inbox");
-export const Info = createIcon("Info");
-export const Key = createIcon("Key");
-export const KeyRound = createIcon("KeyRound");
-export const Languages = createIcon("Languages");
-export const Layers = createIcon("Layers");
-export const LayoutGrid = createIcon("LayoutGrid");
-export const Link = createIcon("Link");
-export const List = createIcon("List");
-export const ListFilter = createIcon("ListFilter");
-export const Loader = createIcon("Loader");
-export const Loader2 = createIcon("Loader2");
-export const Lock = createIcon("Lock");
-export const LockKeyhole = createIcon("LockKeyhole");
-export const LogOut = createIcon("LogOut");
-export const Mail = createIcon("Mail");
-export const Map = createIcon("Map");
-export const MapPin = createIcon("MapPin");
-export const MapPinned = createIcon("MapPinned");
-export const Maximize2 = createIcon("Maximize2");
-export const Megaphone = createIcon("Megaphone");
-export const Menu = createIcon("Menu");
-export const MessageCircle = createIcon("MessageCircle");
-export const MessageSquare = createIcon("MessageSquare");
-export const Minimize2 = createIcon("Minimize2");
-export const Minus = createIcon("Minus");
-export const Monitor = createIcon("Monitor");
-export const Moon = createIcon("Moon");
-export const MoreHorizontal = createIcon("MoreHorizontal");
-export const MoreVertical = createIcon("MoreVertical");
-export const Move = createIcon("Move");
-export const Navigation = createIcon("Navigation");
-export const Package = createIcon("Package");
-export const PackageOpen = createIcon("PackageOpen");
-export const PackageSearch = createIcon("PackageSearch");
-export const PanelLeftClose = createIcon("PanelLeftClose");
-export const PanelLeftOpen = createIcon("PanelLeftOpen");
-export const Paperclip = createIcon("Paperclip");
-export const Pause = createIcon("Pause");
-export const PauseCircle = createIcon("PauseCircle");
-export const Percent = createIcon("Percent");
-export const Phone = createIcon("Phone");
-export const PieChart = createIcon("PieChart");
-export const Pin = createIcon("Pin");
-export const Pizza = createIcon("Pizza");
-export const Play = createIcon("Play");
-export const PlayCircle = createIcon("PlayCircle");
-export const Plus = createIcon("Plus");
-export const Printer = createIcon("Printer");
-export const QrCode = createIcon("QrCode");
-export const Receipt = createIcon("Receipt");
-export const RefreshCcw = createIcon("RefreshCcw");
-export const RefreshCw = createIcon("RefreshCw");
-export const RotateCcw = createIcon("RotateCcw");
-export const RotateCw = createIcon("RotateCw");
-export const Save = createIcon("Save");
-export const Search = createIcon("Search");
-export const SearchX = createIcon("SearchX");
-export const Send = createIcon("Send");
-export const Settings = createIcon("Settings");
-export const Shield = createIcon("Shield");
-export const ShieldAlert = createIcon("ShieldAlert");
-export const ShieldCheck = createIcon("ShieldCheck");
-export const ShoppingBag = createIcon("ShoppingBag");
-export const ShoppingCart = createIcon("ShoppingCart");
-export const SlidersHorizontal = createIcon("SlidersHorizontal");
-export const Soup = createIcon("Soup");
-export const Sparkle = createIcon("Sparkle");
-export const Sparkles = createIcon("Sparkles");
-export const SquarePen = createIcon("SquarePen");
-export const Star = createIcon("Star");
-export const Store = createIcon("Store");
-export const Sun = createIcon("Sun");
-export const Sunrise = createIcon("Sunrise");
-export const Table = createIcon("Table");
-export const Table2 = createIcon("Table2");
-export const Tag = createIcon("Tag");
-export const Tags = createIcon("Tags");
-export const Ticket = createIcon("Ticket");
-export const Timer = createIcon("Timer");
-export const Trash = createIcon("Trash");
-export const Trash2 = createIcon("Trash2");
-export const TrendingDown = createIcon("TrendingDown");
-export const TrendingUp = createIcon("TrendingUp");
-export const Truck = createIcon("Truck");
-export const Undo2 = createIcon("Undo2");
-export const Unlock = createIcon("Unlock");
-export const Upload = createIcon("Upload");
-export const User = createIcon("User");
-export const UserCheck = createIcon("UserCheck");
-export const UserCog = createIcon("UserCog");
-export const UserMinus = createIcon("UserMinus");
-export const UserPlus = createIcon("UserPlus");
-export const UserRound = createIcon("UserRound");
-export const UserX = createIcon("UserX");
-export const Users = createIcon("Users");
-export const Utensils = createIcon("Utensils");
-export const Video = createIcon("Video");
-export const Wallet = createIcon("Wallet");
-export const Warehouse = createIcon("Warehouse");
-export const Wifi = createIcon("Wifi");
-export const Wine = createIcon("Wine");
-export const X = createIcon("X");
-export const XCircle = createIcon("XCircle");
-export const Zap = createIcon("Zap");
-export const ZoomIn = createIcon("ZoomIn");
-export const ZoomOut = createIcon("ZoomOut");
+const iconMap = Object.fromEntries(iconNames.map((name) => [name, createIcon(name)]));
+
+export const {
+  Accessibility, Activity, AlarmClock, AlertCircle, AlertOctagon, AlertTriangle, Archive, ArrowDown, ArrowDownRight,
+  ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, BadgeCheck, Ban, Banknote, BarChart, BarChart2, BarChart3,
+  Beef, Bell, BellOff, BookOpen, Bot, Box, Boxes, Briefcase, Building, Building2, Calculator, Calendar,
+  CalendarCheck, CalendarCheck2, CalendarClock, CalendarDays, CalendarRange, Camera, Carrot,
+  ChartNoAxesColumnIncreasing, Check, CheckCheck, CheckCircle, CheckCircle2, ChefHat, ChevronDown, ChevronLeft,
+  ChevronRight, ChevronUp, ChevronsUpDown, Circle, CircleCheck, CircleDollarSign, CircleHelp, CirclePause,
+  CirclePlay, CirclePlus, Clipboard, ClipboardCheck, ClipboardList, Clock, Clock3, CloudUpload, Coffee, Coins,
+  Columns3, Copy, CreditCard, Crown, Database, DollarSign, Dot, Download, Edit, Edit2, Edit3, Ellipsis,
+  EllipsisVertical, ExternalLink, Eye, EyeOff, File, FileDown, FileImage, FilePlus2, FileSpreadsheet, FileText,
+  FileUp, Filter, FilterX, Fish, Flag, Gauge, Gift, Grid, Grid2X2, Grid3X3, GripVertical, Hash, Headphones,
+  Heart, HelpCircle, Home, Image, ImagePlus, Inbox, Info, Key, KeyRound, Languages, Layers, LayoutGrid, Link,
+  List, ListFilter, Loader, Loader2, Lock, LockKeyhole, LogOut, Mail, Map, MapPin, MapPinned, Maximize2,
+  Megaphone, Menu, MessageCircle, MessageSquare, Minimize2, Minus, Monitor, Moon, MoreHorizontal, MoreVertical,
+  Move, Navigation, Package, PackageOpen, PackageSearch, PanelLeftClose, PanelLeftOpen, Paperclip, Pause,
+  PauseCircle, Percent, Phone, PieChart, Pin, Pizza, Play, PlayCircle, Plus, Printer, QrCode, Receipt,
+  RefreshCcw, RefreshCw, RotateCcw, RotateCw, Save, Search, SearchX, Send, Settings, Shield, ShieldAlert,
+  ShieldCheck, ShoppingBag, ShoppingCart, SlidersHorizontal, Soup, Sparkle, Sparkles, SquarePen, Star, Store,
+  Sun, Sunrise, Table, Table2, Tag, Tags, Ticket, Timer, Trash, Trash2, TrendingDown, TrendingUp, Truck,
+  Undo2, Unlock, Upload, User, UserCheck, UserCog, UserMinus, UserPlus, UserRound, UserX, Users, Utensils,
+  Video, Wallet, Warehouse, Wifi, Wine, X, XCircle, Zap, ZoomIn, ZoomOut,
+} = iconMap;
 
 export default createIcon("LucideIcon");
