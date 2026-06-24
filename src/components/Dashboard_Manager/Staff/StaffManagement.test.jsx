@@ -96,6 +96,7 @@ vi.mock("./components/modals", () => ({
   EditEmployeeModal: () => null,
   WorkHistoryModal: () => null,
   StaffActionConfirmModal: () => null,
+  StaffAvatarModal: () => null,
 }));
 
 describe("StaffManagement navigation", () => {

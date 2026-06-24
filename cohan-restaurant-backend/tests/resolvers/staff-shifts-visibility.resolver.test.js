@@ -23,6 +23,7 @@ vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Type
 describe("staffShifts publication visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.SchedulePublication.find.mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
     modelMocks.Shift.find.mockReturnValue({ sort: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), populate: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
   });
@@ -49,7 +50,7 @@ describe("staffShifts publication visibility", () => {
   it("allows manager query without publication gating", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
 
-    await query.staffShifts(null, { restaurantId: "r1", employeeId: "e2", startDate: "2026-05-04", endDate: "2026-05-10" }, { user: { id: "m1", roles: ["manager"], restaurantIds: ["r1"] } });
+    await query.staffShifts(null, { restaurantId: "r1", employeeId: "e2", startDate: "2026-05-04", endDate: "2026-05-10" }, { user: { id: "m1", roles: ["manager"] } });
 
     expect(modelMocks.SchedulePublication.find).not.toHaveBeenCalled();
     expect(modelMocks.Shift.find).toHaveBeenCalledWith(expect.objectContaining({

@@ -1,5 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { sanitizeUserForClient } from "../../src/security/sanitizeUserForClient.js";
+
+vi.mock("../../models/index.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    Restaurant: {
+      ...(actual.Restaurant || {}),
+      exists: vi.fn().mockResolvedValue(true),
+    },
+  };
+});
 
 describe("sanitizeUserForClient", () => {
   it("preserves emailVerified true/false and safe profile fields", () => {
@@ -221,7 +232,7 @@ describe("user DTO sanitizers", () => {
     await expect(
       sanitizeStaffPrivateProfile(
         { _id: "staff-b", fullName: "Staff B", restaurantForStaff: "restaurant-b", baseSalary: 100 },
-        { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
+        { user: { id: "manager-a", roleName: "manager" } },
         { restaurantId: "restaurant-a" },
       ),
     ).rejects.toThrow("Staff not found");
@@ -230,7 +241,7 @@ describe("user DTO sanitizers", () => {
   it("allows a manager with staff.read to read staff in the manager restaurant", async () => {
     const out = await sanitizeStaffPrivateProfile(
       { _id: "staff-a", fullName: "Staff A", restaurantForStaff: "restaurant-a", baseSalary: 100 },
-      { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
+      { user: { id: "manager-a", roleName: "manager" } },
       { restaurantId: "restaurant-a" },
     );
     expect(out.baseSalary).toBe(100);
@@ -239,14 +250,17 @@ describe("user DTO sanitizers", () => {
   it("uses target staff restaurant when restaurantId is omitted", async () => {
     const out = await sanitizeStaffPrivateProfile(
       { _id: "staff-a", fullName: "Staff A", restaurantForStaff: "restaurant-a", baseSalary: 100 },
-      { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
+      { user: { id: "manager-a", roleName: "manager" } },
     );
     expect(out.baseSalary).toBe(100);
+
+    const { Restaurant } = await import("../../models/index.js");
+    Restaurant.exists.mockResolvedValueOnce(false);
 
     await expect(
       sanitizeStaffPrivateProfile(
         { _id: "staff-b", fullName: "Staff B", restaurantForStaff: "restaurant-b", baseSalary: 100 },
-        { user: { id: "manager-a", roleName: "manager", restaurantId: "restaurant-a" } },
+        { user: { id: "manager-a", roleName: "manager" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });

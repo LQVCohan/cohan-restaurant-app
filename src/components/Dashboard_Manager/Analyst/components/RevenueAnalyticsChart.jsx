@@ -117,7 +117,7 @@ const RevenueAnalyticsChart = ({ data = [], orderData = [], rangeLabel = "Kỳ �
         {!loading && !shouldDrawChart ? (
           <div className="empty-state-inline" data-testid="revenue-empty-compact">
             <span className="empty-icon"><BarChart3 size={18} /></span>
-            <strong>Chưa có doanh thu trong kỳ này</strong>
+            <strong>Chưa có doanh thu trong kỳ</strong>
             <p>{hasPreviousRevenue ? "Kỳ trước có dữ liệu, nhưng kỳ này chưa ghi nhận đơn hoàn tất nên tạm ẩn đường xu hướng để tránh hiểu nhầm." : "Dữ liệu sẽ xuất hiện khi có đơn hoàn tất và thanh toán thành công."}</p>
             <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: "orders", source: "manager-analytics" } }))}>Xem đơn hàng</button>
           </div>

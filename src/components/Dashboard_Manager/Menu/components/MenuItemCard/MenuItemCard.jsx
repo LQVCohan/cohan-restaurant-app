@@ -20,8 +20,8 @@ import AuditLogModal from "../AuditLogModal/AuditLogModal";
 import "./MenuItemCard.scss";
 
 const STATUS_OPTIONS = [
-  { value: "available", label: "Đang bán" },
-  { value: "unavailable", label: "Tạm ngưng bán" },
+  { value: "available", label: "Sẵn sàng" },
+  { value: "unavailable", label: "Tạm dừng" },
   { value: "out_of_stock", label: "Hết món" },
   { value: "hidden", label: "Ẩn khỏi thực đơn" },
 ];
@@ -189,7 +189,7 @@ const MenuItemCard = ({
 
   const renderStatusBadge = () => (
     <div className={`status-badge ${availability.badgeClassName}`}>
-      {availability.label}
+      {item?.status === "available" ? "Sẵn sàng" : availability.label}
     </div>
   );
 
@@ -414,7 +414,7 @@ const MenuItemCard = ({
                     type="button"
                     className="action-btn status-trigger"
                     disabled={updatingStatus}
-                    aria-label="Mở danh sách trạng thái bán"
+                    aria-label="Mở menu trạng thái món"
                     aria-haspopup="menu"
                     aria-expanded={isStatusMenuOpen}
                     onClick={(event) => {

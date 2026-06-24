@@ -11,6 +11,7 @@ const modelMocks = vi.hoisted(() => ({
   Staff: { find: vi.fn(), findById: vi.fn() },
   Timesheet: { find: vi.fn(), findById: vi.fn() },
   PayrollPeriod: { findOne: vi.fn() },
+  Restaurant: { exists: vi.fn() },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -34,7 +35,7 @@ function unlockedPayroll() {
 function ctx(id, userType, restaurantId = RESTAURANT_ID) {
   const normalizedRole = String(userType || "").toUpperCase();
   if (normalizedRole === "ADMIN") return { user: { id, userType } };
-  if (normalizedRole === "MANAGER") return { user: { id, userType, restaurantId } };
+  if (normalizedRole === "MANAGER") return { user: { id, userType } };
   return { user: { id, userType, restaurantForStaff: restaurantId } };
 }
 
@@ -42,6 +43,7 @@ describe("off-schedule attendance service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     unlockedPayroll();
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.Staff.find.mockReturnValue(
       findChain([{ _id: STAFF_ID, fullName: "Staff One", employeeCode: "S001" }]),
     );

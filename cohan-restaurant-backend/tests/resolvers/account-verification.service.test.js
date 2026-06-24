@@ -52,10 +52,13 @@ const servicePromise = import("../../src/services/auth/accountVerification.servi
 const emailVerificationResolverPromise = import("../../graphql/resolvers/auth/emailVerification.mutation.js");
 
 describe("accountVerification.service", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     store.clear();
     mailerSendMail.mockReset();
     eventLogCreate.mockReset();
+    const { Restaurant } = await import("../../models/index.js");
+    Restaurant.exists.mockReset();
+    Restaurant.exists.mockResolvedValue(true);
     process.env.ENABLE_EMAIL_VERIFICATION = "true";
     process.env.ENABLE_PHONE_VERIFICATION = "true";
     process.env.ENABLE_SMS_VERIFICATION = "true";
@@ -219,7 +222,7 @@ describe("emailVerification resend scope", () => {
   it("allows manager for assigned staff in scope", async () => {
     const { assertCanResendForTarget } = await emailVerificationResolverPromise;
     await expect(assertCanResendForTarget(
-      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-b"] } },
+      { user: { id: "manager-1", roleName: "manager" } },
       { _id: "staff-1", userType: "STAFF", restaurantForStaff: "restaurant-b" },
     )).resolves.toBe(true);
   });
@@ -227,7 +230,7 @@ describe("emailVerification resend scope", () => {
   it("does not use customer history as privileged scope", async () => {
     const { assertCanResendForTarget } = await emailVerificationResolverPromise;
     await expect(assertCanResendForTarget(
-      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-b"] } },
+      { user: { id: "manager-1", roleName: "manager" } },
       { _id: "customer-1", userType: "CUSTOMER", refRestaurants: ["restaurant-b"] },
     )).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
   });
@@ -235,7 +238,7 @@ describe("emailVerification resend scope", () => {
   it("denies non-admin manager from resending admin verification", async () => {
     const { assertCanResendForTarget } = await emailVerificationResolverPromise;
     await expect(assertCanResendForTarget(
-      { user: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-a"] } },
+      { user: { id: "manager-1", roleName: "manager" } },
       { _id: "admin-1", userType: "ADMIN", refRestaurants: ["restaurant-a"] },
     )).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
   });

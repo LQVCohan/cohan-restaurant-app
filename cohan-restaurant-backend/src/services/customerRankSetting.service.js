@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import User from "../../models/user.model.js";
-import {
-  CustomerRankSetting,
-  DEFAULT_CUSTOMER_RANKS,
-} from "../../models/customer-rank-setting.model.js";
+const DEFAULT_CUSTOMER_RANKS = Object.freeze([
+  { name: "Mới", minPoints: 0, benefits: "" },
+  { name: "Thân thiết", minPoints: 5, benefits: "Ưu đãi dịp đặc biệt" },
+  { name: "VIP", minPoints: 20, benefits: "Ưu tiên đặt bàn" },
+]);
 
 export function getDefaultCustomerRanks() {
   return DEFAULT_CUSTOMER_RANKS.map((rank) => ({ ...rank }));
@@ -28,6 +28,7 @@ export async function getEffectiveCustomerRankSetting({ restaurantId, session } 
     };
   }
 
+  const { CustomerRankSetting } = await import("../../models/customer-rank-setting.model.js");
   const query = CustomerRankSetting.findOne({ restaurantId: rid });
   const doc = await (session ? query.session(session) : query).lean();
 
@@ -73,6 +74,7 @@ const RANK_POINT_DIVISOR = 1_000_000;
 
 export async function loadCustomerRankContext(userId, session) {
   if (!userId || !mongoose.isValidObjectId(userId)) return null;
+  const { default: User } = await import("../../models/user.model.js");
   const query = User.findById(new mongoose.Types.ObjectId(userId))
     .select("loyaltyRank customerType loyaltyPoints totalSpending");
   const userDoc = await (session ? query.session(session) : query).lean();

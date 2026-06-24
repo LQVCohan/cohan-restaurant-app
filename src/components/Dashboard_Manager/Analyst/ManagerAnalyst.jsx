@@ -269,7 +269,7 @@ const ManagerAnalyst = () => {
           loading
             ? "Đang tải..."
             : !hasRevenueThisPeriod
-              ? "Chưa có doanh thu trong kỳ này"
+              ? "Chưa có doanh thu trong kỳ"
               : revenueProgress === null
                 ? "Chưa có kỳ so sánh"
                 : "So với kỳ trước theo doanh thu",

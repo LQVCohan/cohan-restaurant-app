@@ -51,7 +51,7 @@ export default function DashboardSupportQueue({
     <article className="dashboard-card dashboard-card--support-queue">
       <div className="dashboard-card__head dashboard-card__head--compact">
         <div>
-          <h3>Yêu cầu hỗ trợ</h3>
+          <h3>Yêu cầu hỗ trợ khách hàng</h3>
           <p>Các yêu cầu từ trợ lý AI hoặc khách tại bàn cần nhân viên xử lý.</p>
         </div>
         <span className="queue-count queue-count--support">

@@ -896,9 +896,7 @@ const MenuItemModal = ({
     (type) =>
       MEAT_TYPE_OPTIONS.find((option) => option.value === type)?.label || type,
   );
-  const shouldShowMeatTypes = ["NON_VEGETARIAN", "MIXED"].includes(
-    formData.foodType,
-  );
+  const shouldShowMeatTypes = ["NON_VEGETARIAN", "MIXED"].includes(formData.foodType);
   const currentSugarValue = Number(formData.tasteProfile?.sugar ?? 100);
   const sugarPreviewLabel =
     FOR_YOU_SUGAR_OPTIONS.find(
@@ -1086,7 +1084,7 @@ const MenuItemModal = ({
 
               <div className="for-you-option-group">
                 <div className="for-you-option-group__title">
-                  Nhóm món ăn
+                  Phân loại món ăn
                 </div>
                 <select
                   className="modern-select"
@@ -1112,7 +1110,7 @@ const MenuItemModal = ({
               {shouldShowMeatTypes ? (
                 <div className="for-you-option-group">
                   <div className="for-you-option-group__title">
-                    Thành phần thịt hoặc hải sản
+                    Loại thịt / đạm động vật
                   </div>
                   <div className="for-you-option-grid for-you-option-grid--compact">
                     {MEAT_TYPE_OPTIONS.map((option) => {

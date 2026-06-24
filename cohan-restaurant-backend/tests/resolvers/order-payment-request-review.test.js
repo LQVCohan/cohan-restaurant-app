@@ -36,7 +36,7 @@ const modelMocks = vi.hoisted(() => ({
     findById: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "table-1", code: "T1", restaurantId: "65f000000000000000000099" }) }),
     updateOne: vi.fn().mockResolvedValue(true),
   },
-  Restaurant: {},
+  Restaurant: { exists: vi.fn() },
   PaymentSession: {},
 }));
 
@@ -67,7 +67,6 @@ describe("payment request + confirm guards", () => {
       _id: "65f000000000000000000777",
       roles: ["manager"],
       roleName: "manager",
-      refRestaurants: ["65f000000000000000000099"],
     },
   };
 
@@ -79,6 +78,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.updateOne.mockReset();
     modelMocks.Order.updateMany.mockResolvedValue({ acknowledged: true });
     modelMocks.Order.updateOne.mockResolvedValue({ acknowledged: true });
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.Order.findOne.mockReturnValue(findOneChainFactory(null));
   });
 

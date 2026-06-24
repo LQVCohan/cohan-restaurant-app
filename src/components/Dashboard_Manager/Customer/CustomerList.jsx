@@ -118,7 +118,7 @@ const CustomerTable = ({ customers, onCustomerClick }) => (
   <div
     className="cl-table-card"
     role="region"
-    aria-label="Bảng danh sách khách hàng"
+    aria-label="Bảng khách hàng"
   >
     <table className="cl-table">
       <thead>
@@ -243,7 +243,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const hasPreviousPage =
     hasPreviousLocalPage || Boolean(pagination?.hasPreviousPage);
   const hasNextPage = hasNextLocalPage || Boolean(pagination?.hasNextPage);
-  const hasPagination = hasCustomers && totalVirtualPageCount > 1;
+  const hasPagination = hasCustomers;
 
   const scrollListToTop = () => {
     window.requestAnimationFrame(() => {
@@ -268,9 +268,9 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
 
   const managerSummary = useMemo(() => {
     if (loading || pagination?.isLoading)
-      return "Đang tải danh sách khách hàng...";
-    if (!totalCount) return "Không có khách hàng phù hợp";
-    return `Trang ${currentVirtualPage}/${totalVirtualPageCount} · ${startItem}–${endItem} trên ${totalCount.toLocaleString("vi-VN")} khách hàng`;
+      return "Đang tải danh sách khách...";
+    if (!totalCount) return "Chưa có khách phù hợp";
+    return `Trang ${currentVirtualPage}/${totalVirtualPageCount} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
   }, [
     currentVirtualPage,
     endItem,
@@ -305,10 +305,10 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     scrollListToTop();
   };
 
-  const renderPager = (compact = false) => (
+  const renderPager = (compact = false, showPageSize = false) => (
     <div
       className={`cl-pagination ${compact ? "cl-pagination--inline" : ""}`}
-      aria-label="Phân trang danh sách khách hàng"
+      aria-label="Phân trang khách hàng"
     >
       <button
         type="button"
@@ -322,6 +322,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
       <span>
         Trang <strong>{currentVirtualPage}</strong> / {totalVirtualPageCount}
       </span>
+      {showPageSize ? <span>{visiblePageSize}/trang</span> : <span aria-hidden="true" className="sr-only">{visiblePageSize} mỗi trang</span>}
       <button
         type="button"
         onClick={handleNextPage}
@@ -340,7 +341,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
       className="cl-manager-strip cl-manager-strip--with-pagination"
     >
       <div>
-        <span className="cl-strip-label">Danh sách khách hàng</span>
+        <span className="cl-strip-label">Danh sách khách</span>
         <strong>{managerSummary}</strong>
       </div>
       <div className="cl-strip-tools">
@@ -375,7 +376,8 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         className="cl-bottom-pagination-bar"
         aria-label="Phân trang cuối danh sách"
       >
-        {renderPager(true)}
+        <strong>{managerSummary}</strong>
+        {renderPager(true, true)}
       </div>
     );
   };
@@ -414,7 +416,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
           <div className="cl-empty-icon">
             <SearchX size={42} strokeWidth={1.2} />
           </div>
-          <h3 className="cl-empty-title">Không tìm thấy khách hàng</h3>
+          <h3 className="cl-empty-title">Chưa tìm thấy khách hàng</h3>
           <p className="cl-empty-desc">
             Hãy thử đổi từ khóa, điều chỉnh bộ lọc hoặc thêm khách hàng mới.
           </p>
@@ -431,7 +433,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
               className="cl-empty-secondary"
               onClick={triggerClearFilters}
             >
-              <RotateCcw size={15} /> Đặt lại bộ lọc
+              <RotateCcw size={15} /> Xóa bộ lọc
             </button>
           </div>
         </div>

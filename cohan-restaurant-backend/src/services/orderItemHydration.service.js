@@ -44,7 +44,7 @@ async function assertMenuItemsAvailable({ restaurantId, items, session }) {
   }
 
   const unavailable = (docs || []).find(
-    (item) => String(item.status || "") !== "available",
+    (item) => !["available", "active"].includes(String(item.status || "").toLowerCase()),
   );
   if (unavailable) {
     invalidItems(

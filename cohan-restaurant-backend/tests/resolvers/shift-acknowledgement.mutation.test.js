@@ -18,6 +18,7 @@ const modelMocks = vi.hoisted(() => ({
   Notification: {},
   SchedulePublication: { findById: vi.fn() },
   ShiftAcknowledgement: { updateMany: vi.fn(), findById: vi.fn(), findOne: vi.fn() },
+  Restaurant: { exists: vi.fn() },
 }));
 
 modelMocks.ShiftAcknowledgement.updateMany = modelMocks.updateManyMock;
@@ -85,6 +86,7 @@ describe("shift acknowledgement mutation resolvers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     modelMocks.updateManyMock.mockResolvedValue({ modifiedCount: 1 });
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.SchedulePublication.findById.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
         _id: "pub-1",
@@ -269,7 +271,7 @@ describe("shift acknowledgement mutation resolvers", () => {
     const result = await mutation.reviewShiftAcknowledgement(
       null,
       { input: { acknowledgementId: "ack-1", classification: "valid" } },
-      { user: { id: "mgr-1", roles: ["manager"], restaurantIds: ["r1"] } },
+      { user: { id: "mgr-1", roles: ["manager"] } },
     );
 
     expect(result.declineClassification).toBe("valid");
@@ -292,7 +294,7 @@ describe("shift acknowledgement mutation resolvers", () => {
     const result = await mutation.reviewShiftAcknowledgement(
       null,
       { input: { acknowledgementId: "ack-2", classification: "invalid" } },
-      { user: { id: "mgr-1", roles: ["manager"], restaurantIds: ["r1"] } },
+      { user: { id: "mgr-1", roles: ["manager"] } },
     );
 
     expect(result.declineClassification).toBe("invalid");
@@ -315,7 +317,7 @@ describe("shift acknowledgement mutation resolvers", () => {
       mutation.reviewShiftAcknowledgement(
         null,
         { input: { acknowledgementId: "ack-late", classification: "valid" } },
-        { user: { id: "mgr-1", roles: ["manager"], restaurantIds: ["r1"] } },
+        { user: { id: "mgr-1", roles: ["manager"] } },
       ),
     ).rejects.toThrow("SHIFT_ACKNOWLEDGEMENT_LATE_REVIEW_NOT_ALLOWED");
     expect(doc.save).not.toHaveBeenCalled();

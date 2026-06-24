@@ -35,6 +35,7 @@ describe("staffRoleAssignment.service", () => {
     vi.resetModules();
     vi.clearAllMocks();
     modelMocks.AuditLog.create.mockResolvedValue({ _id: "audit-1" });
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
 
   it("allows manager with staff.write in restaurant scope to assign a whitelisted staff role", async () => {
@@ -53,7 +54,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     const result = await assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager" },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",
@@ -86,7 +87,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager" },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",
@@ -105,7 +106,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager" },
       staffUserId: "staff-1",
       roleId: "role-admin",
       restaurantId: "restaurant-1",
@@ -132,7 +133,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager" },
       staffUserId: "staff-1",
       roleId: "role-storekeeper",
       restaurantId: "restaurant-1",
@@ -154,7 +155,7 @@ describe("staffRoleAssignment.service", () => {
       const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
       await expect(assignStaffRoleWithinRestaurant({
-        actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
+        actor: { id: "manager-1", roleName: "manager" },
         staffUserId: "staff-1",
         roleId: `role-${code}`,
         restaurantId: "restaurant-1",
@@ -199,7 +200,7 @@ describe("staffRoleAssignment.service", () => {
     const { assignStaffRoleWithinRestaurant } = await import("../../src/services/auth/staffRoleAssignment.service.js");
 
     await expect(assignStaffRoleWithinRestaurant({
-      actor: { id: "manager-1", roleName: "manager", restaurantIds: ["restaurant-1"] },
+      actor: { id: "manager-1", roleName: "manager" },
       staffUserId: "staff-1",
       roleId: "role-server",
       restaurantId: "restaurant-1",

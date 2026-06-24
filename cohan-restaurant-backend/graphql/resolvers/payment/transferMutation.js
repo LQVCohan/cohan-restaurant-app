@@ -3,7 +3,6 @@ import { EventLog, Order, PaymentSession } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import {
-  TRANSFER_MAX_REJECTED_PROOFS,
   TRANSFER_PAYMENT_TTL_MS,
   createOrderPayment,
   sanitizePaymentSessionForClient,
@@ -13,6 +12,8 @@ import { emitCustomerTrackingUpdateIfChanged } from "../../../src/services/order
 import { emitOrderEvent, emitRestaurantEvent } from "../order/helper/emitOrderEvent.js";
 import { emitPaymentRealtime } from "../../../src/services/payment/paymentRealtime.service.js";
 import { cancelDraftTransferOrdersForExpiredPayment } from "../../../src/services/payment/transferExpiry.service.js";
+
+const TRANSFER_MAX_REJECTED_PROOFS = 3;
 
 function toId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
