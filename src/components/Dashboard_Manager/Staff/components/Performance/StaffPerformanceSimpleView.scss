@@ -300,3 +300,86 @@
     }
   }
 }
+
+/* Review modal must behave like a real app modal, not a dimmed panel inside the staff content. */
+body:has(.performance-modal-overlay) {
+  overflow: hidden !important;
+}
+
+.performance-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 2147483000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 24px !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(83, 108, 97, 0.2), transparent 32rem),
+    rgba(18, 25, 27, 0.74) !important;
+  backdrop-filter: blur(5px) saturate(0.95) !important;
+}
+
+.performance-review-modal {
+  width: min(720px, calc(100vw - 48px)) !important;
+  max-height: min(760px, 88dvh) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(228, 218, 203, 0.92) !important;
+  border-radius: 22px !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 34px 96px rgba(0, 0, 0, 0.34) !important;
+}
+
+.performance-review-modal .modal-header {
+  flex: 0 0 auto !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(214, 202, 184, 0.84) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+}
+
+.performance-review-modal .review-form {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 14px 18px 0 !important;
+  gap: 10px !important;
+}
+
+.performance-review-modal .review-score-field {
+  border-color: rgba(214, 202, 184, 0.84) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+}
+
+.performance-review-modal input[type="range"] {
+  accent-color: #536c61 !important;
+}
+
+.performance-review-modal .modal-actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 3 !important;
+  margin: 0 -18px !important;
+  padding: 12px 18px !important;
+  border-top: 1px solid rgba(214, 202, 184, 0.84) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 -12px 24px rgba(70, 62, 50, 0.08) !important;
+}
+
+@media (max-width: 760px) {
+  .performance-modal-overlay {
+    align-items: stretch !important;
+    padding: 12px !important;
+  }
+
+  .performance-review-modal {
+    width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .performance-review-modal .review-score-field {
+    grid-template-columns: 1fr !important;
+  }
+}
