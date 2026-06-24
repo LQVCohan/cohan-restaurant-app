@@ -42,6 +42,7 @@ export const BarChart3 = createIcon("BarChart3");
 export const Beef = createIcon("Beef");
 export const Bell = createIcon("Bell");
 export const Bot = createIcon("Bot");
+export const Briefcase = createIcon("Briefcase");
 export const Building2 = createIcon("Building2");
 export const Calendar = createIcon("Calendar");
 export const CalendarCheck = createIcon("CalendarCheck");
