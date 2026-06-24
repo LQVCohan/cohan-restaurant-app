@@ -65,7 +65,7 @@ describe("TodayMealWizard", () => {
 
     expect(screen.getByRole("region", { name: /wizard hỗ trợ chọn món hôm nay/i })).toBeInTheDocument();
     expect(screen.getByText("Hôm nay ăn gì?")).toBeInTheDocument();
-    expect(screen.getByText("Hôm nay bạn muốn ăn kiểu gì?")).toBeInTheDocument();
+    expect(screen.getByText("Bạn muốn bữa ăn kiểu nào?")).toBeInTheDocument();
   });
 
   it("does not render on checkout and manager pages", () => {
@@ -96,13 +96,13 @@ describe("TodayMealWizard", () => {
     renderWizard({ route: "/restaurant/restaurant-1" });
 
     fireEvent.click(screen.getByRole("button", { name: /nhanh gọn/i }));
-    await waitFor(() => expect(screen.getByText("Ngân sách khoảng bao nhiêu?")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Bạn muốn chi khoảng bao nhiêu?")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /100k - 200k/i }));
-    await waitFor(() => expect(screen.getByText("Khẩu vị hôm nay?")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Khẩu vị hôm nay là gì?")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /ít cay/i }));
-    await waitFor(() => expect(screen.getByText("Ăn cho mấy người?")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Bữa này dành cho mấy người?")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /2 người/i }));
 
@@ -112,7 +112,7 @@ describe("TodayMealWizard", () => {
     expect(variables.input.pageContext.source).toBe("todayMealWizard");
     expect(variables.input.pageContext.trigger).toBe("wizard_complete_or_click");
     expect(variables.input.message).toContain("Linh");
-    expect(variables.input.message).toContain("100k đến 200k");
+    expect(variables.input.message).toContain("100k-200k");
     expect(variables.input.message).toContain("ít cay");
     expect(variables.input.message).toContain("2 người");
 
@@ -125,20 +125,20 @@ describe("TodayMealWizard", () => {
     renderWizard({ route: "/restaurant/restaurant-1" });
 
     fireEvent.click(screen.getByRole("button", { name: /nhanh gọn/i }));
-    await waitFor(() => expect(screen.getByText("Ngân sách khoảng bao nhiêu?")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Bạn muốn chi khoảng bao nhiêu?")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /100k - 200k/i }));
-    await waitFor(() => expect(screen.getByText("Khẩu vị hôm nay?")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Khẩu vị hôm nay là gì?")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /ít cay/i }));
-    await waitFor(() => expect(screen.getByText("Ăn cho mấy người?")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Bữa này dành cho mấy người?")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /2 người/i }));
 
     await screen.findByText("Gợi ý từ AI");
-    fireEvent.click(screen.getByRole("button", { name: /hỏi tiếp trong chat ai/i }));
+    fireEvent.click(screen.getByRole("button", { name: /hỏi thêm trong chat ai/i }));
 
     expect(openAiMenuAssistant).toHaveBeenCalledTimes(1);
     const payload = openAiMenuAssistant.mock.calls[0][0];
     expect(payload.restaurantId).toBe("restaurant-1");
     expect(payload.autoSend).toBe(true);
-    expect(payload.message).toContain("100k đến 200k");
+    expect(payload.message).toContain("100k-200k");
   });
 });
