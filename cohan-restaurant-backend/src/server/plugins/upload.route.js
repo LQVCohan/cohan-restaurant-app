@@ -16,6 +16,7 @@ import {
   requestTableModelGeneration,
   shouldKeepAiInputFilesForResult as shouldKeepAiInputFilesForGenerationResult,
 } from "../../services/table3d/table3dAiGeneration.service.js";
+import { verifyAnyTokenAndIssueAuth } from "../../services/auth/accountVerification.service.js";
 
 const MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.UPLOAD_MAX_FILE_SIZE_BYTES || `${10 * 1024 * 1024}`,
@@ -169,7 +170,6 @@ const validateTable3DAiImageFile = (file, buffer) => {
   return extByMime[mimeType] || ext;
 };
 
-
 export const cleanupSavedPaths = async (savedPaths = [], logger) => {
   const paths = Array.isArray(savedPaths) ? savedPaths.filter(Boolean) : [];
   if (!paths.length) return;
@@ -229,7 +229,6 @@ const sha256Hex = (value) =>
 
 const hmac = (key, value, encoding) =>
   crypto.createHmac("sha256", key).update(value).digest(encoding);
-
 
 const UPLOAD_RATE_LIMIT_MAX = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_MAX || "30", 10);
 const UPLOAD_RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.UPLOAD_RATE_LIMIT_WINDOW_MS || `${60 * 1000}`, 10);
@@ -355,13 +354,39 @@ const buildSignedPutUrl = ({ s3, key, mimeType }) => {
 
 export default fp(
   async function uploadRoutes(app) {
+    app.post("/auth/verify-account", {
+      config: {
+        rateLimit: {
+          max: Number(process.env.RL_AUTH_VERIFY_ACCOUNT_MAX || 20),
+          timeWindow: process.env.RL_AUTH_VERIFY_ACCOUNT_WINDOW || "1 minute",
+        },
+      },
+    }, async function (req, reply) {
+      try {
+        const { token, channel } = req.body || {};
+        const result = await verifyAnyTokenAndIssueAuth({
+          token,
+          channel,
+          ctx: { request: req, reply },
+        });
+        return reply.send({ ok: true, token: result.token, user: result.user });
+      } catch (err) {
+        const code = err?.extensions?.code || err?.code || "VERIFY_FAILED";
+        req.log?.warn?.({ err, code }, "account verification auth endpoint failed");
+        return reply.code(code === "BAD_USER_INPUT" ? 400 : 500).send({
+          ok: false,
+          code,
+          message: err?.message || "Verification failed",
+        });
+      }
+    });
+
     if (!app.hasContentTypeParser("multipart")) {
       await app.register(multipart, {
         limits: { fileSize: TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES, files: 8 },
         attachFieldsToBody: false,
       });
     }
-
 
     const table3DAiRateStore = new Map();
     const consumeTable3DAiRateLimit = (req, userId) => {
@@ -499,7 +524,6 @@ export default fp(
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
         },
       });
-
 
       app.post("/table-3d-assets/upload", async function (req, reply) {
         const authUser = await ensureUploadAuth(req, reply);
