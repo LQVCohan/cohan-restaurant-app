@@ -1,28 +1,87 @@
-/* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext } from "react";
-import { useCart as useCartCore } from "../hooks/useCart"; // 👈 hook gốc của bạn
+import React, { createContext, useContext, useEffect, useMemo } from "react";
+import { gql, useQuery } from "@apollo/client";
+import { AuthContext } from "@/context/AuthContext";
+import { useCart as useCartCore } from "../hooks/useCart";
 
-// Tạo context
 const CartContext = createContext(null);
 
-// Provider bọc toàn app (bạn đã dùng trong App.jsx)
-export const CartProvider = ({ children }) => {
-  // Dùng lại logic giỏ hàng đã test kỹ ở hook useCart
-  const cartState = useCartCore();
+const MY_CART = gql`
+  query MyActiveCustomerCartForContext {
+    myCart {
+      id
+      restaurantId
+      totalQuantity
+      totalAmount
+      totalPrice
+      items {
+        id
+        restaurantId
+        menuItemId
+        name
+        price
+        quantity
+        thumbImage
+        note
+        servingVariantKey
+        holdExpiresAt
+        holdStatus
+      }
+    }
+  }
+`;
 
-  return (
-    <CartContext.Provider value={cartState}>{children}</CartContext.Provider>
+const mapServerCartItem = (cartId, item = {}) => ({
+  id: item.menuItemId || item.id,
+  dishId: item.menuItemId || item.id,
+  restaurantId: item.restaurantId,
+  name: item.name || "Món ăn",
+  price: Number(item.price || 0),
+  quantity: Number(item.quantity || 1) || 1,
+  image: item.thumbImage || "",
+  thumbImage: item.thumbImage || "",
+  note: item.note || "",
+  servingVariantKey: item.servingVariantKey || "portion",
+  holdExpiresAt: item.holdExpiresAt || null,
+  holdStatus: item.holdStatus || "active",
+  backendCartId: cartId,
+  backendCartItemId: item.id,
+});
+
+export const CartProvider = ({ children }) => {
+  const cartState = useCartCore();
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
+  const roleName = String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
+  const isCustomer = roleName === "customer";
+
+  const { data, refetch, loading } = useQuery(MY_CART, {
+    skip: !isAuthenticated || !isCustomer,
+    fetchPolicy: "cache-and-network",
+  });
+
+  useEffect(() => {
+    const serverCart = data?.myCart;
+    if (!serverCart?.id) return;
+    const serverItems = (serverCart.items || []).map((item) => mapServerCartItem(serverCart.id, item));
+    cartState.syncServerCart(serverItems, { replace: false });
+  }, [cartState.syncServerCart, data?.myCart]);
+
+  const value = useMemo(
+    () => ({
+      ...cartState,
+      serverCart: data?.myCart || null,
+      serverCartLoading: loading,
+      refetchServerCart: refetch,
+    }),
+    [cartState, data?.myCart, loading, refetch],
   );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
-// Hook tiện dụng để dùng trong component
 export const useCart = () => {
   const ctx = useContext(CartContext);
-  if (!ctx) {
-    throw new Error("useCart must be used inside <CartProvider>");
-  }
+  if (!ctx) throw new Error("useCart must be used inside <CartProvider>");
   return ctx;
 };
 
-// export default nếu bạn cần, nhưng đừng dùng trực tiếp CartContext nữa
 export default CartContext;
