@@ -20,9 +20,7 @@ const toObjectId = (value) => {
 };
 
 const roundMoney = (value) => Math.round(Number(value || 0));
-
-const createReference = (prefix = "WL") =>
-  `${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+const createReference = (prefix = "WL") => `${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
 export function requireWalletUser(ctx) {
   const userId = ctx?.user?.id || ctx?.user?._id;
@@ -30,9 +28,9 @@ export function requireWalletUser(ctx) {
   return String(userId);
 }
 
-function normalizeAmount(amount, { allowZero = false } = {}) {
+function normalizeAmount(amount) {
   const value = roundMoney(amount);
-  if (allowZero ? value < 0 : value <= 0) throw new Error("Invalid wallet amount");
+  if (value <= 0) throw new Error("Invalid wallet amount");
   return value;
 }
 
@@ -86,38 +84,8 @@ function serializeWalletTransaction(transaction) {
   };
 }
 
-async function createWalletTransactionDoc({
-  userId,
-  type,
-  amount,
-  currency = DEFAULT_CURRENCY,
-  balanceBefore,
-  balanceAfter,
-  status = "SUCCESS",
-  referenceType,
-  referenceId,
-  orderIds = [],
-  metadata = {},
-  session,
-}) {
-  const [doc] = await WalletTransaction.create(
-    [
-      {
-        userId,
-        type,
-        amount,
-        currency,
-        balanceBefore,
-        balanceAfter,
-        status,
-        referenceType,
-        referenceId,
-        orderIds,
-        metadata,
-      },
-    ],
-    { session },
-  );
+async function createWalletTransactionDoc({ userId, type, amount, currency = DEFAULT_CURRENCY, balanceBefore, balanceAfter, status = "SUCCESS", referenceType, referenceId, orderIds = [], metadata = {}, session }) {
+  const [doc] = await WalletTransaction.create([{ userId, type, amount, currency, balanceBefore, balanceAfter, status, referenceType, referenceId, orderIds, metadata }], { session });
   return doc;
 }
 
@@ -126,26 +94,12 @@ export async function getWalletSummary(userId) {
   if (!uid) throw new Error("Unauthorized");
   const user = await User.findById(uid).select({ wallet: 1 }).lean();
   if (!user) throw new Error("User not found");
-
-  const [aggregates] = await WalletTransaction.aggregate([
-    { $match: { userId: uid, status: "SUCCESS" } },
-    {
-      $group: {
-        _id: "$type",
-        total: { $sum: "$amount" },
-        count: { $sum: 1 },
-      },
-    },
-  ]);
-
-  const aggregateMap = Array.isArray(aggregates) ? {} : null;
   const rows = await WalletTransaction.aggregate([
     { $match: { userId: uid, status: "SUCCESS" } },
     { $group: { _id: "$type", total: { $sum: "$amount" }, count: { $sum: 1 } } },
   ]);
   const byType = Object.fromEntries(rows.map((row) => [row._id, row]));
   const wallet = serializeWallet(user.wallet || {});
-
   return {
     wallet,
     balance: wallet.balance,
@@ -166,26 +120,14 @@ export async function listWalletTransactions(userId, filter = {}) {
   const query = { userId: uid };
   if (filter?.type) query.type = String(filter.type).toUpperCase();
   if (filter?.status) query.status = String(filter.status).toUpperCase();
-
-  const docs = await WalletTransaction.find(query)
-    .sort({ createdAt: -1, _id: -1 })
-    .limit(limit);
+  const docs = await WalletTransaction.find(query).sort({ createdAt: -1, _id: -1 }).limit(limit);
   return docs.map(serializeWalletTransaction);
 }
 
-export async function creditWallet({
-  userId,
-  amount,
-  type = "TOPUP",
-  referenceType,
-  referenceId,
-  orderIds = [],
-  metadata = {},
-}) {
+export async function creditWallet({ userId, amount, type = "TOPUP", referenceType, referenceId, orderIds = [], metadata = {} }) {
   const uid = toObjectId(userId);
   if (!uid) throw new Error("Invalid userId");
   const normalizedAmount = normalizeAmount(amount);
-
   const session = await mongoose.startSession();
   try {
     let result;
@@ -200,7 +142,6 @@ export async function creditWallet({
       user.wallet.provider = wallet.provider || WALLET_PROVIDER;
       user.wallet.updatedAt = new Date();
       await user.save({ session });
-
       const transaction = await createWalletTransactionDoc({
         userId: uid,
         type,
@@ -214,11 +155,7 @@ export async function creditWallet({
         metadata,
         session,
       });
-
-      result = {
-        wallet: serializeWallet(user.wallet),
-        transaction: serializeWalletTransaction(transaction),
-      };
+      result = { wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(transaction) };
     });
     return result;
   } finally {
@@ -234,18 +171,9 @@ export async function createWalletTopup({ userId, amount, provider = "sandbox", 
     amount: normalizedAmount,
     type: "TOPUP",
     referenceType: "WALLET_TOPUP",
-    metadata: {
-      provider: String(provider || "sandbox"),
-      reference: topupReference,
-      sandbox: String(provider || "sandbox").toLowerCase() === "sandbox",
-      ...metadata,
-    },
+    metadata: { provider: String(provider || "sandbox"), reference: topupReference, sandbox: String(provider || "sandbox").toLowerCase() === "sandbox", ...metadata },
   });
-  return {
-    ok: true,
-    message: "Nạp ví thành công.",
-    ...result,
-  };
+  return { ok: true, message: "Nạp ví thành công.", ...result };
 }
 
 export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [], idempotencyKey }) {
@@ -254,9 +182,7 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
   if (!uid) throw new Error("Unauthorized");
   if (!rid) throw new Error("Invalid restaurantId");
   const uniqueOrderIds = [...new Set((orderIds || []).map(String))];
-  if (!uniqueOrderIds.length || uniqueOrderIds.some((id) => !mongoose.isValidObjectId(id))) {
-    throw new Error("Invalid orderIds");
-  }
+  if (!uniqueOrderIds.length || uniqueOrderIds.some((id) => !mongoose.isValidObjectId(id))) throw new Error("Invalid orderIds");
 
   const session = await mongoose.startSession();
   try {
@@ -265,120 +191,37 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
       const orderObjectIds = uniqueOrderIds.map((id) => new mongoose.Types.ObjectId(id));
       const orders = await Order.find({ _id: { $in: orderObjectIds }, restaurantId: rid }).session(session);
       if (orders.length !== orderObjectIds.length) throw new Error("No eligible orders");
-
       let amount = 0;
       for (const order of orders) {
         if (String(order.userId || "") !== String(uid)) throw new Error("Forbidden");
-        if (String(order?.payment?.status || "").toLowerCase() === "paid" || order.orderPaymentStatus === "paid") {
-          throw new Error("Order already paid");
-        }
+        if (String(order?.payment?.status || "").toLowerCase() === "paid" || order.orderPaymentStatus === "paid") throw new Error("Order already paid");
         amount += Math.max(0, roundMoney(order?.totals?.grandTotal || 0) - roundMoney(order?.payment?.paidAmount || 0));
       }
       amount = normalizeAmount(amount);
-
       const user = await User.findById(uid).session(session);
       if (!user) throw new Error("User not found");
       const wallet = ensureWalletOnUser(user);
       const balanceBefore = roundMoney(wallet.balance);
       if (balanceBefore < amount) throw new Error("Insufficient wallet balance");
       const balanceAfter = balanceBefore - amount;
-
       const txnRef = createReference("WALLETPAY");
-      const [paymentTransaction] = await PaymentTransaction.create(
-        [
-          {
-            restaurantId: rid,
-            orderId: orderObjectIds[0],
-            orderIds: orderObjectIds,
-            userId: uid,
-            method: "e_wallet",
-            paidAmount: amount,
-            changeAmount: 0,
-            currency: wallet.currency || DEFAULT_CURRENCY,
-            status: "SUCCESS",
-            txnRef,
-            externalRef: idempotencyKey || txnRef,
-            meta: { provider: WALLET_PROVIDER, orderIds: uniqueOrderIds, idempotencyKey },
-            paidAt: new Date(),
-          },
-        ],
-        { session },
-      );
-
+      const [paymentTransaction] = await PaymentTransaction.create([{ restaurantId: rid, orderId: orderObjectIds[0], orderIds: orderObjectIds, userId: uid, method: "e_wallet", paidAmount: amount, changeAmount: 0, currency: wallet.currency || DEFAULT_CURRENCY, status: "SUCCESS", txnRef, externalRef: idempotencyKey || txnRef, meta: { provider: WALLET_PROVIDER, orderIds: uniqueOrderIds, idempotencyKey }, paidAt: new Date() }], { session });
       user.wallet.balance = balanceAfter;
       user.wallet.provider = wallet.provider || WALLET_PROVIDER;
       user.wallet.currency = wallet.currency || DEFAULT_CURRENCY;
       user.wallet.updatedAt = new Date();
       await user.save({ session });
-
-      const walletTransaction = await createWalletTransactionDoc({
-        userId: uid,
-        type: "PAYMENT",
-        amount,
-        currency: user.wallet.currency,
-        balanceBefore,
-        balanceAfter,
-        referenceType: "ORDER_PAYMENT",
-        referenceId: paymentTransaction._id,
-        orderIds: orderObjectIds,
-        metadata: { restaurantId: String(rid), txnRef, idempotencyKey },
-        session,
-      });
-
+      const walletTransaction = await createWalletTransactionDoc({ userId: uid, type: "PAYMENT", amount, currency: user.wallet.currency, balanceBefore, balanceAfter, referenceType: "ORDER_PAYMENT", referenceId: paymentTransaction._id, orderIds: orderObjectIds, metadata: { restaurantId: String(rid), txnRef, idempotencyKey }, session });
       for (const order of orders) {
-        order.payment = {
-          ...(order.payment || {}),
-          method: "e_wallet",
-          provider: WALLET_PROVIDER,
-          transactionId: paymentTransaction._id,
-          txnRef,
-          status: "paid",
-          paidAmount: roundMoney(order?.totals?.grandTotal || 0),
-          currency: user.wallet.currency,
-          paidAt: new Date(),
-          paidBy: uid,
-        };
+        order.payment = { ...(order.payment || {}), method: "e_wallet", provider: WALLET_PROVIDER, transactionId: paymentTransaction._id, txnRef, status: "paid", paidAmount: roundMoney(order?.totals?.grandTotal || 0), currency: user.wallet.currency, paidAt: new Date(), paidBy: uid };
         order.orderPaymentStatus = "paid";
-        if (!["completed", "cancelled"].includes(String(order.currentStatus || "").toLowerCase())) {
-          order.currentStatus = "confirmed";
-        }
+        if (!["completed", "cancelled"].includes(String(order.currentStatus || "").toLowerCase())) order.currentStatus = "confirmed";
         order.statusTimeline = Array.isArray(order.statusTimeline) ? order.statusTimeline : [];
         order.statusTimeline.push({ status: order.currentStatus, at: new Date(), byUserId: uid, note: "Paid by Cohan Wallet" });
         await order.save({ session });
       }
-
-      await Cashflow.create(
-        [
-          {
-            restaurantId: rid,
-            type: "INFLOW",
-            amount,
-            currency: user.wallet.currency,
-            category: "SALE",
-            method: "e_wallet",
-            status: "SUCCESS",
-            source: "customer_wallet",
-            occurredAt: new Date(),
-            reference: {
-              kind: "PaymentTransaction",
-              paymentTransactionId: paymentTransaction._id,
-            },
-            note: "Customer paid by Cohan Wallet",
-            createdBy: uid,
-          },
-        ],
-        { session },
-      ).catch(() => {});
-
-      result = {
-        ok: true,
-        message: "Thanh toán bằng ví thành công.",
-        wallet: serializeWallet(user.wallet),
-        transaction: serializeWalletTransaction(walletTransaction),
-        paymentTransactionId: String(paymentTransaction._id),
-        orderIds: uniqueOrderIds,
-        amount,
-      };
+      await Cashflow.create([{ restaurantId: rid, type: "INFLOW", amount, currency: user.wallet.currency, category: "sale", method: "e_wallet", status: "completed", source: "order", occurredAt: new Date(), ref: { kind: "PaymentTransaction", paymentTransactionId: paymentTransaction._id, orderIds: orderObjectIds }, note: "Customer paid by Cohan Wallet", createdBy: uid }], { session }).catch(() => {});
+      result = { ok: true, message: "Thanh toán bằng ví thành công.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction), paymentTransactionId: String(paymentTransaction._id), orderIds: uniqueOrderIds, amount };
     });
     return result;
   } finally {
@@ -386,16 +229,7 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
   }
 }
 
-export async function refundToWallet({
-  userId,
-  restaurantId,
-  orderIds = [],
-  amount,
-  reason,
-  referenceType = "RESTAURANT_REFUND",
-  referenceId,
-  processedBy,
-}) {
+export async function refundToWallet({ userId, restaurantId, orderIds = [], amount, reason, referenceType = "RESTAURANT_REFUND", referenceId, processedBy }) {
   const uid = toObjectId(userId);
   const rid = toObjectId(restaurantId);
   const actorId = toObjectId(processedBy);
@@ -403,7 +237,6 @@ export async function refundToWallet({
   if (!rid) throw new Error("Invalid restaurantId");
   const normalizedAmount = normalizeAmount(amount);
   const orderObjectIds = (orderIds || []).map(toObjectId).filter(Boolean);
-
   const session = await mongoose.startSession();
   try {
     let result;
@@ -418,64 +251,13 @@ export async function refundToWallet({
       user.wallet.currency = wallet.currency || DEFAULT_CURRENCY;
       user.wallet.updatedAt = new Date();
       await user.save({ session });
-
-      const [refund] = await PaymentRefund.create(
-        [
-          {
-            restaurantId: rid,
-            orderId: orderObjectIds[0] || null,
-            amount: normalizedAmount,
-            currency: user.wallet.currency,
-            reason: String(reason || "Refund to wallet").trim(),
-            method: "cohan_wallet",
-            status: "processed",
-            providerRefundId: createReference("REFUND"),
-            createdBy: actorId,
-            approvedBy: actorId,
-            approvedAt: new Date(),
-            processedBy: actorId,
-            processedAt: new Date(),
-            auditTrail: [{ at: new Date(), action: "refund_to_wallet", by: actorId, amount: normalizedAmount }],
-          },
-        ],
-        { session },
-      );
-
-      const walletTransaction = await createWalletTransactionDoc({
-        userId: uid,
-        type: "REFUND",
-        amount: normalizedAmount,
-        currency: user.wallet.currency,
-        balanceBefore,
-        balanceAfter,
-        referenceType,
-        referenceId: toObjectId(referenceId) || refund._id,
-        orderIds: orderObjectIds,
-        metadata: { restaurantId: String(rid), reason, refundId: String(refund._id) },
-        session,
-      });
-
+      const [refund] = await PaymentRefund.create([{ restaurantId: rid, orderId: orderObjectIds[0] || null, amount: normalizedAmount, currency: user.wallet.currency, reason: String(reason || "Refund to wallet").trim(), method: "e_wallet", status: "success", providerRefundId: createReference("REFUND"), createdBy: actorId, approvedBy: actorId, approvedAt: new Date(), processedBy: actorId, processedAt: new Date(), auditTrail: [{ at: new Date(), action: "refund_to_wallet", actorId, nextStatus: "success", reason, note: `Refunded ${normalizedAmount} to Cohan Wallet` }] }], { session });
+      const walletTransaction = await createWalletTransactionDoc({ userId: uid, type: "REFUND", amount: normalizedAmount, currency: user.wallet.currency, balanceBefore, balanceAfter, referenceType, referenceId: toObjectId(referenceId) || refund._id, orderIds: orderObjectIds, metadata: { restaurantId: String(rid), reason, refundId: String(refund._id) }, session });
       if (orderObjectIds.length) {
-        await Order.updateMany(
-          { _id: { $in: orderObjectIds }, restaurantId: rid },
-          {
-            $set: {
-              "payment.status": "refunded",
-              orderPaymentStatus: "refunded",
-            },
-          },
-          { session },
-        );
+        await Order.updateMany({ _id: { $in: orderObjectIds }, restaurantId: rid }, { $set: { "payment.status": "refunded", orderPaymentStatus: "refunded" } }, { session });
       }
-
-      result = {
-        ok: true,
-        message: "Đã hoàn tiền vào ví khách hàng.",
-        wallet: serializeWallet(user.wallet),
-        transaction: serializeWalletTransaction(walletTransaction),
-        refundId: String(refund._id),
-        amount: normalizedAmount,
-      };
+      await Cashflow.create([{ restaurantId: rid, type: "OUTFLOW", amount: normalizedAmount, currency: user.wallet.currency, category: "refund", method: "e_wallet", status: "completed", source: "refund", occurredAt: new Date(), ref: { kind: "PaymentRefund", refundId: refund._id, orderIds: orderObjectIds }, note: reason, createdBy: actorId }], { session }).catch(() => {});
+      result = { ok: true, message: "Đã hoàn tiền vào ví khách hàng.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction), refundId: String(refund._id), amount: normalizedAmount };
     });
     return result;
   } finally {
@@ -488,7 +270,6 @@ export async function adjustWalletBalance({ userId, amount, reason, actorId }) {
   if (!normalizedAmount) throw new Error("Invalid wallet amount");
   const uid = toObjectId(userId);
   if (!uid) throw new Error("Invalid userId");
-
   const session = await mongoose.startSession();
   try {
     let result;
@@ -504,25 +285,8 @@ export async function adjustWalletBalance({ userId, amount, reason, actorId }) {
       user.wallet.currency = wallet.currency || DEFAULT_CURRENCY;
       user.wallet.updatedAt = new Date();
       await user.save({ session });
-
-      const walletTransaction = await createWalletTransactionDoc({
-        userId: uid,
-        type: "ADJUSTMENT",
-        amount: Math.abs(normalizedAmount),
-        currency: user.wallet.currency,
-        balanceBefore,
-        balanceAfter,
-        referenceType: "MANUAL_ADJUSTMENT",
-        metadata: { direction: normalizedAmount > 0 ? "credit" : "debit", reason, actorId },
-        session,
-      });
-
-      result = {
-        ok: true,
-        message: "Đã điều chỉnh số dư ví.",
-        wallet: serializeWallet(user.wallet),
-        transaction: serializeWalletTransaction(walletTransaction),
-      };
+      const walletTransaction = await createWalletTransactionDoc({ userId: uid, type: "ADJUSTMENT", amount: Math.abs(normalizedAmount), currency: user.wallet.currency, balanceBefore, balanceAfter, referenceType: "MANUAL_ADJUSTMENT", metadata: { direction: normalizedAmount > 0 ? "credit" : "debit", reason, actorId }, session });
+      result = { ok: true, message: "Đã điều chỉnh số dư ví.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction) };
     });
     return result;
   } finally {
