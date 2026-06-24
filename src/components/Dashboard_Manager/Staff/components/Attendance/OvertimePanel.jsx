@@ -199,11 +199,11 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
       restaurantId,
       getRestaurantIdFromUrl(),
       user?.restaurantForStaff,
-      user?.refRestaurants?.[0],
+      user?.restaurantId,
     ];
     const valid = candidates.map(normalizeId).find(isValidObjectId);
     return valid || "";
-  }, [restaurantId, user?.restaurantForStaff, user?.refRestaurants]);
+  }, [restaurantId, user?.restaurantForStaff, user?.restaurantId]);
 
   const {
     records,
