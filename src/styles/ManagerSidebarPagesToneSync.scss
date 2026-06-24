@@ -1,0 +1,563 @@
+/* Manager sidebar pages tone sync.
+   Scope: non-AI manager pages opened from the sidebar.
+   Visual-only layer; no API, routing, permissions or data-flow changes. */
+
+:where(
+  .manager-layout--dashboard,
+  .manager-layout--menu,
+  .manager-layout--inventory,
+  .manager-layout--staff,
+  .manager-layout--customers,
+  .manager-layout--customer-analytics,
+  .manager-layout--analytics,
+  .manager-layout--reports,
+  .manager-layout--finance,
+  .manager-layout--transactions,
+  .manager-layout--transfer-review,
+  .manager-layout--schedules,
+  .manager-layout--promotions,
+  .manager-layout--payroll,
+  .manager-layout--reviews,
+  .manager-layout--settings,
+  .manager-layout--rates,
+  .manager-layout--setting,
+  .manager-layout--backup,
+  .manager-layout--print-management,
+  .manager-layout--rbac,
+  .manager-layout--system-users
+) {
+  --sidebar-sync-primary: #0f6f66;
+  --sidebar-sync-primary-deep: #07544e;
+  --sidebar-sync-primary-soft: #edf7f4;
+  --sidebar-sync-accent: #a8855f;
+  --sidebar-sync-accent-deep: #7f5731;
+  --sidebar-sync-accent-soft: #f4eadc;
+  --sidebar-sync-bg: #f6efe3;
+  --sidebar-sync-paper: #fffdf8;
+  --sidebar-sync-paper-soft: #fbf6ed;
+  --sidebar-sync-ink: #24303f;
+  --sidebar-sync-muted: #5d6678;
+  --sidebar-sync-subtle: #7f8998;
+  --sidebar-sync-line: rgba(116, 88, 54, 0.16);
+  --sidebar-sync-line-strong: rgba(116, 88, 54, 0.28);
+  --sidebar-sync-success: #1f7a4b;
+  --sidebar-sync-success-bg: #dff2e7;
+  --sidebar-sync-warning: #a66a18;
+  --sidebar-sync-warning-bg: #fff0d1;
+  --sidebar-sync-danger: #bd5b43;
+  --sidebar-sync-danger-bg: #f8e2da;
+  --sidebar-sync-shadow: 0 20px 46px rgba(48, 40, 30, 0.11);
+  --sidebar-sync-shadow-strong: 0 26px 62px rgba(48, 40, 30, 0.16);
+}
+
+:where(
+  .manager-layout--dashboard,
+  .manager-layout--menu,
+  .manager-layout--inventory,
+  .manager-layout--staff,
+  .manager-layout--customers,
+  .manager-layout--customer-analytics,
+  .manager-layout--analytics,
+  .manager-layout--reports,
+  .manager-layout--finance,
+  .manager-layout--transactions,
+  .manager-layout--transfer-review,
+  .manager-layout--schedules,
+  .manager-layout--promotions,
+  .manager-layout--payroll,
+  .manager-layout--reviews,
+  .manager-layout--settings,
+  .manager-layout--rates,
+  .manager-layout--setting,
+  .manager-layout--backup,
+  .manager-layout--print-management,
+  .manager-layout--rbac,
+  .manager-layout--system-users
+) .manager-layout__content {
+  background:
+    radial-gradient(circle at 7% 0%, rgba(168, 133, 95, 0.17), transparent 32rem),
+    radial-gradient(circle at 92% 8%, rgba(15, 111, 102, 0.1), transparent 30rem),
+    linear-gradient(rgba(116, 88, 54, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(116, 88, 54, 0.02) 1px, transparent 1px),
+    linear-gradient(180deg, #fbf6ed 0%, #f1e8da 100%) !important;
+  background-size: auto, auto, 34px 34px, 34px 34px, auto !important;
+}
+
+:where(
+  .manager-layout--dashboard,
+  .manager-layout--menu,
+  .manager-layout--inventory,
+  .manager-layout--staff,
+  .manager-layout--customers,
+  .manager-layout--customer-analytics,
+  .manager-layout--analytics,
+  .manager-layout--reports,
+  .manager-layout--finance,
+  .manager-layout--transactions,
+  .manager-layout--transfer-review,
+  .manager-layout--schedules,
+  .manager-layout--promotions,
+  .manager-layout--payroll,
+  .manager-layout--reviews,
+  .manager-layout--settings,
+  .manager-layout--rates,
+  .manager-layout--setting,
+  .manager-layout--backup,
+  .manager-layout--print-management,
+  .manager-layout--rbac,
+  .manager-layout--system-users
+) .manager-page-shell {
+  width: min(100%, 1500px) !important;
+  max-width: 1500px !important;
+}
+
+/* Shared surfaces */
+.manager-layout__content :where(
+  .manager-dashboard,
+  .mm-page-container,
+  .storage-management,
+  .print-management,
+  .reports-management,
+  .staff-management,
+  .schedule-management,
+  .customer-management,
+  .customer-analytics-page,
+  .review-management,
+  .finance-dashboard,
+  .transaction-management,
+  .transfer-payment-review-page,
+  .settings-management,
+  .backup-management,
+  .system-user-management,
+  .rbac-management,
+  .analyst-page,
+  .manager-analyst,
+  .promotion-management
+) {
+  color: var(--sidebar-sync-ink);
+}
+
+.manager-layout__content :where(
+  .dashboard-compact-header,
+  .dashboard-filterbar,
+  .dashboard-no-restaurant,
+  .dashboard-error,
+  .dashboard-card,
+  .dashboard-panel,
+  .stats-card,
+  .stat-card,
+  .metric-card,
+  .kpi-card,
+  .summary-card,
+  .chart-card,
+  .content-card,
+  .filter-panel,
+  .toolbar,
+  .toolbar-card,
+  .section-card,
+  .data-card,
+  .list-card,
+  .form-card,
+  .table-card,
+  .settings-card,
+  .backup-card,
+  .report-card,
+  .finance-card,
+  .transaction-card,
+  .review-card,
+  .customer-card,
+  .staff-card,
+  .schedule-card,
+  .print-card,
+  .ant-card,
+  .ant-table-wrapper,
+  .ant-table-container,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-collapse,
+  .ant-list
+) {
+  border-color: var(--sidebar-sync-line) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(251, 246, 237, 0.9)) !important;
+  box-shadow: var(--sidebar-sync-shadow), inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+.manager-layout__content :where(
+  .dashboard-compact-header,
+  .page-header,
+  .manager-page-header,
+  .management-page-header,
+  .storage-header,
+  .reports-header,
+  .finance-header,
+  .transaction-header,
+  .review-header,
+  .customer-header,
+  .staff-header,
+  .schedule-header,
+  .settings-header,
+  .backup-header,
+  .print-header,
+  .rbac-header,
+  .system-user-header
+) {
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid rgba(15, 111, 102, 0.36) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.08), transparent 20rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(244, 234, 220, 0.82)) !important;
+}
+
+.manager-layout__content :where(
+  .dashboard-compact-header::after,
+  .page-header::after,
+  .manager-page-header::after,
+  .management-page-header::after,
+  .storage-header::after,
+  .reports-header::after,
+  .finance-header::after,
+  .transaction-header::after,
+  .review-header::after,
+  .customer-header::after,
+  .staff-header::after,
+  .schedule-header::after,
+  .settings-header::after,
+  .backup-header::after,
+  .print-header::after,
+  .rbac-header::after,
+  .system-user-header::after
+) {
+  content: "";
+  position: absolute;
+  inset: auto -7rem -8rem auto;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 111, 102, 0.13), transparent 68%);
+  pointer-events: none;
+}
+
+.manager-layout__content :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  .page-title,
+  .section-title,
+  .card-title,
+  .ant-card-head-title,
+  .stat-value,
+  .metric-value,
+  .kpi-value,
+  .dashboard-compact-header h1,
+  .dashboard-card h3
+) {
+  color: var(--sidebar-sync-ink) !important;
+  letter-spacing: -0.035em;
+}
+
+.manager-layout__content :where(
+  p,
+  small,
+  .subtitle,
+  .description,
+  .helper-text,
+  .muted,
+  .text-muted,
+  .ant-typography-secondary,
+  .ant-form-item-extra,
+  .ant-empty-description,
+  .stat-label,
+  .metric-label,
+  .kpi-label,
+  .dashboard-compact-header__subtitle,
+  .dashboard-field span
+) {
+  color: var(--sidebar-sync-muted) !important;
+}
+
+/* Inputs and controls */
+.manager-layout__content :where(
+  input,
+  textarea,
+  select,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-number,
+  .ant-checkbox-inner,
+  .ant-radio-inner,
+  .dashboard-field__control
+) {
+  border-color: var(--sidebar-sync-line-strong) !important;
+  color: var(--sidebar-sync-ink) !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+}
+
+.manager-layout__content :where(
+  input:hover,
+  textarea:hover,
+  select:hover,
+  .ant-input:hover,
+  .ant-input-affix-wrapper:hover,
+  .ant-select-selector:hover,
+  .ant-picker:hover,
+  .ant-input-number:hover,
+  .dashboard-field__control:hover
+) {
+  border-color: rgba(15, 111, 102, 0.36) !important;
+}
+
+.manager-layout__content :where(
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper-focused,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker-focused,
+  .ant-input-number-focused
+) {
+  border-color: rgba(15, 111, 102, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(15, 111, 102, 0.12) !important;
+}
+
+/* Buttons */
+.manager-layout__content :where(
+  .ant-btn-primary,
+  .dashboard-btn--primary,
+  .btn-primary,
+  .primary-btn,
+  .button-primary,
+  .save-btn,
+  .submit-btn,
+  .action-primary,
+  button[type="submit"]
+) {
+  color: #fffdf8 !important;
+  border-color: rgba(15, 111, 102, 0.52) !important;
+  background: linear-gradient(135deg, var(--sidebar-sync-primary), var(--sidebar-sync-primary-deep)) !important;
+  box-shadow: 0 14px 28px rgba(15, 111, 102, 0.22) !important;
+}
+
+.manager-layout__content :where(
+  .ant-btn-primary:hover,
+  .dashboard-btn--primary:hover,
+  .btn-primary:hover,
+  .primary-btn:hover,
+  .button-primary:hover,
+  .save-btn:hover,
+  .submit-btn:hover,
+  .action-primary:hover,
+  button[type="submit"]:hover
+) {
+  filter: none !important;
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(15, 111, 102, 0.28) !important;
+}
+
+.manager-layout__content :where(
+  .ant-btn-default,
+  .ant-btn,
+  .dashboard-btn--ghost,
+  .btn-secondary,
+  .secondary-btn,
+  .button-secondary,
+  .outline-btn
+) {
+  border-color: rgba(15, 111, 102, 0.18) !important;
+  color: var(--sidebar-sync-primary) !important;
+  background: rgba(237, 247, 244, 0.88) !important;
+}
+
+.manager-layout__content :where(.ant-btn-dangerous, .btn-danger, .danger-btn, .delete-btn) {
+  border-color: rgba(189, 91, 67, 0.28) !important;
+  color: #9c3f31 !important;
+  background: var(--sidebar-sync-danger-bg) !important;
+}
+
+/* Tables, tags and states */
+.manager-layout__content :where(.ant-table, .ant-table-thead > tr > th) {
+  color: var(--sidebar-sync-ink) !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+}
+
+.manager-layout__content :where(.ant-table-thead > tr > th) {
+  border-bottom-color: var(--sidebar-sync-line) !important;
+  color: var(--sidebar-sync-muted) !important;
+  font-size: 0.78rem;
+  font-weight: 830;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.manager-layout__content :where(.ant-table-tbody > tr > td) {
+  border-bottom-color: rgba(116, 88, 54, 0.1) !important;
+}
+
+.manager-layout__content :where(.ant-table-tbody > tr:hover > td) {
+  background: rgba(237, 247, 244, 0.5) !important;
+}
+
+.manager-layout__content :where(.ant-tag, .tag, .badge, .status-badge, .status-pill, .chip) {
+  border: 1px solid rgba(15, 111, 102, 0.15) !important;
+  color: var(--sidebar-sync-primary) !important;
+  background: var(--sidebar-sync-primary-soft) !important;
+  font-weight: 740;
+}
+
+.manager-layout__content :where(.ant-tag-success, .status-success, .success, .active, .available, .completed) {
+  border-color: rgba(31, 122, 75, 0.22) !important;
+  color: var(--sidebar-sync-success) !important;
+  background: var(--sidebar-sync-success-bg) !important;
+}
+
+.manager-layout__content :where(.ant-tag-warning, .status-warning, .warning, .pending, .draft) {
+  border-color: rgba(213, 137, 53, 0.28) !important;
+  color: #8b4b1f !important;
+  background: var(--sidebar-sync-warning-bg) !important;
+}
+
+.manager-layout__content :where(.ant-tag-error, .status-danger, .status-error, .danger, .error, .cancelled, .failed, .inactive) {
+  border-color: rgba(189, 91, 67, 0.28) !important;
+  color: #9c3f31 !important;
+  background: var(--sidebar-sync-danger-bg) !important;
+}
+
+/* Dashboard specific */
+.manager-layout--dashboard .manager-dashboard {
+  width: min(100%, 1480px) !important;
+  margin-inline: auto !important;
+}
+
+.manager-layout--dashboard .dashboard-compact-header,
+.manager-layout--dashboard .dashboard-filterbar {
+  box-shadow: var(--sidebar-sync-shadow), inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+.manager-layout--dashboard .dashboard-filterbar__context,
+.manager-layout--dashboard .dashboard-no-restaurant__icon {
+  border-color: rgba(15, 111, 102, 0.16) !important;
+  color: var(--sidebar-sync-primary) !important;
+  background: var(--sidebar-sync-primary-soft) !important;
+}
+
+/* Menu, inventory and customer pages */
+.manager-layout--menu :where(.mm-page-container, .menu-management, .menu-page),
+.manager-layout--inventory :where(.storage-management),
+.manager-layout--customers :where(.customer-management),
+.manager-layout--customer-analytics :where(.customer-analytics-page) {
+  width: min(100%, 1480px) !important;
+  margin-inline: auto !important;
+}
+
+.manager-layout--menu :where(.mm-header, .mm-toolbar, .menu-toolbar, .menu-filterbar),
+.manager-layout--inventory :where(.storage-header, .storage-toolbar),
+.manager-layout--customers :where(.customers-header, .customer-toolbar),
+.manager-layout--customer-analytics :where(.customer-analytics-hero, .customer-analytics-toolbar) {
+  border-color: var(--sidebar-sync-line) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.08), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(244, 234, 220, 0.82)) !important;
+  box-shadow: var(--sidebar-sync-shadow), inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+/* Reports, finance, transactions and review pages */
+.manager-layout--reports :where(.reports-management),
+.manager-layout--finance :where(.finance-dashboard),
+.manager-layout--transactions :where(.transaction-management),
+.manager-layout--transfer-review :where(.transfer-payment-review-page),
+.manager-layout--reviews :where(.review-management) {
+  width: min(100%, 1480px) !important;
+  margin-inline: auto !important;
+}
+
+.manager-layout--finance :where(.finance-dashboard .ant-card, .finance-card),
+.manager-layout--transactions :where(.transaction-card, .ant-card),
+.manager-layout--transfer-review :where(.ant-card, .review-card),
+.manager-layout--reviews :where(.review-card, .ant-card),
+.manager-layout--reports :where(.report-card, .ant-card) {
+  border-radius: 18px !important;
+}
+
+/* Settings, backup, print, RBAC and users */
+.manager-layout--settings :where(.settings-management),
+.manager-layout--rates :where(.settings-management),
+.manager-layout--setting :where(.settings-management),
+.manager-layout--backup :where(.backup-management),
+.manager-layout--print-management :where(.print-management),
+.manager-layout--rbac :where(.rbac-management),
+.manager-layout--system-users :where(.system-user-management) {
+  width: min(100%, 1480px) !important;
+  margin-inline: auto !important;
+}
+
+.manager-layout--settings :where(.settings-card, .ant-card),
+.manager-layout--backup :where(.backup-card, .ant-card),
+.manager-layout--print-management :where(.print-card, .ant-card),
+.manager-layout--rbac :where(.rbac-card, .ant-card),
+.manager-layout--system-users :where(.system-user-card, .ant-card) {
+  border-radius: 18px !important;
+}
+
+.manager-layout__content :where(.ant-tabs-tab-active .ant-tabs-tab-btn, .ant-tabs-tab:hover .ant-tabs-tab-btn) {
+  color: var(--sidebar-sync-primary) !important;
+}
+
+.manager-layout__content :where(.ant-tabs-ink-bar, .ant-progress-bg, .ant-switch-checked) {
+  background: var(--sidebar-sync-primary) !important;
+}
+
+.manager-layout__content :where(.ant-pagination-item-active) {
+  border-color: var(--sidebar-sync-primary) !important;
+  background: var(--sidebar-sync-primary-soft) !important;
+}
+
+.manager-layout__content :where(.ant-pagination-item-active a) {
+  color: var(--sidebar-sync-primary) !important;
+}
+
+.manager-layout__content :where(.ant-empty, .empty-state, .state-box, .manager-page-shell__empty) {
+  border: 1px solid var(--sidebar-sync-line) !important;
+  border-radius: 18px !important;
+  color: var(--sidebar-sync-muted) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(168, 133, 95, 0.12), transparent 18rem),
+    rgba(255, 253, 248, 0.78) !important;
+  box-shadow: 0 14px 32px rgba(48, 40, 30, 0.08) !important;
+}
+
+.manager-layout__content :where(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: 3px solid rgba(15, 111, 102, 0.22) !important;
+  outline-offset: 3px !important;
+}
+
+@media (max-width: 768px) {
+  .manager-layout__content :where(
+    .dashboard-compact-header,
+    .page-header,
+    .manager-page-header,
+    .management-page-header,
+    .storage-header,
+    .reports-header,
+    .finance-header,
+    .transaction-header,
+    .review-header,
+    .customer-header,
+    .staff-header,
+    .schedule-header,
+    .settings-header,
+    .backup-header,
+    .print-header,
+    .rbac-header,
+    .system-user-header
+  ) {
+    border-left-width: 0 !important;
+    border-top: 4px solid rgba(15, 111, 102, 0.36) !important;
+  }
+}
