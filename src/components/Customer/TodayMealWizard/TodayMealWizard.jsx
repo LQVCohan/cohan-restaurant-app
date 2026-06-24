@@ -247,17 +247,18 @@ export default function TodayMealWizard() {
         ))}
       </div>
 
-      <div className="today-meal-wizard__body">
+      <div className="today-meal-wizard__body" key={activeStep.id}>
         <span className="today-meal-wizard__eyebrow">{activeStep.eyebrow}</span>
         <h4>{activeStep.title}</h4>
         <p>{activeStep.description}</p>
 
         <div className="today-meal-wizard__options">
-          {activeStep.options.map((option) => (
+          {activeStep.options.map((option, index) => (
             <button
               key={option.value}
               type="button"
               className={activeValue === option.value ? "is-selected" : ""}
+              style={{ "--option-index": index }}
               onClick={() => handleOption(option.value)}
             >
               <strong>{option.label}</strong>
