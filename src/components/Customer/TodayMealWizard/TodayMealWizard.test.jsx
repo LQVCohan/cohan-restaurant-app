@@ -133,7 +133,7 @@ describe("TodayMealWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /2 người/i }));
 
     await screen.findByText("Gợi ý từ AI");
-    fireEvent.click(screen.getByRole("button", { name: /hỏi tiếp trong chat ai/i }));
+    fireEvent.click(screen.getByRole("button", { name: /hỏi thêm trong chat ai/i }));
 
     expect(openAiMenuAssistant).toHaveBeenCalledTimes(1);
     const payload = openAiMenuAssistant.mock.calls[0][0];
