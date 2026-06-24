@@ -13,6 +13,8 @@ import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
 import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
 import "./EmployeeList.scss";
 
+const EMPLOYEE_LIST_PAGE_SIZE = 14;
+
 const EmployeeList = ({
   employees = [],
   selectedEmployee,
@@ -33,7 +35,7 @@ const EmployeeList = ({
   const [verificationFilter, setVerificationFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = EMPLOYEE_LIST_PAGE_SIZE;
 
   const filteredEmployees = useMemo(() => {
     return dataSource.filter((employee) => {
