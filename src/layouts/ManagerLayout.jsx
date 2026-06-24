@@ -8,7 +8,6 @@ import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
-// ponytail: split manager pages at the layout boundary; Sidebar/Header stay eager.
 const Dashboard = lazy(() => import("../components/Dashboard_Manager/Dashboard"));
 const ManagerAnalyst = lazy(() => import("../components/Dashboard_Manager/Analyst/ManagerAnalyst"));
 const ReportsManagement = lazy(() => import("../components/Dashboard_Manager/Reports/ReportsManagement"));
@@ -29,6 +28,7 @@ const ReviewManagement = lazy(() => import("../components/Dashboard_Manager/Revi
 const FinanceDashboard = lazy(() => import("@/components/Dashboard_Manager/Finance/FinanceDashboard"));
 const TransactionManagement = lazy(() => import("@/components/Dashboard_Manager/Transactions/TransactionManagement"));
 const TransferPaymentReviewPage = lazy(() => import("@/components/Dashboard_Manager/Transactions/TransferPaymentReviewPage"));
+const ManagerWalletPage = lazy(() => import("@/components/Dashboard_Manager/Wallet/ManagerWalletPage"));
 const PrintManagement = lazy(() => import("@/components/Dashboard_Manager/PrintManagement/PrintManagement"));
 const RbacManagement = lazy(() => import("@/components/Dashboard_Manager/RBAC/RbacManagement"));
 const SettingsManagement = lazy(() => import("@/components/Dashboard_Manager/Settings/SettingsManagement"));
@@ -41,7 +41,7 @@ const MANAGER_CANONICAL_PATH = "/manager";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard", "tables", "orders", "menu", "inventory", "staff", "customers",
-  "customer-analytics", "analytics", "transactions", "transfer-review", "reports", "schedules",
+  "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
   "ai-chatbot-analytics", "ai-chatbot-settings", "ai-chatbot-knowledge",
@@ -84,6 +84,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   finance: ["finance.read", "payment.read"],
   transactions: ["transaction.read", "finance.read", "payment.read"],
   "transfer-review": ["payment.read", "reconciliation.read"],
+  wallet: ["payment.read", "payment.write", "refund.write"],
   settings: ["system.manage"],
   rates: ["system.manage"],
   setting: ["system.manage"],
@@ -94,16 +95,10 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   "ai-handoff": ["ai.chatbot.handoff", "ai.chatbot.moderate"],
   "ai-chatbot-analytics": ["ai.chatbot.analytics.read", "ai.chatbot.read"],
   "ai-chatbot-settings": ["ai.chatbot.write"],
-  "ai-chatbot-knowledge": [
-    "ai.chatbot.read",
-    "ai.chatbot.write",
-    "ai.chatbot.moderate",
-    "ai.chatbot.evaluate",
-  ],
+  "ai-chatbot-knowledge": ["ai.chatbot.read", "ai.chatbot.write", "ai.chatbot.moderate", "ai.chatbot.evaluate"],
 };
 
 const ADMIN_ONLY_MANAGER_PAGES = new Set(["system-users"]);
-
 const page = (title, description, icon, keywords = []) => ({ title, description, icon, keywords });
 const PAGE_CONFIG = {
   dashboard: page("Tổng quan", "Tổng quan hiệu suất và số liệu vận hành nhà hàng", "📊", ["overview", "thống kê", "kpi", "doanh thu", "dashboard"]),
@@ -119,6 +114,7 @@ const PAGE_CONFIG = {
   finance: page("Tài chính", "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", "💰", ["finance", "thu", "chi", "công nợ", "profit"]),
   transactions: page("Giao dịch", "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch", "💳", ["transaction", "giao dịch", "payment", "thanh toán", "refund", "đối soát"]),
   "transfer-review": page("Duyệt chuyển khoản", "Xem bằng chứng chuyển khoản, xác minh hoặc từ chối thanh toán", "🏦", ["transfer", "bank", "chuyển khoản", "xác minh", "duyệt thanh toán"]),
+  wallet: page("Ví khách hàng", "Quản lý Cohan Balance, hoàn tiền về ví và điều chỉnh số dư", "👛", ["wallet", "ví", "balance", "refund", "hoàn tiền", "cohan balance"]),
   schedules: page("Lịch làm việc", "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự", "📅", ["schedule", "ca làm", "shift", "lịch"]),
   promotions: page("Khuyến mãi", "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", "🎁", ["promotion", "coupon", "discount", "khuyến mãi"]),
   payroll: page("Bảng lương", "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên", "💼", ["payroll", "salary", "lương", "thưởng", "khấu trừ"]),
@@ -150,9 +146,7 @@ const ManagerLayout = () => {
   const allowedPages = useMemo(() => {
     const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(([id, permissions]) => ({ id, permissions }));
     const pageSet = new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
-    if (!isAdminUser) {
-      ADMIN_ONLY_MANAGER_PAGES.forEach((pageId) => pageSet.delete(pageId));
-    }
+    if (!isAdminUser) ADMIN_ONLY_MANAGER_PAGES.forEach((pageId) => pageSet.delete(pageId));
     return pageSet;
   }, [isAdminUser, user]);
 
@@ -167,12 +161,11 @@ const ManagerLayout = () => {
   }, [validPages]);
 
   useEffect(() => {
-    if (validPages.has(currentPage)) {
-      localStorage.setItem("manager.currentPage", currentPage);
-      const expectedHash = `#${currentPage}`;
-      if (window.location.pathname !== MANAGER_CANONICAL_PATH || window.location.hash !== expectedHash) {
-        history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
-      }
+    if (!validPages.has(currentPage)) return;
+    localStorage.setItem("manager.currentPage", currentPage);
+    const expectedHash = `#${currentPage}`;
+    if (window.location.pathname !== MANAGER_CANONICAL_PATH || window.location.hash !== expectedHash) {
+      history.replaceState(null, "", `${MANAGER_CANONICAL_PATH}${expectedHash}`);
     }
   }, [currentPage, validPages]);
 
@@ -238,6 +231,7 @@ const ManagerLayout = () => {
       case "finance": return <FinanceDashboard />;
       case "transactions": return <TransactionManagement />;
       case "transfer-review": return <TransferPaymentReviewPage />;
+      case "wallet": return <ManagerWalletPage />;
       case "settings":
       case "rates":
       case "setting": return <SettingsManagement />;
@@ -280,9 +274,7 @@ const ManagerLayout = () => {
         <main className="manager-layout__content">
           <section className={`manager-page-shell manager-page-shell--${currentPage}`}>
             <div className="manager-page-shell__body">
-              <Suspense fallback={<PageLoadingFallback />}>
-                {renderContent()}
-              </Suspense>
+              <Suspense fallback={<PageLoadingFallback />}>{renderContent()}</Suspense>
             </div>
           </section>
         </main>
