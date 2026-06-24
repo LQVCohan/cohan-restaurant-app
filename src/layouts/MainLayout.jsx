@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Header from "../components/Customer/Homepage_Client/components/Header";
 import Footer from "../components/Customer/Homepage_Client/components/Footer";
 import Cart from "../components/Customer/Homepage_Client/components/Cart";
+import TodayMealWizard from "../components/Customer/TodayMealWizard/TodayMealWizard";
 import { useCart } from "../context/CartProvider";
 import { useCustomerCartActions } from "../hooks/useCustomerCartActions";
 import { OPEN_CUSTOMER_CART_EVENT } from "../utils/cartEvents";
@@ -64,6 +65,7 @@ export default function MainLayout({ children }) {
         busyRestaurantIds={cartActions.busyRestaurantIds}
         isClearing={cartActions.isClearing}
       />
+      <TodayMealWizard />
       <Footer />
     </>
   );
