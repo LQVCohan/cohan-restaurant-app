@@ -1,32 +1,24 @@
 // --- 1. Design Tokens & Variables ---
 :root {
-  // Brand Colors (Orange Theme)
-  --primary-color: #ff6600; // Cam chủ đạo (Vibrant Orange)
-  --primary-hover: #e65c00; // Cam đậm khi hover
-  --primary-light: #fff0e6; // Cam nhạt (dùng cho background nhẹ)
-
-  // Functional Colors
-  --secondary-color: #2d3748; // Màu đen xám (Text chính)
-  --text-muted: #718096; // Màu xám nhạt (Text phụ)
-  --danger: #ef4444; // Đỏ (Error/Notification)
-  --success: #10b981; // Xanh lá (Success)
-
-  // Backgrounds
-  --bg-body: #fdfdfd; // Màu nền chính (gần như trắng)
-  --bg-section: #ffffff; // Màu nền các khối/card
-
-  // Effects
+  --primary-color: #ff6600;
+  --primary-hover: #e65c00;
+  --primary-light: #fff0e6;
+  --secondary-color: #2d3748;
+  --text-muted: #718096;
+  --danger: #ef4444;
+  --success: #10b981;
+  --bg-body: #fdfdfd;
+  --bg-section: #ffffff;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(255, 102, 0, 0.15),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05); // Bóng màu cam nhẹ
-  --radius-md: 0.75rem; // Bo góc chuẩn SaaS (12px)
-  --radius-lg: 1rem; // Bo góc lớn (16px)
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-// --- 2. Global Resets & Typography ---
 html {
   scroll-behavior: smooth;
   font-size: 16px;
@@ -35,7 +27,7 @@ html {
 body {
   margin: 0;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif; // Font hiện đại
+    sans-serif;
   background-color: var(--bg-body);
   color: var(--secondary-color);
   line-height: 1.5;
@@ -46,18 +38,23 @@ body {
   box-sizing: border-box;
 }
 
-// --- 3. Home Container Styles ---
 .home {
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
-  animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); // Animation mượt hơn
+  background:
+    radial-gradient(circle at 8% 6%, rgba(255, 102, 0, 0.08), transparent 32rem),
+    linear-gradient(180deg, #fffaf4 0%, #ffffff 36%, #fff8ef 100%);
+  animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-// Layout Wrapper (Giới hạn chiều rộng nội dung - Chuẩn SaaS)
+.home__main-content {
+  display: block;
+}
+
 .container {
   width: 100%;
-  max-width: 1280px; // Chuẩn màn hình desktop
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 1.5rem;
 
@@ -66,28 +63,76 @@ body {
   }
 }
 
-// --- 4. Floating Cart Button (Redesigned) ---
+.home-value-strip {
+  width: min(1180px, calc(100% - 40px));
+  margin: -18px auto 28px;
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-value-strip__item {
+  min-height: 94px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(92, 64, 51, 0.12);
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 34px rgba(92, 45, 12, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.home-value-strip__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #ff6600;
+  background: #fff1e6;
+}
+
+.home-value-strip__item strong,
+.home-value-strip__item span {
+  display: block;
+}
+
+.home-value-strip__item strong {
+  color: #171717;
+  font-size: 0.96rem;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+
+.home-value-strip__item span {
+  margin-top: 3px;
+  color: #6f6258;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .cart-floating-btn {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-
-  // Gradient cam hiện đại
   background: linear-gradient(135deg, var(--primary-color), #ff8533);
   color: white;
-
   width: 4rem;
   height: 4rem;
   border-radius: 50%;
   border: none;
   cursor: pointer;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
-  box-shadow: 0 8px 30px rgba(255, 102, 0, 0.4); // Bóng đổ glow màu cam
-  z-index: 100; // Đảm bảo luôn nổi lên trên
+  box-shadow: 0 8px 30px rgba(255, 102, 0, 0.4);
+  z-index: 100;
   transition: var(--transition);
 
   &:hover {
@@ -114,7 +159,7 @@ body {
     min-width: 1.5rem;
     height: 1.5rem;
     padding: 0 0.25rem;
-    border-radius: 99px; // Hình con nhộng nếu số lớn
+    border-radius: 99px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -123,7 +168,6 @@ body {
   }
 }
 
-// --- 5. Loading & States ---
 .loading {
   display: flex;
   justify-content: center;
@@ -134,13 +178,12 @@ body {
     width: 2.5rem;
     height: 2.5rem;
     border: 3px solid var(--primary-light);
-    border-top: 3px solid var(--primary-color); // Spinner màu cam
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
 }
 
-// --- 6. Utilities & Animations ---
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -153,58 +196,46 @@ body {
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @keyframes pulse-orange {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 15px rgba(255, 102, 0, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 102, 0, 0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(255, 102, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
 }
 
-// Hiệu ứng pulse khi thêm vào giỏ hàng
 .cart-animating {
   animation: pulse-orange 0.5s ease-out;
 }
 
-// Tiện ích khoảng cách
 .section-spacing {
-  margin-bottom: 4rem; // Khoảng cách giữa các section lớn hơn
+  margin-bottom: 4rem;
 }
 
-// Bridge giữa Thực đơn và Nhà hàng: che mép thẳng của RestaurantGrid.
 .home .restaurant-grid {
-  margin-top: -24px;
-  padding-top: 70px;
+  margin-top: 0;
+  padding-top: 42px;
   border-top: 0;
 }
 
+.home .categories {
+  padding-top: 38px;
+  padding-bottom: 28px;
+}
+
+.home .dish-grid {
+  padding-top: 34px;
+  padding-bottom: 42px;
+}
+
+.home .how-it-works {
+  margin-top: 0;
+}
+
 .home .restaurant-grid::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  left: 0;
-  right: 0;
-  height: 42px;
-  pointer-events: none;
-  z-index: 1;
-  background: linear-gradient(
-    180deg,
-    #fffaf4 0%,
-    rgba(255, 250, 244, 0.96) 44%,
-    rgba(255, 250, 244, 0) 100%
-  );
+  display: none;
 }
 
 .home .restaurant-grid__container {
@@ -212,13 +243,35 @@ body {
   z-index: 2;
 }
 
+@media (max-width: 1080px) {
+  .home-value-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
-  .home .restaurant-grid {
-    margin-top: -18px;
-    padding-top: 64px;
+  .home-value-strip {
+    width: calc(100% - 24px);
+    margin: -10px auto 22px;
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar { display: none; }
   }
 
-  .home .restaurant-grid::after {
-    height: 34px;
+  .home-value-strip__item {
+    flex: 0 0 260px;
+    scroll-snap-align: start;
+  }
+
+  .home .restaurant-grid {
+    padding-top: 30px;
+  }
+
+  .home .categories {
+    padding-top: 28px;
   }
 }
