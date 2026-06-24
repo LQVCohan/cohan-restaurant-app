@@ -1,12 +1,12 @@
 import React, { useMemo } from "react";
 import {
-  ArrowRightLeft,
+  ArrowRight as ArrowRightLeft,
   Box,
-  CupSoda,
-  Droplets,
-  PackagePlus,
-  PackageMinus,
-  Pencil,
+  Coffee as CupSoda,
+  Droplet as Droplets,
+  PackageOpen as PackagePlus,
+  Package as PackageMinus,
+  Edit as Pencil,
   Sparkles,
   Trash2,
 } from "lucide-react";
