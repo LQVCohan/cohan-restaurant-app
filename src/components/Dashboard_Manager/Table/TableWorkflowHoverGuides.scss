@@ -1,4 +1,8 @@
 /* Hover/focus short guides for table configuration modal. */
+.talite-technical-field {
+  display: none !important;
+}
+
 .talite-help-target {
   position: relative !important;
   outline: none;
@@ -28,7 +32,7 @@
   position: absolute;
   left: 0;
   bottom: calc(100% + 9px);
-  z-index: 30;
+  z-index: 80;
   width: max-content;
   max-width: min(300px, 72vw);
   padding: 8px 10px;
@@ -113,6 +117,7 @@
 }
 
 .talite-body button.talite-help-target::before,
+.talite-footer button.talite-help-target::before,
 .talite-section-nav button.talite-help-target::before,
 .talite-close.talite-help-target::before {
   display: none;
