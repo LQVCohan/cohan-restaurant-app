@@ -1,22 +1,20 @@
-// --- 1. Design Tokens & Variables ---
+// --- Homepage base rhythm ---
 :root {
   --primary-color: #ff6600;
   --primary-hover: #e65c00;
   --primary-light: #fff0e6;
-  --secondary-color: #2d3748;
-  --text-muted: #718096;
+  --secondary-color: #202124;
+  --text-muted: #6f6258;
   --danger: #ef4444;
   --success: #10b981;
-  --bg-body: #fdfdfd;
+  --bg-body: #fffaf4;
   --bg-section: #ffffff;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(255, 102, 0, 0.15),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px rgba(92, 45, 12, 0.05);
+  --shadow-md: 0 8px 22px rgba(92, 45, 12, 0.08);
+  --shadow-lg: 0 18px 44px rgba(92, 45, 12, 0.1);
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: all 0.22s ease;
 }
 
 html {
@@ -26,95 +24,34 @@ html {
 
 body {
   margin: 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
-  background-color: var(--bg-body);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-body);
   color: var(--secondary-color);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 .home {
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 8% 6%, rgba(255, 102, 0, 0.08), transparent 32rem),
-    linear-gradient(180deg, #fffaf4 0%, #ffffff 36%, #fff8ef 100%);
-  animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    radial-gradient(circle at 8% 5%, rgba(255, 102, 0, 0.07), transparent 28rem),
+    linear-gradient(180deg, #fff7ef 0%, #ffffff 34%, #fffaf4 100%);
+  animation: fadeIn 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.home__main-content {
-  display: block;
-}
+.home__main-content { display: block; }
 
 .container {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 0 1.5rem;
 
-  @media (max-width: 768px) {
-    padding: 0 1rem;
-  }
-}
-
-.home-value-strip {
-  width: min(1180px, calc(100% - 40px));
-  margin: -18px auto 28px;
-  position: relative;
-  z-index: 8;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.home-value-strip__item {
-  min-height: 94px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  border: 1px solid rgba(92, 64, 51, 0.12);
-  border-radius: 20px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 16px 34px rgba(92, 45, 12, 0.08);
-  backdrop-filter: blur(12px);
-}
-
-.home-value-strip__icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  color: #ff6600;
-  background: #fff1e6;
-}
-
-.home-value-strip__item strong,
-.home-value-strip__item span {
-  display: block;
-}
-
-.home-value-strip__item strong {
-  color: #171717;
-  font-size: 0.96rem;
-  font-weight: 950;
-  letter-spacing: -0.02em;
-}
-
-.home-value-strip__item span {
-  margin-top: 3px;
-  color: #6f6258;
-  font-size: 0.82rem;
-  font-weight: 650;
-  line-height: 1.35;
+  @media (max-width: 768px) { padding: 0 1rem; }
 }
 
 .cart-floating-btn {
@@ -131,22 +68,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 30px rgba(255, 102, 0, 0.4);
+  box-shadow: 0 8px 30px rgba(255, 102, 0, 0.32);
   z-index: 100;
   transition: var(--transition);
 
   &:hover {
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 15px 35px rgba(255, 102, 0, 0.5);
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 14px 32px rgba(255, 102, 0, 0.38);
   }
 
-  &:active {
-    transform: scale(0.95);
-  }
-
-  &__icon {
-    font-size: 1.5rem;
-  }
+  &:active { transform: scale(0.97); }
+  &__icon { font-size: 1.5rem; }
 
   &__count {
     position: absolute;
@@ -184,15 +116,43 @@ body {
   }
 }
 
+.home .restaurant-grid,
+.home .categories,
+.home .dish-grid,
+.home .how-it-works {
+  scroll-margin-top: 92px;
+}
+
+.home .restaurant-grid {
+  margin-top: 0;
+  padding-top: 44px;
+  padding-bottom: 34px;
+  border-top: 0;
+  background: #ffffff;
+}
+
+.home .categories {
+  padding-top: 34px;
+  padding-bottom: 30px;
+  background: #fffaf4;
+}
+
+.home .dish-grid {
+  padding-top: 34px;
+  padding-bottom: 48px;
+  background: #ffffff;
+}
+
+.home .how-it-works {
+  margin-top: 0;
+}
+
+.home .restaurant-grid::after { display: none; }
+.home .restaurant-grid__container { position: relative; z-index: 2; }
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes spin {
@@ -206,72 +166,24 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
 }
 
-.cart-animating {
-  animation: pulse-orange 0.5s ease-out;
-}
-
-.section-spacing {
-  margin-bottom: 4rem;
-}
-
-.home .restaurant-grid {
-  margin-top: 0;
-  padding-top: 42px;
-  border-top: 0;
-}
-
-.home .categories {
-  padding-top: 38px;
-  padding-bottom: 28px;
-}
-
-.home .dish-grid {
-  padding-top: 34px;
-  padding-bottom: 42px;
-}
-
-.home .how-it-works {
-  margin-top: 0;
-}
-
-.home .restaurant-grid::after {
-  display: none;
-}
-
-.home .restaurant-grid__container {
-  position: relative;
-  z-index: 2;
-}
-
-@media (max-width: 1080px) {
-  .home-value-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+.cart-animating { animation: pulse-orange 0.5s ease-out; }
+.section-spacing { margin-bottom: 3rem; }
 
 @media (max-width: 760px) {
-  .home-value-strip {
-    width: calc(100% - 24px);
-    margin: -10px auto 22px;
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar { display: none; }
-  }
-
-  .home-value-strip__item {
-    flex: 0 0 260px;
-    scroll-snap-align: start;
-  }
-
-  .home .restaurant-grid {
-    padding-top: 30px;
-  }
-
-  .home .categories {
+  .home .restaurant-grid,
+  .home .categories,
+  .home .dish-grid {
     padding-top: 28px;
+    padding-bottom: 30px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home,
+  .cart-animating,
+  .loading__spinner {
+    animation: none !important;
+  }
+
+  html { scroll-behavior: auto; }
 }
