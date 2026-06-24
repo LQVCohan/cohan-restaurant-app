@@ -79,10 +79,23 @@ export default function useFoodPreferences({ skip = false } = {}) {
     };
 
     const result = await updateMyFoodPreferences({ variables: { input } });
-    const saved = normalizeFoodPreferencesFromUser({
-      foodPreferences: result?.data?.updateMyFoodPreferences?.foodPreferences,
-    });
+
+    const serverPreferences =
+      result?.data?.updateMyFoodPreferences?.foodPreferences;
+
+    const saved = serverPreferences
+      ? normalizeFoodPreferencesFromUser({ foodPreferences: serverPreferences })
+      : normalizeFoodPreferencesFromUser({
+          foodPreferences: {
+            ...normalized,
+            autoNote: buildFoodPreferenceNote(normalized),
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
     setPreferences(saved);
+    await refetch?.();
+
     return saved;
   };
 
