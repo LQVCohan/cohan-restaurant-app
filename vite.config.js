@@ -11,42 +11,6 @@ const toNumber = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const lucideReactShimImportGuardPlugin = () => ({
-  name: "lucide-react-shim-import-guard",
-  enforce: "pre",
-  transform(code, id) {
-    const filePath = id.split("?")[0];
-    if (!/\.[jt]sx?$/.test(filePath)) return null;
-    if (!code.includes("lucide-react")) return null;
-
-    let changed = false;
-    const transformedCode = code.replace(
-      /import\s*\{\s*([\s\S]*?)\s*\}\s*from\s*["']lucide-react["'];?/g,
-      (_match, specifiers) => {
-        const bindings = String(specifiers)
-          .split(",")
-          .map((specifier) => specifier.trim())
-          .filter(Boolean)
-          .map((specifier) => {
-            const aliasMatch = specifier.match(/^([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)$/);
-            return aliasMatch ? aliasMatch[2] : specifier;
-          })
-          .filter((name) => /^[A-Za-z_$][\w$]*$/.test(name));
-
-        if (!bindings.length) return _match;
-        changed = true;
-        const uniqueBindings = [...new Set(bindings)];
-        return [
-          'import LucideReactIcon from "lucide-react";',
-          `const ${uniqueBindings.map((name) => `${name} = LucideReactIcon`).join(", ")};`,
-        ].join("\n");
-      },
-    );
-
-    return changed ? { code: transformedCode, map: null } : null;
-  },
-});
-
 const aiKnowledgeNoticeMessageGuardPlugin = () => ({
   name: "ai-knowledge-notice-message-guard",
   enforce: "pre",
@@ -132,7 +96,7 @@ export default defineConfig(({ mode }) => {
     .filter(Boolean);
 
   return {
-    plugins: [lucideReactShimImportGuardPlugin(), aiKnowledgeNoticeMessageGuardPlugin(), staffPerformanceMonthRangeGuardPlugin(), react()],
+    plugins: [aiKnowledgeNoticeMessageGuardPlugin(), staffPerformanceMonthRangeGuardPlugin(), react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
