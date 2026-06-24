@@ -13,7 +13,7 @@
 }
 
 .account-verification-card {
-  width: min(560px, 100%);
+  width: min(620px, 100%);
   position: relative;
   overflow: hidden;
   padding: clamp(28px, 5vw, 44px);
@@ -107,6 +107,108 @@
 .account-verification-contact strong {
   color: #1e1915;
   font-weight: 950;
+}
+
+.account-verification-diagnostics {
+  margin: 16px 0 18px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(92, 64, 51, 0.12);
+  background: #ffffff;
+  text-align: left;
+}
+
+.account-verification-diagnostics.is-success {
+  border-color: rgba(22, 163, 74, 0.16);
+  background: #f0fdf4;
+}
+
+.account-verification-diagnostics.is-warning {
+  border-color: rgba(217, 119, 6, 0.2);
+  background: #fffbeb;
+}
+
+.account-verification-diagnostics.is-error {
+  border-color: rgba(220, 38, 38, 0.18);
+  background: #fff1f2;
+}
+
+.account-verification-diagnostics.is-muted {
+  background: #f8fafc;
+}
+
+.account-verification-diagnostics__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.account-verification-status-dot {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #64748b;
+  box-shadow: 0 0 0 5px rgba(100, 116, 139, 0.12);
+}
+
+.account-verification-diagnostics.is-success .account-verification-status-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.12);
+}
+
+.account-verification-diagnostics.is-warning .account-verification-status-dot {
+  background: #d97706;
+  box-shadow: 0 0 0 5px rgba(217, 119, 6, 0.12);
+}
+
+.account-verification-diagnostics.is-error .account-verification-status-dot {
+  background: #dc2626;
+  box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.12);
+}
+
+.account-verification-diagnostics h2 {
+  margin: 0 0 4px;
+  color: #1e1915;
+  font-size: 0.98rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.account-verification-diagnostics p {
+  margin: 0;
+  color: #5f554c;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.account-verification-diagnostics__grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.62fr) minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(92, 64, 51, 0.1);
+}
+
+.account-verification-diagnostics__grid dt,
+.account-verification-diagnostics__grid dd {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.account-verification-diagnostics__grid dt {
+  color: #766b61;
+  font-weight: 900;
+}
+
+.account-verification-diagnostics__grid dd {
+  color: #1e1915;
+  font-weight: 800;
+  word-break: break-word;
 }
 
 .account-verification-actions {
@@ -216,6 +318,10 @@
 
   .account-verification-button {
     width: 100%;
+  }
+
+  .account-verification-diagnostics__grid {
+    grid-template-columns: 1fr;
   }
 }
 
