@@ -98,6 +98,7 @@ export function sanitizeCustomerListUser(user) {
     loyaltyRank: source.loyaltyRank,
     totalOrders: source.totalOrders,
     totalSpending: source.totalSpending,
+    wallet: safeWallet(source.wallet),
     guestExpiresAt: source.guestExpiresAt,
     emailVerified:
       typeof source.emailVerified === "boolean" ? source.emailVerified : undefined,
@@ -158,53 +159,42 @@ function notFound(message = "Staff not found") {
 }
 
 function idEquals(left, right) {
-  const a = stringId(left);
-  const b = stringId(right);
-  return Boolean(a && b && a === b);
+  if (!left || !right) return false;
+  return String(left) === String(right);
 }
 
-export function staffBelongsToRestaurant(user, restaurantId) {
-  if (!restaurantId) return true;
-  const source = toPlainObject(user);
-  if (!source) return false;
-  return idEquals(source.restaurantForStaff, restaurantId);
-}
+export async function assertCanReadStaffPrivateProfile({ ctx, staffUser }) {
+  const viewer = ctx?.user;
+  if (!viewer?.id) throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+  if (!staffUser) throw notFound();
 
-export function resolveStaffPrivateProfileScope(user, restaurantId) {
-  const source = toPlainObject(user);
-  if (!source) return null;
-  if (restaurantId) {
-    if (!staffBelongsToRestaurant(source, restaurantId)) throw notFound();
-    return restaurantId;
-  }
-  return source.restaurantForStaff || null;
-}
+  const viewerRole = String(viewer.roleName || viewer.role?.slug || viewer.role?.name || "").toLowerCase();
+  if (idEquals(viewer.id, staffUser._id || staffUser.id)) return true;
 
-export async function authorizeStaffPrivateProfile(ctx, user, restaurantId) {
-  const targetRestaurantId = resolveStaffPrivateProfileScope(user, restaurantId);
-  const hasRestaurantScope = Boolean(targetRestaurantId);
-
-  if (hasRestaurantScope) {
-    await requireRestaurantPermission(ctx, targetRestaurantId, PERMISSIONS.STAFF_READ);
+  if (["admin", "manager", "hr", "accountant"].includes(viewerRole)) {
+    const restaurantId = staffUser.restaurantForStaff || staffUser.refRestaurants?.[0];
+    if (restaurantId) await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STAFF_READ);
+    else await requirePermission(ctx, PERMISSIONS.STAFF_READ);
     return true;
   }
 
-  await requirePermission(ctx, PERMISSIONS.STAFF_READ);
-  return true;
+  throw new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
 }
 
-export async function sanitizeStaffPrivateProfile(user, ctx, { restaurantId, skipAuthorization = false } = {}) {
+export function resolveStaffPrivateProfileScope(staffUser) {
+  return {
+    restaurantId: staffUser?.restaurantForStaff || staffUser?.refRestaurants?.[0] || null,
+    staffId: staffUser?._id || staffUser?.id || null,
+  };
+}
+
+export function sanitizeStaffPrivateProfile(user) {
   const source = toPlainObject(user);
   if (!source) return null;
 
-  const targetRestaurantId = resolveStaffPrivateProfileScope(source, restaurantId);
-
-  if (!skipAuthorization) {
-    await authorizeStaffPrivateProfile(ctx, source, targetRestaurantId);
-  }
-
   return pickDefined({
     ...sanitizeAdminUserListItem(source),
+    baseSalary: source.baseSalary,
     dateOfBirth: source.dateOfBirth,
     gender: source.gender,
     nationalId: source.nationalId,
@@ -221,7 +211,6 @@ export async function sanitizeStaffPrivateProfile(user, ctx, { restaurantId, ski
     officialStartDate: source.officialStartDate,
     terminationReason: source.terminationReason,
     salaryType: source.salaryType,
-    baseSalary: source.baseSalary,
     hourlyRate: source.hourlyRate,
     allowanceAmount: source.allowanceAmount,
     bankName: source.bankName,
@@ -243,22 +232,7 @@ export async function sanitizeStaffPrivateProfile(user, ctx, { restaurantId, ski
     lastTrainingAt: source.lastTrainingAt,
     nextTrainingDueAt: source.nextTrainingDueAt,
     emergencyContacts: source.emergencyContacts,
-    forcePasswordChange: source.forcePasswordChange,
     noteInternal: source.noteInternal,
+    forcePasswordChange: source.forcePasswordChange,
   });
-}
-
-export function assertNoSensitiveUserFields(obj) {
-  const sensitive = [
-    "passwordHash",
-    "emailVerifyToken",
-    "emailVerifyTokenHash",
-    "phoneVerifyToken",
-    "phoneVerifyTokenHash",
-  ];
-  for (const field of sensitive) {
-    if (Object.prototype.hasOwnProperty.call(obj || {}, field)) {
-      throw new Error(`Sensitive field leaked: ${field}`);
-    }
-  }
 }
