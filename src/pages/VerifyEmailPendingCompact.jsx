@@ -18,6 +18,36 @@ function readSessionValue(key) {
   }
 }
 
+function resolveVerificationError(error) {
+  const first = error?.graphQLErrors?.[0];
+  const extensions = first?.extensions || {};
+  const code = String(extensions.code || "").toUpperCase();
+  const provider = extensions.provider ? ` Provider: ${extensions.provider}.` : "";
+  const detail = extensions.error ? ` Chi tiết: ${extensions.error}.` : "";
+
+  if (code === "EMAIL_PROVIDER_NOT_CONFIGURED") {
+    return `Chưa gửi được email xác minh: backend chưa cấu hình SMTP hoặc App Password Gmail.${provider}${detail}`;
+  }
+
+  if (code === "EMAIL_DELIVERY_FAILED") {
+    return `Gửi email xác minh thất bại: provider trả lỗi.${provider}${detail}`;
+  }
+
+  if (code === "TOO_MANY_REQUESTS") {
+    return "Bạn vừa yêu cầu gửi lại email. Vui lòng đợi hết thời gian cooldown rồi thử lại.";
+  }
+
+  if (code === "EMAIL_NOT_SENT") {
+    return `Email xác minh chưa được gửi. Trạng thái: ${extensions.deliveryStatus || "UNKNOWN"}.${provider}${detail}`;
+  }
+
+  if (error?.networkError) {
+    return "Không kết nối được backend. Hãy kiểm tra backend đã chạy và GraphQL endpoint đúng chưa.";
+  }
+
+  return first?.message || error?.message || "Không thể gửi lại email xác minh.";
+}
+
 export default function VerifyEmailPendingCompact() {
   const { user, logout, isAuthenticated } = React.useContext(AuthContext) || {};
   const location = useLocation();
@@ -33,19 +63,25 @@ export default function VerifyEmailPendingCompact() {
     readSessionValue("pending_verify_phone") ||
     "";
   const [feedback, setFeedback] = React.useState("");
+  const [feedbackType, setFeedbackType] = React.useState("success");
 
   const [resendVerification, { loading }] = useMutation(RESEND_VERIFICATION, {
+    errorPolicy: "none",
     onCompleted: () => {
-      setFeedback("Đã gửi lại email xác minh nếu tài khoản còn cần xác minh. Hãy kiểm tra Inbox, Spam hoặc Promotions.");
+      setFeedbackType("success");
+      setFeedback("Email xác minh đã được backend gửi thành công. Hãy kiểm tra Inbox, Spam hoặc Promotions.");
     },
     onError: (err) => {
-      setFeedback(err?.message || "Không thể gửi lại email xác minh.");
+      setFeedbackType("error");
+      setFeedback(resolveVerificationError(err));
     },
   });
 
   const handleResendEmail = () => {
     setFeedback("");
+    setFeedbackType("success");
     if (!email) {
+      setFeedbackType("error");
       setFeedback("Thiếu email để gửi xác nhận. Vui lòng quay lại đăng nhập bằng email của tài khoản.");
       return;
     }
@@ -100,7 +136,7 @@ export default function VerifyEmailPendingCompact() {
           <p className="account-verification-feedback is-error">Thiếu email/SĐT để gửi xác nhận.</p>
         )}
         {!!feedback && (
-          <p className={`account-verification-feedback ${feedback.includes("Không") || feedback.includes("Thiếu") ? "is-error" : "is-success"}`}>
+          <p className={`account-verification-feedback ${feedbackType === "error" ? "is-error" : "is-success"}`}>
             {feedback}
           </p>
         )}

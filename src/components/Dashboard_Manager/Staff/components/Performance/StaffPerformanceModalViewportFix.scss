@@ -1,0 +1,342 @@
+/* Final viewport + visual polish for Staff Performance review modal.
+   The review modal is moved to #root by runtime portal, so all styles here must be global,
+   not nested under .staff-performance-page. */
+
+body:has(.performance-modal-overlay) {
+  overflow: hidden !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout,
+body:has(.performance-modal-overlay) .manager-layout__main,
+body:has(.performance-modal-overlay) .manager-layout__content,
+body:has(.performance-modal-overlay) .manager-page-shell,
+body:has(.performance-modal-overlay) .manager-page-shell__body,
+body:has(.performance-modal-overlay) .staff-management,
+body:has(.performance-modal-overlay) .staff-management-page,
+body:has(.performance-modal-overlay) .staff-performance-page {
+  transform: none !important;
+  contain: none !important;
+  perspective: none !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout__main,
+body:has(.performance-modal-overlay) .manager-layout__content {
+  overflow: visible !important;
+  z-index: 2147482000 !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout__content {
+  position: static !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout__header,
+body:has(.performance-modal-overlay) .sidebar {
+  z-index: 1 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-width: 100vw !important;
+  min-height: 100dvh !important;
+  z-index: 2147483000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 24px !important;
+  margin: 0 !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(83, 108, 97, 0.18), transparent 34rem),
+    rgba(18, 25, 27, 0.82) !important;
+  backdrop-filter: blur(7px) saturate(0.92) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal {
+  position: relative !important;
+  width: min(760px, calc(100vw - 48px)) !important;
+  max-height: min(800px, 88dvh) !important;
+  margin: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(228, 218, 203, 0.95) !important;
+  border-radius: 24px !important;
+  color: #1f2a2b !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 1), rgba(250, 247, 240, 0.98)) !important;
+  box-shadow:
+    0 38px 110px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .modal-header {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 18px 20px 15px !important;
+  border-bottom: 1px solid rgba(214, 202, 184, 0.86) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 1), rgba(237, 245, 241, 0.72)) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .modal-header h3 {
+  margin: 0 !important;
+  color: #1f2a2b !important;
+  font-size: 1.08rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.025em !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .modal-header p {
+  margin: 4px 0 0 !important;
+  color: #536c61 !important;
+  font-size: 0.84rem !important;
+  font-weight: 800 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .modal-close {
+  width: 36px !important;
+  height: 36px !important;
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid rgba(214, 202, 184, 0.88) !important;
+  border-radius: 12px !important;
+  color: #66736f !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+  box-shadow: 0 8px 18px rgba(70, 62, 50, 0.08) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .modal-close:hover {
+  color: #1f2a2b !important;
+  background: #edf5f1 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .review-form {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  padding: 16px 18px 0 !important;
+  overflow-y: auto !important;
+  background: rgba(255, 253, 248, 0.76) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .factor-box {
+  display: grid !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(83, 108, 97, 0.18) !important;
+  border-radius: 16px !important;
+  background:
+    linear-gradient(135deg, rgba(237, 245, 241, 0.9), rgba(255, 253, 248, 0.96)) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .factor-box strong {
+  display: block !important;
+  margin: 0 !important;
+  color: #24403a !important;
+  font-size: 0.86rem !important;
+  font-weight: 950 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .factor-box p,
+body:has(.performance-modal-overlay) .performance-review-modal .factor-box span {
+  margin: 0 !important;
+  color: #66736f !important;
+  font-size: 0.8rem !important;
+  font-weight: 750 !important;
+  line-height: 1.45 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .factor-grid {
+  display: grid !important;
+  gap: 4px !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .review-score-field {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 250px) !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  border: 1px solid rgba(214, 202, 184, 0.84) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 253, 248, 0.92) !important;
+  box-shadow: 0 8px 18px rgba(70, 62, 50, 0.04) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .review-score-field:hover,
+body:has(.performance-modal-overlay) .performance-review-modal .review-score-field:focus-within {
+  border-color: rgba(83, 108, 97, 0.32) !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 12px 24px rgba(70, 62, 50, 0.08) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .field-copy {
+  min-width: 0 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .field-copy strong {
+  display: block !important;
+  margin: 0 0 3px !important;
+  color: #1f2a2b !important;
+  font-size: 0.88rem !important;
+  font-weight: 950 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .field-copy span {
+  display: block !important;
+  margin: 0 !important;
+  color: #66736f !important;
+  font-size: 0.78rem !important;
+  font-weight: 750 !important;
+  line-height: 1.36 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .field-control {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 64px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal input[type="range"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  accent-color: #536c61 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal input[type="number"] {
+  width: 64px !important;
+  height: 38px !important;
+  padding: 0 8px !important;
+  border: 1px solid rgba(214, 202, 184, 0.92) !important;
+  border-radius: 11px !important;
+  color: #1f2a2b !important;
+  background: #fffdf8 !important;
+  font-size: 0.9rem !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+  outline: none !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal input[type="number"]:focus,
+body:has(.performance-modal-overlay) .performance-review-modal textarea:focus {
+  border-color: rgba(83, 108, 97, 0.48) !important;
+  box-shadow: 0 0 0 4px rgba(83, 108, 97, 0.1) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .review-note-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  margin: 0 !important;
+  padding: 0 0 14px !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .review-note-field strong {
+  color: #1f2a2b !important;
+  font-size: 0.86rem !important;
+  font-weight: 950 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal textarea {
+  min-height: 94px !important;
+  width: 100% !important;
+  resize: vertical !important;
+  padding: 12px 13px !important;
+  border: 1px solid rgba(214, 202, 184, 0.92) !important;
+  border-radius: 14px !important;
+  color: #1f2a2b !important;
+  background: #fffdf8 !important;
+  font-size: 0.86rem !important;
+  font-weight: 750 !important;
+  line-height: 1.45 !important;
+  outline: none !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal textarea::placeholder {
+  color: #9aa6a1 !important;
+  font-weight: 750 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .modal-actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 4 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  margin: 0 -18px !important;
+  padding: 13px 18px !important;
+  border-top: 1px solid rgba(214, 202, 184, 0.86) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 -14px 24px rgba(70, 62, 50, 0.08) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .btn-secondary,
+body:has(.performance-modal-overlay) .performance-review-modal .btn-primary {
+  min-height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  font-size: 0.84rem !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .btn-secondary {
+  border: 1px solid rgba(214, 202, 184, 0.92) !important;
+  color: #53605d !important;
+  background: #fffdf8 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .btn-primary {
+  border: 1px solid #536c61 !important;
+  color: #fff !important;
+  background: #536c61 !important;
+  box-shadow: 0 12px 22px rgba(83, 108, 97, 0.18) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal .btn-primary:hover {
+  background: #43584f !important;
+}
+
+@media (max-width: 760px) {
+  body:has(.performance-modal-overlay) .performance-modal-overlay {
+    align-items: stretch !important;
+    padding: 12px !important;
+  }
+
+  body:has(.performance-modal-overlay) .performance-review-modal {
+    width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 20px !important;
+  }
+
+  body:has(.performance-modal-overlay) .performance-review-modal .review-score-field {
+    grid-template-columns: 1fr !important;
+  }
+
+  body:has(.performance-modal-overlay) .performance-review-modal .field-control {
+    grid-template-columns: minmax(0, 1fr) 62px !important;
+  }
+}

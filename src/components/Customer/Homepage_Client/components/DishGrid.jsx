@@ -1,7 +1,7 @@
 import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
-import { Star, UtensilsCrossed } from "lucide-react";
+import { Flame, Leaf, PartyPopper, Star, UtensilsCrossed } from "lucide-react";
 import {
   buildFoodDetailPath,
   buildFoodDetailState,
@@ -16,7 +16,6 @@ import { useCart } from "../../../../context/CartProvider";
 import { useNotification } from "../../../../hooks/useNotification";
 import "../../../../styles/Homepage/DishGrid.scss";
 
-// --- GRAPHQL QUERY ---
 const GET_TOP_MENU_ITEMS = gql`
   query GetTopMenuItems(
     $limit: Int = 8
@@ -80,6 +79,36 @@ const ADD_CART_ITEM = gql`
   }
 `;
 
+const fallbackDishSuggestions = [
+  {
+    key: "today-combo",
+    Icon: Flame,
+    name: "Combo no nhanh hôm nay",
+    description: "Gợi ý các món dễ ăn, đặt nhanh, phù hợp bữa trưa hoặc bữa tối.",
+    image: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=620&q=80",
+    cta: "Tìm combo",
+    path: "/restaurants",
+  },
+  {
+    key: "healthy-pick",
+    Icon: Leaf,
+    name: "Món nhẹ bụng",
+    description: "Ưu tiên món ít dầu, nhiều rau hoặc khẩu vị cân bằng hơn.",
+    image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=620&q=80",
+    cta: "Khám phá",
+    path: "/for-you",
+  },
+  {
+    key: "group-meal",
+    Icon: PartyPopper,
+    name: "Ăn cùng bạn bè",
+    description: "Các lựa chọn dễ chia sẻ như lẩu, nướng, hải sản hoặc món gọi chung.",
+    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=620&q=80",
+    cta: "Xem nhà hàng",
+    path: "/restaurants",
+  },
+];
+
 const normalizeCartNote = (value) => String(value || "").trim();
 
 const getMutationErrorMessage = (error, fallback) =>
@@ -112,7 +141,6 @@ const DishGrid = ({
     fetchPolicy: "network-only",
   });
 
-  // State lưu variant key đang chọn của từng món
   const [selectedVariantKeyByDish, setSelectedVariantKeyByDish] = useState({});
   const [addingDishId, setAddingDishId] = useState(null);
 
@@ -122,11 +150,9 @@ const DishGrid = ({
     () => safeDishes.filter((dish) => shouldShowMenuItemToCustomer(dish)),
     [safeDishes],
   );
-  // Ảnh fallback nếu món chưa có ảnh
   const defaultImg =
     "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80";
 
-  // --- LOGIC HELPER ---
   const getVariantKey = (variant, fallbackIndex = 0) =>
     variant?.key || `variant-${fallbackIndex}`;
 
@@ -179,7 +205,6 @@ const DishGrid = ({
   const handleMethodChange = (dishId, variantKey) => {
     setSelectedVariantKeyByDish((prev) => ({ ...prev, [dishId]: variantKey }));
   };
-
 
   const scrollToRestaurants = () => {
     document.getElementById("restaurants")?.scrollIntoView({
@@ -315,15 +340,20 @@ const DishGrid = ({
     }
   };
 
+  const hasCategoryFilter = selectedCategoryId || selectedCategoryName;
+
   return (
     <section id="menu" className="dish-grid">
       <div className="dish-grid__container">
-        {/* Header */}
         <div className="dish-grid__header">
-          <h3 className="dish-grid__title">Thực đơn nổi bật</h3>
+          <div>
+            <span className="dish-grid__badge">Gợi ý món ngon</span>
+            <h3 className="dish-grid__title">Thực đơn nổi bật</h3>
+            <p className="dish-grid__subtitle">Các món đáng thử, combo theo mood và gợi ý để bạn chọn nhanh hơn.</p>
+          </div>
+          <button type="button" className="dish-grid__view-all" onClick={scrollToRestaurants}>Tìm nhà hàng <span>→</span></button>
         </div>
 
-        {/* Content */}
         {error ? (
           <div className="dish-grid__error">Có lỗi khi tải món ăn.</div>
         ) : (
@@ -358,7 +388,6 @@ const DishGrid = ({
                         }
                       }}
                     >
-                      {/* Image Area */}
                       <div
                         className="dish-card__image-wrapper"
                         role="link"
@@ -375,45 +404,23 @@ const DishGrid = ({
                           }
                         }}
                       >
-                        <img
-                          src={img}
-                          alt={dish.name}
-                          className="dish-card__img"
-                        />
-                        {dish.point && (
-                          <div className="dish-card__rating">
-                            <Star aria-hidden="true" /> {dish.point}
-                          </div>
-                        )}
-                        {availability?.label && (
-                          <div className="dish-card__availability">
-                            {availability.label}
-                          </div>
-                        )}
+                        <img src={img} alt={dish.name} className="dish-card__img" />
+                        {dish.point && <div className="dish-card__rating"><Star aria-hidden="true" /> {dish.point}</div>}
+                        {availability?.label && <div className="dish-card__availability">{availability.label}</div>}
                       </div>
 
-                      {/* Content Area */}
                       <div className="dish-card__body">
-                        <h4 className="dish-card__name" title={dish.name}>
-                          {dish.name}
-                        </h4>
+                        <h4 className="dish-card__name" title={dish.name}>{dish.name}</h4>
                         <p className="dish-card__restaurant">{restaurantName}</p>
                         <div className="dish-card__meta">
                           <span className="dish-card__meta-item"><Star aria-hidden="true" /> {dish.point || dish.rate || "4.8"}</span>
                           {dish.avgPrepTimeMin && <span>{dish.avgPrepTimeMin} phút</span>}
                         </div>
 
-                        {/* Dropdown chọn biến thể */}
                         <div className="dish-card__variant-area">
                           {hasVariants ? (
-                            <div
-                              className="dish-card__select-wrapper"
-                              onClick={(e) => e.stopPropagation()}
-                              onKeyDown={(e) => e.stopPropagation()}
-                            >
-                              <label className="dish-card__label">
-                                Tùy chọn:
-                              </label>
+                            <div className="dish-card__select-wrapper" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                              <label className="dish-card__label">Tùy chọn:</label>
                               <select
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => e.stopPropagation()}
@@ -425,36 +432,19 @@ const DishGrid = ({
                                 }}
                               >
                                 {dish.servingVariants.map((m, idx) => (
-                                  <option
-                                    key={`${dish.id}-${getVariantKey(m, idx)}`}
-                                    value={getVariantKey(m, idx)}
-                                  >
-                                    {m.name} - {getEffectivePrice(
-                                      dish.basePrice,
-                                      m,
-                                    ).toLocaleString("vi-VN")}đ
+                                  <option key={`${dish.id}-${getVariantKey(m, idx)}`} value={getVariantKey(m, idx)}>
+                                    {m.name} - {getEffectivePrice(dish.basePrice, m).toLocaleString("vi-VN")}đ
                                   </option>
                                 ))}
                               </select>
                             </div>
                           ) : (
-                            // Spacer giữ chiều cao thẻ
-                            <div className="dish-card__variant-spacer">
-                              <span className="dish-card__label-static">
-                                Món tiêu chuẩn
-                              </span>
-                            </div>
+                            <div className="dish-card__variant-spacer"><span className="dish-card__label-static">Món tiêu chuẩn</span></div>
                           )}
                         </div>
 
-                        {/* Footer: Price + Button */}
                         <div className="dish-card__footer">
-                          <div className="dish-card__price-box">
-                            <span className="price">
-                              {price.toLocaleString("vi-VN")} <small>đ</small>
-                            </span>
-                          </div>
-
+                          <div className="dish-card__price-box"><span className="price">{price.toLocaleString("vi-VN")} <small>đ</small></span></div>
                           <button
                             className="dish-card__btn-add"
                             type="button"
@@ -472,56 +462,59 @@ const DishGrid = ({
                   );
                 })}
 
-            {!loading &&
-              visibleDishes.length === 0 &&
-              (selectedCategoryId || selectedCategoryName) && (
-                <div className="dish-grid__empty">
-                  <span className="dish-grid__empty-icon" aria-hidden="true"><UtensilsCrossed /></span>
-                  <strong>Chưa có món phù hợp</strong>
-                  <span>Hãy thử danh mục khác hoặc xem nhà hàng nổi bật bên dưới.</span>
-                  <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>
-                    Xem nhà hàng nổi bật
-                  </button>
-                </div>
-              )}
+            {!loading && visibleDishes.length === 0 && hasCategoryFilter && (
+              <div className="dish-grid__empty dish-grid__empty--category">
+                <span className="dish-grid__empty-icon" aria-hidden="true"><UtensilsCrossed /></span>
+                <strong>Chưa có món phù hợp</strong>
+                <span>Hãy thử danh mục khác hoặc xem nhà hàng nổi bật bên trên.</span>
+                <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>Xem nhà hàng nổi bật</button>
+              </div>
+            )}
 
-            {!loading &&
-              visibleDishes.length === 0 &&
-              !(selectedCategoryId || selectedCategoryName) && (
-                <div className="dish-grid__empty">
-                  <span className="dish-grid__empty-icon" aria-hidden="true"><UtensilsCrossed /></span>
-                  <strong>Chưa có món nổi bật</strong>
-                  <span>Thực đơn đang được cập nhật.</span>
-                  <button type="button" className="dish-grid__empty-cta" onClick={scrollToRestaurants}>
-                    Xem nhà hàng nổi bật
-                  </button>
-                </div>
-              )}
+            {!loading && visibleDishes.length === 0 && !hasCategoryFilter && (
+              <FallbackDishSuggestions navigate={navigate} />
+            )}
           </div>
         )}
       </div>
 
-      {/* --- SÓNG ĐÁY (Kết nối với RestaurantGrid) --- */}
       <div className="dish-grid__wave-bottom">
-        <svg
-          viewBox="0 0 1440 320"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
-          className="wave-svg"
-        >
-          {/* Màu Trắng trùng với RestaurantGrid */}
-          <path
-            fill="#ffffff"
-            fillOpacity="1"
-            d="M0,96L48,122.7C96,149,192,203,288,208C384,213,480,171,576,138.7C672,107,768,85,864,101.3C960,117,1056,171,1152,197.3C1248,224,1344,224,1392,224L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-          ></path>
+        <svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="wave-svg">
+          <path fill="#ffffff" fillOpacity="1" d="M0,96L48,122.7C96,149,192,203,288,208C384,213,480,171,576,138.7C672,107,768,85,864,101.3C960,117,1056,171,1152,197.3C1248,224,1344,224,1392,224L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
         </svg>
       </div>
     </section>
   );
 };
 
-// Skeleton Loader
+const FallbackDishSuggestions = ({ navigate }) => (
+  <div className="dish-grid__fallback" aria-label="Gợi ý món thay thế khi thực đơn đang cập nhật">
+    <div className="dish-grid__fallback-head">
+      <span className="dish-grid__empty-icon" aria-hidden="true"><UtensilsCrossed /></span>
+      <div>
+        <strong>Thực đơn đang được cập nhật</strong>
+        <span>Trong lúc chờ món thật, bạn có thể bắt đầu bằng các gợi ý nhanh dưới đây.</span>
+      </div>
+    </div>
+    <div className="dish-grid__fallback-list">
+      {fallbackDishSuggestions.map((item) => {
+        const Icon = item.Icon;
+        return (
+          <article key={item.key} className="dish-grid__fallback-card">
+            <img src={item.image} alt={item.name} loading="lazy" />
+            <div className="dish-grid__fallback-body">
+              <div className="dish-grid__fallback-icon"><Icon size={16} /></div>
+              <h4>{item.name}</h4>
+              <p>{item.description}</p>
+              <button type="button" onClick={() => navigate(item.path)}>{item.cta}</button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  </div>
+);
+
 const SkeletonCard = () => (
   <div className="dish-card dish-card--skeleton">
     <div className="skeleton-img" />

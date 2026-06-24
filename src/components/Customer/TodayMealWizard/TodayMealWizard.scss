@@ -1,16 +1,16 @@
 .today-meal-wizard,
 .today-meal-wizard-launcher {
-  --meal-primary: #0f6f66;
-  --meal-primary-deep: #07544e;
-  --meal-primary-soft: #edf7f4;
-  --meal-accent: #a8855f;
-  --meal-accent-soft: #f4eadc;
-  --meal-bg: #fffdf8;
-  --meal-paper: rgba(255, 253, 248, 0.96);
-  --meal-line: rgba(116, 88, 54, 0.18);
-  --meal-ink: #24303f;
-  --meal-muted: #5d6678;
-  --meal-shadow: 0 22px 52px rgba(48, 40, 30, 0.16);
+  --meal-primary: #ff6600;
+  --meal-primary-deep: #e65c00;
+  --meal-primary-soft: #fff1e6;
+  --meal-accent: #ff8a3d;
+  --meal-accent-soft: #fff6ed;
+  --meal-bg: #fffaf4;
+  --meal-paper: rgba(255, 250, 244, 0.97);
+  --meal-line: rgba(255, 102, 0, 0.2);
+  --meal-ink: #201a16;
+  --meal-muted: #6f6258;
+  --meal-shadow: 0 22px 52px rgba(255, 102, 0, 0.18);
   font-family: inherit;
 }
 
@@ -23,13 +23,25 @@
   border: 1px solid var(--meal-line);
   border-radius: 24px;
   background:
-    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.1), transparent 15rem),
-    radial-gradient(circle at 100% 0%, rgba(168, 133, 95, 0.14), transparent 14rem),
-    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(251, 246, 237, 0.95));
-  box-shadow: var(--meal-shadow), inset 0 1px rgba(255, 255, 255, 0.9);
+    radial-gradient(circle at 0% 0%, rgba(255, 102, 0, 0.13), transparent 15rem),
+    radial-gradient(circle at 100% 0%, rgba(255, 138, 61, 0.12), transparent 14rem),
+    linear-gradient(180deg, rgba(255, 250, 244, 0.98), rgba(255, 246, 237, 0.95));
+  box-shadow: var(--meal-shadow), inset 0 1px rgba(255, 255, 255, 0.92);
   color: var(--meal-ink);
   overflow: hidden;
   backdrop-filter: blur(16px);
+  transform-origin: left bottom;
+  animation: mealWizardEnter 0.48s cubic-bezier(0.2, 0.9, 0.2, 1.12) both;
+}
+
+.today-meal-wizard::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.68) 42%, transparent 58%);
+  transform: translateX(-130%);
+  animation: mealWizardSheen 4.2s ease-in-out 0.7s infinite;
 }
 
 .today-meal-wizard__header {
@@ -38,7 +50,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 16px 12px;
-  border-bottom: 1px solid rgba(116, 88, 54, 0.11);
+  border-bottom: 1px solid rgba(255, 102, 0, 0.13);
 }
 
 .today-meal-wizard__icon {
@@ -47,9 +59,10 @@
   display: grid;
   place-items: center;
   border-radius: 16px;
-  color: #fffdf8;
+  color: #fffaf4;
   background: linear-gradient(135deg, var(--meal-primary), var(--meal-accent));
-  box-shadow: 0 12px 24px rgba(15, 111, 102, 0.22);
+  box-shadow: 0 12px 24px rgba(255, 102, 0, 0.24);
+  animation: mealWizardIconFloat 2.8s ease-in-out infinite;
 }
 
 .today-meal-wizard__header p,
@@ -58,7 +71,7 @@
 }
 
 .today-meal-wizard__header p {
-  color: var(--meal-accent);
+  color: var(--meal-primary);
   font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.08em;
@@ -77,11 +90,19 @@
   height: 34px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(116, 88, 54, 0.14);
+  border: 1px solid rgba(255, 102, 0, 0.18);
   border-radius: 999px;
-  background: rgba(255, 253, 248, 0.9);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--meal-muted);
   cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.today-meal-wizard__close:hover {
+  transform: rotate(90deg) scale(1.04);
+  background: #fff1e6;
+  color: var(--meal-primary-deep);
+  border-color: rgba(255, 102, 0, 0.3);
 }
 
 .today-meal-wizard__progress {
@@ -94,28 +115,34 @@
 .today-meal-wizard__progress span {
   height: 5px;
   border-radius: 999px;
-  background: rgba(116, 88, 54, 0.14);
+  background: rgba(255, 102, 0, 0.13);
+  overflow: hidden;
+  transition: background 0.22s ease, transform 0.22s ease;
 }
 
 .today-meal-wizard__progress span.is-active {
   background: linear-gradient(90deg, var(--meal-primary), var(--meal-accent));
+  transform: scaleX(1.02);
+  animation: mealWizardProgressPop 0.42s ease both;
 }
 
 .today-meal-wizard__body {
   padding: 14px 16px 12px;
+  animation: mealWizardStepIn 0.32s cubic-bezier(0.22, 0.9, 0.24, 1) both;
 }
 
 .today-meal-wizard__eyebrow {
   display: inline-flex;
   width: fit-content;
   margin-bottom: 6px;
-  border: 1px solid rgba(15, 111, 102, 0.13);
+  border: 1px solid rgba(255, 102, 0, 0.18);
   border-radius: 999px;
   background: var(--meal-primary-soft);
-  color: var(--meal-primary);
+  color: var(--meal-primary-deep);
   padding: 5px 9px;
   font-size: 11px;
   font-weight: 850;
+  animation: mealWizardBadgePulse 2.7s ease-in-out infinite;
 }
 
 .today-meal-wizard__body h4,
@@ -147,22 +174,30 @@
 
 .today-meal-wizard__options button {
   min-height: 74px;
-  border: 1px solid rgba(116, 88, 54, 0.15);
+  border: 1px solid rgba(255, 102, 0, 0.16);
   border-radius: 16px;
-  background: rgba(255, 253, 248, 0.88);
+  background: rgba(255, 255, 255, 0.88);
   color: var(--meal-ink);
   padding: 11px 12px;
   text-align: left;
   cursor: pointer;
+  opacity: 0;
+  transform: translateY(9px) scale(0.98);
+  animation: mealWizardOptionIn 0.34s ease forwards;
+  animation-delay: calc(var(--option-index, 0) * 58ms);
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 .today-meal-wizard__options button:hover,
 .today-meal-wizard__options button.is-selected {
-  transform: translateY(-1px);
-  border-color: rgba(15, 111, 102, 0.32);
-  background: linear-gradient(180deg, rgba(237, 247, 244, 0.9), rgba(255, 253, 248, 0.95));
-  box-shadow: 0 10px 22px rgba(15, 111, 102, 0.1);
+  transform: translateY(-2px) scale(1.015);
+  border-color: rgba(255, 102, 0, 0.36);
+  background: linear-gradient(180deg, rgba(255, 241, 230, 0.96), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 10px 22px rgba(255, 102, 0, 0.12);
+}
+
+.today-meal-wizard__options button.is-selected {
+  animation: mealWizardSelected 0.3s ease both;
 }
 
 .today-meal-wizard__options strong,
@@ -190,8 +225,8 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  border-top: 1px solid rgba(116, 88, 54, 0.11);
-  background: rgba(255, 253, 248, 0.74);
+  border-top: 1px solid rgba(255, 102, 0, 0.13);
+  background: rgba(255, 250, 244, 0.78);
 }
 
 .today-meal-wizard__footer button {
@@ -201,12 +236,12 @@
   justify-content: center;
   gap: 6px;
   border-radius: 14px;
-  border: 1px solid rgba(15, 111, 102, 0.16);
+  border: 1px solid rgba(255, 102, 0, 0.2);
   padding: 0 12px;
   font-size: 12px;
   font-weight: 880;
   cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease, background 0.16s ease;
 }
 
 .today-meal-wizard__footer button:disabled {
@@ -219,7 +254,7 @@
 .today-meal-wizard__nav,
 .today-meal-wizard__for-you {
   background: var(--meal-primary-soft);
-  color: var(--meal-primary);
+  color: var(--meal-primary-deep);
 }
 
 .today-meal-wizard__for-you {
@@ -228,10 +263,14 @@
 
 .today-meal-wizard__ask,
 .today-meal-wizard__nav--next {
-  border-color: rgba(15, 111, 102, 0.36) !important;
+  border-color: rgba(255, 102, 0, 0.38) !important;
   background: linear-gradient(135deg, var(--meal-primary), var(--meal-primary-deep));
-  color: #fffdf8;
-  box-shadow: 0 12px 24px rgba(15, 111, 102, 0.22);
+  color: #fffaf4;
+  box-shadow: 0 12px 24px rgba(255, 102, 0, 0.24);
+}
+
+.today-meal-wizard__ask:not(:disabled) svg {
+  animation: mealWizardSparkle 1.7s ease-in-out infinite;
 }
 
 .today-meal-wizard__ask:hover:not(:disabled),
@@ -250,21 +289,105 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  border: 1px solid rgba(15, 111, 102, 0.24);
+  border: 1px solid rgba(255, 102, 0, 0.28);
   border-radius: 999px;
   background: linear-gradient(135deg, var(--meal-primary), var(--meal-primary-deep));
-  color: #fffdf8;
+  color: #fffaf4;
   padding: 0 16px;
   font-size: 14px;
   font-weight: 900;
-  box-shadow: 0 18px 34px rgba(15, 111, 102, 0.24);
+  box-shadow: 0 18px 34px rgba(255, 102, 0, 0.26);
   cursor: pointer;
+  transform-origin: left bottom;
+  animation: mealWizardLauncherIn 0.36s cubic-bezier(0.2, 0.9, 0.2, 1.12) both, mealWizardLauncherPulse 2.8s ease-in-out 0.7s infinite;
+}
+
+.today-meal-wizard-launcher svg {
+  animation: mealWizardSparkle 1.8s ease-in-out infinite;
 }
 
 .today-meal-wizard button:focus-visible,
 .today-meal-wizard-launcher:focus-visible {
-  outline: 3px solid rgba(15, 111, 102, 0.22);
+  outline: 3px solid rgba(255, 102, 0, 0.24);
   outline-offset: 3px;
+}
+
+@keyframes mealWizardEnter {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.012); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mealWizardStepIn {
+  from { opacity: 0; transform: translateX(14px); filter: blur(4px); }
+  to { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+
+@keyframes mealWizardOptionIn {
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mealWizardSelected {
+  0% { transform: translateY(0) scale(1); }
+  55% { transform: translateY(-2px) scale(1.035); }
+  100% { transform: translateY(-2px) scale(1.015); }
+}
+
+@keyframes mealWizardProgressPop {
+  from { transform: scaleX(0.68); }
+  to { transform: scaleX(1.02); }
+}
+
+@keyframes mealWizardBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 102, 0, 0); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 102, 0, 0.08); }
+}
+
+@keyframes mealWizardIconFloat {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-2px) rotate(-2deg); }
+}
+
+@keyframes mealWizardSheen {
+  0%, 58% { transform: translateX(-130%); opacity: 0; }
+  68% { opacity: 0.9; }
+  84%, 100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes mealWizardSparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: 1; }
+  45% { transform: rotate(12deg) scale(1.12); opacity: 0.82; }
+}
+
+@keyframes mealWizardLauncherIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mealWizardLauncherPulse {
+  0%, 100% { box-shadow: 0 18px 34px rgba(255, 102, 0, 0.26); }
+  50% { box-shadow: 0 18px 34px rgba(255, 102, 0, 0.26), 0 0 0 8px rgba(255, 102, 0, 0.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-meal-wizard,
+  .today-meal-wizard::before,
+  .today-meal-wizard__body,
+  .today-meal-wizard__icon,
+  .today-meal-wizard__eyebrow,
+  .today-meal-wizard__progress span.is-active,
+  .today-meal-wizard__options button,
+  .today-meal-wizard__options button.is-selected,
+  .today-meal-wizard__ask:not(:disabled) svg,
+  .today-meal-wizard-launcher,
+  .today-meal-wizard-launcher svg {
+    animation: none !important;
+  }
+
+  .today-meal-wizard__options button {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (max-width: 640px) {

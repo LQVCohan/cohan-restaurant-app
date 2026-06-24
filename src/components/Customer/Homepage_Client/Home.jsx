@@ -7,8 +7,8 @@ import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
 
 import "../../../styles/Homepage/home.scss";
+import "../../../styles/Homepage/HomeMotion.scss";
 
-// Hàm tiện ích lấy khung giờ (để lọc Category nếu cần)
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 10) return "breakfast";
@@ -19,15 +19,10 @@ const getCurrentTimeSlot = () => {
 
 const Home = () => {
   const timeSlot = getCurrentTimeSlot();
-
-  // Filter: Dùng để lọc RestaurantGrid khi bấm vào Category hoặc Search
   const [filterState, setFilterState] = useState({});
-
-  // Booking UI
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
 
-  // Khi chọn Danh mục -> Cập nhật bộ lọc cho RestaurantGrid
   const handleCategorySelect = useCallback((category) => {
     const categoryId = typeof category === "string" ? category : category?.id;
     const categoryName = typeof category === "object" ? category?.name : "";
@@ -43,34 +38,20 @@ const Home = () => {
     if (element) {
       const headerOffset = 100;
       const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition =
-        elementPosition + window.pageYOffset - headerOffset;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
     }
   }, [timeSlot]);
 
-  // Khi tìm kiếm từ Hero -> Cập nhật bộ lọc text
   const handleSearch = useCallback((searchPayload) => {
-    const searchText =
-      typeof searchPayload === "string"
-        ? searchPayload
-        : searchPayload?.search || "";
-
+    const searchText = typeof searchPayload === "string" ? searchPayload : searchPayload?.search || "";
     if (!searchText.trim()) return;
 
-    const nearbyCenter =
-      typeof searchPayload === "object" ? searchPayload?.location || null : null;
-
-    setFilterState((prev) => ({
-      ...prev,
-      search: searchText,
-      nearbyCenter,
-    }));
-
+    const nearbyCenter = typeof searchPayload === "object" ? searchPayload?.location || null : null;
+    setFilterState((prev) => ({ ...prev, search: searchText, nearbyCenter }));
     document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Mở modal đặt bàn (từ RestaurantGrid nếu được dùng ở flow khác)
   const handleOpenBooking = useCallback((restaurant) => {
     setSelectedRestaurant(restaurant);
     setIsTableBookingOpen(true);
@@ -88,6 +69,11 @@ const Home = () => {
       <main className="home__main-content">
         <HeroSection onSearch={handleSearch} />
 
+        <RestaurantGrid
+          restaurantFilter={filterState}
+          onBookingClick={handleOpenBooking}
+        />
+
         <Categories
           onCategorySelect={handleCategorySelect}
           timeSlot={timeSlot}
@@ -99,14 +85,7 @@ const Home = () => {
           timeSlot={timeSlot}
         />
 
-        <RestaurantGrid
-          restaurantFilter={filterState}
-          onBookingClick={handleOpenBooking}
-        />
-
-        <div className="home__section-wrapper">
-          <HowItWorks />
-        </div>
+        <HowItWorks />
       </main>
 
       <TableBooking

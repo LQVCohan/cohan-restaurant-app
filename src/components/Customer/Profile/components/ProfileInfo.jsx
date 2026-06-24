@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQuery, gql } from "@apollo/client";
-import { useVnAddressLazy } from "@/hooks/useVnAddressLazy"; // Đảm bảo đường dẫn đúng
+import { useVnAddressLazy } from "@/hooks/useVnAddressLazy";
 import { useAvatarUploadLocal } from "@/hooks/useAvatarUploadLocal";
 import { compressAvatar } from "@/utils/compressAvatar";
 import "./ProfileInfo.scss";
 
-// --- GRAPHQL MUTATION ---
 const UPDATE_USER = gql`
   mutation UpdateUser($input: UpdateUserInput!) {
     updateUser(input: $input) {
@@ -27,7 +26,6 @@ const UPDATE_USER = gql`
     }
   }
 `;
-
 
 const REQUEST_CONTACT_CHANGE_OTP = gql`
   mutation RequestContactChangeOtp($input: RequestContactChangeOtpInput!) {
@@ -78,7 +76,6 @@ const CREATE_WALLET = gql`
   }
 `;
 
-
 const MY_WALLET_TRANSACTIONS = gql`
   query MyWalletTransactions($limit: Int, $offset: Int) {
     myWalletTransactions(limit: $limit, offset: $offset) {
@@ -95,6 +92,29 @@ const MY_WALLET_TRANSACTIONS = gql`
   }
 `;
 
+const money = (value, currency = "VND") =>
+  `${Number(value || 0).toLocaleString("vi-VN")} ${currency || "VND"}`;
+
+const transactionLabel = (type = "") => {
+  const normalized = String(type || "").toUpperCase();
+  if (normalized === "TOPUP") return "Nạp ví";
+  if (normalized === "PAYMENT") return "Thanh toán";
+  if (normalized === "REFUND") return "Hoàn tiền";
+  if (normalized === "ADJUSTMENT") return "Điều chỉnh";
+  return normalized || "Giao dịch";
+};
+
+const resetContactModal = () => ({
+  open: false,
+  target: "EMAIL",
+  step: "enter_value",
+  value: "",
+  otp: "",
+  message: "",
+  maskedDestination: "",
+  cooldownUntil: null,
+});
+
 const ProfileInfo = ({
   user,
   isEditMode,
@@ -105,20 +125,16 @@ const ProfileInfo = ({
   const [updateUser, { loading: updating }] = useMutation(UPDATE_USER);
   const { upload } = useAvatarUploadLocal();
   const [savingProfile, setSavingProfile] = useState(false);
-  const [createWallet, { loading: creatingWallet }] =
-    useMutation(CREATE_WALLET);
-  const [requestContactChangeOtp, { loading: requestingContactOtp }] =
-    useMutation(REQUEST_CONTACT_CHANGE_OTP);
-  const [confirmContactChangeOtp, { loading: confirmingContactOtp }] =
-    useMutation(CONFIRM_CONTACT_CHANGE_OTP);
+  const [createWallet, { loading: creatingWallet }] = useMutation(CREATE_WALLET);
+  const [requestContactChangeOtp, { loading: requestingContactOtp }] = useMutation(REQUEST_CONTACT_CHANGE_OTP);
+  const [confirmContactChangeOtp, { loading: confirmingContactOtp }] = useMutation(CONFIRM_CONTACT_CHANGE_OTP);
   const [cancelContactChangeOtp] = useMutation(CANCEL_CONTACT_CHANGE_OTP);
   const { data: txData, refetch: refetchTx } = useQuery(MY_WALLET_TRANSACTIONS, {
-    variables: { limit: 10, offset: 0 },
+    variables: { limit: 6, offset: 0 },
     skip: !user?.wallet,
     fetchPolicy: "network-only",
   });
 
-  // Form State
   const [formData, setFormData] = useState({
     fullName: "",
     line1: "",
@@ -127,19 +143,9 @@ const ProfileInfo = ({
     ward: "",
   });
   const [topupAmount, setTopupAmount] = useState("100000");
-  const [contactModal, setContactModal] = useState({
-    open: false,
-    target: "EMAIL",
-    step: "enter_value",
-    value: "",
-    otp: "",
-    message: "",
-    maskedDestination: "",
-    cooldownUntil: null,
-  });
+  const [contactModal, setContactModal] = useState(resetContactModal());
   const toppingUp = false;
 
-  // Address Hook
   const {
     provinces,
     districts,
@@ -153,21 +159,17 @@ const ProfileInfo = ({
     loading: loadingAddress,
   } = useVnAddressLazy({ enabled: true });
 
-  // 1. SYNC DATA TỪ PROPS USER
   useEffect(() => {
-    if (user) {
-      setFormData({
-        fullName: user.fullName || "",
-        line1: user.address?.line1 || "",
-        city: user.address?.city || "",
-        district: user.address?.district || "",
-        ward: user.address?.ward || "",
-      });
-    }
+    if (!user) return;
+    setFormData({
+      fullName: user.fullName || "",
+      line1: user.address?.line1 || "",
+      city: user.address?.city || "",
+      district: user.address?.district || "",
+      ward: user.address?.ward || "",
+    });
   }, [user]);
 
-  // 2. LOGIC MAP NGƯỢC (TÊN -> MÃ) CHO ĐỊA CHỈ
-  // Khi user bấm Edit, hệ thống sẽ tìm mã tỉnh/huyện tương ứng với tên đang lưu để hiển thị đúng
   useEffect(() => {
     if (isEditMode && formData.city && provinces?.length > 0 && !provinceKey) {
       const found = provinces.find((p) => p.name === formData.city);
@@ -176,12 +178,7 @@ const ProfileInfo = ({
   }, [isEditMode, formData.city, provinces, provinceKey, setProvince]);
 
   useEffect(() => {
-    if (
-      isEditMode &&
-      formData.district &&
-      districts?.length > 0 &&
-      !districtKey
-    ) {
+    if (isEditMode && formData.district && districts?.length > 0 && !districtKey) {
       const found = districts.find((d) => d.name === formData.district);
       if (found) setDistrict(found.code);
     }
@@ -194,24 +191,21 @@ const ProfileInfo = ({
     }
   }, [isEditMode, formData.ward, wards, wardKey, setWard]);
 
-  // 3. HANDLERS
   const handleAddressChange = (type, e) => {
     const code = e.target.value;
-
     if (type === "city") {
       const found = provinces?.find((p) => String(p.code) === code);
-      setProvince(code); // Cập nhật mã cho hook load quận
-      setFormData((p) => ({
-        ...p,
-        city: found?.name || "",
-        district: "",
-        ward: "",
-      })); // Lưu tên
-    } else if (type === "district") {
+      setProvince(code);
+      setFormData((p) => ({ ...p, city: found?.name || "", district: "", ward: "" }));
+      return;
+    }
+    if (type === "district") {
       const found = districts?.find((d) => String(d.code) === code);
       setDistrict(code);
       setFormData((p) => ({ ...p, district: found?.name || "", ward: "" }));
-    } else if (type === "ward") {
+      return;
+    }
+    if (type === "ward") {
       const found = wards?.find((w) => String(w.code) === code);
       setWard(code);
       setFormData((p) => ({ ...p, ward: found?.name || "" }));
@@ -220,28 +214,18 @@ const ProfileInfo = ({
 
   const handleSave = async () => {
     if (savingProfile || updating) return;
-
     setSavingProfile(true);
     try {
       let avatarUrl = user.avatarUrl || "";
-
       if (newAvatarFile) {
-        try {
-          const compressedAvatar = await compressAvatar(newAvatarFile);
-          avatarUrl = await upload(compressedAvatar);
-        } catch (uploadError) {
-          throw new Error(
-            uploadError?.message ||
-              "Không thể tải ảnh đại diện. Vui lòng thử lại sau."
-          );
-        }
+        const compressedAvatar = await compressAvatar(newAvatarFile);
+        avatarUrl = await upload(compressedAvatar);
       }
 
       await updateUser({
         variables: {
           input: {
             fullName: formData.fullName,
-            phone: formData.phone,
             avatarUrl,
             address: {
               line1: formData.line1,
@@ -265,35 +249,11 @@ const ProfileInfo = ({
   };
 
   const openContactModal = (target) => {
-    setContactModal({
-      open: true,
-      target,
-      step: "enter_value",
-      value: "",
-      otp: "",
-      message: "",
-      maskedDestination: "",
-      cooldownUntil: null,
-    });
+    setContactModal({ ...resetContactModal(), open: true, target });
   };
 
-  const resetContactModal = () => ({
-    open: false,
-    target: "EMAIL",
-    step: "enter_value",
-    value: "",
-    otp: "",
-    message: "",
-    maskedDestination: "",
-    cooldownUntil: null,
-  });
-
   const closeContactModal = async () => {
-    const shouldCancel =
-      contactModal.open &&
-      contactModal.step === "enter_otp" &&
-      Boolean(contactModal.maskedDestination);
-
+    const shouldCancel = contactModal.open && contactModal.step === "enter_otp" && Boolean(contactModal.maskedDestination);
     if (shouldCancel) {
       try {
         await cancelContactChangeOtp({ variables: { target: contactModal.target } });
@@ -301,7 +261,6 @@ const ProfileInfo = ({
         console.warn("Không thể hủy OTP đang chờ:", err?.message);
       }
     }
-
     setContactModal(resetContactModal());
   };
 
@@ -341,7 +300,7 @@ const ProfileInfo = ({
       });
       alert(contactModal.target === "EMAIL" ? "Cập nhật email thành công!" : "Cập nhật số điện thoại thành công!");
       setContactModal(resetContactModal());
-      refetchUser();
+      refetchUser?.();
     } catch (err) {
       console.error(err);
       setContactModal((prev) => ({ ...prev, message: "Mã OTP không đúng hoặc đã hết hạn." }));
@@ -355,40 +314,29 @@ const ProfileInfo = ({
 
   const handleCreateWallet = async () => {
     try {
-      await createWallet({
-        variables: {
-          input: {
-            provider: "internal",
-            currency: "VND",
-          },
-        },
-      });
+      await createWallet({ variables: { input: { provider: "internal", currency: "VND" } } });
       alert("Đã tạo ví điện tử thành công!");
-      refetchUser();
+      await refetchUser?.();
+      refetchTx?.();
     } catch (err) {
       console.error(err);
       alert("Không thể tạo ví: " + err.message);
     }
   };
 
+  const transactions = txData?.myWalletTransactions || [];
+  const walletCurrency = user?.wallet?.currency || "VND";
+
   return (
     <div className="content-card fade-in">
       <div className="card-header">
         <h2 className="card-title">Hồ sơ cá nhân</h2>
         {!isEditMode ? (
-          <button className="btn-edit" onClick={() => setIsEditMode(true)}>
-            ✏️ Chỉnh sửa
-          </button>
+          <button className="btn-edit" onClick={() => setIsEditMode(true)}>✏️ Chỉnh sửa</button>
         ) : (
           <div className="action-group">
-            <button className="btn-cancel" onClick={() => setIsEditMode(false)}>
-              Hủy
-            </button>
-            <button
-              className="btn-save"
-              onClick={handleSave}
-              disabled={updating || savingProfile}
-            >
+            <button className="btn-cancel" onClick={() => setIsEditMode(false)}>Hủy</button>
+            <button className="btn-save" onClick={handleSave} disabled={updating || savingProfile}>
               {updating || savingProfile ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
@@ -396,7 +344,6 @@ const ProfileInfo = ({
       </div>
 
       <div className="form-grid">
-        {/* --- CƠ BẢN --- */}
         <div className="form-group">
           <label>Họ và tên</label>
           <input
@@ -404,16 +351,11 @@ const ProfileInfo = ({
             className="form-input"
             disabled={!isEditMode}
             value={formData.fullName}
-            onChange={(e) =>
-              setFormData({ ...formData, fullName: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
           />
         </div>
 
-        {/* --- ĐỊA CHỈ --- */}
-        <div className="form-divider">
-          <span>📍 Địa chỉ giao hàng</span>
-        </div>
+        <div className="form-divider"><span>📍 Địa chỉ giao hàng</span></div>
 
         <div className="form-group full">
           <label>Số nhà, Tên đường</label>
@@ -422,61 +364,32 @@ const ProfileInfo = ({
             className="form-input"
             disabled={!isEditMode}
             value={formData.line1}
-            onChange={(e) =>
-              setFormData({ ...formData, line1: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, line1: e.target.value })}
             placeholder="VD: 123 Đường Nguyễn Huệ..."
           />
         </div>
 
         <div className="form-group">
           <label>Tỉnh / Thành phố</label>
-          <select
-            className="form-select"
-            disabled={!isEditMode || loadingAddress}
-            value={provinceKey}
-            onChange={(e) => handleAddressChange("city", e)}
-          >
+          <select className="form-select" disabled={!isEditMode || loadingAddress} value={provinceKey} onChange={(e) => handleAddressChange("city", e)}>
             <option value="">-- Chọn Tỉnh/Thành --</option>
-            {provinces?.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.name}
-              </option>
-            ))}
+            {provinces?.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}
           </select>
         </div>
 
         <div className="form-group">
           <label>Quận / Huyện</label>
-          <select
-            className="form-select"
-            disabled={!isEditMode || !provinceKey}
-            value={districtKey}
-            onChange={(e) => handleAddressChange("district", e)}
-          >
+          <select className="form-select" disabled={!isEditMode || !provinceKey} value={districtKey} onChange={(e) => handleAddressChange("district", e)}>
             <option value="">-- Chọn Quận/Huyện --</option>
-            {districts?.map((d) => (
-              <option key={d.code} value={d.code}>
-                {d.name}
-              </option>
-            ))}
+            {districts?.map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}
           </select>
         </div>
 
         <div className="form-group">
           <label>Phường / Xã</label>
-          <select
-            className="form-select"
-            disabled={!isEditMode || !districtKey}
-            value={wardKey}
-            onChange={(e) => handleAddressChange("ward", e)}
-          >
+          <select className="form-select" disabled={!isEditMode || !districtKey} value={wardKey} onChange={(e) => handleAddressChange("ward", e)}>
             <option value="">-- Chọn Phường/Xã --</option>
-            {wards?.map((w) => (
-              <option key={w.code} value={w.code}>
-                {w.name}
-              </option>
-            ))}
+            {wards?.map((w) => <option key={w.code} value={w.code}>{w.name}</option>)}
           </select>
         </div>
       </div>
@@ -496,9 +409,7 @@ const ProfileInfo = ({
               <strong>{user.email || "Chưa cập nhật"}</strong>
               {user.emailVerified && <span className="contact-verified">Đã xác minh</span>}
             </div>
-            <button type="button" className="btn-edit" onClick={() => openContactModal("EMAIL")}>
-              Đổi email
-            </button>
+            <button type="button" className="btn-edit" onClick={() => openContactModal("EMAIL")}>Đổi email</button>
           </div>
 
           <div className="contact-summary-card">
@@ -507,9 +418,7 @@ const ProfileInfo = ({
               <strong>{user.phone || "Chưa cập nhật"}</strong>
               {user.phoneVerified && <span className="contact-verified">Đã xác minh</span>}
             </div>
-            <button type="button" className="btn-edit" onClick={() => openContactModal("PHONE")}>
-              Đổi số điện thoại
-            </button>
+            <button type="button" className="btn-edit" onClick={() => openContactModal("PHONE")}>Đổi số điện thoại</button>
           </div>
         </div>
       </div>
@@ -519,9 +428,7 @@ const ProfileInfo = ({
           <div className="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
             <div className="contact-modal-header">
               <div>
-                <h3 id="contact-modal-title">
-                  {contactModal.target === "EMAIL" ? "Đổi email đăng nhập" : "Đổi số điện thoại"}
-                </h3>
+                <h3 id="contact-modal-title">{contactModal.target === "EMAIL" ? "Đổi email đăng nhập" : "Đổi số điện thoại"}</h3>
                 <p>
                   {contactModal.step === "enter_value"
                     ? contactModal.target === "EMAIL"
@@ -550,12 +457,7 @@ const ProfileInfo = ({
                   onChange={(e) => setContactModal((prev) => ({ ...prev, value: e.target.value, message: "", cooldownUntil: null }))}
                   placeholder={contactModal.target === "EMAIL" ? "email-moi@example.com" : "0901234567"}
                 />
-                <button
-                  type="button"
-                  className="btn-save contact-modal-primary"
-                  onClick={handleRequestContactOtp}
-                  disabled={requestingContactOtp}
-                >
+                <button type="button" className="btn-save contact-modal-primary" onClick={handleRequestContactOtp} disabled={requestingContactOtp}>
                   {requestingContactOtp ? "Đang gửi mã..." : "Gửi mã OTP"}
                 </button>
               </div>
@@ -575,12 +477,7 @@ const ProfileInfo = ({
                   <button type="button" className="btn-cancel" onClick={handleRequestContactOtp} disabled={requestingContactOtp}>
                     {requestingContactOtp ? "Đang gửi lại..." : "Gửi lại mã"}
                   </button>
-                  <button
-                    type="button"
-                    className="btn-save"
-                    onClick={handleConfirmContactOtp}
-                    disabled={confirmingContactOtp || contactModal.otp.length !== 6}
-                  >
+                  <button type="button" className="btn-save" onClick={handleConfirmContactOtp} disabled={confirmingContactOtp || contactModal.otp.length !== 6}>
                     {confirmingContactOtp ? "Đang xác nhận..." : "Xác nhận thay đổi"}
                   </button>
                 </div>
@@ -590,83 +487,78 @@ const ProfileInfo = ({
         </div>
       )}
 
-      <div className="wallet-panel">
-        <div className="wallet-info">
-          <h3>Ví điện tử</h3>
-          {user?.wallet ? (
-            <div className="wallet-meta">
-              <div>
-                Trạng thái:{" "}
-                <strong>{user.wallet.status || "chưa kích hoạt"}</strong>
-              </div>
-              <div>
-                Số dư:{" "}
-                <strong>
-                  {Number(user.wallet.balance || 0).toLocaleString()}{" "}
-                  {user.wallet.currency || "VND"}
-                </strong>
-              </div>
-              <div>Nhà cung cấp: {user.wallet.provider || "Nội bộ"}</div>
-            </div>
-          ) : (
-            <p className="wallet-empty">
-              Bạn chưa có ví điện tử. Hãy tạo ví để thanh toán nhanh hơn.
-            </p>
-          )}
+      <section className={`wallet-panel ${user?.wallet ? "has-wallet" : "is-empty"}`}>
+        <div className="wallet-panel-header">
+          <div>
+            <span className="wallet-eyebrow">Ví điện tử</span>
+            <h3>{user?.wallet ? "FoodHub Wallet" : "Mở ví FoodHub"}</h3>
+            <p>{user?.wallet ? "Quản lý số dư và giao dịch gần đây trong cùng một khu vực." : "Tạo ví một lần để thanh toán nhanh hơn ở các đơn hàng sau."}</p>
+          </div>
+          {user?.wallet && <span className="wallet-status-badge">{user.wallet.status || "active"}</span>}
         </div>
-        <div className="wallet-actions">
-          <button
-            className="btn-save"
-            onClick={handleCreateWallet}
-            disabled={creatingWallet || Boolean(user?.wallet)}
-          >
-            {user?.wallet
-              ? "Ví đã sẵn sàng"
-              : creatingWallet
-                ? "Đang tạo ví..."
-                : "Tạo ví điện tử"}
-          </button>
-          {user?.wallet && (
-            <div className="wallet-topup">
-              <input
-                type="text"
-                className="form-input"
-                value={topupAmount}
-                onChange={(e) => setTopupAmount(e.target.value)}
-                placeholder="Số tiền nạp"
-              />
-              <button
-                className="btn-edit"
-                onClick={handleTopupWallet}
-                disabled={toppingUp}
-              >
-                {toppingUp ? "Đang nạp..." : "Nạp tiền"}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {user?.wallet && (
-        <div className="wallet-panel">
-          <div className="wallet-info">
-            <h3>Lịch sử giao dịch ví</h3>
-            <div className="wallet-meta">
-              {(txData?.myWalletTransactions || []).length === 0 && (
-                <div>Chưa có giao dịch nào.</div>
-              )}
-              {(txData?.myWalletTransactions || []).map((tx) => (
-                <div key={tx.id}>
-                  <strong>{tx.type}</strong> ·{" "}
-                  {Number(tx.amount || 0).toLocaleString()} {tx.currency || "VND"} ·{" "}
-                  {new Date(tx.createdAt).toLocaleString("vi-VN")} · Số dư sau:{" "}
-                  {Number(tx.balanceAfter || 0).toLocaleString()}
+        {user?.wallet ? (
+          <div className="wallet-dashboard">
+            <div className="wallet-balance-card">
+              <span>Số dư khả dụng</span>
+              <strong>{money(user.wallet.balance, walletCurrency)}</strong>
+              <small>Nhà cung cấp: {user.wallet.provider || "Nội bộ"}</small>
+            </div>
+
+            <div className="wallet-control-card">
+              <label>Nạp tiền vào ví</label>
+              <div className="wallet-topup-row">
+                <input
+                  type="text"
+                  className="form-input"
+                  value={topupAmount}
+                  onChange={(e) => setTopupAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Số tiền nạp"
+                />
+                <button className="btn-edit" onClick={handleTopupWallet} disabled={toppingUp}>
+                  {toppingUp ? "Đang nạp..." : "Nạp tiền"}
+                </button>
+              </div>
+              <p>Nạp ví tự động sẽ hoạt động sau khi hoàn tất cổng thanh toán.</p>
+            </div>
+
+            <div className="wallet-history-card">
+              <div className="wallet-history-title">
+                <strong>Lịch sử gần đây</strong>
+                <span>{transactions.length} giao dịch</span>
+              </div>
+              {transactions.length === 0 ? (
+                <p className="wallet-empty-line">Chưa có giao dịch nào.</p>
+              ) : (
+                <div className="wallet-transaction-list">
+                  {transactions.map((tx) => (
+                    <div className="wallet-transaction-item" key={tx.id}>
+                      <div>
+                        <strong>{transactionLabel(tx.type)}</strong>
+                        <span>{tx.createdAt ? new Date(tx.createdAt).toLocaleString("vi-VN") : "Chưa có thời gian"}</span>
+                      </div>
+                      <div className="wallet-transaction-amount">
+                        {money(tx.amount, tx.currency || walletCurrency)}
+                        <small>Số dư sau: {money(tx.balanceAfter, tx.currency || walletCurrency)}</small>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="wallet-empty-state">
+            <div>
+              <strong>Bạn chưa có ví điện tử</strong>
+              <p>Ví FoodHub giúp lưu số dư, theo dõi giao dịch và chuẩn bị cho thanh toán nhanh.</p>
+            </div>
+            <button className="btn-save" onClick={handleCreateWallet} disabled={creatingWallet}>
+              {creatingWallet ? "Đang tạo ví..." : "Tạo ví điện tử"}
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 };

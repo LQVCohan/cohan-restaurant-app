@@ -1,0 +1,400 @@
+.staff-performance-page {
+  width: min(100%, 1320px) !important;
+  margin-inline: auto !important;
+  gap: 10px !important;
+  color: #1f2a2b !important;
+
+  .performance-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(214, 202, 184, 0.8) !important;
+    background:
+      linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(237, 245, 241, 0.7)) !important;
+    box-shadow: 0 14px 34px rgba(70, 62, 50, 0.08) !important;
+
+    .eyebrow {
+      color: #536c61 !important;
+      font-size: 0.68rem !important;
+      margin-bottom: 2px !important;
+    }
+
+    h2 {
+      color: #1f2a2b !important;
+      font-size: 1.25rem !important;
+      letter-spacing: -0.035em !important;
+    }
+
+    p {
+      max-width: 620px !important;
+      margin-top: 3px !important;
+      color: #66736f !important;
+      font-size: 0.84rem !important;
+      line-height: 1.4 !important;
+    }
+
+    .hero-actions {
+      align-self: center !important;
+      gap: 8px !important;
+    }
+  }
+
+  .performance-formula-panel {
+    padding: 8px 12px !important;
+    border-radius: 14px !important;
+    border-color: rgba(83, 108, 97, 0.16) !important;
+    background: rgba(255, 253, 248, 0.82) !important;
+
+    summary {
+      color: #536c61 !important;
+      font-size: 0.84rem !important;
+    }
+
+    &[open] {
+      padding-bottom: 12px !important;
+    }
+  }
+
+  .performance-controls {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: end !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    border: 1px solid rgba(214, 202, 184, 0.78) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 253, 248, 0.9) !important;
+    box-shadow: 0 12px 28px rgba(70, 62, 50, 0.06) !important;
+
+    .control-group {
+      gap: 8px !important;
+    }
+
+    label {
+      gap: 4px !important;
+      color: #66736f !important;
+      font-size: 0.72rem !important;
+    }
+
+    input,
+    select {
+      height: 34px !important;
+      min-width: 130px !important;
+      border-radius: 10px !important;
+      border-color: rgba(214, 202, 184, 0.9) !important;
+      background: #fffdf8 !important;
+      font-size: 0.82rem !important;
+    }
+
+    .search-control input {
+      min-width: 230px !important;
+    }
+  }
+
+  .performance-kpis {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+
+    .kpi-card {
+      min-height: 58px !important;
+      padding: 10px 12px !important;
+      border-radius: 15px !important;
+      border-color: rgba(214, 202, 184, 0.75) !important;
+      background: rgba(255, 253, 248, 0.88) !important;
+      box-shadow: none !important;
+
+      svg {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 8px !important;
+        color: #536c61 !important;
+        background: #edf5f1 !important;
+      }
+
+      span {
+        color: #66736f !important;
+        font-size: 0.67rem !important;
+        letter-spacing: 0.035em !important;
+      }
+
+      strong {
+        color: #1f2a2b !important;
+        font-size: 1rem !important;
+      }
+    }
+  }
+
+  .performance-overview {
+    display: none !important;
+  }
+
+  .performance-layout {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .performance-table-card {
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(214, 202, 184, 0.82) !important;
+    background: rgba(255, 253, 248, 0.94) !important;
+    box-shadow: 0 16px 36px rgba(70, 62, 50, 0.08) !important;
+    overflow: hidden !important;
+  }
+
+  .performance-table-card > header,
+  .performance-table-card .table-header {
+    padding: 12px 14px !important;
+    border-bottom: 1px solid rgba(214, 202, 184, 0.74) !important;
+    background: rgba(255, 253, 248, 0.98) !important;
+
+    h3 {
+      color: #1f2a2b !important;
+      font-size: 0.98rem !important;
+    }
+
+    p {
+      margin-top: 2px !important;
+      color: #66736f !important;
+      font-size: 0.8rem !important;
+    }
+  }
+
+  .performance-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    border-radius: 0 0 18px 18px !important;
+  }
+
+  .performance-table {
+    width: 100% !important;
+    min-width: 1080px !important;
+    table-layout: fixed !important;
+
+    th,
+    td {
+      padding: 10px 12px !important;
+      border-bottom: 1px solid rgba(230, 223, 212, 0.76) !important;
+      background: #fffdf8 !important;
+    }
+
+    th {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 2 !important;
+      color: #66736f !important;
+      background: #f8f5ee !important;
+      font-size: 0.68rem !important;
+    }
+
+    tr:hover td {
+      background: #f7fbf8 !important;
+    }
+
+    tr.missing-snapshot td {
+      background: rgba(255, 249, 214, 0.42) !important;
+    }
+
+    tr.missing-snapshot:hover td {
+      background: rgba(255, 246, 190, 0.56) !important;
+    }
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 310px !important;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 100px !important;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 120px !important;
+    }
+
+    th:nth-child(n + 4):nth-child(-n + 7),
+    td:nth-child(n + 4):nth-child(-n + 7) {
+      width: 88px !important;
+      text-align: center !important;
+    }
+
+    th:last-child,
+    td:last-child {
+      width: 190px !important;
+    }
+
+    .employee-cell {
+      gap: 9px !important;
+
+      .avatar {
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 11px !important;
+      }
+
+      strong {
+        font-size: 0.85rem !important;
+      }
+
+      span {
+        font-size: 0.72rem !important;
+        line-height: 1.25 !important;
+      }
+
+      .trend-text {
+        color: #7a6f60 !important;
+      }
+    }
+  }
+
+  .level-badge {
+    padding: 4px 8px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .level-badge.missing {
+    color: #8a633f !important;
+    background: rgba(255, 248, 221, 0.9) !important;
+  }
+
+  .row-action {
+    min-height: 30px !important;
+    padding: 0 8px !important;
+    border-radius: 9px !important;
+    color: #536c61 !important;
+    background: #edf5f1 !important;
+    border-color: rgba(83, 108, 97, 0.18) !important;
+    font-size: 0.72rem !important;
+  }
+
+  .row-action.ghost {
+    background: #fffdf8 !important;
+    color: #66736f !important;
+    border-color: rgba(214, 202, 184, 0.8) !important;
+  }
+
+  .performance-detail-panel {
+    display: none !important;
+  }
+
+  @media (max-width: 1180px) {
+    width: 100% !important;
+
+    .performance-controls,
+    .performance-hero {
+      grid-template-columns: 1fr !important;
+    }
+
+    .performance-kpis {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+}
+
+/* Review modal: ManagerLayout uses transform/contain, so fixed children get trapped unless the parent stacking context is relaxed while this modal is open. */
+body:has(.performance-modal-overlay) {
+  overflow: hidden !important;
+}
+
+.manager-layout:has(.performance-modal-overlay) {
+  isolation: auto !important;
+}
+
+.manager-layout:has(.performance-modal-overlay) .manager-layout__main,
+.manager-layout:has(.performance-modal-overlay) .manager-layout__content {
+  transform: none !important;
+  contain: none !important;
+  overflow: visible !important;
+  z-index: 2147482000 !important;
+}
+
+.manager-layout:has(.performance-modal-overlay) .manager-layout__content {
+  position: static !important;
+}
+
+.performance-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 2147483000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 24px !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(83, 108, 97, 0.2), transparent 32rem),
+    rgba(18, 25, 27, 0.78) !important;
+  backdrop-filter: blur(5px) saturate(0.95) !important;
+}
+
+.performance-review-modal {
+  width: min(720px, calc(100vw - 48px)) !important;
+  max-height: min(760px, 88dvh) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(228, 218, 203, 0.92) !important;
+  border-radius: 22px !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 34px 96px rgba(0, 0, 0, 0.34) !important;
+}
+
+.performance-review-modal .modal-header {
+  flex: 0 0 auto !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(214, 202, 184, 0.84) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+}
+
+.performance-review-modal .review-form {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 14px 18px 0 !important;
+  gap: 10px !important;
+}
+
+.performance-review-modal .review-score-field {
+  border-color: rgba(214, 202, 184, 0.84) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+}
+
+.performance-review-modal input[type="range"] {
+  accent-color: #536c61 !important;
+}
+
+.performance-review-modal .modal-actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 3 !important;
+  margin: 0 -18px !important;
+  padding: 12px 18px !important;
+  border-top: 1px solid rgba(214, 202, 184, 0.84) !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow: 0 -12px 24px rgba(70, 62, 50, 0.08) !important;
+}
+
+@media (max-width: 760px) {
+  .performance-modal-overlay {
+    align-items: stretch !important;
+    padding: 12px !important;
+  }
+
+  .performance-review-modal {
+    width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .performance-review-modal .review-score-field {
+    grid-template-columns: 1fr !important;
+  }
+}

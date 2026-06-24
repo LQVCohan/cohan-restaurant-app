@@ -46,6 +46,37 @@ function forbidden() {
   return new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
 }
 
+function ensureVerificationDispatched(result, channel = "email") {
+  const delivery = channel === "sms" ? result?.sms : result?.email;
+  const status = String(delivery?.status || result?.status || "").toUpperCase();
+
+  if (status === "SENT" || status === "ALREADY_VERIFIED" || status === "VERIFIED") {
+    return true;
+  }
+
+  if (status === "COOLDOWN") {
+    throw new GraphQLError("Verification email was requested too recently. Please wait before trying again.", {
+      extensions: { code: "TOO_MANY_REQUESTS", deliveryStatus: status, cooldownUntil: delivery?.cooldownUntil || null },
+    });
+  }
+
+  if (status === "NOT_CONFIGURED") {
+    throw new GraphQLError("Verification email was not sent because the email provider is not configured.", {
+      extensions: { code: "EMAIL_PROVIDER_NOT_CONFIGURED", deliveryStatus: status, provider: delivery?.provider || null, error: delivery?.error || null },
+    });
+  }
+
+  if (status === "FAILED") {
+    throw new GraphQLError("Verification email delivery failed.", {
+      extensions: { code: "EMAIL_DELIVERY_FAILED", deliveryStatus: status, provider: delivery?.provider || null, error: delivery?.error || null },
+    });
+  }
+
+  throw new GraphQLError("Verification email was not sent.", {
+    extensions: { code: "EMAIL_NOT_SENT", deliveryStatus: status || "UNKNOWN", provider: delivery?.provider || null, error: delivery?.error || null },
+  });
+}
+
 async function hasAccessToAnyTargetRestaurant(ctx, restaurantIds) {
   for (const restaurantId of restaurantIds) {
     try {
@@ -98,8 +129,8 @@ export default {
     const user = await User.findOne({ email: String(email || "").toLowerCase().trim() });
     if (!user) return true; // Không tiết lộ user existence.
     if (user.emailVerified) return true;
-    await issueVerificationForUser({ user, channels: "EMAIL", reason: "request", ctx });
-    return true;
+    const result = await issueVerificationForUser({ user, channels: "EMAIL", reason: "request", ctx });
+    return ensureVerificationDispatched(result, "email");
   },
 
   // Mutation: verifyEmail(token: String!): Boolean!
@@ -114,8 +145,8 @@ export default {
     const user = await User.findOne({ email: String(email || "").toLowerCase().trim() });
     if (!user) return true; // Không tiết lộ user existence.
     if (user.emailVerified) return true;
-    await issueVerificationForUser({ user, channels: "EMAIL", reason: "resend", ctx });
-    return true;
+    const result = await issueVerificationForUser({ user, channels: "EMAIL", reason: "resend", ctx });
+    return ensureVerificationDispatched(result, "email");
   },
 
   requestMyVerification: async (_root, { channel = "AUTO" }, ctx) => {

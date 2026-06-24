@@ -57,17 +57,45 @@ const ProfileSidebar = ({
     user.avatarUrl ||
     `https://ui-avatars.com/api/?name=${user.fullName}&background=ff6600&color=fff`;
 
-  // Tính % để lên hạng (Ví dụ demo)
-  const progressPercent = Math.min(
-    ((user.loyaltyPoints || 0) / 1000) * 100,
-    100
-  );
+  const progressPercent = Math.min(((user.loyaltyPoints || 0) / 1000) * 100, 100);
+
+  const navItems = [
+    {
+      id: "info",
+      label: "Thông tin tài khoản",
+      icon: "👤",
+      desc: "Chỉnh sửa thông tin cá nhân",
+    },
+    {
+      id: "preferences",
+      label: "Khẩu vị & Ăn uống",
+      icon: "🥗",
+      desc: "Thiết lập chế độ ăn, dị ứng",
+    },
+    {
+      id: "orders",
+      label: "Lịch sử đơn hàng",
+      icon: "🛍️",
+      desc: "Xem lại các đơn đã đặt",
+    },
+    {
+      id: "wallet",
+      label: "Ví điện tử",
+      icon: "💳",
+      desc: user?.wallet ? "Số dư, nạp ví, giao dịch" : "Tạo ví FoodHub để thanh toán nhanh",
+    },
+    {
+      id: "security",
+      label: "Bảo mật & Riêng tư",
+      icon: "🛡️",
+      desc: "Đổi mật khẩu, 2FA",
+    },
+  ];
 
   return (
     <aside className="profile-sidebar">
-      {/* 1. USER CARD VỚI ẢNH BÌA */}
       <div className="user-card-pro">
-        <div className="card-cover"></div> {/* Ảnh bìa gradient */}
+        <div className="card-cover"></div>
         <div className="card-content">
           <div className="avatar-area">
             <div className="avatar-ring">
@@ -81,10 +109,7 @@ const ProfileSidebar = ({
               />
             </div>
             {isEditMode && (
-              <button
-                className="avatar-edit-btn"
-                onClick={() => fileInputRef.current?.click()}
-              >
+              <button className="avatar-edit-btn" onClick={() => fileInputRef.current?.click()}>
                 📷
               </button>
             )}
@@ -100,7 +125,6 @@ const ProfileSidebar = ({
           <h3 className="user-name">{user.fullName || user.username}</h3>
           <span className="user-email">{user.email}</span>
 
-          {/* Badge Role */}
           <div className="user-badge">
             <span className="badge-icon">👑</span>
             <span>{user.roleName || "Thành viên thân thiết"}</span>
@@ -108,7 +132,6 @@ const ProfileSidebar = ({
         </div>
       </div>
 
-      {/* 2. MEMBERSHIP CARD (HIỂN THỊ ĐIỂM ĐẸP HƠN) */}
       <div className="membership-card">
         <div className="mem-header">
           <span>Điểm tích lũy</span>
@@ -125,34 +148,8 @@ const ProfileSidebar = ({
         </p>
       </div>
 
-      {/* 3. NAVIGATION */}
       <nav className="profile-nav-pro">
-        {[
-          {
-            id: "info",
-            label: "Thông tin tài khoản",
-            icon: "👤",
-            desc: "Chỉnh sửa thông tin cá nhân",
-          },
-          {
-            id: "preferences",
-            label: "Khẩu vị & Ăn uống",
-            icon: "🥗",
-            desc: "Thiết lập chế độ ăn, dị ứng",
-          },
-          {
-            id: "orders",
-            label: "Lịch sử đơn hàng",
-            icon: "🛍️",
-            desc: "Xem lại các đơn đã đặt",
-          },
-          {
-            id: "security",
-            label: "Bảo mật & Riêng tư",
-            icon: "🛡️",
-            desc: "Đổi mật khẩu, 2FA",
-          },
-        ].map((item) => (
+        {navItems.map((item) => (
           <button
             key={item.id}
             className={`nav-item ${activeTab === item.id ? "active" : ""}`}
