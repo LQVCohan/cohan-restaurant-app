@@ -33,6 +33,10 @@ $border: rgba(92, 64, 51, 0.1);
   .profile-content {
     min-width: 0;
   }
+
+  .profile-content > .content-card > .wallet-panel {
+    display: none;
+  }
 }
 
 svg,
