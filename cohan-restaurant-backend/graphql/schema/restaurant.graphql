@@ -162,6 +162,22 @@ type RestaurantConnection {
   totalCount: Int!
 }
 
+type RestaurantProfileRewriteResult {
+  text: String!
+  provider: String!
+  usedGemini: Boolean!
+  reason: String
+}
+
+input RewriteRestaurantProfileInput {
+  restaurantId: ID!
+  restaurantName: String
+  cuisineType: String
+  currentText: String
+  chefName: String
+  tone: String
+}
+
 extend type Query {
   restaurants(
     limit: Int = 20
@@ -319,6 +335,9 @@ extend type Mutation {
   updateRestaurantCategoryIndex(
     input: UpdateRestaurantCategoryIndexInput!
   ): RestaurantCategoryIndex!
+  rewriteRestaurantProfileDescription(
+    input: RewriteRestaurantProfileInput!
+  ): RestaurantProfileRewriteResult!
 }
 
 type Category {
