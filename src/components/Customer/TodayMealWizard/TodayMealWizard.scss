@@ -30,6 +30,18 @@
   color: var(--meal-ink);
   overflow: hidden;
   backdrop-filter: blur(16px);
+  transform-origin: left bottom;
+  animation: mealWizardEnter 0.52s cubic-bezier(0.2, 0.9, 0.2, 1.15) both;
+}
+
+.today-meal-wizard::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.62) 42%, transparent 58%);
+  transform: translateX(-130%);
+  animation: mealWizardSheen 3.8s ease-in-out 0.55s infinite;
 }
 
 .today-meal-wizard__header {
@@ -50,6 +62,7 @@
   color: #fffdf8;
   background: linear-gradient(135deg, var(--meal-primary), var(--meal-accent));
   box-shadow: 0 12px 24px rgba(15, 111, 102, 0.22);
+  animation: mealWizardIconFloat 2.8s ease-in-out infinite;
 }
 
 .today-meal-wizard__header p,
@@ -82,6 +95,13 @@
   background: rgba(255, 253, 248, 0.9);
   color: var(--meal-muted);
   cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.today-meal-wizard__close:hover {
+  transform: rotate(90deg) scale(1.04);
+  background: #fff3ea;
+  color: #d45918;
 }
 
 .today-meal-wizard__progress {
@@ -95,14 +115,19 @@
   height: 5px;
   border-radius: 999px;
   background: rgba(116, 88, 54, 0.14);
+  overflow: hidden;
+  transition: background 0.22s ease, transform 0.22s ease;
 }
 
 .today-meal-wizard__progress span.is-active {
   background: linear-gradient(90deg, var(--meal-primary), var(--meal-accent));
+  transform: scaleX(1.02);
+  animation: mealWizardProgressPop 0.42s ease both;
 }
 
 .today-meal-wizard__body {
   padding: 14px 16px 12px;
+  animation: mealWizardStepIn 0.32s cubic-bezier(0.22, 0.9, 0.24, 1) both;
 }
 
 .today-meal-wizard__eyebrow {
@@ -116,6 +141,7 @@
   padding: 5px 9px;
   font-size: 11px;
   font-weight: 850;
+  animation: mealWizardBadgePulse 2.4s ease-in-out infinite;
 }
 
 .today-meal-wizard__body h4,
@@ -154,15 +180,23 @@
   padding: 11px 12px;
   text-align: left;
   cursor: pointer;
+  opacity: 0;
+  transform: translateY(9px) scale(0.98);
+  animation: mealWizardOptionIn 0.34s ease forwards;
+  animation-delay: calc(var(--option-index, 0) * 58ms);
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 .today-meal-wizard__options button:hover,
 .today-meal-wizard__options button.is-selected {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.015);
   border-color: rgba(15, 111, 102, 0.32);
   background: linear-gradient(180deg, rgba(237, 247, 244, 0.9), rgba(255, 253, 248, 0.95));
   box-shadow: 0 10px 22px rgba(15, 111, 102, 0.1);
+}
+
+.today-meal-wizard__options button.is-selected {
+  animation: mealWizardSelected 0.3s ease both;
 }
 
 .today-meal-wizard__options strong,
@@ -234,6 +268,10 @@
   box-shadow: 0 12px 24px rgba(15, 111, 102, 0.22);
 }
 
+.today-meal-wizard__ask:not(:disabled) svg {
+  animation: mealWizardSparkle 1.7s ease-in-out infinite;
+}
+
 .today-meal-wizard__ask:hover:not(:disabled),
 .today-meal-wizard__nav--next:hover:not(:disabled),
 .today-meal-wizard__for-you:hover:not(:disabled),
@@ -259,12 +297,116 @@
   font-weight: 900;
   box-shadow: 0 18px 34px rgba(15, 111, 102, 0.24);
   cursor: pointer;
+  transform-origin: left bottom;
+  animation: mealWizardLauncherIn 0.36s cubic-bezier(0.2, 0.9, 0.2, 1.12) both, mealWizardLauncherPulse 2.6s ease-in-out 0.7s infinite;
+}
+
+.today-meal-wizard-launcher svg {
+  animation: mealWizardSparkle 1.8s ease-in-out infinite;
 }
 
 .today-meal-wizard button:focus-visible,
 .today-meal-wizard-launcher:focus-visible {
   outline: 3px solid rgba(15, 111, 102, 0.22);
   outline-offset: 3px;
+}
+
+@keyframes mealWizardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mealWizardStepIn {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes mealWizardOptionIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mealWizardSelected {
+  0% { transform: translateY(0) scale(1); }
+  55% { transform: translateY(-2px) scale(1.035); }
+  100% { transform: translateY(-2px) scale(1.015); }
+}
+
+@keyframes mealWizardProgressPop {
+  from { transform: scaleX(0.68); }
+  to { transform: scaleX(1.02); }
+}
+
+@keyframes mealWizardBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(15, 111, 102, 0); }
+  50% { box-shadow: 0 0 0 5px rgba(15, 111, 102, 0.07); }
+}
+
+@keyframes mealWizardIconFloat {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-2px) rotate(-2deg); }
+}
+
+@keyframes mealWizardSheen {
+  0%, 58% { transform: translateX(-130%); opacity: 0; }
+  68% { opacity: 0.9; }
+  84%, 100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes mealWizardSparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: 1; }
+  45% { transform: rotate(12deg) scale(1.12); opacity: 0.82; }
+}
+
+@keyframes mealWizardLauncherIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mealWizardLauncherPulse {
+  0%, 100% { box-shadow: 0 18px 34px rgba(15, 111, 102, 0.24); }
+  50% { box-shadow: 0 18px 34px rgba(15, 111, 102, 0.24), 0 0 0 8px rgba(15, 111, 102, 0.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-meal-wizard,
+  .today-meal-wizard::before,
+  .today-meal-wizard__body,
+  .today-meal-wizard__icon,
+  .today-meal-wizard__eyebrow,
+  .today-meal-wizard__progress span.is-active,
+  .today-meal-wizard__options button,
+  .today-meal-wizard__options button.is-selected,
+  .today-meal-wizard__ask:not(:disabled) svg,
+  .today-meal-wizard-launcher,
+  .today-meal-wizard-launcher svg {
+    animation: none !important;
+  }
+
+  .today-meal-wizard__options button {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (max-width: 640px) {
