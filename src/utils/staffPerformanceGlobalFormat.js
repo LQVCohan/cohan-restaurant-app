@@ -6,12 +6,23 @@ const formatPercentFallback = (value) => {
   return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}%`;
 };
 
-if (typeof globalThis !== "undefined" && typeof globalThis.formatPercent !== "function") {
-  Object.defineProperty(globalThis, "formatPercent", {
-    value: formatPercentFallback,
+const scoreTextFallback = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "--/100";
+  return `${Math.round(number)}/100`;
+};
+
+const installGlobalFormatter = (name, formatter) => {
+  if (typeof globalThis === "undefined" || typeof formatter !== "function") return;
+  if (typeof globalThis[name] === "function") return;
+  Object.defineProperty(globalThis, name, {
+    value: formatter,
     configurable: true,
     writable: true,
   });
-}
+};
 
-export { formatPercentFallback as formatPercent };
+installGlobalFormatter("formatPercent", formatPercentFallback);
+installGlobalFormatter("scoreText", scoreTextFallback);
+
+export { formatPercentFallback as formatPercent, scoreTextFallback as scoreText };
