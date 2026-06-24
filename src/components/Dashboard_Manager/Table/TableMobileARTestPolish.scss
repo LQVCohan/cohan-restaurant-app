@@ -1,0 +1,89 @@
+.table-3d-modal {
+  .table-3d-modal__header-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .table-3d-test-report-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid rgba(83, 108, 97, 0.18);
+    border-radius: 999px;
+    color: #126d61;
+    background: #edf5f1;
+    font-size: 0.72rem;
+    font-weight: 820;
+    white-space: nowrap;
+  }
+
+  .table-3d-modal__header-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    border-radius: 11px !important;
+  }
+
+  .table-3d-modal__footer--clear-actions .table-3d-position-action .btn {
+    border-color: rgba(83, 108, 97, 0.22) !important;
+    color: #126d61 !important;
+    background: #edf5f1 !important;
+    font-weight: 840 !important;
+  }
+
+  .table-3d-modal__footer--clear-actions .table-3d-position-action__hint {
+    color: #66736f;
+    font-size: 0.72rem;
+  }
+}
+
+.ar-placement-modal {
+  .ar-placement-modal__mode-labels article strong,
+  .ar-placement-modal__section-title h4,
+  .ar-placement-modal__section h4 {
+    letter-spacing: -0.02em;
+  }
+
+  .ar-placement-modal__mode-labels article:nth-child(1) strong::after {
+    content: " · có lưu vị trí";
+    color: #66736f;
+    font-weight: 700;
+  }
+
+  .ar-placement-modal__mode-labels article:nth-child(2) strong::after {
+    content: " · chỉ xem thử";
+    color: #66736f;
+    font-weight: 700;
+  }
+
+  .ar-placement-modal__mode-labels article:nth-child(3) strong::after {
+    content: " · dự phòng";
+    color: #66736f;
+    font-weight: 700;
+  }
+
+  .ar-placement-modal__step {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 860px) {
+  .table-3d-modal {
+    .table-3d-modal__header {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
+
+    .table-3d-modal__header-actions {
+      width: 100%;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+  }
+}
