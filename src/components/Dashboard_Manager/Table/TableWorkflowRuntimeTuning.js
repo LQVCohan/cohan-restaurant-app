@@ -37,6 +37,53 @@ const SECTION_KIND_RULES = [
   { className: "talite-group--ai", match: ["AI", "Gợi ý"] },
 ];
 
+const FIELD_GUIDES = new Map([
+  ["Mã bàn", "Mã hiển thị trên sơ đồ và danh sách bàn. Nên ngắn, dễ gọi như A1 hoặc V201."],
+  ["Sức chứa", "Số khách tối đa bàn này phục vụ thoải mái. Dùng để gợi ý ghép bàn và đặt bàn."],
+  ["Loại", "Phân loại vị trí bàn như trong nhà, VIP hoặc ngoài trời để khách chọn đúng nhu cầu."],
+  ["Nhãn bàn", "Thêm vài nhãn ngắn để mô tả bàn, ví dụ gần cửa sổ, riêng tư hoặc view đẹp."],
+  ["Khu vực", "Tên khu phục vụ của bàn, ví dụ Sảnh chính, sân vườn, tầng lửng."],
+  ["Vị trí X", "Tọa độ ngang của bàn trên sơ đồ. Chỉ chỉnh khi cần căn lại vị trí thủ công."],
+  ["Vị trí Y", "Tọa độ dọc của bàn trên sơ đồ. Chỉ chỉnh khi cần căn lại vị trí thủ công."],
+  ["Link VR bàn", "Đường dẫn ảnh 360 hoặc trang VR riêng của bàn để khách xem trước không gian."],
+  ["Tầng đích", "Chọn tầng mới khi muốn chuyển bàn sang khu vực khác. Hệ thống sẽ cố gắng giữ bố cục hợp lý."],
+  ["Bàn muốn đổi vị trí", "Nhập mã bàn cùng tầng để hoán đổi vị trí hoặc mã hiển thị."],
+  ["Gộp với các bàn", "Nhập các mã bàn cần ghép, cách nhau bằng dấu phẩy hoặc khoảng trắng."],
+  ["Giá đặt cọc (VND)", "Số tiền khách cần đặt trước khi giữ bàn. Để trống nếu không yêu cầu cọc."],
+  ["Ưu đãi từ Promotion", "Chọn các khuyến mãi sẽ hiện khi khách đặt bàn này."],
+  ["Tiện ích / ưu đãi nhanh (nhập tay)", "Thêm ưu đãi riêng cho bàn mà chưa cần tạo promotion mới."],
+  ["Giữ bàn (phút)", "Khoảng thời gian nhà hàng giữ bàn sau giờ đặt. Quá thời gian này có thể giải phóng bàn."],
+  ["Chi tiêu tối thiểu", "Mức chi tiêu tối thiểu áp dụng cho bàn đặc biệt, phòng riêng hoặc giờ cao điểm."],
+  ["Chính sách huỷ", "Quy định hủy/hoàn cọc để nhân viên và khách hiểu rõ trước khi đặt bàn."],
+]);
+
+const SECTION_GUIDES = new Map([
+  ["Thông tin cơ bản", "Thiết lập dữ liệu nền của bàn: mã, sức chứa, khu vực, tọa độ và VR."],
+  ["Trạng thái", "Cập nhật nhanh tình trạng vận hành hiện tại của bàn."],
+  ["Chuyển tầng", "Di chuyển bàn sang tầng khác khi thay đổi bố cục nhà hàng."],
+  ["Đổi vị trí với bàn khác", "Hoán đổi bàn cùng tầng để tối ưu sơ đồ mà không phải kéo thủ công."],
+  ["Gộp / Tách", "Dùng khi phục vụ nhóm lớn hoặc tách bàn sau khi kết thúc phục vụ."],
+  ["Đặt cọc & Ưu đãi khi đặt bàn", "Thiết lập cọc và ưu đãi hiển thị cho khách khi đặt bàn."],
+  ["Chính sách đặt bàn", "Quy định thời gian giữ bàn, mức chi tiêu tối thiểu và điều kiện hủy."],
+  ["Gợi ý AI cho bàn ăn", "Tạo gợi ý nhanh để tối ưu ghép bàn, ưu đãi và thời gian quay vòng."],
+  ["Cấu hình VR bàn", "Gắn link VR hoặc ảnh 360 để khách xem trước không gian bàn."],
+]);
+
+const BUTTON_GUIDES = new Map([
+  ["Lưu thay đổi", "Lưu toàn bộ cấu hình hiện tại của bàn."],
+  ["Đóng", "Đóng modal. Nếu có bản nháp, hệ thống có thể nhắc khôi phục ở lần sau."],
+  ["Thêm", "Thêm tiện ích hoặc ưu đãi nhập tay vào bàn này."],
+  ["Mở VR bàn", "Mở thử link VR/ảnh 360 đã cấu hình cho bàn."],
+  ["Chuyển", "Chuyển bàn sang tầng đã chọn."],
+  ["Đổi chỗ", "Đổi vị trí hoặc mã với bàn đã nhập."],
+  ["Gộp bàn", "Ghép bàn này với các bàn khác để phục vụ nhóm lớn."],
+  ["Tách bàn này", "Tách bàn khỏi nhóm ghép hiện tại."],
+  ["Xoá bàn", "Xóa bàn khỏi hệ thống nếu không còn ràng buộc vận hành."],
+  ["Đề xuất ghép bàn", "Gợi ý bàn phù hợp để ghép khi cần thêm chỗ."],
+  ["Đề xuất ưu đãi", "Gợi ý ưu đãi phù hợp với bàn và khuyến mãi hiện có."],
+  ["AI dự đoán bàn trống", "Ước lượng thời gian bàn có thể quay lại trạng thái trống."],
+]);
+
 const shouldTuneElement = (element) => {
   if (!element?.closest) return false;
   return Boolean(
@@ -204,6 +251,59 @@ const ensureModalFooterState = (modal) => {
   footer.insertBefore(state, actions || null);
 };
 
+const setGuide = (element, guide, placement = "top") => {
+  if (!element || !guide) return;
+  element.classList.add("talite-help-target");
+  element.dataset.guide = guide;
+  element.dataset.guidePlacement = placement;
+  if (!element.hasAttribute("tabindex")) element.setAttribute("tabindex", "0");
+  element.setAttribute("aria-label", `${element.textContent?.trim() || "Mục này"}. ${guide}`);
+  element.setAttribute("title", guide);
+};
+
+const addFieldGuides = (modal) => {
+  modal.querySelectorAll(".talite-label").forEach((label) => {
+    const text = label.textContent?.trim();
+    const guide = FIELD_GUIDES.get(text);
+    if (!guide) return;
+    const target = label.closest("div") || label;
+    setGuide(target, guide, "top");
+    const field = target.querySelector?.("input, select, textarea");
+    if (field) {
+      field.setAttribute("title", guide);
+      field.setAttribute("aria-describedby", field.getAttribute("aria-describedby") || "table-field-guide");
+    }
+  });
+};
+
+const addSectionGuides = (modal) => {
+  modal.querySelectorAll(".talite-group-header").forEach((header) => {
+    const title = header.querySelector(".talite-label")?.textContent?.trim();
+    const guide = SECTION_GUIDES.get(title);
+    if (guide) setGuide(header, guide, "bottom");
+  });
+  const info = modal.querySelector(".talite-info");
+  setGuide(info, "Xem nhanh thông tin hiện tại của bàn trước khi chỉnh cấu hình.", "bottom");
+  const vrBlock = modal.querySelector(".talite-vr-block");
+  setGuide(vrBlock, SECTION_GUIDES.get("Cấu hình VR bàn"), "top");
+};
+
+const addButtonGuides = (modal) => {
+  modal.querySelectorAll("button").forEach((button) => {
+    const text = button.textContent?.trim();
+    const guide = BUTTON_GUIDES.get(text);
+    if (guide) setGuide(button, guide, "top");
+  });
+};
+
+const enhanceModalGuides = (modal) => {
+  if (!modal || modal.dataset.hoverGuideReady === "true") return;
+  addSectionGuides(modal);
+  addFieldGuides(modal);
+  addButtonGuides(modal);
+  modal.dataset.hoverGuideReady = "true";
+};
+
 const enhanceTableModalObservation = (root) => {
   if (!root?.querySelectorAll) return;
   const modals = root.matches?.(".talite-modal")
@@ -213,6 +313,7 @@ const enhanceTableModalObservation = (root) => {
     markModalSections(modal);
     ensureModalNavigator(modal);
     ensureModalFooterState(modal);
+    enhanceModalGuides(modal);
   });
 };
 
