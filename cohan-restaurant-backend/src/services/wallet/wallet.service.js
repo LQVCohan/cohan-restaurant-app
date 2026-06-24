@@ -241,6 +241,21 @@ export async function refundToWallet({ userId, restaurantId, orderIds = [], amou
   try {
     let result;
     await session.withTransaction(async () => {
+      if (orderObjectIds.length) {
+        const orders = await Order.find({ _id: { $in: orderObjectIds }, restaurantId: rid }).session(session);
+        if (orders.length !== orderObjectIds.length) throw new Error("Some refund orders are not eligible for this restaurant");
+        const paidTotal = orders.reduce((sum, order) => {
+          if (String(order.userId || "") !== String(uid)) throw new Error("Refund target does not match order customer");
+          return sum + Math.max(0, roundMoney(order?.payment?.paidAmount || order?.totals?.grandTotal || 0));
+        }, 0);
+        const previousRefunds = await PaymentRefund.find({ restaurantId: rid, orderId: { $in: orderObjectIds }, status: { $in: ["success", "processed"] } }).session(session).lean();
+        const refundedTotal = previousRefunds.reduce((sum, refund) => sum + roundMoney(refund.amount || 0), 0);
+        const refundableAmount = Math.max(0, paidTotal - refundedTotal);
+        if (normalizedAmount > refundableAmount) {
+          throw new Error(`Refund amount exceeds refundable balance (${refundableAmount})`);
+        }
+      }
+
       const user = await User.findById(uid).session(session);
       if (!user) throw new Error("User not found");
       const wallet = ensureWalletOnUser(user);
