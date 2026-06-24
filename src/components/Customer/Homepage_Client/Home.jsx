@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { Gift, MapPin, ShieldCheck, WalletCards } from "lucide-react";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
@@ -8,7 +9,6 @@ import TableBooking from "./components/TableBooking";
 
 import "../../../styles/Homepage/home.scss";
 
-// Hàm tiện ích lấy khung giờ (để lọc Category nếu cần)
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 10) return "breakfast";
@@ -17,17 +17,56 @@ const getCurrentTimeSlot = () => {
   return "late_night";
 };
 
+const HomeValueStrip = () => {
+  const items = [
+    {
+      icon: MapPin,
+      title: "Gần bạn hơn",
+      description: "Lọc nhà hàng theo vị trí và khoảng cách rõ ràng.",
+    },
+    {
+      icon: Gift,
+      title: "Deal mỗi ngày",
+      description: "Ưu đãi, coupon và combo được gom ngay trên Cohan.",
+    },
+    {
+      icon: WalletCards,
+      title: "Cohan Balance",
+      description: "Thanh toán bằng ví, nhận hoàn tiền nhanh sau đơn.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Đặt món an tâm",
+      description: "Giữ món, theo dõi đơn và nhận hỗ trợ khi cần.",
+    },
+  ];
+
+  return (
+    <section className="home-value-strip" aria-label="Điểm mạnh khi đặt món trên FoodHub">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <article key={item.title} className="home-value-strip__item">
+            <div className="home-value-strip__icon"><Icon size={18} /></div>
+            <div>
+              <strong>{item.title}</strong>
+              <span>{item.description}</span>
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+};
+
 const Home = () => {
   const timeSlot = getCurrentTimeSlot();
 
-  // Filter: Dùng để lọc RestaurantGrid khi bấm vào Category hoặc Search
   const [filterState, setFilterState] = useState({});
 
-  // Booking UI
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
 
-  // Khi chọn Danh mục -> Cập nhật bộ lọc cho RestaurantGrid
   const handleCategorySelect = useCallback((category) => {
     const categoryId = typeof category === "string" ? category : category?.id;
     const categoryName = typeof category === "object" ? category?.name : "";
@@ -49,7 +88,6 @@ const Home = () => {
     }
   }, [timeSlot]);
 
-  // Khi tìm kiếm từ Hero -> Cập nhật bộ lọc text
   const handleSearch = useCallback((searchPayload) => {
     const searchText =
       typeof searchPayload === "string"
@@ -70,7 +108,6 @@ const Home = () => {
     document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Mở modal đặt bàn (từ RestaurantGrid nếu được dùng ở flow khác)
   const handleOpenBooking = useCallback((restaurant) => {
     setSelectedRestaurant(restaurant);
     setIsTableBookingOpen(true);
@@ -87,6 +124,12 @@ const Home = () => {
     <div className="home">
       <main className="home__main-content">
         <HeroSection onSearch={handleSearch} />
+        <HomeValueStrip />
+
+        <RestaurantGrid
+          restaurantFilter={filterState}
+          onBookingClick={handleOpenBooking}
+        />
 
         <Categories
           onCategorySelect={handleCategorySelect}
@@ -97,11 +140,6 @@ const Home = () => {
           selectedCategoryId={filterState.categoryId}
           selectedCategoryName={filterState.categoryName}
           timeSlot={timeSlot}
-        />
-
-        <RestaurantGrid
-          restaurantFilter={filterState}
-          onBookingClick={handleOpenBooking}
         />
 
         <div className="home__section-wrapper">
