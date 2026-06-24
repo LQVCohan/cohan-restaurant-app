@@ -80,6 +80,11 @@ const CREATE_USER_MUTATION = gql`
         phone
         emailVerified
         phoneVerified
+        verificationLastChannel
+        verificationLastStatus
+        verificationLastRequestedAt
+        emailVerifyLastSentAt
+        phoneVerifyLastSentAt
         fullName
         username
       }
@@ -292,10 +297,19 @@ const LoginPage = () => {
         resetCaptcha();
       },
       onCompleted: (data) => {
+        const token = data?.createUser?.token;
         const createdUser = data?.createUser?.user;
         const needsVerification =
           createdUser?.status === "pending" ||
           (createdUser && !isAccountVerified(createdUser));
+
+        if (token && createdUser) {
+          authLogin(token, createdUser, null, {
+            persistSession: true,
+            rememberIdentifier: true,
+            identifier: createdUser.email || registerForm.email,
+          });
+        }
 
         if (needsVerification) {
           showNotification(
@@ -308,6 +322,11 @@ const LoginPage = () => {
               email: createdUser?.email || registerForm.email,
               phone: createdUser?.phone,
               fromRegistration: true,
+              verificationLastChannel: createdUser?.verificationLastChannel,
+              verificationLastStatus: createdUser?.verificationLastStatus,
+              verificationLastRequestedAt: createdUser?.verificationLastRequestedAt,
+              emailVerifyLastSentAt: createdUser?.emailVerifyLastSentAt,
+              phoneVerifyLastSentAt: createdUser?.phoneVerifyLastSentAt,
             },
           });
         } else {
