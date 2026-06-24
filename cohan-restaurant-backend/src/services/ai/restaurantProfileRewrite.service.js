@@ -1,5 +1,9 @@
-const GEMINI_MODEL = process.env.GEMINI_REWRITE_MODEL || "gemini-1.5-flash";
-const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const DEFAULT_GEMINI_REWRITE_MODELS = [
+  process.env.GEMINI_REWRITE_MODEL,
+  "gemini-flash-latest",
+  "gemini-3.5-flash",
+  "gemini-2.5-flash",
+].filter(Boolean);
 
 const cleanText = (value = "") =>
   String(value || "")
@@ -8,17 +12,34 @@ const cleanText = (value = "") =>
 
 const clampText = (value = "", max = 1200) => cleanText(value).slice(0, max);
 
+const normalizeCuisine = (value = "") => {
+  const cuisine = cleanText(value);
+  if (!cuisine || /chưa\s*(chọn|cập nhật)/i.test(cuisine)) return "ẩm thực được chăm chút";
+  return cuisine;
+};
+
+const normalizeCurrentStory = (value = "") => {
+  const text = cleanText(value);
+  if (!text) return "";
+
+  // Avoid feeding an old fallback sentence back into a new fallback and duplicating it.
+  if (/là điểm hẹn.+nơi thực khách có thể thưởng thức/i.test(text)) return "";
+  return text.replace(/\.{2,}/g, ".");
+};
+
 const buildFallbackRewrite = ({ restaurantName, cuisineType, currentText, chefName }) => {
   const name = cleanText(restaurantName) || "Nhà hàng";
-  const cuisine = cleanText(cuisineType) || "ẩm thực đa dạng";
-  const story = cleanText(currentText) || "mang đến trải nghiệm ẩm thực chỉn chu, gần gũi và đáng nhớ";
-  const chefLine = cleanText(chefName)
-    ? ` Dưới sự phụ trách của ${cleanText(chefName)}, từng món ăn được chăm chút để giữ trọn hương vị và cảm xúc.`
-    : "";
+  const cuisine = normalizeCuisine(cuisineType);
+  const story = normalizeCurrentStory(currentText);
+  const chef = cleanText(chefName);
 
-  return clampText(
-    `${name} là điểm hẹn ${cuisine}, nơi thực khách có thể thưởng thức món ngon trong không gian ấm cúng và chuyên nghiệp. ${story}.${chefLine}`,
-  );
+  const sentences = [
+    `${name} là điểm hẹn ${cuisine}, mang đến trải nghiệm ấm cúng, chỉn chu và dễ nhớ cho thực khách.`,
+    story || "Không gian và món ăn được chuẩn bị cẩn thận để mỗi lần ghé thăm đều tạo cảm giác gần gũi, tin cậy.",
+    chef ? `Bếp trưởng ${chef} phụ trách hương vị và chất lượng phục vụ trong từng món ăn.` : "",
+  ].filter(Boolean);
+
+  return clampText(sentences.join(" "));
 };
 
 const buildPrompt = ({ restaurantName, cuisineType, currentText, chefName, tone }) => `
@@ -29,13 +50,14 @@ Yêu cầu:
 - Tự nhiên, tin cậy, phù hợp ứng dụng đặt bàn/đặt món.
 - Không dùng emoji, không dùng dấu ngoặc kép, không phóng đại quá mức.
 - Giữ đúng thông tin đã có, không tự bịa địa chỉ/giải thưởng.
+- Nếu loại ẩm thực chưa chọn thì không viết cụm "Chưa chọn ẩm thực".
 - Tone: ${cleanText(tone) || "ấm áp, chuyên nghiệp, cao cấp vừa phải"}.
 
 Thông tin:
 Tên nhà hàng: ${cleanText(restaurantName) || "Chưa có"}
-Loại ẩm thực: ${cleanText(cuisineType) || "Chưa chọn"}
+Loại ẩm thực: ${normalizeCuisine(cuisineType)}
 Bếp trưởng/phụ trách bếp: ${cleanText(chefName) || "Chưa cập nhật"}
-Mô tả hiện tại: ${cleanText(currentText) || "Chưa có mô tả"}
+Mô tả hiện tại: ${normalizeCurrentStory(currentText) || "Chưa có mô tả"}
 
 Chỉ trả về nội dung mô tả đã viết lại.
 `.trim();
@@ -43,6 +65,40 @@ Chỉ trả về nội dung mô tả đã viết lại.
 const extractGeminiText = (payload) => {
   const parts = payload?.candidates?.[0]?.content?.parts || [];
   return cleanText(parts.map((part) => part?.text || "").join(" "));
+};
+
+const buildGeminiEndpoint = (model) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+const callGeminiModel = async ({ apiKey, model, input, signal }) => {
+  const response = await fetch(`${buildGeminiEndpoint(model)}?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal,
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: buildPrompt(input) }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.65,
+        topP: 0.9,
+        maxOutputTokens: 220,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    const error = new Error(`Gemini ${model} HTTP ${response.status}: ${errorText.slice(0, 220)}`);
+    error.status = response.status;
+    throw error;
+  }
+
+  const payload = await response.json();
+  return clampText(extractGeminiText(payload));
 };
 
 export async function rewriteRestaurantProfileDescription(input = {}) {
@@ -69,53 +125,40 @@ export async function rewriteRestaurantProfileDescription(input = {}) {
     Number(process.env.GEMINI_REWRITE_TIMEOUT_MS || 12000),
   );
 
+  const attemptedErrors = [];
+
   try {
-    const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: buildPrompt(input) }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.65,
-          topP: 0.9,
-          maxOutputTokens: 220,
-        },
-      }),
-    });
+    for (const model of DEFAULT_GEMINI_REWRITE_MODELS) {
+      try {
+        const text = await callGeminiModel({
+          apiKey,
+          model,
+          input,
+          signal: controller.signal,
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      return {
-        text: fallbackText,
-        provider: "fallback",
-        usedGemini: false,
-        reason: `Gemini HTTP ${response.status}: ${errorText.slice(0, 240)}`,
-      };
-    }
+        if (!text) {
+          attemptedErrors.push(`${model}: empty text`);
+          continue;
+        }
 
-    const payload = await response.json();
-    const text = clampText(extractGeminiText(payload));
-
-    if (!text) {
-      return {
-        text: fallbackText,
-        provider: "fallback",
-        usedGemini: false,
-        reason: "Gemini returned empty text",
-      };
+        return {
+          text,
+          provider: "gemini",
+          usedGemini: true,
+          reason: `model:${model}`,
+        };
+      } catch (error) {
+        attemptedErrors.push(error?.message || `${model}: request failed`);
+        if (error?.name === "AbortError") break;
+      }
     }
 
     return {
-      text,
-      provider: "gemini",
-      usedGemini: true,
-      reason: "ok",
+      text: fallbackText,
+      provider: "fallback",
+      usedGemini: false,
+      reason: attemptedErrors.join(" | ").slice(0, 500) || "Gemini returned no usable response",
     };
   } catch (error) {
     return {
