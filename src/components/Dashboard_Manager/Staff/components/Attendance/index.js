@@ -1,1 +1,1 @@
-export { default } from "./AttendancePage";
+export { default } from "./AttendancePageScoped";
