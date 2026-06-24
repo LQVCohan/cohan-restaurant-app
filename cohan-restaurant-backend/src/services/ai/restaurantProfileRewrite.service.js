@@ -1,8 +1,9 @@
 const DEFAULT_GEMINI_REWRITE_MODELS = [
   process.env.GEMINI_REWRITE_MODEL,
-  "gemini-flash-latest",
-  "gemini-3.5-flash",
   "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-flash",
 ].filter(Boolean);
 
 const cleanText = (value = "") =>
@@ -70,35 +71,56 @@ const extractGeminiText = (payload) => {
 const buildGeminiEndpoint = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-const callGeminiModel = async ({ apiKey, model, input, signal }) => {
-  const response = await fetch(`${buildGeminiEndpoint(model)}?key=${encodeURIComponent(apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal,
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: buildPrompt(input) }],
+const getModelTimeoutMs = () => {
+  const timeout = Number(process.env.GEMINI_REWRITE_TIMEOUT_MS || 30000);
+  return Number.isFinite(timeout) && timeout >= 5000 ? timeout : 30000;
+};
+
+const callGeminiModel = async ({ apiKey, model, input }) => {
+  const controller = new AbortController();
+  const timeoutMs = getModelTimeoutMs();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${buildGeminiEndpoint(model)}?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: buildPrompt(input) }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.55,
+          topP: 0.85,
+          maxOutputTokens: 180,
         },
-      ],
-      generationConfig: {
-        temperature: 0.65,
-        topP: 0.9,
-        maxOutputTokens: 220,
-      },
-    }),
-  });
+      }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    const error = new Error(`Gemini ${model} HTTP ${response.status}: ${errorText.slice(0, 220)}`);
-    error.status = response.status;
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      const error = new Error(`Gemini ${model} HTTP ${response.status}: ${errorText.slice(0, 220)}`);
+      error.status = response.status;
+      throw error;
+    }
+
+    const payload = await response.json();
+    return clampText(extractGeminiText(payload));
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error(`Gemini ${model} request timeout after ${timeoutMs}ms`);
+      timeoutError.name = "GeminiTimeoutError";
+      timeoutError.status = "timeout";
+      throw timeoutError;
+    }
     throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const payload = await response.json();
-  return clampText(extractGeminiText(payload));
 };
 
 export async function rewriteRestaurantProfileDescription(input = {}) {
@@ -119,55 +141,32 @@ export async function rewriteRestaurantProfileDescription(input = {}) {
     };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    Number(process.env.GEMINI_REWRITE_TIMEOUT_MS || 12000),
-  );
-
   const attemptedErrors = [];
 
-  try {
-    for (const model of DEFAULT_GEMINI_REWRITE_MODELS) {
-      try {
-        const text = await callGeminiModel({
-          apiKey,
-          model,
-          input,
-          signal: controller.signal,
-        });
+  for (const model of DEFAULT_GEMINI_REWRITE_MODELS) {
+    try {
+      const text = await callGeminiModel({ apiKey, model, input });
 
-        if (!text) {
-          attemptedErrors.push(`${model}: empty text`);
-          continue;
-        }
-
-        return {
-          text,
-          provider: "gemini",
-          usedGemini: true,
-          reason: `model:${model}`,
-        };
-      } catch (error) {
-        attemptedErrors.push(error?.message || `${model}: request failed`);
-        if (error?.name === "AbortError") break;
+      if (!text) {
+        attemptedErrors.push(`${model}: empty text`);
+        continue;
       }
-    }
 
-    return {
-      text: fallbackText,
-      provider: "fallback",
-      usedGemini: false,
-      reason: attemptedErrors.join(" | ").slice(0, 500) || "Gemini returned no usable response",
-    };
-  } catch (error) {
-    return {
-      text: fallbackText,
-      provider: "fallback",
-      usedGemini: false,
-      reason: error?.name === "AbortError" ? "Gemini request timeout" : error?.message || "Gemini request failed",
-    };
-  } finally {
-    clearTimeout(timeout);
+      return {
+        text,
+        provider: "gemini",
+        usedGemini: true,
+        reason: `model:${model}`,
+      };
+    } catch (error) {
+      attemptedErrors.push(error?.message || `${model}: request failed`);
+    }
   }
+
+  return {
+    text: fallbackText,
+    provider: "fallback",
+    usedGemini: false,
+    reason: attemptedErrors.join(" | ").slice(0, 900) || "Gemini returned no usable response",
+  };
 }
