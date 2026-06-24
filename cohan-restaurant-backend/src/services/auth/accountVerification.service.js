@@ -101,9 +101,21 @@ function deliveryBase(channel) {
   };
 }
 
+function trimDetail(value, max = 500) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
 function sanitizeError(error) {
-  const code = error?.extensions?.code || error?.code || error?.message || "DELIVERY_FAILED";
-  return String(code).slice(0, 120);
+  const parts = [
+    error?.code && `code=${error.code}`,
+    error?.command && `command=${error.command}`,
+    error?.responseCode && `responseCode=${error.responseCode}`,
+    error?.response && `response=${error.response}`,
+    error?.message && `message=${error.message}`,
+    error?.extensions?.code && `extensionCode=${error.extensions.code}`,
+  ].filter(Boolean);
+
+  return trimDetail(parts.join("; ") || "DELIVERY_FAILED");
 }
 
 export function canResendVerification({ user, channel }) {
@@ -225,7 +237,7 @@ async function issueEmail({ user, requestedBy, reason, ctx, force }) {
     result.skipped = Boolean(mailResult?.skipped);
     result.sent = !mailResult?.skipped && !mailResult?.rejected?.length;
     result.status = result.sent ? STATUS.SENT : STATUS.NOT_CONFIGURED;
-    if (!result.sent) result.error = "EMAIL_PROVIDER_NOT_CONFIGURED";
+    if (!result.sent) result.error = mailResult?.error || "EMAIL_PROVIDER_NOT_CONFIGURED";
   } catch (err) {
     result.status = STATUS.FAILED;
     result.error = sanitizeError(err);
