@@ -20,6 +20,7 @@ import "./styles/Table3DToolbarMobileFix.css";
 import "./styles/TableCameraPreviewRepair.css";
 import "./styles/Table3DMainModalRepair.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
+import "./utils/staffPerformanceGlobalFormat.js";
 
 import App from "./App.jsx";
 import "./styles/RbacPayrollTheme.css";
