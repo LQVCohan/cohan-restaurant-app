@@ -91,8 +91,8 @@ const STEP_CONFIG = [
   {
     id: "occasion",
     eyebrow: "Bước 1/4",
-    title: "Hôm nay bạn muốn ăn kiểu gì?",
-    description: "Chọn mood bữa ăn để AI hiểu đúng ngữ cảnh.",
+    title: "Bạn muốn bữa ăn kiểu nào?",
+    description: "Chọn nhanh mood, AI sẽ lọc món hợp ngữ cảnh.",
     options: [
       { value: "nhanh_gon", label: "Nhanh gọn", hint: "No lâu, ít phải chọn" },
       { value: "healthy", label: "Nhẹ bụng", hint: "Ít dầu, cân bằng" },
@@ -103,8 +103,8 @@ const STEP_CONFIG = [
   {
     id: "budget",
     eyebrow: "Bước 2/4",
-    title: "Ngân sách khoảng bao nhiêu?",
-    description: "AI sẽ ưu tiên món đúng mức giá thay vì gợi ý quá rộng.",
+    title: "Bạn muốn chi khoảng bao nhiêu?",
+    description: "Chọn khoảng giá để AI ưu tiên món vừa túi tiền.",
     options: [
       { value: "duoi_100k", label: "Dưới 100k", hint: "Tiết kiệm" },
       { value: "100_200k", label: "100k - 200k", hint: "Dễ chọn nhất" },
@@ -115,8 +115,8 @@ const STEP_CONFIG = [
   {
     id: "taste",
     eyebrow: "Bước 3/4",
-    title: "Khẩu vị hôm nay?",
-    description: "Chọn hướng vị chính, có thể kết hợp với hồ sơ khẩu vị của bạn.",
+    title: "Khẩu vị hôm nay là gì?",
+    description: "Chọn vị chính để AI gợi ý đúng gu hơn.",
     options: [
       { value: "dam_da", label: "Đậm đà", hint: "Mặn mà, bắt vị" },
       { value: "it_cay", label: "Ít cay", hint: "Dễ ăn" },
@@ -127,8 +127,8 @@ const STEP_CONFIG = [
   {
     id: "people",
     eyebrow: "Bước 4/4",
-    title: "Ăn cho mấy người?",
-    description: "AI có thể đề xuất combo hoặc nhóm món phù hợp số người.",
+    title: "Bữa này dành cho mấy người?",
+    description: "Chọn số người, AI sẽ tự tính món lẻ hoặc combo phù hợp.",
     options: [
       { value: "mot_nguoi", label: "1 người", hint: "Một phần gọn" },
       { value: "hai_nguoi", label: "2 người", hint: "Có thể gọi combo" },
@@ -140,20 +140,20 @@ const STEP_CONFIG = [
 
 const LABELS = {
   nhanh_gon: "nhanh gọn",
-  healthy: "nhẹ bụng, cân bằng",
-  thuong_ban_than: "tự thưởng bằng món ngon đáng tiền",
-  di_cung_ban_be: "đi cùng bạn bè, dễ chia sẻ",
+  healthy: "nhẹ bụng",
+  thuong_ban_than: "tự thưởng",
+  di_cung_ban_be: "đi cùng bạn bè",
   duoi_100k: "dưới 100k",
-  "100_200k": "100k đến 200k",
-  "200_400k": "200k đến 400k",
-  khong_gioi_han: "không giới hạn ngân sách",
+  "100_200k": "100k-200k",
+  "200_400k": "200k-400k",
+  khong_gioi_han: "không giới hạn",
   dam_da: "đậm đà",
   it_cay: "ít cay",
   cay_nong: "cay nóng",
   chay: "món chay",
   mot_nguoi: "1 người",
   hai_nguoi: "2 người",
-  nhom_3_4: "3 đến 4 người",
+  nhom_3_4: "3-4 người",
   nhom_lon: "nhóm lớn",
 };
 
@@ -196,15 +196,17 @@ const shouldRenderWizard = (pathname = "") => {
 
 const buildPrompt = ({ answers, userName, restaurantId }) => {
   const lines = [
-    "Hãy đóng vai trợ lý chọn món cho khách hàng hôm nay trong Cohan Restaurant App.",
-    `Người dùng${userName ? ` ${userName}` : ""} muốn bữa ăn: ${LABELS[answers.occasion] || "dễ ăn"}.`,
+    "Bạn là trợ lý chọn món trong Cohan Restaurant App.",
+    "Hãy dùng dữ liệu menu/nhà hàng hiện có để gợi ý món phù hợp nhất.",
+    `Khách${userName ? ` ${userName}` : ""} muốn bữa ăn: ${LABELS[answers.occasion] || "dễ ăn"}.`,
     `Ngân sách: ${LABELS[answers.budget] || "vừa phải"}.`,
-    `Khẩu vị: ${LABELS[answers.taste] || "tự nhiên, dễ ăn"}.`,
+    `Khẩu vị: ${LABELS[answers.taste] || "dễ ăn"}.`,
     `Số người: ${LABELS[answers.people] || "1-2 người"}.`,
     restaurantId
-      ? "Ưu tiên gợi ý món có trong nhà hàng hiện tại nếu dữ liệu menu cho phép."
-      : "Nếu chưa có nhà hàng cụ thể, hãy gợi ý cách chọn nhà hàng và món phù hợp trong Cohan.",
-    "Trả lời ngắn gọn theo 3 phần: món nên chọn, lý do, bước tiếp theo. Nếu có món trong menu thì đề xuất món cụ thể và nhắc tôi bấm xem món để thêm vào giỏ.",
+      ? "Ưu tiên món của nhà hàng hiện tại nếu có dữ liệu phù hợp."
+      : "Nếu chưa có nhà hàng cụ thể, hãy gợi ý món/nhà hàng phù hợp trong hệ thống.",
+    "Cách trả lời: tiếng Việt tự nhiên, ngắn gọn, không dài dòng. Không lặp câu 'trong dữ liệu hiện có' nếu không cần.",
+    "Định dạng nên có: 1 câu chốt món nên chọn, 2-4 gợi ý món cụ thể kèm lý do ngắn, 1 bước tiếp theo rõ ràng.",
   ];
   return lines.join("\n");
 };
@@ -232,6 +234,25 @@ const buildMenuSourceCards = (response) => {
   return cards;
 };
 
+const formatAiAnswer = (answer = "") => {
+  const cleaned = String(answer || "")
+    .replace(/Mình chỉ thấy các món sau trong dữ liệu hiện có:?/gi, "Mình gợi ý các món phù hợp nhất:")
+    .replace(/Nếu bạn cần hỗ trợ thêm[\s\S]*$/gi, "")
+    .replace(/\s*\(Thời gian chuẩn bị nhanh\)/gi, "")
+    .replace(/\s*\(Thời gian chuẩn bị bình thường\)/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return cleaned || "AI chưa có gợi ý phù hợp. Bạn có thể đổi khẩu vị hoặc chọn nhà hàng trước.";
+};
+
+const buildAnswerSummary = (answers) => [
+  LABELS[answers.people],
+  LABELS[answers.occasion],
+  LABELS[answers.budget],
+  LABELS[answers.taste],
+].filter(Boolean);
+
 export default function TodayMealWizard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -257,6 +278,8 @@ export default function TodayMealWizard() {
   const completedCount = Object.values(answers).filter(Boolean).length;
   const canAskAi = completedCount === STEP_CONFIG.length && !aiLoading;
   const menuSourceCards = useMemo(() => buildMenuSourceCards(aiResult), [aiResult]);
+  const answerSummary = useMemo(() => buildAnswerSummary(answers), [answers]);
+  const showResultMode = aiLoading || Boolean(aiResult);
 
   if (!visible) return null;
 
@@ -314,6 +337,12 @@ export default function TodayMealWizard() {
   };
 
   const handleAskAi = () => requestAiSuggestion(answers);
+
+  const handleEditAnswers = () => {
+    setAiError("");
+    setAiResult(null);
+    setStepIndex(0);
+  };
 
   const handleOpenForYou = () => {
     if (isAuthenticated) {
@@ -376,39 +405,54 @@ export default function TodayMealWizard() {
         </button>
       </div>
 
-      <div className="today-meal-wizard__progress" aria-hidden="true">
-        {STEP_CONFIG.map((step, index) => (
-          <span key={step.id} className={index <= stepIndex ? "is-active" : ""} />
-        ))}
-      </div>
-
-      <div className="today-meal-wizard__body" key={activeStep.id}>
-        <span className="today-meal-wizard__eyebrow">{activeStep.eyebrow}</span>
-        <h4>{activeStep.title}</h4>
-        <p>{activeStep.description}</p>
-
-        <div className="today-meal-wizard__options">
-          {activeStep.options.map((option, index) => (
-            <button
-              key={option.value}
-              type="button"
-              className={activeValue === option.value ? "is-selected" : ""}
-              style={{ "--option-index": index }}
-              onClick={() => handleOption(option.value)}
-              disabled={aiLoading}
-            >
-              <strong>{option.label}</strong>
-              <small>{option.hint}</small>
-            </button>
+      {!showResultMode ? (
+        <div className="today-meal-wizard__progress" aria-hidden="true">
+          {STEP_CONFIG.map((step, index) => (
+            <span key={step.id} className={index <= stepIndex ? "is-active" : ""} />
           ))}
         </div>
+      ) : null}
+
+      <div className="today-meal-wizard__body" key={showResultMode ? "ai-result" : activeStep.id}>
+        {showResultMode ? (
+          <div className="today-meal-wizard__summary">
+            <span className="today-meal-wizard__eyebrow">Đã chọn xong</span>
+            <h4>AI đang gợi ý món phù hợp</h4>
+            <div className="today-meal-wizard__summary-chips">
+              {answerSummary.map((item) => <span key={item}>{item}</span>)}
+            </div>
+            <button type="button" className="today-meal-wizard__edit" onClick={handleEditAnswers} disabled={aiLoading}>Đổi lựa chọn</button>
+          </div>
+        ) : (
+          <>
+            <span className="today-meal-wizard__eyebrow">{activeStep.eyebrow}</span>
+            <h4>{activeStep.title}</h4>
+            <p>{activeStep.description}</p>
+
+            <div className="today-meal-wizard__options">
+              {activeStep.options.map((option, index) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={activeValue === option.value ? "is-selected" : ""}
+                  style={{ "--option-index": index }}
+                  onClick={() => handleOption(option.value)}
+                  disabled={aiLoading}
+                >
+                  <strong>{option.label}</strong>
+                  <small>{option.hint}</small>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {(aiLoading || aiError || aiResult) && (
           <div className="today-meal-wizard__ai-panel" aria-live="polite">
             {aiLoading ? (
               <div className="today-meal-wizard__ai-loading">
                 <Loader2 size={16} />
-                AI đang tìm món phù hợp từ dữ liệu hệ thống...
+                Đang tìm món hợp khẩu vị của bạn...
               </div>
             ) : null}
 
@@ -419,7 +463,7 @@ export default function TodayMealWizard() {
             {aiResult ? (
               <div className="today-meal-wizard__ai-result">
                 <span className="today-meal-wizard__ai-kicker">Gợi ý từ AI</span>
-                <p>{aiResult.answer}</p>
+                <p>{formatAiAnswer(aiResult.answer)}</p>
 
                 {menuSourceCards.length > 0 ? (
                   <div className="today-meal-wizard__source-list">
@@ -434,7 +478,7 @@ export default function TodayMealWizard() {
 
                 <button type="button" className="today-meal-wizard__chat-follow" onClick={handleOpenChatbot}>
                   <Bot size={15} />
-                  Hỏi tiếp trong chat AI
+                  Hỏi thêm trong chat AI
                 </button>
               </div>
             ) : null}
@@ -443,7 +487,7 @@ export default function TodayMealWizard() {
       </div>
 
       <footer className="today-meal-wizard__footer">
-        <button type="button" className="today-meal-wizard__nav" onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))} disabled={stepIndex === 0 || aiLoading}>
+        <button type="button" className="today-meal-wizard__nav" onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))} disabled={stepIndex === 0 || aiLoading || showResultMode}>
           <ChevronLeft size={16} />
           Lùi
         </button>
