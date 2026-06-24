@@ -41,6 +41,7 @@ import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scs
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoLayoutFix.scss";
 import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
 import "./styles/ManagerGlobalToneAudit.scss";
+import "./styles/AiManagerToneSync.scss";
 import { installRestaurantInfoCopyTuning } from "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoCopyTuning.js";
 import { installTableWorkflowCopyTuning } from "./components/Dashboard_Manager/Table/TableWorkflowCopyTuning.js";
 import { installFloorPlanDesignerExperience } from "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.js";
