@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Box, Loader2 } from "lucide-react";
+import { AlertTriangle, Box, ClipboardCheck, Loader2 } from "lucide-react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import useTable3DModels from "@/hooks/useTable3DModels";
@@ -17,6 +17,7 @@ import {
   doesCustomModelMatchTableType,
   getCustomModelCatalogTableType,
 } from "@/config/table3dCustomModelStorage";
+import { buildArMobileTestReport, copyTextToClipboard } from "@/utils/arMobileTestReport";
 import "./Table3DSimulatorModal.scss";
 import CustomTableModelBuilderModal from "./CustomTableModelBuilderModal";
 import TableCameraPlacementPreviewModal from "./TableCameraPlacementPreviewModal";
@@ -83,6 +84,7 @@ export default function Table3DSimulatorModalV2({
   const [assetFilter, setAssetFilter] = useState("all");
   const [pendingDeleteModelKey, setPendingDeleteModelKey] = useState("");
   const [capabilities, setCapabilities] = useState(getCapabilities);
+  const [testReportStatus, setTestReportStatus] = useState("");
   const viewerRef = useRef(null);
   const customModelScope = restaurantName || restaurantId || "default";
 
@@ -102,6 +104,7 @@ export default function Table3DSimulatorModalV2({
     setCustomModels(loadCustomTableModels(customModelScope));
     setShowArOptions(false);
     setPendingDeleteModelKey("");
+    setTestReportStatus("");
 
     const detectWebXr = async () => {
       if (!navigator?.xr?.isSessionSupported) {
@@ -192,6 +195,7 @@ export default function Table3DSimulatorModalV2({
     setModelLoading(Boolean(selectedModel.modelUrl));
     setModelLoadProgress(0);
     setPendingDeleteModelKey("");
+    setTestReportStatus("");
   }, [selectedModel]);
 
   const cameraOrbit = `${orbit.theta}deg ${orbit.phi}deg ${
@@ -364,6 +368,28 @@ export default function Table3DSimulatorModalV2({
     }
   };
 
+  const handleCopyMobileTestReport = async () => {
+    const report = buildArMobileTestReport({
+      selectedModel,
+      table,
+      restaurant,
+      floor: floor || currentFloorLayout,
+      capabilities,
+      arStatus,
+      extra: {
+        canOpenAr,
+        canLaunchNativeAr,
+        canOpenArPlacement,
+        modelError,
+        currentFloorName,
+      },
+    });
+
+    const copied = await copyTextToClipboard(report);
+    setTestReportStatus(copied ? "Đã copy báo cáo" : "Không copy được");
+    window.setTimeout(() => setTestReportStatus(""), 2200);
+  };
+
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || !selectedModel?.modelUrl) return undefined;
@@ -426,9 +452,17 @@ export default function Table3DSimulatorModalV2({
             {currentFloorName ? ` · ${currentFloorName}` : ""}
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={onClose}>
-          Đóng
-        </Button>
+        <div className="table-3d-modal__header-actions">
+          {testReportStatus ? (
+            <span className="table-3d-test-report-status">{testReportStatus}</span>
+          ) : null}
+          <Button variant="secondary" size="sm" onClick={handleCopyMobileTestReport}>
+            <ClipboardCheck size={14} /> Báo cáo test
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Đóng
+          </Button>
+        </div>
       </div>
 
       <div className="table-3d-modal__layout">
@@ -563,6 +597,7 @@ export default function Table3DSimulatorModalV2({
             }
             canOpenArPlacement={canOpenArPlacement}
             arPlacementTitle={arPlacementTitle}
+            placementActionLabel="Đặt bàn vào sơ đồ bằng AR"
             onOpenArPlacement={() =>
               canOpenArPlacement && setShowArPlacement(true)
             }
@@ -572,6 +607,7 @@ export default function Table3DSimulatorModalV2({
             isOpeningAr={isOpeningAr}
             arUnavailableReason={arUnavailableReason}
             onOpenNativeAr={handleOpenNativeAr}
+            applyActionLabel="Áp dụng mẫu 3D"
             onApply={() =>
               selectedModel &&
               onApply(selectedModel, {
