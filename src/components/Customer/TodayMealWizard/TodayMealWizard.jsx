@@ -1,11 +1,61 @@
 import React, { useContext, useMemo, useState } from "react";
+import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bot, ChevronLeft, ChevronRight, Sparkles, Utensils, X } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, Loader2, Sparkles, Utensils, X } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
+import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import "./TodayMealWizard.scss";
 
 const STORAGE_KEY = "cohan.todayMealWizard.minimized";
+
+const ASK_AI_CHATBOT = gql`
+  mutation TodayMealWizardAskAi($input: AskAiChatbotInput!) {
+    askAiChatbot(input: $input) {
+      answer
+      intent
+      confidence
+      quickReplies
+      isFallback
+      conversationId
+      answerMessageId
+      actions {
+        type
+        label
+        href
+        description
+        icon
+        priority
+      }
+      sources {
+        type
+        id
+        label
+        formattedPrice
+        status
+        isAvailable
+        hasOptions
+        hasVariants
+        restaurantId
+        basePrice
+        currentPrice
+        price
+        servingVariants
+      }
+      contextSummary {
+        restaurantCount
+        menuItemCount
+        couponCount
+        orderCount
+        reservationCount
+      }
+      handoffSuggested
+      handoffReason
+      handoffMessage
+    }
+  }
+`;
 
 const WIZARD_VISIBLE_PREFIXES = [
   "/",
@@ -145,7 +195,7 @@ const shouldRenderWizard = (pathname = "") => {
 
 const buildPrompt = ({ answers, userName, restaurantId }) => {
   const lines = [
-    "Hãy đóng vai trợ lý chọn món cho khách hàng hôm nay.",
+    "Hãy đóng vai trợ lý chọn món cho khách hàng hôm nay trong Cohan Restaurant App.",
     `Người dùng${userName ? ` ${userName}` : ""} muốn bữa ăn: ${LABELS[answers.occasion] || "dễ ăn"}.`,
     `Ngân sách: ${LABELS[answers.budget] || "vừa phải"}.`,
     `Khẩu vị: ${LABELS[answers.taste] || "tự nhiên, dễ ăn"}.`,
@@ -153,15 +203,39 @@ const buildPrompt = ({ answers, userName, restaurantId }) => {
     restaurantId
       ? "Ưu tiên gợi ý món có trong nhà hàng hiện tại nếu dữ liệu menu cho phép."
       : "Nếu chưa có nhà hàng cụ thể, hãy gợi ý cách chọn nhà hàng và món phù hợp trong Cohan.",
-    "Trả lời ngắn gọn theo 3 phần: món nên chọn, lý do, bước tiếp theo. Nếu có món trong menu thì đề xuất món cụ thể và nhắc tôi bấm Chọn món để thêm vào giỏ.",
+    "Trả lời ngắn gọn theo 3 phần: món nên chọn, lý do, bước tiếp theo. Nếu có món trong menu thì đề xuất món cụ thể và nhắc tôi bấm xem món để thêm vào giỏ.",
   ];
   return lines.join("\n");
+};
+
+const getAiErrorMessage = (error) => {
+  const code = error?.graphQLErrors?.[0]?.extensions?.code;
+  const msg = error?.graphQLErrors?.[0]?.message || error?.message || "";
+  if (code === "RATE_LIMITED" || String(msg).includes("gửi quá nhanh")) {
+    return "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
+  }
+  return msg || "AI chưa phản hồi được lúc này. Vui lòng thử lại.";
+};
+
+const buildMenuSourceCards = (response) => {
+  const seen = new Set();
+  const cards = [];
+  for (const source of response?.sources || []) {
+    if (source?.type !== "menuItem" || !source?.id) continue;
+    const key = String(source.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cards.push(source);
+    if (cards.length >= 3) break;
+  }
+  return cards;
 };
 
 export default function TodayMealWizard() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useContext(AuthContext) || {};
+  const [askAiChatbot, { loading: aiLoading }] = useMutation(ASK_AI_CHATBOT);
   const [isMinimized, setIsMinimized] = useState(readInitialMinimized);
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState({
@@ -170,6 +244,9 @@ export default function TodayMealWizard() {
     taste: "",
     people: "",
   });
+  const [aiResult, setAiResult] = useState(null);
+  const [aiError, setAiError] = useState("");
+  const [lastPrompt, setLastPrompt] = useState("");
 
   const visible = shouldRenderWizard(location.pathname);
   const restaurantId = useMemo(() => getRestaurantIdFromLocation(location), [location]);
@@ -177,7 +254,8 @@ export default function TodayMealWizard() {
   const activeValue = answers[activeStep.id];
   const isLastStep = stepIndex === STEP_CONFIG.length - 1;
   const completedCount = Object.values(answers).filter(Boolean).length;
-  const canAskAi = completedCount === STEP_CONFIG.length;
+  const canAskAi = completedCount === STEP_CONFIG.length && !aiLoading;
+  const menuSourceCards = useMemo(() => buildMenuSourceCards(aiResult), [aiResult]);
 
   if (!visible) return null;
 
@@ -188,17 +266,42 @@ export default function TodayMealWizard() {
 
   const handleOption = (value) => {
     setAnswers((prev) => ({ ...prev, [activeStep.id]: value }));
+    setAiError("");
+    setAiResult(null);
     if (!isLastStep) window.setTimeout(() => setStepIndex((prev) => Math.min(prev + 1, STEP_CONFIG.length - 1)), 120);
   };
 
-  const handleAskAi = () => {
+  const handleAskAi = async () => {
     const prompt = buildPrompt({
       answers,
       userName: user?.fullName || user?.name || "",
       restaurantId,
     });
-    openAiMenuAssistant({ message: prompt, autoSend: true, restaurantId });
-    setMinimized(true);
+    setLastPrompt(prompt);
+    setAiError("");
+    setAiResult(null);
+
+    try {
+      const { data } = await askAiChatbot({
+        variables: {
+          input: {
+            message: prompt,
+            restaurantId: restaurantId || undefined,
+            history: [],
+            pageContext: {
+              source: "todayMealWizard",
+              route: location.pathname,
+              answers,
+              userName: user?.fullName || user?.name || "",
+            },
+          },
+        },
+      });
+      const response = data?.askAiChatbot;
+      setAiResult(response || { answer: "AI chưa có gợi ý phù hợp. Bạn có thể thử đổi khẩu vị hoặc ngân sách." });
+    } catch (error) {
+      setAiError(getAiErrorMessage(error));
+    }
   };
 
   const handleOpenForYou = () => {
@@ -207,6 +310,35 @@ export default function TodayMealWizard() {
       return;
     }
     navigate("/login", { state: { from: "/for-you" } });
+  };
+
+  const handleOpenChatbot = () => {
+    openAiMenuAssistant({
+      message: lastPrompt || buildPrompt({ answers, userName: user?.fullName || user?.name || "", restaurantId }),
+      autoSend: true,
+      restaurantId,
+    });
+  };
+
+  const handleOpenFood = (source) => {
+    if (!source?.id) return;
+    const targetRestaurantId = source.restaurantId || restaurantId;
+    navigate(
+      buildFoodDetailPath(source.id, { restaurantId: targetRestaurantId }),
+      {
+        state: buildFoodDetailState(
+          {
+            id: source.id,
+            name: source.label,
+            restaurantId: targetRestaurantId,
+            basePrice: source.basePrice || source.currentPrice || source.price,
+            status: source.status,
+            servingVariants: source.servingVariants || [],
+          },
+          { restaurantId: targetRestaurantId },
+        ),
+      },
+    );
   };
 
   if (isMinimized) {
@@ -258,21 +390,59 @@ export default function TodayMealWizard() {
             </button>
           ))}
         </div>
+
+        {(aiLoading || aiError || aiResult) && (
+          <div className="today-meal-wizard__ai-panel" aria-live="polite">
+            {aiLoading ? (
+              <div className="today-meal-wizard__ai-loading">
+                <Loader2 size={16} />
+                AI đang tìm món phù hợp từ dữ liệu hệ thống...
+              </div>
+            ) : null}
+
+            {aiError ? (
+              <div className="today-meal-wizard__ai-error">{aiError}</div>
+            ) : null}
+
+            {aiResult ? (
+              <div className="today-meal-wizard__ai-result">
+                <span className="today-meal-wizard__ai-kicker">Gợi ý từ AI</span>
+                <p>{aiResult.answer}</p>
+
+                {menuSourceCards.length > 0 ? (
+                  <div className="today-meal-wizard__source-list">
+                    {menuSourceCards.map((source) => (
+                      <button key={source.id} type="button" className="today-meal-wizard__source-card" onClick={() => handleOpenFood(source)}>
+                        <strong>{source.label}</strong>
+                        <span>{source.formattedPrice || (source.currentPrice ? `${Number(source.currentPrice).toLocaleString("vi-VN")}đ` : "Xem chi tiết")}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                <button type="button" className="today-meal-wizard__chat-follow" onClick={handleOpenChatbot}>
+                  <Bot size={15} />
+                  Hỏi tiếp trong chat AI
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <footer className="today-meal-wizard__footer">
-        <button type="button" className="today-meal-wizard__nav" onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))} disabled={stepIndex === 0}>
+        <button type="button" className="today-meal-wizard__nav" onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))} disabled={stepIndex === 0 || aiLoading}>
           <ChevronLeft size={16} />
           Lùi
         </button>
-        <button type="button" className="today-meal-wizard__for-you" onClick={handleOpenForYou}>
+        <button type="button" className="today-meal-wizard__for-you" onClick={handleOpenForYou} disabled={aiLoading}>
           <Bot size={16} />
           Gợi ý cá nhân
         </button>
         {isLastStep ? (
           <button type="button" className="today-meal-wizard__ask" onClick={handleAskAi} disabled={!canAskAi}>
-            Hỏi AI
-            <Sparkles size={16} />
+            {aiLoading ? "Đang hỏi..." : "Hỏi AI"}
+            {aiLoading ? <Loader2 size={16} className="today-meal-wizard__spin" /> : <Sparkles size={16} />}
           </button>
         ) : (
           <button type="button" className="today-meal-wizard__nav today-meal-wizard__nav--next" onClick={() => setStepIndex((prev) => Math.min(prev + 1, STEP_CONFIG.length - 1))}>
