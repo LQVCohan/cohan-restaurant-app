@@ -26,7 +26,6 @@ const MODAL_SECTION_NAV = [
   { key: "basic", label: "Thông tin", match: ["Thông tin cơ bản"] },
   { key: "ops", label: "Vận hành", match: ["Trạng thái", "Chuyển tầng"] },
   { key: "booking", label: "Đặt bàn", match: ["Đặt cọc", "Chính sách"] },
-  { key: "vr", label: "VR/3D", selector: ".talite-vr-block, .talite-visual-card" },
   { key: "ai", label: "AI", match: ["AI", "Gợi ý"] },
 ];
 
@@ -43,8 +42,6 @@ const FIELD_GUIDES = new Map([
   ["Loại", "Phân loại vị trí bàn như trong nhà, VIP hoặc ngoài trời để khách chọn đúng nhu cầu."],
   ["Nhãn bàn", "Thêm vài nhãn ngắn để mô tả bàn, ví dụ gần cửa sổ, riêng tư hoặc view đẹp."],
   ["Khu vực", "Tên khu phục vụ của bàn, ví dụ Sảnh chính, sân vườn, tầng lửng."],
-  ["Vị trí X", "Tọa độ ngang của bàn trên sơ đồ. Chỉ chỉnh khi cần căn lại vị trí thủ công."],
-  ["Vị trí Y", "Tọa độ dọc của bàn trên sơ đồ. Chỉ chỉnh khi cần căn lại vị trí thủ công."],
   ["Link VR bàn", "Đường dẫn ảnh 360 hoặc trang VR riêng của bàn để khách xem trước không gian."],
   ["Tầng đích", "Chọn tầng mới khi muốn chuyển bàn sang khu vực khác. Hệ thống sẽ cố gắng giữ bố cục hợp lý."],
   ["Bàn muốn đổi vị trí", "Nhập mã bàn cùng tầng để hoán đổi vị trí hoặc mã hiển thị."],
@@ -57,8 +54,11 @@ const FIELD_GUIDES = new Map([
   ["Chính sách huỷ", "Quy định hủy/hoàn cọc để nhân viên và khách hiểu rõ trước khi đặt bàn."],
 ]);
 
+const TECHNICAL_LABELS = new Set(["Vị trí X", "Vị trí Y"]);
+const TECHNICAL_SUMMARY_LABELS = new Set(["Vị trí:"]);
+
 const SECTION_GUIDES = new Map([
-  ["Thông tin cơ bản", "Thiết lập dữ liệu nền của bàn: mã, sức chứa, khu vực, tọa độ và VR."],
+  ["Thông tin cơ bản", "Thiết lập dữ liệu nền của bàn: mã, sức chứa, khu vực và trải nghiệm VR."],
   ["Trạng thái", "Cập nhật nhanh tình trạng vận hành hiện tại của bàn."],
   ["Chuyển tầng", "Di chuyển bàn sang tầng khác khi thay đổi bố cục nhà hàng."],
   ["Đổi vị trí với bàn khác", "Hoán đổi bàn cùng tầng để tối ưu sơ đồ mà không phải kéo thủ công."],
@@ -133,7 +133,7 @@ const tuneButtons = (root) => {
     if (text === "T.Toán" || text === "Thanh toán") {
       button.textContent = "Thu tiền";
       button.setAttribute("aria-label", "Thu tiền bàn đang phục vụ");
-      button.setAttribute("title", "Thu tiền");
+      button.removeAttribute("title");
     }
   });
 };
@@ -188,18 +188,22 @@ const scrollModalBodyTo = (modal, target) => {
   body.scrollTo({ top: Math.max(nextTop, 0), behavior: "smooth" });
 };
 
-const updateActiveNavigatorItem = (modal) => {
+const updateActiveNavigatorItem = (modal, forcedKey = "") => {
   const nav = modal.querySelector(".talite-section-nav");
   const body = modal.querySelector(".talite-body");
   if (!nav || !body) return;
 
-  let activeKey = "overview";
-  MODAL_SECTION_NAV.forEach((item) => {
-    const target = findNavTarget(modal, item);
-    if (!target) return;
-    const threshold = target.offsetTop - 20;
-    if (body.scrollTop >= threshold) activeKey = item.key;
-  });
+  let activeKey = forcedKey || "overview";
+  if (!forcedKey) {
+    const positions = MODAL_SECTION_NAV
+      .map((item) => ({ ...item, target: findNavTarget(modal, item) }))
+      .filter((item) => item.target)
+      .sort((a, b) => a.target.offsetTop - b.target.offsetTop);
+
+    positions.forEach((item) => {
+      if (body.scrollTop >= item.target.offsetTop - 24) activeKey = item.key;
+    });
+  }
 
   nav.querySelectorAll("button[data-section-key]").forEach((button) => {
     button.classList.toggle("active", button.dataset.sectionKey === activeKey);
@@ -224,8 +228,10 @@ const ensureModalNavigator = (modal) => {
     button.dataset.sectionKey = item.key;
     button.textContent = item.label;
     button.addEventListener("click", () => {
+      updateActiveNavigatorItem(modal, item.key);
       scrollModalBodyTo(modal, target);
-      window.requestAnimationFrame(() => updateActiveNavigatorItem(modal));
+      window.setTimeout(() => updateActiveNavigatorItem(modal, item.key), 180);
+      window.setTimeout(() => updateActiveNavigatorItem(modal), 520);
     });
     nav.appendChild(button);
   });
@@ -258,7 +264,7 @@ const setGuide = (element, guide, placement = "top") => {
   element.dataset.guidePlacement = placement;
   if (!element.hasAttribute("tabindex")) element.setAttribute("tabindex", "0");
   element.setAttribute("aria-label", `${element.textContent?.trim() || "Mục này"}. ${guide}`);
-  element.setAttribute("title", guide);
+  element.removeAttribute("title");
 };
 
 const addFieldGuides = (modal) => {
@@ -270,8 +276,8 @@ const addFieldGuides = (modal) => {
     setGuide(target, guide, "top");
     const field = target.querySelector?.("input, select, textarea");
     if (field) {
-      field.setAttribute("title", guide);
-      field.setAttribute("aria-describedby", field.getAttribute("aria-describedby") || "table-field-guide");
+      field.removeAttribute("title");
+      field.setAttribute("aria-label", `${text}. ${guide}`);
     }
   });
 };
@@ -292,12 +298,34 @@ const addButtonGuides = (modal) => {
   modal.querySelectorAll("button").forEach((button) => {
     const text = button.textContent?.trim();
     const guide = BUTTON_GUIDES.get(text);
+    button.removeAttribute("title");
     if (guide) setGuide(button, guide, "top");
   });
 };
 
+const hideTechnicalFields = (modal) => {
+  modal.querySelectorAll(".talite-label").forEach((label) => {
+    const text = label.textContent?.trim();
+    if (!TECHNICAL_LABELS.has(text)) return;
+    const fieldWrapper = label.closest(".grid2 > div") || label.closest("div");
+    if (fieldWrapper) {
+      fieldWrapper.classList.add("talite-technical-field");
+      fieldWrapper.setAttribute("aria-hidden", "true");
+    }
+  });
+
+  modal.querySelectorAll(".talite-info .kv").forEach((row) => {
+    const key = row.querySelector(".k")?.textContent?.trim();
+    if (TECHNICAL_SUMMARY_LABELS.has(key)) {
+      row.classList.add("talite-technical-field");
+      row.setAttribute("aria-hidden", "true");
+    }
+  });
+};
+
 const enhanceModalGuides = (modal) => {
-  if (!modal || modal.dataset.hoverGuideReady === "true") return;
+  if (!modal) return;
+  hideTechnicalFields(modal);
   addSectionGuides(modal);
   addFieldGuides(modal);
   addButtonGuides(modal);
