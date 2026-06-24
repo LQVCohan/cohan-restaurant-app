@@ -1,8 +1,6 @@
 // src/server.js
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { connectDB } from "../../config/db.js";
-import { createServer } from "./createServer.js";
 import { loadEnv, validateEnv } from "../config/env.js";
 import process from "process";
 
@@ -18,6 +16,11 @@ const startServer = async () => {
       console.warn(
         "⚠️ No .env file found. Searched: <repo>/.env, <cwd>/.env, <repo>/cohan-restaurant-backend/.env. Run `npm run env:local` from repo root to generate local .env files. Note: .env.example is a template and is not auto-loaded.",
       );
+    } else if (process.env.NODE_ENV !== "production") {
+      console.log(`🔧 Loaded env files: ${loadedEnvFiles.join(", ")}`);
+      console.log(
+        `✉️ SMTP env: user=${process.env.SMTP_USER ? "set" : "missing"}, pass=${process.env.SMTP_PASS ? "set" : "missing"}, host=${process.env.SMTP_HOST || "gmail-service"}, port=${process.env.SMTP_PORT || "default"}`,
+      );
     }
 
     // Keep local uploads in one stable directory regardless of whether the
@@ -27,6 +30,12 @@ const startServer = async () => {
     }
 
     const env = validateEnv();
+
+    // Import env-dependent modules only after .env has been loaded.
+    const [{ connectDB }, { createServer }] = await Promise.all([
+      import("../../config/db.js"),
+      import("./createServer.js"),
+    ]);
 
     await connectDB();
     const app = await createServer();
