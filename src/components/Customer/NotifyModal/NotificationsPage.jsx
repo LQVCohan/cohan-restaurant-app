@@ -5,12 +5,11 @@ import "./NotificationsPage.scss";
 import { useCustomerNotifications } from "@/context/CustomerNotificationContext";
 
 const NotificationsPage = () => {
-  const [filter, setFilter] = useState("all"); // 'all' hoặc 'unread'
+  const [filter, setFilter] = useState("all");
   const navigate = useNavigate();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
     useCustomerNotifications();
 
-  // Lọc thông báo dựa trên tab đang chọn
   const displayedNotifications = useMemo(() => {
     if (filter === "unread") {
       return notifications.filter((notif) => !notif.isRead);
@@ -18,11 +17,14 @@ const NotificationsPage = () => {
     return notifications;
   }, [notifications, filter]);
 
+  const handleOpenNotification = async (notif) => {
+    await markAsRead(notif.id);
+    if (notif.link) navigate(notif.link);
+  };
 
   return (
     <div className="notifications-page">
       <div className="notif-container">
-        {/* HEADER GIAO DIỆN */}
         <div className="notif-header">
           <div className="title-wrapper">
             <h1>Thông báo của bạn</h1>
@@ -41,7 +43,6 @@ const NotificationsPage = () => {
           </button>
         </div>
 
-        {/* TABS LỌC THÔNG BÁO */}
         <div className="notif-tabs">
           <button
             className={`tab-item ${filter === "all" ? "active" : ""}`}
@@ -57,7 +58,6 @@ const NotificationsPage = () => {
           </button>
         </div>
 
-        {/* DANH SÁCH THÔNG BÁO */}
         <div className="notif-list">
           {displayedNotifications.length === 0 ? (
             <div className="empty-state">
@@ -72,9 +72,11 @@ const NotificationsPage = () => {
               <div
                 key={notif.id}
                 className={`notif-card ${!notif.isRead ? "unread" : ""}`}
-                onClick={() => {
-                  markAsRead(notif.id);
-                  if (notif.threadId) navigate(`/help?threadId=${notif.threadId}`);
+                onClick={() => handleOpenNotification(notif)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") handleOpenNotification(notif);
                 }}
               >
                 <div className="notif-icon">
@@ -95,7 +97,7 @@ const NotificationsPage = () => {
                       e.stopPropagation();
                       deleteNotification(notif.id);
                     }}
-                    title="Xóa thông báo"
+                    title="Ẩn thông báo"
                   >
                     <Trash2 size={18} />
                   </button>
