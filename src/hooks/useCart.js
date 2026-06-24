@@ -71,6 +71,42 @@ const getInitialCart = () => {
   }
 };
 
+const normalizeCartLine = (item = {}) => {
+  const incoming = { ...item, quantity: Number(item.quantity || 1) || 1 };
+  incoming.id = incoming.id || incoming.dishId || incoming.menuItemId;
+  incoming.dishId = incoming.dishId || incoming.menuItemId || incoming.id;
+  incoming.cartLineKey = getLineKey(incoming);
+  return incoming;
+};
+
+const mergeCartLines = (localCart = [], incomingCart = []) => {
+  const lineMap = new Map();
+
+  [...(localCart || []), ...(incomingCart || [])]
+    .map(normalizeCartLine)
+    .filter((item) => item.id && !isHoldExpired(item))
+    .forEach((item) => {
+      const key = getLineKey(item);
+      const existing = lineMap.get(key);
+      if (!existing) {
+        lineMap.set(key, item);
+        return;
+      }
+
+      lineMap.set(key, {
+        ...existing,
+        ...item,
+        quantity: Math.max(Number(existing.quantity || 1), Number(item.quantity || 1)),
+        holdExpiresAt: item.holdExpiresAt || existing.holdExpiresAt,
+        holdStatus: item.holdStatus || existing.holdStatus,
+        backendCartItemId: item.backendCartItemId || existing.backendCartItemId,
+        backendCartId: item.backendCartId || existing.backendCartId,
+      });
+    });
+
+  return Array.from(lineMap.values());
+};
+
 export const useCart = () => {
   const [cart, setCart] = useState(getInitialCart);
 
@@ -92,10 +128,9 @@ export const useCart = () => {
 
   // dish cần có: id (dishId), restaurantId, name, price, image?, method?, quantity?
   const addToCart = useCallback((dish) => {
-    const incoming = { ...dish, quantity: dish.quantity || 1 };
-    incoming.cartLineKey = getLineKey(incoming);
+    const incoming = normalizeCartLine(dish);
     setCart((prev) => {
-      // Gộp theo cặp (id + restaurantId) để tránh trùng món từ nhà hàng khác
+      // Gộp theo cặp (id + restaurantId + biến thể + note + modifiers)
       const incomingLineKey = getLineKey(incoming);
       const found = prev.find((i) => getLineKey(i) === incomingLineKey);
       if (found) {
@@ -116,6 +151,15 @@ export const useCart = () => {
       }
       return [...prev, incoming];
     });
+  }, []);
+
+  const syncServerCart = useCallback((serverItems = [], { replace = false } = {}) => {
+    const normalizedServerItems = (serverItems || []).map(normalizeCartLine);
+    setCart((prev) => (replace ? normalizedServerItems : mergeCartLines(prev, normalizedServerItems)));
+  }, []);
+
+  const replaceCart = useCallback((items = []) => {
+    setCart((items || []).map(normalizeCartLine).filter((item) => item.id && !isHoldExpired(item)));
   }, []);
 
   // Thay đổi số lượng theo itemId (delta có thể âm/dương)
@@ -167,6 +211,8 @@ export const useCart = () => {
   return {
     cart,
     addToCart,
+    syncServerCart,
+    replaceCart,
     updateQuantity,
     removeFromCart,
     clearCart,
