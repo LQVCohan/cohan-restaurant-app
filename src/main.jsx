@@ -38,6 +38,7 @@ import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowFinalPolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalOverlapFix.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowObservationUX.scss";
+import "./components/Dashboard_Manager/Table/TableWorkflowHoverGuides.scss";
 import "./components/Dashboard_Manager/Table/TableMobileARTestPolish.scss";
 import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
