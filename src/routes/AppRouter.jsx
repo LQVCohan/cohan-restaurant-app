@@ -10,6 +10,7 @@ import VerifyAccountConfirm from "../pages/VerifyAccountConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
 
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
+import CombosPage from "@/components/Customer/Combos/CombosPage";
 import RestaurantDetail from "../components/Customer/RestaurantDetail/RestaurantDetail";
 import TableBooking from "../components/Customer/TableBooking/TableBooking";
 import OrdersPage from "../components/Customer/OrdersManagement/OrdersPage";
@@ -199,6 +200,7 @@ const AppRouter = () => (
       <Route path="/orders" element={withPrivateRoute(<OrdersPage />, ["customer", "manager", "admin"])} />
       <Route path="/track-delivery/:orderId" element={withPrivateRoute(<OrderTrackingPage />, ["customer", "manager", "admin"])} />
       <Route path="/restaurants" element={<RestaurantsList />} />
+      <Route path="/combos" element={<CombosPage />} />
       <Route path="/restaurant/:id" element={<RestaurantDetail />} />
       <Route path="/restaurant/:id/layout" element={<TableBooking />} />
       <Route path="/table/:restaurantId/:tableId" element={<TableCurrentSessionPage />} />

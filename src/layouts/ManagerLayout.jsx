@@ -15,6 +15,7 @@ const StaffManagement = lazy(() => import("../components/Dashboard_Manager/Staff
 const ScheduleManagementPage = lazy(() => import("../components/Dashboard_Manager/Schedule/ScheduleManagementPage"));
 const OrderManagement = lazy(() => import("../components/Dashboard_Manager/Order/OrderManagement"));
 const MenuManagement = lazy(() => import("../components/Dashboard_Manager/Menu/MenuManagement"));
+const ComboManagement = lazy(() => import("../components/Dashboard_Manager/Combo/ComboManagement"));
 const TableManagement = lazy(() => import("../components/Dashboard_Manager/Table/TableManagement"));
 const CustomerManagement = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerManagement"));
 const CustomerAnalyticsPage = lazy(() => import("../components/Dashboard_Manager/Customer/CustomerAnalyticsPage"));
@@ -40,7 +41,7 @@ const AiHandoffInbox = lazy(() => import("@/components/communication/AiHandoffIn
 const MANAGER_CANONICAL_PATH = "/manager";
 
 const VALID_MANAGER_PAGES = new Set([
-  "dashboard", "tables", "orders", "menu", "inventory", "staff", "customers",
+  "dashboard", "tables", "orders", "menu", "combos", "inventory", "staff", "customers",
   "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
@@ -70,6 +71,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   analytics: ["report.read"],
   orders: ["order.read"],
   menu: ["menu.read"],
+  combos: ["menu.read"],
   inventory: ["inventory.read", "stock.read"],
   tables: ["table.read"],
   "restaurant-info-management": ["restaurant.read"],
@@ -105,6 +107,7 @@ const PAGE_CONFIG = {
   tables: page("Quản lý bàn", "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", "🪑", ["bàn", "table", "đặt bàn", "sơ đồ"]),
   orders: page("Quản lý đơn hàng", "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", "🧾", ["order", "đơn", "timeline", "thanh toán"]),
   menu: page("Quản lý menu", "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ", "🍜", ["món", "menu", "giá", "danh mục"]),
+  combos: page("Quản lý combo", "Tạo bundle combo cố định, không trộn với khuyến mãi", "🍱", ["combo", "bundle", "set món"]),
   inventory: page("Quản lý kho", "Theo dõi tồn kho, nhập xuất và cảnh báo nguyên liệu", "📦", ["kho", "inventory", "nguyên liệu", "tồn"]),
   staff: page("Quản lý nhân viên", "Danh sách nhân viên, vai trò, trạng thái và phân công", "👥", ["staff", "nhân viên", "vai trò", "quyền"]),
   customers: page("Quản lý khách hàng", "Thông tin khách, hạng thành viên, điểm và hành vi mua", "🧑‍🤝‍🧑", ["khách hàng", "loyalty", "rank", "điểm"]),
@@ -222,6 +225,7 @@ const ManagerLayout = () => {
       case "tables": return <TableManagement />;
       case "orders": return <OrderManagement />;
       case "menu": return <MenuManagement />;
+      case "combos": return <ComboManagement />;
       case "inventory": return <StorageManagement />;
       case "staff": return <StaffManagement />;
       case "customers": return <CustomerManagement />;

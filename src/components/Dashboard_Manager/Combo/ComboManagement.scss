@@ -1,0 +1,27 @@
+.combo-management { padding: 1.5rem; color: #3f2b22; }
+.combo-management__header, .combo-management__filters, .manager-combo-card, .combo-management__dialog { background: #fff; border: 1px solid rgba(92,64,51,.12); border-radius: 22px; box-shadow: 0 14px 34px rgba(92,64,51,.08); }
+.combo-management__header { display: flex; justify-content: space-between; gap: 1rem; padding: 1.4rem; align-items: center; }
+.combo-management__header span { color: #ff6600; font-weight: 800; text-transform: uppercase; font-size: .78rem; letter-spacing: .08em; }
+.combo-management__header h1 { margin: .2rem 0; }
+.combo-management button { border: 0; border-radius: 999px; padding: .75rem 1rem; background: #ff6600; color: #fff; font-weight: 800; cursor: pointer; }
+.combo-management__filters { display: grid; grid-template-columns: 1fr 1fr 180px; gap: .75rem; padding: 1rem; margin: 1rem 0; }
+.combo-management input, .combo-management select, .combo-management textarea { border: 1px solid rgba(92,64,51,.16); border-radius: 14px; padding: .75rem; min-height: 42px; }
+.combo-management__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.manager-combo-card { overflow: hidden; display: grid; grid-template-columns: 110px 1fr; }
+.manager-combo-card img { width: 110px; height: 100%; object-fit: cover; }
+.manager-combo-card > div { padding: 1rem; }
+.manager-combo-card h3 { margin: .35rem 0; }
+.manager-combo-card button { background: #fff7ef; color: #e65c00; border: 1px solid rgba(255,102,0,.25); margin-right: .35rem; padding: .55rem .75rem; }
+.is-active { color: #198754; font-weight: 800; } .is-muted { color: #8b6f61; font-weight: 800; }
+.combo-management__empty { background: #fff; border-radius: 18px; padding: 2rem; text-align: center; }
+.combo-management__modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 1rem; background: rgba(44,30,22,.42); }
+.combo-management__dialog { position: relative; display: grid; gap: .75rem; width: min(760px, 100%); max-height: 90dvh; overflow: auto; padding: 1.3rem; }
+.combo-management__dialog label { display: grid; gap: .35rem; font-weight: 700; }
+.combo-management__close { position: absolute; right: 1rem; top: 1rem; width: 40px; height: 40px; padding: 0; }
+.combo-management__items > div:first-child, .combo-management__item-row, .combo-management__preview { display: flex; gap: .6rem; align-items: center; justify-content: space-between; }
+.combo-management__item-row select { flex: 1; }
+.combo-management__item-row input { width: 90px; }
+.combo-management__check { display: flex !important; grid-template-columns: auto 1fr; align-items: center; }
+.combo-management :focus-visible { outline: 3px solid rgba(255,102,0,.45); outline-offset: 3px; }
+@media (max-width: 720px) { .combo-management__header, .combo-management__filters, .manager-combo-card { grid-template-columns: 1fr; display: grid; } .manager-combo-card img { width: 100%; height: 180px; } }
+@media (prefers-reduced-motion: reduce) { .combo-management * { transition: none !important; } }

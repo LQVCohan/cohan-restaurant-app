@@ -32,7 +32,8 @@
     "test:performance": "vitest run tests/services/staff-performance-core-formula.service.test.js tests/services/performance-incident.service.test.js tests/services/performance-appeal.service.test.js",
     "backfill:restaurant-location": "node scripts/backfillRestaurantLocation.js",
     "seed:demo:payroll-readiness": "node scripts/seedPayrollReadinessDemo.js",
-    "verify:demo:scheduling-attendance": "node scripts/verifySchedulingAttendanceDemoRegression.js"
+    "verify:demo:scheduling-attendance": "node scripts/verifySchedulingAttendanceDemoRegression.js",
+    "seed:demo:combos": "node scripts/seedCombosDemo.js"
   },
   "keywords": [],
   "author": "",

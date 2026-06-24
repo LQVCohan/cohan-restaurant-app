@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Cart, Warehouse, MenuItem, Menu } from "../../../models/index.js";
+import { Cart, Warehouse, MenuItem, Menu, Combo } from "../../../models/index.js";
 import { applyCartDerivedFields } from "../../../models/cartDerivedFields.js";
 import { getPublicRestaurantOrThrow, assertRestaurantCanOrder } from "../shared/restaurantCapabilityGuards.js";
 import { logObjectEvent } from "../../../src/services/eventLog.service.js";
@@ -148,6 +148,10 @@ function normalizeCartItemNote(value) {
   return String(value || "").trim();
 }
 
+function isSameComboIdentity(item, { restaurantId, comboId }) {
+  return String(item?.itemType || "MENU_ITEM") === "COMBO" && String(item?.comboId || "") === String(comboId) && String(item?.restaurantId || "") === String(restaurantId);
+}
+
 function isSameCartIdentity(item, { restaurantId, menuItemId, servingKey, note }) {
   return (
     String(item?.menuItemId) === String(menuItemId) &&
@@ -243,6 +247,7 @@ function buildInventoryReleasePayload(item, reason) {
 
 async function releaseCartItemsTx({ cart, items, session }) {
   for (const item of items || []) {
+    if (String(item?.itemType || "MENU_ITEM") === "COMBO") continue;
     const warehouseId = await resolveWarehouseIdOrDefault(item.restaurantId, session);
     await cancelReservationForOrderTx({
       restaurantId: item.restaurantId,
@@ -361,6 +366,7 @@ export const CartMutation = {
         } else {
           cart.items.push({
             _id: reservedItemId,
+            itemType: "MENU_ITEM",
             menuItemId,
             name: serverSnapshotName,
             price: serverSnapshotPrice,
@@ -420,6 +426,58 @@ export const CartMutation = {
     return after;
   },
 
+
+  async addComboToCart(_, { comboId, quantity = 1 }, ctx) {
+    const uid = requireAuthUser(ctx);
+    if (!mongoose.isValidObjectId(comboId)) throw new GraphQLError("Invalid comboId");
+    const qty = Math.max(1, Math.floor(Number(quantity || 1)));
+    const combo = await Combo.findOne({ _id: comboId, isActive: { $ne: false } })
+      .populate("restaurantId")
+      .populate("items.menuItemId");
+    if (!combo) throw new GraphQLError("Combo không tồn tại.");
+    if (!combo.restaurantId) throw new GraphQLError("Combo chưa có nhà hàng.");
+    if (!Array.isArray(combo.items) || !combo.items.length) throw new GraphQLError("Combo chưa có món.");
+    const restaurantId = combo.restaurantId?._id || combo.restaurantId;
+    const { availability } = await getPublicRestaurantOrThrow(restaurantId);
+    assertRestaurantCanOrder(availability);
+    const snapshotItems = combo.items.map((row) => {
+      const item = row?.menuItemId;
+      if (!item?._id) throw new GraphQLError("Combo có món không hợp lệ.");
+      if (String(item.restaurantId) !== String(restaurantId)) throw new GraphQLError("Món trong combo không thuộc cùng nhà hàng.");
+      if (String(item.status || "available") !== "available") throw new GraphQLError(`Món ${item.name || ""} trong combo hiện không khả dụng.`);
+      return { menuItemId: String(item._id), name: item.name || "Món", qty: Math.max(1, Number(row.qty || 1)), price: Number(item.basePrice || 0), imageUrl: item.thumbImage || null };
+    });
+    const originalPrice = snapshotItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
+    const unitPrice = Number(combo.price || 0);
+    if (!(unitPrice > 0)) throw new GraphQLError("Combo chưa có giá hợp lệ.");
+    const snapshot = { comboId: String(combo._id), name: combo.name, restaurantId: String(restaurantId), restaurantName: combo.restaurantId?.name || null, items: snapshotItems, originalPrice, comboPrice: unitPrice, imageUrl: combo.imageUrl || snapshotItems.find((item) => item.imageUrl)?.imageUrl || null };
+    let after = null;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        let cart = await Cart.findOne({ userId: uid, status: "active" }).session(session);
+        if (!cart) cart = await Cart.create([{ userId: uid, items: [], status: "active" }], { session }).then((x) => x[0]);
+        assertNotBlocked(cart);
+        const existing = cart.items.find((it) => isSameComboIdentity(it, { restaurantId, comboId }));
+        if (existing) {
+          existing.quantity = Number(existing.quantity || 1) + qty;
+          existing.comboSnapshot = snapshot;
+          existing.price = unitPrice;
+          existing.name = combo.name;
+          existing.thumbImage = snapshot.imageUrl;
+        } else {
+          cart.items.push({ itemType: "COMBO", comboId, menuItemId: snapshotItems[0]?.menuItemId, restaurantId, name: combo.name, price: unitPrice, quantity: qty, thumbImage: snapshot.imageUrl, comboSnapshot: snapshot, holdStatus: "active" });
+        }
+        applyCartDerivedFields(cart, { now: new Date() });
+        await cart.save({ session });
+        after = cart.toObject({ virtuals: true });
+      });
+    } finally {
+      await session.endSession();
+    }
+    return after;
+  },
+
   async updateCartItem(_, { input }, ctx) {
     const { cartId, itemId, quantity } = input;
     requireAuthUser(ctx);
@@ -449,7 +507,7 @@ export const CartMutation = {
         const holdExpiresAt = new Date(now.getTime() + HOLD_TTL_MS);
         const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
 
-        if (delta > 0) {
+        if (String(it.itemType || "MENU_ITEM") !== "COMBO" && delta > 0) {
           const restaurantId = it.restaurantId;
           const { availability } = await getPublicRestaurantOrThrow(restaurantId);
           assertRestaurantCanOrder(availability);
@@ -472,7 +530,7 @@ export const CartMutation = {
             });
             throw outOfStockError("Món đã hết hàng hoặc không đủ tồn kho để tăng số lượng.");
           }
-        } else if (delta < 0) {
+        } else if (String(it.itemType || "MENU_ITEM") !== "COMBO" && delta < 0) {
           const restaurantId = it.restaurantId;
           const warehouseId = await resolveWarehouseIdOrDefault(restaurantId, session);
           const orderCode = holdOrderCode(cart._id, it._id);

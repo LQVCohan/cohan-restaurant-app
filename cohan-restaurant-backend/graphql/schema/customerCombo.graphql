@@ -1,0 +1,96 @@
+enum ComboSourceType {
+  COMBO
+  PROMOTION
+}
+
+type CustomerComboItem {
+  menuItemId: ID
+  name: String!
+  qty: Int!
+  imageUrl: String
+  price: Float
+}
+
+type CustomerCombo {
+  id: ID!
+  sourceType: ComboSourceType!
+  restaurantId: ID
+  restaurantName: String
+  name: String!
+  description: String
+  imageUrl: String
+  items: [CustomerComboItem!]!
+  originalPrice: Float
+  comboPrice: Float
+  discountAmount: Float
+  discountPercent: Float
+  badge: String
+  isAvailable: Boolean!
+  startsAt: DateTime
+  endsAt: DateTime
+  minPeople: Int
+  maxPeople: Int
+}
+
+input CustomerComboFilterInput {
+  restaurantId: ID
+  people: String
+  budget: String
+  onlyAvailable: Boolean
+  search: String
+  limit: Int
+  sourceType: ComboSourceType
+}
+
+
+type ComboItem {
+  menuItemId: ID!
+  qty: Int!
+  name: String
+  price: Float
+  imageUrl: String
+}
+
+type Combo {
+  id: ID!
+  restaurantId: ID
+  restaurantName: String
+  name: String!
+  description: String
+  imageUrl: String
+  items: [ComboItem!]!
+  price: Float!
+  originalPrice: Float
+  isActive: Boolean!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ComboItemInput {
+  menuItemId: ID!
+  qty: Int!
+}
+
+input ComboInput {
+  restaurantId: ID!
+  name: String!
+  description: String
+  imageUrl: String
+  items: [ComboItemInput!]!
+  price: Float!
+  isActive: Boolean
+}
+
+extend type Query {
+  customerCombos(filter: CustomerComboFilterInput): [CustomerCombo!]!
+  customerCombo(id: ID!): CustomerCombo
+  managerCombos(restaurantId: ID!, search: String, status: String): [Combo!]!
+  combo(id: ID!): Combo
+}
+
+extend type Mutation {
+  createCombo(input: ComboInput!): Combo!
+  updateCombo(id: ID!, input: ComboInput!): Combo!
+  deleteCombo(id: ID!): Boolean!
+  toggleComboStatus(id: ID!, isActive: Boolean!): Combo!
+}

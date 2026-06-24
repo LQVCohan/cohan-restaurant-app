@@ -86,8 +86,8 @@ const fallbackDishSuggestions = [
     name: "Combo no nhanh hôm nay",
     description: "Gợi ý các món dễ ăn, đặt nhanh, phù hợp bữa trưa hoặc bữa tối.",
     image: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=620&q=80",
-    cta: "Tìm combo",
-    path: "/restaurants",
+    cta: "Xem combo",
+    path: "/combos",
   },
   {
     key: "healthy-pick",

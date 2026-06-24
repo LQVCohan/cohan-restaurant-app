@@ -15,6 +15,9 @@ const ComboSchema = new Schema(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
     name: { type: String, required: true },
+    description: { type: String, trim: true },
+    imageUrl: { type: String, trim: true },
+    isActive: { type: Boolean, default: true, index: true },
     items: [ComboItemSchema],
     price: { type: Number, required: true },
   },

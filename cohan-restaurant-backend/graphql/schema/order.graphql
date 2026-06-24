@@ -617,6 +617,9 @@ type ActionResultPayload {
 
 input CheckoutCartItemInput {
   restaurantId: ID!
+  itemType: String
+  comboId: ID
+  comboSnapshot: JSON
   cartId: ID
   cartItemId: ID
   dishId: ID
