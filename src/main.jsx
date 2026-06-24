@@ -35,6 +35,7 @@ import "./components/Dashboard_Manager/Table/TableManagementPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementFinalQC.scss";
 import "./components/Dashboard_Manager/Table/TableManagementScorePolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
+import "./components/Dashboard_Manager/Table/TableMobileARTestPolish.scss";
 import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
