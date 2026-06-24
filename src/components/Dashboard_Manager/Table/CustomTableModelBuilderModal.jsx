@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
-import { getGraphqlUrl } from "@/lib/apiBaseUrl";
+import { toBackendRootUrl } from "@/lib/apiBaseUrl";
 import { TABLE_3D_TYPE_OPTIONS } from "@/config/table3dCatalog";
 import {
   buildAiGeneratedTableCatalogItem,
@@ -88,12 +88,6 @@ const formatFileSize = (bytes = 0) => {
   return `${Math.round(bytes / 1024)} KB`;
 };
 
-const getApiBase = () => {
-  const graphqlUrl = getGraphqlUrl();
-  if (graphqlUrl.startsWith("/")) return "";
-  return graphqlUrl.replace(/\/graphql\/?$/i, "").replace(/\/$/, "");
-};
-
 const isGlbFile = (file) =>
   String(file?.name || "")
     .toLowerCase()
@@ -130,7 +124,7 @@ const validateSharedCatalogFields = (source) => {
 const uploadTable3DAsset = ({ form, onProgress }) =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${getApiBase()}/table-3d-assets/upload`);
+    xhr.open("POST", toBackendRootUrl("/table-3d-assets/upload"));
     xhr.withCredentials = true;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && typeof onProgress === "function") {
@@ -164,7 +158,7 @@ const uploadTable3DAsset = ({ form, onProgress }) =>
   });
 
 const requestAiTable3DGeneration = (formData) =>
-  fetch(`${getApiBase()}/table-3d-ai/generate`, {
+  fetch(toBackendRootUrl("/table-3d-ai/generate"), {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -179,7 +173,7 @@ const requestAiTable3DGeneration = (formData) =>
   });
 
 const fetchAiTable3DJobStatus = (jobId) =>
-  fetch(`${getApiBase()}/table-3d-ai/jobs/${encodeURIComponent(jobId)}`, {
+  fetch(toBackendRootUrl(`/table-3d-ai/jobs/${encodeURIComponent(jobId)}`), {
     credentials: "include",
   }).then(async (response) => {
     const payload = await response.json().catch(() => ({}));
@@ -300,7 +294,8 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
       nextErrors.push("Thumbnail URL phải bắt đầu bằng http:// hoặc https://.");
     }
 
-    return [...nextErrors, ...validateSharedCatalogFields(urlForm)];
+    nextErrors.push(...validateSharedCatalogFields(urlForm));
+    return nextErrors;
   };
 
   const validateUploadForm = () => {
@@ -309,152 +304,180 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     const thumbnailFile = uploadForm.thumbnailFile;
 
     if (!modelFile) {
-      nextErrors.push("File model .glb là bắt buộc.");
+      nextErrors.push("Vui lòng chọn file model .glb.");
     } else {
-      if (!isGlbFile(modelFile))
-        nextErrors.push("Phase này chỉ hỗ trợ upload file .glb.");
+      if (!isGlbFile(modelFile)) {
+        nextErrors.push("Chỉ hỗ trợ file .glb cho model tải lên.");
+      }
       if (modelFile.size > MODEL_MAX_SIZE_BYTES) {
-        nextErrors.push(
-          `File model tối đa ${formatFileSize(MODEL_MAX_SIZE_BYTES)}.`,
-        );
+        nextErrors.push(`Model tối đa ${formatFileSize(MODEL_MAX_SIZE_BYTES)}.`);
       }
     }
 
     if (thumbnailFile) {
       if (!IMAGE_MIME_TYPES.has(thumbnailFile.type)) {
-        nextErrors.push("Thumbnail phải là ảnh PNG, JPEG hoặc WebP.");
+        nextErrors.push("Thumbnail chỉ hỗ trợ PNG, JPG hoặc WEBP.");
       }
       if (thumbnailFile.size > THUMBNAIL_MAX_SIZE_BYTES) {
-        nextErrors.push(
-          `Thumbnail tối đa ${formatFileSize(THUMBNAIL_MAX_SIZE_BYTES)}.`,
-        );
+        nextErrors.push(`Thumbnail tối đa ${formatFileSize(THUMBNAIL_MAX_SIZE_BYTES)}.`);
       }
     }
 
-    return [...nextErrors, ...validateSharedCatalogFields(uploadForm)];
-  };
-
-  const handleAiImagesSelected = (event) => {
-    const selected = Array.from(event.target.files || []);
-    const nextImages = [...(aiForm.referenceImages || []), ...selected].slice(
-      0,
-      AI_MAX_IMAGES,
-    );
-    updateAiField("referenceImages", nextImages);
-    event.target.value = "";
-  };
-
-  const removeAiImage = (index) => {
-    updateAiField(
-      "referenceImages",
-      (aiForm.referenceImages || []).filter(
-        (_, imageIndex) => imageIndex !== index,
-      ),
-    );
+    nextErrors.push(...validateSharedCatalogFields(uploadForm));
+    return nextErrors;
   };
 
   const validateAiForm = () => {
     const nextErrors = [];
-    const images = aiForm.referenceImages || [];
-    if (!String(aiForm.name || "").trim())
-      nextErrors.push("Tên mẫu là bắt buộc.");
-    if (!String(aiForm.tableType || "").trim())
-      nextErrors.push("Loại bàn là bắt buộc.");
-    if (images.length < AI_MIN_IMAGES)
-      nextErrors.push("Cần ít nhất 3 ảnh tham khảo.");
-    if (images.length > AI_MAX_IMAGES)
-      nextErrors.push("Tối đa 5 ảnh tham khảo.");
+    const images = Array.from(aiForm.images || []);
+    if (images.length < AI_MIN_IMAGES) nextErrors.push("Cần ít nhất 3 ảnh tham chiếu.");
+    if (images.length > AI_MAX_IMAGES) nextErrors.push("Tối đa 5 ảnh tham chiếu.");
     images.forEach((file) => {
-      if (!IMAGE_MIME_TYPES.has(file.type))
-        nextErrors.push(`${file.name}: chỉ hỗ trợ PNG, JPEG hoặc WebP.`);
-      if (file.size > AI_IMAGE_MAX_SIZE_BYTES)
-        nextErrors.push(
-          `${file.name}: tối đa ${formatFileSize(AI_IMAGE_MAX_SIZE_BYTES)}.`,
-        );
+      if (!IMAGE_MIME_TYPES.has(file.type)) nextErrors.push(`${file.name}: chỉ hỗ trợ PNG, JPG hoặc WEBP.`);
+      if (file.size > AI_IMAGE_MAX_SIZE_BYTES) nextErrors.push(`${file.name}: tối đa ${formatFileSize(AI_IMAGE_MAX_SIZE_BYTES)}.`);
     });
-    return [...nextErrors, ...validateSharedCatalogFields(aiForm)];
+    nextErrors.push(...validateSharedCatalogFields(aiForm));
+    return nextErrors;
   };
 
-  const handleAiSubmit = async () => {
-    const validationErrors = validateAiForm();
-    if (validationErrors.length) {
-      setError(validationErrors.join(" "));
+  const handleApplyParametric = () => {
+    const errors = validateSharedCatalogFields(form);
+    if (errors.length) {
+      setError(errors.join(" "));
+      return;
+    }
+    onApply(buildCustomTableCatalogItem(form));
+    onClose?.();
+  };
+
+  const handleApplyUrl = () => {
+    const errors = validateUrlForm();
+    if (errors.length) {
+      setError(errors.join(" "));
+      return;
+    }
+    onApply(buildCustomUrlTableCatalogItem(urlForm));
+    onClose?.();
+  };
+
+  const handleUploadModel = async () => {
+    const errors = validateUploadForm();
+    if (errors.length) {
+      setError(errors.join(" "));
       return;
     }
 
-    setError("");
-    setAiStatus("submitting");
-    const formData = new FormData();
-    formData.append(
+    const uploadPayload = new FormData();
+    uploadPayload.append("model", uploadForm.modelFile, uploadForm.modelFile.name);
+    if (uploadForm.thumbnailFile) {
+      uploadPayload.append("thumbnail", uploadForm.thumbnailFile, uploadForm.thumbnailFile.name);
+    }
+
+    uploadPayload.append(
       "metadata",
       JSON.stringify({
-        name: aiForm.name,
-        tableType: aiForm.tableType,
-        capacity: Number(aiForm.capacity),
-        defaultScale: Number(aiForm.defaultScale),
-        dimensions: {
-          width: aiForm.widthCm,
-          depth: aiForm.depthCm,
-          height: aiForm.heightCm,
-          diameter: aiForm.diameterCm,
+        type: uploadForm.type,
+        label: uploadForm.label,
+        capacity: Number(uploadForm.capacity),
+        area: uploadForm.area,
+        defaultScale: Number(uploadForm.defaultScale),
+        dimensionsCm: {
+          width: Number(uploadForm.widthCm) || null,
+          depth: Number(uploadForm.depthCm) || null,
+          height: Number(uploadForm.heightCm) || null,
+          diameter: Number(uploadForm.diameterCm) || null,
         },
-        material: aiForm.material,
-        color: aiForm.color,
-        notes: aiForm.notes,
-        tags: parseTags(aiForm.tags),
-        licenseLabel: aiForm.licenseLabel,
+        tags: parseTags(uploadForm.tags),
       }),
     );
-    (aiForm.referenceImages || []).forEach((file) =>
-      formData.append("images", file, file.name),
-    );
+
+    setError("");
+    setUploadProgress(0);
+    setUploadStatus("Đang tải model 3D lên server...");
+    setIsUploading(true);
 
     try {
-      const result = await requestAiTable3DGeneration(formData);
-      setAiJob(result);
-      setAiStatus(result.status || (result.ok ? "queued" : "failed"));
-      if (result.status === "not_configured") {
-        setError("Tính năng AI đang chờ cấu hình dịch vụ sinh model 3D.");
-      } else if (result.status === "pending_provider") {
-        setError(
-          result.message ||
-            "Provider AI đã khai báo nhưng adapter sinh model 3D chưa được tích hợp.",
-        );
-      }
+      const payload = await uploadTable3DAsset({
+        form: uploadPayload,
+        onProgress: setUploadProgress,
+      });
+      const item = buildUploadedTableCatalogItem({
+        ...uploadForm,
+        modelUrl: payload.modelUrl,
+        thumbnailUrl: payload.thumbnailUrl,
+        fileName: payload.fileName,
+        sizeBytes: payload.sizeBytes,
+      });
+      setUploadStatus("Đã upload model. Mẫu mới đã sẵn sàng để dùng trong sơ đồ bàn.");
+      onApply(item);
+      onClose?.();
     } catch (err) {
-      setAiStatus("failed");
-      setError(err?.message || "Không gửi được yêu cầu AI.");
+      setError(err?.message || "Không thể tải model lên server.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleAiCheckStatus = async () => {
-    if (!aiJob?.jobId) return;
+  const handleSubmitAi = async () => {
+    const errors = validateAiForm();
+    if (errors.length) {
+      setError(errors.join(" "));
+      return;
+    }
+
+    const formData = new FormData();
+    Array.from(aiForm.images || []).forEach((file) => formData.append("images", file, file.name));
+    formData.append("metadata", JSON.stringify({
+      type: aiForm.type,
+      label: aiForm.label,
+      prompt: aiForm.prompt,
+      capacity: Number(aiForm.capacity),
+      area: aiForm.area,
+      defaultScale: Number(aiForm.defaultScale),
+      dimensionsCm: {
+        width: Number(aiForm.widthCm) || null,
+        depth: Number(aiForm.depthCm) || null,
+        height: Number(aiForm.heightCm) || null,
+        diameter: Number(aiForm.diameterCm) || null,
+      },
+      tags: parseTags(aiForm.tags),
+    }));
+
     setError("");
+    setAiStatus("submitting");
     try {
-      const result = await fetchAiTable3DJobStatus(aiJob.jobId);
-      setAiJob((prev) => ({ ...(prev || {}), ...result }));
-      setAiStatus(result.status || "processing");
-      if (result.status === "not_configured") {
-        setError("Tính năng AI đang chờ cấu hình dịch vụ sinh model 3D.");
-        return;
-      }
-      if (result.status === "completed" && result.generatedModelUrl) {
-        const item = buildAiGeneratedTableCatalogItem({
+      const payload = await requestAiTable3DGeneration(formData);
+      setAiJob(payload);
+      setAiStatus(payload.status || "queued");
+      if (payload?.modelUrl) {
+        onApply(buildAiGeneratedTableCatalogItem({
           ...aiForm,
-          capacity: Number(aiForm.capacity),
-          defaultScale: Number(aiForm.defaultScale),
-          tags: parseTags(aiForm.tags),
-          generatedModelUrl: result.generatedModelUrl,
-          generatedThumbnailUrl: result.generatedThumbnailUrl || "",
-          aiJobId: result.jobId || aiJob.jobId,
-          aiProvider:
-            result.aiProvider || result.provider || aiJob.provider || "",
-          generationStatus: result.status,
-        });
-        if (item) {
-          onApply?.(item);
-          onClose?.();
-        }
+          modelUrl: payload.modelUrl,
+          thumbnailUrl: payload.thumbnailUrl,
+          jobId: payload.jobId,
+        }));
+      }
+    } catch (err) {
+      setAiStatus("failed");
+      setError(err?.message || "Không thể tạo job AI.");
+    }
+  };
+
+  const handleRefreshAiJob = async () => {
+    const jobId = aiJob?.jobId;
+    if (!jobId) return;
+    setAiStatus("processing");
+    try {
+      const payload = await fetchAiTable3DJobStatus(jobId);
+      setAiJob((prev) => ({ ...(prev || {}), ...payload }));
+      setAiStatus(payload.status || "processing");
+      if (payload?.modelUrl) {
+        onApply(buildAiGeneratedTableCatalogItem({
+          ...aiForm,
+          modelUrl: payload.modelUrl,
+          thumbnailUrl: payload.thumbnailUrl,
+          jobId,
+        }));
       }
     } catch (err) {
       setAiStatus("failed");
@@ -462,650 +485,150 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     }
   };
 
-  const handleUploadAndApply = async () => {
-    const validationErrors = validateUploadForm();
-    if (validationErrors.length) {
-      setError(validationErrors.join(" "));
-      return;
-    }
-
-    setError("");
-    setUploadProgress(0);
-    setUploadStatus("Đang upload file model...");
-    setIsUploading(true);
-
-    const formData = new FormData();
-    formData.append("model", uploadForm.modelFile, uploadForm.modelFile.name);
-    if (uploadForm.thumbnailFile) {
-      formData.append(
-        "thumbnail",
-        uploadForm.thumbnailFile,
-        uploadForm.thumbnailFile.name,
-      );
-    }
-
-    try {
-      const result = await uploadTable3DAsset({
-        form: formData,
-        onProgress: setUploadProgress,
-      });
-      setUploadStatus("Upload thành công. Đang lưu vào thư viện...");
-      const item = buildUploadedTableCatalogItem({
-        ...uploadForm,
-        capacity: Number(uploadForm.capacity),
-        defaultScale: Number(uploadForm.defaultScale),
-        modelUrl: result.modelUrl,
-        thumbnailUrl: result.thumbnailUrl || "",
-        uploadedFileName:
-          result.fileName ||
-          result.originalFileName ||
-          uploadForm.modelFile.name,
-        uploadedSizeBytes: result.sizeBytes || uploadForm.modelFile.size,
-        tags: parseTags(uploadForm.tags),
-      });
-      onApply?.(item);
-      onClose?.();
-    } catch (err) {
-      setError(err?.message || "Upload thất bại, vui lòng thử lại.");
-      setUploadStatus("Upload thất bại.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleApply = () => {
-    if (mode === BUILDER_MODES.UPLOAD) {
-      handleUploadAndApply();
-      return;
-    }
-
-    if (mode === BUILDER_MODES.AI) {
-      handleAiSubmit();
-      return;
-    }
-
-    if (mode === BUILDER_MODES.URL) {
-      const validationErrors = validateUrlForm();
-      if (validationErrors.length) {
-        setError(validationErrors.join(" "));
-        return;
-      }
-
-      const item = buildCustomUrlTableCatalogItem({
-        ...urlForm,
-        capacity: Number(urlForm.capacity),
-        defaultScale: Number(urlForm.defaultScale),
-        tags: parseTags(urlForm.tags),
-      });
-      onApply?.(item);
-      onClose?.();
-      return;
-    }
-
-    const spec = normalizeCustomTableSpec(form);
-    const item = buildCustomTableCatalogItem(spec);
-    onApply?.(item);
-    onClose?.();
-  };
-
-  const renderDimensionsFields = (state, update, prefix) => (
-    <>
-      <Field label="Rộng (cm)">
-        <input
-          className="form-control"
-          type="number"
-          min="1"
-          value={state.widthCm}
-          onChange={(e) => update("widthCm", e.target.value)}
-        />
-      </Field>
-      <Field label="Sâu (cm)">
-        <input
-          className="form-control"
-          type="number"
-          min="1"
-          value={state.depthCm}
-          onChange={(e) => update("depthCm", e.target.value)}
-        />
-      </Field>
-      <Field label="Cao (cm)">
-        <input
-          className="form-control"
-          type="number"
-          min="1"
-          value={state.heightCm}
-          onChange={(e) => update("heightCm", e.target.value)}
-        />
-      </Field>
-      <Field
-        label="Đường kính (cm)"
-        hint={prefix === "parametric" ? "Dùng cho bàn tròn" : "Tuỳ chọn"}
-      >
-        <input
-          className="form-control"
-          type="number"
-          min="1"
-          value={state.diameterCm}
-          onChange={(e) => update("diameterCm", e.target.value)}
-        />
-      </Field>
-    </>
-  );
-
-  const renderCatalogCoreSections = (state, update, prefix) => (
-    <>
-      <Section title="Thông tin mẫu" eyebrow="01">
-        <Field label="Tên mẫu">
-          <input
-            className="form-control"
-            value={state.name}
-            onChange={(e) => update("name", e.target.value)}
-            placeholder="Ví dụ: Bàn patio GLB 4 chỗ"
-          />
-        </Field>
-        <Field label="Loại bàn">
-          <select
-            className="form-select"
-            value={state.tableType}
-            onChange={(e) => update("tableType", e.target.value)}
-          >
-            {TABLE_3D_TYPE_OPTIONS.map((type) => (
-              <option key={`${prefix}-${type.value}`} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Số ghế">
-          <input
-            className="form-control"
-            type="number"
-            min="1"
-            value={state.capacity}
-            onChange={(e) => update("capacity", e.target.value)}
-          />
-        </Field>
-        <Field label="defaultScale" hint="0.2–3">
-          <input
-            className="form-control"
-            type="number"
-            min="0.2"
-            max="3"
-            step="0.05"
-            value={state.defaultScale}
-            onChange={(e) => update("defaultScale", e.target.value)}
-          />
-        </Field>
-      </Section>
-
-      <Section title="Kích thước thực tế" eyebrow="02">
-        {renderDimensionsFields(state, update, prefix)}
-      </Section>
-
-      <Section title="Nguồn và quyền sử dụng" eyebrow="03">
-        <Field
-          label="Nguồn model / ghi chú"
-          className="custom-table-builder__field--wide"
-        >
-          <input
-            className="form-control"
-            value={state.source}
-            onChange={(e) => update("source", e.target.value)}
-            placeholder="Nội bộ, vendor, URL nguồn..."
-          />
-        </Field>
-        <Field
-          label="License / ghi chú quyền sử dụng"
-          className="custom-table-builder__field--wide"
-        >
-          <input
-            className="form-control"
-            value={state.licenseLabel}
-            onChange={(e) => update("licenseLabel", e.target.value)}
-            placeholder="CC0, CC BY, nội bộ đã được phép..."
-          />
-        </Field>
-        <Field
-          label="Tags"
-          hint="Ngăn cách bằng dấu phẩy"
-          className="custom-table-builder__field--wide"
-        >
-          <input
-            className="form-control"
-            value={state.tags}
-            onChange={(e) => update("tags", e.target.value)}
-            placeholder="outdoor, wood, glb"
-          />
-        </Field>
-      </Section>
-    </>
-  );
+  if (!open) return null;
 
   return (
     <Modal
       isOpen={open}
-      onClose={onClose}
+      onClose={isBusy ? undefined : onClose}
+      title="Tạo mẫu bàn tùy chỉnh"
       size="xl"
       className="custom-table-builder-modal"
-      autoWrapBody={false}
     >
       <div className="custom-table-builder">
-        <div className="custom-table-builder__header">
-          <div className="custom-table-builder__icon" aria-hidden="true">
-            ✦
-          </div>
-          <div>
-            <span className="custom-table-builder__eyebrow">
-              Thư viện bàn 3D
-            </span>
-            <h3>Tạo mẫu bàn tùy chỉnh</h3>
-            <p>
-              Tạo mẫu bằng thông số, URL, upload .glb hoặc gửi yêu cầu AI dựng
-              model từ ảnh tham khảo.
-            </p>
-          </div>
-        </div>
+        <aside className="custom-table-builder__tabs" aria-label="Chọn cách tạo mẫu bàn">
+          {BUILDER_TABS.map((tab) => (
+            <button
+              type="button"
+              key={tab.value}
+              className={mode === tab.value ? "active" : ""}
+              onClick={() => handleModeChange(tab.value)}
+              disabled={isBusy}
+            >
+              <span className="custom-table-builder__tab-icon">{tab.icon}</span>
+              <strong>{tab.label}</strong>
+              <small>{tab.description}</small>
+            </button>
+          ))}
+        </aside>
 
-        <div
-          className="custom-table-builder__tabs"
-          role="tablist"
-          aria-label="Chế độ tạo mẫu bàn tùy chỉnh"
-        >
-          {BUILDER_TABS.map((tab) => {
-            const isActive = mode === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`custom-table-builder__tab${isActive ? " active" : ""}`}
-                onClick={() => handleModeChange(tab.value)}
-              >
-                <span
-                  className="custom-table-builder__tab-icon"
-                  aria-hidden="true"
-                >
-                  {tab.icon}
-                </span>
-                <span>
-                  <strong>{tab.label}</strong>
-                  <small>{tab.description}</small>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="custom-table-builder__active-summary">
-          <span>{activeTab.icon}</span>
-          <div>
-            <strong>{activeTab.label}</strong>
-            <p>{activeTab.description}</p>
-          </div>
-        </div>
-
-        {error && <StatusCard tone="warning">{error}</StatusCard>}
-
-        <div className="custom-table-builder__body">
+        <main className="custom-table-builder__content">
           {mode === BUILDER_MODES.PARAMETRIC && (
             <>
-              <Section title="Thông tin mẫu" eyebrow="01">
-                <Field label="Tên mẫu bàn">
-                  <input
-                    className="form-control"
-                    value={form.name}
-                    onChange={(e) => updateField("name", e.target.value)}
-                    placeholder="Ví dụ: Booth cửa sổ 6 chỗ"
-                  />
+              <Section title="Thông tin mẫu" eyebrow="Tùy chỉnh nhanh">
+                <Field label="Tên mẫu">
+                  <input value={form.label} onChange={(e) => updateField("label", e.target.value)} />
                 </Field>
-                <Field label="Loại hình dáng">
-                  <select
-                    className="form-select"
-                    value={form.shape}
-                    onChange={(e) => updateField("shape", e.target.value)}
-                  >
-                    {CUSTOM_TABLE_SHAPES.map((shape) => (
-                      <option key={shape.value} value={shape.value}>
-                        {shape.label}
-                      </option>
+                <Field label="Loại bàn">
+                  <select value={form.type} onChange={(e) => updateField("type", e.target.value)}>
+                    {TABLE_3D_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Khu vực">
-                  <select
-                    className="form-select"
-                    value={form.area}
-                    onChange={(e) => updateField("area", e.target.value)}
-                  >
-                    {TABLE_AREA_OPTIONS.map((area) => (
-                      <option key={area.value} value={area.value}>
-                        {area.label}
-                      </option>
+                <Field label="Khu vực gợi ý">
+                  <select value={form.area} onChange={(e) => updateField("area", e.target.value)}>
+                    {TABLE_AREA_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{getTableAreaLabel(option.value)}</option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Số ghế">
-                  <input
-                    className="form-control"
-                    type="number"
-                    min="1"
-                    value={form.capacity}
-                    onChange={(e) => updateField("capacity", e.target.value)}
-                  />
+                <Field label="Sức chứa">
+                  <input type="number" min="1" value={form.capacity} onChange={(e) => updateField("capacity", e.target.value)} />
                 </Field>
               </Section>
-
-              <Section title="Kích thước và chất liệu" eyebrow="02">
-                {renderDimensionsFields(form, updateField, "parametric")}
-                <Field label="Chất liệu">
-                  <input
-                    className="form-control"
-                    value={form.material}
-                    onChange={(e) => updateField("material", e.target.value)}
-                    placeholder="Gỗ, đá, kim loại..."
-                  />
-                </Field>
-                <Field label="Màu">
-                  <input
-                    className="form-control custom-table-builder__color-input"
-                    type="color"
-                    value={form.color}
-                    onChange={(e) => updateField("color", e.target.value)}
-                  />
-                </Field>
-              </Section>
-
-              <Section title="Ảnh tham khảo và ghi chú" eyebrow="03">
-                <Field
-                  label="Ảnh tham khảo nội bộ"
-                  hint={
-                    form.referenceImageName || "Chỉ lưu tên ảnh để ghi chú mẫu"
-                  }
-                >
-                  <input
-                    className="form-control"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleReferenceImage}
-                  />
-                </Field>
-                <Field
-                  label="Ghi chú"
-                  className="custom-table-builder__field--wide"
-                >
-                  <input
-                    className="form-control"
-                    value={form.notes}
-                    onChange={(e) => updateField("notes", e.target.value)}
-                    placeholder="Vị trí dùng, style, lưu ý vận hành..."
-                  />
+              <Section title="Kích thước & hiển thị" eyebrow="cm / scale">
+                {CUSTOM_TABLE_SHAPES.map((shape) => (
+                  <button
+                    type="button"
+                    key={shape}
+                    className={`custom-table-builder__shape ${form.shape === shape ? "active" : ""}`}
+                    onClick={() => updateField("shape", shape)}
+                  >
+                    {getCustomTableShapeLabel(shape)}
+                  </button>
+                ))}
+                <Field label="Rộng (cm)"><input type="number" value={form.widthCm} onChange={(e) => updateField("widthCm", e.target.value)} /></Field>
+                <Field label="Sâu (cm)"><input type="number" value={form.depthCm} onChange={(e) => updateField("depthCm", e.target.value)} /></Field>
+                <Field label="Cao (cm)"><input type="number" value={form.heightCm} onChange={(e) => updateField("heightCm", e.target.value)} /></Field>
+                <Field label="Đường kính (cm)"><input type="number" value={form.diameterCm} onChange={(e) => updateField("diameterCm", e.target.value)} /></Field>
+                <Field label="Scale mặc định"><input type="number" step="0.05" value={form.defaultScale} onChange={(e) => updateField("defaultScale", e.target.value)} /></Field>
+                <Field label="Tag"><input value={form.tags} onChange={(e) => updateField("tags", e.target.value)} placeholder="wood, vip, sofa..." /></Field>
+                <Field label="Ảnh tham chiếu" hint="Chỉ lưu tên file để gợi ý, không upload ở chế độ này.">
+                  <input type="file" accept="image/*" onChange={handleReferenceImage} />
                 </Field>
               </Section>
-
-              <StatusCard tone="info">
-                <strong>Preview:</strong>{" "}
-                {getCustomTableShapeLabel(normalizedPreview.shape)} •{" "}
-                {normalizedPreview.capacity} ghế • {normalizedPreview.widthCm} x{" "}
-                {normalizedPreview.depthCm} x {normalizedPreview.heightCm} cm
-                {normalizedPreview.shape === "round"
-                  ? ` • Ø ${normalizedPreview.diameterCm} cm`
-                  : ""}{" "}
-                • Khu vực: {getTableAreaLabel(normalizedPreview.area)}
+              <StatusCard>
+                Preview: {normalizedPreview.label} · {normalizedPreview.capacity} ghế · {getCustomTableShapeLabel(normalizedPreview.shape)}
               </StatusCard>
+              <div className="custom-table-builder__actions"><Button variant="primary" onClick={handleApplyParametric}>Dùng mẫu này</Button></div>
             </>
           )}
 
           {mode === BUILDER_MODES.URL && (
             <>
-              {renderCatalogCoreSections(urlForm, updateUrlField, "url")}
-              <Section title="Model URL" eyebrow="04">
-                <Field
-                  label="Model URL (.glb/.gltf)"
-                  hint="Nên dùng .glb để model-viewer tải ổn định hơn .gltf."
-                  className="custom-table-builder__field--wide"
-                >
-                  <input
-                    className="form-control"
-                    value={urlForm.modelUrl}
-                    onChange={(e) => updateUrlField("modelUrl", e.target.value)}
-                    placeholder="https://example.com/table.glb"
-                  />
-                </Field>
-                <Field
-                  label="Thumbnail URL"
-                  className="custom-table-builder__field--wide"
-                >
-                  <input
-                    className="form-control"
-                    value={urlForm.thumbnailUrl}
-                    onChange={(e) =>
-                      updateUrlField("thumbnailUrl", e.target.value)
-                    }
-                    placeholder="https://example.com/table-thumbnail.jpg"
-                  />
-                </Field>
+              <Section title="Nguồn model online" eyebrow="GLB / GLTF">
+                <Field label="Tên mẫu"><input value={urlForm.label} onChange={(e) => updateUrlField("label", e.target.value)} /></Field>
+                <Field label="Model URL" className="span-2" hint="URL phải trỏ trực tiếp tới file .glb hoặc .gltf."><input value={urlForm.modelUrl} onChange={(e) => updateUrlField("modelUrl", e.target.value)} /></Field>
+                <Field label="Thumbnail URL" className="span-2"><input value={urlForm.thumbnailUrl} onChange={(e) => updateUrlField("thumbnailUrl", e.target.value)} /></Field>
+                <Field label="Loại bàn"><select value={urlForm.type} onChange={(e) => updateUrlField("type", e.target.value)}>{TABLE_3D_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+                <Field label="Sức chứa"><input type="number" min="1" value={urlForm.capacity} onChange={(e) => updateUrlField("capacity", e.target.value)} /></Field>
+                <Field label="Khu vực"><select value={urlForm.area} onChange={(e) => updateUrlField("area", e.target.value)}>{TABLE_AREA_OPTIONS.map((option) => <option key={option.value} value={option.value}>{getTableAreaLabel(option.value)}</option>)}</select></Field>
+                <Field label="Scale"><input type="number" step="0.05" value={urlForm.defaultScale} onChange={(e) => updateUrlField("defaultScale", e.target.value)} /></Field>
+                <Field label="Tag"><input value={urlForm.tags} onChange={(e) => updateUrlField("tags", e.target.value)} /></Field>
               </Section>
+              <div className="custom-table-builder__actions"><Button variant="primary" onClick={handleApplyUrl}>Dùng URL model</Button></div>
             </>
           )}
 
           {mode === BUILDER_MODES.UPLOAD && (
             <>
-              {renderCatalogCoreSections(
-                uploadForm,
-                updateUploadField,
-                "upload",
-              )}
-              <Section
-                title="Tải file model"
-                eyebrow="04"
-                className="custom-table-builder__section--upload"
-              >
-                <Field
-                  label="File model .glb"
-                  hint={
-                    uploadForm.modelFile
-                      ? `${uploadForm.modelFile.name} • ${formatFileSize(uploadForm.modelFile.size)}`
-                      : `Tối đa ${formatFileSize(MODEL_MAX_SIZE_BYTES)}`
-                  }
-                >
-                  <div className="custom-table-builder__file-card">
-                    <input
-                      className="form-control"
-                      type="file"
-                      accept=".glb,model/gltf-binary"
-                      onChange={(event) =>
-                        updateUploadField(
-                          "modelFile",
-                          event.target.files?.[0] || null,
-                        )
-                      }
-                    />
-                  </div>
+              <Section title="Upload model thật" eyebrow="Local backend">
+                <Field label="Tên mẫu"><input value={uploadForm.label} onChange={(e) => updateUploadField("label", e.target.value)} /></Field>
+                <Field label="File model .glb" hint={`Tối đa ${formatFileSize(MODEL_MAX_SIZE_BYTES)}.`}>
+                  <input type="file" accept=".glb,model/gltf-binary" onChange={(e) => updateUploadField("modelFile", e.target.files?.[0] || null)} />
                 </Field>
-                <Field
-                  label="Thumbnail ảnh optional"
-                  hint={
-                    uploadForm.thumbnailFile
-                      ? `${uploadForm.thumbnailFile.name} • ${formatFileSize(uploadForm.thumbnailFile.size)}`
-                      : `PNG/JPEG/WebP, tối đa ${formatFileSize(THUMBNAIL_MAX_SIZE_BYTES)}`
-                  }
-                >
-                  <div className="custom-table-builder__file-card">
-                    <input
-                      className="form-control"
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(event) =>
-                        updateUploadField(
-                          "thumbnailFile",
-                          event.target.files?.[0] || null,
-                        )
-                      }
-                    />
-                  </div>
+                <Field label="Thumbnail" hint={`PNG/JPG/WEBP, tối đa ${formatFileSize(THUMBNAIL_MAX_SIZE_BYTES)}.`}>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => updateUploadField("thumbnailFile", e.target.files?.[0] || null)} />
                 </Field>
+                <Field label="Loại bàn"><select value={uploadForm.type} onChange={(e) => updateUploadField("type", e.target.value)}>{TABLE_3D_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+                <Field label="Sức chứa"><input type="number" min="1" value={uploadForm.capacity} onChange={(e) => updateUploadField("capacity", e.target.value)} /></Field>
+                <Field label="Khu vực"><select value={uploadForm.area} onChange={(e) => updateUploadField("area", e.target.value)}>{TABLE_AREA_OPTIONS.map((option) => <option key={option.value} value={option.value}>{getTableAreaLabel(option.value)}</option>)}</select></Field>
+                <Field label="Scale"><input type="number" step="0.05" value={uploadForm.defaultScale} onChange={(e) => updateUploadField("defaultScale", e.target.value)} /></Field>
+                <Field label="Tag"><input value={uploadForm.tags} onChange={(e) => updateUploadField("tags", e.target.value)} /></Field>
               </Section>
-
-              <StatusCard tone="info">
-                File model tối đa {formatFileSize(MODEL_MAX_SIZE_BYTES)};
-                thumbnail tối đa {formatFileSize(THUMBNAIL_MAX_SIZE_BYTES)}. Xóa
-                mẫu khỏi thư viện chỉ xóa metadata trong trình duyệt, chưa xóa
-                file trên server.
-              </StatusCard>
-
-              {(uploadStatus || uploadProgress > 0) && (
-                <StatusCard tone="neutral">
-                  <div className="custom-table-builder__progress-row">
-                    <span>{uploadStatus || "Đang upload..."}</span>
-                    {uploadProgress > 0 && <strong>{uploadProgress}%</strong>}
-                  </div>
-                  {uploadProgress > 0 && (
-                    <div
-                      className="custom-table-builder__progress"
-                      aria-hidden="true"
-                    >
-                      <span
-                        style={{ width: `${Math.min(uploadProgress, 100)}%` }}
-                      />
-                    </div>
-                  )}
-                </StatusCard>
-              )}
+              {uploadStatus && <StatusCard>{uploadStatus} {uploadProgress > 0 ? `${uploadProgress}%` : ""}</StatusCard>}
+              <div className="custom-table-builder__actions"><Button variant="primary" onClick={handleUploadModel} disabled={isUploading}>{isUploading ? "Đang upload..." : "Upload và dùng mẫu"}</Button></div>
             </>
           )}
 
           {mode === BUILDER_MODES.AI && (
             <>
-              {renderCatalogCoreSections(aiForm, updateAiField, "ai")}
-              <Section title="Mô tả để AI dựng model" eyebrow="04">
-                <Field label="Chất liệu">
-                  <input
-                    className="form-control"
-                    value={aiForm.material}
-                    onChange={(e) => updateAiField("material", e.target.value)}
-                    placeholder="gỗ, đá, kim loại..."
-                  />
+              <Section title="Tạo mẫu bằng AI" eyebrow="Preview provider">
+                <Field label="Tên mẫu"><input value={aiForm.label} onChange={(e) => updateAiField("label", e.target.value)} /></Field>
+                <Field label="Ảnh tham chiếu" className="span-2" hint="Cần 3–5 ảnh từ nhiều góc để tạo job.">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(e) => updateAiField("images", Array.from(e.target.files || []))} />
                 </Field>
-                <Field label="Màu sắc">
-                  <input
-                    className="form-control"
-                    value={aiForm.color}
-                    onChange={(e) => updateAiField("color", e.target.value)}
-                    placeholder="nâu gỗ, đen mờ..."
-                  />
-                </Field>
-                <Field
-                  label="Ghi chú mô tả"
-                  className="custom-table-builder__field--wide"
-                >
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    value={aiForm.notes}
-                    onChange={(e) => updateAiField("notes", e.target.value)}
-                    placeholder="Mô tả mặt bàn, chân bàn, cạnh bo, phong cách..."
-                  />
-                </Field>
+                <Field label="Prompt" className="span-2"><textarea value={aiForm.prompt} onChange={(e) => updateAiField("prompt", e.target.value)} rows={4} /></Field>
+                <Field label="Loại bàn"><select value={aiForm.type} onChange={(e) => updateAiField("type", e.target.value)}>{TABLE_3D_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+                <Field label="Sức chứa"><input type="number" min="1" value={aiForm.capacity} onChange={(e) => updateAiField("capacity", e.target.value)} /></Field>
+                <Field label="Khu vực"><select value={aiForm.area} onChange={(e) => updateAiField("area", e.target.value)}>{TABLE_AREA_OPTIONS.map((option) => <option key={option.value} value={option.value}>{getTableAreaLabel(option.value)}</option>)}</select></Field>
+                <Field label="Scale"><input type="number" step="0.05" value={aiForm.defaultScale} onChange={(e) => updateAiField("defaultScale", e.target.value)} /></Field>
+                <Field label="Tag"><input value={aiForm.tags} onChange={(e) => updateAiField("tags", e.target.value)} /></Field>
               </Section>
-
-              <Section title="Ảnh tham khảo" eyebrow="05">
-                <Field
-                  label="Chọn 3–5 ảnh"
-                  hint={`Mỗi ảnh tối đa ${formatFileSize(AI_IMAGE_MAX_SIZE_BYTES)}.`}
-                  className="custom-table-builder__field--wide"
-                >
-                  <div className="custom-table-builder__file-card custom-table-builder__file-card--ai">
-                    <input
-                      className="form-control"
-                      type="file"
-                      multiple
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={handleAiImagesSelected}
-                    />
-                    <p>
-                      Mặt trước, mặt bên, mặt trên hoặc ảnh có vật chuẩn kích
-                      thước sẽ giúp provider dựng chính xác hơn.
-                    </p>
-                  </div>
-                </Field>
-
-                {(aiForm.referenceImages || []).length > 0 && (
-                  <div className="custom-table-builder__image-list custom-table-builder__field--wide">
-                    {(aiForm.referenceImages || []).map((file, index) => (
-                      <div
-                        className="custom-table-builder__image-chip"
-                        key={`${file.name}-${file.size}-${index}`}
-                      >
-                        <span>
-                          {index + 1}. {file.name}
-                        </span>
-                        <small>{formatFileSize(file.size)}</small>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => removeAiImage(index)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Section>
-
-              <StatusCard tone="info">
-                <strong>Quy tắc ảnh:</strong> ảnh sáng rõ; thấy toàn bộ bàn; ít
-                vật che khuất; nền sạch; không có người/khách hàng/thông tin
-                nhạy cảm; nên có vật chuẩn hoặc nhập kích thước thật.
+              <StatusCard tone={aiStatus === "failed" ? "danger" : "info"}>
+                Trạng thái: {getAiStatusLabel(aiStatus)}
+                {aiJob?.message ? ` · ${aiJob.message}` : ""}
               </StatusCard>
-
-              <StatusCard tone={aiStatus === "failed" ? "warning" : "neutral"}>
-                <div className="custom-table-builder__job-status">
-                  <span>Trạng thái</span>
-                  <strong>{getAiStatusLabel(aiStatus)}</strong>
-                </div>
-                {aiJob?.jobId && <p>Job: {aiJob.jobId}</p>}
-                {aiJob?.message ? <p>{aiJob.message}</p> : null}
-                {aiJob?.warnings?.length ? (
-                  <p>Cảnh báo: {aiJob.warnings.join(", ")}</p>
-                ) : null}
-                {aiJob?.jobId && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={handleAiCheckStatus}
-                    disabled={aiStatus === "submitting"}
-                  >
-                    Kiểm tra trạng thái
-                  </Button>
-                )}
-              </StatusCard>
+              <div className="custom-table-builder__actions">
+                <Button variant="primary" onClick={handleSubmitAi} disabled={isBusy}>{aiStatus === "submitting" ? "Đang gửi..." : "Gửi job AI"}</Button>
+                {aiJob?.jobId && <Button variant="secondary" onClick={handleRefreshAiJob}>Kiểm tra job</Button>}
+              </div>
             </>
           )}
-        </div>
 
-        <div className="custom-table-builder__footer">
-          <p>{activeTab.description}</p>
-          <div className="custom-table-builder__footer-actions">
-            <Button variant="secondary" onClick={onClose} disabled={isBusy}>
-              Hủy
-            </Button>
-            <Button variant="primary" onClick={handleApply} disabled={isBusy}>
-              {mode === BUILDER_MODES.UPLOAD
-                ? isUploading
-                  ? "Đang upload..."
-                  : "Upload & lưu"
-                : mode === BUILDER_MODES.AI
-                  ? aiStatus === "submitting"
-                    ? "Đang gửi..."
-                    : "Gửi yêu cầu AI"
-                  : "Lưu vào thư viện"}
-            </Button>
-          </div>
-        </div>
+          {error && <StatusCard tone="danger">{error}</StatusCard>}
+        </main>
       </div>
     </Modal>
   );
