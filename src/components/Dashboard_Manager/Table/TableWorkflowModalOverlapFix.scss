@@ -1,0 +1,215 @@
+/* Fix table detail modal overlap caused by aggressive global polish.
+   The modal content is a flat list inside .talite-body, so every section must be
+   explicitly placed in the right column instead of relying on CSS grid auto flow. */
+.talite-modal {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.talite-body {
+  display: grid !important;
+  grid-template-columns: minmax(210px, 235px) minmax(0, 1fr) !important;
+  grid-auto-flow: row !important;
+  grid-auto-rows: auto !important;
+  align-items: start !important;
+  gap: 10px 12px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+  max-height: calc(min(800px, 87dvh) - 122px) !important;
+  scroll-padding-bottom: 72px !important;
+}
+
+.talite-body > .talite-info {
+  grid-column: 1 !important;
+  grid-row: 1 / span 99 !important;
+  align-self: start !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 3 !important;
+  width: 100% !important;
+  max-height: calc(min(800px, 87dvh) - 146px) !important;
+  overflow-y: auto !important;
+}
+
+.talite-body > .talite-group,
+.talite-body > .actions-end {
+  grid-column: 2 !important;
+  grid-row: auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+}
+
+.talite-body > .talite-group + .talite-group,
+.talite-body > .talite-group + .actions-end,
+.talite-body > .actions-end + .talite-group {
+  margin-top: 0 !important;
+}
+
+.talite-group {
+  display: block !important;
+  contain: layout paint !important;
+  overflow: visible !important;
+  padding: 12px 13px !important;
+  border: 1px solid #e4dacb !important;
+  border-radius: 16px !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  box-shadow: 0 10px 22px rgba(70, 62, 50, 0.045) !important;
+}
+
+.talite-group::before {
+  top: 12px !important;
+  bottom: 12px !important;
+  z-index: 0 !important;
+}
+
+.talite-group > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.talite-group-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 9px !important;
+  min-height: 32px !important;
+  margin: 0 0 10px !important;
+}
+
+.talite-group-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 30px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  font-size: 15px !important;
+  border-radius: 10px !important;
+}
+
+.talite-group-header > div {
+  min-width: 0 !important;
+}
+
+.talite-label {
+  line-height: 1.22 !important;
+}
+
+.talite-group-sub,
+.hint {
+  line-height: 1.35 !important;
+}
+
+.talite-input,
+.talite-body input,
+.talite-body select,
+.talite-body textarea {
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+.grid2 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start !important;
+  gap: 10px !important;
+}
+
+.talite-vr-block,
+.talite-promo-box,
+.talite-quick,
+.talite-ai-grid,
+.talite-ai-results,
+.talite-perk-tags {
+  min-width: 0 !important;
+}
+
+.talite-promo-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px 10px !important;
+  max-height: 132px !important;
+  overflow: auto !important;
+}
+
+.talite-check,
+.talite-checkbox-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-height: 28px !important;
+}
+
+.talite-check input,
+.talite-checkbox-row input {
+  flex: 0 0 auto !important;
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.talite-ai-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.talite-ai-grid .btn {
+  min-height: 38px !important;
+  white-space: normal !important;
+  text-align: center !important;
+  line-height: 1.25 !important;
+}
+
+.talite-footer {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  z-index: 8 !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+}
+
+/* Keep delete/action block visually separated and never floating over cards. */
+.talite-body > .actions-end:last-of-type {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 2px 0 6px !important;
+}
+
+@media (max-width: 980px) {
+  .talite-body {
+    display: block !important;
+    max-height: calc(88dvh - 120px) !important;
+  }
+
+  .talite-body > .talite-info {
+    position: relative !important;
+    top: auto !important;
+    max-height: none !important;
+    margin-bottom: 10px !important;
+  }
+
+  .talite-body > .talite-group,
+  .talite-body > .actions-end {
+    margin-bottom: 10px !important;
+  }
+
+  .grid2,
+  .talite-promo-list,
+  .talite-ai-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
