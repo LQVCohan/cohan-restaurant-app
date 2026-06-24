@@ -29,6 +29,31 @@ const createIcon = (name) => {
   return Icon;
 };
 
+const iconNames = [
+  "Accessibility", "Activity", "AlarmClock", "AlertCircle", "AlertOctagon", "AlertTriangle", "Archive",
+  "ArrowDown", "ArrowDownRight", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowUpRight", "BadgeCheck", "Ban",
+  "Banknote", "BarChart", "BarChart2", "BarChart3", "Beef", "Bell", "BellOff", "BookOpen", "Bot", "Box", "Boxes",
+  "Briefcase", "Building", "Building2", "Calculator", "Calendar", "CalendarCheck", "CalendarCheck2", "CalendarClock",
+  "CalendarDays", "CalendarRange", "Camera", "Carrot", "ChartNoAxesColumnIncreasing", "Check", "CheckCheck",
+  "CheckCircle", "CheckCircle2", "ChefHat", "ChevronDown", "ChevronLeft", "ChevronRight", "ChevronUp", "ChevronsUpDown",
+  "Circle", "CircleCheck", "CircleDollarSign", "CircleHelp", "CirclePause", "CirclePlay", "CirclePlus", "Clipboard",
+  "ClipboardCheck", "ClipboardList", "Clock", "Clock3", "CloudUpload", "Coffee", "Coins", "Columns3", "Copy", "CreditCard",
+  "Crown", "Database", "DollarSign", "Dot", "Download", "Edit", "Edit2", "Edit3", "Ellipsis", "EllipsisVertical",
+  "ExternalLink", "Eye", "EyeOff", "File", "FileDown", "FileImage", "FilePlus2", "FileSpreadsheet", "FileText", "FileUp",
+  "Filter", "FilterX", "Fish", "Flag", "Gauge", "Gift", "Grid", "Grid2X2", "Grid3X3", "GripVertical", "Hash",
+  "Headphones", "Heart", "HelpCircle", "Home", "Image", "ImagePlus", "Inbox", "Info", "Key", "KeyRound", "Languages",
+  "Layers", "LayoutGrid", "Link", "List", "ListFilter", "Loader", "Loader2", "Lock", "LockKeyhole", "LogOut", "Mail",
+  "Map", "MapPin", "MapPinned", "Maximize2", "Megaphone", "Menu", "MessageCircle", "MessageSquare", "Minimize2", "Minus",
+  "Monitor", "Moon", "MoreHorizontal", "MoreVertical", "Move", "Navigation", "Package", "PackageOpen", "PackageSearch",
+  "PanelLeftClose", "PanelLeftOpen", "Paperclip", "Pause", "PauseCircle", "Percent", "Phone", "PieChart", "Pin", "Pizza",
+  "Play", "PlayCircle", "Plus", "Printer", "QrCode", "Receipt", "RefreshCcw", "RefreshCw", "RotateCcw", "RotateCw",
+  "Save", "Search", "SearchX", "Send", "Settings", "Shield", "ShieldAlert", "ShieldCheck", "ShoppingBag", "ShoppingCart",
+  "SlidersHorizontal", "Soup", "Sparkle", "Sparkles", "SquarePen", "Star", "Store", "Sun", "Sunrise", "Table", "Table2",
+  "Tag", "Tags", "Ticket", "Timer", "Trash", "Trash2", "TrendingDown", "TrendingUp", "Truck", "Undo2", "Unlock", "Upload",
+  "User", "UserCheck", "UserCog", "UserMinus", "UserPlus", "UserRound", "UserX", "Users", "Utensils", "Video",
+  "Wallet", "Warehouse", "Wifi", "Wine", "X", "XCircle", "Zap", "ZoomIn", "ZoomOut",
+];
+
 export const Accessibility = createIcon("Accessibility");
 export const Activity = createIcon("Activity");
 export const AlarmClock = createIcon("AlarmClock");
@@ -54,6 +79,7 @@ export const BellOff = createIcon("BellOff");
 export const BookOpen = createIcon("BookOpen");
 export const Bot = createIcon("Bot");
 export const Box = createIcon("Box");
+export const Boxes = createIcon("Boxes");
 export const Briefcase = createIcon("Briefcase");
 export const Building = createIcon("Building");
 export const Building2 = createIcon("Building2");
@@ -65,6 +91,7 @@ export const CalendarClock = createIcon("CalendarClock");
 export const CalendarDays = createIcon("CalendarDays");
 export const CalendarRange = createIcon("CalendarRange");
 export const Camera = createIcon("Camera");
+export const Carrot = createIcon("Carrot");
 export const ChartNoAxesColumnIncreasing = createIcon("ChartNoAxesColumnIncreasing");
 export const Check = createIcon("Check");
 export const CheckCheck = createIcon("CheckCheck");
@@ -110,6 +137,7 @@ export const EyeOff = createIcon("EyeOff");
 export const File = createIcon("File");
 export const FileDown = createIcon("FileDown");
 export const FileImage = createIcon("FileImage");
+export const FilePlus2 = createIcon("FilePlus2");
 export const FileSpreadsheet = createIcon("FileSpreadsheet");
 export const FileText = createIcon("FileText");
 export const FileUp = createIcon("FileUp");
@@ -215,6 +243,7 @@ export const Trash2 = createIcon("Trash2");
 export const TrendingDown = createIcon("TrendingDown");
 export const TrendingUp = createIcon("TrendingUp");
 export const Truck = createIcon("Truck");
+export const Undo2 = createIcon("Undo2");
 export const Unlock = createIcon("Unlock");
 export const Upload = createIcon("Upload");
 export const User = createIcon("User");
