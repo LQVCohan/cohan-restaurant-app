@@ -1,5 +1,5 @@
 // src/hooks/useAvatarUploadLocal.js
-import { getApiBaseUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
+import { getGraphqlUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
 import { getToken, setAuth } from "@/lib/authStorage";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
@@ -17,14 +17,30 @@ const getAuthHeader = async () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const getUploadApiBase = () => getApiBaseUrl();
+const stripGraphqlSuffix = (value = "") =>
+  String(value || "").replace(/\/graphql\/?$/, "").replace(/\/$/, "");
+
+const getUploadBaseUrl = () => {
+  const graphqlUrl = getGraphqlUrl();
+  const base = stripGraphqlSuffix(graphqlUrl);
+
+  // Upload routes are mounted at backend root: /upload, /upload/sign,
+  // /upload/complete. Do not route these through /api.
+  if (!base || base === "/") return "";
+  if (base === "/api" || base.endsWith("/api")) {
+    return base.replace(/\/api$/, "");
+  }
+  return base;
+};
+
+const toUploadUrl = (pathname) => `${getUploadBaseUrl()}${pathname}`;
 const normalizeUploadedUrl = (url) => toApiAssetUrl(url);
 
 export function useAvatarUploadLocal() {
   const uploadViaSignedUrl = async (file, onProgress) => {
     const authHeader = await getAuthHeader();
 
-    const signRes = await fetch(`${getUploadApiBase()}/upload/sign`, {
+    const signRes = await fetch(toUploadUrl("/upload/sign"), {
       method: "POST",
       credentials: "include",
       headers: {
@@ -69,7 +85,7 @@ export function useAvatarUploadLocal() {
       xhr.send(file);
     });
 
-    const completeRes = await fetch(`${getUploadApiBase()}/upload/complete`, {
+    const completeRes = await fetch(toUploadUrl("/upload/complete"), {
       method: "POST",
       credentials: "include",
       headers: {
@@ -95,7 +111,7 @@ export function useAvatarUploadLocal() {
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${getUploadApiBase()}/upload`);
+      xhr.open("POST", toUploadUrl("/upload"));
       xhr.withCredentials = true;
 
       Object.entries(authHeader).forEach(([key, value]) => {
