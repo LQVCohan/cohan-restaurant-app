@@ -187,7 +187,7 @@ export const MENU_MANAGEMENT_ACTIONS = {
   CREATE_ITEM: "menu.create_item",
   UPDATE_ITEM: "menu.update_item",
   DELETE_ITEM: "menu.delete_item",
-  UPDATE_PRICE: "menu.price_update",
+  UPDATE_PRICE: "menu.update_price",
   MANAGE_DISH_CATEGORY: "menu.manage_dish_category",
   MANAGE_CATEGORY: "menu.manage_category",
   MANAGE_MENU_GROUP: "menu.manage_menu_group",
@@ -197,8 +197,8 @@ export const MENU_MANAGEMENT_ACTIONS = {
   DELETE_MENU: "menu.delete_menu",
   TOGGLE_MENU: "menu.toggle_menu",
   COPY_MENU: "menu.copy_menu",
-  SYNC_INVENTORY: "menu.inventory_sync",
-  VIEW_AUDIT: "menu.audit_read",
+  SYNC_INVENTORY: "menu.inventory.sync",
+  VIEW_AUDIT: "menu.audit.read",
 };
 
 const MENU_ACTION_PERMISSION_MAP = {
