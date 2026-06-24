@@ -7,11 +7,13 @@ import StrictOrderPaymentMutation from "./strictOrderPaymentMutation.js";
 import TransferPaymentMutation from "./transferMutation.js";
 import { PaymentResolvers } from "./types.js";
 import publicTablePaymentMutation from "./publicTablePaymentMutation.js";
+import wallet from "../wallet/index.js";
 
 export default {
   Query: {
     ...PaymentQuery,
     ...BankTransferPaymentQuery,
+    ...(wallet.Query || {}),
   },
   Mutation: {
     ...PaymentMutation,
@@ -20,6 +22,7 @@ export default {
     ...StrictOrderPaymentMutation,
     ...TransferPaymentMutation,
     ...publicTablePaymentMutation,
+    ...(wallet.Mutation || {}),
   },
   ...PaymentResolvers,
 };
