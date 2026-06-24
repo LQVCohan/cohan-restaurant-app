@@ -9,6 +9,7 @@ import {
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
+import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -241,10 +242,32 @@ async function updateRestaurantCategoryIndex(_, { input }, ctx) {
   return updated;
 }
 
+async function rewriteRestaurantProfileDescription(_, { input }, ctx) {
+  const { user } = ctx || {};
+  if (!user) throw forbidden("Unauthorized");
+  const restaurantId = input?.restaurantId;
+  if (!restaurantId) throw badInput("restaurantId is required");
+
+  const rId = toObjectId(restaurantId);
+  const doc = await Restaurant.findById(rId);
+  if (!doc) throw notFound("Restaurant not found");
+  await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
+  await assertCanMutateRestaurant(user, doc);
+
+  return rewriteRestaurantProfileDescriptionService({
+    restaurantName: input?.restaurantName || doc.name,
+    cuisineType: input?.cuisineType || doc.cuisineType,
+    currentText: input?.currentText || doc.description,
+    chefName: input?.chefName || "",
+    tone: input?.tone || "ấm áp, chuyên nghiệp, đáng tin cậy",
+  });
+}
+
 export const RestaurantMutation = {
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,
   updateRestaurantManager,
   updateRestaurantCategoryIndex,
+  rewriteRestaurantProfileDescription,
 };
