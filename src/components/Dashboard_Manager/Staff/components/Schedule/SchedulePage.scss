@@ -1,11 +1,256 @@
 .staff-schedule-page {
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
 
   .schedule-container {
-    height: 100%;
-    min-height: 620px;
-    border-radius: 16px;
+    height: auto;
+    min-height: 0;
+    border-radius: 18px;
+    background: transparent;
+    overflow: visible;
+  }
+
+  /* Trang nhân sự chỉ cần xem nhanh lịch tuần này, không cần dashboard phụ của module lịch. */
+  .schedule-header,
+  .schedule-publish-reminder,
+  .schedule-insights-panel,
+  .schedule-quality-panel,
+  .schedule-feedback {
+    display: none !important;
+  }
+
+  .schedule-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+    align-items: center;
+    gap: 10px !important;
+    margin: 0 0 10px;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(214, 202, 184, 0.8) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 253, 248, 0.94) !important;
+    box-shadow: 0 16px 36px rgba(70, 62, 50, 0.08) !important;
+    backdrop-filter: blur(14px);
+  }
+
+  .schedule-toolbar .toolbar-left,
+  .schedule-toolbar .toolbar-right,
+  .schedule-toolbar .toolbar-group,
+  .schedule-toolbar .toolbar-group--view,
+  .schedule-toolbar .toolbar-group--filters,
+  .schedule-toolbar .toolbar-group--actions {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-toolbar .toolbar-right,
+  .schedule-toolbar .toolbar-group--filters,
+  .schedule-toolbar .toolbar-group--actions {
+    justify-content: flex-end !important;
+  }
+
+  .schedule-toolbar .view-toggles {
+    display: inline-flex !important;
+    padding: 3px !important;
+    border: 1px solid rgba(83, 108, 97, 0.14) !important;
+    border-radius: 999px !important;
+    background: #edf5f1 !important;
+  }
+
+  .schedule-toolbar .view-toggles button {
+    min-height: 30px !important;
+    height: 30px !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    color: #53605d !important;
+    font-size: 0.78rem !important;
+    font-weight: 850 !important;
+  }
+
+  .schedule-toolbar .view-toggles button:not(.active) {
+    display: none !important;
+  }
+
+  .schedule-toolbar .view-toggles button.active {
+    background: #536c61 !important;
+    color: #fff !important;
+    box-shadow: 0 8px 16px rgba(83, 108, 97, 0.16) !important;
+  }
+
+  .schedule-toolbar .date-navigation {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-toolbar .date-navigation .nav-btn,
+  .schedule-toolbar .toolbar-right button,
+  .schedule-toolbar .toolbar-group--actions > button,
+  .schedule-toolbar select {
+    min-height: 32px !important;
+    height: 32px !important;
+    border-radius: 11px !important;
+    border: 1px solid rgba(214, 202, 184, 0.84) !important;
+    background: rgba(255, 253, 248, 0.9) !important;
+    color: #24323b !important;
+    box-shadow: none !important;
+    font-size: 0.78rem !important;
+    font-weight: 800 !important;
+  }
+
+  .schedule-toolbar .date-navigation .week-label {
+    color: #1f2a2b !important;
+    font-size: 0.92rem !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  .schedule-toolbar .toolbar-right select,
+  .schedule-toolbar .toolbar-group--filters select {
+    max-width: 190px !important;
+  }
+
+  .schedule-toolbar .btn-auto-schedule,
+  .schedule-toolbar .btn-publish,
+  .schedule-toolbar .schedule-status-badge,
+  .schedule-toolbar .toolbar-group--actions > button:not(:first-child) {
+    display: none !important;
+  }
+
+  .schedule-legend {
+    margin: 0 0 8px !important;
+    padding: 8px 10px !important;
+    border: 1px solid rgba(214, 202, 184, 0.72) !important;
+    border-radius: 14px !important;
+    background: rgba(255, 253, 248, 0.82) !important;
+    box-shadow: none !important;
+  }
+
+  .schedule-legend .legend-group:first-child {
+    display: none !important;
+  }
+
+  .schedule-legend .legend-title,
+  .schedule-legend .legend-item {
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+  }
+
+  .schedule-board {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(132px, 1fr)) !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .schedule-day-column {
+    min-width: 132px !important;
+    min-height: 260px !important;
+    border: 1px solid rgba(214, 202, 184, 0.8) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 253, 248, 0.9) !important;
+    box-shadow: 0 12px 28px rgba(70, 62, 50, 0.07) !important;
+    overflow: hidden !important;
+  }
+
+  .schedule-day-column:focus-within,
+  .schedule-day-column:hover {
+    border-color: rgba(83, 108, 97, 0.28) !important;
+    box-shadow: 0 14px 30px rgba(70, 62, 50, 0.1) !important;
+  }
+
+  .day-header {
+    min-height: 48px !important;
+    padding: 8px 10px !important;
+    border-bottom: 1px solid rgba(214, 202, 184, 0.64) !important;
+    background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(248, 245, 238, 0.84)) !important;
+  }
+
+  .day-header.today {
+    background: #edf5f1 !important;
+    border-color: rgba(83, 108, 97, 0.24) !important;
+  }
+
+  .day-header span {
+    color: #53605d !important;
+    font-size: 0.68rem !important;
+    font-weight: 900 !important;
+  }
+
+  .day-header strong {
+    color: #1f2a2b !important;
+    font-size: 0.9rem !important;
+    font-weight: 950 !important;
+  }
+
+  .day-header small {
+    min-width: 28px !important;
+    padding: 2px 6px !important;
+    border-radius: 999px !important;
+    color: #536c61 !important;
+    background: #edf5f1 !important;
+    border-color: rgba(83, 108, 97, 0.18) !important;
+    font-size: 0.66rem !important;
+    font-weight: 850 !important;
+  }
+
+  .day-body {
+    min-height: 205px !important;
+    padding: 8px !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .shift-slot {
+    min-height: 34px !important;
+  }
+
+  .empty-shift-slot,
+  .add-shift-btn,
+  .day-summary-pill,
+  .more-shifts-btn {
+    min-height: 34px !important;
+    padding: 7px 8px !important;
+    border-radius: 11px !important;
+    color: #6b7773 !important;
+    background: rgba(248, 251, 249, 0.82) !important;
+    border: 1px dashed rgba(83, 108, 97, 0.18) !important;
+    font-size: 0.74rem !important;
+    font-weight: 850 !important;
+  }
+
+  .add-shift-btn {
+    display: none !important;
+  }
+
+  .shift-card,
+  .schedule-shift-card {
+    border-radius: 12px !important;
+    border-color: rgba(83, 108, 97, 0.2) !important;
+    box-shadow: none !important;
+  }
+
+  @media (max-width: 1180px) {
+    .schedule-toolbar {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+
+    .schedule-toolbar .toolbar-right,
+    .schedule-toolbar .toolbar-group--filters,
+    .schedule-toolbar .toolbar-group--actions {
+      justify-content: flex-start !important;
+    }
   }
 }
