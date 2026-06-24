@@ -41,6 +41,7 @@ const STAFF_ACCOUNT_OVERVIEW = gql`
       employeeCode
       employmentType
       employmentStatus
+      restaurantForStaff
       floorAssigned
       floorCount
       tableCount
@@ -51,6 +52,15 @@ const STAFF_ACCOUNT_OVERVIEW = gql`
       shiftsWorkedCount
       currentShift
       lastShift
+    }
+  }
+`;
+
+const STAFF_RESTAURANT_BASIC = gql`
+  query StaffProfileRestaurantBasic($id: ID!) {
+    restaurant(id: $id) {
+      id
+      name
     }
   }
 `;
@@ -96,6 +106,11 @@ const EMPLOYMENT_TYPE_LABELS = {
   seasonal: "Thời vụ",
   contract: "Hợp đồng",
   probation: "Thử việc",
+  FULL_TIME: "Toàn thời gian",
+  PART_TIME: "Bán thời gian",
+  SEASONAL: "Thời vụ",
+  CONTRACT: "Hợp đồng",
+  PROBATION: "Thử việc",
 };
 
 const EMPLOYMENT_STATUS_LABELS = {
@@ -103,16 +118,15 @@ const EMPLOYMENT_STATUS_LABELS = {
   on_leave: "Đang nghỉ phép",
   resigned: "Đã nghỉ việc",
   suspended: "Tạm khóa",
+  WORKING: "Đang làm việc",
+  ON_LEAVE: "Đang nghỉ phép",
+  RESIGNED: "Đã nghỉ việc",
+  SUSPENDED: "Tạm khóa",
 };
 
-const normalizeDisplayKey = (value) =>
-  String(value || "").trim().toLowerCase();
-
-const getEmploymentTypeLabel = (value) =>
-  EMPLOYMENT_TYPE_LABELS[normalizeDisplayKey(value)] || value || "Chưa cập nhật";
-
-const getEmploymentStatusLabel = (value) =>
-  EMPLOYMENT_STATUS_LABELS[normalizeDisplayKey(value)] || value || "Đang làm việc";
+const normalizeDisplayKey = (value) => String(value || "").trim().toLowerCase();
+const getEmploymentTypeLabel = (value) => EMPLOYMENT_TYPE_LABELS[value] || EMPLOYMENT_TYPE_LABELS[normalizeDisplayKey(value)] || value || "Chưa cập nhật";
+const getEmploymentStatusLabel = (value) => EMPLOYMENT_STATUS_LABELS[value] || EMPLOYMENT_STATUS_LABELS[normalizeDisplayKey(value)] || value || "Đang làm việc";
 
 const departmentLabels = DEPARTMENT_OPTIONS.reduce((acc, item) => {
   acc[item.value] = item.label.replace(/^\S+\s*/, "");
@@ -144,10 +158,13 @@ const resolveId = (value) => {
   return value.id || value._id || "";
 };
 
-const getRestaurantLabel = (user, restaurants) => {
-  const source = user?.restaurantForStaff || restaurants?.[0];
+const getRestaurantLabel = (user, restaurants, overview, restaurantFromQuery) => {
+  const source = restaurantFromQuery || user?.restaurantForStaff || restaurants?.[0];
+  if (restaurantFromQuery?.name) return restaurantFromQuery.name;
+  if (user?.restaurantForStaffName) return user.restaurantForStaffName;
+  if (user?.restaurant?.name) return user.restaurant.name;
   if (!source) return "Chưa gán cơ sở";
-  if (typeof source === "string") return source;
+  if (typeof source === "string") return overview?.restaurantForStaff ? "Đang tải tên cơ sở..." : source;
   return source.name || source.restaurantName || source.code || resolveId(source) || "Chưa gán cơ sở";
 };
 
@@ -198,6 +215,12 @@ const StaffProfilePage = () => {
   });
 
   const overview = overviewData?.staffAccountOverview || {};
+  const restaurantId = overview.restaurantForStaff || resolveId(user?.restaurantForStaff);
+  const { data: restaurantData } = useQuery(STAFF_RESTAURANT_BASIC, {
+    variables: { id: restaurantId },
+    skip: !restaurantId,
+    fetchPolicy: "cache-first",
+  });
   const salary = salaryData?.staffSalarySummary || null;
   const shifts = shiftData?.staffShiftHistory || [];
   const displayName = overview.fullName || user?.fullName || user?.name || user?.username || "Nhân viên";
@@ -206,7 +229,7 @@ const StaffProfilePage = () => {
   const employmentType = overview.employmentType || user?.employmentType || "";
   const employmentLabel = getEmploymentTypeLabel(employmentType);
   const employmentStatusLabel = getEmploymentStatusLabel(overview.employmentStatus || user?.employmentStatus);
-  const restaurantLabel = getRestaurantLabel(user, restaurants);
+  const restaurantLabel = getRestaurantLabel(user, restaurants, overview, restaurantData?.restaurant);
   const initials = getInitials(displayName);
 
   return (
@@ -336,7 +359,6 @@ const StaffProfilePage = () => {
               )) : <p className="staff-profile__empty">Chưa có dữ liệu ca làm gần đây.</p>}
             </div>
           </section>
-
         </div>
       </div>
     </div>
