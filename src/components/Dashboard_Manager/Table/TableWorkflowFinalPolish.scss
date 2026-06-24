@@ -1,0 +1,384 @@
+/* Final visual pass for the table management workflow.
+   Scope is intentionally limited to the table module to avoid changing other manager pages. */
+:root {
+  --twf-ink: #1f2a2b;
+  --twf-muted: #66736f;
+  --twf-sage: #536c61;
+  --twf-sage-strong: #126d61;
+  --twf-sage-soft: #edf5f1;
+  --twf-cream: #fffdf8;
+  --twf-cream-2: #f8f5ee;
+  --twf-line: #e4dacb;
+  --twf-line-strong: #d5c7b4;
+  --twf-danger: #ba514b;
+  --twf-warn: #b8875c;
+  --twf-shadow-soft: 0 18px 44px rgba(70, 62, 50, 0.1);
+  --twf-shadow-modal: 0 34px 96px rgba(31, 42, 43, 0.28);
+}
+
+/* Guard against layout disappearing after navigating back from floor-map. */
+.tm-container {
+  display: block !important;
+  box-sizing: border-box;
+}
+
+.tm-container .tm-layout {
+  display: grid !important;
+  align-items: start !important;
+  width: 100% !important;
+  min-height: 420px !important;
+}
+
+.tm-container .tm-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.tm-container .tm-grid-area {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-width: 0 !important;
+  min-height: 420px !important;
+  overflow: visible !important;
+}
+
+.tm-container .tm-table-grid {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.tm-container .tm-empty {
+  min-height: 320px !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(83, 108, 97, 0.08), transparent 20rem),
+    rgba(255, 253, 248, 0.76) !important;
+}
+
+/* Main card/action refinement. */
+.tm-container .tm-table-card {
+  position: relative;
+  isolation: isolate;
+  border-color: rgba(83, 108, 97, 0.22) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(246, 250, 247, 0.9)) !important;
+}
+
+.tm-container .tm-table-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(circle at 88% 8%, rgba(83, 108, 97, 0.1), transparent 9rem);
+  pointer-events: none;
+}
+
+.tm-container .tm-table-card .card-body {
+  border: 1px solid rgba(213, 199, 180, 0.72) !important;
+  background: rgba(255, 253, 248, 0.78) !important;
+}
+
+.tm-container .tm-table-card .btn-mini {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  letter-spacing: -0.01em;
+}
+
+.tm-container .tm-table-card .btn-mini.warning {
+  min-width: 70px !important;
+  background: #b8875c !important;
+  border-color: #b8875c !important;
+  color: #fff !important;
+}
+
+.tm-container .tm-table-card.occupied {
+  border-color: rgba(186, 81, 75, 0.34) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 253, 248, 0.99), rgba(255, 241, 237, 0.88)) !important;
+}
+
+.tm-container .tm-table-card.payment_pending {
+  border-color: rgba(184, 135, 92, 0.42) !important;
+}
+
+/* Better floor/filter panels. */
+.tm-container .tm-sidebar,
+.tm-container .tm-grid-area,
+.tm-container .management-page-header.density-compact {
+  backdrop-filter: blur(14px) saturate(1.04);
+}
+
+.tm-container .tm-floor-item .name,
+.tm-container .tm-filter-field span,
+.tm-container .tm-panel-kicker {
+  letter-spacing: -0.01em;
+}
+
+/* Detail modal — move from long form feeling to compact operations console. */
+.talite-backdrop {
+  background:
+    radial-gradient(circle at 20% 8%, rgba(83, 108, 97, 0.22), transparent 34rem),
+    radial-gradient(circle at 88% 80%, rgba(184, 135, 92, 0.12), transparent 30rem),
+    rgba(24, 33, 36, 0.56) !important;
+}
+
+.talite-modal {
+  width: min(1010px, 91vw) !important;
+  max-height: min(800px, 87dvh) !important;
+  border: 1px solid rgba(228, 218, 203, 0.98) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(248, 245, 238, 0.98)) !important;
+  box-shadow: var(--twf-shadow-modal) !important;
+}
+
+.talite-header {
+  padding: 13px 16px !important;
+  border-bottom-color: var(--twf-line) !important;
+}
+
+.talite-header > div:first-child {
+  display: grid !important;
+  gap: 2px !important;
+}
+
+.talite-title {
+  color: var(--twf-ink) !important;
+  font-size: 1rem !important;
+  letter-spacing: -0.035em !important;
+}
+
+.talite-title b {
+  color: var(--twf-sage-strong) !important;
+}
+
+.talite-subtitle {
+  color: var(--twf-muted) !important;
+  font-size: 0.78rem !important;
+}
+
+.talite-body {
+  grid-template-columns: minmax(200px, 230px) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding: 12px !important;
+}
+
+.talite-info {
+  border-color: var(--twf-line) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(237, 245, 241, 0.5)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76) !important;
+}
+
+.talite-info .kv {
+  background: rgba(255, 253, 248, 0.82) !important;
+}
+
+.talite-visual-card {
+  margin-top: 6px !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+}
+
+.talite-visual-card__head p {
+  margin: 2px 0 0 !important;
+  line-height: 1.32 !important;
+}
+
+.talite-group {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--twf-line) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+  box-shadow: 0 10px 24px rgba(70, 62, 50, 0.045) !important;
+}
+
+.talite-group::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(83, 108, 97, 0.36);
+}
+
+.talite-group-header {
+  padding-left: 2px !important;
+}
+
+.talite-group-icon {
+  color: var(--twf-sage-strong) !important;
+  background: var(--twf-sage-soft) !important;
+  border-color: rgba(83, 108, 97, 0.18) !important;
+}
+
+.talite-input:focus,
+.talite-body input:focus,
+.talite-body select:focus,
+.talite-body textarea:focus {
+  border-color: rgba(83, 108, 97, 0.48) !important;
+  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.12) !important;
+}
+
+.talite-promo-list {
+  border-radius: 13px !important;
+  background: rgba(255, 253, 248, 0.74) !important;
+}
+
+.talite-ai-grid {
+  gap: 8px !important;
+}
+
+.talite-ai-card,
+.talite-vr-block,
+.talite-upload,
+.talite-promo-box {
+  border-color: var(--twf-line) !important;
+  background: rgba(255, 253, 248, 0.78) !important;
+}
+
+.talite-footer {
+  border-top-color: var(--twf-line) !important;
+  box-shadow: 0 -12px 28px rgba(70, 62, 50, 0.06) !important;
+}
+
+.talite-footer .btn.primary,
+.talite-body .btn.primary {
+  background: var(--twf-sage-strong) !important;
+  border-color: var(--twf-sage-strong) !important;
+}
+
+/* VR modal — more consistent with manager cards. */
+.tm-modal--vr {
+  width: min(640px, 90vw) !important;
+  box-shadow: var(--twf-shadow-modal) !important;
+}
+
+.tm-modal--vr .modal-header,
+.tm-modal--vr .modal-footer {
+  background: rgba(255, 253, 248, 0.96) !important;
+  border-color: var(--twf-line) !important;
+}
+
+.tm-modal--vr .tm-form-header h4,
+.tm-modal--vr .tm-vr-card strong {
+  color: var(--twf-ink) !important;
+}
+
+.tm-modal--vr input:focus {
+  border-color: rgba(83, 108, 97, 0.48) !important;
+  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.12) !important;
+}
+
+/* 3D modal — make it look like a pro workspace. */
+.table-3d-modal {
+  width: min(1420px, 94vw) !important;
+  border-color: var(--twf-line) !important;
+}
+
+.table-3d-modal__header {
+  background:
+    linear-gradient(90deg, rgba(255, 253, 248, 0.98), rgba(237, 245, 241, 0.8)) !important;
+}
+
+.table-3d-ar-status {
+  border-radius: 999px !important;
+  padding: 4px 9px !important;
+  font-size: 0.68rem !important;
+}
+
+.table-3d-modal__sidebar {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76) !important;
+}
+
+.table-3d-modal .model-item.active {
+  border-color: rgba(83, 108, 97, 0.52) !important;
+  background: var(--twf-sage-soft) !important;
+}
+
+.table-3d-modal .model-badge {
+  border-color: rgba(83, 108, 97, 0.18) !important;
+  background: rgba(255, 253, 248, 0.8) !important;
+}
+
+.table-3d-stage {
+  border-radius: 18px !important;
+  overflow: hidden !important;
+}
+
+.table-3d-modal__footer--clear-actions .button,
+.table-3d-modal__footer--clear-actions button {
+  min-height: 36px !important;
+  border-radius: 12px !important;
+}
+
+/* Floor designer — keep the blue canvas but make controls premium and readable. */
+.fp-layout .fp-header {
+  color: var(--twf-ink) !important;
+}
+
+.fp-layout .fp-body {
+  background-color: #e9ecfa !important;
+  background-image:
+    radial-gradient(circle, rgba(83, 108, 97, 0.16) 1px, transparent 1px),
+    radial-gradient(circle at 50% 45%, rgba(255, 253, 248, 0.3), transparent 34rem) !important;
+  background-size: 22px 22px, auto !important;
+}
+
+.fp-layout .fp-palette {
+  border-radius: 18px !important;
+  background: rgba(255, 253, 248, 0.95) !important;
+}
+
+.fp-layout .property-panel,
+.fp-layout .fp-inspector,
+.fp-layout .item-properties,
+.fp-layout .selected-panel {
+  border-radius: 18px !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+  border: 1px solid var(--twf-line) !important;
+  box-shadow: var(--twf-shadow-soft) !important;
+}
+
+.fp-layout .right-sect .btn-primary,
+.fp-layout .right-sect button[class*="primary"] {
+  background: var(--twf-sage-strong) !important;
+  border-color: var(--twf-sage-strong) !important;
+}
+
+.fp-layout .right-sect button,
+.fp-layout .center-tools button,
+.fp-layout input,
+.fp-layout select {
+  font-weight: 700 !important;
+}
+
+@media (min-width: 1500px) {
+  .tm-container .tm-table-grid {
+    grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .talite-modal,
+  .table-3d-modal,
+  .tm-modal--vr {
+    width: min(100%, 94vw) !important;
+  }
+
+  .talite-body,
+  .table-3d-modal__layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .talite-info {
+    position: static !important;
+    max-height: none !important;
+  }
+}
