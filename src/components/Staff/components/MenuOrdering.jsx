@@ -80,260 +80,465 @@ export default function MenuOrdering({
     return Array.from(options, ([value, label]) => ({ value, label }));
   }, [menuItems]);
 
-  const filteredItems = useMemo(() => {
-    const search = String(menuSearchQuery || "").trim().toLowerCase();
-    return (menuItems || []).filter((item) => {
-      const matchesSearch =
-        !search ||
-        String(item?.name || "").toLowerCase().includes(search) ||
-        String(item?.description || "").toLowerCase().includes(search);
-      const categoryLabel = sanitizeCategoryLabel(item?.categoryLabel || item?.category || item?.categoryName);
-      const matchesCategory =
-        menuCategoryFilter === "all" ||
-        categoryLabel === menuCategoryFilter ||
-        item?.categoryId === menuCategoryFilter;
+  const categoryOptions = useMemo(() => {
+    const seen = new Set(["all"]);
+    const options = [{ value: "all", label: "Tất cả" }];
+    const source = categories?.length ? categories : ["Tất cả"];
+
+    source.forEach((cat) => {
+      const label = sanitizeCategoryLabel(cat);
+      if (!label || label === "Tất cả" || seen.has(label)) return;
+      seen.add(label);
+      options.push({ value: label, label });
+    });
+
+    const meaningfulOptions = options.filter((option) => option.value !== "all");
+    if (meaningfulOptions.length === 1 && meaningfulOptions[0].label === "Chưa phân loại") {
+      return options.slice(0, 1);
+    }
+
+    return options;
+  }, [categories]);
+
+  const selectedVariants = useMemo(() => {
+    return Array.isArray(selectedItem?.servingVariants)
+      ? selectedItem.servingVariants
+      : [];
+  }, [selectedItem]);
+
+  const selectedVariant = useMemo(() => {
+    return (
+      selectedVariants.find((variant) => getVariantKey(variant) === selectedVariantKey) ||
+      selectedItem?.defaultVariant ||
+      selectedVariants[0] ||
+      null
+    );
+  }, [selectedItem, selectedVariantKey, selectedVariants]);
+
+  const draftProofTarget = useMemo(() => {
+    if (!selectedItem) return null;
+    return {
+      ...selectedItem,
+      servingVariant: selectedVariant,
+      proofImages: draftProofImages,
+    };
+  }, [draftProofImages, selectedItem, selectedVariant]);
+
+  const shouldSuggestProof = useMemo(() => {
+    if (!draftProofTarget) return false;
+    const variantMode = String(selectedVariant?.mode || selectedVariant?.key || "").toUpperCase();
+    return variantMode === "BY_WEIGHT" || requiresProofImage(draftProofTarget);
+  }, [draftProofTarget, selectedVariant]);
+
+  const filteredMenu = useMemo(() => {
+    const matchesPriceFilter = (price) => {
+      const amount = Number(price || 0);
+      if (menuPriceFilter === "under_50000") return amount < 50000;
+      if (menuPriceFilter === "50000_100000") {
+        return amount >= 50000 && amount <= 100000;
+      }
+      if (menuPriceFilter === "100000_300000") {
+        return amount > 100000 && amount <= 300000;
+      }
+      if (menuPriceFilter === "over_300000") return amount > 300000;
+      return true;
+    };
+
+    return (menuItems || []).filter((m) => {
+      const keyword = menuSearchQuery.trim().toLowerCase();
+      const variantText = (m.servingVariants || [])
+        .map((variant) => [variant?.name, variant?.key, variant?.mode].filter(Boolean).join(" "))
+        .join(" ")
+        .toLowerCase();
+      const categoryLabel = sanitizeCategoryLabel(m.category);
+      const matchesKeyword = !keyword || `${m.name} ${variantText}`.toLowerCase().includes(keyword);
+      const matchesCategory = menuCategoryFilter === "all" || categoryLabel === menuCategoryFilter;
       const matchesServing =
         menuServingFilter === "all" ||
-        (item?.servingVariants || []).some((variant) => getVariantKey(variant) === menuServingFilter);
-      const price = Number(item?.price || item?.basePrice || item?.currentPrice || 0);
-      const matchesPrice =
-        menuPriceFilter === "all" ||
-        (menuPriceFilter === "under-100" && price < 100000) ||
-        (menuPriceFilter === "100-200" && price >= 100000 && price <= 200000) ||
-        (menuPriceFilter === "over-200" && price > 200000);
-      const availabilityStatus = String(item?.availabilityStatus || item?.status || "available").toLowerCase();
-      const isAvailable = availabilityStatus !== "unavailable" && availabilityStatus !== "out_of_stock";
+        (m.servingVariants || []).some((variant) => {
+          return [variant?.key, variant?.mode, variant?.name]
+            .filter(Boolean)
+            .map(String)
+            .includes(menuServingFilter);
+        });
+      const isAvailable =
+        Number(m.stock || 0) > 0 &&
+        !["unavailable", "out_of_stock", "hidden"].includes(String(m.status || "").toLowerCase());
       const matchesAvailability =
         menuAvailabilityFilter === "all" ||
-        (menuAvailabilityFilter === "available" && isAvailable) ||
-        (menuAvailabilityFilter === "unavailable" && !isAvailable);
-
-      return matchesSearch && matchesCategory && matchesServing && matchesPrice && matchesAvailability;
+        (menuAvailabilityFilter === "available" ? isAvailable : !isAvailable);
+      return matchesKeyword && matchesCategory && matchesServing && matchesAvailability && matchesPriceFilter(m.price);
     });
-  }, [menuItems, menuSearchQuery, menuCategoryFilter, menuServingFilter, menuPriceFilter, menuAvailabilityFilter]);
+  }, [menuAvailabilityFilter, menuCategoryFilter, menuItems, menuPriceFilter, menuSearchQuery, menuServingFilter]);
 
-  const formatPrice = (value) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      maximumFractionDigits: 0,
-    }).format(Number(value || 0));
+  useEffect(() => {
+    onItemSheetOpenChange?.(Boolean(selectedItem && permissions.canAddItems));
+    return () => onItemSheetOpenChange?.(false);
+  }, [onItemSheetOpenChange, permissions.canAddItems, selectedItem]);
 
-  const canAddItem = permissions.canCreateOrder || permissions.canManageOrders;
-  const canAttachProof = permissions.canAttachProof || permissions.canManageOrders;
-
-  const handleAdd = (item, extra = {}) => {
-    if (!canAddItem) return;
-    onAdd?.({
-      ...item,
-      selectedVariantKey: extra.selectedVariantKey || selectedVariantKey || undefined,
-      prepChoice: extra.prepChoice || prepChoice || undefined,
-      serveOrder: extra.serveOrder || serveOrder || undefined,
-      proofImages: extra.proofImages || [],
-    });
+  const closeOptionsSheet = () => {
     setSelectedItem(null);
+    setSelectedVariantKey("");
+    setPrepChoice("");
+    setServeOrder("Mang ra cùng lúc");
+    setDraftProofImages([]);
+    setProofDraftItem(null);
+  };
+
+  const handleOpenItem = (item) => {
+    if (!permissions.canAddItems) return;
+
+    const variants = Array.isArray(item.servingVariants) ? item.servingVariants : [];
+    const defaultVariant =
+      item.defaultVariant ||
+      variants.find((variant) => variant?.key === item.servingKey) ||
+      variants[0] ||
+      null;
+
+    setSelectedItem(item);
+    setSelectedVariantKey(getVariantKey(defaultVariant));
+    setPrepChoice("");
+    setServeOrder("Mang ra cùng lúc");
     setDraftProofImages([]);
     setProofDraftItem(null);
   };
 
   const handleConfirmAdd = () => {
-    if (!selectedItem) return;
-    if (requiresProofImage(selectedItem) && canAttachProof && draftProofImages.length === 0) {
-      setProofDraftItem(selectedItem);
+    if (!permissions.canAddItems) {
+      alert(NO_PERMISSION_MESSAGE);
       return;
     }
-    handleAdd(selectedItem, { proofImages: draftProofImages });
+
+    if (selectedVariants.length > 1 && !selectedVariant) {
+      alert("Vui lòng chọn biến thể món.");
+      return;
+    }
+
+    onAdd(selectedItem, {
+      variant: selectedVariant,
+      prep: prepChoice || "Mặc định",
+      serveOrder,
+      proofImages: draftProofImages,
+    });
+
+    closeOptionsSheet();
   };
 
-  return (
-    <div className="staff-menu-ordering">
-      <div className="menu-ordering__filters">
-        <label className="menu-ordering__search">
-          <Search size={16} />
-          <input
-            value={menuSearchQuery}
-            onChange={(event) => setMenuSearchQuery?.(event.target.value)}
-            placeholder="Tìm món, mô tả..."
-          />
-        </label>
-        <select
-          value={menuCategoryFilter}
-          onChange={(event) => setMenuCategoryFilter?.(event.target.value)}
-          aria-label="Lọc danh mục"
-        >
-          <option value="all">Tất cả danh mục</option>
-          {(categories || []).map((category) => {
-            const label = sanitizeCategoryLabel(category?.name || category?.label || category);
-            return (
-              <option key={category?.id || label} value={category?.id || label}>
-                {label}
-              </option>
-            );
-          })}
-        </select>
-        <select
-          value={menuServingFilter}
-          onChange={(event) => setMenuServingFilter?.(event.target.value)}
-          aria-label="Lọc khẩu phần"
-        >
-          {servingOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={menuPriceFilter}
-          onChange={(event) => setMenuPriceFilter?.(event.target.value)}
-          aria-label="Lọc giá"
-        >
-          <option value="all">Tất cả giá</option>
-          <option value="under-100">Dưới 100k</option>
-          <option value="100-200">100k - 200k</option>
-          <option value="over-200">Trên 200k</option>
-        </select>
-        <select
-          value={menuAvailabilityFilter}
-          onChange={(event) => setMenuAvailabilityFilter?.(event.target.value)}
-          aria-label="Lọc trạng thái"
-        >
-          <option value="available">Đang bán</option>
-          <option value="all">Tất cả trạng thái</option>
-          <option value="unavailable">Tạm ngưng</option>
-        </select>
-      </div>
+  function formatCurrency(value) {
+    return Number(value || 0).toLocaleString("vi-VN");
+  }
 
-      {!canAddItem ? (
-        <div className="staff-menu-ordering__permission" role="alert">
-          <AlertTriangle size={18} />
-          <span>{READONLY_MESSAGE}</span>
+  function getCustomerAccumulatedValue(customer) {
+    return Number(
+      customer?.totalSpending ??
+        customer?.points ??
+        customer?.loyaltyPoints ??
+        0,
+    );
+  }
+
+  function getCustomerNote(customer) {
+    return (
+      customer?.note ||
+      customer?.noteInternal ||
+      customer?.dietaryNotes ||
+      customer?.customerPreferences ||
+      ""
+    );
+  }
+
+  if (!selectedTable) {
+    return (
+      <div className="staff-pos-empty-state">
+        <div className="empty-icon-wrapper">
+          <MapPin size={40} />
         </div>
-      ) : null}
+        <h3>Chưa chọn bàn</h3>
+        <p>Vui lòng chọn một bàn từ sơ đồ để bắt đầu gọi món</p>
+      </div>
+    );
+  }
 
-      <div className="menu-ordering__grid">
-        {filteredItems.map((item) => {
-          const price = item?.price ?? item?.basePrice ?? item?.currentPrice ?? 0;
-          const categoryLabel = sanitizeCategoryLabel(item?.categoryLabel || item?.category || item?.categoryName);
-          return (
-            <article key={item.id} className="menu-ordering-card">
-              <div className="menu-ordering-card__image">
-                {item?.thumbImage || item?.image ? (
-                  <img src={item.thumbImage || item.image} alt={item.name || "Món ăn"} />
-                ) : (
-                  <Crown size={24} />
-                )}
-                {requiresProofImage(item) ? (
-                  <span className="menu-ordering-card__badge">
-                    <Camera size={12} /> Cần ảnh
-                  </span>
-                ) : null}
-              </div>
-              <div className="menu-ordering-card__content">
-                <div className="menu-ordering-card__meta">
-                  <span>{categoryLabel}</span>
-                  <span>
-                    <MapPin size={12} /> {item?.prepArea || "Bếp chính"}
-                  </span>
-                </div>
-                <h3>{item.name}</h3>
-                <p>{item.description || "Món đang sẵn sàng phục vụ."}</p>
-                <div className="menu-ordering-card__footer">
-                  <strong>{formatPrice(price)}</strong>
-                  <button type="button" disabled={!canAddItem} onClick={() => setSelectedItem(item)}>
-                    <Plus size={14} /> Chọn
-                  </button>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+  return (
+    <div className="staff-pos-menu">
+      <div className="table-status-banner">
+        <div className="table-info">
+          <span className="label">Đang lên đơn</span>
+          <span className="table-name">{selectedTable.name}</span>
+        </div>
+        <ChevronRight size={18} className="icon-right" />
       </div>
 
-      {selectedItem ? (
-        <div className="staff-menu-sheet" role="dialog" aria-modal="true" aria-label="Tùy chỉnh món">
-          <button className="staff-menu-sheet__backdrop" type="button" onClick={() => setSelectedItem(null)} aria-label="Đóng" />
-          <section className="staff-menu-sheet__panel">
-            <header>
-              <div>
-                <span>Tùy chỉnh món</span>
-                <h2>{selectedItem.name}</h2>
-              </div>
-              <button type="button" onClick={() => setSelectedItem(null)} aria-label="Đóng tùy chỉnh món">
-                <X size={18} />
+      {selectedTable.customer ? (
+        <div className="customer-vip-card">
+          <div className="cus-header">
+            <div className="cus-avatar-wrap">
+              <UserCircle size={36} className="text-primary" />
+            </div>
+            <div className="cus-details">
+              <h4>
+                {selectedTable.customer.name}
+                <span className="rank-badge">
+                  <Crown size={12} /> {selectedTable.customer.rank}
+                </span>
+              </h4>
+              <p>
+                {selectedTable.customer.phone || "Chưa có SĐT"} • Tích lũy:{" "}
+                <strong>
+                  {formatCurrency(
+                    getCustomerAccumulatedValue(selectedTable.customer),
+                  )}
+                  đ
+                </strong>
+              </p>
+            </div>
+            {permissions.canRemoveCustomer && (
+              <button
+                type="button"
+                className="btn-remove-cus"
+                onClick={() => {
+                  if (!permissions.canRemoveCustomer) {
+                    alert(NO_PERMISSION_MESSAGE);
+                    return;
+                  }
+                  onRemoveCustomer?.();
+                }}
+                aria-label="Gỡ khách khỏi bàn"
+              >
+                <X size={20} />
               </button>
-            </header>
+            )}
+          </div>
+          {getCustomerNote(selectedTable.customer) && (
+            <div className="cus-warning">
+              <AlertTriangle size={14} />
+              <span>
+                <strong>Lưu ý:</strong>{" "}
+                {getCustomerNote(selectedTable.customer)}
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="customer-empty-hint">
+          <Search size={16} />
+          <span>Có thể gán khách quen từ thanh tìm khách phía trên.</span>
+        </div>
+      )}
 
-            <label>
-              Khẩu phần
-              <select value={selectedVariantKey} onChange={(event) => setSelectedVariantKey(event.target.value)}>
-                <option value="">Mặc định</option>
-                {(selectedItem.servingVariants || []).map((variant) => (
-                  <option key={getVariantKey(variant)} value={getVariantKey(variant)}>
-                    {variant.name || variant.key}
-                  </option>
-                ))}
-              </select>
-            </label>
+      {permissions.isReadOnlyRole && (
+        <div className="staff-inline-state">{READONLY_MESSAGE}</div>
+      )}
 
-            <label>
-              Ghi chú chế biến
-              <input value={prepChoice} onChange={(event) => setPrepChoice(event.target.value)} placeholder="Ít cay, không hành..." />
-            </label>
-
-            <label>
-              Thứ tự phục vụ
-              <select value={serveOrder} onChange={(event) => setServeOrder(event.target.value)}>
-                <option>Mang ra cùng lúc</option>
-                <option>Món khai vị trước</option>
-                <option>Món chính sau 10 phút</option>
-              </select>
-            </label>
-
-            <div className="staff-menu-sheet__customer">
-              <UserCircle size={18} />
-              <span>{selectedTable?.code ? `Bàn ${selectedTable.code}` : "Khách lẻ / mang đi"}</span>
-              {selectedTable ? (
-                <button type="button" onClick={() => onRemoveCustomer?.(selectedTable)}>
-                  Đổi khách <ChevronRight size={14} />
+      {permissions.canViewMenu && (
+        <>
+          <div className="menu-filter-panel" aria-label="Tìm và lọc món">
+            <label className="menu-search-field">
+              <Search size={17} />
+              <input
+                type="search"
+                placeholder="Tìm món ăn, đồ uống..."
+                value={menuSearchQuery}
+                onChange={(event) => setMenuSearchQuery?.(event.target.value)}
+              />
+              {menuSearchQuery ? (
+                <button type="button" onClick={() => setMenuSearchQuery?.("")} aria-label="Xóa tìm kiếm món">
+                  <X size={15} />
                 </button>
               ) : null}
+            </label>
+            <div className="category-scroll" aria-label="Lọc danh mục món">
+              {categoryOptions.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  className={`filter-chip ${menuCategoryFilter === cat.value ? "active" : ""}`}
+                  onClick={() => {
+                    setMenuCategoryFilter?.(cat.value);
+                    setSelectedCategory?.(cat.label);
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="category-scroll category-scroll--secondary" aria-label="Lọc món nâng cao">
+              {servingOptions.map((option) => (
+                <button key={option.value} type="button" className={`filter-chip ${menuServingFilter === option.value ? "active" : ""}`} onClick={() => setMenuServingFilter?.(option.value)}>{option.label}</button>
+              ))}
+              {[{ value: "available", label: "Còn món" }, { value: "all", label: "Tất cả trạng thái" }, { value: "sold_out", label: "Hết món" }].map((option) => (
+                <button key={option.value} type="button" className={`filter-chip ${menuAvailabilityFilter === option.value ? "active" : ""}`} onClick={() => setMenuAvailabilityFilter?.(option.value)}>{option.label}</button>
+              ))}
+              {[
+                { value: "all", label: "Mọi giá" },
+                { value: "under_50000", label: "Dưới 50k" },
+                { value: "50000_100000", label: "50k–100k" },
+                { value: "100000_300000", label: "100k–300k" },
+                { value: "over_300000", label: "Trên 300k" },
+              ].map((option) => (
+                <button key={option.value} type="button" className={`filter-chip ${menuPriceFilter === option.value ? "active" : ""}`} onClick={() => setMenuPriceFilter?.(option.value)}>{option.label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="menu-grid">
+            {!menuItems.length ? <div className="staff-inline-state">Nhà hàng chưa có món đang bán.</div> : null}
+            {menuItems.length > 0 && filteredMenu.length === 0 ? <div className="staff-inline-state">Không tìm thấy món phù hợp.</div> : null}
+            {filteredMenu.map((item) => {
+              const isOutOfStock = item.stock <= 0;
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={`menu-item-card ${isOutOfStock ? "out-of-stock" : ""}`}
+                  onClick={() => {
+                    if (isOutOfStock || !permissions.canAddItems) return;
+                    handleOpenItem(item);
+                  }}
+                >
+                  <div className="item-content">
+                    <h4 className="item-name">{item.name}</h4>
+                    <p className="item-price">{item.price.toLocaleString()}đ</p>
+                  </div>
+                  <div className="item-footer">
+                    <span className={`stock-badge ${isOutOfStock ? "out" : "in"}`}>
+                      {isOutOfStock ? "Hết món" : `Còn ${item.stock}`}
+                    </span>
+                    {!isOutOfStock && permissions.canAddItems && (
+                      <span className="btn-add-quick" aria-hidden="true">
+                        <Plus size={16} />
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {selectedItem && permissions.canAddItems && (
+        <div
+          className="item-options-overlay"
+          onClick={closeOptionsSheet}
+        >
+          <div
+            className="item-options-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="drag-indicator">
+              <div className="drag-handle"></div>
             </div>
 
-            {requiresProofImage(selectedItem) ? (
-              <div className="staff-menu-sheet__proof">
-                <Camera size={18} />
-                <span>Món này cần ảnh xác nhận theo quy định.</span>
-                <button type="button" onClick={() => setProofDraftItem(selectedItem)} disabled={!canAttachProof}>
-                  Chụp/đính kèm ảnh
+            <div className="sheet-header">
+              <div className="header-info">
+                <h3>{selectedItem.name}</h3>
+                <p className="price-text">
+                  {selectedItem.price.toLocaleString()}đ
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={closeOptionsSheet}
+                aria-label="Đóng tùy chọn món"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="sheet-body">
+              {selectedVariants.length > 1 && (
+                <div className="option-group">
+                  <label className="group-label">1. Chọn biến thể</label>
+                  <div className="chips-container">
+                    {selectedVariants.map((variant) => {
+                      const variantKey = getVariantKey(variant);
+                      return (
+                        <button
+                          type="button"
+                          key={variantKey}
+                          className={`option-chip ${
+                            selectedVariantKey === variantKey ? "selected" : ""
+                          }`}
+                          onClick={() => setSelectedVariantKey(variantKey)}
+                        >
+                          {variant.name || variant.key}
+                          {variant.price != null
+                            ? ` · ${Number(variant.price).toLocaleString("vi-VN")}đ`
+                            : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="option-group">
+                <label className="group-label">2. Thứ tự lên món</label>
+                <div className="chips-container">
+                  {[
+                    "Khai vị (Mang ra trước)",
+                    "Mang ra cùng lúc",
+                    "Tráng miệng (Mang ra sau)",
+                  ].map((s) => (
+                    <button
+                      type="button"
+                      key={s}
+                      className={`option-chip ${serveOrder === s ? "selected" : ""}`}
+                      onClick={() => setServeOrder(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="option-group proof-option-card">
+                <div className="proof-option-card__copy">
+                  <label className="group-label">3. Ảnh minh chứng</label>
+                  <p>Dùng cho món cân ký hoặc món cần xác nhận hình ảnh trước khi gửi bếp.</p>
+                  <span className="proof-option-card__status">
+                    {draftProofImages.length
+                      ? `Đã có ${draftProofImages.length} ảnh minh chứng`
+                      : "Chưa có ảnh minh chứng."}
+                  </span>
+                </div>
+                {shouldSuggestProof ? (
+                  <div className="proof-option-card__hint">
+                    Món này nên có ảnh minh chứng trước khi gửi bếp.
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="proof-option-card__button"
+                  onClick={() => setProofDraftItem(draftProofTarget)}
+                >
+                  <Camera size={16} />
+                  Chụp ảnh minh chứng
                 </button>
               </div>
-            ) : null}
+            </div>
 
-            <footer>
-              <button type="button" onClick={() => setSelectedItem(null)}>
-                Hủy
-              </button>
-              <button type="button" onClick={handleConfirmAdd} disabled={!canAddItem}>
+            <div className="sheet-footer">
+              <button type="button" className="btn-confirm-add" onClick={handleConfirmAdd}>
                 Thêm vào đơn
               </button>
-            </footer>
-          </section>
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
 
-      <StaffProofCaptureModal
-        open={Boolean(proofDraftItem)}
-        order={proofDraftItem ? { items: [proofDraftItem] } : null}
-        onClose={() => setProofDraftItem(null)}
-        onConfirm={(images) => {
-          const normalized = normalizeProofImages(images);
-          setDraftProofImages(normalized);
-          if (proofDraftItem) {
-            handleAdd(proofDraftItem, { proofImages: normalized });
-          }
-          setProofDraftItem(null);
-        }}
-      />
+      {proofDraftItem && (
+        <StaffProofCaptureModal
+          open={Boolean(proofDraftItem)}
+          item={{ ...proofDraftItem, proofImages: draftProofImages }}
+          onClose={() => setProofDraftItem(null)}
+          onSave={(images) => {
+            setDraftProofImages(normalizeProofImages(images));
+            setProofDraftItem(null);
+          }}
+        />
+      )}
     </div>
   );
 }
