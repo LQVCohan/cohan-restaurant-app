@@ -92,7 +92,7 @@ describe("TodayMealWizard", () => {
     expect(screen.getByRole("region", { name: /wizard hỗ trợ chọn món hôm nay/i })).toBeInTheDocument();
   });
 
-  it("calls backend AI and renders meal suggestions after completing all steps", async () => {
+  it("automatically calls backend AI and renders meal suggestions after completing all steps", async () => {
     renderWizard({ route: "/restaurant/restaurant-1" });
 
     fireEvent.click(screen.getByRole("button", { name: /nhanh gọn/i }));
@@ -105,12 +105,12 @@ describe("TodayMealWizard", () => {
     await waitFor(() => expect(screen.getByText("Ăn cho mấy người?")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /2 người/i }));
-    fireEvent.click(screen.getByRole("button", { name: /hỏi ai/i }));
 
     await waitFor(() => expect(mocks.askAiChatbot).toHaveBeenCalledTimes(1));
     const variables = mocks.askAiChatbot.mock.calls[0][0].variables;
     expect(variables.input.restaurantId).toBe("restaurant-1");
     expect(variables.input.pageContext.source).toBe("todayMealWizard");
+    expect(variables.input.pageContext.trigger).toBe("wizard_complete_or_click");
     expect(variables.input.message).toContain("Linh");
     expect(variables.input.message).toContain("100k đến 200k");
     expect(variables.input.message).toContain("ít cay");
@@ -131,7 +131,6 @@ describe("TodayMealWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /ít cay/i }));
     await waitFor(() => expect(screen.getByText("Ăn cho mấy người?")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /2 người/i }));
-    fireEvent.click(screen.getByRole("button", { name: /hỏi ai/i }));
 
     await screen.findByText("Gợi ý từ AI");
     fireEvent.click(screen.getByRole("button", { name: /hỏi tiếp trong chat ai/i }));
