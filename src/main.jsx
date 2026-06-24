@@ -55,6 +55,7 @@ import { installRestaurantInfoCopyTuning } from "./components/Dashboard_Manager/
 import { installTableWorkflowCopyTuning } from "./components/Dashboard_Manager/Table/TableWorkflowCopyTuning.js";
 import { installTableWorkflowRuntimeTuning } from "./components/Dashboard_Manager/Table/TableWorkflowRuntimeTuning.js";
 import { installFloorPlanDesignerExperience } from "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.js";
+import { installStaffPerformanceModalPortalFix } from "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceModalPortalFix.js";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
@@ -66,6 +67,7 @@ installRestaurantInfoCopyTuning();
 installTableWorkflowCopyTuning();
 installTableWorkflowRuntimeTuning();
 installFloorPlanDesignerExperience();
+installStaffPerformanceModalPortalFix();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
