@@ -1,0 +1,36 @@
+name: debug-ci
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: debug-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  debug:
+    name: component failure summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run component and show failure
+        run: |
+          git clone -q --depth=1 --branch "${{ github.head_ref }}" https://github.com/${{ github.repository }} repo
+          cd repo
+          npm ci --silent --no-audit --no-fund >/dev/null 2>&1
+          npm --prefix cohan-restaurant-backend ci --silent --no-audit --no-fund >/dev/null 2>&1
+          set +e
+          npm run test:component > /tmp/component.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo COMPONENT_FAILED
+            sed -n '/Failed Suites/,$p' /tmp/component.log | head -n 160
+            sed -n '/Failed Tests/,$p' /tmp/component.log | head -n 160
+            grep -E "FAIL |Invariant|TypeError|ReferenceError|AssertionError|Expected|Received|Cannot|does not provide an export|not wrapped" /tmp/component.log | tail -n 160
+          else
+            echo COMPONENT_PASSED
+          fi
+          exit "$status"
