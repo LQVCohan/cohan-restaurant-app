@@ -1,0 +1,176 @@
+/* Observation-first UX for table configuration modal. */
+.talite-modal {
+  width: min(1040px, 92vw) !important;
+}
+
+.talite-section-nav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 46px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(228, 218, 203, 0.94);
+  background:
+    linear-gradient(90deg, rgba(255, 253, 248, 0.98), rgba(237, 245, 241, 0.78));
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.talite-section-nav::before {
+  content: "Đi nhanh";
+  flex: 0 0 auto;
+  color: #536c61;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+.talite-section-nav button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(83, 108, 97, 0.16);
+  border-radius: 999px;
+  color: #53605d;
+  background: rgba(255, 253, 248, 0.78);
+  font-size: 0.76rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.talite-section-nav button:hover {
+  color: #126d61;
+  border-color: rgba(83, 108, 97, 0.32);
+  background: #fffdf8;
+}
+
+.talite-section-nav button.active {
+  color: #fff;
+  border-color: #536c61;
+  background: #536c61;
+  box-shadow: 0 8px 16px rgba(83, 108, 97, 0.15);
+}
+
+.talite-body {
+  max-height: calc(min(800px, 87dvh) - 170px) !important;
+  padding-top: 11px !important;
+}
+
+.talite-body > .talite-info {
+  position: relative;
+}
+
+.talite-body > .talite-info::before {
+  content: "Tổng quan bàn";
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  min-height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #126d61;
+  background: #edf5f1;
+  border: 1px solid rgba(83, 108, 97, 0.16);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.talite-group {
+  position: relative !important;
+  padding-top: 14px !important;
+}
+
+.talite-group::after {
+  content: attr(data-section-index);
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  color: rgba(83, 108, 97, 0.34);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+}
+
+.talite-group--operation {
+  border-color: rgba(83, 108, 97, 0.2) !important;
+}
+
+.talite-group--booking {
+  border-color: rgba(184, 135, 92, 0.24) !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 248, 237, 0.66)) !important;
+}
+
+.talite-group--ai {
+  border-color: rgba(61, 106, 140, 0.2) !important;
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(239, 247, 250, 0.62)) !important;
+}
+
+.talite-group--basic .talite-group-icon,
+.talite-group--operation .talite-group-icon,
+.talite-group--booking .talite-group-icon,
+.talite-group--ai .talite-group-icon {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.talite-save-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #53605d;
+}
+
+.talite-save-state span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 999px;
+  background: #126d61;
+  box-shadow: 0 0 0 4px rgba(18, 109, 97, 0.1);
+}
+
+.talite-save-state strong {
+  color: #1f2a2b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.talite-save-state em {
+  color: #66736f;
+  font-size: 0.74rem;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.talite-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.talite-footer .actions {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .talite-section-nav::before,
+  .talite-save-state em {
+    display: none;
+  }
+
+  .talite-body {
+    max-height: calc(88dvh - 150px) !important;
+  }
+
+  .talite-save-state strong {
+    white-space: normal;
+  }
+}
