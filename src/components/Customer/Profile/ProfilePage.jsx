@@ -5,6 +5,7 @@ import ProfileInfo from "./components/ProfileInfo";
 import OrderHistory from "./components/OrderHistory";
 import SecuritySettings from "./components/SecuritySettings";
 import FoodPreferences from "./components/FoodPreferences";
+import LoyaltyWalletCard from "./components/LoyaltyWalletCard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import "./ProfilePage.scss";
 
@@ -88,7 +89,6 @@ const ProfilePage = () => {
   return (
     <div className="profile-page">
       <div className="profile-container">
-        {/* Sidebar: Avatar & Menu */}
         <ProfileSidebar
           user={user}
           activeTab={activeTab}
@@ -100,8 +100,8 @@ const ProfilePage = () => {
           onAvatarChange={handleAvatarChange}
         />
 
-        {/* Content Area */}
         <main className="profile-content">
+          <LoyaltyWalletCard user={user} />
           {activeTab === "info" && (
             <ProfileInfo
               user={user}
