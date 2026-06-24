@@ -2,14 +2,13 @@ import React, { useCallback, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileInfo from "./components/ProfileInfo";
+import ProfileWallet from "./components/ProfileWallet";
 import OrderHistory from "./components/OrderHistory";
 import SecuritySettings from "./components/SecuritySettings";
 import FoodPreferences from "./components/FoodPreferences";
-import LoyaltyWalletCard from "./components/LoyaltyWalletCard";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import "./ProfilePage.scss";
 
-// GraphQL Main Query
 const ME_QUERY = gql`
   query Me {
     me {
@@ -77,14 +76,15 @@ const ProfilePage = () => {
     return result;
   }, [refetch]);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="profile-loading">
         <LoadingSpinner size="large" />
       </div>
     );
-  if (error)
-    return <div className="profile-error">Lỗi tải trang: {error.message}</div>;
+  }
+
+  if (error) return <div className="profile-error">Lỗi tải trang: {error.message}</div>;
 
   return (
     <div className="profile-page">
@@ -101,7 +101,6 @@ const ProfilePage = () => {
         />
 
         <main className="profile-content">
-          <LoyaltyWalletCard user={user} />
           {activeTab === "info" && (
             <ProfileInfo
               user={user}
@@ -113,6 +112,7 @@ const ProfilePage = () => {
           )}
           {activeTab === "preferences" && <FoodPreferences />}
           {activeTab === "orders" && <OrderHistory user={user} />}
+          {activeTab === "wallet" && <ProfileWallet user={user} refetchUser={handleRefetchUser} />}
           {activeTab === "security" && <SecuritySettings />}
         </main>
       </div>
