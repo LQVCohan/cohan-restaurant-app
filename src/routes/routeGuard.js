@@ -4,8 +4,14 @@ import {
   resolveAccessRoleName as resolveAccessRoleNameFromConfig,
   resolveUserRoleName,
 } from "@/utils/frontendRoleAccess";
+import { isAccountVerified } from "@/utils/accountVerification";
 
-export const resolveRoleName = (me) => resolveUserRoleName(me);
+export const resolveRoleName = (me) => {
+  if (me && typeof me === "object" && !isAccountVerified(me)) {
+    return "pending_verification";
+  }
+  return resolveUserRoleName(me);
+};
 
 export const resolveAccessRoleName = (me) => resolveAccessRoleNameFromConfig(me);
 
@@ -21,4 +27,7 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
     .includes(normalizedRole);
 };
 
-export const getRoleHomeRoute = (roleName) => getDefaultPathForRole(roleName);
+export const getRoleHomeRoute = (roleName) =>
+  normalizeRoleName(roleName) === "pending_verification"
+    ? "/verify-email"
+    : getDefaultPathForRole(roleName);
