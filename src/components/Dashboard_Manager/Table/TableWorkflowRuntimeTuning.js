@@ -3,6 +3,7 @@ const WORKFLOW_TEXT_REPLACEMENTS = new Map([
   ["Thanh toán", "Thu tiền"],
   ["Tags (phân tách dấu phẩy)", "Nhãn bàn"],
   ["Khu vực (zone)", "Khu vực"],
+  ["Đổi chỗ với bàn khác (đổi vị trí)", "Đổi vị trí với bàn khác"],
   ["swap code", "đổi vị trí"],
   ["Source:", "Nguồn:"],
   ["License:", "Bản quyền:"],
@@ -19,6 +20,22 @@ const FLOOR_TEXT_REPLACEMENTS = new Map([
   ["Tầng 3 – test", "Tầng 3 – Khu thử nghiệm"],
   ["Tầng 3 - test", "Tầng 3 - Khu thử nghiệm"],
 ]);
+
+const MODAL_SECTION_NAV = [
+  { key: "overview", label: "Tổng quan", selector: ".talite-info" },
+  { key: "basic", label: "Thông tin", match: ["Thông tin cơ bản"] },
+  { key: "ops", label: "Vận hành", match: ["Trạng thái", "Chuyển tầng"] },
+  { key: "booking", label: "Đặt bàn", match: ["Đặt cọc", "Chính sách"] },
+  { key: "vr", label: "VR/3D", selector: ".talite-vr-block, .talite-visual-card" },
+  { key: "ai", label: "AI", match: ["AI", "Gợi ý"] },
+];
+
+const SECTION_KIND_RULES = [
+  { className: "talite-group--basic", match: ["Thông tin cơ bản"] },
+  { className: "talite-group--operation", match: ["Trạng thái", "Chuyển tầng", "Đổi vị trí", "Gộp / Tách"] },
+  { className: "talite-group--booking", match: ["Đặt cọc", "Chính sách"] },
+  { className: "talite-group--ai", match: ["AI", "Gợi ý"] },
+];
 
 const shouldTuneElement = (element) => {
   if (!element?.closest) return false;
@@ -92,11 +109,119 @@ const tuneLayoutState = (root) => {
   if (tableGrid) tableGrid.dataset.tableWorkflowMounted = "true";
 };
 
+const getGroupTitle = (group) =>
+  group?.querySelector?.(".talite-group-header .talite-label, .talite-label")?.textContent?.trim() || "";
+
+const titleMatches = (title, matchers = []) =>
+  matchers.some((matcher) => title.toLowerCase().includes(String(matcher).toLowerCase()));
+
+const findNavTarget = (modal, item) => {
+  if (item.selector) return modal.querySelector(item.selector);
+  const groups = Array.from(modal.querySelectorAll(".talite-body > .talite-group"));
+  return groups.find((group) => titleMatches(getGroupTitle(group), item.match));
+};
+
+const markModalSections = (modal) => {
+  const groups = Array.from(modal.querySelectorAll(".talite-body > .talite-group"));
+  groups.forEach((group, index) => {
+    const title = getGroupTitle(group);
+    group.dataset.sectionIndex = String(index + 1).padStart(2, "0");
+    SECTION_KIND_RULES.forEach(({ className, match }) => {
+      if (titleMatches(title, match)) group.classList.add(className);
+    });
+  });
+};
+
+const scrollModalBodyTo = (modal, target) => {
+  const body = modal.querySelector(".talite-body");
+  if (!body || !target) return;
+  const bodyRect = body.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const nextTop = body.scrollTop + targetRect.top - bodyRect.top - 8;
+  body.scrollTo({ top: Math.max(nextTop, 0), behavior: "smooth" });
+};
+
+const updateActiveNavigatorItem = (modal) => {
+  const nav = modal.querySelector(".talite-section-nav");
+  const body = modal.querySelector(".talite-body");
+  if (!nav || !body) return;
+
+  let activeKey = "overview";
+  MODAL_SECTION_NAV.forEach((item) => {
+    const target = findNavTarget(modal, item);
+    if (!target) return;
+    const threshold = target.offsetTop - 20;
+    if (body.scrollTop >= threshold) activeKey = item.key;
+  });
+
+  nav.querySelectorAll("button[data-section-key]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.sectionKey === activeKey);
+  });
+};
+
+const ensureModalNavigator = (modal) => {
+  if (!modal || modal.dataset.observationNavReady === "true") return;
+  const header = modal.querySelector(".talite-header");
+  const body = modal.querySelector(".talite-body");
+  if (!header || !body) return;
+
+  const nav = document.createElement("div");
+  nav.className = "talite-section-nav";
+  nav.setAttribute("aria-label", "Điều hướng nhanh trong modal cấu hình bàn");
+
+  MODAL_SECTION_NAV.forEach((item) => {
+    const target = findNavTarget(modal, item);
+    if (!target) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.sectionKey = item.key;
+    button.textContent = item.label;
+    button.addEventListener("click", () => {
+      scrollModalBodyTo(modal, target);
+      window.requestAnimationFrame(() => updateActiveNavigatorItem(modal));
+    });
+    nav.appendChild(button);
+  });
+
+  if (nav.childElementCount > 1) {
+    header.insertAdjacentElement("afterend", nav);
+  }
+
+  const scrollHandler = () => updateActiveNavigatorItem(modal);
+  body.addEventListener("scroll", scrollHandler, { passive: true });
+  modal.__taliteNavScrollHandler = scrollHandler;
+  modal.dataset.observationNavReady = "true";
+  window.requestAnimationFrame(() => updateActiveNavigatorItem(modal));
+};
+
+const ensureModalFooterState = (modal) => {
+  const footer = modal?.querySelector?.(".talite-footer");
+  const actions = footer?.querySelector?.(".actions");
+  if (!footer || footer.querySelector(".talite-save-state")) return;
+  const state = document.createElement("div");
+  state.className = "talite-save-state";
+  state.innerHTML = '<span></span><strong>Sẵn sàng cập nhật</strong><em>Bấm Lưu thay đổi để áp dụng cấu hình bàn.</em>';
+  footer.insertBefore(state, actions || null);
+};
+
+const enhanceTableModalObservation = (root) => {
+  if (!root?.querySelectorAll) return;
+  const modals = root.matches?.(".talite-modal")
+    ? [root]
+    : Array.from(root.querySelectorAll(".talite-modal"));
+  modals.forEach((modal) => {
+    markModalSections(modal);
+    ensureModalNavigator(modal);
+    ensureModalFooterState(modal);
+  });
+};
+
 const tuneRoot = (root = document.body) => {
   tuneText(root);
   tuneButtons(root);
   tuneFloorNames(root);
   tuneLayoutState(root);
+  enhanceTableModalObservation(root);
 };
 
 export const installTableWorkflowRuntimeTuning = () => {
