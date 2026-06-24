@@ -1,0 +1,334 @@
+/* Manager global tone audit pass.
+   Purpose: synchronize unpolished manager pages with the current restaurant/order theme.
+   Visual-only layer; no data flow, routing, auth, or API behavior changes. */
+
+.manager-layout {
+  --cohan-manager-primary: #0f6f66;
+  --cohan-manager-primary-deep: #07544e;
+  --cohan-manager-primary-soft: #edf7f4;
+  --cohan-manager-accent: #a8855f;
+  --cohan-manager-accent-deep: #7f5731;
+  --cohan-manager-accent-soft: #f4eadc;
+  --cohan-manager-bg: #f6efe3;
+  --cohan-manager-paper: #fffdf8;
+  --cohan-manager-paper-soft: #fbf6ed;
+  --cohan-manager-line: rgba(116, 88, 54, 0.16);
+  --cohan-manager-line-strong: rgba(116, 88, 54, 0.28);
+  --cohan-manager-ink: #24303f;
+  --cohan-manager-muted: #5d6678;
+  --cohan-manager-danger: #bd5b43;
+  --cohan-manager-danger-soft: #f8e2da;
+  --cohan-manager-warning: #d58935;
+  --cohan-manager-warning-soft: #fff0d1;
+  --cohan-manager-success: #1f7a4b;
+  --cohan-manager-success-soft: #dff2e7;
+  --cohan-manager-shadow: 0 20px 46px rgba(48, 40, 30, 0.11);
+  --cohan-manager-shadow-strong: 0 26px 62px rgba(48, 40, 30, 0.16);
+}
+
+.manager-layout__content {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(168, 133, 95, 0.16), transparent 32rem),
+    radial-gradient(circle at 92% 8%, rgba(15, 111, 102, 0.1), transparent 30rem),
+    linear-gradient(rgba(116, 88, 54, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(116, 88, 54, 0.02) 1px, transparent 1px),
+    linear-gradient(180deg, #fbf6ed 0%, #f1e8da 100%) !important;
+  background-size: auto, auto, 34px 34px, 34px 34px, auto !important;
+}
+
+.manager-layout__content :where(
+  .manager-page-shell,
+  .mm-page-container,
+  .storage-management,
+  .print-management,
+  .reports-management,
+  .staff-management,
+  .schedule-management,
+  .customer-management,
+  .customer-analytics-page,
+  .ai-chatbot-analytics-page,
+  .ai-chatbot-settings-page,
+  .ai-chatbot-knowledge-page,
+  .review-management,
+  .finance-dashboard,
+  .transaction-management,
+  .transfer-payment-review-page,
+  .settings-management,
+  .backup-management,
+  .system-user-management,
+  .rbac-management,
+  .ai-handoff-inbox,
+  .dashboard
+) {
+  color: var(--cohan-manager-ink);
+}
+
+.manager-layout__content :where(
+  .management-page-header,
+  .manager-page-header,
+  .page-header,
+  .dashboard-header,
+  .storage-header,
+  .finance-header,
+  .reports-header,
+  .review-header,
+  .customers-header,
+  .settings-header,
+  .backup-header,
+  .print-header,
+  .ant-card,
+  .ant-table-wrapper,
+  .ant-table-container,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-collapse,
+  .ant-list,
+  .stat-card,
+  .metric-card,
+  .kpi-card,
+  .summary-card,
+  .filter-panel,
+  .toolbar,
+  .toolbar-card,
+  .content-card,
+  .panel,
+  .card
+) {
+  border-color: var(--cohan-manager-line) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.97), rgba(251, 246, 237, 0.9)) !important;
+  box-shadow: var(--cohan-manager-shadow), inset 0 1px rgba(255, 255, 255, 0.84) !important;
+}
+
+.manager-layout__content :where(.ant-card, .ant-modal-content, .ant-drawer-content, .panel, .content-card, .summary-card, .metric-card, .stat-card, .kpi-card) {
+  border-radius: 18px !important;
+}
+
+.manager-layout__content :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  .page-title,
+  .section-title,
+  .card-title,
+  .ant-card-head-title,
+  .ant-typography h1,
+  .ant-typography h2,
+  .ant-typography h3,
+  .ant-statistic-content,
+  .stat-value,
+  .metric-value,
+  .kpi-value
+) {
+  color: var(--cohan-manager-ink) !important;
+  letter-spacing: -0.025em;
+}
+
+.manager-layout__content :where(
+  p,
+  small,
+  .subtitle,
+  .description,
+  .helper-text,
+  .muted,
+  .text-muted,
+  .ant-typography-secondary,
+  .ant-form-item-extra,
+  .ant-empty-description,
+  .metric-label,
+  .stat-label,
+  .kpi-label,
+  .card-description
+) {
+  color: var(--cohan-manager-muted) !important;
+}
+
+.manager-layout__content :where(.management-page-header, .manager-page-header, .page-header, .dashboard-header) {
+  border-left: 4px solid rgba(15, 111, 102, 0.34) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.08), transparent 20rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(244, 234, 220, 0.82)) !important;
+}
+
+.manager-layout__content :where(
+  input,
+  textarea,
+  select,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-checkbox-inner,
+  .ant-radio-inner
+) {
+  border-color: var(--cohan-manager-line-strong) !important;
+  color: var(--cohan-manager-ink) !important;
+  background: rgba(255, 253, 248, 0.9) !important;
+}
+
+.manager-layout__content :where(
+  input:hover,
+  textarea:hover,
+  select:hover,
+  .ant-input:hover,
+  .ant-input-affix-wrapper:hover,
+  .ant-select-selector:hover,
+  .ant-picker:hover,
+  .ant-input-number:hover
+) {
+  border-color: rgba(15, 111, 102, 0.36) !important;
+}
+
+.manager-layout__content :where(
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper-focused,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker-focused,
+  .ant-input-number-focused
+) {
+  border-color: rgba(15, 111, 102, 0.5) !important;
+  box-shadow: 0 0 0 4px rgba(15, 111, 102, 0.12) !important;
+}
+
+.manager-layout__content :where(.ant-btn-primary, .btn-primary, .primary-btn, .button-primary, .save-btn, .submit-btn, .action-primary) {
+  color: #fffdf8 !important;
+  border-color: rgba(15, 111, 102, 0.52) !important;
+  background: linear-gradient(135deg, var(--cohan-manager-primary) 0%, var(--cohan-manager-primary-deep) 100%) !important;
+  box-shadow: 0 14px 28px rgba(15, 111, 102, 0.22) !important;
+}
+
+.manager-layout__content :where(.ant-btn-primary:hover, .btn-primary:hover, .primary-btn:hover, .button-primary:hover, .save-btn:hover, .submit-btn:hover, .action-primary:hover) {
+  filter: none !important;
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(15, 111, 102, 0.28) !important;
+}
+
+.manager-layout__content :where(.ant-btn-default, .ant-btn, .btn-secondary, .secondary-btn, .button-secondary, .outline-btn) {
+  border-color: rgba(15, 111, 102, 0.17) !important;
+  color: var(--cohan-manager-primary) !important;
+  background: rgba(237, 247, 244, 0.86) !important;
+}
+
+.manager-layout__content :where(.ant-btn-dangerous, .btn-danger, .danger-btn, .delete-btn) {
+  color: #9c3f31 !important;
+  border-color: rgba(189, 91, 67, 0.28) !important;
+  background: var(--cohan-manager-danger-soft) !important;
+}
+
+.manager-layout__content :where(.ant-tag, .tag, .badge, .status-badge, .status-pill, .chip) {
+  border-color: rgba(15, 111, 102, 0.16) !important;
+  color: var(--cohan-manager-primary) !important;
+  background: var(--cohan-manager-primary-soft) !important;
+  font-weight: 720;
+}
+
+.manager-layout__content :where(.ant-tag-success, .status-success, .success, .active, .available, .completed) {
+  color: var(--cohan-manager-success) !important;
+  background: var(--cohan-manager-success-soft) !important;
+  border-color: rgba(31, 122, 75, 0.22) !important;
+}
+
+.manager-layout__content :where(.ant-tag-warning, .status-warning, .warning, .pending, .draft) {
+  color: #8b4b1f !important;
+  background: var(--cohan-manager-warning-soft) !important;
+  border-color: rgba(213, 137, 53, 0.28) !important;
+}
+
+.manager-layout__content :where(.ant-tag-error, .status-danger, .status-error, .danger, .error, .cancelled, .failed, .inactive) {
+  color: #9c3f31 !important;
+  background: var(--cohan-manager-danger-soft) !important;
+  border-color: rgba(189, 91, 67, 0.28) !important;
+}
+
+.manager-layout__content :where(.ant-table, .ant-table-thead > tr > th) {
+  color: var(--cohan-manager-ink) !important;
+  background: rgba(255, 253, 248, 0.94) !important;
+}
+
+.manager-layout__content :where(.ant-table-thead > tr > th) {
+  border-bottom-color: var(--cohan-manager-line) !important;
+  color: var(--cohan-manager-muted) !important;
+  font-size: 0.78rem;
+  font-weight: 820;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.manager-layout__content :where(.ant-table-tbody > tr > td) {
+  border-bottom-color: rgba(116, 88, 54, 0.1) !important;
+}
+
+.manager-layout__content :where(.ant-table-tbody > tr:hover > td) {
+  background: rgba(237, 247, 244, 0.48) !important;
+}
+
+.manager-layout__content :where(.ant-tabs-tab-active, .ant-tabs-tab:hover) .ant-tabs-tab-btn,
+.manager-layout__content :where(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: var(--cohan-manager-primary) !important;
+}
+
+.manager-layout__content :where(.ant-tabs-ink-bar) {
+  background: var(--cohan-manager-primary) !important;
+}
+
+.manager-layout__content :where(.ant-modal-header, .ant-drawer-header, .ant-card-head) {
+  border-color: var(--cohan-manager-line) !important;
+  background: linear-gradient(90deg, rgba(237, 247, 244, 0.82), rgba(244, 234, 220, 0.58)) !important;
+}
+
+.manager-layout__content :where(.ant-modal-footer, .ant-drawer-footer) {
+  border-color: var(--cohan-manager-line) !important;
+  background: linear-gradient(90deg, rgba(255, 253, 248, 0.94), rgba(251, 246, 237, 0.9)) !important;
+}
+
+.manager-layout__content :where(.ant-empty, .empty-state, .state-box, .mm-state-box, .manager-page-shell__empty) {
+  border: 1px solid var(--cohan-manager-line) !important;
+  border-radius: 18px !important;
+  color: var(--cohan-manager-muted) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(168, 133, 95, 0.12), transparent 18rem),
+    rgba(255, 253, 248, 0.72) !important;
+  box-shadow: 0 14px 32px rgba(48, 40, 30, 0.08) !important;
+}
+
+.manager-layout__content :where(.ant-alert) {
+  border-radius: 14px !important;
+  border-color: var(--cohan-manager-line) !important;
+  background: rgba(255, 253, 248, 0.86) !important;
+}
+
+.manager-layout__content :where(.ant-progress-bg) {
+  background: linear-gradient(90deg, var(--cohan-manager-primary), var(--cohan-manager-accent)) !important;
+}
+
+.manager-layout__content :where(.ant-switch-checked) {
+  background: var(--cohan-manager-primary) !important;
+}
+
+.manager-layout__content :where(.ant-pagination-item-active) {
+  border-color: var(--cohan-manager-primary) !important;
+  background: var(--cohan-manager-primary-soft) !important;
+}
+
+.manager-layout__content :where(.ant-pagination-item-active a) {
+  color: var(--cohan-manager-primary) !important;
+}
+
+.manager-layout__content :where(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: 3px solid rgba(15, 111, 102, 0.22) !important;
+  outline-offset: 3px !important;
+}
+
+@media (max-width: 768px) {
+  .manager-layout__content :where(.management-page-header, .manager-page-header, .page-header, .dashboard-header) {
+    border-left-width: 0 !important;
+    border-top: 4px solid rgba(15, 111, 102, 0.34) !important;
+  }
+}
