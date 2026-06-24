@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { ArrowLeft, Clock, Heart, MapPin, Share2, Star } from "lucide-react";
 
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { AuthContext } from "@/context/AuthContext";
 import { getOpeningStatusLabel, getRestaurantPrimaryCTA } from "@/utils/restaurantStatus";
 import MenuSection from "./components/MenuSection/MenuSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
@@ -17,8 +18,6 @@ import "./RestaurantDetail.scss";
 import "./RestaurantDetail.refinements.scss";
 import "./RestaurantDetail.fallbacks.scss";
 
-const FAVORITES_STORAGE_KEY = "restaurant_favorites";
-
 const DETAIL_FALLBACK_COVERS = [
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=82",
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=82",
@@ -26,15 +25,6 @@ const DETAIL_FALLBACK_COVERS = [
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1600&q=82",
   "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1600&q=82",
 ];
-
-const readFavoriteIds = () => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
-  } catch {
-    return new Set();
-  }
-};
 
 const formatAddressText = (address = {}) => {
   return [address.line1, address.district, address.city].filter(Boolean).join(", ");
@@ -110,10 +100,30 @@ const GET_RESTAURANT_REVIEW_STATS = gql`
   }
 `;
 
+const MY_RESTAURANT_FAVORITES = gql`
+  query MyRestaurantFavoritesForDetail {
+    myFavorites(type: "restaurant") {
+      id
+      targetId
+    }
+  }
+`;
+
+const TOGGLE_RESTAURANT_FAVORITE = gql`
+  mutation ToggleRestaurantFavoriteForDetail($input: ToggleFavoriteInput!) {
+    toggleFavorite(input: $input) {
+      id
+      type
+      targetId
+    }
+  }
+`;
+
 const RestaurantDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAuthenticated } = useContext(AuthContext) || {};
 
   const isPreviewMode = new URLSearchParams(location.search).get("preview") === "1";
 
@@ -125,11 +135,28 @@ const RestaurantDetail = () => {
     variables: { restaurantId: id },
     skip: !id,
   });
+  const {
+    data: favoriteData,
+    refetch: refetchRestaurantFavorites,
+  } = useQuery(MY_RESTAURANT_FAVORITES, {
+    skip: isPreviewMode || !isAuthenticated || !user?.id,
+    fetchPolicy: "cache-and-network",
+  });
+  const [toggleRestaurantFavorite, { loading: favoriteLoading }] = useMutation(
+    TOGGLE_RESTAURANT_FAVORITE,
+    {
+      onCompleted: () => refetchRestaurantFavorites?.(),
+    },
+  );
 
   const [activeTab, setActiveTab] = useState("info");
-  const [favoriteActive, setFavoriteActive] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [previewRestaurantOverride, setPreviewRestaurantOverride] = useState(null);
+
+  const favoriteRestaurantIds = useMemo(
+    () => new Set((favoriteData?.myFavorites || []).map((favorite) => String(favorite?.targetId))),
+    [favoriteData?.myFavorites],
+  );
 
   useEffect(() => {
     if (location.hash === "#reviews" || location.state?.openTab === "reviews") {
@@ -161,12 +188,6 @@ const RestaurantDetail = () => {
 
   const restaurant = restaurantData?.publicRestaurant;
 
-  useEffect(() => {
-    if (!restaurant?.id) return;
-    const ids = readFavoriteIds();
-    setFavoriteActive(ids.has(String(restaurant.id)));
-  }, [restaurant?.id]);
-
   if (loading) {
     return (
       <div className="detail-loading">
@@ -193,6 +214,7 @@ const RestaurantDetail = () => {
     addressText: previewRestaurantOverride?.addressText || restaurant.addressText || formatAddressText(mergedAddress),
   };
 
+  const favoriteActive = favoriteRestaurantIds.has(String(resolvedRestaurant.id));
   const canReserve = !!resolvedRestaurant.canReserve;
   const primaryCtaText = getRestaurantPrimaryCTA({
     canReserve: resolvedRestaurant.canReserve,
@@ -212,21 +234,26 @@ const RestaurantDetail = () => {
     navigate(`/restaurant/${resolvedRestaurant.id}/layout`);
   };
 
-  const handleFavorite = () => {
-    if (isPreviewMode) return;
+  const handleFavorite = async () => {
+    if (isPreviewMode || favoriteLoading) return;
 
-    if (!localStorage.getItem("token")) {
+    if (!isAuthenticated || !user?.id) {
       navigate("/login", { state: { from: location } });
       return;
     }
 
-    const favoriteIds = readFavoriteIds();
-    const targetId = String(resolvedRestaurant.id);
-    if (favoriteIds.has(targetId)) favoriteIds.delete(targetId);
-    else favoriteIds.add(targetId);
-
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favoriteIds]));
-    setFavoriteActive(favoriteIds.has(targetId));
+    try {
+      await toggleRestaurantFavorite({
+        variables: {
+          input: {
+            type: "restaurant",
+            targetId: resolvedRestaurant.id,
+          },
+        },
+      });
+    } catch {
+      // Notification system is not guaranteed on this public page; keep UX stable.
+    }
   };
 
   const handleShare = async () => {
@@ -351,8 +378,10 @@ const RestaurantDetail = () => {
                 <button
                   type="button"
                   className={`btn-icon ${favoriteActive ? "active" : ""}`}
-                  disabled={isPreviewMode}
+                  disabled={isPreviewMode || favoriteLoading}
                   onClick={handleFavorite}
+                  aria-pressed={favoriteActive}
+                  title={favoriteActive ? "Bỏ lưu nhà hàng" : "Lưu nhà hàng yêu thích"}
                 >
                   <Heart size={20} />
                 </button>
