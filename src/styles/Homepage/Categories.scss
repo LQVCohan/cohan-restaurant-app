@@ -9,31 +9,35 @@ $cream: #fff8ef;
   z-index: 4;
   width: 100%;
   overflow: hidden;
-  background: #ffffff;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 102, 0, 0.08), transparent 24rem),
+    #ffffff;
   padding: 18px 0 18px;
 
   &__container {
-    max-width: 1360px;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 24px;
 
-    @media (max-width: 768px) { padding: 0 20px; }
+    @media (max-width: 768px) { padding: 0 16px; }
   }
 
   &__header {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 14px;
   }
 
-  &--compact &__header {
-    justify-content: center;
-    flex-wrap: wrap;
-    column-gap: 22px;
-    row-gap: 8px;
-    text-align: center;
+  &__badge {
+    display: inline-flex;
+    margin-bottom: 6px;
+    color: $primary;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   &__title {
@@ -80,16 +84,10 @@ $cream: #fff8ef;
 
   &__grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
 
-    @media (max-width: 1180px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    &--compact {
-      grid-template-columns: repeat(auto-fit, minmax(250px, 310px));
-      justify-content: center;
-      max-width: 980px;
-      margin-inline: auto;
-    }
+    @media (max-width: 1180px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     @media (max-width: 620px) {
       display: flex;
