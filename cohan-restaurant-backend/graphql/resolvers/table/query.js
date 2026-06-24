@@ -1,13 +1,11 @@
 import mongoose from "mongoose";
 import Table from "../../../models/table.model.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireAnyRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 
-const TABLE_LIST_READ_PERMISSIONS = [
-  PERMISSIONS.TABLE_READ,
-  PERMISSIONS.ORDER_READ,
-  PERMISSIONS.RESERVATION_READ,
-];
+async function requireTableListAccess(ctx, restaurantId) {
+  await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_READ);
+}
 
 async function cleanupExpiredViewLocks(restaurantId) {
   const now = new Date();
@@ -23,7 +21,7 @@ export default {
     ctx,
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
+    await requireTableListAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
     const q = { restaurantId };
 
@@ -66,7 +64,7 @@ export default {
       !mongoose.isValidObjectId(restaurantId) ||
       !mongoose.isValidObjectId(floorId)
     ) return null;
-    await requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
+    await requireTableListAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
     return Table.findOne({ restaurantId, floorId, code }).lean({
       virtuals: true,

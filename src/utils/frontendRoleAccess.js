@@ -220,7 +220,17 @@ const MENU_ACTION_PERMISSION_MAP = {
   [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write", "log.read"],
 };
 
-export const canPerformMenuAction = (userOrRole, action, userPermissions = []) => {
+const userWithExplicitPermissions = (userOrRole, userPermissions = []) => {
+  if (!Array.isArray(userPermissions) || userPermissions.length === 0) {
+    return userOrRole;
+  }
+  if (userOrRole && typeof userOrRole === "object") {
+    return { ...userOrRole, effectivePermissionCodes: userPermissions };
+  }
+  return { roleName: userOrRole, effectivePermissionCodes: userPermissions };
+};
+
+export const canAccessMenuManagementAction = (userOrRole, action, userPermissions = []) => {
   const normalized = resolveUserRoleName(userOrRole);
   if (!normalized) return false;
   if (isAdminRole(normalized) || isManagerRole(normalized)) return true;
@@ -228,8 +238,11 @@ export const canPerformMenuAction = (userOrRole, action, userPermissions = []) =
   const required = MENU_ACTION_PERMISSION_MAP[action] || [];
   if (!required.length) return false;
 
-  return hasAnyPermission(userPermissions, required);
+  return hasAnyPermission(userWithExplicitPermissions(userOrRole, userPermissions), required);
 };
 
+export const canPerformMenuAction = canAccessMenuManagementAction;
+
 export const canViewMenuAction = (userOrRole, action, userPermissions = []) =>
-  canPerformMenuAction(userOrRole, action, userPermissions) || hasPermission(userPermissions, action);
+  canAccessMenuManagementAction(userOrRole, action, userPermissions) ||
+  hasPermission(userWithExplicitPermissions(userOrRole, userPermissions), action);
