@@ -3,22 +3,37 @@ import nodemailer from "nodemailer";
 import process from "process";
 
 let warnedMissingSmtp = false;
+let transporter = null;
+let transporterKey = "";
+
+function envValue(name) {
+  return String(process.env[name] || "").trim();
+}
 
 function hasSmtpCredentials() {
-  const { SMTP_USER, SMTP_PASS } = process.env;
-  return Boolean(SMTP_USER && SMTP_PASS);
+  return Boolean(envValue("SMTP_USER") && envValue("SMTP_PASS"));
+}
+
+function currentTransporterKey() {
+  return [
+    envValue("SMTP_HOST"),
+    envValue("SMTP_PORT"),
+    envValue("SMTP_USER"),
+    envValue("SMTP_PASS") ? "pass:set" : "pass:missing",
+  ].join("|");
 }
 
 function makeTransport() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+  const SMTP_HOST = envValue("SMTP_HOST");
+  const SMTP_PORT = envValue("SMTP_PORT");
+  const SMTP_USER = envValue("SMTP_USER");
+  const SMTP_PASS = envValue("SMTP_PASS");
 
   if (!hasSmtpCredentials()) {
     return null;
   }
 
-  // Nếu có HOST/PORT -> dùng SMTP chuẩn (Mailtrap, SendGrid,...)
-  // Nếu không -> dùng service Gmail (App Password)
-  const transporter =
+  const nextTransporter =
     SMTP_HOST && SMTP_PORT
       ? nodemailer.createTransport({
           host: SMTP_HOST,
@@ -31,33 +46,52 @@ function makeTransport() {
           auth: { user: SMTP_USER, pass: SMTP_PASS },
         });
 
-  // bật log/debug khi cần
   if (process.env.NODE_ENV !== "production") {
-    transporter.set("logger", true);
-    transporter.set("debug", true);
+    nextTransporter.set("logger", true);
+    nextTransporter.set("debug", true);
   }
 
+  return nextTransporter;
+}
+
+function getTransporter() {
+  const key = currentTransporterKey();
+  if (!transporter || transporterKey !== key) {
+    transporter = makeTransport();
+    transporterKey = key;
+  }
   return transporter;
 }
 
-const transporter = makeTransport();
-
-export const isMailerConfigured = hasSmtpCredentials();
+export const isMailerConfigured = () => hasSmtpCredentials();
 
 export const mailer = {
   async sendMail({ to, subject, html, text }) {
-    if (!transporter) {
+    const activeTransporter = getTransporter();
+
+    if (!activeTransporter) {
+      const missing = [
+        !envValue("SMTP_USER") && "SMTP_USER",
+        !envValue("SMTP_PASS") && "SMTP_PASS",
+      ].filter(Boolean);
+
       if (!warnedMissingSmtp) {
         warnedMissingSmtp = true;
         console.warn(
-          "[Mailer] SMTP_USER/SMTP_PASS is missing. Email sending is disabled."
+          `[Mailer] Email sending is disabled. Missing env: ${missing.join(", ") || "unknown"}.`,
         );
       }
-      return { accepted: [], rejected: [to], messageId: null, skipped: true };
+      return {
+        accepted: [],
+        rejected: [to],
+        messageId: null,
+        skipped: true,
+        error: missing.length ? `MISSING_${missing.join("_")}` : "SMTP_NOT_CONFIGURED",
+      };
     }
 
-    const from = process.env.MAIL_FROM || process.env.SMTP_USER;
-    return transporter.sendMail({ from, to, subject, html, text });
+    const from = envValue("MAIL_FROM") || envValue("SMTP_FROM") || envValue("SMTP_USER");
+    return activeTransporter.sendMail({ from, to, subject, html, text });
   },
 };
 
