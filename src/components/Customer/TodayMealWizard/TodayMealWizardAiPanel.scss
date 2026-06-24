@@ -1,0 +1,148 @@
+.today-meal-wizard__ai-panel {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+  animation: mealWizardStepIn 0.3s cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+
+.today-meal-wizard__ai-loading,
+.today-meal-wizard__ai-error,
+.today-meal-wizard__ai-result {
+  border: 1px solid rgba(255, 102, 0, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 22px rgba(255, 102, 0, 0.09);
+}
+
+.today-meal-wizard__ai-loading,
+.today-meal-wizard__ai-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px;
+  color: var(--meal-muted);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.4;
+}
+
+.today-meal-wizard__ai-loading svg,
+.today-meal-wizard__spin {
+  animation: mealWizardSpin 0.8s linear infinite;
+}
+
+.today-meal-wizard__ai-error {
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.today-meal-wizard__ai-result {
+  padding: 11px;
+  display: grid;
+  gap: 10px;
+}
+
+.today-meal-wizard__ai-kicker {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--meal-primary-soft);
+  color: var(--meal-primary-deep);
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.today-meal-wizard__ai-result p {
+  margin: 0;
+  max-height: 156px;
+  overflow: auto;
+  color: var(--meal-ink);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.48;
+  white-space: pre-line;
+  padding-right: 2px;
+}
+
+.today-meal-wizard__source-list {
+  display: grid;
+  gap: 8px;
+}
+
+.today-meal-wizard__source-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 102, 0, 0.18);
+  border-radius: 13px;
+  background: #fffaf4;
+  color: var(--meal-ink);
+  text-align: left;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.today-meal-wizard__source-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 102, 0, 0.34);
+  box-shadow: 0 8px 18px rgba(255, 102, 0, 0.1);
+}
+
+.today-meal-wizard__source-card strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.today-meal-wizard__source-card span {
+  color: var(--meal-primary-deep);
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.today-meal-wizard__chat-follow {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 102, 0, 0.2);
+  border-radius: 13px;
+  background: var(--meal-primary-soft);
+  color: var(--meal-primary-deep);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.today-meal-wizard__chat-follow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(255, 102, 0, 0.1);
+}
+
+@keyframes mealWizardSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-meal-wizard__ai-panel,
+  .today-meal-wizard__ai-loading svg,
+  .today-meal-wizard__spin {
+    animation: none !important;
+  }
+
+  .today-meal-wizard__source-card,
+  .today-meal-wizard__chat-follow {
+    transition: none !important;
+  }
+}
