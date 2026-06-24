@@ -265,16 +265,9 @@ export default function TodayMealWizard() {
     writeMinimized(value);
   };
 
-  const handleOption = (value) => {
-    setAnswers((prev) => ({ ...prev, [activeStep.id]: value }));
-    setAiError("");
-    setAiResult(null);
-    if (!isLastStep) window.setTimeout(() => setStepIndex((prev) => Math.min(prev + 1, STEP_CONFIG.length - 1)), 120);
-  };
-
-  const handleAskAi = async () => {
+  const requestAiSuggestion = async (nextAnswers = answers) => {
     const prompt = buildPrompt({
-      answers,
+      answers: nextAnswers,
       userName: user?.fullName || user?.name || "",
       restaurantId,
     });
@@ -291,8 +284,9 @@ export default function TodayMealWizard() {
             history: [],
             pageContext: {
               source: "todayMealWizard",
+              trigger: "wizard_complete_or_click",
               route: location.pathname,
-              answers,
+              answers: nextAnswers,
               userName: user?.fullName || user?.name || "",
             },
           },
@@ -304,6 +298,22 @@ export default function TodayMealWizard() {
       setAiError(getAiErrorMessage(error));
     }
   };
+
+  const handleOption = (value) => {
+    const nextAnswers = { ...answers, [activeStep.id]: value };
+    setAnswers(nextAnswers);
+    setAiError("");
+    setAiResult(null);
+
+    if (!isLastStep) {
+      window.setTimeout(() => setStepIndex((prev) => Math.min(prev + 1, STEP_CONFIG.length - 1)), 120);
+      return;
+    }
+
+    window.setTimeout(() => requestAiSuggestion(nextAnswers), 120);
+  };
+
+  const handleAskAi = () => requestAiSuggestion(answers);
 
   const handleOpenForYou = () => {
     if (isAuthenticated) {
@@ -385,6 +395,7 @@ export default function TodayMealWizard() {
               className={activeValue === option.value ? "is-selected" : ""}
               style={{ "--option-index": index }}
               onClick={() => handleOption(option.value)}
+              disabled={aiLoading}
             >
               <strong>{option.label}</strong>
               <small>{option.hint}</small>
@@ -442,7 +453,7 @@ export default function TodayMealWizard() {
         </button>
         {isLastStep ? (
           <button type="button" className="today-meal-wizard__ask" onClick={handleAskAi} disabled={!canAskAi}>
-            {aiLoading ? "Đang hỏi..." : "Hỏi AI"}
+            {aiLoading ? "Đang hỏi..." : aiResult ? "Hỏi lại" : "Hỏi AI"}
             {aiLoading ? <Loader2 size={16} className="today-meal-wizard__spin" /> : <Sparkles size={16} />}
           </button>
         ) : (
