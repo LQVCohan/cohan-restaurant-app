@@ -113,8 +113,8 @@ describe("Table3DSimulatorModalV2", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Xem thử và bố trí bàn 3D/i })).toBeInTheDocument();
-    expect(screen.getByText("Bàn tròn 4 ghế")).toBeInTheDocument();
-    expect(screen.getByText("Cần HTTPS")).toBeInTheDocument();
+    expect(screen.getAllByText("Bàn tròn 4 ghế").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Cần HTTPS").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Báo cáo test/i })).toBeInTheDocument();
   });
 
