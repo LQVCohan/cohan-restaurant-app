@@ -603,7 +603,13 @@ const StaffManagement = () => {
       );
     }
     if (currentPage === "attendance") {
-      return <AttendancePage currentTime={currentTime} currentDate={currentDate} />;
+      return (
+        <AttendancePage
+          currentTime={currentTime}
+          currentDate={currentDate}
+          restaurantId={selectedRestaurant}
+        />
+      );
     }
     if (currentPage === "leave") {
       return <LeaveManagement restaurantId={selectedRestaurant} />;
@@ -701,7 +707,7 @@ const StaffManagement = () => {
       <StaffAvatarModal
         isOpen={modals.staffAvatar}
         employee={selectedEmployee}
-        loading={uploadingAvatar}
+        uploading={uploadingAvatar}
         onClose={() => closeModal("staffAvatar")}
         onSubmit={handleAvatarSubmit}
       />
