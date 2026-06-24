@@ -228,8 +228,18 @@ export const canPerformMenuAction = (userOrRole, action, userPermissions = []) =
   const required = MENU_ACTION_PERMISSION_MAP[action] || [];
   if (!required.length) return false;
 
-  return hasAnyPermission(userPermissions, required);
+  return hasAnyPermission({ ...(typeof userOrRole === "object" ? userOrRole : {}), effectivePermissionCodes: userPermissions }, required);
 };
 
+const getUserPermissionCodes = (userOrRole, explicit = []) => {
+  if (Array.isArray(explicit) && explicit.length) return explicit;
+  if (!userOrRole || typeof userOrRole !== "object") return [];
+  return userOrRole.effectivePermissionCodes || userOrRole.permissionCodes || userOrRole.permissions || [];
+};
+
+export const canAccessMenuManagementAction = (userOrRole, action, userPermissions = []) =>
+  canPerformMenuAction(userOrRole, action, getUserPermissionCodes(userOrRole, userPermissions));
+
 export const canViewMenuAction = (userOrRole, action, userPermissions = []) =>
-  canPerformMenuAction(userOrRole, action, userPermissions) || hasPermission(userPermissions, action);
+  canAccessMenuManagementAction(userOrRole, action, userPermissions) ||
+  hasPermission({ ...(typeof userOrRole === "object" ? userOrRole : {}), effectivePermissionCodes: getUserPermissionCodes(userOrRole, userPermissions) }, action);

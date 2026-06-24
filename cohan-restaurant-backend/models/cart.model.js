@@ -7,11 +7,14 @@ const { Schema, Types } = mongoose;
 
 const CartItemSchema = new Schema(
   {
+    itemType: { type: String, enum: ["MENU_ITEM", "COMBO"], default: "MENU_ITEM", index: true },
     menuItemId: {
       type: Types.ObjectId,
       ref: "MenuItem",
-      required: true,
+      required: false,
     },
+    comboId: { type: Types.ObjectId, ref: "Combo" },
+    comboSnapshot: { type: Schema.Types.Mixed, default: null },
     restaurantId: {
       type: Types.ObjectId,
       ref: "Restaurant",

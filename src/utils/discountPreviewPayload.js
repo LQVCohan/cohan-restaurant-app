@@ -31,6 +31,9 @@ export const mapCartItemToOrderItemInput = (
   item = {},
   { includeCartHoldRef = false } = {},
 ) => {
+  const isCombo = item.itemType === "COMBO" || item.comboId;
+  const comboSnapshot = item.comboSnapshot || {};
+  const firstComboItemId = comboSnapshot.items?.[0]?.menuItemId;
   const servingKey =
     item.servingKey ||
     item.servingVariantKey ||
@@ -48,8 +51,11 @@ export const mapCartItemToOrderItemInput = (
   );
 
   const payload = {
-    dishId: item.dishId || item.menuId || item.id,
-    menuId: item.menuId || item.dishId || item.id,
+    itemType: isCombo ? "COMBO" : "MENU_ITEM",
+    comboId: isCombo ? (item.comboId || comboSnapshot.comboId || item.id) : undefined,
+    comboSnapshot: isCombo ? comboSnapshot : undefined,
+    dishId: isCombo ? firstComboItemId : (item.dishId || item.menuId || item.id),
+    menuId: isCombo ? firstComboItemId : (item.menuId || item.dishId || item.id),
     categoryId: item.categoryId || null,
     name: item.name || "",
     unit: item.unit || "phần",

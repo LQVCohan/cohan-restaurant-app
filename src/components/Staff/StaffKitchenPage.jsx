@@ -3,6 +3,7 @@ import { AuthContext } from "@/context/AuthContext";
 import useOrderManagement from "@/hooks/useOrderManagement";
 import useSocketOrder from "@/hooks/useSocketOrder";
 import { useNotification } from "@/hooks/useNotification";
+import { getOrderLineDisplay } from "@/utils/orderLineDisplay";
 
 const ITEM_STATUS_LABELS = {
   pending: "Chờ bếp nhận",
@@ -483,13 +484,21 @@ const StaffKitchenPage = () => {
                     const saveKey = `${order.id}:${itemKey}`;
                     const station = getItemStation(item);
                     const timingBadges = getTimingBadges(item);
+                    const lineDisplay = getOrderLineDisplay(item, { mode: "kitchen" });
                     return (
                       <div key={itemKey} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="font-medium text-gray-900">
-                              x{formatQuantity(item.quantity)} {item.name || "Món"}
+                              {lineDisplay.isComboLine ? "Combo: " : ""}x{formatQuantity(lineDisplay.quantity)} {lineDisplay.displayName}
                             </div>
+                            {lineDisplay.isComboLine && lineDisplay.childItems.length > 0 ? (
+                              <ul className="mt-2 space-y-1 border-l-2 border-green-200 pl-3 text-xs text-gray-700" aria-label="Món con trong combo">
+                                {lineDisplay.childItems.map((child) => (
+                                  <li key={child.key}>{child.qty}× {child.name}{child.note ? ` · ${child.note}` : ""}</li>
+                                ))}
+                              </ul>
+                            ) : null}
                             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                               <span className={`rounded-full px-2.5 py-1 font-medium ${getKitchenItemBadgeClassName(status)}`}>
                                 {ITEM_STATUS_LABELS[status] || status}

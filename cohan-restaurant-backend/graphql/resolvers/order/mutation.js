@@ -187,6 +187,34 @@ function mapItemToStation(item = {}) {
   return isDrink ? PRINT_STATIONS.bar : PRINT_STATIONS.kitchen;
 }
 
+
+function buildPrintItemLine(it) {
+  const itemType = String(it?.itemType || "MENU_ITEM").toUpperCase();
+  const comboSnapshot = it?.comboSnapshot || null;
+  const quantity = Number(it?.quantity || 0);
+  const comboItems = itemType === "COMBO" && Array.isArray(comboSnapshot?.items)
+    ? comboSnapshot.items.map((child, index) => ({
+        menuItemId: String(child?.menuItemId || child?.id || ""),
+        name: child?.name || "Món trong combo",
+        quantity: Math.max(1, Number(child?.qty || child?.quantity || 1)) * Math.max(1, quantity || 1),
+        note: child?.note || child?.options || "",
+        index,
+      }))
+    : [];
+
+  return {
+    orderItemId: String(it?._id || ""),
+    dishId: String(it?.dishId || ""),
+    name: comboSnapshot?.name || it?.name || "",
+    quantity,
+    note: it?.note || "",
+    itemType,
+    comboId: it?.comboId ? String(it.comboId) : "",
+    comboSnapshot: itemType === "COMBO" ? comboSnapshot : null,
+    comboItems,
+  };
+}
+
 async function enqueuePrintJobsForConfirmedOrder({
   order,
   printType = "order_confirmed",
@@ -225,13 +253,7 @@ async function enqueuePrintJobsForConfirmedOrder({
         stationType: stationId,
         printerId,
         printType,
-        items: (items || []).map((it) => ({
-          orderItemId: String(it?._id || ""),
-          dishId: String(it?.dishId || ""),
-          name: it?.name || "",
-          quantity: Number(it?.quantity || 0),
-          note: it?.note || "",
-        })),
+        items: (items || []).map(buildPrintItemLine),
         status: "pending",
         retryCount: 0,
         payload: { orderCode: order.orderCode, tableCode: order.tableCode },
@@ -566,6 +588,11 @@ async function validateAndReleaseCartHoldTx({
     new Date(cartItem.holdExpiresAt) <= new Date()
   ) {
     throw new Error(CART_HOLD_CHECKOUT_ERROR);
+  }
+
+  if (String(cartItem.itemType || "MENU_ITEM") === "COMBO") {
+    if (String(rawItem.itemType || "") !== "COMBO" || String(cartItem.comboId || "") !== String(rawItem.comboId || "")) throw new Error(CART_HOLD_CHECKOUT_ERROR);
+    return { cart, cartItemId };
   }
 
   const checkoutMenuItemId = rawItem.dishId || rawItem.menuId;
@@ -1930,6 +1957,7 @@ export const OrderMutation = {
         throw new Error("Each checkout item must include valid restaurantId");
       }
 
+      const isComboCheckoutItem = String(rawItem?.itemType || "MENU_ITEM") === "COMBO";
       const menuItemId = rawItem?.dishId || rawItem?.menuId;
       if (!menuItemId) {
         throw new Error("Each checkout item must include dishId or menuId");
@@ -1946,6 +1974,14 @@ export const OrderMutation = {
         menuId: rawItem?.menuId || menuItemId,
         servingKey: normalizeCartHoldServingKey(rawItem?.servingKey),
       });
+      if (isComboCheckoutItem) {
+        orderItem.itemType = "COMBO";
+        orderItem.comboId = rawItem.comboId;
+        orderItem.comboSnapshot = rawItem.comboSnapshot || null;
+        orderItem.baseUnitPrice = Number(rawItem.comboSnapshot?.comboPrice || rawItem.price || orderItem.baseUnitPrice || 0);
+        orderItem.unitPrice = orderItem.baseUnitPrice;
+        orderItem.lineSubtotal = orderItem.unitPrice * Number(orderItem.quantity || 1);
+      }
 
       const key = String(rid);
       if (!grouped.has(key)) {
@@ -2019,11 +2055,12 @@ export const OrderMutation = {
             if (released) releasedCartItems.push(released);
           }
 
-          const hydratedItems = await hydrateCheckoutOrderItems({
-            restaurantId,
-            items: normalizedItems,
-            session,
-          });
+          const comboItems = normalizedItems.filter((item) => item.itemType === "COMBO");
+          const regularItems = normalizedItems.filter((item) => item.itemType !== "COMBO");
+          const hydratedItems = [
+            ...(regularItems.length ? await hydrateCheckoutOrderItems({ restaurantId, items: regularItems, session }) : []),
+            ...comboItems,
+          ];
 
           const groupShippingFee =
             orderType === "delivery" && grouped.size > 1

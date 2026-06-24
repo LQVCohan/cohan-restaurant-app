@@ -6,7 +6,10 @@
 type CartItem {
   id: ID! # _id của subdocument (đã map ở resolver CartItemFieldResolvers.id)
   restaurantId: ID!
-  menuItemId: ID!
+  itemType: String!
+  menuItemId: ID
+  comboId: ID
+  comboSnapshot: JSON
 
   name: String
   price: Float
@@ -155,6 +158,7 @@ extend type Query {
 
 extend type Mutation {
   addCartItem(input: AddCartItemInput!): Cart!
+  addComboToCart(comboId: ID!, quantity: Int = 1): Cart!
   updateCartItem(input: UpdateCartItemInput!): Cart!
   removeCartItem(input: RemoveCartItemInput!): Cart!
   clearCart(input: ClearCartInput!): Boolean!
@@ -165,7 +169,10 @@ extend type Mutation {
 
 
 type MenuItemLiveState {
-  menuItemId: ID!
+  itemType: String!
+  menuItemId: ID
+  comboId: ID
+  comboSnapshot: JSON
   restaurantId: ID!
   servingVariantKey: String
   viewerCount: Int!
@@ -183,7 +190,10 @@ type MenuItemLiveState {
 
 input MenuItemLiveStateInput {
   restaurantId: ID!
-  menuItemId: ID!
+  itemType: String!
+  menuItemId: ID
+  comboId: ID
+  comboSnapshot: JSON
   servingVariantKey: String
   userId: ID
 }

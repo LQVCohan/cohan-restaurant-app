@@ -2,6 +2,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { CartProvider, useCart } from '../CartProvider';
 
+vi.mock('@apollo/client', async () => {
+  const actual = await vi.importActual('@apollo/client');
+  return { ...actual, useQuery: () => ({ data: null, refetch: vi.fn(), loading: false }) };
+});
+
 vi.mock('../../hooks/useCart', () => ({
   useCart: () => ({ items: [{ id: 1 }], totalItems: 1 }),
 }));

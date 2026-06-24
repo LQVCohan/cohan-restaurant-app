@@ -22,6 +22,7 @@ import {
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
 import { formatDiscountReasonLabel } from "@/utils/discountDisplay";
+import { getOrderLineDisplay } from "@/utils/orderLineDisplay";
 import OrderTrackingQrCard from "./OrderTrackingQrCard";
 
 const formatCurrency = (amount) => {
@@ -176,6 +177,7 @@ const OrderItemRow = React.memo(
         document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const lineDisplay = getOrderLineDisplay(item, { mode: "receipt" });
     const config = ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending;
     const StatusIcon = config.icon;
 
@@ -220,11 +222,19 @@ const OrderItemRow = React.memo(
                 ? `Còn lại: x${item.quantity}`
                 : `x${item.quantity}`}
             </span>
-            <span className="itemName">{item.name}</span>
+            <span className="itemName">{lineDisplay.displayName}</span>
+            {lineDisplay.isComboLine && <span className="metaTag combo">Combo</span>}
             {Number(item.cancelledQuantity || 0) > 0 && (
               <span className="metaTag">Đã hủy: x{item.cancelledQuantity}</span>
             )}
           </div>
+          {lineDisplay.isComboLine && lineDisplay.childItems.length > 0 && (
+            <ul className="itemCard__comboItems" aria-label="Món trong combo">
+              {lineDisplay.childItems.map((child) => (
+                <li key={child.key}>{child.qty}× {child.name}</li>
+              ))}
+            </ul>
+          )}
           <div className="itemCard__meta">
             {item.modifiersPrice > 0 && (
               <span className="metaTag mod">
@@ -240,7 +250,8 @@ const OrderItemRow = React.memo(
             </div>
           )}
           <div className="itemCard__price">
-            {formatCurrency(item._lineTotal)}
+            {formatCurrency(lineDisplay.totalPrice || item._lineTotal)}
+            {lineDisplay.discountAmount > 0 && <small>Tiết kiệm {formatCurrency(lineDisplay.discountAmount)}</small>}
           </div>
           {pendingVoidRequests.map((req) => (
             <div key={req.requestId} className="itemCard__note">

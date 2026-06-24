@@ -5,6 +5,7 @@ import { useCart } from "@/context/CartProvider";
 import { AuthContext } from "@/context/AuthContext";
 import { useCustomerCartActions } from "@/hooks/useCustomerCartActions";
 import { getHoldStatus, formatHoldCountdown, hasExpiredHoldItems } from "@/components/Customer/Homepage_Client/components/Cart";
+import { getOrderLineDisplay } from "@/utils/orderLineDisplay";
 import "./CartPage.scss";
 
 const formatVND = (value = 0) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
@@ -18,7 +19,7 @@ const groupCartItems = (cart = []) => {
     }
     const group = map.get(restaurantId);
     group.items.push(item);
-    group.subtotal += Number(item.price || 0) * Number(item.quantity || 1);
+    group.subtotal += getOrderLineDisplay(item).totalPrice;
   }
   return Array.from(map.values());
 };
@@ -140,13 +141,23 @@ export default function CartPage() {
                   {group.items.map((item) => {
                     const hold = getHoldStatus(item, now);
                     const itemBusy = cartActions.isClearing || !!cartActions.busyItemIds?.[item.cartLineKey || item.id];
+                    const line = getOrderLineDisplay(item);
                     return (
                       <div className="cart-page__item" key={item.cartLineKey || item.backendCartItemId || item.id}>
-                        <img src={item.image || item.thumbImage || "/default-dishes.jpg"} alt={item.name || "Món ăn"} />
+                        <img src={item.image || item.thumbImage || "/default-dishes.jpg"} alt={line.displayName || "Món ăn"} />
                         <div className="cart-page__item-main">
-                          <h3>{item.name || "Món ăn"}</h3>
-                          {item.note && <p className="cart-page__item-note">Ghi chú: {item.note}</p>}
-                          {item.servingVariantKey && <span className="cart-page__item-chip">Tùy chọn: {item.servingVariantKey}</span>}
+                          <h3>{line.displayName}</h3>
+                          {line.isComboLine && <span className="cart-page__item-chip cart-page__item-chip--combo">{line.badgeLabel}</span>}
+                          {line.isComboLine && line.childItems.length > 0 && (
+                            <ul className="cart-page__combo-items">
+                              {line.childItems.map((comboItem) => (
+                                <li key={`${item.id}-${comboItem.key}`}>{comboItem.qty}× {comboItem.name}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {line.discountAmount > 0 && <p className="cart-page__item-note">Tiết kiệm: {formatVND(line.discountAmount)}</p>}
+                          {line.note && <p className="cart-page__item-note">Ghi chú: {line.note}</p>}
+                          {item.itemType !== "COMBO" && item.servingVariantKey && <span className="cart-page__item-chip">Tùy chọn: {item.servingVariantKey}</span>}
                           {hold.state !== "none" && (
                             <span className={`cart-page__hold cart-page__hold--${hold.state}`}>
                               {hold.state === "expired"
@@ -156,7 +167,7 @@ export default function CartPage() {
                           )}
                         </div>
                         <div className="cart-page__item-actions">
-                          <strong>{formatVND(Number(item.price || 0) * Number(item.quantity || 1))}</strong>
+                          <strong>{formatVND(line.totalPrice)}</strong>
                           <div className="cart-page__qty">
                             <button type="button" disabled={itemBusy || item.quantity <= 1} onClick={() => cartActions.updateCartItemQuantity(item, -1)}>-</button>
                             <span>{item.quantity || 1}</span>
