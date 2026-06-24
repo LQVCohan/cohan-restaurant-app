@@ -1,5 +1,6 @@
 import React, { useContext, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
@@ -9,6 +10,15 @@ import {
   STAFF_ORDER_ROLES,
 } from "@/utils/frontendRoleAccess";
 import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
+
+const STAFF_RESTAURANT_BASIC = gql`
+  query StaffRestaurantBasic($id: ID!) {
+    restaurant(id: $id) {
+      id
+      name
+    }
+  }
+`;
 
 const getDisplayName = (user) => {
   if (!user || typeof user !== "object") return null;
@@ -32,8 +42,15 @@ const getRoleLabel = (user, normalizedRole) => {
   );
 };
 
-const getRestaurantLabel = (user, restaurants) => {
-  return user?.restaurantName || user?.restaurant?.name || restaurants?.[0]?.name || "Chưa xác định cơ sở làm việc";
+const getRestaurantLabel = (user, restaurants, restaurantFromQuery) => {
+  return (
+    user?.restaurantName ||
+    user?.restaurantForStaffName ||
+    user?.restaurant?.name ||
+    restaurantFromQuery?.name ||
+    restaurants?.[0]?.name ||
+    "Chưa xác định cơ sở làm việc"
+  );
 };
 
 const isActivePath = (location, target) => {
@@ -53,7 +70,15 @@ const StaffLayout = ({ children }) => {
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
-  const restaurantLabel = getRestaurantLabel(user, restaurants);
+  const restaurantId = typeof user?.restaurantForStaff === "object"
+    ? user?.restaurantForStaff?.id || user?.restaurantForStaff?._id
+    : user?.restaurantForStaff;
+  const { data: restaurantData } = useQuery(STAFF_RESTAURANT_BASIC, {
+    variables: { id: restaurantId },
+    skip: !restaurantId,
+    fetchPolicy: "cache-first",
+  });
+  const restaurantLabel = getRestaurantLabel(user, restaurants, restaurantData?.restaurant);
 
   const navItems = useMemo(
     () => [
