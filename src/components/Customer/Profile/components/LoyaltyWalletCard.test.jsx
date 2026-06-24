@@ -1,23 +1,27 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import LoyaltyWalletCard from "./LoyaltyWalletCard";
 
+const renderCard = (user) =>
+  render(
+    <MemoryRouter>
+      <LoyaltyWalletCard user={user} />
+    </MemoryRouter>,
+  );
+
 describe("LoyaltyWalletCard", () => {
   it("shows member tier, points, spending and wallet status", () => {
-    render(
-      <LoyaltyWalletCard
-        user={{
-          loyaltyPoints: 1600,
-          totalOrders: 12,
-          totalSpending: 2500000,
-          wallet: {
-            status: "active",
-            balance: 300000,
-            currency: "VND",
-          },
-        }}
-      />,
-    );
+    renderCard({
+      loyaltyPoints: 1600,
+      totalOrders: 12,
+      totalSpending: 2500000,
+      wallet: {
+        status: "active",
+        balance: 300000,
+        currency: "VND",
+      },
+    });
 
     expect(screen.getByText("Gold")).toBeInTheDocument();
     expect(screen.getByText("1.600 điểm thưởng")).toBeInTheDocument();
@@ -25,10 +29,11 @@ describe("LoyaltyWalletCard", () => {
     expect(screen.getByText(/2.500.000/)).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
     expect(screen.getByText(/300.000/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mở ví/i })).toBeInTheDocument();
   });
 
   it("shows inactive wallet state when wallet is missing", () => {
-    render(<LoyaltyWalletCard user={{ loyaltyPoints: 100, totalOrders: 0, totalSpending: 0 }} />);
+    renderCard({ loyaltyPoints: 100, totalOrders: 0, totalSpending: 0 });
 
     expect(screen.getByText("Member")).toBeInTheDocument();
     expect(screen.getByText("100 điểm thưởng")).toBeInTheDocument();
