@@ -1,5 +1,5 @@
 // src/hooks/useAvatarUploadLocal.js
-import { getGraphqlUrl, toApiAssetUrl } from "@/lib/apiBaseUrl";
+import { toApiAssetUrl, toBackendRootUrl } from "@/lib/apiBaseUrl";
 import { getToken, setAuth } from "@/lib/authStorage";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
 
@@ -17,23 +17,7 @@ const getAuthHeader = async () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-const stripGraphqlSuffix = (value = "") =>
-  String(value || "").replace(/\/graphql\/?$/, "").replace(/\/$/, "");
-
-const getUploadBaseUrl = () => {
-  const graphqlUrl = getGraphqlUrl();
-  const base = stripGraphqlSuffix(graphqlUrl);
-
-  // Upload routes are mounted at backend root: /upload, /upload/sign,
-  // /upload/complete. Do not route these through /api.
-  if (!base || base === "/") return "";
-  if (base === "/api" || base.endsWith("/api")) {
-    return base.replace(/\/api$/, "");
-  }
-  return base;
-};
-
-const toUploadUrl = (pathname) => `${getUploadBaseUrl()}${pathname}`;
+const toUploadUrl = (pathname) => toBackendRootUrl(pathname);
 const normalizeUploadedUrl = (url) => toApiAssetUrl(url);
 
 export function useAvatarUploadLocal() {
