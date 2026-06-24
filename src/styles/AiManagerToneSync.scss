@@ -1,0 +1,421 @@
+/* AI manager tone sync pass.
+   Scope: AI chatbot analytics/settings/knowledge and AI handoff pages.
+   Visual-only: keeps GraphQL, auth, navigation and data flow unchanged. */
+
+.manager-layout--ai-chatbot-analytics,
+.manager-layout--ai-chatbot-settings,
+.manager-layout--ai-chatbot-knowledge,
+.manager-layout--ai-handoff {
+  --ai-sync-primary: #0f6f66;
+  --ai-sync-primary-deep: #07544e;
+  --ai-sync-primary-soft: #edf7f4;
+  --ai-sync-accent: #a8855f;
+  --ai-sync-accent-deep: #7f5731;
+  --ai-sync-accent-soft: #f4eadc;
+  --ai-sync-bg: #f6efe3;
+  --ai-sync-paper: #fffdf8;
+  --ai-sync-paper-soft: #fbf6ed;
+  --ai-sync-ink: #24303f;
+  --ai-sync-muted: #5d6678;
+  --ai-sync-subtle: #7f8998;
+  --ai-sync-line: rgba(116, 88, 54, 0.16);
+  --ai-sync-line-strong: rgba(116, 88, 54, 0.28);
+  --ai-sync-success: #1f7a4b;
+  --ai-sync-success-bg: #dff2e7;
+  --ai-sync-warning: #a66a18;
+  --ai-sync-warning-bg: #fff0d1;
+  --ai-sync-danger: #bd5b43;
+  --ai-sync-danger-bg: #f8e2da;
+  --ai-sync-shadow: 0 20px 46px rgba(48, 40, 30, 0.11);
+  --ai-sync-shadow-strong: 0 26px 62px rgba(48, 40, 30, 0.16);
+}
+
+.manager-layout--ai-chatbot-analytics .manager-layout__content,
+.manager-layout--ai-chatbot-settings .manager-layout__content,
+.manager-layout--ai-chatbot-knowledge .manager-layout__content,
+.manager-layout--ai-handoff .manager-layout__content {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(168, 133, 95, 0.16), transparent 30rem),
+    radial-gradient(circle at 88% 12%, rgba(15, 111, 102, 0.1), transparent 28rem),
+    linear-gradient(180deg, #fbf6ed 0%, #f1e8da 100%) !important;
+}
+
+.manager-layout--ai-chatbot-analytics .manager-page-shell,
+.manager-layout--ai-chatbot-settings .manager-page-shell,
+.manager-layout--ai-chatbot-knowledge .manager-page-shell,
+.manager-layout--ai-handoff .manager-page-shell {
+  width: min(100%, 1500px) !important;
+  max-width: 1500px !important;
+}
+
+.manager-layout--ai-handoff .manager-page-shell__body,
+.manager-layout--ai-chatbot-analytics .manager-page-shell__body,
+.manager-layout--ai-chatbot-settings .manager-page-shell__body,
+.manager-layout--ai-chatbot-knowledge .manager-page-shell__body {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Shared AI admin pages */
+.ai-admin-page {
+  --ai-bg: var(--ai-sync-bg) !important;
+  --ai-surface: var(--ai-sync-paper) !important;
+  --ai-surface-soft: var(--ai-sync-paper-soft) !important;
+  --ai-border: var(--ai-sync-line) !important;
+  --ai-border-strong: var(--ai-sync-line-strong) !important;
+  --ai-text: var(--ai-sync-ink) !important;
+  --ai-muted: var(--ai-sync-muted) !important;
+  --ai-subtle: var(--ai-sync-subtle) !important;
+  --ai-accent: var(--ai-sync-primary) !important;
+  --ai-accent-hover: var(--ai-sync-primary-deep) !important;
+  --ai-accent-soft: var(--ai-sync-primary-soft) !important;
+  --ai-success: var(--ai-sync-success) !important;
+  --ai-success-bg: var(--ai-sync-success-bg) !important;
+  --ai-warning: var(--ai-sync-warning) !important;
+  --ai-warning-bg: var(--ai-sync-warning-bg) !important;
+  --ai-danger: var(--ai-sync-danger) !important;
+  --ai-danger-bg: var(--ai-sync-danger-bg) !important;
+  --ai-shadow-sm: 0 14px 32px rgba(48, 40, 30, 0.08) !important;
+  --ai-shadow-md: var(--ai-sync-shadow) !important;
+
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.08), transparent 22rem),
+    radial-gradient(circle at 100% 0%, rgba(168, 133, 95, 0.13), transparent 26rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(251, 246, 237, 0.9)) !important;
+  border: 1px solid rgba(116, 88, 54, 0.12) !important;
+  box-shadow: 0 24px 58px rgba(48, 40, 30, 0.1) !important;
+}
+
+.ai-admin-hero,
+.ai-admin-panel,
+.ai-admin-metrics article,
+.ai-admin-tabs,
+.ai-admin-control-card,
+.ai-admin-guide-card,
+.ai-admin-drawer-panel,
+.customer-analytics-panel,
+.ai-analytics-card,
+.ai-admin-review-strip,
+.ai-admin-settings-status-strip article,
+.ai-admin-settings-footer,
+.ai-admin-modal {
+  border-color: var(--ai-sync-line) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(251, 246, 237, 0.9)) !important;
+  box-shadow: var(--ai-sync-shadow), inset 0 1px rgba(255, 255, 255, 0.82) !important;
+}
+
+.ai-admin-hero {
+  position: relative !important;
+  overflow: hidden !important;
+  border-left: 4px solid rgba(15, 111, 102, 0.36) !important;
+}
+
+.ai-admin-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -8rem -9rem auto;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 111, 102, 0.14), transparent 66%);
+  pointer-events: none;
+}
+
+.ai-admin-eyebrow {
+  color: var(--ai-sync-accent) !important;
+}
+
+.ai-admin-hero h2,
+.ai-admin-panel h3,
+.ai-admin-section-heading h3,
+.ai-admin-card h4,
+.ai-admin-empty h4,
+.ai-analytics-card__header h3,
+.ai-admin-review-strip__summary h3,
+.ai-admin-modal h3 {
+  color: var(--ai-sync-ink) !important;
+}
+
+.ai-admin-hero p:not(.ai-admin-eyebrow),
+.ai-admin-section-heading p,
+.ai-admin-panel__header p,
+.ai-admin-card p,
+.ai-admin-empty p,
+.ai-admin-help,
+.ai-analytics-card__header p,
+.ai-admin-review-strip__summary p {
+  color: var(--ai-sync-muted) !important;
+}
+
+.ai-admin-field input,
+.ai-admin-field select,
+.ai-admin-field textarea,
+.ai-admin-import-export textarea,
+.ai-handoff-inbox input,
+.ai-handoff-inbox select,
+.ai-handoff-inbox textarea {
+  border-color: var(--ai-sync-line-strong) !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  color: var(--ai-sync-ink) !important;
+}
+
+.ai-admin-field input:focus,
+.ai-admin-field select:focus,
+.ai-admin-field textarea:focus,
+.ai-admin-import-export textarea:focus,
+.ai-handoff-inbox input:focus,
+.ai-handoff-inbox select:focus,
+.ai-handoff-inbox textarea:focus {
+  border-color: rgba(15, 111, 102, 0.52) !important;
+  box-shadow: 0 0 0 4px rgba(15, 111, 102, 0.12) !important;
+}
+
+.ai-admin-actions button,
+.ai-admin-panel button,
+.ai-admin-card button,
+.ai-admin-import-export button,
+.ai-admin-toolbar button,
+.ai-admin-link-button {
+  background: linear-gradient(135deg, var(--ai-sync-primary), var(--ai-sync-primary-deep)) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 14px 28px rgba(15, 111, 102, 0.2) !important;
+}
+
+.ai-admin-actions button:hover:not(:disabled),
+.ai-admin-panel button:hover:not(:disabled),
+.ai-admin-card button:hover:not(:disabled),
+.ai-admin-import-export button:hover:not(:disabled),
+.ai-admin-toolbar button:hover:not(:disabled),
+.ai-admin-link-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #118075, var(--ai-sync-primary-deep)) !important;
+  box-shadow: 0 18px 34px rgba(15, 111, 102, 0.26) !important;
+}
+
+.ai-admin-button--secondary,
+.ai-admin-actions .ai-admin-button--secondary,
+.ai-admin-panel .ai-admin-button--secondary,
+.ai-admin-card .ai-admin-button--secondary {
+  border: 1px solid rgba(15, 111, 102, 0.18) !important;
+  background: var(--ai-sync-primary-soft) !important;
+  color: var(--ai-sync-primary) !important;
+  box-shadow: none !important;
+}
+
+.ai-admin-button--danger,
+.ai-admin-actions .ai-admin-button--danger,
+.ai-admin-panel .ai-admin-button--danger,
+.ai-admin-card .ai-admin-button--danger {
+  border: 1px solid rgba(189, 91, 67, 0.24) !important;
+  background: var(--ai-sync-danger-bg) !important;
+  color: #9c3f31 !important;
+  box-shadow: none !important;
+}
+
+.ai-admin-tabs {
+  background: rgba(255, 253, 248, 0.78) !important;
+  backdrop-filter: blur(10px);
+}
+
+.ai-admin-tabs button.is-active,
+.ai-admin-tabs button:disabled {
+  background: linear-gradient(135deg, var(--ai-sync-primary), var(--ai-sync-primary-deep)) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 10px 22px rgba(15, 111, 102, 0.24) !important;
+}
+
+.ai-admin-chip,
+.ai-admin-status,
+.ai-admin-selection,
+.ai-admin-tag,
+.ai-admin-tag--muted,
+.ai-admin-card__meta span {
+  border: 1px solid rgba(15, 111, 102, 0.14) !important;
+  background: var(--ai-sync-primary-soft) !important;
+  color: var(--ai-sync-primary) !important;
+}
+
+.ai-admin-chip--warning,
+.ai-admin-status.is-waiting {
+  border-color: rgba(213, 137, 53, 0.24) !important;
+  background: var(--ai-sync-warning-bg) !important;
+  color: #8b4b1f !important;
+}
+
+.ai-admin-chip--danger {
+  border-color: rgba(189, 91, 67, 0.26) !important;
+  background: var(--ai-sync-danger-bg) !important;
+  color: #9c3f31 !important;
+}
+
+.ai-admin-chip--success,
+.ai-admin-status.is-on {
+  border-color: rgba(31, 122, 75, 0.22) !important;
+  background: var(--ai-sync-success-bg) !important;
+  color: var(--ai-sync-success) !important;
+}
+
+.ai-admin-review-strip {
+  border-color: rgba(168, 133, 95, 0.28) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 240, 209, 0.76), rgba(255, 253, 248, 0.96)) !important;
+}
+
+.ai-admin-review-strip__item,
+.ai-analytics-list__item,
+.ai-admin-card,
+.ai-admin-check,
+.ai-admin-check--card,
+.ai-admin-result-summary,
+.ai-admin-import-export,
+.ai-admin-eval-cases li {
+  border-color: var(--ai-sync-line) !important;
+  background: rgba(255, 253, 248, 0.76) !important;
+}
+
+.ai-admin-settings-status-strip article::before {
+  background: var(--ai-sync-accent) !important;
+  box-shadow: 0 0 0 4px rgba(168, 133, 95, 0.12) !important;
+}
+
+.ai-admin-settings-status-strip article.is-active::before {
+  background: var(--ai-sync-primary) !important;
+  box-shadow: 0 0 0 4px rgba(15, 111, 102, 0.12) !important;
+}
+
+.ai-admin-settings-preview__window {
+  border-color: var(--ai-sync-line) !important;
+  background: linear-gradient(180deg, #fffdf8 0%, #f6efe3 100%) !important;
+  box-shadow: 0 22px 52px rgba(48, 40, 30, 0.12), inset 0 1px rgba(255, 255, 255, 0.82) !important;
+}
+
+.ai-admin-settings-preview__topbar i {
+  background: linear-gradient(135deg, var(--ai-sync-primary), var(--ai-sync-accent)) !important;
+  box-shadow: 0 10px 22px rgba(15, 111, 102, 0.22) !important;
+}
+
+.ai-admin-panel pre {
+  background: #24303f !important;
+  color: #fffaf3 !important;
+}
+
+/* AI handoff inbox */
+.ai-handoff-inbox {
+  --ai-bg: var(--ai-sync-bg) !important;
+  --ai-surface: var(--ai-sync-paper) !important;
+  --ai-surface-soft: var(--ai-sync-paper-soft) !important;
+  --ai-border: var(--ai-sync-line) !important;
+  --ai-border-strong: var(--ai-sync-line-strong) !important;
+  --ai-text: var(--ai-sync-ink) !important;
+  --ai-muted: var(--ai-sync-muted) !important;
+  --ai-subtle: var(--ai-sync-subtle) !important;
+  --ai-accent: var(--ai-sync-primary) !important;
+  --ai-accent-hover: var(--ai-sync-primary-deep) !important;
+  --ai-accent-soft: var(--ai-sync-primary-soft) !important;
+  --ai-danger: var(--ai-sync-danger) !important;
+  --ai-danger-bg: var(--ai-sync-danger-bg) !important;
+  --ai-shadow-sm: var(--ai-sync-shadow) !important;
+  --ai-shadow-md: var(--ai-sync-shadow-strong) !important;
+
+  width: min(100%, 1480px) !important;
+  max-width: 1480px !important;
+  border: 1px solid rgba(116, 88, 54, 0.12) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.08), transparent 22rem),
+    radial-gradient(circle at 100% 0%, rgba(168, 133, 95, 0.13), transparent 26rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(251, 246, 237, 0.9)) !important;
+  box-shadow: 0 24px 58px rgba(48, 40, 30, 0.1) !important;
+}
+
+.ai-handoff-inbox__panel {
+  border-color: var(--ai-sync-line) !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  box-shadow: var(--ai-sync-shadow), inset 0 1px rgba(255, 255, 255, 0.82) !important;
+}
+
+.ai-handoff-inbox__panel-header {
+  border-bottom-color: var(--ai-sync-line) !important;
+  background: linear-gradient(135deg, rgba(237, 247, 244, 0.78), rgba(244, 234, 220, 0.56)) !important;
+}
+
+.ai-handoff-inbox__eyebrow,
+.ai-handoff-inbox__message strong {
+  color: var(--ai-sync-accent) !important;
+}
+
+.ai-handoff-inbox__tabs {
+  border: 1px solid rgba(15, 111, 102, 0.12) !important;
+  background: rgba(237, 247, 244, 0.86) !important;
+}
+
+.ai-handoff-inbox__tabs button.active {
+  background: linear-gradient(135deg, var(--ai-sync-primary), var(--ai-sync-primary-deep)) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 10px 22px rgba(15, 111, 102, 0.24) !important;
+}
+
+.ai-handoff-inbox__item:hover,
+.ai-handoff-inbox__item.active {
+  background: rgba(237, 247, 244, 0.72) !important;
+}
+
+.ai-handoff-inbox__item.active {
+  box-shadow: inset 4px 0 0 var(--ai-sync-primary) !important;
+}
+
+.ai-handoff-inbox__content {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(15, 111, 102, 0.06), transparent 18rem),
+    linear-gradient(180deg, #fffdf8 0%, #fbf6ed 100%) !important;
+}
+
+.ai-handoff-inbox__message {
+  border-color: var(--ai-sync-line) !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  box-shadow: 0 10px 22px rgba(48, 40, 30, 0.06) !important;
+}
+
+.ai-handoff-inbox__message.is-handoff-summary {
+  border-color: rgba(15, 111, 102, 0.2) !important;
+  background: var(--ai-sync-primary-soft) !important;
+}
+
+.ai-handoff-inbox__message button,
+.ai-handoff-inbox__reply button {
+  border-color: rgba(15, 111, 102, 0.18) !important;
+  background: var(--ai-sync-primary-soft) !important;
+  color: var(--ai-sync-primary) !important;
+}
+
+.ai-handoff-inbox__reply button[type="submit"],
+.ai-handoff-inbox__reply button:last-child {
+  background: linear-gradient(135deg, var(--ai-sync-primary), var(--ai-sync-primary-deep)) !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 14px 28px rgba(15, 111, 102, 0.22) !important;
+}
+
+.ai-handoff-inbox__dot {
+  background: var(--ai-sync-primary) !important;
+  box-shadow: 0 0 0 4px rgba(15, 111, 102, 0.12) !important;
+}
+
+@media (max-width: 1024px) {
+  .ai-handoff-inbox {
+    grid-template-columns: 1fr !important;
+    padding: 18px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-admin-page,
+  .ai-handoff-inbox {
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .ai-admin-hero {
+    border-left-width: 0 !important;
+    border-top: 4px solid rgba(15, 111, 102, 0.36) !important;
+  }
+}
