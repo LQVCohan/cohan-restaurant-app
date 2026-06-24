@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import { Gift, MapPin, ShieldCheck, WalletCards } from "lucide-react";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
@@ -17,53 +16,9 @@ const getCurrentTimeSlot = () => {
   return "late_night";
 };
 
-const HomeValueStrip = () => {
-  const items = [
-    {
-      icon: MapPin,
-      title: "Gần bạn hơn",
-      description: "Lọc nhà hàng theo vị trí và khoảng cách rõ ràng.",
-    },
-    {
-      icon: Gift,
-      title: "Deal mỗi ngày",
-      description: "Ưu đãi, coupon và combo được gom ngay trên Cohan.",
-    },
-    {
-      icon: WalletCards,
-      title: "Cohan Balance",
-      description: "Thanh toán bằng ví, nhận hoàn tiền nhanh sau đơn.",
-    },
-    {
-      icon: ShieldCheck,
-      title: "Đặt món an tâm",
-      description: "Giữ món, theo dõi đơn và nhận hỗ trợ khi cần.",
-    },
-  ];
-
-  return (
-    <section className="home-value-strip" aria-label="Điểm mạnh khi đặt món trên FoodHub">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <article key={item.title} className="home-value-strip__item">
-            <div className="home-value-strip__icon"><Icon size={18} /></div>
-            <div>
-              <strong>{item.title}</strong>
-              <span>{item.description}</span>
-            </div>
-          </article>
-        );
-      })}
-    </section>
-  );
-};
-
 const Home = () => {
   const timeSlot = getCurrentTimeSlot();
-
   const [filterState, setFilterState] = useState({});
-
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
 
@@ -82,29 +37,17 @@ const Home = () => {
     if (element) {
       const headerOffset = 100;
       const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition =
-        elementPosition + window.pageYOffset - headerOffset;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
     }
   }, [timeSlot]);
 
   const handleSearch = useCallback((searchPayload) => {
-    const searchText =
-      typeof searchPayload === "string"
-        ? searchPayload
-        : searchPayload?.search || "";
-
+    const searchText = typeof searchPayload === "string" ? searchPayload : searchPayload?.search || "";
     if (!searchText.trim()) return;
 
-    const nearbyCenter =
-      typeof searchPayload === "object" ? searchPayload?.location || null : null;
-
-    setFilterState((prev) => ({
-      ...prev,
-      search: searchText,
-      nearbyCenter,
-    }));
-
+    const nearbyCenter = typeof searchPayload === "object" ? searchPayload?.location || null : null;
+    setFilterState((prev) => ({ ...prev, search: searchText, nearbyCenter }));
     document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
@@ -124,7 +67,6 @@ const Home = () => {
     <div className="home">
       <main className="home__main-content">
         <HeroSection onSearch={handleSearch} />
-        <HomeValueStrip />
 
         <RestaurantGrid
           restaurantFilter={filterState}
@@ -142,9 +84,7 @@ const Home = () => {
           timeSlot={timeSlot}
         />
 
-        <div className="home__section-wrapper">
-          <HowItWorks />
-        </div>
+        <HowItWorks />
       </main>
 
       <TableBooking
