@@ -8,10 +8,8 @@ $line: rgba(92, 64, 51, 0.12);
   z-index: 3;
   width: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(255, 102, 0, 0.08), transparent 24rem),
-    #fff8ef;
-  padding: 48px 0 64px;
+  background: #fffaf4;
+  padding: 42px 0 54px;
 
   &__wave-top { display: none; }
 
@@ -23,16 +21,9 @@ $line: rgba(92, 64, 51, 0.12);
   }
 
   &__header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
-    align-items: end;
-    gap: 24px;
-    margin-bottom: 20px;
-
-    @media (max-width: 760px) {
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
+    display: block;
+    margin-bottom: 18px;
+    max-width: 640px;
   }
 
   &__badge {
@@ -48,15 +39,15 @@ $line: rgba(92, 64, 51, 0.12);
   &__title {
     margin: 0;
     color: $text-main;
-    font-size: clamp(1.55rem, 2.6vw, 2.15rem);
+    font-size: clamp(1.45rem, 2.35vw, 2rem);
     font-weight: 950;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.045em;
     text-wrap: balance;
   }
 
   &__subtitle {
     display: block;
-    margin: 0;
+    margin: 7px 0 0;
     color: $text-sub;
     font-size: 0.95rem;
     font-weight: 620;
@@ -66,7 +57,7 @@ $line: rgba(92, 64, 51, 0.12);
   &__grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
     position: relative;
 
     @media (max-width: 980px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -80,64 +71,45 @@ $line: rgba(92, 64, 51, 0.12);
     grid-template-areas: "icon title" "icon desc";
     column-gap: 14px;
     align-items: center;
-    min-height: 104px;
-    padding: 18px;
-    border-radius: 20px;
+    min-height: 96px;
+    padding: 16px;
+    border-radius: 18px;
     border: 1px solid $line;
-    background: rgba(255, 255, 255, 0.86);
-    box-shadow: 0 14px 32px rgba(92, 45, 12, 0.07);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-
-    &:nth-child(2),
-    &:nth-child(4) {
-      transform: translateY(10px);
-    }
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 28px rgba(92, 45, 12, 0.06);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 
     &:hover {
-      transform: translateY(-3px);
-      border-color: rgba(255, 102, 0, 0.22);
-      box-shadow: 0 18px 40px rgba(255, 102, 0, 0.11);
-    }
-
-    &:nth-child(2):hover,
-    &:nth-child(4):hover {
-      transform: translateY(6px);
-    }
-
-    @media (max-width: 980px) {
-      &:nth-child(2),
-      &:nth-child(4),
-      &:nth-child(2):hover,
-      &:nth-child(4):hover {
-        transform: none;
-      }
+      transform: translateY(-2px);
+      border-color: rgba(255, 102, 0, 0.2);
+      box-shadow: 0 16px 34px rgba(255, 102, 0, 0.1);
     }
   }
 
   &__step-number {
     position: absolute;
-    top: 9px;
-    left: 9px;
-    width: 24px;
-    height: 24px;
+    top: 8px;
+    left: 8px;
+    width: 23px;
+    height: 23px;
     border-radius: 999px;
     background: $primary;
     color: #fff;
     display: grid;
     place-items: center;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 950;
-    box-shadow: 0 8px 18px rgba(255, 102, 0, 0.24);
+    box-shadow: 0 8px 18px rgba(255, 102, 0, 0.22);
   }
 
   &__icon-wrapper {
     grid-area: icon;
     width: 50px;
     height: 50px;
-    border-radius: 16px;
+    border-radius: 15px;
     display: grid;
     place-items: center;
-    background: linear-gradient(135deg, #fff1e6, #ffe0c2);
+    background: #fff1e6;
     color: $primary;
   }
 
@@ -151,7 +123,7 @@ $line: rgba(92, 64, 51, 0.12);
     grid-area: title;
     margin: 0 0 4px;
     color: $text-main;
-    font-size: 0.98rem;
+    font-size: 0.97rem;
     font-weight: 950;
     letter-spacing: -0.02em;
   }
@@ -160,7 +132,7 @@ $line: rgba(92, 64, 51, 0.12);
     grid-area: desc;
     margin: 0;
     color: $text-sub;
-    font-size: 0.84rem;
+    font-size: 0.83rem;
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -170,8 +142,5 @@ $line: rgba(92, 64, 51, 0.12);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .how-it-works__card {
-    transition: none;
-    transform: none !important;
-  }
+  .how-it-works__card { transition: none; }
 }
