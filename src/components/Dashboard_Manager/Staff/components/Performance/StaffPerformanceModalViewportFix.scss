@@ -1,0 +1,74 @@
+/* Final viewport fix for Staff Performance review modal.
+   ManagerLayout creates transformed/contained ancestors, which can trap fixed overlays.
+   When this modal exists, release those ancestors so the backdrop is attached to the viewport. */
+
+body:has(.performance-modal-overlay) {
+  overflow: hidden !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout,
+body:has(.performance-modal-overlay) .manager-layout__main,
+body:has(.performance-modal-overlay) .manager-layout__content,
+body:has(.performance-modal-overlay) .manager-page-shell,
+body:has(.performance-modal-overlay) .manager-page-shell__body,
+body:has(.performance-modal-overlay) .staff-management,
+body:has(.performance-modal-overlay) .staff-management-page,
+body:has(.performance-modal-overlay) .staff-performance-page {
+  transform: none !important;
+  contain: none !important;
+  perspective: none !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout__main,
+body:has(.performance-modal-overlay) .manager-layout__content {
+  overflow: visible !important;
+  z-index: 2147482000 !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout__content {
+  position: static !important;
+}
+
+body:has(.performance-modal-overlay) .manager-layout__header,
+body:has(.performance-modal-overlay) .sidebar {
+  z-index: 1 !important;
+}
+
+body:has(.performance-modal-overlay) .performance-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-width: 100vw !important;
+  min-height: 100dvh !important;
+  z-index: 2147483000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 24px !important;
+  margin: 0 !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 48% 18%, rgba(83, 108, 97, 0.2), transparent 34rem),
+    rgba(18, 25, 27, 0.82) !important;
+  backdrop-filter: blur(6px) saturate(0.92) !important;
+}
+
+body:has(.performance-modal-overlay) .performance-review-modal {
+  position: relative !important;
+  width: min(720px, calc(100vw - 48px)) !important;
+  max-height: min(760px, 88dvh) !important;
+  margin: auto !important;
+}
+
+@media (max-width: 760px) {
+  body:has(.performance-modal-overlay) .performance-modal-overlay {
+    padding: 12px !important;
+    align-items: stretch !important;
+  }
+}
