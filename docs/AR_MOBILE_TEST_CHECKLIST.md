@@ -2,6 +2,29 @@
 
 Tài liệu này dùng để test các luồng 3D/AR mở từ trang **Quản lý bàn**.
 
+## 0. Chạy test tự động trước khi test tay
+
+Chạy nhóm test riêng cho AR/3D bàn:
+
+```bash
+npm run test:table-ar
+```
+
+Hoặc tách riêng:
+
+```bash
+npm run test:table-ar:unit
+npm run test:table-ar:e2e
+```
+
+Nhóm test này bao phủ:
+
+- Utility tạo báo cáo test AR/mobile.
+- Action bar 3D/AR: xem camera, xem AR native, đặt bàn bằng AR, áp dụng mẫu.
+- Modal 3D: trạng thái HTTPS/WebXR, nút **Báo cáo test**, mở modal đặt bàn.
+- Modal đặt bàn bằng AR: preflight, fallback khi thiếu WebXR, trạng thái chưa chọn bàn.
+- Playwright mobile smoke: mở trang quản lý bàn, mở modal 3D, copy báo cáo test, kiểm tra fallback AR.
+
 ## 1. Chuẩn bị máy tính và điện thoại
 
 - Máy tính và điện thoại dùng chung một mạng Wi-Fi.
@@ -143,7 +166,7 @@ Checklist thao tác:
 - [ ] Nhập/điền đủ 2 mốc sơ đồ và 2 mốc AR.
 - [ ] Có Table.position.
 - [ ] Bấm **Chọn vị trí này** lưu được.
-- [ ] Quay lại sơ đồ tầng thấy vị trí bàn đã đổi.
+- [ ] Quay lại sơ đồ tầng thấy bàn đổi vị trí đúng.
 
 Ghi lại:
 
