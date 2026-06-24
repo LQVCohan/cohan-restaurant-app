@@ -5,6 +5,38 @@ export function getGraphqlUrl() {
 const stripGraphqlSuffix = (value: string) =>
   String(value || "").replace(/\/graphql\/?$/, "").replace(/\/$/, "");
 
+const stripApiSuffix = (value: string) =>
+  String(value || "").replace(/\/api\/?$/, "").replace(/\/$/, "");
+
+export function getBackendRootUrl() {
+  const gqlUrl = getGraphqlUrl();
+  const baseWithoutGraphql = stripGraphqlSuffix(gqlUrl);
+
+  // Non-GraphQL Fastify routes such as /upload, /upload/sign,
+  // /table-3d-assets/upload and /table-3d-ai/generate are mounted at backend
+  // root, not under /api. Keep this helper separate from getApiBaseUrl().
+  if (!baseWithoutGraphql || baseWithoutGraphql === "/") return "";
+
+  if (baseWithoutGraphql.startsWith("/")) {
+    return stripApiSuffix(baseWithoutGraphql);
+  }
+
+  try {
+    const parsed = new URL(baseWithoutGraphql);
+    parsed.pathname = stripApiSuffix(parsed.pathname);
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return stripApiSuffix(baseWithoutGraphql);
+  }
+}
+
+export function toBackendRootUrl(pathname: string) {
+  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${getBackendRootUrl()}${normalizedPath}`;
+}
+
 export function getApiBaseUrl() {
   const gqlUrl = getGraphqlUrl();
   const baseWithoutGraphql = stripGraphqlSuffix(gqlUrl);
@@ -77,7 +109,7 @@ export function toApiAssetUrl(path: string | null | undefined) {
   }
 
   const gqlUrl = getGraphqlUrl();
-  const apiBase = getApiBaseUrl();
+  const backendRoot = getBackendRootUrl();
 
   if (/^https?:\/\//.test(value)) {
     try {
@@ -98,7 +130,7 @@ export function toApiAssetUrl(path: string | null | undefined) {
   if (value.startsWith("//")) return value;
 
   // Windows-style paths can be returned by local upload adapters. Convert
-  // them before joining with the API origin so browsers receive a valid URL.
+  // them before joining with the backend origin so browsers receive a valid URL.
   const safePath = value.replace(/\\/g, "/");
   const normalizedPath = normalizeLocalUploadPath(
     safePath.startsWith("/") ? safePath : `/${safePath}`,
@@ -107,8 +139,8 @@ export function toApiAssetUrl(path: string | null | undefined) {
   if (gqlUrl.startsWith("/")) return normalizedPath;
 
   try {
-    const parsedApiBase = new URL(apiBase);
-    return `${parsedApiBase.origin}${normalizedPath}`;
+    const parsedBackendRoot = new URL(backendRoot || gqlUrl);
+    return `${parsedBackendRoot.origin}${normalizedPath}`;
   } catch {
     return normalizedPath;
   }
