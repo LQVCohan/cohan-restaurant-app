@@ -1,83 +1,59 @@
-// --- VARIABLES ---
 $primary: #ff6600;
 $primary-hover: #e65c00;
-$bg-footer: #1a202c; // Màu đen xám (Dark Slate) - Trend SaaS hiện đại
-$text-light: #f7fafc;
-$text-gray: #a0aec0;
-$border-dark: #2d3748;
+$bg-footer: #fff8ef;
+$text-main: #171717;
+$text-sub: #6f6258;
+$line: rgba(92, 64, 51, 0.13);
+$surface: rgba(255, 255, 255, 0.82);
 
 .footer-saas {
-  background-color: $bg-footer;
-  color: $text-light;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 102, 0, 0.09), transparent 28rem),
+    radial-gradient(circle at 86% 10%, rgba(168, 133, 95, 0.12), transparent 24rem),
+    linear-gradient(180deg, #fff8ef 0%, #fffaf5 100%);
+  color: $text-main;
   position: relative;
   z-index: 10;
-
-  // Padding lớn để chứa sóng đỉnh và nội dung
-  padding-top: 80px;
-  padding-bottom: 40px;
+  padding: 56px 0 32px;
   width: 100%;
   overflow-x: hidden;
+  border-top: 1px solid rgba(92, 64, 51, 0.1);
 
-  /* --- SÓNG ĐỈNH (WAVE TOP) --- */
-  .footer-wave-top {
-    position: absolute;
-    top: -1px; // Chồng lấn lên trên để che khe hở
-    left: 0;
-    width: 100%;
-    min-width: 100vw;
-    line-height: 0;
-    z-index: 1;
-    pointer-events: none;
+  .footer-wave-top { display: none; }
 
-    .wave-svg {
-      display: block;
-      width: calc(100% + 1.3px);
-      height: 60px;
-
-      @media (min-width: 768px) {
-        height: 100px;
-      }
-
-      // Màu fill đã được set cứng trong SVG là #1a202c (trùng màu footer)
-    }
-  }
-
-  /* --- CONTAINER --- */
   .footer-container {
-    max-width: 1440px;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 24px;
     position: relative;
     z-index: 2;
 
-    @media (max-width: 768px) {
-      padding: 0 20px;
-    }
+    @media (max-width: 768px) { padding: 0 16px; }
   }
 
-  /* --- GRID LAYOUT --- */
   .footer-top {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1.5fr; // Chia cột tỷ lệ
-    gap: 40px;
-    margin-bottom: 60px;
+    grid-template-columns: 1.35fr 0.85fr 0.95fr 1.35fr;
+    gap: 34px;
+    margin-bottom: 36px;
 
     @media (max-width: 1024px) {
-      grid-template-columns: 1fr 1fr; // Tablet: 2 hàng 2 cột
-      gap: 30px;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
     }
+
     @media (max-width: 640px) {
-      grid-template-columns: 1fr; // Mobile: 1 cột
+      grid-template-columns: 1fr;
     }
   }
 
-  /* --- COLUMNS --- */
   .footer-col {
     h4 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: white;
-      margin-bottom: 24px;
+      font-size: 1rem;
+      font-weight: 950;
+      color: $text-main;
+      margin: 0 0 16px;
+      letter-spacing: -0.02em;
     }
 
     ul {
@@ -85,89 +61,114 @@ $border-dark: #2d3748;
       padding: 0;
       margin: 0;
 
-      li {
-        margin-bottom: 12px;
+      li { margin-bottom: 10px; }
 
-        a {
-          color: $text-gray;
-          text-decoration: none;
-          font-size: 0.95rem;
-          transition: all 0.2s;
+      a {
+        color: $text-sub;
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 650;
+        transition: color 0.2s ease, transform 0.2s ease;
+        display: inline-flex;
 
-          &:hover {
-            color: $primary;
-            padding-left: 4px; // Hiệu ứng đẩy nhẹ
-          }
+        &:hover {
+          color: $primary;
+          transform: translateX(3px);
+        }
+
+        &:focus-visible {
+          outline: 3px solid rgba(255, 102, 0, 0.22);
+          outline-offset: 3px;
+          border-radius: 8px;
         }
       }
     }
   }
 
-  /* --- BRAND COL --- */
   .brand-col {
     .brand-logo {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
+
       .logo-icon {
-        font-size: 24px;
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background: #fff1e6;
+        box-shadow: 0 10px 24px rgba(255, 102, 0, 0.12);
+        font-size: 22px;
       }
+
       .logo-text {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: white;
-        letter-spacing: -0.5px;
+        font-size: 1.42rem;
+        font-weight: 950;
+        color: $text-main;
+        letter-spacing: -0.04em;
       }
     }
+
     .brand-desc {
-      color: $text-gray;
-      line-height: 1.6;
-      font-size: 0.95rem;
-      margin-bottom: 24px;
-      max-width: 300px;
+      color: $text-sub;
+      line-height: 1.65;
+      font-size: 0.94rem;
+      margin: 0 0 18px;
+      max-width: 320px;
     }
+
     .social-links {
       display: flex;
-      gap: 12px;
+      gap: 10px;
+
       .social-link {
         width: 36px;
         height: 36px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid $line;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
-        transition: all 0.2s;
+        color: $text-main;
+        transition: transform 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+
         &:hover {
-          background: $primary;
-          transform: translateY(-3px);
+          color: $primary;
+          border-color: rgba(255, 102, 0, 0.26);
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(255, 102, 0, 0.12);
         }
       }
     }
   }
 
-  /* --- NEWSLETTER COL --- */
   .newsletter-col {
     .newsletter-text {
-      color: $text-gray;
-      font-size: 0.9rem;
-      margin-bottom: 16px;
+      color: $text-sub;
+      font-size: 0.92rem;
+      margin: 0 0 14px;
+      line-height: 1.5;
     }
 
     .newsletter-form {
-      margin-bottom: 30px;
+      margin-bottom: 24px;
 
       .input-group {
         position: relative;
         display: flex;
         align-items: center;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid $line;
+        box-shadow: 0 12px 26px rgba(92, 45, 12, 0.06);
 
         .input-icon {
           position: absolute;
           left: 16px;
-          color: $text-gray;
+          color: $text-sub;
           z-index: 1;
         }
 
@@ -176,20 +177,18 @@ $border-dark: #2d3748;
           height: 48px;
           padding: 0 50px 0 44px;
           border-radius: 99px;
-          border: 1px solid $border-dark;
-          background: rgba(255, 255, 255, 0.05);
-          color: white;
+          border: 0;
+          background: transparent;
+          color: $text-main;
           outline: none;
-          font-size: 0.95rem;
-          transition: all 0.2s;
+          font-size: 0.94rem;
+          font-weight: 650;
 
           &:focus {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: $primary;
+            box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.13);
           }
-          &::placeholder {
-            color: #718096;
-          }
+
+          &::placeholder { color: #a19386; }
         }
 
         button {
@@ -200,28 +199,18 @@ $border-dark: #2d3748;
           width: 36px;
           border-radius: 50%;
           border: none;
-          background: $primary;
+          background: linear-gradient(135deg, $primary, #ff8533);
           color: white;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.2s;
+          transition: transform 0.2s ease, background 0.2s ease;
 
-          &:hover {
-            background: $primary-hover;
-          }
-          &:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-          }
-          &.success {
-            background: #10b981;
-          }
-
-          .spin {
-            animation: spin 1s linear infinite;
-          }
+          &:hover { background: $primary-hover; transform: translateY(-1px); }
+          &:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+          &.success { background: #10b981; }
+          .spin { animation: spin 1s linear infinite; }
         }
       }
     }
@@ -230,66 +219,75 @@ $border-dark: #2d3748;
       .app-label {
         display: block;
         font-size: 0.9rem;
-        font-weight: 600;
-        color: white;
-        margin-bottom: 12px;
+        font-weight: 900;
+        color: $text-main;
+        margin-bottom: 10px;
       }
+
       .store-buttons {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
+
         .store-btn {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          padding: 8px 16px;
-          border-radius: 8px;
-          color: white;
+          background: rgba(255, 255, 255, 0.82);
+          border: 1px solid $line;
+          padding: 8px 14px;
+          border-radius: 12px;
+          color: $text-main;
           text-decoration: none;
-          font-size: 0.9rem;
-          font-weight: 500;
-          transition: all 0.2s;
+          font-size: 0.88rem;
+          font-weight: 800;
+          transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 
           &:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: white;
+            color: $primary;
+            border-color: rgba(255, 102, 0, 0.28);
+            transform: translateY(-1px);
           }
         }
       }
     }
   }
 
-  /* --- DIVIDER --- */
   .footer-divider {
     height: 1px;
-    background: $border-dark;
-    margin-bottom: 30px;
+    background: rgba(92, 64, 51, 0.12);
+    margin-bottom: 24px;
   }
 
-  /* --- BOTTOM --- */
   .footer-bottom {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: $text-gray;
+    color: $text-sub;
     font-size: 0.9rem;
+    gap: 16px;
 
     @media (max-width: 768px) {
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
       text-align: center;
     }
 
     .bottom-right {
       display: flex;
       align-items: center;
-      gap: 24px;
+      gap: 18px;
+
+      @media (max-width: 560px) {
+        flex-direction: column;
+      }
 
       .contact-info {
         display: flex;
-        gap: 16px;
+        gap: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+
         span {
           display: flex;
           align-items: center;
@@ -300,18 +298,20 @@ $border-dark: #2d3748;
       .scroll-top-btn {
         width: 40px;
         height: 40px;
-        border-radius: 8px;
-        background: $border-dark;
-        color: white;
-        border: none;
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.86);
+        color: $text-main;
+        border: 1px solid $line;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
+        transition: transform 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 
         &:hover {
-          background: $primary;
+          color: $primary;
+          border-color: rgba(255, 102, 0, 0.28);
+          transform: translateY(-2px);
         }
       }
     }
@@ -319,10 +319,15 @@ $border-dark: #2d3748;
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-saas a,
+  .footer-saas button,
+  .footer-saas .social-link,
+  .footer-saas .store-btn {
+    transition: none !important;
   }
 }
