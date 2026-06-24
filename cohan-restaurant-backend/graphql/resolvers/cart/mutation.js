@@ -148,8 +148,12 @@ function normalizeCartItemNote(value) {
   return String(value || "").trim();
 }
 
+function isComboCartItem(item) {
+  return String(item?.itemType || "MENU_ITEM") === "COMBO";
+}
+
 function isSameComboIdentity(item, { restaurantId, comboId }) {
-  return String(item?.itemType || "MENU_ITEM") === "COMBO" && String(item?.comboId || "") === String(comboId) && String(item?.restaurantId || "") === String(restaurantId);
+  return isComboCartItem(item) && String(item?.comboId || "") === String(comboId) && String(item?.restaurantId || "") === String(restaurantId);
 }
 
 function isSameCartIdentity(item, { restaurantId, menuItemId, servingKey, note }) {
@@ -183,7 +187,7 @@ function isExpiredHoldItem(item, now) {
 }
 
 function getItemsToReleaseForReason(cart, reason, now) {
-  const activeItems = [...(cart?.items || [])].filter(isActiveHoldItem);
+  const activeItems = [...(cart?.items || [])].filter((item) => isActiveHoldItem(item) && !isComboCartItem(item));
 
   if (reason === "timeout") {
     return activeItems.filter((item) => isExpiredHoldItem(item, now));
@@ -234,6 +238,7 @@ function buildCartReleaseLine(item) {
 }
 
 function buildInventoryReleasePayload(item, reason) {
+  if (isComboCartItem(item) || !item?.menuItemId) return null;
   const servingKey = getCartServingKey(item.servingKey || item.servingVariantKey);
   return {
     type: "INVENTORY_RELEASED",
@@ -245,9 +250,23 @@ function buildInventoryReleasePayload(item, reason) {
   };
 }
 
+function buildInventoryReleaseEvents(items = [], reason, cartId) {
+  return (items || [])
+    .map((item) => {
+      const payload = buildInventoryReleasePayload(item, reason);
+      if (!payload) return null;
+      return {
+        ...payload,
+        cartId: String(cartId),
+        cartItemId: String(item._id),
+      };
+    })
+    .filter(Boolean);
+}
+
 async function releaseCartItemsTx({ cart, items, session }) {
   for (const item of items || []) {
-    if (String(item?.itemType || "MENU_ITEM") === "COMBO") continue;
+    if (isComboCartItem(item)) continue;
     const warehouseId = await resolveWarehouseIdOrDefault(item.restaurantId, session);
     await cancelReservationForOrderTx({
       restaurantId: item.restaurantId,
@@ -506,8 +525,9 @@ export const CartMutation = {
         const now = new Date();
         const holdExpiresAt = new Date(now.getTime() + HOLD_TTL_MS);
         const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
+        const isComboItem = isComboCartItem(it);
 
-        if (String(it.itemType || "MENU_ITEM") !== "COMBO" && delta > 0) {
+        if (!isComboItem && delta > 0) {
           const restaurantId = it.restaurantId;
           const { availability } = await getPublicRestaurantOrThrow(restaurantId);
           assertRestaurantCanOrder(availability);
@@ -530,7 +550,7 @@ export const CartMutation = {
             });
             throw outOfStockError("Món đã hết hàng hoặc không đủ tồn kho để tăng số lượng.");
           }
-        } else if (String(it.itemType || "MENU_ITEM") !== "COMBO" && delta < 0) {
+        } else if (!isComboItem && delta < 0) {
           const restaurantId = it.restaurantId;
           const warehouseId = await resolveWarehouseIdOrDefault(restaurantId, session);
           const orderCode = holdOrderCode(cart._id, it._id);
@@ -544,9 +564,11 @@ export const CartMutation = {
         }
 
         it.quantity = newQty;
-        it.holdExpiresAt = holdExpiresAt;
-        it.holdStatus = "active";
-        it.servingKey = servingKey;
+        if (!isComboItem) {
+          it.holdExpiresAt = holdExpiresAt;
+          it.holdStatus = "active";
+          it.servingKey = servingKey;
+        }
 
         const totals = computeTotals(cart.items);
         cart.totalQuantity = totals.totalQuantity;
@@ -555,7 +577,7 @@ export const CartMutation = {
         await cart.save({ session });
         after = cart.toObject({ virtuals: true });
 
-        if (delta > 0) {
+        if (!isComboItem && delta > 0) {
           eventPayload = {
             type: "INVENTORY_HELD",
             restaurantId: String(it.restaurantId),
@@ -564,7 +586,7 @@ export const CartMutation = {
             quantityDelta: delta,
             holdExpiresAt: holdExpiresAt.toISOString(),
           };
-        } else if (delta < 0) {
+        } else if (!isComboItem && delta < 0) {
           eventPayload = {
             type: "INVENTORY_RELEASED",
             restaurantId: String(it.restaurantId),
@@ -597,16 +619,28 @@ export const CartMutation = {
     const it = cart.items.id(itemId);
     if (!it) throw new GraphQLError("Cart item not found");
 
-    const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
-    const restaurantId = it.restaurantId;
-    const menuItemId = it.menuItemId;
-    const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
-    await cancelReservationForOrderTx({
-      restaurantId,
-      warehouseId,
-      orderCode: holdOrderCode(cart._id, itemId),
-      lines: [{ menuItemId, quantity: it.quantity, servingKey }],
-    });
+    let eventPayload = null;
+
+    if (!isComboCartItem(it)) {
+      const servingKey = getCartServingKey(it.servingKey || it.servingVariantKey);
+      const restaurantId = it.restaurantId;
+      const menuItemId = it.menuItemId;
+      const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+      await cancelReservationForOrderTx({
+        restaurantId,
+        warehouseId,
+        orderCode: holdOrderCode(cart._id, itemId),
+        lines: [{ menuItemId, quantity: it.quantity, servingKey }],
+      });
+
+      eventPayload = {
+        type: "INVENTORY_RELEASED",
+        restaurantId: String(restaurantId),
+        menuItemId: String(menuItemId),
+        servingVariantKey: servingKey,
+        reason: "remove_item",
+      };
+    }
 
     it.remove();
 
@@ -615,14 +649,6 @@ export const CartMutation = {
     applyCartDerivedFields(cart);
 
     await cart.save();
-
-    const eventPayload = {
-      type: "INVENTORY_RELEASED",
-      restaurantId: String(restaurantId),
-      menuItemId: String(menuItemId),
-      servingVariantKey: servingKey,
-      reason: "remove_item",
-    };
 
     emitInventoryEvent(ctx, eventPayload);
     await notifyWatchersFromReleaseEvent(ctx, eventPayload);
@@ -655,11 +681,7 @@ export const CartMutation = {
 
         await cart.save({ session });
 
-        releaseEvents = itemsToRelease.map((item) => ({
-          ...buildInventoryReleasePayload(item, "clear_cart"),
-          cartId: String(cart._id),
-          cartItemId: String(item._id),
-        }));
+        releaseEvents = buildInventoryReleaseEvents(itemsToRelease, "clear_cart", cart._id);
       });
     } catch (err) {
       rethrowManualReleaseError(
@@ -708,11 +730,7 @@ export const CartMutation = {
 
         await cart.save({ session });
 
-        releaseEvents = itemsToRelease.map((item) => ({
-          ...buildInventoryReleasePayload(item, reason),
-          cartId: String(cart._id),
-          cartItemId: String(item._id),
-        }));
+        releaseEvents = buildInventoryReleaseEvents(itemsToRelease, reason, cart._id);
       });
     } catch (err) {
       rethrowManualReleaseError(err, "Không thể trả món đã giữ trong giỏ. Vui lòng thử lại.");
