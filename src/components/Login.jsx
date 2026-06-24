@@ -1,6 +1,6 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { gql, useLazyQuery, useMutation } from "@apollo/client";
+import { gql, useMutation } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useNotification } from "@/hooks/useNotification";
@@ -87,16 +87,6 @@ const CREATE_USER_MUTATION = gql`
   }
 `;
 
-const ROLES_QUERY = gql`
-  query Roles($search: String) {
-    role(search: $search) {
-      id
-      slug
-      name
-    }
-  }
-`;
-
 function splitIdentifier(val) {
   val = (val || "").trim();
   if (val.includes("@")) return { email: val };
@@ -143,6 +133,30 @@ function resolveLoginErrorMessage(error) {
   }
 
   return "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.";
+}
+
+function resolveRegisterErrorMessage(error) {
+  const first = error?.graphQLErrors?.[0];
+  const code = first?.extensions?.code || "";
+  const msg = String(first?.message || "").toLowerCase();
+
+  if (msg.includes("already in use") || msg.includes("duplicate")) {
+    return "Email hoặc tài khoản này đã được sử dụng.";
+  }
+
+  if (msg.includes("weak password")) {
+    return first?.message || "Mật khẩu chưa đủ mạnh.";
+  }
+
+  if (code === "BAD_USER_INPUT") {
+    return first?.message || "Dữ liệu đăng ký chưa hợp lệ.";
+  }
+
+  if (error?.networkError) {
+    return "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  }
+
+  return "Đăng ký thất bại. Vui lòng thử lại.";
 }
 
 const safeRedirectPath = (candidate, fallback) => {
@@ -196,10 +210,6 @@ const LoginPage = () => {
 
   const recaptchaLoginRef = useRef(null);
   const recaptchaRegisterRef = useRef(null);
-
-  const [loadRoles] = useLazyQuery(ROLES_QUERY, {
-    fetchPolicy: "network-only",
-  });
 
   const resetCaptcha = () => {
     setCaptchaToken("");
@@ -277,8 +287,8 @@ const LoginPage = () => {
     CREATE_USER_MUTATION,
     {
       errorPolicy: "none",
-      onError: () => {
-        showNotification("Đăng ký thất bại", "error");
+      onError: (error) => {
+        showNotification(resolveRegisterErrorMessage(error), "error");
         resetCaptcha();
       },
       onCompleted: (data) => {
@@ -345,11 +355,10 @@ const LoginPage = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (
-      !registerForm.fullName ||
-      !registerForm.email ||
-      !registerForm.password
-    ) {
+    const fullName = registerForm.fullName.trim();
+    const email = registerForm.email.trim().toLowerCase();
+
+    if (!fullName || !email || !registerForm.password) {
       return showNotification("Vui lòng nhập đầy đủ thông tin", "warning");
     }
     if (registerForm.password !== registerForm.confirmPassword) {
@@ -371,34 +380,14 @@ const LoginPage = () => {
       return showNotification("Vui lòng xác thực Captcha", "warning");
     }
 
-    let roleId;
-    try {
-      const { data } = await loadRoles({
-        variables: { search: "customer" },
-      });
-      roleId =
-        data?.role?.find((r) => r.slug === "customer")?.id ||
-        data?.role?.[0]?.id;
-    } catch {
-      roleId = undefined;
-    }
-
-    if (!roleId) {
-      showNotification(
-        "Không thể tải quyền mặc định cho tài khoản mới. Vui lòng thử lại.",
-        "error",
-      );
-      return;
-    }
-
     const variables = {
       i: {
-        ...registerForm,
-        username: buildGeneratedUsername(registerForm.email),
-        roleId,
-        captchaToken: shouldRenderCaptcha ? captchaToken : undefined,
-        status: "active",
+        fullName,
+        email,
+        password: registerForm.password,
+        username: buildGeneratedUsername(email),
         customerType: "NEW",
+        captchaToken: shouldRenderCaptcha ? captchaToken : undefined,
       },
     };
 
