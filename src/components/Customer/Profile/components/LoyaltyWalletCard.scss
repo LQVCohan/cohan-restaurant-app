@@ -1,0 +1,106 @@
+.loyalty-wallet-card {
+  margin-bottom: 18px;
+  border: 1px solid rgba(116, 88, 54, 0.16);
+  border-radius: 24px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.1), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(251, 246, 237, 0.92));
+  box-shadow: 0 20px 46px rgba(48, 40, 30, 0.1), inset 0 1px rgba(255, 255, 255, 0.84);
+  color: #24303f;
+}
+
+.loyalty-wallet-card__hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.loyalty-wallet-card__icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  color: #fffdf8;
+  background: linear-gradient(135deg, #0f6f66, #a8855f);
+  box-shadow: 0 14px 28px rgba(15, 111, 102, 0.2);
+}
+
+.loyalty-wallet-card__eyebrow,
+.loyalty-wallet-card h2,
+.loyalty-wallet-card span,
+.loyalty-wallet-card p {
+  margin: 0;
+}
+
+.loyalty-wallet-card__eyebrow {
+  color: #a8855f;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.loyalty-wallet-card h2 {
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.loyalty-wallet-card__hero span,
+.loyalty-wallet-card__progress p,
+.loyalty-wallet-card__stats span,
+.loyalty-wallet-card__stats small {
+  color: #5d6678;
+}
+
+.loyalty-wallet-card__progress {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.loyalty-wallet-card__progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(116, 88, 54, 0.12);
+  overflow: hidden;
+}
+
+.loyalty-wallet-card__progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f6f66, #a8855f);
+}
+
+.loyalty-wallet-card__stats {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.loyalty-wallet-card__stats article {
+  border: 1px solid rgba(15, 111, 102, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.74);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.loyalty-wallet-card__stats svg {
+  color: #0f6f66;
+}
+
+.loyalty-wallet-card__stats strong {
+  color: #24303f;
+  font-size: 16px;
+}
+
+@media (max-width: 680px) {
+  .loyalty-wallet-card__stats {
+    grid-template-columns: 1fr;
+  }
+}
