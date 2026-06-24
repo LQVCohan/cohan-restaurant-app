@@ -7,6 +7,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
 import "./TodayMealWizard.scss";
+import "./TodayMealWizardAiPanel.scss";
 
 const STORAGE_KEY = "cohan.todayMealWizard.minimized";
 
