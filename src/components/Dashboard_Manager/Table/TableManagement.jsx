@@ -901,7 +901,7 @@ const TableManagement = () => {
                         renderQuickAction(t, "occupied", "Nhận khách", "btn-mini success")
                       )}
                       {t.status === "occupied" && (
-                        renderQuickAction(t, "payment_pending", "Thanh toán", "btn-mini warning")
+                        renderQuickAction(t, "payment_pending", "T.Toán", "btn-mini warning")
                       )}
                       {t.status === "payment_pending" && (
                         renderQuickAction(t, "cleaning", "Dọn bàn", "btn-mini primary")

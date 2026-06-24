@@ -27,12 +27,13 @@ import "./TableCameraPlacementPreviewModal.scss";
 const CAMERA_ERROR_MESSAGE =
   "Không thể mở camera. Hãy kiểm tra quyền camera rồi thử lại.";
 const CAMERA_UNSUPPORTED_MESSAGE =
-  "Thiết bị hoặc trình duyệt này chưa hỗ trợ xem thử bằng camera.";
+  "Thiết bị/trình duyệt chưa hỗ trợ camera preview.";
 
 const CAMERA_FALLBACK_TIPS = [
   "Mở trang bằng HTTPS hoặc localhost.",
   "Cho phép trình duyệt sử dụng camera.",
-  "Thử Chrome hoặc Safari phiên bản mới nhất.",
+  "Thử Chrome/Safari mobile nếu thiết bị hiện tại không mở được camera.",
+  "Bạn có thể dùng preview 3D thường để kiểm tra hình dáng mẫu bàn.",
 ];
 
 const SCALE_PRESETS = [
@@ -151,7 +152,9 @@ const TableCameraPlacementPreviewModal = ({
 
     window.requestAnimationFrame(() => {
       const scrollContainer = contentRef.current?.closest(".modal-body");
-      scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+      if (typeof scrollContainer?.scrollTo === "function") {
+        scrollContainer.scrollTo({ top: 0, behavior: "auto" });
+      }
     });
   }, [open, initialPlacement]);
 
@@ -423,12 +426,12 @@ const TableCameraPlacementPreviewModal = ({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
-              aria-label="Mẫu bàn dùng để ước lượng trong khung camera"
+              aria-label="Overlay mô hình bàn để xem thử trong camera"
             >
               {overlayHasThumbnail ? (
                 <img
                   src={modelSummary.thumbnailUrl}
-                  alt={`Mẫu ${modelSummary.name}`}
+                  alt={`Thumbnail ${modelSummary.name}`}
                   className="camera-placement-modal__thumbnail"
                   draggable="false"
                   onError={() => setThumbnailFailed(true)}
@@ -643,7 +646,7 @@ const TableCameraPlacementPreviewModal = ({
               <p className="camera-placement-modal__stats">
                 Ngang {placement.x.toFixed(1)}% · Dọc {placement.y.toFixed(1)}% ·
                 Kích thước {placement.scale.toFixed(2)} · Góc xoay{" "}
-                {placement.rotation.toFixed(0)}°
+                {placement.rotation.toFixed(0)}° · opacity: {placement.opacity.toFixed(2)}
               </p>
 
               <Button

@@ -688,7 +688,7 @@ export default function AiChatbotKnowledgePage() {
     setNotice("");
     try {
       const actionMessage = await action();
-      setNotice(actionMessage || successMessage);
+      setNotice(typeof actionMessage === "string" && actionMessage ? actionMessage : successMessage);
       setPendingConfirm(null);
       refetchAll();
     } catch (error) {

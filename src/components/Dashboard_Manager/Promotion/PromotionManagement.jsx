@@ -242,11 +242,16 @@ export default function PromotionManagement() {
     resolveStatus,
   } = useCoupons(selectedRestaurantId);
 
-  const { data: customerRankSettingsData } = useQuery(GET_CUSTOMER_RANK_SETTINGS, {
-    skip: !selectedRestaurantId,
-    variables: { restaurantId: selectedRestaurantId },
-    fetchPolicy: "cache-and-network",
-  });
+  let customerRankSettingsData = null;
+  try {
+    ({ data: customerRankSettingsData } = useQuery(GET_CUSTOMER_RANK_SETTINGS, {
+      skip: !selectedRestaurantId,
+      variables: { restaurantId: selectedRestaurantId },
+      fetchPolicy: "cache-and-network",
+    }));
+  } catch {
+    customerRankSettingsData = null;
+  }
 
   const customerRankOptions = useMemo(
     () => (customerRankSettingsData?.customerRankSettings?.ranks || [])

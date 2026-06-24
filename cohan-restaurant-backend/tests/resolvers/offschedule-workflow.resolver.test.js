@@ -5,7 +5,7 @@ const modelMocks = vi.hoisted(() => ({
   Timesheet: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn() },
   Shift: { find: vi.fn(), findOne: vi.fn() },
   LeaveRequest: { find: vi.fn() },
-  LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {}, Restaurant: {}, PayrollPeriod: { findOne: vi.fn() }, PayrollItem: {}, SchedulePublication: {}, EventLog: {}, ShiftAcknowledgement: {}, PerformanceIncident: { findOneAndUpdate: vi.fn() },
+  LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {}, Restaurant: { exists: vi.fn() }, PayrollPeriod: { findOne: vi.fn() }, PayrollItem: {}, SchedulePublication: {}, EventLog: {}, ShiftAcknowledgement: {}, PerformanceIncident: { findOneAndUpdate: vi.fn() },
   Role: {}, PayrollSetting: {}, PayrollAdjustment: {}, EmployeeCodeCounter: {}, Notification: {},
 }));
 vi.mock('../../models/index.js', () => modelMocks);
@@ -19,6 +19,7 @@ describe('off-schedule workflow visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     modelMocks.PayrollPeriod.findOne.mockReturnValue({ sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(null) });
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
 
 
@@ -52,7 +53,6 @@ describe('off-schedule workflow visibility', () => {
         {
           _id: 't-legacy-approved',
           employeeId: '507f1f77bcf86cd799439012',
-          restaurantId: '507f1f77bcf86cd799439011',
           workDate: new Date(),
           isOffSchedule: true,
           approved: false,
@@ -81,7 +81,6 @@ describe('off-schedule workflow visibility', () => {
         user: {
           id: '507f1f77bcf86cd799439015',
           userType: 'MANAGER',
-          restaurantId: '507f1f77bcf86cd799439011',
         },
       },
     );
@@ -93,7 +92,7 @@ describe('off-schedule workflow visibility', () => {
     const save = vi.fn();
     modelMocks.Timesheet.findById.mockResolvedValue({ _id: 't1', employeeId: '507f1f77bcf86cd799439012', restaurantId: '507f1f77bcf86cd799439011', isOffSchedule: true, approved: false, offScheduleApprovalStatus: 'pending', save, toObject() { return this; } });
     modelMocks.Staff.findById.mockReturnValue({ populate: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439012', fullName: 'A' }) });
-    const result = await Mutation.approveOffScheduleAttendance({}, { timesheetId: '507f1f77bcf86cd799439014', note: 'ok' }, { user: { id: '507f1f77bcf86cd799439015', userType: 'MANAGER', restaurantId: '507f1f77bcf86cd799439011' } });
+    const result = await Mutation.approveOffScheduleAttendance({}, { timesheetId: '507f1f77bcf86cd799439014', note: 'ok' }, { user: { id: '507f1f77bcf86cd799439015', userType: 'MANAGER' } });
     expect(result.approved).toBe(true);
     expect(result.offScheduleApprovalStatus).toBe('approved');
     expect(save).toHaveBeenCalled();

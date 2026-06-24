@@ -137,7 +137,7 @@ const Dashboard = () => {
       >
         <div>
           <p className="dashboard-compact-header__greeting">{greetingText}</p>
-          <h1 id="dashboard-title">Tổng quan vận hành</h1>
+          <h1 id="dashboard-title">Dashboard quản lý</h1>
           <p className="dashboard-compact-header__subtitle">
             Theo dõi nhanh doanh thu, đơn hàng, tồn kho và hiệu suất trong ca.
           </p>
@@ -233,7 +233,7 @@ const Dashboard = () => {
         <section className="dashboard-error" role="alert">
           <AlertTriangle size={18} />
           <div>
-            <h3>Không thể tải dữ liệu tổng quan</h3>
+            <h3>Không thể tải dữ liệu dashboard</h3>
             <p>{error?.message || "Vui lòng thử lại sau."}</p>
           </div>
           <button
@@ -487,7 +487,7 @@ const Dashboard = () => {
                       <TrendingUp size={16} />
                     </div>
                     <p className="revenue-compact-empty__text">
-                      Chưa có dữ liệu doanh thu trong thời gian này.
+                      Chưa có doanh thu trong khoảng thời gian này.
                     </p>
                   </div>
                 )}

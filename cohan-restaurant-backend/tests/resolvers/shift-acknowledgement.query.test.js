@@ -67,6 +67,7 @@ describe("shift acknowledgement query resolvers", () => {
   });
 
   it("allows manager to query restaurant acknowledgements with filters", async () => {
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.shiftAcknowledgements(
       null,
@@ -92,7 +93,8 @@ describe("shift acknowledgement query resolvers", () => {
     expect(modelMocks.findSortMock).toHaveBeenCalledWith({ deadlineAt: 1, createdAt: -1 });
   });
 
-  it("allows manager access through refRestaurants for shiftAcknowledgements", async () => {
+  it("allows manager access through restaurant ownership for shiftAcknowledgements", async () => {
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.shiftAcknowledgements(
       null,
@@ -107,6 +109,7 @@ describe("shift acknowledgement query resolvers", () => {
   });
 
   it("returns empty for another week when filters do not overlap", async () => {
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     modelMocks.findSortMock.mockResolvedValue([]);
 

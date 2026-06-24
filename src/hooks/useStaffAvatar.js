@@ -49,7 +49,15 @@ const normalizeStoredAvatarUrl = (rawUrl) => {
 const useStaffAvatar = () => {
   const [uploadingFile, setUploadingFile] = useState(false);
   const { upload } = useAvatarUploadLocal();
-  const [mutateAvatar, state] = useMutation(UPDATE_STAFF_AVATAR);
+  let mutateAvatar = async () => {
+    throw new Error("Không thể cập nhật ảnh đại diện khi thiếu Apollo Client.");
+  };
+  let state = {};
+  try {
+    [mutateAvatar, state] = useMutation(UPDATE_STAFF_AVATAR);
+  } catch (error) {
+    state = { error };
+  }
 
   const updateStaffAvatar = useCallback(
     async (userId, { fileBase64, fileUrl } = {}) => {

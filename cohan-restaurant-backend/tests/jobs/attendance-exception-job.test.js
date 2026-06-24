@@ -148,6 +148,7 @@ describe("attendance exception detection job", () => {
     });
     modelMocks.EventLog.log.mockResolvedValue({ _id: "event-1" });
     modelMocks.Restaurant.find.mockReturnValue(restaurantFindQuery([{ _id: restaurantId }]));
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
 
   it("calls detectAttendanceExceptionsForRange with the requested restaurant and range", async () => {
@@ -254,7 +255,7 @@ describe("attendance exception detection job", () => {
         role === "ADMIN"
           ? { id: actorId, userType: role }
           : role === "MANAGER"
-            ? { id: actorId, userType: role, restaurantId }
+            ? { id: actorId, userType: role }
             : { id: actorId, userType: role, restaurantForStaff: restaurantId },
     },
     );
@@ -280,7 +281,7 @@ describe("attendance exception detection job", () => {
         role === "ADMIN"
           ? { id: actorId, userType: role }
           : role === "MANAGER"
-            ? { id: actorId, userType: role, restaurantId }
+            ? { id: actorId, userType: role }
             : { id: actorId, userType: role, restaurantForStaff: restaurantId },
     },
       ),

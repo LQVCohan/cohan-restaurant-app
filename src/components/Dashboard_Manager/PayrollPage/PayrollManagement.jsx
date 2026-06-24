@@ -39,8 +39,8 @@ const PAYROLL_OVERVIEW_PAGE_QUERY = gql`
 
 const getDefaultRange = () => {
   const today = new Date();
-  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 26);
-  const thisMonth = new Date(today.getFullYear(), today.getMonth(), 25);
+  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 25);
+  const thisMonth = new Date(today.getFullYear(), today.getMonth(), 24);
   return {
     start: prevMonth.toISOString().split("T")[0],
     end: thisMonth.toISOString().split("T")[0],

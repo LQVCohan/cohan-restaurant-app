@@ -27,6 +27,7 @@ describe("module permission guards", () => {
   });
 
   it("allows a manager with module permission inside restaurant scope", async () => {
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const ctx = {
       user: {
         id: "manager-1",

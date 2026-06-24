@@ -189,7 +189,7 @@ export default function DashboardActionQueue({
     <article className={cardClassName}>
       <div className="dashboard-card__head">
         <div>
-          <h3>Yêu cầu chờ xác nhận</h3>
+          <h3>Đơn và đặt bàn chờ xác nhận</h3>
           <p>Đơn hàng và đặt bàn cần xử lý, không theo bộ lọc thời gian.</p>
         </div>
         <span className="queue-count">
