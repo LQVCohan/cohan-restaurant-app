@@ -23,6 +23,44 @@ const formatDateFallback = (value) => {
   }).format(date);
 };
 
+const PERFORMANCE_SCORE_LEVELS = {
+  excellent: {
+    label: "Xuất sắc",
+    className: "excellent",
+    description: "Phù hợp cho ca quan trọng, ca cao điểm hoặc ca cần kinh nghiệm.",
+  },
+  good: {
+    label: "Tốt",
+    className: "good",
+    description: "Có thể ưu tiên khi xếp lịch vận hành thường ngày.",
+  },
+  average: {
+    label: "Trung bình",
+    className: "average",
+    description: "Phù hợp với ca thông thường, cần tiếp tục theo dõi.",
+  },
+  needs_attention: {
+    label: "Cần chú ý",
+    className: "attention",
+    description: "Nên hạn chế xếp ca quan trọng một mình.",
+  },
+  poor: {
+    label: "Kém",
+    className: "poor",
+    description: "Cần quản lý/HR xem lại trước khi ưu tiên xếp lịch.",
+  },
+};
+
+const getScoreLevelFallback = (value) => {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return PERFORMANCE_SCORE_LEVELS.needs_attention;
+  if (score >= 90) return PERFORMANCE_SCORE_LEVELS.excellent;
+  if (score >= 80) return PERFORMANCE_SCORE_LEVELS.good;
+  if (score >= 65) return PERFORMANCE_SCORE_LEVELS.average;
+  if (score >= 50) return PERFORMANCE_SCORE_LEVELS.needs_attention;
+  return PERFORMANCE_SCORE_LEVELS.poor;
+};
+
 const AVATAR_COLORS = [
   "#536c61",
   "#126d61",
@@ -57,10 +95,12 @@ installGlobalFormatter("formatPercent", formatPercentFallback);
 installGlobalFormatter("scoreText", scoreTextFallback);
 installGlobalFormatter("getAvatarColor", getAvatarColorFallback);
 installGlobalFormatter("formatDate", formatDateFallback);
+installGlobalFormatter("getScoreLevel", getScoreLevelFallback);
 
 export {
   formatPercentFallback as formatPercent,
   scoreTextFallback as scoreText,
   getAvatarColorFallback as getAvatarColor,
   formatDateFallback as formatDate,
+  getScoreLevelFallback as getScoreLevel,
 };
