@@ -5,6 +5,8 @@ import { User } from "../../../models/index.js";
 import { mailer, buildVerifyMail } from "../../../lib/mailer.js";
 import { sendSms, buildVerificationSms } from "../notifications/sms.service.js";
 import { logEvent } from "../eventLog.service.js";
+import { issueRefreshToken, signAccessToken } from "../../security/authTokens.js";
+import { sanitizeUserForClient } from "../../security/sanitizeUserForClient.js";
 
 const CHANNEL_EMAIL = "email";
 const CHANNEL_SMS = "sms";
@@ -139,6 +141,26 @@ function activationSatisfied(user) {
   if (policy === "any") return emailOk || phoneOk;
   if (!hasEmail && hasPhone) return phoneOk;
   return emailOk;
+}
+
+async function buildAuthPayloadForVerifiedUser(userId, ctx = null) {
+  const userObj = await User.findById(userId).populate("role").lean({ virtuals: true });
+  if (!userObj) throw new GraphQLError("USER_NOT_FOUND", { extensions: { code: "NOT_FOUND" } });
+
+  const roleName = (userObj?.role?.slug || userObj?.role?.name || "").toLowerCase();
+  const token = signAccessToken({ ...userObj, roleName });
+
+  if (ctx?.reply) {
+    await issueRefreshToken({
+      userId: userObj._id,
+      reply: ctx.reply,
+      userAgent: ctx?.request?.headers?.["user-agent"],
+      ip: ctx?.request?.ip,
+      persistent: true,
+    });
+  }
+
+  return { token, user: sanitizeUserForClient({ ...userObj, roleName }) };
 }
 
 async function writeVerificationAudit({ ctx, user, verb, status, channels, reason, result, error }) {
@@ -359,7 +381,7 @@ export async function resendAccountVerification({ userId, channel = "AUTO", requ
   return issueVerificationForUser({ user, channels: channel, requestedBy, reason: "resend", ctx });
 }
 
-async function verifyToken({ token, channel }) {
+async function verifyToken({ token, channel, returnUser = false }) {
   if (!token) throw new GraphQLError("Missing verification token.", { extensions: { code: "BAD_USER_INPUT" } });
   const tokenHash = hashToken(token);
   const isEmail = channel === CHANNEL_EMAIL;
@@ -388,7 +410,7 @@ async function verifyToken({ token, channel }) {
   user.verificationLastError = null;
   await user.save();
   await writeVerificationAudit({ ctx: null, user, verb: isEmail ? "account.verification.email_verified" : "account.verification.phone_verified", status: STATUS.VERIFIED, channels: [channel], reason: "verify", result: { sent: true } });
-  return true;
+  return returnUser ? user : true;
 }
 
 export function verifyEmailToken(token) {
@@ -406,11 +428,22 @@ export function verifyAnyToken({ token, channel }) {
   throw new GraphQLError("Unsupported verification channel.", { extensions: { code: "BAD_USER_INPUT" } });
 }
 
+export async function verifyAnyTokenAndIssueAuth({ token, channel, ctx }) {
+  const c = String(channel || "").toLowerCase();
+  if (!["email", "sms", "phone"].includes(c)) {
+    throw new GraphQLError("Unsupported verification channel.", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  const normalizedChannel = c === "phone" ? CHANNEL_SMS : c;
+  const verifiedUser = await verifyToken({ token, channel: normalizedChannel, returnUser: true });
+  return buildAuthPayloadForVerifiedUser(verifiedUser._id, ctx);
+}
+
 export default {
   issueVerificationForUser,
   verifyEmailToken,
   verifyPhoneToken,
   verifyAnyToken,
+  verifyAnyTokenAndIssueAuth,
   resendAccountVerification,
   canResendVerification,
 };
