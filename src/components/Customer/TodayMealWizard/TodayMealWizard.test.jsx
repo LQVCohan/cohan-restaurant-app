@@ -50,9 +50,9 @@ describe("TodayMealWizard", () => {
     renderWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /thu nhỏ wizard/i }));
-    expect(screen.getByRole("button", { name: /mở wizard hôm nay ăn gì/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mở wizard chọn món nhanh/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /mở wizard hôm nay ăn gì/i }));
+    fireEvent.click(screen.getByRole("button", { name: /mở wizard chọn món nhanh/i }));
     expect(screen.getByRole("region", { name: /wizard hỗ trợ chọn món hôm nay/i })).toBeInTheDocument();
   });
 
