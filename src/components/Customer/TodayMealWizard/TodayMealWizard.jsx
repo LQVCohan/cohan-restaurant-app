@@ -211,14 +211,9 @@ export default function TodayMealWizard() {
 
   if (isMinimized) {
     return (
-      <button
-        type="button"
-        className="today-meal-wizard-launcher"
-        onClick={() => setMinimized(false)}
-        aria-label="Mở wizard Hôm nay ăn gì"
-      >
+      <button type="button" className="today-meal-wizard-launcher" onClick={() => setMinimized(false)} aria-label="Mở wizard chọn món nhanh">
         <Sparkles size={18} />
-        <span>Hôm nay ăn gì?</span>
+        <span>Chọn món nhanh</span>
       </button>
     );
   }
@@ -240,10 +235,7 @@ export default function TodayMealWizard() {
 
       <div className="today-meal-wizard__progress" aria-hidden="true">
         {STEP_CONFIG.map((step, index) => (
-          <span
-            key={step.id}
-            className={index <= stepIndex ? "is-active" : ""}
-          />
+          <span key={step.id} className={index <= stepIndex ? "is-active" : ""} />
         ))}
       </div>
 
@@ -269,39 +261,21 @@ export default function TodayMealWizard() {
       </div>
 
       <footer className="today-meal-wizard__footer">
-        <button
-          type="button"
-          className="today-meal-wizard__nav"
-          onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))}
-          disabled={stepIndex === 0}
-        >
+        <button type="button" className="today-meal-wizard__nav" onClick={() => setStepIndex((prev) => Math.max(prev - 1, 0))} disabled={stepIndex === 0}>
           <ChevronLeft size={16} />
           Lùi
         </button>
-        <button
-          type="button"
-          className="today-meal-wizard__for-you"
-          onClick={handleOpenForYou}
-        >
+        <button type="button" className="today-meal-wizard__for-you" onClick={handleOpenForYou}>
           <Bot size={16} />
           Gợi ý cá nhân
         </button>
         {isLastStep ? (
-          <button
-            type="button"
-            className="today-meal-wizard__ask"
-            onClick={handleAskAi}
-            disabled={!canAskAi}
-          >
+          <button type="button" className="today-meal-wizard__ask" onClick={handleAskAi} disabled={!canAskAi}>
             Hỏi AI
             <Sparkles size={16} />
           </button>
         ) : (
-          <button
-            type="button"
-            className="today-meal-wizard__nav today-meal-wizard__nav--next"
-            onClick={() => setStepIndex((prev) => Math.min(prev + 1, STEP_CONFIG.length - 1))}
-          >
+          <button type="button" className="today-meal-wizard__nav today-meal-wizard__nav--next" onClick={() => setStepIndex((prev) => Math.min(prev + 1, STEP_CONFIG.length - 1))}>
             Tiếp
             <ChevronRight size={16} />
           </button>
