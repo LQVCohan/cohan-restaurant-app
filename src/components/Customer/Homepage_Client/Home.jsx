@@ -7,6 +7,7 @@ import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
 
 import "../../../styles/Homepage/home.scss";
+import "../../../styles/Homepage/HomeMotion.scss";
 
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
