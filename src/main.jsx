@@ -42,6 +42,7 @@ import "./components/Dashboard_Manager/Table/TableWorkflowObservationUX.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowHoverGuides.scss";
 import "./components/Dashboard_Manager/Table/TableMobileARTestPolish.scss";
 import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
+import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceSimpleView.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoLayoutFix.scss";
