@@ -16,6 +16,11 @@
   gap: 14px;
 }
 
+.loyalty-wallet-card__hero > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
 .loyalty-wallet-card__icon {
   width: 54px;
   height: 54px;
@@ -25,6 +30,18 @@
   color: #fffdf8;
   background: linear-gradient(135deg, #0f6f66, #a8855f);
   box-shadow: 0 14px 28px rgba(15, 111, 102, 0.2);
+}
+
+.loyalty-wallet-card__wallet-link {
+  min-height: 38px;
+  border: 1px solid rgba(15, 111, 102, 0.24);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0f6f66, #07544e);
+  color: #fffdf8;
+  padding: 0 14px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(15, 111, 102, 0.18);
 }
 
 .loyalty-wallet-card__eyebrow,
@@ -100,6 +117,14 @@
 }
 
 @media (max-width: 680px) {
+  .loyalty-wallet-card__hero {
+    flex-wrap: wrap;
+  }
+
+  .loyalty-wallet-card__wallet-link {
+    width: 100%;
+  }
+
   .loyalty-wallet-card__stats {
     grid-template-columns: 1fr;
   }
