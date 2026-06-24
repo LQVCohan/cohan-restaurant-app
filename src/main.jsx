@@ -35,6 +35,7 @@ import "./components/Dashboard_Manager/Table/TableManagementPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementFinalQC.scss";
 import "./components/Dashboard_Manager/Table/TableManagementScorePolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
+import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoLayoutFix.scss";
@@ -42,6 +43,7 @@ import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
 import "./styles/ManagerGlobalToneAudit.scss";
 import { installRestaurantInfoCopyTuning } from "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoCopyTuning.js";
 import { installTableWorkflowCopyTuning } from "./components/Dashboard_Manager/Table/TableWorkflowCopyTuning.js";
+import { installFloorPlanDesignerExperience } from "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.js";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
@@ -51,6 +53,7 @@ installAuthenticatedTable3DTransport();
 installRbacVietnameseLabels();
 installRestaurantInfoCopyTuning();
 installTableWorkflowCopyTuning();
+installFloorPlanDesignerExperience();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
