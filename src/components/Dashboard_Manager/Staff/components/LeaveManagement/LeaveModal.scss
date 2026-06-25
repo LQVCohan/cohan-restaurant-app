@@ -135,3 +135,74 @@
   font-size: 0.88rem;
   line-height: 1.5;
 }
+
+.leave-modal__close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #dce8df;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1f2a24;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.leave-modal__close:hover {
+  border-color: rgba(31, 111, 74, 0.35);
+  background: #f5fbf7;
+  color: #165c3c;
+}
+
+.leave-modal .leave-form-container,
+.leave-form-container--compact {
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.leave-modal .leave-form-container {
+  overflow: auto;
+}
+
+.leave-form-container--compact .main-form {
+  padding: 1rem 1.25rem 0;
+}
+
+.leave-form-container--compact .form-section {
+  margin-bottom: 1rem;
+}
+
+.leave-form-container--compact .form-group {
+  margin-bottom: 0.8rem;
+}
+
+.leave-form-container--compact .leave-types-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.55rem;
+}
+
+.leave-form-container--compact .leave-types-grid .radio-card {
+  min-height: 44px;
+  padding: 0.55rem 0.65rem;
+}
+
+.leave-form-container--compact textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.leave-form-container--compact .total-days-bar {
+  padding: 0.65rem 0.8rem;
+}
+
+.leave-form-container--compact .form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 0.85rem 1.25rem;
+}
