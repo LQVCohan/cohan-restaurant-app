@@ -55,6 +55,7 @@
     "graphql": "^16.11.0",
     "jsonwebtoken": "^9.0.2",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.21.0",
     "mapbox-gl": "^3.17.0",
     "maplibre-gl": "^5.14.0",
     "mercurius": "^16.9.0",
