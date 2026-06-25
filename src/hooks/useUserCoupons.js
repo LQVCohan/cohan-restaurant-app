@@ -63,10 +63,10 @@ export const REMOVE_SAVED_COUPON = gql`
 const toCouponId = (userCoupon) =>
   String(userCoupon?.couponId || userCoupon?.coupon?.id || "").trim();
 
-export default function useUserCoupons({ restaurantId, skip = false } = {}) {
+export default function useUserCoupons({ restaurantId, status = "saved", skip = false } = {}) {
   const variables = useMemo(
-    () => ({ restaurantId: restaurantId || null, status: "saved" }),
-    [restaurantId],
+    () => ({ restaurantId: restaurantId || null, status: status || null }),
+    [restaurantId, status],
   );
 
   const { data, loading, error, refetch } = useQuery(MY_COUPONS, {
@@ -90,7 +90,7 @@ export default function useUserCoupons({ restaurantId, skip = false } = {}) {
     },
   );
 
-  const myCoupons = data?.myCoupons ?? [];
+  const myCoupons = useMemo(() => data?.myCoupons ?? [], [data?.myCoupons]);
 
   const savedCouponIds = useMemo(
     () => myCoupons.map(toCouponId).filter(Boolean),

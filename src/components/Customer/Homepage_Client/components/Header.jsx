@@ -102,7 +102,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
 
   const couponPath = couponRestaurantId
     ? `/coupons/${couponRestaurantId}`
-    : "/restaurants";
+    : "/coupons";
 
 
   const goto = (path) => {
