@@ -78,3 +78,25 @@
 .leave-list-container .table-container .leave-table .empty-row {
   padding: 2.5rem 1rem;
 }
+
+.leave-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 3vw, 28px);
+  background: rgba(17, 24, 39, 0.44);
+}
+
+.leave-modal {
+  width: min(920px, 100%);
+  max-height: min(88vh, 880px);
+  overflow: hidden;
+  border: 1px solid rgba(31, 111, 74, 0.18);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+  display: flex;
+  flex-direction: column;
+}
