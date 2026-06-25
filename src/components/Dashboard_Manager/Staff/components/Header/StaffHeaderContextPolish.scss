@@ -1,7 +1,3 @@
-/* Context-aware staff header polish
-   - Subpages already have their own KPI cards, so the top staff header stays compact.
-   - Hide the old schedule drill-down banner because restaurantId alone made it appear on normal staff pages. */
-
 .management-page-header.staff-page-header.is-subpage-context {
   margin-bottom: 10px;
   padding: 12px 14px;
@@ -24,24 +20,59 @@
     font-size: 12px;
   }
 
+  .mph-right {
+    gap: 8px;
+  }
+
+  .mph-stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 8px;
+  }
+
+  .mph-stat-card {
+    min-height: 54px;
+    padding: 8px 10px;
+    border-radius: 13px;
+  }
+
+  .mph-stat-card__icon {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    font-size: 0.95rem;
+  }
+
+  .mph-stat-card__label {
+    font-size: 10px;
+  }
+
+  .mph-stat-card__value {
+    font-size: 16px;
+  }
+
   .mph-controls-row {
     justify-content: flex-end;
     gap: 8px;
   }
 
   .mph-search {
-    flex: 1 1 340px;
-    max-width: 460px;
+    flex: 1 1 300px;
+    max-width: 420px;
+  }
+
+  .mph-icon-btn {
+    display: inline-grid !important;
   }
 
   .mph-btn--primary {
     min-width: 140px;
   }
 
-  .mph-footer-row,
-  .mph-stats-grid,
-  .mph-icon-btn {
-    display: none !important;
+  .mph-footer-row {
+    display: flex !important;
+    font-size: 11px;
+    color: #74685e;
   }
 }
 
@@ -78,6 +109,10 @@
       padding: 0 0 10px;
     }
 
+    .mph-stats-grid {
+      grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+
     .mph-controls-row {
       justify-content: flex-start;
     }
@@ -90,6 +125,10 @@
 
 @media (max-width: 760px) {
   .management-page-header.staff-page-header.is-subpage-context {
+    .mph-stats-grid {
+      grid-template-columns: 1fr;
+    }
+
     .mph-search,
     .mph-select,
     .mph-btn {
