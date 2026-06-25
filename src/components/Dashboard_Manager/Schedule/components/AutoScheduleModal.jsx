@@ -120,6 +120,7 @@ const AutoScheduleModal = ({
       isOpen={isOpen}
       onClose={!generating && !applying ? onClose : undefined}
       size="xl"
+      className="auto-schedule-modal"
     >
       <Modal.Header>Chia ca tự động</Modal.Header>
 
@@ -195,27 +196,6 @@ const AutoScheduleModal = ({
                 Preview và apply sẽ chặn nhân sự vượt ngưỡng giờ/tuần này.
               </p>
             </div>
-
-            <div className="config-card auto-workflow-card">
-              <div className="config-head">
-                <Sparkles size={16} />
-                <span>Quy trình áp dụng</span>
-              </div>
-              <ol>
-                <li>
-                  <strong>1</strong>
-                  <span>Phân tích nhu cầu và xung đột lịch.</span>
-                </li>
-                <li>
-                  <strong>2</strong>
-                  <span>Manager chọn ca hợp lệ trong preview.</span>
-                </li>
-                <li>
-                  <strong>3</strong>
-                  <span>Lưu phân công và giữ cảnh báo ca còn thiếu.</span>
-                </li>
-              </ol>
-            </div>
           </div>
 
           <div className="config-card auto-config-constraints">
@@ -252,6 +232,27 @@ const AutoScheduleModal = ({
               />
             </label>
           </div>
+
+          <div className="config-card auto-workflow-card">
+            <div className="config-head">
+              <Sparkles size={16} />
+              <span>Quy trình áp dụng</span>
+            </div>
+            <ol>
+              <li>
+                <strong>1</strong>
+                <span>Phân tích nhu cầu và xung đột lịch.</span>
+              </li>
+              <li>
+                <strong>2</strong>
+                <span>Manager chọn ca hợp lệ trong preview.</span>
+              </li>
+              <li>
+                <strong>3</strong>
+                <span>Lưu phân công và giữ cảnh báo ca còn thiếu.</span>
+              </li>
+            </ol>
+          </div>
         </div>
 
         <div className="auto-actions-strip">
@@ -262,481 +263,307 @@ const AutoScheduleModal = ({
             disabled={generating || applying}
           >
             <Sparkles size={16} />
-            {generating ? "Đang phân tích lịch..." : "Tạo preview chia ca"}
+            {generating ? "Đang tạo preview..." : "Tạo preview chia ca"}
           </button>
-          {assistantMeta ? (
+
+          {assistantMeta && (
             <div className="assistant-meta">
               <span
-                className={`meta-pill ${assistantMeta.fallbackUsed ? "fallback" : "forecast"}`}
+                className={`meta-pill ${
+                  autoScheduleSource === "ai" ? "forecast" : "fallback"
+                }`}
               >
-                {assistantMeta.fallbackUsed
-                  ? "Nhu cầu dự phòng"
-                  : "Nhu cầu dự báo"}
+                {autoScheduleSource === "ai" ? "AI forecast" : "Fallback nội bộ"}
               </span>
-              <span>TZ: {assistantMeta.timezone}</span>
+              <span>{assistantMeta?.totalCandidates || 0} ứng viên khả dụng</span>
+              <span>{assistantMeta?.totalDemandSlots || 0} slot cần phủ</span>
             </div>
-          ) : null}
+          )}
         </div>
 
-        {generateError ? (
-          <div className="auto-state error">
-            <AlertTriangle size={18} />
-            <span>{generateError}</span>
-          </div>
-        ) : null}
-
-        {!generateError && generating ? (
+        {generating && (
           <div className="auto-state loading">
-            <Sparkles size={18} />
-            <span>
-              Đang phân tích nhu cầu, lịch rảnh và ràng buộc vận hành...
-            </span>
+            <Info size={16} /> Đang phân tích lịch rảnh, nhu cầu ca và ràng buộc vận hành...
           </div>
-        ) : null}
+        )}
 
-        {!generating && aiPlannerPayload ? (
+        {generateError && (
+          <div className="auto-state error">
+            <AlertTriangle size={16} /> {generateError}
+          </div>
+        )}
+
+        {assistantSummary && (
           <div className="ai-planner-summary-wrap">
             <div className="ai-planner-summary">
               <div>
-                <strong>Nhận định hệ thống</strong>
-                <p>{aiPlannerPayload.aiSummary}</p>
-                {!!(aiPlannerPayload.generatedFrom || []).length && (
-                  <small>Nguồn: {(aiPlannerPayload.generatedFrom || []).join(", ")}</small>
-                )}
+                <strong>{assistantSummary.headline}</strong>
+                <p>{assistantSummary.recommendation}</p>
+                <small>{assistantSummary.rationale}</small>
               </div>
               <span className="confidence-pill">
-                Tin cậy {Math.round(Number(aiPlannerPayload.confidence || 0) * 100)}%
+                {assistantSummary.confidence}% tin cậy
               </span>
             </div>
-            {!!(aiPlannerPayload.riskWarnings || []).length && (
+            {assistantSummary.risks?.length > 0 && (
               <ul className="risk-warning-list">
-                {(aiPlannerPayload.riskWarnings || []).slice(0, 3).map((warning, idx) => (
-                  <li key={`risk-${idx}`}>
-                    <strong>{warning.severity || "warning"}:</strong> {warning.message}
-                  </li>
+                {assistantSummary.risks.map((risk, index) => (
+                  <li key={`${risk}-${index}`}>{risk}</li>
                 ))}
               </ul>
             )}
           </div>
-        ) : null}
+        )}
 
-        {!generating && assistantSummary ? (
-          <div className="summary-grid">
-            <div className="summary-card">
-              <span className="label">Nhóm ca phân tích</span>
-              <strong>
-                {compactNumber(assistantSummary.totalShiftGroups)}
-              </strong>
-            </div>
-            <div className="summary-card warning">
-              <span className="label">Ca thiếu người</span>
-              <strong>
-                {compactNumber(assistantSummary.underStaffedShifts)}
-              </strong>
-            </div>
-            <div className="summary-card success">
-              <span className="label">Phân công tạo được</span>
-              <strong>
-                {compactNumber(preview?.summary?.recommendedAssignments)}
-              </strong>
-            </div>
-            <div className="summary-card muted">
-              <span className="label">Bị chặn bởi guard</span>
-              <strong>
-                {compactNumber(preview?.summary?.blockedAssignments)}
-              </strong>
-            </div>
-          </div>
-        ) : null}
-
-        {!generating && preview && !previewItems.length ? (
-          <div className="auto-state empty">
-            <Info size={18} />
-            <span>Trợ lý chưa có gợi ý nào trong phạm vi hiện tại.</span>
-          </div>
-        ) : null}
-
-        {!generating && previewItems.length ? (
-          <div className="preview-list">
-            <div className="preview-head">
-              <div>
-                <h4>Preview phân ca</h4>
-                <p>
-                  Chọn các ca muốn áp dụng. Hệ thống sẽ lưu các phân công hợp lệ
-                  và cảnh báo riêng những vai trò còn thiếu người phù hợp.
-                </p>
-                <p>
-                  Ca còn thiếu người vẫn có thể áp dụng nếu hệ thống đã tìm được
-                  ít nhất một phân công hợp lệ. Các vai trò còn thiếu sẽ được
-                  ghi chú để manager bổ sung sau.
-                </p>
+        {preview && (
+          <>
+            <div className="summary-grid">
+              <div className="summary-card">
+                <span className="label">Tổng ca phân tích</span>
+                <strong>{preview.summary?.totalShifts || 0}</strong>
               </div>
-              <div className="preview-stats">
-                <span>
-                  <Users size={14} />
-                  {selectedCount}/{applicableCount} ca sẵn sàng áp dụng
-                </span>
+              <div className="summary-card success">
+                <span className="label">Có thể áp dụng</span>
+                <strong>{applicableCount}</strong>
+              </div>
+              <div className="summary-card warning">
+                <span className="label">Cần chú ý</span>
+                <strong>{preview.summary?.warningCount || 0}</strong>
+              </div>
+              <div className="summary-card muted">
+                <span className="label">Đã chọn</span>
+                <strong>{selectedCount}</strong>
               </div>
             </div>
 
-            {previewItems.map((item) => (
-              <div
-                key={item.uiKey || item.shiftKey}
-                className={`preview-item ${item.canApply ? "" : "blocked"}`}
-              >
-                <label className="preview-toggle">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(selectedShiftKeys[item.shiftKey])}
-                    onChange={() => onToggleShift(item.shiftKey)}
-                    disabled={!item.canApply || applying}
-                  />
-                  <div className="preview-main">
-                    <div className="preview-title-row">
-                      <div>
-                        <strong>
-                          {SHIFT_LABELS[item.shiftType] || item.shiftType}
-                        </strong>
-                        <span>
-                          {item.date} • {statusLabel(item.status)} • độ tin cậy{" "}
-                          {compactNumber(item.confidence * 100)}%
-                        </span>
-                      </div>
-                      <div
-                        className={`severity-pill ${item.severity || "low"}`}
-                      >
-                        {severityLabel(item.severity)}
-                      </div>
-                    </div>
+            <div className="preview-list">
+              <div className="preview-head">
+                <div>
+                  <h4>Preview chia ca đề xuất</h4>
+                  <p>Chọn các ca hợp lệ để áp dụng vào lịch làm việc.</p>
+                </div>
+                <div className="preview-stats">
+                  <span>
+                    {selectedCount}/{applicableCount} ca được chọn
+                  </span>
+                </div>
+              </div>
 
-                    <div className="preview-meta-row">
-                      <span>
-                        Thiếu {compactNumber(item.missingHeadcount)} người
-                      </span>
-                      <span>
-                        Hiện có {compactNumber(item.currentAssignedStaff)}
-                      </span>
-                      <span>
-                        Đề xuất tổng {compactNumber(item.recommendedTotalStaff)}
-                      </span>
-                    </div>
+              {previewItems.length === 0 && (
+                <div className="auto-state empty">
+                  <Info size={16} /> Trợ lý chưa có gợi ý nào trong phạm vi hiện tại.
+                </div>
+              )}
 
-                    <div className="preview-role-list">
-                      {(item.recommendedRoles || [])
-                        .filter((role) => Number(role.delta || 0) < 0)
-                        .map((role) => (
-                          <span
-                            key={`${item.shiftKey}-${role.role}`}
-                            className="role-pill"
-                          >
-                            {getRoleLabel(role.role)} x
-                            {Math.abs(Number(role.delta || 0))}
+              {previewItems.map((item) => {
+                const shiftLabel = SHIFT_LABELS[item.shiftType] || item.shiftType;
+                const roles = (item.roleNeeds || []).map(formatRoleNeed);
+                const unfilledRoles = roles.filter((role) => role.missing > 0 || role.unresolved > 0);
+                const assignedRows = item.assignments || [];
+                const blockedRows = item.blockedCandidates || [];
+                const aiExplanation = aiPlannerPayload?.explanations?.[item.shiftKey];
+                return (
+                  <div
+                    key={item.shiftKey}
+                    className={`preview-item ${item.canApply ? "" : "blocked"}`}
+                  >
+                    <label className="preview-toggle">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedShiftKeys[item.shiftKey])}
+                        onChange={() => onToggleShift?.(item.shiftKey)}
+                        disabled={!item.canApply || applying}
+                      />
+                      <div className="preview-main">
+                        <div className="preview-title-row">
+                          <div>
+                            <strong>
+                              {item.shiftName || "Ca làm"} · {shiftLabel}
+                            </strong>
+                            <span>{new Date(item.date).toLocaleDateString("vi-VN")}</span>
+                          </div>
+                          <span className={`severity-pill ${item.severity || "low"}`}>
+                            {statusLabel(item.status)} · {severityLabel(item.severity)}
                           </span>
-                        ))}
-                    </div>
-                    {(item.unfilledRoles || []).length ? (
-                      <div className="unfilled-role-panel">
-                        <h5>Ca này đang thiếu gì?</h5>
-
-                        {(item.unfilledRoles || []).map((roleRow) => {
-                          const roleNeed = formatRoleNeed(roleRow);
-
-                          return (
-                            <div
-                              key={`${item.shiftKey}-${roleRow.role}-unfilled`}
-                              className="unfilled-role-card"
-                            >
-                              <div className="unfilled-role-head">
-                                <strong>{roleNeed.role}</strong>
-                                <span>
-                                  Cần {roleNeed.required}, hiện có{" "}
-                                  {roleNeed.assigned}, hệ thống tìm được{" "}
-                                  {roleNeed.planned}, còn thiếu{" "}
-                                  {roleNeed.unresolved}
-                                </span>
-                              </div>
-
-                              <p>{roleRow.reason}</p>
-
-                              {roleRow.suggestedAction ? (
-                                <small>
-                                  Gợi ý xử lý: {roleRow.suggestedAction}
-                                </small>
-                              ) : null}
-
-                              {(roleRow.blockedCandidates || []).length ? (
-                                <div className="unfilled-blocked-list">
-                                  <strong>Ứng viên đã xét nhưng bị loại</strong>
-                                  <ul>
-                                    {(roleRow.blockedCandidates || [])
-                                      .slice(0, 5)
-                                      .map((candidate) => (
-                                        <li
-                                          key={`${item.shiftKey}-${roleRow.role}-${candidate.staffId}`}
-                                        >
-                                          <span>
-                                            {candidate.fullName} •{" "}
-                                            {getRoleLabel(candidate.role)}
-                                          </span>
-                                          <small>{candidate.reason}</small>
-                                        </li>
-                                      ))}
-                                  </ul>
-                                </div>
-                              ) : (
-                                <div className="unfilled-empty-candidates">
-                                  Chưa có ứng viên cụ thể nào được trợ lý đưa
-                                  vào danh sách xét cho vai trò này.
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                    <div className="assignment-block">
-                      <h5>Nhân sự dự kiến áp dụng</h5>
-                      {(item.plannedAssignments || []).length ? (
-                        <ul>
-                          {item.plannedAssignments.map((assignment) => {
-                            const hasValidationIssues =
-                              (assignment.validationIssues || []).length > 0;
-
-                            return (
-                              <li key={`${item.shiftKey}-${assignment.staffId}`}>
-                                <CheckCircle2 size={14} />
-                                <div>
-                                  <strong>
-                                    {assignment.fullName} •{" "}
-                                    {getRoleLabel(assignment.role)}
-                                  </strong>
-
-                                  <div className="assignment-explain-chips">
-                                    {assignment.role ? (
-                                      <span className="explain-chip info">
-                                        Vai trò cần: {getRoleLabel(assignment.role)}
-                                      </span>
-                                    ) : null}
-                                    {assignment.score !== null &&
-                                    assignment.score !== undefined ? (
-                                      <span className="explain-chip info">
-                                        Điểm phù hợp: {compactNumber(assignment.score)}
-                                      </span>
-                                    ) : null}
-                                    {hasValidationIssues ? (
-                                      <span className="explain-chip danger">
-                                        Cần xử lý
-                                      </span>
-                                    ) : item.canApply === false ? (
-                                      <span className="explain-chip danger">
-                                        Không thể áp dụng
-                                      </span>
-                                    ) : (
-                                      <span className="explain-chip success">
-                                        Có thể xếp
-                                      </span>
-                                    )}
-                                    {(assignment.warnings || []).length ? (
-                                      <span className="explain-chip warning">
-                                        Có cảnh báo
-                                      </span>
-                                    ) : null}
-                                    {hasValidationIssues ? (
-                                      <span className="explain-chip danger">
-                                        Cần kiểm tra lịch rảnh
-                                      </span>
-                                    ) : null}
-                                  </div>
-
-                                  {assignment.aiExplanation ? (
-                                    <div className="ai-explanation-box">
-                                      <p>{assignment.aiExplanation.reason}</p>
-                                      {!!(assignment.aiExplanation.factors || []).length && (
-                                        <div className="ai-factor-list">
-                                          {assignment.aiExplanation.factors.map((factor, factorIdx) => (
-                                            <span key={`${item.shiftKey}-${assignment.staffId}-factor-${factorIdx}`} className="ai-factor-chip">
-                                              {factor}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                      <small>Độ tin cậy: {compactNumber(Number(assignment.aiExplanation.confidence || 0) * 100)}%</small>
-                                    </div>
-                                  ) : null}
-
-                                  {(assignment.warnings || []).length ? (
-                                    <div className="assignment-alert-block warning">
-                                      <h6>Cảnh báo</h6>
-                                      <ul>
-                                        {assignment.warnings.map((warning, idx) => (
-                                          <li key={`${item.shiftKey}-${assignment.staffId}-warn-${idx}`}>
-                                            <span>{getIssueMessage(warning)}</span>
-                                            {getSuggestedAction(warning) ? (
-                                              <small>
-                                                Gợi ý: {getSuggestedAction(warning)}
-                                              </small>
-                                            ) : null}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  ) : null}
-
-                                  {(assignment.validationIssues || []).length ? (
-                                    <div className="assignment-alert-block issue">
-                                      <h6>Vấn đề cần xử lý</h6>
-                                      <ul>
-                                        {assignment.validationIssues.map((issue, idx) => (
-                                          <li key={`${item.shiftKey}-${assignment.staffId}-issue-${idx}`}>
-                                            <span>{getIssueMessage(issue)}</span>
-                                            {getSuggestedAction(issue) ? (
-                                              <small>
-                                                Gợi ý: {getSuggestedAction(issue)}
-                                              </small>
-                                            ) : null}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  ) : null}
-
-                                  <CandidateScoreBreakdown
-                                    assignment={assignment}
-                                  />
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : (
-                        <div className="note-line">
-                          Không còn ứng viên hợp lệ sau bước kiểm tra xung đột.
                         </div>
-                      )}
-                    </div>
 
-                    {(item.blockedCandidates || []).length ? (
-                      <div className="assignment-block warning blocked-candidates-section">
-                        <h5>
-                          Ứng viên bị chặn
-                          <span className="blocked-candidates-count">
-                            {item.blockedCandidates.length} ứng viên
+                        <div className="preview-meta-row">
+                          <span>
+                            <Users size={14} /> Cần {item.requiredStaff || 0} · Có {item.assignedStaff || 0}
                           </span>
-                        </h5>
-                        <ul>
-                          {item.blockedCandidates.slice(0, 6).map((candidate, idx) => (
-                            <li key={`${item.shiftKey}-${candidate.staffId || candidate.employeeId || idx}`}>
-                              <AlertTriangle size={14} />
-                              <div>
-                                <strong>
-                                  {getCandidateDisplayName(candidate)}
-                                  {candidate.role ? ` • ${getRoleLabel(candidate.role)}` : ""}
-                                </strong>
-                                <span>{candidate.reason || "Không đạt điều kiện xếp ca"}</span>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
+                          <span>
+                            Thiếu {item.missingStaff || 0} vị trí
+                          </span>
+                          <span>
+                            Nhu cầu {compactNumber(item.forecastedDemand)} khách
+                          </span>
+                        </div>
 
-                    {!item.canApply ? (
-                      <div className="note-line danger">
-                        Không thể áp dụng vì chưa có nhân sự hợp lệ nào.
+                        {roles.length > 0 && (
+                          <div className="preview-role-list">
+                            {roles.map((role) => (
+                              <span key={role.role} className="role-pill">
+                                {role.role}: {role.assigned}/{role.required}
+                                {role.unresolved > 0 ? ` · thiếu ${role.unresolved}` : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="assignment-explain-chips">
+                          {(item.explainChips || []).map((chip, idx) => (
+                            <span key={`${chip.label}-${idx}`} className={`explain-chip ${chip.tone || "info"}`}>
+                              {chip.label}
+                            </span>
+                          ))}
+                        </div>
+
+                        {aiExplanation && (
+                          <div className="ai-explanation-box">
+                            <p>{aiExplanation.summary}</p>
+                            {aiExplanation.factors?.length > 0 && (
+                              <div className="ai-factor-list">
+                                {aiExplanation.factors.map((factor, idx) => (
+                                  <span key={`${factor}-${idx}`} className="ai-factor-chip">
+                                    {factor}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {aiExplanation.modelVersion && (
+                              <small>Model: {aiExplanation.modelVersion}</small>
+                            )}
+                          </div>
+                        )}
+
+                        {unfilledRoles.length > 0 && (
+                          <div className="unfilled-role-panel">
+                            <h5>Vai trò còn thiếu</h5>
+                            {unfilledRoles.map((role) => (
+                              <div key={role.role} className="unfilled-role-card">
+                                <div className="unfilled-role-head">
+                                  <strong>{role.role}</strong>
+                                  <span>
+                                    Cần {role.required} · Đã xếp {role.assigned} · Còn thiếu {role.missing || role.unresolved}
+                                  </span>
+                                </div>
+                                {item.unfilledRoleReasons?.[role.role] && (
+                                  <p>{item.unfilledRoleReasons[role.role]}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {assignedRows.length > 0 && (
+                          <div className="assignment-block">
+                            <h5>Nhân sự đề xuất</h5>
+                            <ul>
+                              {assignedRows.map((assignment, idx) => (
+                                <li key={`${assignment.staffId || assignment.employeeId}-${idx}`}>
+                                  <CheckCircle2 size={15} />
+                                  <div>
+                                    <strong>{getCandidateDisplayName(assignment)}</strong>
+                                    <span>
+                                      {getRoleLabel(assignment.role)} · Điểm {assignment.score ?? "--"}
+                                    </span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {blockedRows.length > 0 && (
+                          <div className="assignment-block warning">
+                            <h5>
+                              Ứng viên bị chặn
+                              <span className="blocked-candidates-count">{blockedRows.length}</span>
+                            </h5>
+                            <ul>
+                              {blockedRows.slice(0, 4).map((candidate, idx) => (
+                                <li key={`${candidate.staffId || idx}-blocked`}>
+                                  <AlertTriangle size={15} />
+                                  <div>
+                                    <strong>{getCandidateDisplayName(candidate)}</strong>
+                                    <span>{candidate.reason || "Không đạt ràng buộc"}</span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {item.issues?.length > 0 && (
+                          <div className="assignment-alert-block issue">
+                            <h6>Cảnh báo</h6>
+                            <ul>
+                              {item.issues.map((issue, idx) => (
+                                <li key={`${getIssueMessage(issue)}-${idx}`}>
+                                  <span>{getIssueMessage(issue)}</span>
+                                  {getSuggestedAction(issue) && (
+                                    <small>{getSuggestedAction(issue)}</small>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                    ) : null}
-                    {item.unresolvedCount > 0 && item.canApply ? (
-                      <div className="note-line warning">
-                        Còn thiếu {item.unresolvedCount} vị trí - có thể bổ sung
-                        sau.
-                      </div>
-                    ) : null}
-                    {item.unresolvedCount > 0 ? (
-                      <div className="note-line danger">
-                        Vẫn còn thiếu {item.unresolvedCount} người sau khi áp
-                        dụng các gợi ý hợp lệ. Hệ thống vẫn có thể lưu phần nhân
-                        sự đã tìm được và sẽ cảnh báo các vai trò còn thiếu.
-                      </div>
-                    ) : null}
+                    </label>
                   </div>
-                </label>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {selectedCount > 0 && requiresOverride ? (
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {requiresOverride && (
           <div className="auto-override-panel">
-            <h5>Có phân công cần ghi đè cảnh báo</h5>
+            <h5>Cần xác nhận ghi đè cảnh báo</h5>
             <p>
-              {selectedWarningAssignments} phân công đã chọn có cảnh báo chính
-              sách hoặc lịch rảnh. Cần nhập lý do trước khi áp dụng.
+              Một số ca được chọn vẫn có cảnh báo thiếu người hoặc ứng viên rủi ro. Nhập lý do để tiếp tục áp dụng.
             </p>
             <label className="override-reason-field">
               <span>Lý do ghi đè</span>
               <textarea
                 value={overrideReason}
-                onChange={(event) =>
-                  onOverrideReasonChange?.(event.target.value)
-                }
-                placeholder="Ví dụ: Đã xác nhận trực tiếp với nhân viên và cần bổ sung người cho ca tối."
-                disabled={applying || generating}
+                onChange={(event) => onOverrideReasonChange?.(event.target.value)}
+                placeholder="VD: Ca đã được quản lý xác nhận bổ sung nhân sự trực tiếp..."
+                disabled={applying}
               />
             </label>
             <label className="override-confirm-row">
               <input
                 type="checkbox"
                 checked={overrideConfirmed}
-                onChange={(event) =>
-                  onOverrideConfirmedChange?.(event.target.checked)
-                }
-                disabled={applying || generating}
+                onChange={(event) => onOverrideConfirmedChange?.(event.target.checked)}
+                disabled={applying}
               />
-              <span>
-                Tôi xác nhận đã kiểm tra cảnh báo và chấp nhận ghi đè có lý do.
-              </span>
+              <span>Tôi xác nhận vẫn áp dụng các ca đã chọn dù còn cảnh báo.</span>
             </label>
-            <small>
-              Lý do này sẽ được ghi vào ghi chú/log khi áp dụng chia ca tự động.
-            </small>
-            {overrideError ? (
-              <div className="override-error" role="alert">
-                {overrideError}
-              </div>
-            ) : null}
+            {overrideError && <div className="override-error">{overrideError}</div>}
           </div>
-        ) : null}
+        )}
       </Modal.Body>
 
       <Modal.Footer className="auto-schedule-footer">
-        {selectedCount > 0 ? (
+        {preview && (
           <div className="auto-apply-summary">
-            <span>Đã chọn: {selectedCount} ca</span>
-            <span>Phân công sạch: {selectedCleanAssignments}</span>
-            <span>Cần ghi đè: {selectedWarningAssignments}</span>
-            <span>Còn thiếu sau áp dụng: {selectedUnresolvedPositions} vị trí</span>
+            <span>{selectedCount} ca đã chọn</span>
+            <span>{selectedCleanAssignments} phân công sạch</span>
+            {selectedWarningAssignments > 0 && <span>{selectedWarningAssignments} cảnh báo</span>}
+            {selectedUnresolvedPositions > 0 && <span>{selectedUnresolvedPositions} vị trí còn thiếu</span>}
           </div>
-        ) : null}
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={onClose}
-          disabled={generating || applying}
-        >
+        )}
+        <button type="button" className="btn-secondary" onClick={onClose} disabled={generating || applying}>
           Đóng
         </button>
         <button
           type="button"
           className="btn-primary"
-          onClick={() =>
-            onApply?.({
-              allowOverride: requiresOverride,
-              overrideReason,
-              overrideConfirmed,
-            })
-          }
-          disabled={
-            generating || applying || selectedCount === 0 || !canApplyWithOverride
-          }
+          onClick={onApply}
+          disabled={!selectedCount || applying || generating || !canApplyWithOverride}
         >
           {applying ? "Đang áp dụng..." : `Áp dụng ${selectedCount} ca đã chọn`}
         </button>
