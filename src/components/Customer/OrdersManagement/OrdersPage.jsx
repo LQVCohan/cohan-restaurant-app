@@ -2,7 +2,7 @@ import React, { useMemo, useState, useContext, useCallback } from "react";
 import Modal from "@/components/common/Modal";
 import { Link, useNavigate } from "react-router-dom";
 import "./OrdersPage.scss";
-import OrderItem from "./OrderItem"; // Import OrderItem mới
+import OrderItem from "./OrderItem";
 import Toast from "../../ui/Toast";
 import Skeleton from "../../ui/Skeleton";
 
@@ -22,7 +22,6 @@ import {
 import ConfirmationModal from "../../Customer/TableBooking/ConfirmationModal/ConfirmationModal";
 import { useCart } from "@/context/CartProvider";
 
-/* ───────────────── GraphQL Queries (Giữ nguyên) ───────────────── */
 const ORDERS_BY_USER = gql`
   query OrdersByUser($userId: ID!, $limit: Int = 20, $cursor: ID) {
     ordersByUser(userId: $userId, limit: $limit, cursor: $cursor) {
@@ -119,6 +118,20 @@ const MY_RESERVATIONS = gql`
   }
 `;
 
+const TABLES_BY_RESTAURANT = gql`
+  query OrdersPageTablesByRestaurant($restaurantId: ID!, $status: TableStatus, $limit: Int) {
+    tables(restaurantId: $restaurantId, status: $status, limit: $limit) {
+      id
+      code
+      capacity
+      status
+      floorId
+      deposit
+      type
+    }
+  }
+`;
+
 const CANCEL_ORDER = gql`
   mutation CancelOrder($restaurantId: ID!, $orderId: ID!, $reason: String) {
     cancelOrder(restaurantId: $restaurantId, orderId: $orderId, reason: $reason) {
@@ -131,6 +144,7 @@ const CANCEL_ORDER = gql`
     }
   }
 `;
+
 const CANCEL_RESERVATION = gql`
   mutation CancelReservation($id: ID!) {
     cancelReservation(id: $id) {
@@ -139,6 +153,7 @@ const CANCEL_RESERVATION = gql`
     }
   }
 `;
+
 const REQUEST_RESERVATION_CHANGE = gql`
   mutation RequestReservationChange($input: RequestReservationChangeInput!) {
     requestReservationChange(input: $input) {
@@ -161,12 +176,15 @@ const DELETE_RESERVATION = gql`
   }
 `;
 
-// Helper format
-const fmtMoney = (v) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    v
-  );
 const EMPTY_VALUE = "--";
+const COMPLETED_STATUSES = ["completed", "seated"];
+const CANCELLED_STATUSES = ["cancelled", "rejected", "expired", "no_show"];
+
+const fmtMoney = (v) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(Number(v || 0));
 
 const toVNDateTime = (iso) => {
   if (!iso) return EMPTY_VALUE;
@@ -178,6 +196,7 @@ const displayValue = (value) => {
   if (value === null || value === undefined || value === "") return EMPTY_VALUE;
   return value;
 };
+
 const normalizeOrderType = (raw) => {
   const value = String(raw || "").toLowerCase();
 
@@ -240,14 +259,16 @@ const getMappedLabel = (map, raw) => {
 const getReservationStatusLabel = (raw) => getMappedLabel(RESERVATION_STATUS_LABELS, raw);
 const getDepositStatusLabel = (raw) => getMappedLabel(DEPOSIT_STATUS_LABELS, raw);
 const getPaymentMethodLabel = (raw) => getMappedLabel(PAYMENT_METHOD_LABELS, raw);
-
-
+const getOrderRestaurantId = (order) => order?.restaurantId || order?.raw?.restaurantId || null;
+const resolveMenuItemId = (item) =>
+  item?.dishId || item?.menuItemId || item?.itemId || item?.id || item?._id || item?.menuId || null;
 
 function OrderDetailModal({ detailTarget, onClose }) {
   if (!detailTarget?.data) return null;
 
   const { kind, data } = detailTarget;
-  const orderCode = data.orderCode || data.id || "--";
+  const orderCode = data.orderCode || data.id || EMPTY_VALUE;
+  const isOrder = ["dinein", "takeaway", "delivery"].includes(kind);
 
   const renderField = (label, value) => (
     <div className="detail-row">
@@ -268,12 +289,12 @@ function OrderDetailModal({ detailTarget, onClose }) {
               : "Chi tiết đặt bàn"}
       </Modal.Header>
       <Modal.Body className="order-detail-modal">
-        {["dinein", "takeaway", "delivery"].includes(kind) ? (
+        {isOrder ? (
           <>
             {renderField("Mã đơn", orderCode)}
-            {renderField("Trạng thái", data.currentStatus || "--")}
-            {renderField("Nhà hàng", data.restaurantId || "--")}
-            {renderField("Thời gian tạo", data.createdAt ? toVNDateTime(data.createdAt) : "--")}
+            {renderField("Trạng thái", data.currentStatus || EMPTY_VALUE)}
+            {renderField("Nhà hàng", data.restaurantName || data.restaurantId || EMPTY_VALUE)}
+            {renderField("Thời gian tạo", toVNDateTime(data.createdAt))}
             {renderField("Hình thức", getOrderTypeLabel(data.orderType))}
             <div className="detail-items">
               <p className="detail-section-title">Danh sách món</p>
@@ -281,12 +302,12 @@ function OrderDetailModal({ detailTarget, onClose }) {
                 <ul>
                   {(data.items || []).map((it, idx) => (
                     <li key={it?._id || `${it?.name}_${idx}`}>
-                      {it?.name || "--"} × {it?.quantity || "--"} {it?.unit || ""} • {fmtMoney(Number(it?.unitPrice ?? it?.price ?? it?.servingVariant?.price ?? 0))}
+                      {it?.name || EMPTY_VALUE} × {it?.quantity || EMPTY_VALUE} {it?.unit || ""} • {fmtMoney(Number(it?.unitPrice ?? it?.price ?? it?.servingVariant?.price ?? 0))}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p>--</p>
+                <p>{EMPTY_VALUE}</p>
               )}
             </div>
             {renderField("Tổng tiền", fmtMoney(data?.totals?.grandTotal || 0))}
@@ -295,22 +316,20 @@ function OrderDetailModal({ detailTarget, onClose }) {
         ) : (
           <>
             {renderField("Mã đặt bàn", orderCode)}
-            {renderField("Nhà hàng", data.restaurantName || data.restaurantId || "--")}
-            {renderField("Bàn", data.tableId || "--")}
-            {renderField("Thời gian đến", data.timeTo ? toVNDateTime(data.timeTo) : "--")}
-            {renderField("Thời lượng", data.isUnlimitedTime ? "Không giới hạn" : `${data.durationMinutes || "--"} phút`)}
-            {renderField("Số khách", data.partySize ? `${data.partySize} người` : "--")}
+            {renderField("Nhà hàng", data.restaurantName || data.restaurantId || EMPTY_VALUE)}
+            {renderField("Bàn", data.tableId || EMPTY_VALUE)}
+            {renderField("Thời gian đến", toVNDateTime(data.timeTo))}
+            {renderField("Thời lượng", data.isUnlimitedTime ? "Không giới hạn" : `${data.durationMinutes || EMPTY_VALUE} phút`)}
+            {renderField("Số khách", data.partySize ? `${data.partySize} người` : EMPTY_VALUE)}
             {renderField("Tiền cọc", fmtMoney(data.depositAmount || 0))}
-            {renderField("Trạng thái thanh toán cọc", data.depositStatus || "--")}
-            {renderField("Trạng thái đặt bàn", data.status || "--")}
-            {renderField("Thời gian tạo", data.createdAt ? toVNDateTime(data.createdAt) : "--")}
+            {renderField("Trạng thái thanh toán cọc", getDepositStatusLabel(data.depositStatus))}
+            {renderField("Trạng thái đặt bàn", getReservationStatusLabel(data.status))}
+            {renderField("Thời gian tạo", toVNDateTime(data.createdAt))}
           </>
         )}
       </Modal.Body>
       <Modal.Footer>
-        <button className="btn btn--primary" onClick={onClose}>
-          Đóng
-        </button>
+        <button className="btn btn--primary" onClick={onClose}>Đóng</button>
       </Modal.Footer>
     </Modal>
   );
@@ -319,7 +338,7 @@ function OrderDetailModal({ detailTarget, onClose }) {
 function ReceiptModal({ receiptTarget, onClose, onReorder }) {
   if (!receiptTarget) return null;
 
-  const orderCode = receiptTarget?.orderCode || receiptTarget?.id || "--";
+  const orderCode = receiptTarget?.orderCode || receiptTarget?.id || EMPTY_VALUE;
   const orderType = normalizeOrderType(receiptTarget?.orderType);
 
   const renderField = (label, value) => (
@@ -336,22 +355,16 @@ function ReceiptModal({ receiptTarget, onClose, onReorder }) {
       <Modal.Header>Hóa đơn</Modal.Header>
       <Modal.Body className="order-detail-modal">
         {renderField("Mã đơn", orderCode)}
-        {renderField("Trạng thái", receiptTarget?.currentStatus || "--")}
+        {renderField("Trạng thái", receiptTarget?.currentStatus || EMPTY_VALUE)}
         {renderField("Hình thức", getOrderTypeLabel(receiptTarget?.orderType))}
-        {renderField(
-          "Nhà hàng",
-          receiptTarget?.restaurantName || receiptTarget?.restaurantId || "--"
-        )}
-        {renderField(
-          "Thời gian tạo",
-          receiptTarget?.createdAt ? toVNDateTime(receiptTarget.createdAt) : "--"
-        )}
+        {renderField("Nhà hàng", receiptTarget?.restaurantName || receiptTarget?.restaurantId || EMPTY_VALUE)}
+        {renderField("Thời gian tạo", toVNDateTime(receiptTarget?.createdAt))}
 
         {orderType === "delivery" && receiptTarget?.shipping && (
           <>
-            {renderField("Người nhận", receiptTarget?.shipping?.fullName || "--")}
-            {renderField("Số điện thoại", receiptTarget?.shipping?.phone || "--")}
-            {renderField("Địa chỉ", receiptTarget?.shipping?.address || "--")}
+            {renderField("Người nhận", receiptTarget?.shipping?.fullName || EMPTY_VALUE)}
+            {renderField("Số điện thoại", receiptTarget?.shipping?.phone || EMPTY_VALUE)}
+            {renderField("Địa chỉ", receiptTarget?.shipping?.address || EMPTY_VALUE)}
           </>
         )}
 
@@ -362,50 +375,39 @@ function ReceiptModal({ receiptTarget, onClose, onReorder }) {
               {(receiptTarget?.items || []).map((it, idx) => {
                 const unitPrice = getOrderItemUnitPrice(it);
                 const quantity = Number(it?.quantity);
-                const hasSubtotal = Number.isFinite(quantity);
                 const lineSubtotal = Number(it?.lineSubtotal);
                 const resolvedSubtotal = Number.isFinite(lineSubtotal)
                   ? lineSubtotal
-                  : unitPrice * quantity;
+                  : unitPrice * (Number.isFinite(quantity) ? quantity : 1);
 
                 return (
                   <li key={it?._id || `${it?.name}_${idx}`}>
-                    {it?.name || "--"} • SL: {it?.quantity ?? "--"} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : "--"} • Tạm tính: {hasSubtotal ? fmtMoney(resolvedSubtotal) : "--"}
+                    {it?.name || EMPTY_VALUE} • SL: {it?.quantity ?? EMPTY_VALUE} {it?.unit || ""} • Đơn giá: {Number.isFinite(unitPrice) ? fmtMoney(unitPrice) : EMPTY_VALUE} • Tạm tính: {fmtMoney(resolvedSubtotal)}
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p>--</p>
+            <p>{EMPTY_VALUE}</p>
           )}
         </div>
 
-        {renderField(
-          "Tổng tiền",
-          Number.isFinite(Number(receiptTarget?.totals?.grandTotal))
-            ? fmtMoney(Number(receiptTarget?.totals?.grandTotal))
-            : "--"
-        )}
-        {receiptTarget?.reservationId &&
-          renderField("Liên kết đặt bàn", receiptTarget?.reservationId)}
+        {renderField("Tổng tiền", fmtMoney(receiptTarget?.totals?.grandTotal || 0))}
+        {receiptTarget?.reservationId && renderField("Liên kết đặt bàn", receiptTarget?.reservationId)}
       </Modal.Body>
       <Modal.Footer>
         {!!(receiptTarget?.items || []).length && (
-          <button
-            className="btn btn--outline"
-            onClick={() => onReorder?.(receiptTarget)}
-          >
+          <button className="btn btn--outline" onClick={() => onReorder?.(receiptTarget)}>
             Đặt lại đơn này
           </button>
         )}
-        <button className="btn btn--primary" onClick={onClose}>
-          Đóng
-        </button>
+        <button className="btn btn--primary" onClick={onClose}>Đóng</button>
       </Modal.Footer>
     </Modal>
   );
 }
-function ReservationReceiptModal({ reservation, onClose }) {
+
+function ReservationReceiptModal({ reservation, onClose, onRebook }) {
   if (!reservation) return null;
 
   const reservationCode = reservation?.orderCode || reservation?.id || EMPTY_VALUE;
@@ -457,12 +459,7 @@ function ReservationReceiptModal({ reservation, onClose }) {
                 ? `${Number(reservation.durationMinutes)} phút`
                 : EMPTY_VALUE
           )}
-          {renderField(
-            "Số khách",
-            Number.isFinite(Number(reservation?.partySize))
-              ? `${Number(reservation.partySize)} người`
-              : EMPTY_VALUE
-          )}
+          {renderField("Số khách", Number.isFinite(Number(reservation?.partySize)) ? `${Number(reservation.partySize)} người` : EMPTY_VALUE)}
           {renderField("Trạng thái đặt bàn", getReservationStatusLabel(reservation?.status))}
           {renderField("Thời gian tạo đặt bàn", toVNDateTime(reservation?.createdAt))}
           {renderField("Ghi chú / yêu cầu đặc biệt", reservation?.note)}
@@ -485,9 +482,10 @@ function ReservationReceiptModal({ reservation, onClose }) {
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <button className="btn btn--primary" onClick={onClose}>
-          Đóng
+        <button className="btn btn--outline" onClick={() => onRebook?.(reservation)}>
+          Đặt lại bàn
         </button>
+        <button className="btn btn--primary" onClick={onClose}>Đóng</button>
       </Modal.Footer>
     </Modal>
   );
@@ -496,15 +494,15 @@ function ReservationReceiptModal({ reservation, onClose }) {
 export default function OrdersPage() {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id;
+  const navigate = useNavigate();
+  const { cart, addToCart, clearCart } = useCart();
+
   const [activeTab, setActiveTab] = useState("all");
   const [toasts, setToasts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  const navigate = useNavigate();
-  const { cart, addToCart, clearCart } = useCart();
 
-  // State Modals
   const [cancelTarget, setCancelTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [changeTimeTarget, setChangeTimeTarget] = useState(null);
@@ -514,7 +512,11 @@ export default function OrdersPage() {
   const [receiptTarget, setReceiptTarget] = useState(null);
   const [reservationReceiptTarget, setReservationReceiptTarget] = useState(null);
 
-  // Queries
+  const pushToast = useCallback((text) => {
+    setToasts((items) => [...items, { id: `${Date.now()}_${Math.random()}`, text }]);
+  }, []);
+  const closeToast = useCallback((id) => setToasts((items) => items.filter((x) => x.id !== id)), []);
+
   const {
     data: orderConn,
     loading: ordersLoading,
@@ -525,6 +527,7 @@ export default function OrdersPage() {
     skip: !userId,
     fetchPolicy: "network-only",
   });
+
   const {
     data: resvList,
     loading: resvLoading,
@@ -536,62 +539,69 @@ export default function OrdersPage() {
     fetchPolicy: "network-only",
   });
 
-  // Mutations
+  const changeTableRestaurantId = changeTableOpen?.restaurantId || null;
+  const { data: availableTablesData, loading: availableTablesLoading } = useQuery(TABLES_BY_RESTAURANT, {
+    variables: { restaurantId: changeTableRestaurantId, status: "available", limit: 200 },
+    skip: !changeTableRestaurantId,
+    fetchPolicy: "network-only",
+  });
+
   const [cancelOrderMutation] = useMutation(CANCEL_ORDER, {
     onCompleted: () => {
       pushToast("Đã hủy đơn");
-      refetchOrders();
+      refetchOrders?.();
     },
     onError: (err) => pushToast(getOrderActionErrorMessage(err, "Không thể hủy đơn.")),
   });
+
   const [cancelReservationMutation] = useMutation(CANCEL_RESERVATION, {
     onCompleted: () => {
       pushToast("Đã hủy bàn");
-      refetchReservations();
+      refetchReservations?.();
     },
-    onError: (err) =>
-      pushToast(getReservationActionErrorMessage(err, "Không thể hủy đặt bàn.")),
+    onError: (err) => pushToast(getReservationActionErrorMessage(err, "Không thể hủy đặt bàn.")),
   });
+
   const [requestReservationChange] = useMutation(REQUEST_RESERVATION_CHANGE, {
     onCompleted: () => {
       pushToast("Đã gửi yêu cầu thay đổi tới nhà hàng");
-      refetchReservations();
+      refetchReservations?.();
     },
-    onError: (err) =>
-      pushToast(getReservationActionErrorMessage(err, "Không thể gửi yêu cầu thay đổi.")),
+    onError: (err) => pushToast(getReservationActionErrorMessage(err, "Không thể gửi yêu cầu thay đổi.")),
   });
 
   const [deleteReservationMutation] = useMutation(DELETE_RESERVATION, {
     onCompleted: () => {
       pushToast("Đã xóa lịch sử");
-      refetchReservations();
+      refetchReservations?.();
     },
-    onError: (err) =>
-      pushToast(getReservationActionErrorMessage(err, "Không thể xóa lịch sử đặt bàn.")),
+    onError: (err) => pushToast(getReservationActionErrorMessage(err, "Không thể xóa lịch sử đặt bàn.")),
   });
 
-  const pushToast = (text) =>
-    setToasts((t) => [...t, { id: Math.random(), text }]);
-  const closeToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
-
+  const handleRebookReservation = useCallback((reservation) => {
+    if (!reservation?.restaurantId) {
+      pushToast("Không đủ thông tin nhà hàng để đặt lại bàn.");
+      return false;
+    }
+    navigate(`/restaurant/${encodeURIComponent(reservation.restaurantId)}/layout?rebook=${encodeURIComponent(reservation.id)}`, {
+      state: { rebookReservation: reservation },
+    });
+    return true;
+  }, [navigate, pushToast]);
 
   const handleItemClick = (item) => {
     const raw = item?.raw;
+    if (!raw) {
+      pushToast("Không đủ thông tin để mở chi tiết đơn.");
+      return;
+    }
 
     if (["dinein", "takeaway", "delivery"].includes(item?.kind)) {
-      if (!raw) {
-        pushToast("Không đủ thông tin để mở chi tiết đơn.");
-        return;
-      }
       setDetailTarget({ kind: item.kind, data: raw });
       return;
     }
 
     if (item?.kind === "reservation") {
-      if (!raw) {
-        pushToast("Không đủ thông tin để mở chi tiết đơn.");
-        return;
-      }
       setDetailTarget({ kind: "reservation", data: raw });
       return;
     }
@@ -599,12 +609,14 @@ export default function OrdersPage() {
     pushToast("Không đủ thông tin để mở chi tiết đơn.");
   };
 
-  const resolveOrderRestaurantId = (order) =>
-    order?.restaurantId || order?.raw?.restaurantId || null;
-
   const mapOrderItemToCartItem = (orderItem, restaurantId) => {
-    const id = orderItem?.dishId || orderItem?.menuItemId || orderItem?.itemId;
+    const id = resolveMenuItemId(orderItem);
     if (!id) return null;
+    const servingVariantKey =
+      orderItem?.servingKey ||
+      orderItem?.servingVariant?.key ||
+      orderItem?.servingVariantKey ||
+      "portion";
     const price =
       Number(orderItem?.unitPrice) ||
       Number(orderItem?.servingVariant?.price) ||
@@ -614,7 +626,10 @@ export default function OrdersPage() {
     return {
       id,
       dishId: orderItem?.dishId || id,
-      restaurantId,
+      menuItemId: id,
+      menuId: orderItem?.menuId || null,
+      categoryId: orderItem?.categoryId || null,
+      restaurantId: String(restaurantId),
       name: orderItem?.name || "Món ăn",
       price,
       quantity: Number(orderItem?.quantity) > 0 ? Number(orderItem.quantity) : 1,
@@ -624,7 +639,11 @@ export default function OrdersPage() {
         orderItem?.thumbnail ||
         (Array.isArray(orderItem?.proofImages) ? orderItem.proofImages[0] : "") ||
         "",
+      servingVariantKey,
+      servingKey: servingVariantKey,
+      method: orderItem?.servingVariant?.name || servingVariantKey,
       modifiers: orderItem?.modifiers || orderItem?.options || [],
+      note: orderItem?.note || null,
     };
   };
 
@@ -641,9 +660,9 @@ export default function OrdersPage() {
 
     mapped.forEach((item) => addToCart(item));
     pushToast("Đã thêm món từ đơn cũ vào giỏ hàng.");
-    navigate(`/cus-menu?restaurantId=${encodeURIComponent(restaurantId)}`);
+    navigate(`/cus-menu?restaurantId=${encodeURIComponent(restaurantId)}&reorder=1`);
     return true;
-  }, [addToCart, navigate]);
+  }, [addToCart, navigate, pushToast]);
 
   const handleReorder = useCallback((order) => {
     const sourceItems = Array.isArray(order?.items) ? order.items : [];
@@ -652,7 +671,7 @@ export default function OrdersPage() {
       return false;
     }
 
-    const restaurantId = resolveOrderRestaurantId(order);
+    const restaurantId = getOrderRestaurantId(order);
     if (!restaurantId) {
       pushToast("Không đủ thông tin nhà hàng để đặt lại đơn.");
       return false;
@@ -664,23 +683,20 @@ export default function OrdersPage() {
       (cartRestaurantIds.length > 1 || String(cartRestaurantIds[0]) !== String(restaurantId));
 
     if (hasConflict) {
-      const confirmed = window.confirm(
-        "Giỏ hàng hiện tại sẽ được thay bằng các món từ đơn này. Tiếp tục?"
-      );
+      const confirmed = window.confirm("Giỏ hàng hiện tại sẽ được thay bằng các món từ đơn này. Tiếp tục?");
       if (!confirmed) return false;
       clearCart();
     }
 
     return performReorder(order, restaurantId);
-  }, [cart, clearCart, performReorder]);
+  }, [cart, clearCart, performReorder, pushToast]);
 
-  /* --- 1. MAPPING RESERVATION DATA --- */
   const reservationItems = useMemo(() => {
     return (resvList?.myReservations || []).map((r) => {
-      const isCancelled = ["cancelled", "rejected", "expired"].includes(
-        (r.status || "").toLowerCase()
-      );
-      const isCompleted = ["completed", "seated"].includes((r.status || "").toLowerCase());
+      const normalizedStatus = (r.status || "").toLowerCase();
+      const isCancelled = CANCELLED_STATUSES.includes(normalizedStatus);
+      const isCompleted = COMPLETED_STATUSES.includes(normalizedStatus);
+      const isActive = !isCancelled && !isCompleted;
 
       const actions = [
         {
@@ -690,8 +706,15 @@ export default function OrdersPage() {
         },
       ];
 
-      // Action: Thanh toán
-      if (r.status === "pending_payment") {
+      if (isCancelled || isCompleted) {
+        actions.push({
+          label: "Đặt lại bàn",
+          variant: "primary",
+          onClick: () => handleRebookReservation(r),
+        });
+      }
+
+      if (normalizedStatus === "pending_payment") {
         actions.push({
           label: "Thanh toán cọc",
           variant: "success",
@@ -699,13 +722,14 @@ export default function OrdersPage() {
             setQrBooking({
               id: r.id,
               orderCode: r.orderCode,
-              deposit: r.depositAmount,
+              depositAmount: r.depositAmount,
+              depositStatus: r.depositStatus,
+              paymentMethod: r.paymentMethod || r.depositPaymentMethod,
             }),
         });
       }
 
-      // Action: Đổi giờ/bàn
-      if (!isCancelled && !isCompleted) {
+      if (isActive) {
         actions.push({
           label: "Đổi giờ",
           variant: "outline",
@@ -718,7 +742,6 @@ export default function OrdersPage() {
         });
       }
 
-      // Action: Hủy/Xóa
       if (isCancelled || isCompleted) {
         actions.push({
           label: "Xóa",
@@ -736,29 +759,24 @@ export default function OrdersPage() {
       return {
         key: r.id,
         kind: "reservation",
-        status: (r.status || "").toLowerCase(),
+        status: normalizedStatus,
         orderId: r.orderCode || r.id.slice(-6).toUpperCase(),
         restaurantName: r.restaurantName || "Nhà hàng",
         header: { timeText: toVNDateTime(r.createdAt) },
-        itemsPreview: [], // Đặt bàn không có list món
+        itemsPreview: [],
         mainInfo: [
-          {
-            label: "Ngày đến",
-            value: toVNDateTime(r.timeTo),
-            highlight: true,
-          },
-          { label: "Số khách", value: `${r.partySize} người` },
+          { label: "Ngày đến", value: toVNDateTime(r.timeTo), highlight: true },
+          { label: "Số khách", value: `${r.partySize || 0} người` },
           { label: "Tiền cọc", value: fmtMoney(Number(r.depositAmount || 0)) },
           { label: "Thời lượng", value: r.isUnlimitedTime ? "Không giới hạn" : `${r.durationMinutes || 60} phút` },
           { label: "TT thanh toán", value: getDepositStatusLabel(r.depositStatus) },
         ],
-        actions: actions,
+        actions,
         raw: r,
       };
     });
-  }, [resvList]);
+  }, [handleRebookReservation, resvList]);
 
-  /* --- 2. MAPPING ORDER DATA --- */
   const orderItems = useMemo(() => {
     const nodes = (orderConn?.ordersByUser?.edges || [])
       .map((e) => e.node)
@@ -766,13 +784,10 @@ export default function OrdersPage() {
 
     return nodes.map((o) => {
       const type = normalizeOrderType(o.orderType);
-      const isCancelled = ["cancelled", "rejected"].includes(
-        (o.currentStatus || "").toLowerCase()
-      );
-
-      const itemsPreview = (o.items || [])
-        .slice(0, 2)
-        .map((it) => ({ quantity: it.quantity, name: it.name }));
+      const normalizedStatus = (o.currentStatus || "").toLowerCase();
+      const isCancelled = ["cancelled", "rejected"].includes(normalizedStatus);
+      const isCompleted = normalizedStatus === "completed";
+      const itemsPreview = (o.items || []).slice(0, 2).map((it) => ({ quantity: it.quantity, name: it.name }));
       const moreCount = Math.max(0, (o.items?.length || 0) - 2);
 
       const actions = [
@@ -782,6 +797,7 @@ export default function OrdersPage() {
           onClick: () => setReceiptTarget(o),
         },
       ];
+
       if ((o.items || []).length > 0) {
         actions.push({
           label: "Đặt lại",
@@ -790,56 +806,44 @@ export default function OrdersPage() {
         });
       }
 
-      if (!isCancelled && o.currentStatus !== "completed") {
+      if (!isCancelled && !isCompleted) {
         actions.push({
           label: "Hủy đơn",
           variant: "danger",
           onClick: () => setCancelTarget({ id: o.id, restaurantId: o.restaurantId, kind: "order" }),
         });
       }
+
       return {
         key: o.id,
         kind: type,
-        status: (o.currentStatus || "").toLowerCase(),
+        status: normalizedStatus,
         orderId: o.orderCode || o.id.slice(-6).toUpperCase(),
-        restaurantName: `Nhà hàng (ID: ${o.restaurantId.slice(-4)})`,
+        restaurantName: o.restaurantName || (o.restaurantId ? `Nhà hàng (ID: ${String(o.restaurantId).slice(-4)})` : "Nhà hàng"),
         header: {
           timeText: toVNDateTime(o.createdAt),
           moreItemsCount: moreCount,
         },
-        itemsPreview: itemsPreview,
+        itemsPreview,
         mainInfo: [
-          {
-            label: "Tổng tiền",
-            value: fmtMoney(o.totals?.grandTotal),
-            highlight: true,
-          },
+          { label: "Tổng tiền", value: fmtMoney(o.totals?.grandTotal), highlight: true },
           { label: "Số món", value: `${o.items?.length || 0} món` },
           {
             label: type === "delivery" ? "Giao lúc" : "Hình thức",
-            value:
-              type === "delivery"
-                ? o.shipping?.deliveryTime || "--"
-                : getOrderTypeLabel(o.orderType),
+            value: type === "delivery" ? o.shipping?.deliveryTime || EMPTY_VALUE : getOrderTypeLabel(o.orderType),
           },
         ],
-        actions: actions,
+        actions,
         raw: o,
       };
     });
-  }, [orderConn, handleReorder]);
+  }, [handleReorder, orderConn]);
 
-  const allItems = useMemo(
-    () => [...reservationItems, ...orderItems],
-    [reservationItems, orderItems]
-  );
+  const allItems = useMemo(() => [...reservationItems, ...orderItems], [reservationItems, orderItems]);
   const isDefaultFilters = !searchTerm.trim() && statusFilter === "all" && sortBy === "newest";
 
-  // Filter + Search + Sort logic
   const visibleItems = useMemo(() => {
     const searchText = searchTerm.trim().toLowerCase();
-    const completedStatuses = ["completed", "seated"];
-    const cancelledStatuses = ["cancelled", "rejected", "expired"];
 
     const tabFiltered = allItems.filter((item) => {
       if (activeTab === "all") return true;
@@ -847,9 +851,7 @@ export default function OrdersPage() {
       if (activeTab === "dinein") return item.kind === "dinein";
       if (activeTab === "takeaway") return item.kind === "takeaway";
       if (activeTab === "delivery") return item.kind === "delivery";
-      if (activeTab === "history") {
-        return ["cancelled", "completed", "rejected", "expired"].includes(item.status);
-      }
+      if (activeTab === "history") return [...CANCELLED_STATUSES, ...COMPLETED_STATUSES].includes(item.status);
       return true;
     });
 
@@ -868,6 +870,10 @@ export default function OrdersPage() {
         raw?.orderCode,
         raw?.id,
         raw?.restaurantId,
+        raw?.restaurantName,
+        raw?.customerName,
+        raw?.customerPhone,
+        raw?.customerEmail,
         raw?.currentStatus,
         raw?.status,
         itemNames,
@@ -881,11 +887,9 @@ export default function OrdersPage() {
 
     const statusFiltered = searched.filter((item) => {
       if (statusFilter === "all") return true;
-      if (statusFilter === "completed") return completedStatuses.includes(item.status);
-      if (statusFilter === "cancelled") return cancelledStatuses.includes(item.status);
-      if (statusFilter === "active") {
-        return !completedStatuses.includes(item.status) && !cancelledStatuses.includes(item.status);
-      }
+      if (statusFilter === "completed") return COMPLETED_STATUSES.includes(item.status);
+      if (statusFilter === "cancelled") return CANCELLED_STATUSES.includes(item.status);
+      if (statusFilter === "active") return !COMPLETED_STATUSES.includes(item.status) && !CANCELLED_STATUSES.includes(item.status);
       return true;
     });
 
@@ -935,11 +939,10 @@ export default function OrdersPage() {
   const shouldShowEmpty = !isLoading && !hasVisibleItems && !shouldShowFullError;
   const hasFilterOrSearch = !isDefaultFilters;
   const hasScopedFilter = hasFilterOrSearch || activeTab !== "all";
+
   const summaryStats = useMemo(() => {
-    const completedStatuses = ["completed", "seated"];
-    const cancelledStatuses = ["cancelled", "rejected", "expired"];
     const activeCount = allItems.filter(
-      (item) => !completedStatuses.includes(item.status) && !cancelledStatuses.includes(item.status)
+      (item) => !COMPLETED_STATUSES.includes(item.status) && !CANCELLED_STATUSES.includes(item.status)
     ).length;
 
     return [
@@ -949,6 +952,29 @@ export default function OrdersPage() {
       { label: "Đang hiển thị", value: visibleItems.length },
     ];
   }, [allItems, reservationItems.length, visibleItems.length]);
+
+  const currentRestaurantForChangeTable = useMemo(() => {
+    if (!changeTableOpen?.restaurantId) return [];
+    return [
+      {
+        id: changeTableOpen.restaurantId,
+        name: changeTableOpen.restaurantName || "Nhà hàng hiện tại",
+      },
+    ];
+  }, [changeTableOpen]);
+
+  const tablesByRestaurant = useMemo(() => {
+    if (!changeTableRestaurantId) return {};
+    const mappedTables = (availableTablesData?.tables || []).map((table) => ({
+      id: table.id,
+      name: table.code || table.name || `Bàn ${String(table.id).slice(-4)}`,
+      capacity: Number(table.capacity || 0),
+      deposit: Number(table.deposit || 0),
+      floor: table.floorId || table.type || "Khu vực hiện tại",
+      note: table.status ? `Trạng thái: ${table.status}` : null,
+    }));
+    return { [changeTableRestaurantId]: mappedTables };
+  }, [availableTablesData?.tables, changeTableRestaurantId]);
 
   return (
     <main className="orders-page">
@@ -970,70 +996,62 @@ export default function OrdersPage() {
             ))}
           </div>
         </div>
-        <button
-          className="btn-create"
-          aria-label="Tạo đơn mới"
-          onClick={() => navigate("/restaurants")}
-        >
+        <button className="btn-create" aria-label="Tạo đơn mới" onClick={() => navigate("/restaurants")}>
           Tạo đơn mới
         </button>
       </section>
 
       <section className="orders-toolbar" aria-label="Bộ lọc đơn hàng">
         <div className="tabs-container">
-        {[
-          { id: "all", label: "Tất cả", icon: "📑" },
-          { id: "reservation", label: "Đặt bàn", icon: "📅" },
-          { id: "dinein", label: "Tại quán", icon: "🍽️" },
-          { id: "takeaway", label: "Mang đi", icon: "🥡" },
-          { id: "delivery", label: "Giao hàng", icon: "🚚" },
-          { id: "history", label: "Lịch sử", icon: "📜" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.icon} {tab.label}
-          </button>
-        ))}
+          {[
+            { id: "all", label: "Tất cả", icon: "📑" },
+            { id: "reservation", label: "Đặt bàn", icon: "📅" },
+            { id: "dinein", label: "Tại quán", icon: "🍽️" },
+            { id: "takeaway", label: "Mang đi", icon: "🥡" },
+            { id: "delivery", label: "Giao hàng", icon: "🚚" },
+            { id: "history", label: "Lịch sử", icon: "📜" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
         </div>
         <div className="orders-controls">
-        <input
-          className="orders-search"
-          type="text"
-          placeholder="Tìm theo mã đơn, món, nhà hàng..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="orders-select"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="active">Đang xử lý</option>
-          <option value="completed">Hoàn tất</option>
-          <option value="cancelled">Đã hủy/từ chối/hết hạn</option>
-        </select>
-        <select className="orders-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="newest">Mới nhất</option>
-          <option value="oldest">Cũ nhất</option>
-          <option value="amount_desc">Tổng tiền cao đến thấp</option>
-          <option value="amount_asc">Tổng tiền thấp đến cao</option>
-        </select>
-        {hasFilterOrSearch && (
-          <button
-            className="btn-clear-filters"
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("all");
-              setSortBy("newest");
-            }}
-          >
-            Xóa lọc
-          </button>
-        )}
+          <input
+            className="orders-search"
+            type="text"
+            placeholder="Tìm theo mã đơn, món, nhà hàng, SĐT..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select className="orders-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang xử lý</option>
+            <option value="completed">Hoàn tất</option>
+            <option value="cancelled">Đã hủy/từ chối/hết hạn</option>
+          </select>
+          <select className="orders-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="amount_desc">Tổng tiền cao đến thấp</option>
+            <option value="amount_asc">Tổng tiền thấp đến cao</option>
+          </select>
+          {hasFilterOrSearch && (
+            <button
+              className="btn-clear-filters"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+                setSortBy("newest");
+              }}
+            >
+              Xóa lọc
+            </button>
+          )}
         </div>
       </section>
 
@@ -1056,17 +1074,11 @@ export default function OrdersPage() {
             {shouldShowPartialWarning && (
               <div className="empty-state empty-state--warning">
                 <p>Một phần dữ liệu chưa tải được. Bạn vẫn có thể xem các đơn đã tải.</p>
-                {(ordersError?.message || resvError?.message) && (
-                  <p>{ordersError?.message || resvError?.message}</p>
-                )}
+                {(ordersError?.message || resvError?.message) && <p>{ordersError?.message || resvError?.message}</p>}
               </div>
             )}
             {visibleItems.map((item) => (
-              <OrderItem
-                key={item.key}
-                {...item}
-                onClick={() => handleItemClick(item)}
-              />
+              <OrderItem key={item.key} {...item} onClick={() => handleItemClick(item)} />
             ))}
           </>
         )}
@@ -1078,16 +1090,16 @@ export default function OrdersPage() {
         )}
       </section>
 
-      {/* --- MODALS --- */}
       <QRPaymentModal
         isOpen={!!qrBooking}
         onClose={() => setQrBooking(null)}
         booking={qrBooking}
         onPaymentConfirmed={() => {
           setQrBooking(null);
-          refetchReservations();
+          refetchReservations?.();
         }}
       />
+
       <ChangeTimeModal
         isOpen={!!changeTimeTarget}
         onClose={() => setChangeTimeTarget(null)}
@@ -1106,17 +1118,20 @@ export default function OrdersPage() {
           setChangeTimeTarget(null);
         }}
       />
+
       <CancelOrderModal
         isOpen={!!cancelTarget}
         onClose={() => setCancelTarget(null)}
         onConfirm={async ({ reason }) => {
-          if (cancelTarget.kind === "reservation")
+          if (cancelTarget.kind === "reservation") {
             await cancelReservationMutation({ variables: { id: cancelTarget.id } });
-          else
+          } else {
             await cancelOrderMutation({ variables: { orderId: cancelTarget.id, restaurantId: cancelTarget.restaurantId, reason } });
+          }
           setCancelTarget(null);
         }}
       />
+
       <ConfirmationModal
         visible={!!deleteTarget}
         title="Xóa lịch sử?"
@@ -1126,10 +1141,9 @@ export default function OrdersPage() {
         }}
         onClose={() => setDeleteTarget(null)}
       />
-      <OrderDetailModal
-        detailTarget={detailTarget}
-        onClose={() => setDetailTarget(null)}
-      />
+
+      <OrderDetailModal detailTarget={detailTarget} onClose={() => setDetailTarget(null)} />
+
       <ReceiptModal
         receiptTarget={receiptTarget}
         onClose={() => setReceiptTarget(null)}
@@ -1138,13 +1152,25 @@ export default function OrdersPage() {
           if (ok) setReceiptTarget(null);
         }}
       />
+
       <ReservationReceiptModal
         reservation={reservationReceiptTarget}
         onClose={() => setReservationReceiptTarget(null)}
+        onRebook={(reservation) => {
+          const ok = handleRebookReservation(reservation);
+          if (ok) setReservationReceiptTarget(null);
+        }}
       />
+
+      {availableTablesLoading && changeTableOpen && (
+        <div className="orders-page__loading-note" role="status">Đang tải bàn trống...</div>
+      )}
       <ChangeTableModal
         isOpen={!!changeTableOpen}
         onClose={() => setChangeTableOpen(null)}
+        currentReservation={changeTableOpen}
+        restaurants={currentRestaurantForChangeTable}
+        tablesByRestaurant={tablesByRestaurant}
         onSubmit={async (payload) => {
           await requestReservationChange({
             variables: {
