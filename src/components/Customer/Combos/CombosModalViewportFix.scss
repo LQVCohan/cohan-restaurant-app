@@ -1,0 +1,139 @@
+.combo-modal {
+  align-items: center !important;
+  justify-items: center !important;
+  padding: clamp(1rem, 3vw, 2rem) !important;
+  overflow: auto !important;
+}
+
+.combo-modal__panel {
+  width: min(92vw, 980px) !important;
+  max-width: 980px !important;
+  max-height: min(86vh, 720px) !important;
+  display: grid !important;
+  grid-template-columns: minmax(300px, 0.95fr) minmax(320px, 1.05fr) !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  background: #fffaf4 !important;
+}
+
+.combo-modal__media {
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: min(86vh, 720px) !important;
+}
+
+.combo-modal__media > img {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  object-fit: cover !important;
+}
+
+.combo-modal__content {
+  min-width: 0 !important;
+  max-height: min(86vh, 720px) !important;
+  overflow: auto !important;
+  padding: clamp(1.25rem, 2.4vw, 2rem) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 102, 0, 0.08), transparent 18rem),
+    #fffaf4 !important;
+}
+
+.combo-modal__content h2 {
+  margin: 0.35rem 0 0.45rem !important;
+  font-size: clamp(1.35rem, 2.5vw, 2rem) !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.04em !important;
+}
+
+.combo-modal__content > p {
+  margin: 0.35rem 0 !important;
+  line-height: 1.55 !important;
+}
+
+.combo-modal__content ul {
+  margin: 1rem 0 !important;
+  max-height: 190px !important;
+  overflow: auto !important;
+}
+
+.combo-modal__content li {
+  align-items: center !important;
+  padding: 0.72rem 0 !important;
+}
+
+.combo-modal__total {
+  align-items: baseline !important;
+  flex-wrap: wrap !important;
+  padding-top: 0.25rem !important;
+}
+
+.combo-modal__note {
+  margin: 0.65rem 0 0 !important;
+  max-width: 36rem !important;
+  line-height: 1.55 !important;
+}
+
+.combo-modal__actions {
+  position: sticky !important;
+  bottom: 0 !important;
+  margin: 1rem -0.2rem -0.4rem !important;
+  padding: 0.75rem 0.2rem 0.25rem !important;
+  background: linear-gradient(180deg, rgba(255, 250, 244, 0), #fffaf4 35%) !important;
+}
+
+.combo-modal__actions a,
+.combo-modal__actions button {
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.combo-modal__close {
+  right: 1rem !important;
+  top: 1rem !important;
+}
+
+@media (max-width: 900px) {
+  .combo-modal {
+    align-items: start !important;
+    padding: 0.75rem !important;
+  }
+
+  .combo-modal__panel {
+    width: min(96vw, 620px) !important;
+    max-height: calc(100vh - 1.5rem) !important;
+    grid-template-columns: 1fr !important;
+    overflow: auto !important;
+  }
+
+  .combo-modal__media {
+    height: 260px !important;
+    max-height: 260px !important;
+  }
+
+  .combo-modal__content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .combo-modal__panel {
+    border-radius: 22px !important;
+  }
+
+  .combo-modal__media {
+    height: 210px !important;
+    max-height: 210px !important;
+  }
+
+  .combo-modal__content ul {
+    max-height: none !important;
+  }
+
+  .combo-modal__actions {
+    display: grid !important;
+  }
+}
