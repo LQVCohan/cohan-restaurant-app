@@ -58,14 +58,91 @@
     box-shadow: 0 16px 32px rgba(255, 102, 0, 0.22);
   }
 
+  button.btn-primary {
+    position: relative;
+    overflow: hidden;
+  }
+
   button.btn-primary:hover {
     box-shadow: 0 18px 38px rgba(255, 102, 0, 0.28);
+  }
+
+  button.btn-primary:not(:disabled)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+    transition: transform 0.6s ease;
+  }
+
+  button.btn-primary:not(:disabled):hover::before {
+    transform: translateX(120%);
+  }
+
+  button.btn-primary:disabled::after {
+    content: "";
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    margin-left: 8px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.42);
+    border-top-color: #fff;
+    vertical-align: -2px;
+    animation: loginButtonSpin 0.72s linear infinite;
   }
 
   .remember-card,
   .check-card {
     background: rgba(255, 247, 237, 0.92);
     border-color: rgba(255, 102, 0, 0.22);
+  }
+
+  .auth-form--register #register-password:not(:placeholder-shown) {
+    padding-bottom: 13px;
+  }
+
+  .auth-form--register .input-wrapper:has(#register-password:not(:placeholder-shown)) {
+    margin-bottom: 18px;
+
+    &::after {
+      content: "Gợi ý: dùng 8+ ký tự, có chữ hoa, số và ký tự đặc biệt";
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      bottom: -16px;
+      color: #a16207;
+      font-size: 0.68rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      bottom: -5px;
+      height: 4px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, #f97316 0 33%, #facc15 33% 66%, #22c55e 66% 100%);
+      opacity: 0.86;
+    }
+  }
+
+  .social-container {
+    align-items: center;
+
+    &::before {
+      content: "Sắp hỗ trợ";
+      align-self: center;
+      color: rgba(117, 109, 98, 0.78);
+      font-size: 0.72rem;
+      font-weight: 800;
+      margin-right: 2px;
+    }
   }
 
   .overlay {
@@ -83,8 +160,11 @@
     z-index: 0;
     pointer-events: none;
     background:
+      url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.22)' stroke-width='2'%3E%3Cpath d='M38 46c0 18 14 32 32 32s32-14 32-32'/%3E%3Cpath d='M70 18v62'/%3E%3Cpath d='M132 35v64'/%3E%3Cpath d='M122 36h20M122 50h20M122 64h20'/%3E%3Crect x='28' y='112' width='62' height='42' rx='12'/%3E%3Cpath d='M42 126h34M42 140h22'/%3E%3C/g%3E%3C/svg%3E") 18% 24% / 180px 180px no-repeat,
+      url("data:image/svg+xml,%3Csvg width='150' height='150' viewBox='0 0 150 150' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.18)' stroke-width='2'%3E%3Ccircle cx='76' cy='74' r='42'/%3E%3Ccircle cx='76' cy='74' r='22'/%3E%3Cpath d='M30 118h92M42 126h68'/%3E%3C/g%3E%3C/svg%3E") 82% 74% / 150px 150px no-repeat,
       linear-gradient(115deg, rgba(255, 255, 255, 0.14), transparent 36%),
       radial-gradient(circle at 78% 12%, rgba(255, 255, 255, 0.18), transparent 8rem);
+    opacity: 0.8;
   }
 
   .overlay::after {
@@ -110,6 +190,21 @@
       font-weight: 700;
       line-height: 1.58;
     }
+
+    p::after {
+      content: "Đặt món nhanh hơn. Lưu khẩu vị riêng. Theo dõi đơn dễ dàng.";
+      display: block;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.94);
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1.45;
+      backdrop-filter: blur(10px);
+    }
   }
 
   .floating-food-layer {
@@ -118,6 +213,7 @@
     z-index: 1;
     pointer-events: none;
     overflow: hidden;
+    perspective: 800px;
   }
 
   .food-float {
@@ -134,25 +230,39 @@
     font-size: 1.45rem;
     opacity: 0.72;
     animation: loginFoodFloat 8s ease-in-out infinite;
+    will-change: transform;
   }
 
-  .food-float--1 { top: 12%; left: 12%; animation-delay: -0.6s; }
-  .food-float--2 { top: 22%; right: 14%; animation-delay: -2.2s; }
-  .food-float--3 { top: 50%; left: 8%; animation-delay: -4.1s; }
-  .food-float--4 { right: 12%; bottom: 22%; animation-delay: -1.4s; }
-  .food-float--5 { left: 34%; bottom: 12%; animation-delay: -3.2s; }
-  .food-float--6 { top: 68%; right: 34%; animation-delay: -5.5s; }
+  .food-float--1 { top: 12%; left: 12%; animation-delay: -0.6s; transform-origin: 30% 70%; }
+  .food-float--2 { top: 22%; right: 14%; animation-delay: -2.2s; width: 44px; height: 44px; opacity: 0.58; filter: blur(0.2px); }
+  .food-float--3 { top: 50%; left: 8%; animation-delay: -4.1s; width: 60px; height: 60px; opacity: 0.82; }
+  .food-float--4 { right: 12%; bottom: 22%; animation-delay: -1.4s; width: 48px; height: 48px; }
+  .food-float--5 { left: 34%; bottom: 12%; animation-delay: -3.2s; width: 42px; height: 42px; opacity: 0.52; }
+  .food-float--6 { top: 68%; right: 34%; animation-delay: -5.5s; width: 56px; height: 56px; opacity: 0.72; }
+
+  .overlay:has(.ghost:hover) .food-float {
+    animation-duration: 4.5s;
+  }
+
+  .overlay:has(.ghost:hover) .food-float--1,
+  .overlay:has(.ghost:hover) .food-float--4 {
+    scale: 1.12;
+  }
 
   @keyframes loginFoodFloat {
     0%, 100% {
       transform: translate3d(0, 0, 0) rotate(-6deg) scale(1);
     }
     35% {
-      transform: translate3d(18px, -22px, 0) rotate(8deg) scale(1.05);
+      transform: translate3d(18px, -22px, 40px) rotate(8deg) scale(1.05);
     }
     70% {
-      transform: translate3d(-14px, 16px, 0) rotate(-2deg) scale(0.96);
+      transform: translate3d(-14px, 16px, -20px) rotate(-2deg) scale(0.96);
     }
+  }
+
+  @keyframes loginButtonSpin {
+    to { transform: rotate(360deg); }
   }
 
   @media (max-width: 768px) {
@@ -166,7 +276,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .food-float {
+    .food-float,
+    button.btn-primary:disabled::after {
       animation: none !important;
     }
   }
