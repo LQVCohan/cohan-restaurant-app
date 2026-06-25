@@ -149,6 +149,7 @@ export default function POSLayout() {
 
   return (
     <div className={styles.page}>
+      <style>{`[class*="transferReviewPanel"]{display:none!important;}`}</style>
       <div className={styles.restaurantBar}>
         <div className={styles.restaurantBarInfo}>
           <div className={styles.restaurantHead}>
