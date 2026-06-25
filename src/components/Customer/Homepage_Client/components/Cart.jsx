@@ -111,6 +111,23 @@ export const getHoldStatus = (item, now = Date.now()) => {
 export const hasExpiredHoldItems = (cart = [], now = Date.now()) =>
   (cart || []).some((item) => getHoldStatus(item, now).state === "expired");
 
+const isComboCartLine = (item = {}) =>
+  String(item.itemType || item.kind || item.type || "").toUpperCase() === "COMBO" ||
+  Boolean(item.comboId || item.comboSnapshot);
+
+const getComboChildItems = (item = {}) => {
+  const snapshotItems = Array.isArray(item.comboSnapshot?.items)
+    ? item.comboSnapshot.items
+    : [];
+  const comboQty = Math.max(1, Number(item.quantity || 1));
+
+  return snapshotItems.map((child, index) => ({
+    key: child.menuItemId || child.id || `${child.name || "combo-item"}-${index}`,
+    name: child.name || "Món trong combo",
+    qty: Math.max(1, Number(child.qty || child.quantity || 1)) * comboQty,
+  }));
+};
+
 const Cart = ({
   isOpen,
   onClose,
@@ -323,16 +340,22 @@ function RestaurantGroup({
       <div className="cart-group__list">
         {group.items.map((item) => {
           const line = (item.price || 0) * (item.quantity || 1);
-          const hold = getHoldStatus(item, now);
+          const isCombo = isComboCartLine(item);
+          const hold = isCombo ? { state: "none", remainingMs: 0 } : getHoldStatus(item, now);
           const modifiers = item.modifiers || item.selectedModifiers || [];
-          const variantLabel =
-            item.servingVariantName ||
-            item.servingName ||
-            item.method ||
-            item.servingMethod ||
-            item.servingVariantLabel ||
-            item.servingVariantKey ||
-            item.servingKey;
+          const variantLabel = isCombo
+            ? "Combo bundle"
+            : item.servingVariantName ||
+              item.servingName ||
+              item.method ||
+              item.servingMethod ||
+              item.servingVariantLabel ||
+              item.servingVariantKey ||
+              item.servingKey;
+          const childItems = isCombo ? getComboChildItems(item) : [];
+          const originalPrice = Number(item.comboSnapshot?.originalPrice || 0);
+          const unitPrice = Number(item.price || 0);
+          const unitSaving = isCombo && originalPrice > unitPrice ? originalPrice - unitPrice : 0;
           const itemBusy =
             clearingBusy ||
             globalBusy ||
@@ -340,18 +363,33 @@ function RestaurantGroup({
           return (
             <div
               key={item.cartLineKey || item.id}
-              className={`cart-item ${hold.state === "expired" ? "is-expired" : ""}`}
+              className={`cart-item ${isCombo ? "cart-item--combo" : ""} ${hold.state === "expired" ? "is-expired" : ""}`}
             >
               <div className="cart-item__main">
                 <div className="cart-item__info">
-                  <h6 className="cart-item__name">{item.name}</h6>
+                  <h6 className="cart-item__name">
+                    {item.name}
+                    {isCombo && <span className="cart-item__badge">Combo</span>}
+                  </h6>
                   <div className="cart-item__price-unit">
                     {formatVND(item.price)}
                   </div>
                   {!!variantLabel && (
                     <p className="cart-item__meta">Phần: {variantLabel}</p>
                   )}
-                  {!!item.note && (
+                  {isCombo && childItems.length > 0 && (
+                    <ul className="cart-item__combo-list" aria-label={`Món trong ${item.name}`}>
+                      {childItems.map((child) => (
+                        <li key={child.key}><span>{child.qty}×</span>{child.name}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {isCombo && unitSaving > 0 && (
+                    <p className="cart-item__combo-saving">
+                      Tiết kiệm {formatVND(unitSaving * Number(item.quantity || 1))}
+                    </p>
+                  )}
+                  {!!item.note && !isCombo && (
                     <p className="cart-item__meta">Ghi chú: {item.note}</p>
                   )}
                   {modifiers.length > 0 && (
