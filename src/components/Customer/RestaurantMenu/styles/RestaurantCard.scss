@@ -97,11 +97,11 @@
     align-items: center;
     border: 1px solid rgba(255, 255, 255, 0.65);
     border-radius: rm.$radius-pill;
-    background: rgba(255, 250, 242, 0.86);
+    background: rgba(255, 250, 242, 0.88);
     backdrop-filter: blur(12px);
     color: rm.$text-main;
-    font-size: 0.78rem;
-    font-weight: 800;
+    font-size: 0.76rem;
+    font-weight: 700;
     line-height: 1;
     padding: 0.5rem 0.72rem;
   }
@@ -137,10 +137,10 @@
   .res-name {
     margin: 0 4.8rem 0.55rem 0;
     color: rm.$text-main;
-    font-size: 1.28rem;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.15;
+    font-size: 1.16rem;
+    font-weight: 700;
+    letter-spacing: -0.012em;
+    line-height: 1.28;
     text-wrap: balance;
   }
 
@@ -150,7 +150,8 @@
     align-items: center;
     gap: 0.55rem;
     color: rm.$text-muted;
-    font-size: 0.88rem;
+    font-size: 0.86rem;
+    line-height: 1.4;
     margin-bottom: 1.1rem;
 
     .rating {
@@ -159,7 +160,7 @@
       border: 1px solid rgba(217, 119, 6, 0.18);
       padding: 0.25rem 0.5rem;
       border-radius: rm.$radius-pill;
-      font-weight: 900;
+      font-weight: 800;
       font-variant-numeric: tabular-nums;
     }
   }
@@ -171,8 +172,8 @@
     grid-template-columns: auto 1fr;
     gap: 0.45rem;
     color: rm.$text-sub;
-    font-size: 0.9rem;
-    line-height: 1.45;
+    font-size: 0.88rem;
+    line-height: 1.55;
 
     svg { width: 16px; color: rm.$primary-dark; margin-top: 0.1rem; }
   }
