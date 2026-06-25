@@ -48,6 +48,7 @@ const ActionCard = ({ to, title, description, cta, tone = "neutral", disabled = 
 const taskItems = [
   { label: "Trước ca", title: "Kiểm tra lịch và phản hồi ca mới", to: "/staff/schedule" },
   { label: "Trong ca", title: "Chấm công vào/ra đúng thời điểm", to: "/staff/schedule" },
+  { label: "Khi cần nghỉ", title: "Gửi đơn nghỉ phép để quản lý duyệt", to: "/staff/leave" },
   { label: "Sau ca", title: "Theo dõi nhắc việc và phản hồi quản lý", to: "/staff/notifications" },
 ];
 
@@ -74,10 +75,11 @@ const baseActions = [
     tone: "warm",
   },
   {
-    title: "Nghỉ phép / tăng ca / chỉnh công",
-    description: "Tính năng này đang chờ hỗ trợ. Vui lòng xử lý tại lịch cá nhân hoặc liên hệ quản lý.",
-    tone: "muted",
-    disabled: true,
+    to: "/staff/leave",
+    title: "Nghỉ phép",
+    description: "Tạo đơn nghỉ phép và theo dõi trạng thái duyệt ngay trong khu vực nhân viên.",
+    cta: "Tạo đơn",
+    tone: "warm",
   },
   {
     to: "/staff/profile",
@@ -112,7 +114,7 @@ const baseActions = [
 const notificationPreview = [
   { type: "Lịch làm", title: "Kiểm tra lịch tuần và phản hồi ca mới nếu có." },
   { type: "Chấm công", title: "Chấm công vào trước ca và chấm công ra khi kết thúc ca." },
-  { type: "Lịch rảnh/bận", title: "Gửi lịch rảnh/bận đúng kỳ để quản lý xếp ca." },
+  { type: "Nghỉ phép", title: "Gửi đơn nghỉ phép sớm để quản lý kịp xếp ca thay thế." },
   { type: "Hồ sơ", title: "Cập nhật thiếu sót thông tin qua quản lý trực tiếp." },
 ];
 
@@ -159,7 +161,7 @@ const StaffDashboardPage = () => {
           </p>
           <div className="staff-hero-links" aria-label="Lối tắt ca làm">
             <Link className="staff-hero-link" to="/staff/schedule"><span>Ca hôm nay</span><strong>Xem lịch</strong></Link>
-            <Link className="staff-hero-link" to="/staff/schedule"><span>Trạng thái</span><strong>Sẵn sàng</strong></Link>
+            <Link className="staff-hero-link" to="/staff/leave"><span>Nghỉ phép</span><strong>Tạo đơn</strong></Link>
             <Link className="staff-hero-link" to="/staff/notifications"><span>Nhắc việc</span><strong>Thông báo</strong></Link>
           </div>
         </div>
@@ -206,7 +208,6 @@ const StaffDashboardPage = () => {
           </div>
         </aside>
       </section>
-
 
       <section className="staff-dashboard-section staff-card" aria-labelledby="staff-actions-title">
         <div className="staff-dashboard-section__header">
