@@ -33,7 +33,7 @@ const PROVIDER_OPTIONS = [
 ];
 
 const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
-  const depositAmount = Number(booking?.deposit) || 0;
+  const depositAmount = Number(booking?.depositAmount ?? booking?.deposit ?? 0);
   const orderCode = booking?.orderCode || null;
 
   const [provider, setProvider] = useState("momo");
@@ -206,31 +206,79 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   );
 };
 
-const PaymentInfo = ({ booking, amount, activePayment }) => (
-  <div className="payment-info">
-    <div className="payment-amount">
-      <span className="amount-label">Số tiền cần thanh toán:</span>
-      <span className="amount-value">{formatCurrency(amount)}</span>
-    </div>
+const PaymentInfo = ({ booking, amount, activePayment }) => {
+  const [expandedOrders, setExpandedOrders] = useState(false);
+  const linkedOrders = Array.isArray(booking?.linkedOrders)
+    ? booking.linkedOrders.filter(Boolean)
+    : booking?.linkedOrder
+      ? [booking.linkedOrder]
+      : [];
 
-    <div className="payment-details">
-      <PaymentDetail
-        label="Mã đặt bàn"
-        value={`#${booking?.orderCode || booking?.id || "—"}`}
-      />
-      <PaymentDetail label="Trạng thái" value={activePayment?.status || "pending"} />
-      <PaymentDetail label="Provider" value={activePayment?.provider || "-"} />
-      <PaymentDetail label="Reference" value={activePayment?.reference || "-"} />
-    </div>
+  return (
+    <div className="payment-info">
+      <div className="payment-amount">
+        <span className="amount-label">Số tiền cần thanh toán:</span>
+        <span className="amount-value">{formatCurrency(amount)}</span>
+      </div>
 
-    <div className="payment-warning">
-      <p>
-        ⚠️ <strong>Lưu ý:</strong> Redirect không phải xác nhận cuối cùng.
-      </p>
-      <p>Hệ thống chỉ xác nhận khi backend nhận callback/IPN hợp lệ.</p>
+      <div className="payment-details">
+        <PaymentDetail
+          label="Mã đặt bàn"
+          value={`#${booking?.orderCode || booking?.id || "—"}`}
+        />
+        {linkedOrders.length > 0 && (
+          <PaymentDetail
+            label="Order kèm"
+            value={linkedOrders.map((order) => `#${order.orderCode || order.id}`).join(", ")}
+          />
+        )}
+        <PaymentDetail label="Trạng thái" value={activePayment?.status || "pending"} />
+        <PaymentDetail label="Provider" value={activePayment?.provider || "-"} />
+        <PaymentDetail label="Reference" value={activePayment?.reference || "-"} />
+      </div>
+
+      {linkedOrders.length > 0 && (
+        <div className="payment-details" style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={() => setExpandedOrders((prev) => !prev)}
+          >
+            {expandedOrders ? "Ẩn món ăn" : "Mở rộng món ăn"}
+          </button>
+          {expandedOrders && linkedOrders.map((order) => (
+            <div key={order.id || order.orderCode} className="detail-item" style={{ display: "block" }}>
+              <strong>Order #{order.orderCode || order.id}</strong>
+              <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+                {(order.items || []).map((item) => (
+                  <li key={item._id || item.name}>
+                    {item.name} × {item.quantity || 1}
+                    {Number(item.lineSubtotal || item.unitPrice || item.basePrice || 0) > 0
+                      ? ` · ${formatCurrency(item.lineSubtotal || Number(item.unitPrice || item.basePrice || 0) * Number(item.quantity || 1))}`
+                      : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {booking?.linkedOrderError && (
+        <div className="payment-warning">
+          <p>⚠️ {booking.linkedOrderError}</p>
+        </div>
+      )}
+
+      <div className="payment-warning">
+        <p>
+          ⚠️ <strong>Lưu ý:</strong> Redirect không phải xác nhận cuối cùng.
+        </p>
+        <p>Hệ thống chỉ xác nhận khi backend nhận callback/IPN hợp lệ.</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const PaymentDetail = ({ label, value }) => (
   <div className="detail-item">
