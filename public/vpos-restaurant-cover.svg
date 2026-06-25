@@ -1,55 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
-  <title id="title">Restaurant cover</title>
-  <desc id="desc">Warm restaurant counter, tables and POS terminal illustration for VPOS authentication screen.</desc>
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="VPOS restaurant counter illustration">
   <defs>
-    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#315f55"/>
-      <stop offset="0.5" stop-color="#9b4c2b"/>
-      <stop offset="1" stop-color="#f0c58a"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2B1B13"/>
+      <stop offset="0.48" stop-color="#9A4F08"/>
+      <stop offset="1" stop-color="#FF7A1A"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="24%" r="60%">
-      <stop stop-color="#fff6d6" stop-opacity="0.55"/>
-      <stop offset="0.62" stop-color="#f1a35a" stop-opacity="0.2"/>
-      <stop offset="1" stop-color="#1c312d" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="10"/>
+    <linearGradient id="counter" x1="150" y1="620" x2="1090" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE3B8"/>
+      <stop offset="1" stop-color="#C77726"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="372" y1="234" x2="792" y2="506" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#FDE5C5"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="32" stdDeviation="28" flood-color="#2B1B13" flood-opacity="0.28"/>
     </filter>
+    <filter id="smallShadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#2B1B13" flood-opacity="0.18"/>
+    </filter>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" stroke="white" stroke-opacity="0.055"/>
+    </pattern>
   </defs>
-  <rect width="1200" height="900" fill="url(#wall)"/>
-  <rect width="1200" height="900" fill="url(#glow)"/>
-  <g opacity="0.17">
-    <path d="M0 168h1200M0 336h1200M0 504h1200M0 672h1200" stroke="#fff7e8" stroke-width="2"/>
-    <path d="M165 0v900M330 0v900M495 0v900M660 0v900M825 0v900M990 0v900" stroke="#fff7e8" stroke-width="2"/>
+
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <rect width="1200" height="900" fill="url(#grid)"/>
+  <circle cx="1028" cy="142" r="188" fill="#FFD19A" fill-opacity="0.22"/>
+  <circle cx="184" cy="196" r="124" fill="#FFFFFF" fill-opacity="0.12"/>
+  <circle cx="832" cy="720" r="210" fill="#FFFFFF" fill-opacity="0.09"/>
+
+  <g opacity="0.16" stroke="#FFFDF8" stroke-width="3" stroke-linecap="round">
+    <path d="M132 370h178"/>
+    <path d="M132 402h126"/>
+    <path d="M930 308h136"/>
+    <path d="M930 342h96"/>
+    <path d="M166 148c36 42 88 42 124 0"/>
+    <path d="M228 76v100"/>
   </g>
-  <g filter="url(#soft)" opacity="0.28">
-    <ellipse cx="284" cy="302" rx="146" ry="42" fill="#fff4d8"/>
-    <ellipse cx="904" cy="256" rx="176" ry="50" fill="#fff4d8"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="338" y="208" width="456" height="314" rx="30" fill="#2A211B"/>
+    <rect x="365" y="235" width="402" height="244" rx="24" fill="url(#screen)"/>
+    <rect x="488" y="522" width="158" height="46" rx="12" fill="#2A211B"/>
+    <rect x="444" y="564" width="246" height="34" rx="17" fill="#2A211B"/>
   </g>
-  <g stroke="#fff7e8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.76">
-    <path d="M212 552h776" stroke-width="24"/>
-    <path d="M244 584h708v126H244z" fill="#5e3928" fill-opacity="0.5" stroke-width="9"/>
-    <path d="M310 515h176" stroke-width="10"/>
-    <path d="M336 512c14-75 130-75 148 0" fill="#fff7e8" fill-opacity="0.32" stroke-width="8"/>
-    <path d="M366 486h88" stroke-width="7" opacity="0.8"/>
-    <path d="M726 438h150v108H726z" fill="#fff7e8" fill-opacity="0.22" stroke-width="9"/>
-    <path d="M750 466h78M750 494h96" stroke-width="7"/>
-    <path d="M891 452h38v94h-38z" fill="#fff7e8" fill-opacity="0.32" stroke-width="8"/>
-    <circle cx="801" cy="526" r="10" fill="#fff7e8" stroke="none"/>
-    <path d="M495 546c5-69 59-112 122-112 64 0 113 43 120 112" fill="#fff7e8" fill-opacity="0.18" stroke-width="8"/>
-    <path d="M526 502c48-34 104-34 153 0" stroke-width="8"/>
-    <path d="M170 726h240M790 726h246" stroke-width="14" opacity="0.8"/>
-    <path d="M238 726l-42 92M338 726l42 92M858 726l-42 92M984 726l42 92" stroke-width="10" opacity="0.76"/>
-    <path d="M245 236h130l-17 88H262z" fill="#fff7e8" fill-opacity="0.2" stroke-width="8"/>
-    <path d="M277 236l14-58M321 236l22-82" stroke-width="7"/>
-    <path d="M742 220h174" stroke-width="13"/>
-    <path d="M760 220c17-61 134-61 153 0" fill="#fff7e8" fill-opacity="0.2" stroke-width="8"/>
+
+  <g filter="url(#smallShadow)">
+    <rect x="408" y="278" width="118" height="92" rx="20" fill="#FFF7ED"/>
+    <rect x="544" y="278" width="178" height="22" rx="11" fill="#D97706" fill-opacity="0.92"/>
+    <rect x="544" y="320" width="132" height="15" rx="7.5" fill="#9A4F08" fill-opacity="0.32"/>
+    <rect x="544" y="350" width="160" height="15" rx="7.5" fill="#9A4F08" fill-opacity="0.24"/>
+    <rect x="544" y="402" width="78" height="32" rx="16" fill="#FF6600"/>
+    <path d="M435 316h62M435 338h42" stroke="#D97706" stroke-width="10" stroke-linecap="round"/>
   </g>
-  <g opacity="0.22" fill="#fff7e8">
-    <circle cx="160" cy="145" r="5"/>
-    <circle cx="1028" cy="152" r="6"/>
-    <circle cx="1002" cy="376" r="4"/>
-    <circle cx="197" cy="408" r="6"/>
-    <circle cx="625" cy="210" r="5"/>
+
+  <rect x="128" y="646" width="944" height="112" rx="36" fill="url(#counter)" filter="url(#softShadow)"/>
+  <rect x="190" y="604" width="184" height="92" rx="24" fill="#FFF4E0" filter="url(#smallShadow)"/>
+  <rect x="824" y="580" width="176" height="124" rx="28" fill="#2A211B" filter="url(#smallShadow)"/>
+  <rect x="850" y="604" width="124" height="52" rx="14" fill="#FFF4E0"/>
+  <rect x="868" y="622" width="88" height="12" rx="6" fill="#D97706"/>
+  <rect x="868" y="642" width="60" height="8" rx="4" fill="#D97706" fill-opacity="0.45"/>
+
+  <g filter="url(#smallShadow)">
+    <rect x="244" y="514" width="168" height="124" rx="28" fill="#FFFDF8"/>
+    <path d="M278 564h100" stroke="#FF6600" stroke-width="12" stroke-linecap="round"/>
+    <path d="M278 594h68" stroke="#9A4F08" stroke-width="10" stroke-linecap="round" opacity="0.35"/>
+  </g>
+
+  <g opacity="0.96" filter="url(#smallShadow)">
+    <rect x="704" y="106" width="168" height="58" rx="29" fill="#FFFDF8" fill-opacity="0.9"/>
+    <text x="788" y="142" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#9A4F08">VPOS</text>
+  </g>
+
+  <g opacity="0.34" fill="#FFFDF8">
+    <circle cx="86" cy="734" r="5"/>
+    <circle cx="112" cy="734" r="5"/>
+    <circle cx="138" cy="734" r="5"/>
+    <circle cx="1018" cy="240" r="5"/>
+    <circle cx="1044" cy="240" r="5"/>
+    <circle cx="1070" cy="240" r="5"/>
   </g>
 </svg>
