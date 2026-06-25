@@ -30,6 +30,9 @@ const getRoleName = (user) =>
 export default function CartPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const bookingRestaurantId = searchParams.get("restaurantId");
+  const bookingAddonMode = searchParams.get("returnTo") === "booking" && !!bookingRestaurantId;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const {
     cart,
@@ -60,11 +63,30 @@ export default function CartPage() {
   }, [cart.length]);
 
   const groups = useMemo(() => groupCartItems(cart), [cart]);
-  const expiredHoldExists = useMemo(() => hasExpiredHoldItems(cart, now), [cart, now]);
+  const bookingCartItems = useMemo(
+    () => (cart || []).filter((item) => String(item.restaurantId) === String(bookingRestaurantId || "")),
+    [bookingRestaurantId, cart],
+  );
+  const otherRestaurantItems = useMemo(
+    () => bookingAddonMode
+      ? (cart || []).filter((item) => String(item.restaurantId) !== String(bookingRestaurantId || ""))
+      : [],
+    [bookingAddonMode, bookingRestaurantId, cart],
+  );
+  const expiredHoldExists = useMemo(
+    () => hasExpiredHoldItems(bookingAddonMode ? bookingCartItems : cart, now),
+    [bookingAddonMode, bookingCartItems, cart, now]
+  );
   const roleName = getRoleName(user);
   const canCheckout = Boolean(isAuthenticated && roleName === "customer" && cart.length && !expiredHoldExists);
-  const totalItems = getTotalItems();
-  const totalPrice = getTotalPrice();
+  const totalItems = bookingAddonMode
+    ? bookingCartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+    : getTotalItems();
+  const totalPrice = bookingAddonMode
+    ? bookingCartItems.reduce((sum, item) => sum + getOrderLineDisplay(item).totalPrice, 0)
+    : getTotalPrice();
+  const hasWrongRestaurantItems = bookingAddonMode && otherRestaurantItems.length > 0;
+  const hasNoBookingItems = bookingAddonMode && bookingCartItems.length === 0;
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
@@ -73,6 +95,11 @@ export default function CartPage() {
     }
     if (roleName !== "customer") return;
     if (expiredHoldExists || !cart.length) return;
+    if (bookingAddonMode) {
+      if (hasWrongRestaurantItems || hasNoBookingItems) return;
+      navigate(`/restaurant/${bookingRestaurantId}/layout?fromMenu=1`);
+      return;
+    }
     navigate("/checkout", { state: { from: "/cart" } });
   };
 
@@ -83,10 +110,12 @@ export default function CartPage() {
           <ArrowLeft size={18} /> Quay lại
         </button>
         <div>
-          <p className="cart-page__eyebrow">Giỏ hàng chính thức</p>
-          <h1>Kiểm tra món trước khi đặt</h1>
+          <p className="cart-page__eyebrow">{bookingAddonMode ? "Order kèm đặt bàn" : "Giỏ hàng chính thức"}</p>
+          <h1>{bookingAddonMode ? "Kiểm tra món đi kèm đặt bàn" : "Kiểm tra món trước khi đặt"}</h1>
           <p>
-            Giỏ hàng được đồng bộ với hệ thống giữ món khi bạn đăng nhập, giúp hạn chế đặt trùng hoặc hết hàng khi thanh toán.
+            {bookingAddonMode
+              ? "Giỏ order kèm chỉ được hoàn tất với món thuộc đúng nhà hàng đang đặt bàn. Sau khi hoàn tất, bạn sẽ quay lại đơn đặt bàn để thanh toán cọc."
+              : "Giỏ hàng được đồng bộ với hệ thống giữ món khi bạn đăng nhập, giúp hạn chế đặt trùng hoặc hết hàng khi thanh toán."}
           </p>
         </div>
         <div className="cart-page__summary-pill">
@@ -102,6 +131,12 @@ export default function CartPage() {
         </div>
       )}
 
+      {bookingAddonMode && hasWrongRestaurantItems && (
+        <div className="cart-page__notice cart-page__notice--warning" role="alert">
+          <AlertTriangle size={18} /> Giỏ có món từ nhà hàng khác. Vui lòng xóa nhóm không thuộc nhà hàng đặt bàn trước khi hoàn tất order kèm theo.
+        </div>
+      )}
+
       {expiredHoldExists && (
         <div className="cart-page__notice cart-page__notice--warning" role="alert">
           <AlertTriangle size={18} /> Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại trước khi thanh toán.
@@ -114,7 +149,7 @@ export default function CartPage() {
           <h2>Giỏ hàng đang trống</h2>
           <p>Hãy chọn nhà hàng hoặc hỏi AI gợi ý món phù hợp cho hôm nay.</p>
           <div className="cart-page__empty-actions">
-            <button type="button" onClick={() => navigate("/cus-menu")}>Xem thực đơn</button>
+            <button type="button" onClick={() => navigate(bookingAddonMode ? `/cus-menu?restaurantId=${encodeURIComponent(bookingRestaurantId)}&returnTo=booking` : "/cus-menu")}>Xem thực đơn</button>
             <button type="button" className="secondary" onClick={() => navigate("/restaurants")}>Khám phá nhà hàng</button>
           </div>
         </section>
@@ -186,14 +221,22 @@ export default function CartPage() {
           </section>
 
           <aside className="cart-page__checkout-card">
-            <p className="cart-page__eyebrow">Tóm tắt thanh toán</p>
+            <p className="cart-page__eyebrow">{bookingAddonMode ? "Tóm tắt order kèm" : "Tóm tắt thanh toán"}</p>
             <div className="cart-page__checkout-row"><span>Số lượng</span><strong>{totalItems} món</strong></div>
             <div className="cart-page__checkout-row"><span>Tạm tính</span><strong>{formatVND(totalPrice)}</strong></div>
-            <div className="cart-page__checkout-total"><span>Tổng</span><strong>{formatVND(totalPrice)}</strong></div>
+            {bookingAddonMode && <div className="cart-page__checkout-row"><span>Cọc món tạm tính</span><strong>{formatVND(Math.round(totalPrice * 0.5))}</strong></div>}
+            <div className="cart-page__checkout-total"><span>{bookingAddonMode ? "Tổng món kèm" : "Tổng"}</span><strong>{formatVND(totalPrice)}</strong></div>
             {!isAuthenticated && <p className="cart-page__helper">Bạn cần đăng nhập tài khoản khách hàng để thanh toán.</p>}
             {isAuthenticated && roleName !== "customer" && <p className="cart-page__helper">Vui lòng dùng tài khoản khách hàng để checkout.</p>}
-            <button type="button" className="cart-page__checkout-btn" onClick={handleCheckout} disabled={cartActions.isBusy || (isAuthenticated && !canCheckout)}>
-              {!isAuthenticated ? "Đăng nhập để thanh toán" : "Thanh toán ngay"}
+            {bookingAddonMode && hasWrongRestaurantItems && <p className="cart-page__helper">Không thể hoàn tất vì có món từ nhà hàng khác.</p>}
+            {bookingAddonMode && hasNoBookingItems && <p className="cart-page__helper">Chưa có món nào thuộc nhà hàng đang đặt bàn.</p>}
+            <button
+              type="button"
+              className="cart-page__checkout-btn"
+              onClick={handleCheckout}
+              disabled={cartActions.isBusy || (isAuthenticated && (!canCheckout || (bookingAddonMode && (hasWrongRestaurantItems || hasNoBookingItems))))}
+            >
+              {!isAuthenticated ? "Đăng nhập để thanh toán" : bookingAddonMode ? "Hoàn tất order kèm theo" : "Thanh toán ngay"}
             </button>
             <button type="button" className="cart-page__clear-btn" onClick={cartActions.clearCustomerCart} disabled={cartActions.isClearing}>
               Xóa toàn bộ giỏ
