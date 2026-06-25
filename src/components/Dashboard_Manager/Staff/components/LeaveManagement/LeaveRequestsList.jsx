@@ -49,6 +49,7 @@ const LeaveRequestsList = ({
   searchPlaceholder = "🔍 Tìm nhân viên...",
   allowDecisionActions = true,
   showSearch = true,
+  headerAction = null,
 }) => {
   const { user } = React.useContext(AuthContext);
   const currentUserId = user?.id || user?._id || null;
@@ -76,28 +77,31 @@ const LeaveRequestsList = ({
           <p>{subtitle}</p>
         </div>
 
-        <div className="stats-grid">
-          <div className="stat-card total">
-            <div className="icon">📂</div>
-            <div className="info">
-              <span className="label">Tổng đơn</span>
-              <span className="value">{stats.total}</span>
+        <div className="header-actions">
+          <div className="stats-grid">
+            <div className="stat-card total">
+              <div className="icon">📂</div>
+              <div className="info">
+                <span className="label">Tổng đơn</span>
+                <span className="value">{stats.total}</span>
+              </div>
+            </div>
+            <div className="stat-card pending">
+              <div className="icon">⏳</div>
+              <div className="info">
+                <span className="label">Chờ duyệt</span>
+                <span className="value">{stats.pending}</span>
+              </div>
+            </div>
+            <div className="stat-card approved">
+              <div className="icon">✅</div>
+              <div className="info">
+                <span className="label">Đã duyệt</span>
+                <span className="value">{stats.approved}</span>
+              </div>
             </div>
           </div>
-          <div className="stat-card pending">
-            <div className="icon">⏳</div>
-            <div className="info">
-              <span className="label">Chờ duyệt</span>
-              <span className="value">{stats.pending}</span>
-            </div>
-          </div>
-          <div className="stat-card approved">
-            <div className="icon">✅</div>
-            <div className="info">
-              <span className="label">Đã duyệt</span>
-              <span className="value">{stats.approved}</span>
-            </div>
-          </div>
+          {headerAction && <div className="header-action-slot">{headerAction}</div>}
         </div>
       </div>
 
@@ -125,7 +129,6 @@ const LeaveRequestsList = ({
             type="date"
             value={selectedDate}
             onChange={(e) => onDateChange(e.target.value)}
-            style={{ marginRight: 8 }}
           />
           {showSearch && (
             <input
