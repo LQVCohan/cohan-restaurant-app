@@ -169,6 +169,22 @@ function mapIssue(issue, fallbackCode = "VALIDATION_FAILED") {
   };
 }
 
+function normalizeIssueList(issues = [], fallbackCode = "VALIDATION_FAILED") {
+  if (!Array.isArray(issues)) return [];
+  return issues.map((issue) => mapIssue(issue, fallbackCode));
+}
+
+function normalizeAutoSchedulePreviewItem(item = {}) {
+  const warnings = normalizeIssueList(item.warnings, "AUTO_SCHEDULE_WARNING");
+  const validationIssues = normalizeIssueList(item.validationIssues, "VALIDATION_FAILED");
+  return {
+    ...item,
+    status: item.status || (item.employeeId ? "ready" : "blocked"),
+    warnings,
+    validationIssues,
+  };
+}
+
 function assertValidOverrideInput(input = {}) {
   if (!input.allowOverride) return;
 
@@ -227,8 +243,8 @@ function getApplyScopePreview(preview, selectedShiftKeySet) {
 
   return {
     ...preview,
-    items: selectedItems,
-    plannedAssignments,
+    items: selectedItems.map(normalizeAutoSchedulePreviewItem),
+    plannedAssignments: plannedAssignments.map(normalizeAutoSchedulePreviewItem),
     unfilledRoles,
     unresolvedCount,
     canApply: plannedAssignments.length > 0 && unresolvedCount === 0,
@@ -266,14 +282,14 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
     const candidates = [];
     for (const staff of staffRows) {
       if (demand.requiredRole && !staffMatchesRole(staff, demand.requiredRole)) {
-        const issue = { code: "ROLE_MISMATCH", severity: "error", message: "Nhân viên không đúng role bắt buộc." };
+        const issue = mapIssue({ code: "ROLE_MISMATCH", severity: "error", message: "Nhân viên không đúng role bắt buộc." });
         blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: [issue] });
         continue;
       }
       const employeeKey = String(staff._id);
       const plannedOverlap = (plannedWindowsByEmployee.get(employeeKey) || []).some((window) => window.startTime < demand.endTime && window.endTime > demand.startTime);
       if (plannedOverlap) {
-        const issue = { code: "PLANNED_SHIFT_OVERLAP", severity: "error", message: "Nhân viên đã được preview cho ca khác trùng thời gian." };
+        const issue = mapIssue({ code: "PLANNED_SHIFT_OVERLAP", severity: "error", message: "Nhân viên đã được preview cho ca khác trùng thời gian." });
         blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: employeeKey, requiredRole: demand.requiredRole, issues: [issue] });
         continue;
       }
@@ -284,7 +300,7 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       if (avoidOvertime && weeklyHoursCap > 0 && afterPlanned > weeklyHoursCap) blocking.push({ code: "WEEKLY_HOURS_CAP_EXCEEDED", severity: "error", message: `Tổng giờ tuần sau khi xếp ca vượt giới hạn ${weeklyHoursCap}h.` });
       if (respectAvailability && (validation.warnings || []).some((issue) => String(issue.code || "").includes("AVAILABILITY")) && !input.allowOverride) blocking.push({ code: "AVAILABILITY_VIOLATION", severity: "error", message: "Nhân viên không phù hợp availability đã đăng ký." });
       if (blocking.length) {
-        blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: blocking.map(mapIssue) });
+        blockedCandidates.push({ shiftKey: demand.shiftKey, employeeId: String(staff._id), requiredRole: demand.requiredRole, issues: normalizeIssueList(blocking) });
         continue;
       }
       candidates.push({ staff, validation, afterPlanned });
@@ -293,8 +309,16 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
     candidates.sort((a, b) => Number(b.validation.score || 0) - Number(a.validation.score || 0));
     const selected = candidates[0] || null;
     if (!selected) {
+      const validationIssues = [mapIssue({ code: "NO_ELIGIBLE_CANDIDATE", severity: "error", message: "Không có nhân viên đủ điều kiện." })];
       unfilledRoles.push({ shiftKey: demand.shiftKey, shiftType: demand.shiftType, startTime: demand.startTime, endTime: demand.endTime, requiredRole: demand.requiredRole, reason: "NO_ELIGIBLE_CANDIDATE" });
-      items.push({ ...demand, status: "blocked", employeeId: null, employeeName: null, validationIssues: [{ code: "NO_ELIGIBLE_CANDIDATE", severity: "error", message: "Không có nhân viên đủ điều kiện." }] });
+      items.push(normalizeAutoSchedulePreviewItem({
+        ...demand,
+        status: "blocked",
+        employeeId: null,
+        employeeName: null,
+        warnings: [],
+        validationIssues,
+      }));
       continue;
     }
     const employeeId = String(selected.staff._id);
@@ -303,14 +327,46 @@ export async function buildAutoSchedulePreviewBackend(input, ctx = {}) {
       ...(plannedWindowsByEmployee.get(employeeId) || []),
       { startTime: demand.startTime, endTime: demand.endTime },
     ]);
-    const item = { ...demand, status: selected.validation.warnings?.length ? "warning" : "ready", employeeId, employeeName: selected.staff.fullName || null, score: selected.validation.score || 0, warnings: selected.validation.warnings || [], validationIssues: selected.validation.warnings || [] };
+    const warnings = normalizeIssueList(selected.validation.warnings || [], "AUTO_SCHEDULE_WARNING");
+    const item = normalizeAutoSchedulePreviewItem({
+      ...demand,
+      status: warnings.length ? "warning" : "ready",
+      employeeId,
+      employeeName: selected.staff.fullName || null,
+      score: selected.validation.score || 0,
+      warnings,
+      validationIssues: warnings,
+    });
     items.push(item);
     plannedAssignments.push(item);
   }
 
-  const summary = { totalDemand: demandItems.length, recommendedAssignments: plannedAssignments.length, warningAssignments: items.filter((item) => item.status === "warning").length, blockedAssignments: items.filter((item) => item.status === "blocked").length, existingShiftCount: existingShifts.length };
+  const normalizedItems = items.map(normalizeAutoSchedulePreviewItem);
+  const normalizedPlannedAssignments = plannedAssignments.map(normalizeAutoSchedulePreviewItem);
+  const normalizedUnfilledIssues = unfilledRoles.map((row) => mapIssue({
+    code: row.reason,
+    severity: "error",
+    message: `Thiếu nhân sự cho ${row.requiredRole || row.shiftType}.`,
+  }));
+  const summary = {
+    totalDemand: demandItems.length,
+    recommendedAssignments: normalizedPlannedAssignments.length,
+    warningAssignments: normalizedItems.filter((item) => item.status === "warning").length,
+    blockedAssignments: normalizedItems.filter((item) => item.status === "blocked").length,
+    existingShiftCount: existingShifts.length,
+  };
   const unresolvedCount = unfilledRoles.length;
-  return { items, summary, plannedAssignments, blockedCandidates, unfilledRoles, unresolvedCount, canApply: plannedAssignments.length > 0 && unresolvedCount === 0, warnings: [], validationIssues: unfilledRoles.map((row) => ({ code: row.reason, severity: "error", message: `Thiếu nhân sự cho ${row.requiredRole || row.shiftType}.` })) };
+  return {
+    items: normalizedItems,
+    summary,
+    plannedAssignments: normalizedPlannedAssignments,
+    blockedCandidates,
+    unfilledRoles,
+    unresolvedCount,
+    canApply: normalizedPlannedAssignments.length > 0 && unresolvedCount === 0,
+    warnings: [],
+    validationIssues: normalizedUnfilledIssues,
+  };
 }
 
 export async function buildAutoScheduleCreateInputs(input, ctx = {}) {
