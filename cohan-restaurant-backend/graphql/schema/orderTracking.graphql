@@ -266,6 +266,9 @@ extend type Query {
   ): [CustomerServiceRequest!]!
   orderTrackingQrSvg(orderId: ID!): String!
 
+  myOrders(limit: Int = 20, cursor: ID): OrdersConnection!
+  ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
+
   order(id: ID!): Order
   orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
   previewOrderDiscount(input: PreviewOrderDiscountInput!): DiscountBreakdown!
