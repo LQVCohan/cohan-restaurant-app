@@ -2,6 +2,21 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Modal from "@/components/common/Modal";
 
+function toDateInput(date) {
+  return date.toLocaleDateString("en-CA");
+}
+
+function toTimeInput(date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function getNextSafeSlot() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(19, 30, 0, 0);
+  return d;
+}
+
 function toISOFromDateAndTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
   const [h, m] = timeStr.split(":").map(Number);
@@ -13,29 +28,32 @@ function toISOFromDateAndTime(dateStr, timeStr) {
 export default function ChangeTimeModal({
   isOpen,
   onClose,
-  onSubmit, // (payload: {iso, date, time}) => void
+  onSubmit, // (payload: {timeTo, iso, date, time}) => void
   title = "🕐 Đổi thời gian",
   minDate, // yyyy-mm-dd
   initialDate, // yyyy-mm-dd
   initialTime, // HH:mm
 }) {
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const suggestedSlot = useMemo(getNextSafeSlot, []);
+  const today = useMemo(() => toDateInput(new Date()), []);
   const min = minDate || today;
 
-  const [date, setDate] = useState(initialDate || min);
-  const [time, setTime] = useState(initialTime || "19:30");
+  const defaultDate = initialDate || toDateInput(suggestedSlot);
+  const defaultTime = initialTime || toTimeInput(suggestedSlot);
+  const [date, setDate] = useState(defaultDate);
+  const [time, setTime] = useState(defaultTime);
 
   useEffect(() => {
     if (isOpen) {
-      setDate(initialDate || min);
-      setTime(initialTime || "19:30");
+      setDate(defaultDate);
+      setTime(defaultTime);
     }
-  }, [isOpen, initialDate, initialTime, min]);
+  }, [isOpen, defaultDate, defaultTime]);
 
   const submit = () => {
     const iso = toISOFromDateAndTime(date, time);
     if (!iso) return;
-    onSubmit?.({ iso, date, time });
+    onSubmit?.({ timeTo: iso, iso, date, time });
   };
 
   if (!isOpen) return null;
@@ -62,7 +80,7 @@ export default function ChangeTimeModal({
         </div>
 
         <div className="hint">
-          💡 Hệ thống sẽ kiểm tra bàn trống tự động khi xác nhận.
+          💡 Đã tự gợi ý khung an toàn gần nhất. Hệ thống sẽ kiểm tra bàn trống khi xác nhận.
         </div>
       </div>
 
