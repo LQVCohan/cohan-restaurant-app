@@ -131,6 +131,17 @@ const FieldIcon = ({ type }) => {
   );
 };
 
+const FloatingFoodIcons = () => (
+  <div className="floating-food-layer" aria-hidden="true">
+    <span className="food-float food-float--1">🍜</span>
+    <span className="food-float food-float--2">🍕</span>
+    <span className="food-float food-float--3">🥗</span>
+    <span className="food-float food-float--4">🍔</span>
+    <span className="food-float food-float--5">🥤</span>
+    <span className="food-float food-float--6">🍣</span>
+  </div>
+);
+
 function splitIdentifier(val) {
   val = (val || "").trim();
   if (val.includes("@")) return { email: val };
@@ -358,13 +369,10 @@ const LoginPage = () => {
         <button type="button" className={mobileMode === "register" ? "active" : ""} onClick={() => togglePanel(true)}>Đăng ký</button>
       </div>
 
-      <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký VPOS">
+      <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký FoodHub">
         <div className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}>
           <form className="auth-form auth-form--register" onSubmit={handleRegister}>
-            <span className="overlay-kicker">VPOS account</span>
             <h1>Tạo tài khoản</h1>
-            <p className="auth-subtitle">Lưu món yêu thích, địa chỉ và ưu đãi trong một tài khoản VPOS.</p>
-            <div className="auth-trust-strip" aria-label="Lợi ích khi tạo tài khoản"><span>Lưu món yêu thích</span><span>Theo dõi đơn</span></div>
 
             <label className="field-label" htmlFor="register-full-name">Họ và tên</label>
             <div className="input-wrapper"><FieldIcon type="user" /><input id="register-full-name" type="text" placeholder="Họ và tên" aria-label="Họ và tên" autoComplete="name" value={registerForm.fullName} onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })} /></div>
@@ -387,10 +395,7 @@ const LoginPage = () => {
 
         <div className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}>
           <form className="auth-form auth-form--login" onSubmit={handleLogin}>
-            <span className="overlay-kicker">VPOS manager</span>
             <h1 id="login-form-title">Đăng nhập</h1>
-            <p className="auth-subtitle">Vận hành POS, đơn hàng, bàn và ca làm trên một màn hình.</p>
-            <div className="auth-trust-strip" aria-label="Tính năng sau khi đăng nhập"><span>Bàn & POS</span><span>Đơn realtime</span><span>Ca làm</span></div>
 
             <label className="field-label" htmlFor="login-identifier">Email, username hoặc số điện thoại</label>
             <div className="input-wrapper"><FieldIcon type="user" /><input id="login-identifier" type="text" placeholder="Email / Username / SĐT" aria-label="Email, username hoặc số điện thoại" autoComplete="username" value={loginForm.identifier} onChange={(e) => setLoginForm({ ...loginForm, identifier: e.target.value })} /></div>
@@ -408,8 +413,17 @@ const LoginPage = () => {
 
         <div className="overlay-container" aria-hidden="true">
           <div className="overlay">
-            <div className="overlay-panel overlay-left"><span className="overlay-kicker">VPOS guest</span><h1>Chào mừng</h1><p>Đăng nhập để theo dõi đơn, đặt bàn và nhận ưu đãi đang mở.</p><button type="button" className="ghost" onClick={() => togglePanel(false)}>Đăng nhập</button></div>
-            <div className="overlay-panel overlay-right"><span className="overlay-kicker">Restaurant POS</span><h1>Xin chào</h1><p>Tạo tài khoản VPOS để đặt món nhanh hơn và lưu món yêu thích.</p><button type="button" className="ghost" onClick={() => togglePanel(true)}>Đăng ký</button></div>
+            <FloatingFoodIcons />
+            <div className="overlay-panel overlay-left">
+              <h1>Chào mừng</h1>
+              <p>Đăng nhập để tiếp tục đặt món, theo dõi đơn và lưu các lựa chọn yêu thích.</p>
+              <button type="button" className="ghost" onClick={() => togglePanel(false)}>Đăng nhập</button>
+            </div>
+            <div className="overlay-panel overlay-right">
+              <h1>Xin chào</h1>
+              <p>Tạo tài khoản để đặt món nhanh hơn và cá nhân hóa trải nghiệm FoodHub.</p>
+              <button type="button" className="ghost" onClick={() => togglePanel(true)}>Đăng ký</button>
+            </div>
           </div>
         </div>
       </section>
