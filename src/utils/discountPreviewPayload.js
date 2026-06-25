@@ -27,6 +27,35 @@ export const getShippingFeeForDiscountPreview = ({
   return Number.isFinite(fee) && fee > 0 ? fee : 0;
 };
 
+const ORDER_ITEM_INPUT_KEYS = new Set([
+  "dishId",
+  "menuId",
+  "categoryId",
+  "name",
+  "unit",
+  "image",
+  "proofImages",
+  "basePrice",
+  "servingKey",
+  "servingVariant",
+  "quantity",
+  "weightGrams",
+  "selectedModifiers",
+  "note",
+  "priority",
+  "status",
+]);
+
+const sanitizeOrderItemInput = (payload = {}) => {
+  const clean = {};
+  Object.entries(payload).forEach(([key, value]) => {
+    if (!ORDER_ITEM_INPUT_KEYS.has(key)) return;
+    if (value === undefined) return;
+    clean[key] = value;
+  });
+  return clean;
+};
+
 export const mapCartItemToOrderItemInput = (
   item = {},
   { includeCartHoldRef = false } = {},
@@ -100,6 +129,25 @@ export const mapCartItemToOrderItemInput = (
   return payload;
 };
 
+export const mapCartItemToDiscountOrderItemInput = (item = {}) => {
+  const payload = mapCartItemToOrderItemInput(item, { includeCartHoldRef: false });
+  const unit = String(payload.unit || "").toLowerCase();
+  const quantity = Number(payload.quantity || 0);
+
+  if (
+    payload.weightGrams == null &&
+    (unit === "kg" || unit === "g") &&
+    Number.isFinite(quantity) &&
+    quantity > 0
+  ) {
+    payload.weightGrams = unit === "g"
+      ? Math.round(quantity)
+      : Math.round(quantity * 1000);
+  }
+
+  return sanitizeOrderItemInput(payload);
+};
+
 export const buildDiscountPricingInput = ({
   taxRate = 0,
   serviceRate = 0,
@@ -124,7 +172,7 @@ export const buildOrderDiscountPreviewInput = ({
 }) => ({
   restaurantId,
   orderType,
-  items: items.map(mapCartItemToOrderItemInput),
+  items: items.map(mapCartItemToDiscountOrderItemInput),
   pricing: buildDiscountPricingInput({
     taxRate,
     serviceRate,
