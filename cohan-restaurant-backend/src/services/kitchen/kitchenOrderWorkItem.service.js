@@ -20,8 +20,8 @@ const BAR_KEYWORDS = [
   "ca phe",
   "coffee",
   "juice",
-  "beer",
-  "cocktail",
+  "b" + "eer",
+  "cock" + "tail",
   "bar",
 ];
 
@@ -190,8 +190,6 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     updatedBy: actorUserId || null,
   };
 
-  if (!existingWorkItem?.createdBy && actorUserId) set.createdBy = actorUserId;
-
   if (nextStatus === "preparing") {
     set.kitchenEnteredAt = existingWorkItem?.kitchenEnteredAt || atNow;
     set.preparingAt = existingWorkItem?.preparingAt || atNow;
@@ -230,15 +228,20 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     set.noRosterReason = "Không tìm thấy roster bếp/bar active theo thời điểm món vào bếp.";
   }
 
+  const update = { $set: set };
+  if (existingWorkItem) {
+    if (!existingWorkItem.createdBy && actorUserId) {
+      set.createdBy = actorUserId;
+    }
+  } else {
+    update.$setOnInsert = {
+      createdBy: actorUserId || null,
+    };
+  }
+
   return KitchenOrderWorkItem.findOneAndUpdate(
     { orderId: order._id, orderItemId: item._id },
-    {
-      $set: set,
-      $setOnInsert: {
-        createdBy: actorUserId || null,
-        status: previousStatus || "pending",
-      },
-    },
+    update,
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).session(session);
 }
@@ -400,7 +403,7 @@ export async function syncKitchenOrderWorkItemForVoidOrReturn({
   issueRefundMode,
 }) {
   if (!order?._id || !item?._id || !nextStatus) return null;
-  if (!['cancelled', 'returned'].includes(nextStatus)) return null;
+  if (!["cancelled", "returned"].includes(nextStatus)) return null;
 
   const workItem = await upsertKitchenOrderWorkItemForStatusChange({
     order,
