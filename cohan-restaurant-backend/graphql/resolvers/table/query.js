@@ -1,9 +1,8 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import Table from "../../../models/table.model.js";
-import { Restaurant } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
-import { requireAnyRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
+import * as authorizationService from "../../../src/services/auth/authorization.service.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 
 const TABLE_LIST_READ_PERMISSIONS = [
@@ -32,6 +31,18 @@ const TABLE_SELECT = {
   joinGroupId: 1,
 };
 
+const getRestaurantModel = async () => {
+  const module = await import("../../../models/restaurant.model.js");
+  return module.default || module.Restaurant;
+};
+
+async function requireTableListAccess(ctx, restaurantId) {
+  if (typeof authorizationService.requireAnyRestaurantPermission === "function") {
+    return authorizationService.requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
+  }
+  return authorizationService.requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_READ);
+}
+
 async function cleanupExpiredViewLocks(restaurantId) {
   const now = new Date();
   const q = { "viewLock.expiresAt": { $lte: now } };
@@ -43,6 +54,7 @@ async function requirePublicRestaurant(restaurantId) {
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
   }
+  const Restaurant = await getRestaurantModel();
   const restaurant = await Restaurant.findOne({
     _id: restaurantId,
     businessStatus: "active",
@@ -83,7 +95,7 @@ export default {
     ctx,
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
-    await requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
+    await requireTableListAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
     const q = buildTableFilter({ restaurantId, floorId, status, type, search });
 
@@ -115,7 +127,7 @@ export default {
       !mongoose.isValidObjectId(restaurantId) ||
       !mongoose.isValidObjectId(floorId)
     ) return null;
-    await requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
+    await requireTableListAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
     return Table.findOne({ restaurantId, floorId, code }).lean({
       virtuals: true,
