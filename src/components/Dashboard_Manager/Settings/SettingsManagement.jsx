@@ -4,6 +4,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import useManagerRestaurantSelection from "../../../hooks/useManagerRestaurantSelection";
 import { hasPermission } from "../../../utils/frontendPermissionAccess";
 import "./SettingsManagement.scss";
+import "./SettingsOvertimePolicy.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const Q_SYSTEM_SETTING = gql`
