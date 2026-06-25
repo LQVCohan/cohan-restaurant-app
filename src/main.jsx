@@ -43,6 +43,7 @@ import "./components/Dashboard_Manager/Table/TableWorkflowHoverGuides.scss";
 import "./components/Dashboard_Manager/Table/TableMobileARTestPolish.scss";
 import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
 import "./components/Dashboard_Manager/Staff/components/EmployeeList/EmployeeListLayoutPolish.scss";
+import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
 import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceSimpleView.scss";
 import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceModalViewportFix.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
