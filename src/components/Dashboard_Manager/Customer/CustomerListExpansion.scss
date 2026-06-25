@@ -1,16 +1,18 @@
-/* Gives the customer list enough lower canvas to reveal the full 9-card page cleanly. */
+/* Gives the customer list enough lower canvas to reveal the full card page cleanly. */
 
 .cm-page .cm-layout {
   padding-bottom: max(7rem, 18vh) !important;
 }
 
-.cm-page .cl-grid--nine-page {
+.cm-page .cl-grid--nine-page,
+.cm-page .cl-grid--all-loaded {
   position: relative !important;
   padding-bottom: 1.35rem !important;
   margin-bottom: 0.25rem !important;
 }
 
-.cm-page .cl-grid--nine-page::after {
+.cm-page .cl-grid--nine-page::after,
+.cm-page .cl-grid--all-loaded::after {
   content: "" !important;
   display: block !important;
   grid-column: 1 / -1 !important;
