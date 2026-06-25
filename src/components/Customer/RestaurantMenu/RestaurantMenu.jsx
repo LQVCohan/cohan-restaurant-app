@@ -21,28 +21,27 @@ const GET_CUSTOMER_RESTAURANTS = gql`
     publicRestaurants(limit: $limit) {
       edges {
         node {
-      id
-      name
-      cuisineType
-      avgRating
-      reviewCount
-      canOrder
-      openingStatus
-      coverImage
-      avatar
-      address {
-        line1
-        line2
-        ward
-        district
-        city
-      }
+          id
+          name
+          cuisineType
+          avgRating
+          reviewCount
+          canOrder
+          openingStatus
+          coverImage
+          avatar
+          address {
+            line1
+            line2
+            ward
+            district
+            city
+          }
         }
       }
     }
   }
 `;
-
 
 const MY_RESTAURANT_FAVORITES = gql`
   query MyRestaurantFavoritesForMenu {
@@ -79,8 +78,39 @@ const GET_CUSTOMER_RESTAURANT_BY_ID = gql`
   }
 `;
 
+const ADD_CART_ITEM = gql`
+  mutation AddCartItemFromReorder($input: AddCartItemInput!) {
+    addCartItem(input: $input) {
+      id
+      totalQuantity
+      totalAmount
+      items {
+        id
+        restaurantId
+        menuItemId
+        name
+        price
+        quantity
+        thumbImage
+        note
+        servingVariantKey
+        holdExpiresAt
+        holdStatus
+      }
+    }
+  }
+`;
+
 const RESTAURANT_FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80";
+
+const normalizeCartNote = (value) => String(value || "").trim();
+
+const getMutationErrorMessage = (error, fallback) =>
+  error?.graphQLErrors?.[0]?.message ||
+  error?.networkError?.result?.errors?.[0]?.message ||
+  error?.message ||
+  fallback;
 
 const formatAddress = (address) => {
   if (!address) return "Địa chỉ đang cập nhật";
@@ -118,12 +148,16 @@ const RestaurantMenu = () => {
   const { search } = useLocation();
   const [selectedRes, setSelectedRes] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [syncingReorder, setSyncingReorder] = useState(false);
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
   const bookingAddonMode = returnTo === "booking" && !!restaurantParam;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
+  const roleName = String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
+  const isCustomer = roleName === "customer";
   const { showNotification } = useNotification();
+  const [addCartItemMutation] = useMutation(ADD_CART_ITEM);
 
   const { data: favoriteData, refetch: refetchRestaurantFavorites } = useQuery(MY_RESTAURANT_FAVORITES, {
     skip: !isAuthenticated || !user?.id,
@@ -178,6 +212,7 @@ const RestaurantMenu = () => {
     removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
+    upsertCartLine,
   } = useCart();
 
   const {
@@ -229,6 +264,94 @@ const RestaurantMenu = () => {
       setSelectedRes(normalizeRestaurant(detailRestaurant));
     }
   }, [normalizedRestaurants, restaurantByIdData?.publicRestaurant, restaurantParam]);
+
+  useEffect(() => {
+    if (!restaurantParam || !isAuthenticated || !user?.id || !isCustomer || syncingReorder) return;
+    const localOnlyItems = bookingCartItems.filter(
+      (item) => !item.backendCartId || !item.backendCartItemId,
+    );
+    if (!localOnlyItems.length) return;
+
+    let cancelled = false;
+    const syncLocalReorderItems = async () => {
+      setSyncingReorder(true);
+      try {
+        for (const item of localOnlyItems) {
+          if (cancelled) return;
+          const menuItemId = item.dishId || item.menuItemId || item.menuId || item.id;
+          if (!menuItemId) continue;
+          const servingVariantKey = item.servingVariantKey || item.servingKey || item.variantKey || "portion";
+          const quantity = Math.max(1, Number(item.quantity || 1));
+          const note = item.note || null;
+          const { data } = await addCartItemMutation({
+            variables: {
+              input: {
+                userId: user.id,
+                restaurantId: String(restaurantParam),
+                menuItemId,
+                name: item.name || "Món ăn",
+                price: Number(item.price || item.unitPrice || item.basePrice || 0),
+                quantity,
+                thumbImage: item.image || item.thumbImage || "",
+                note,
+                servingVariantKey,
+              },
+            },
+          });
+
+          const returnedItem = data?.addCartItem?.items?.find((serverItem) => {
+            const sameMenuItem = String(serverItem?.menuItemId) === String(menuItemId);
+            const sameServing = String(serverItem?.servingVariantKey || "portion") === String(servingVariantKey || "portion");
+            const sameNote = normalizeCartNote(serverItem?.note) === normalizeCartNote(note);
+            return sameMenuItem && sameServing && sameNote;
+          });
+          const backendCartId = data?.addCartItem?.id || null;
+          const backendCartItemId = returnedItem?.id || null;
+          if (!backendCartId || !backendCartItemId) continue;
+
+          upsertCartLine?.({
+            ...item,
+            id: item.id || menuItemId,
+            dishId: menuItemId,
+            restaurantId: String(restaurantParam),
+            servingVariantKey: returnedItem?.servingVariantKey || servingVariantKey,
+            backendCartId,
+            backendCartItemId,
+            holdExpiresAt: returnedItem?.holdExpiresAt || null,
+            holdStatus: returnedItem?.holdStatus || "active",
+            note: returnedItem?.note ?? note,
+          }, { preserveQuantity: false });
+        }
+        if (!cancelled) {
+          showNotification("Đã đồng bộ món đặt lại vào giỏ hàng để có thể thanh toán.", "success");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          showNotification(
+            getMutationErrorMessage(error, "Không thể đồng bộ món đặt lại. Vui lòng thêm lại món từ thực đơn."),
+            "error",
+          );
+        }
+      } finally {
+        if (!cancelled) setSyncingReorder(false);
+      }
+    };
+
+    syncLocalReorderItems();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    addCartItemMutation,
+    bookingCartItems,
+    isAuthenticated,
+    isCustomer,
+    restaurantParam,
+    showNotification,
+    syncingReorder,
+    upsertCartLine,
+    user?.id,
+  ]);
 
   const handleOpenFoodDetail = (foodId, state = {}) => {
     navigate(buildFoodDetailPath(foodId, state || {}), { state });
@@ -306,6 +429,12 @@ const RestaurantMenu = () => {
       {bookingAddonMode && selectedRes ? (
         <div className="booking-alert" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
           Bạn đang chọn món đi kèm đặt bàn tại <strong>{selectedRes.name}</strong>. Giỏ chỉ được hoàn tất với món của nhà hàng này.
+        </div>
+      ) : null}
+
+      {syncingReorder && selectedRes ? (
+        <div className="booking-alert" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
+          Đang đồng bộ món đặt lại vào giỏ hàng để giữ món trước khi thanh toán...
         </div>
       ) : null}
 
@@ -399,7 +528,7 @@ const RestaurantMenu = () => {
         onClearCart={clearCustomerCart}
         onRemoveRestaurantItems={removeRestaurantScopedItems}
         onRemoveItem={removeCartLineItem}
-        isBusy={isBusy}
+        isBusy={isBusy || syncingReorder}
         busyItemIds={busyItemIds}
         busyRestaurantIds={busyRestaurantIds}
         isClearing={isClearing}
