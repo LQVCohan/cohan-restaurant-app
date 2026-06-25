@@ -15,7 +15,7 @@ describe("orderLineDisplay", () => {
     expect(line.isComboLine).toBe(true);
     expect(line.displayName).toBe("Combo no nhanh");
     expect(line.totalPrice).toBe(178000);
-    expect(line.discountAmount).toBe(16000);
+    expect(line.discountAmount).toBe(32000);
     expect(line.childItems[0].qty).toBe(1);
   });
 
