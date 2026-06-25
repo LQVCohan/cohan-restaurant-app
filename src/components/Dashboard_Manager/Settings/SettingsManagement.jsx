@@ -14,6 +14,15 @@ const Q_SYSTEM_SETTING = gql`
       dateFormat
       operational { businessDayStartHour defaultLanguage }
       modules { scheduling rbac printing backup }
+      overtimePolicy {
+        enabled
+        defaultMaxMinutesPerDay
+        roleGroupLimits {
+          service { maxMinutesPerDay }
+          kitchen { maxMinutesPerDay }
+          shiftManager { maxMinutesPerDay }
+        }
+      }
       metadata { version note }
       updatedAt
     }
@@ -28,11 +37,50 @@ const M_UPDATE_SYSTEM_SETTING = gql`
       dateFormat
       operational { businessDayStartHour defaultLanguage }
       modules { scheduling rbac printing backup }
+      overtimePolicy {
+        enabled
+        defaultMaxMinutesPerDay
+        roleGroupLimits {
+          service { maxMinutesPerDay }
+          kitchen { maxMinutesPerDay }
+          shiftManager { maxMinutesPerDay }
+        }
+      }
       metadata { version note }
       updatedAt
     }
   }
 `;
+
+const OVERTIME_ROLE_GROUPS = [
+  {
+    key: "service",
+    label: "Nhân viên phục vụ",
+    description: "Server, host, điều phối sảnh",
+    defaultMinutes: 120,
+  },
+  {
+    key: "kitchen",
+    label: "Bếp",
+    description: "Bếp trưởng, đầu bếp, phụ bếp",
+    defaultMinutes: 180,
+  },
+  {
+    key: "shiftManager",
+    label: "Quản lý ca",
+    description: "Giám sát ca, trưởng ca, manager trực",
+    defaultMinutes: 240,
+  },
+];
+
+const FALLBACK_OVERTIME_POLICY = {
+  enabled: true,
+  defaultMaxMinutesPerDay: 120,
+  roleGroupLimits: OVERTIME_ROLE_GROUPS.reduce((acc, item) => {
+    acc[item.key] = { maxMinutesPerDay: item.defaultMinutes };
+    return acc;
+  }, {}),
+};
 
 const FALLBACK_SYSTEM_SETTING = {
   timezone: "Asia/Ho_Chi_Minh",
@@ -40,6 +88,7 @@ const FALLBACK_SYSTEM_SETTING = {
   dateFormat: "DD/MM/YYYY",
   operational: { businessDayStartHour: 6, defaultLanguage: "vi" },
   modules: { scheduling: true, rbac: true, printing: true, backup: false },
+  overtimePolicy: FALLBACK_OVERTIME_POLICY,
   metadata: { version: "N/A", note: "Đang hiển thị cấu hình tham chiếu mặc định." },
   updatedAt: null,
 };
@@ -59,20 +108,56 @@ const MODULE_LABELS = {
   backup: "Backup",
 };
 
-const toFormState = (setting = FALLBACK_SYSTEM_SETTING) => ({
-  timezone: setting.timezone || "",
-  currency: setting.currency || "",
-  dateFormat: setting.dateFormat || "",
-  businessDayStartHour: String(setting.operational?.businessDayStartHour ?? ""),
-  defaultLanguage: setting.operational?.defaultLanguage || "",
-  modules: {
-    scheduling: Boolean(setting.modules?.scheduling),
-    rbac: Boolean(setting.modules?.rbac),
-    printing: Boolean(setting.modules?.printing),
-    backup: Boolean(setting.modules?.backup),
-  },
-  note: setting.metadata?.note || "",
-});
+const getOvertimePolicy = (setting = FALLBACK_SYSTEM_SETTING) => {
+  const source = setting.overtimePolicy || FALLBACK_OVERTIME_POLICY;
+  const roleGroupLimits = source.roleGroupLimits || {};
+  return {
+    enabled: source.enabled ?? FALLBACK_OVERTIME_POLICY.enabled,
+    defaultMaxMinutesPerDay:
+      source.defaultMaxMinutesPerDay ?? FALLBACK_OVERTIME_POLICY.defaultMaxMinutesPerDay,
+    roleGroupLimits: OVERTIME_ROLE_GROUPS.reduce((acc, group) => {
+      acc[group.key] = {
+        maxMinutesPerDay:
+          roleGroupLimits[group.key]?.maxMinutesPerDay ?? group.defaultMinutes,
+      };
+      return acc;
+    }, {}),
+  };
+};
+
+const toFormState = (setting = FALLBACK_SYSTEM_SETTING) => {
+  const overtimePolicy = getOvertimePolicy(setting);
+  return {
+    timezone: setting.timezone || "",
+    currency: setting.currency || "",
+    dateFormat: setting.dateFormat || "",
+    businessDayStartHour: String(setting.operational?.businessDayStartHour ?? ""),
+    defaultLanguage: setting.operational?.defaultLanguage || "",
+    modules: {
+      scheduling: Boolean(setting.modules?.scheduling),
+      rbac: Boolean(setting.modules?.rbac),
+      printing: Boolean(setting.modules?.printing),
+      backup: Boolean(setting.modules?.backup),
+    },
+    overtimePolicyEnabled: Boolean(overtimePolicy.enabled),
+    overtimeDefaultMaxMinutes: String(overtimePolicy.defaultMaxMinutesPerDay ?? ""),
+    overtimeLimits: OVERTIME_ROLE_GROUPS.reduce((acc, group) => {
+      acc[group.key] = String(
+        overtimePolicy.roleGroupLimits[group.key]?.maxMinutesPerDay ?? group.defaultMinutes,
+      );
+      return acc;
+    }, {}),
+    note: setting.metadata?.note || "",
+  };
+};
+
+const validateMinuteLimit = (value, label) => {
+  const minutes = Number(value);
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 1440) {
+    return `${label} phải là số nguyên từ 0 đến 1440 phút.`;
+  }
+  return "";
+};
 
 const validateForm = (form) => {
   const errors = {};
@@ -83,8 +168,32 @@ const validateForm = (form) => {
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
     errors.businessDayStartHour = "Giờ bắt đầu ngày vận hành phải là số nguyên từ 0 đến 23.";
   }
+
+  const defaultLimitError = validateMinuteLimit(
+    form.overtimeDefaultMaxMinutes,
+    "Giới hạn tăng ca mặc định",
+  );
+  if (defaultLimitError) errors.overtimeDefaultMaxMinutes = defaultLimitError;
+
+  OVERTIME_ROLE_GROUPS.forEach((group) => {
+    const error = validateMinuteLimit(
+      form.overtimeLimits?.[group.key],
+      `Giới hạn tăng ca ${group.label}`,
+    );
+    if (error) errors[`overtime_${group.key}`] = error;
+  });
+
   if (String(form.note || "").length > 1000) errors.note = "Ghi chú tối đa 1000 ký tự.";
   return errors;
+};
+
+const formatMinutes = (value) => {
+  const minutes = Number(value || 0);
+  const hours = Math.floor(minutes / 60);
+  const remain = minutes % 60;
+  if (hours && remain) return `${hours}h ${remain}p`;
+  if (hours) return `${hours}h`;
+  return `${remain}p`;
 };
 
 const SettingsSkeleton = () => (
@@ -126,6 +235,7 @@ const SettingsManagement = () => {
   });
 
   const systemSetting = data?.systemSetting || FALLBACK_SYSTEM_SETTING;
+  const overtimePolicy = getOvertimePolicy(systemSetting);
 
   useEffect(() => {
     if (!editMode) setForm(toFormState(systemSetting));
@@ -151,6 +261,14 @@ const SettingsManagement = () => {
     setForm((prev) => ({ ...prev, modules: { ...prev.modules, [module]: value } }));
   };
 
+  const setOvertimeLimit = (roleGroup, value) => {
+    setForm((prev) => ({
+      ...prev,
+      overtimeLimits: { ...prev.overtimeLimits, [roleGroup]: value },
+    }));
+    setFormErrors((prev) => ({ ...prev, [`overtime_${roleGroup}`]: undefined }));
+  };
+
   const handleEdit = () => {
     setForm(toFormState(systemSetting));
     setFormErrors({});
@@ -170,6 +288,7 @@ const SettingsManagement = () => {
     const nextErrors = validateForm(form);
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
+
     await updateSystemSetting({
       variables: {
         input: {
@@ -179,6 +298,14 @@ const SettingsManagement = () => {
           dateFormat: form.dateFormat.trim(),
           operational: { businessDayStartHour: Number(form.businessDayStartHour), defaultLanguage: form.defaultLanguage.trim() },
           modules: form.modules,
+          overtimePolicy: {
+            enabled: Boolean(form.overtimePolicyEnabled),
+            defaultMaxMinutesPerDay: Number(form.overtimeDefaultMaxMinutes),
+            roleGroupLimits: OVERTIME_ROLE_GROUPS.reduce((acc, group) => {
+              acc[group.key] = { maxMinutesPerDay: Number(form.overtimeLimits[group.key]) };
+              return acc;
+            }, {}),
+          },
           note: form.note,
         },
       },
@@ -203,8 +330,8 @@ const SettingsManagement = () => {
       />
 
       <section className="settings-management__hero" aria-label="Tổng quan control center">
-        <div><span className="settings-management__eyebrow">System control center</span><h2>Cấu hình nền tảng có version, phân quyền và audit</h2><p>Quản trị múi giờ, tiền tệ, format ngày, module nền tảng và điều hướng nhanh tới các trung tâm cấu hình liên quan.</p></div>
-        <div className="settings-management__hero-metrics"><article><strong>v{metadataVersion}</strong><span>Metadata version</span></article><article><strong>{loading ? "Sync" : error ? "Fallback" : "Ready"}</strong><span>Trạng thái backend</span></article><article><strong>{updatedAt}</strong><span>Cập nhật gần nhất</span></article></div>
+        <div><span className="settings-management__eyebrow">System control center</span><h2>Cấu hình nền tảng có version, phân quyền và audit</h2><p>Quản trị múi giờ, tiền tệ, format ngày, giới hạn tăng ca theo nhóm vai trò, module nền tảng và điều hướng nhanh tới các trung tâm cấu hình liên quan.</p></div>
+        <div className="settings-management__hero-metrics"><article><strong>v{metadataVersion}</strong><span>Metadata version</span></article><article><strong>{loading ? "Sync" : error ? "Fallback" : "Ready"}</strong><span>Trạng thái backend</span></article><article><strong>{overtimePolicy.enabled ? "Đang chặn" : "Tắt"}</strong><span>Chính sách tăng ca</span></article><article><strong>{updatedAt}</strong><span>Cập nhật gần nhất</span></article></div>
       </section>
 
       {!restaurantsLoading && !hasRestaurants ? <SettingsEmptyState /> : null}
@@ -225,6 +352,33 @@ const SettingsManagement = () => {
                 <label>Business day start hour<input aria-label="Business day start hour" type="number" inputMode="numeric" value={form.businessDayStartHour} disabled={!editMode || updateState.loading} onChange={(event) => setField("businessDayStartHour", event.target.value)} />{formErrors.businessDayStartHour ? <em>{formErrors.businessDayStartHour}</em> : null}</label>
                 <label>Default language<input aria-label="Default language" value={form.defaultLanguage} disabled={!editMode || updateState.loading} onChange={(event) => setField("defaultLanguage", event.target.value)} />{formErrors.defaultLanguage ? <em>{formErrors.defaultLanguage}</em> : null}</label>
               </div>
+
+              <section className="settings-management__overtime-policy" aria-label="Thiết lập giới hạn tăng ca">
+                <div className="settings-management__policy-header">
+                  <div><span>Overtime policy</span><h4>Giới hạn tăng ca theo nhóm vai trò</h4><p>Backend sẽ chặn duyệt nếu số phút tăng ca vượt giới hạn đã cấu hình cho nhóm nhân viên.</p></div>
+                  <label className="settings-management__toggle-row"><input type="checkbox" checked={Boolean(form.overtimePolicyEnabled)} disabled={!editMode || updateState.loading} onChange={(event) => setField("overtimePolicyEnabled", event.target.checked)} /><span>Bật kiểm soát giới hạn</span></label>
+                </div>
+
+                <div className="settings-management__overtime-grid">
+                  <label className="settings-management__overtime-limit-card is-default">
+                    <span>Mặc định</span>
+                    <small>Áp dụng khi không xác định được nhóm vai trò.</small>
+                    <input type="number" min="0" max="1440" inputMode="numeric" value={form.overtimeDefaultMaxMinutes} disabled={!editMode || updateState.loading} onChange={(event) => setField("overtimeDefaultMaxMinutes", event.target.value)} />
+                    <strong>{formatMinutes(form.overtimeDefaultMaxMinutes)}/ngày</strong>
+                    {formErrors.overtimeDefaultMaxMinutes ? <em>{formErrors.overtimeDefaultMaxMinutes}</em> : null}
+                  </label>
+                  {OVERTIME_ROLE_GROUPS.map((group) => (
+                    <label key={group.key} className="settings-management__overtime-limit-card">
+                      <span>{group.label}</span>
+                      <small>{group.description}</small>
+                      <input type="number" min="0" max="1440" inputMode="numeric" value={form.overtimeLimits[group.key]} disabled={!editMode || updateState.loading} onChange={(event) => setOvertimeLimit(group.key, event.target.value)} />
+                      <strong>{formatMinutes(form.overtimeLimits[group.key])}/ngày</strong>
+                      {formErrors[`overtime_${group.key}`] ? <em>{formErrors[`overtime_${group.key}`]}</em> : null}
+                    </label>
+                  ))}
+                </div>
+              </section>
+
               <div className="settings-management__module-grid" aria-label="Module nền tảng">
                 {Object.entries(MODULE_LABELS).map(([key, label]) => <label key={key}><input type="checkbox" checked={Boolean(form.modules[key])} disabled={!editMode || updateState.loading} onChange={(event) => setModule(key, event.target.checked)} /><span>{label}</span></label>)}
               </div>
@@ -233,6 +387,7 @@ const SettingsManagement = () => {
 
             <section className="settings-management__summary" aria-label="Tổng quan cấu hình">
               <article><span>Vận hành</span><ul><li>Múi giờ: {systemSetting.timezone}</li><li>Tiền tệ: {systemSetting.currency}</li><li>Định dạng ngày: {systemSetting.dateFormat}</li></ul></article>
+              <article><span>Tăng ca</span><ul><li>Kiểm soát: {overtimePolicy.enabled ? "Bật" : "Tắt"}</li><li>Phục vụ: {formatMinutes(overtimePolicy.roleGroupLimits.service.maxMinutesPerDay)}/ngày</li><li>Bếp: {formatMinutes(overtimePolicy.roleGroupLimits.kitchen.maxMinutesPerDay)}/ngày</li><li>Quản lý ca: {formatMinutes(overtimePolicy.roleGroupLimits.shiftManager.maxMinutesPerDay)}/ngày</li></ul></article>
               <article><span>Bảo mật</span><ul><li>RBAC: {systemSetting.modules?.rbac ? "Bật" : "Tắt"}</li><li>Ngôn ngữ mặc định: {systemSetting.operational?.defaultLanguage || "-"}</li></ul><button type="button" onClick={() => navigateManagerPage("rbac")}>Mở phân quyền</button></article>
               <article><span>Nhà hàng</span><ul><li>Hồ sơ, liên hệ, giờ mở cửa</li><li>Cập nhật gần nhất: {updatedAt}</li></ul><button type="button" onClick={() => navigateManagerPage("restaurant-info-management")}>Mở thông tin nhà hàng</button></article>
               <article><span>Thiết bị</span><ul><li>In ấn: {systemSetting.modules?.printing ? "Bật" : "Tắt"}</li><li>Backup module: {systemSetting.modules?.backup ? "Bật" : "Tắt"}</li></ul><button type="button" onClick={() => navigateManagerPage("print-management")}>Mở quản lý in ấn</button></article>
