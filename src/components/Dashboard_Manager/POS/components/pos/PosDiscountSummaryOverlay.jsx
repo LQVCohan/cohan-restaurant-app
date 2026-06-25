@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePos } from "../../../../../context/PosContext";
 import { useDiscountPreview } from "@/hooks/useDiscountPreview";
 import {
@@ -42,8 +43,20 @@ export default function PosDiscountSummaryOverlay() {
   const { restaurantId, currentOrder, currentOrderType, shippingInfo } = usePos();
   const { previewOrderDiscount } = useDiscountPreview();
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
+  const [footerElement, setFooterElement] = useState(null);
 
   const previewItems = useMemo(() => getCleanOrderItems(currentOrder), [currentOrder]);
+
+  useEffect(() => {
+    const resolveFooter = () => {
+      const node = document.querySelector('[data-pos-order-panel] > [class*="footer"]');
+      setFooterElement(node || null);
+    };
+
+    resolveFooter();
+    const frame = window.requestAnimationFrame(resolveFooter);
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     if (!restaurantId || !previewItems.length) {
@@ -98,7 +111,7 @@ export default function PosDiscountSummaryOverlay() {
     ? discountBreakdown.appliedPromotions.length
     : 0;
 
-  if (!previewItems.length || totalDiscount <= 0) return null;
+  if (!footerElement || !previewItems.length || totalDiscount <= 0) return null;
 
   const detailRows = [
     { label: "Tạm tính", value: subtotal, sign: "normal" },
@@ -116,27 +129,34 @@ export default function PosDiscountSummaryOverlay() {
     ...(shippingFee > 0 ? [{ label: "Phí giao hàng", value: shippingFee, sign: "normal" }] : []),
   ];
 
-  return (
+  return createPortal(
     <>
       <style>{`
+        [data-pos-order-panel] > [class*="footer"] {
+          display: flex !important;
+          flex-direction: column !important;
+        }
         [data-pos-order-panel] > [class*="footer"] > [class*="summary"] {
-          visibility: hidden !important;
+          display: none !important;
+        }
+        [data-pos-order-panel] > [class*="footer"] > [class*="actionsGrid"] {
+          order: 2;
+        }
+        [data-pos-discount-footer] {
+          order: 1;
+          margin-bottom: 0.85rem;
         }
       `}</style>
       <div
         data-pos-discount-footer
         aria-label="Chi tiết tạm tính sau ưu đãi"
         style={{
-          position: "absolute",
-          left: 12,
-          right: 12,
-          bottom: 72,
-          zIndex: 80,
-          pointerEvents: "none",
+          width: "100%",
+          boxSizing: "border-box",
           border: "1px solid rgba(253, 186, 116, 0.95)",
           borderRadius: 16,
           background: "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)",
-          boxShadow: "0 16px 34px rgba(15, 23, 42, 0.12)",
+          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.07)",
           padding: "0.7rem 0.8rem 0.75rem",
           color: "#0f172a",
           overflow: "hidden",
@@ -244,6 +264,7 @@ export default function PosDiscountSummaryOverlay() {
           </strong>
         </div>
       </div>
-    </>
+    </>,
+    footerElement,
   );
 }
