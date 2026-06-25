@@ -37,7 +37,13 @@ const getRestaurantModel = async () => {
 };
 
 async function requireTableListAccess(ctx, restaurantId) {
-  if (typeof authorizationService.requireAnyRestaurantPermission === "function") {
+  if (
+    Object.prototype.hasOwnProperty.call(
+      authorizationService,
+      "requireAnyRestaurantPermission",
+    ) &&
+    typeof authorizationService.requireAnyRestaurantPermission === "function"
+  ) {
     return authorizationService.requireAnyRestaurantPermission(ctx, restaurantId, TABLE_LIST_READ_PERMISSIONS);
   }
   return authorizationService.requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_READ);
