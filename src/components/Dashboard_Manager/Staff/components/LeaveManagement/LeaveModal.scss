@@ -18,6 +18,16 @@
   cursor: pointer;
 }
 
+.leave-open-modal-btn:hover {
+  background: #165c3c;
+  transform: translateY(-1px);
+}
+
+.leave-open-modal-btn:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.24);
+  outline-offset: 3px;
+}
+
 .leave-list-container {
   height: auto;
   min-height: 0;
@@ -26,4 +36,45 @@
 .leave-list-container .dashboard-header {
   align-items: center;
   padding-block: 1rem;
+}
+
+.leave-list-container .header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.leave-list-container .header-action-slot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.leave-list-container .controls-bar {
+  gap: 12px;
+  padding-block: 0.75rem;
+}
+
+.leave-list-container .controls-bar .search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leave-list-container .controls-bar .search-box input {
+  min-height: 38px;
+}
+
+.leave-list-container .table-container {
+  min-height: 220px;
+}
+
+.leave-list-container .table-container .leave-table tbody tr td {
+  padding-block: 0.78rem;
+}
+
+.leave-list-container .table-container .leave-table .empty-row {
+  padding: 2.5rem 1rem;
 }
