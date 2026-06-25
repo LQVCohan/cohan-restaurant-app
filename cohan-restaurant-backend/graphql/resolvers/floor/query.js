@@ -2,14 +2,19 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { requireRestaurantAccess } from "../../guards.js";
 import Floor from "../../../models/floor.model.js";
-import { Restaurant } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
+
+const getRestaurantModel = async () => {
+  const module = await import("../../../models/restaurant.model.js");
+  return module.default || module.Restaurant;
+};
 
 async function requirePublicRestaurant(restaurantId) {
   if (!mongoose.isValidObjectId(restaurantId)) {
     throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
   }
 
+  const Restaurant = await getRestaurantModel();
   const restaurant = await Restaurant.findOne({
     _id: restaurantId,
     businessStatus: "active",

@@ -10,12 +10,34 @@ vi.mock("@/context/CartProvider", () => ({ useCart: () => ({ addToCart: vi.fn(),
 vi.mock("@/hooks/useNotification", () => ({ useNotification: () => ({ showNotification: vi.fn() }) }));
 
 const renderPage = (mocks) => render(
-  <MockedProvider mocks={mocks} addTypename={false}>
+  <MockedProvider mocks={mocks}>
     <MemoryRouter><CombosPage /></MemoryRouter>
   </MockedProvider>,
 );
 
 const baseVariables = { filter: { onlyAvailable: true, limit: 36 } };
+
+const promoComboFixture = {
+  id: "1",
+  sourceType: "PROMOTION",
+  restaurantId: "r1",
+  restaurantName: "Cơm Cohan",
+  name: "Combo trưa",
+  description: "No nhanh",
+  imageUrl: "",
+  originalPrice: 120000,
+  comboPrice: 99000,
+  discountAmount: 21000,
+  discountPercent: 18,
+  badge: "Tiết kiệm 21.000đ",
+  isAvailable: true,
+  startsAt: null,
+  endsAt: null,
+  items: [
+    { menuItemId: "m1", name: "Cơm gà", qty: 1, imageUrl: "", price: 70000 },
+    { menuItemId: "m2", name: "Canh", qty: 1, imageUrl: "", price: 50000 },
+  ],
+};
 
 describe("CombosPage", () => {
   it("renders loading then empty state", async () => {
@@ -24,12 +46,12 @@ describe("CombosPage", () => {
     expect(await screen.findByText("Chưa có combo phù hợp")).toBeInTheDocument();
   });
 
-  it("renders combo cards and opens detail modal", async () => {
-    renderPage([{ request: { query: CUSTOMER_COMBOS, variables: baseVariables }, result: { data: { customerCombos: [{ id: "1", sourceType: "PROMOTION", restaurantId: "r1", restaurantName: "Cơm Cohan", name: "Combo trưa", description: "No nhanh", imageUrl: "", originalPrice: 120000, comboPrice: 99000, discountAmount: 21000, discountPercent: 18, badge: "Tiết kiệm 21.000đ", isAvailable: true, startsAt: null, endsAt: null, items: [{ menuItemId: "m1", name: "Cơm gà", qty: 1, imageUrl: "", price: 70000 }, { menuItemId: "m2", name: "Canh", qty: 1, imageUrl: "", price: 50000 }] }] } } }]);
-    expect(await screen.findAllByText("Combo trưa")).toHaveLength(2);
-    fireEvent.click(screen.getAllByText("Xem combo")[0]);
+  it("renders promo combo cards and opens detail modal", async () => {
+    renderPage([{ request: { query: CUSTOMER_COMBOS, variables: baseVariables }, result: { data: { customerCombos: [promoComboFixture] } } }]);
+    expect(await screen.findByText("Combo trưa")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Xem ưu đãi" })[0]);
     expect(screen.getByRole("dialog", { name: "Chi tiết Combo trưa" })).toBeInTheDocument();
-    expect(screen.getByText("Combo này gồm nhiều món, bạn có thể kiểm tra trước khi thêm.")).toBeInTheDocument();
+    expect(screen.getByText("Đây là combo ưu đãi: hệ thống chỉ áp dụng giảm giá ở bước thanh toán khi giỏ đủ điều kiện, không thêm như một bundle.")).toBeInTheDocument();
   });
 
   it("sends people and budget filters to the query", async () => {
