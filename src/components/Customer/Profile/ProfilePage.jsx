@@ -8,6 +8,7 @@ import SecuritySettings from "./components/SecuritySettings";
 import FoodPreferences from "./components/FoodPreferences";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import "./ProfilePage.scss";
+import "./ProfileVisibilityPolish.scss";
 
 const ME_QUERY = gql`
   query Me {
