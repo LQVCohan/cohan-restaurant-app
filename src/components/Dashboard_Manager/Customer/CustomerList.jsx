@@ -18,8 +18,6 @@ import "./CustomerManagerScale.scss";
 import "./CustomerPaginationSafe.scss";
 import "./CustomerFullCardPagination.scss";
 
-const CUSTOMER_VISIBLE_PAGE_SIZE = 9;
-
 const normalizeEpochToMs = (v) => {
   if (v == null) return null;
   if (v instanceof Date) return v.getTime();
@@ -198,7 +196,6 @@ const CustomerTable = ({ customers, onCustomerClick }) => (
 
 const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   const [viewMode, setViewMode] = useState("grid");
-  const [localPage, setLocalPage] = useState(1);
   const listAnchorRef = useRef(null);
   const didMountRef = useRef(false);
   const totalLoaded = customers?.length || 0;
@@ -209,41 +206,25 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     Number(pagination?.pageSize || totalLoaded || 1),
   );
   const totalCount = Number(pagination?.totalCount || totalLoaded || 0);
-  const visiblePageSize = CUSTOMER_VISIBLE_PAGE_SIZE;
-  const localTotalPages = Math.max(
-    1,
-    Math.ceil(totalLoaded / visiblePageSize),
-  );
+  const visiblePageSize = Math.max(1, totalLoaded || backendPageSize);
   const totalVirtualPageCount = Math.max(
     1,
     Math.ceil(totalCount / visiblePageSize),
   );
   const backendOffset = (backendPage - 1) * backendPageSize;
-  const localStartIndex = (localPage - 1) * visiblePageSize;
-  const localEndIndex = localStartIndex + visiblePageSize;
-  const visibleCustomers = useMemo(
-    () => (customers || []).slice(localStartIndex, localEndIndex),
-    [customers, localEndIndex, localStartIndex],
-  );
+  const visibleCustomers = useMemo(() => customers || [], [customers]);
   const currentVirtualPage = Math.max(
     1,
-    Math.floor(backendOffset / visiblePageSize) + localPage,
+    Math.floor(backendOffset / visiblePageSize) + 1,
   );
-  const startItem =
-    totalCount > 0 ? backendOffset + localStartIndex + 1 : 0;
+  const startItem = totalCount > 0 ? backendOffset + 1 : 0;
   const endItem =
     totalCount > 0
-      ? Math.min(
-          totalCount,
-          backendOffset + localStartIndex + visibleCustomers.length,
-        )
+      ? Math.min(totalCount, backendOffset + visibleCustomers.length)
       : 0;
-  const hasPreviousLocalPage = localPage > 1;
-  const hasNextLocalPage = localPage < localTotalPages;
-  const hasPreviousPage =
-    hasPreviousLocalPage || Boolean(pagination?.hasPreviousPage);
-  const hasNextPage = hasNextLocalPage || Boolean(pagination?.hasNextPage);
-  const hasPagination = hasCustomers;
+  const hasPreviousPage = Boolean(pagination?.hasPreviousPage);
+  const hasNextPage = Boolean(pagination?.hasNextPage);
+  const hasPagination = hasCustomers && (hasPreviousPage || hasNextPage);
 
   const scrollListToTop = () => {
     window.requestAnimationFrame(() => {
@@ -255,53 +236,38 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
   };
 
   useEffect(() => {
-    setLocalPage(1);
-  }, [customers, backendPage, backendPageSize]);
-
-  useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
       return;
     }
     scrollListToTop();
-  }, [localPage, backendPage, backendPageSize, viewMode]);
+  }, [backendPage, backendPageSize, viewMode]);
 
   const managerSummary = useMemo(() => {
     if (loading || pagination?.isLoading)
       return "Đang tải danh sách khách...";
     if (!totalCount) return "Chưa có khách phù hợp";
-    return `Trang ${currentVirtualPage}/${totalVirtualPageCount} • ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
+    return `Hiển thị ${startItem}-${endItem} / ${totalCount.toLocaleString("vi-VN")} khách`;
   }, [
-    currentVirtualPage,
     endItem,
     loading,
     pagination?.isLoading,
     startItem,
     totalCount,
-    totalVirtualPageCount,
   ]);
 
   const handlePreviousPage = () => {
     scrollListToTop();
-    if (hasPreviousLocalPage) {
-      setLocalPage((current) => Math.max(1, current - 1));
-      return;
-    }
     pagination?.onPrevious?.();
   };
 
   const handleNextPage = () => {
     scrollListToTop();
-    if (hasNextLocalPage) {
-      setLocalPage((current) => Math.min(localTotalPages, current + 1));
-      return;
-    }
     pagination?.onNext?.();
   };
 
   const handleViewModeChange = (nextMode) => {
     setViewMode(nextMode);
-    setLocalPage(1);
     scrollListToTop();
   };
 
@@ -322,7 +288,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
       <span>
         Trang <strong>{currentVirtualPage}</strong> / {totalVirtualPageCount}
       </span>
-      {showPageSize ? <span>{visiblePageSize}/trang</span> : <span aria-hidden="true" className="sr-only">{visiblePageSize} mỗi trang</span>}
+      {showPageSize ? <span>{visibleCustomers.length}/trang</span> : <span aria-hidden="true" className="sr-only">{visibleCustomers.length} mỗi trang</span>}
       <button
         type="button"
         onClick={handleNextPage}
@@ -386,8 +352,8 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     return (
       <>
         {renderManagerStrip()}
-        <div className="cl-grid cl-grid--nine-page">
-          {Array.from({ length: CUSTOMER_VISIBLE_PAGE_SIZE }).map((_, index) => (
+        <div className="cl-grid cl-grid--all-loaded">
+          {Array.from({ length: 9 }).map((_, index) => (
             <div key={index} className="cl-skeleton-card">
               <div className="cl-sk-header">
                 <div className="cl-sk-avatar" />
@@ -447,7 +413,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         </>
       ) : (
         <>
-          <div className="cl-grid cl-grid--nine-page">
+          <div className="cl-grid cl-grid--all-loaded">
             {visibleCustomers.map((customer) => (
               <CustomerCard
                 key={customer.id}
