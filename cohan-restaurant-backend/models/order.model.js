@@ -170,6 +170,9 @@ const OrderModifierSnapshotSchema = new Schema(
 
 const OrderItemSchema = new Schema(
   {
+    itemType: { type: String, enum: ["MENU_ITEM", "COMBO"], default: "MENU_ITEM" },
+    comboId: { type: Schema.Types.ObjectId, ref: "Combo" },
+    comboSnapshot: { type: Schema.Types.Mixed, default: null },
     dishId: { type: Schema.Types.ObjectId, ref: "MenuItem", required: true },
     menuId: { type: Schema.Types.ObjectId, ref: "Menu", required: true },
     categoryId: {

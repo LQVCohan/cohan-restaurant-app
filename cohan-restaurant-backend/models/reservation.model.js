@@ -64,6 +64,10 @@ const ReservationSchema = BaseSchemaModel(
     requestedTimeTo: { type: Date },
     requestedDurationMinutes: { type: Number, min: 0 },
     requestedTableId: { type: Types.ObjectId, ref: "Table" },
+
+    // Customer-side history hiding only. This must not change the business status
+    // of the reservation, unlike manager no-show/cancel workflows.
+    hiddenFromCustomerUserIds: [{ type: Types.ObjectId, ref: "User", index: true }],
   },
   { collection: "reservations" }
 );
@@ -92,6 +96,7 @@ ReservationSchema.pre("validate", function (next) {
 
 ReservationSchema.index({ restaurantId: 1, tableId: 1, timeTo: 1 });
 ReservationSchema.index({ userId: 1, createdAt: -1 });
+ReservationSchema.index({ userId: 1, hiddenFromCustomerUserIds: 1, createdAt: -1 });
 ReservationSchema.index({ orderCode: 1 });
 
 export const Reservation = mongoose.model("Reservation", ReservationSchema);

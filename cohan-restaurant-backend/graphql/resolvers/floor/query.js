@@ -1,6 +1,34 @@
 import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
 import { requireRestaurantAccess } from "../../guards.js";
 import Floor from "../../../models/floor.model.js";
+import { Restaurant } from "../../../models/index.js";
+import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
+
+async function requirePublicRestaurant(restaurantId) {
+  if (!mongoose.isValidObjectId(restaurantId)) {
+    throw new GraphQLError("Invalid restaurantId", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+
+  const restaurant = await Restaurant.findOne({
+    _id: restaurantId,
+    businessStatus: "active",
+    publicationStatus: "published",
+  }).lean();
+
+  if (!restaurant) {
+    throw new GraphQLError("Restaurant is not public", { extensions: { code: "NOT_FOUND" } });
+  }
+
+  const availability = computeRestaurantAvailability(restaurant || {});
+  if (availability.canView === false) {
+    throw new GraphQLError("Restaurant is not available for public viewing", {
+      extensions: { code: "RESTAURANT_NOT_VIEWABLE" },
+    });
+  }
+
+  return restaurant;
+}
 
 export default {
   // Lấy danh sách tất cả tầng của nhà hàng
@@ -11,6 +39,13 @@ export default {
 
     // Trả về danh sách tầng (kèm theo layout nếu cần)
     return Floor.find({ restaurantId })
+      .sort({ level: 1 })
+      .lean({ virtuals: true });
+  },
+
+  publicFloors: async (_parent, { restaurantId }) => {
+    await requirePublicRestaurant(restaurantId);
+    return Floor.find({ restaurantId, isActive: { $ne: false } })
       .sort({ level: 1 })
       .lean({ virtuals: true });
   },

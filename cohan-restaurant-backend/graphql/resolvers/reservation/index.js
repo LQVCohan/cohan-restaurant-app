@@ -5,11 +5,14 @@ import { PaymentSession, PaymentTransaction } from "../../../models/index.js";
 import { ReservationMutation } from "./mutation.js";
 import { ReservationChangeReviewMutation } from "./changeReview.js";
 import {
+  ReservationCustomerHistoryMutation,
+  ReservationCustomerHistoryQuery,
+} from "./customerHistory.js";
+import {
   ReservationCheckInMutation,
   withSafeReservationStatusMutation,
 } from "./checkIn.js";
 import { withReservationRealtimeEvents } from "./realtimeEvents.js";
-
 
 async function findLatestDepositSession(reservation) {
   const reservationId = reservation?._id || reservation?.id;
@@ -64,8 +67,10 @@ export default {
   Reservation: ReservationType,
   Query: {
     ...ReservationQuery,
+    ...ReservationCustomerHistoryQuery,
   },
   Mutation: {
     ...RealtimeReservationMutation,
+    ...ReservationCustomerHistoryMutation,
   },
 };

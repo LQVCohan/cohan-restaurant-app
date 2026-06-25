@@ -661,3 +661,27 @@ $st-cancelled-text: #b91c1c;
     }
   }
 }
+
+.itemCard__comboItems {
+  margin: 0.25rem 0 0 32px;
+  padding-left: 1rem;
+  color: $text-sub;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.itemCard__header .metaTag.combo {
+  background: #fff3e8;
+  border: 1px solid rgba(255, 102, 0, 0.22);
+  color: #e65c00;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+}
+
+.itemCard__price small {
+  display: block;
+  color: #e65c00;
+  font-size: 0.72rem;
+  font-weight: 700;
+}

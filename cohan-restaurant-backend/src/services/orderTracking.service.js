@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import QRCode from "qrcode";
 import { Order } from "../../models/index.js";
+import { canOrderRequestPayment } from "./orderPaymentRequestGuard.service.js";
 
 const DELIVERY_PUBLIC_STATUS = {
   driver_assigned: "DRIVER_ASSIGNED",
@@ -240,7 +241,7 @@ export function toCustomerTrackingPayload(order = {}) {
       status: normalizedPaymentStatus.toUpperCase(),
       method: order?.payment?.method || null,
       provider: order?.payment?.provider || null,
-      canRequestPayment: ["partial", "unpaid"].includes(normalizedPaymentStatus),
+      canRequestPayment: canOrderRequestPayment(order),
       totalAmount: Number(order?.totals?.grandTotal || 0),
     },
     latestRequest: latestRequest
@@ -256,7 +257,6 @@ export function toCustomerTrackingPayload(order = {}) {
       : null,
   };
 }
-
 
 export async function validateOrderTrackingToken(trackingToken) {
   if (!trackingToken || typeof trackingToken !== "string") return { ok: false, code: "INVALID" };

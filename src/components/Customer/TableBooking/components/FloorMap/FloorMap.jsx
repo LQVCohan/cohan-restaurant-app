@@ -16,6 +16,7 @@ const FloorMap = ({
   const [isLegendOpen, setIsLegendOpen] = useState(false); // Mặc định đóng cho gọn
   const { user } = useContext(AuthContext) || {};
   const [notifyTable, setNotifyTable] = useState(null);
+  const [visualTable, setVisualTable] = useState(null);
   const { showNotification } = useNotification();
   const hasLayout = layout && layout.length > 0;
 
@@ -25,6 +26,14 @@ const FloorMap = ({
   const isPanning = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
+
+  const hasVisualPreview = (table) =>
+    Boolean(
+      table?.vrUrl ||
+        (Array.isArray(table?.photos) && table.photos.length > 0) ||
+        table?.visualConfig?.modelUrl ||
+        table?.visualConfig?.modelKey,
+    );
 
   const handleMouseDown = (e) => {
     if (e.button !== 0) return;
@@ -119,7 +128,10 @@ const FloorMap = ({
             transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
           }}
         >
-          <div className="map-container-realistic">
+          <div
+            className="map-container-realistic"
+            style={meta?.width && meta?.height ? { width: meta.width, height: meta.height } : undefined}
+          >
             {/* 1. LAYOUT LAYER */}
             {hasLayout ? (
               <div className="layout-layer">
@@ -174,6 +186,19 @@ const FloorMap = ({
                       {(table.status === "occupied" ||
                         table.status === "reserved") && (
                         <span className="status-badge bell">🔔</span>
+                      )}
+                      {hasVisualPreview(table) && (
+                        <button
+                          type="button"
+                          className="visual-preview-trigger"
+                          title="Xem ảnh/360/3D của bàn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setVisualTable(table);
+                          }}
+                        >
+                          👁
+                        </button>
                       )}
                     </div>
 
@@ -233,6 +258,42 @@ const FloorMap = ({
           </div>
         )}
       </div>
+
+      {visualTable && (
+        <div className="table-visual-preview" role="dialog" aria-modal="true">
+          <div className="table-visual-preview__card">
+            <button
+              type="button"
+              className="table-visual-preview__close"
+              onClick={() => setVisualTable(null)}
+            >
+              ×
+            </button>
+            <h3>Bàn {visualTable.label}</h3>
+            <p>Sức chứa: {visualTable.capacity} khách</p>
+            {Array.isArray(visualTable.photos) && visualTable.photos.length > 0 && (
+              <div className="table-visual-preview__photos">
+                {visualTable.photos.slice(0, 4).map((src, index) => (
+                  <img key={`${src}_${index}`} src={src} alt={`Bàn ${visualTable.label} ${index + 1}`} />
+                ))}
+              </div>
+            )}
+            {visualTable.vrUrl && (
+              <a href={visualTable.vrUrl} target="_blank" rel="noreferrer">
+                Mở không gian 360
+              </a>
+            )}
+            {visualTable.visualConfig?.modelUrl && (
+              <a href={visualTable.visualConfig.modelUrl} target="_blank" rel="noreferrer">
+                Mở mô hình 3D
+              </a>
+            )}
+            {!visualTable.vrUrl && !visualTable.visualConfig?.modelUrl && visualTable.visualConfig?.modelKey && (
+              <p>Mô hình 3D: {visualTable.visualConfig.modelLabel || visualTable.visualConfig.modelKey}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <NotifyModal
         isOpen={!!notifyTable}

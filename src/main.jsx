@@ -42,6 +42,7 @@ import "./components/Dashboard_Manager/Table/TableWorkflowObservationUX.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowHoverGuides.scss";
 import "./components/Dashboard_Manager/Table/TableMobileARTestPolish.scss";
 import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
+import "./components/Dashboard_Manager/Staff/components/EmployeeList/EmployeeListLayoutPolish.scss";
 import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceSimpleView.scss";
 import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceModalViewportFix.scss";
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
@@ -56,6 +57,7 @@ import { installTableWorkflowCopyTuning } from "./components/Dashboard_Manager/T
 import { installTableWorkflowRuntimeTuning } from "./components/Dashboard_Manager/Table/TableWorkflowRuntimeTuning.js";
 import { installFloorPlanDesignerExperience } from "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.js";
 import { installStaffPerformanceModalPortalFix } from "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceModalPortalFix.js";
+import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning.js";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
@@ -68,6 +70,7 @@ installTableWorkflowCopyTuning();
 installTableWorkflowRuntimeTuning();
 installFloorPlanDesignerExperience();
 installStaffPerformanceModalPortalFix();
+installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

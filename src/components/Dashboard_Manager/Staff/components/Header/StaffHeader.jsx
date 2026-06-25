@@ -1,6 +1,59 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ManagementPageHeader from "../../../shared/ManagementPageHeader";
 import "./StaffHeader.scss";
+import "./StaffHeaderContextPolish.scss";
+
+const STAFF_PAGE_COPY = {
+  dashboard: {
+    eyebrow: "TRUNG TÂM NHÂN SỰ",
+    title: "Quản lý nhân sự",
+    compactTitle: "Nhân sự",
+    subtitle:
+      "Theo dõi hồ sơ, trạng thái làm việc, chấm công và phân công nhân viên theo từng nhà hàng.",
+  },
+  attendance: {
+    eyebrow: "NHÂN SỰ · CHẤM CÔNG",
+    title: "Chấm công nhân viên",
+    compactTitle: "Chấm công",
+    subtitle:
+      "Kiểm tra vào ca, tan ca, chỉnh công và tăng ca trong ngày đang chọn.",
+  },
+  leave: {
+    eyebrow: "NHÂN SỰ · NGHỈ PHÉP",
+    title: "Nghỉ phép nhân viên",
+    compactTitle: "Nghỉ phép",
+    subtitle:
+      "Theo dõi đơn nghỉ phép, trạng thái duyệt và số hồ sơ cần xử lý.",
+  },
+  schedule: {
+    eyebrow: "NHÂN SỰ · LỊCH LÀM",
+    title: "Lịch làm nhân viên",
+    compactTitle: "Lịch làm",
+    subtitle:
+      "Lập lịch, kiểm tra ca và rà soát lịch theo từng nhà hàng.",
+  },
+  performance: {
+    eyebrow: "NHÂN SỰ · HIỆU SUẤT",
+    title: "Hiệu suất nhân viên",
+    compactTitle: "Hiệu suất",
+    subtitle:
+      "Theo dõi điểm hiệu suất, phản hồi và các dữ liệu ảnh hưởng đến đánh giá.",
+  },
+  reports: {
+    eyebrow: "NHÂN SỰ · BÁO CÁO",
+    title: "Báo cáo nhân sự",
+    compactTitle: "Báo cáo",
+    subtitle:
+      "Tổng hợp dữ liệu nhân sự, chấm công, lịch làm và kết quả vận hành.",
+  },
+};
+
+const getStaffPageFromLocation = () => {
+  if (typeof window === "undefined") return "dashboard";
+  const params = new URLSearchParams(window.location.search || "");
+  const staffPage = params.get("staffPage");
+  return STAFF_PAGE_COPY[staffPage] ? staffPage : "dashboard";
+};
 
 const StaffHeader = ({
   selectedRestaurant,
@@ -17,6 +70,31 @@ const StaffHeader = ({
   onSearchChange,
   pendingLeaveCount = 0,
 }) => {
+  const [activeStaffPage, setActiveStaffPage] = useState(getStaffPageFromLocation);
+
+  useEffect(() => {
+    const syncFromQuery = (event) => {
+      const eventPage = event?.detail?.page;
+      const nextPage =
+        event?.detail?.query?.staffPage ||
+        (eventPage && eventPage !== "staff" ? eventPage : "") ||
+        getStaffPageFromLocation();
+      if (STAFF_PAGE_COPY[nextPage]) setActiveStaffPage(nextPage);
+    };
+
+    window.addEventListener("staff:page-change", syncFromQuery);
+    window.addEventListener("manager:navigation-query", syncFromQuery);
+    window.addEventListener("popstate", syncFromQuery);
+    window.addEventListener("hashchange", syncFromQuery);
+
+    return () => {
+      window.removeEventListener("staff:page-change", syncFromQuery);
+      window.removeEventListener("manager:navigation-query", syncFromQuery);
+      window.removeEventListener("popstate", syncFromQuery);
+      window.removeEventListener("hashchange", syncFromQuery);
+    };
+  }, []);
+
   const statsData = useMemo(() => {
     const parsedAverageRate = Number(stats.avgRate);
     const hasAverageRate =
@@ -39,13 +117,25 @@ const StaffHeader = ({
     ];
   }, [stats]);
 
+  const isOverviewPage = activeStaffPage === "dashboard";
+  const pageCopy = STAFF_PAGE_COPY[activeStaffPage] || STAFF_PAGE_COPY.dashboard;
+
+  const goToStaffPage = (page) => {
+    setActiveStaffPage(page);
+    window.dispatchEvent(
+      new CustomEvent("staff:page-change", { detail: { page, source: "staff-header" } }),
+    );
+    onPageChange?.(page);
+  };
+
   return <ManagementPageHeader
-    className="staff-page-header"
+    className={`staff-page-header ${isOverviewPage ? "" : "is-subpage-context"}`.trim()}
     density="compact"
-    eyebrow="TRUNG TÂM NHÂN SỰ"
-    title={isCollapsed ? "Nhân sự" : "Quản lý nhân sự"}
-    subtitle="Theo dõi hồ sơ, trạng thái làm việc, chấm công và phân công nhân viên theo từng nhà hàng."
-    stats={statsData}
+    statsPlacement={isOverviewPage ? "right" : "none"}
+    eyebrow={pageCopy.eyebrow}
+    title={isCollapsed ? pageCopy.compactTitle : pageCopy.title}
+    subtitle={pageCopy.subtitle}
+    stats={isOverviewPage ? statsData : []}
     loading={loading}
     isCollapsed={isCollapsed}
     onToggle={onToggle}
@@ -55,15 +145,15 @@ const StaffHeader = ({
     selectedRestaurant={selectedRestaurant}
     onRestaurantChange={onRestaurantChange}
     restaurantList={restaurantList}
-    quickActions={[
-      { icon: "📝", label: "Chấm công", title: "Điểm danh và theo dõi chấm công", onClick: () => onPageChange?.("attendance") },
-      { icon: "📅", label: "Xếp ca", title: "Xếp ca làm việc", onClick: () => onPageChange?.("schedule") },
-      { icon: "🏖️", label: "Nghỉ phép", title: "Duyệt và theo dõi nghỉ phép", onClick: () => onPageChange?.("leave") },
-    ]}
-    secondaryActions={onExportData ? [{ icon: "📤", label: "Xuất dữ liệu", onClick: onExportData }] : []}
+    quickActions={isOverviewPage ? [
+      { icon: "📝", label: "Chấm công", title: "Điểm danh và theo dõi chấm công", onClick: () => goToStaffPage("attendance") },
+      { icon: "📅", label: "Xếp ca", title: "Xếp ca làm việc", onClick: () => goToStaffPage("schedule") },
+      { icon: "🏖️", label: "Nghỉ phép", title: "Duyệt và theo dõi nghỉ phép", onClick: () => goToStaffPage("leave") },
+    ] : []}
+    secondaryActions={onExportData && isOverviewPage ? [{ icon: "📤", label: "Xuất dữ liệu", onClick: onExportData }] : []}
     primaryAction={onAddEmployee ? { icon: "➕", label: isCollapsed ? "" : "Thêm nhân viên", onClick: onAddEmployee } : null}
-    footerLeft={<span>Trực tuyến: <strong>{loading ? "--" : (stats.activeStaff || 0)}</strong></span>}
-    footerRight={<span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn nghỉ phép</strong></span>}
+    footerLeft={isOverviewPage ? <span>Trực tuyến: <strong>{loading ? "--" : (stats.activeStaff || 0)}</strong></span> : null}
+    footerRight={isOverviewPage ? <span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn nghỉ phép</strong></span> : null}
   />;
 };
 

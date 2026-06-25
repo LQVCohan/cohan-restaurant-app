@@ -1,5 +1,6 @@
 import tableQueries from "./query.js";
 import tableMutations from "./mutation.js";
+import { CustomerPublicTableMutation } from "./publicCustomer.js";
 
 import { TableCustomerQuery, TableCustomerMutation } from "./tableCustomer.js";
 
@@ -13,6 +14,7 @@ export default {
     ...tableMutations,
 
     ...TableCustomerMutation, // ✅ thêm
+    ...CustomerPublicTableMutation,
   },
   Table: {
     viewLockUserId: (p) => p?.viewLock?.userId || null,

@@ -232,6 +232,8 @@ extend type Query {
   # Lấy chi tiết 1 tầng (bao gồm layout)
   floor(id: ID!): Floor
 
+  publicFloors(restaurantId: ID!): [Floor!]!
+
   tables(
     restaurantId: ID!
     floorId: ID
@@ -241,6 +243,13 @@ extend type Query {
     limit: Int = 200
   ): [Table!]!
   tableByCode(restaurantId: ID!, floorId: ID!, code: String!): Table
+  publicTables(
+    restaurantId: ID!
+    floorId: ID
+    status: TableStatus
+    type: TableType
+    limit: Int = 200
+  ): [Table!]!
 }
 
 extend type Mutation {

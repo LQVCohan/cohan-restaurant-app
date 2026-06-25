@@ -366,3 +366,16 @@
     grid-template-columns: 1fr 1fr 1fr;
   }
 }
+.cart-page__item-chip--combo {
+  background: #fff3e8;
+  color: #e65c00;
+  border-color: rgba(255, 102, 0, 0.26);
+}
+
+.cart-page__combo-items {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  color: #6b564a;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}

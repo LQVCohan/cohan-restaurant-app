@@ -299,3 +299,22 @@
 .best-coupon-card.is-disabled {
   opacity: 0.78;
 }
+
+.checkout-combo-row.is-combo {
+  align-items: flex-start;
+}
+
+.checkout-combo-row ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  color: #6f5a46;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.checkout-combo-row small {
+  display: block;
+  margin-top: 0.3rem;
+  color: #e65c00;
+  font-weight: 800;
+}

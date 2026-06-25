@@ -17,7 +17,10 @@ const MY_CART = gql`
       items {
         id
         restaurantId
+        itemType
         menuItemId
+        comboId
+        comboSnapshot
         name
         price
         quantity
@@ -34,8 +37,11 @@ const MY_CART = gql`
 const noopRefetchServerCart = async () => null;
 
 const mapServerCartItem = (cartId, item = {}) => ({
-  id: item.menuItemId || item.id,
+  itemType: item.itemType || "MENU_ITEM",
+  id: item.itemType === "COMBO" ? (item.comboId || item.id) : (item.menuItemId || item.id),
   dishId: item.menuItemId || item.id,
+  comboId: item.comboId || null,
+  comboSnapshot: item.comboSnapshot || null,
   restaurantId: item.restaurantId,
   name: item.name || "Món ăn",
   price: Number(item.price || 0),
