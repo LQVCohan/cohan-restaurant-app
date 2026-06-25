@@ -52,8 +52,8 @@ const BookingSummary = ({
                   <Users size={18} />
                 </div>
                 <div className="details">
-                  <span className="label">Sức chứa (Capacity)</span>
-                  <span className="value">{selectedTable.capacity} Khách</span>
+                  <span className="label">Sức chứa</span>
+                  <span className="value">{selectedTable.capacity} khách</span>
                 </div>
               </div>
 
@@ -62,7 +62,7 @@ const BookingSummary = ({
                   <MapPin size={18} />
                 </div>
                 <div className="details">
-                  <span className="label">Vị trí (Location)</span>
+                  <span className="label">Vị trí</span>
                   <span className="value">
                     {selectedFloorName || "Tầng trệt"}
                   </span>
@@ -76,7 +76,7 @@ const BookingSummary = ({
                   <Wallet size={18} />
                 </div>
                 <div className="details">
-                  <span className="label">Đặt cọc (Deposit)</span>
+                  <span className="label">Đặt cọc bàn</span>
                   <span className="value highlight">
                     {formatPrice(
                       selectedTable.price || selectedTable.depositAmount
@@ -90,7 +90,7 @@ const BookingSummary = ({
                   <UtensilsCrossed size={18} />
                 </div>
                 <div className="details">
-                  <span className="label">Cọc món (50%)</span>
+                  <span className="label">Cọc món tạm tính</span>
                   <span className="value highlight">
                     {menuDeposit > 0
                       ? formatPrice(menuDeposit)
@@ -111,7 +111,7 @@ const BookingSummary = ({
                     className="bsm-btn bsm-btn-secondary"
                     onClick={onOrderDishes}
                   >
-                    Order món
+                    Chọn món đi kèm
                   </button>
                 )}
               </div>
@@ -121,10 +121,10 @@ const BookingSummary = ({
           /* Trạng thái chưa chọn bàn (Empty State) */
           <div className="bsm-empty-state">
             <div className="bsm-empty-icon">
-              <UtensilsCrossed size={48} strokeWidth={1} />
+              <UtensilsCrossed size={48} strokeWidth={1.6} />
             </div>
             <p className="bsm-empty-text">Vui lòng chọn bàn trên sơ đồ</p>
-            <span className="bsm-empty-subtext">Select a table to proceed</span>
+            <span className="bsm-empty-subtext">Bấm vào bàn màu xanh để tiếp tục đặt bàn</span>
           </div>
         )}
       </div>
