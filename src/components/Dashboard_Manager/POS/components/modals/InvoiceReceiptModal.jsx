@@ -35,6 +35,7 @@ const lineQuantity = (line) =>
 const lineSubtotal = (line) => {
   const explicit = line?.subtotal ?? line?.lineSubtotal ?? line?.total;
   if (explicit != null) return toNumber(explicit);
+
   return (
     (toNumber(line?.unitPrice ?? line?.price ?? line?.basePrice) +
       toNumber(line?.modifiersPrice)) *
@@ -65,6 +66,7 @@ function InvoiceReceiptModal({
     if (Array.isArray(invoice?.lines) && invoice.lines.length) {
       return invoice.lines;
     }
+
     return (fallbackItems || []).map((item) => ({
       name: item?.name,
       quantity: item?.quantity,
@@ -83,7 +85,9 @@ function InvoiceReceiptModal({
   const grandTotal = toNumber(
     totals?.grandTotal ?? receiptData?.payableTotalVnd ?? receiptData?.total,
   );
-  const paidAmount = toNumber(invoice?.paid ?? transaction?.paidAmount ?? receiptData?.paidAmount);
+  const paidAmount = toNumber(
+    invoice?.paid ?? transaction?.paidAmount ?? receiptData?.paidAmount,
+  );
   const discount = toNumber(totals?.discount);
   const method = transaction?.method || receiptData?.method || "cash";
   const displayTable = table?.code || invoice?.tableCode || "—";
@@ -93,8 +97,10 @@ function InvoiceReceiptModal({
       window.print?.();
       return;
     }
+
     setPrinting(true);
     setPrintMessage("");
+
     try {
       const result = await enqueueInvoicePrintJob({
         variables: {
@@ -114,10 +120,15 @@ function InvoiceReceiptModal({
           },
         },
       });
+
       const jobId = result?.data?.enqueuePrintJob?.id;
-      setPrintMessage(jobId ? `Đã tạo lệnh in #${jobId}.` : "Đã tạo lệnh in hóa đơn.");
+      setPrintMessage(
+        jobId ? `Đã tạo lệnh in #${jobId}.` : "Đã tạo lệnh in hóa đơn.",
+      );
     } catch (error) {
-      setPrintMessage(error?.message || "Không tạo được lệnh in. Đã mở in trình duyệt.");
+      setPrintMessage(
+        error?.message || "Không tạo được lệnh in. Đã mở in trình duyệt.",
+      );
       window.print?.();
     } finally {
       setPrinting(false);
@@ -177,14 +188,17 @@ function InvoiceReceiptModal({
               <b>-{formatPrice(discount)}</b>
             </div>
           )}
+
           <div className={s.totalRow}>
             <span>Tổng thanh toán</span>
             <b>{formatPrice(grandTotal)}</b>
           </div>
+
           <div>
             <span>Đã thu</span>
             <b>{formatPrice(paidAmount || grandTotal)}</b>
           </div>
+
           {receiptData?.change > 0 && (
             <div>
               <span>Tiền thối</span>
@@ -196,9 +210,15 @@ function InvoiceReceiptModal({
         {printMessage && <div className={s.printMessage}>{printMessage}</div>}
 
         <div className={s.actions}>
-          <button type="button" className={s.secondary} onClick={handlePrint} disabled={printing}>
+          <button
+            type="button"
+            className={s.secondary}
+            onClick={handlePrint}
+            disabled={printing}
+          >
             {printing ? "Đang tạo lệnh in..." : "In hóa đơn"}
           </button>
+
           <button type="button" className={s.primary} onClick={onFinish}>
             Hoàn tất & đóng bàn
           </button>

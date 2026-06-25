@@ -31,6 +31,7 @@ import {
   getShippingFeeForDiscountPreview,
 } from "@/utils/discountPreviewPayload";
 import PaymentModal from "../modals/PaymentModal";
+import InvoiceReceiptModal from "../modals/InvoiceReceiptModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
 import MenuItemModal from "../modals/MenuItemModal";
 import OrderConfirmModal from "../modals/OrderConfirmModal";
@@ -285,6 +286,8 @@ export default function RightPanel() {
   };
 
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState(null);
+  const [isReceiptModalOpen, setReceiptModalOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -732,6 +735,15 @@ export default function RightPanel() {
       showNotification("Thanh toán thành công.", "success");
 
       const invoice = payload?.server?.invoice || null;
+      setReceiptData({
+        ...payload,
+        invoice,
+        transaction: payload?.server?.transaction || null,
+        cashflow: payload?.server?.cashflow || null,
+        table: currentTable,
+        fallbackItems: currentOrder || [],
+      });
+      setReceiptModalOpen(true);
       const invoiceTotals = invoice?.totals || {};
       const invoiceNumber = invoice?.number || invoice?.id;
 
@@ -801,6 +813,7 @@ export default function RightPanel() {
     [
       showNotification,
       currentTable,
+      currentOrder,
       clearActiveDrafts,
       clearTableSessionState,
       setTableStatus,
@@ -1552,6 +1565,19 @@ export default function RightPanel() {
         table={currentTable}
         onConfirm={() => {}}
         onComplete={handlePaymentComplete}
+      />
+
+      <InvoiceReceiptModal
+        isOpen={isReceiptModalOpen}
+        receiptData={receiptData}
+        restaurantId={restaurantId || currentTable?.restaurantId}
+        table={receiptData?.table || currentTable}
+        fallbackItems={receiptData?.fallbackItems || currentOrder}
+        onClose={() => setReceiptModalOpen(false)}
+        onFinish={() => {
+          setReceiptModalOpen(false);
+          setReceiptData(null);
+        }}
       />
 
       <ConfirmDeleteModal
