@@ -96,8 +96,10 @@ const TableBooking = () => {
   const navigate = useNavigate();
   const { search, state } = useLocation();
   const restaurantId = id;
-  const { user } = useContext(AuthContext) || {};
+  const auth = useContext(AuthContext) || {};
+  const { user } = auth;
   const lastWatchingFloorRef = useRef(null);
+  const rebookAutoOpenRef = useRef(false);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -109,6 +111,20 @@ const TableBooking = () => {
   const fromMenu = searchParams.get("fromMenu") === "1";
   const rebookReservation = state?.rebookReservation || null;
   const isRebook = !!searchParams.get("rebook") || !!rebookReservation;
+  const bookingAuthValue =
+    isRebook && rebookReservation
+      ? {
+          ...auth,
+          user: {
+            ...(user || {}),
+            fullName: rebookReservation.customerName || user?.fullName || user?.name || "",
+            name: rebookReservation.customerName || user?.name || user?.fullName || "",
+            phone: rebookReservation.customerPhone || user?.phone || user?.phoneNumber || "",
+            phoneNumber: rebookReservation.customerPhone || user?.phoneNumber || user?.phone || "",
+            email: rebookReservation.customerEmail || user?.email || "",
+          },
+        }
+      : auth;
 
   const [updateFloorWatching] = useMutation(UPDATE_FLOOR_WATCHING);
   const [acquireTableViewLock] = useMutation(ACQUIRE_TABLE_VIEW_LOCK);
@@ -173,6 +189,18 @@ const TableBooking = () => {
       updateFloorWatching({ variables: { id: currentFloorId, isWatching: false } }).catch(() => {});
     };
   }, [activeFloorData?.id, canReserve, canToggleWatching, updateFloorWatching]);
+
+  useEffect(() => {
+    if (!isRebook) return;
+    if (!selectedTable?.id) {
+      rebookAutoOpenRef.current = false;
+      return;
+    }
+    if (!showBookingModal && !rebookAutoOpenRef.current) {
+      rebookAutoOpenRef.current = true;
+      setShowBookingModal(true);
+    }
+  }, [isRebook, selectedTable?.id, showBookingModal]);
 
   const handleSelectTable = async (table) => {
     if (!publicRestaurant || !canReserve) return;
@@ -326,7 +354,7 @@ const TableBooking = () => {
 
       {isRebook && (
         <div className="booking-alert">
-          🔁 Đang đặt lại bàn từ lịch sử cũ. Chọn bàn trống rồi xác nhận thông tin mới.
+          🔁 Đang đặt lại bàn từ lịch sử cũ. Chọn bàn trống, hệ thống sẽ tự mở form và điền sẵn thông tin khách.
         </div>
       )}
       {fromMenu && (
@@ -398,17 +426,18 @@ const TableBooking = () => {
         </aside>
       </div>
 
-      <BookingModal
-        isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-        restaurantId={restaurantId}
-        tableId={selectedTable?.id}
-        tableCode={selectedTable?.label || selectedTable?.code}
-        tableCapacity={selectedTable?.capacity}
-        tableFloor={activeLevel}
-        prefillReservation={rebookReservation}
-        onBookingConfirmed={handleBookingConfirmed}
-      />
+      <AuthContext.Provider value={bookingAuthValue}>
+        <BookingModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          restaurantId={restaurantId}
+          tableId={selectedTable?.id}
+          tableCode={selectedTable?.label || selectedTable?.code}
+          tableCapacity={selectedTable?.capacity}
+          tableFloor={activeLevel}
+          onBookingConfirmed={handleBookingConfirmed}
+        />
+      </AuthContext.Provider>
 
       <QRPaymentModal
         isOpen={showPaymentModal}
