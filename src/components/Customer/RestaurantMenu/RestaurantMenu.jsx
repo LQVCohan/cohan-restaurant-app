@@ -121,6 +121,7 @@ const RestaurantMenu = () => {
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
+  const bookingAddonMode = returnTo === "booking" && !!restaurantParam;
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
 
@@ -198,6 +199,20 @@ const RestaurantMenu = () => {
 
   const totalPrice = getTotalPrice();
   const totalCount = getTotalItems();
+  const bookingCartItems = useMemo(
+    () => (cart || []).filter((item) => String(item.restaurantId) === String(restaurantParam || "")),
+    [cart, restaurantParam],
+  );
+  const bookingCartTotal = useMemo(
+    () => bookingCartItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0),
+    [bookingCartItems],
+  );
+  const bookingCartCount = useMemo(
+    () => bookingCartItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    [bookingCartItems],
+  );
+  const displayCartTotal = bookingAddonMode ? bookingCartTotal : totalPrice;
+  const displayCartCount = bookingAddonMode ? bookingCartCount : totalCount;
 
   useEffect(() => {
     if (!restaurantParam) return;
@@ -219,12 +234,26 @@ const RestaurantMenu = () => {
     navigate(buildFoodDetailPath(foodId, state || {}), { state });
   };
 
+  const handleBookingAddonComplete = () => {
+    if (!restaurantParam) return;
+    setIsCartOpen(false);
+    navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`);
+  };
+
   const handleCheckoutSuccess = () => {
-    if (returnTo === "booking" && restaurantParam) {
-      navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`);
+    if (bookingAddonMode && restaurantParam) {
+      handleBookingAddonComplete();
       return;
     }
     clearCart();
+  };
+
+  const handleMenuBack = () => {
+    if (bookingAddonMode && restaurantParam) {
+      navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`);
+      return;
+    }
+    setSelectedRes(null);
   };
 
   const renderRestaurantSkeletons = () => (
@@ -274,6 +303,12 @@ const RestaurantMenu = () => {
         </section>
       )}
 
+      {bookingAddonMode && selectedRes ? (
+        <div className="booking-alert" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
+          Bạn đang chọn món đi kèm đặt bàn tại <strong>{selectedRes.name}</strong>. Giỏ chỉ được hoàn tất với món của nhà hàng này.
+        </div>
+      ) : null}
+
       {selectedRes ? (
         <section className="menu-assistant-bar" aria-label="Trợ lý gợi ý món">
           <button
@@ -296,7 +331,7 @@ const RestaurantMenu = () => {
         <MenuDetailView
           restaurant={selectedRes}
           canOrder={!!selectedRes?.canOrder}
-          onBack={() => setSelectedRes(null)}
+          onBack={handleMenuBack}
           onOpenFoodDetail={handleOpenFoodDetail}
         />
       ) : (
@@ -345,11 +380,11 @@ const RestaurantMenu = () => {
           type="button"
           className="floating-cart-btn fade-in"
           onClick={() => setIsCartOpen(true)}
-          aria-label={`Mở giỏ hàng, ${totalCount} món, tổng ${formatCurrency(totalPrice)}`}
+          aria-label={`Mở giỏ hàng, ${displayCartCount} món, tổng ${formatCurrency(displayCartTotal)}`}
         >
           <span className="cart-icon" aria-hidden="true">🛒</span>
-          <span className="cart-count">{totalCount}</span>
-          <span className="cart-total">{formatCurrency(totalPrice)}</span>
+          <span className="cart-count">{displayCartCount}</span>
+          <span className="cart-total">{formatCurrency(displayCartTotal)}</span>
         </button>
       )}
 
@@ -359,7 +394,7 @@ const RestaurantMenu = () => {
         onClose={() => setIsCartOpen(false)}
         cart={cart}
         onUpdateQuantity={updateCartItemQuantity}
-        totalPrice={totalPrice}
+        totalPrice={bookingAddonMode ? bookingCartTotal : totalPrice}
         onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={clearCustomerCart}
         onRemoveRestaurantItems={removeRestaurantScopedItems}
@@ -368,6 +403,9 @@ const RestaurantMenu = () => {
         busyItemIds={busyItemIds}
         busyRestaurantIds={busyRestaurantIds}
         isClearing={isClearing}
+        bookingAddonMode={bookingAddonMode}
+        bookingRestaurantId={restaurantParam}
+        onBookingAddonComplete={handleBookingAddonComplete}
       />
     </main>
   );
