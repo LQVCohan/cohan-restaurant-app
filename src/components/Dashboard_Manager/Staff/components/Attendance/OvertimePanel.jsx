@@ -113,12 +113,29 @@ const getOvertimeStatusBadge = (status) => {
   );
 };
 
-const extractOvertimeActionErrorCode = (error) => {
-  const candidates = [
+const getOvertimeErrorMessages = (error) =>
+  [
     error?.graphQLErrors?.[0]?.message,
     error?.networkError?.result?.errors?.[0]?.message,
     error?.message,
-  ].filter(Boolean);
+  ].filter(Boolean).map((message) => String(message));
+
+const getOvertimePolicyLimitMessage = (error) => {
+  const message = getOvertimeErrorMessages(error).find((item) =>
+    item.includes("ATTENDANCE_OVERTIME_LIMIT_EXCEEDED"),
+  );
+  if (!message) return "";
+
+  const [, rawMaxMinutes, roleGroupLabel] = message.split("|");
+  const maxMinutes = Number(rawMaxMinutes);
+  const maxLabel = Number.isFinite(maxMinutes) ? formatMinutes(maxMinutes) : "mức đã cấu hình";
+  const groupLabel = roleGroupLabel || "nhóm vai trò này";
+
+  return `⚠️ Số phút tăng ca được duyệt vượt giới hạn của ${groupLabel}. Tối đa hiện tại: ${maxLabel}/ngày. Hãy giảm số phút duyệt hoặc chỉnh chính sách tại Cài đặt hệ thống.`;
+};
+
+const extractOvertimeActionErrorCode = (error) => {
+  const candidates = getOvertimeErrorMessages(error);
 
   return Object.keys(OVERTIME_ACTION_ERROR_MESSAGES).find((code) =>
     candidates.some((message) => String(message).includes(code)),
@@ -132,6 +149,9 @@ export const getOvertimeActionErrorMessage = (error, fallback) => {
   if (isUnauthenticatedError(error)) {
     return "⚠️ Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
   }
+
+  const policyLimitMessage = getOvertimePolicyLimitMessage(error);
+  if (policyLimitMessage) return policyLimitMessage;
 
   const overtimeErrorCode = extractOvertimeActionErrorCode(error);
   if (overtimeErrorCode) {
