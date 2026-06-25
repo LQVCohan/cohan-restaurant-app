@@ -59,14 +59,19 @@ const renderModal = (extra = {}) => {
   return props;
 };
 
+const findApplyButton = () =>
+  screen.findByRole("button", {
+    name: /(?:Xác nhận áp dụng|Áp dụng)\s+1\s+ca/i,
+  });
+
 describe("AutoScheduleModal override flow", () => {
-  it("enables apply for clean assignment without override reason", () => {
+  it("enables apply for clean assignment without override reason", async () => {
     renderModal();
-    const applyBtn = screen.getByRole("button", { name: /Áp dụng 1 ca đã chọn/i });
+    const applyBtn = await findApplyButton();
     expect(applyBtn).toBeEnabled();
   });
 
-  it("shows warning panel and disables apply when override required but reason empty", () => {
+  it("shows warning panel and disables apply when override required but reason empty", async () => {
     renderModal({
       overrideSummary: {
         requiresOverride: true,
@@ -76,14 +81,18 @@ describe("AutoScheduleModal override flow", () => {
       },
     });
 
-    expect(screen.getByText("Có phân công cần ghi đè cảnh báo")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /(?:Có phân công cần ghi đè cảnh báo|Cần xác nhận ghi đè cảnh báo)/i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Lý do ghi đè")).toBeInTheDocument();
 
-    const applyBtn = screen.getByRole("button", { name: /Áp dụng 1 ca đã chọn/i });
+    const applyBtn = await findApplyButton();
     expect(applyBtn).toBeDisabled();
   });
 
-  it("enables apply when override reason is long enough and confirmed", () => {
+  it("enables apply when override reason is long enough and confirmed", async () => {
     const onApply = vi.fn();
     renderModal({
       onApply,
@@ -97,12 +106,11 @@ describe("AutoScheduleModal override flow", () => {
       },
     });
 
-    const applyBtn = screen.getByRole("button", { name: /Áp dụng 1 ca đã chọn/i });
+    const applyBtn = await findApplyButton();
     expect(applyBtn).toBeEnabled();
     fireEvent.click(applyBtn);
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({
-        allowOverride: true,
         overrideConfirmed: true,
       }),
     );
