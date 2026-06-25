@@ -4,6 +4,7 @@ import LeaveRequestForm from "@/components/Dashboard_Manager/Staff/components/Le
 import LeaveRequestsList from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestsList";
 import { useLeaveManagement } from "@/hooks/useLeaveManagement";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveManagement.scss";
+import "./StaffLeavePage.scss";
 
 const resolveId = (value) => {
   if (!value) return "";
@@ -19,6 +20,12 @@ const getCurrentUserId = (user) =>
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.displayName || user?.username || "Nhân viên";
 
+const getInitials = (name) => {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "NV";
+  return parts.slice(-2).map((part) => part.charAt(0).toUpperCase()).join("");
+};
+
 const buildSelfStaffOption = (user, restaurantId) => ({
   id: getCurrentUserId(user),
   fullName: getDisplayName(user),
@@ -30,12 +37,32 @@ const buildSelfStaffOption = (user, restaurantId) => ({
   restaurantForStaff: restaurantId,
 });
 
+const leaveGuide = [
+  {
+    step: "01",
+    title: "Chọn đúng loại nghỉ",
+    copy: "Hệ thống tự tính số ngày dự kiến để quản lý duyệt và đồng bộ dữ liệu lương.",
+  },
+  {
+    step: "02",
+    title: "Ghi lý do rõ ràng",
+    copy: "Lý do ngắn gọn giúp quản lý xử lý nhanh hơn, đặc biệt với nghỉ nửa ngày hoặc nghỉ đột xuất.",
+  },
+  {
+    step: "03",
+    title: "Theo dõi trạng thái",
+    copy: "Đơn đã gửi sẽ nằm ở lịch sử bên dưới, nhân viên chỉ xem đơn của chính mình.",
+  },
+];
+
 export default function StaffLeavePage() {
   const { user, restaurants } = useContext(AuthContext) || {};
   const [selectedDate, setSelectedDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
+  const staffName = getDisplayName(user);
+  const initials = getInitials(staffName);
   const restaurantId =
     resolveId(user?.restaurantForStaff) ||
     resolveId(user?.restaurant) ||
@@ -67,56 +94,102 @@ export default function StaffLeavePage() {
     );
   }, [employeeId, restaurantId, staffList, user]);
 
+  const leaveStats = useMemo(
+    () => ({
+      total: leaveRequests.length,
+      pending: leaveRequests.filter((request) => request.status === "PENDING").length,
+      approved: leaveRequests.filter((request) => request.status === "APPROVED").length,
+    }),
+    [leaveRequests],
+  );
+
   if (!restaurantId || !employeeId) {
     return (
-      <div className="leave-management-page">
-        <div className="leave-list-container">
-          <div className="empty-row">
-            Không xác định được nhà hàng hoặc tài khoản nhân viên. Vui lòng đăng nhập lại.
-          </div>
+      <div className="staff-leave-page staff-page">
+        <div className="staff-leave-empty-card" role="status">
+          <strong>Không mở được khu vực nghỉ phép</strong>
+          <span>Không xác định được nhà hàng hoặc tài khoản nhân viên. Vui lòng đăng nhập lại.</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="leave-management-page">
-      <div className="leave-list-container">
-        <div className="dashboard-header">
-          <div className="header-title">
-            <h3>📝 Đơn nghỉ phép của tôi</h3>
-            <p>Gửi đơn xin nghỉ phép và theo dõi trạng thái duyệt từ quản lý.</p>
+    <div className="staff-leave-page staff-page" aria-labelledby="staff-leave-title">
+      <section className="staff-leave-hero" aria-label="Tổng quan nghỉ phép">
+        <div className="staff-leave-hero__copy">
+          <span className="staff-leave-badge">Self-service nghỉ phép</span>
+          <h1 id="staff-leave-title">Xin nghỉ phép trong vài bước</h1>
+          <p>
+            Gửi đơn nghỉ phép, theo dõi trạng thái duyệt và giữ lịch sử nghỉ phép ngay trong khu vực nhân viên.
+          </p>
+          <div className="staff-leave-hero__stats" aria-label="Thống kê đơn nghỉ phép">
+            <div className="staff-leave-stat-card">
+              <span>Tổng đơn</span>
+              <strong>{leaveStats.total}</strong>
+            </div>
+            <div className="staff-leave-stat-card staff-leave-stat-card--pending">
+              <span>Chờ duyệt</span>
+              <strong>{leaveStats.pending}</strong>
+            </div>
+            <div className="staff-leave-stat-card staff-leave-stat-card--approved">
+              <span>Đã duyệt</span>
+              <strong>{leaveStats.approved}</strong>
+            </div>
           </div>
         </div>
-      </div>
 
-      <LeaveRequestForm
-        staffList={selfStaffList}
-        onSubmit={submitLeaveRequest}
-        disabled={isMutating}
-        loading={loading}
-        error={error}
-        selfServiceEmployeeId={employeeId}
-      />
+        <aside className="staff-leave-identity-card" aria-label="Tài khoản gửi đơn">
+          <div className="staff-leave-identity-card__avatar" aria-hidden="true">{initials}</div>
+          <span>Người làm đơn</span>
+          <strong>{staffName}</strong>
+          <small>Mẫu đơn sẽ tự khóa theo tài khoản hiện tại.</small>
+        </aside>
+      </section>
 
-      <LeaveRequestsList
-        requests={leaveRequests}
-        onApprove={undefined}
-        onReject={undefined}
-        onConfirmReplacement={undefined}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        searchTerm={search}
-        onSearchChange={setSearch}
-        loading={loading}
-        error={error}
-        title="📋 Lịch sử đơn nghỉ phép"
-        subtitle="Theo dõi trạng thái các đơn bạn đã gửi"
-        allowDecisionActions={false}
-        showSearch={false}
-      />
+      <section className="staff-leave-guide" aria-label="Hướng dẫn gửi đơn nghỉ phép">
+        {leaveGuide.map((item) => (
+          <article className="staff-leave-guide__item" key={item.step}>
+            <span>{item.step}</span>
+            <div>
+              <strong>{item.title}</strong>
+              <p>{item.copy}</p>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="staff-leave-panel staff-leave-panel--form" aria-label="Tạo đơn nghỉ phép">
+        <LeaveRequestForm
+          staffList={selfStaffList}
+          onSubmit={submitLeaveRequest}
+          disabled={isMutating}
+          loading={loading}
+          error={error}
+          selfServiceEmployeeId={employeeId}
+        />
+      </section>
+
+      <section className="staff-leave-panel staff-leave-panel--history" aria-label="Lịch sử đơn nghỉ phép">
+        <LeaveRequestsList
+          requests={leaveRequests}
+          onApprove={undefined}
+          onReject={undefined}
+          onConfirmReplacement={undefined}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          searchTerm={search}
+          onSearchChange={setSearch}
+          loading={loading}
+          error={error}
+          title="📋 Lịch sử đơn nghỉ phép"
+          subtitle="Theo dõi trạng thái các đơn bạn đã gửi"
+          allowDecisionActions={false}
+          showSearch={false}
+        />
+      </section>
     </div>
   );
 }
