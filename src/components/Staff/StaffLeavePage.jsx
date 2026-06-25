@@ -14,11 +14,8 @@ const resolveId = (value) => {
   return String(value);
 };
 
-const getCurrentUserId = (user) =>
-  String(user?.id || user?._id || user?.userId || "");
-
-const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.displayName || user?.username || "Nhân viên";
+const getCurrentUserId = (user) => String(user?.id || user?._id || user?.userId || "");
+const getDisplayName = (user) => user?.fullName || user?.name || user?.displayName || user?.username || "Nhân viên";
 
 const getInitials = (name) => {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -38,21 +35,9 @@ const buildSelfStaffOption = (user, restaurantId) => ({
 });
 
 const leaveGuide = [
-  {
-    step: "01",
-    title: "Chọn đúng loại nghỉ",
-    copy: "Hệ thống tự tính số ngày dự kiến để quản lý duyệt và đồng bộ dữ liệu lương.",
-  },
-  {
-    step: "02",
-    title: "Ghi lý do rõ ràng",
-    copy: "Lý do ngắn gọn giúp quản lý xử lý nhanh hơn, đặc biệt với nghỉ nửa ngày hoặc nghỉ đột xuất.",
-  },
-  {
-    step: "03",
-    title: "Theo dõi trạng thái",
-    copy: "Đơn đã gửi sẽ nằm ở lịch sử bên dưới, nhân viên chỉ xem đơn của chính mình.",
-  },
+  { step: "01", title: "Chọn đúng loại nghỉ", copy: "Hệ thống tự tính số ngày dự kiến để quản lý duyệt và đồng bộ dữ liệu lương." },
+  { step: "02", title: "Ghi lý do rõ ràng", copy: "Lý do ngắn gọn giúp quản lý xử lý nhanh hơn." },
+  { step: "03", title: "Theo dõi trạng thái", copy: "Đơn đã gửi sẽ nằm ở lịch sử bên dưới." },
 ];
 
 export default function StaffLeavePage() {
@@ -60,23 +45,14 @@ export default function StaffLeavePage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const staffName = getDisplayName(user);
   const initials = getInitials(staffName);
-  const restaurantId =
-    resolveId(user?.restaurantForStaff) ||
-    resolveId(user?.restaurant) ||
-    resolveId(restaurants?.[0]);
+  const restaurantId = resolveId(user?.restaurantForStaff) || resolveId(user?.restaurant) || resolveId(restaurants?.[0]);
   const employeeId = getCurrentUserId(user);
 
-  const {
-    leaveRequests,
-    staffList,
-    submitLeaveRequest,
-    loading,
-    error,
-    isMutating,
-  } = useLeaveManagement({
+  const { leaveRequests, staffList, submitLeaveRequest, loading, error, isMutating } = useLeaveManagement({
     selectedDate,
     status: statusFilter,
     search,
@@ -86,12 +62,8 @@ export default function StaffLeavePage() {
 
   const selfStaffList = useMemo(() => {
     if (!employeeId) return [];
-    const selfFromQuery = (staffList || []).find(
-      (item) => String(item.id) === String(employeeId),
-    );
-    return [selfFromQuery || buildSelfStaffOption(user, restaurantId)].filter(
-      (item) => item?.id,
-    );
+    const selfFromQuery = (staffList || []).find((item) => String(item.id) === String(employeeId));
+    return [selfFromQuery || buildSelfStaffOption(user, restaurantId)].filter((item) => item?.id);
   }, [employeeId, restaurantId, staffList, user]);
 
   const leaveStats = useMemo(
@@ -102,6 +74,8 @@ export default function StaffLeavePage() {
     }),
     [leaveRequests],
   );
+
+  const closeCreateModal = () => setIsCreateModalOpen(false);
 
   if (!restaurantId || !employeeId) {
     return (
@@ -116,26 +90,20 @@ export default function StaffLeavePage() {
 
   return (
     <div className="staff-leave-page staff-page" aria-labelledby="staff-leave-title">
-      <section className="staff-leave-hero" aria-label="Tổng quan nghỉ phép">
+      <section className="staff-leave-hero staff-leave-hero--compact" aria-label="Tổng quan nghỉ phép">
         <div className="staff-leave-hero__copy">
-          <span className="staff-leave-badge">Self-service nghỉ phép</span>
+          <span className="staff-leave-badge">Nghỉ phép nhân viên</span>
           <h1 id="staff-leave-title">Xin nghỉ phép trong vài bước</h1>
-          <p>
-            Gửi đơn nghỉ phép, theo dõi trạng thái duyệt và giữ lịch sử nghỉ phép ngay trong khu vực nhân viên.
-          </p>
+          <p>Gửi đơn trong modal, theo dõi trạng thái duyệt và giữ lịch sử ngay trong khu vực nhân viên.</p>
+          <div className="staff-leave-hero__actions">
+            <button type="button" className="staff-leave-primary-btn" onClick={() => setIsCreateModalOpen(true)}>
+              + Tạo đơn nghỉ phép
+            </button>
+          </div>
           <div className="staff-leave-hero__stats" aria-label="Thống kê đơn nghỉ phép">
-            <div className="staff-leave-stat-card">
-              <span>Tổng đơn</span>
-              <strong>{leaveStats.total}</strong>
-            </div>
-            <div className="staff-leave-stat-card staff-leave-stat-card--pending">
-              <span>Chờ duyệt</span>
-              <strong>{leaveStats.pending}</strong>
-            </div>
-            <div className="staff-leave-stat-card staff-leave-stat-card--approved">
-              <span>Đã duyệt</span>
-              <strong>{leaveStats.approved}</strong>
-            </div>
+            <div className="staff-leave-stat-card"><span>Tổng đơn</span><strong>{leaveStats.total}</strong></div>
+            <div className="staff-leave-stat-card staff-leave-stat-card--pending"><span>Chờ duyệt</span><strong>{leaveStats.pending}</strong></div>
+            <div className="staff-leave-stat-card staff-leave-stat-card--approved"><span>Đã duyệt</span><strong>{leaveStats.approved}</strong></div>
           </div>
         </div>
 
@@ -143,7 +111,7 @@ export default function StaffLeavePage() {
           <div className="staff-leave-identity-card__avatar" aria-hidden="true">{initials}</div>
           <span>Người làm đơn</span>
           <strong>{staffName}</strong>
-          <small>Mẫu đơn sẽ tự khóa theo tài khoản hiện tại.</small>
+          <small>Form sẽ tự chọn tài khoản hiện tại.</small>
         </aside>
       </section>
 
@@ -151,23 +119,9 @@ export default function StaffLeavePage() {
         {leaveGuide.map((item) => (
           <article className="staff-leave-guide__item" key={item.step}>
             <span>{item.step}</span>
-            <div>
-              <strong>{item.title}</strong>
-              <p>{item.copy}</p>
-            </div>
+            <div><strong>{item.title}</strong><p>{item.copy}</p></div>
           </article>
         ))}
-      </section>
-
-      <section className="staff-leave-panel staff-leave-panel--form" aria-label="Tạo đơn nghỉ phép">
-        <LeaveRequestForm
-          staffList={selfStaffList}
-          onSubmit={submitLeaveRequest}
-          disabled={isMutating}
-          loading={loading}
-          error={error}
-          selfServiceEmployeeId={employeeId}
-        />
       </section>
 
       <section className="staff-leave-panel staff-leave-panel--history" aria-label="Lịch sử đơn nghỉ phép">
@@ -188,8 +142,37 @@ export default function StaffLeavePage() {
           subtitle="Theo dõi trạng thái các đơn bạn đã gửi"
           allowDecisionActions={false}
           showSearch={false}
+          headerAction={<button type="button" className="leave-open-modal-btn" onClick={() => setIsCreateModalOpen(true)}>+ Tạo đơn</button>}
         />
       </section>
+
+      {isCreateModalOpen && (
+        <div className="leave-modal-overlay" role="presentation">
+          <section className="leave-modal" role="dialog" aria-modal="true" aria-labelledby="staff-leave-create-modal-title">
+            <div className="leave-modal__header">
+              <div>
+                <span className="leave-modal__eyebrow">Nghỉ phép nhân viên</span>
+                <h3 id="staff-leave-create-modal-title">Tạo đơn nghỉ phép</h3>
+                <p>Form được mở trong modal để màn lịch sử gọn hơn và dễ theo dõi.</p>
+              </div>
+              <button type="button" className="leave-modal__close" aria-label="Đóng form tạo đơn nghỉ phép" onClick={closeCreateModal}>×</button>
+            </div>
+            <LeaveRequestForm
+              staffList={selfStaffList}
+              onSubmit={submitLeaveRequest}
+              disabled={isMutating}
+              loading={loading}
+              error={error}
+              selfServiceEmployeeId={employeeId}
+              compact
+              title=""
+              submitLabel="Gửi đơn"
+              onCancel={closeCreateModal}
+              onSubmitted={closeCreateModal}
+            />
+          </section>
+        </div>
+      )}
     </div>
   );
 }
