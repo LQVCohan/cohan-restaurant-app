@@ -220,14 +220,21 @@ const MENU_ACTION_PERMISSION_MAP = {
   [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write", "log.read"],
 };
 
+const getUserPermissionCodes = (userOrRole, explicit = []) => {
+  if (Array.isArray(explicit) && explicit.length) return explicit;
+  if (!userOrRole || typeof userOrRole !== "object") return [];
+  return userOrRole.effectivePermissionCodes || userOrRole.permissionCodes || userOrRole.permissions || [];
+};
+
 const userWithExplicitPermissions = (userOrRole, userPermissions = []) => {
-  if (!Array.isArray(userPermissions) || userPermissions.length === 0) {
+  const effectivePermissionCodes = getUserPermissionCodes(userOrRole, userPermissions);
+  if (!Array.isArray(effectivePermissionCodes) || effectivePermissionCodes.length === 0) {
     return userOrRole;
   }
   if (userOrRole && typeof userOrRole === "object") {
-    return { ...userOrRole, effectivePermissionCodes: userPermissions };
+    return { ...userOrRole, effectivePermissionCodes };
   }
-  return { roleName: userOrRole, effectivePermissionCodes: userPermissions };
+  return { roleName: userOrRole, effectivePermissionCodes };
 };
 
 export const canAccessMenuManagementAction = (userOrRole, action, userPermissions = []) => {
