@@ -65,6 +65,8 @@ const normalizeFilter = (filter) => Object.fromEntries(
   Object.entries(filter).filter(([, value]) => value && value !== "unlimited"),
 );
 
+const optionLabel = (key, value) => filters[key]?.find(([optionValue]) => optionValue === value)?.[1] || "";
+
 export default function CombosPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useContext(AuthContext) || {};
@@ -82,8 +84,18 @@ export default function CombosPage() {
   const [addComboToCartMutation] = useMutation(ADD_COMBO_TO_CART);
   const combos = data?.customerCombos || [];
   const featured = combos.slice(0, 3);
+  const bestSaving = combos.reduce((max, combo) => Math.max(max, Number(combo.discountAmount || 0)), 0);
+  const comboOnlyCount = combos.filter((combo) => combo.sourceType === "COMBO").length;
+  const promotionCount = combos.filter((combo) => combo.sourceType === "PROMOTION").length;
+  const activeFilters = [
+    filter.search && `Tìm: ${filter.search}`,
+    filter.people && optionLabel("people", filter.people),
+    filter.budget && optionLabel("budget", filter.budget),
+    filter.sourceType && optionLabel("sourceType", filter.sourceType),
+  ].filter(Boolean);
 
   const updateFilter = (key, value) => setFilter((prev) => ({ ...prev, [key]: value }));
+  const clearFilters = () => setFilter({ search: "", people: "", budget: "", sourceType: "" });
 
   const addComboItems = async (combo) => {
     if (combo?.sourceType === "COMBO") {
@@ -157,24 +169,29 @@ export default function CombosPage() {
 
   const renderCard = (combo, featuredCard = false) => {
     const canAddItems = combo.restaurantId && combo.items?.some((item) => item.menuItemId);
+    const itemCount = (combo.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
     return (
       <article className={`combo-card${featuredCard ? " combo-card--featured" : ""}`} key={`${combo.sourceType}-${combo.id}`}>
         <div className="combo-card__image-wrap">
           <img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} className="combo-card__image" loading="lazy" />
           <span className="combo-card__badge">{combo.badge || (combo.sourceType === "PROMOTION" ? "Ưu đãi combo" : "Combo cố định")}</span>
+          {combo.discountAmount > 0 && <span className="combo-card__saving-flag">- {money(combo.discountAmount)}đ</span>}
         </div>
         <div className="combo-card__body">
-          <p className="combo-card__eyebrow">{combo.sourceType === "PROMOTION" ? "Combo ưu đãi" : "Combo nhà hàng"}</p>
+          <div className="combo-card__meta-row">
+            <p className="combo-card__eyebrow">{combo.sourceType === "PROMOTION" ? "Combo ưu đãi" : "Combo nhà hàng"}</p>
+            <span>{itemCount || combo.items?.length || 0} món</span>
+          </div>
           <h3>{combo.name}</h3>
           <p className="combo-card__restaurant">{combo.restaurantName || "Nhà hàng đang cập nhật"}</p>
           <ul className="combo-card__items" aria-label={`Món trong ${combo.name}`}>
-            {(combo.items || []).slice(0, 4).map((item) => <li key={`${combo.id}-${item.menuItemId || item.name}`}>{item.qty}× {item.name}</li>)}
+            {(combo.items || []).slice(0, 4).map((item) => <li key={`${combo.id}-${item.menuItemId || item.name}`}><span>{item.qty}×</span>{item.name}</li>)}
           </ul>
           <div className="combo-card__price-row">
             <strong>{money(combo.comboPrice ?? combo.originalPrice)}đ</strong>
             {combo.originalPrice && combo.comboPrice && combo.originalPrice > combo.comboPrice && <span>{money(combo.originalPrice)}đ</span>}
           </div>
-          {combo.discountAmount > 0 && <p className="combo-card__save">Tiết kiệm {money(combo.discountAmount)}đ</p>}
+          {combo.discountAmount > 0 && <p className="combo-card__save">Tiết kiệm {money(combo.discountAmount)}đ so với gọi lẻ</p>}
           <div className="combo-card__actions">
             <button type="button" className="combo-card__secondary" onClick={() => setSelectedCombo(combo)}>Xem combo</button>
             {canAddItems && (
@@ -190,13 +207,33 @@ export default function CombosPage() {
 
   return (
     <main className="combos-page" id="main-content">
+      <div className="combos-page__glow combos-page__glow--left" aria-hidden="true" />
+      <div className="combos-page__glow combos-page__glow--right" aria-hidden="true" />
+
       <section className="combos-hero" aria-labelledby="combos-title">
-        <div>
+        <div className="combos-hero__content">
           <span className="combos-hero__label">Cohan combo</span>
           <h1 id="combos-title">Combo tiết kiệm hôm nay</h1>
-          <p>Chọn set món phù hợp bữa ăn, nhóm người và ngân sách của bạn.</p>
+          <p>Chọn nhanh set món theo số người, ngân sách và khẩu vị. Combo cố định được thêm vào giỏ như một bundle riêng.</p>
+          <div className="combos-hero__actions">
+            <a href="#combo-results" className="combos-hero__primary">Xem combo</a>
+            <Link className="combos-hero__link" to="/restaurants">Xem nhà hàng</Link>
+          </div>
         </div>
-        <Link className="combos-hero__link" to="/restaurants">Xem nhà hàng</Link>
+        <aside className="combos-hero__panel" aria-label="Tóm tắt combo">
+          <div>
+            <span>{combos.length || "—"}</span>
+            <small>combo khả dụng</small>
+          </div>
+          <div>
+            <span>{bestSaving ? `${money(bestSaving)}đ` : "—"}</span>
+            <small>tiết kiệm cao nhất</small>
+          </div>
+          <div>
+            <span>{comboOnlyCount}/{promotionCount}</span>
+            <small>bundle / ưu đãi</small>
+          </div>
+        </aside>
       </section>
 
       <section className="combos-filter" aria-label="Bộ lọc combo">
@@ -212,17 +249,55 @@ export default function CombosPage() {
             </select>
           </label>
         ))}
+        {activeFilters.length > 0 && (
+          <div className="combos-filter__chips" aria-label="Bộ lọc đang áp dụng">
+            {activeFilters.map((label) => <span key={label}>{label}</span>)}
+            <button type="button" onClick={clearFilters}>Xóa lọc</button>
+          </div>
+        )}
       </section>
 
+      <section className="combos-curation" aria-label="Gợi ý chọn combo">
+        <article>
+          <span>01</span>
+          <strong>Bundle thật</strong>
+          <p>Combo cố định được giữ thành một dòng riêng trong giỏ và hóa đơn.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <strong>Ưu đãi rõ ràng</strong>
+          <p>Combo promotion vẫn áp dụng trên món thành phần, không trộn nhầm với bundle.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <strong>Dễ kiểm tra</strong>
+          <p>Xem món con, giá gốc và mức tiết kiệm trước khi thêm vào giỏ.</p>
+        </article>
+      </section>
+
+      <div id="combo-results" />
       {loading && !combos.length ? <SkeletonGrid /> : error ? (
-        <section className="combos-state" role="alert"><h2>Không tải được combo</h2><p>Vui lòng thử lại sau ít phút.</p><button type="button" onClick={() => refetch()}>Thử lại</button></section>
+        <section className="combos-state combos-state--error" role="alert">
+          <span className="combos-state__mark">Không tải được dữ liệu</span>
+          <h2>Combo chưa sẵn sàng để hiển thị</h2>
+          <p>Backend hoặc dữ liệu seed combo có thể chưa chạy. Thử tải lại sau khi kiểm tra server GraphQL.</p>
+          <div className="combos-state__actions">
+            <button type="button" onClick={() => refetch()}>Thử lại</button>
+            <Link to="/restaurants">Xem nhà hàng</Link>
+          </div>
+        </section>
       ) : combos.length ? (
         <>
           <section className="combos-section"><div className="combos-section__heading"><span>Combo nổi bật</span><h2>Set món đáng thử</h2></div><div className="combos-featured">{featured.map((combo) => renderCard(combo, true))}</div></section>
           <section className="combos-section"><div className="combos-section__heading"><span>Tất cả combo</span><h2>Chọn theo bữa ăn của bạn</h2></div><div className="combos-grid">{combos.map((combo) => renderCard(combo))}</div></section>
         </>
       ) : (
-        <section className="combos-state"><h2>Chưa có combo phù hợp</h2><p>Bạn có thể xem nhà hàng hoặc để AI gợi ý món tương tự.</p><Link to="/restaurants">Xem nhà hàng</Link></section>
+        <section className="combos-state">
+          <span className="combos-state__mark">Bộ sưu tập trống</span>
+          <h2>Chưa có combo phù hợp</h2>
+          <p>Bạn có thể xem nhà hàng hoặc để AI gợi ý món tương tự trong lúc quản lý cập nhật combo mới.</p>
+          <div className="combos-state__actions"><Link to="/restaurants">Xem nhà hàng</Link><button type="button" onClick={clearFilters}>Xóa bộ lọc</button></div>
+        </section>
       )}
 
       {selectedCombo && <ComboModal combo={selectedCombo} onClose={() => setSelectedCombo(null)} onAdd={addComboItems} isAdding={addingComboId === selectedCombo.id} />}
@@ -231,7 +306,7 @@ export default function CombosPage() {
 }
 
 function SkeletonGrid() {
-  return <div className="combos-grid" aria-label="Đang tải combo">{Array.from({ length: 6 }).map((_, i) => <div className="combo-card combo-card--skeleton" key={i}><div /><span /><span /><span /></div>)}</div>;
+  return <div className="combos-grid combos-grid--loading" aria-label="Đang tải combo">{Array.from({ length: 6 }).map((_, i) => <div className="combo-card combo-card--skeleton" key={i}><div /><span /><span /><span /></div>)}</div>;
 }
 
 function ComboModal({ combo, onClose, onAdd, isAdding }) {
@@ -240,13 +315,13 @@ function ComboModal({ combo, onClose, onAdd, isAdding }) {
     <div className="combo-modal" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <section className="combo-modal__panel" role="dialog" aria-modal="true" aria-label={`Chi tiết ${combo.name}`}>
         <button type="button" className="combo-modal__close" aria-label="Đóng chi tiết combo" onClick={onClose}>×</button>
-        <img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} />
+        <div className="combo-modal__media"><img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} /><span>{combo.badge || "Combo"}</span></div>
         <div className="combo-modal__content">
-          <span>{combo.badge || "Combo"}</span>
+          <span className="combo-modal__eyebrow">{combo.sourceType === "PROMOTION" ? "Ưu đãi combo" : "Combo bundle"}</span>
           <h2>{combo.name}</h2>
           <p>{combo.restaurantName || "Nhà hàng đang cập nhật"}</p>
           {combo.description && <p>{combo.description}</p>}
-          <ul>{(combo.items || []).map((item) => <li key={`${item.menuItemId || item.name}-modal`}><strong>{item.qty}×</strong> {item.name}{item.price ? <em>{money(item.price)}đ</em> : null}</li>)}</ul>
+          <ul>{(combo.items || []).map((item) => <li key={`${item.menuItemId || item.name}-modal`}><strong>{item.qty}× {item.name}</strong>{item.price ? <em>{money(item.price)}đ</em> : null}</li>)}</ul>
           <div className="combo-modal__total"><strong>{money(combo.comboPrice ?? combo.originalPrice)}đ</strong>{combo.discountAmount > 0 && <span>Tiết kiệm {money(combo.discountAmount)}đ</span>}</div>
           <p className="combo-modal__note">Combo này gồm nhiều món, bạn có thể kiểm tra trước khi thêm.</p>
           <div className="combo-modal__actions">
