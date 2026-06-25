@@ -100,6 +100,7 @@ const TableBooking = () => {
   const { user } = auth;
   const lastWatchingFloorRef = useRef(null);
   const rebookAutoOpenRef = useRef(false);
+  const rebookAutoPickRef = useRef(false);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -111,6 +112,7 @@ const TableBooking = () => {
   const fromMenu = searchParams.get("fromMenu") === "1";
   const rebookReservation = state?.rebookReservation || null;
   const isRebook = !!searchParams.get("rebook") || !!rebookReservation;
+  const rebookPartySize = Number(rebookReservation?.partySize || 0);
   const bookingAuthValue =
     isRebook && rebookReservation
       ? {
@@ -238,6 +240,25 @@ const TableBooking = () => {
   };
 
   useEffect(() => {
+    if (!isRebook || rebookAutoPickRef.current || selectedTable?.id || tablesLoading) return;
+    const availableTables = (tables || []).filter((table) => table.status === "available");
+    if (!availableTables.length) return;
+
+    const oldTable = rebookReservation?.tableId
+      ? availableTables.find((table) => String(table.id) === String(rebookReservation.tableId))
+      : null;
+    const fitTable = rebookPartySize
+      ? availableTables.find((table) => Number(table.capacity || 0) >= rebookPartySize)
+      : null;
+    const targetTable = oldTable || fitTable || availableTables[0];
+
+    if (targetTable) {
+      rebookAutoPickRef.current = true;
+      handleSelectTable(targetTable);
+    }
+  }, [isRebook, rebookPartySize, rebookReservation?.tableId, selectedTable?.id, tables, tablesLoading]);
+
+  useEffect(() => {
     return () => {
       if (selectedTable?.id && user?.id) {
         releaseTableViewLock({
@@ -354,7 +375,7 @@ const TableBooking = () => {
 
       {isRebook && (
         <div className="booking-alert">
-          🔁 Đang đặt lại bàn từ lịch sử cũ. Chọn bàn trống, hệ thống sẽ tự mở form và điền sẵn thông tin khách.
+          🔁 Đang đặt lại bàn từ lịch sử cũ. Hệ thống sẽ ưu tiên chọn bàn cũ hoặc bàn đủ chỗ rồi tự mở form.
         </div>
       )}
       {fromMenu && (
