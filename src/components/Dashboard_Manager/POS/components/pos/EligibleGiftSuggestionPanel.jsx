@@ -4,8 +4,10 @@ import { useNotification } from "../../../../../hooks/useNotification";
 import { useDiscountPreview } from "@/hooks/useDiscountPreview";
 import {
   buildOrderDiscountPreviewInput,
+  getDiscountBreakdownTotal,
   getShippingFeeForDiscountPreview,
 } from "@/utils/discountPreviewPayload";
+import { formatPrice } from "@/utils/formatters";
 import styles from "./EligibleGiftSuggestionPanel.module.scss";
 
 const getComparableIds = (item) =>
@@ -39,12 +41,14 @@ export default function EligibleGiftSuggestionPanel() {
   };
   const { previewOrderDiscount } = useDiscountPreview();
   const [eligibleGiftItems, setEligibleGiftItems] = useState([]);
+  const [discountBreakdown, setDiscountBreakdown] = useState(null);
 
   const previewItems = useMemo(() => getCleanOrderItems(currentOrder), [currentOrder]);
 
   useEffect(() => {
     if (!restaurantId || !previewItems.length) {
       setEligibleGiftItems([]);
+      setDiscountBreakdown(null);
       return undefined;
     }
 
@@ -72,8 +76,12 @@ export default function EligibleGiftSuggestionPanel() {
           ? breakdown.eligibleGiftItems.filter((gift) => Number(gift?.missingGiftQuantity || 0) > 0)
           : [];
         setEligibleGiftItems(gifts);
+        setDiscountBreakdown(breakdown || null);
       } catch {
-        if (!cancelled) setEligibleGiftItems([]);
+        if (!cancelled) {
+          setEligibleGiftItems([]);
+          setDiscountBreakdown(null);
+        }
       }
     }, 360);
 
@@ -124,45 +132,87 @@ export default function EligibleGiftSuggestionPanel() {
     [addToOrder, menuItems, showNotification],
   );
 
-  if (!eligibleGiftItems.length) return null;
+  const subtotal = Number(discountBreakdown?.subtotal || 0);
+  const totalDiscount = Math.max(
+    0,
+    Number(
+      discountBreakdown?.totalDiscount ??
+        discountBreakdown?.discount ??
+        discountBreakdown?.promotionDiscount ??
+        0,
+    ),
+  );
+  const payableTotal = getDiscountBreakdownTotal(discountBreakdown, subtotal);
+
+  if (!eligibleGiftItems.length && totalDiscount <= 0) return null;
 
   return (
-    <section className={styles.giftPanel} aria-label="Gợi ý món tặng khuyến mãi">
-      <div className={styles.giftHeader}>
-        <span className={styles.giftIcon}>🎁</span>
-        <div>
-          <h3 className={styles.giftTitle}>Đơn đủ điều kiện nhận món tặng</h3>
-          <p className={styles.giftSubtitle}>
-            Thêm món tặng vào đơn để hệ thống tự giảm giá dòng quà tặng.
-          </p>
-        </div>
-      </div>
-
-      <div className={styles.giftList}>
-        {eligibleGiftItems.map((gift) => (
-          <div
-            key={`${gift.promotionId}_${gift.giftItemId}`}
-            className={styles.giftItem}
-          >
-            <div className={styles.giftText}>
-              <strong className={styles.giftName}>
-                {gift.giftItemName || "Món tặng"}
-              </strong>
-              <span className={styles.giftMessage}>
-                {gift.message ||
-                  `${gift.promotionName || "Khuyến mãi"} · còn thiếu ${gift.missingGiftQuantity || 1}`}
-              </span>
+    <section className={styles.giftPanel} aria-label="Gợi ý ưu đãi POS">
+      {totalDiscount > 0 && (
+        <div style={{ marginBottom: eligibleGiftItems.length ? 12 : 0 }}>
+          <div className={styles.giftHeader}>
+            <span className={styles.giftIcon}>%</span>
+            <div>
+              <h3 className={styles.giftTitle}>Tạm tính sau ưu đãi</h3>
+              <p className={styles.giftSubtitle}>Hệ thống đã tự áp dụng khuyến mãi hợp lệ cho đơn hiện tại.</p>
             </div>
-            <button
-              type="button"
-              className={styles.giftButton}
-              onClick={() => handleAddGift(gift)}
-            >
-              Thêm món tặng
-            </button>
           </div>
-        ))}
-      </div>
+          <div style={{ display: "grid", gap: 6, marginTop: 8, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Tạm tính</span>
+              <strong>{formatPrice(subtotal)}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "#16a34a" }}>
+              <span>Tổng giảm</span>
+              <strong>-{formatPrice(totalDiscount)}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", color: "#ea580c", fontWeight: 800 }}>
+              <span>Tổng sau giảm</span>
+              <strong>{formatPrice(payableTotal)}</strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eligibleGiftItems.length > 0 && (
+        <>
+          <div className={styles.giftHeader}>
+            <span className={styles.giftIcon}>🎁</span>
+            <div>
+              <h3 className={styles.giftTitle}>Đơn đủ điều kiện nhận món tặng</h3>
+              <p className={styles.giftSubtitle}>
+                Thêm món tặng vào đơn để hệ thống tự giảm giá dòng quà tặng.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.giftList}>
+            {eligibleGiftItems.map((gift) => (
+              <div
+                key={`${gift.promotionId}_${gift.giftItemId}`}
+                className={styles.giftItem}
+              >
+                <div className={styles.giftText}>
+                  <strong className={styles.giftName}>
+                    {gift.giftItemName || "Món tặng"}
+                  </strong>
+                  <span className={styles.giftMessage}>
+                    {gift.message ||
+                      `${gift.promotionName || "Khuyến mãi"} · còn thiếu ${gift.missingGiftQuantity || 1}`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.giftButton}
+                  onClick={() => handleAddGift(gift)}
+                >
+                  Thêm món tặng
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
