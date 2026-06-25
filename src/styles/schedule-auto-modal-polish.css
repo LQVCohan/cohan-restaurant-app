@@ -1,103 +1,126 @@
 /* =========================================================
    AUTO SCHEDULE MODAL POLISH
-   Manager workflow styling. Loaded after component SCSS.
+   Loaded after component SCSS. Keep selectors explicit so the modal result is visibly different.
    ========================================================= */
+
+.modal-container.auto-schedule-modal,
+.modal-container.modal--xl.auto-schedule-modal {
+  width: min(1120px, calc(100vw - 36px)) !important;
+  max-height: min(90vh, 900px) !important;
+  border: 1px solid rgba(154, 119, 78, 0.28) !important;
+  border-radius: 24px !important;
+  background: #fffdf8 !important;
+  box-shadow: 0 30px 78px rgba(31, 42, 36, 0.26) !important;
+}
+
+.modal-container.auto-schedule-modal > .modal-header {
+  min-height: auto !important;
+  padding: 14px 20px !important;
+  border-bottom: 1px solid rgba(154, 119, 78, 0.2) !important;
+  background:
+    radial-gradient(circle at 4% 0%, rgba(31, 111, 74, 0.12), transparent 18rem),
+    linear-gradient(135deg, #ffffff 0%, #fbf4ea 100%) !important;
+  color: #1f2a24 !important;
+  font-size: 1.05rem !important;
+  font-weight: 860 !important;
+  letter-spacing: -0.025em;
+}
 
 .auto-schedule-body {
   --auto-primary: #4f46e5;
   --auto-primary-dark: #3730a3;
   --auto-primary-soft: #eef2ff;
-  --auto-border: #e2e8f0;
-  --auto-text: #0f172a;
-  --auto-muted: #64748b;
-  --auto-success: #10b981;
-  --auto-warning: #f59e0b;
-  --auto-danger: #ef4444;
+  --auto-border: rgba(154, 119, 78, 0.2);
+  --auto-text: #1f2a24;
+  --auto-muted: #68756f;
+  --auto-success: #1f6f4a;
+  --auto-warning: #a16207;
+  --auto-danger: #b42318;
+  max-height: calc(90vh - 126px) !important;
+  overflow: auto !important;
   gap: 0.78rem !important;
-  padding-top: 0.05rem;
+  padding: 14px 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(79, 70, 229, 0.07), transparent 22rem),
+    linear-gradient(180deg, #fffdf8 0%, #fbf7ef 100%) !important;
 }
 
 .auto-schedule-body .auto-banner {
-  align-items: center;
-  padding: 0.78rem 0.95rem !important;
-  border-radius: 18px !important;
-  border-color: #c7d2fe !important;
-  background:
-    radial-gradient(circle at 2rem 1.5rem, rgba(79, 70, 229, 0.18), transparent 2.2rem),
-    linear-gradient(135deg, #eef2ff 0%, #ffffff 62%, #f8fafc 100%) !important;
-  box-shadow: 0 10px 26px rgba(79, 70, 229, 0.08);
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
   min-height: auto !important;
+  padding: 0.78rem 0.95rem !important;
+  border: 1px solid rgba(31, 111, 74, 0.18) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 2rem 1.5rem, rgba(31, 111, 74, 0.13), transparent 2.4rem),
+    linear-gradient(135deg, #ffffff 0%, #f4fbf6 100%) !important;
+  box-shadow: 0 12px 28px rgba(84, 55, 30, 0.065) !important;
   overflow: visible !important;
 }
 
 .auto-schedule-body .auto-banner .banner-icon {
-  width: 2.25rem !important;
-  height: 2.25rem !important;
-  border-radius: 13px !important;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
-  box-shadow: 0 12px 22px rgba(79, 70, 229, 0.22);
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 15px !important;
+  background: linear-gradient(180deg, #4f46e5, #3730a3) !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.18) !important;
 }
 
 .auto-schedule-body .auto-banner .banner-copy strong {
-  color: #1e1b4b !important;
-  font-size: 0.94rem !important;
-  font-weight: 900 !important;
+  color: #1f2a24 !important;
+  font-size: 0.96rem !important;
+  font-weight: 860 !important;
   letter-spacing: -0.015em;
   line-height: 1.2;
 }
 
 .auto-schedule-body .auto-banner .banner-copy p {
   margin-top: 0.2rem !important;
-  color: #475569 !important;
+  color: #68756f !important;
   font-size: 0.8rem !important;
-  line-height: 1.36 !important;
+  line-height: 1.38 !important;
 }
 
-/* Explicit JSX columns. This avoids CSS-grid row spanning creating dead whitespace. */
+/* 3 cards on the first row, workflow spans the full second row. */
 .auto-schedule-body .auto-config-grid--workflow {
   display: grid !important;
-  grid-template-columns: minmax(260px, 0.78fr) minmax(360px, 1.22fr) !important;
-  grid-template-rows: auto !important;
-  gap: 0.72rem !important;
-  align-items: start !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: auto auto !important;
+  gap: 0.75rem !important;
+  align-items: stretch !important;
 }
 
 .auto-schedule-body .auto-config-left {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.72rem !important;
-  min-width: 0;
+  display: contents !important;
 }
 
+.auto-schedule-body .auto-config-left > .config-card,
 .auto-schedule-body .auto-config-constraints {
-  min-width: 0;
-  align-self: start !important;
-}
-
-.auto-schedule-body .auto-config-grid--workflow > .config-card,
-.auto-schedule-body .auto-config-grid--workflow > .auto-config-left,
-.auto-schedule-body .auto-config-grid--workflow > .auto-config-constraints {
-  grid-column: auto !important;
+  grid-column: span 1 !important;
   grid-row: auto !important;
-}
-
-.auto-schedule-body .config-card {
-  position: relative;
-  padding: 0.82rem !important;
-  border-radius: 18px !important;
-  border-color: rgba(226, 232, 240, 0.96) !important;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 24px rgba(15, 23, 42, 0.045);
-  overflow: hidden;
-}
-
-.auto-schedule-body .auto-config-left > .config-card {
+  min-width: 0 !important;
   min-height: 0 !important;
   align-self: stretch !important;
 }
 
-.auto-schedule-body .auto-config-left .config-hint {
-  max-width: 22rem;
+.auto-schedule-body .auto-workflow-card {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+}
+
+.auto-schedule-body .config-card {
+  position: relative !important;
+  min-height: 0 !important;
+  padding: 0.86rem !important;
+  border: 1px solid rgba(154, 119, 78, 0.2) !important;
+  border-radius: 17px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 12px 28px rgba(84, 55, 30, 0.065) !important;
+  overflow: hidden !important;
 }
 
 .auto-schedule-body .config-card::before {
@@ -105,424 +128,511 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  background: linear-gradient(90deg, rgba(79, 70, 229, 0.45), rgba(79, 70, 229, 0));
+  background: linear-gradient(90deg, rgba(31, 111, 74, 0.45), rgba(31, 111, 74, 0));
+}
+
+.auto-schedule-body .config-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  bottom: -44px;
+  width: 112px;
+  height: 112px;
+  border-radius: 32px;
+  background: rgba(31, 111, 74, 0.045);
+  transform: rotate(14deg);
+  pointer-events: none;
 }
 
 .auto-schedule-body .config-card .config-head {
-  margin-bottom: 0.58rem !important;
-  color: #0f172a !important;
-  font-size: 0.9rem !important;
-  font-weight: 900 !important;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0.66rem !important;
+  color: #1f2a24 !important;
+  font-size: 0.88rem !important;
+  font-weight: 850 !important;
   letter-spacing: -0.01em;
 }
 
+.auto-schedule-body .config-card .config-head svg {
+  color: #1f6f4a !important;
+}
+
 .auto-schedule-body .config-card label {
-  gap: 0.26rem !important;
-  margin-bottom: 0.48rem !important;
-  color: #64748b !important;
-  font-size: 0.77rem !important;
-  font-weight: 750 !important;
+  position: relative;
+  z-index: 1;
+  gap: 0.33rem !important;
+  margin-bottom: 0.55rem !important;
+  color: #68756f !important;
+  font-size: 0.78rem !important;
+  font-weight: 730 !important;
 }
 
 .auto-schedule-body .config-card select,
 .auto-schedule-body .config-card input[type="number"] {
-  height: 2.3rem !important;
+  height: 40px !important;
+  border: 1px solid rgba(154, 119, 78, 0.32) !important;
   border-radius: 12px !important;
-  border-color: #cbd5e1 !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
-  font-size: 0.84rem !important;
-  font-weight: 720 !important;
-}
-
-.auto-schedule-body .config-card select:focus,
-.auto-schedule-body .config-card input[type="number"]:focus {
-  border-color: #818cf8 !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+  background: #fffdf8 !important;
+  color: #1f2a24 !important;
+  padding: 0 0.8rem !important;
+  font-size: 0.88rem !important;
+  font-weight: 760 !important;
   outline: none !important;
 }
 
-.auto-schedule-body .config-hint {
-  font-size: 0.73rem !important;
-  line-height: 1.38 !important;
+.auto-schedule-body .config-card select:focus,
+.auto-schedule-body .config-card input[type="number"]:focus,
+.auto-schedule-body .config-card textarea:focus {
+  border-color: rgba(31, 111, 74, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(31, 111, 74, 0.1) !important;
 }
 
-.auto-schedule-body .auto-workflow-card {
-  background:
-    radial-gradient(circle at 1.2rem 1rem, rgba(79, 70, 229, 0.12), transparent 1.6rem),
-    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+.auto-schedule-body .config-hint {
+  position: relative;
+  z-index: 1;
+  margin: 0 !important;
+  color: #68756f !important;
+  font-size: 0.74rem !important;
+  line-height: 1.42 !important;
+}
+
+.auto-schedule-body .config-card .toggle-row {
+  position: relative;
+  z-index: 1;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.7rem !important;
+  min-height: 38px !important;
+  margin-bottom: 0.45rem !important;
+  padding: 0.56rem 0.68rem !important;
+  border: 1px solid rgba(31, 111, 74, 0.13) !important;
+  border-radius: 13px !important;
+  background: #f8fbf6 !important;
+}
+
+.auto-schedule-body .config-card .toggle-row input {
+  width: 1rem !important;
+  height: 1rem !important;
+  accent-color: #1f6f4a !important;
 }
 
 .auto-schedule-body .auto-workflow-card ol {
-  display: grid;
-  gap: 0.44rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.6rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
 }
 
 .auto-schedule-body .auto-workflow-card li {
-  display: grid;
-  grid-template-columns: 1.38rem minmax(0, 1fr);
-  gap: 0.5rem;
-  align-items: center;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  min-height: 48px !important;
+  padding: 0.58rem 0.65rem !important;
+  border: 1px solid rgba(79, 70, 229, 0.14) !important;
+  border-radius: 14px !important;
+  background: #f8f9ff !important;
 }
 
 .auto-schedule-body .auto-workflow-card li strong {
-  width: 1.38rem;
-  height: 1.38rem;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #eef2ff;
-  color: #4338ca;
-  font-size: 0.7rem;
-  font-weight: 950;
+  display: grid !important;
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px !important;
+  place-items: center !important;
+  border-radius: 999px !important;
+  background: #e0e7ff !important;
+  color: #3730a3 !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
 }
 
 .auto-schedule-body .auto-workflow-card li span {
-  color: #475569;
-  font-size: 0.74rem;
-  font-weight: 760;
-  line-height: 1.28;
-}
-
-.auto-schedule-body .role-required-card {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
-  align-self: start !important;
-  box-shadow: none !important;
-}
-
-.auto-schedule-body .role-required-card .config-head {
-  margin-bottom: 0.5rem !important;
-}
-
-.auto-schedule-body .required-role-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 0.42rem !important;
-  margin-top: 0.42rem !important;
-}
-
-.auto-schedule-body .role-check-row {
-  min-height: 2.22rem !important;
-  justify-content: center;
-  gap: 0.34rem !important;
-  padding: 0.34rem 0.48rem !important;
-  border-radius: 14px !important;
-  border-color: #e2e8f0 !important;
-  background: #f8fafc !important;
-  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.auto-schedule-body .role-check-row:hover {
-  transform: translateY(-1px);
-  border-color: #a5b4fc !important;
-  background: #eef2ff !important;
-  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
-}
-
-.auto-schedule-body .role-check-row input {
-  accent-color: #4f46e5 !important;
-}
-
-.auto-schedule-body .role-check-row span {
-  font-size: 0.73rem !important;
-  font-weight: 850 !important;
-}
-
-.auto-schedule-body .required-role-warning {
-  margin-top: 0.46rem !important;
-  border-radius: 12px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  padding: 0.42rem 0.55rem;
-  color: #9a3412 !important;
-  font-size: 0.69rem !important;
-  line-height: 1.32 !important;
+  color: #334155 !important;
+  font-size: 0.78rem !important;
+  font-weight: 760 !important;
+  line-height: 1.35 !important;
 }
 
 .auto-schedule-body .auto-actions-strip {
-  position: relative;
-  bottom: auto;
-  z-index: 5;
-  margin-top: -0.04rem;
-  padding: 0.58rem 0.66rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
   display: flex !important;
-  justify-content: space-between !important;
   align-items: center !important;
-  gap: 0.8rem !important;
+  justify-content: space-between !important;
+  gap: 0.75rem !important;
+  min-height: 50px !important;
+  padding: 0.5rem !important;
+  border: 1px solid rgba(154, 119, 78, 0.2) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 12px 28px rgba(84, 55, 30, 0.065) !important;
 }
 
 .auto-schedule-body .auto-actions-strip .assistant-meta {
-  gap: 0.38rem !important;
-  color: #64748b !important;
-  font-size: 0.74rem !important;
-  font-weight: 700;
-}
-
-.auto-schedule-body .auto-actions-strip .btn-primary {
-  min-width: 12rem;
-  justify-content: center;
-  align-self: center;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+  color: #68756f !important;
+  font-size: 0.77rem !important;
+  font-weight: 740 !important;
 }
 
 .auto-schedule-body .meta-pill {
-  padding: 0.2rem 0.48rem !important;
-  font-size: 0.7rem !important;
+  border-radius: 999px !important;
+  padding: 0.24rem 0.6rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 840 !important;
+}
+
+.auto-schedule-body .meta-pill.forecast {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.auto-schedule-body .meta-pill.fallback {
+  background: #fef3c7 !important;
+  color: #92400e !important;
 }
 
 .auto-schedule-body .btn-primary,
 .auto-schedule-footer .btn-primary {
-  min-height: 2.32rem !important;
-  border-radius: 999px !important;
-  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  min-height: 40px !important;
+  border: 1px solid transparent !important;
+  border-radius: 13px !important;
+  background: linear-gradient(180deg, #4f46e5, #3730a3) !important;
   color: #ffffff !important;
-  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.22) !important;
-  font-weight: 900 !important;
+  padding: 0 1rem !important;
+  font-weight: 840 !important;
+  cursor: pointer !important;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.18) !important;
 }
 
 .auto-schedule-body .btn-primary:hover:not(:disabled),
 .auto-schedule-footer .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #4338ca, #3730a3) !important;
+  box-shadow: 0 16px 28px rgba(79, 70, 229, 0.22) !important;
 }
 
 .auto-schedule-body .btn-secondary,
 .auto-schedule-footer .btn-secondary {
-  min-height: 2.32rem !important;
-  border-radius: 999px !important;
+  min-height: 40px !important;
+  border: 1px solid rgba(154, 119, 78, 0.32) !important;
+  border-radius: 13px !important;
   background: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
-  font-weight: 850 !important;
+  color: #1f2a24 !important;
+  padding: 0 1rem !important;
+  font-weight: 840 !important;
+  cursor: pointer !important;
 }
 
-.auto-schedule-body .btn-secondary:hover:not(:disabled),
-.auto-schedule-footer .btn-secondary:hover:not(:disabled) {
-  transform: translateY(-1px);
+.auto-schedule-body .btn-primary:disabled,
+.auto-schedule-body .btn-secondary:disabled,
+.auto-schedule-footer .btn-primary:disabled,
+.auto-schedule-footer .btn-secondary:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.58 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.auto-schedule-body .auto-state,
+.auto-schedule-body .ai-planner-summary-wrap,
+.auto-schedule-body .auto-override-panel,
+.auto-schedule-body .summary-card,
+.auto-schedule-body .preview-item {
+  border-radius: 16px !important;
+  box-shadow: 0 12px 28px rgba(84, 55, 30, 0.065) !important;
+}
+
+.auto-schedule-body .auto-state {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  padding: 0.78rem 0.9rem !important;
+  font-size: 0.83rem !important;
+  font-weight: 760 !important;
+}
+
+.auto-schedule-body .auto-state.loading {
+  border: 1px solid #c7d2fe !important;
+  background: #eef2ff !important;
+  color: #3730a3 !important;
+}
+
+.auto-schedule-body .auto-state.error {
+  border: 1px solid #fecaca !important;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+}
+
+.auto-schedule-body .auto-state.empty {
+  border: 1px dashed #cbd5e1 !important;
   background: #f8fafc !important;
+  color: #475569 !important;
 }
 
 .auto-schedule-body .summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 0.65rem !important;
 }
 
 .auto-schedule-body .summary-card {
-  position: relative;
-  min-height: 4.25rem;
+  min-height: 4.2rem !important;
   padding: 0.72rem 0.82rem !important;
-  border-radius: 16px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
-  overflow: hidden;
-}
-
-.auto-schedule-body .summary-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: #cbd5e1;
-}
-
-.auto-schedule-body .summary-card.success::before {
-  background: #10b981;
-}
-
-.auto-schedule-body .summary-card.warning::before {
-  background: #f97316;
+  border: 1px solid rgba(154, 119, 78, 0.2) !important;
+  background: #ffffff !important;
 }
 
 .auto-schedule-body .summary-card .label {
-  font-size: 0.7rem !important;
+  color: #68756f !important;
+  font-size: 0.72rem !important;
+  font-weight: 840 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .auto-schedule-body .summary-card strong {
-  margin-top: 0.26rem !important;
-  font-size: 1.05rem !important;
+  display: block !important;
+  margin-top: 0.35rem !important;
+  color: #1f2a24 !important;
+  font-size: 1.2rem !important;
 }
 
-.auto-schedule-body .preview-head {
-  padding-top: 0.2rem;
-  margin-bottom: 0.32rem !important;
-}
-
-.auto-schedule-body .preview-head h4 {
-  font-size: 1rem !important;
-  font-weight: 900 !important;
-  letter-spacing: -0.015em;
+.auto-schedule-body .preview-head,
+.auto-schedule-body .ai-planner-summary {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
 }
 
 .auto-schedule-body .preview-item {
-  border-radius: 18px !important;
-  border-color: rgba(226, 232, 240, 0.96) !important;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 10px 22px rgba(15, 23, 42, 0.04);
-  overflow: hidden;
+  border: 1px solid rgba(154, 119, 78, 0.2) !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
 }
 
 .auto-schedule-body .preview-item.blocked {
   border-color: #fecaca !important;
-  background: linear-gradient(180deg, #fff 0%, #fffafa 100%) !important;
-}
-
-.auto-schedule-body .validation-warning,
-.auto-schedule-body .preview-warning {
-  margin-top: 0.4rem !important;
-  padding: 0.48rem 0.6rem !important;
-  border-radius: 12px !important;
-  border: 1px solid #fed7aa !important;
-  background: #fff7ed !important;
-  color: #9a3412 !important;
-  font-size: 0.73rem !important;
-  line-height: 1.35 !important;
+  background: #fffafa !important;
 }
 
 .auto-schedule-body .preview-toggle {
-  padding: 0.85rem !important;
+  padding: 0.9rem !important;
 }
 
-.auto-schedule-body .preview-title-row strong {
-  font-size: 0.9rem !important;
-  font-weight: 900 !important;
+.auto-schedule-body .preview-meta-row,
+.auto-schedule-body .preview-role-list,
+.auto-schedule-body .assignment-explain-chips,
+.auto-schedule-body .ai-factor-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.42rem !important;
+  margin-top: 0.62rem !important;
 }
 
-.auto-schedule-body .preview-title-row span {
-  font-size: 0.78rem !important;
+.auto-schedule-body .preview-meta-row span,
+.auto-schedule-body .role-pill,
+.auto-schedule-body .explain-chip,
+.auto-schedule-body .ai-factor-chip,
+.auto-schedule-body .severity-pill,
+.auto-schedule-body .blocked-candidates-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  border-radius: 999px !important;
+  padding: 0.24rem 0.55rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
 }
 
 .auto-schedule-body .preview-meta-row span,
 .auto-schedule-body .role-pill {
-  border-radius: 999px !important;
+  border: 1px solid #e2e8f0 !important;
   background: #f8fafc !important;
-  font-size: 0.72rem !important;
-  font-weight: 780 !important;
+  color: #334155 !important;
+}
+
+.auto-schedule-body .explain-chip.info,
+.auto-schedule-body .ai-factor-chip {
+  border: 1px solid #dbeafe !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.auto-schedule-body .explain-chip.success {
+  border: 1px solid #bbf7d0 !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+
+.auto-schedule-body .explain-chip.warning {
+  border: 1px solid #fde68a !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+}
+
+.auto-schedule-body .explain-chip.danger,
+.auto-schedule-body .severity-pill.high {
+  border: 1px solid #fecaca !important;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+}
+
+.auto-schedule-body .severity-pill.medium {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.auto-schedule-body .severity-pill.low {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
 }
 
 .auto-schedule-body .assignment-block,
 .auto-schedule-body .candidate-score-breakdown,
 .auto-schedule-body .unfilled-role-panel,
+.auto-schedule-body .unfilled-role-card,
+.auto-schedule-body .ai-explanation-box,
+.auto-schedule-body .assignment-alert-block,
+.auto-schedule-body .candidate-warning-list {
+  margin-top: 0.72rem !important;
+  border-radius: 15px !important;
+}
+
+.auto-schedule-body .assignment-block {
+  padding: 0.82rem !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+}
+
+.auto-schedule-body .assignment-block.warning,
+.auto-schedule-body .assignment-alert-block.warning {
+  border-color: #fdba74 !important;
+  background: #fff7ed !important;
+}
+
+.auto-schedule-body .assignment-alert-block.issue,
+.auto-schedule-body .unfilled-role-panel,
 .auto-schedule-body .unfilled-role-card {
-  border-radius: 16px !important;
+  border: 1px solid #fecaca !important;
+  background: #fff7f7 !important;
+}
+
+.auto-schedule-body .ai-explanation-box,
+.auto-schedule-body .ai-planner-summary-wrap {
+  border: 1px solid #dbeafe !important;
+  background: #f8fbff !important;
+  padding: 0.78rem 0.9rem !important;
+}
+
+.auto-schedule-body .auto-override-panel {
+  border: 1px solid #fdba74 !important;
+  background: #fffbeb !important;
+  padding: 0.85rem 1rem !important;
 }
 
 .auto-schedule-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  margin: 0 -1rem -1rem;
-  padding: 0.72rem 1rem;
-  border-top: 1px solid #e2e8f0;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.06);
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 10 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.75rem !important;
+  padding: 12px 20px !important;
+  border-top: 1px solid rgba(154, 119, 78, 0.2) !important;
+  background: rgba(255, 253, 248, 0.96) !important;
+  backdrop-filter: blur(10px) !important;
+  box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.06) !important;
 }
 
-@media (max-width: 1024px) {
-  .auto-schedule-body .auto-config-grid--workflow {
-    grid-template-columns: 1fr !important;
+.auto-schedule-footer .auto-apply-summary {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.45rem !important;
+  margin-right: auto !important;
+}
+
+.auto-schedule-footer .auto-apply-summary span {
+  border: 1px solid rgba(154, 119, 78, 0.2) !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  padding: 0.24rem 0.55rem !important;
+  font-size: 0.73rem !important;
+  font-weight: 780 !important;
+}
+
+@media (max-width: 1040px) {
+  .modal-container.auto-schedule-modal,
+  .modal-container.modal--xl.auto-schedule-modal {
+    width: min(940px, calc(100vw - 18px)) !important;
   }
 
-  .auto-schedule-body .auto-actions-strip {
-    position: static;
-    flex-direction: column;
-    align-items: stretch !important;
+  .auto-schedule-body .auto-config-grid--workflow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .auto-schedule-body .auto-config-left > .config-card,
+  .auto-schedule-body .auto-config-constraints {
+    grid-column: span 1 !important;
+  }
+
+  .auto-schedule-body .auto-workflow-card {
+    grid-column: 1 / -1 !important;
+  }
+
+  .auto-schedule-body .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
 @media (max-width: 720px) {
-  .auto-schedule-body .auto-banner {
-    align-items: flex-start;
+  .modal-container.auto-schedule-modal,
+  .modal-container.modal--xl.auto-schedule-modal {
+    width: calc(100vw - 10px) !important;
+    max-height: 94vh !important;
+    border-radius: 20px 20px 12px 12px !important;
   }
 
-  .auto-schedule-body .required-role-grid,
-  .auto-schedule-body .summary-grid,
-  .auto-schedule-body .candidate-metrics-grid {
+  .auto-schedule-body {
+    max-height: calc(94vh - 126px) !important;
+    padding: 12px !important;
+  }
+
+  .auto-schedule-body .auto-banner,
+  .auto-schedule-body .auto-config-grid--workflow,
+  .auto-schedule-body .auto-workflow-card ol,
+  .auto-schedule-body .summary-grid {
     grid-template-columns: 1fr !important;
   }
 
-  .auto-schedule-footer {
-    margin-left: -0.75rem;
-    margin-right: -0.75rem;
+  .auto-schedule-body .auto-config-left > .config-card,
+  .auto-schedule-body .auto-config-constraints,
+  .auto-schedule-body .auto-workflow-card {
+    grid-column: 1 / -1 !important;
   }
-}
 
-.auto-schedule-body .assignment-explain-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin: 0.35rem 0 0.4rem;
-}
+  .auto-schedule-body .auto-actions-strip,
+  .auto-schedule-body .preview-head,
+  .auto-schedule-body .ai-planner-summary,
+  .auto-schedule-footer {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
 
-.auto-schedule-body .explain-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.14rem 0.55rem;
-  font-size: 0.69rem;
-  font-weight: 760;
-  line-height: 1.25;
-  border: 1px solid transparent;
-}
-
-.auto-schedule-body .explain-chip.info { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
-.auto-schedule-body .explain-chip.success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
-.auto-schedule-body .explain-chip.warning { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
-.auto-schedule-body .explain-chip.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-
-.auto-schedule-body .assignment-alert-block {
-  margin: 0.35rem 0;
-  border-radius: 10px;
-  padding: 0.42rem 0.5rem;
-  border: 1px solid;
-}
-
-.auto-schedule-body .assignment-alert-block h6 {
-  margin: 0 0 0.2rem;
-  font-size: 0.7rem;
-  font-weight: 850;
-}
-
-.auto-schedule-body .assignment-alert-block ul {
-  margin: 0;
-  padding-left: 1rem;
-  display: grid;
-  gap: 0.24rem;
-}
-
-.auto-schedule-body .assignment-alert-block li span,
-.auto-schedule-body .assignment-alert-block li small {
-  display: block;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.auto-schedule-body .assignment-alert-block.warning { background: #fffaf0; border-color: #fcd34d; }
-.auto-schedule-body .assignment-alert-block.warning h6 { color: #9a3412; }
-.auto-schedule-body .assignment-alert-block.issue { background: #fef2f2; border-color: #fca5a5; }
-.auto-schedule-body .assignment-alert-block.issue h6 { color: #b91c1c; }
-
-.auto-schedule-body .blocked-candidates-section h5 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  color: #9a3412;
-}
-
-.auto-schedule-body .blocked-candidates-count {
-  border-radius: 999px;
-  padding: 0.1rem 0.45rem;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
-  font-size: 0.68rem;
-  font-weight: 800;
-  white-space: nowrap;
+  .auto-schedule-body .auto-actions-strip .btn-primary,
+  .auto-schedule-body .auto-actions-strip .btn-secondary,
+  .auto-schedule-footer button,
+  .auto-schedule-footer .auto-apply-summary {
+    width: 100% !important;
+  }
 }
