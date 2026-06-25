@@ -4,6 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   EventLog: { create: vi.fn() },
   PayrollPeriod: { findOne: vi.fn() },
   Staff: { findById: vi.fn() },
+  SystemSetting: { findOne: vi.fn() },
   Timesheet: { findById: vi.fn() },
 }));
 
@@ -99,6 +100,13 @@ function mockPayrollPeriodLookup(period = null) {
   return { sort, lean };
 }
 
+function mockSystemSettingLookup(setting = null) {
+  const lean = vi.fn().mockResolvedValue(setting);
+  const select = vi.fn().mockReturnValue({ lean });
+  modelMocks.SystemSetting.findOne.mockReturnValue({ select });
+  return { select, lean };
+}
+
 describe("attendance overtime approval", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -123,6 +131,7 @@ describe("attendance overtime approval", () => {
       }),
     });
     mockPayrollPeriodLookup(null);
+    mockSystemSettingLookup(null);
   });
 
   it("checkout sau plannedEndTime set overtimeMinutes", async () => {
