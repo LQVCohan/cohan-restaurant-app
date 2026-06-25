@@ -153,11 +153,12 @@ export const buildDiscountPricingInput = ({
   serviceRate = 0,
   shippingFee = 0,
   couponCode = "",
+  voucherCode = "",
 }) => ({
   taxRate: Number(taxRate || 0),
   serviceRate: Number(serviceRate || 0),
   shippingFee: Number(shippingFee || 0),
-  voucherCode: normalizeCouponCode(couponCode),
+  voucherCode: normalizeCouponCode(couponCode || voucherCode),
 });
 
 export const buildOrderDiscountPreviewInput = ({
