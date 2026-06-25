@@ -74,9 +74,10 @@ const StaffHeader = ({
 
   useEffect(() => {
     const syncFromQuery = (event) => {
+      const eventPage = event?.detail?.page;
       const nextPage =
-        event?.detail?.page ||
         event?.detail?.query?.staffPage ||
+        (eventPage && eventPage !== "staff" ? eventPage : "") ||
         getStaffPageFromLocation();
       if (STAFF_PAGE_COPY[nextPage]) setActiveStaffPage(nextPage);
     };
