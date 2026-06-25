@@ -230,6 +230,7 @@
     font-size: 1.45rem;
     opacity: 0.72;
     animation: loginFoodFloat 8s ease-in-out infinite;
+    transition: box-shadow 0.22s ease, background 0.22s ease, opacity 0.22s ease;
     will-change: transform;
   }
 
@@ -241,12 +242,9 @@
   .food-float--6 { top: 68%; right: 34%; animation-delay: -5.5s; width: 56px; height: 56px; opacity: 0.72; }
 
   .overlay:has(.ghost:hover) .food-float {
-    animation-duration: 4.5s;
-  }
-
-  .overlay:has(.ghost:hover) .food-float--1,
-  .overlay:has(.ghost:hover) .food-float--4 {
-    scale: 1.12;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 22px 44px rgba(154, 52, 18, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    opacity: 0.82;
   }
 
   @keyframes loginFoodFloat {
