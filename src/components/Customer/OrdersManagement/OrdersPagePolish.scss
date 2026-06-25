@@ -1,0 +1,342 @@
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap");
+
+.orders-page {
+  --orders-orange: #ff6600;
+  --orders-orange-dark: #c2410c;
+  --orders-ink: #241a13;
+  --orders-muted: #6f6258;
+  --orders-line: rgba(92, 64, 51, 0.13);
+  --orders-card: rgba(255, 253, 248, 0.97);
+
+  width: 100%;
+  max-width: none !important;
+  padding: clamp(72px, 6.2vw, 96px) clamp(16px, 3vw, 40px) 72px !important;
+  color: var(--orders-ink) !important;
+  font-family: "Be Vietnam Pro", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 102, 0, 0.085), transparent 28rem),
+    linear-gradient(90deg, #ffffff 0%, #fff7ed 22%, #fffdf8 50%, #fff7ed 78%, #ffffff 100%) !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  &::before {
+    opacity: 0.13 !important;
+    background-size: 38px 38px !important;
+  }
+
+  .page-header.orders-hero,
+  .orders-toolbar,
+  .orders-grid {
+    width: min(100%, 1120px);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .page-header.orders-hero {
+    min-height: 246px;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+    padding: clamp(26px, 3.6vw, 42px) !important;
+    border: 1.25px solid rgba(255, 102, 0, 0.18) !important;
+    border-radius: 28px !important;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(255, 138, 61, 0.11), transparent 20rem),
+      linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 255, 255, 0.94)) !important;
+    box-shadow:
+      0 24px 70px rgba(83, 46, 20, 0.115),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(255, 102, 0, 0.68) 12%, rgba(255, 138, 61, 0.22) 62%, transparent);
+      pointer-events: none;
+    }
+
+    &::after {
+      right: -64px !important;
+      bottom: -118px !important;
+      border-color: rgba(255, 102, 0, 0.16) !important;
+      background: rgba(255, 102, 0, 0.055) !important;
+    }
+
+    .eyebrow {
+      margin-bottom: 12px !important;
+      color: var(--orders-orange-dark) !important;
+      font-size: 0.72rem !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.075em !important;
+    }
+
+    .title {
+      max-width: 760px !important;
+      color: var(--orders-ink) !important;
+      font-size: clamp(2rem, 3.4vw, 3.2rem) !important;
+      font-weight: 800 !important;
+      line-height: 1.08 !important;
+      letter-spacing: -0.032em !important;
+    }
+
+    .subtitle {
+      max-width: 68ch !important;
+      color: var(--orders-muted) !important;
+      font-size: clamp(0.94rem, 1.15vw, 1.03rem) !important;
+      font-weight: 500 !important;
+      line-height: 1.72 !important;
+    }
+
+    .btn-create {
+      background: linear-gradient(135deg, #ff6600, #c2410c) !important;
+      border-color: rgba(255, 102, 0, 0.28) !important;
+      box-shadow: 0 16px 32px rgba(255, 102, 0, 0.23) !important;
+    }
+  }
+
+  .summary-strip {
+    max-width: 670px !important;
+    gap: 10px !important;
+    margin-top: 24px !important;
+  }
+
+  .summary-chip {
+    min-height: 64px;
+    padding: 11px 13px !important;
+    border: 1.25px solid rgba(255, 102, 0, 0.16) !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.82) !important;
+    box-shadow: 0 10px 24px rgba(83, 46, 20, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+
+    span {
+      color: #75685e !important;
+      font-size: 0.72rem !important;
+      font-weight: 650 !important;
+      letter-spacing: -0.004em !important;
+    }
+
+    strong {
+      color: var(--orders-ink) !important;
+      font-size: 1.22rem !important;
+      font-weight: 800 !important;
+    }
+  }
+
+  .orders-toolbar {
+    top: 76px !important;
+    margin-bottom: 20px !important;
+    padding: 13px !important;
+    border: 1.25px solid rgba(255, 102, 0, 0.16) !important;
+    border-radius: 24px !important;
+    background: rgba(255, 253, 248, 0.92) !important;
+    box-shadow: 0 18px 46px rgba(83, 46, 20, 0.085), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+    backdrop-filter: blur(16px) !important;
+  }
+
+  .tabs-container {
+    gap: 8px !important;
+    margin-bottom: 11px !important;
+
+    .tab-btn {
+      min-height: 38px;
+      padding: 8px 13px !important;
+      border-color: rgba(92, 64, 51, 0.13) !important;
+      color: #67564a !important;
+      background: #ffffff !important;
+      font-size: 0.84rem !important;
+      font-weight: 650 !important;
+      letter-spacing: -0.006em !important;
+      box-shadow: 0 8px 18px rgba(83, 46, 20, 0.045);
+
+      &:hover {
+        color: var(--orders-orange-dark) !important;
+        border-color: rgba(255, 102, 0, 0.28) !important;
+        transform: translateY(-1px);
+      }
+
+      &.active {
+        color: #fff !important;
+        background: linear-gradient(135deg, #ff6600, #c2410c) !important;
+        border-color: rgba(255, 102, 0, 0.34) !important;
+        box-shadow: 0 12px 26px rgba(255, 102, 0, 0.2) !important;
+      }
+    }
+  }
+
+  .orders-controls {
+    gap: 9px !important;
+  }
+
+  .orders-search,
+  .orders-select {
+    min-height: 44px !important;
+    border: 1.25px solid rgba(92, 64, 51, 0.13) !important;
+    border-radius: 15px !important;
+    color: var(--orders-ink) !important;
+    background: #fffaf4 !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+
+    &:focus {
+      border-color: rgba(255, 102, 0, 0.46) !important;
+      box-shadow: 0 0 0 4px rgba(255, 102, 0, 0.1) !important;
+    }
+  }
+
+  .btn-create,
+  .btn-clear-filters {
+    font-weight: 700 !important;
+    letter-spacing: -0.006em;
+  }
+
+  .btn-clear-filters {
+    color: var(--orders-orange-dark) !important;
+    background: #fff7ed !important;
+    border-color: rgba(255, 102, 0, 0.2) !important;
+  }
+
+  .orders-grid {
+    gap: 14px !important;
+  }
+
+  .empty-state {
+    min-height: 190px !important;
+    border: 1.5px dashed rgba(255, 102, 0, 0.2) !important;
+    border-radius: 26px !important;
+    color: #75685e !important;
+    background: rgba(255, 253, 248, 0.93) !important;
+    box-shadow: 0 18px 48px rgba(83, 46, 20, 0.065) !important;
+
+    p {
+      font-weight: 550 !important;
+      line-height: 1.7 !important;
+    }
+  }
+
+  .order-detail-modal {
+    font-family: inherit !important;
+
+    .detail-label {
+      color: #75685e !important;
+      font-weight: 600 !important;
+    }
+
+    .detail-value,
+    .detail-section-title {
+      color: var(--orders-ink) !important;
+      font-weight: 700 !important;
+    }
+  }
+}
+
+.orders-page .order-card {
+  border: 1.25px solid rgba(255, 102, 0, 0.14) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 138, 61, 0.075), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.99), rgba(255, 255, 255, 0.96)) !important;
+  box-shadow: 0 18px 48px rgba(83, 46, 20, 0.075), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  font-family: "Be Vietnam Pro", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+
+  &::before {
+    width: 4px !important;
+    background: linear-gradient(180deg, #ff6600, rgba(255, 102, 0, 0.12)) !important;
+  }
+
+  .kind-badge,
+  .status-pill,
+  .btn-action,
+  .detail-link,
+  .info-cell .label {
+    font-weight: 650 !important;
+    letter-spacing: -0.004em !important;
+    text-transform: none !important;
+  }
+
+  .res-name {
+    color: #241a13 !important;
+    font-size: 1.02rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.012em !important;
+  }
+
+  .order-time,
+  .order-id,
+  .more-items,
+  .info-cell .label {
+    color: #75685e !important;
+  }
+
+  .res-avatar {
+    color: #c2410c !important;
+    background: linear-gradient(135deg, #fff1e5, #fffdf8) !important;
+    border-color: rgba(255, 102, 0, 0.18) !important;
+    font-weight: 800 !important;
+  }
+
+  .items-list,
+  .info-cell,
+  .card-footer {
+    border-color: rgba(92, 64, 51, 0.12) !important;
+  }
+
+  .items-list {
+    background: #fffaf4 !important;
+  }
+
+  .info-cell {
+    background: rgba(255, 253, 248, 0.92) !important;
+  }
+
+  .info-cell .value {
+    color: #241a13 !important;
+    font-weight: 650 !important;
+  }
+
+  .info-cell .value.highlight,
+  .detail-link {
+    color: #c2410c !important;
+    font-weight: 700 !important;
+  }
+
+  .btn-action {
+    font-size: 0.82rem !important;
+    font-weight: 650 !important;
+  }
+
+  .btn-action.btn-primary {
+    background: linear-gradient(135deg, #ff6600, #c2410c) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .orders-page {
+    padding-top: 76px !important;
+
+    .page-header.orders-hero {
+      min-height: auto;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .orders-page {
+    padding: 74px 14px 42px !important;
+
+    .page-header.orders-hero,
+    .orders-toolbar,
+    .orders-grid {
+      width: 100%;
+    }
+
+    .page-header.orders-hero {
+      padding: 22px !important;
+      border-radius: 24px !important;
+    }
+
+    .summary-strip {
+      grid-template-columns: 1fr 1fr !important;
+    }
+  }
+}
