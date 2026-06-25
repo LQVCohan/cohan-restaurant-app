@@ -2,6 +2,7 @@
 import { toApiAssetUrl, toBackendRootUrl } from "@/lib/apiBaseUrl";
 import { getToken, setAuth } from "@/lib/authStorage";
 import { refreshAccessTokenOnce } from "@/lib/authRefresh";
+import { compressImageForUpload } from "@/utils/compressAvatar";
 
 const getAuthHeader = async () => {
   let token = getToken();
@@ -19,6 +20,17 @@ const getAuthHeader = async () => {
 
 const toUploadUrl = (pathname) => toBackendRootUrl(pathname);
 const normalizeUploadedUrl = (url) => toApiAssetUrl(url);
+
+const prepareUploadFile = async (file) => {
+  if (!file) throw new Error("No file selected");
+  if (!String(file.type || "").startsWith("image/")) return file;
+
+  return compressImageForUpload(file, {
+    maxDimension: 1600,
+    targetMaxBytes: 1800 * 1024,
+    quality: 0.82,
+  });
+};
 
 export function useAvatarUploadLocal() {
   const uploadViaSignedUrl = async (file, onProgress) => {
@@ -136,20 +148,20 @@ export function useAvatarUploadLocal() {
   };
 
   const upload = async (file, onProgress) => {
-    if (!file) throw new Error("No file selected");
+    const uploadFile = await prepareUploadFile(file);
 
     if (import.meta.env.VITE_UPLOAD_MODE === "local") {
-      return uploadViaLocalApi(file, onProgress);
+      return uploadViaLocalApi(uploadFile, onProgress);
     }
 
     try {
-      return await uploadViaSignedUrl(file, onProgress);
+      return await uploadViaSignedUrl(uploadFile, onProgress);
     } catch (error) {
       console.warn(
         "Signed avatar upload failed; falling back to local upload.",
         error,
       );
-      return uploadViaLocalApi(file, onProgress);
+      return uploadViaLocalApi(uploadFile, onProgress);
     }
   };
 
