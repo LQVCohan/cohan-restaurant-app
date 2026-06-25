@@ -96,6 +96,7 @@ const TableBooking = () => {
     restaurantId,
     tableLimit: 200,
     enabled: canLoadFloorMap,
+    publicAccess: true,
   });
 
   const restaurantCartItems = (cart || []).filter(
@@ -110,8 +111,9 @@ const TableBooking = () => {
   const canToggleWatching = (() => {
     const role = (user?.roleName || user?.role || "").toLowerCase();
     return (
-      role.includes("customer") ||
       role.includes("staff") ||
+      role.includes("manager") ||
+      role.includes("admin") ||
       role.includes("nhân viên") ||
       role.includes("nhan vien")
     );
@@ -283,6 +285,7 @@ const TableBooking = () => {
                   selectedTable={selectedTable}
                   onSelectTable={handleSelectTable}
                   layout={activeFloorData?.layout || []}
+                  meta={activeFloorData?.meta || null}
                   // Truyền prop để map render style đẹp hơn
                   theme="premium"
                 />
