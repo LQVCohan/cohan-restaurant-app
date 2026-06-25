@@ -1,0 +1,249 @@
+.attendance-management-page {
+  .overtime-panel {
+    display: grid;
+    gap: 16px;
+  }
+
+  .overtime-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .overtime-stat-card {
+    position: relative;
+    min-height: 98px;
+    padding: 16px 16px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(76, 84, 78, 0.12);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(251, 247, 239, 0.78)),
+      radial-gradient(circle at 96% 0%, rgba(154, 119, 78, 0.12), transparent 9rem);
+    box-shadow: 0 14px 36px rgba(69, 58, 42, 0.08);
+    overflow: hidden;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: auto 14px 0;
+      height: 3px;
+      border-radius: 999px 999px 0 0;
+      background: rgba(154, 119, 78, 0.22);
+    }
+
+    &.warning::after { background: #e5a93c; }
+    &.info::after { background: #6aa1d8; }
+    &.success::after { background: #3f9e73; }
+
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      color: #5f6c66;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    strong {
+      display: block;
+      color: #1f2c28;
+      font-size: clamp(24px, 2.2vw, 34px);
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: -0.045em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    small {
+      display: block;
+      margin-top: 8px;
+      color: #71807a;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+  }
+
+  .overtime-section {
+    border-radius: 24px;
+    border: 1px solid rgba(76, 84, 78, 0.12);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 246, 238, 0.78)),
+      radial-gradient(circle at 100% 0%, rgba(47, 107, 79, 0.08), transparent 16rem);
+    box-shadow: 0 18px 48px rgba(69, 58, 42, 0.08);
+    overflow: hidden;
+
+    .table-toolbar {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(76, 84, 78, 0.1);
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      min-height: 34px;
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(76, 84, 78, 0.12);
+      background: rgba(255, 255, 255, 0.76);
+      color: #4f5f59;
+      font-size: 12px;
+      font-weight: 850;
+      box-shadow: none;
+
+      &.active {
+        border-color: rgba(47, 107, 79, 0.22);
+        background: #eaf6f0;
+        color: #246049;
+      }
+    }
+  }
+
+  .overtime-table {
+    min-width: 1080px;
+
+    thead th {
+      color: #6c756f;
+      font-size: 11px;
+      letter-spacing: 0.055em;
+      text-transform: uppercase;
+      background: rgba(248, 244, 237, 0.94);
+    }
+
+    tbody tr {
+      transition: background 150ms ease;
+
+      &:hover {
+        background: rgba(237, 246, 240, 0.48);
+      }
+    }
+
+    .employee-cell {
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .compact-stack {
+      display: grid;
+      gap: 2px;
+
+      strong {
+        color: #283631;
+        font-weight: 900;
+      }
+
+      span {
+        color: #7a857f;
+        font-size: 12px;
+      }
+    }
+
+    .overtime-approved-minutes {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(47, 107, 79, 0.1);
+      color: #2f6b4f;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .overtime-status-note {
+    max-width: 180px;
+    margin-top: 5px;
+    line-height: 1.35;
+  }
+
+  .overtime-review-modal {
+    width: min(720px, calc(100vw - 36px));
+    border-radius: 24px;
+    border: 1px solid rgba(76, 84, 78, 0.13);
+    background: #fffdf8;
+    box-shadow: 0 30px 90px rgba(27, 31, 35, 0.22);
+    overflow: hidden;
+
+    .modal-header {
+      background:
+        linear-gradient(135deg, rgba(237, 246, 240, 0.96), rgba(255, 248, 235, 0.95)),
+        radial-gradient(circle at 100% 0%, rgba(47, 107, 79, 0.15), transparent 11rem);
+      border-bottom: 1px solid rgba(76, 84, 78, 0.1);
+    }
+
+    .overtime-modal-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(76, 84, 78, 0.12);
+      background: rgba(250, 247, 241, 0.78);
+
+      > div {
+        display: grid;
+        gap: 4px;
+        min-height: 64px;
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .label {
+        color: #74817b;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.045em;
+        text-transform: uppercase;
+      }
+    }
+
+    .form-alert.error {
+      border-radius: 16px;
+      border: 1px solid rgba(180, 83, 9, 0.18);
+      background: #fff7ed;
+      color: #9a5b16;
+      line-height: 1.5;
+    }
+  }
+}
+
+@media (max-width: 1180px) {
+  .attendance-management-page {
+    .overtime-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 720px) {
+  .attendance-management-page {
+    .overtime-summary-grid,
+    .overtime-review-modal .overtime-modal-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .overtime-stat-card {
+      min-height: 86px;
+    }
+  }
+}
