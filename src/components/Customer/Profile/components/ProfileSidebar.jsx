@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { validateAvatarFile } from "@/utils/compressAvatar";
+import { compressAvatar } from "@/utils/compressAvatar";
 import "./ProfileSidebar.scss";
 
 const ProfileSidebar = ({
@@ -11,6 +11,7 @@ const ProfileSidebar = ({
 }) => {
   const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
+  const [processingAvatar, setProcessingAvatar] = useState(false);
 
   useEffect(() => {
     if (isEditMode) return undefined;
@@ -32,24 +33,25 @@ const ProfileSidebar = ({
     [preview]
   );
 
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setProcessingAvatar(true);
     try {
-      validateAvatarFile(file);
+      const resizedFile = await compressAvatar(file);
+      const objectUrl = URL.createObjectURL(resizedFile);
+      setPreview((currentPreview) => {
+        if (currentPreview) URL.revokeObjectURL(currentPreview);
+        return objectUrl;
+      });
+      onAvatarChange?.(resizedFile);
     } catch (error) {
       alert(error.message);
       event.target.value = "";
-      return;
+    } finally {
+      setProcessingAvatar(false);
     }
-
-    const objectUrl = URL.createObjectURL(file);
-    setPreview((currentPreview) => {
-      if (currentPreview) URL.revokeObjectURL(currentPreview);
-      return objectUrl;
-    });
-    onAvatarChange?.(file);
   };
 
   const displayAvatar =
@@ -109,8 +111,13 @@ const ProfileSidebar = ({
               />
             </div>
             {isEditMode && (
-              <button className="avatar-edit-btn" onClick={() => fileInputRef.current?.click()}>
-                📷
+              <button
+                className="avatar-edit-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={processingAvatar}
+                title={processingAvatar ? "Đang tối ưu ảnh..." : "Đổi ảnh đại diện"}
+              >
+                {processingAvatar ? "…" : "📷"}
               </button>
             )}
             <input
