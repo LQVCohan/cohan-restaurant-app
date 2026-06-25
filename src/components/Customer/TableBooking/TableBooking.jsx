@@ -15,6 +15,7 @@ import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { getReservationActionErrorMessage } from "@/utils/commerceActionErrorMessages";
+import { mapCartItemToDiscountOrderItemInput } from "@/utils/discountPreviewPayload";
 import "./TableBooking.scss";
 
 const ACQUIRE_TABLE_VIEW_LOCK = gql`
@@ -45,6 +46,39 @@ const UPDATE_FLOOR_WATCHING = gql`
     }
   }
 `;
+
+const CREATE_ORDER_FOR_TABLE = gql`
+  mutation CreateReservationAddonOrder($input: CreateOrderForTableInput!) {
+    createOrderForTable(input: $input) {
+      isNewOrder
+      order {
+        id
+        orderCode
+        parentOrderCode
+        restaurantId
+        tableCode
+        currentStatus
+        note
+        totals {
+          subtotal
+          grandTotal
+        }
+        items {
+          _id
+          name
+          quantity
+          unit
+          basePrice
+          unitPrice
+          lineSubtotal
+          servingKey
+          note
+        }
+      }
+    }
+  }
+`;
+
 const PUBLIC_RESTAURANT_CAPABILITY = gql`
   query PublicRestaurantCapability($id: ID!) {
     publicRestaurant(id: $id) {
@@ -76,6 +110,7 @@ const TableBooking = () => {
   const [updateFloorWatching] = useMutation(UPDATE_FLOOR_WATCHING);
   const [acquireTableViewLock] = useMutation(ACQUIRE_TABLE_VIEW_LOCK);
   const [releaseTableViewLock] = useMutation(RELEASE_TABLE_VIEW_LOCK);
+  const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
   const { data: restaurantData, loading: restaurantLoading } = useQuery(
     PUBLIC_RESTAURANT_CAPABILITY,
     { variables: { id: restaurantId }, skip: !restaurantId },
@@ -100,7 +135,7 @@ const TableBooking = () => {
   });
 
   const restaurantCartItems = (cart || []).filter(
-    (item) => item.restaurantId === restaurantId,
+    (item) => String(item.restaurantId) === String(restaurantId),
   );
   const menuSubtotal = restaurantCartItems.reduce(
     (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
@@ -192,13 +227,75 @@ const TableBooking = () => {
     };
   }, [selectedTable?.id, user?.id, releaseTableViewLock]);
 
-  const handleBookingConfirmed = (reservation) => {
-    setBookingData(reservation);
+  const attachAddonOrderToReservation = async (reservation) => {
+    if (!reservation?.id || !restaurantCartItems.length || !selectedTable?.id) {
+      return {
+        ...reservation,
+        linkedCartItems: restaurantCartItems,
+        linkedMenuSubtotal: menuSubtotal,
+        linkedMenuDeposit: menuDeposit,
+        linkedOrders: [],
+      };
+    }
+
+    const addonItems = restaurantCartItems.map(mapCartItemToDiscountOrderItemInput);
+    const tableCode = selectedTable?.label || selectedTable?.code || selectedTable?.id;
+    const { data } = await createOrderForTable({
+      variables: {
+        input: {
+          restaurantId,
+          tableId: selectedTable.id,
+          tableCode,
+          parentOrderCode: reservation.orderCode || null,
+          items: addonItems,
+          note: `Order món đi kèm đặt bàn ${reservation.orderCode || reservation.id}`,
+          customer: {
+            fullName: reservation.customerName || user?.fullName || user?.name || null,
+            phone: reservation.customerPhone || user?.phone || null,
+            email: reservation.customerEmail || user?.email || null,
+          },
+          clientMeta: {
+            source: "reservation_cart_addon",
+            reservationId: reservation.id,
+            reservationOrderCode: reservation.orderCode || null,
+            linkedMenuSubtotal: menuSubtotal,
+            menuDepositPercent: 50,
+          },
+        },
+      },
+    });
+    const addonOrder = data?.createOrderForTable?.order || null;
+    return {
+      ...reservation,
+      linkedCartItems: restaurantCartItems,
+      linkedMenuSubtotal: menuSubtotal,
+      linkedMenuDeposit: menuDeposit,
+      linkedOrders: addonOrder ? [addonOrder] : [],
+    };
+  };
+
+  const handleBookingConfirmed = async (reservation) => {
     setShowBookingModal(false);
     if (selectedTable?.id && user?.id) {
       releaseTableViewLock({ variables: { input: { tableId: selectedTable.id, userId: user.id } } }).catch(() => {});
     }
-    const needDeposit = Number(reservation?.depositAmount || 0) > 0;
+
+    let enrichedReservation = reservation;
+    try {
+      enrichedReservation = await attachAddonOrderToReservation(reservation);
+    } catch (err) {
+      enrichedReservation = {
+        ...reservation,
+        linkedCartItems: restaurantCartItems,
+        linkedMenuSubtotal: menuSubtotal,
+        linkedMenuDeposit: menuDeposit,
+        linkedOrders: [],
+        linkedOrderError: err?.message || "Không thể tạo order món đi kèm.",
+      };
+    }
+
+    setBookingData(enrichedReservation);
+    const needDeposit = Number(enrichedReservation?.depositAmount || 0) > 0;
     needDeposit ? setShowPaymentModal(true) : setShowSuccessModal(true);
   };
 
