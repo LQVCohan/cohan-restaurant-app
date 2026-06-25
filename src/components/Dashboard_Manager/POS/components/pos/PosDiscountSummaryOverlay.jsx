@@ -14,6 +14,30 @@ const getCleanOrderItems = (items = []) =>
     return status !== "cancelled" && status !== "returned" && Number(item?.quantity || 0) > 0;
   });
 
+const toMoney = (value) => Math.max(0, Math.round(Number(value || 0)));
+
+const rowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  fontSize: 12,
+  lineHeight: 1.25,
+};
+
+const labelStyle = {
+  color: "#475569",
+  fontWeight: 750,
+  minWidth: 0,
+};
+
+const valueStyle = {
+  color: "#0f172a",
+  fontWeight: 850,
+  whiteSpace: "nowrap",
+  fontVariantNumeric: "tabular-nums",
+};
+
 export default function PosDiscountSummaryOverlay() {
   const { restaurantId, currentOrder, currentOrderType, shippingInfo } = usePos();
   const { previewOrderDiscount } = useDiscountPreview();
@@ -58,125 +82,166 @@ export default function PosDiscountSummaryOverlay() {
     };
   }, [restaurantId, currentOrderType, previewItems, shippingInfo?.shippingFee, previewOrderDiscount]);
 
-  const subtotal = Number(discountBreakdown?.subtotal || 0);
-  const totalDiscount = Math.max(
-    0,
-    Number(
-      discountBreakdown?.totalDiscount ??
-        discountBreakdown?.discount ??
-        discountBreakdown?.promotionDiscount ??
-        0,
-    ),
+  const subtotal = toMoney(discountBreakdown?.subtotal);
+  const promotionDiscount = toMoney(discountBreakdown?.promotionDiscount);
+  const couponDiscount = toMoney(discountBreakdown?.couponDiscount);
+  const totalDiscount = toMoney(
+    discountBreakdown?.totalDiscount ??
+      discountBreakdown?.discount ??
+      promotionDiscount + couponDiscount,
   );
-  const payableTotal = getDiscountBreakdownTotal(discountBreakdown, subtotal);
+  const service = toMoney(discountBreakdown?.service);
+  const tax = toMoney(discountBreakdown?.tax);
+  const shippingFee = toMoney(discountBreakdown?.shippingFee);
+  const payableTotal = toMoney(getDiscountBreakdownTotal(discountBreakdown, subtotal));
+  const appliedPromotionCount = Array.isArray(discountBreakdown?.appliedPromotions)
+    ? discountBreakdown.appliedPromotions.length
+    : 0;
 
   if (!previewItems.length || totalDiscount <= 0) return null;
+
+  const detailRows = [
+    { label: "Tạm tính", value: subtotal, sign: "normal" },
+    ...(promotionDiscount > 0
+      ? [{ label: "Giảm khuyến mãi", value: promotionDiscount, sign: "discount" }]
+      : []),
+    ...(couponDiscount > 0
+      ? [{ label: "Giảm coupon", value: couponDiscount, sign: "discount" }]
+      : []),
+    ...(promotionDiscount <= 0 && couponDiscount <= 0 && totalDiscount > 0
+      ? [{ label: "Tổng giảm", value: totalDiscount, sign: "discount" }]
+      : []),
+    ...(service > 0 ? [{ label: "Phí phục vụ", value: service, sign: "normal" }] : []),
+    ...(tax > 0 ? [{ label: "Thuế", value: tax, sign: "normal" }] : []),
+    ...(shippingFee > 0 ? [{ label: "Phí giao hàng", value: shippingFee, sign: "normal" }] : []),
+  ];
 
   return (
     <>
       <style>{`
-        [data-pos-order-panel]:has(+ [data-pos-discount-footer]) [class*="summary"] {
+        [data-pos-order-panel] > [class*="footer"] > [class*="summary"] {
           visibility: hidden !important;
         }
       `}</style>
       <div
         data-pos-discount-footer
-        aria-label="Tạm tính sau ưu đãi"
+        aria-label="Chi tiết tạm tính sau ưu đãi"
         style={{
           position: "absolute",
           left: 12,
           right: 12,
-          bottom: 76,
+          bottom: 72,
           zIndex: 80,
           pointerEvents: "none",
-          border: "1px solid rgba(134, 239, 172, 0.95)",
-          borderRadius: 18,
-          background:
-            "linear-gradient(135deg, rgba(240, 253, 244, 0.99), rgba(255, 247, 237, 0.98))",
+          border: "1px solid rgba(253, 186, 116, 0.95)",
+          borderRadius: 16,
+          background: "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)",
           boxShadow: "0 16px 34px rgba(15, 23, 42, 0.12)",
-          padding: "0.8rem 0.9rem",
-          color: "#14532d",
+          padding: "0.7rem 0.8rem 0.75rem",
+          color: "#0f172a",
           overflow: "hidden",
         }}
       >
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 38%)",
-            pointerEvents: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            paddingBottom: 6,
+            borderBottom: "1px dashed rgba(148, 163, 184, 0.58)",
+            marginBottom: 7,
           }}
-        />
-
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <span
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 10,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#dcfce7",
-                  color: "#15803d",
-                  fontWeight: 950,
-                  boxShadow: "inset 0 0 0 1px rgba(34, 197, 94, 0.15)",
-                  flexShrink: 0,
-                }}
-              >
-                %
-              </span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 950, color: "#14532d" }}>Tổng sau ưu đãi</div>
-                <div style={{ fontSize: 11, color: "#166534", lineHeight: 1.3 }}>
-                  Đã tự áp dụng khuyến mãi hợp lệ cho đơn này.
-                </div>
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 10,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#ffedd5",
+                color: "#ea580c",
+                fontWeight: 950,
+                flexShrink: 0,
+              }}
+            >
+              ₫
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 950, color: "#0f172a" }}>
+                Chi tiết thanh toán POS
               </div>
-            </div>
-
-            <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800 }}>Cần thu</div>
-              <div style={{ fontSize: 18, color: "#ea580c", fontWeight: 950, lineHeight: 1.1 }}>
-                {formatPrice(payableTotal)}
+              <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                {appliedPromotionCount > 0
+                  ? `${appliedPromotionCount} ưu đãi đã áp dụng tự động`
+                  : "Ưu đãi đã áp dụng tự động"}
               </div>
             </div>
           </div>
-
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 8,
-              marginTop: 10,
+              borderRadius: 999,
+              padding: "0.24rem 0.55rem",
+              background: "#dcfce7",
+              color: "#15803d",
+              fontSize: 11,
+              fontWeight: 900,
+              whiteSpace: "nowrap",
             }}
           >
-            <div
-              style={{
-                borderRadius: 12,
-                background: "rgba(255, 255, 255, 0.76)",
-                border: "1px solid rgba(226, 232, 240, 0.9)",
-                padding: "0.45rem 0.55rem",
-              }}
-            >
-              <div style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>Tạm tính</div>
-              <strong style={{ color: "#0f172a", fontSize: 13 }}>{formatPrice(subtotal)}</strong>
+            Đã giảm {formatPrice(totalDiscount)}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 5 }}>
+          {detailRows.map((row) => (
+            <div key={row.label} style={rowStyle}>
+              <span style={labelStyle}>{row.label}</span>
+              <span
+                style={{
+                  ...valueStyle,
+                  color: row.sign === "discount" ? "#16a34a" : valueStyle.color,
+                }}
+              >
+                {row.sign === "discount" ? "-" : ""}
+                {formatPrice(row.value)}
+              </span>
             </div>
-            <div
-              style={{
-                borderRadius: 12,
-                background: "rgba(220, 252, 231, 0.72)",
-                border: "1px solid rgba(134, 239, 172, 0.72)",
-                padding: "0.45rem 0.55rem",
-                textAlign: "right",
-              }}
-            >
-              <div style={{ color: "#166534", fontSize: 11, fontWeight: 800 }}>Đã giảm</div>
-              <strong style={{ color: "#16a34a", fontSize: 13 }}>-{formatPrice(totalDiscount)}</strong>
+          ))}
+        </div>
+
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px dashed rgba(148, 163, 184, 0.62)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>Tổng cộng</div>
+            <div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 700 }}>
+              Giá đã gồm ưu đãi hợp lệ
             </div>
           </div>
+          <strong
+            style={{
+              color: "#ea580c",
+              fontSize: 20,
+              lineHeight: 1,
+              fontWeight: 950,
+              whiteSpace: "nowrap",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {formatPrice(payableTotal)}
+          </strong>
         </div>
       </div>
     </>
