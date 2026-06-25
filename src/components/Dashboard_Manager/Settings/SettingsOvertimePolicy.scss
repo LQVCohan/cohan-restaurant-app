@@ -3,15 +3,61 @@
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   }
 
+  &__hero {
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: clamp(18px, 4vw, 58px);
+      bottom: -46px;
+      width: 210px;
+      height: 210px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(47, 107, 79, 0.12), transparent 68%);
+      pointer-events: none;
+    }
+  }
+
+  &__hero-metrics article:nth-child(3) {
+    border-color: rgba(47, 107, 79, 0.18);
+    background: linear-gradient(135deg, rgba(237, 246, 240, 0.86), rgba(255, 255, 255, 0.7));
+  }
+
+  &__form.is-editing &__overtime-policy {
+    border-color: rgba(47, 107, 79, 0.32);
+    box-shadow: 0 22px 54px rgba(47, 107, 79, 0.11);
+  }
+
   &__overtime-policy {
+    position: relative;
     display: grid;
-    gap: 14px;
-    padding: 16px;
+    gap: 16px;
+    padding: clamp(16px, 2vw, 22px);
     border: 1px solid rgba(154, 119, 78, 0.18);
-    border-radius: 22px;
+    border-radius: 26px;
     background:
-      linear-gradient(135deg, rgba(255, 253, 248, 0.88), rgba(247, 240, 229, 0.74)),
-      radial-gradient(circle at 100% 0%, rgba(154, 119, 78, 0.1), transparent 18rem);
+      linear-gradient(135deg, rgba(255, 253, 248, 0.94), rgba(247, 240, 229, 0.76)),
+      radial-gradient(circle at 100% 0%, rgba(47, 107, 79, 0.13), transparent 20rem),
+      radial-gradient(circle at 4% 100%, rgba(154, 119, 78, 0.12), transparent 18rem);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 16px 44px rgba(69, 58, 42, 0.08);
+
+    &::before {
+      content: "Giới hạn tính theo số phút được duyệt trong 1 ngày công";
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      max-width: 250px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(47, 107, 79, 0.16);
+      background: rgba(237, 246, 240, 0.88);
+      color: #2f6b4f;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+    }
   }
 
   &__policy-header {
@@ -19,6 +65,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
+    padding-right: 270px;
 
     > div {
       display: grid;
@@ -37,16 +84,16 @@
     h4 {
       margin: 0;
       color: var(--ink);
-      font-size: clamp(18px, 2vw, 24px);
-      letter-spacing: -0.025em;
+      font-size: clamp(20px, 2vw, 26px);
+      letter-spacing: -0.035em;
     }
 
     p {
       margin: 0;
-      max-width: 70ch;
+      max-width: 74ch;
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 1.6;
     }
   }
 
@@ -61,52 +108,71 @@
     padding: 10px 12px;
     border: 1px solid rgba(45, 55, 50, 0.14);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.78);
     color: #35413c;
     font-size: 13px;
     font-weight: 850;
     cursor: pointer;
+    box-shadow: 0 10px 24px rgba(69, 58, 42, 0.07);
 
     input {
       width: 16px;
       height: 16px;
       padding: 0;
       border-radius: 5px;
-      accent-color: #6f5e46;
+      accent-color: #2f6b4f;
     }
   }
 
   &__overtime-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
   }
 
   &__overtime-limit-card {
-    min-height: 172px;
-    padding: 13px;
+    position: relative;
+    min-height: 188px;
+    padding: 15px;
     border: 1px solid rgba(45, 55, 50, 0.13);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.62);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), 0 10px 28px rgba(69, 58, 42, 0.06);
     display: grid !important;
-    grid-template-rows: auto auto auto auto 1fr;
-    gap: 8px !important;
+    grid-template-rows: auto auto 1fr auto auto;
+    gap: 9px !important;
+    overflow: hidden;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(47, 107, 79, 0.58), rgba(154, 119, 78, 0.36));
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      border-color: rgba(47, 107, 79, 0.24);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), 0 18px 38px rgba(69, 58, 42, 0.1);
+    }
 
     &.is-default {
       border-color: rgba(111, 94, 70, 0.28);
-      background: rgba(245, 241, 234, 0.82);
+      background: linear-gradient(135deg, rgba(245, 241, 234, 0.92), rgba(255, 255, 255, 0.72));
     }
 
     > span {
+      margin-top: 4px;
       color: var(--ink);
-      font-size: 14px;
-      font-weight: 900;
+      font-size: 15px;
+      font-weight: 950;
       line-height: 1.2;
     }
 
     small {
-      min-height: 36px;
+      min-height: 38px;
       color: var(--muted);
       font-size: 12px;
       font-weight: 650;
@@ -114,21 +180,30 @@
     }
 
     input {
+      height: 42px;
       text-align: right;
-      font-weight: 900;
+      font-size: 18px;
+      font-weight: 950;
       font-variant-numeric: tabular-nums;
+      border-color: rgba(47, 107, 79, 0.18);
+      background: rgba(255, 255, 255, 0.92);
+
+      &:not(:disabled):focus-visible {
+        outline-color: rgba(47, 107, 79, 0.28);
+        border-color: rgba(47, 107, 79, 0.48);
+      }
     }
 
     strong {
       justify-self: start;
       width: fit-content;
-      padding: 6px 9px;
+      padding: 7px 10px;
       border-radius: 999px;
       background: rgba(47, 107, 79, 0.1);
       border: 1px solid rgba(47, 107, 79, 0.16);
       color: var(--success);
       font-size: 12px;
-      font-weight: 900;
+      font-weight: 950;
     }
 
     em {
@@ -136,11 +211,33 @@
       line-height: 1.35;
     }
   }
+
+  &__summary article:has(> span:first-child) {
+    min-height: 170px;
+  }
+
+  &__summary article:nth-child(2) {
+    border-color: rgba(47, 107, 79, 0.18);
+    background: linear-gradient(135deg, rgba(237, 246, 240, 0.82), rgba(255, 255, 255, 0.72));
+  }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .settings-management {
+    &__overtime-policy::before {
+      position: static;
+      width: fit-content;
+      max-width: 100%;
+      order: 2;
+    }
+
+    &__policy-header {
+      padding-right: 0;
+      order: 1;
+    }
+
     &__overtime-grid {
+      order: 3;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
