@@ -140,6 +140,26 @@ const FloatingFoodIcons = () => (
   </div>
 );
 
+const AuthBrand = () => (
+  <div className="auth-brand-row" aria-label="VPOS Restaurant Platform">
+    <span className="auth-brand-mark">VPOS</span>
+    <span className="auth-brand-name">Restaurant Platform</span>
+  </div>
+);
+
+const LoginAudience = () => (
+  <div className="auth-audience-grid" aria-label="Đăng nhập cho khách hàng và quản lý">
+    <span>
+      <strong>Khách hàng</strong>
+      <small>Đặt món, ví, khẩu vị</small>
+    </span>
+    <span>
+      <strong>Quản lý</strong>
+      <small>POS, bàn, đơn, ca</small>
+    </span>
+  </div>
+);
+
 function splitIdentifier(val) {
   val = (val || "").trim();
   if (val.includes("@")) return { email: val };
@@ -370,7 +390,9 @@ const LoginPage = () => {
       <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký VPOS">
         <div className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}>
           <form className="auth-form auth-form--register" onSubmit={handleRegister}>
+            <AuthBrand />
             <h1>Tạo tài khoản</h1>
+            <LoginAudience />
 
             <label className="field-label" htmlFor="register-full-name">Họ và tên</label>
             <div className="input-wrapper"><FieldIcon type="user" /><input id="register-full-name" type="text" placeholder="Họ và tên" aria-label="Họ và tên" autoComplete="name" value={registerForm.fullName} onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })} /></div>
@@ -393,7 +415,9 @@ const LoginPage = () => {
 
         <div className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}>
           <form className="auth-form auth-form--login" onSubmit={handleLogin}>
+            <AuthBrand />
             <h1 id="login-form-title">Đăng nhập</h1>
+            <LoginAudience />
 
             <label className="field-label" htmlFor="login-identifier">Email, username hoặc số điện thoại</label>
             <div className="input-wrapper"><FieldIcon type="user" /><input id="login-identifier" type="text" placeholder="Email / Username / SĐT" aria-label="Email, username hoặc số điện thoại" autoComplete="username" value={loginForm.identifier} onChange={(e) => setLoginForm({ ...loginForm, identifier: e.target.value })} /></div>
@@ -414,12 +438,20 @@ const LoginPage = () => {
             <FloatingFoodIcons />
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
-              <p>Tạo tài khoản VPOS để bắt đầu quản lý nhà hàng nhanh chóng, đồng bộ và dễ theo dõi hơn.</p>
+              <p>Tạo tài khoản VPOS để bắt đầu đặt món hoặc quản lý vận hành nhà hàng trên cùng một nền tảng.</p>
+              <div className="overlay-access-stack">
+                <span><strong>Khách hàng</strong><small>Đặt món, ví, khẩu vị</small></span>
+                <span><strong>Quản lý</strong><small>Bàn, POS, đơn realtime</small></span>
+              </div>
               <button type="button" className="ghost" onClick={() => togglePanel(false)}>Đăng nhập</button>
             </div>
             <div className="overlay-panel overlay-right">
               <h1>Xin chào</h1>
-              <p>Đăng nhập VPOS để quản lý bàn, theo dõi đơn realtime và kiểm soát ca làm trên cùng một hệ thống.</p>
+              <p>Đăng nhập VPOS để tiếp tục với đúng vai trò: khách hàng đặt món hoặc quản lý vận hành nhà hàng.</p>
+              <div className="overlay-access-stack">
+                <span><strong>Khách hàng</strong><small>Theo dõi đơn & ưu đãi</small></span>
+                <span><strong>Nhà hàng</strong><small>Kiểm soát bàn, ca, POS</small></span>
+              </div>
               <button type="button" className="ghost" onClick={() => togglePanel(true)}>Đăng ký</button>
             </div>
           </div>
