@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { ChevronLeft, Info, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
+import { ChevronLeft, Info, Layers } from "lucide-react";
 
 import FloorMap from "./components/FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
@@ -94,7 +94,7 @@ const PUBLIC_RESTAURANT_CAPABILITY = gql`
 const TableBooking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { search, state } = useLocation();
   const restaurantId = id;
   const { user } = useContext(AuthContext) || {};
   const lastWatchingFloorRef = useRef(null);
@@ -105,7 +105,10 @@ const TableBooking = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingData, setBookingData] = useState(null);
   const { cart } = useCart();
-  const fromMenu = new URLSearchParams(search).get("fromMenu") === "1";
+  const searchParams = new URLSearchParams(search);
+  const fromMenu = searchParams.get("fromMenu") === "1";
+  const rebookReservation = state?.rebookReservation || null;
+  const isRebook = !!searchParams.get("rebook") || !!rebookReservation;
 
   const [updateFloorWatching] = useMutation(UPDATE_FLOOR_WATCHING);
   const [acquireTableViewLock] = useMutation(ACQUIRE_TABLE_VIEW_LOCK);
@@ -161,19 +164,13 @@ const TableBooking = () => {
     if (!currentFloorId) return;
     const prevFloorId = lastWatchingFloorRef.current;
     if (prevFloorId && prevFloorId !== currentFloorId) {
-      updateFloorWatching({
-        variables: { id: prevFloorId, isWatching: false },
-      }).catch(() => {});
+      updateFloorWatching({ variables: { id: prevFloorId, isWatching: false } }).catch(() => {});
     }
-    updateFloorWatching({
-      variables: { id: currentFloorId, isWatching: true },
-    }).catch(() => {});
+    updateFloorWatching({ variables: { id: currentFloorId, isWatching: true } }).catch(() => {});
     lastWatchingFloorRef.current = currentFloorId;
     return () => {
       if (!currentFloorId) return;
-      updateFloorWatching({
-        variables: { id: currentFloorId, isWatching: false },
-      }).catch(() => {});
+      updateFloorWatching({ variables: { id: currentFloorId, isWatching: false } }).catch(() => {});
     };
   }, [activeFloorData?.id, canReserve, canToggleWatching, updateFloorWatching]);
 
@@ -208,12 +205,7 @@ const TableBooking = () => {
       });
       setSelectedTable(table);
     } catch (err) {
-      alert(
-        getReservationActionErrorMessage(
-          err,
-          err?.message || "Bàn đang được khách khác xem.",
-        ),
-      );
+      alert(getReservationActionErrorMessage(err, err?.message || "Bàn đang được khách khác xem."));
     }
   };
 
@@ -304,21 +296,19 @@ const TableBooking = () => {
     setShowSuccessModal(true);
   };
 
-  if (floorsLoading)
+  if (floorsLoading) {
     return (
       <div className="booking-loading-premium">
         <LoadingSpinner size="large" className="booking-loading-spinner" />
         <p>Đang chuẩn bị không gian...</p>
       </div>
     );
-  if (restaurantLoading)
-    return <div className="booking-loading-premium"><p>Đang tải thông tin nhà hàng...</p></div>;
-  if (!publicRestaurant)
-    return <div className="booking-loading-premium"><p>Nhà hàng không khả dụng hoặc chưa công khai.</p></div>;
+  }
+  if (restaurantLoading) return <div className="booking-loading-premium"><p>Đang tải thông tin nhà hàng...</p></div>;
+  if (!publicRestaurant) return <div className="booking-loading-premium"><p>Nhà hàng không khả dụng hoặc chưa công khai.</p></div>;
 
   return (
     <div className="table-booking-premium">
-      {/* Header Premium */}
       <header className="premium-header">
         <div className="header-inner">
           <button className="btn-back-link" onClick={() => navigate(-1)}>
@@ -329,31 +319,27 @@ const TableBooking = () => {
             <h1 className="main-heading">Sơ đồ chỗ ngồi</h1>
           </div>
           <div className="header-actions">
-            <button className="btn-help">
-              <Info size={20} />
-            </button>
+            <button className="btn-help"><Info size={20} /></button>
           </div>
         </div>
       </header>
 
-      {fromMenu && (
+      {isRebook && (
         <div className="booking-alert">
-          🛎️ Đã quay lại từ giỏ món. Hệ thống sẽ tính tiền cọc bàn + 50% cọc món
-          trong bước thanh toán.
+          🔁 Đang đặt lại bàn từ lịch sử cũ. Chọn bàn trống rồi xác nhận thông tin mới.
         </div>
       )}
-      {!canReserve && (
-        <div className="booking-alert">Nhà hàng hiện không nhận đặt bàn.</div>
+      {fromMenu && (
+        <div className="booking-alert">
+          🛎️ Đã quay lại từ giỏ món. Hệ thống sẽ tính tiền cọc bàn + 50% cọc món trong bước thanh toán.
+        </div>
       )}
+      {!canReserve && <div className="booking-alert">Nhà hàng hiện không nhận đặt bàn.</div>}
 
       <div className="booking-layout-grid">
-        {/* LEFT COLUMN: Main Interaction Area */}
         <main className="main-visual-area">
-          {/* Floor Selector Bar */}
           <div className="floor-control-bar">
-            <div className="bar-label">
-              <Layers size={18} /> Chọn tầng:
-            </div>
+            <div className="bar-label"><Layers size={18} /> Chọn tầng:</div>
             <div className="floor-scroll-container">
               <FloorSelector
                 floors={floors}
@@ -363,7 +349,6 @@ const TableBooking = () => {
             </div>
           </div>
 
-          {/* Map Viewport */}
           <div className="map-viewport-frame">
             {!canReserve ? (
               <div className="map-state-msg"><span>Nhà hàng hiện không nhận đặt bàn.</span></div>
@@ -374,60 +359,38 @@ const TableBooking = () => {
               </div>
             ) : (
               <>
-                <div className="floor-name-watermark">
-                  {activeFloorData?.name}
-                </div>
+                <div className="floor-name-watermark">{activeFloorData?.name}</div>
                 <FloorMap
                   tables={tables}
                   selectedTable={selectedTable}
                   onSelectTable={handleSelectTable}
                   layout={activeFloorData?.layout || []}
                   meta={activeFloorData?.meta || null}
-                  // Truyền prop để map render style đẹp hơn
                   theme="premium"
                 />
-
-                {/* Legend Floating Pill */}
                 <div className="legend-pill">
-                  <div className="l-item">
-                    <span className="dot available"></span> Trống
-                  </div>
-                  <div className="l-item">
-                    <span className="dot selected"></span> Đang chọn
-                  </div>
-                  <div className="l-item">
-                    <span className="dot occupied"></span> Đã đặt
-                  </div>
+                  <div className="l-item"><span className="dot available"></span> Trống</div>
+                  <div className="l-item"><span className="dot selected"></span> Đang chọn</div>
+                  <div className="l-item"><span className="dot occupied"></span> Đã đặt</div>
                 </div>
               </>
             )}
           </div>
         </main>
 
-        {/* RIGHT COLUMN: Sidebar Summary Card */}
         <aside className="sidebar-summary-area">
           <div className="summary-sticky-wrapper">
             <div className="summary-card-premium">
-              <div className="card-header">
-                <h3>Thông tin đặt bàn</h3>
-              </div>
+              <div className="card-header"><h3>Thông tin đặt bàn</h3></div>
               <div className="card-body-wrapper">
                 <BookingSummary
                   selectedTable={selectedTable}
                   selectedFloorName={activeFloorData?.name}
                   menuDeposit={menuDeposit}
                   menuItemsCount={restaurantCartItems.length}
-                  // Chúng ta sẽ ẩn nút mặc định của component con và dùng nút custom ở dưới nếu cần,
-                  // hoặc style lại nút của component con qua CSS
                   onConfirm={() => canReserve && selectedTable && setShowBookingModal(true)}
                   onCancel={() => setSelectedTable(null)}
-                  onOrderDishes={() =>
-                    navigate(
-                      `/cus-menu?restaurantId=${encodeURIComponent(
-                        restaurantId,
-                      )}&returnTo=booking`,
-                    )
-                  }
+                  onOrderDishes={() => navigate(`/cus-menu?restaurantId=${encodeURIComponent(restaurantId)}&returnTo=booking`)}
                 />
               </div>
             </div>
@@ -435,15 +398,15 @@ const TableBooking = () => {
         </aside>
       </div>
 
-      {/* Modals */}
       <BookingModal
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
         restaurantId={restaurantId}
         tableId={selectedTable?.id}
-        tableCode={selectedTable?.label}
+        tableCode={selectedTable?.label || selectedTable?.code}
         tableCapacity={selectedTable?.capacity}
         tableFloor={activeLevel}
+        prefillReservation={rebookReservation}
         onBookingConfirmed={handleBookingConfirmed}
       />
 
