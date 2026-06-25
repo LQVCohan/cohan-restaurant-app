@@ -8,6 +8,7 @@ import { apolloClient } from "./apollo/client";
 import "./styles/Globals.scss";
 import "./components/LoginPolish.scss";
 import "./components/LoginAudiencePolish.scss";
+import "./components/Customer/ForYou/ForYouTypographyPolish.scss";
 import "./components/Customer/RestaurantMenu/styles/MenuDetailViewPolish.scss";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
