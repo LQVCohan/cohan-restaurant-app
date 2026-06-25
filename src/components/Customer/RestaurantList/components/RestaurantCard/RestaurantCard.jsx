@@ -37,6 +37,7 @@ const RestaurantCard = ({
   restaurant,
   variant = "grid",
   isFavorited,
+  isRecent = false,
   onToggleFavorite,
   onMakeReservation,
   onViewDetails,
@@ -52,7 +53,7 @@ const RestaurantCard = ({
 
   return (
     <div
-      className={`restaurant-card ${variant === "list" ? "restaurant-card--list" : ""}`}
+      className={`restaurant-card ${variant === "list" ? "restaurant-card--list" : ""} ${isRecent ? "restaurant-card--recent" : ""}`}
       onClick={() => onViewDetails(restaurant.id)}
     >
       <div className="restaurant-card__image-wrapper">
@@ -62,6 +63,12 @@ const RestaurantCard = ({
           className="restaurant-card__img"
           loading="lazy"
         />
+
+        {isRecent && (
+          <span className="restaurant-card__recent-badge">
+            Gần đây
+          </span>
+        )}
 
         <button
           type="button"
@@ -87,6 +94,7 @@ const RestaurantCard = ({
               ⭐ {hasReviews ? Number(restaurant.avgRating || 0).toFixed(1) : "Chưa có đánh giá"}
               {hasReviews && <span className="count">({restaurant.reviewCount})</span>}
             </div>
+            {isRecent && <div className="meta-item recent">↻ Đã tương tác gần đây</div>}
           </div>
 
           <p className="restaurant-desc">{restaurant.description || "Thông tin đang được cập nhật"}</p>
