@@ -55,6 +55,12 @@ export default function ChangeTableModal({
     return filtered;
   }, [tablesByRestaurant, restaurantId, people, search, sort]);
 
+  useEffect(() => {
+    if (!isOpen || !tables.length) return;
+    if (selectedTable && tables.some((table) => table.id === selectedTable.id)) return;
+    setSelectedTable(tables[0]);
+  }, [isOpen, selectedTable, tables]);
+
   const switchingRestaurant = restaurantId && restaurantId !== currentRid;
   const currentDeposit = Number(currentReservation?.depositAmount || 0);
   const penalty = switchingRestaurant ? Math.floor(currentDeposit * 0.5) : 0;
@@ -112,6 +118,13 @@ export default function ChangeTableModal({
               <option value="capacity_desc">Sức chứa lớn trước</option>
             </select>
           </div>
+
+          {selectedTable && (
+            <div className="alert alert--info">
+              ⚡ Đã tự chọn <b>{selectedTable.name}</b> phù hợp với {people} khách.
+              Bạn có thể đổi bàn khác trước khi xác nhận.
+            </div>
+          )}
 
           {switchingRestaurant ? (
             <div className="alert alert--warning">
