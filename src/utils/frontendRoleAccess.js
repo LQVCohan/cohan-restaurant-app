@@ -220,7 +220,24 @@ const MENU_ACTION_PERMISSION_MAP = {
   [MENU_MANAGEMENT_ACTIONS.VIEW_AUDIT]: ["menu.audit.read", "menu.read", "menu.write", "log.read"],
 };
 
-export const canPerformMenuAction = (userOrRole, action, userPermissions = []) => {
+const getUserPermissionCodes = (userOrRole, explicit = []) => {
+  if (Array.isArray(explicit) && explicit.length) return explicit;
+  if (!userOrRole || typeof userOrRole !== "object") return [];
+  return userOrRole.effectivePermissionCodes || userOrRole.permissionCodes || userOrRole.permissions || [];
+};
+
+const userWithExplicitPermissions = (userOrRole, userPermissions = []) => {
+  const effectivePermissionCodes = getUserPermissionCodes(userOrRole, userPermissions);
+  if (!Array.isArray(effectivePermissionCodes) || effectivePermissionCodes.length === 0) {
+    return userOrRole;
+  }
+  if (userOrRole && typeof userOrRole === "object") {
+    return { ...userOrRole, effectivePermissionCodes };
+  }
+  return { roleName: userOrRole, effectivePermissionCodes };
+};
+
+export const canAccessMenuManagementAction = (userOrRole, action, userPermissions = []) => {
   const normalized = resolveUserRoleName(userOrRole);
   if (!normalized) return false;
   if (isAdminRole(normalized) || isManagerRole(normalized)) return true;
@@ -228,18 +245,11 @@ export const canPerformMenuAction = (userOrRole, action, userPermissions = []) =
   const required = MENU_ACTION_PERMISSION_MAP[action] || [];
   if (!required.length) return false;
 
-  return hasAnyPermission({ ...(typeof userOrRole === "object" ? userOrRole : {}), effectivePermissionCodes: userPermissions }, required);
+  return hasAnyPermission(userWithExplicitPermissions(userOrRole, userPermissions), required);
 };
 
-const getUserPermissionCodes = (userOrRole, explicit = []) => {
-  if (Array.isArray(explicit) && explicit.length) return explicit;
-  if (!userOrRole || typeof userOrRole !== "object") return [];
-  return userOrRole.effectivePermissionCodes || userOrRole.permissionCodes || userOrRole.permissions || [];
-};
-
-export const canAccessMenuManagementAction = (userOrRole, action, userPermissions = []) =>
-  canPerformMenuAction(userOrRole, action, getUserPermissionCodes(userOrRole, userPermissions));
+export const canPerformMenuAction = canAccessMenuManagementAction;
 
 export const canViewMenuAction = (userOrRole, action, userPermissions = []) =>
   canAccessMenuManagementAction(userOrRole, action, userPermissions) ||
-  hasPermission({ ...(typeof userOrRole === "object" ? userOrRole : {}), effectivePermissionCodes: getUserPermissionCodes(userOrRole, userPermissions) }, action);
+  hasPermission(userWithExplicitPermissions(userOrRole, userPermissions), action);

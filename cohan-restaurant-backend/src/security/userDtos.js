@@ -177,35 +177,50 @@ function idEquals(left, right) {
   return String(left) === String(right);
 }
 
-export async function assertCanReadStaffPrivateProfile({ ctx, staffUser }) {
+function getRoleName(user) {
+  return String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
+}
+
+export function staffBelongsToRestaurant(staffUser, restaurantId) {
+  const assignedRestaurantId = stringId(staffUser?.restaurantForStaff);
+  return Boolean(assignedRestaurantId && idEquals(assignedRestaurantId, stringId(restaurantId)));
+}
+
+export function resolveStaffPrivateProfileScope(staffUser, requestedRestaurantId = null) {
+  const requested = stringId(requestedRestaurantId);
+  if (requested) return requested;
+  return stringId(staffUser?.restaurantForStaff) || stringId(staffUser?.refRestaurants?.[0]) || null;
+}
+
+export async function assertCanReadStaffPrivateProfile({ ctx, staffUser, restaurantId }) {
   const viewer = ctx?.user;
-  if (!viewer?.id) throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+  if (!viewer?.id && !viewer?._id) {
+    throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+  }
   if (!staffUser) throw notFound();
 
-  const viewerRole = String(viewer.roleName || viewer.role?.slug || viewer.role?.name || "").toLowerCase();
-  if (idEquals(viewer.id, staffUser._id || staffUser.id)) return true;
+  const viewerId = viewer.id || viewer._id;
+  if (idEquals(viewerId, staffUser._id || staffUser.id)) return true;
 
-  if (["admin", "manager", "hr", "accountant"].includes(viewerRole)) {
-    const restaurantId = staffUser.restaurantForStaff || staffUser.refRestaurants?.[0];
-    if (restaurantId) await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.STAFF_READ);
-    else await requirePermission(ctx, PERMISSIONS.STAFF_READ);
-    return true;
+  const targetRestaurantId = resolveStaffPrivateProfileScope(staffUser, restaurantId);
+  if (restaurantId && !staffBelongsToRestaurant(staffUser, restaurantId)) {
+    throw notFound();
   }
 
-  throw new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
+  const viewerRole = getRoleName(viewer);
+  if (!["admin", "manager", "hr", "accountant"].includes(viewerRole)) {
+    throw new GraphQLError("FORBIDDEN", { extensions: { code: "FORBIDDEN" } });
+  }
+
+  if (targetRestaurantId) {
+    await requireRestaurantPermission(ctx, targetRestaurantId, PERMISSIONS.STAFF_READ);
+  } else {
+    await requirePermission(ctx, PERMISSIONS.STAFF_READ);
+  }
+  return true;
 }
 
-export function resolveStaffPrivateProfileScope(staffUser) {
-  return {
-    restaurantId: staffUser?.restaurantForStaff || staffUser?.refRestaurants?.[0] || null,
-    staffId: staffUser?._id || staffUser?.id || null,
-  };
-}
-
-export function sanitizeStaffPrivateProfile(user) {
-  const source = toPlainObject(user);
-  if (!source) return null;
-
+function buildStaffPrivateProfile(source) {
   return pickDefined({
     ...sanitizeAdminUserListItem(source),
     baseSalary: source.baseSalary,
@@ -249,4 +264,19 @@ export function sanitizeStaffPrivateProfile(user) {
     noteInternal: source.noteInternal,
     forcePasswordChange: source.forcePasswordChange,
   });
+}
+
+export function sanitizeStaffPrivateProfile(user, ctx = null, options = {}) {
+  const source = toPlainObject(user);
+  if (!source) return null;
+
+  if (!ctx || options.skipAuthorization) {
+    return buildStaffPrivateProfile(source);
+  }
+
+  return assertCanReadStaffPrivateProfile({
+    ctx,
+    staffUser: source,
+    restaurantId: options.restaurantId,
+  }).then(() => buildStaffPrivateProfile(source));
 }

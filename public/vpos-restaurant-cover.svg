@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Restaurant cover</title>
+  <desc id="desc">Warm restaurant counter, tables and POS terminal illustration for VPOS authentication screen.</desc>
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#315f55"/>
+      <stop offset="0.5" stop-color="#9b4c2b"/>
+      <stop offset="1" stop-color="#f0c58a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="24%" r="60%">
+      <stop stop-color="#fff6d6" stop-opacity="0.55"/>
+      <stop offset="0.62" stop-color="#f1a35a" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#1c312d" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" fill="url(#wall)"/>
+  <rect width="1200" height="900" fill="url(#glow)"/>
+  <g opacity="0.17">
+    <path d="M0 168h1200M0 336h1200M0 504h1200M0 672h1200" stroke="#fff7e8" stroke-width="2"/>
+    <path d="M165 0v900M330 0v900M495 0v900M660 0v900M825 0v900M990 0v900" stroke="#fff7e8" stroke-width="2"/>
+  </g>
+  <g filter="url(#soft)" opacity="0.28">
+    <ellipse cx="284" cy="302" rx="146" ry="42" fill="#fff4d8"/>
+    <ellipse cx="904" cy="256" rx="176" ry="50" fill="#fff4d8"/>
+  </g>
+  <g stroke="#fff7e8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.76">
+    <path d="M212 552h776" stroke-width="24"/>
+    <path d="M244 584h708v126H244z" fill="#5e3928" fill-opacity="0.5" stroke-width="9"/>
+    <path d="M310 515h176" stroke-width="10"/>
+    <path d="M336 512c14-75 130-75 148 0" fill="#fff7e8" fill-opacity="0.32" stroke-width="8"/>
+    <path d="M366 486h88" stroke-width="7" opacity="0.8"/>
+    <path d="M726 438h150v108H726z" fill="#fff7e8" fill-opacity="0.22" stroke-width="9"/>
+    <path d="M750 466h78M750 494h96" stroke-width="7"/>
+    <path d="M891 452h38v94h-38z" fill="#fff7e8" fill-opacity="0.32" stroke-width="8"/>
+    <circle cx="801" cy="526" r="10" fill="#fff7e8" stroke="none"/>
+    <path d="M495 546c5-69 59-112 122-112 64 0 113 43 120 112" fill="#fff7e8" fill-opacity="0.18" stroke-width="8"/>
+    <path d="M526 502c48-34 104-34 153 0" stroke-width="8"/>
+    <path d="M170 726h240M790 726h246" stroke-width="14" opacity="0.8"/>
+    <path d="M238 726l-42 92M338 726l42 92M858 726l-42 92M984 726l42 92" stroke-width="10" opacity="0.76"/>
+    <path d="M245 236h130l-17 88H262z" fill="#fff7e8" fill-opacity="0.2" stroke-width="8"/>
+    <path d="M277 236l14-58M321 236l22-82" stroke-width="7"/>
+    <path d="M742 220h174" stroke-width="13"/>
+    <path d="M760 220c17-61 134-61 153 0" fill="#fff7e8" fill-opacity="0.2" stroke-width="8"/>
+  </g>
+  <g opacity="0.22" fill="#fff7e8">
+    <circle cx="160" cy="145" r="5"/>
+    <circle cx="1028" cy="152" r="6"/>
+    <circle cx="1002" cy="376" r="4"/>
+    <circle cx="197" cy="408" r="6"/>
+    <circle cx="625" cy="210" r="5"/>
+  </g>
+</svg>
