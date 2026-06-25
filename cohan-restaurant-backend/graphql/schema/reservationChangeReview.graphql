@@ -1,0 +1,3 @@
+extend type Query {
+  pendingReservationChanges(restaurantId: ID!, limit: Int = 50): [Reservation!]!
+}
