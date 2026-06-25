@@ -50,6 +50,12 @@ const LeaveRequestForm = ({
   loading = false,
   error = null,
   selfServiceEmployeeId = "",
+  compact = false,
+  title = "📝 Tạo Đơn Xin Nghỉ Phép",
+  subtitle = "",
+  submitLabel = "Gửi Đơn",
+  onCancel,
+  onSubmitted,
 }) => {
   const authContext = React.useContext(AuthContext) || {};
   const user = authContext.user;
@@ -171,6 +177,11 @@ const LeaveRequestForm = ({
     setErrors({});
   };
 
+  const handleCancel = () => {
+    resetForm();
+    onCancel?.();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formErrors = validateForm();
@@ -203,6 +214,7 @@ const LeaveRequestForm = ({
       });
       alert("Đã tạo đơn nghỉ phép và lưu database.");
       resetForm();
+      onSubmitted?.();
     } catch (submitError) {
       if (isForbiddenError(submitError)) {
         alert("Bạn không có quyền tạo đơn nghỉ phép cho nhân sự này.");
@@ -217,10 +229,13 @@ const LeaveRequestForm = ({
   };
 
   return (
-    <div className="leave-form-container">
-      <div className="form-header-section">
-        <h3 className="title">📝 Tạo Đơn Xin Nghỉ Phép</h3>
-      </div>
+    <div className={`leave-form-container ${compact ? "leave-form-container--compact" : ""}`}>
+      {title && (
+        <div className="form-header-section">
+          <h3 className="title">{title}</h3>
+          {subtitle && <p className="subtitle">{subtitle}</p>}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="main-form">
         <div className="form-section">
@@ -380,11 +395,11 @@ const LeaveRequestForm = ({
         </div>
 
         <div className="form-footer">
-          <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={disabled}>
+          <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={disabled}>
             Hủy
           </button>
           <button type="submit" className="btn btn-primary" disabled={disabled || !hasStaffList}>
-            Gửi Đơn
+            {submitLabel}
           </button>
         </div>
       </form>
