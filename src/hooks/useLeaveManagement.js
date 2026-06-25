@@ -116,16 +116,18 @@ export const useLeaveManagement = ({
   status,
   search,
   restaurantId,
+  employeeId,
 }) => {
   const filter = useMemo(
     () => ({
       restaurantId: restaurantId || undefined,
+      employeeId: employeeId || undefined,
       startDate: selectedDate || undefined,
       endDate: selectedDate || undefined,
       status: status === "all" ? undefined : status,
       search: search?.trim() || undefined,
     }),
-    [search, selectedDate, status, restaurantId],
+    [employeeId, restaurantId, search, selectedDate, status],
   );
 
   const { data, loading, error, refetch } = useQuery(Q_LEAVE_PAGE, {
@@ -147,28 +149,34 @@ export const useLeaveManagement = ({
   );
   const staffList = useMemo(() => data?.staffList || [], [data?.staffList]);
 
+  const refetchIfReady = async () => {
+    if (restaurantId && refetch) {
+      await refetch();
+    }
+  };
+
   const submitLeaveRequest = async (input) => {
     await createLeaveMutation({ variables: { input } });
-    await refetch();
+    await refetchIfReady();
   };
 
   const approveLeave = async (requestId, note) => {
     await approveLeaveMutation({
       variables: { requestId, note: note || undefined },
     });
-    await refetch();
+    await refetchIfReady();
   };
 
   const rejectLeave = async (requestId, reason) => {
     await rejectLeaveMutation({ variables: { requestId, reason } });
-    await refetch();
+    await refetchIfReady();
   };
 
   const confirmReplacement = async (requestId, note) => {
     await confirmReplacementMutation({
       variables: { requestId, note: note || undefined },
     });
-    await refetch();
+    await refetchIfReady();
   };
 
   const isMutating =
