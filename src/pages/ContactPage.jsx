@@ -5,13 +5,68 @@ import {
   MapPin,
   Clock,
   Send,
-  Facebook,
-  Instagram,
-  Twitter,
 } from "lucide-react";
 import "./ContactPage.scss";
 import "./ContactPage.product.css";
 // Giả sử bạn có component Toast, nếu chưa có thì dùng alert tạm
+
+const SocialFacebook = ({ size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      d="M14 8.75H16.25V5.25H13.65C10.92 5.25 9.25 6.9 9.25 9.55V12H6.75V15.55H9.25V21H13.05V15.55H15.85L16.35 12H13.05V9.95C13.05 9.15 13.38 8.75 14 8.75Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const SocialInstagram = ({ size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect
+      x="5"
+      y="5"
+      width="14"
+      height="14"
+      rx="4"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <circle cx="12" cy="12" r="3.25" stroke="currentColor" strokeWidth="2" />
+    <circle cx="16.35" cy="7.65" r="1" fill="currentColor" />
+  </svg>
+);
+
+const SocialTwitter = ({ size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      d="M6.2 5H9.75L12.55 8.92L15.95 5H18.1L13.55 10.25L18.8 17.6H15.25L11.95 12.98L7.95 17.6H5.8L10.95 11.65L6.2 5ZM8.15 6.45L15.95 16.15H16.85L9.05 6.45H8.15Z"
+      fill="currentColor"
+    />
+  </svg>
+);
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -205,14 +260,14 @@ const ContactPage = () => {
             <div className="social-links">
               <span className="label">Theo dõi chúng tôi:</span>
               <div className="icons">
-                <a href="#" className="social-icon">
-                  <Facebook size={20} />
+                <a href="#" className="social-icon" aria-label="Facebook">
+                  <SocialFacebook size={20} />
                 </a>
-                <a href="#" className="social-icon">
-                  <Instagram size={20} />
+                <a href="#" className="social-icon" aria-label="Instagram">
+                  <SocialInstagram size={20} />
                 </a>
-                <a href="#" className="social-icon">
-                  <Twitter size={20} />
+                <a href="#" className="social-icon" aria-label="Twitter">
+                  <SocialTwitter size={20} />
                 </a>
               </div>
             </div>
