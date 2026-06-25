@@ -40,15 +40,6 @@ const ADD_COMBO_TO_CART = gql`
   }
 `;
 
-const ADD_CART_ITEM = gql`
-  mutation AddComboItemToCart($input: AddCartItemInput!) {
-    addCartItem(input: $input) {
-      id
-      items { id restaurantId menuItemId name price quantity thumbImage note servingVariantKey holdExpiresAt holdStatus }
-    }
-  }
-`;
-
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80";
 const money = (value) => Number(value || 0).toLocaleString("vi-VN");
 const filters = {
@@ -66,11 +57,12 @@ const normalizeFilter = (filter) => Object.fromEntries(
 );
 
 const optionLabel = (key, value) => filters[key]?.find(([optionValue]) => optionValue === value)?.[1] || "";
+const isBundleCombo = (combo) => combo?.sourceType === "COMBO";
 
 export default function CombosPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useContext(AuthContext) || {};
-  const { addToCart, refetchServerCart } = useCart();
+  const { refetchServerCart } = useCart();
   const { showNotification } = useNotification();
   const [filter, setFilter] = useState({ search: "", people: "", budget: "", sourceType: "" });
   const [selectedCombo, setSelectedCombo] = useState(null);
@@ -80,7 +72,6 @@ export default function CombosPage() {
     variables: { filter: queryFilter },
     fetchPolicy: "cache-and-network",
   });
-  const [addCartItemMutation] = useMutation(ADD_CART_ITEM);
   const [addComboToCartMutation] = useMutation(ADD_COMBO_TO_CART);
   const combos = data?.customerCombos || [];
   const featured = combos.slice(0, 3);
@@ -97,89 +88,42 @@ export default function CombosPage() {
   const updateFilter = (key, value) => setFilter((prev) => ({ ...prev, [key]: value }));
   const clearFilters = () => setFilter({ search: "", people: "", budget: "", sourceType: "" });
 
-  const addComboItems = async (combo) => {
-    if (combo?.sourceType === "COMBO") {
-      if (!isAuthenticated || !user?.id) {
-        showNotification("Vui lòng đăng nhập để thêm combo vào giỏ.", "warning");
-        navigate("/login", { state: { from: "/combos" } });
-        return;
-      }
-      setAddingComboId(combo.id);
-      try {
-        await addComboToCartMutation({ variables: { comboId: combo.id, quantity: 1 } });
-        await refetchServerCart?.();
-        showNotification("Đã thêm combo bundle vào giỏ.", "success");
-      } catch (err) {
-        showNotification(err?.message || "Không thể thêm combo vào giỏ.", "error");
-      } finally {
-        setAddingComboId(null);
-      }
+  const addBundleCombo = async (combo) => {
+    if (!isBundleCombo(combo)) {
+      setSelectedCombo(combo);
       return;
     }
-    const items = (combo?.items || []).filter((item) => item.menuItemId && combo.restaurantId);
-    if (!items.length) return;
     if (!isAuthenticated || !user?.id) {
-      showNotification("Vui lòng đăng nhập để thêm món vào giỏ.", "warning");
+      showNotification("Vui lòng đăng nhập để thêm combo vào giỏ.", "warning");
       navigate("/login", { state: { from: "/combos" } });
       return;
     }
     setAddingComboId(combo.id);
     try {
-      for (const item of items) {
-        const price = Number(item.price || 0);
-        const { data: mutationData } = await addCartItemMutation({
-          variables: { input: {
-            userId: user.id,
-            restaurantId: String(combo.restaurantId),
-            menuItemId: item.menuItemId,
-            name: item.name,
-            price,
-            quantity: Number(item.qty || 1),
-            thumbImage: item.imageUrl || combo.imageUrl || DEFAULT_IMAGE,
-            note: `Từ combo: ${combo.name}`,
-            servingVariantKey: "portion",
-          } },
-        });
-        const returned = mutationData?.addCartItem?.items?.find((row) => String(row?.menuItemId) === String(item.menuItemId));
-        addToCart({
-          id: item.menuItemId,
-          dishId: item.menuItemId,
-          restaurantId: String(combo.restaurantId),
-          servingVariantKey: returned?.servingVariantKey || "portion",
-          name: item.name,
-          price,
-          image: item.imageUrl || combo.imageUrl || DEFAULT_IMAGE,
-          method: "Phần tiêu chuẩn",
-          quantity: Number(item.qty || 1),
-          backendCartId: mutationData?.addCartItem?.id || null,
-          backendCartItemId: returned?.id || null,
-          holdExpiresAt: returned?.holdExpiresAt || null,
-          holdStatus: returned?.holdStatus || null,
-          note: returned?.note ?? `Từ combo: ${combo.name}`,
-        });
-      }
+      await addComboToCartMutation({ variables: { comboId: combo.id, quantity: 1 } });
       await refetchServerCart?.();
-      showNotification("Đã thêm các món trong combo vào giỏ.", "success");
+      showNotification("Đã thêm combo bundle vào giỏ.", "success");
     } catch (err) {
-      showNotification(err?.message || "Không thể thêm combo vào giỏ. Vui lòng thử lại.", "error");
+      showNotification(err?.message || "Không thể thêm combo vào giỏ.", "error");
     } finally {
       setAddingComboId(null);
     }
   };
 
   const renderCard = (combo, featuredCard = false) => {
-    const canAddItems = combo.restaurantId && combo.items?.some((item) => item.menuItemId);
+    const bundle = isBundleCombo(combo);
+    const canAddBundle = bundle && combo.restaurantId && combo.items?.some((item) => item.menuItemId);
     const itemCount = (combo.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
     return (
       <article className={`combo-card${featuredCard ? " combo-card--featured" : ""}`} key={`${combo.sourceType}-${combo.id}`}>
         <div className="combo-card__image-wrap">
           <img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} className="combo-card__image" loading="lazy" />
-          <span className="combo-card__badge">{combo.badge || (combo.sourceType === "PROMOTION" ? "Ưu đãi combo" : "Combo cố định")}</span>
+          <span className="combo-card__badge">{combo.badge || (bundle ? "Combo cố định" : "Ưu đãi combo")}</span>
           {combo.discountAmount > 0 && <span className="combo-card__saving-flag">- {money(combo.discountAmount)}đ</span>}
         </div>
         <div className="combo-card__body">
           <div className="combo-card__meta-row">
-            <p className="combo-card__eyebrow">{combo.sourceType === "PROMOTION" ? "Combo ưu đãi" : "Combo nhà hàng"}</p>
+            <p className="combo-card__eyebrow">{bundle ? "Combo bundle" : "Ưu đãi checkout"}</p>
             <span>{itemCount || combo.items?.length || 0} món</span>
           </div>
           <h3>{combo.name}</h3>
@@ -191,14 +135,20 @@ export default function CombosPage() {
             <strong>{money(combo.comboPrice ?? combo.originalPrice)}đ</strong>
             {combo.originalPrice && combo.comboPrice && combo.originalPrice > combo.comboPrice && <span>{money(combo.originalPrice)}đ</span>}
           </div>
-          {combo.discountAmount > 0 && <p className="combo-card__save">Tiết kiệm {money(combo.discountAmount)}đ so với gọi lẻ</p>}
+          {bundle ? (
+            combo.discountAmount > 0 && <p className="combo-card__save">Tiết kiệm {money(combo.discountAmount)}đ so với gọi lẻ</p>
+          ) : (
+            <p className="combo-card__save combo-card__save--notice">Ưu đãi sẽ được tính ở bước thanh toán khi giỏ đủ điều kiện.</p>
+          )}
           <div className="combo-card__actions">
-            <button type="button" className="combo-card__secondary" onClick={() => setSelectedCombo(combo)}>Xem combo</button>
-            {canAddItems && (
-              <button type="button" className="combo-card__primary" disabled={addingComboId === combo.id} onClick={() => addComboItems(combo)}>
-                {addingComboId === combo.id ? "Đang thêm..." : combo.sourceType === "COMBO" ? "Thêm combo" : "Thêm món"}
+            <button type="button" className="combo-card__secondary" onClick={() => setSelectedCombo(combo)}>{bundle ? "Xem combo" : "Xem ưu đãi"}</button>
+            {canAddBundle ? (
+              <button type="button" className="combo-card__primary" disabled={addingComboId === combo.id} onClick={() => addBundleCombo(combo)}>
+                {addingComboId === combo.id ? "Đang thêm..." : "Thêm combo"}
               </button>
-            )}
+            ) : !bundle && combo.restaurantId ? (
+              <Link className="combo-card__primary combo-card__primary--link" to={`/restaurant/${combo.restaurantId}`}>Chọn món</Link>
+            ) : null}
           </div>
         </div>
       </article>
@@ -214,7 +164,7 @@ export default function CombosPage() {
         <div className="combos-hero__content">
           <span className="combos-hero__label">Cohan combo</span>
           <h1 id="combos-title">Combo tiết kiệm hôm nay</h1>
-          <p>Chọn nhanh set món theo số người, ngân sách và khẩu vị. Combo cố định được thêm vào giỏ như một bundle riêng.</p>
+          <p>Combo cố định được thêm vào giỏ như một bundle riêng. Combo ưu đãi chỉ là điều kiện giảm giá và sẽ được tính ở bước thanh toán.</p>
           <div className="combos-hero__actions">
             <a href="#combo-results" className="combos-hero__primary">Xem combo</a>
             <Link className="combos-hero__link" to="/restaurants">Xem nhà hàng</Link>
@@ -266,12 +216,12 @@ export default function CombosPage() {
         <article>
           <span>02</span>
           <strong>Ưu đãi rõ ràng</strong>
-          <p>Combo promotion vẫn áp dụng trên món thành phần, không trộn nhầm với bundle.</p>
+          <p>Combo promotion chỉ là điều kiện giảm giá ở checkout, không thêm sai như bundle.</p>
         </article>
         <article>
           <span>03</span>
           <strong>Dễ kiểm tra</strong>
-          <p>Xem món con, giá gốc và mức tiết kiệm trước khi thêm vào giỏ.</p>
+          <p>Xem món con, giá gốc và mức tiết kiệm trước khi quyết định.</p>
         </article>
       </section>
 
@@ -300,7 +250,7 @@ export default function CombosPage() {
         </section>
       )}
 
-      {selectedCombo && <ComboModal combo={selectedCombo} onClose={() => setSelectedCombo(null)} onAdd={addComboItems} isAdding={addingComboId === selectedCombo.id} />}
+      {selectedCombo && <ComboModal combo={selectedCombo} onClose={() => setSelectedCombo(null)} onAdd={addBundleCombo} isAdding={addingComboId === selectedCombo.id} />}
     </main>
   );
 }
@@ -310,23 +260,26 @@ function SkeletonGrid() {
 }
 
 function ComboModal({ combo, onClose, onAdd, isAdding }) {
-  const canAddItems = combo.restaurantId && combo.items?.some((item) => item.menuItemId);
+  const bundle = isBundleCombo(combo);
+  const canAddBundle = bundle && combo.restaurantId && combo.items?.some((item) => item.menuItemId);
   return (
     <div className="combo-modal" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <section className="combo-modal__panel" role="dialog" aria-modal="true" aria-label={`Chi tiết ${combo.name}`}>
         <button type="button" className="combo-modal__close" aria-label="Đóng chi tiết combo" onClick={onClose}>×</button>
-        <div className="combo-modal__media"><img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} /><span>{combo.badge || "Combo"}</span></div>
+        <div className="combo-modal__media"><img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} /><span>{combo.badge || (bundle ? "Combo" : "Ưu đãi")}</span></div>
         <div className="combo-modal__content">
-          <span className="combo-modal__eyebrow">{combo.sourceType === "PROMOTION" ? "Ưu đãi combo" : "Combo bundle"}</span>
+          <span className="combo-modal__eyebrow">{bundle ? "Combo bundle" : "Ưu đãi checkout"}</span>
           <h2>{combo.name}</h2>
           <p>{combo.restaurantName || "Nhà hàng đang cập nhật"}</p>
           {combo.description && <p>{combo.description}</p>}
           <ul>{(combo.items || []).map((item) => <li key={`${item.menuItemId || item.name}-modal`}><strong>{item.qty}× {item.name}</strong>{item.price ? <em>{money(item.price)}đ</em> : null}</li>)}</ul>
           <div className="combo-modal__total"><strong>{money(combo.comboPrice ?? combo.originalPrice)}đ</strong>{combo.discountAmount > 0 && <span>Tiết kiệm {money(combo.discountAmount)}đ</span>}</div>
-          <p className="combo-modal__note">Combo này gồm nhiều món, bạn có thể kiểm tra trước khi thêm.</p>
+          <p className="combo-modal__note">
+            {bundle ? "Combo này sẽ được thêm vào giỏ như một bundle riêng." : "Đây là combo ưu đãi: hệ thống chỉ áp dụng giảm giá ở bước thanh toán khi giỏ đủ điều kiện, không thêm như một bundle."}
+          </p>
           <div className="combo-modal__actions">
-            {combo.restaurantId && <Link to={`/restaurant/${combo.restaurantId}`}>Đến nhà hàng</Link>}
-            {canAddItems && <button type="button" onClick={() => onAdd(combo)} disabled={isAdding}>{isAdding ? "Đang thêm..." : combo.sourceType === "COMBO" ? "Thêm combo vào giỏ" : "Thêm món vào giỏ"}</button>}
+            {combo.restaurantId && <Link to={`/restaurant/${combo.restaurantId}`}>{bundle ? "Đến nhà hàng" : "Chọn món đủ điều kiện"}</Link>}
+            {canAddBundle && <button type="button" onClick={() => onAdd(combo)} disabled={isAdding}>{isAdding ? "Đang thêm..." : "Thêm combo vào giỏ"}</button>}
           </div>
         </div>
       </section>
