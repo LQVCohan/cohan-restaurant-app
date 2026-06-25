@@ -4,7 +4,7 @@ import LeaveRequestsList from "./LeaveRequestsList";
 import { useLeaveManagement } from "../../../../../hooks/useLeaveManagement";
 import "./LeaveManagement.scss";
 
-const LeaveManagement = () => {
+const LeaveManagement = ({ restaurantId }) => {
   const [selectedDate, setSelectedDate] = useState(
     ""
   );
@@ -21,7 +21,12 @@ const LeaveManagement = () => {
     loading,
     error,
     isMutating,
-  } = useLeaveManagement({ selectedDate, status: statusFilter, search });
+  } = useLeaveManagement({
+    selectedDate,
+    status: statusFilter,
+    search,
+    restaurantId,
+  });
 
   return (
     <div className="leave-management-page">
