@@ -1,6 +1,24 @@
 /* Gives the customer list enough lower canvas to reveal the full card page cleanly. */
 
+.cm-page {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
 .cm-page .cm-layout {
+  flex: none !important;
+  min-height: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-bottom: max(7rem, 18vh) !important;
+}
+
+.cm-page .cm-layout .cm-main-area {
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
   padding-bottom: max(7rem, 18vh) !important;
 }
 
@@ -24,7 +42,8 @@
 }
 
 @media (min-height: 880px) {
-  .cm-page .cm-layout {
+  .cm-page .cm-layout,
+  .cm-page .cm-layout .cm-main-area {
     padding-bottom: max(9rem, 20vh) !important;
   }
 

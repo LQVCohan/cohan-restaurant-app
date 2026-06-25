@@ -30,6 +30,9 @@ const OrderItem = ({
   };
   const statusLabel = statusLabels[normalizedStatus] || status || "--";
   const displayRestaurantName = restaurantName || "Nhà hàng";
+  const visibleActions = normalizedStatus === "pending_change"
+    ? actions.filter((action) => !["Đổi giờ", "Đổi bàn"].includes(action?.label))
+    : actions;
 
   const handleKeyDown = (event) => {
     if (!onClick) return;
@@ -88,6 +91,12 @@ const OrderItem = ({
           </div>
         </div>
 
+        {normalizedStatus === "pending_change" && (
+          <div className="items-list">
+            <div className="more-items">Lịch cũ vẫn giữ hiệu lực cho đến khi nhà hàng duyệt yêu cầu.</div>
+          </div>
+        )}
+
         {itemsPreview.length > 0 && (
           <div className="items-list">
             {itemsPreview.map((item, idx) => (
@@ -121,7 +130,7 @@ const OrderItem = ({
           Xem chi tiết <ArrowRight size={14} />
         </div>
         <div className="action-group">
-          {actions.map((action, idx) => (
+          {visibleActions.map((action, idx) => (
             <button
               type="button"
               key={`${action.label}-${idx}`}

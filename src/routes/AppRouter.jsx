@@ -26,6 +26,7 @@ import CheckoutPage from "@/pages/CheckoutPage.jsx";
 import CartPage from "@/pages/CartPage.jsx";
 import WalletPage from "@/pages/WalletPage.jsx";
 import TableCurrentSessionPage from "@/components/Customer/TableCurrentSession/TableCurrentSessionPage";
+import ReservationChangeReviewPage from "@/components/Dashboard_Manager/Reservations/ReservationChangeReviewPage";
 import {
   AdminRestaurantInfoManagement,
   ManagerRestaurantInfoManagement,
@@ -178,6 +179,7 @@ const AppRouter = () => (
     <Route path="/manager" element={withPrivateRoute(<ManagerLayout><Dashboard /></ManagerLayout>, ["manager", "admin", "hr", "accountant"])} />
     <Route path="/manager/dashboard/POS" element={withPrivateRoute(withLazyRoute(<POSLayout />), ["manager", "admin"])} />
     <Route path="/manager/floor-map/:restaurantId" element={withPrivateRoute(<FloorPlanDesigner />, ["manager", "admin"], false)} />
+    <Route path="/manager/reservation-changes" element={withPrivateRoute(<ManagerLayout><ReservationChangeReviewPage /></ManagerLayout>, ["manager", "admin"])} />
     <Route path="/manager/performance" element={withPrivateRoute(<Navigate to="/manager#staff" replace />, ["manager", "admin"])} />
     <Route path="/manager/restaurants/categories" element={withPrivateRoute(<ManagerRestaurantInfoManagement />, ["manager", "admin"])} />
     <Route path="/admin/restaurants/categories" element={withPrivateRoute(<AdminRestaurantInfoManagement />, ["admin"])} />
@@ -211,7 +213,6 @@ const AppRouter = () => (
       <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer"])} />
       <Route path="/food/:foodId" element={<FoodDetail />} />
       <Route path="/vouchers/:id" element={<Navigate to="/restaurants" replace />} />
-      <Route path="/coupons" element={<CouponPage />} />
       <Route path="/coupons/:restaurantId" element={<CouponPage />} />
       <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
