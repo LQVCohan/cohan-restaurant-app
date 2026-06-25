@@ -10,6 +10,22 @@ type SystemSettingModules {
   backup: Boolean!
 }
 
+type SystemSettingOvertimeLimit {
+  maxMinutesPerDay: Int!
+}
+
+type SystemSettingOvertimeRoleGroupLimits {
+  service: SystemSettingOvertimeLimit!
+  kitchen: SystemSettingOvertimeLimit!
+  shiftManager: SystemSettingOvertimeLimit!
+}
+
+type SystemSettingOvertimePolicy {
+  enabled: Boolean!
+  defaultMaxMinutesPerDay: Int!
+  roleGroupLimits: SystemSettingOvertimeRoleGroupLimits!
+}
+
 type SystemSettingMetadata {
   note: String
   version: Int!
@@ -23,6 +39,7 @@ type SystemSetting {
   dateFormat: String!
   operational: SystemSettingOperational!
   modules: SystemSettingModules!
+  overtimePolicy: SystemSettingOvertimePolicy!
   metadata: SystemSettingMetadata!
   updatedBy: ID
   createdAt: DateTime
@@ -41,6 +58,22 @@ input SystemSettingModulesInput {
   backup: Boolean
 }
 
+input SystemSettingOvertimeLimitInput {
+  maxMinutesPerDay: Int
+}
+
+input SystemSettingOvertimeRoleGroupLimitsInput {
+  service: SystemSettingOvertimeLimitInput
+  kitchen: SystemSettingOvertimeLimitInput
+  shiftManager: SystemSettingOvertimeLimitInput
+}
+
+input SystemSettingOvertimePolicyInput {
+  enabled: Boolean
+  defaultMaxMinutesPerDay: Int
+  roleGroupLimits: SystemSettingOvertimeRoleGroupLimitsInput
+}
+
 input UpdateSystemSettingInput {
   restaurantId: ID!
   timezone: String
@@ -48,6 +81,7 @@ input UpdateSystemSettingInput {
   dateFormat: String
   operational: SystemSettingOperationalInput
   modules: SystemSettingModulesInput
+  overtimePolicy: SystemSettingOvertimePolicyInput
   note: String
 }
 
