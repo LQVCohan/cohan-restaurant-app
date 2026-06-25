@@ -2,42 +2,46 @@
 
 .floor-selector-tabs {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 0;
+  scrollbar-width: thin;
 
-  // Ẩn scrollbar nhưng vẫn cuộn được
   &::-webkit-scrollbar {
-    height: 4px;
+    height: 5px;
   }
+
   &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+    background: rgba(255, 107, 26, 0.28);
+    border-radius: 999px;
   }
 
   .floor-tab {
-    padding: 8px 20px;
-    border-radius: 20px; // Bo tròn dạng viên thuốc
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 999px;
     background: #ffffff;
     border: 1px solid #e5e7eb;
-    color: #6b7280;
-    font-weight: 500;
-    font-size: 0.95rem;
+    color: #475569;
+    font-weight: 800;
+    font-size: 0.92rem;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 
     &:hover {
-      background: #f9fafb;
-      color: #3b82f6; // Màu xanh chủ đạo
-      border-color: #3b82f6;
+      background: #fff1e8;
+      color: #c2410c;
+      border-color: rgba(255, 107, 26, 0.46);
+      transform: translateY(-1px);
     }
 
     &.active {
-      background: #3b82f6;
-      color: white;
-      border-color: #3b82f6;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+      background: linear-gradient(135deg, #ff6b1a, #ff8a3d);
+      color: #ffffff;
+      border-color: #ff6b1a;
+      box-shadow: 0 8px 18px rgba(255, 107, 26, 0.32);
     }
   }
 }
