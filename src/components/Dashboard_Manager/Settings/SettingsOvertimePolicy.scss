@@ -1,4 +1,8 @@
 .settings-management {
+  &__summary {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+
   &__overtime-policy {
     display: grid;
     gap: 14px;
