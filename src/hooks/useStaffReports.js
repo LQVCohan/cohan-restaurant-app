@@ -101,6 +101,16 @@ const STAFF_REPORTS_QUERY = gql`
 
 const toISODate = (d) => d.toISOString().slice(0, 10);
 
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const toDateTimeInput = (value, boundary = "start") => {
+  if (!value) return undefined;
+  if (DATE_ONLY_PATTERN.test(value)) {
+    return `${value}T${boundary === "end" ? "23:59:59.999" : "00:00:00.000"}Z`;
+  }
+  return value;
+};
+
 export const buildPresetRange = (preset) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -129,10 +139,10 @@ export default function useStaffReports({ startDate, endDate, compareStartDate, 
   const variables = useMemo(
     () => ({
       input: {
-        startDate,
-        endDate,
-        compareStartDate: compareStartDate || undefined,
-        compareEndDate: compareEndDate || undefined,
+        startDate: toDateTimeInput(startDate, "start"),
+        endDate: toDateTimeInput(endDate, "end"),
+        compareStartDate: toDateTimeInput(compareStartDate, "start"),
+        compareEndDate: toDateTimeInput(compareEndDate, "end"),
       },
     }),
     [compareEndDate, compareStartDate, endDate, startDate]
