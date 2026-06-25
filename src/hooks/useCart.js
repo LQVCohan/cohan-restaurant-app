@@ -75,6 +75,7 @@ const normalizeCartLine = (item = {}) => {
   const incoming = { ...item, quantity: Number(item.quantity || 1) || 1 };
   incoming.id = incoming.id || incoming.dishId || incoming.menuItemId;
   incoming.dishId = incoming.dishId || incoming.menuItemId || incoming.id;
+  incoming.servingVariantKey = incoming.servingVariantKey || incoming.servingKey || incoming.variantKey || "portion";
   incoming.cartLineKey = getLineKey(incoming);
   return incoming;
 };
@@ -153,6 +154,28 @@ export const useCart = () => {
     });
   }, []);
 
+  const upsertCartLine = useCallback((item, { preserveQuantity = true } = {}) => {
+    const incoming = normalizeCartLine(item);
+    if (!incoming.id) return;
+    setCart((prev) => {
+      const incomingLineKey = getLineKey(incoming);
+      const found = prev.some((i) => getLineKey(i) === incomingLineKey);
+      if (!found) return [...prev, incoming];
+      return prev.map((i) => {
+        if (getLineKey(i) !== incomingLineKey) return i;
+        return {
+          ...i,
+          ...incoming,
+          quantity: preserveQuantity ? Number(i.quantity || incoming.quantity || 1) : Number(incoming.quantity || 1),
+          holdExpiresAt: incoming.holdExpiresAt || i.holdExpiresAt,
+          holdStatus: incoming.holdStatus || i.holdStatus,
+          backendCartItemId: incoming.backendCartItemId || i.backendCartItemId,
+          backendCartId: incoming.backendCartId || i.backendCartId,
+        };
+      });
+    });
+  }, []);
+
   const syncServerCart = useCallback((serverItems = [], { replace = false } = {}) => {
     const normalizedServerItems = (serverItems || []).map(normalizeCartLine);
     setCart((prev) => (replace ? normalizedServerItems : mergeCartLines(prev, normalizedServerItems)));
@@ -211,6 +234,7 @@ export const useCart = () => {
   return {
     cart,
     addToCart,
+    upsertCartLine,
     syncServerCart,
     replaceCart,
     updateQuantity,
