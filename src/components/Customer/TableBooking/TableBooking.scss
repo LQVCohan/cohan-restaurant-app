@@ -16,6 +16,8 @@ $color-border: #e5e7eb;
 $color-bg-page: #fffaf5;
 $color-white: #ffffff;
 
+$page-max-width: 1460px;
+$sidebar-width: 320px;
 $shadow-card: 0 18px 45px rgba(15, 23, 42, 0.08);
 $shadow-float: 0 18px 36px rgba(15, 23, 42, 0.16);
 $radius-xl: 22px;
@@ -35,7 +37,7 @@ $radius-md: 14px;
 }
 
 .booking-alert {
-  max-width: 1200px;
+  max-width: $page-max-width;
   margin: 0 auto 18px;
   padding: 13px 18px;
   background: #111827;
@@ -49,7 +51,7 @@ $radius-md: 14px;
 
 /* --- HEADER --- */
 .premium-header {
-  max-width: 1200px;
+  max-width: $page-max-width;
   margin: 0 auto 24px;
   padding: 0 24px;
 
@@ -137,12 +139,12 @@ $radius-md: 14px;
 
 /* --- GRID LAYOUT --- */
 .booking-layout-grid {
-  max-width: 1200px;
+  max-width: $page-max-width;
   margin: 0 auto;
   padding: 0 24px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 350px;
-  gap: 24px;
+  grid-template-columns: minmax(760px, 1fr) $sidebar-width;
+  gap: 22px;
   align-items: start;
 
   @media (max-width: 1100px) {
@@ -234,8 +236,8 @@ $radius-md: 14px;
 /* Map Viewport Frame */
 .map-viewport-frame {
   position: relative;
-  height: min(64vh, 640px);
-  min-height: 520px;
+  height: min(68vh, 660px);
+  min-height: 540px;
   overflow: hidden;
   isolation: isolate;
   background: #fffefd;
@@ -386,6 +388,13 @@ $radius-md: 14px;
   }
 }
 
+@media (max-width: 1280px) {
+  .booking-layout-grid {
+    grid-template-columns: minmax(0, 1fr) 310px;
+    gap: 18px;
+  }
+}
+
 @media (max-width: 1100px) {
   .premium-header {
     padding: 0 16px;
@@ -397,6 +406,7 @@ $radius-md: 14px;
 
   .booking-layout-grid {
     padding: 0 16px;
+    grid-template-columns: 1fr;
   }
 }
 
