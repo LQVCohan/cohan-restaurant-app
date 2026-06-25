@@ -24,6 +24,25 @@ const Q_FLOORS = gql`
   }
 `;
 
+const Q_PUBLIC_FLOORS = gql`
+  query PublicFloors($restaurantId: ID!) {
+    publicFloors(restaurantId: $restaurantId) {
+      id
+      name
+      level
+      description
+      planImage
+      isActive
+      isWatching
+      layout
+      meta {
+        width
+        height
+      }
+    }
+  }
+`;
+
 const Q_TABLES = gql`
   query Tables(
     $restaurantId: ID!
@@ -40,6 +59,54 @@ const Q_TABLES = gql`
       id
       label: code
       capacity
+      type
+      deposit
+      photos
+      vrUrl
+      notes
+      tags
+      visualConfig
+      position {
+        x
+        y
+        w
+        h
+        rotation
+        shape
+        path
+      }
+      status
+      isViewingLocked
+      viewLockUserId
+      viewLockExpiresAt
+      viewLockViewerName
+    }
+  }
+`;
+
+const Q_PUBLIC_TABLES = gql`
+  query PublicTables(
+    $restaurantId: ID!
+    $floorId: ID!
+    $status: TableStatus
+    $limit: Int
+  ) {
+    publicTables(
+      restaurantId: $restaurantId
+      floorId: $floorId
+      status: $status
+      limit: $limit
+    ) {
+      id
+      label: code
+      capacity
+      type
+      deposit
+      photos
+      vrUrl
+      notes
+      tags
+      visualConfig
       position {
         x
         y
@@ -86,6 +153,7 @@ const M_CREATE_FLOOR = gql`
  * @param initialFloorId: nếu có id tầng cụ thể ban đầu
  * @param tableStatus: filter status bàn (optional)
  * @param tableLimit: limit số bàn (default 200)
+ * @param publicAccess: dùng query public cho màn khách hàng
  */
 export default function useFloorManagement({
   restaurantId,
@@ -94,6 +162,7 @@ export default function useFloorManagement({
   tableStatus = null,
   tableLimit = 200,
   enabled = true,
+  publicAccess = false,
 }) {
   // 1. Query floors
   const {
@@ -101,13 +170,16 @@ export default function useFloorManagement({
     loading: floorsLoading,
     error: floorsError,
     refetch: refetchFloors,
-  } = useQuery(Q_FLOORS, {
+  } = useQuery(publicAccess ? Q_PUBLIC_FLOORS : Q_FLOORS, {
     variables: { restaurantId },
     skip: !enabled || !restaurantId,
     fetchPolicy: "cache-and-network",
   });
 
-  const floors = useMemo(() => floorsData?.floors ?? [], [floorsData]);
+  const floors = useMemo(
+    () => (publicAccess ? floorsData?.publicFloors : floorsData?.floors) ?? [],
+    [floorsData, publicAccess]
+  );
   const [createFloorMut] = useMutation(M_CREATE_FLOOR);
 
   // 2. Active level / floor
@@ -145,7 +217,7 @@ export default function useFloorManagement({
     loading: tablesLoading,
     error: tablesError,
     refetch: refetchTables,
-  } = useQuery(Q_TABLES, {
+  } = useQuery(publicAccess ? Q_PUBLIC_TABLES : Q_TABLES, {
     variables: {
       restaurantId,
       floorId: activeFloorId,
@@ -156,7 +228,10 @@ export default function useFloorManagement({
     fetchPolicy: "network-only",
   });
 
-  const tables = useMemo(() => tablesData?.tables ?? [], [tablesData]);
+  const tables = useMemo(
+    () => (publicAccess ? tablesData?.publicTables : tablesData?.tables) ?? [],
+    [tablesData, publicAccess]
+  );
 
   // Helpers set floor theo id
   const setActiveFloorById = (id) => {
@@ -177,6 +252,9 @@ export default function useFloorManagement({
     }) => {
       if (!restaurantId) {
         throw new Error("Missing restaurantId");
+      }
+      if (publicAccess) {
+        throw new Error("Không thể tạo tầng từ màn khách hàng.");
       }
       const normalizedName = String(name || "").trim();
       if (!normalizedName) {
@@ -217,7 +295,7 @@ export default function useFloorManagement({
       await refetchFloors();
       return created;
     },
-    [restaurantId, floors, createFloorMut, refetchFloors]
+    [restaurantId, floors, createFloorMut, refetchFloors, publicAccess]
   );
 
   return {
