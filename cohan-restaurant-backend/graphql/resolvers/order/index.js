@@ -5,6 +5,10 @@ import { OrderCoreRecoveryQuery } from "./queryCoreRecovery.js";
 import { OrderMutation } from "./mutation.js";
 import { CustomerTrackingPaymentMutation } from "./customerTrackingPaymentMutation.js";
 import { OrderProofMutation } from "./orderProofMutation.js";
+import {
+  CustomerOrderHistoryMutation,
+  CustomerOrderHistoryQuery,
+} from "./customerHistory.js";
 import { withOrderRestaurantAccessGuards } from "./accessGuard.js";
 import { OrderResolvers } from "./types.js";
 import { OrderSubscription } from "./subscription.js";
@@ -27,10 +31,12 @@ export default {
     ...OrderQuery,
     ...OrderCoreRecoveryQuery,
     ...publicTableSessionQuery,
+    ...CustomerOrderHistoryQuery,
   },
   Mutation: {
     ...GuardedOrderMutation,
     ...OrderProofMutation,
+    ...CustomerOrderHistoryMutation,
   },
   Subscription: {
     ...OrderSubscription,
