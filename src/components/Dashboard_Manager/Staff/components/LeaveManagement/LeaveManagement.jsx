@@ -3,6 +3,7 @@ import LeaveRequestForm from "./LeaveRequestForm";
 import LeaveRequestsList from "./LeaveRequestsList";
 import { useLeaveManagement } from "../../../../../hooks/useLeaveManagement";
 import "./LeaveManagement.scss";
+import "./LeaveModal.scss";
 
 const LeaveManagement = ({ restaurantId }) => {
   const [selectedDate, setSelectedDate] = useState("");
