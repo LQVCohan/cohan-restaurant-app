@@ -443,7 +443,7 @@ export default function Table3DSimulatorModalV2({
               className={`table-3d-ar-status table-3d-ar-status--${arStatus.tone}`}
               title={arStatus.description}
             >
-              {arStatus.label}
+              Trạng thái AR: {arStatus.label}
             </span>
           </div>
           <p>

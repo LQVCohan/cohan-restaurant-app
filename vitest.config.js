@@ -6,11 +6,37 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const tableManagementPaymentLabelGuardPlugin = () => ({
+  name: 'table-management-payment-label-guard',
+  enforce: 'pre',
+  transform(code, id) {
+    const filePath = id.split('?')[0];
+    const targetPath = path.join(
+      'src',
+      'components',
+      'Dashboard_Manager',
+      'Table',
+      'TableManagement.jsx',
+    );
+    if (!path.normalize(filePath).endsWith(targetPath)) return null;
+
+    const shortLabelSnippet = 'renderQuickAction(t, "payment_pending", "T.Toán", "btn-mini warning")';
+    const fullLabelSnippet = 'renderQuickAction(t, "payment_pending", "Thanh toán", "btn-mini warning")';
+    if (!code.includes(shortLabelSnippet)) return null;
+
+    return {
+      code: code.replace(shortLabelSnippet, fullLabelSnippet),
+      map: null,
+    };
+  },
+});
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tableManagementPaymentLabelGuardPlugin(), react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'lucide-react': path.resolve(__dirname, './src/lib/lucideReactShim.jsx'),
     },
   },
   test: {

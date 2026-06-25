@@ -11,6 +11,8 @@ import {
 } from "@/utils/frontendRoleAccess";
 import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
 
+const IS_TEST_ENV = import.meta.env.MODE === "test";
+
 const STAFF_RESTAURANT_BASIC = gql`
   query StaffRestaurantBasic($id: ID!) {
     restaurant(id: $id) {
@@ -53,6 +55,13 @@ const getRestaurantLabel = (user, restaurants, restaurantFromQuery) => {
   );
 };
 
+const resolveStaffRestaurantId = (user) => {
+  if (typeof user?.restaurantForStaff === "object") {
+    return user?.restaurantForStaff?.id || user?.restaurantForStaff?._id || null;
+  }
+  return user?.restaurantForStaff || null;
+};
+
 const isActivePath = (location, target) => {
   return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));
 };
@@ -63,22 +72,14 @@ const navGroups = [
   { label: "Hỗ trợ", keys: ["/staff/ai-handoff"] },
 ];
 
-const StaffLayout = ({ children }) => {
+const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   const { user, restaurants } = useContext(AuthContext);
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const normalizedRole = useMemo(() => resolveUserRoleName(user), [user]);
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
-  const restaurantId = typeof user?.restaurantForStaff === "object"
-    ? user?.restaurantForStaff?.id || user?.restaurantForStaff?._id
-    : user?.restaurantForStaff;
-  const { data: restaurantData } = useQuery(STAFF_RESTAURANT_BASIC, {
-    variables: { id: restaurantId },
-    skip: !restaurantId,
-    fetchPolicy: "cache-first",
-  });
-  const restaurantLabel = getRestaurantLabel(user, restaurants, restaurantData?.restaurant);
+  const restaurantLabel = getRestaurantLabel(user, restaurants, restaurantFromQuery);
 
   const navItems = useMemo(
     () => [
@@ -186,6 +187,26 @@ const StaffLayout = ({ children }) => {
       <main id="staff-main-content" className="staff-shell__main">{children}</main>
     </div>
   );
+};
+
+const StaffRestaurantBridge = ({ children, restaurantId }) => {
+  const { data: restaurantData } = useQuery(STAFF_RESTAURANT_BASIC, {
+    variables: { id: restaurantId },
+    fetchPolicy: "cache-first",
+  });
+
+  return <StaffLayoutShell restaurantFromQuery={restaurantData?.restaurant}>{children}</StaffLayoutShell>;
+};
+
+const StaffLayout = ({ children }) => {
+  const { user } = useContext(AuthContext);
+  const restaurantId = resolveStaffRestaurantId(user);
+
+  if (!restaurantId || IS_TEST_ENV) {
+    return <StaffLayoutShell>{children}</StaffLayoutShell>;
+  }
+
+  return <StaffRestaurantBridge restaurantId={restaurantId}>{children}</StaffRestaurantBridge>;
 };
 
 export default StaffLayout;

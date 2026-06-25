@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, TrendingUp, WalletCards } from "lucide-react";
+import { Gift, TrendingUp, Wallet } from "lucide-react";
 import "./LoyaltyWalletCard.scss";
 
 const formatVND = (value = 0) =>
@@ -46,12 +46,12 @@ export default function LoyaltyWalletCard({ user }) {
           <strong>{totalOrders.toLocaleString("vi-VN")}</strong>
         </article>
         <article>
-          <WalletCards size={18} />
+          <Wallet size={18} />
           <span>Chi tiêu</span>
           <strong>{formatVND(totalSpending)}</strong>
         </article>
         <article>
-          <WalletCards size={18} />
+          <Wallet size={18} />
           <span>Ví Cohan</span>
           <strong>{wallet?.balance != null ? formatVND(wallet.balance) : "Chưa kích hoạt"}</strong>
           {wallet?.status && <small>{wallet.status}</small>}

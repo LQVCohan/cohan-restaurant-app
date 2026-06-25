@@ -1,0 +1,101 @@
+/* Context-aware staff header polish
+   - Subpages already have their own KPI cards, so the top staff header stays compact.
+   - Hide the old schedule drill-down banner because restaurantId alone made it appear on normal staff pages. */
+
+.management-page-header.staff-page-header.is-subpage-context {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  grid-template-columns: minmax(190px, 245px) minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(241, 228, 208, 0.72), transparent 35%),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(250, 244, 235, 0.94));
+
+  .mph-left {
+    padding-right: 12px;
+  }
+
+  .mph-title {
+    margin-bottom: 4px;
+    font-size: 21px;
+  }
+
+  .mph-subtitle {
+    max-width: 34ch;
+    font-size: 12px;
+  }
+
+  .mph-controls-row {
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .mph-search {
+    flex: 1 1 340px;
+    max-width: 460px;
+  }
+
+  .mph-btn--primary {
+    min-width: 140px;
+  }
+
+  .mph-footer-row,
+  .mph-stats-grid,
+  .mph-icon-btn {
+    display: none !important;
+  }
+}
+
+.staff-page-container .attendance-readiness-focus-banner {
+  display: none !important;
+}
+
+.staff-page-container .attendance-management-page {
+  gap: 1.15rem;
+}
+
+.staff-page-container .attendance-management-page .stats-grid {
+  gap: 1rem;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card {
+  min-height: 78px;
+  padding: 1rem;
+}
+
+.staff-page-container .attendance-management-page .stats-grid .stat-card .icon-box {
+  width: 42px;
+  height: 42px;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 1180px) {
+  .management-page-header.staff-page-header.is-subpage-context {
+    grid-template-columns: 1fr;
+
+    .mph-left {
+      border-right: 0;
+      border-bottom: 1px dashed rgba(154, 119, 78, 0.2);
+      padding: 0 0 10px;
+    }
+
+    .mph-controls-row {
+      justify-content: flex-start;
+    }
+
+    .mph-search {
+      max-width: none;
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .management-page-header.staff-page-header.is-subpage-context {
+    .mph-search,
+    .mph-select,
+    .mph-btn {
+      flex: 1 1 100%;
+      max-width: none;
+      width: 100%;
+    }
+  }
+}

@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   Info,
-  Settings2,
+  Settings,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -220,7 +220,7 @@ const AutoScheduleModal = ({
 
           <div className="config-card auto-config-constraints">
             <div className="config-head">
-              <Settings2 size={16} />
+              <Settings size={16} />
               <span>Ràng buộc áp dụng</span>
             </div>
             <label className="toggle-row">

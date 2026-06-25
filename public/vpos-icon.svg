@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">VPOS icon</title>
+  <desc id="desc">A VPOS restaurant point of sale mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="10" y1="6" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f6a60"/>
+      <stop offset="0.56" stop-color="#184a43"/>
+      <stop offset="1" stop-color="#c8642c"/>
+    </linearGradient>
+    <linearGradient id="plate" x1="15" y1="18" x2="50" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffaf2"/>
+      <stop offset="1" stop-color="#f4dcc0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#bg)"/>
+  <path d="M15 38c3.8 8 29.2 8 33 0" fill="none" stroke="#fffaf2" stroke-width="5" stroke-linecap="round"/>
+  <path d="M18 36c1.9-10.2 26.1-10.2 28 0" fill="url(#plate)"/>
+  <path d="M22 42h21" stroke="#fffaf2" stroke-width="4" stroke-linecap="round"/>
+  <path d="M44 14v19M50 14v19" stroke="#fffaf2" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M13 15v10c0 3 2 5 5 5v12" stroke="#fffaf2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   MapPin,
-  UserCircle,
+  User as UserCircle,
   AlertTriangle,
   X,
   Search,

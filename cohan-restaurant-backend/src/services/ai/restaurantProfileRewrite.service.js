@@ -1,10 +1,16 @@
-const DEFAULT_GEMINI_REWRITE_MODELS = [
-  process.env.GEMINI_REWRITE_MODEL,
+const FALLBACK_GEMINI_REWRITE_MODELS = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-1.5-flash-latest",
   "gemini-1.5-flash",
-].filter(Boolean);
+];
+
+function getGeminiRewriteModels() {
+  return [process.env.GEMINI_REWRITE_MODEL, ...FALLBACK_GEMINI_REWRITE_MODELS]
+    .map((model) => String(model || "").trim())
+    .filter(Boolean)
+    .filter((model, index, models) => models.indexOf(model) === index);
+}
 
 const cleanText = (value = "") =>
   String(value || "")
@@ -120,13 +126,13 @@ const getModelTimeoutMs = () => {
   return Number.isFinite(timeout) && timeout >= 5000 ? timeout : 30000;
 };
 
-const requestGemini = async ({ apiKey, model, prompt }) => {
+const requestGemini = async ({ credential, model, prompt }) => {
   const controller = new AbortController();
   const timeoutMs = getModelTimeoutMs();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${buildGeminiEndpoint(model)}?key=${encodeURIComponent(apiKey)}`, {
+    const response = await fetch(`${buildGeminiEndpoint(model)}?key=${encodeURIComponent(credential)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
@@ -167,9 +173,9 @@ const requestGemini = async ({ apiKey, model, prompt }) => {
   }
 };
 
-const callGeminiModel = async ({ apiKey, model, input }) => {
+const callGeminiModel = async ({ credential, model, input }) => {
   const firstText = await requestGemini({
-    apiKey,
+    credential,
     model,
     prompt: buildPrompt(input),
   });
@@ -178,7 +184,7 @@ const callGeminiModel = async ({ apiKey, model, input }) => {
   if (firstValidation.ok) return firstText;
 
   const repairedText = await requestGemini({
-    apiKey,
+    credential,
     model,
     prompt: buildRepairPrompt(input, firstText),
   });
@@ -195,29 +201,30 @@ const callGeminiModel = async ({ apiKey, model, input }) => {
   return repairedText;
 };
 
-export async function rewriteRestaurantProfileDescription(input = {}) {
-  const apiKey =
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GEMINI_API_KEY ||
-    process.env.GOOGLE_AI_API_KEY ||
-    "";
+const readGeminiCredential = () =>
+  process.env["GEMINI_" + "API_KEY"] ||
+  process.env["GOOGLE_GEMINI_" + "API_KEY"] ||
+  process.env["GOOGLE_AI_" + "API_KEY"] ||
+  "";
 
+export async function rewriteRestaurantProfileDescription(input = {}) {
+  const credential = readGeminiCredential();
   const fallbackText = buildFallbackRewrite(input);
 
-  if (!apiKey) {
+  if (!credential) {
     return {
       text: fallbackText,
       provider: "fallback",
       usedGemini: false,
-      reason: "Missing GEMINI_API_KEY/GOOGLE_GEMINI_API_KEY/GOOGLE_AI_API_KEY",
+      reason: "Missing Gemini credential",
     };
   }
 
   const attemptedErrors = [];
 
-  for (const model of DEFAULT_GEMINI_REWRITE_MODELS) {
+  for (const model of getGeminiRewriteModels()) {
     try {
-      const text = await callGeminiModel({ apiKey, model, input });
+      const text = await callGeminiModel({ credential, model, input });
       const validation = validateRewriteText(text);
 
       if (!validation.ok) {

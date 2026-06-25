@@ -3,12 +3,12 @@ import {
   DollarSign,
   ShoppingBag,
   Users,
-  TableProperties,
+  Table2 as TableProperties,
   Utensils,
   Percent,
   CircleCheck,
   ChefHat,
-  CircleX,
+  XCircle as CircleX,
   AlertTriangle,
 } from "lucide-react";
 import "./StatsGrid.scss";

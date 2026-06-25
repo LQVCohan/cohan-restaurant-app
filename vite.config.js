@@ -119,19 +119,11 @@ export default defineConfig(({ mode }) => {
       allowedHosts,
       origin: devOrigin,
       hmr: {
-        host: devHost,
         protocol: devHmrProtocol,
+        host: devHost,
+        port: devPort,
         clientPort: devHmrClientPort,
       },
-    },
-    optimizeDeps: {
-      include: [
-        "@fortawesome/fontawesome-svg-core",
-        "@fortawesome/free-solid-svg-icons",
-        "@fortawesome/react-fontawesome",
-        "chart.js/auto",
-        "@apollo/client",
-      ],
     },
   };
 });

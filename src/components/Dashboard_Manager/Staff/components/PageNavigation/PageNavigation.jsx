@@ -12,7 +12,7 @@ import "./PageNavigation.scss";
 
 const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
   const ActiveBackground = motion.div;
-  // Định nghĩa danh sách trang kèm Icon component
+
   const pages = [
     {
       id: "dashboard",
@@ -28,7 +28,7 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
       id: "leave",
       label: "Nghỉ phép",
       icon: Palmtree,
-      badgeKey: "leaveRequests", // Key để lấy số lượng badge
+      badgeKey: "leaveRequests",
     },
     {
       id: "schedule",
@@ -47,6 +47,17 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
     },
   ];
 
+  const handlePageChange = (pageId) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("staff:page-change", {
+          detail: { page: pageId, source: "staff-page-navigation" },
+        }),
+      );
+    }
+    onPageChange(pageId);
+  };
+
   return (
     <div className="page-nav-container">
       <div className="nav-inner-wrapper">
@@ -60,12 +71,11 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
               key={page.id}
               type="button"
               className={`nav-item ${isActive ? "active" : ""}`}
-              onClick={() => onPageChange(page.id)}
+              onClick={() => handlePageChange(page.id)}
               aria-current={isActive ? "page" : undefined}
             >
               <div className="icon-wrapper">
                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-                {/* Hiển thị chấm đỏ thông báo nếu có */}
                 {count > 0 && (
                   <span className="badge-indicator">
                     {count > 9 ? "9+" : count}
@@ -74,8 +84,7 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
               </div>
               <span className="nav-label">{page.label}</span>
 
-              {/* Hiệu ứng nền chuyển động (Active Background) */}
-              {isActive && <div className="active-bg" />}
+              {isActive && <ActiveBackground className="active-bg" layoutId="staff-nav-active" />}
             </button>
           );
         })}
