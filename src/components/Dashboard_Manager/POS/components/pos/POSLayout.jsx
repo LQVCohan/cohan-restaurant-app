@@ -9,6 +9,8 @@ import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNoti
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
 import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
 import EligibleGiftSuggestionPanel from "./EligibleGiftSuggestionPanel";
+import PosDiscountSummaryOverlay from "./PosDiscountSummaryOverlay";
+import TransferQueueBell from "./TransferQueueBell";
 import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
 
@@ -35,7 +37,7 @@ function POSContent({ restaurantId }) {
       </div>
 
       <div className={styles.rightCol}>
-        <div className={styles.card}>
+        <div className={styles.card} style={{ position: "relative" }}>
           <CustomerRequestQueuePanel
             restaurantId={restaurantId}
             onOpenPayment={handleOpenPayment}
@@ -43,6 +45,7 @@ function POSContent({ restaurantId }) {
           <TablePaymentRequestNotice />
           <EligibleGiftSuggestionPanel />
           <RightPanel />
+          <PosDiscountSummaryOverlay />
         </div>
       </div>
     </div>
@@ -175,15 +178,18 @@ export default function POSLayout() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className={`${styles.lockButton} ${isLocked ? styles.locked : ""}`}
-          onClick={handleToggleLock}
-          disabled={!restaurantId}
-        >
-          {isLocked ? <Unlock size={15} /> : <Lock size={15} />}
-          {isLocked ? "Đổi nhà hàng" : "Khóa nhà hàng"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0 }}>
+          <TransferQueueBell restaurantId={restaurantId} />
+          <button
+            type="button"
+            className={`${styles.lockButton} ${isLocked ? styles.locked : ""}`}
+            onClick={handleToggleLock}
+            disabled={!restaurantId}
+          >
+            {isLocked ? <Unlock size={15} /> : <Lock size={15} />}
+            {isLocked ? "Đổi nhà hàng" : "Khóa nhà hàng"}
+          </button>
+        </div>
       </div>
       {!restaurantId ? (
         <div className={styles.emptyState}>
