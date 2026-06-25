@@ -17,7 +17,7 @@ const renderPage = (mocks) => render(
 
 const baseVariables = { filter: { onlyAvailable: true, limit: 36 } };
 
-const comboFixture = {
+const promoComboFixture = {
   id: "1",
   sourceType: "PROMOTION",
   restaurantId: "r1",
@@ -46,12 +46,12 @@ describe("CombosPage", () => {
     expect(await screen.findByText("Chưa có combo phù hợp")).toBeInTheDocument();
   });
 
-  it("renders combo cards and opens detail modal", async () => {
-    renderPage([{ request: { query: CUSTOMER_COMBOS, variables: baseVariables }, result: { data: { customerCombos: [comboFixture] } } }]);
+  it("renders promo combo cards and opens detail modal", async () => {
+    renderPage([{ request: { query: CUSTOMER_COMBOS, variables: baseVariables }, result: { data: { customerCombos: [promoComboFixture] } } }]);
     expect(await screen.findAllByText("Combo trưa")).toHaveLength(2);
-    fireEvent.click(screen.getAllByRole("button", { name: "Xem combo" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Xem ưu đãi" })[0]);
     expect(screen.getByRole("dialog", { name: "Chi tiết Combo trưa" })).toBeInTheDocument();
-    expect(screen.getByText("Combo này gồm nhiều món, bạn có thể kiểm tra trước khi thêm.")).toBeInTheDocument();
+    expect(screen.getByText("Đây là combo ưu đãi: hệ thống chỉ áp dụng giảm giá ở bước thanh toán khi giỏ đủ điều kiện, không thêm như một bundle.")).toBeInTheDocument();
   });
 
   it("sends people and budget filters to the query", async () => {
