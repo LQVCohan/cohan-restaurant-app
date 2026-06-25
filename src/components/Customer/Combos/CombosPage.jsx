@@ -5,6 +5,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { useCart } from "@/context/CartProvider";
 import { useNotification } from "@/hooks/useNotification";
 import "./CombosPage.scss";
+import "./CombosLayoutRepair.scss";
 
 export const CUSTOMER_COMBOS = gql`
   query CustomerCombos($filter: CustomerComboFilterInput) {
@@ -74,7 +75,8 @@ export default function CombosPage() {
   });
   const [addComboToCartMutation] = useMutation(ADD_COMBO_TO_CART);
   const combos = data?.customerCombos || [];
-  const featured = combos.slice(0, 3);
+  const featured = combos.slice(0, Math.min(3, combos.length));
+  const remainingCombos = combos.slice(featured.length);
   const bestSaving = combos.reduce((max, combo) => Math.max(max, Number(combo.discountAmount || 0)), 0);
   const comboOnlyCount = combos.filter((combo) => combo.sourceType === "COMBO").length;
   const promotionCount = combos.filter((combo) => combo.sourceType === "PROMOTION").length;
@@ -115,7 +117,7 @@ export default function CombosPage() {
     const canAddBundle = bundle && combo.restaurantId && combo.items?.some((item) => item.menuItemId);
     const itemCount = (combo.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
     return (
-      <article className={`combo-card${featuredCard ? " combo-card--featured" : ""}`} key={`${combo.sourceType}-${combo.id}`}>
+      <article className={`combo-card${featuredCard ? " combo-card--featured" : ""} ${bundle ? "combo-card--bundle" : "combo-card--promotion"}`} key={`${combo.sourceType}-${combo.id}`}>
         <div className="combo-card__image-wrap">
           <img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} className="combo-card__image" loading="lazy" />
           <span className="combo-card__badge">{combo.badge || (bundle ? "Combo cố định" : "Ưu đãi combo")}</span>
@@ -238,8 +240,34 @@ export default function CombosPage() {
         </section>
       ) : combos.length ? (
         <>
-          <section className="combos-section"><div className="combos-section__heading"><span>Combo nổi bật</span><h2>Set món đáng thử</h2></div><div className="combos-featured">{featured.map((combo) => renderCard(combo, true))}</div></section>
-          <section className="combos-section"><div className="combos-section__heading"><span>Tất cả combo</span><h2>Chọn theo bữa ăn của bạn</h2></div><div className="combos-grid">{combos.map((combo) => renderCard(combo))}</div></section>
+          <section className="combos-section combos-section--featured">
+            <div className="combos-section__heading">
+              <span>Combo nổi bật</span>
+              <h2>Set món đáng thử</h2>
+              <p>Ưu tiên combo đang có mức tiết kiệm tốt và dễ kiểm tra điều kiện trước khi chọn món.</p>
+            </div>
+            <div className={`combos-featured ${featured.length === 1 ? "combos-featured--single" : ""}`}>
+              {featured.map((combo) => renderCard(combo, true))}
+              {featured.length === 1 && (
+                <aside className="combos-section__helper" aria-label="Gợi ý sử dụng combo">
+                  <span>Gợi ý nhanh</span>
+                  <h3>Đọc nhãn trước khi thêm vào giỏ</h3>
+                  <p><strong>Combo bundle</strong> sẽ vào giỏ như một dòng combo riêng. <strong>Ưu đãi checkout</strong> chỉ giảm giá khi bạn chọn đủ món điều kiện.</p>
+                  <Link to="/restaurants">Xem thêm nhà hàng</Link>
+                </aside>
+              )}
+            </div>
+          </section>
+          {remainingCombos.length > 0 && (
+            <section className="combos-section combos-section--all">
+              <div className="combos-section__heading">
+                <span>Tất cả combo</span>
+                <h2>Chọn theo bữa ăn của bạn</h2>
+                <p>So sánh các combo còn lại theo số người, ngân sách và loại ưu đãi.</p>
+              </div>
+              <div className="combos-grid">{remainingCombos.map((combo) => renderCard(combo))}</div>
+            </section>
+          )}
         </>
       ) : (
         <section className="combos-state">
