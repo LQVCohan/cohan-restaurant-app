@@ -141,6 +141,9 @@ const Cart = ({
   busyItemIds,
   busyRestaurantIds,
   isClearing = false,
+  bookingAddonMode = false,
+  bookingRestaurantId = null,
+  onBookingAddonComplete,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -165,26 +168,52 @@ const Cart = ({
     return Array.from(map.values());
   }, [cart]);
 
+  const bookingScopedItems = useMemo(
+    () => (cart || []).filter((item) => String(item.restaurantId) === String(bookingRestaurantId || "")),
+    [bookingRestaurantId, cart],
+  );
+  const otherRestaurantItems = useMemo(
+    () => bookingAddonMode
+      ? (cart || []).filter((item) => String(item.restaurantId) !== String(bookingRestaurantId || ""))
+      : [],
+    [bookingAddonMode, bookingRestaurantId, cart],
+  );
+  const scopedTotal = useMemo(
+    () => bookingScopedItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0),
+    [bookingScopedItems],
+  );
+  const scopedItemCount = useMemo(
+    () => bookingScopedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    [bookingScopedItems],
+  );
+
   useEffect(() => {
     if (!isOpen || !cart?.length) return undefined;
     const intervalId = window.setInterval(() => setTickMs(Date.now()), 1000);
     return () => window.clearInterval(intervalId);
   }, [cart?.length, isOpen]);
 
-  const total =
-    typeof totalPrice === "function" ? totalPrice() : totalPrice || 0;
-  const itemCount =
-    cart?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
+  const total = bookingAddonMode
+    ? scopedTotal
+    : typeof totalPrice === "function" ? totalPrice() : totalPrice || 0;
+  const itemCount = bookingAddonMode
+    ? scopedItemCount
+    : cart?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
   const expiredHoldExists = useMemo(
-    () => hasExpiredHoldItems(cart, tickMs),
-    [cart, tickMs],
+    () => hasExpiredHoldItems(bookingAddonMode ? bookingScopedItems : cart, tickMs),
+    [bookingAddonMode, bookingScopedItems, cart, tickMs],
   );
+  const hasWrongRestaurantItems = bookingAddonMode && otherRestaurantItems.length > 0;
+  const hasNoScopedItems = bookingAddonMode && bookingScopedItems.length === 0;
   const hasScopedBusyState =
     busyItemIds !== undefined ||
     busyRestaurantIds !== undefined ||
     typeof isClearing === "boolean";
   const globalBusy = hasScopedBusyState ? false : isBusy;
   const clearingBusy = isClearing || (!hasScopedBusyState && isBusy);
+  const bookingAddonDisabled =
+    bookingAddonMode &&
+    (clearingBusy || globalBusy || hasNoScopedItems || hasWrongRestaurantItems || expiredHoldExists);
 
   const handleQtyChange = (item, e) => {
     const itemBusy =
@@ -198,6 +227,17 @@ const Cart = ({
     if (delta !== 0) onUpdateQuantity?.(item, delta);
   };
 
+  const handleCheckout = () => {
+    if (bookingAddonMode) {
+      if (bookingAddonDisabled) return;
+      onBookingAddonComplete?.();
+      return;
+    }
+    if (clearingBusy || globalBusy || !cart?.length || expiredHoldExists) return;
+    const from = `${location.pathname}${location.search || ""}` || "cart";
+    navigate("/checkout", { state: { from } });
+  };
+
   return (
     <>
       <div
@@ -208,7 +248,7 @@ const Cart = ({
         <div className="cart-header">
           <div className="cart-header__top">
             <h3 className="cart-header__title">
-              Giỏ hàng <span className="cart-header__count">({itemCount})</span>
+              {bookingAddonMode ? "Giỏ món kèm đặt bàn" : "Giỏ hàng"} <span className="cart-header__count">({itemCount})</span>
             </h3>
             <button onClick={onClose} className="cart-header__close">
               <IconClose />
@@ -256,39 +296,40 @@ const Cart = ({
         {!!cart?.length && (
           <div className="cart-footer">
             <div className="cart-footer__row">
-              <span className="cart-footer__label">Tổng thanh toán</span>
+              <span className="cart-footer__label">{bookingAddonMode ? "Tạm tính món kèm" : "Tổng thanh toán"}</span>
               <span className="cart-footer__total">{formatVND(total)}</span>
             </div>
             <button
               className="cart-checkout-btn"
-              onClick={() => {
-                if (
-                  clearingBusy ||
-                  globalBusy ||
-                  !cart?.length ||
-                  expiredHoldExists
-                )
-                  return;
-                const from =
-                  `${location.pathname}${location.search || ""}` || "cart";
-                navigate("/checkout", { state: { from } });
-              }}
-              disabled={
-                clearingBusy || globalBusy || !cart?.length || expiredHoldExists
-              }
+              onClick={handleCheckout}
+              disabled={bookingAddonMode ? bookingAddonDisabled : clearingBusy || globalBusy || !cart?.length || expiredHoldExists}
               title={
                 expiredHoldExists
                   ? "Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại món."
-                  : "Tiến hành đặt đơn"
+                  : bookingAddonMode
+                    ? "Hoàn tất chọn món kèm và quay lại đặt bàn"
+                    : "Tiến hành đặt đơn"
               }
               aria-label={
                 expiredHoldExists
                   ? "Không thể đặt đơn vì có món đã hết thời gian giữ"
-                  : "Đặt đơn ngay"
+                  : bookingAddonMode
+                    ? "Hoàn tất order kèm theo"
+                    : "Đặt đơn ngay"
               }
             >
-              Đặt đơn ngay
+              {bookingAddonMode ? "Hoàn tất order kèm theo" : "Đặt đơn ngay"}
             </button>
+            {hasWrongRestaurantItems && (
+              <p className="cart-footer__warning" role="alert">
+                Giỏ đang có món từ nhà hàng khác. Vui lòng xóa nhóm không thuộc nhà hàng đặt bàn trước khi hoàn tất order kèm theo.
+              </p>
+            )}
+            {hasNoScopedItems && (
+              <p className="cart-footer__warning" role="alert">
+                Chưa có món nào của nhà hàng đang đặt bàn.
+              </p>
+            )}
             {expiredHoldExists && (
               <p className="cart-footer__warning" role="alert">
                 Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại món.
