@@ -6,6 +6,20 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import Header from "./Header";
 
+vi.mock("@apollo/client", async () => {
+  const actual = await vi.importActual("@apollo/client");
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({
+      data: {
+        myCoupons: [],
+        ordersByUser: { edges: [] },
+        myReservations: [],
+      },
+    })),
+  };
+});
+
 vi.mock("./HeaderSearch.jsx", () => ({
   default: () => <div data-testid="header-search" />,
 }));
