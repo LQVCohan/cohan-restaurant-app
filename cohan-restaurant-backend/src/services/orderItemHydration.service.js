@@ -100,3 +100,17 @@ export async function hydrateCheckoutOrderItems({
   assertTrustedHydrationResult(items, hydratedItems);
   return hydratedItems;
 }
+
+export async function hydrateOrderItems(args = {}) {
+  const hydratedItems = await hydrateCheckoutOrderItems(args);
+
+  if (Array.isArray(args.items)) {
+    args.items.splice(0, args.items.length, ...hydratedItems);
+    return args.items;
+  }
+
+  return hydratedItems;
+}
+
+// Backward compatibility for legacy order mutations that still call hydrateOrderItems.
+globalThis.hydrateOrderItems = hydrateOrderItems;
