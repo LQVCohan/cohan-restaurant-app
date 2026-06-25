@@ -35,23 +35,37 @@ const initialFormData = {
   reason: "",
 };
 
+const resolveRoleCandidate = (user) => {
+  if (!user || typeof user !== "object") return "";
+  if (typeof user.role === "object") {
+    return user.role.slug || user.role.name || user.role.code || "";
+  }
+  return user.roleName || user.role || user.userType || "";
+};
+
 const LeaveRequestForm = ({
   onSubmit,
   staffList = [],
   disabled = false,
   loading = false,
   error = null,
+  selfServiceEmployeeId = "",
 }) => {
   const authContext = React.useContext(AuthContext) || {};
   const user = authContext.user;
-  const isStaffSelfService = String(user?.roleName || user?.role || "").toLowerCase() === "staff";
-  const currentUserId = user?.id || user?._id || user?.userId || "";
+  const roleCandidate = resolveRoleCandidate(user);
+  const normalizedRole = String(roleCandidate || "").toLowerCase();
+  const isStaffSelfService =
+    Boolean(selfServiceEmployeeId) ||
+    String(user?.userType || "").toUpperCase() === "STAFF" ||
+    normalizedRole === "staff";
+  const currentUserId = selfServiceEmployeeId || user?.id || user?._id || user?.userId || "";
   const [formData, setFormData] = useState(initialFormData);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [errors, setErrors] = useState({});
 
   const selectedEmployee = useMemo(
-    () => staffList.find((item) => item.id === formData.employee),
+    () => staffList.find((item) => String(item.id) === String(formData.employee)),
     [formData.employee, staffList]
   );
 
@@ -218,11 +232,11 @@ const LeaveRequestForm = ({
                 type="search"
                 value={employeeSearch}
                 onChange={handleEmployeeSearchChange}
-                placeholder="Tìm theo tên hoặc mã nhân viên"
+                placeholder={isStaffSelfService ? "Tự động chọn tài khoản của bạn" : "Tìm theo tên hoặc mã nhân viên"}
                 className="employee-search-input"
                 aria-label="Tìm nhân viên"
                 data-testid="leave-employee-search"
-                disabled={disabled || (!hasStaffList && loading)}
+                disabled={disabled || isStaffSelfService || (!hasStaffList && loading)}
               />
               <select
                 name="employee"
@@ -257,7 +271,6 @@ const LeaveRequestForm = ({
               )}
               {errors.employee && <span className="err-msg">{errors.employee}</span>}
             </div>
-
             {requiresReplacementManager && (
               <div className="form-group">
                 <label>Quản lý thay thế *</label>
