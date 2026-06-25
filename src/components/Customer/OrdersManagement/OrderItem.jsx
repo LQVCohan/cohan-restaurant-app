@@ -3,7 +3,7 @@ import "./OrderItem.scss";
 import { Receipt, Truck, CalendarCheck, ArrowRight } from "lucide-react";
 
 const OrderItem = ({
-  kind, // 'reservation' | 'delivery' | 'dinein'
+  kind,
   status,
   orderId,
   header,
@@ -17,7 +17,7 @@ const OrderItem = ({
   const statusLabels = {
     pending: "Đang xử lý",
     pending_payment: "Chờ cọc",
-    pending_change: "Chờ đổi",
+    pending_change: "Chờ nhà hàng duyệt",
     confirmed: "Đã xác nhận",
     shipping: "Đang giao",
     delivering: "Đang giao",
