@@ -1,19 +1,95 @@
 import React, { useContext, useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
 import HeaderSearch from "./HeaderSearch.jsx";
 import CustomerNotificationBell from "@/components/Customer/common/CustomerNotificationBell";
 
+const CUSTOMER_DROPDOWN_COUNTS = gql`
+  query CustomerDropdownCounts($userId: ID!, $orderLimit: Int = 50) {
+    myCoupons(status: "saved") {
+      id
+      status
+    }
+    ordersByUser(userId: $userId, limit: $orderLimit) {
+      edges {
+        node {
+          id
+          currentStatus
+        }
+      }
+    }
+    myReservations(limit: $orderLimit) {
+      id
+      status
+    }
+  }
+`;
+
+const ACTIVE_ORDER_STATUSES = new Set([
+  "pending",
+  "pending_payment",
+  "confirmed",
+  "preparing",
+  "ready",
+  "shipping",
+  "delivering",
+  "out_for_delivery",
+]);
+
+const ACTIVE_RESERVATION_STATUSES = new Set([
+  "pending",
+  "pending_payment",
+  "confirmed",
+  "pending_change",
+]);
+
+const countActiveRows = (rows, statusKey = "status", activeSet) =>
+  rows.filter((row) => {
+    const status = String(row?.[statusKey] || "").toLowerCase();
+    return !status || activeSet.has(status);
+  }).length;
 
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, restaurants = [], refRestaurant = [] } =
     useContext(AuthContext) || {};
-  const counts = { coupons: 3, orders: 2 };
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [lang, setLang] = useState("vi");
+
+  const userId = user?.id || user?._id || "";
+  const { data: dropdownCountData } = useQuery(CUSTOMER_DROPDOWN_COUNTS, {
+    variables: { userId, orderLimit: 50 },
+    skip: !userId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const counts = useMemo(() => {
+    const coupons = dropdownCountData?.myCoupons?.length || 0;
+    const orderNodes =
+      dropdownCountData?.ordersByUser?.edges
+        ?.map((edge) => edge?.node)
+        .filter(Boolean) || [];
+    const reservations = dropdownCountData?.myReservations || [];
+
+    const activeOrders = countActiveRows(
+      orderNodes,
+      "currentStatus",
+      ACTIVE_ORDER_STATUSES,
+    );
+    const activeReservations = countActiveRows(
+      reservations,
+      "status",
+      ACTIVE_RESERVATION_STATUSES,
+    );
+
+    return {
+      coupons,
+      orders: activeOrders + activeReservations,
+    };
+  }, [dropdownCountData]);
 
   const userMenuRef = useRef(null);
   const couponRestaurantId = useMemo(() => {
