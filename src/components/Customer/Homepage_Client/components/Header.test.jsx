@@ -62,7 +62,7 @@ describe("Header coupon navigation", () => {
     );
   });
 
-  it("falls back to restaurants when no coupon restaurant is available", () => {
+  it("opens coupon wallet when no coupon restaurant is available", () => {
     renderHeader({
       user: { id: "user-1", username: "guest" },
       restaurants: [],
@@ -73,6 +73,6 @@ describe("Header coupon navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: /guest/i }));
     fireEvent.click(screen.getByText("🎟️ Kho Coupon"));
 
-    expect(screen.getByTestId("location")).toHaveTextContent("/restaurants");
+    expect(screen.getByTestId("location")).toHaveTextContent("/coupons");
   });
 });
