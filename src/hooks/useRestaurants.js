@@ -75,11 +75,23 @@ export const useRestaurants = (source = [], { itemsPerPage = 12 } = {}) => {
       return true;
     });
 
+    const compareRecentRank = (a, b) => {
+      const ar = Number.isFinite(Number(a.recentRank))
+        ? Number(a.recentRank)
+        : Number.POSITIVE_INFINITY;
+      const br = Number.isFinite(Number(b.recentRank))
+        ? Number(b.recentRank)
+        : Number.POSITIVE_INFINITY;
+      if (ar !== br) return ar - br;
+      return 0;
+    };
+
     // Sort
     switch (sortBy) {
       case "rating":
         filtered.sort(
           (a, b) =>
+            compareRecentRank(a, b) ||
             (b.avgRating ?? b.rating ?? 0) - (a.avgRating ?? a.rating ?? 0)
         );
         break;
@@ -92,16 +104,18 @@ export const useRestaurants = (source = [], { itemsPerPage = 12 } = {}) => {
             .map((t) => t.trim());
           return Number((minStr || "0").replace(/\./g, ""));
         };
-        filtered.sort((a, b) => toMin(a.priceRange) - toMin(b.priceRange));
+        filtered.sort((a, b) => compareRecentRank(a, b) || toMin(a.priceRange) - toMin(b.priceRange));
         break;
       }
       case "distance":
         filtered.sort(
           (a, b) =>
+            compareRecentRank(a, b) ||
             (parseFloat(a.distance) || 0) - (parseFloat(b.distance) || 0)
         );
         break;
       default:
+        filtered.sort(compareRecentRank);
         break;
     }
     return filtered;
