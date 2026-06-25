@@ -44,6 +44,11 @@ const LeaveRequestsList = ({
   onSearchChange,
   loading,
   error,
+  title = "📋 Quản Lý Nghỉ Phép",
+  subtitle = "Theo dõi và xử lý đơn nghỉ thật từ database",
+  searchPlaceholder = "🔍 Tìm nhân viên...",
+  allowDecisionActions = true,
+  showSearch = true,
 }) => {
   const { user } = React.useContext(AuthContext);
   const currentUserId = user?.id || user?._id || null;
@@ -67,8 +72,8 @@ const LeaveRequestsList = ({
     <div className="leave-list-container">
       <div className="dashboard-header">
         <div className="header-title">
-          <h3>📋 Quản Lý Nghỉ Phép</h3>
-          <p>Theo dõi và xử lý đơn nghỉ thật từ database</p>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
         </div>
 
         <div className="stats-grid">
@@ -122,12 +127,14 @@ const LeaveRequestsList = ({
             onChange={(e) => onDateChange(e.target.value)}
             style={{ marginRight: 8 }}
           />
-          <input
-            type="text"
-            placeholder="🔍 Tìm nhân viên..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+          {showSearch && (
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+            />
+          )}
         </div>
       </div>
 
@@ -154,9 +161,11 @@ const LeaveRequestsList = ({
 
             {requestRows.map((req) => {
               const canConfirmReplacement =
+                allowDecisionActions &&
                 req.replacementStatus === "PENDING" &&
                 currentUserId &&
                 req.replacementManagerId === currentUserId;
+              const canReview = allowDecisionActions && req.status === "PENDING";
 
               return (
                 <tr key={req.id} className="hover-row">
@@ -205,7 +214,7 @@ const LeaveRequestsList = ({
                       </button>
                     )}
 
-                    {req.status === "PENDING" && (
+                    {canReview && (
                       <div className="action-buttons">
                         <button
                           className="btn-icon approve"
@@ -236,6 +245,10 @@ const LeaveRequestsList = ({
                           ✕
                         </button>
                       </div>
+                    )}
+
+                    {!canConfirmReplacement && !canReview && (
+                      <span className="date-sub">Theo dõi</span>
                     )}
                   </td>
                 </tr>
