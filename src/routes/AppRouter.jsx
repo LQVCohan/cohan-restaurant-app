@@ -211,6 +211,7 @@ const AppRouter = () => (
       <Route path="/checkout" element={withPrivateRoute(<CheckoutPage />, ["customer"])} />
       <Route path="/food/:foodId" element={<FoodDetail />} />
       <Route path="/vouchers/:id" element={<Navigate to="/restaurants" replace />} />
+      <Route path="/coupons" element={<CouponPage />} />
       <Route path="/coupons/:restaurantId" element={<CouponPage />} />
       <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />

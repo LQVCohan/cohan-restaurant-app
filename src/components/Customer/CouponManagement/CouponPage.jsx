@@ -1,576 +1,137 @@
 import React, { useContext, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { useParams, useSearchParams } from "react-router-dom";
-import {
-  Check,
-  Gift,
-  Inbox,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Ticket,
-  Truck,
-  Utensils,
-  Wallet,
-  X,
-} from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { AlertCircle, Check, Clock, Compass, Inbox, Search, Ticket, Wallet } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import useUserCoupons from "@/hooks/useUserCoupons";
-import { COUPON_CATEGORIES } from "@/utils/constants";
+import CouponCard from "./CouponCard";
+import CouponDetailModal from "./CouponDetailModal";
+import { filterCoupons, isCouponExpired, normalizeCoupon, sortCoupons } from "./couponUtils";
 import "./CouponPage.scss";
 
 const GET_COUPONS = gql`
-  query Coupons(
-    $restaurantId: ID!
-    $activeOnly: Boolean = true
-    $limit: Int = 50
-    $offset: Int = 0
-  ) {
-    coupons(
-      restaurantId: $restaurantId
-      activeOnly: $activeOnly
-      limit: $limit
-      offset: $offset
-    ) {
-      id
-      name
-      code
-      category
-      description
-      discountType
-      discountValue
-      minOrderValue
-      maxDiscount
-      maxUsage
-      used
-      publishAt
-      startAt
-      endAt
-      isActive
-      constraints
+  query Coupons($restaurantId: ID!, $activeOnly: Boolean = true, $limit: Int = 50, $offset: Int = 0) {
+    coupons(restaurantId: $restaurantId, activeOnly: $activeOnly, limit: $limit, offset: $offset) {
+      id name code category description discountType discountValue minOrderValue maxDiscount maxUsage used publishAt startAt endAt isActive constraints restaurantId
     }
   }
 `;
 
-const CATEGORIES = [
-  { id: "all", label: "Tất cả", icon: <Ticket size={18} /> },
-  { id: "shipping", label: "Vận chuyển", icon: <Truck size={18} /> },
-  { id: "food", label: "Đồ ăn", icon: <Utensils size={18} /> },
-  { id: "table", label: "Đặt bàn", icon: <ShieldCheck size={18} /> },
-  { id: "order", label: "Đặt món", icon: <Gift size={18} /> },
+const FILTERS = [
+  { id: "all", label: "Tất cả" },
+  { id: "saved", label: "Đã lưu" },
+  { id: "valid", label: "Còn hiệu lực" },
+  { id: "expiring", label: "Sắp hết hạn" },
+  { id: "used", label: "Đã dùng" },
+  { id: "expired", label: "Hết hạn" },
+  { id: "shipping", label: "Vận chuyển" },
+  { id: "food", label: "Đồ ăn" },
+  { id: "table", label: "Đặt bàn" },
+  { id: "order", label: "Đặt món" },
 ];
 
-const ORDER_TYPE_LABELS = {
-  dine_in: "Dùng tại bàn",
-  takeaway: "Mang đi",
-  delivery: "Giao hàng",
-};
-
-const PAYMENT_METHOD_LABELS = {
-  cash: "Tiền mặt",
-  card: "Thẻ",
-  transfer: "Chuyển khoản",
-  bank_transfer: "Chuyển khoản",
-  e_wallet: "Ví điện tử",
-};
-
-const normalizeConstraintArray = (value) =>
-  Array.isArray(value)
-    ? value.map((item) => String(item || "").trim()).filter(Boolean)
-    : [];
-
-const normalizeRestaurantId = (restaurant) => {
-  if (!restaurant) return "";
-  return String(
-    restaurant.id || restaurant._id || restaurant.restaurantId || restaurant,
-  ).trim();
-};
-
-const formatCurrency = (value) =>
-  `${Number(value || 0).toLocaleString("vi-VN")}đ`;
-
-const formatDate = (value) =>
-  value ? new Date(value).toLocaleDateString("vi-VN") : "Không giới hạn";
-
-const getCouponCategory = (coupon) =>
-  String(coupon.category || "order").toLowerCase();
-
-const getCouponColor = (category) => {
-  if (category === "shipping") return "blue";
-  if (category === "food") return "orange";
-  if (category === "table") return "purple";
-  return "green";
-};
-
-const buildUsage = (coupon) => {
-  const maxUsage = Number(coupon.maxUsage || 0);
-  const used = Number(coupon.used || 0);
-
-  if (!maxUsage) {
-    return {
-      label: "Không giới hạn lượt dùng",
-      percent: null,
-    };
-  }
-
-  const remaining = Math.max(maxUsage - used, 0);
-  return {
-    label: `Còn ${remaining.toLocaleString("vi-VN")}/${maxUsage.toLocaleString("vi-VN")} lượt`,
-    percent: Math.min(Math.round((used / maxUsage) * 100), 100),
-  };
-};
-
-const buildConditionLines = (coupon) => {
-  const constraints = coupon.constraints || {};
-  const lines = [];
-
-  if (Number(coupon.minOrderValue || 0) > 0) {
-    lines.push(`Đơn tối thiểu ${formatCurrency(coupon.minOrderValue)}.`);
-  }
-
-  if (Number(coupon.maxDiscount || 0) > 0) {
-    lines.push(`Giảm tối đa ${formatCurrency(coupon.maxDiscount)}.`);
-  }
-
-  const usage = buildUsage(coupon);
-  lines.push(usage.label + ".");
-
-  lines.push(
-    `Hiệu lực: ${formatDate(coupon.startAt)} - ${formatDate(coupon.endAt)}.`,
-  );
-
-  if (constraints.stackable) {
-    lines.push("Có thể dùng chồng với coupon khác.");
-  }
-
-  if (constraints.combinableWithPromotions) {
-    lines.push("Có thể dùng chung với Promotion hợp lệ.");
-  }
-
-  if (constraints.exclusive) {
-    lines.push("Coupon độc quyền, có thể chặn ưu đãi khác.");
-  }
-
-  const perUserLimit = Number(constraints.perUserLimit || 0);
-  if (perUserLimit > 0) {
-    lines.push(`Mỗi khách dùng tối đa ${perUserLimit} lần.`);
-  }
-
-  const orderTypes = normalizeConstraintArray(constraints.orderTypes);
-  if (orderTypes.length) {
-    lines.push(
-      `Chỉ áp dụng cho: ${orderTypes
-        .map((type) => ORDER_TYPE_LABELS[type] || type)
-        .join(" / ")}.`,
-    );
-  }
-
-  const paymentMethods = normalizeConstraintArray(constraints.paymentMethods);
-  if (paymentMethods.length) {
-    lines.push(
-      `Phương thức thanh toán: ${paymentMethods
-        .map((method) => PAYMENT_METHOD_LABELS[method] || method)
-        .join(" / ")}.`,
-    );
-  }
-
-  if (constraints.firstOrderOnly) {
-    lines.push("Chỉ cho đơn đầu tiên.");
-  }
-
-  if (Array.isArray(constraints.conditions)) {
-    lines.push(...constraints.conditions.filter(Boolean));
-  }
-
-  return lines.length ? lines : ["Xem điều kiện áp dụng khi thanh toán."];
-};
-
-const mapCouponToCard = (coupon) => {
-  const category = getCouponCategory(coupon);
-  const isPercent = coupon.discountType === "PERCENT";
-  const usage = buildUsage(coupon);
-
-  const now = Date.now();
-  const isExpired = coupon.endAt ? new Date(coupon.endAt).getTime() < now : false;
-  const isOutOfUsage =
-    Number(coupon.maxUsage || 0) > 0 &&
-    Number(coupon.used || 0) >= Number(coupon.maxUsage || 0);
-  const minOrderValue = Number(coupon.minOrderValue || 0);
-
-  return {
-    id: coupon.id,
-    name: coupon.name || coupon.code,
-    code: coupon.code,
-    category,
-    categoryLabel: COUPON_CATEGORIES[category] || category,
-    title:
-      coupon.name ||
-      (isPercent
-        ? `Giảm ${coupon.discountValue}%`
-        : `Giảm ${formatCurrency(coupon.discountValue)}`),
-    subTitle: coupon.description || "Ưu đãi áp dụng theo điều kiện",
-    discountLabel: isPercent
-      ? `Giảm ${coupon.discountValue}%`
-      : `Giảm ${formatCurrency(coupon.discountValue)}`,
-    expiry: formatDate(coupon.endAt),
-    usage,
-    tag: "Coupon",
-    color: getCouponColor(category),
-    conditions: buildConditionLines(coupon),
-    badges: [
-      isExpired ? "Hết hạn" : null,
-      isOutOfUsage ? "Hết lượt" : null,
-      minOrderValue > 0
-        ? `Đơn tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ`
-        : null,
-    ].filter(Boolean),
-  };
-};
-
 const CouponPage = () => {
-  const { restaurantId: routeRestaurantId } = useParams();
-  const [searchParams] = useSearchParams();
-  const {
-    isAuthenticated = false,
-    restaurants = [],
-    refRestaurant = [],
-    token,
-    user,
-  } = useContext(AuthContext) || {};
+  const { restaurantId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated = false, token, user } = useContext(AuthContext) || {};
+  const loggedIn = Boolean(isAuthenticated || token || user?.id || user?._id);
+  const isWalletPage = !restaurantId;
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCoupon, setSelectedCoupon] = useState(null);
+  const [actionError, setActionError] = useState("");
 
-  const contextRestaurantId = useMemo(
-    () =>
-      [...restaurants, ...refRestaurant]
-        .map(normalizeRestaurantId)
-        .find(Boolean) || "",
-    [restaurants, refRestaurant],
-  );
-
-  const restaurantId = useMemo(() => {
-    const routeId = routeRestaurantId ? String(routeRestaurantId).trim() : "";
-    if (routeId) return routeId;
-
-    const queryRestaurantId = String(
-      searchParams.get("restaurantId") || "",
-    ).trim();
-    if (queryRestaurantId) return queryRestaurantId;
-
-    return contextRestaurantId;
-  }, [contextRestaurantId, routeRestaurantId, searchParams]);
-
-  const { data, loading, error } = useQuery(GET_COUPONS, {
+  const couponsQuery = useQuery(GET_COUPONS, {
     variables: { restaurantId, activeOnly: true, limit: 50, offset: 0 },
-    skip: !restaurantId,
+    skip: isWalletPage || !restaurantId,
     fetchPolicy: "cache-and-network",
   });
-  const [activeTab, setActiveTab] = useState("all");
-  const [selectedCoupon, setSelectedCoupon] = useState(null);
-  const [saveActionError, setSaveActionError] = useState("");
-  const canSaveCoupons = Boolean(isAuthenticated || user?.id || token);
-  const {
-    savedCouponIds,
-    loading: userCouponsLoading,
-    saveCoupon,
-    removeSavedCoupon,
-  } = useUserCoupons({
-    restaurantId,
-    skip: !restaurantId || !canSaveCoupons,
-  });
 
-  const coupons = useMemo(
-    () => (data?.coupons ?? []).map(mapCouponToCard),
-    [data?.coupons],
-  );
+  const userCoupons = useUserCoupons({ restaurantId: restaurantId || null, status: isWalletPage ? null : "saved", skip: !loggedIn });
 
-  const filteredCoupons = useMemo(() => {
-    if (activeTab === "all") return coupons;
-    if (activeTab === "saved") {
-      return coupons.filter((coupon) => savedCouponIds.includes(coupon.id));
-    }
-    return coupons.filter((coupon) => coupon.category === activeTab);
-  }, [activeTab, coupons, savedCouponIds]);
+  const savedByCouponId = useMemo(() => {
+    const map = new Map();
+    userCoupons.myCoupons.forEach((row) => {
+      const couponId = String(row?.couponId || row?.coupon?.id || "").trim();
+      if (couponId) map.set(couponId, row);
+    });
+    return map;
+  }, [userCoupons.myCoupons]);
 
-  const handleToggleSave = async (id) => {
-    if (!canSaveCoupons) return;
+  const coupons = useMemo(() => {
+    const sourceRows = isWalletPage ? userCoupons.myCoupons : couponsQuery.data?.coupons || [];
+    return sortCoupons(sourceRows.map((row) => normalizeCoupon(row, isWalletPage ? row : savedByCouponId.get(String(row?.id || "")))));
+  }, [couponsQuery.data?.coupons, isWalletPage, savedByCouponId, userCoupons.myCoupons]);
 
-    const isSaved = savedCouponIds.includes(id);
-    setSaveActionError("");
+  const visibleCoupons = useMemo(() => filterCoupons(coupons, activeTab, searchTerm), [activeTab, coupons, searchTerm]);
+  const expiringCount = coupons.filter((coupon) => coupon.endAt && !isCouponExpired(coupon) && new Date(coupon.endAt).getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000).length;
+  const validCount = coupons.filter((coupon) => ["active", "saved"].includes(coupon.status)).length;
+  const pageLoading = (isWalletPage ? userCoupons.loading : couponsQuery.loading || userCoupons.loading) && !coupons.length;
+  const pageError = isWalletPage ? userCoupons.error : couponsQuery.error || userCoupons.error;
 
+  const requireLogin = () => {
+    setActionError("Vui lòng đăng nhập để lưu coupon");
+    navigate("/login", { state: { from: location } });
+  };
+
+  const handleSave = async (coupon) => {
+    if (!loggedIn) return requireLogin();
+    setActionError("");
     try {
-      if (isSaved) {
-        await removeSavedCoupon(id);
-        return;
-      }
-
-      await saveCoupon(id);
+      const result = await userCoupons.saveCoupon(coupon.id);
+      if (!result) throw new Error("save failed");
     } catch {
-      setSaveActionError(
-        isSaved
-          ? "Không thể bỏ lưu Coupon. Vui lòng thử lại."
-          : "Không thể lưu Coupon. Vui lòng thử lại.",
-      );
+      setActionError("Không thể lưu coupon. Vui lòng thử lại.");
     }
   };
 
-  const renderCouponUsage = (coupon) => {
-    if (coupon.usage.percent == null) {
-      return <span className="usage-text">{coupon.usage.label}</span>;
+  const handleRemove = async (coupon) => {
+    setActionError("");
+    try {
+      const ok = await userCoupons.removeSavedCoupon(coupon.id);
+      if (!ok) throw new Error("remove failed");
+    } catch {
+      setActionError("Không thể bỏ lưu coupon. Vui lòng thử lại.");
     }
-
-    return (
-      <div className="usage-area">
-        <div className="usage-bg">
-          <div
-            className="usage-fill"
-            style={{ width: `${coupon.usage.percent}%` }}
-          ></div>
-        </div>
-        <span className="usage-text">{coupon.usage.label}</span>
-      </div>
-    );
   };
 
-  const renderCouponContent = () => {
-    if (!restaurantId) {
-      return (
-        <div className="empty-state">
-          <Inbox size={42} />
-          <h3>Chọn nhà hàng để xem Coupon</h3>
-          <p>
-            Coupon được phát hành theo từng nhà hàng. Vui lòng chọn nhà hàng
-            trước khi xem ưu đãi.
-          </p>
-        </div>
-      );
-    }
-
-    if (loading && !data) {
-      return (
-        <div className="empty-state">
-          <Ticket size={42} />
-          <h3>Đang tải Coupon...</h3>
-          <p>Chúng tôi đang lấy danh sách coupon mới nhất cho nhà hàng này.</p>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="empty-state">
-          <Inbox size={42} />
-          <h3>Không thể tải Coupon lúc này</h3>
-          <p>
-            Đã có lỗi khi lấy dữ liệu. Vui lòng tải lại trang hoặc thử lại sau.
-          </p>
-        </div>
-      );
-    }
-
-    if (!filteredCoupons.length) {
-      return (
-        <div className="empty-state">
-          <Inbox size={42} />
-          <h3>Chưa có Coupon phù hợp</h3>
-          <p>
-            Nhà hàng này hiện chưa có coupon đang hoạt động trong nhóm bạn chọn.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="coupon-grid">
-        {filteredCoupons.map((coupon) => {
-          const isSaved = savedCouponIds.includes(coupon.id);
-          return (
-            <div
-              key={coupon.id}
-              className={`ticket-card color-${coupon.color}`}
-            >
-              <div className="ticket-left">
-                <div className="ticket-icon">
-                  {coupon.category === "shipping" ? (
-                    <Truck size={28} />
-                  ) : coupon.category === "food" ? (
-                    <Utensils size={28} />
-                  ) : (
-                    <Gift size={28} />
-                  )}
-                </div>
-                <div className="vertical-dashed"></div>
-                <div className="cutout top"></div>
-                <div className="cutout bottom"></div>
-              </div>
-
-              <div className="ticket-right">
-                <div className="ticket-header">
-                  <span className="tag">{coupon.categoryLabel}</span>
-                  <span className="expiry">HSD: {coupon.expiry}</span>
-                </div>
-
-                <div className="ticket-body">
-                  <h4 className="t-title">{coupon.title}</h4>
-                  <p className="t-sub">{coupon.subTitle}</p>
-                  <p className="discount-label">{coupon.discountLabel}</p>
-                  <div className="coupon-badges">
-                    {isSaved && <span className="tag">Đã lưu</span>}
-                    {coupon.badges.map((badge) => (
-                      <span key={`${coupon.id}-${badge}`} className="tag">
-                        {badge}
-                      </span>
-                    ))}
-                  </div>
-                  {renderCouponUsage(coupon)}
-                </div>
-
-                <div className="ticket-footer">
-                  <button
-                    className="btn-detail"
-                    onClick={() => setSelectedCoupon(coupon)}
-                  >
-                    Điều kiện
-                  </button>
-                  <button
-                    className={`btn-save ${isSaved ? "saved" : ""}`}
-                    disabled={userCouponsLoading}
-                    onClick={() => handleToggleSave(coupon.id)}
-                  >
-                    {!canSaveCoupons ? (
-                      "Đăng nhập để lưu Coupon"
-                    ) : isSaved ? (
-                      <>
-                        Đã lưu <Check size={14} />
-                      </>
-                    ) : (
-                      "Lưu ngay"
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  const handleUseNow = (coupon) => navigate(coupon.restaurantId ? `/restaurant/${coupon.restaurantId}` : "/restaurants");
+  const retry = () => { couponsQuery.refetch?.(); userCoupons.refetch?.(); };
 
   return (
-    <div className="coupon-page">
-      <div className="coupon-container">
-        <div className="dashboard-header">
-          <div className="welcome-text">
-            <h1>Kho Coupon & Ưu đãi</h1>
-            <p>Săn deal hời, ăn chơi không lo về giá!</p>
-          </div>
-          <div className="stats-card">
-            <div className="stat-item">
-              <div className="icon-circle bg-yellow">
-                <Sparkles size={20} />
-              </div>
-              <div>
-                <span className="value">{coupons.length}</span>
-                <span className="label">Coupon</span>
-              </div>
-            </div>
-            <div className="divider"></div>
-            <div className="stat-item">
-              <div className="icon-circle bg-blue">
-                <Wallet size={20} />
-              </div>
-              <div>
-                <span className="value">{savedCouponIds.length}</span>
-                <span className="label">Đã lưu</span>
-              </div>
-            </div>
-          </div>
+    <main className="coupon-page">
+      <section className="coupon-hero">
+        <div><span className="coupon-eyebrow">FoodHub / VPOS</span><h1>Kho Coupon</h1><p>{isWalletPage ? "Quản lý các coupon bạn đã lưu và dùng ngay khi đặt món." : "Chọn ưu đãi thật đang hoạt động tại nhà hàng này."}</p></div>
+        <div className="coupon-stats">
+          <div><Ticket /><strong>{coupons.length}</strong><span>Tổng coupon</span></div>
+          <div><Wallet /><strong>{coupons.filter((c) => c.isSaved).length}</strong><span>Đã lưu</span></div>
+          <div><Check /><strong>{validCount}</strong><span>Còn hiệu lực</span></div>
+          <div><Clock /><strong>{expiringCount}</strong><span>Sắp hết hạn</span></div>
         </div>
+      </section>
 
-        <div className="action-bar">
-          <div className="search-box">
-            <Search className="search-icon" size={20} />
-            <input type="text" placeholder="Tìm kiếm coupon..." />
-            <button>Tìm</button>
-          </div>
-        </div>
+      <section className="coupon-toolbar">
+        <label className="coupon-search"><Search size={19} /><input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm theo tên, mã, mô tả, danh mục..." /></label>
+        <div className="coupon-tabs">{FILTERS.map((filter) => <button key={filter.id} className={activeTab === filter.id ? "active" : ""} onClick={() => setActiveTab(filter.id)}>{filter.label}</button>)}</div>
+      </section>
 
-        <div className="categories-wrapper">
-          {[
-            ...CATEGORIES,
-            { id: "saved", label: "Coupon đã lưu", icon: <Check size={18} /> },
-          ].map((category) => (
-            <button
-              key={category.id}
-              className={`cat-pill ${activeTab === category.id ? "active" : ""}`}
-              onClick={() => setActiveTab(category.id)}
-            >
-              {category.icon}
-              <span>{category.label}</span>
-            </button>
-          ))}
-        </div>
+      {actionError && <div className="coupon-alert" role="alert"><AlertCircle size={18} />{actionError}</div>}
 
-        <div className="section-title">
-          <h3>✨ Coupon dành cho bạn</h3>
-        </div>
-
-        {saveActionError && (
-          <p className="coupon-action-error" role="alert">
-            {saveActionError}
-          </p>
-        )}
-
-        {renderCouponContent()}
-      </div>
-
-      {selectedCoupon && (
-        <div
-          className="modal-coupon-overlay"
-          onClick={() => setSelectedCoupon(null)}
-        >
-          <div
-            className="modal-ticket"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              className="close-btn"
-              onClick={() => setSelectedCoupon(null)}
-            >
-              <X size={24} />
-            </button>
-            <div className="modal-header-bg">
-              <Ticket size={50} />
-              <h3>{selectedCoupon.title}</h3>
-              <span className="modal-code">{selectedCoupon.code}</span>
-            </div>
-            <div className="modal-content">
-              <div className="info-row">
-                <span>Hạn sử dụng</span>
-                <span className="val">{selectedCoupon.expiry}</span>
-              </div>
-              <div className="condition-list">
-                <h4>Điều kiện áp dụng</h4>
-                <ul>
-                  {selectedCoupon.conditions.map((condition, index) => (
-                    <li key={`${selectedCoupon.id}-${index}`}>{condition}</li>
-                  ))}
-                </ul>
-              </div>
-              <button
-                className="btn-use-now"
-                disabled={userCouponsLoading}
-                onClick={() => handleToggleSave(selectedCoupon.id)}
-              >
-                {!canSaveCoupons
-                  ? "Đăng nhập để lưu Coupon"
-                  : savedCouponIds.includes(selectedCoupon.id)
-                    ? "Bỏ lưu coupon"
-                    : "Lưu coupon ngay"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {!loggedIn && isWalletPage ? (
+        <div className="coupon-empty"><Inbox size={44} /><h2>Đăng nhập để xem Kho Coupon</h2><p>Kho Coupon dùng dữ liệu thật từ tài khoản của bạn.</p><button onClick={() => navigate("/login", { state: { from: location } })}>Đăng nhập</button></div>
+      ) : pageLoading ? (
+        <div className="coupon-empty"><Ticket size={44} /><h2>Đang tải coupon...</h2><p>FoodHub đang lấy ưu đãi mới nhất.</p></div>
+      ) : pageError ? (
+        <div className="coupon-empty coupon-empty--error"><AlertCircle size={44} /><h2>Không thể tải coupon</h2><p>Đã có lỗi khi lấy dữ liệu thật. Vui lòng thử lại.</p><button onClick={retry}>Thử lại</button></div>
+      ) : visibleCoupons.length ? (
+        <section className="coupon-grid">{visibleCoupons.map((coupon) => <CouponCard key={coupon.id} coupon={coupon} busy={userCoupons.loading} onSave={handleSave} onRemove={handleRemove} onUse={handleUseNow} onDetail={setSelectedCoupon} />)}</section>
+      ) : (
+        <div className="coupon-empty"><Compass size={44} /><h2>Chưa có coupon phù hợp</h2><p>{isWalletPage ? "Bạn chưa lưu coupon nào hoặc bộ lọc hiện tại không có kết quả." : "Nhà hàng này hiện chưa có coupon phù hợp với bộ lọc."}</p><button onClick={() => navigate("/restaurants")}>Khám phá nhà hàng</button></div>
       )}
-    </div>
+
+      <CouponDetailModal coupon={selectedCoupon} onClose={() => setSelectedCoupon(null)} />
+    </main>
   );
 };
 
