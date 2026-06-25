@@ -11,6 +11,9 @@ const roundVnd = (value) => Math.max(0, Math.round(toNum(value, 0)));
 const toObjId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
 
+const resolveMenuItemId = (item = {}) =>
+  item?.dishId || item?.menuItemId || item?.id || item?._id || item?.menuId || null;
+
 const resolveServingPrice = (
   menuItem,
   inputServingKey,
@@ -52,7 +55,7 @@ const resolveServingPrice = (
     servingKey,
     servingVariant: {
       key: servingKey,
-      name: inputServingVariant?.name || "Mặc định",
+      name: inputServingVariant?.name || "Default",
       mode: inputServingVariant?.mode || "PORTION",
       price: fallbackPrice,
       sellQty: inputServingVariant?.sellQty ?? null,
@@ -75,18 +78,18 @@ export async function buildPricedOrderItems({
   const safeItems = Array.isArray(items) ? items : [];
   if (!safeItems.length) return [];
 
-  const menuIds = [
+  const menuItemIds = [
     ...new Set(
       safeItems
-        .map((item) => item?.menuId || item?.dishId)
+        .map(resolveMenuItemId)
         .filter(Boolean)
         .map(String),
     ),
   ];
 
-  const menuDocs = menuIds.length
+  const menuDocs = menuItemIds.length
     ? await MenuItem.find({
-        _id: { $in: menuIds.map(toObjId).filter(Boolean) },
+        _id: { $in: menuItemIds.map(toObjId).filter(Boolean) },
         restaurantId: rid,
       })
         .session?.(session)
@@ -99,8 +102,8 @@ export async function buildPricedOrderItems({
 
   return safeItems
     .map((input) => {
-      const menuId = input?.menuId || input?.dishId || null;
-      const menu = menuId ? menuById.get(String(menuId)) : null;
+      const menuItemId = resolveMenuItemId(input);
+      const menu = menuItemId ? menuById.get(String(menuItemId)) : null;
 
       if (!menu) {
         throw new Error("Invalid order item: menu item not found");
@@ -115,8 +118,6 @@ export async function buildPricedOrderItems({
         input.servingVariant,
       );
 
-      // Modifier pricing có thể thêm sau nếu mutation hiện có logic phức tạp.
-      // PR này ưu tiên không tin unit/base price từ client.
       const modifiersPrice = 0;
       const unitPrice = roundVnd(pricing.basePrice + modifiersPrice);
       const lineSubtotal = roundVnd(unitPrice * quantity);
