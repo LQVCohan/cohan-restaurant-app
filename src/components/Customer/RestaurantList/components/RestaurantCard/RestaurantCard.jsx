@@ -1,5 +1,6 @@
 import React from "react";
 import "./RestaurantCard.scss";
+import "./RestaurantCardRecent.scss";
 import {
   getOpeningStatusLabel,
   canShowReservationButton,
