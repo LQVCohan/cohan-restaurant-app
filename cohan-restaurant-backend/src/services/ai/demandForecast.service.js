@@ -1,7 +1,10 @@
 import process from "process";
 import { MenuItem, Order, Recipe, Reservation, StockItem } from "../../../models/index.js";
+import { generateGeminiJson } from "./geminiClient.service.js";
+import { callLocalChatProvider, getLocalAiConfig } from "./localAiProvider.service.js";
 
-const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-5";
+const DEFAULT_OPENAI_MODEL = process.env.AI_MODEL || process.env.OPENAI_MODEL || "gpt-5";
+const DEFAULT_GEMINI_MODEL = process.env.AI_CHATBOT_MODEL || process.env.GEMINI_MODEL || "gemini-1.5-flash";
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 const ACTIVE_ORDER_STATUSES = new Set([
@@ -228,58 +231,153 @@ function buildStockRiskIndex({ risingDishes, recipeMap, stockByIngredient }) {
   });
 }
 
+const stripJsonFences = (value = "") =>
+  String(value || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+
 const safeJsonParse = (raw) => {
-  if (!raw || typeof raw !== "string") return null;
+  const text = stripJsonFences(raw);
+  if (!text) return null;
   try {
-    return JSON.parse(raw);
+    return JSON.parse(text);
   } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(text.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
 };
 
-async function tryAiSummary({ forecast, timezone }) {
+const normalizeAiProvider = (value) => String(value || "").trim().toLowerCase();
+
+const getAiProviderOrder = () => {
+  const primary = normalizeAiProvider(process.env.AI_PROVIDER || "local");
+  const fallback = normalizeAiProvider(process.env.AI_FALLBACK_PROVIDER || "local");
+  const localConfig = getLocalAiConfig();
+  const order = [];
+
+  const push = (provider) => {
+    const key = provider === "ollama" ? "local" : provider;
+    if (["local", "gemini", "openai"].includes(key) && !order.includes(key)) order.push(key);
+  };
+
+  push(primary);
+  push(fallback);
+  if (localConfig.enabled) push("local");
+  push("gemini");
+  push("openai");
+
+  return order;
+};
+
+const buildAiSummaryPrompt = ({ forecast, timezone }) => [
+  "Bạn là trợ lý forecast nhà hàng.",
+  "Trả về JSON thuần với shape {\"summary\":{},\"notes\":[string]}.",
+  "summary có thể bổ sung các trường ngắn như demandInsight, staffingNote, prepWarning.",
+  "Không markdown, không giải thích ngoài JSON.",
+  `Timezone: ${timezone}`,
+  `Input: ${JSON.stringify({
+    busiestPeriods: forecast.summary?.busiestPeriods || [],
+    topRisingDishes: forecast.summary?.topRisingDishes || [],
+    hourlyHead: (forecast.hourlyForecast || []).slice(0, 8),
+    dailyForecast: (forecast.dailyForecast || []).slice(0, 4),
+    risingDishes: (forecast.risingDishes || []).slice(0, 5),
+  })}`,
+].join("\n");
+
+async function callOpenAiJson({ prompt }) {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return { aiEnhanced: false, payload: null };
+  if (!apiKey) return null;
 
-  const prompt = [
-    "Bạn là trợ lý forecast nhà hàng.",
-    "Trả về JSON thuần với shape {summary:{},notes:[string]}",
-    "Không markdown.",
-    `Timezone: ${timezone}`,
-    `Input: ${JSON.stringify({
-      busiestPeriods: forecast.summary?.busiestPeriods || [],
-      topRisingDishes: forecast.summary?.topRisingDishes || [],
-      hourlyHead: (forecast.hourlyForecast || []).slice(0, 6),
-      risingDishes: (forecast.risingDishes || []).slice(0, 5),
-    })}`,
-  ].join("\n");
+  const res = await fetch(OPENAI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: DEFAULT_OPENAI_MODEL,
+      temperature: 0.2,
+      max_tokens: 260,
+      messages: [
+        { role: "system", content: "Bạn trả lời tiếng Việt, JSON hợp lệ." },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
 
-  try {
-    const res = await fetch(OPENAI_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        temperature: 0.2,
-        max_tokens: 220,
-        messages: [
-          { role: "system", content: "Bạn trả lời tiếng Việt, JSON hợp lệ." },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const parsed = safeJsonParse(data?.choices?.[0]?.message?.content?.trim());
+  return parsed ? { payload: parsed, provider: "openai", model: DEFAULT_OPENAI_MODEL } : null;
+}
 
-    if (!res.ok) return { aiEnhanced: false, payload: null };
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content?.trim();
-    const parsed = safeJsonParse(text);
-    return parsed ? { aiEnhanced: true, payload: parsed } : { aiEnhanced: false, payload: null };
-  } catch {
-    return { aiEnhanced: false, payload: null };
+async function callGeminiJson({ prompt }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  const model = DEFAULT_GEMINI_MODEL;
+  const payload = await generateGeminiJson({
+    apiKey,
+    model,
+    systemInstruction: "Bạn trả lời tiếng Việt, JSON hợp lệ. Không markdown.",
+    prompt,
+    timeoutMs: 12000,
+  });
+  return payload ? { payload, provider: "gemini", model } : null;
+}
+
+async function callLocalAiJson({ prompt }) {
+  const localConfig = getLocalAiConfig();
+  if (!localConfig.enabled) return null;
+
+  const result = await callLocalChatProvider({
+    systemInstruction: "Bạn là trợ lý forecast nhà hàng. Chỉ trả JSON hợp lệ, không markdown.",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.2,
+    maxTokens: 600,
+  });
+  const parsed = safeJsonParse(result?.content);
+  return parsed ? { payload: parsed, provider: `local:${localConfig.provider}`, model: localConfig.chatModel } : null;
+}
+
+async function tryAiSummary({ forecast, timezone }) {
+  const prompt = buildAiSummaryPrompt({ forecast, timezone });
+  const attemptedProviders = [];
+
+  for (const provider of getAiProviderOrder()) {
+    try {
+      attemptedProviders.push(provider);
+      const result =
+        provider === "local"
+          ? await callLocalAiJson({ prompt })
+          : provider === "gemini"
+            ? await callGeminiJson({ prompt })
+            : await callOpenAiJson({ prompt });
+
+      if (result?.payload?.summary) {
+        return {
+          aiEnhanced: true,
+          payload: result.payload,
+          provider: result.provider,
+          model: result.model,
+          attemptedProviders,
+          fallbackProviderUsed: attemptedProviders.length > 1,
+        };
+      }
+    } catch (error) {
+      console.warn("[demand-forecast] AI summary provider unavailable", {
+        provider,
+        message: error?.message,
+      });
+    }
   }
+
+  return { aiEnhanced: false, payload: null, attemptedProviders };
 }
 
 export function computeDemandForecastFromData({
@@ -580,8 +678,8 @@ export async function buildDemandForecast({
     timezone,
   });
 
-  // Optional AI enhancement for textual summary (preserve deterministic core).
   const ai = await tryAiSummary({ forecast, timezone });
+  forecast.meta.aiAttemptedProviders = ai.attemptedProviders || [];
   if (ai.aiEnhanced && ai.payload?.summary) {
     forecast.summary = {
       ...forecast.summary,
@@ -589,8 +687,14 @@ export async function buildDemandForecast({
       notes: [...(forecast.summary?.notes || []), ...(Array.isArray(ai.payload?.notes) ? ai.payload.notes : [])],
     };
     forecast.meta.aiEnhanced = true;
+    forecast.meta.aiProvider = ai.provider;
+    forecast.meta.aiModel = ai.model;
+    forecast.meta.aiFallbackProviderUsed = Boolean(ai.fallbackProviderUsed);
   } else {
     forecast.meta.aiEnhanced = false;
+    forecast.meta.aiProvider = null;
+    forecast.meta.aiModel = null;
+    forecast.meta.aiFallbackProviderUsed = false;
   }
 
   if (!forecast.risingDishes.length) {
