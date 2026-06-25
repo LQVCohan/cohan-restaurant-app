@@ -1,0 +1,451 @@
+.staff-leave-page {
+  --staff-leave-bg: #F7F8F3;
+  --staff-leave-surface: #ffffff;
+  --staff-leave-surface-soft: #F5FBF7;
+  --staff-leave-border: #DCE8DF;
+  --staff-leave-border-strong: rgba(31, 111, 74, 0.24);
+  --staff-leave-text: #1F2A24;
+  --staff-leave-muted: #64746A;
+  --staff-leave-accent: #1F6F4A;
+  --staff-leave-accent-strong: #165C3C;
+  --staff-leave-accent-soft: #EAF5EE;
+  --staff-leave-warning: #9A6700;
+  --staff-leave-warning-soft: #FFF7D6;
+  --staff-leave-danger: #B42318;
+  --staff-leave-shadow: 0 18px 42px rgba(31, 111, 74, 0.08);
+  --staff-leave-soft-shadow: 0 12px 28px rgba(31, 111, 74, 0.07);
+  --staff-leave-radius-lg: 30px;
+  --staff-leave-radius-md: 20px;
+
+  position: relative;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  color: var(--staff-leave-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-leave-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(31, 111, 74, 0.13), transparent 22rem),
+    radial-gradient(circle at 92% 12%, rgba(47, 125, 87, 0.08), transparent 24rem),
+    linear-gradient(180deg, #F8FAF6 0%, var(--staff-leave-bg) 100%);
+  pointer-events: none;
+}
+
+.staff-leave-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.staff-leave-hero__copy,
+.staff-leave-identity-card,
+.staff-leave-guide__item,
+.staff-leave-empty-card,
+.staff-leave-page .leave-form-container,
+.staff-leave-page .leave-list-container {
+  border: 1px solid var(--staff-leave-border);
+  background: var(--staff-leave-surface);
+  box-shadow: var(--staff-leave-shadow);
+}
+
+.staff-leave-hero__copy {
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+  padding: clamp(24px, 4vw, 42px);
+  border-radius: var(--staff-leave-radius-lg);
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.96) 0%, rgba(245, 251, 247, 0.94) 58%, rgba(234, 245, 238, 0.92) 100%),
+    radial-gradient(circle at 12% 10%, rgba(31, 111, 74, 0.18), transparent 24rem);
+}
+
+.staff-leave-hero__copy::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(31, 111, 74, 0.11);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.staff-leave-hero__copy::after {
+  content: "";
+  position: absolute;
+  right: -76px;
+  bottom: -118px;
+  width: 300px;
+  height: 300px;
+  border-radius: 42% 58% 48% 52%;
+  background: rgba(31, 111, 74, 0.13);
+  pointer-events: none;
+}
+
+.staff-leave-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(31, 111, 74, 0.2);
+  border-radius: 10px;
+  background: var(--staff-leave-accent-soft);
+  color: var(--staff-leave-accent-strong);
+  font-size: 0.78rem;
+  font-weight: 820;
+  letter-spacing: 0.015em;
+}
+
+.staff-leave-hero__copy h1 {
+  position: relative;
+  max-width: 700px;
+  margin: 16px 0 12px;
+  font-size: clamp(2.2rem, 5vw, 4.7rem);
+  font-weight: 880;
+  letter-spacing: -0.065em;
+  line-height: 0.92;
+  text-wrap: balance;
+}
+
+.staff-leave-hero__copy p {
+  position: relative;
+  max-width: 65ch;
+  margin: 0;
+  color: var(--staff-leave-muted);
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
+.staff-leave-hero__stats {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 720px;
+  margin-top: 26px;
+}
+
+.staff-leave-stat-card {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid rgba(31, 111, 74, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: var(--staff-leave-soft-shadow);
+}
+
+.staff-leave-stat-card span {
+  color: var(--staff-leave-muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.staff-leave-stat-card strong {
+  color: var(--staff-leave-accent-strong);
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.staff-leave-stat-card--pending strong {
+  color: var(--staff-leave-warning);
+}
+
+.staff-leave-stat-card--approved strong {
+  color: var(--staff-leave-accent);
+}
+
+.staff-leave-identity-card {
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 280px;
+  padding: 24px;
+  border-color: var(--staff-leave-border-strong);
+  border-radius: var(--staff-leave-radius-lg);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(47, 125, 87, 0.2), transparent 12rem),
+    linear-gradient(160deg, #F5FBF7 0%, #ffffff 100%);
+}
+
+.staff-leave-identity-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  top: -34px;
+  width: 118px;
+  height: 118px;
+  border: 1px solid rgba(31, 111, 74, 0.16);
+  border-radius: 32px;
+  transform: rotate(12deg);
+}
+
+.staff-leave-identity-card__avatar {
+  display: grid;
+  position: relative;
+  width: 58px;
+  height: 58px;
+  margin-bottom: auto;
+  place-items: center;
+  border: 1px solid rgba(31, 111, 74, 0.32);
+  border-radius: 18px;
+  background: var(--staff-leave-accent-soft);
+  color: var(--staff-leave-accent-strong);
+  font-size: 1.2rem;
+  font-weight: 860;
+}
+
+.staff-leave-identity-card span,
+.staff-leave-identity-card small {
+  position: relative;
+  color: rgba(31, 111, 74, 0.76);
+  font-size: 0.82rem;
+  font-weight: 720;
+  letter-spacing: 0.03em;
+}
+
+.staff-leave-identity-card strong {
+  position: relative;
+  margin: 10px 0;
+  color: var(--staff-leave-text);
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.staff-leave-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.staff-leave-guide__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--staff-leave-radius-md);
+  box-shadow: var(--staff-leave-soft-shadow);
+}
+
+.staff-leave-guide__item > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--staff-leave-accent-soft);
+  color: var(--staff-leave-accent-strong);
+  font-size: 0.82rem;
+  font-weight: 860;
+}
+
+.staff-leave-guide__item strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1rem;
+  color: var(--staff-leave-text);
+}
+
+.staff-leave-guide__item p {
+  margin: 0;
+  color: var(--staff-leave-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.staff-leave-panel {
+  margin-bottom: 18px;
+}
+
+.staff-leave-page .leave-form-container,
+.staff-leave-page .leave-list-container {
+  border-radius: var(--staff-leave-radius-lg);
+  box-shadow: var(--staff-leave-shadow);
+}
+
+.staff-leave-page .leave-form-container {
+  max-width: none;
+  margin: 0;
+}
+
+.staff-leave-page .leave-form-container .form-header-section,
+.staff-leave-page .leave-list-container .dashboard-header {
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.98), rgba(245, 251, 247, 0.95)),
+    radial-gradient(circle at 0% 0%, rgba(31, 111, 74, 0.14), transparent 18rem);
+  border-bottom-color: var(--staff-leave-border);
+}
+
+.staff-leave-page .leave-form-container .form-header-section .title,
+.staff-leave-page .leave-list-container .dashboard-header .header-title h3 {
+  color: var(--staff-leave-text);
+  letter-spacing: -0.025em;
+}
+
+.staff-leave-page .leave-form-container .form-section .section-title {
+  color: var(--staff-leave-accent-strong);
+  border-bottom-color: rgba(31, 111, 74, 0.18);
+}
+
+.staff-leave-page .leave-form-container .form-group select,
+.staff-leave-page .leave-form-container .form-group input[type="search"],
+.staff-leave-page .leave-form-container .form-group input[type="date"],
+.staff-leave-page .leave-form-container .form-group textarea,
+.staff-leave-page .leave-list-container .controls-bar .search-box input {
+  border-color: var(--staff-leave-border);
+  background: #FAFCF8;
+}
+
+.staff-leave-page .leave-form-container .form-group select:focus,
+.staff-leave-page .leave-form-container .form-group input[type="search"]:focus,
+.staff-leave-page .leave-form-container .form-group input[type="date"]:focus,
+.staff-leave-page .leave-form-container .form-group textarea:focus,
+.staff-leave-page .leave-list-container .controls-bar .search-box input:focus {
+  border-color: var(--staff-leave-accent);
+  box-shadow: 0 0 0 3px rgba(31, 111, 74, 0.12);
+}
+
+.staff-leave-page .leave-form-container .leave-types-grid .radio-card {
+  border-radius: 14px;
+}
+
+.staff-leave-page .leave-form-container .leave-types-grid .radio-card.selected {
+  border-color: var(--staff-leave-accent);
+  background: var(--staff-leave-accent-soft);
+  color: var(--staff-leave-accent-strong);
+  box-shadow: 0 12px 26px rgba(31, 111, 74, 0.08);
+}
+
+.staff-leave-page .leave-form-container .total-days-bar {
+  border-color: #F5D36D;
+  background: var(--staff-leave-warning-soft);
+  color: var(--staff-leave-warning);
+}
+
+.staff-leave-page .leave-form-container .form-footer {
+  background: #FAFCF8;
+  border-top-color: var(--staff-leave-border);
+}
+
+.staff-leave-page .leave-form-container .form-footer .btn.btn-primary {
+  background: var(--staff-leave-accent);
+  box-shadow: 0 12px 24px rgba(31, 111, 74, 0.18);
+}
+
+.staff-leave-page .leave-form-container .form-footer .btn.btn-primary:hover {
+  background: var(--staff-leave-accent-strong);
+}
+
+.staff-leave-page .leave-form-container .form-footer .btn:focus-visible,
+.staff-leave-page .leave-list-container button:focus-visible {
+  outline: 3px solid rgba(31, 111, 74, 0.24);
+  outline-offset: 3px;
+}
+
+.staff-leave-page .leave-list-container .controls-bar {
+  background: #FAFCF8;
+  border-bottom-color: var(--staff-leave-border);
+}
+
+.staff-leave-page .leave-list-container .controls-bar .tabs .tab-btn.active {
+  color: var(--staff-leave-accent-strong);
+}
+
+.staff-leave-page .leave-list-container .dashboard-header .stats-grid .stat-card.approved {
+  background: var(--staff-leave-accent-soft);
+  border-color: rgba(31, 111, 74, 0.22);
+}
+
+.staff-leave-page .leave-list-container .dashboard-header .stats-grid .stat-card.approved .value,
+.staff-leave-page .leave-list-container .leave-table .status-badge.approved {
+  color: var(--staff-leave-accent);
+}
+
+.staff-leave-page .leave-list-container .leave-table .employee-cell .avatar {
+  background: var(--staff-leave-accent);
+}
+
+.staff-leave-page .leave-list-container .leave-table .leave-type {
+  border: 1px solid rgba(31, 111, 74, 0.14);
+  background: var(--staff-leave-accent-soft);
+  color: var(--staff-leave-accent-strong);
+}
+
+.staff-leave-page .leave-list-container .leave-table tbody tr:hover {
+  background: #F8FBF6;
+}
+
+.staff-leave-empty-card {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  border-radius: var(--staff-leave-radius-md);
+}
+
+.staff-leave-empty-card strong {
+  color: var(--staff-leave-danger);
+  font-size: 1.1rem;
+}
+
+.staff-leave-empty-card span {
+  color: var(--staff-leave-muted);
+  line-height: 1.55;
+}
+
+@media (max-width: 980px) {
+  .staff-leave-hero,
+  .staff-leave-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-leave-identity-card {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 720px) {
+  .staff-leave-page {
+    width: 100%;
+  }
+
+  .staff-leave-hero__copy,
+  .staff-leave-identity-card,
+  .staff-leave-guide__item {
+    border-radius: 22px;
+  }
+
+  .staff-leave-hero__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-leave-page .leave-form-container .main-form,
+  .staff-leave-page .leave-form-container .form-header-section,
+  .staff-leave-page .leave-form-container .form-footer,
+  .staff-leave-page .leave-list-container .dashboard-header,
+  .staff-leave-page .leave-list-container .controls-bar {
+    padding-inline: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-leave-page *,
+  .staff-leave-page *::before,
+  .staff-leave-page *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
