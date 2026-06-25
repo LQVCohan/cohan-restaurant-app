@@ -3,13 +3,20 @@ import React from "react";
 import { formatCurrency } from "../../../../utils/formatters";
 import { canCustomerOrderMenuItem, getMenuItemAvailability } from "../../../../utils/menuItemAvailability";
 import "../styles/MenuItemCard.scss";
+
+const MENU_ITEM_PLACEHOLDER = "https://placehold.co/720x480/f5eadb/9a4f08?text=Cohan+Food";
+
 const MenuItemCard = ({ item, onClick, disabled = false }) => {
   const foodPreferenceMeta = item?.foodPreferenceMeta;
   const availability = getMenuItemAvailability(item);
   const isOrderable = canCustomerOrderMenuItem(item) && !disabled;
-  const handleImageError = (e) => {
-    e.target.src = "https://placehold.co/600x400/e2e8f0/94a3b8?text=Food+Image";
+  const imageSrc = item?.thumbImage || MENU_ITEM_PLACEHOLDER;
+
+  const handleImageError = (event) => {
+    event.currentTarget.onerror = null;
+    event.currentTarget.src = MENU_ITEM_PLACEHOLDER;
   };
+
   const handleOpen = () => {
     if (!isOrderable) return;
     onClick(item);
@@ -34,8 +41,8 @@ const MenuItemCard = ({ item, onClick, disabled = false }) => {
     >
       <div className="thumb">
         <img
-          src={item.thumbImage}
-          alt={item.name}
+          src={imageSrc}
+          alt={item.name || "Món ăn Cohan"}
           loading="lazy"
           onError={handleImageError}
         />
