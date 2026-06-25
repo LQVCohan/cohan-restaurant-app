@@ -133,12 +133,10 @@ const FieldIcon = ({ type }) => {
 
 const FloatingFoodIcons = () => (
   <div className="floating-food-layer" aria-hidden="true">
-    <span className="food-float food-float--1">🍜</span>
-    <span className="food-float food-float--2">🍕</span>
-    <span className="food-float food-float--3">🥗</span>
-    <span className="food-float food-float--4">🍔</span>
-    <span className="food-float food-float--5">🥤</span>
-    <span className="food-float food-float--6">🍣</span>
+    <span className="food-float food-float--1">POS</span>
+    <span className="food-float food-float--2">BÀN</span>
+    <span className="food-float food-float--3">ĐƠN</span>
+    <span className="food-float food-float--4">CA</span>
   </div>
 );
 
@@ -369,7 +367,7 @@ const LoginPage = () => {
         <button type="button" className={mobileMode === "register" ? "active" : ""} onClick={() => togglePanel(true)}>Đăng ký</button>
       </div>
 
-      <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký FoodHub">
+      <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký VPOS">
         <div className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}>
           <form className="auth-form auth-form--register" onSubmit={handleRegister}>
             <h1>Tạo tài khoản</h1>
@@ -416,12 +414,12 @@ const LoginPage = () => {
             <FloatingFoodIcons />
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
-              <p>Đăng nhập để tiếp tục đặt món, theo dõi đơn và lưu các lựa chọn yêu thích.</p>
+              <p>Tạo tài khoản VPOS để bắt đầu quản lý nhà hàng nhanh chóng, đồng bộ và dễ theo dõi hơn.</p>
               <button type="button" className="ghost" onClick={() => togglePanel(false)}>Đăng nhập</button>
             </div>
             <div className="overlay-panel overlay-right">
               <h1>Xin chào</h1>
-              <p>Tạo tài khoản để đặt món nhanh hơn và cá nhân hóa trải nghiệm FoodHub.</p>
+              <p>Đăng nhập VPOS để quản lý bàn, theo dõi đơn realtime và kiểm soát ca làm trên cùng một hệ thống.</p>
               <button type="button" className="ghost" onClick={() => togglePanel(true)}>Đăng ký</button>
             </div>
           </div>
