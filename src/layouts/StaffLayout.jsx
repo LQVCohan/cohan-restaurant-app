@@ -67,7 +67,7 @@ const isActivePath = (location, target) => {
 };
 
 const navGroups = [
-  { label: "Công việc", keys: ["/staff/dashboard", "/staff/schedule", "/staff/orders", "/staff/kitchen", "/staff/contacts"] },
+  { label: "Công việc", keys: ["/staff/dashboard", "/staff/schedule", "/staff/leave", "/staff/orders", "/staff/kitchen", "/staff/contacts"] },
   { label: "Tài khoản", keys: ["/staff/profile", "/staff/notifications", "/staff/payslips", "/staff/settings"] },
   { label: "Hỗ trợ", keys: ["/staff/ai-handoff"] },
 ];
@@ -85,6 +85,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
     () => [
       { label: "Tổng quan", to: "/staff/dashboard" },
       { label: "Lịch cá nhân", to: "/staff/schedule" },
+      { label: "Nghỉ phép", to: "/staff/leave" },
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
       { label: "Liên lạc", to: "/staff/contacts" },
