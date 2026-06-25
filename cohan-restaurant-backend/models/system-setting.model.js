@@ -2,6 +2,18 @@ import mongoose from "mongoose";
 
 const { Schema, Types } = mongoose;
 
+const overtimeLimitSchema = new Schema(
+  {
+    maxMinutesPerDay: {
+      type: Number,
+      default: 120,
+      min: 0,
+      max: 1440,
+    },
+  },
+  { _id: false },
+);
+
 const SystemSettingSchema = new Schema(
   {
     restaurantId: {
@@ -56,6 +68,20 @@ const SystemSettingSchema = new Schema(
       rbac: { type: Boolean, default: true },
       printing: { type: Boolean, default: true },
       backup: { type: Boolean, default: true },
+    },
+    overtimePolicy: {
+      enabled: { type: Boolean, default: true },
+      defaultMaxMinutesPerDay: {
+        type: Number,
+        default: 120,
+        min: 0,
+        max: 1440,
+      },
+      roleGroupLimits: {
+        service: { type: overtimeLimitSchema, default: () => ({ maxMinutesPerDay: 120 }) },
+        kitchen: { type: overtimeLimitSchema, default: () => ({ maxMinutesPerDay: 180 }) },
+        shiftManager: { type: overtimeLimitSchema, default: () => ({ maxMinutesPerDay: 240 }) },
+      },
     },
     metadata: {
       note: { type: String, default: "" },
