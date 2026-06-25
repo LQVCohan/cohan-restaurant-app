@@ -117,25 +117,105 @@ const StaffHeader = ({
     ];
   }, [stats]);
 
+  const pageStatsData = useMemo(() => {
+    const base = {
+      total: { id: "total", icon: "👥", label: "Nhân sự", value: stats.totalStaff || 0 },
+      active: { id: "active", icon: "🟢", label: "Trực tuyến", value: stats.activeStaff || 0 },
+      onLeave: { id: "leave", icon: "🏖️", label: "Đang nghỉ", value: stats.onLeaveStaff || 0 },
+      pending: { id: "pending", icon: "📝", label: "Đơn chờ duyệt", value: pendingLeaveCount || 0 },
+    };
+
+    if (activeStaffPage === "attendance") {
+      return [
+        base.total,
+        base.active,
+        { id: "need-check", icon: "⚡", label: "Thao tác nhanh", value: "Vào/Tan" },
+        base.pending,
+      ];
+    }
+    if (activeStaffPage === "leave") {
+      return [base.pending, base.onLeave, base.total, base.active];
+    }
+    if (activeStaffPage === "schedule") {
+      return [
+        base.total,
+        { id: "calendar", icon: "🗓️", label: "Lập lịch", value: "Theo tuần" },
+        base.onLeave,
+        base.pending,
+      ];
+    }
+    if (activeStaffPage === "performance") {
+      return [
+        base.total,
+        statsData.find((item) => item.id === "rate"),
+        base.active,
+        base.pending,
+      ].filter(Boolean);
+    }
+    if (activeStaffPage === "reports") {
+      return [
+        { id: "range", icon: "📊", label: "Báo cáo", value: "Theo kỳ" },
+        base.total,
+        base.active,
+        base.pending,
+      ];
+    }
+    return statsData;
+  }, [activeStaffPage, pendingLeaveCount, stats.activeStaff, stats.onLeaveStaff, stats.totalStaff, statsData]);
+
+  const pageQuickActions = useMemo(() => {
+    if (activeStaffPage === "dashboard") {
+      return [
+        { icon: "📝", label: "Chấm công", title: "Điểm danh và theo dõi chấm công", onClick: () => goToStaffPage("attendance") },
+        { icon: "📅", label: "Xếp ca", title: "Xếp ca làm việc", onClick: () => goToStaffPage("schedule") },
+        { icon: "🏖️", label: "Nghỉ phép", title: "Duyệt và theo dõi nghỉ phép", onClick: () => goToStaffPage("leave") },
+      ];
+    }
+    const shortcuts = {
+      attendance: [
+        { icon: "🏖️", label: "Nghỉ phép", title: "Mở nghỉ phép", onClick: () => goToStaffPage("leave") },
+        { icon: "📅", label: "Lịch", title: "Mở lịch làm", onClick: () => goToStaffPage("schedule") },
+      ],
+      leave: [
+        { icon: "✅", label: "Chấm công", title: "Mở chấm công", onClick: () => goToStaffPage("attendance") },
+        { icon: "📅", label: "Lịch", title: "Mở lịch làm", onClick: () => goToStaffPage("schedule") },
+      ],
+      schedule: [
+        { icon: "✅", label: "Chấm công", title: "Mở chấm công", onClick: () => goToStaffPage("attendance") },
+        { icon: "📈", label: "Hiệu suất", title: "Mở hiệu suất", onClick: () => goToStaffPage("performance") },
+      ],
+      performance: [
+        { icon: "📊", label: "Báo cáo", title: "Mở báo cáo", onClick: () => goToStaffPage("reports") },
+        { icon: "✅", label: "Chấm công", title: "Mở chấm công", onClick: () => goToStaffPage("attendance") },
+      ],
+      reports: [
+        { icon: "📈", label: "Hiệu suất", title: "Mở hiệu suất", onClick: () => goToStaffPage("performance") },
+        { icon: "✅", label: "Chấm công", title: "Mở chấm công", onClick: () => goToStaffPage("attendance") },
+      ],
+    };
+    return shortcuts[activeStaffPage] || [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStaffPage]);
+
   const isOverviewPage = activeStaffPage === "dashboard";
   const pageCopy = STAFF_PAGE_COPY[activeStaffPage] || STAFF_PAGE_COPY.dashboard;
 
-  const goToStaffPage = (page) => {
+  function goToStaffPage(page) {
     setActiveStaffPage(page);
     window.dispatchEvent(
       new CustomEvent("staff:page-change", { detail: { page, source: "staff-header" } }),
     );
     onPageChange?.(page);
-  };
+  }
 
   return <ManagementPageHeader
     className={`staff-page-header ${isOverviewPage ? "" : "is-subpage-context"}`.trim()}
     density="compact"
-    statsPlacement={isOverviewPage ? "right" : "none"}
+    statsPlacement={pageStatsData.length ? "right" : "none"}
     eyebrow={pageCopy.eyebrow}
     title={isCollapsed ? pageCopy.compactTitle : pageCopy.title}
     subtitle={pageCopy.subtitle}
-    stats={isOverviewPage ? statsData : []}
+    stats={pageStatsData}
     loading={loading}
     isCollapsed={isCollapsed}
     onToggle={onToggle}
@@ -145,15 +225,11 @@ const StaffHeader = ({
     selectedRestaurant={selectedRestaurant}
     onRestaurantChange={onRestaurantChange}
     restaurantList={restaurantList}
-    quickActions={isOverviewPage ? [
-      { icon: "📝", label: "Chấm công", title: "Điểm danh và theo dõi chấm công", onClick: () => goToStaffPage("attendance") },
-      { icon: "📅", label: "Xếp ca", title: "Xếp ca làm việc", onClick: () => goToStaffPage("schedule") },
-      { icon: "🏖️", label: "Nghỉ phép", title: "Duyệt và theo dõi nghỉ phép", onClick: () => goToStaffPage("leave") },
-    ] : []}
+    quickActions={pageQuickActions}
     secondaryActions={onExportData && isOverviewPage ? [{ icon: "📤", label: "Xuất dữ liệu", onClick: onExportData }] : []}
     primaryAction={onAddEmployee ? { icon: "➕", label: isCollapsed ? "" : "Thêm nhân viên", onClick: onAddEmployee } : null}
-    footerLeft={isOverviewPage ? <span>Trực tuyến: <strong>{loading ? "--" : (stats.activeStaff || 0)}</strong></span> : null}
-    footerRight={isOverviewPage ? <span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn nghỉ phép</strong></span> : null}
+    footerLeft={isOverviewPage ? <span>Trực tuyến: <strong>{loading ? "--" : (stats.activeStaff || 0)}</strong></span> : <span>Trang hiện tại: <strong>{pageCopy.compactTitle}</strong></span>}
+    footerRight={isOverviewPage ? <span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn nghỉ phép</strong></span> : <span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn</strong></span>}
   />;
 };
 
