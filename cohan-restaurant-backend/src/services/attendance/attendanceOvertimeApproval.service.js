@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { EventLog, Staff, Timesheet } from "../../../models/index.js";
+import { EventLog, Staff, SystemSetting, Timesheet } from "../../../models/index.js";
 import {
   assertPayrollPeriodEditable,
   findPayrollPeriodOverlap,
@@ -26,6 +26,23 @@ const REVIEWABLE_ATTENDANCE_STATUSES = new Set([
 
 const BLOCKING_PAYROLL_PERIOD_STATUSES = ["finalized", "locked", "paid"];
 
+const DEFAULT_OVERTIME_POLICY = {
+  enabled: true,
+  defaultMaxMinutesPerDay: 120,
+  roleGroupLimits: {
+    service: { maxMinutesPerDay: 120 },
+    kitchen: { maxMinutesPerDay: 180 },
+    shiftManager: { maxMinutesPerDay: 240 },
+  },
+};
+
+const OVERTIME_ROLE_GROUP_LABELS = {
+  service: "Nhân viên phục vụ",
+  kitchen: "Bếp",
+  shiftManager: "Quản lý ca",
+  default: "Nhóm mặc định",
+};
+
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
   return new Types.ObjectId(value);
@@ -33,6 +50,14 @@ function toObjectId(value) {
 
 function normalizeRole(value) {
   return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
 }
@@ -161,6 +186,117 @@ async function assertAttendanceOvertimePayrollEditable(timesheet) {
   }
 }
 
+function getSafeMinuteLimit(value, fallback) {
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric < 0 || numeric > 1440) return fallback;
+  return numeric;
+}
+
+function normalizeOvertimePolicy(policy = {}) {
+  const source = policy || {};
+  const roleGroupLimits = source.roleGroupLimits || {};
+
+  return {
+    enabled: Boolean(source.enabled ?? DEFAULT_OVERTIME_POLICY.enabled),
+    defaultMaxMinutesPerDay: getSafeMinuteLimit(
+      source.defaultMaxMinutesPerDay,
+      DEFAULT_OVERTIME_POLICY.defaultMaxMinutesPerDay,
+    ),
+    roleGroupLimits: {
+      service: {
+        maxMinutesPerDay: getSafeMinuteLimit(
+          roleGroupLimits.service?.maxMinutesPerDay,
+          DEFAULT_OVERTIME_POLICY.roleGroupLimits.service.maxMinutesPerDay,
+        ),
+      },
+      kitchen: {
+        maxMinutesPerDay: getSafeMinuteLimit(
+          roleGroupLimits.kitchen?.maxMinutesPerDay,
+          DEFAULT_OVERTIME_POLICY.roleGroupLimits.kitchen.maxMinutesPerDay,
+        ),
+      },
+      shiftManager: {
+        maxMinutesPerDay: getSafeMinuteLimit(
+          roleGroupLimits.shiftManager?.maxMinutesPerDay,
+          DEFAULT_OVERTIME_POLICY.roleGroupLimits.shiftManager.maxMinutesPerDay,
+        ),
+      },
+    },
+  };
+}
+
+function getStaffOvertimeRoleGroup(staff) {
+  const roleText = normalizeText(
+    [
+      staff?.role?.slug,
+      staff?.role?.name,
+      staff?.roleName,
+      staff?.positionTitle,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  const department = normalizeText(staff?.department);
+
+  if (
+    roleText.includes("supervisor") ||
+    roleText.includes("manager") ||
+    roleText.includes("shift_manager") ||
+    roleText.includes("quan ly") ||
+    roleText.includes("giam sat") ||
+    roleText.includes("truong ca")
+  ) {
+    return "shiftManager";
+  }
+  if (department === "kitchen" || roleText.includes("chef") || roleText.includes("cook") || roleText.includes("bep")) {
+    return "kitchen";
+  }
+  if (department === "service" || roleText.includes("server") || roleText.includes("phuc vu") || roleText.includes("host")) {
+    return "service";
+  }
+  return "default";
+}
+
+async function loadOvertimePolicy(restaurantId) {
+  if (!SystemSetting?.findOne) return normalizeOvertimePolicy();
+  const setting = await SystemSetting.findOne({ restaurantId })
+    .select({ overtimePolicy: 1 })
+    .lean();
+  return normalizeOvertimePolicy(setting?.overtimePolicy);
+}
+
+async function loadStaffForOvertimePolicy(employeeId) {
+  if (!employeeId) return null;
+  return Staff.findById(employeeId)
+    .populate("role")
+    .select({
+      _id: 1,
+      fullName: 1,
+      employeeCode: 1,
+      department: 1,
+      positionTitle: 1,
+      role: 1,
+      roleName: 1,
+      avatarUrl: 1,
+      avatar: 1,
+    })
+    .lean();
+}
+
+async function assertApprovedOvertimeWithinPolicy({ timesheet, staff, approvedOvertimeMinutes }) {
+  const policy = await loadOvertimePolicy(timesheet.restaurantId);
+  if (!policy.enabled) return;
+
+  const group = getStaffOvertimeRoleGroup(staff);
+  const groupLimit = policy.roleGroupLimits[group]?.maxMinutesPerDay;
+  const maxMinutes = getSafeMinuteLimit(groupLimit, policy.defaultMaxMinutesPerDay);
+
+  if (approvedOvertimeMinutes > maxMinutes) {
+    const label = OVERTIME_ROLE_GROUP_LABELS[group] || OVERTIME_ROLE_GROUP_LABELS.default;
+    throw new Error(`ATTENDANCE_OVERTIME_LIMIT_EXCEEDED|${maxMinutes}|${label}`);
+  }
+}
+
 export async function mapAttendanceRecordWithOvertime(timesheet, staffDoc = null) {
   let staff = staffDoc;
   if (!staff && timesheet?.employeeId) {
@@ -170,7 +306,9 @@ export async function mapAttendanceRecordWithOvertime(timesheet, staffDoc = null
         _id: 1,
         fullName: 1,
         employeeCode: 1,
+        department: 1,
         positionTitle: 1,
+        role: 1,
         roleName: 1,
         avatarUrl: 1,
         avatar: 1,
@@ -283,6 +421,13 @@ export async function approveAttendanceOvertime({ input, ctx }) {
     throw new Error("ATTENDANCE_OVERTIME_APPROVED_EXCEEDS_RAW");
   }
 
+  const staff = await loadStaffForOvertimePolicy(timesheet.employeeId);
+  await assertApprovedOvertimeWithinPolicy({
+    timesheet,
+    staff,
+    approvedOvertimeMinutes,
+  });
+
   timesheet.approvedOvertimeMinutes = approvedOvertimeMinutes;
   timesheet.overtimeApprovalStatus = "approved";
   timesheet.overtimeReviewNote = String(input.reviewNote || "").trim();
@@ -302,7 +447,7 @@ export async function approveAttendanceOvertime({ input, ctx }) {
     },
   });
 
-  return mapAttendanceRecordWithOvertime(timesheet);
+  return mapAttendanceRecordWithOvertime(timesheet, staff);
 }
 
 export async function rejectAttendanceOvertime({ input, ctx }) {
