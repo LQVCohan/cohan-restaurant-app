@@ -97,6 +97,19 @@ export const ReservationQuery = {
       .lean({ virtuals: true });
   },
 
+  async pendingReservationChanges(_, { restaurantId, limit = 50 }, ctx) {
+    const rId = toObjectId(restaurantId);
+    await requireRestaurantPermission(ctx, rId, PERMISSIONS.RESERVATION_READ);
+    return Reservation.find({
+      restaurantId: rId,
+      status: "pending_change",
+      changeRequestStatus: "requested",
+    })
+      .sort({ updatedAt: -1, _id: -1 })
+      .limit(Math.max(1, Math.min(Number(limit || 50), 100)))
+      .lean({ virtuals: true });
+  },
+
   async confirmedReservationByTable(_, { restaurantId, tableId }, ctx) {
     return ReservationQuery.activeReservationByTable(_, { restaurantId, tableId }, ctx);
   },
