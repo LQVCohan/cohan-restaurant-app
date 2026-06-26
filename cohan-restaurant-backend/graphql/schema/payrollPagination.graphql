@@ -1,3 +1,77 @@
+type PayrollStats {
+  totalPayroll: Float
+  paidAmount: Float
+  remaining: Float
+  progress: Int
+}
+
+type StaffPayrollItem {
+  id: ID!
+  payrollItemId: ID
+  periodId: ID
+  periodName: String
+  periodStartDate: DateTime
+  periodEndDate: DateTime
+  periodStatus: String
+  periodFinalizedAt: DateTime
+  name: String
+  code: String
+  role: String
+  department: String
+  avatar: String
+  baseSalary: Float
+  workDays: Float
+  actualWorkDays: Float
+  totalHours: Float
+  hourlyRate: Float
+  allowance: Float
+  bonus: Float
+  otherAddition: Float
+  overtime: Float
+  overtimeNormal: Float
+  overtimeWeekend: Float
+  overtimeHoliday: Float
+  nightShiftExtra: Float
+  overtimeHours: Float
+  overtimeNormalHours: Float
+  overtimeWeekendHours: Float
+  overtimeHolidayHours: Float
+  nightHours: Float
+  overtimeNightHours: Float
+  deduction: Float
+  otherDeduction: Float
+  advance: Float
+  insuranceSocial: Float
+  insuranceHealth: Float
+  insuranceUnemployment: Float
+  insuranceTotal: Float
+  insuranceEmployerTotal: Float
+  personalIncomeTax: Float
+  grossIncome: Float
+  coefficient: Float
+  totalIncome: Float
+  totalDeduction: Float
+  netSalary: Float
+  policyCode: String
+  policyEffectiveFrom: DateTime
+  regionCode: String
+  minimumWageMonthly: Float
+  minimumWageHourly: Float
+  minimumWageViolation: Boolean
+  insuranceEligible: Boolean
+  warningMessages: [String!]
+  status: String
+  paidAmount: Float
+  remainingAmount: Float
+  paidAt: DateTime
+  lateMinutes: Float
+  earlyLeaveMinutes: Float
+  unpaidLeaveDays: Float
+  paidLeaveDays: Float
+  scheduleShiftCount: Float
+  manualAdjustmentTotal: Float
+}
+
 type PayrollPaginationInfo {
   totalCount: Int!
   limit: Int!
