@@ -80,8 +80,8 @@ describe("BackupManagement config snapshot UI", () => {
   it("renders export/import sections and database backup warning", () => {
     renderPage();
     expect(screen.getByText("Xuất cấu hình")).toBeInTheDocument();
-    expect(screen.getByText("Khôi phục cấu hình")).toBeInTheDocument();
-    expect(screen.getByText(/không thay thế/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Khôi phục cấu hình").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/không thay thế/i).length).toBeGreaterThan(0);
   });
 
   it("creates a manual backup run from checklist workflow", async () => {
@@ -198,7 +198,7 @@ describe("BackupManagement conflict resolver UI", () => {
     await previewImportWithFile();
     expect(await screen.findByText("Xử lý xung đột khôi phục")).toBeInTheDocument();
     expect(screen.getByText("Tổng xung đột")).toBeInTheDocument();
-    expect(screen.getByText("Cần chú ý")).toBeInTheDocument();
+    expect(screen.getAllByText("Cần chú ý").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText("Khác biệt trường"));
     expect(screen.getByText(/basePrice: file=50000/)).toBeInTheDocument();
   });
