@@ -175,6 +175,24 @@ const normalizeBatchOrders = (orders = []) => {
     });
 };
 
+const buildItemStatusStats = (orders = []) => {
+  const stats = { total: 0, working: 0, ready: 0, served: 0 };
+
+  orders.forEach((order) => {
+    (order.items || []).forEach((item) => {
+      const quantity = Math.max(Number(item?.quantity || 1), 1);
+      const tone = getStatusTone(item?.status);
+
+      stats.total += quantity;
+      if (tone === "success") stats.served += quantity;
+      else if (tone === "ready") stats.ready += quantity;
+      else stats.working += quantity;
+    });
+  });
+
+  return stats;
+};
+
 const formatLastUpdated = (value) => {
   if (!value) return "Chưa cập nhật";
   return value.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
@@ -226,6 +244,11 @@ const TableCurrentSessionPage = () => {
   const batchOrders = useMemo(
     () => normalizeBatchOrders(tableSessionData?.orders || []),
     [tableSessionData?.orders],
+  );
+
+  const itemStatusStats = useMemo(
+    () => buildItemStatusStats(batchOrders),
+    [batchOrders],
   );
 
   const temporaryTotal = useMemo(
@@ -437,6 +460,27 @@ const TableCurrentSessionPage = () => {
           >
             {feedback.text}
           </div>
+        )}
+
+        {batchOrders.length > 0 && (
+          <section className="customer-table-session-page__status-summary" aria-label="Tóm tắt trạng thái món">
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--total">
+              <span>Tổng món</span>
+              <strong>{itemStatusStats.total}</strong>
+            </div>
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--working">
+              <span>Đang xử lý</span>
+              <strong>{itemStatusStats.working}</strong>
+            </div>
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--ready">
+              <span>Sẵn sàng</span>
+              <strong>{itemStatusStats.ready}</strong>
+            </div>
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--served">
+              <span>Đã phục vụ</span>
+              <strong>{itemStatusStats.served}</strong>
+            </div>
+          </section>
         )}
 
         {!batchOrders.length ? (
