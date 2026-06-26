@@ -1,0 +1,43 @@
+.restaurant-grid {
+  .res-card {
+    &__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 0 0 10px;
+    }
+
+    &__badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(92, 64, 51, 0.1);
+      background: rgba(255, 250, 244, 0.9);
+      color: #5f5148;
+      font-size: 0.75rem;
+      font-weight: 850;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    &__badge--success {
+      border-color: rgba(22, 163, 74, 0.2);
+      background: rgba(220, 252, 231, 0.82);
+      color: #166534;
+    }
+
+    &__badge--primary {
+      border-color: rgba(232, 93, 4, 0.18);
+      background: #fff1e5;
+      color: #c94f02;
+    }
+
+    &__badge--warm {
+      border-color: rgba(245, 158, 11, 0.22);
+      background: rgba(254, 243, 199, 0.86);
+      color: #92400e;
+    }
+  }
+}
