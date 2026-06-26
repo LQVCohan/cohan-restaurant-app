@@ -13,6 +13,13 @@ const AI_CHATBOT_MANAGER_PERMISSIONS = [
   "ai.chatbot.analytics.read",
 ];
 
+const BACKUP_MANAGER_PERMISSIONS = [
+  "backup.read",
+  "backup.write",
+  "backup.export",
+  "backup.import",
+];
+
 const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
     "restaurant.read",
@@ -72,6 +79,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "payroll.payment.record",
     "payroll.export",
     ...AI_CHATBOT_MANAGER_PERMISSIONS,
+    ...BACKUP_MANAGER_PERMISSIONS,
   ],
   hr: [
     "staff.read",
