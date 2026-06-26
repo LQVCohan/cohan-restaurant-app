@@ -25,7 +25,7 @@ const CheckoutRequestLockSchema = BaseSchemaModel({
   failedAt: Date,
   errorCode: String,
   errorMessage: String,
-  expiresAt: { type: Date, required: true, index: true },
+  expiresAt: { type: Date, required: true },
 });
 
 CheckoutRequestLockSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
