@@ -11,7 +11,7 @@ const TABLE_LIST_READ_PERMISSIONS = [
   PERMISSIONS.RESERVATION_READ,
 ];
 
-const TABLE_SELECT = {
+const PUBLIC_TABLE_SELECT = {
   viewLock: 1,
   status: 1,
   capacity: 1,
@@ -29,6 +29,10 @@ const TABLE_SELECT = {
   visualConfig: 1,
   isJoinable: 1,
   joinGroupId: 1,
+};
+
+const TABLE_SELECT = {
+  ...PUBLIC_TABLE_SELECT,
   tableAccessUrl: 1,
   tableQrCodeDataUrl: 1,
   tableQrGeneratedAt: 1,
@@ -126,7 +130,7 @@ export default {
     if (!status) q.status = { $ne: "offline" };
 
     return Table.find(q)
-      .select(TABLE_SELECT)
+      .select(PUBLIC_TABLE_SELECT)
       .sort({ floorLevel: 1, code: 1 })
       .limit(Math.min(limit ?? 200, 500))
       .lean({ virtuals: true });
@@ -139,8 +143,10 @@ export default {
     ) return null;
     await requireTableListAccess(ctx, restaurantId);
     await cleanupExpiredViewLocks(restaurantId);
-    return Table.findOne({ restaurantId, floorId, code }).lean({
-      virtuals: true,
-    });
+    return Table.findOne({ restaurantId, floorId, code })
+      .select(TABLE_SELECT)
+      .lean({
+        virtuals: true,
+      });
   },
 };
