@@ -30,6 +30,14 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["trang chu", "home", "bat dau"],
   },
   {
+    key: "restaurants",
+    label: "Danh sách nhà hàng",
+    path: "/restaurants",
+    intent: "navigation",
+    description: "Tìm nhà hàng theo tên, khu vực, đánh giá và trạng thái mở cửa.",
+    aliases: ["danh sach nha hang", "tim nha hang", "nha hang gan toi", "chon nha hang", "restaurants"],
+  },
+  {
     key: "restaurant-detail",
     label: "Thông tin nhà hàng",
     path: "/restaurant/:restaurantId",
@@ -44,6 +52,14 @@ export const AI_CHATBOT_FEATURE_MAP = [
     intent: "menu",
     description: "Xem món ăn, giá và các lựa chọn đang bán.",
     aliases: ["menu", "thuc don", "tim mon an", "xem mon", "mon an", "do an", "gia mon"],
+  },
+  {
+    key: "combos",
+    label: "Combo ưu đãi",
+    path: "/combos",
+    intent: "menu",
+    description: "Xem các combo và ưu đãi món ăn đang có trên hệ thống.",
+    aliases: ["combo", "combo uu dai", "combo tiet kiem", "set mon", "goi mon", "combo cho 2 nguoi"],
   },
   {
     key: "food-detail",
@@ -71,6 +87,33 @@ export const AI_CHATBOT_FEATURE_MAP = [
     description: "Xác nhận đơn hàng sau khi kiểm tra giỏ.",
     allowedRoles: CUSTOMER_NAV_ROLES,
     aliases: ["thanh toan", "checkout", "xac nhan don", "tra tien", "dat mon"],
+  },
+  {
+    key: "coupons",
+    label: "Kho Coupon",
+    path: "/coupons",
+    intent: "promotion",
+    description: "Xem mã giảm giá, điều kiện áp dụng và coupon đã lưu.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    aliases: ["coupon", "voucher", "ma giam gia", "uu dai", "khuyen mai", "kho coupon", "ma uu dai"],
+  },
+  {
+    key: "wallet",
+    label: "Ví của tôi",
+    path: "/wallet",
+    intent: "profileHelp",
+    description: "Xem ví, số dư và giao dịch thanh toán của tài khoản.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    aliases: ["vi", "vi cua toi", "wallet", "so du", "nap tien", "lich su vi"],
+  },
+  {
+    key: "for-you",
+    label: "Gợi ý cho tôi",
+    path: "/for-you",
+    intent: "menu",
+    description: "Xem gợi ý món cá nhân hóa theo lịch sử và sở thích.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    aliases: ["goi y cho toi", "for you", "mon hop voi toi", "ca nhan hoa", "de xuat mon"],
   },
   {
     key: "orders",
@@ -186,9 +229,14 @@ const canUseFeature = (entry, role) => {
 
 const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "home") return path === "/" || path === "";
+  if (entry.key === "restaurants") return path === "/restaurants";
   if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "reservations") return path.includes("/layout") || path.includes("reservation");
   if (entry.key === "menu") return path.includes("menu") || path.includes("restaurant");
+  if (entry.key === "combos") return path.includes("combo");
+  if (entry.key === "coupons") return path.includes("coupon") || path.includes("voucher");
+  if (entry.key === "wallet") return path.includes("wallet");
+  if (entry.key === "for-you") return path.includes("for-you");
   if (entry.key === "food-detail") return path.startsWith("/food/") || Boolean(menuItemId);
   if (entry.key === "cart") return path.includes("cart");
   if (entry.key === "checkout") return path.includes("checkout");
