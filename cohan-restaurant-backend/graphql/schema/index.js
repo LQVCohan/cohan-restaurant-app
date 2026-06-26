@@ -8,6 +8,24 @@ const __dirname = path.dirname(__filename);
 
 const schemaDir = __dirname;
 
+const staffResolverCompatibilityPrelude = `
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+input UpdateAvatarInput {
+  fileBase64: String
+  fileUrl: String
+  clear: Boolean
+}
+
+input CreateWalletInput {
+  provider: String
+  currency: String
+}
+`;
+
 const stripDomainOwnedStaffCompatibilityFields = (source) => {
   const domainOwnedMutationFields = [
     "publishSchedule(input: PublishScheduleInput!): CompatibilityNode",
@@ -44,7 +62,10 @@ const readSchemaFile = (fileName) => {
   }
 
   if (fileName === "staffResolverCompatibility.graphql") {
-    return stripDomainOwnedStaffCompatibilityFields(source);
+    return `${staffResolverCompatibilityPrelude}\n${stripDomainOwnedStaffCompatibilityFields(source).replace(
+      "createMyWallet(input: CreateWalletInput!): Wallet",
+      "createMyWallet(input: CreateWalletInput!): User",
+    )}`;
   }
 
   if (fileName !== "user.graphql") return source;
@@ -56,6 +77,10 @@ const readSchemaFile = (fileName) => {
     : `${source.slice(0, lastWalletField)}${source.slice(lastWalletField + "\n  wallet: Wallet".length)}`;
 
   return withoutDuplicateWallet
+    .replace(
+      "createUser(input: CreateUserInput!): User!",
+      "createUser(input: CreateUserInput!): AuthPayload!",
+    )
     .replace(
       "updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!",
       "updateCustomerMetrics(input: UpdateCustomerMetricsInput, id: ID, restaurantId: ID, loyaltyPoints: Int, customerType: CustomerType): User!",
