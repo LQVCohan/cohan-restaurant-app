@@ -1,0 +1,13 @@
+enum WalletTransactionType {
+  TOPUP
+  PAYMENT
+  REFUND
+  ADJUSTMENT
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
