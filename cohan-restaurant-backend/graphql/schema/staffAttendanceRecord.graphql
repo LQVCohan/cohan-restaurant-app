@@ -1,0 +1,11 @@
+type StaffAttendanceRecord {
+  id: ID!
+  employeeId: ID
+  employeeName: String
+  employeeCode: String
+  restaurantId: ID
+  workDate: DateTime
+  status: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
