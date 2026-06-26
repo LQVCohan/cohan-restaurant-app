@@ -72,6 +72,85 @@ const navGroups = [
   { label: "Hỗ trợ", keys: ["/staff/ai-handoff"] },
 ];
 
+const staffPageMeta = [
+  {
+    path: "/staff/dashboard",
+    eyebrow: "Khu vực nhân viên",
+    title: "Trung tâm ca làm",
+    description: "Mở nhanh lịch, chấm công, nghỉ phép và các việc cần xử lý trong ca.",
+  },
+  {
+    path: "/staff/schedule",
+    eyebrow: "Lịch cá nhân",
+    title: "Lịch làm và chấm công",
+    description: "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm.",
+  },
+  {
+    path: "/staff/leave",
+    eyebrow: "Nghỉ phép nhân viên",
+    title: "Tạo và theo dõi đơn nghỉ phép",
+    description: "Gửi đơn xin nghỉ phép, xem trạng thái duyệt và lịch sử đơn ngay trong khu vực nhân viên.",
+  },
+  {
+    path: "/staff/orders",
+    eyebrow: "Vận hành đơn",
+    title: "Order nội bộ",
+    description: "Tiếp nhận đơn, cập nhật trạng thái phục vụ và phối hợp với bếp theo quyền được cấp.",
+  },
+  {
+    path: "/staff/kitchen",
+    eyebrow: "Khu vực bếp",
+    title: "Món chờ xử lý",
+    description: "Theo dõi món mới, món đang làm và món đã hoàn tất trong luồng bếp.",
+  },
+  {
+    path: "/staff/performance",
+    eyebrow: "Hiệu suất",
+    title: "Hiệu suất cá nhân",
+    description: "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn.",
+  },
+  {
+    path: "/staff/profile",
+    eyebrow: "Tài khoản",
+    title: "Hồ sơ nhân viên",
+    description: "Kiểm tra thông tin cá nhân, vai trò, liên hệ và dữ liệu làm việc.",
+  },
+  {
+    path: "/staff/notifications",
+    eyebrow: "Nhắc việc",
+    title: "Thông báo nhân viên",
+    description: "Theo dõi lịch mới, yêu cầu phản hồi và các cập nhật quan trọng từ quản lý.",
+  },
+  {
+    path: "/staff/contacts",
+    eyebrow: "Liên lạc",
+    title: "Trao đổi nội bộ",
+    description: "Mở kênh liên lạc với quản lý, hỗ trợ và các bộ phận liên quan.",
+  },
+  {
+    path: "/staff/ai-handoff",
+    eyebrow: "Hỗ trợ",
+    title: "Bàn giao hỗ trợ",
+    description: "Theo dõi các hội thoại cần nhân viên tiếp nhận sau khi AI chuyển giao.",
+  },
+  {
+    path: "/staff/payslips",
+    eyebrow: "Phiếu lương",
+    title: "Lương cá nhân",
+    description: "Xem kỳ lương, khoản thanh toán và ghi chú liên quan đến lương.",
+  },
+  {
+    path: "/staff/settings",
+    eyebrow: "Thiết lập",
+    title: "Cài đặt nhân viên",
+    description: "Điều chỉnh các tuỳ chọn tài khoản và trải nghiệm trong khu vực nhân viên.",
+  },
+];
+
+const getStaffPageMeta = (pathname) =>
+  staffPageMeta.find((item) => pathname === item.path || pathname.startsWith(item.path + "/")) ||
+  staffPageMeta[0];
+
 const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   const { user, restaurants } = useContext(AuthContext);
   const location = useLocation();
@@ -80,6 +159,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
   const restaurantLabel = getRestaurantLabel(user, restaurants, restaurantFromQuery);
+  const pageMeta = useMemo(() => getStaffPageMeta(location.pathname), [location.pathname]);
 
   const navItems = useMemo(
     () => [
@@ -112,9 +192,10 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
       <header className="staff-shell__header">
         <div className="staff-shell__inner">
           <div className="staff-shell__topbar">
-            <div>
-              <p className="staff-shell__eyebrow">Khu vực nhân viên</p>
-              <h1 className="staff-shell__title">Vận hành ca làm</h1>
+            <div className="staff-shell__heading">
+              <p className="staff-shell__eyebrow">{pageMeta.eyebrow}</p>
+              <h1 className="staff-shell__title">{pageMeta.title}</h1>
+              <p className="staff-shell__subtitle">{pageMeta.description}</p>
             </div>
             <div className="staff-shell__identity">
               <div className="staff-shell__identity-avatar" aria-hidden="true">{(displayName || "NV").slice(0, 2).toUpperCase()}</div>
