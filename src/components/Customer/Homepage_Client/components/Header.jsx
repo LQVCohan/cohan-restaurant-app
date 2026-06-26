@@ -231,6 +231,12 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     </button>
                     <button
                       className="header__menu-item"
+                      onClick={() => goto("/wallet")}
+                    >
+                      <span className="header__item-label">💳 Ví của tôi</span>
+                    </button>
+                    <button
+                      className="header__menu-item"
                       onClick={() => goto("/orders")}
                     >
                       <span className="header__item-label">
