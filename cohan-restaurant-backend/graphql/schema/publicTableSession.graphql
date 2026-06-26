@@ -20,6 +20,16 @@ type PublicTableOrderItem {
   status: ItemStatus
 }
 
+type PublicTableCustomerRequest {
+  requestId: String
+  type: String
+  status: String
+  message: String
+  createdAt: DateTime
+  acknowledgedAt: DateTime
+  resolvedAt: DateTime
+}
+
 type PublicTableSessionSummary {
   id: ID!
   orderCode: String
@@ -43,6 +53,7 @@ type PublicTableOrder {
 type PublicActiveTableSessionOrdersResult {
   session: PublicTableSessionSummary
   orders: [PublicTableOrder!]!
+  customerRequests: [PublicTableCustomerRequest!]!
   tableId: ID
   tableCode: String
 }
