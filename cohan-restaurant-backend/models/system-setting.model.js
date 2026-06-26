@@ -21,7 +21,6 @@ const SystemSettingSchema = new Schema(
       ref: "Restaurant",
       required: true,
       unique: true,
-      index: true,
     },
     timezone: {
       type: String,

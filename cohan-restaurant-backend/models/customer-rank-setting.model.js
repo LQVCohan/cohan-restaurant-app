@@ -21,7 +21,6 @@ const customerRankSettingSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   ranks: {
     type: [rankThresholdSchema],
