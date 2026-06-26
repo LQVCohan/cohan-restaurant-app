@@ -23,7 +23,7 @@ const TABLE_QR_FIELDS = gql`
 
 const TABLE_QR_LIST = gql`
   query TableQrList($restaurantId: ID!) {
-    tables(restaurantId: $restaurantId) {
+    tableQrAccessList(restaurantId: $restaurantId) {
       ...TableQrFields
     }
   }
@@ -100,8 +100,8 @@ export default function TableQrManagementPage() {
   const [revokeTableQr] = useMutation(REVOKE_TABLE_QR);
 
   const tables = useMemo(
-    () => [...(data?.tables || [])].sort((a, b) => Number(a.floorLevel || 0) - Number(b.floorLevel || 0) || String(a.code || "").localeCompare(String(b.code || ""))),
-    [data?.tables],
+    () => [...(data?.tableQrAccessList || [])].sort((a, b) => Number(a.floorLevel || 0) - Number(b.floorLevel || 0) || String(a.code || "").localeCompare(String(b.code || ""))),
+    [data?.tableQrAccessList],
   );
   const readyCount = tables.filter((table) => getTableQrState(table) === "ready").length;
   const expiredCount = tables.filter((table) => getTableQrState(table) === "expired").length;
