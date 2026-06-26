@@ -12,4 +12,13 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
   const observer = new MutationObserver(syncKitchenDisplayClass);
   observer.observe(document.documentElement, {
-    childList
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+
+  syncKitchenDisplayClass();
+}
+
+export default syncKitchenDisplayClass;
