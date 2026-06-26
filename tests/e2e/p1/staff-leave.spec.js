@@ -152,7 +152,8 @@ test.describe("P1 staff leave self-service", () => {
     const modal = page.getByRole("dialog", { name: "Tạo đơn nghỉ phép" });
     await expect(modal).toBeVisible();
 
-    await modal.getByLabel("Nghỉ năm").check();
+    await modal.locator("label.radio-card", { hasText: "Nghỉ năm" }).click();
+    await expect(modal.locator('input[name="leaveType"][value="ANNUAL"]')).toBeChecked();
     await modal.locator('input[name="startDate"]').fill("2026-07-01");
     await modal.locator('input[name="endDate"]').fill("2026-07-01");
     await modal.locator('textarea[name="reason"]').fill("P1 xin nghỉ phép tự phục vụ");
