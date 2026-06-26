@@ -27,9 +27,6 @@ const parentRoleSchema = BaseSchemaModel({
   description: { type: String, trim: true },
 });
 
-// Index để tối ưu query theo slug
-parentRoleSchema.index({ slug: 1 }, { unique: true });
-
 // Export model
 export const ParentRole =
   mongoose.models.ParentRole || mongoose.model("ParentRole", parentRoleSchema);
