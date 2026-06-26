@@ -236,9 +236,10 @@ test.describe("P1 manager leave review", () => {
     await row.locator(".btn-icon.reject").click();
     const prompt = await promptPromise;
     expect(prompt.message()).toContain("Lý do từ chối");
+    const alertPromise = page.waitForEvent("dialog");
     await prompt.accept("P1 không phù hợp lịch làm việc");
 
-    const alert = await page.waitForEvent("dialog");
+    const alert = await alertPromise;
     expect(alert.message()).toContain("Từ chối đơn thành công");
     await alert.accept();
     backendGuard.assertNoBackendErrors("manager reject leave request");
