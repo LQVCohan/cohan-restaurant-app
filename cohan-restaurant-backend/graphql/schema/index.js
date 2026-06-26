@@ -8,6 +8,20 @@ const __dirname = path.dirname(__filename);
 
 const schemaDir = __dirname;
 
+const stripDomainOwnedStaffCompatibilityFields = (source) => {
+  const domainOwnedMutationFields = [
+    "publishSchedule(input: PublishScheduleInput!): CompatibilityNode",
+    "changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): CompatibilityNode",
+    "addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): CompatibilityNode",
+    "deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): CompatibilityNode",
+  ];
+
+  return domainOwnedMutationFields.reduce(
+    (nextSource, field) => nextSource.replace(`\n  ${field}`, ""),
+    source,
+  );
+};
+
 const readSchemaFile = (fileName) => {
   const source = fs.readFileSync(path.join(schemaDir, fileName), "utf8");
 
@@ -27,6 +41,10 @@ const readSchemaFile = (fileName) => {
       "staffSchedulingAssistant(restaurantId: ID!, horizonDays: Int): StaffSchedulingAssistant",
       "staffSchedulingAssistant(restaurantId: ID!, horizonDays: Int, timezone: String): StaffSchedulingAssistant",
     );
+  }
+
+  if (fileName === "staffResolverCompatibility.graphql") {
+    return stripDomainOwnedStaffCompatibilityFields(source);
   }
 
   if (fileName !== "user.graphql") return source;
