@@ -41,8 +41,8 @@ function visit(node, cb) {
 }
 
 function isGqlTag(node) {
-  const callee = node?.callee;
-  return callee?.type === "Identifier" && callee.name === "gql";
+  const tag = node?.tag;
+  return tag?.type === "Identifier" && tag.name === "gql";
 }
 
 function extractGqlDocuments(filePath) {
