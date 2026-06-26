@@ -19,7 +19,10 @@ extend type CompatibilityNode {
   autoCreateWindow: Boolean
   averageResolutionHours: Float
   averageScore: Float
+  blockedAssignments: [CompatibilityNode!]
+  blockedCandidates: [CompatibilityNode!]
   canAddStaffToShift: Boolean
+  canApply: Boolean
   canApplyAutoSchedule: Boolean
   canChangeShiftTime: Boolean
   canDeleteShiftGroup: Boolean
@@ -32,10 +35,14 @@ extend type CompatibilityNode {
   changedAfterAcknowledgementCount: Int
   checkInAt: DateTime
   checkOutAt: DateTime
+  closeDayOfWeek: Int
   closeReason: String
+  closeTime: String
+  compensatoryTreatment: String
   confidence: Float
   consecutiveDaysRuleLevel: String
   consecutiveWorkingDays: Int
+  costEfficiency: Float
   contract: Boolean
   current: Float
   days: Float
@@ -48,8 +55,11 @@ extend type CompatibilityNode {
   deltaPct: Float
   displayStatus: String
   earlyLeave: Int
+  eligibleAt: DateTime
   eligibleScoreDeltaPending: Float
+  employmentTypeFit: Float
   enabled: Boolean
+  existingShiftCount: Int
   explanations: [String!]
   fairness: Float
   fallbackUsed: Boolean
@@ -63,6 +73,7 @@ extend type CompatibilityNode {
   isLate: Boolean
   isPaidLeave: Boolean
   key: String
+  lastChangedAt: DateTime
   late: Int
   lateChangeRequiresApproval: Boolean
   latestIncidentAt: DateTime
@@ -87,17 +98,24 @@ extend type CompatibilityNode {
   originalLatenessMinutes: Int
   originalOvertimeMinutes: Int
   overtimePenalty: Float
+  overrideRequiresReason: Boolean
   part_time: Boolean
   payrollCountable: Boolean
+  performance: Float
   performanceContribution: Float
   performanceScore: Float
+  performanceSnapshotId: ID
   pendingCount: Int
+  present: Int
+  absent: Int
+  preventShiftOverlap: Boolean
   previous: Float
   preview: CompatibilityNode
   probation: Boolean
   publishTargetDayOfWeek: Int
   publishTargetTime: String
   records: Int
+  recommendedAssignments: [CompatibilityNode!]
   recommendedRoles: [CompatibilityNode!]
   recommendedShiftTemplates: [CompatibilityNode!]
   recommendedWeeklyHoursCap: Float
@@ -109,11 +127,14 @@ extend type CompatibilityNode {
   requestedEarlyLeaveMinutes: Int
   requestedLatenessMinutes: Int
   requestedOvertimeMinutes: Int
+  requiredRole: String
   requiresChangeReason: Boolean
   requiresEmployeeNotification: Boolean
   respectLeaveRequests: Boolean
   respectWorkingDays: Boolean
   respondedAt: DateTime
+  responsibilityNote: String
+  reviewNote: String
   riskLevel: String
   riskReasons: [String!]
   riskWarnings: [String!]
@@ -122,6 +143,7 @@ extend type CompatibilityNode {
   seasonal: Boolean
   shiftEndTime: DateTime
   shiftHours: Float
+  shiftKey: String
   shiftStartTime: DateTime
   shiftsInDayAfter: Int
   slaComplianceRate: Float
@@ -130,11 +152,18 @@ extend type CompatibilityNode {
   timezone: String
   totalAssignedStaff: Int
   totalDeductDays: Float
+  totalDemand: Float
   totalIncidents: Int
   totalRequiringReview: Int
   treatMissingPartTimeSubmissionAsUnavailable: Boolean
+  unfilledRoles: [CompatibilityNode!]
   unpaidFactor: Float
+  unresolvedCount: Int
+  validationIssues: [CompatibilityNode!]
+  waivedAt: DateTime
+  waiveReason: String
   waivedScoreDelta: Float
+  warningAssignments: [CompatibilityNode!]
   weeklyHoursAfter: Float
   weeklyHoursBefore: Float
   weeklyHoursCap: Float
@@ -152,6 +181,14 @@ extend type ContactChangeOtpResult {
   phoneVerifiedAt: DateTime
 }
 
+extend type StaffAttendanceRecord {
+  displayStatus: String
+  isLate: Boolean
+  reviewNote: String
+  shiftEndTime: DateTime
+  shiftStartTime: DateTime
+}
+
 extend type AttendanceCorrectionRequest {
   action: String
   actorId: ID
@@ -162,6 +199,11 @@ extend type AttendanceCorrectionRequest {
   requestedEarlyLeaveMinutes: Int
   requestedLatenessMinutes: Int
   requestedOvertimeMinutes: Int
+}
+
+extend type PerformanceIncidentAppeal {
+  scoreReversalId: ID
+  scoreReversalNote: String
 }
 
 extend type SchedulePublication {
