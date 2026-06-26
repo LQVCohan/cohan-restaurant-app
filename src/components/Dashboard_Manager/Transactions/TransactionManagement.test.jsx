@@ -356,9 +356,10 @@ describe("TransactionManagement", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /Hoàn tiền từ giao dịch/i }),
     );
-    expect(screen.getByText("Tạo yêu cầu hoàn tiền")).toBeInTheDocument();
+    const refundDialog = screen.getByRole("dialog");
+    expect(within(refundDialog).getByRole("heading", { name: "Tạo yêu cầu hoàn tiền" })).toBeInTheDocument();
     expect(
-      within(screen.getByRole("dialog")).queryByPlaceholderText(
+      within(refundDialog).queryByPlaceholderText(
         /ObjectId|raw/i,
       ),
     ).not.toBeInTheDocument();
