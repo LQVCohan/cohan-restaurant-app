@@ -119,6 +119,10 @@ describe("AiChatbotWidget helpers", () => {
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "coupons", path: "/coupons" })]));
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "ví của tôi ở đâu" }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "wallet", path: "/wallet" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "thông báo của tôi ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "notifications", path: "/notifications" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "liên hệ hỗ trợ ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "contact", path: "/contact" })]));
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "combo tiết kiệm cho 2 người" }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "combos", path: "/combos" })]));
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "gợi ý món hợp với tôi" }))
