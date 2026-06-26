@@ -10,6 +10,7 @@ import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
 import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
 import EligibleGiftSuggestionPanel from "./EligibleGiftSuggestionPanel";
 import PosDiscountSummaryOverlay from "./PosDiscountSummaryOverlay";
+import ThirdPartyShippingPanel from "./ThirdPartyShippingPanel";
 import TransferQueueBell from "./TransferQueueBell";
 import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
@@ -45,6 +46,7 @@ function POSContent({ restaurantId }) {
           <TablePaymentRequestNotice />
           <EligibleGiftSuggestionPanel />
           <RightPanel />
+          <ThirdPartyShippingPanel />
           <PosDiscountSummaryOverlay />
         </div>
       </div>
