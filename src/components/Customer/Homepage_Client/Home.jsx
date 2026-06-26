@@ -20,10 +20,10 @@ const getCurrentTimeSlot = () => {
 };
 
 const CUSTOMER_SHORTCUTS = [
-  { icon: "🎟️", title: "Kho Coupon", desc: "Xem ưu đãi đã lưu và dùng ngay khi đặt món.", path: "/coupons" },
-  { icon: "✨", title: "Dành cho bạn", desc: "Món hợp khẩu vị, dựa trên thói quen gần đây.", path: "/for-you" },
-  { icon: "📍", title: "Gần bạn", desc: "Tìm nhà hàng thuận đường, quyết định nhanh hơn.", path: "/restaurants" },
-  { icon: "📦", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
+  { icon: "🎟️", tag: "Ưu đãi", title: "Kho Coupon", desc: "Xem ưu đãi đã lưu và dùng ngay khi đặt món.", path: "/coupons" },
+  { icon: "✨", tag: "Cá nhân hóa", title: "Dành cho bạn", desc: "Món hợp khẩu vị, dựa trên thói quen gần đây.", path: "/for-you" },
+  { icon: "📍", tag: "Gần nhất", title: "Gần bạn", desc: "Tìm nhà hàng thuận đường, quyết định nhanh hơn.", path: "/restaurants" },
+  { icon: "📦", tag: "Theo dõi", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
 ];
 
 const Home = () => {
@@ -98,6 +98,7 @@ const Home = () => {
                 <button key={item.path} type="button" className="home-shortcut-card" onClick={() => navigate(item.path)}>
                   <span className="home-shortcut-card__icon" aria-hidden="true">{item.icon}</span>
                   <span className="home-shortcut-card__content">
+                    <em className="home-shortcut-card__tag">{item.tag}</em>
                     <strong>{item.title}</strong>
                     <small>{item.desc}</small>
                   </span>
