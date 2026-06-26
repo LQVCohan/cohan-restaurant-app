@@ -42,6 +42,12 @@ function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, t
   }
 }
 
+function assertStoredTableAccessToken(table, token) {
+  if (!table?.tableAccessToken || table.tableAccessToken !== String(token || "").trim()) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+}
+
 export async function publicActiveTableSessionOrders(
   _parent,
   { restaurantId, tableId, token },
@@ -60,12 +66,13 @@ export async function publicActiveTableSessionOrders(
   });
 
   const table = await Table.findOne({ _id: tid, restaurantId: rid })
-    .select({ _id: 1, code: 1 })
+    .select({ _id: 1, code: 1, tableAccessToken: 1 })
     .lean();
 
   if (!table) {
     throw new Error("Table not found");
   }
+  assertStoredTableAccessToken(table, token);
 
   const safeCode = normalizePublicTableCode(table.code);
   assertTableAccessTokenMatches({
