@@ -44,7 +44,7 @@ const HERO_TARGETS = [
 
 const SECTION_TARGETS = [
   ".restaurant-grid__header",
-  ".home-shortcuts__copy",
+  ".home-shortcuts__header",
   ".categories__header",
   ".dish-grid__header",
   ".how-it-works__header",
