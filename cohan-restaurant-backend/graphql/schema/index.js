@@ -18,6 +18,17 @@ const readSchemaFile = (fileName) => {
     );
   }
 
+  if (fileName === "customerRankSettings.graphql") {
+    return source.replace("customerRankSettings(restaurantId: ID!):", "customerRankSettings(restaurantId: ID):");
+  }
+
+  if (fileName === "frontendCompatibility.graphql") {
+    return source.replace(
+      "staffSchedulingAssistant(restaurantId: ID!, horizonDays: Int): StaffSchedulingAssistant",
+      "staffSchedulingAssistant(restaurantId: ID!, horizonDays: Int, timezone: String): StaffSchedulingAssistant",
+    );
+  }
+
   if (fileName !== "user.graphql") return source;
 
   const firstWalletField = source.indexOf("\n  wallet: Wallet");
@@ -83,6 +94,7 @@ const files = [
   "staffSchedulingAssistant.graphql",
   "staffResolverCompatibility.graphql",
   "operationCompatibilityExtras.graphql",
+  "operationCompatibilityExtras2.graphql",
   "audit_log.graphql",
   "systemSetting.graphql",
   "backup.graphql",
