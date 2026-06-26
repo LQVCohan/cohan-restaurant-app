@@ -163,12 +163,13 @@ const LeaveRequestsList = ({
             )}
 
             {requestRows.map((req) => {
+              const isOwnRequest = currentUserId && String(req.employeeId || "") === String(currentUserId);
               const canConfirmReplacement =
                 allowDecisionActions &&
                 req.replacementStatus === "PENDING" &&
                 currentUserId &&
                 req.replacementManagerId === currentUserId;
-              const canReview = allowDecisionActions && req.status === "PENDING";
+              const canReview = allowDecisionActions && req.status === "PENDING" && !isOwnRequest;
 
               return (
                 <tr key={req.id} className="hover-row">
