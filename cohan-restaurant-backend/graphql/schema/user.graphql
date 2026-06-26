@@ -263,6 +263,7 @@ type Wallet {
   balance: Float!
   currency: String!
   provider: String
+  status: String
   updatedAt: DateTime
 }
 
@@ -698,8 +699,10 @@ input CreateUserInput {
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
   noteInternal: String
-  emergencyContact: EmergencyContactInput
+
+  hourlyRate: Float
   baseSalary: Int
+  allowanceAmount: Float
   dateOfBirth: DateTime
   gender: StaffGender
   nationalId: String
@@ -708,16 +711,6 @@ input CreateUserInput {
   maritalStatus: MaritalStatus
   permanentAddress: String
   temporaryAddress: String
-  contractCode: String
-  contractType: StaffContractType
-  contractStartDate: DateTime
-  contractEndDate: DateTime
-  probationEndDate: DateTime
-  officialStartDate: DateTime
-  terminationReason: String
-  salaryType: StaffSalaryType
-  hourlyRate: Float
-  allowanceAmount: Float
   bankName: String
   bankAccountNumber: String
   bankAccountHolder: String
@@ -731,12 +724,8 @@ input CreateUserInput {
   skills: [String!]
   languages: [StaffLanguageSkillInput!]
   uniformSize: String
-  deviceIds: [String!]
   accessCardCode: String
   trainingStatus: StaffTrainingStatus
-  lastTrainingAt: DateTime
-  nextTrainingDueAt: DateTime
-  emergencyContacts: [EmergencyContactExtendedInput!]
 }
 
 input UpdateUserInput {
@@ -745,83 +734,37 @@ input UpdateUserInput {
   email: String
   phone: String
   address: AddressInput
-  avatarUrl: String
-  loyaltyRank: String
-}
-
-input UpdateAvatarInput {
-  fileBase64: String
-  fileUrl: String
-}
-
-input CreateWalletInput {
+  password: String
   provider: String
-  currency: String
-}
-
-input WalletTopupInput {
-  amount: Float!
-  note: String
-  idempotencyKey: String
-}
-
-input AssignRoleToUserInput {
-  userId: ID!
-  roleId: ID!
-}
-
-input AdminUpdateUserInput {
-  fullName: String
-  username: String
-  email: String
-  phone: String
-  address: AddressInput
-  avatarUrl: String
   status: String
-  customerType: CustomerType
-  loyaltyPoints: Int
-  totalOrders: Int
-  totalSpending: Float
-  isGuest: Boolean
-  guestExpiresAt: String
+  roleId: ID
   refRestaurantIds: [ID!]
   restaurantForStaff: ID
-  roleId: ID
+  customerType: CustomerType
 
   userType: UserType
   taxCode: String
-
-  employeeCode: String
   department: DepartmentType
+  employeeCode: String
   positionTitle: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
   shiftType: ShiftType
   workingDays: [StaffWorkingDay!]
   dateJoined: DateTime
-  dateLeft: DateTime
-  forcePasswordChange: Boolean
   noteInternal: String
-  emergencyContact: EmergencyContactInput
+
+  hourlyRate: Float
   baseSalary: Int
+  allowanceAmount: Float
   dateOfBirth: DateTime
   gender: StaffGender
   nationalId: String
   nationalIdIssuedAt: DateTime
   nationalIdIssuedPlace: String
-  maritalStatus: MaritalStatus
+  maritalStatus: String
   permanentAddress: String
   temporaryAddress: String
-  contractCode: String
-  contractType: StaffContractType
-  contractStartDate: DateTime
-  contractEndDate: DateTime
-  probationEndDate: DateTime
-  officialStartDate: DateTime
-  terminationReason: String
-  salaryType: StaffSalaryType
-  hourlyRate: Float
-  allowanceAmount: Float
   bankName: String
   bankAccountNumber: String
   bankAccountHolder: String
@@ -835,74 +778,47 @@ input AdminUpdateUserInput {
   skills: [String!]
   languages: [StaffLanguageSkillInput!]
   uniformSize: String
-  deviceIds: [String!]
   accessCardCode: String
   trainingStatus: StaffTrainingStatus
-  lastTrainingAt: DateTime
-  nextTrainingDueAt: DateTime
-  emergencyContacts: [EmergencyContactExtendedInput!]
-}
-
-input CreateCustomerInput {
-  fullName: String!
-  username: String
-  email: String
-  phone: String
-  address: AddressInput
-  roleId: ID
-  status: String
-  provider: String
-  refRestaurantIds: [ID!]
-}
-
-input CreateGuestUserInput {
-  fullName: String
-  phone: String
-  expiresInDays: Int
-}
-
-input UpdateCustomerMetricsInput {
-  id: ID!
-  restaurantId: ID!
-  loyaltyPoints: Int!
-  customerType: CustomerType!
 }
 
 type Query {
   me: User
-  staffPrivateProfile: StaffPrivateProfile
-  users(roleId: ID, search: String, isGuest: Boolean): [User!]!
-  customers(search: String, includeGuests: Boolean, restaurantId: ID): [User!]!
-  customersForTableInfo(search: String, includeGuests: Boolean): [User!]!
-  customerListPage(restaurantId: ID!, search: String, includeGuests: Boolean, customerKind: CustomerKindFilter, customerRank: CustomerRankFilterInput, sortBy: CustomerSortBy, sortDirection: SortDirection, limit: Int, cursor: String): CustomerListPage!
-  customerExportRows(restaurantId: ID!, search: String, includeGuests: Boolean, customerKind: CustomerKindFilter, customerRank: CustomerRankFilterInput, sortBy: CustomerSortBy, sortDirection: SortDirection, limit: Int): [User!]!
-  customerListSummaries(restaurantId: ID!, userIds: [ID!]!, recentLimit: Int, topDishLimit: Int): [CustomerListSummary!]!
+  users(roleId: ID, isGuest: Boolean, search: String): [User!]!
+  customers(search: String, includeGuests: Boolean = true, restaurantId: ID): [User!]!
+  customerListPage(
+    restaurantId: ID!
+    search: String
+    includeGuests: Boolean = true
+    customerKind: CustomerKindFilter = ALL
+    customerRank: CustomerRankFilterInput
+    sortBy: CustomerSortBy = CREATED_AT
+    sortDirection: SortDirection = DESC
+    limit: Int = 30
+    cursor: String
+  ): CustomerListPage!
+  customerDetailAnalytics(restaurantId: ID!, userId: ID!): CustomerDetailAnalytics!
+  customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!
   customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
+  customerRankSettings(restaurantId: ID!): CustomerRankSettings!
   roleList: [Role!]!
-  customerDetailAnalytics(userId: ID!, restaurantId: ID!, limit: Int): CustomerDetailAnalytics!
-  wallets(userId: ID!): [Wallet!]!
-  walletTransactions(walletId: ID!, limit: Int): [WalletTransaction!]!
+  staffPrivateProfile(id: ID!): StaffPrivateProfile!
+  schedulePublications(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): [SchedulePublication!]!
+  schedulePublishValidation(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!, mandatoryShiftRoles: JSON): SchedulePublishValidationResult!
 }
 
 type Mutation {
-  createCustomer(input: CreateCustomerInput!): User!
-  createUser(input: CreateUserInput!): AuthPayload!
-  createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
-  adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User!
-  assignRoleToUser(input: AssignRoleToUserInput!): User!
-  updateMyUser(input: UpdateUserInput!): User!
-  updateMyAvatar(input: UpdateAvatarInput!): User!
-  createWallet(input: CreateWalletInput!): Wallet!
-  walletTopup(input: WalletTopupInput!): WalletTransaction!
-  updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!
-  resendUserVerification(userId: ID!, channel: VerificationChannel = AUTO): VerificationResult!
-}
-
-# =========================
-# Auth Types
-# =========================
-type AuthPayload {
-  token: String!
-  refreshToken: String
-  user: User!
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  deleteUser(id: ID!): User!
+  updateProfile(input: UpdateUserInput!): User!
+  sendVerification(channel: VerificationChannel!): VerificationResult!
+  verifyContactChange(token: String!): User!
+  verifyContactToken(token: String!): VerificationResult!
+  publishSchedule(input: PublishScheduleInput!): SchedulePublication!
+  reopenSchedulePublication(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!, reason: String!): SchedulePublication!
+  changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): ScheduleChangeLog!
+  addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): ScheduleChangeLog!
+  removeStaffFromPublishedShift(input: RemoveStaffFromPublishedShiftInput!): ScheduleChangeLog!
+  deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): ScheduleChangeLog!
 }
