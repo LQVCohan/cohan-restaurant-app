@@ -7,6 +7,8 @@ import { parseDurationMs } from "../src/utils/duration.js";
 export const TABLE_ACCESS_TOKEN_ERROR = "Invalid table access token";
 export const TABLE_ACCESS_TOKEN_PURPOSE = "customer_table";
 
+const ACTIVE_CUSTOMER_REQUEST_STATUSES = new Set(["PENDING", "ACKNOWLEDGED"]);
+
 function toIdString(value) {
   if (!value) return null;
   return String(value);
@@ -140,6 +142,31 @@ function mapPublicItems(items = []) {
   }));
 }
 
+function mapPublicCustomerRequest(request) {
+  return {
+    requestId: request?.requestId || null,
+    type: request?.type || null,
+    status: request?.status || null,
+    message: request?.message || null,
+    createdAt: request?.createdAt || null,
+    acknowledgedAt: request?.acknowledgedAt || null,
+    resolvedAt: request?.resolvedAt || null,
+  };
+}
+
+function mapActivePublicCustomerRequests(requests = []) {
+  return [...requests]
+    .filter((request) =>
+      ACTIVE_CUSTOMER_REQUEST_STATUSES.has(String(request?.status || "").toUpperCase()),
+    )
+    .sort((left, right) => {
+      const leftTime = left?.createdAt ? new Date(left.createdAt).getTime() : 0;
+      const rightTime = right?.createdAt ? new Date(right.createdAt).getTime() : 0;
+      return rightTime - leftTime;
+    })
+    .map(mapPublicCustomerRequest);
+}
+
 export function mapPublicTableSession(session) {
   if (!session) {
     return null;
@@ -183,6 +210,7 @@ export function buildPublicActiveTableSessionOrdersResult({
     tableCode: tableCode || null,
     session: mapPublicTableSession(session),
     orders: publicOrders,
+    customerRequests: mapActivePublicCustomerRequests(session?.customerRequests || []),
   };
 }
 
