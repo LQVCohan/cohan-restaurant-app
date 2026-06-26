@@ -46,7 +46,7 @@ const renderHeader = (authValue) =>
   );
 
 describe("Header coupon navigation", () => {
-  it("navigates to /coupons/:restaurantId instead of a user-based voucher route", () => {
+  it("opens the customer coupon wallet from the account menu", () => {
     renderHeader({
       user: { id: "user-1", username: "guest" },
       restaurants: [{ id: "restaurant-1" }],
@@ -57,9 +57,7 @@ describe("Header coupon navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: /guest/i }));
     fireEvent.click(screen.getByText("🎟️ Kho Coupon"));
 
-    expect(screen.getByTestId("location")).toHaveTextContent(
-      "/coupons/restaurant-1",
-    );
+    expect(screen.getByTestId("location")).toHaveTextContent("/coupons");
   });
 
   it("opens coupon wallet when no coupon restaurant is available", () => {
