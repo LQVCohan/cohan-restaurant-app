@@ -142,9 +142,11 @@ describe("CustomerList manager workflow", () => {
     );
 
     expect(screen.getAllByText("Hiển thị 21-21 / 67 khách")).toHaveLength(2);
-    expect(screen.getAllByText(/Trang\s+2\s+\/\s+4/)).toHaveLength(2);
+    const pagers = screen.getAllByLabelText("Phân trang khách hàng");
+    expect(pagers).toHaveLength(2);
+    pagers.forEach((pager) => expect(pager).toHaveTextContent(/Trang\s+2\s+\/\s+4/));
 
-    const topPager = screen.getAllByLabelText("Phân trang khách hàng")[0];
+    const topPager = pagers[0];
     fireEvent.click(within(topPager).getByRole("button", { name: /trước/i }));
     fireEvent.click(within(topPager).getByRole("button", { name: /sau/i }));
 
