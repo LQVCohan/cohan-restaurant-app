@@ -1,6 +1,60 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useMemo } from "react";
 
+const LEAVE_REQUEST_SELECTION = `
+  id
+  employeeId
+  employeeName
+  employeeCode
+  employeeRole
+  employeeAvatar
+  restaurantId
+  leaveType
+  startDate
+  endDate
+  startSession
+  endSession
+  requestedDays
+  requestedHours
+  reason
+  status
+  approverId
+  approverName
+  approvedAt
+  rejectedAt
+  rejectionReason
+  replacementManagerId
+  replacementManagerName
+  replacementStatus
+  replacementConfirmedAt
+  replacementConfirmedBy
+  payrollFlags {
+    isPaidLeave
+    deductLeaveBalance
+    payrollCountable
+    halfDayFactor
+    maternityTreatment
+    holidayTreatment
+    compensatoryTreatment
+    unpaidFactor
+  }
+  quotaImpact {
+    deductAnnualDays
+    deductSickDays
+    deductCompensatoryDays
+    totalDeductDays
+  }
+  auditLogs {
+    action
+    actorId
+    actorName
+    note
+    at
+  }
+  createdAt
+  updatedAt
+`;
+
 export const Q_LEAVE_PAGE = gql`
   query LeavePageData($restaurantId: ID!, $filter: LeaveRequestFilterInput) {
     staffList(restaurantId: $restaurantId) {
@@ -14,57 +68,15 @@ export const Q_LEAVE_PAGE = gql`
       restaurantForStaff
     }
     leaveRequests(filter: $filter) {
-      id
-      employeeId
-      employeeName
-      employeeCode
-      employeeRole
-      employeeAvatar
-      restaurantId
-      leaveType
-      startDate
-      endDate
-      startSession
-      endSession
-      requestedDays
-      requestedHours
-      reason
-      status
-      approverId
-      approverName
-      approvedAt
-      rejectedAt
-      rejectionReason
-      replacementManagerId
-      replacementManagerName
-      replacementStatus
-      replacementConfirmedAt
-      replacementConfirmedBy
-      payrollFlags {
-        isPaidLeave
-        deductLeaveBalance
-        payrollCountable
-        halfDayFactor
-        maternityTreatment
-        holidayTreatment
-        compensatoryTreatment
-        unpaidFactor
-      }
-      quotaImpact {
-        deductAnnualDays
-        deductSickDays
-        deductCompensatoryDays
-        totalDeductDays
-      }
-      auditLogs {
-        action
-        actorId
-        actorName
-        note
-        at
-      }
-      createdAt
-      updatedAt
+      ${LEAVE_REQUEST_SELECTION}
+    }
+  }
+`;
+
+export const Q_STAFF_LEAVE_PAGE = gql`
+  query StaffLeavePageData($filter: LeaveRequestFilterInput) {
+    leaveRequests(filter: $filter) {
+      ${LEAVE_REQUEST_SELECTION}
     }
   }
 `;
@@ -129,12 +141,16 @@ export const useLeaveManagement = ({
     }),
     [employeeId, restaurantId, search, selectedDate, status],
   );
+  const isSelfService = Boolean(employeeId);
 
-  const { data, loading, error, refetch } = useQuery(Q_LEAVE_PAGE, {
-    variables: { restaurantId, filter },
-    skip: !restaurantId,
-    fetchPolicy: "cache-and-network",
-  });
+  const { data, loading, error, refetch } = useQuery(
+    isSelfService ? Q_STAFF_LEAVE_PAGE : Q_LEAVE_PAGE,
+    {
+      variables: isSelfService ? { filter } : { restaurantId, filter },
+      skip: !restaurantId,
+      fetchPolicy: "cache-and-network",
+    },
+  );
 
   const [createLeaveMutation, createState] = useMutation(M_CREATE);
   const [approveLeaveMutation, approveState] = useMutation(M_APPROVE);
