@@ -17,14 +17,15 @@ import {
 import useStaffReports, { buildPresetRange } from "@/hooks/useStaffReports";
 import { downloadXlsxWorkbook } from "@/utils/xlsxWorkbook";
 import "./StaffReportsPage.scss";
+import "./StaffReportsScrollPanels.scss";
 
 const PIE_COLORS = ["#1f6f4a", "#a87845", "#f59e0b", "#ef4444", "#2563eb", "#8b5cf6"];
 
 const KPI_CONFIG = [
-  { key: "activeEmployees", label: "Đang hoạt động", icon: "👥", featured: true, tone: "success" },
+  { key: "activeEmployees", label: "Nhân sự đang làm", icon: "👥", featured: true, tone: "success" },
   { key: "terminatedEmployees", label: "Đã nghỉ việc", icon: "🚪", tone: "muted" },
-  { key: "joinedEmployees", label: "Nhân sự vào kỳ này", icon: "➕", featured: true, tone: "info" },
-  { key: "leftEmployees", label: "Nhân sự rời kỳ này", icon: "➖", tone: "warning" },
+  { key: "joinedEmployees", label: "Vào làm trong kỳ", icon: "➕", featured: true, tone: "info" },
+  { key: "leftEmployees", label: "Rời đi trong kỳ", icon: "➖", tone: "warning" },
   { key: "presentCount", label: "Có mặt", icon: "✅", featured: true, tone: "success" },
   { key: "absentCount", label: "Vắng", icon: "⚠️", tone: "danger" },
   { key: "lateCount", label: "Đi muộn", icon: "⏱️", tone: "warning" },
@@ -34,10 +35,57 @@ const KPI_CONFIG = [
   { key: "remainingLeaveBalanceDays", label: "Quỹ nghỉ còn lại", icon: "🧮", tone: "success" },
 ];
 
+const ATTENDANCE_STATUS_LABELS = {
+  completed: "Hoàn tất ca",
+  checked_out: "Đã ra ca",
+  checked_in: "Đang trong ca",
+  scheduled: "Đã xếp lịch",
+  scheduled_absent: "Vắng theo lịch",
+  unscheduled_absent: "Vắng ngoài lịch",
+  unscheduled_checkin: "Vào ca ngoài lịch",
+  unscheduled_completed: "Hoàn tất ngoài lịch",
+  late: "Đi muộn",
+  early_leave: "Về sớm",
+  late_early_leave: "Muộn và về sớm",
+};
+
+const LEAVE_TYPE_LABELS = {
+  annual: "Nghỉ năm",
+  sick: "Nghỉ bệnh",
+  unpaid: "Nghỉ không lương",
+  paid_personal: "Nghỉ việc riêng có lương",
+  maternity: "Nghỉ thai sản",
+  compensatory: "Nghỉ bù",
+  holiday: "Nghỉ lễ/tết",
+  half_day: "Nghỉ nửa ngày",
+};
+
+const LEAVE_STATUS_LABELS = {
+  approved: "Đã duyệt",
+  rejected: "Từ chối",
+  pending: "Chờ duyệt",
+  pending_replacement: "Chờ thay thế",
+  pending_manager: "Chờ quản lý",
+};
+
+const SHIFT_TYPE_LABELS = {
+  morning: "Ca sáng",
+  afternoon: "Ca chiều",
+  evening: "Ca tối",
+  full_day: "Cả ngày",
+  rotating: "Ca xoay",
+  unknown: "Chưa rõ ca",
+};
+
 const toDateLabel = (value) =>
   value ? new Date(value).toLocaleDateString("vi-VN") : "--";
 
 const formatNumber = (value) => Number(value || 0).toLocaleString("vi-VN");
+
+const toLabel = (map, value, fallback = "--") => {
+  const key = String(value || "").toLowerCase();
+  return map[key] || value || fallback;
+};
 
 const formatDelta = (comparisonItem) => {
   if (!comparisonItem) return "--";
@@ -126,8 +174,8 @@ const buildStaffReportSheets = ({ report, summary, comparisonMap }) => {
       row.employeeName || "--",
       row.employeeCode || "--",
       row.date || "",
-      row.shiftType || "--",
-      row.status || "--",
+      toLabel(SHIFT_TYPE_LABELS, row.shiftType),
+      toLabel(ATTENDANCE_STATUS_LABELS, row.status),
       row.workedMinutes ?? 0,
       row.lateMinutes ?? 0,
       row.earlyLeaveMinutes ?? 0,
@@ -148,8 +196,8 @@ const buildStaffReportSheets = ({ report, summary, comparisonMap }) => {
     ...(report?.leaveDetails || []).map((row) => [
       row.employeeName || "--",
       row.employeeCode || "--",
-      row.leaveType || "--",
-      row.status || "--",
+      toLabel(LEAVE_TYPE_LABELS, row.leaveType),
+      toLabel(LEAVE_STATUS_LABELS, row.status),
       toDateLabel(row.startDate),
       toDateLabel(row.endDate),
       row.requestedDays ?? 0,
@@ -216,13 +264,29 @@ const StaffReportsPage = () => {
 
   const leaveStatusChartData = useMemo(
     () =>
-      (report?.leaveStatusDistribution || []).map((item) => {
-        const key = String(item.label || "").toLowerCase();
-        const viLabel =
-          key === "approved" ? "Đã duyệt" : key === "rejected" ? "Từ chối" : "Chờ duyệt";
-        return { ...item, label: viLabel };
-      }),
+      (report?.leaveStatusDistribution || []).map((item) => ({
+        ...item,
+        label: toLabel(LEAVE_STATUS_LABELS, item.label, "Chờ duyệt"),
+      })),
     [report?.leaveStatusDistribution]
+  );
+
+  const leaveByTypeChartData = useMemo(
+    () =>
+      (report?.leaveByType || []).map((item) => ({
+        ...item,
+        leaveTypeLabel: toLabel(LEAVE_TYPE_LABELS, item.leaveType, "Loại nghỉ khác"),
+      })),
+    [report?.leaveByType]
+  );
+
+  const attendanceByShiftChartData = useMemo(
+    () =>
+      (report?.attendanceByShift || []).map((item) => ({
+        ...item,
+        shiftTypeLabel: toLabel(SHIFT_TYPE_LABELS, item.shiftType, "Chưa rõ ca"),
+      })),
+    [report?.attendanceByShift]
   );
 
   const handlePresetChange = (value) => {
@@ -274,14 +338,14 @@ const StaffReportsPage = () => {
 
         <div className="report-health-grid" aria-label="Tóm tắt sức khỏe báo cáo">
           <div className="report-health-card primary">
-            <span>Record chấm công</span>
+            <span>Bản ghi chấm công</span>
             <strong>{formatNumber(reportHealth.attendanceRecords)}</strong>
-            <small>Tổng lượt ghi nhận trong kỳ</small>
+            <small>Tổng bản ghi trong kỳ</small>
           </div>
           <div className="report-health-card warning">
-            <span>Tỷ lệ vấn đề</span>
+            <span>Tỷ lệ cần xử lý</span>
             <strong>{reportHealth.issueRate}%</strong>
-            <small>{formatNumber(reportHealth.issueTotal)} lượt vắng/muộn/về sớm</small>
+            <small>{formatNumber(reportHealth.issueTotal)} bản ghi vắng/muộn/về sớm</small>
           </div>
           <div className="report-health-card success">
             <span>Đơn nghỉ đã duyệt</span>
@@ -327,7 +391,7 @@ const StaffReportsPage = () => {
       </div>
 
       {loading && <div className="report-state">Đang tải báo cáo nhân sự...</div>}
-      {error && <div className="report-state error">Lỗi tải báo cáo: {error.message}</div>}
+      {error && <div className="report-state error">Không thể tải báo cáo: {error.message}</div>}
       {!loading && !error && !report && (
         <div className="report-state">Không có dữ liệu để hiển thị.</div>
       )}
@@ -375,12 +439,12 @@ const StaffReportsPage = () => {
             <ChartCard
               title="Phân bố loại nghỉ"
               subtitle="Cơ cấu các loại đơn nghỉ trong kỳ"
-              hasData={hasMeaningfulData(report.leaveByType, ["count", "days"])}
+              hasData={hasMeaningfulData(leaveByTypeChartData, ["count", "days"])}
             >
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={report.leaveByType || []} dataKey="count" nameKey="leaveType" outerRadius={96} innerRadius={52} paddingAngle={2}>
-                    {(report.leaveByType || []).map((_, idx) => (
+                  <Pie data={leaveByTypeChartData} dataKey="count" nameKey="leaveTypeLabel" outerRadius={96} innerRadius={52} paddingAngle={2}>
+                    {leaveByTypeChartData.map((_, idx) => (
                       <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
                     ))}
                   </Pie>
@@ -407,7 +471,7 @@ const StaffReportsPage = () => {
             </ChartCard>
 
             <ChartCard
-              title="Nhân sự hoạt động / nghỉ việc"
+              title="Nhân sự đang làm / đã nghỉ"
               subtitle="Trạng thái lực lượng nhân sự"
               hasData={hasMeaningfulData(report.workforceStatusDistribution, ["count"])}
             >
@@ -440,17 +504,17 @@ const StaffReportsPage = () => {
 
             <ChartCard
               title="Tham gia theo ca"
-              subtitle="Record chấm công theo từng loại ca"
-              hasData={hasMeaningfulData(report.attendanceByShift, ["records", "present", "absent"])}
+              subtitle="Bản ghi chấm công theo từng loại ca"
+              hasData={hasMeaningfulData(attendanceByShiftChartData, ["records", "present", "absent"])}
             >
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={report.attendanceByShift || []} margin={{ top: 8, right: 14, left: -8, bottom: 0 }}>
+                <BarChart data={attendanceByShiftChartData} margin={{ top: 8, right: 14, left: -8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e6ded1" />
-                  <XAxis dataKey="shiftType" tick={{ fontSize: 12 }} />
+                  <XAxis dataKey="shiftTypeLabel" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="records" fill="#2563eb" name="Tổng record" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="records" fill="#2563eb" name="Tổng bản ghi" radius={[8, 8, 0, 0]} />
                   <Bar dataKey="present" fill="#1f6f4a" name="Có mặt" radius={[8, 8, 0, 0]} />
                   <Bar dataKey="absent" fill="#ef4444" name="Vắng" radius={[8, 8, 0, 0]} />
                 </BarChart>
@@ -492,8 +556,8 @@ const StaffReportsPage = () => {
                           <td>{row.employeeName || "--"}</td>
                           <td>{row.employeeCode || "--"}</td>
                           <td>{row.date}</td>
-                          <td>{row.shiftType || "--"}</td>
-                          <td>{row.status}</td>
+                          <td>{toLabel(SHIFT_TYPE_LABELS, row.shiftType)}</td>
+                          <td>{toLabel(ATTENDANCE_STATUS_LABELS, row.status)}</td>
                           <td>{row.workedMinutes}</td>
                           <td>{row.lateMinutes}</td>
                           <td>{row.earlyLeaveMinutes}</td>
@@ -537,8 +601,8 @@ const StaffReportsPage = () => {
                         <tr key={row.requestId}>
                           <td>{row.employeeName || "--"}</td>
                           <td>{row.employeeCode || "--"}</td>
-                          <td>{row.leaveType}</td>
-                          <td>{row.status}</td>
+                          <td>{toLabel(LEAVE_TYPE_LABELS, row.leaveType)}</td>
+                          <td>{toLabel(LEAVE_STATUS_LABELS, row.status)}</td>
                           <td>{toDateLabel(row.startDate)}</td>
                           <td>{toDateLabel(row.endDate)}</td>
                           <td>{row.requestedDays}</td>
