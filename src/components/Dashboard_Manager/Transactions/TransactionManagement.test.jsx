@@ -224,7 +224,7 @@ function renderPage({
   );
 }
 
-describe("TransactionManagement UC18", () => {
+describe("TransactionManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.URL.createObjectURL = vi.fn(() => "blob:tx");
@@ -232,14 +232,14 @@ describe("TransactionManagement UC18", () => {
     HTMLAnchorElement.prototype.click = vi.fn();
   });
 
-  it("renders UC18 tabs", () => {
+  it("renders transaction operation tabs", () => {
     renderPage();
     [
-      "Nhật ký",
-      "Cashflow",
+      "Nhật ký giao dịch",
+      "Dòng tiền",
       "Hoàn tiền",
       "Đối soát",
-      "Bank transactions",
+      "Giao dịch ngân hàng",
       "Công nợ",
     ].forEach((label) => {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
@@ -262,12 +262,12 @@ describe("TransactionManagement UC18", () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
 
     expect(screen.getByText(/\*\*\*\*9012/)).toBeInTheDocument();
     expect(screen.queryByText(/123456789012/)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Export CSV/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Xuất CSV/i }));
 
     const csv = blobCalls[0]?.[0]?.[0] || "";
 
@@ -337,7 +337,7 @@ describe("TransactionManagement UC18", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
-    fireEvent.click(within(payableCard).getByRole("button", { name: "Void" }));
+    fireEvent.click(within(payableCard).getByRole("button", { name: "Hủy ghi nhận" }));
     expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Lý do"), {
       target: { value: "Nhập trùng" },
@@ -354,7 +354,7 @@ describe("TransactionManagement UC18", () => {
   it("creates refund from a transaction without raw ID entry and gates lifecycle actions by status", async () => {
     renderPage();
     fireEvent.click(
-      screen.getByRole("button", { name: /Refund từ giao dịch/i }),
+      screen.getByRole("button", { name: /Hoàn tiền từ giao dịch/i }),
     );
     expect(screen.getByText("Tạo yêu cầu hoàn tiền")).toBeInTheDocument();
     expect(
@@ -369,12 +369,12 @@ describe("TransactionManagement UC18", () => {
       target: { value: "Hoàn món" },
     });
     expect(
-      screen.getByRole("button", { name: "Tạo refund request" }),
+      screen.getByRole("button", { name: "Tạo yêu cầu hoàn tiền" }),
     ).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Số tiền hoàn"), {
       target: { value: "300000" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Tạo refund request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo yêu cầu hoàn tiền" }));
     await waitFor(() =>
       expect(txSpies.createRefundRequest).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -414,10 +414,10 @@ describe("TransactionManagement UC18", () => {
     const confirmSpy = vi.spyOn(window, "confirm");
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Đối soát" }));
-    expect(screen.getByText(/Confidence 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Độ tin cậy 0/)).toBeInTheDocument();
     fireEvent.click(screen.getByText("rec-1"));
     expect(screen.getByText(/PAYREF123456/)).toBeInTheDocument();
-    expect(screen.getByText(/PaymentSession · 100/)).toBeInTheDocument();
+    expect(screen.getByText(/Phiên thanh toán · 100/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "×" }));
 
     fireEvent.click(screen.getByRole("button", { name: /Đóng/ }));
@@ -435,17 +435,17 @@ describe("TransactionManagement UC18", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
-    fireEvent.click(screen.getByRole("button", { name: "Manual match" }));
-    expect(screen.getByText(/confidence 100/)).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(/Force match/i));
+    fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ghép thủ công" }));
+    expect(screen.getByText(/độ tin cậy 100/)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/Ghép bắt buộc/i));
     expect(
-      screen.getByRole("button", { name: "Xác nhận match" }),
+      screen.getByRole("button", { name: "Xác nhận ghép" }),
     ).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Ghi chú/lý do"), {
       target: { value: "Force có lý do" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Xác nhận match" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận ghép" }));
     await waitFor(() =>
       expect(txSpies.manualMatchBankTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -456,7 +456,7 @@ describe("TransactionManagement UC18", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
     fireEvent.click(screen.getByRole("button", { name: "Bỏ qua" }));
     expect(screen.getByRole("button", { name: "Xác nhận" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Lý do"), {
@@ -476,14 +476,14 @@ describe("TransactionManagement UC18", () => {
   it("hides write actions without finance/refund/reconciliation permissions", () => {
     renderPage({ userPermissions: ["transaction.read"], roleName: "staff" });
     expect(
-      screen.queryByRole("button", { name: /Thu\/chi thủ công/i }),
+      screen.queryByRole("button", { name: /Ghi nhận thu\/chi/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Refund từ giao dịch/i }),
+      screen.queryByRole("button", { name: /Hoàn tiền từ giao dịch/i }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Bank transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Giao dịch ngân hàng" }));
     expect(
-      screen.queryByRole("button", { name: "Auto match" }),
+      screen.queryByRole("button", { name: "Tự động khớp" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Công nợ" }));
     expect(
