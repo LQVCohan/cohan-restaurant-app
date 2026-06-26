@@ -9,6 +9,8 @@ import "./TableCurrentSessionPage.scss";
 
 const INVALID_TABLE_LINK_MESSAGE = "Link bàn không hợp lệ hoặc đã hết hạn.";
 const TABLE_SESSION_POLL_MS = 12000;
+const isTablePageVisible = () =>
+  typeof document === "undefined" || document.visibilityState !== "hidden";
 
 const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
   query PublicActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!, $token: String!) {
@@ -204,6 +206,7 @@ const TableCurrentSessionPage = () => {
   const [feedback, setFeedback] = useState(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(isTablePageVisible);
 
   const tableAccessToken = useMemo(
     () => String(searchParams.get("token") || "").trim(),
@@ -221,7 +224,7 @@ const TableCurrentSessionPage = () => {
     variables: { restaurantId, tableId, token: tableAccessToken },
     skip: !hasRouteParams || !hasTableAccessToken,
     fetchPolicy: "cache-and-network",
-    pollInterval: TABLE_SESSION_POLL_MS,
+    pollInterval: isPageVisible ? TABLE_SESSION_POLL_MS : 0,
     notifyOnNetworkStatusChange: true,
   });
 
@@ -240,6 +243,22 @@ const TableCurrentSessionPage = () => {
       setLastUpdatedAt(new Date());
     }
   }, [tableSessionData]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+
+    const handleVisibilityChange = () => {
+      const visible = isTablePageVisible();
+      setIsPageVisible(visible);
+
+      if (visible && hasRouteParams && hasTableAccessToken) {
+        refetch?.().catch(() => {});
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [hasRouteParams, hasTableAccessToken, refetch]);
 
   const batchOrders = useMemo(
     () => normalizeBatchOrders(tableSessionData?.orders || []),
