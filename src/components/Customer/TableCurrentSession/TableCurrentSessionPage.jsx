@@ -86,6 +86,18 @@ const PUBLIC_REQUEST_TABLE_PAYMENT = gql`
   }
 `;
 
+const PUBLIC_CALL_STAFF_FOR_TABLE = gql`
+  mutation PublicCallStaffForTable($input: PublicRequestTablePaymentInput!) {
+    publicCallStaffForTable(input: $input) {
+      ok
+      message
+      requestId
+      status
+      requestedAt
+    }
+  }
+`;
+
 const HIDDEN_ORDER_STATUSES = new Set(["completed", "cancelled", "failed"]);
 
 const formatStatusLabel = (status) => {
@@ -178,6 +190,9 @@ const TableCurrentSessionPage = () => {
   const [requestTablePayment, { loading: requestingPayment }] = useMutation(
     PUBLIC_REQUEST_TABLE_PAYMENT,
   );
+  const [callStaffForTable, { loading: callingStaff }] = useMutation(
+    PUBLIC_CALL_STAFF_FOR_TABLE,
+  );
 
   const tableSessionData = data?.publicActiveTableSessionOrders || null;
   const batchOrders = useMemo(
@@ -206,6 +221,14 @@ const TableCurrentSessionPage = () => {
     );
   }, [batchOrders, tableSessionData?.session]);
 
+  const buildRequestInput = (note = null) => ({
+    restaurantId,
+    tableId,
+    tableCode: tableSessionData?.tableCode || null,
+    token: tableAccessToken,
+    note,
+  });
+
   const handleRequestPayment = async () => {
     if (!hasTableAccessToken) {
       setFeedback({
@@ -220,12 +243,7 @@ const TableCurrentSessionPage = () => {
     try {
       const { data: mutationData } = await requestTablePayment({
         variables: {
-          input: {
-            restaurantId,
-            tableId,
-            tableCode: tableSessionData?.tableCode || null,
-            token: tableAccessToken,
-          },
+          input: buildRequestInput(),
         },
       });
 
@@ -250,6 +268,39 @@ const TableCurrentSessionPage = () => {
           text: "Đã gửi yêu cầu thanh toán. Nhân viên sẽ đến hỗ trợ.",
         });
       }
+
+      await refetch();
+    } catch (mutationError) {
+      setFeedback({
+        type: "error",
+        text: getPublicTableErrorText(mutationError),
+      });
+    }
+  };
+
+  const handleCallStaff = async () => {
+    if (!hasTableAccessToken) {
+      setFeedback({
+        type: "error",
+        text: INVALID_TABLE_LINK_MESSAGE,
+      });
+      return;
+    }
+
+    setFeedback(null);
+
+    try {
+      const { data: mutationData } = await callStaffForTable({
+        variables: {
+          input: buildRequestInput("Khách cần hỗ trợ tại bàn."),
+        },
+      });
+      const result = mutationData?.publicCallStaffForTable;
+
+      setFeedback({
+        type: result?.ok ? "success" : "error",
+        text: result?.message || "Không thể gọi nhân viên lúc này.",
+      });
 
       await refetch();
     } catch (mutationError) {
@@ -381,14 +432,24 @@ const TableCurrentSessionPage = () => {
                 <span>Tạm tính</span>
                 <strong>{formatPrice(temporaryTotal)}</strong>
               </div>
-              <button
-                type="button"
-                className="customer-table-session-page__cta"
-                disabled={paymentRequested || requestingPayment || !batchOrders.length}
-                onClick={handleRequestPayment}
-              >
-                {requestingPayment ? "Đang gửi yêu cầu..." : "Gọi thanh toán"}
-              </button>
+              <div className="customer-table-session-page__actions">
+                <button
+                  type="button"
+                  className="customer-table-session-page__cta"
+                  disabled={paymentRequested || requestingPayment || callingStaff || !batchOrders.length}
+                  onClick={handleRequestPayment}
+                >
+                  {requestingPayment ? "Đang gửi yêu cầu..." : "Gọi thanh toán"}
+                </button>
+                <button
+                  type="button"
+                  className="customer-table-session-page__cta customer-table-session-page__cta--secondary"
+                  disabled={requestingPayment || callingStaff}
+                  onClick={handleCallStaff}
+                >
+                  {callingStaff ? "Đang gọi nhân viên..." : "Gọi nhân viên"}
+                </button>
+              </div>
               <p className="customer-table-session-page__hint">
                 Đây là tạm tính của các đợt gọi món đang phục vụ, không phải hóa đơn đã thanh toán.
               </p>
