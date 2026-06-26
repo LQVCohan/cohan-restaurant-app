@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
@@ -18,7 +19,15 @@ const getCurrentTimeSlot = () => {
   return "late_night";
 };
 
+const CUSTOMER_SHORTCUTS = [
+  { icon: "🎟️", title: "Kho Coupon", desc: "Xem ưu đãi đã lưu và dùng ngay khi đặt món.", path: "/coupons" },
+  { icon: "✨", title: "Dành cho bạn", desc: "Món hợp khẩu vị, dựa trên thói quen gần đây.", path: "/for-you" },
+  { icon: "📍", title: "Gần bạn", desc: "Tìm nhà hàng thuận đường, quyết định nhanh hơn.", path: "/restaurants" },
+  { icon: "📦", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
+];
+
 const Home = () => {
+  const navigate = useNavigate();
   const timeSlot = getCurrentTimeSlot();
   const [filterState, setFilterState] = useState({});
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
@@ -76,6 +85,28 @@ const Home = () => {
         />
 
         <HomeForYouSection timeSlot={timeSlot} />
+
+        <section className="home-shortcuts" aria-labelledby="home-shortcuts-title">
+          <div className="home-shortcuts__container">
+            <div className="home-shortcuts__copy">
+              <span className="home-shortcuts__eyebrow">Khám phá nhanh</span>
+              <h3 id="home-shortcuts-title">Tiếp tục hành trình ăn uống của bạn</h3>
+              <p>Mở nhanh những khu vực khách hay dùng nhất để lưu ưu đãi, xem gợi ý và theo dõi đơn.</p>
+            </div>
+            <div className="home-shortcuts__grid">
+              {CUSTOMER_SHORTCUTS.map((item) => (
+                <button key={item.path} type="button" className="home-shortcut-card" onClick={() => navigate(item.path)}>
+                  <span className="home-shortcut-card__icon" aria-hidden="true">{item.icon}</span>
+                  <span className="home-shortcut-card__content">
+                    <strong>{item.title}</strong>
+                    <small>{item.desc}</small>
+                  </span>
+                  <span className="home-shortcut-card__arrow" aria-hidden="true">→</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <Categories
           onCategorySelect={handleCategorySelect}
