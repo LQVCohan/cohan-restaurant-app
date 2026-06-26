@@ -37,6 +37,13 @@ const STAFF_USER = {
   employmentStatus: "WORKING",
 };
 
+const REQUESTING_MANAGER = {
+  id: "test-manager-requester-2",
+  fullName: "Cohan Requesting Manager",
+  employeeCode: "MG-002",
+  positionTitle: "Quản lý ca",
+};
+
 const jwtLikeToken = (roleName) => {
   const payload = Buffer.from(
     JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600, roleName }),
@@ -90,6 +97,20 @@ const makeLeaveRequest = (overrides = {}) => ({
   auditLogs: [],
   createdAt: "2026-06-26T00:00:00.000Z",
   updatedAt: "2026-06-26T00:00:00.000Z",
+  ...overrides,
+});
+
+const makeManagerReplacementRequest = (overrides = {}) => makeLeaveRequest({
+  id: "leave-replacement-p1",
+  employeeId: REQUESTING_MANAGER.id,
+  employeeName: REQUESTING_MANAGER.fullName,
+  employeeCode: REQUESTING_MANAGER.employeeCode,
+  employeeRole: REQUESTING_MANAGER.positionTitle,
+  reason: "P1 manager needs replacement confirmation",
+  status: "PENDING_REPLACEMENT_CONFIRMATION",
+  replacementManagerId: MANAGER_USER.id,
+  replacementManagerName: MANAGER_USER.fullName,
+  replacementStatus: "PENDING",
   ...overrides,
 });
 
@@ -187,6 +208,22 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
         data = { rejectLeaveRequest: requests.find((request) => request.id === requestId) };
         break;
       }
+      case "ConfirmReplacement": {
+        const requestId = variables.requestId;
+        requests = requests.map((request) =>
+          request.id === requestId
+            ? {
+                ...request,
+                status: "PENDING",
+                replacementStatus: "CONFIRMED",
+                replacementConfirmedAt: "2026-06-26T10:10:00.000Z",
+                replacementConfirmedBy: MANAGER_USER.id,
+              }
+            : request,
+        );
+        data = { confirmReplacementLeaveRequest: requests.find((request) => request.id === requestId) };
+        break;
+      }
       default:
         data = {};
     }
@@ -210,7 +247,7 @@ const openManagerLeavePage = async (page) => {
     );
   });
   await expect(page.locator(".leave-list-container")).toBeVisible();
-  await expect(page.getByText(STAFF_USER.fullName)).toBeVisible();
+  await expect(page.getByText(STAFF_USER.fullName).or(page.getByText(REQUESTING_MANAGER.fullName))).toBeVisible();
 };
 
 test.describe("P1 manager leave review", () => {
@@ -260,5 +297,23 @@ test.describe("P1 manager leave review", () => {
     backendGuard.assertNoBackendErrors("manager reject leave request");
 
     await expect(row).toContainText("Từ chối");
+  });
+
+  test("assigned manager confirms replacement without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerLeaveMocks(page, [makeManagerReplacementRequest()]);
+    await openManagerLeavePage(page);
+
+    const row = page.locator("tr.hover-row", { hasText: REQUESTING_MANAGER.fullName });
+    await expect(row).toContainText("Chờ quản lý thay thế xác nhận");
+
+    backendGuard.clear();
+    const dialogPromise = page.waitForEvent("dialog");
+    await row.locator('button[title="Xác nhận thay thế"]').click();
+    const dialog = await dialogPromise;
+    expect(dialog.message()).toContain("Đã xác nhận thay thế thành công");
+    await dialog.accept();
+    backendGuard.assertNoBackendErrors("manager confirm replacement leave request");
+
+    await expect(row).toContainText("Chờ duyệt");
   });
 });
