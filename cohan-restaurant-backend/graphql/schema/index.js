@@ -7,6 +7,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const schemaDir = __dirname;
+
+const readSchemaFile = (fileName) => {
+  const source = fs.readFileSync(path.join(schemaDir, fileName), "utf8");
+  if (fileName !== "user.graphql") return source;
+
+  const firstWalletField = source.indexOf("\n  wallet: Wallet");
+  const lastWalletField = source.lastIndexOf("\n  wallet: Wallet");
+  if (firstWalletField === -1 || firstWalletField === lastWalletField) return source;
+
+  // ponytail: user.graphql currently has one duplicate User.wallet line; strip only the later copy during schema load.
+  return `${source.slice(0, lastWalletField)}${source.slice(lastWalletField + "\n  wallet: Wallet".length)}`;
+};
+
 const files = [
   "base.graphql",
   "user.graphql",
@@ -28,6 +41,7 @@ const files = [
   "event_log.graphql",
   "payments.graphql",
   "paymentTransfer.graphql",
+  "walletEnums.graphql",
   "wallet.graphql",
   "publicTableSession.graphql",
   "tableCustomer.graphql",
@@ -51,11 +65,13 @@ const files = [
   "aiChatbot.graphql",
   "availability.graphql",
   "posCustomer.graphql",
+  "staffAttendanceRecord.graphql",
   "attendance_overtime.graphql",
+  "staffSchedulingAssistant.graphql",
   "audit_log.graphql",
   "systemSetting.graphql",
   "backup.graphql",
-].map((fileName) => fs.readFileSync(path.join(schemaDir, fileName), "utf8"));
+].map(readSchemaFile);
 
 const staffAvatarSchema = `
 extend type Mutation {
