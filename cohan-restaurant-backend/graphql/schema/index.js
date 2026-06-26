@@ -10,6 +10,14 @@ const schemaDir = __dirname;
 
 const readSchemaFile = (fileName) => {
   const source = fs.readFileSync(path.join(schemaDir, fileName), "utf8");
+
+  if (fileName === "wallet.graphql") {
+    return source.replace(
+      "myWalletTransactions(input: WalletTransactionFilterInput): [WalletTransaction!]!",
+      "myWalletTransactions(input: WalletTransactionFilterInput, limit: Int = 20, offset: Int = 0): [WalletTransaction!]!",
+    );
+  }
+
   if (fileName !== "user.graphql") return source;
 
   const firstWalletField = source.indexOf("\n  wallet: Wallet");
