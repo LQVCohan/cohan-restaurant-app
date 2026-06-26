@@ -104,6 +104,10 @@ type Table {
   vrUrl: String
   notes: String
   visualConfig: JSON
+  tableAccessUrl: String
+  tableQrCodeDataUrl: String
+  tableQrGeneratedAt: DateTime
+  tableQrExpiresAt: DateTime
   status: TableStatus!
   floorLevel: Int
   deposit: Int
@@ -192,6 +196,11 @@ input BulkTableItemInput {
   joinGroupId: String
 }
 
+input GenerateTableAccessQrInput {
+  tableId: ID!
+  baseUrl: String!
+}
+
 input MergeTablesInput {
   restaurantId: ID!
   tableIds: [ID!]! # các bàn sẽ vào 1 nhóm
@@ -267,6 +276,8 @@ extend type Mutation {
   setTableStatus(input: SetTableStatusInput!): Table! # đổi trạng thái nhanh
   swapTableCodes(input: SwapTableCodesInput!): Boolean! # hoán đổi code giữa 2 bàn
   bulkUpsertTables(input: BulkUpsertTablesInput!): Int! # trả về số bàn upsert
+  generateTableAccessQr(input: GenerateTableAccessQrInput!): Table!
+  revokeTableAccessQr(tableId: ID!): Table!
   acquireTableViewLock(input: AcquireTableViewLockInput!): Table!
   releaseTableViewLock(input: ReleaseTableViewLockInput!): Table
 }
