@@ -6,7 +6,6 @@ const restaurantCategoryIndexSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   timeSlot: {
     type: String,
