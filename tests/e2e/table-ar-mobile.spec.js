@@ -170,9 +170,9 @@ async function mockBackend(page) {
   });
 }
 
-test.describe("manager table AR mobile smoke", () => {
-  test.use({ ...devices["Pixel 5"] });
+test.use({ ...devices["Pixel 5"] });
 
+test.describe("manager table AR mobile smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       window.sessionStorage.setItem("foodhub_access_token", "e2e-token");
