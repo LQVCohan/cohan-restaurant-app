@@ -316,4 +316,31 @@ test.describe("P1 manager leave review", () => {
 
     await expect(row).toContainText("Chờ duyệt");
   });
+
+  test("assigned manager confirms replacement then approves leave without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerLeaveMocks(page, [makeManagerReplacementRequest({ id: "leave-replacement-approve-p1" })]);
+    await openManagerLeavePage(page);
+
+    const row = page.locator("tr.hover-row", { hasText: REQUESTING_MANAGER.fullName });
+    await expect(row).toContainText("Chờ quản lý thay thế xác nhận");
+
+    backendGuard.clear();
+    const confirmDialogPromise = page.waitForEvent("dialog");
+    await row.locator('button[title="Xác nhận thay thế"]').click();
+    const confirmDialog = await confirmDialogPromise;
+    expect(confirmDialog.message()).toContain("Đã xác nhận thay thế thành công");
+    await confirmDialog.accept();
+    backendGuard.assertNoBackendErrors("manager confirm replacement before approval");
+    await expect(row).toContainText("Chờ duyệt");
+
+    backendGuard.clear();
+    const approveDialogPromise = page.waitForEvent("dialog");
+    await row.locator(".btn-icon.approve").click();
+    const approveDialog = await approveDialogPromise;
+    expect(approveDialog.message()).toContain("Duyệt đơn thành công");
+    await approveDialog.accept();
+    backendGuard.assertNoBackendErrors("manager approve confirmed replacement leave request");
+
+    await expect(row).toContainText("Đã duyệt");
+  });
 });
