@@ -10,6 +10,7 @@ npm run test:unit
 npm run test:component
 npm run test:api
 npm run test:smoke
+npm run test:p1
 npm run test:ci
 ```
 
@@ -21,6 +22,46 @@ npm --prefix cohan-restaurant-backend run test:serial
 npm --prefix cohan-restaurant-backend run test:menu-rbac
 npm --prefix cohan-restaurant-backend run test:performance
 ```
+
+## P1 end-to-end network guard
+
+P1 dùng Playwright để đi qua từng nút/luồng thật và fail test khi backend trả lỗi dù UI vẫn hiện thành công.
+
+Chạy riêng P1:
+
+```bash
+npm run test:p1
+```
+
+Khi viết P1 spec mới, import fixture ở `tests/e2e/p1/p1Fixtures.js` rồi gọi `backendGuard.assertNoBackendErrors()` sau các nút quan trọng:
+
+```js
+import { expect, test } from "./p1Fixtures.js";
+
+test("manager saves a setting without hidden backend errors", async ({ page, backendGuard }) => {
+  await page.goto("/manager#settings");
+  backendGuard.clear();
+  await page.getByRole("button", { name: /lưu/i }).click();
+  backendGuard.assertNoBackendErrors("after save settings");
+  await expect(page.getByText(/thành công|đã lưu/i)).toBeVisible();
+});
+```
+
+Guard hiện bắt:
+
+- HTTP `4xx/5xx` từ `/api/*` hoặc `/graphql`.
+- GraphQL response có `errors[]` kể cả HTTP vẫn là `200`.
+- Request backend bị fail hẳn.
+
+`/api/auth/refresh` với `204` hoặc `401` được bỏ qua vì đây có thể là trạng thái guest/auth bình thường. Nếu refresh trả `500` thì vẫn fail.
+
+Khi P1 fail, mở report:
+
+```bash
+npx playwright show-report
+```
+
+Trace/screenshot/video lỗi được giữ theo cấu hình Playwright hiện tại.
 
 ## Regression theo module
 
