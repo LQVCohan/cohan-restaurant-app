@@ -6,6 +6,7 @@ import {
 
 const MANAGER_FEATURE_ROLES = ["admin", "manager", "hr", "accountant"];
 const CUSTOMER_NAV_ROLES = ["customer", "admin", "manager"];
+const NOTIFICATION_NAV_ROLES = [...CUSTOMER_NAV_ROLES, ...STAFF_SHARED_ROLES];
 
 const normalizeText = (value = "") =>
   String(value || "")
@@ -28,6 +29,14 @@ export const AI_CHATBOT_FEATURE_MAP = [
     intent: "navigation",
     description: "Khám phá nhà hàng, ưu đãi và các lối tắt chính.",
     aliases: ["trang chu", "home", "bat dau"],
+  },
+  {
+    key: "contact",
+    label: "Trung tâm hỗ trợ",
+    path: "/contact",
+    intent: "support",
+    description: "Liên hệ hỗ trợ hoặc gửi yêu cầu cho hệ thống.",
+    aliases: ["lien he", "ho tro", "support", "gap nhan vien", "can ho tro", "khieu nai", "phan nan"],
   },
   {
     key: "restaurants",
@@ -105,6 +114,15 @@ export const AI_CHATBOT_FEATURE_MAP = [
     description: "Xem ví, số dư và giao dịch thanh toán của tài khoản.",
     allowedRoles: CUSTOMER_NAV_ROLES,
     aliases: ["vi", "vi cua toi", "wallet", "so du", "nap tien", "lich su vi"],
+  },
+  {
+    key: "notifications",
+    label: "Thông báo",
+    path: "/notifications",
+    intent: "navigation",
+    description: "Xem thông báo tài khoản, đơn hàng, đặt bàn và hệ thống.",
+    allowedRoles: NOTIFICATION_NAV_ROLES,
+    aliases: ["thong bao", "notification", "notifications", "chuong bao", "tin moi", "canh bao"],
   },
   {
     key: "for-you",
@@ -229,6 +247,7 @@ const canUseFeature = (entry, role) => {
 
 const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "home") return path === "/" || path === "";
+  if (entry.key === "contact") return path === "/contact";
   if (entry.key === "restaurants") return path === "/restaurants";
   if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "reservations") return path.includes("/layout") || path.includes("reservation");
@@ -236,6 +255,7 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "combos") return path.includes("combo");
   if (entry.key === "coupons") return path.includes("coupon") || path.includes("voucher");
   if (entry.key === "wallet") return path.includes("wallet");
+  if (entry.key === "notifications") return path.includes("notification");
   if (entry.key === "for-you") return path.includes("for-you");
   if (entry.key === "food-detail") return path.startsWith("/food/") || Boolean(menuItemId);
   if (entry.key === "cart") return path.includes("cart");
