@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
+import HomeForYouSection from "./components/HomeForYouSection";
 import DishGrid from "./components/DishGrid";
 import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
@@ -73,6 +74,8 @@ const Home = () => {
           restaurantFilter={filterState}
           onBookingClick={handleOpenBooking}
         />
+
+        <HomeForYouSection timeSlot={timeSlot} />
 
         <Categories
           onCategorySelect={handleCategorySelect}
