@@ -324,6 +324,38 @@ const buildRestaurantCandidates = ({ restaurant, sources, menuItems, coupons }) 
       tags: ["món khác", "for you", "khẩu vị", "menu"],
       confidence: 0.9,
     });
+    pushCandidate(candidates, {
+      question: "Khách cần món ăn kèm cho tiệc sinh nhật thì gợi ý thế nào?",
+      suggestedTitle: "Playbook gợi ý món ăn kèm cho tiệc sinh nhật",
+      suggestedContent: "Khi khách hỏi món ăn kèm, khai vị hoặc món phụ cho tiệc sinh nhật, chatbot phải lấy món từ CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems. Ưu tiên món dễ chia sẻ, dễ ăn khi đứng/ngồi tiệc, ít dây bẩn, hợp nhóm, có thể là khai vị, snack, món chiên/nướng, món phụ, tráng miệng, đồ uống hoặc combo nếu dữ liệu có. Nên đưa 3-5 lựa chọn, mỗi món có lý do ngắn và action link /food/{id}. Không tự tạo set/combo nếu không có trong context.",
+      category: "recommendation_playbook",
+      tags: ["sinh nhật", "món ăn kèm", "khai vị", "tiệc"],
+      confidence: 0.9,
+    });
+    pushCandidate(candidates, {
+      question: "Khách tụ tập bạn bè hoặc ăn nhậu nên gợi ý món gì?",
+      suggestedTitle: "Playbook gợi ý món cho buổi tụ tập bạn bè",
+      suggestedContent: "Khi khách nói tụ tập bạn bè, liên hoan, ăn nhậu hoặc cần món lai rai, chatbot chỉ tư vấn món ăn trong menu, không khuyến khích rượu bia. Ưu tiên món dễ chia, đậm vị, ăn kèm tốt, snack, món chiên/nướng, món khai vị, món ít cần dụng cụ và phù hợp nhóm. Nếu khách hỏi đồ uống, chỉ gợi ý đồ uống không cồn hoặc đồ uống có trong context một cách trung lập theo menu. Mỗi món cụ thể phải có source menuItem và link /food/{id} nếu có id.",
+      category: "recommendation_playbook",
+      tags: ["tụ tập", "ăn nhậu", "món ăn kèm", "nhóm"],
+      confidence: 0.9,
+    });
+    pushCandidate(candidates, {
+      question: "Khách tổ chức tiệc gia đình nên gọi món gì?",
+      suggestedTitle: "Playbook gợi ý món cho tiệc gia đình",
+      suggestedContent: "Khi khách hỏi món cho tiệc gia đình, chatbot nên gợi ý cấu trúc bữa ăn cân bằng từ món có trong context: món chính, món dễ chia, món nhẹ/khai vị, món cho trẻ em nếu có, món ít cay cho người lớn tuổi và đồ uống/tráng miệng nếu phù hợp. Ưu tiên món phổ biến, đánh giá tốt, không quá kén khẩu vị. Nếu khách nêu số người hoặc ngân sách, lọc theo partySize/budget trước rồi mới xét rating và For You.",
+      category: "recommendation_playbook",
+      tags: ["tiệc gia đình", "nhóm", "trẻ em", "người lớn tuổi"],
+      confidence: 0.9,
+    });
+    pushCandidate(candidates, {
+      question: "Khách liên hoan công ty hoặc họp nhóm nên gọi món gì?",
+      suggestedTitle: "Playbook gợi ý món cho liên hoan công ty",
+      suggestedContent: "Khi khách hỏi món cho liên hoan công ty, họp nhóm hoặc team building, chatbot ưu tiên món dễ chia khẩu phần, trình bày gọn, ít rủi ro dị ứng, nhiều người ăn được, có thể đặt số lượng lớn nếu menu hỗ trợ. Nên gợi ý theo nhóm: món chính, món ăn kèm/khai vị, đồ uống, tráng miệng. Không cam kết phục vụ số lượng lớn nếu context không có chính sách; hãy gợi ý liên hệ nhân viên để xác nhận trước.",
+      category: "recommendation_playbook",
+      tags: ["liên hoan", "công ty", "nhóm", "món ăn kèm"],
+      confidence: 0.9,
+    });
 
     const dietaryItems = menuItems.filter(
       (item) =>
