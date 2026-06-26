@@ -7,7 +7,7 @@ const APPEAL_STATUS = ["submitted", "under_review", "needs_more_info", "accepted
 const PerformanceIncidentAppealSchema = new Schema(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
-    incidentId: { type: Types.ObjectId, ref: "PerformanceIncident", required: true, index: true },
+    incidentId: { type: Types.ObjectId, ref: "PerformanceIncident", required: true },
     employeeId: { type: Types.ObjectId, ref: "User", required: true, index: true },
     submittedBy: { type: Types.ObjectId, ref: "User", required: true },
     submittedAt: { type: Date, default: Date.now },
