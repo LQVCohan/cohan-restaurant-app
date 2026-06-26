@@ -13,6 +13,20 @@ import {
 } from "../../../utils/publicTableSession.js";
 
 const QR_WIDTH = 512;
+const QR_TABLE_SELECT = {
+  _id: 1,
+  restaurantId: 1,
+  floorId: 1,
+  floorLevel: 1,
+  code: 1,
+  status: 1,
+  capacity: 1,
+  tableAccessUrl: 1,
+  tableQrCodeDataUrl: 1,
+  tableQrGeneratedAt: 1,
+  tableQrExpiresAt: 1,
+};
+const getQrTokenExpiresIn = () => process.env.TABLE_QR_ACCESS_TOKEN_EXPIRES_IN || "365d";
 
 function normalizeBaseUrl(value) {
   try {
@@ -51,6 +65,17 @@ async function loadTableForQr(tableId, ctx) {
   return table;
 }
 
+export const TableAccessQrQuery = {
+  tableQrAccessList: async (_parent, { restaurantId }, ctx) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_READ);
+    return Table.find({ restaurantId })
+      .select(QR_TABLE_SELECT)
+      .sort({ floorLevel: 1, code: 1 })
+      .lean({ virtuals: true });
+  },
+};
+
 export const TableAccessQrMutation = {
   generateTableAccessQr: async (_parent, { input }, ctx) => {
     const table = await loadTableForQr(input?.tableId, ctx);
@@ -58,6 +83,7 @@ export const TableAccessQrMutation = {
       restaurantId: table.restaurantId,
       tableId: table._id,
       tableCode: normalizePublicTableCode(table.code),
+      expiresIn: getQrTokenExpiresIn(),
     });
     const verifiedToken = verifyTableAccessToken(token);
     const tableAccessUrl = buildTableAccessUrl({
