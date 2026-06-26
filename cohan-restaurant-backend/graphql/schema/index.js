@@ -22,10 +22,14 @@ const readSchemaFile = (fileName) => {
 
   const firstWalletField = source.indexOf("\n  wallet: Wallet");
   const lastWalletField = source.lastIndexOf("\n  wallet: Wallet");
-  if (firstWalletField === -1 || firstWalletField === lastWalletField) return source;
+  const withoutDuplicateWallet = firstWalletField === -1 || firstWalletField === lastWalletField
+    ? source
+    : `${source.slice(0, lastWalletField)}${source.slice(lastWalletField + "\n  wallet: Wallet".length)}`;
 
-  // ponytail: user.graphql currently has one duplicate User.wallet line; strip only the later copy during schema load.
-  return `${source.slice(0, lastWalletField)}${source.slice(lastWalletField + "\n  wallet: Wallet".length)}`;
+  return withoutDuplicateWallet.replace(
+    "updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!",
+    "updateCustomerMetrics(input: UpdateCustomerMetricsInput, id: ID, restaurantId: ID, loyaltyPoints: Int, customerType: CustomerType): User!",
+  );
 };
 
 const files = [
@@ -78,6 +82,7 @@ const files = [
   "attendance_overtime.graphql",
   "staffSchedulingAssistant.graphql",
   "staffResolverCompatibility.graphql",
+  "operationCompatibilityExtras.graphql",
   "audit_log.graphql",
   "systemSetting.graphql",
   "backup.graphql",
