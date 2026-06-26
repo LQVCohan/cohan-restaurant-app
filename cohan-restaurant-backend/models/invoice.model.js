@@ -51,7 +51,7 @@ const InvoiceSchema = BaseSchemaModel(
     tableCode: { type: String },
 
     // So hoa don tang dan, hien thi cho khach (vd. INV-2025-000123)
-    number: { type: String, unique: true, sparse: true },
+    number: { type: String },
 
     // Thoi diem phat hanh hoa don
     issuedAt: { type: Date, required: true },
@@ -81,7 +81,7 @@ const InvoiceSchema = BaseSchemaModel(
     meta: { type: Schema.Types.Mixed },
 
     // (tuy chon) ma/QR hien thi cho khach, neu ban van can
-    code: { type: String, unique: true, sparse: true },
+    code: { type: String },
   },
   {},
 );
