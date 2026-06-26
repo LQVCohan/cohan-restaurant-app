@@ -50,8 +50,8 @@ beforeEach(() => {
   });
   previewExport.mockResolvedValue({ data: { restaurantConfigBackupPreview: { restaurantId: "r1", fileName: "backup.json", schemaVersion: 1, createdAt: "2026-06-02T00:00:00.000Z", warnings: ["preview warning"], counts: [{ key: "systemSettings", label: "Cấu hình hệ thống", count: 1, enabled: true }] } } });
   exportBackup.mockResolvedValue({ data: { exportRestaurantConfigBackup: { fileName: "backup.json", mimeType: "application/json", encoding: "base64", contentBase64: window.btoa('{"kind":"cohan.restaurant_config_snapshot"}'), checksum: "sha256:abc", sizeBytes: 42, createdAt: "2026-06-02T00:00:00.000Z" } } });
-  previewImport.mockResolvedValue({ data: { previewRestaurantConfigImport: { valid: true, schemaVersion: 1, sourceRestaurantName: "Nguồn", targetRestaurantId: "r2", mode: "clone", warnings: ["dry-run"], errors: [], changes: [{ section: "systemSettings", action: "create", label: "Cấu hình hệ thống", count: 1 }] } } });
-  importBackup.mockResolvedValue({ data: { importRestaurantConfigBackup: { success: true, dryRun: false, targetRestaurantId: "r2", mode: "clone", warnings: ["Skipped recipe ingredient line because ingredient was not imported or could not be remapped."], errors: [], changes: [], backupRun: { id: "br1", status: "checklist_completed", note: "Imported", createdAt: "2026-06-02T00:00:00.000Z", completedAt: "2026-06-02T00:00:00.000Z" } } } });
+  previewImport.mockResolvedValue({ data: { previewRestaurantConfigImport: { valid: true, schemaVersion: 1, sourceRestaurantName: "Nguồn", targetRestaurantId: "r2", mode: "clone", warnings: ["preview ok"], errors: [], changes: [{ section: "systemSettings", action: "create", label: "Cấu hình hệ thống", count: 1 }], conflictSummary: [], conflicts: [] } } });
+  importBackup.mockResolvedValue({ data: { importRestaurantConfigBackup: { success: true, dryRun: false, targetRestaurantId: "r2", mode: "clone", warnings: ["Skipped recipe ingredient line because ingredient was not imported or could not be remapped."], errors: [], changes: [], conflicts: [], appliedResolutions: [], backupRun: { id: "br1", status: "checklist_completed", note: "Imported", createdAt: "2026-06-02T00:00:00.000Z", completedAt: "2026-06-02T00:00:00.000Z" } } } });
   createBackupRun.mockResolvedValue({ data: { createBackupRun: { id: "br-new", restaurantId: "r1", status: "planned", checklist: {}, scope: {}, note: "" } } });
   updateBackupRun.mockResolvedValue({ data: { updateBackupRun: { id: "br1", restaurantId: "r1", status: "checklist_completed", checklist: {}, scope: {}, note: "" } } });
   useLazyQueryMock.mockImplementation((query, options = {}) => [async (variables) => {
@@ -64,7 +64,6 @@ beforeEach(() => {
   }, { loading: false }]);
   useMutationMock.mockImplementation((mutation) => {
     const text = String(mutation);
-    if (text.includes("restaurantConfigBackupPreview")) return [previewExport, { loading: false }];
     if (text.includes("createBackupRun")) return [createBackupRun, { loading: false }];
     if (text.includes("updateBackupRun")) return [updateBackupRun, { loading: false }];
     if (text.includes("exportRestaurantConfigBackup")) return [exportBackup, { loading: false }];
@@ -78,17 +77,17 @@ beforeEach(() => {
 });
 
 describe("BackupManagement config snapshot UI", () => {
-  it("render export/import sections and warning", () => {
+  it("renders export/import sections and database backup warning", () => {
     renderPage();
-    expect(screen.getByText("Export cấu hình")).toBeInTheDocument();
-    expect(screen.getByText("Import / Khôi phục")).toBeInTheDocument();
-    expect(screen.getByText(/không thay thế database backup/i)).toBeInTheDocument();
+    expect(screen.getByText("Xuất cấu hình")).toBeInTheDocument();
+    expect(screen.getByText("Khôi phục cấu hình")).toBeInTheDocument();
+    expect(screen.getByText(/không thay thế/i)).toBeInTheDocument();
   });
 
   it("creates a manual backup run from checklist workflow", async () => {
     renderPage();
     fireEvent.click(screen.getByLabelText("Kiểm tra báo cáo cuối ngày"));
-    fireEvent.click(screen.getByText("Tạo backup run mới"));
+    fireEvent.click(screen.getByText("Tạo lần sao lưu mới"));
     await waitFor(() => expect(createBackupRun).toHaveBeenCalled());
     expect(createBackupRun.mock.calls[0][0].variables.input.checklist.reportsChecked).toBe(true);
   });
@@ -104,36 +103,36 @@ describe("BackupManagement config snapshot UI", () => {
   it("export button downloads JSON file from base64", async () => {
     const appendSpy = vi.spyOn(document.body, "appendChild");
     renderPage();
-    fireEvent.click(screen.getByText("Tải file backup JSON"));
+    fireEvent.click(screen.getByText("Tải file sao lưu JSON"));
     await waitFor(() => expect(exportBackup).toHaveBeenCalled());
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(appendSpy).toHaveBeenCalled();
-    expect(await screen.findByText(/Checksum: sha256:abc/)).toBeInTheDocument();
+    expect(await screen.findByText(/Mã kiểm tra: sha256:abc/)).toBeInTheDocument();
   });
 
   it("file input preview import calls preview mutation", async () => {
     renderPage();
     const file = new File([JSON.stringify({ kind: "cohan.restaurant_config_snapshot" })], "backup.json", { type: "application/json" });
-    fireEvent.change(screen.getByLabelText(/File snapshot JSON/i), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText(/File sao lưu JSON/i), { target: { files: [file] } });
     await waitFor(() => expect(screen.getByText(/Đã chọn: backup.json/)).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText("Preview import")).not.toBeDisabled());
-    fireEvent.click(screen.getByText("Preview import"));
+    await waitFor(() => expect(screen.getByText("Xem trước khôi phục")).not.toBeDisabled());
+    fireEvent.click(screen.getByText("Xem trước khôi phục"));
     await waitFor(() => expect(previewImport).toHaveBeenCalled());
-    expect(await screen.findByText(/Preview: Hợp lệ/)).toBeInTheDocument();
+    expect(await screen.findByText(/Xem trước: Hợp lệ/)).toBeInTheDocument();
   });
 
-  it("import thật disabled until preview valid + confirmation", async () => {
+  it("import button disabled until preview valid + confirmation", async () => {
     renderPage();
-    const importButton = screen.getByText("Import thật");
+    const importButton = screen.getByText("Áp dụng khôi phục");
     expect(importButton).toBeDisabled();
     const file = new File(["{}"], "backup.json", { type: "application/json" });
-    fireEvent.change(screen.getByLabelText(/File snapshot JSON/i), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText(/File sao lưu JSON/i), { target: { files: [file] } });
     await waitFor(() => expect(screen.getByText(/Đã chọn/)).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText("Preview import")).not.toBeDisabled());
-    fireEvent.click(screen.getByText("Preview import"));
+    await waitFor(() => expect(screen.getByText("Xem trước khôi phục")).not.toBeDisabled());
+    fireEvent.click(screen.getByText("Xem trước khôi phục"));
     await waitFor(() => expect(previewImport).toHaveBeenCalled());
     expect(importButton).toBeDisabled();
-    fireEvent.click(screen.getByLabelText(/Tôi hiểu import/));
+    fireEvent.click(screen.getByLabelText(/Tôi hiểu thao tác khôi phục/));
     await waitFor(() => expect(importButton).not.toBeDisabled());
     fireEvent.click(importButton);
     await waitFor(() => expect(importBackup).toHaveBeenCalled());
@@ -185,10 +184,10 @@ const conflictPreviewPayload = (overrides = {}) => ({
 
 const previewImportWithFile = async () => {
   const file = new File(["{}"], "backup.json", { type: "application/json" });
-  fireEvent.change(screen.getByLabelText(/File snapshot JSON/i), { target: { files: [file] } });
+  fireEvent.change(screen.getByLabelText(/File sao lưu JSON/i), { target: { files: [file] } });
   await waitFor(() => expect(screen.getByText(/Đã chọn/)).toBeInTheDocument());
-  await waitFor(() => expect(screen.getByText("Preview import")).not.toBeDisabled());
-  fireEvent.click(screen.getByText("Preview import"));
+  await waitFor(() => expect(screen.getByText("Xem trước khôi phục")).not.toBeDisabled());
+  fireEvent.click(screen.getByText("Xem trước khôi phục"));
   await waitFor(() => expect(previewImport).toHaveBeenCalled());
 };
 
@@ -197,9 +196,9 @@ describe("BackupManagement conflict resolver UI", () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload());
     renderPage();
     await previewImportWithFile();
-    expect(await screen.findByText("Xử lý xung đột import")).toBeInTheDocument();
-    expect(screen.getByText("Tổng conflicts")).toBeInTheDocument();
-    expect(screen.getByText("Warning")).toBeInTheDocument();
+    expect(await screen.findByText("Xử lý xung đột khôi phục")).toBeInTheDocument();
+    expect(screen.getByText("Tổng xung đột")).toBeInTheDocument();
+    expect(screen.getByText("Cần chú ý")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Khác biệt trường"));
     expect(screen.getByText(/basePrice: file=50000/)).toBeInTheDocument();
   });
@@ -209,8 +208,8 @@ describe("BackupManagement conflict resolver UI", () => {
     renderPage();
     await previewImportWithFile();
     fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
-    fireEvent.click(screen.getByLabelText(/Tôi hiểu import/));
-    fireEvent.click(screen.getByText("Import thật"));
+    fireEvent.click(screen.getByLabelText(/Tôi hiểu thao tác khôi phục/));
+    fireEvent.click(screen.getByText("Áp dụng khôi phục"));
     await waitFor(() => expect(importBackup).toHaveBeenCalled());
     expect(importBackup.mock.calls[0][0].variables.input.conflictResolutions).toEqual(expect.arrayContaining([expect.objectContaining({ conflictId: "menuCatalog:MenuItem:PHO", resolution: "use_source" })]));
   });
@@ -220,10 +219,10 @@ describe("BackupManagement conflict resolver UI", () => {
     renderPage();
     await previewImportWithFile();
     fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "rename_source" } });
-    fireEvent.click(screen.getByLabelText(/Tôi hiểu import/));
-    expect(screen.getByText("Import thật")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText(/Tôi hiểu thao tác khôi phục/));
+    expect(screen.getByText("Áp dụng khôi phục")).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Tên mới PHO"), { target: { value: "PHO-NEW" } });
-    expect(screen.getByText("Import thật")).not.toBeDisabled();
+    expect(screen.getByText("Áp dụng khôi phục")).not.toBeDisabled();
   });
 
   it("bulk keep target updates supported conflicts", async () => {
@@ -239,7 +238,7 @@ describe("BackupManagement conflict resolver UI", () => {
     previewImport.mockResolvedValueOnce(conflictPreviewPayload({ conflict: { severity: "blocking", defaultResolution: "skip" } }));
     renderPage();
     await previewImportWithFile();
-    fireEvent.click(screen.getByLabelText(/Tôi hiểu import/));
-    expect(screen.getByText("Import thật")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText(/Tôi hiểu thao tác khôi phục/));
+    expect(screen.getByText("Áp dụng khôi phục")).toBeDisabled();
   });
 });
