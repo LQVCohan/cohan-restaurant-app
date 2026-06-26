@@ -25,6 +25,7 @@ import {
   Send,
 } from "lucide-react";
 import "./PrintManagement.scss";
+import "./PrintManagementPolish.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
 const DEFAULT_TEMPLATES = [
