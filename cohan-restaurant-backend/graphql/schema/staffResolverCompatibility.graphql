@@ -1,0 +1,156 @@
+# ponytail: temporary contract for staff/payroll resolvers that already exist but had no SDL.
+# Keep startup strict; replace JSON fields with typed contracts as each staff screen is hardened.
+
+extend type Query {
+  staff(id: ID): JSON
+  publicRestaurantStaff(restaurantId: ID): JSON
+  staffList(restaurantId: ID, roleId: ID, search: String, employmentStatus: String): JSON
+  shiftAcknowledgements(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime, employeeId: ID, status: String): JSON
+  myShiftAttendances(startDate: DateTime, endDate: DateTime, restaurantId: ID): JSON
+  managerShiftAttendances(restaurantId: ID, startDate: DateTime, endDate: DateTime, employeeId: ID): JSON
+  myShiftAcknowledgements(restaurantId: ID, status: String): JSON
+  myScheduleAcknowledgement(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): JSON
+  scheduleAcknowledgementSummary(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): JSON
+  schedulingPolicy(restaurantId: ID): JSON
+  staffPerformanceSnapshots(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): JSON
+  validateShiftAssignment(input: JSON): JSON
+  staffAccountOverview(staffId: ID, restaurantId: ID): JSON
+  staffSalarySummary(staffId: ID, restaurantId: ID): JSON
+  staffShiftHistory(staffId: ID, restaurantId: ID, limit: Int): JSON
+  staffPayrollOverview(startDate: DateTime, endDate: DateTime, restaurantId: ID, periodId: ID): JSON
+  payrollPeriods(restaurantId: ID, status: String, limit: Int): JSON
+  payrollPeriodDetail(periodId: ID!): JSON
+  payrollPayslip(periodId: ID, employeeId: ID): JSON
+  payrollPayments(periodId: ID, restaurantId: ID, employeeId: ID): JSON
+  payrollPayouts(restaurantId: ID, periodId: ID, status: String, limit: Int): JSON
+  payrollPayoutBatch(batchId: ID!): JSON
+  employeeBankAccount(employeeId: ID!): JSON
+  restaurantPayoutAccounts(restaurantId: ID!): JSON
+  payrollExportRows(startDate: DateTime, endDate: DateTime, restaurantId: ID, periodId: ID): JSON
+  payrollSettings(restaurantId: ID!): JSON
+  overtimeRequests(restaurantId: ID, employeeId: ID, status: String, limit: Int): JSON
+  overtimeRequest(id: ID!): JSON
+  validatePayrollPeriod(periodId: ID!): JSON
+  myPayslips(limit: Int): JSON
+  myPayslip(periodId: ID!): JSON
+  aiSchedulePlannerPreview(input: JSON): JSON
+  schedulePublication(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): JSON
+  scheduleChangeLogs(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime, limit: Int): JSON
+  staffShifts(restaurantId: ID, employeeId: ID, startDate: DateTime, endDate: DateTime): JSON
+  staffAttendanceRecords(restaurantId: ID, startDate: DateTime, endDate: DateTime, status: String, search: String): JSON
+  offScheduleAttendances(input: JSON): JSON
+  attendanceCorrectionRequests(filter: JSON): JSON
+  attendanceCorrectionRequest(id: ID!): JSON
+  staffPerformanceSummary(restaurantId: ID!, staffId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
+  staffPerformanceSummaries(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
+  staffPerformanceScoreAdjustments(restaurantId: ID!, staffId: ID): JSON
+  staffPerformanceScoreTimeline(restaurantId: ID!, staffId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
+  performanceIncidents(restaurantId: ID!, staffId: ID, status: String): JSON
+  performanceIncidentAppeals(restaurantId: ID!, staffId: ID, status: String): JSON
+  managerIncidentReviewQueue(restaurantId: ID!, status: String): JSON
+  managerIncidentReviewQueueSummary(restaurantId: ID!): JSON
+  managerPerformanceDashboard(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
+  leaveRequests(restaurantId: ID, employeeId: ID, status: String): JSON
+  myReplacementLeaveRequests(status: String): JSON
+  leaveBalance(employeeId: ID): JSON
+  staffReportsOverview(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
+}
+
+extend type Mutation {
+  changeMyPassword(input: JSON): JSON
+  updateAvatar(input: UpdateAvatarInput!): User
+  createMyWallet(input: JSON): JSON
+  topUpMyWallet(input: JSON): JSON
+  login(input: JSON): JSON
+  updateMyFoodPreferences(input: JSON): User
+  updateUser(id: ID, input: JSON): User
+  updateCustomerNote(userId: ID!, restaurantId: ID!, note: String): User
+  setUserStatus(userId: ID!, status: String!): User
+  softDeleteUser(userId: ID!): Boolean
+  upsertCustomerRankSettings(restaurantId: ID!, ranks: [RankThresholdInput!]!): CustomerRankSettings
+  requestEmailVerification(input: JSON): JSON
+  verifyEmail(input: JSON): JSON
+  resendVerification(input: JSON): JSON
+  requestMyVerification(input: JSON): JSON
+  verifyPhone(input: JSON): JSON
+  verifyAccountToken(input: JSON): JSON
+  requestContactChangeOtp(input: JSON): JSON
+  confirmContactChangeOtp(input: JSON): JSON
+  cancelContactChangeOtp(input: JSON): JSON
+  assignStaffRole(input: JSON): JSON
+  assignStaffRoleWithinRestaurant(input: JSON): JSON
+  createStaff(input: JSON): JSON
+  updateStaff(id: ID, input: JSON): JSON
+  deleteStaff(id: ID!): Boolean
+  setStaffEmploymentStatus(input: JSON): JSON
+  publishSchedule(input: PublishScheduleInput!): JSON
+  lockSchedule(input: JSON): JSON
+  reopenSchedule(input: JSON): JSON
+  closeSchedule(input: JSON): JSON
+  previewAutoSchedule(input: JSON): JSON
+  applyAutoSchedule(input: JSON): JSON
+  createStaffShift(input: JSON): JSON
+  createStaffShifts(input: JSON): JSON
+  updateStaffShift(id: ID, input: JSON): JSON
+  changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): JSON
+  deleteStaffShift(id: ID!): Boolean
+  deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): JSON
+  addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): JSON
+  acceptShiftAcknowledgement(id: ID!): JSON
+  declineShiftAcknowledgement(id: ID!, reason: String): JSON
+  respondShiftAcknowledgement(input: JSON): JSON
+  reviewShiftAcknowledgement(input: JSON): JSON
+  acknowledgeMySchedule(input: JSON): JSON
+  expirePendingShiftAcknowledgements(input: JSON): JSON
+  updateSchedulingPolicy(input: JSON): JSON
+  startSchedulingOperations(input: JSON): JSON
+  upsertStaffPerformanceReview(input: JSON): JSON
+  recalculateStaffPerformanceSnapshots(input: JSON): JSON
+  createPayrollPeriod(input: JSON): JSON
+  recalculatePayrollPeriod(periodId: ID!): JSON
+  finalizePayrollPeriod(periodId: ID!): JSON
+  lockPayrollPeriod(periodId: ID!): JSON
+  markPayrollPeriodPaid(periodId: ID!): JSON
+  markPayrollItemPaid(input: JSON): JSON
+  batchMarkPayrollPaid(input: JSON): JSON
+  createPayrollPayout(input: JSON): JSON
+  createPayrollBatchPayout(input: JSON): JSON
+  retryPayrollPayout(id: ID!): JSON
+  cancelPayrollPayout(id: ID!): JSON
+  applyPayrollPayoutResult(input: JSON): JSON
+  upsertEmployeeBankAccount(input: JSON): JSON
+  verifyEmployeeBankAccount(input: JSON): JSON
+  upsertRestaurantPayoutAccount(input: JSON): JSON
+  updatePayrollSettings(input: JSON): JSON
+  upsertPayrollAdjustment(input: JSON): JSON
+  deletePayrollAdjustment(id: ID!): Boolean
+  createAttendanceCorrectionRequest(input: JSON): JSON
+  approveAttendanceCorrectionRequest(input: JSON): JSON
+  rejectAttendanceCorrectionRequest(input: JSON): JSON
+  cancelAttendanceCorrectionRequest(id: ID!): JSON
+  reviewPerformanceIncident(input: JSON): JSON
+  waivePerformanceIncident(input: JSON): JSON
+  markPerformanceIncidentEligible(input: JSON): JSON
+  applyPerformanceIncidentScore(input: JSON): JSON
+  createPerformanceIncidentAppeal(input: JSON): JSON
+  cancelPerformanceIncidentAppeal(id: ID!): JSON
+  reviewPerformanceIncidentAppeal(input: JSON): JSON
+  reverseScoreForAcceptedAppeal(input: JSON): JSON
+  createOvertimeRequest(input: JSON): JSON
+  confirmOvertimeRequest(id: ID!): JSON
+  approveOvertimeRequest(input: JSON): JSON
+  rejectOvertimeRequest(input: JSON): JSON
+  cancelOvertimeRequest(id: ID!): JSON
+  completeOvertimeRequest(id: ID!): JSON
+  checkInShift(input: JSON): JSON
+  checkOutShift(input: JSON): JSON
+  markShiftAttendanceReviewed(input: JSON): JSON
+  upsertStaffAttendance(input: JSON): JSON
+  runAttendanceExceptionDetection(input: JSON): JSON
+  approveOffScheduleAttendance(input: JSON): JSON
+  rejectOffScheduleAttendance(input: JSON): JSON
+  createLeaveRequest(input: JSON): JSON
+  approveLeaveRequest(input: JSON): JSON
+  rejectLeaveRequest(input: JSON): JSON
+  confirmReplacementLeaveRequest(input: JSON): JSON
+}
