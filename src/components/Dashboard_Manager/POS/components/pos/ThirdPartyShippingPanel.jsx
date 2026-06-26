@@ -23,20 +23,16 @@ const toNumberInput = (value) => {
   return Number.isFinite(number) && number > 0 ? String(Math.round(number)) : "";
 };
 
-const panelStyle = {
-  margin: "0.75rem 0.85rem 0",
-  border: "1px solid #fed7aa",
-  borderRadius: 16,
-  background: "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)",
-  boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
-  padding: "0.75rem",
-};
-
-const rowStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-  marginTop: 8,
+const compactInputStyle = {
+  minWidth: 0,
+  height: 30,
+  border: "1px solid #e2e8f0",
+  borderRadius: 999,
+  padding: "0 0.55rem",
+  fontSize: 11,
+  fontWeight: 850,
+  color: "#0f172a",
+  background: "#fff",
 };
 
 const labelStyle = {
@@ -62,6 +58,7 @@ const inputStyle = {
 export default function ThirdPartyShippingPanel() {
   const { currentOrderType, shippingInfo, setShippingInfo } = usePos();
   const [mountNode, setMountNode] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const selectedProvider = useMemo(
     () =>
@@ -75,26 +72,18 @@ export default function ThirdPartyShippingPanel() {
     if (currentOrderType !== "delivery") {
       if (mountNode?.parentNode) mountNode.parentNode.removeChild(mountNode);
       setMountNode(null);
+      setIsOpen(false);
       return undefined;
     }
 
     const attach = () => {
       const wrapper = document.querySelector("[data-pos-order-panel]");
-      if (!wrapper) return;
+      const headerRight = wrapper?.querySelector('[class*="headerRight"]');
+      if (!headerRight) return;
 
-      const discountBox = wrapper.querySelector('[class*="discountBox"]');
-      const header = wrapper.querySelector('[class*="header"]');
       const node = document.createElement("div");
       node.dataset.posThirdPartyShipping = "true";
-
-      if (discountBox?.parentNode) {
-        discountBox.insertAdjacentElement("afterend", node);
-      } else if (header?.parentNode) {
-        header.insertAdjacentElement("beforebegin", node);
-      } else {
-        wrapper.prepend(node);
-      }
-
+      headerRight.prepend(node);
       setMountNode(node);
     };
 
@@ -113,95 +102,167 @@ export default function ThirdPartyShippingPanel() {
   const updateShipping = (patch) => {
     setShippingInfo?.((prev) => ({
       ...(prev || {}),
-      deliveryStatus: "pending",
+      deliveryStatus: prev?.deliveryStatus || "pending",
       ...patch,
     }));
   };
 
+  const shippingFee = Number(shippingInfo?.shippingFee || 0);
+  const providerLabel = selectedProvider.label;
+
   return createPortal(
-    <section style={panelStyle} aria-label="Đối tác giao hàng bên thứ ba">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 950, color: "#0f172a" }}>Đối tác giao hàng</div>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>
-            {selectedProvider.hint}
-          </div>
-        </div>
-        <span
+    <div style={{ position: "relative", marginRight: 8 }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        title="Cấu hình giao hàng bên thứ 3"
+        style={{
+          height: 34,
+          maxWidth: 176,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          border: "1px solid #fed7aa",
+          borderRadius: 999,
+          background: "#fff7ed",
+          color: "#9a3412",
+          padding: "0 0.7rem",
+          fontSize: 11,
+          fontWeight: 900,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        🚚 {providerLabel}
+        {shippingFee > 0 ? ` · ${shippingFee.toLocaleString("vi-VN")}đ` : ""}
+      </button>
+
+      {isOpen && (
+        <section
+          aria-label="Đối tác giao hàng bên thứ ba"
           style={{
-            borderRadius: 999,
-            background: "#ffedd5",
-            color: "#c2410c",
-            padding: "0.2rem 0.5rem",
-            fontSize: 11,
-            fontWeight: 900,
-            whiteSpace: "nowrap",
+            position: "absolute",
+            top: 42,
+            right: 0,
+            width: 360,
+            maxWidth: "calc(100vw - 32px)",
+            zIndex: 90,
+            border: "1px solid #fed7aa",
+            borderRadius: 16,
+            background: "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)",
+            boxShadow: "0 24px 56px rgba(15, 23, 42, 0.18)",
+            padding: "0.75rem",
           }}
         >
-          3rd-party ship
-        </span>
-      </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 950, color: "#0f172a" }}>Đối tác giao hàng</div>
+              <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>
+                {selectedProvider.hint}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              style={{
+                border: 0,
+                borderRadius: 999,
+                background: "#ffedd5",
+                color: "#c2410c",
+                padding: "0.25rem 0.55rem",
+                fontSize: 11,
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              Đóng
+            </button>
+          </div>
 
-      <label style={{ ...labelStyle, marginTop: 10 }}>
-        Nhà vận chuyển
-        <select
-          style={inputStyle}
-          value={shippingInfo?.deliveryMethod || "ship_now"}
-          onChange={(event) => updateShipping({ deliveryMethod: event.target.value })}
-        >
-          {SHIPPING_PROVIDERS.map((provider) => (
-            <option key={provider.value} value={provider.value}>{provider.label}</option>
-          ))}
-        </select>
-      </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 8, marginTop: 10 }}>
+            <label style={labelStyle}>
+              Nhà vận chuyển
+              <select
+                style={inputStyle}
+                value={shippingInfo?.deliveryMethod || "ship_now"}
+                onChange={(event) => updateShipping({ deliveryMethod: event.target.value })}
+              >
+                {SHIPPING_PROVIDERS.map((provider) => (
+                  <option key={provider.value} value={provider.value}>{provider.label}</option>
+                ))}
+              </select>
+            </label>
+            <label style={labelStyle}>
+              Phí ship
+              <input
+                style={inputStyle}
+                type="number"
+                min="0"
+                placeholder="0"
+                value={toNumberInput(shippingInfo?.shippingFee)}
+                onChange={(event) => updateShipping({ shippingFee: Number(event.target.value || 0) })}
+              />
+            </label>
+          </div>
 
-      <div style={rowStyle}>
-        <label style={labelStyle}>
-          Phí ship
-          <input
-            style={inputStyle}
-            type="number"
-            min="0"
-            placeholder="0"
-            value={toNumberInput(shippingInfo?.shippingFee)}
-            onChange={(event) => updateShipping({ shippingFee: Number(event.target.value || 0) })}
-          />
-        </label>
-        <label style={labelStyle}>
-          Trạng thái
-          <select
-            style={inputStyle}
-            value={shippingInfo?.deliveryStatus || "pending"}
-            onChange={(event) => updateShipping({ deliveryStatus: event.target.value })}
-          >
-            {DELIVERY_STATUS_OPTIONS.map((status) => (
-              <option key={status.value} value={status.value}>{status.label}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+            <label style={labelStyle}>
+              Trạng thái
+              <select
+                style={inputStyle}
+                value={shippingInfo?.deliveryStatus || "pending"}
+                onChange={(event) => updateShipping({ deliveryStatus: event.target.value })}
+              >
+                {DELIVERY_STATUS_OPTIONS.map((status) => (
+                  <option key={status.value} value={status.value}>{status.label}</option>
+                ))}
+              </select>
+            </label>
+            <label style={labelStyle}>
+              SĐT tài xế
+              <input
+                style={inputStyle}
+                placeholder="Số tài xế"
+                value={shippingInfo?.driverPhone || ""}
+                onChange={(event) => updateShipping({ driverPhone: event.target.value })}
+              />
+            </label>
+          </div>
 
-      <div style={rowStyle}>
-        <label style={labelStyle}>
-          Mã vận đơn
-          <input
-            style={inputStyle}
-            placeholder="VD: GRB123..."
-            value={shippingInfo?.externalTrackingCode || ""}
-            onChange={(event) => updateShipping({ externalTrackingCode: event.target.value })}
-          />
-        </label>
-        <label style={labelStyle}>
-          SĐT tài xế
-          <input
-            style={inputStyle}
-            placeholder="Số tài xế"
-            value={shippingInfo?.driverPhone || ""}
-            onChange={(event) => updateShipping({ driverPhone: event.target.value })}
-          />
-        </label>
-      </div>
-    </section>,
+          <label style={{ ...labelStyle, marginTop: 8 }}>
+            Mã vận đơn
+            <input
+              style={inputStyle}
+              placeholder="VD: GRB123..."
+              value={shippingInfo?.externalTrackingCode || ""}
+              onChange={(event) => updateShipping({ externalTrackingCode: event.target.value })}
+            />
+          </label>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+            <select
+              style={{ ...compactInputStyle, flex: 1 }}
+              value={shippingInfo?.deliveryMethod || "ship_now"}
+              onChange={(event) => updateShipping({ deliveryMethod: event.target.value })}
+            >
+              {SHIPPING_PROVIDERS.map((provider) => (
+                <option key={provider.value} value={provider.value}>{provider.label}</option>
+              ))}
+            </select>
+            <input
+              style={{ ...compactInputStyle, width: 94 }}
+              type="number"
+              min="0"
+              placeholder="Phí ship"
+              value={toNumberInput(shippingInfo?.shippingFee)}
+              onChange={(event) => updateShipping({ shippingFee: Number(event.target.value || 0) })}
+            />
+          </div>
+        </section>
+      )}
+    </div>,
     mountNode,
   );
 }
