@@ -8,7 +8,6 @@ const MenuAvailabilityWatchSchema = BaseSchemaModel({
     type: Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   menuItemId: {
     type: Types.ObjectId,
@@ -79,7 +78,6 @@ const MenuAvailabilityWatchSchema = BaseSchemaModel({
   expiresAt: {
     type: Date,
     required: true,
-    index: true,
   },
   clientMeta: {
     type: Schema.Types.Mixed,
