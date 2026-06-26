@@ -195,6 +195,11 @@
   font-size: 1.05rem;
 }
 
+.customer-table-session-page__actions {
+  display: grid;
+  gap: 10px;
+}
+
 .customer-table-session-page__cta {
   width: 100%;
   min-height: 48px;
@@ -205,7 +210,13 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.customer-table-session-page__cta--secondary {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
 }
 
 .customer-table-session-page__cta:hover:not(:disabled) {
@@ -213,8 +224,10 @@
 }
 
 .customer-table-session-page__cta:disabled {
-  cursor: not-allowed;
+  cursor: default;
   background: #9ca3af;
+  border-color: #9ca3af;
+  color: #ffffff;
 }
 
 .customer-table-session-page__hint {
