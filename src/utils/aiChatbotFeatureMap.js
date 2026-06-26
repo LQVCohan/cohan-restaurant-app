@@ -52,7 +52,17 @@ export const AI_CHATBOT_FEATURE_MAP = [
     path: "/restaurant/:restaurantId",
     intent: "navigation",
     description: "Xem thông tin mở cửa, địa chỉ, đánh giá và thực đơn nhà hàng.",
+    requiresRestaurantId: true,
     aliases: ["nha hang", "chi tiet nha hang", "mo cua", "dia chi nha hang"],
+  },
+  {
+    key: "restaurant-reviews",
+    label: "Đánh giá nhà hàng",
+    path: "/restaurant/:restaurantId#reviews",
+    intent: "navigation",
+    description: "Mở phần đánh giá của nhà hàng hiện tại.",
+    requiresRestaurantId: true,
+    aliases: ["danh gia", "review", "reviews", "xem danh gia", "binh luan nha hang", "nhan xet nha hang"],
   },
   {
     key: "menu",
@@ -148,6 +158,7 @@ export const AI_CHATBOT_FEATURE_MAP = [
     path: "/restaurant/:restaurantId/layout",
     intent: "reservationHelp",
     description: "Xem sơ đồ bàn và giữ chỗ.",
+    requiresRestaurantId: true,
     aliases: ["dat ban", "lam sao dat ban", "dat ban o dau", "giu cho", "dat cho", "ban trong", "so do ban", "reservation", "booking"],
   },
   {
@@ -238,7 +249,8 @@ const fillPath = (path = "", { restaurantId, menuItemId } = {}) =>
     .replace(":restaurantId", encodeURIComponent(restaurantId || ""))
     .replace(":menuItemId", encodeURIComponent(menuItemId || ""));
 
-const canUseFeature = (entry, role) => {
+const canUseFeature = (entry, role, { restaurantId } = {}) => {
+  if (entry.requiresRestaurantId && !restaurantId) return false;
   if (!role) return !entry.managerOnly && !entry.allowedRoles;
   if (entry.allowedRoles?.length) return roleMatches(entry.allowedRoles, role);
   if (entry.managerOnly) return isManagerFeatureRole(role);
@@ -250,6 +262,7 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "contact") return path === "/contact";
   if (entry.key === "restaurants") return path === "/restaurants";
   if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
+  if (entry.key === "restaurant-reviews") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "reservations") return path.includes("/layout") || path.includes("reservation");
   if (entry.key === "menu") return path.includes("menu") || path.includes("restaurant");
   if (entry.key === "combos") return path.includes("combo");
@@ -297,7 +310,7 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
       .slice(0, 6);
   }
 
-  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role));
+  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role, { restaurantId }));
 
   return accessibleEntries
     .map((entry) => {
