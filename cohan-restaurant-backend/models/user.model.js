@@ -288,7 +288,6 @@ userSchema.index({
   "address.district": 1,
 });
 
-userSchema.index({ phone: 1 });
 userSchema.index({ emailVerifyToken: 1 });
 userSchema.index({ emailVerifyTokenHash: 1 });
 userSchema.index({ phoneVerifyToken: 1 });

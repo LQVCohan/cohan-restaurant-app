@@ -293,7 +293,7 @@ const OrderItemSchema = new Schema(
 );
 
 const OrderSchema = BaseSchemaModel({
-  orderCode: { type: String, required: true, index: true },
+  orderCode: { type: String, required: true },
   trackingCode: { type: String, default: null },
   trackingToken: { type: String, default: null },
   trackingUrl: { type: String, default: null },

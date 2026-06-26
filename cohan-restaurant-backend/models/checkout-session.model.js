@@ -5,7 +5,7 @@ const { Schema } = mongoose;
 
 const CheckoutSessionSchema = BaseSchemaModel({
   checkoutCode: { type: String, required: true, index: true },
-  idempotencyKey: { type: String, index: true },
+  idempotencyKey: { type: String },
   userId: { type: Schema.Types.ObjectId, ref: "User", index: true },
   customer: {
     fullName: String,
