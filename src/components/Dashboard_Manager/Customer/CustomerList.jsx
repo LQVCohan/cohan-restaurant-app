@@ -206,17 +206,12 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
     Number(pagination?.pageSize || totalLoaded || 1),
   );
   const totalCount = Number(pagination?.totalCount || totalLoaded || 0);
-  const visiblePageSize = Math.max(1, totalLoaded || backendPageSize);
-  const totalVirtualPageCount = Math.max(
+  const totalPageCount = Math.max(
     1,
-    Math.ceil(totalCount / visiblePageSize),
+    Number(pagination?.totalPages || Math.ceil(totalCount / backendPageSize)),
   );
   const backendOffset = (backendPage - 1) * backendPageSize;
   const visibleCustomers = useMemo(() => customers || [], [customers]);
-  const currentVirtualPage = Math.max(
-    1,
-    Math.floor(backendOffset / visiblePageSize) + 1,
-  );
   const startItem = totalCount > 0 ? backendOffset + 1 : 0;
   const endItem =
     totalCount > 0
@@ -286,9 +281,9 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         <ChevronLeft size={15} /> Trước
       </button>
       <span>
-        Trang <strong>{currentVirtualPage}</strong> / {totalVirtualPageCount}
+        Trang <strong>{backendPage}</strong> / {totalPageCount}
       </span>
-      {showPageSize ? <span>{visibleCustomers.length}/trang</span> : <span aria-hidden="true" className="sr-only">{visibleCustomers.length} mỗi trang</span>}
+      {showPageSize ? <span>{backendPageSize}/trang</span> : <span aria-hidden="true" className="sr-only">{backendPageSize} mỗi trang</span>}
       <button
         type="button"
         onClick={handleNextPage}
