@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Download, FilePlus2, RefreshCw, Search, ShieldCheck, Undo2, X } from "lucide-react";
 import "../Finance/FinanceDashboard.scss";
 import "./TransactionManagementPolish.scss";
+import "./TransactionManagementLayoutFix.scss";
 import { TransactionTable } from "../Finance/FinanceComponents";
 import { AuthContext } from "@/context/AuthContext";
 import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
@@ -13,6 +14,13 @@ const safeBankAccountLabel = (bankTransaction = {}) =>
   bankTransaction.bankAccountNumberMasked ||
   (bankTransaction.bankAccountNumberLast4 ? `****${bankTransaction.bankAccountNumberLast4}` : "-");
 const asDate = (value) => value ? new Date(value).toLocaleString("vi-VN") : "-";
+const asDateOnly = (value) => {
+  if (!value) return "-";
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("vi-VN");
+};
 
 const TYPE_LABELS = {
   INFLOW: "Thu",
@@ -385,7 +393,7 @@ const TransactionManagement = () => {
           <p>Theo dõi dòng tiền, yêu cầu hoàn tiền, giao dịch ngân hàng và công nợ trong một màn hình kiểm soát.</p>
           <div className="tx-context-pills" aria-label="Ngữ cảnh giao dịch">
             <span>{selectedRestaurant?.name || "Chưa chọn nhà hàng"}</span>
-            <span>{asDate(tx.filters.dateFrom)} → {asDate(tx.filters.dateTo)}</span>
+            <span>{asDateOnly(tx.filters.dateFrom)} → {asDateOnly(tx.filters.dateTo)}</span>
             <span>{needReconciliation} giao dịch cần đối soát</span>
           </div>
         </div>
