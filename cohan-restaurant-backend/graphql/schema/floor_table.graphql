@@ -252,6 +252,7 @@ extend type Query {
     limit: Int = 200
   ): [Table!]!
   tableByCode(restaurantId: ID!, floorId: ID!, code: String!): Table
+  tableQrAccessList(restaurantId: ID!): [Table!]!
   publicTables(
     restaurantId: ID!
     floorId: ID
