@@ -34,7 +34,7 @@ describe("ReportsManagement", () => {
     expect(screen.getByText("Tổng đơn vận hành")).toBeInTheDocument();
     expect(screen.getByText("450.000đ")).toBeInTheDocument();
     expect(screen.getAllByText("Phở bò").length).toBeGreaterThan(0);
-    expect(screen.getByText("Phân bổ trạng thái")).toBeInTheDocument();
+    expect(screen.getByText("Trạng thái đơn")).toBeInTheDocument();
   });
 
 
@@ -71,11 +71,11 @@ describe("ReportsManagement", () => {
 
   it("exports CSV with all sections", () => {
     const csv = buildReportsCsv(overview, { restaurantId: "r1", dateRange: { start: "2026-06-01", end: "2026-06-09" } });
-    expect(csv).toContain("SUMMARY");
-    expect(csv).toContain("REVENUE_BY_DAY");
-    expect(csv).toContain("BY_STATUS");
-    expect(csv).toContain("BY_ORDER_TYPE");
-    expect(csv).toContain("TOP_DISHES");
+    expect(csv).toContain("Tổng quan");
+    expect(csv).toContain("Doanh thu theo ngày");
+    expect(csv).toContain("Trạng thái đơn");
+    expect(csv).toContain("Loại đơn");
+    expect(csv).toContain("Món bán nổi bật");
   });
 
   it("empty state and CTA dispatch manager:navigate orders", () => {
