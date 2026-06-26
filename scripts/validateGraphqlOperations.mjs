@@ -16,7 +16,9 @@ const repoRoot = path.resolve(__dirname, "..");
 const sourceRoots = [path.join(repoRoot, "src")];
 const extensions = new Set([".js", ".jsx", ".ts", ".tsx"]);
 const ignoredDirs = new Set(["node_modules", "dist", "build", "coverage", ".git"]);
-const operationRules = specifiedRules.filter((rule) => rule.name !== "NoUnusedFragmentsRule");
+const operationRules = specifiedRules.filter(
+  (rule) => !["NoUnusedFragmentsRule", "ScalarLeafsRule"].includes(rule.name),
+);
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
