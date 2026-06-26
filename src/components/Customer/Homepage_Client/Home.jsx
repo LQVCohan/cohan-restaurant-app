@@ -7,6 +7,7 @@ import HomeForYouSection from "./components/HomeForYouSection";
 import DishGrid from "./components/DishGrid";
 import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
+import useGsapHomeMotion from "./hooks/useGsapHomeMotion";
 
 import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
@@ -34,6 +35,7 @@ const Home = () => {
   const [filterState, setFilterState] = useState({});
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const homeMotionRef = useGsapHomeMotion();
 
   const handleCategorySelect = useCallback((category) => {
     const categoryId = typeof category === "string" ? category : category?.id;
@@ -77,7 +79,7 @@ const Home = () => {
   };
 
   return (
-    <div className="home">
+    <div className="home" ref={homeMotionRef}>
       <main className="home__main-content">
         <HeroSection onSearch={handleSearch} />
 
