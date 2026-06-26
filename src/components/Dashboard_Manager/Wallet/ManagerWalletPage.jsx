@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { RefreshCw, Search, ShieldCheck, Undo2, WalletCards } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import "./ManagerWalletPage.scss";
 
 const CUSTOMER_WALLETS = gql`
@@ -45,11 +47,38 @@ const ADJUST_WALLET_BALANCE = gql`
 `;
 
 const fmt = (value = 0) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
+const formatDateTime = (value) => (value ? new Date(value).toLocaleString("vi-VN") : "Chưa cập nhật");
+const walletOf = (customer = {}) => customer.wallet || { balance: 0, currency: "VND", provider: "cohan_wallet", status: "active" };
 
-const Field = ({ label, children }) => (
+const WALLET_STATUS_LABELS = {
+  active: "Đang hoạt động",
+  inactive: "Ngưng hoạt động",
+  locked: "Tạm khóa",
+  suspended: "Tạm khóa",
+};
+
+const WALLET_PROVIDER_LABELS = {
+  cohan_wallet: "Ví Cohan",
+  sandbox: "Ví thử nghiệm",
+};
+
+const friendlyWalletError = (message = "") => {
+  const text = String(message || "").toLowerCase();
+  if (text.includes("negative")) return "Số dư ví không được âm.";
+  if (text.includes("invalid wallet amount")) return "Số tiền ví không hợp lệ.";
+  if (text.includes("invalid restaurantid")) return "Vui lòng chọn nhà hàng trước khi hoàn tiền.";
+  if (text.includes("forbidden")) return "Bạn chưa có quyền thực hiện thao tác này.";
+  return "Không thể cập nhật ví khách hàng. Vui lòng thử lại.";
+};
+
+const getWalletStatusLabel = (status) => WALLET_STATUS_LABELS[String(status || "active").toLowerCase()] || "Đang hoạt động";
+const getWalletProviderLabel = (provider) => WALLET_PROVIDER_LABELS[String(provider || "cohan_wallet").toLowerCase()] || "Ví Cohan";
+
+const Field = ({ label, helper, children }) => (
   <label className="wallet-admin-field">
     <span>{label}</span>
     {children}
+    {helper && <small>{helper}</small>}
   </label>
 );
 
@@ -60,6 +89,7 @@ function WalletActionModal({ mode, customer, restaurantId, onClose, onSubmit, lo
   const [direction, setDirection] = useState("credit");
   const amountNumber = Number(amount || 0);
   const isAdjust = mode === "adjust";
+  const wallet = walletOf(customer);
   const valid = customer?.id && amountNumber > 0 && reason.trim() && (isAdjust || restaurantId);
 
   const submit = () => {
@@ -89,12 +119,12 @@ function WalletActionModal({ mode, customer, restaurantId, onClose, onSubmit, lo
   return (
     <div className="wallet-admin-modal-backdrop" role="dialog" aria-modal="true">
       <div className="wallet-admin-modal">
-        <button type="button" className="wallet-admin-modal__close" onClick={onClose}>×</button>
-        <p className="wallet-admin-eyebrow">{isAdjust ? "Điều chỉnh ví" : "Hoàn tiền về ví"}</p>
+        <button type="button" className="wallet-admin-modal__close" onClick={onClose} aria-label="Đóng">×</button>
+        <p className="wallet-admin-eyebrow">{isAdjust ? "Điều chỉnh số dư" : "Hoàn tiền về ví"}</p>
         <h3>{customer?.fullName || "Khách hàng"}</h3>
         <div className="wallet-admin-modal__summary">
           <span>Số dư hiện tại</span>
-          <strong>{fmt(customer?.wallet?.balance)}</strong>
+          <strong>{fmt(wallet.balance)}</strong>
           <small>{customer?.phone || customer?.email || customer?.id}</small>
         </div>
 
@@ -107,13 +137,13 @@ function WalletActionModal({ mode, customer, restaurantId, onClose, onSubmit, lo
           </Field>
         )}
 
-        <Field label="Số tiền">
-          <input type="number" min="1000" step="1000" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Ví dụ: 50000" />
+        <Field label="Số tiền" helper="Nhập số tiền bằng VND, tối thiểu 1.000đ.">
+          <input type="number" min="1000" step="1000" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Ví dụ: 50.000" />
         </Field>
 
         {!isAdjust && (
-          <Field label="Order ID liên quan, mỗi dòng một mã, có thể bỏ trống">
-            <textarea value={orderIdsText} onChange={(event) => setOrderIdsText(event.target.value)} placeholder="Dán orderId nếu muốn gắn refund với đơn cụ thể" />
+          <Field label="Mã đơn liên quan" helper="Có thể bỏ trống. Mỗi dòng một mã đơn nếu muốn gắn hoàn tiền với đơn cụ thể.">
+            <textarea value={orderIdsText} onChange={(event) => setOrderIdsText(event.target.value)} placeholder="Dán mã đơn liên quan" />
           </Field>
         )}
 
@@ -121,6 +151,7 @@ function WalletActionModal({ mode, customer, restaurantId, onClose, onSubmit, lo
           <textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder={isAdjust ? "Ví dụ: Điều chỉnh sai lệch sau đối soát" : "Ví dụ: Hoàn tiền do nhà hàng hủy món"} />
         </Field>
 
+        {!isAdjust && !restaurantId && <p className="wallet-admin-modal__warning">Vui lòng chọn nhà hàng trước khi hoàn tiền.</p>}
         <button type="button" className="wallet-admin-primary" disabled={!valid || loading} onClick={submit}>
           {loading ? "Đang xử lý..." : isAdjust ? "Xác nhận điều chỉnh" : "Hoàn tiền về ví"}
         </button>
@@ -130,6 +161,7 @@ function WalletActionModal({ mode, customer, restaurantId, onClose, onSubmit, lo
 }
 
 export default function ManagerWalletPage() {
+  const { user } = useContext(AuthContext) || {};
   const {
     restaurantOptions,
     selectedRestaurantId,
@@ -138,7 +170,10 @@ export default function ManagerWalletPage() {
   } = useManagerRestaurantSelection();
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(null);
+
+  const canRefund = hasAnyPermission(user, ["refund.write", "payment.write"]);
+  const canAdjust = hasAnyPermission(user, ["payment.write"]);
 
   const { data, loading, error, refetch } = useQuery(CUSTOMER_WALLETS, {
     variables: { restaurantId: selectedRestaurantId || null, search: search.trim() || null },
@@ -148,52 +183,66 @@ export default function ManagerWalletPage() {
 
   const [refundToWallet, refundState] = useMutation(REFUND_TO_WALLET, {
     onCompleted: (res) => {
-      setNotice(res?.refundToWallet?.message || "Đã hoàn tiền về ví.");
+      setNotice({ type: "success", text: res?.refundToWallet?.message || "Đã hoàn tiền về ví." });
       setModal(null);
       refetch();
     },
-    onError: (err) => setNotice(err?.message || "Không thể hoàn tiền về ví."),
+    onError: (err) => setNotice({ type: "error", text: friendlyWalletError(err?.message) }),
   });
 
   const [adjustWallet, adjustState] = useMutation(ADJUST_WALLET_BALANCE, {
     onCompleted: (res) => {
-      setNotice(res?.adjustWalletBalance?.message || "Đã điều chỉnh ví.");
+      setNotice({ type: "success", text: res?.adjustWalletBalance?.message || "Đã điều chỉnh số dư ví." });
       setModal(null);
       refetch();
     },
-    onError: (err) => setNotice(err?.message || "Không thể điều chỉnh ví."),
+    onError: (err) => setNotice({ type: "error", text: friendlyWalletError(err?.message) }),
   });
 
   const customers = data?.customers || [];
+  const selectedRestaurantName = restaurantOptions.find((restaurant) => String(restaurant.id) === String(selectedRestaurantId))?.name || "Tất cả nhà hàng có quyền";
   const totals = useMemo(() => {
     return customers.reduce(
       (acc, item) => {
-        acc.balance += Number(item?.wallet?.balance || 0);
-        acc.active += item?.wallet?.status === "active" ? 1 : 0;
+        const wallet = walletOf(item);
+        const balance = Number(wallet.balance || 0);
+        acc.balance += balance;
+        acc.active += String(wallet.status || "active").toLowerCase() === "active" ? 1 : 0;
+        acc.withBalance += balance > 0 ? 1 : 0;
         acc.count += 1;
+        const updatedAt = wallet.updatedAt ? new Date(wallet.updatedAt).getTime() : 0;
+        acc.lastUpdatedAt = Math.max(acc.lastUpdatedAt, Number.isFinite(updatedAt) ? updatedAt : 0);
         return acc;
       },
-      { balance: 0, active: 0, count: 0 },
+      { balance: 0, active: 0, withBalance: 0, count: 0, lastUpdatedAt: 0 },
     );
   }, [customers]);
-
+  const averageBalance = totals.count ? totals.balance / totals.count : 0;
   const modalLoading = refundState.loading || adjustState.loading;
 
   return (
-    <div className="wallet-admin-page">
+    <div className="wallet-admin-page wallet-admin-page--polished">
       <header className="wallet-admin-hero">
-        <div>
-          <p className="wallet-admin-eyebrow">Cohan Wallet Operations</p>
+        <div className="wallet-admin-hero__copy">
+          <p className="wallet-admin-eyebrow">Ví & hoàn tiền</p>
           <h1>Ví khách hàng</h1>
-          <p>Quản lý số dư ví, hoàn tiền từ nhà hàng và điều chỉnh sai lệch có lý do/audit.</p>
+          <p>Quản lý số dư ví, hoàn tiền từ nhà hàng và điều chỉnh chênh lệch có lý do rõ ràng.</p>
+          <div className="wallet-admin-context-pills">
+            <span>{selectedRestaurantName}</span>
+            <span>{totals.count} khách đang hiển thị</span>
+            <span>Cập nhật gần nhất: {totals.lastUpdatedAt ? formatDateTime(totals.lastUpdatedAt) : "Chưa có dữ liệu"}</span>
+          </div>
         </div>
-        <div className="wallet-admin-hero__badge">
-          <ShieldCheck size={18} /> Refund về ví thay vì trả tiền mặt thủ công
+        <div className="wallet-admin-hero__panel">
+          <WalletCards size={22} />
+          <span>Tổng số dư ví</span>
+          <strong>{fmt(totals.balance)}</strong>
+          <small>Hoàn tiền về ví giúp giảm xử lý tiền mặt thủ công.</small>
         </div>
       </header>
 
       <section className="wallet-admin-toolbar">
-        <select value={selectedRestaurantId || ""} onChange={(event) => setSelectedRestaurantId(event.target.value)}>
+        <select value={selectedRestaurantId || ""} onChange={(event) => setSelectedRestaurantId(event.target.value)} aria-label="Chọn nhà hàng">
           <option value="">Tất cả nhà hàng có quyền</option>
           {restaurantOptions.map((restaurant) => (
             <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
@@ -203,43 +252,52 @@ export default function ManagerWalletPage() {
           <Search size={16} />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm khách theo tên, SĐT, email" />
         </div>
-        <button type="button" onClick={() => refetch()} disabled={loading}>
+        <button type="button" onClick={() => refetch()} disabled={loading || restaurantsLoading}>
           <RefreshCw size={16} /> Làm mới
         </button>
       </section>
 
-      {notice && <div className="wallet-admin-notice">{notice}</div>}
-      {error && <div className="wallet-admin-notice wallet-admin-notice--error">{error.message}</div>}
+      {notice && <div className={`wallet-admin-notice wallet-admin-notice--${notice.type}`}>{notice.text}</div>}
+      {!canRefund && !canAdjust && <div className="wallet-admin-notice wallet-admin-notice--warning">Bạn có quyền xem ví, nhưng chưa có quyền hoàn tiền hoặc điều chỉnh số dư.</div>}
+      {error && <div className="wallet-admin-notice wallet-admin-notice--error">Không thể tải danh sách ví khách hàng. Vui lòng thử lại.</div>}
 
-      <section className="wallet-admin-stats">
+      <section className="wallet-admin-stats" aria-label="Tổng quan ví khách hàng">
         <article><WalletCards size={18} /><span>Tổng số dư</span><strong>{fmt(totals.balance)}</strong></article>
-        <article><ShieldCheck size={18} /><span>Ví active</span><strong>{totals.active}/{totals.count}</strong></article>
-        <article><Undo2 size={18} /><span>Khách đang hiển thị</span><strong>{customers.length}</strong></article>
+        <article><ShieldCheck size={18} /><span>Ví đang hoạt động</span><strong>{totals.active}/{totals.count}</strong></article>
+        <article><Undo2 size={18} /><span>Có số dư</span><strong>{totals.withBalance}</strong></article>
+        <article><WalletCards size={18} /><span>Số dư trung bình</span><strong>{fmt(averageBalance)}</strong></article>
       </section>
 
       <section className="wallet-admin-table-card">
         <div className="wallet-admin-table-card__header">
-          <h2>Danh sách ví khách hàng</h2>
+          <div>
+            <p className="wallet-admin-eyebrow">Danh sách ví</p>
+            <h2>Khách hàng có ví</h2>
+          </div>
           <span>{loading ? "Đang tải..." : `${customers.length} khách`}</span>
         </div>
         <div className="wallet-admin-table">
-          {customers.map((customer) => (
-            <article key={customer.id} className="wallet-admin-row">
-              <div>
-                <strong>{customer.fullName || "Khách hàng"}</strong>
-                <span>{customer.phone || customer.email || customer.id}</span>
-                <small>{customer.totalOrders || 0} đơn · {fmt(customer.totalSpending)} · {customer.loyaltyPoints || 0} điểm</small>
-              </div>
-              <div className="wallet-admin-balance">
-                <strong>{fmt(customer?.wallet?.balance)}</strong>
-                <span>{customer?.wallet?.status || "active"} · {customer?.wallet?.provider || "cohan_wallet"}</span>
-              </div>
-              <div className="wallet-admin-actions">
-                <button type="button" onClick={() => setModal({ mode: "refund", customer })}>Hoàn về ví</button>
-                <button type="button" onClick={() => setModal({ mode: "adjust", customer })}>Điều chỉnh</button>
-              </div>
-            </article>
-          ))}
+          {customers.map((customer) => {
+            const wallet = walletOf(customer);
+            return (
+              <article key={customer.id} className="wallet-admin-row">
+                <div className="wallet-admin-customer">
+                  <strong>{customer.fullName || "Khách hàng"}</strong>
+                  <span>{customer.phone || customer.email || customer.id}</span>
+                  <small>{customer.totalOrders || 0} đơn · {fmt(customer.totalSpending)} · {customer.loyaltyPoints || 0} điểm</small>
+                </div>
+                <div className="wallet-admin-balance">
+                  <strong>{fmt(wallet.balance)}</strong>
+                  <span>{getWalletStatusLabel(wallet.status)} · {getWalletProviderLabel(wallet.provider)}</span>
+                  <small>Cập nhật: {formatDateTime(wallet.updatedAt)}</small>
+                </div>
+                <div className="wallet-admin-actions">
+                  {canRefund && <button type="button" onClick={() => setModal({ mode: "refund", customer })}>Hoàn về ví</button>}
+                  {canAdjust && <button type="button" onClick={() => setModal({ mode: "adjust", customer })}>Điều chỉnh</button>}
+                </div>
+              </article>
+            );
+          })}
           {!customers.length && !loading && <div className="wallet-admin-empty">Chưa tìm thấy khách hàng phù hợp.</div>}
         </div>
       </section>
