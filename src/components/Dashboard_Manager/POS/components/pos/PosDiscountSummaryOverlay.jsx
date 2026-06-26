@@ -56,6 +56,7 @@ export default function PosDiscountSummaryOverlay() {
   const { previewOrderDiscount } = useDiscountPreview();
   const [discountBreakdown, setDiscountBreakdown] = useState(null);
   const [footerElement, setFooterElement] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const previewItems = useMemo(() => getCleanOrderItems(currentOrder), [currentOrder]);
   const localSubtotal = useMemo(
@@ -176,9 +177,10 @@ export default function PosDiscountSummaryOverlay() {
             ? "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)"
             : "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
           boxShadow: "0 10px 24px rgba(15, 23, 42, 0.07)",
-          padding: "0.7rem 0.8rem 0.75rem",
+          padding: isCollapsed ? "0.62rem 0.72rem" : "0.7rem 0.8rem 0.75rem",
           color: "#0f172a",
           overflow: "hidden",
+          transition: "padding 0.16s ease, box-shadow 0.16s ease",
         }}
       >
         <div
@@ -187,9 +189,9 @@ export default function PosDiscountSummaryOverlay() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 10,
-            paddingBottom: 6,
-            borderBottom: "1px dashed rgba(148, 163, 184, 0.58)",
-            marginBottom: 7,
+            paddingBottom: isCollapsed ? 0 : 6,
+            borderBottom: isCollapsed ? "0" : "1px dashed rgba(148, 163, 184, 0.58)",
+            marginBottom: isCollapsed ? 0 : 7,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -213,77 +215,133 @@ export default function PosDiscountSummaryOverlay() {
               <div style={{ fontSize: 13, fontWeight: 950, color: "#0f172a" }}>
                 Chi tiết thanh toán POS
               </div>
-              <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
-                {hasDiscount
-                  ? `${appliedPromotionCount || 1} ưu đãi đã áp dụng tự động`
-                  : previewItems.length
-                    ? "Chưa có ưu đãi áp dụng cho đơn này"
-                    : "Chưa có món trong đơn"}
-              </div>
+              {!isCollapsed && (
+                <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                  {hasDiscount
+                    ? `${appliedPromotionCount || 1} ưu đãi đã áp dụng tự động`
+                    : previewItems.length
+                      ? "Chưa có ưu đãi áp dụng cho đơn này"
+                      : "Chưa có món trong đơn"}
+                </div>
+              )}
             </div>
           </div>
-          <div
-            style={{
-              borderRadius: 999,
-              padding: "0.24rem 0.55rem",
-              background: hasDiscount ? "#dcfce7" : "#f1f5f9",
-              color: hasDiscount ? "#15803d" : "#64748b",
-              fontSize: 11,
-              fontWeight: 900,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {hasDiscount ? `Đã giảm ${formatPrice(totalDiscount)}` : "Không giảm"}
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gap: 5 }}>
-          {detailRows.map((row) => (
-            <div key={row.label} style={rowStyle}>
-              <span style={labelStyle}>{row.label}</span>
-              <span
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            {!isCollapsed && (
+              <div
                 style={{
-                  ...valueStyle,
-                  color: row.sign === "discount" && row.value > 0 ? "#16a34a" : valueStyle.color,
+                  borderRadius: 999,
+                  padding: "0.24rem 0.55rem",
+                  background: hasDiscount ? "#dcfce7" : "#f1f5f9",
+                  color: hasDiscount ? "#15803d" : "#64748b",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
                 }}
               >
-                {row.sign === "discount" && row.value > 0 ? "-" : ""}
-                {formatPrice(row.value)}
-              </span>
-            </div>
-          ))}
+                {hasDiscount ? `Đã giảm ${formatPrice(totalDiscount)}` : "Không giảm"}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsCollapsed((value) => !value)}
+              aria-expanded={!isCollapsed}
+              title={isCollapsed ? "Mở chi tiết footer" : "Thu gọn footer"}
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 999,
+                background: "#fff",
+                color: "#475569",
+                padding: "0.24rem 0.55rem",
+                fontSize: 11,
+                fontWeight: 900,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                boxShadow: "0 4px 10px rgba(15, 23, 42, 0.04)",
+              }}
+            >
+              {isCollapsed ? "Mở rộng" : "Thu gọn"}
+            </button>
+          </div>
         </div>
 
-        <div
-          style={{
-            marginTop: 8,
-            paddingTop: 8,
-            borderTop: "1px dashed rgba(148, 163, 184, 0.62)",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <div>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>Tổng cộng</div>
-            <div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 700 }}>
-              {hasDiscount ? "Giá đã gồm ưu đãi hợp lệ" : "Giá tạm tính hiện tại"}
-            </div>
-          </div>
-          <strong
+        {isCollapsed ? (
+          <div
             style={{
-              color: "#ea580c",
-              fontSize: 20,
-              lineHeight: 1,
-              fontWeight: 950,
-              whiteSpace: "nowrap",
-              fontVariantNumeric: "tabular-nums",
+              marginTop: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
             }}
           >
-            {formatPrice(payableTotal)}
-          </strong>
-        </div>
+            <div style={{ color: hasDiscount ? "#15803d" : "#64748b", fontSize: 11, fontWeight: 850 }}>
+              {hasDiscount ? `Đã giảm ${formatPrice(totalDiscount)}` : "Tổng hiện tại"}
+            </div>
+            <strong
+              style={{
+                color: "#ea580c",
+                fontSize: 18,
+                lineHeight: 1,
+                fontWeight: 950,
+                whiteSpace: "nowrap",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {formatPrice(payableTotal)}
+            </strong>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gap: 5 }}>
+              {detailRows.map((row) => (
+                <div key={row.label} style={rowStyle}>
+                  <span style={labelStyle}>{row.label}</span>
+                  <span
+                    style={{
+                      ...valueStyle,
+                      color: row.sign === "discount" && row.value > 0 ? "#16a34a" : valueStyle.color,
+                    }}
+                  >
+                    {row.sign === "discount" && row.value > 0 ? "-" : ""}
+                    {formatPrice(row.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                marginTop: 8,
+                paddingTop: 8,
+                borderTop: "1px dashed rgba(148, 163, 184, 0.62)",
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div>
+                <div style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>Tổng cộng</div>
+                <div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 700 }}>
+                  {hasDiscount ? "Giá đã gồm ưu đãi hợp lệ" : "Giá tạm tính hiện tại"}
+                </div>
+              </div>
+              <strong
+                style={{
+                  color: "#ea580c",
+                  fontSize: 20,
+                  lineHeight: 1,
+                  fontWeight: 950,
+                  whiteSpace: "nowrap",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {formatPrice(payableTotal)}
+              </strong>
+            </div>
+          </>
+        )}
       </div>
     </>,
     footerElement,
