@@ -21,6 +21,13 @@ const GET_TOP_RESTAURANTS = gql`
       priceRange
       openingHours
       closingHours
+      openingStatus
+      canReserve
+      canOrder
+      canDelivery
+      canPickup
+      orderCount
+      reservationCount
       avgRating
       address {
         line1
@@ -59,6 +66,13 @@ const GET_RESTAURANTS_NEARBY = gql`
       priceRange
       openingHours
       closingHours
+      openingStatus
+      canReserve
+      canOrder
+      canDelivery
+      canPickup
+      orderCount
+      reservationCount
       avgRating
       distanceKm
       straightLineDistanceKm
@@ -90,6 +104,11 @@ const GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT = gql`
       priceRange
       openingHours
       closingHours
+      openingStatus
+      canReserve
+      canOrder
+      canDelivery
+      canPickup
       avgRating
       orderCount
       reservationCount
@@ -169,7 +188,6 @@ const RESTAURANT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
 ];
 
-
 const TECHNICAL_TEXT_PATTERNS = [
   /\[[^\]]*(?:demo|pr\d+|scheduling)[^\]]*\]/gi,
   /\bPR\s*\d+\s*demo\b/gi,
@@ -214,6 +232,20 @@ const isPlaceholderRestaurantImage = (url = "") => {
   return normalizedUrl.includes("picsum.photos") || normalizedUrl.includes("source.unsplash") || normalizedUrl.includes("/random");
 };
 
+const buildServiceBadges = (restaurant) => {
+  const badges = [];
+  const openingStatus = String(restaurant.openingStatus || "").toLowerCase();
+
+  if (openingStatus === "open") badges.push({ label: "Đang mở", tone: "success" });
+  if (restaurant.canOrder) badges.push({ label: "Đặt món", tone: "primary" });
+  if (restaurant.canReserve) badges.push({ label: "Đặt bàn", tone: "neutral" });
+  if (restaurant.canDelivery) badges.push({ label: "Giao hàng", tone: "neutral" });
+  if (!restaurant.canDelivery && restaurant.canPickup) badges.push({ label: "Tự đến lấy", tone: "neutral" });
+  if (restaurant.orderCount > 0) badges.push({ label: "Được đặt nhiều", tone: "warm" });
+
+  return badges.slice(0, 4);
+};
+
 const normalizeRestaurant = (node, index) => {
   const candidateImage = node.coverImage || node.avatar || "";
   const fallbackImage = RESTAURANT_FALLBACK_IMAGES[index % RESTAURANT_FALLBACK_IMAGES.length];
@@ -224,7 +256,7 @@ const normalizeRestaurant = (node, index) => {
   const straightLineDistanceKm = nullableNumber(node?.straightLineDistanceKm);
   const estimatedTravelMinutes = nullableNumber(node?.estimatedTravelMinutes);
 
-  return {
+  const normalized = {
     id: node.id,
     name: toCustomerText(node.name, "Nhà hàng đang cập nhật"),
     description: toCustomerText(node.description, "Mô tả đang được cập nhật."),
@@ -233,6 +265,13 @@ const normalizeRestaurant = (node, index) => {
     hours: formatHours(node.openingHours, node.closingHours),
     addressText: toCustomerText(formatAddress(node.address), "", { allowEmpty: true }),
     avgRating: nullableNumber(node.avgRating),
+    orderCount: nullableNumber(node.orderCount) || 0,
+    reservationCount: nullableNumber(node.reservationCount) || 0,
+    openingStatus: node.openingStatus,
+    canReserve: node.canReserve === true,
+    canOrder: node.canOrder === true,
+    canDelivery: node.canDelivery === true,
+    canPickup: node.canPickup === true,
     lat,
     lng,
     distanceKm,
@@ -240,6 +279,11 @@ const normalizeRestaurant = (node, index) => {
     straightLineDistanceKm,
     estimatedTravelMinutes,
     distanceSource: typeof node?.distanceSource === "string" ? node.distanceSource : null,
+  };
+
+  return {
+    ...normalized,
+    serviceBadges: buildServiceBadges(normalized),
   };
 };
 
@@ -388,6 +432,13 @@ const RestaurantGrid = ({ addressFilter = undefined, restaurantFilter = undefine
                           <h4 className="res-card__name" title={r.name}>{r.name}</h4>
                           {r.priceRange && <span className="res-card__price">{r.priceRange}</span>}
                         </div>
+                        {r.serviceBadges.length > 0 && (
+                          <div className="res-card__badges" aria-label="Dịch vụ nhà hàng">
+                            {r.serviceBadges.map((badge) => (
+                              <span key={badge.label} className={`res-card__badge res-card__badge--${badge.tone}`}>{badge.label}</span>
+                            ))}
+                          </div>
+                        )}
                         <p className="res-card__address" title={r.addressText}><MapPin aria-hidden="true" /> {r.addressText || "Chưa cập nhật địa chỉ"}</p>
                         {distanceMetaText && <p className="res-card__distance">{r.distanceSource === "road" ? <Navigation aria-hidden="true" /> : <LocateFixed aria-hidden="true" />} {distanceMetaText}</p>}
                       </div>
