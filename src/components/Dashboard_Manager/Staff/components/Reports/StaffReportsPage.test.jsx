@@ -105,7 +105,7 @@ describe("StaffReportsPage", () => {
 
     render(<StaffReportsPage />);
 
-    expect(screen.getByText("Đang hoạt động")).toBeInTheDocument();
+    expect(screen.getByText("Nhân sự đang làm / đã nghỉ")).toBeInTheDocument();
     expect(screen.getByText("Xu hướng chấm công theo ngày")).toBeInTheDocument();
     expect(screen.getByText("Chi tiết chấm công")).toBeInTheDocument();
     expect(screen.getByText("Chi tiết nghỉ phép")).toBeInTheDocument();
