@@ -17,6 +17,18 @@ const getCleanOrderItems = (items = []) =>
 
 const toMoney = (value) => Math.max(0, Math.round(Number(value || 0)));
 
+const getItemSubtotal = (item = {}) => {
+  const quantity = Number(item?.quantity || 0);
+  const unitPrice = Number(
+    item?.lineSubtotal != null
+      ? Number(item.lineSubtotal) / Math.max(quantity, 1)
+      : item?.unitPrice ?? item?.basePrice ?? item?.price ?? item?.servingVariant?.price ?? 0,
+  );
+
+  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice)) return 0;
+  return unitPrice * quantity;
+};
+
 const rowStyle = {
   display: "flex",
   alignItems: "center",
@@ -46,6 +58,10 @@ export default function PosDiscountSummaryOverlay() {
   const [footerElement, setFooterElement] = useState(null);
 
   const previewItems = useMemo(() => getCleanOrderItems(currentOrder), [currentOrder]);
+  const localSubtotal = useMemo(
+    () => toMoney(previewItems.reduce((sum, item) => sum + getItemSubtotal(item), 0)),
+    [previewItems],
+  );
 
   useEffect(() => {
     const resolveFooter = () => {
@@ -95,7 +111,11 @@ export default function PosDiscountSummaryOverlay() {
     };
   }, [restaurantId, currentOrderType, previewItems, shippingInfo?.shippingFee, previewOrderDiscount]);
 
-  const subtotal = toMoney(discountBreakdown?.subtotal);
+  if (!footerElement) return null;
+
+  const subtotal = previewItems.length
+    ? toMoney(discountBreakdown?.subtotal || localSubtotal)
+    : 0;
   const promotionDiscount = toMoney(discountBreakdown?.promotionDiscount);
   const couponDiscount = toMoney(discountBreakdown?.couponDiscount);
   const totalDiscount = toMoney(
@@ -106,27 +126,22 @@ export default function PosDiscountSummaryOverlay() {
   const service = toMoney(discountBreakdown?.service);
   const tax = toMoney(discountBreakdown?.tax);
   const shippingFee = toMoney(discountBreakdown?.shippingFee);
-  const payableTotal = toMoney(getDiscountBreakdownTotal(discountBreakdown, subtotal));
+  const payableTotal = previewItems.length
+    ? toMoney(getDiscountBreakdownTotal(discountBreakdown, subtotal - totalDiscount + service + tax + shippingFee))
+    : 0;
   const appliedPromotionCount = Array.isArray(discountBreakdown?.appliedPromotions)
     ? discountBreakdown.appliedPromotions.length
     : 0;
-
-  if (!footerElement || !previewItems.length || totalDiscount <= 0) return null;
+  const hasDiscount = totalDiscount > 0;
 
   const detailRows = [
     { label: "Tạm tính", value: subtotal, sign: "normal" },
-    ...(promotionDiscount > 0
-      ? [{ label: "Giảm khuyến mãi", value: promotionDiscount, sign: "discount" }]
+    { label: "Tổng giảm", value: totalDiscount, sign: "discount" },
+    { label: "Phí phục vụ", value: service, sign: "normal" },
+    { label: "Thuế", value: tax, sign: "normal" },
+    ...(shippingFee > 0 || currentOrderType === "delivery"
+      ? [{ label: "Phí giao hàng", value: shippingFee, sign: "normal" }]
       : []),
-    ...(couponDiscount > 0
-      ? [{ label: "Giảm coupon", value: couponDiscount, sign: "discount" }]
-      : []),
-    ...(promotionDiscount <= 0 && couponDiscount <= 0 && totalDiscount > 0
-      ? [{ label: "Tổng giảm", value: totalDiscount, sign: "discount" }]
-      : []),
-    ...(service > 0 ? [{ label: "Phí phục vụ", value: service, sign: "normal" }] : []),
-    ...(tax > 0 ? [{ label: "Thuế", value: tax, sign: "normal" }] : []),
-    ...(shippingFee > 0 ? [{ label: "Phí giao hàng", value: shippingFee, sign: "normal" }] : []),
   ];
 
   return createPortal(
@@ -149,13 +164,17 @@ export default function PosDiscountSummaryOverlay() {
       `}</style>
       <div
         data-pos-discount-footer
-        aria-label="Chi tiết tạm tính sau ưu đãi"
+        aria-label="Chi tiết thanh toán POS"
         style={{
           width: "100%",
           boxSizing: "border-box",
-          border: "1px solid rgba(253, 186, 116, 0.95)",
+          border: hasDiscount
+            ? "1px solid rgba(253, 186, 116, 0.95)"
+            : "1px solid rgba(226, 232, 240, 0.95)",
           borderRadius: 16,
-          background: "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)",
+          background: hasDiscount
+            ? "linear-gradient(180deg, #ffffff 0%, #fff7ed 100%)"
+            : "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
           boxShadow: "0 10px 24px rgba(15, 23, 42, 0.07)",
           padding: "0.7rem 0.8rem 0.75rem",
           color: "#0f172a",
@@ -182,8 +201,8 @@ export default function PosDiscountSummaryOverlay() {
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "#ffedd5",
-                color: "#ea580c",
+                background: hasDiscount ? "#ffedd5" : "#e2e8f0",
+                color: hasDiscount ? "#ea580c" : "#475569",
                 fontWeight: 950,
                 flexShrink: 0,
               }}
@@ -195,9 +214,11 @@ export default function PosDiscountSummaryOverlay() {
                 Chi tiết thanh toán POS
               </div>
               <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
-                {appliedPromotionCount > 0
-                  ? `${appliedPromotionCount} ưu đãi đã áp dụng tự động`
-                  : "Ưu đãi đã áp dụng tự động"}
+                {hasDiscount
+                  ? `${appliedPromotionCount || 1} ưu đãi đã áp dụng tự động`
+                  : previewItems.length
+                    ? "Chưa có ưu đãi áp dụng cho đơn này"
+                    : "Chưa có món trong đơn"}
               </div>
             </div>
           </div>
@@ -205,14 +226,14 @@ export default function PosDiscountSummaryOverlay() {
             style={{
               borderRadius: 999,
               padding: "0.24rem 0.55rem",
-              background: "#dcfce7",
-              color: "#15803d",
+              background: hasDiscount ? "#dcfce7" : "#f1f5f9",
+              color: hasDiscount ? "#15803d" : "#64748b",
               fontSize: 11,
               fontWeight: 900,
               whiteSpace: "nowrap",
             }}
           >
-            Đã giảm {formatPrice(totalDiscount)}
+            {hasDiscount ? `Đã giảm ${formatPrice(totalDiscount)}` : "Không giảm"}
           </div>
         </div>
 
@@ -223,10 +244,10 @@ export default function PosDiscountSummaryOverlay() {
               <span
                 style={{
                   ...valueStyle,
-                  color: row.sign === "discount" ? "#16a34a" : valueStyle.color,
+                  color: row.sign === "discount" && row.value > 0 ? "#16a34a" : valueStyle.color,
                 }}
               >
-                {row.sign === "discount" ? "-" : ""}
+                {row.sign === "discount" && row.value > 0 ? "-" : ""}
                 {formatPrice(row.value)}
               </span>
             </div>
@@ -247,7 +268,7 @@ export default function PosDiscountSummaryOverlay() {
           <div>
             <div style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>Tổng cộng</div>
             <div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 700 }}>
-              Giá đã gồm ưu đãi hợp lệ
+              {hasDiscount ? "Giá đã gồm ưu đãi hợp lệ" : "Giá tạm tính hiện tại"}
             </div>
           </div>
           <strong
