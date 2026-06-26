@@ -72,6 +72,13 @@ const customerExportRowsField = `
     limit: Int = 1000
   ): [User!]!`;
 
+const customerListSummariesField = `customerListSummaries(
+    restaurantId: ID!
+    userIds: [ID!]!
+    recentLimit: Int = 5
+    topDishLimit: Int = 3
+  ): [CustomerListSummary!]!`;
+
 const stripDomainOwnedStaffCompatibilityFields = (source) => {
   const domainOwnedMutationFields = [
     "publishSchedule(input: PublishScheduleInput!): CompatibilityNode",
@@ -133,11 +140,23 @@ const readSchemaFile = (fileName) => {
     )
     .replace(
       "customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!",
-      `customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!${customerExportRowsField}`,
+      `${customerListSummariesField}${customerExportRowsField}`,
     )
     .replace(
-      "customerDetailAnalytics(userId: ID!, restaurantId: ID!",
-      "customerDetailAnalytics(userId: ID!, restaurantId: ID",
+      "customerDetailAnalytics(restaurantId: ID!, userId: ID!): CustomerDetailAnalytics!",
+      "customerDetailAnalytics(restaurantId: ID, userId: ID!): CustomerDetailAnalytics!",
+    )
+    .replace(
+      "changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): ScheduleChangeLog!",
+      "changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): Boolean!",
+    )
+    .replace(
+      "addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): ScheduleChangeLog!",
+      "addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): CompatibilityNode!",
+    )
+    .replace(
+      "deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): ScheduleChangeLog!",
+      "deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): Boolean!",
     );
 };
 
