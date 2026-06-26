@@ -62,6 +62,12 @@ const TableSchema = BaseSchemaModel({
   notes: { type: String },
   visualConfig: { type: mongoose.Schema.Types.Mixed, default: null },
 
+  tableAccessToken: { type: String, default: null },
+  tableAccessUrl: { type: String, default: null },
+  tableQrCodeDataUrl: { type: String, default: null },
+  tableQrGeneratedAt: { type: Date, default: null },
+  tableQrExpiresAt: { type: Date, default: null },
+
   status: {
     type: String,
     enum: TableStatus,
