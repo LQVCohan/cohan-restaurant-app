@@ -109,6 +109,7 @@ input CheckInReservationInput {
 extend type Query {
   reservation(id: ID, orderCode: String): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
+  pendingReservationChanges(restaurantId: ID!, limit: Int = 50): [Reservation!]!
   confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
   activeReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
 }
