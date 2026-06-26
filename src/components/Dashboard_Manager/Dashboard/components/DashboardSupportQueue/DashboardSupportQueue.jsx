@@ -17,11 +17,15 @@ const REQUEST_TYPE_LABELS = {
   SUPPORT: "Yêu cầu hỗ trợ",
   HANDOFF: "Trợ lý AI chuyển cho nhân viên",
   CALL_STAFF: "Gọi nhân viên",
+  STAFF_CALL: "Gọi nhân viên",
   PAYMENT: "Hỗ trợ thanh toán",
+  PAYMENT_REQUEST: "Yêu cầu thanh toán",
   support: "Yêu cầu hỗ trợ",
   handoff: "Trợ lý AI chuyển cho nhân viên",
   call_staff: "Gọi nhân viên",
+  staff_call: "Gọi nhân viên",
   payment: "Hỗ trợ thanh toán",
+  payment_request: "Yêu cầu thanh toán",
 };
 
 const REQUEST_STATUS_LABELS = {
