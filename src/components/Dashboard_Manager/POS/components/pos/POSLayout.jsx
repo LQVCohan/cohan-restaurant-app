@@ -9,6 +9,7 @@ import PosMenuAvailabilityRealtimeNotice from "./PosMenuAvailabilityRealtimeNoti
 import PosReservationRealtimeNotice from "./PosReservationRealtimeNotice";
 import CustomerRequestQueuePanel from "./CustomerRequestQueuePanel";
 import EligibleGiftSuggestionPanel from "./EligibleGiftSuggestionPanel";
+import DiscountCouponDock from "./DiscountCouponDock";
 import PosDiscountSummaryOverlay from "./PosDiscountSummaryOverlay";
 import ThirdPartyShippingPanel from "./ThirdPartyShippingPanel";
 import TransferQueueBell from "./TransferQueueBell";
@@ -46,6 +47,7 @@ function POSContent({ restaurantId }) {
           <TablePaymentRequestNotice />
           <EligibleGiftSuggestionPanel />
           <RightPanel />
+          <DiscountCouponDock />
           <ThirdPartyShippingPanel />
           <PosDiscountSummaryOverlay />
         </div>
