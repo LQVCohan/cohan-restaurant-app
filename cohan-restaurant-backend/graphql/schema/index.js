@@ -26,6 +26,40 @@ input CreateWalletInput {
 }
 `;
 
+const userMutationCompatibilitySchema = `
+input AssignRoleToUserInput {
+  userId: ID!
+  roleId: ID!
+}
+
+input AdminUpdateUserInput {
+  fullName: String
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  avatarUrl: String
+  status: String
+  roleId: ID
+  refRestaurantIds: [ID!]
+  restaurantForStaff: ID
+  customerType: CustomerType
+  loyaltyPoints: Int
+  totalOrders: Int
+  totalSpending: Float
+  isGuest: Boolean
+  guestExpiresAt: DateTime
+}
+
+extend type Mutation {
+  assignRoleToUser(input: AssignRoleToUserInput!): User
+  createGuestUser(fullName: String, phone: String, expiresInDays: Int): User
+  adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User
+  updateCustomerMetrics(id: ID!, restaurantId: ID!, loyaltyPoints: Int!, customerType: CustomerType!): User
+  resendUserVerification(userId: ID!, channel: VerificationChannel = AUTO): VerificationResult
+}
+`;
+
 const customerExportRowsField = `
   customerExportRows(
     restaurantId: ID!
@@ -163,6 +197,8 @@ const files = [
   "systemSetting.graphql",
   "backup.graphql",
 ].map(readSchemaFile);
+
+files.push(userMutationCompatibilitySchema);
 
 const staffAvatarSchema = `
 extend type Mutation {
