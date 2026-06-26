@@ -102,6 +102,27 @@ const formatCurrency = (value) =>
 const formatNumber = (value) =>
   new Intl.NumberFormat("vi-VN").format(Number(value || 0));
 
+const formatDishQuantity = (quantity, dishName) => {
+  const normalizedName = String(dishName || "").toLowerCase();
+  const isWeightBasedDish =
+    /(^|[\s\-\/])kg([\s\-\/]|$)/i.test(normalizedName) ||
+    /kilogram|theo\s*k(?:g|í|ý)/i.test(normalizedName);
+
+  return `${formatNumber(quantity)} ${isWeightBasedDish ? "kg" : "đơn vị đã bán"}`;
+};
+
+const CUSTOMER_SEGMENT_LABELS = {
+  NEW: "Khách mới",
+  REPEAT: "Khách quay lại",
+  DORMANT: "Khách lâu chưa quay lại",
+  HIGH_VALUE: "Khách giá trị cao",
+};
+
+const getCustomerSegmentLabel = (segment) =>
+  CUSTOMER_SEGMENT_LABELS[String(segment?.segmentKey || "").toUpperCase()] ||
+  segment?.segmentLabel ||
+  "Phân khúc chưa đặt tên";
+
 const formatPercent = (value) => `${Math.round(Number(value || 0))}%`;
 
 const formatDays = (value) => {
@@ -266,7 +287,7 @@ const CustomerAnalyticsPage = () => {
         label: "Khách giá trị cao",
         value: highValueCustomerCount,
         help: "Ưu tiên giữ trải nghiệm ổn định cho nhóm này",
-        cta: "Xem nhóm VIP",
+        cta: "Xem nhóm giá trị cao",
         icon: Wallet,
         tone: "premium",
         onClick: () => navigateManagerPage("customers", { segment: "high-value" }),
@@ -291,8 +312,8 @@ const CustomerAnalyticsPage = () => {
           <p className="customer-analytics-hero__eyebrow">Phân tích khách hàng</p>
           <h2>Hiểu khách, chọn đúng nhóm cần chăm sóc</h2>
           <p>
-            Theo dõi chi tiêu, phân khúc khách, rủi ro rời bỏ và cohort quay lại
-            trong một màn hình dễ thao tác cho quản lý ca.
+            Theo dõi chi tiêu, phân khúc khách, rủi ro rời bỏ và khả năng quay lại
+            theo từng nhóm tháng trong một màn hình dễ thao tác cho quản lý ca.
           </p>
           <div className="customer-analytics-quick-actions" aria-label="Thao tác nhanh">
             <button type="button" onClick={() => navigateManagerPage("customers")}>
@@ -347,7 +368,7 @@ const CustomerAnalyticsPage = () => {
       <div className="customer-analytics-context">
         <span>{selectedRestaurant?.name || "Chưa chọn nhà hàng"}</span>
         <span>{loading ? "Đang đồng bộ dữ liệu" : "Dữ liệu khách hàng hiện tại"}</span>
-        <span>{formatNumber(activeCustomerCount)} khách hoạt động</span>
+        <span>{formatNumber(activeCustomerCount)} khách có đơn</span>
       </div>
 
       {error ? (
@@ -377,16 +398,16 @@ const CustomerAnalyticsPage = () => {
           <div className="customer-analytics-kpis">
             <article className={`customer-kpi customer-kpi--primary ${loading ? "customer-kpi--loading" : ""}`}>
               <span className="customer-kpi__icon"><Users size={18} aria-hidden="true" /></span>
-              <span className="customer-kpi__label">Khách hoạt động</span>
+              <span className="customer-kpi__label">Khách có đơn</span>
               <strong className="customer-kpi__value">{loading ? "..." : formatNumber(activeCustomerCount)}</strong>
-              <p className="customer-kpi__help">Khách có tương tác hoặc đơn hàng được ghi nhận.</p>
+              <p className="customer-kpi__help">Khách có ít nhất một đơn hàng hợp lệ.</p>
             </article>
 
             <article className={`customer-kpi customer-kpi--success ${loading ? "customer-kpi--loading" : ""}`}>
               <span className="customer-kpi__icon"><Repeat2 size={18} aria-hidden="true" /></span>
               <span className="customer-kpi__label">Khách quay lại</span>
               <strong className="customer-kpi__value">{loading ? "..." : formatNumber(returningCustomerCount)}</strong>
-              <p className="customer-kpi__help">Nhóm khách đã có dấu hiệu quay lại.</p>
+              <p className="customer-kpi__help">Khách có từ hai đơn hợp lệ trở lên.</p>
             </article>
 
             <article className={`customer-kpi customer-kpi--accent ${loading ? "customer-kpi--loading" : ""}`}>
@@ -398,9 +419,9 @@ const CustomerAnalyticsPage = () => {
 
             <article className={`customer-kpi customer-kpi--neutral ${loading ? "customer-kpi--loading" : ""}`}>
               <span className="customer-kpi__icon"><ReceiptText size={18} aria-hidden="true" /></span>
-              <span className="customer-kpi__label">Giá trị đơn TB</span>
+              <span className="customer-kpi__label">Giá trị đơn trung bình</span>
               <strong className="customer-kpi__value customer-kpi__value--compact">{loading ? "..." : formatCurrency(averageOrderValue)}</strong>
-              <p className="customer-kpi__help">Trung bình chi tiêu trên mỗi đơn.</p>
+              <p className="customer-kpi__help">Trung bình chi tiêu trên mỗi đơn hợp lệ.</p>
             </article>
           </div>
 
@@ -408,7 +429,7 @@ const CustomerAnalyticsPage = () => {
             <div>
               <span>Tỷ lệ quay lại</span>
               <strong>{loading ? "..." : `${returningRate}%`}</strong>
-              <small>Dựa trên khách quay lại / khách hoạt động</small>
+              <small>Dựa trên khách quay lại / khách có đơn</small>
             </div>
             <div>
               <span>Tổng đơn</span>
@@ -416,9 +437,9 @@ const CustomerAnalyticsPage = () => {
               <small>Tổng đơn hợp lệ trong dữ liệu phân tích</small>
             </div>
             <div>
-              <span>Chu kỳ quay lại TB</span>
+              <span>Chu kỳ quay lại trung bình</span>
               <strong>{loading ? "..." : formatDays(averageRepeatIntervalDays)}</strong>
-              <small>Thời gian trung bình giữa các lần quay lại</small>
+              <small>Thời gian trung bình giữa các lần mua lại</small>
             </div>
             <div>
               <span>Khách cần chú ý</span>
@@ -447,8 +468,8 @@ const CustomerAnalyticsPage = () => {
             <section className="customer-panel customer-panel--primary">
               <div className="customer-panel__head">
                 <div>
-                  <h3>Món khách quan tâm</h3>
-                  <p>Các món được gọi nhiều trong dữ liệu phân tích khách hàng.</p>
+                  <h3>Món bán nổi bật</h3>
+                  <p>Tổng số lượng món đã bán trong dữ liệu phân tích khách hàng.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("menu")}>
                   Menu <ArrowRight size={14} aria-hidden="true" />
@@ -465,7 +486,7 @@ const CustomerAnalyticsPage = () => {
                         <div className="customer-dish-row__body">
                           <div className="customer-dish-row__meta">
                             <strong>{item?.dishName || "Không rõ tên món"}</strong>
-                            <span>{formatNumber(quantity)} lượt</span>
+                            <span>{formatDishQuantity(quantity, item?.dishName)}</span>
                           </div>
                           <ProgressBar value={progress} />
                         </div>
@@ -473,7 +494,7 @@ const CustomerAnalyticsPage = () => {
                     );
                   })}
                 </div>
-              ) : <EmptyState title="Chưa có dữ liệu món phổ biến" description="Khi có đơn hoàn thành, các món được khách quan tâm sẽ hiển thị tại đây." actionLabel="Kiểm tra menu" onAction={() => navigateManagerPage("menu")} />}
+              ) : <EmptyState title="Chưa có dữ liệu món bán nổi bật" description="Khi có đơn hoàn thành, các món bán chạy sẽ hiển thị tại đây." actionLabel="Kiểm tra menu" onAction={() => navigateManagerPage("menu")} />}
             </section>
 
             <section className="customer-panel">
@@ -514,7 +535,7 @@ const CustomerAnalyticsPage = () => {
                   <p>Các nhóm khách theo dữ liệu phân tích hiện tại.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("customers")}>
-                  Mở khách <ArrowRight size={14} aria-hidden="true" />
+                  Mở danh sách khách <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải phân khúc khách hàng...</div> : visibleCustomerSegments.length > 0 ? (
@@ -524,7 +545,7 @@ const CustomerAnalyticsPage = () => {
                     return (
                       <div className="customer-segment-row" key={`${segment?.segmentKey || "segment"}-${index}`}>
                         <div className="customer-segment-row__meta">
-                          <strong>{segment?.segmentLabel || "Phân khúc chưa đặt tên"}</strong>
+                          <strong>{getCustomerSegmentLabel(segment)}</strong>
                           <span>{formatNumber(segment?.customerCount)} khách • {formatPercent(percentage)}</span>
                         </div>
                         <ProgressBar value={percentage} />
@@ -538,14 +559,14 @@ const CustomerAnalyticsPage = () => {
             <section className="customer-panel">
               <div className="customer-panel__head">
                 <div>
-                  <h3>Khách có nguy cơ rời bỏ</h3>
+                  <h3>Khách lâu chưa quay lại</h3>
                   <p>Theo dõi nhóm khách lâu chưa quay lại để chăm sóc kịp thời.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("customers", { segment: "dormant" })}>
                   Lọc nhóm này <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
-              {loading ? <div className="customer-panel__loading">Đang tải khách có nguy cơ rời bỏ...</div> : churnRiskCustomers.length > 0 ? (
+              {loading ? <div className="customer-panel__loading">Đang tải khách lâu chưa quay lại...</div> : churnRiskCustomers.length > 0 ? (
                 <div className="customer-risk-list">
                   {churnRiskCustomers.map((customer, index) => {
                     const risk = getChurnRiskMeta(customer?.daysSinceLastOrder);
@@ -583,7 +604,7 @@ const CustomerAnalyticsPage = () => {
                     );
                   })}
                 </div>
-              ) : <EmptyState title="Chưa có khách có nguy cơ rời bỏ" description="Hiện chưa có khách nào cần nhắc quay lại trong dữ liệu." />}
+              ) : <EmptyState title="Chưa có khách lâu chưa quay lại" description="Hiện chưa có khách nào cần nhắc quay lại trong dữ liệu." />}
             </section>
 
             <section className="customer-panel">
@@ -593,7 +614,7 @@ const CustomerAnalyticsPage = () => {
                   <p>Nhóm khách chi tiêu lớn cần duy trì trải nghiệm tốt.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("customers", { segment: "high-value" })}>
-                  Xem VIP <ArrowRight size={14} aria-hidden="true" />
+                  Xem nhóm giá trị cao <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải khách giá trị cao...</div> : topValueCustomers.length > 0 ? (
@@ -612,7 +633,7 @@ const CustomerAnalyticsPage = () => {
                         <div className="customer-value-row__meta">
                           <span>{formatCurrency(spend)}</span>
                           <span>{formatNumber(customer?.totalOrders)} đơn</span>
-                          <span>AOV: {formatCurrency(customer?.averageOrderValue)}</span>
+                          <span>Trung bình/đơn: {formatCurrency(customer?.averageOrderValue)}</span>
                           <span>Đơn gần nhất: {formatDate(customer?.lastOrderAt)}</span>
                         </div>
                         <ProgressBar value={progress} />
@@ -639,12 +660,12 @@ const CustomerAnalyticsPage = () => {
             <section className="customer-panel">
               <div className="customer-panel__head">
                 <div>
-                  <h3>Cohort quay lại</h3>
-                  <p>Theo dõi hiệu quả giữ chân theo từng cohort tháng.</p>
+                  <h3>Giữ chân theo tháng</h3>
+                  <p>Theo dõi hiệu quả giữ chân khách theo từng nhóm tháng.</p>
                 </div>
-                <span className="customer-panel__note"><Search size={13} aria-hidden="true" /> Retention</span>
+                <span className="customer-panel__note"><Search size={13} aria-hidden="true" /> Giữ chân</span>
               </div>
-              {loading ? <div className="customer-panel__loading">Đang tải dữ liệu cohort...</div> : cohortRetention.length > 0 ? (
+              {loading ? <div className="customer-panel__loading">Đang tải dữ liệu giữ chân...</div> : cohortRetention.length > 0 ? (
                 <div className="customer-cohort-list">
                   {cohortRetention.map((cohort, index) => {
                     const rate = Number(cohort?.retentionRate || 0);
@@ -659,7 +680,7 @@ const CustomerAnalyticsPage = () => {
                     );
                   })}
                 </div>
-              ) : <EmptyState title="Chưa có đủ dữ liệu cohort" description="Cần thêm lịch sử khách theo nhiều tháng để đánh giá giữ chân." />}
+              ) : <EmptyState title="Chưa có đủ dữ liệu giữ chân" description="Cần thêm lịch sử khách theo nhiều tháng để đánh giá khả năng quay lại." />}
             </section>
 
             <section className="customer-panel customer-panel--full">
@@ -669,7 +690,7 @@ const CustomerAnalyticsPage = () => {
                   <p>Các đề xuất từ hệ thống dựa trên dữ liệu hiện có.</p>
                 </div>
                 <button type="button" onClick={() => navigateManagerPage("customers")}>
-                  Mở khách hàng <ArrowRight size={14} aria-hidden="true" />
+                  Mở danh sách khách <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </div>
               {loading ? <div className="customer-panel__loading">Đang tải gợi ý hành động...</div> : recommendations.length > 0 ? (
@@ -682,7 +703,7 @@ const CustomerAnalyticsPage = () => {
                     return (
                       <article className={`customer-recommendation-card customer-recommendation-card--${priorityClass}`} key={`${item?.key || "recommendation"}-${index}`}>
                         <div>
-                          <h4>{item?.title || "Gợi ý"}</h4>
+                          <h4>{item?.title === "Món được quan tâm nổi bật" ? "Món bán nổi bật" : item?.title || "Gợi ý"}</h4>
                           <p>{item?.description || "—"}</p>
                         </div>
                         <span>{PRIORITY_LABELS[priority] || "Theo dõi"}</span>
@@ -700,7 +721,7 @@ const CustomerAnalyticsPage = () => {
                 <div>
                   <p className="customer-guidance__eyebrow">Bước tiếp theo</p>
                   <h3>Chưa đủ dữ liệu để phân tích khách hàng</h3>
-                  <p>Hãy ghi nhận đơn hàng và hoàn thiện dữ liệu khách để hệ thống bắt đầu tạo insight hữu ích.</p>
+                  <p>Hãy ghi nhận đơn hàng và hoàn thiện dữ liệu khách để hệ thống bắt đầu tạo gợi ý hữu ích.</p>
                 </div>
                 <div className="customer-guidance__steps">
                   <div><ClipboardList size={16} aria-hidden="true" /><span>Kiểm tra đơn</span></div>
@@ -718,9 +739,9 @@ const CustomerAnalyticsPage = () => {
                 <p className="customer-guidance__eyebrow">Gợi ý vận hành</p>
                 <h3>
                   <BarChart3 size={16} aria-hidden="true" />
-                  <span>Dùng insight để chăm sóc khách hàng hiệu quả hơn</span>
+                  <span>Dùng dữ liệu phân tích để chăm sóc khách hàng hiệu quả hơn</span>
                 </h3>
-                <p>Tập trung vào nhóm có nguy cơ rời bỏ, khách giá trị cao và cohort giữ chân để tối ưu doanh thu.</p>
+                <p>Tập trung vào nhóm lâu chưa quay lại, khách giá trị cao và khả năng giữ chân để tối ưu doanh thu.</p>
               </div>
             )}
           </section>
