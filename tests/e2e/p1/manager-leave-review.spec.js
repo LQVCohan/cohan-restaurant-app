@@ -134,6 +134,30 @@ const filterLeaveRequests = (requests, filter = {}) => {
   });
 };
 
+const corsHeadersFor = (route) => {
+  const origin = route.request().headers().origin || "http://127.0.0.1:5173";
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-credentials": "true",
+    "access-control-allow-headers": "authorization, content-type",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    vary: "Origin",
+  };
+};
+
+const fulfillOptions = (route) =>
+  route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
+
+const fulfillJson = (route, data) =>
+  route.fulfill({
+    status: 200,
+    headers: {
+      ...corsHeadersFor(route),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
 const installManagerLeaveMocks = async (page, initialRequests) => {
   let requests = initialRequests.map((request) => ({ ...request }));
   const token = jwtLikeToken(MANAGER_USER.roleName);
@@ -143,18 +167,18 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
   }, token);
 
   await page.route("**/api/auth/refresh", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ token, user: MANAGER_USER }),
-    });
+    if (route.request().method() === "OPTIONS") return fulfillOptions(route);
+    return fulfillJson(route, { token, user: MANAGER_USER });
   });
 
   await page.route("**/api/auth/logout", async (route) => {
-    await route.fulfill({ status: 204, body: "" });
+    if (route.request().method() === "OPTIONS") return fulfillOptions(route);
+    await route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
   });
 
   await page.route("**/graphql", async (route) => {
+    if (route.request().method() === "OPTIONS") return fulfillOptions(route);
+
     const payload = route.request().postDataJSON();
     const operationName = payload?.operationName || "";
     const variables = payload?.variables || {};
@@ -244,11 +268,7 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
         data = {};
     }
 
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ data }),
-    });
+    return fulfillJson(route, { data });
   });
 };
 
@@ -319,7 +339,7 @@ test.describe("P1 manager leave review", () => {
     await installManagerLeaveMocks(page, [makeLeaveRequest({ id: "leave-reject-cancel-p1" })]);
     const rejectOperations = [];
     page.on("request", (request) => {
-      if (!request.url().includes("/graphql")) return;
+      if (!request.url().includes("/graphql") || request.method() !== "POST") return;
       try {
         const payload = request.postDataJSON();
         if (payload?.operationName === "RejectLeave") rejectOperations.push(payload);
