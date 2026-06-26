@@ -58,6 +58,14 @@ type PublicRequestTablePaymentResult {
   requestedAt: String
 }
 
+type PublicCallStaffForTableResult {
+  ok: Boolean!
+  message: String
+  requestId: String
+  status: String
+  requestedAt: String
+}
+
 input PublicRequestTablePaymentInput {
   restaurantId: ID!
   tableId: ID!
@@ -78,4 +86,8 @@ extend type Mutation {
   publicRequestTablePayment(
     input: PublicRequestTablePaymentInput!
   ): PublicRequestTablePaymentResult!
+
+  publicCallStaffForTable(
+    input: PublicRequestTablePaymentInput!
+  ): PublicCallStaffForTableResult!
 }
