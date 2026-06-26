@@ -232,16 +232,23 @@ test.describe("P1 manager leave review", () => {
     await expect(row).toContainText("Chờ duyệt");
 
     backendGuard.clear();
-    const promptPromise = page.waitForEvent("dialog");
-    await row.locator(".btn-icon.reject").click();
-    const prompt = await promptPromise;
-    expect(prompt.message()).toContain("Lý do từ chối");
-    const alertPromise = page.waitForEvent("dialog");
-    await prompt.accept("P1 không phù hợp lịch làm việc");
-
-    const alert = await alertPromise;
-    expect(alert.message()).toContain("Từ chối đơn thành công");
-    await alert.accept();
+    const dialogMessages = [];
+    const handleDialog = async (dialog) => {
+      dialogMessages.push(dialog.message());
+      if (dialog.type() === "prompt") {
+        await dialog.accept("P1 không phù hợp lịch làm việc");
+        return;
+      }
+      await dialog.accept();
+    };
+    page.on("dialog", handleDialog);
+    try {
+      await row.locator(".btn-icon.reject").click();
+      await expect.poll(() => dialogMessages.some((message) => message.includes("Lý do từ chối"))).toBe(true);
+      await expect.poll(() => dialogMessages.some((message) => message.includes("Từ chối đơn thành công"))).toBe(true);
+    } finally {
+      page.off("dialog", handleDialog);
+    }
     backendGuard.assertNoBackendErrors("manager reject leave request");
 
     await expect(row).toContainText("Từ chối");
