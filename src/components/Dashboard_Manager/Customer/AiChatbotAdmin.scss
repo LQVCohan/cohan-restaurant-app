@@ -19,7 +19,7 @@
   --ai-shadow-sm: 0 8px 22px rgba(79, 55, 33, 0.07);
   --ai-shadow-md: 0 14px 34px rgba(79, 55, 33, 0.1);
 
-  width: min(100%, 1040px);
+  width: min(100%, 1180px);
   min-height: calc(100dvh - 112px);
   margin: 0 auto;
   padding: 18px 22px 34px;
@@ -281,7 +281,11 @@
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.72fr);
 }
 
-.ai-admin-grid--knowledge,
+.ai-admin-grid--knowledge {
+  grid-template-columns: minmax(520px, 1.42fr) minmax(300px, 0.58fr);
+  align-items: start;
+}
+
 .ai-admin-grid--safety,
 .ai-admin-grid--evaluation {
   grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.72fr);
@@ -328,6 +332,12 @@
   gap: 12px;
 }
 
+.ai-admin-page--knowledge .ai-admin-side-stack {
+  position: sticky;
+  top: 14px;
+  align-self: start;
+}
+
 .ai-admin-form,
 .ai-admin-import-export {
   display: grid;
@@ -357,6 +367,14 @@
 .ai-admin-actions--end,
 .ai-admin-actions--settings {
   justify-content: flex-end;
+}
+
+.ai-admin-page--knowledge .ai-admin-panel__header > div:first-child {
+  max-width: 430px;
+}
+
+.ai-admin-page--knowledge .ai-admin-panel__header .ai-admin-actions {
+  max-width: 420px;
 }
 
 .ai-admin-actions button,
@@ -460,6 +478,19 @@
   border: 1px solid var(--ai-border);
   border-radius: 16px;
   background: var(--ai-surface);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.ai-admin-card:hover {
+  border-color: var(--ai-border-strong);
+  box-shadow: var(--ai-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.ai-admin-card.is-selected {
+  border-color: rgba(138, 98, 61, 0.42);
+  background: linear-gradient(180deg, #fffdf8, rgba(246, 239, 228, 0.72));
+  box-shadow: 0 0 0 3px rgba(138, 98, 61, 0.08), var(--ai-shadow-sm);
 }
 
 .ai-admin-card__checkbox {
@@ -467,6 +498,10 @@
   height: 16px;
   margin-top: 4px;
   accent-color: var(--ai-accent);
+}
+
+.ai-admin-card__body {
+  min-width: 0;
 }
 
 .ai-admin-card__meta,
@@ -488,6 +523,11 @@
   font-weight: 800;
 }
 
+.ai-admin-page--knowledge .ai-admin-card h4 {
+  font-size: 15px;
+  line-height: 1.18;
+}
+
 .ai-admin-card p {
   margin: 0;
   color: var(--ai-muted);
@@ -499,6 +539,10 @@
   -webkit-line-clamp: 3;
 }
 
+.ai-admin-page--knowledge .ai-admin-card p {
+  -webkit-line-clamp: 2;
+}
+
 .ai-admin-card small {
   display: block;
   margin-top: 7px;
@@ -508,6 +552,11 @@
 
 .ai-admin-card__actions {
   flex-direction: column;
+}
+
+.ai-admin-page--knowledge .ai-admin-card__actions button {
+  min-width: 48px;
+  padding-inline: 10px;
 }
 
 .ai-admin-status,
@@ -600,6 +649,10 @@
   border-radius: 14px;
   background: rgba(255, 253, 248, 0.82);
   padding: 10px 12px;
+}
+
+.ai-admin-page--knowledge .ai-admin-collapsible {
+  margin-top: 0;
 }
 
 .ai-admin-collapsible summary {
@@ -806,6 +859,12 @@
   gap: 6px;
 }
 
+@media (max-width: 1180px) {
+  .ai-admin-grid--knowledge {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.6fr);
+  }
+}
+
 @media (max-width: 1024px) {
   .ai-admin-page {
     width: 100%;
@@ -824,6 +883,10 @@
   .ai-admin-operational-grid,
   .customer-analytics-layout-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ai-admin-page--knowledge .ai-admin-side-stack {
+    position: static;
   }
 }
 
@@ -863,12 +926,21 @@
     flex-direction: column;
   }
 
+  .ai-admin-page--knowledge .ai-admin-panel__header > div:first-child,
+  .ai-admin-page--knowledge .ai-admin-panel__header .ai-admin-actions {
+    max-width: none;
+  }
+
   .ai-admin-card {
     grid-template-columns: 1fr;
   }
 
   .ai-admin-card__actions {
     flex-flow: row wrap;
+  }
+
+  .ai-admin-page--knowledge .ai-admin-card p {
+    -webkit-line-clamp: 3;
   }
 
   .ai-admin-actions,
