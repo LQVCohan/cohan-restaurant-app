@@ -4,6 +4,8 @@ import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 
+const BACKUP_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
+
 const NAVIGATION_SECTIONS = [
   {
     title: "Tổng quan",
@@ -68,7 +70,7 @@ const NAVIGATION_SECTIONS = [
       { id: "settings", permissions: ["system.manage"], icon: "⚙️", label: "Cài đặt", page: "Cài đặt" },
       { id: "system-users", roles: ["admin"], icon: "👤", label: "Người dùng hệ thống", page: "Người dùng hệ thống" },
       { id: "print-management", permissions: ["print.read", "report.read"], icon: "🖨️", label: "Quản lý in ấn", page: "Quản lý in ấn" },
-      { id: "backup", permissions: ["system.manage"], icon: "💾", label: "Sao lưu", page: "Sao lưu" },
+      { id: "backup", permissions: BACKUP_PERMISSIONS, icon: "💾", label: "Sao lưu & khôi phục", page: "Sao lưu & khôi phục" },
     ],
   },
 ];
@@ -138,9 +140,8 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
                   aria-label={item.label}
                   data-tooltip={item.label}
                 >
-                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-icon" aria-hidden="true">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>
-                  {activeItem === item.id && <div className="nav-indicator" />}
                 </button>
               );
             })}
@@ -149,11 +150,11 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="user-avatar-small">👨‍💼</div>
-          <div className="user-info-small">
-            <div className="user-name-small">{sidebarUserName}</div>
-            <div className="user-status-small"><span className="status-dot-small" />{sidebarUserRole}</div>
+        <div className="user-info">
+          <div className="user-avatar">{sidebarUserName.charAt(0).toUpperCase()}</div>
+          <div className="user-details">
+            <div className="user-name">{sidebarUserName}</div>
+            <div className="user-role">{sidebarUserRole}</div>
           </div>
         </div>
       </div>
