@@ -3,9 +3,31 @@ type StaffAttendanceRecord {
   employeeId: ID
   employeeName: String
   employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
   restaurantId: ID
   workDate: DateTime
+  shiftId: ID
+  shiftType: String
+  plannedStartTime: DateTime
+  plannedEndTime: DateTime
+  actualCheckInAt: DateTime
+  actualCheckOutAt: DateTime
+  workedMinutes: Float
+  hours: Float
+  latenessMinutes: Int
+  earlyLeaveMinutes: Int
   status: String
+  isOffSchedule: Boolean
+  offScheduleApprovalStatus: String
+  offScheduleReasonCategory: String
+  offScheduleReason: String
+  offScheduleReviewedBy: ID
+  offScheduleReviewedAt: DateTime
+  offScheduleReviewNote: String
+  source: String
+  note: String
+  approved: Boolean
   createdAt: DateTime
   updatedAt: DateTime
 }
