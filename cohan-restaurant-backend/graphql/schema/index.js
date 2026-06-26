@@ -57,6 +57,7 @@ const files = [
   "cart.graphql",
   "customerFavorite.graphql",
   "customerAddress.graphql",
+  "customerRankSettings.graphql",
   "search.graphql",
   "shippingTracking.graphql",
   "orderTracking.graphql",
