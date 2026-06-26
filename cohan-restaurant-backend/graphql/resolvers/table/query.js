@@ -29,6 +29,10 @@ const TABLE_SELECT = {
   visualConfig: 1,
   isJoinable: 1,
   joinGroupId: 1,
+  tableAccessUrl: 1,
+  tableQrCodeDataUrl: 1,
+  tableQrGeneratedAt: 1,
+  tableQrExpiresAt: 1,
 };
 
 const getRestaurantModel = async () => {
