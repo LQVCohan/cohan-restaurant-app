@@ -48,11 +48,11 @@ const DEFAULT_TEMPLATES = [
   },
 ];
 
-const UC22_DEMO_STEPS = [
-  "Thêm máy in demo",
-  "Test cấu hình mô phỏng",
+const PRINT_OPERATION_STEPS = [
+  "Thêm máy in",
+  "Kiểm tra cấu hình",
   "Gán trạm bếp/bar/thu ngân",
-  "Tạo test job và retry nếu lỗi",
+  "Theo dõi và gửi lại lệnh lỗi",
 ];
 
 const Q_PRINT_SETTINGS = gql`
@@ -176,6 +176,15 @@ const sanitizeStationsByPrinters = (stations, printers) => {
   return next;
 };
 
+const printerStatusLabel = (status) => (status === "online" ? "Sẵn sàng" : "Chưa sẵn sàng");
+const printTypeLabel = (type) => {
+  if (type === "test" || type === "manual_test") return "Lệnh kiểm tra";
+  if (type === "receipt") return "Hóa đơn";
+  if (type === "kitchen") return "Phiếu bếp";
+  if (type === "bar") return "Phiếu bar";
+  return type || "Lệnh in";
+};
+
 export default function PrintManagement() {
   const { restaurants } = useContext(AuthContext);
   const restaurantList = useMemo(
@@ -286,7 +295,7 @@ export default function PrintManagement() {
           setSaveError(
             getPrintSettingActionErrorMessage(
               err,
-              "Lưu cấu hình thất bại. Vui lòng kiểm tra kết nối và thử lại.",
+              "Không thể lưu cấu hình in. Vui lòng kiểm tra kết nối và thử lại.",
             ),
           ),
         );
@@ -317,7 +326,7 @@ export default function PrintManagement() {
         return {
           ok: false,
           mode: "validation",
-          message: "Vui lòng chọn nhà hàng trước khi test.",
+          message: "Vui lòng chọn nhà hàng trước khi kiểm tra cấu hình.",
         };
       }
 
@@ -326,8 +335,7 @@ export default function PrintManagement() {
         return {
           ok: false,
           mode: "validation",
-          message:
-            "Thiếu tên hoặc IP. Đây là bước validate cấu hình, chưa handshake phần cứng.",
+          message: "Thiếu tên máy in hoặc địa chỉ IP.",
         };
       }
 
@@ -335,8 +343,7 @@ export default function PrintManagement() {
         return {
           ok: true,
           mode: "validation",
-          message:
-            "Máy in chưa lưu DB. Đã validate cấu hình form thành công (mô phỏng), chưa handshake phần cứng.",
+          message: "Cấu hình hợp lệ. Lưu máy in trước khi gửi lệnh kiểm tra.",
         };
       }
 
@@ -357,10 +364,10 @@ export default function PrintManagement() {
       } catch (err) {
         return {
           ok: false,
-          mode: "db_simulation",
+          mode: "check",
           message: getPrintSettingActionErrorMessage(
             err,
-            `Test cấu hình mô phỏng thất bại: ${err?.message || "unknown error"}`,
+            "Không thể kiểm tra cấu hình máy in.",
           ),
         };
       }
@@ -368,11 +375,11 @@ export default function PrintManagement() {
       const job = result?.data?.testPrint;
       return {
         ok: job?.status === "completed",
-        mode: "db_simulation",
+        mode: "check",
         message:
           job?.status === "completed"
-            ? "Đã tạo test job mô phỏng và cập nhật trạng thái từ DB; chưa handshake phần cứng thật."
-            : `Test cấu hình mô phỏng thất bại: ${job?.error || "unknown error"}`,
+            ? "Đã kiểm tra cấu hình và cập nhật trạng thái máy in."
+            : `Kiểm tra cấu hình thất bại: ${job?.error || "chưa xác định nguyên nhân"}`,
       };
     },
     [editingPrinter, refetch, selectedRestaurantId, testPrint],
@@ -420,8 +427,7 @@ export default function PrintManagement() {
     setPendingDeletePrinterId("");
     setNotice({
       type: "success",
-      message:
-        "Đã xóa thiết bị khỏi cấu hình cục bộ. Hệ thống sẽ tự lưu thay đổi.",
+      message: "Đã xóa máy in khỏi cấu hình. Hệ thống sẽ tự lưu thay đổi.",
     });
   };
 
@@ -448,14 +454,14 @@ export default function PrintManagement() {
       await refetch();
       setNotice({
         type: "success",
-        message: "Đã gửi lại print job vào hàng đợi xử lý.",
+        message: "Đã gửi lại lệnh in vào hàng đợi xử lý.",
       });
     } catch (err) {
       setNotice({
         type: "error",
         message: getPrintSettingActionErrorMessage(
           err,
-          `Không thể retry print job: ${err?.message || "Lỗi không xác định"}`,
+          "Không thể gửi lại lệnh in. Vui lòng thử lại.",
         ),
       });
     }
@@ -486,7 +492,7 @@ export default function PrintManagement() {
     if (template && !template.enabled) {
       setNotice({
         type: "warning",
-        message: "Bật mẫu phiếu trước khi tạo test job mô phỏng.",
+        message: "Bật mẫu phiếu trước khi gửi lệnh kiểm tra.",
       });
       return;
     }
@@ -496,8 +502,7 @@ export default function PrintManagement() {
     if (!targetPrinter || !selectedRestaurantId) {
       setNotice({
         type: "warning",
-        message:
-          "Cần chọn nhà hàng và có ít nhất một máy in trước khi tạo test job mô phỏng.",
+        message: "Cần chọn nhà hàng và có ít nhất một máy in trước khi gửi lệnh kiểm tra.",
       });
       return;
     }
@@ -517,14 +522,14 @@ export default function PrintManagement() {
       await refetch();
       setNotice({
         type: "success",
-        message: "Đã tạo test job mô phỏng và đưa vào hàng đợi print job.",
+        message: "Đã gửi lệnh kiểm tra vào hàng đợi in.",
       });
     } catch (err) {
       setNotice({
         type: "error",
         message: getPrintSettingActionErrorMessage(
           err,
-          `Không thể tạo test job mô phỏng: ${err?.message || "Lỗi không xác định"}`,
+          "Không thể gửi lệnh kiểm tra. Vui lòng thử lại.",
         ),
       });
     }
@@ -557,32 +562,32 @@ export default function PrintManagement() {
   };
 
   return (
-    <main className="print-ui">
+    <main className="print-ui print-ui--polished">
       <div className="print-ui__bg-circle" aria-hidden="true"></div>
 
       <ManagementPageHeader
-        eyebrow="PRINT OPERATIONS"
-        title="Bảng điều phối in ấn"
-        subtitle="Thiết bị, trạm in, mẫu phiếu và hàng đợi print job cho demo vận hành nhà hàng."
+        eyebrow="In ấn & vận hành"
+        title="Quản lý in ấn"
+        subtitle="Cấu hình máy in, phân luồng phiếu bếp/bar, quản lý mẫu in và theo dõi hàng đợi lệnh in."
         icon="🖨️"
         density="compact"
         stats={[
           {
             id: "printers",
             icon: "🧩",
-            label: "Thiết bị",
+            label: "Máy in",
             value: printerStats.total,
           },
           {
             id: "online",
             icon: "📡",
-            label: "Online",
+            label: "Sẵn sàng",
             value: printerStats.online,
           },
           {
             id: "failed",
             icon: "⚠️",
-            label: "Jobs lỗi",
+            label: "Lệnh lỗi",
             value: printerStats.failed,
           },
         ]}
@@ -591,24 +596,22 @@ export default function PrintManagement() {
         restaurantList={headerRestaurantList}
         primaryAction={{
           icon: "➕",
-          label: "Thiết bị mới",
+          label: "Thêm máy in",
           onClick: openAddPrinter,
           disabled: !hasRestaurantSelection,
           title: hasRestaurantSelection
-            ? "Thêm thiết bị"
-            : "Chọn nhà hàng để thêm thiết bị",
+            ? "Thêm máy in"
+            : "Chọn nhà hàng để thêm máy in",
         }}
       />
 
-      <section className="print-ui__demo-flow" aria-label="Luồng demo UC22">
+      <section className="print-ui__demo-flow" aria-label="Quy trình vận hành in ấn">
         <div className="demo-flow__intro">
-          <strong>Luồng demo UC22</strong>
-          <span>
-            Đi theo các bước vận hành in ấn mô phỏng, không handshake phần cứng.
-          </span>
+          <strong>Quy trình vận hành</strong>
+          <span>Theo dõi từ cấu hình máy in đến lệnh in lỗi cần xử lý.</span>
         </div>
         <ol className="demo-flow__steps">
-          {UC22_DEMO_STEPS.map((step, index) => (
+          {PRINT_OPERATION_STEPS.map((step, index) => (
             <li key={step}>
               <span>{index + 1}</span>
               <p>{step}</p>
@@ -639,8 +642,7 @@ export default function PrintManagement() {
           </div>
           <h3>Chọn nhà hàng để tải cấu hình in ấn.</h3>
           <p>
-            Danh sách thiết bị, phân luồng trạm in, mẫu phiếu và hàng đợi print
-            job sẽ hiển thị sau khi chọn nhà hàng.
+            Danh sách máy in, phân luồng trạm in, mẫu phiếu và hàng đợi lệnh in sẽ hiển thị sau khi chọn nhà hàng.
           </p>
         </section>
       ) : null}
@@ -651,10 +653,7 @@ export default function PrintManagement() {
       )}
       {hasRestaurantSelection && error && (
         <section className="ui-card print-ui__notice is-error" role="alert">
-          <span>
-            Không thể tải cấu hình in ấn. Kiểm tra kết nối hoặc thử tải lại dữ
-            liệu.
-          </span>
+          <span>Không thể tải cấu hình in ấn. Kiểm tra kết nối hoặc thử tải lại dữ liệu.</span>
           <button
             type="button"
             onClick={() => refetch?.()}
@@ -670,13 +669,13 @@ export default function PrintManagement() {
           <div className="print-ui__grid">
             <section
               className="ui-card devices-section"
-              aria-label="Thiết bị đã kết nối"
+              aria-label="Máy in đã cấu hình"
             >
               <div className="card-header">
                 <h3>
-                  <Server size={18} /> Thiết bị đã kết nối
+                  <Server size={18} /> Máy in đã cấu hình
                 </h3>
-                <span className="badge">{printers.length} thiết bị</span>
+                <span className="badge">{printers.length} máy in</span>
               </div>
 
               <div className="device-list">
@@ -685,10 +684,10 @@ export default function PrintManagement() {
                     <div className="empty-icon">
                       <Wifi size={32} />
                     </div>
-                    <h4>Chưa có máy in demo</h4>
-                    <p>Thêm thiết bị để gán trạm và tạo print job mô phỏng.</p>
+                    <h4>Chưa có máy in</h4>
+                    <p>Thêm máy in để gán trạm và gửi lệnh kiểm tra.</p>
                     <button type="button" onClick={openAddPrinter}>
-                      Thêm máy in demo
+                      Thêm máy in
                     </button>
                   </div>
                 ) : (
@@ -706,12 +705,12 @@ export default function PrintManagement() {
                         <div className="meta">
                           <span className="tag-ip">{printer.ip}</span>
                           <span className="type">
-                            {printer.type === "thermal" ? "Nhiệt" : "Khác"}
+                            {printer.type === "thermal" ? "Máy in nhiệt" : "Máy in khác"}
                           </span>
                           <span
                             className={`type status-${printer.status || "offline"}`}
                           >
-                            {printer.status || "offline"}
+                            {printerStatusLabel(printer.status)}
                           </span>
                         </div>
                       </div>
@@ -726,8 +725,8 @@ export default function PrintManagement() {
                               message: result.message,
                             });
                           }}
-                          aria-label={`Test cấu hình ${printer.name}`}
-                          title="Test cấu hình mô phỏng"
+                          aria-label={`Kiểm tra cấu hình ${printer.name}`}
+                          title="Kiểm tra cấu hình"
                         >
                           <Send size={16} />
                         </button>
@@ -751,7 +750,7 @@ export default function PrintManagement() {
                       </div>
                       {pendingDeletePrinterId === printer.id ? (
                         <div className="device-confirm" role="alert">
-                          <span>Xóa thiết bị này?</span>
+                          <span>Xóa máy in này?</span>
                           <button
                             type="button"
                             onClick={() => handleRemovePrinter(printer.id)}
@@ -775,9 +774,9 @@ export default function PrintManagement() {
             <section className="ui-card routing-section">
               <div className="card-header">
                 <h3>
-                  <Activity size={18} /> Phân luồng in bếp
+                  <Activity size={18} /> Phân luồng in
                 </h3>
-                <p>Điều hướng lệnh in tự động</p>
+                <p>Chọn máy in nhận phiếu theo từng khu vực.</p>
               </div>
 
               {!hasPrinters && (
@@ -831,7 +830,7 @@ export default function PrintManagement() {
                       })}
                       {!hasPrinters && (
                         <span className="station-unassigned station-unassigned--waiting">
-                          Chờ
+                          Chờ máy in
                         </span>
                       )}
                     </div>
@@ -842,7 +841,7 @@ export default function PrintManagement() {
           </div>
 
           <div className="print-ui__stack">
-            <section className="ui-card">
+            <section className="ui-card template-section">
               <div className="card-header">
                 <h3>
                   <FileText size={18} /> Loại phiếu / mẫu in
@@ -890,22 +889,22 @@ export default function PrintManagement() {
                       }
                       title={
                         !hasPrinters
-                          ? "Thêm máy in demo trước khi tạo test job"
+                          ? "Thêm máy in trước khi gửi lệnh kiểm tra"
                           : !template.enabled
-                            ? "Bật mẫu trước khi tạo test job"
-                            : "Tạo test job mô phỏng"
+                            ? "Bật mẫu trước khi gửi lệnh kiểm tra"
+                            : "Gửi lệnh kiểm tra"
                       }
                     >
-                      Tạo test job mô phỏng
+                      Gửi lệnh kiểm tra
                     </button>
                     {!hasPrinters && (
                       <small className="template-card__hint">
-                        Thêm máy in demo trước khi tạo test job.
+                        Thêm máy in trước khi gửi lệnh kiểm tra.
                       </small>
                     )}
                     {hasPrinters && !template.enabled && (
                       <small className="template-card__hint">
-                        Bật mẫu trước khi tạo test job.
+                        Bật mẫu trước khi gửi lệnh kiểm tra.
                       </small>
                     )}
                   </div>
@@ -913,23 +912,23 @@ export default function PrintManagement() {
               </div>
             </section>
 
-            <section className="ui-card">
+            <section className="ui-card jobs-section">
               <div className="card-header">
                 <h3>
-                  <Printer size={18} /> Hàng đợi print job
+                  <Printer size={18} /> Hàng đợi lệnh in
                 </h3>
                 <div className="job-header-actions">
                   <button type="button" onClick={() => refetch?.()}>
                     Tải lại hàng đợi
                   </button>
-                  <span className="badge">{jobs.length} jobs</span>
+                  <span className="badge">{jobs.length} lệnh</span>
                 </div>
               </div>
 
               {jobs.length === 0 ? (
                 <div className="no-data no-data--job">
-                  <h4>Chưa có print job</h4>
-                  <p>Tạo test job mô phỏng từ mẫu phiếu để demo hàng đợi.</p>
+                  <h4>Chưa có lệnh in</h4>
+                  <p>Gửi lệnh kiểm tra từ mẫu phiếu để kiểm tra hàng đợi.</p>
                   {hasPrinters && (
                     <button
                       type="button"
@@ -937,11 +936,11 @@ export default function PrintManagement() {
                       disabled={!receiptTemplate?.enabled}
                       title={
                         receiptTemplate?.enabled
-                          ? "Tạo job từ mẫu hóa đơn"
-                          : "Bật mẫu hóa đơn trước khi tạo job"
+                          ? "Gửi lệnh từ mẫu hóa đơn"
+                          : "Bật mẫu hóa đơn trước khi gửi lệnh"
                       }
                     >
-                      Tạo job từ mẫu hóa đơn
+                      Gửi lệnh từ mẫu hóa đơn
                     </button>
                   )}
                 </div>
@@ -950,8 +949,7 @@ export default function PrintManagement() {
                   {jobs.slice(0, 20).map((job) => (
                     <div key={job.id} className={`job-item job-${job.status}`}>
                       <div>
-                        <strong>{job.printType}</strong> •{" "}
-                        {job.printerName || job.printerId || "N/A"}
+                        <strong>{printTypeLabel(job.printType)}</strong> • {job.printerName || job.printerId || "Chưa xác định"}
                         <div className="job-meta">
                           <span
                             className={`job-status job-status--${job.status || "pending"}`}
@@ -961,7 +959,7 @@ export default function PrintManagement() {
                           <span>
                             {new Date(job.createdAt).toLocaleString("vi-VN")}
                           </span>
-                          <span>Retry: {job.retryCount || 0}</span>
+                          <span>Đã gửi lại: {job.retryCount || 0}</span>
                         </div>
                         {job.error && (
                           <div className="job-error">Lỗi: {job.error}</div>
@@ -973,7 +971,7 @@ export default function PrintManagement() {
                           className="retry-btn"
                           onClick={() => handleRetryJob(job.id)}
                         >
-                          <RotateCcw size={14} /> Retry job lỗi
+                          <RotateCcw size={14} /> Gửi lại lệnh lỗi
                         </button>
                       )}
                     </div>
