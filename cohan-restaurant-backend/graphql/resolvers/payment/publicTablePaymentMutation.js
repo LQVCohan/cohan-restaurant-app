@@ -88,6 +88,12 @@ function assertTableAccessTokenMatches({ verifiedToken, restaurantId, tableId, t
   }
 }
 
+function assertStoredTableAccessToken(table, token) {
+  if (!table?.tableAccessToken || table.tableAccessToken !== String(token || "").trim()) {
+    throw new Error(TABLE_ACCESS_TOKEN_ERROR);
+  }
+}
+
 function normalizeCustomerRequestMessage(value, fallback) {
   const normalized = String(value || "").trim().replace(/\s+/g, " ");
   return (normalized || fallback).slice(0, CUSTOMER_REQUEST_MESSAGE_MAX_LENGTH);
@@ -139,12 +145,13 @@ async function loadPublicTableSessionAccess({ restaurantId, tableId, tableCode, 
   });
 
   const table = await Table.findOne({ _id: tid, restaurantId: rid })
-    .select({ _id: 1, code: 1 })
+    .select({ _id: 1, code: 1, tableAccessToken: 1 })
     .lean();
 
   if (!table) {
     throw new Error("Table not found");
   }
+  assertStoredTableAccessToken(table, token);
 
   const safeCode = normalizePublicTableCode(table.code);
 
