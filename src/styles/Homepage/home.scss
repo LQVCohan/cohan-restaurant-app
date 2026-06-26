@@ -150,6 +150,122 @@ body {
 .home .restaurant-grid::after { display: none; }
 .home .restaurant-grid__container { position: relative; z-index: 2; }
 
+.home-shortcuts {
+  background: #fffaf4;
+  padding: 34px 0 18px;
+
+  &__container {
+    width: min(1360px, calc(100% - 64px));
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.5fr);
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  &__copy {
+    border-radius: 28px;
+    padding: 26px;
+    background:
+      radial-gradient(circle at top left, rgba(255, 184, 112, 0.28), transparent 18rem),
+      #ffffff;
+    border: 1px solid rgba(232, 93, 4, 0.12);
+    box-shadow: var(--shadow-md);
+
+    h3 {
+      margin: 10px 0 10px;
+      color: #1f1a16;
+      font-size: clamp(1.35rem, 2.4vw, 2rem);
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+    }
+
+    p {
+      margin: 0;
+      color: #75685e;
+      line-height: 1.65;
+    }
+  }
+
+  &__eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    border-radius: 999px;
+    padding: 7px 12px;
+    background: #fff1e5;
+    color: #c94f02;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+.home-shortcut-card {
+  border: 1px solid rgba(92, 64, 51, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 22px;
+  padding: 18px;
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  text-align: left;
+  color: #1f1a16;
+  cursor: pointer;
+  box-shadow: 0 14px 36px rgba(92, 45, 12, 0.07);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: rgba(232, 93, 4, 0.28);
+    box-shadow: 0 22px 46px rgba(92, 45, 12, 0.12);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(232, 93, 4, 0.26);
+    outline-offset: 3px;
+  }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 16px;
+    background: #fff1e5;
+    font-size: 1.25rem;
+  }
+
+  &__content {
+    display: grid;
+    gap: 5px;
+
+    strong {
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    small {
+      color: #786b60;
+      line-height: 1.45;
+      font-size: 0.86rem;
+    }
+  }
+
+  &__arrow {
+    color: #c94f02;
+    font-weight: 900;
+  }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -169,12 +285,29 @@ body {
 .cart-animating { animation: pulse-orange 0.5s ease-out; }
 .section-spacing { margin-bottom: 3rem; }
 
+@media (max-width: 900px) {
+  .home-shortcuts {
+    &__container {
+      width: min(100% - 40px, 720px);
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
 @media (max-width: 760px) {
   .home .restaurant-grid,
   .home .categories,
   .home .dish-grid {
     padding-top: 28px;
     padding-bottom: 30px;
+  }
+
+  .home-shortcuts {
+    padding-top: 28px;
+
+    &__grid {
+      grid-template-columns: 1fr;
+    }
   }
 }
 
@@ -183,6 +316,10 @@ body {
   .cart-animating,
   .loading__spinner {
     animation: none !important;
+  }
+
+  .home-shortcut-card {
+    transition: none !important;
   }
 
   html { scroll-behavior: auto; }
