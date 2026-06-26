@@ -21,6 +21,7 @@ import "./styles/TableCameraPreviewRepair.css";
 import "./styles/Table3DMainModalRepair.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 import "./components/Customer/Combos/CombosModalViewportFix.scss";
+import "./styles/AiChatbotKnowledgeCompactList.scss";
 import "./utils/staffPerformanceGlobalFormat.js";
 
 import App from "./App.jsx";
@@ -38,46 +39,14 @@ import "./components/Dashboard_Manager/Table/TableManagementFinalQC.scss";
 import "./components/Dashboard_Manager/Table/TableManagementScorePolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowFinalPolish.scss";
-import "./components/Dashboard_Manager/Table/TableWorkflowModalOverlapFix.scss";
-import "./components/Dashboard_Manager/Table/TableWorkflowObservationUX.scss";
-import "./components/Dashboard_Manager/Table/TableWorkflowHoverGuides.scss";
-import "./components/Dashboard_Manager/Table/TableMobileARTestPolish.scss";
-import "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.scss";
-import "./components/Dashboard_Manager/Staff/components/EmployeeList/EmployeeListLayoutPolish.scss";
-import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
-import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceSimpleView.scss";
-import "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceModalViewportFix.scss";
-import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.scss";
-import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoToneSync.scss";
-import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoLayoutFix.scss";
-import "./components/Customer/RestaurantDetail/RestaurantPreviewFrameFix.scss";
-import "./styles/ManagerGlobalToneAudit.scss";
-import "./styles/AiManagerToneSync.scss";
-import "./styles/ManagerSidebarPagesToneSync.scss";
-import { installRestaurantInfoCopyTuning } from "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoCopyTuning.js";
-import { installTableWorkflowCopyTuning } from "./components/Dashboard_Manager/Table/TableWorkflowCopyTuning.js";
-import { installTableWorkflowRuntimeTuning } from "./components/Dashboard_Manager/Table/TableWorkflowRuntimeTuning.js";
-import { installFloorPlanDesignerExperience } from "./components/Dashboard_Manager/Table/FloorPlanDesignerExperience.js";
-import { installStaffPerformanceModalPortalFix } from "./components/Dashboard_Manager/Staff/components/Performance/StaffPerformanceModalPortalFix.js";
-import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning.js";
-import { initFrontendErrorTracking } from "./observability/errorTracking.js";
-import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
-import { installAiChatbotStreamFetchPatch } from "@/utils/aiChatbotStreamFetchPatch";
-import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
+import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
+import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
 
-void initFrontendErrorTracking();
 installAiChatbotStreamFetchPatch();
-installAuthenticatedTable3DTransport();
-installRbacVietnameseLabels();
-installRestaurantInfoCopyTuning();
-installTableWorkflowCopyTuning();
-installTableWorkflowRuntimeTuning();
-installFloorPlanDesignerExperience();
-installStaffPerformanceModalPortalFix();
-installAttendanceWordingTuning();
+applyChatThreadToolbarStyle();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <App />
-  </StrictMode>,
+  </StrictMode>
 );
