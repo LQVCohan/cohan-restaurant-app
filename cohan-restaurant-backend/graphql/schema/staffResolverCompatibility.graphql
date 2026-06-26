@@ -1,156 +1,797 @@
-# ponytail: temporary contract for staff/payroll resolvers that already exist but had no SDL.
-# Keep startup strict; replace JSON fields with typed contracts as each staff screen is hardened.
+# ponytail: compatibility SDL for existing FE queries while feature schemas are being hardened.
+# Typed loosely enough to validate real operations; replace field-by-field with domain types as screens are stabilized.
+
+enum ShiftAcknowledgementStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+type CompatibilityNode {
+  id: ID
+  _id: ID
+  userId: ID
+  customerId: ID
+  employeeId: ID
+  staffId: ID
+  restaurantId: ID
+  shiftId: ID
+  periodId: ID
+  payoutId: ID
+  batchId: ID
+  attendanceId: ID
+  requestId: ID
+  incidentId: ID
+  appealId: ID
+
+  code: String
+  name: String
+  fullName: String
+  username: String
+  email: String
+  phone: String
+  avatar: String
+  avatarUrl: String
+  title: String
+  label: String
+  message: String
+  description: String
+  note: String
+  reason: String
+  priority: String
+  type: String
+  target: String
+  status: String
+  effectiveStatus: String
+  employmentStatus: String
+  roleName: String
+  department: String
+  positionTitle: String
+  shiftType: String
+  source: String
+  category: String
+  verificationStatus: String
+  idempotencyKey: String
+
+  ok: Boolean
+  success: Boolean
+  valid: Boolean
+  approved: Boolean
+  canEdit: Boolean
+  canDelete: Boolean
+  canApprove: Boolean
+  canReject: Boolean
+  hasMore: Boolean
+  isReadOnly: Boolean
+  isOnline: Boolean
+  isOffSchedule: Boolean
+  minimumWageViolation: Boolean
+  insuranceEligible: Boolean
+
+  count: Int
+  total: Int
+  totalCount: Int
+  page: Int
+  pageSize: Int
+  totalPages: Int
+  limit: Int
+  offset: Int
+  progress: Int
+  quantity: Int
+  score: Float
+  amount: Float
+  balance: Float
+  paidAmount: Float
+  remaining: Float
+  remainingAmount: Float
+  baseSalary: Float
+  netSalary: Float
+  grossIncome: Float
+  grossSalary: Float
+  totalIncome: Float
+  totalDeduction: Float
+  totalPayroll: Float
+  totalSpend: Float
+  totalOrders: Int
+  totalHours: Float
+  workDays: Float
+  actualWorkDays: Float
+  overtimeHours: Float
+  overtimeMinutes: Int
+  approvedOvertimeMinutes: Int
+  lateMinutes: Float
+  latenessMinutes: Int
+  earlyLeaveMinutes: Int
+  unpaidLeaveDays: Float
+  paidLeaveDays: Float
+
+  date: String
+  startDate: DateTime
+  endDate: DateTime
+  periodStart: DateTime
+  periodEnd: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+  publishedAt: DateTime
+  lockedAt: DateTime
+  closedAt: DateTime
+  reopenedAt: DateTime
+  workDate: DateTime
+  startTime: DateTime
+  endTime: DateTime
+  plannedStartTime: DateTime
+  plannedEndTime: DateTime
+  actualCheckInAt: DateTime
+  actualCheckOutAt: DateTime
+  paidAt: DateTime
+
+  role: Role
+  user: User
+  customer: User
+  employee: StaffPrivateProfile
+  staff: StaffPrivateProfile
+  restaurant: Restaurant
+  wallet: Wallet
+  transaction: WalletTransaction
+  payment: CompatibilityNode
+  payout: CompatibilityNode
+  period: CompatibilityNode
+  summary: CompatibilityNode
+  stats: CompatibilityNode
+  pageInfo: CompatibilityNode
+  permissions: CompatibilityNode
+  policy: CompatibilityNode
+  balanceInfo: CompatibilityNode
+  bankAccount: CompatibilityNode
+
+  rows: [CompatibilityNode!]
+  items: [CompatibilityNode!]
+  data: [CompatibilityNode!]
+  nodes: [CompatibilityNode!]
+  staffList: [StaffPrivateProfile!]
+  employees: [StaffPrivateProfile!]
+  shifts: [CompatibilityNode!]
+  attendances: [StaffAttendanceRecord!]
+  acknowledgements: [CompatibilityNode!]
+  requests: [CompatibilityNode!]
+  periods: [CompatibilityNode!]
+  payments: [CompatibilityNode!]
+  payouts: [CompatibilityNode!]
+  logs: [ScheduleChangeLog!]
+  issues: [CompatibilityNode!]
+  warnings: [String!]
+  errors: [String!]
+  recommendations: [CompatibilityNode!]
+  summaries: [CompatibilityNode!]
+  timeline: [CompatibilityNode!]
+  incidents: [CompatibilityNode!]
+  appeals: [CompatibilityNode!]
+  orderIds: [ID!]
+  shiftIds: [ID!]
+  employeeIds: [ID!]
+  affectedShiftIds: [ID!]
+  affectedEmployeeIds: [ID!]
+  warningMessages: [String!]
+
+  meta: JSON
+  metadata: JSON
+  raw: JSON
+  diff: JSON
+  input: JSON
+  result: JSON
+}
+
+type ContactChangeOtpResult {
+  ok: Boolean
+  success: Boolean
+  message: String
+  target: ContactChangeTarget
+  cooldownUntil: DateTime
+}
+
+type AttendanceCorrectionRequest {
+  id: ID
+  employeeId: ID
+  restaurantId: ID
+  status: String
+  type: String
+  reason: String
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type OvertimeRequest {
+  id: ID
+  employeeId: ID
+  restaurantId: ID
+  status: String
+  reason: String
+  note: String
+  overtimeMinutes: Int
+  approvedOvertimeMinutes: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PerformanceIncident {
+  id: ID
+  employeeId: ID
+  staffId: ID
+  restaurantId: ID
+  status: String
+  type: String
+  reason: String
+  note: String
+  score: Float
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PerformanceIncidentAppeal {
+  id: ID
+  incidentId: ID
+  employeeId: ID
+  staffId: ID
+  restaurantId: ID
+  status: String
+  reason: String
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input RequestContactChangeOtpInput {
+  target: ContactChangeTarget!
+  value: String
+}
+
+input ConfirmContactChangeOtpInput {
+  target: ContactChangeTarget!
+  otp: String
+  code: String
+}
+
+input FoodPreferencesInput {
+  diet: String
+  allergies: [String!]
+  habits: JSON
+}
+
+input LeaveRequestFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: String
+  from: DateTime
+  to: DateTime
+  startDate: DateTime
+  endDate: DateTime
+}
+
+input CreateLeaveRequestInput {
+  restaurantId: ID
+  employeeId: ID
+  replacementEmployeeId: ID
+  leaveType: String
+  type: String
+  startDate: DateTime
+  endDate: DateTime
+  startSession: String
+  endSession: String
+  reason: String
+  note: String
+}
+
+input ReviewShiftAcknowledgementInput {
+  acknowledgementId: ID
+  id: ID
+  status: ShiftAcknowledgementStatus
+  note: String
+  reason: String
+}
+
+input RespondShiftAcknowledgementInput {
+  acknowledgementId: ID
+  id: ID
+  status: ShiftAcknowledgementStatus
+  note: String
+  reason: String
+}
+
+input LockScheduleInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+  reason: String
+}
+
+input CloseScheduleInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+  reason: String
+}
+
+input ReopenScheduleInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+  reason: String
+}
+
+input CreateStaffShiftInput {
+  restaurantId: ID
+  employeeId: ID
+  staffId: ID
+  shiftId: ID
+  date: DateTime
+  workDate: DateTime
+  startTime: DateTime
+  endTime: DateTime
+  shiftType: String
+  note: String
+}
+
+input UpdateStaffShiftInput {
+  shiftId: ID
+  employeeId: ID
+  staffId: ID
+  startTime: DateTime
+  endTime: DateTime
+  shiftType: String
+  status: String
+  note: String
+  reason: String
+  notifyEmployee: Boolean
+}
+
+input AiSchedulePlannerPreviewInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+  timezone: String
+  staffIds: [ID!]
+  options: JSON
+}
+
+input ApplyAutoScheduleInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+  timezone: String
+  shifts: [JSON!]
+  options: JSON
+}
+
+input ValidateShiftAssignmentInput {
+  restaurantId: ID
+  employeeId: ID
+  staffId: ID
+  shiftId: ID
+  startTime: DateTime
+  endTime: DateTime
+}
+
+input SchedulingPolicyInput {
+  restaurantId: ID
+  timezone: String
+  rules: JSON
+  settings: JSON
+}
+
+input OffScheduleAttendanceFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: String
+  startDate: DateTime
+  endDate: DateTime
+}
+
+input AttendanceCorrectionFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: String
+  startDate: DateTime
+  endDate: DateTime
+}
+
+input UpsertStaffAttendanceInput {
+  restaurantId: ID
+  employeeId: ID
+  shiftId: ID
+  workDate: DateTime
+  actualCheckInAt: DateTime
+  actualCheckOutAt: DateTime
+  note: String
+}
+
+input OvertimeRequestFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: String
+  startDate: DateTime
+  endDate: DateTime
+}
+
+input CreatePayrollPeriodInput {
+  restaurantId: ID
+  startDate: DateTime
+  endDate: DateTime
+  name: String
+}
+
+input MarkPayrollItemPaidInput {
+  periodId: ID
+  employeeId: ID
+  payrollItemId: ID
+  amount: Float
+  note: String
+}
+
+input BatchMarkPayrollPaidInput {
+  periodId: ID
+  employeeIds: [ID!]
+  note: String
+}
+
+input PayrollPayoutInput {
+  periodId: ID
+  employeeId: ID
+  amount: Float
+  idempotencyKey: String
+  note: String
+}
+
+input PayrollBatchPayoutInput {
+  periodId: ID
+  employeeIds: [ID!]
+  idempotencyKey: String
+  note: String
+}
+
+input PayrollPayoutResultInput {
+  payoutId: ID
+  status: String
+  reference: String
+  note: String
+  metadata: JSON
+}
+
+input EmployeeBankAccountInput {
+  employeeId: ID
+  restaurantId: ID
+  bankName: String
+  bankAccountNumber: String
+  bankAccountHolder: String
+}
+
+input RestaurantPayoutAccountInput {
+  restaurantId: ID
+  bankName: String
+  bankAccountNumber: String
+  bankAccountHolder: String
+}
+
+input PayrollSettingsInput {
+  restaurantId: ID
+  settings: JSON
+  policy: JSON
+}
+
+input PayrollAdjustmentInput {
+  periodId: ID
+  employeeId: ID
+  adjustmentId: ID
+  type: String
+  amount: Float
+  reason: String
+  note: String
+}
+
+input StaffPerformanceFilterInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input UpsertStaffPerformanceReviewInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  score: Float
+  note: String
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input RecalculateStaffPerformanceInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input StaffPerformanceSummaryInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input StaffPerformanceScoreAdjustmentFilterInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input StaffPerformanceScoreTimelineInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input PerformanceIncidentFilterInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  status: String
+}
+
+input PerformanceIncidentAppealFilterInput {
+  restaurantId: ID
+  staffId: ID
+  employeeId: ID
+  status: String
+}
+
+input ManagerIncidentReviewQueueInput {
+  restaurantId: ID
+  status: String
+  limit: Int
+  offset: Int
+}
+
+input ManagerIncidentReviewQueueSummaryInput {
+  restaurantId: ID
+}
+
+input ManagerPerformanceDashboardInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input CreatePerformanceIncidentAppealInput {
+  incidentId: ID
+  reason: String
+  note: String
+}
+
+input ReviewPerformanceIncidentAppealInput {
+  appealId: ID
+  status: String
+  note: String
+  reason: String
+}
+
+input ReverseScoreForAcceptedAppealInput {
+  appealId: ID
+  reason: String
+  note: String
+}
+
+input StaffReportsInput {
+  restaurantId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+extend type User {
+  foodPreferences: JSON
+}
+
+extend type Wallet {
+  status: String
+  createdAt: DateTime
+}
+
+extend type WalletTransaction {
+  currency: String
+  referenceType: String
+  referenceId: ID
+  orderIds: [ID!]
+  metadata: JSON
+}
+
+extend type VerificationResult {
+  ok: Boolean
+  errors: [String!]
+  email: String
+  sms: String
+}
+
+extend type StaffPrivateProfile {
+  username: String
+  userType: UserType
+  status: String
+  roleName: String
+  emailVerified: Boolean
+  phoneVerified: Boolean
+  verifiedAt: DateTime
+  emailVerifiedAt: DateTime
+  phoneVerifiedAt: DateTime
+  role: Role
+  address: Address
+  taxCode: String
+  isOnline: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+extend type StaffAttendanceRecord {
+  overtimeMinutes: Int
+}
 
 extend type Query {
-  staff(id: ID): JSON
-  publicRestaurantStaff(restaurantId: ID): JSON
-  staffList(restaurantId: ID, roleId: ID, search: String, employmentStatus: String): JSON
-  shiftAcknowledgements(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime, employeeId: ID, status: String): JSON
-  myShiftAttendances(startDate: DateTime, endDate: DateTime, restaurantId: ID): JSON
-  managerShiftAttendances(restaurantId: ID, startDate: DateTime, endDate: DateTime, employeeId: ID): JSON
-  myShiftAcknowledgements(restaurantId: ID, status: String): JSON
-  myScheduleAcknowledgement(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): JSON
-  scheduleAcknowledgementSummary(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): JSON
-  schedulingPolicy(restaurantId: ID): JSON
-  staffPerformanceSnapshots(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): JSON
-  validateShiftAssignment(input: JSON): JSON
-  staffAccountOverview(staffId: ID, restaurantId: ID): JSON
-  staffSalarySummary(staffId: ID, restaurantId: ID): JSON
-  staffShiftHistory(staffId: ID, restaurantId: ID, limit: Int): JSON
-  staffPayrollOverview(startDate: DateTime, endDate: DateTime, restaurantId: ID, periodId: ID): JSON
-  payrollPeriods(restaurantId: ID, status: String, limit: Int): JSON
-  payrollPeriodDetail(periodId: ID!): JSON
-  payrollPayslip(periodId: ID, employeeId: ID): JSON
-  payrollPayments(periodId: ID, restaurantId: ID, employeeId: ID): JSON
-  payrollPayouts(restaurantId: ID, periodId: ID, status: String, limit: Int): JSON
-  payrollPayoutBatch(batchId: ID!): JSON
-  employeeBankAccount(employeeId: ID!): JSON
-  restaurantPayoutAccounts(restaurantId: ID!): JSON
-  payrollExportRows(startDate: DateTime, endDate: DateTime, restaurantId: ID, periodId: ID): JSON
-  payrollSettings(restaurantId: ID!): JSON
-  overtimeRequests(restaurantId: ID, employeeId: ID, status: String, limit: Int): JSON
-  overtimeRequest(id: ID!): JSON
-  validatePayrollPeriod(periodId: ID!): JSON
-  myPayslips(limit: Int): JSON
-  myPayslip(periodId: ID!): JSON
-  aiSchedulePlannerPreview(input: JSON): JSON
-  schedulePublication(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): JSON
-  scheduleChangeLogs(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime, limit: Int): JSON
-  staffShifts(restaurantId: ID, employeeId: ID, startDate: DateTime, endDate: DateTime): JSON
-  staffAttendanceRecords(restaurantId: ID, startDate: DateTime, endDate: DateTime, status: String, search: String): JSON
-  offScheduleAttendances(input: JSON): JSON
-  attendanceCorrectionRequests(filter: JSON): JSON
-  attendanceCorrectionRequest(id: ID!): JSON
-  staffPerformanceSummary(restaurantId: ID!, staffId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
-  staffPerformanceSummaries(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
-  staffPerformanceScoreAdjustments(restaurantId: ID!, staffId: ID): JSON
-  staffPerformanceScoreTimeline(restaurantId: ID!, staffId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
-  performanceIncidents(restaurantId: ID!, staffId: ID, status: String): JSON
-  performanceIncidentAppeals(restaurantId: ID!, staffId: ID, status: String): JSON
-  managerIncidentReviewQueue(restaurantId: ID!, status: String): JSON
-  managerIncidentReviewQueueSummary(restaurantId: ID!): JSON
-  managerPerformanceDashboard(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
-  leaveRequests(restaurantId: ID, employeeId: ID, status: String): JSON
-  myReplacementLeaveRequests(status: String): JSON
-  leaveBalance(employeeId: ID): JSON
-  staffReportsOverview(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): JSON
+  staff(id: ID): StaffPrivateProfile
+  publicRestaurantStaff(restaurantId: ID): [StaffPrivateProfile!]!
+  staffList(restaurantId: ID, roleId: ID, search: String, employmentStatus: EmploymentStatus): [StaffPrivateProfile!]!
+  shiftAcknowledgements(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime, employeeId: ID, status: ShiftAcknowledgementStatus): [CompatibilityNode!]!
+  myShiftAttendances(startDate: DateTime, endDate: DateTime, periodStart: DateTime, periodEnd: DateTime, restaurantId: ID): [StaffAttendanceRecord!]!
+  managerShiftAttendances(restaurantId: ID, startDate: DateTime, endDate: DateTime, periodStart: DateTime, periodEnd: DateTime, employeeId: ID): [StaffAttendanceRecord!]!
+  myShiftAcknowledgements(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime, status: ShiftAcknowledgementStatus): [CompatibilityNode!]!
+  myScheduleAcknowledgement(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): CompatibilityNode
+  scheduleAcknowledgementSummary(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): CompatibilityNode
+  schedulingPolicy(restaurantId: ID): CompatibilityNode
+  staffPerformanceSnapshots(filter: StaffPerformanceFilterInput, restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): [CompatibilityNode!]!
+  validateShiftAssignment(input: ValidateShiftAssignmentInput): CompatibilityNode
+  staffAccountOverview(staffId: ID, restaurantId: ID): CompatibilityNode
+  staffSalarySummary(staffId: ID, restaurantId: ID): CompatibilityNode
+  staffShiftHistory(staffId: ID, employeeId: ID, restaurantId: ID, limit: Int): [CompatibilityNode!]!
+  staffPayrollOverview(startDate: DateTime, endDate: DateTime, restaurantId: ID, periodId: ID): CompatibilityNode
+  payrollPeriods(restaurantId: ID, status: String, limit: Int): [CompatibilityNode!]!
+  payrollPeriodDetail(periodId: ID!): CompatibilityNode
+  payrollPayslip(periodId: ID, employeeId: ID): CompatibilityNode
+  payrollPayments(periodId: ID, restaurantId: ID, employeeId: ID): [CompatibilityNode!]!
+  payrollPayouts(restaurantId: ID, periodId: ID, status: String, limit: Int): [CompatibilityNode!]!
+  payrollPayoutBatch(batchId: ID!): CompatibilityNode
+  employeeBankAccount(employeeId: ID!): CompatibilityNode
+  restaurantPayoutAccounts(restaurantId: ID!): [CompatibilityNode!]!
+  payrollExportRows(startDate: DateTime, endDate: DateTime, restaurantId: ID, periodId: ID): [CompatibilityNode!]!
+  payrollSettings(restaurantId: ID): CompatibilityNode
+  overtimeRequests(filter: OvertimeRequestFilterInput, restaurantId: ID, employeeId: ID, status: String, limit: Int): [OvertimeRequest!]!
+  overtimeRequest(id: ID!): OvertimeRequest
+  validatePayrollPeriod(periodId: ID!): CompatibilityNode
+  myPayslips(limit: Int): [CompatibilityNode!]!
+  myPayslip(periodId: ID!): CompatibilityNode
+  aiSchedulePlannerPreview(input: AiSchedulePlannerPreviewInput): CompatibilityNode
+  schedulePublication(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): SchedulePublication
+  scheduleChangeLogs(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime, shiftIds: [ID!], limit: Int): [ScheduleChangeLog!]!
+  staffShifts(restaurantId: ID, employeeId: ID, startDate: DateTime, endDate: DateTime, status: String, limit: Int): [CompatibilityNode!]!
+  staffAttendanceRecords(restaurantId: ID, employeeId: ID, startDate: DateTime, endDate: DateTime, status: String, search: String): [StaffAttendanceRecord!]!
+  offScheduleAttendances(input: OffScheduleAttendanceFilterInput): [StaffAttendanceRecord!]!
+  attendanceCorrectionRequests(filter: AttendanceCorrectionFilterInput): [AttendanceCorrectionRequest!]!
+  attendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
+  staffPerformanceSummary(input: StaffPerformanceSummaryInput, restaurantId: ID, staffId: ID, periodStart: DateTime, periodEnd: DateTime): CompatibilityNode
+  staffPerformanceSummaries(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime): [CompatibilityNode!]!
+  staffPerformanceScoreAdjustments(input: StaffPerformanceScoreAdjustmentFilterInput, restaurantId: ID, staffId: ID): [CompatibilityNode!]!
+  staffPerformanceScoreTimeline(input: StaffPerformanceScoreTimelineInput, restaurantId: ID, staffId: ID, periodStart: DateTime, periodEnd: DateTime): [CompatibilityNode!]!
+  performanceIncidents(filter: PerformanceIncidentFilterInput, restaurantId: ID, staffId: ID, status: String): [PerformanceIncident!]!
+  performanceIncidentAppeals(filter: PerformanceIncidentAppealFilterInput, restaurantId: ID, staffId: ID, status: String): [PerformanceIncidentAppeal!]!
+  managerIncidentReviewQueue(input: ManagerIncidentReviewQueueInput, restaurantId: ID, status: String): [CompatibilityNode!]!
+  managerIncidentReviewQueueSummary(input: ManagerIncidentReviewQueueSummaryInput, restaurantId: ID): CompatibilityNode
+  managerPerformanceDashboard(input: ManagerPerformanceDashboardInput, restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): CompatibilityNode
+  leaveRequests(filter: LeaveRequestFilterInput, restaurantId: ID, employeeId: ID, status: String): [CompatibilityNode!]!
+  myReplacementLeaveRequests(status: String): [CompatibilityNode!]!
+  leaveBalance(employeeId: ID): CompatibilityNode
+  staffReportsOverview(input: StaffReportsInput, restaurantId: ID, periodStart: DateTime, periodEnd: DateTime): CompatibilityNode
 }
 
 extend type Mutation {
-  changeMyPassword(input: JSON): JSON
+  changeMyPassword(currentPassword: String, newPassword: String, input: JSON): CompatibilityNode
   updateAvatar(input: UpdateAvatarInput!): User
-  createMyWallet(input: JSON): JSON
-  topUpMyWallet(input: JSON): JSON
-  login(input: JSON): JSON
-  updateMyFoodPreferences(input: JSON): User
-  updateUser(id: ID, input: JSON): User
-  updateCustomerNote(userId: ID!, restaurantId: ID!, note: String): User
+  createMyWallet(input: CreateWalletInput!): Wallet
+  topUpMyWallet(input: WalletTopupInput!): CompatibilityNode
+  login(email: String, username: String, phone: String, password: String, captchaToken: String, input: JSON): AuthPayload
+  updateMyFoodPreferences(input: FoodPreferencesInput!): User
+  updateUser(id: ID, input: UpdateUserInput!): User
+  updateCustomerNote(userId: ID, customerId: ID, restaurantId: ID, note: String, noteInternal: String): User
   setUserStatus(userId: ID!, status: String!): User
   softDeleteUser(userId: ID!): Boolean
   upsertCustomerRankSettings(restaurantId: ID!, ranks: [RankThresholdInput!]!): CustomerRankSettings
-  requestEmailVerification(input: JSON): JSON
-  verifyEmail(input: JSON): JSON
-  resendVerification(input: JSON): JSON
-  requestMyVerification(input: JSON): JSON
-  verifyPhone(input: JSON): JSON
-  verifyAccountToken(input: JSON): JSON
-  requestContactChangeOtp(input: JSON): JSON
-  confirmContactChangeOtp(input: JSON): JSON
-  cancelContactChangeOtp(input: JSON): JSON
-  assignStaffRole(input: JSON): JSON
-  assignStaffRoleWithinRestaurant(input: JSON): JSON
-  createStaff(input: JSON): JSON
-  updateStaff(id: ID, input: JSON): JSON
-  deleteStaff(id: ID!): Boolean
-  setStaffEmploymentStatus(input: JSON): JSON
-  publishSchedule(input: PublishScheduleInput!): JSON
-  lockSchedule(input: JSON): JSON
-  reopenSchedule(input: JSON): JSON
-  closeSchedule(input: JSON): JSON
-  previewAutoSchedule(input: JSON): JSON
-  applyAutoSchedule(input: JSON): JSON
-  createStaffShift(input: JSON): JSON
-  createStaffShifts(input: JSON): JSON
-  updateStaffShift(id: ID, input: JSON): JSON
-  changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): JSON
-  deleteStaffShift(id: ID!): Boolean
-  deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): JSON
-  addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): JSON
-  acceptShiftAcknowledgement(id: ID!): JSON
-  declineShiftAcknowledgement(id: ID!, reason: String): JSON
-  respondShiftAcknowledgement(input: JSON): JSON
-  reviewShiftAcknowledgement(input: JSON): JSON
-  acknowledgeMySchedule(input: JSON): JSON
-  expirePendingShiftAcknowledgements(input: JSON): JSON
-  updateSchedulingPolicy(input: JSON): JSON
-  startSchedulingOperations(input: JSON): JSON
-  upsertStaffPerformanceReview(input: JSON): JSON
-  recalculateStaffPerformanceSnapshots(input: JSON): JSON
-  createPayrollPeriod(input: JSON): JSON
-  recalculatePayrollPeriod(periodId: ID!): JSON
-  finalizePayrollPeriod(periodId: ID!): JSON
-  lockPayrollPeriod(periodId: ID!): JSON
-  markPayrollPeriodPaid(periodId: ID!): JSON
-  markPayrollItemPaid(input: JSON): JSON
-  batchMarkPayrollPaid(input: JSON): JSON
-  createPayrollPayout(input: JSON): JSON
-  createPayrollBatchPayout(input: JSON): JSON
-  retryPayrollPayout(id: ID!): JSON
-  cancelPayrollPayout(id: ID!): JSON
-  applyPayrollPayoutResult(input: JSON): JSON
-  upsertEmployeeBankAccount(input: JSON): JSON
-  verifyEmployeeBankAccount(input: JSON): JSON
-  upsertRestaurantPayoutAccount(input: JSON): JSON
-  updatePayrollSettings(input: JSON): JSON
-  upsertPayrollAdjustment(input: JSON): JSON
-  deletePayrollAdjustment(id: ID!): Boolean
-  createAttendanceCorrectionRequest(input: JSON): JSON
-  approveAttendanceCorrectionRequest(input: JSON): JSON
-  rejectAttendanceCorrectionRequest(input: JSON): JSON
-  cancelAttendanceCorrectionRequest(id: ID!): JSON
-  reviewPerformanceIncident(input: JSON): JSON
-  waivePerformanceIncident(input: JSON): JSON
-  markPerformanceIncidentEligible(input: JSON): JSON
-  applyPerformanceIncidentScore(input: JSON): JSON
-  createPerformanceIncidentAppeal(input: JSON): JSON
-  cancelPerformanceIncidentAppeal(id: ID!): JSON
-  reviewPerformanceIncidentAppeal(input: JSON): JSON
-  reverseScoreForAcceptedAppeal(input: JSON): JSON
-  createOvertimeRequest(input: JSON): JSON
-  confirmOvertimeRequest(id: ID!): JSON
-  approveOvertimeRequest(input: JSON): JSON
-  rejectOvertimeRequest(input: JSON): JSON
-  cancelOvertimeRequest(id: ID!): JSON
-  completeOvertimeRequest(id: ID!): JSON
-  checkInShift(input: JSON): JSON
-  checkOutShift(input: JSON): JSON
-  markShiftAttendanceReviewed(input: JSON): JSON
-  upsertStaffAttendance(input: JSON): JSON
-  runAttendanceExceptionDetection(input: JSON): JSON
-  approveOffScheduleAttendance(input: JSON): JSON
-  rejectOffScheduleAttendance(input: JSON): JSON
-  createLeaveRequest(input: JSON): JSON
-  approveLeaveRequest(input: JSON): JSON
-  rejectLeaveRequest(input: JSON): JSON
-  confirmReplacementLeaveRequest(input: JSON): JSON
+  requestEmailVerification(input: JSON): VerificationResult
+  verifyEmail(input: JSON): VerificationResult
+  resendVerification(email: String, input: JSON): VerificationResult
+  requestMyVerification(input: JSON): VerificationResult
+  verifyPhone(input: JSON): VerificationResult
+  verifyAccountToken(input: JSON): VerificationResult
+  requestContactChangeOtp(input: RequestContactChangeOtpInput!): ContactChangeOtpResult
+  confirmContactChangeOtp(input: ConfirmContactChangeOtpInput!): ContactChangeOtpResult
+  cancelContactChangeOtp(target: ContactChangeTarget, input: JSON): ContactChangeOtpResult
+  assignStaffRole(input: JSON): CompatibilityNode
+  assignStaffRoleWithinRestaurant(input: JSON): CompatibilityNode
+  createStaff(input: JSON): StaffPrivateProfile
+  updateStaff(id: ID, input: JSON): StaffPrivateProfile
+  deleteStaff(id: ID, userId: ID): Boolean
+  setStaffEmploymentStatus(input: JSON): StaffPrivateProfile
+  publishSchedule(input: PublishScheduleInput!): CompatibilityNode
+  lockSchedule(input: LockScheduleInput!): CompatibilityNode
+  reopenSchedule(input: ReopenScheduleInput!): CompatibilityNode
+  closeSchedule(input: CloseScheduleInput!): CompatibilityNode
+  previewAutoSchedule(input: AiSchedulePlannerPreviewInput): CompatibilityNode
+  applyAutoSchedule(input: ApplyAutoScheduleInput!): CompatibilityNode
+  createStaffShift(input: CreateStaffShiftInput!): CompatibilityNode
+  createStaffShifts(input: CreateStaffShiftInput, inputs: [CreateStaffShiftInput!]): [CompatibilityNode!]!
+  updateStaffShift(id: ID, shiftId: ID, input: UpdateStaffShiftInput!): CompatibilityNode
+  changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): CompatibilityNode
+  deleteStaffShift(id: ID, shiftId: ID, reason: String, notifyEmployee: Boolean): Boolean
+  deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): CompatibilityNode
+  addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): CompatibilityNode
+  acceptShiftAcknowledgement(id: ID!): CompatibilityNode
+  declineShiftAcknowledgement(id: ID!, reason: String): CompatibilityNode
+  respondShiftAcknowledgement(input: RespondShiftAcknowledgementInput!): CompatibilityNode
+  reviewShiftAcknowledgement(input: ReviewShiftAcknowledgementInput!): CompatibilityNode
+  acknowledgeMySchedule(restaurantId: ID, periodStart: DateTime, periodEnd: DateTime, input: JSON): CompatibilityNode
+  expirePendingShiftAcknowledgements(input: JSON): CompatibilityNode
+  updateSchedulingPolicy(restaurantId: ID, input: SchedulingPolicyInput!): CompatibilityNode
+  startSchedulingOperations(restaurantId: ID, input: JSON): CompatibilityNode
+  upsertStaffPerformanceReview(input: UpsertStaffPerformanceReviewInput!): CompatibilityNode
+  recalculateStaffPerformanceSnapshots(input: RecalculateStaffPerformanceInput!): CompatibilityNode
+  createPayrollPeriod(input: CreatePayrollPeriodInput!): CompatibilityNode
+  recalculatePayrollPeriod(periodId: ID!): CompatibilityNode
+  finalizePayrollPeriod(periodId: ID!): CompatibilityNode
+  lockPayrollPeriod(periodId: ID!): CompatibilityNode
+  markPayrollPeriodPaid(periodId: ID!, employeeIds: [ID!]): CompatibilityNode
+  markPayrollItemPaid(input: MarkPayrollItemPaidInput!): CompatibilityNode
+  batchMarkPayrollPaid(input: BatchMarkPayrollPaidInput!): CompatibilityNode
+  createPayrollPayout(input: PayrollPayoutInput!): CompatibilityNode
+  createPayrollBatchPayout(input: PayrollBatchPayoutInput!): CompatibilityNode
+  retryPayrollPayout(id: ID, payoutId: ID, idempotencyKey: String): CompatibilityNode
+  cancelPayrollPayout(id: ID, payoutId: ID, reason: String): CompatibilityNode
+  applyPayrollPayoutResult(input: PayrollPayoutResultInput!): CompatibilityNode
+  upsertEmployeeBankAccount(input: EmployeeBankAccountInput!): CompatibilityNode
+  verifyEmployeeBankAccount(employeeId: ID, restaurantId: ID, verificationStatus: String, input: JSON): CompatibilityNode
+  upsertRestaurantPayoutAccount(input: RestaurantPayoutAccountInput!): CompatibilityNode
+  updatePayrollSettings(input: PayrollSettingsInput!): CompatibilityNode
+  upsertPayrollAdjustment(input: PayrollAdjustmentInput!): CompatibilityNode
+  deletePayrollAdjustment(id: ID, periodId: ID, employeeId: ID, adjustmentId: ID): Boolean
+  createAttendanceCorrectionRequest(input: JSON): AttendanceCorrectionRequest
+  approveAttendanceCorrectionRequest(input: JSON): AttendanceCorrectionRequest
+  rejectAttendanceCorrectionRequest(input: JSON): AttendanceCorrectionRequest
+  cancelAttendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
+  reviewPerformanceIncident(input: JSON): PerformanceIncident
+  waivePerformanceIncident(input: JSON): PerformanceIncident
+  markPerformanceIncidentEligible(input: JSON): PerformanceIncident
+  applyPerformanceIncidentScore(input: JSON): PerformanceIncident
+  createPerformanceIncidentAppeal(input: CreatePerformanceIncidentAppealInput!): PerformanceIncidentAppeal
+  cancelPerformanceIncidentAppeal(id: ID!): PerformanceIncidentAppeal
+  reviewPerformanceIncidentAppeal(input: ReviewPerformanceIncidentAppealInput!): PerformanceIncidentAppeal
+  reverseScoreForAcceptedAppeal(input: ReverseScoreForAcceptedAppealInput!): PerformanceIncidentAppeal
+  createOvertimeRequest(input: JSON): OvertimeRequest
+  confirmOvertimeRequest(id: ID!): OvertimeRequest
+  approveOvertimeRequest(input: JSON): OvertimeRequest
+  rejectOvertimeRequest(input: JSON): OvertimeRequest
+  cancelOvertimeRequest(id: ID!): OvertimeRequest
+  completeOvertimeRequest(id: ID!): OvertimeRequest
+  checkInShift(shiftId: ID, input: JSON): StaffAttendanceRecord
+  checkOutShift(shiftId: ID, input: JSON): StaffAttendanceRecord
+  markShiftAttendanceReviewed(attendanceId: ID, note: String, input: JSON): StaffAttendanceRecord
+  upsertStaffAttendance(input: UpsertStaffAttendanceInput!): StaffAttendanceRecord
+  runAttendanceExceptionDetection(input: JSON): CompatibilityNode
+  approveOffScheduleAttendance(input: JSON): StaffAttendanceRecord
+  rejectOffScheduleAttendance(input: JSON): StaffAttendanceRecord
+  createLeaveRequest(input: CreateLeaveRequestInput!): CompatibilityNode
+  approveLeaveRequest(requestId: ID, note: String, input: JSON): CompatibilityNode
+  rejectLeaveRequest(requestId: ID, reason: String, input: JSON): CompatibilityNode
+  confirmReplacementLeaveRequest(requestId: ID, note: String, input: JSON): CompatibilityNode
 }
