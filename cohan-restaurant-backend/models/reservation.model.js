@@ -6,9 +6,19 @@ const { Types } = mongoose;
 
 const ReservationSchema = BaseSchemaModel(
   {
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
+    restaurantId: {
+      type: Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+      index: true,
+    },
     restaurantName: { type: String, default: "" },
-    tableId: { type: Types.ObjectId, ref: "Table", required: true, index: true },
+    tableId: {
+      type: Types.ObjectId,
+      ref: "Table",
+      required: true,
+      index: true,
+    },
     userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
 
     orderCode: { type: String, index: true },
@@ -54,7 +64,11 @@ const ReservationSchema = BaseSchemaModel(
 
     pendingPaymentExpiresAt: { type: Date, index: true },
 
-    changeRequestType: { type: String, enum: ["time", "table", "none"], default: "none" },
+    changeRequestType: {
+      type: String,
+      enum: ["time", "table", "none"],
+      default: "none",
+    },
     changeRequestStatus: {
       type: String,
       enum: ["none", "requested", "approved", "rejected"],
@@ -67,9 +81,11 @@ const ReservationSchema = BaseSchemaModel(
 
     // Customer-side history hiding only. This must not change the business status
     // of the reservation, unlike manager no-show/cancel workflows.
-    hiddenFromCustomerUserIds: [{ type: Types.ObjectId, ref: "User", index: true }],
+    hiddenFromCustomerUserIds: [
+      { type: Types.ObjectId, ref: "User", index: true },
+    ],
   },
-  { collection: "reservations" }
+  { collection: "reservations" },
 );
 
 ReservationSchema.pre("validate", function (next) {
@@ -96,8 +112,11 @@ ReservationSchema.pre("validate", function (next) {
 
 ReservationSchema.index({ restaurantId: 1, tableId: 1, timeTo: 1 });
 ReservationSchema.index({ userId: 1, createdAt: -1 });
-ReservationSchema.index({ userId: 1, hiddenFromCustomerUserIds: 1, createdAt: -1 });
-ReservationSchema.index({ orderCode: 1 });
+ReservationSchema.index({
+  userId: 1,
+  hiddenFromCustomerUserIds: 1,
+  createdAt: -1,
+});
 
 export const Reservation = mongoose.model("Reservation", ReservationSchema);
 export default Reservation;

@@ -27,7 +27,8 @@ const SystemSettingSchema = new Schema(
       default: "Asia/Ho_Chi_Minh",
       trim: true,
       validate: {
-        validator: (value) => typeof value === "string" && value.trim().length > 0,
+        validator: (value) =>
+          typeof value === "string" && value.trim().length > 0,
         message: "timezone must be a non-empty string",
       },
     },
@@ -36,7 +37,8 @@ const SystemSettingSchema = new Schema(
       default: "VND",
       trim: true,
       validate: {
-        validator: (value) => typeof value === "string" && value.trim().length > 0,
+        validator: (value) =>
+          typeof value === "string" && value.trim().length > 0,
         message: "currency must be a non-empty string",
       },
     },
@@ -45,7 +47,8 @@ const SystemSettingSchema = new Schema(
       default: "DD/MM/YYYY",
       trim: true,
       validate: {
-        validator: (value) => typeof value === "string" && value.trim().length > 0,
+        validator: (value) =>
+          typeof value === "string" && value.trim().length > 0,
         message: "dateFormat must be a non-empty string",
       },
     },
@@ -77,9 +80,18 @@ const SystemSettingSchema = new Schema(
         max: 1440,
       },
       roleGroupLimits: {
-        service: { type: overtimeLimitSchema, default: () => ({ maxMinutesPerDay: 120 }) },
-        kitchen: { type: overtimeLimitSchema, default: () => ({ maxMinutesPerDay: 180 }) },
-        shiftManager: { type: overtimeLimitSchema, default: () => ({ maxMinutesPerDay: 240 }) },
+        service: {
+          type: overtimeLimitSchema,
+          default: () => ({ maxMinutesPerDay: 120 }),
+        },
+        kitchen: {
+          type: overtimeLimitSchema,
+          default: () => ({ maxMinutesPerDay: 180 }),
+        },
+        shiftManager: {
+          type: overtimeLimitSchema,
+          default: () => ({ maxMinutesPerDay: 240 }),
+        },
       },
     },
     metadata: {
@@ -91,9 +103,8 @@ const SystemSettingSchema = new Schema(
       ref: "User",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-SystemSettingSchema.index({ restaurantId: 1 }, { unique: true });
-
-export default mongoose.models.SystemSetting || mongoose.model("SystemSetting", SystemSettingSchema);
+export default mongoose.models.SystemSetting ||
+  mongoose.model("SystemSetting", SystemSettingSchema);
