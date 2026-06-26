@@ -257,16 +257,6 @@ type Address {
   country: String
 }
 
-type Role {
-  id: ID!
-  name: String!
-  slug: String!
-  parentRole: Role
-  department: String
-  description: String
-  createdAt: DateTime
-  updatedAt: DateTime
-}
 
 type Wallet {
   id: ID!
