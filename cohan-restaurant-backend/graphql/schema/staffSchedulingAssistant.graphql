@@ -1,0 +1,55 @@
+type StaffSchedulingAssistantSummary {
+  totalShiftGroups: Int
+  underStaffedShifts: Int
+  overStaffedShifts: Int
+  highestRiskShift: String
+  notes: [String!]
+}
+
+type StaffSchedulingRoleNeed {
+  role: String
+  required: Int
+  assigned: Int
+  delta: Int
+}
+
+type StaffSchedulingCandidate {
+  staffId: ID
+  fullName: String
+  role: String
+  reason: String
+}
+
+type StaffSchedulingAssistantShift {
+  shiftKey: String
+  date: String
+  shiftType: String
+  demandLevel: String
+  expectedOrders: Float
+  expectedGuests: Float
+  recommendedTotalStaff: Int
+  currentAssignedStaff: Int
+  deltaStaff: Int
+  status: String
+  severity: String
+  confidence: Float
+  recommendedRoles: [StaffSchedulingRoleNeed!]
+  suggestedCandidates: [StaffSchedulingCandidate!]
+}
+
+type StaffSchedulingAssistantMeta {
+  method: String
+  basedOnForecast: Boolean
+  fallbackUsed: Boolean
+  generatedAt: DateTime
+  timezone: String
+  periodStart: DateTime
+  periodEnd: DateTime
+  effectiveHorizonDays: Int
+}
+
+type StaffSchedulingAssistant {
+  summary: StaffSchedulingAssistantSummary
+  shifts: [StaffSchedulingAssistantShift!]
+  meta: StaffSchedulingAssistantMeta
+}
