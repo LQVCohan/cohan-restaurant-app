@@ -26,6 +26,18 @@ input CreateWalletInput {
 }
 `;
 
+const customerExportRowsField = `
+  customerExportRows(
+    restaurantId: ID!
+    search: String
+    includeGuests: Boolean = true
+    customerKind: CustomerKindFilter = ALL
+    customerRank: CustomerRankFilterInput
+    sortBy: CustomerSortBy = CREATED_AT
+    sortDirection: SortDirection = DESC
+    limit: Int = 1000
+  ): [User!]!`;
+
 const stripDomainOwnedStaffCompatibilityFields = (source) => {
   const domainOwnedMutationFields = [
     "publishSchedule(input: PublishScheduleInput!): CompatibilityNode",
@@ -84,6 +96,10 @@ const readSchemaFile = (fileName) => {
     .replace(
       "updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!",
       "updateCustomerMetrics(input: UpdateCustomerMetricsInput, id: ID, restaurantId: ID, loyaltyPoints: Int, customerType: CustomerType): User!",
+    )
+    .replace(
+      "customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!",
+      `customerListSummaries(restaurantId: ID!, userIds: [ID!]!): [CustomerListSummary!]!${customerExportRowsField}`,
     )
     .replace(
       "customerDetailAnalytics(userId: ID!, restaurantId: ID!",
