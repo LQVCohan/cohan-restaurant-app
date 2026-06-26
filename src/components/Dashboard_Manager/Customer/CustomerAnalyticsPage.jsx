@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { AuthContext } from "../../../context/AuthContext";
 import "./CustomerAnalyticsPage.scss";
+import "./CustomerAnalyticsScrollPanels.scss";
 
 const GET_CUSTOMER_ANALYTICS = gql`
   query GetCustomerAnalytics($restaurantId: ID!) {
