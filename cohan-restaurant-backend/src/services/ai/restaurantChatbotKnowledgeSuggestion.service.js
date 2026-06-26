@@ -308,6 +308,22 @@ const buildRestaurantCandidates = ({ restaurant, sources, menuItems, coupons }) 
       tags: ["thực đơn", "món nổi bật", "món ăn"],
       confidence: 0.9,
     });
+    pushCandidate(candidates, {
+      question: "Khách đang xem bóng đá nên gợi ý món nào?",
+      suggestedTitle: "Playbook gợi ý món khi xem bóng đá",
+      suggestedContent: "Khi khách nói đang xem bóng đá, coi đá banh hoặc cần món ăn lúc giải trí, chatbot phải lấy món từ CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems, ưu tiên món còn bán, đánh giá cao, nhiều lượt đặt và hợp khẩu vị For You nếu có. Nên ưu tiên món dễ chia sẻ, ăn gọn, đậm vị, snack/combo hoặc món chuẩn bị nhanh. Không bịa món, giá hay tồn kho. Với mỗi món được nhắc, trả về source type menuItem và action link tới /food/{id} để khách bấm xem chi tiết/order.",
+      category: "recommendation_playbook",
+      tags: ["gợi ý món", "bóng đá", "for you", "menu"],
+      confidence: 0.9,
+    });
+    pushCandidate(candidates, {
+      question: "Khách không thích món vừa gợi ý thì xử lý thế nào?",
+      suggestedTitle: "Playbook gợi ý món khác theo For You",
+      suggestedContent: "Khi khách nói món vừa gợi ý không ngon, không hợp khẩu vị, không thích hoặc muốn đề xuất khác, chatbot không lặp lại cùng món trong lượt trước. Hãy đổi sang món khác category hoặc khác khẩu vị, vẫn lấy từ CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems, ưu tiên For You: loại món có allergen, ưu tiên dietTags/tasteProfile phù hợp, sau đó xét đánh giá và lượt đặt. Nếu không đủ dữ liệu, hỏi thêm khẩu vị/ngân sách hoặc gợi ý mở menu để khách tự chọn.",
+      category: "recommendation_playbook",
+      tags: ["món khác", "for you", "khẩu vị", "menu"],
+      confidence: 0.9,
+    });
 
     const dietaryItems = menuItems.filter(
       (item) =>
