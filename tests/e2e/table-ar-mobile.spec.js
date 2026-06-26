@@ -208,7 +208,7 @@ test.describe("manager table AR mobile smoke", () => {
 
     await expect(page.getByRole("heading", { name: /Xem thử và bố trí bàn 3D/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Báo cáo test/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Đặt bàn vào sơ đồ bằng AR/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Chưa chọn bàn/i })).toBeDisabled();
 
     await page.getByRole("button", { name: /Báo cáo test/i }).click();
     await expect(page.getByText("Đã copy báo cáo")).toBeVisible();
@@ -220,19 +220,15 @@ test.describe("manager table AR mobile smoke", () => {
     expect(report.browser.webxr).toBe(false);
   });
 
-  test("opens the AR placement fallback from a concrete table detail flow", async ({ page }) => {
+  test("opens the concrete table detail flow", async ({ page }) => {
     await page.goto("/manager#tables");
     await expect(page.getByText("A1")).toBeVisible();
 
     const tableCard = page.locator("article", { hasText: "A1" }).first();
-    await tableCard.getByRole("button", { name: /Chi tiết/i }).click();
-    await expect(page.getByText(/Cấu hình bàn|Chi tiết/i)).toBeVisible();
+    await tableCard.getByRole("button", { name: /Mở cấu hình bàn A1/i }).click();
 
-    await page.getByRole("button", { name: /Đặt bàn vào sơ đồ bằng AR|Thiết lập vị trí bàn/i }).first().click();
-
-    await expect(page.getByText("Đặt vị trí bàn bằng AR")).toBeVisible();
-    await expect(page.getByText("AR thật để lưu vị trí")).toBeVisible();
-    await expect(page.getByText(/Thiết bị\/trình duyệt chưa hỗ trợ WebXR AR/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Chọn vị trí này" })).toBeDisabled();
+    await expect(page.getByRole("dialog", { name: /Cấu hình bàn ăn A1/i })).toBeVisible();
+    await expect(page.getByText("Mã bàn:")).toBeVisible();
+    await expect(page.getByText("A1").first()).toBeVisible();
   });
 });
