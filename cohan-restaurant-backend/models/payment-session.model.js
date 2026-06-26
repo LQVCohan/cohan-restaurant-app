@@ -58,7 +58,7 @@ const TransferPaymentSchema = new Schema(
 );
 
 const PaymentSessionSchema = BaseSchemaModel({
-  restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
+  restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
   orderId: { type: Types.ObjectId, ref: "Order", index: true },
   reservationId: { type: Types.ObjectId, ref: "Reservation", index: true },
   userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
@@ -94,7 +94,7 @@ const PaymentSessionSchema = BaseSchemaModel({
 
   callbackAt: { type: Date },
   reconciledAt: { type: Date },
-  expiresAt: { type: Date, index: true },
+  expiresAt: { type: Date },
   cancelledAt: { type: Date },
   cancelledBy: { type: Types.ObjectId, ref: "User" },
   cancelReason: { type: String },
