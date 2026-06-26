@@ -30,6 +30,7 @@
     "test:table-ar:e2e": "playwright test tests/e2e/table-ar-mobile.spec.js",
     "test:e2e": "playwright test tests/e2e",
     "test:smoke": "playwright test tests/e2e/smoke",
+    "test:p1": "playwright test tests/e2e/p1",
     "test:ci": "npm run check:conflicts && npm run lint && npm run build && npm run check:graphql && npm run test:unit && npm run test:component && npm run test:api && npm run test:smoke",
     "seed:test": "node scripts/seed-test-data.mjs",
     "reset:test-db": "node scripts/seed-test-data.mjs --reset-plan",
