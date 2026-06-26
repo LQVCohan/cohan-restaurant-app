@@ -32,6 +32,10 @@ Nguyên tắc: **tri thức hướng dẫn chatbot cách trả lời; dữ liệ
 | “Đang coi đá banh ăn gì?” | `recommendation_playbook` | Món dễ chia, ăn gọn, đậm vị, combo/snack | Menu, For You, trạng thái món |
 | “Món A được đánh giá cao nhất?” | `recommendation_playbook` | Ưu tiên rating/lượt đặt, không bịa điểm đánh giá | `rate`, `orderCounter`, link món |
 | “Không ngon lắm, món khác đi” | `recommendation_playbook` | Không lặp lại món cũ, đổi category/khẩu vị | Lịch sử hội thoại, menu còn bán |
+| “Món ăn kèm cho tiệc sinh nhật?” | `recommendation_playbook` | Khai vị, món phụ, món dễ chia, tráng miệng, đồ uống | Menu, nhóm người, giá, link món |
+| “Tụ tập bạn bè/ăn nhậu gọi gì?” | `recommendation_playbook` | Tư vấn món ăn lai rai, dễ chia; không khuyến khích rượu bia | Menu, For You, món nhóm |
+| “Tiệc gia đình nên gọi món gì?” | `recommendation_playbook` | Món chính, món kèm, món cho trẻ em/người lớn tuổi | Menu, partySize, khẩu vị |
+| “Liên hoan công ty/họp nhóm ăn gì?” | `recommendation_playbook` | Món dễ chia khẩu phần, ít kén, số lượng lớn cần xác nhận | Menu, khả năng phục vụ, handoff |
 | “Tôi không ăn cay/chay/dị ứng” | `menu_safety` | Cách lọc khẩu vị và cảnh báo dị ứng | dietTags, allergenTags, tasteProfile |
 | “Đi 2 người nên gọi gì?” | `recommendation_playbook` | Gợi ý combo, món chính, món phụ, nước | Menu, khẩu phần, giá |
 | “Dưới 100k ăn gì?” | `recommendation_playbook` | Lọc theo ngân sách, không ép upsell | Giá món runtime |
@@ -62,7 +66,7 @@ Danh mục (`category`) nên thống nhất để dễ tìm và đánh giá:
 - `safety_policy`: giới hạn chatbot, quyền riêng tư, nội dung bị chặn.
 - `faq`: câu hỏi thường gặp.
 
-Thẻ (`tags`) nên ngắn và có thể tìm lại: `for you`, `bóng đá`, `nhóm`, `ngân sách`, `dị ứng`, `đặt bàn`, `giao hàng`, `thanh toán`, `coupon`, `handoff`.
+Thẻ (`tags`) nên ngắn và có thể tìm lại: `for you`, `bóng đá`, `sinh nhật`, `món ăn kèm`, `khai vị`, `tụ tập`, `ăn nhậu`, `gia đình`, `liên hoan`, `nhóm`, `ngân sách`, `dị ứng`, `đặt bàn`, `giao hàng`, `thanh toán`, `coupon`, `handoff`.
 
 ## Quy tắc viết một mục tri thức tốt
 
@@ -83,7 +87,8 @@ Thẻ (`tags`) nên ngắn và có thể tìm lại: `for you`, `bóng đá`, `n
 5. Với đơn hàng/đặt bàn, chỉ trả lời dữ liệu của user hiện tại có trong context.
 6. Với thanh toán/checkout, chỉ hướng dẫn khách tự thao tác, không tự tạo đơn/thanh toán.
 7. Với phàn nàn hoặc yêu cầu người thật, chuyển handoff ngắn gọn.
-8. Nếu thiếu dữ liệu, nói “mình chưa thấy trong dữ liệu hiện tại”, rồi gợi ý bước tiếp theo.
+8. Với ngữ cảnh “ăn nhậu”, chỉ tư vấn món ăn trong menu; không khuyến khích hoặc hướng dẫn sử dụng rượu bia.
+9. Nếu thiếu dữ liệu, nói “mình chưa thấy trong dữ liệu hiện tại”, rồi gợi ý bước tiếp theo.
 
 ## Cách dùng nút “Tạo tri thức tự động”
 
@@ -93,7 +98,7 @@ Thẻ (`tags`) nên ngắn và có thể tìm lại: `for you`, `bóng đá`, `n
 4. Kiểm tra từng gợi ý, sửa câu chữ nếu cần.
 5. Bấm **Duyệt** để chuyển gợi ý thành tri thức chatbot dùng được.
 
-Nút này tạo gợi ý từ dữ liệu nhà hàng, giờ mở cửa, đặt bàn, menu, thanh toán, khuyến mãi, giao hàng/mang đi. Khi có nguồn menu, hệ thống cũng sinh playbook gợi ý món khi xem bóng đá và gợi ý món khác theo For You.
+Nút này tạo gợi ý từ dữ liệu nhà hàng, giờ mở cửa, đặt bàn, menu, thanh toán, khuyến mãi, giao hàng/mang đi. Khi có nguồn menu, hệ thống cũng sinh playbook cho bóng đá, sinh nhật, ăn kèm/khai vị, tụ tập bạn bè, tiệc gia đình, liên hoan công ty và gợi ý món khác theo For You.
 
 ## Bộ tri thức nền nên import
 
@@ -117,6 +122,42 @@ Vào **Nhập / Xuất dữ liệu → Định dạng nhập: JSON**, dán mản
     "tags": ["gợi ý món", "bóng đá", "for you", "menu"],
     "enabled": true,
     "priority": 85,
+    "sourceType": "manual"
+  },
+  {
+    "title": "Playbook gợi ý món ăn kèm cho tiệc sinh nhật",
+    "content": "Khi khách hỏi món ăn kèm, khai vị hoặc món phụ cho tiệc sinh nhật, chatbot phải lấy món từ CONTEXT.recommendedMenuItems hoặc CONTEXT.menuItems. Ưu tiên món dễ chia sẻ, dễ ăn khi đứng/ngồi tiệc, ít dây bẩn, hợp nhóm, có thể là khai vị, snack, món chiên/nướng, món phụ, tráng miệng, đồ uống hoặc combo nếu dữ liệu có. Nên đưa 3-5 lựa chọn, mỗi món có lý do ngắn và action link /food/{id}. Không tự tạo set/combo nếu không có trong context.",
+    "category": "recommendation_playbook",
+    "tags": ["sinh nhật", "món ăn kèm", "khai vị", "tiệc"],
+    "enabled": true,
+    "priority": 85,
+    "sourceType": "manual"
+  },
+  {
+    "title": "Playbook gợi ý món cho buổi tụ tập bạn bè",
+    "content": "Khi khách nói tụ tập bạn bè, liên hoan, ăn nhậu hoặc cần món lai rai, chatbot chỉ tư vấn món ăn trong menu, không khuyến khích rượu bia. Ưu tiên món dễ chia, đậm vị, ăn kèm tốt, snack, món chiên/nướng, món khai vị, món ít cần dụng cụ và phù hợp nhóm. Nếu khách hỏi đồ uống, chỉ gợi ý đồ uống không cồn hoặc đồ uống có trong context một cách trung lập theo menu. Mỗi món cụ thể phải có source menuItem và link /food/{id} nếu có id.",
+    "category": "recommendation_playbook",
+    "tags": ["tụ tập", "ăn nhậu", "món ăn kèm", "nhóm"],
+    "enabled": true,
+    "priority": 85,
+    "sourceType": "manual"
+  },
+  {
+    "title": "Playbook gợi ý món cho tiệc gia đình",
+    "content": "Khi khách hỏi món cho tiệc gia đình, chatbot nên gợi ý cấu trúc bữa ăn cân bằng từ món có trong context: món chính, món dễ chia, món nhẹ/khai vị, món cho trẻ em nếu có, món ít cay cho người lớn tuổi và đồ uống/tráng miệng nếu phù hợp. Ưu tiên món phổ biến, đánh giá tốt, không quá kén khẩu vị. Nếu khách nêu số người hoặc ngân sách, lọc theo partySize/budget trước rồi mới xét rating và For You.",
+    "category": "recommendation_playbook",
+    "tags": ["tiệc gia đình", "nhóm", "trẻ em", "người lớn tuổi"],
+    "enabled": true,
+    "priority": 80,
+    "sourceType": "manual"
+  },
+  {
+    "title": "Playbook gợi ý món cho liên hoan công ty",
+    "content": "Khi khách hỏi món cho liên hoan công ty, họp nhóm hoặc team building, chatbot ưu tiên món dễ chia khẩu phần, trình bày gọn, ít rủi ro dị ứng, nhiều người ăn được, có thể đặt số lượng lớn nếu menu hỗ trợ. Nên gợi ý theo nhóm: món chính, món ăn kèm/khai vị, đồ uống, tráng miệng. Không cam kết phục vụ số lượng lớn nếu context không có chính sách; hãy gợi ý liên hệ nhân viên để xác nhận trước.",
+    "category": "recommendation_playbook",
+    "tags": ["liên hoan", "công ty", "nhóm", "món ăn kèm"],
+    "enabled": true,
+    "priority": 80,
     "sourceType": "manual"
   },
   {
@@ -266,6 +307,14 @@ Nguyên tắc không bịa dữ liệu món ăn,"Chỉ nói món, giá, trạng 
 - “Có món nào dưới 100k mà được đánh giá tốt không?”
 - “Tôi muốn món ăn nhanh, dễ ăn, không quá cay.”
 
+### Ngữ cảnh tiệc và món ăn kèm
+
+- “Gợi ý món ăn kèm cho tiệc sinh nhật.”
+- “Tụ tập bạn bè thì nên gọi món gì dễ chia?”
+- “Ăn nhậu thì có món nào lai rai ngon không?”
+- “Tiệc gia đình có trẻ em và người lớn tuổi thì nên gọi món gì?”
+- “Liên hoan công ty 10 người nên gọi món gì?”
+
 ### For You, khẩu vị, dị ứng
 
 - “Tôi không ăn cay, gợi ý món dễ ăn.”
@@ -296,6 +345,7 @@ Nguyên tắc không bịa dữ liệu món ăn,"Chỉ nói món, giá, trạng 
 - Không chứa thông tin cá nhân, mật khẩu, token, OTP, số thẻ.
 - Không hứa chắc chắn về dị ứng nếu dữ liệu món chưa đủ.
 - Không nói chatbot có thể tự đặt món/thanh toán.
+- Với “ăn nhậu”, chỉ tư vấn món ăn/menu, không khuyến khích rượu bia.
 - Có câu test tương ứng trong tab Kiểm thử.
 
 ## Khi nào cần sửa code thay vì nạp tri thức
