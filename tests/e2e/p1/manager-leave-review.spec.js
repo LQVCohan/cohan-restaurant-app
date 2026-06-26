@@ -200,8 +200,16 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
 };
 
 const openManagerLeavePage = async (page) => {
-  await page.goto("/manager?staffPage=leave#staff");
-  await expect(page.getByRole("heading", { name: /Quản Lý Nghỉ Phép/ })).toBeVisible();
+  await page.goto("/manager#staff");
+  await expect(page.locator(".staff-page-container")).toBeVisible();
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new CustomEvent("manager:navigation-query", {
+        detail: { page: "staff", query: { staffPage: "leave" }, source: "p1" },
+      }),
+    );
+  });
+  await expect(page.locator(".leave-list-container")).toBeVisible();
   await expect(page.getByText(STAFF_USER.fullName)).toBeVisible();
 };
 
