@@ -51,7 +51,7 @@ describe("CombosPage", () => {
     expect(await screen.findByText("Combo trưa")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Xem ưu đãi" })[0]);
     expect(screen.getByRole("dialog", { name: "Chi tiết Combo trưa" })).toBeInTheDocument();
-    expect(screen.getByText("Đây là combo ưu đãi: hệ thống chỉ áp dụng giảm giá ở bước thanh toán khi giỏ đủ điều kiện, không thêm như một bundle.")).toBeInTheDocument();
+    expect(screen.getByText("Ưu đãi này sẽ tự áp dụng ở bước thanh toán khi giỏ hàng đủ điều kiện.")).toBeInTheDocument();
   });
 
   it("sends people and budget filters to the query", async () => {
