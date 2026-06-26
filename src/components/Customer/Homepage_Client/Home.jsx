@@ -21,6 +21,7 @@ const getCurrentTimeSlot = () => {
 
 const CUSTOMER_SHORTCUTS = [
   { icon: "🎟️", tag: "Ưu đãi", title: "Kho Coupon", desc: "Xem ưu đãi đã lưu và dùng ngay khi đặt món.", path: "/coupons" },
+  { icon: "💳", tag: "Thanh toán", title: "Ví của tôi", desc: "Quản lý ví và kiểm tra tiện ích thanh toán nhanh.", path: "/wallet" },
   { icon: "🍱", tag: "Tiết kiệm", title: "Combo", desc: "Chọn nhanh các combo món ăn đang có trên hệ thống.", path: "/combos" },
   { icon: "✨", tag: "Cá nhân hóa", title: "Dành cho bạn", desc: "Món hợp khẩu vị, dựa trên thói quen gần đây.", path: "/for-you" },
   { icon: "📍", tag: "Gần nhất", title: "Gần bạn", desc: "Tìm nhà hàng thuận đường, quyết định nhanh hơn.", path: "/restaurants" },
