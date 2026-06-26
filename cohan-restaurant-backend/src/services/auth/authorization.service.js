@@ -66,6 +66,13 @@ const REVIEW_MANAGER_PERMISSIONS = [
   "review.analytics.read",
 ];
 
+const BACKUP_MANAGER_PERMISSIONS = [
+  "backup.read",
+  "backup.write",
+  "backup.export",
+  "backup.import",
+];
+
 const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
   manager: [
     "restaurant.read", "restaurant.write", "menu.read", "menu.write",
@@ -78,6 +85,7 @@ const LEGACY_ROLE_PERMISSION_MAP = Object.freeze({
     "coupon.read", "coupon.write", "customer.read", "customer.update", "role.read", "permission.read",
     ...AI_CHATBOT_MANAGER_PERMISSIONS,
     ...REVIEW_MANAGER_PERMISSIONS,
+    ...BACKUP_MANAGER_PERMISSIONS,
   ],
   hr: ["staff.read", "shift.read", "report.read", "attendance.read", "performance.read"],
   accountant: ["payment.read", "payment.write", "finance.read", "finance.write", "finance.export", "transaction.read", "transaction.write", "reconciliation.read", "reconciliation.write", "refund.read", "refund.write", "report.read", "report.export", "payroll.read"],
