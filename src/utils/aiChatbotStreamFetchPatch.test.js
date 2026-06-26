@@ -31,6 +31,7 @@ describe("aiChatbotStreamFetchPatch", () => {
       "event: delta",
       'data: {"text":"Mình gợi ý"}',
       "",
+      "",
     ].join("\n"));
 
     expect(parsed.events).toEqual([
