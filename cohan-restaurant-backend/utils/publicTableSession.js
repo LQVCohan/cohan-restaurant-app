@@ -33,13 +33,20 @@ function getTableAccessTokenIssuer() {
   return process.env.JWT_ISSUER || "foodhub-system";
 }
 
-function getTableAccessTokenExpiresIn() {
-  const expiresIn = process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN || "8h";
-  parseDurationMs(expiresIn, "8h");
+function normalizeTokenExpiresIn(value, fallback = "8h") {
+  const expiresIn = String(value || fallback).trim() || fallback;
+  parseDurationMs(expiresIn, fallback);
   return expiresIn;
 }
 
-export function signTableAccessToken({ restaurantId, tableId, tableCode } = {}) {
+function getTableAccessTokenExpiresIn(expiresIn) {
+  return normalizeTokenExpiresIn(
+    expiresIn || process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN,
+    "8h",
+  );
+}
+
+export function signTableAccessToken({ restaurantId, tableId, tableCode, expiresIn } = {}) {
   const normalizedRestaurantId = toIdString(restaurantId);
   const normalizedTableId = toIdString(tableId);
 
@@ -59,7 +66,7 @@ export function signTableAccessToken({ restaurantId, tableId, tableCode } = {}) 
   }
 
   return jwt.sign(payload, getTableAccessTokenSecret(), {
-    expiresIn: getTableAccessTokenExpiresIn(),
+    expiresIn: getTableAccessTokenExpiresIn(expiresIn),
     issuer: getTableAccessTokenIssuer(),
   });
 }
