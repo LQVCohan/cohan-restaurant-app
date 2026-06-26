@@ -69,6 +69,7 @@ const files = [
   "staffAttendanceRecord.graphql",
   "attendance_overtime.graphql",
   "staffSchedulingAssistant.graphql",
+  "staffResolverCompatibility.graphql",
   "audit_log.graphql",
   "systemSetting.graphql",
   "backup.graphql",
