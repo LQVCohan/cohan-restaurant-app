@@ -114,6 +114,17 @@ const makeManagerReplacementRequest = (overrides = {}) => makeLeaveRequest({
   ...overrides,
 });
 
+const makeSelfReviewRequest = (overrides = {}) => makeLeaveRequest({
+  id: "leave-self-review-p1",
+  employeeId: MANAGER_USER.id,
+  employeeName: MANAGER_USER.fullName,
+  employeeCode: "MG-001",
+  employeeRole: "Quản lý nhà hàng",
+  reason: "P1 self review must be hidden",
+  status: "PENDING",
+  ...overrides,
+});
+
 const filterLeaveRequests = (requests, filter = {}) => {
   const expectedStatus = filter?.status && filter.status !== "all" ? filter.status : null;
   return requests.filter((request) => {
@@ -252,7 +263,7 @@ const openManagerLeavePage = async (page) => {
     );
   });
   await expect(page.locator(".leave-list-container")).toBeVisible();
-  await expect(page.getByText(STAFF_USER.fullName).or(page.getByText(REQUESTING_MANAGER.fullName))).toBeVisible();
+  await expect(page.locator("tr.hover-row").first()).toBeVisible();
 };
 
 test.describe("P1 manager leave review", () => {
@@ -329,6 +340,18 @@ test.describe("P1 manager leave review", () => {
 
     expect(rejectOperations).toHaveLength(0);
     await expect(row).toContainText("Chờ duyệt");
+  });
+
+  test("manager cannot review own leave request from the UI", async ({ page, backendGuard }) => {
+    await installManagerLeaveMocks(page, [makeSelfReviewRequest()]);
+    await openManagerLeavePage(page);
+
+    const row = page.locator("tr.hover-row", { hasText: MANAGER_USER.fullName });
+    await expect(row).toContainText("Chờ duyệt");
+    await expect(row.locator(".btn-icon.approve")).toHaveCount(0);
+    await expect(row.locator(".btn-icon.reject")).toHaveCount(0);
+    await expect(row).toContainText("Theo dõi");
+    backendGuard.assertNoBackendErrors("manager self leave review actions hidden");
   });
 
   test("assigned manager confirms replacement without hidden backend errors", async ({ page, backendGuard }) => {
