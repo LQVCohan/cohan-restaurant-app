@@ -41,7 +41,6 @@ const RecipeSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   menuItemId: {
     type: mongoose.Schema.Types.ObjectId,
