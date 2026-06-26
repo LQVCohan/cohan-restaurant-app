@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const SOURCE_TYPES = ["manual", "faq", "policy"];
+const SOURCE_TYPES = ["manual", "faq", "policy", "suggestion"];
 
 const knowledgeSchema = new mongoose.Schema(
   {
