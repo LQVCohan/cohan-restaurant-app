@@ -236,9 +236,25 @@ const IGNORE_BANK_TRANSACTION = gql`
   }
 `;
 
+const pad2 = (value) => String(value).padStart(2, "0");
+
+export const toLocalDateInputValue = (date) => {
+  const d = date instanceof Date ? date : new Date(date);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+
+export const toGraphqlDateTime = (value, { endOfDay = false } = {}) => {
+  if (!value) return null;
+  const text = String(value).trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (match) return `${match[1]}-${match[2]}-${match[3]}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
 const today = new Date();
-const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+const monthStart = toLocalDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1));
+const monthEnd = toLocalDateInputValue(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 
 export const CASHFLOW_CATEGORIES = ["sale", "refund", "payroll", "inventory", "operations", "supplier_payment", "adjustment", "other"];
 export const CASHFLOW_SUBCATEGORIES = ["labor", "cogs", "rent", "utility", "maintenance", "marketing", "bank_fee", "tax", "etc", "other"];
@@ -270,8 +286,8 @@ export function useTransactions() {
   const variables = useMemo(() => {
     const base = {
       restaurantId,
-      dateFrom: filters.dateFrom || null,
-      dateTo: filters.dateTo || null,
+      dateFrom: toGraphqlDateTime(filters.dateFrom),
+      dateTo: toGraphqlDateTime(filters.dateTo, { endOfDay: true }),
       type: filters.type === "all" ? null : filters.type,
       category: filters.category || null,
       subcategory: filters.subcategory || null,
