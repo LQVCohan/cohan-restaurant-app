@@ -343,4 +343,43 @@ test.describe("P1 manager leave review", () => {
 
     await expect(row).toContainText("Đã duyệt");
   });
+
+  test("assigned manager confirms replacement then rejects leave without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerLeaveMocks(page, [makeManagerReplacementRequest({ id: "leave-replacement-reject-p1" })]);
+    await openManagerLeavePage(page);
+
+    const row = page.locator("tr.hover-row", { hasText: REQUESTING_MANAGER.fullName });
+    await expect(row).toContainText("Chờ quản lý thay thế xác nhận");
+
+    backendGuard.clear();
+    const confirmDialogPromise = page.waitForEvent("dialog");
+    await row.locator('button[title="Xác nhận thay thế"]').click();
+    const confirmDialog = await confirmDialogPromise;
+    expect(confirmDialog.message()).toContain("Đã xác nhận thay thế thành công");
+    await confirmDialog.accept();
+    backendGuard.assertNoBackendErrors("manager confirm replacement before rejection");
+    await expect(row).toContainText("Chờ duyệt");
+
+    backendGuard.clear();
+    const dialogMessages = [];
+    const handleDialog = async (dialog) => {
+      dialogMessages.push(dialog.message());
+      if (dialog.type() === "prompt") {
+        await dialog.accept("P1 từ chối sau khi xác nhận thay thế");
+        return;
+      }
+      await dialog.accept();
+    };
+    page.on("dialog", handleDialog);
+    try {
+      await row.locator(".btn-icon.reject").click();
+      await expect.poll(() => dialogMessages.some((message) => message.includes("Lý do từ chối"))).toBe(true);
+      await expect.poll(() => dialogMessages.some((message) => message.includes("Từ chối đơn thành công"))).toBe(true);
+    } finally {
+      page.off("dialog", handleDialog);
+    }
+    backendGuard.assertNoBackendErrors("manager reject confirmed replacement leave request");
+
+    await expect(row).toContainText("Từ chối");
+  });
 });
