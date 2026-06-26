@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -8,6 +8,7 @@ import { formatPrice } from "@/utils/formatters";
 import "./TableCurrentSessionPage.scss";
 
 const INVALID_TABLE_LINK_MESSAGE = "Link bàn không hợp lệ hoặc đã hết hạn.";
+const TABLE_SESSION_POLL_MS = 12000;
 
 const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
   query PublicActiveTableSessionOrders($restaurantId: ID!, $tableId: ID!, $token: String!) {
@@ -117,6 +118,16 @@ const formatStatusLabel = (status) => {
   return labels[normalized] || (normalized ? normalized.replace(/_/g, " ") : "Đang xử lý");
 };
 
+const getStatusTone = (status) => {
+  const normalized = String(status || "").trim().toLowerCase();
+
+  if (["served", "completed"].includes(normalized)) return "success";
+  if (["ready"].includes(normalized)) return "ready";
+  if (["preparing", "confirmed"].includes(normalized)) return "progress";
+  if (["cancelled", "failed"].includes(normalized)) return "danger";
+  return "pending";
+};
+
 const getPublicTableErrorText = (inputError) => {
   const message = String(inputError?.message || "").trim();
 
@@ -164,10 +175,17 @@ const normalizeBatchOrders = (orders = []) => {
     });
 };
 
+const formatLastUpdated = (value) => {
+  if (!value) return "Chưa cập nhật";
+  return value.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+};
+
 const TableCurrentSessionPage = () => {
   const { restaurantId, tableId } = useParams();
   const [searchParams] = useSearchParams();
   const [feedback, setFeedback] = useState(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const tableAccessToken = useMemo(
     () => String(searchParams.get("token") || "").trim(),
@@ -185,6 +203,8 @@ const TableCurrentSessionPage = () => {
     variables: { restaurantId, tableId, token: tableAccessToken },
     skip: !hasRouteParams || !hasTableAccessToken,
     fetchPolicy: "cache-and-network",
+    pollInterval: TABLE_SESSION_POLL_MS,
+    notifyOnNetworkStatusChange: true,
   });
 
   const [requestTablePayment, { loading: requestingPayment }] = useMutation(
@@ -195,6 +215,14 @@ const TableCurrentSessionPage = () => {
   );
 
   const tableSessionData = data?.publicActiveTableSessionOrders || null;
+  const isRefreshingTable = loading && Boolean(tableSessionData);
+
+  useEffect(() => {
+    if (tableSessionData) {
+      setLastUpdatedAt(new Date());
+    }
+  }, [tableSessionData]);
+
   const batchOrders = useMemo(
     () => normalizeBatchOrders(tableSessionData?.orders || []),
     [tableSessionData?.orders],
@@ -228,6 +256,30 @@ const TableCurrentSessionPage = () => {
     token: tableAccessToken,
     note,
   });
+
+  const handleManualRefresh = async () => {
+    if (!hasTableAccessToken) {
+      setFeedback({
+        type: "error",
+        text: INVALID_TABLE_LINK_MESSAGE,
+      });
+      return;
+    }
+
+    setManualRefreshing(true);
+
+    try {
+      await refetch();
+      setFeedback(null);
+    } catch (refreshError) {
+      setFeedback({
+        type: "error",
+        text: getPublicTableErrorText(refreshError),
+      });
+    } finally {
+      setManualRefreshing(false);
+    }
+  };
 
   const handleRequestPayment = async () => {
     if (!hasTableAccessToken) {
@@ -355,12 +407,28 @@ const TableCurrentSessionPage = () => {
                 ? `Bàn ${tableSessionData.tableCode}`
                 : `Bàn ${tableId}`}
             </h1>
+            <p className="customer-table-session-page__live-note">
+              Tự động cập nhật trạng thái món mỗi 12 giây. Cập nhật gần nhất: {formatLastUpdated(lastUpdatedAt)}.
+            </p>
           </div>
-          {paymentRequested && (
-            <span className="customer-table-session-page__badge">
-              Đã gọi thanh toán
+          <div className="customer-table-session-page__header-actions">
+            <span className={`customer-table-session-page__live-pill ${isRefreshingTable ? "is-refreshing" : ""}`}>
+              {isRefreshingTable ? "Đang cập nhật" : "Live"}
             </span>
-          )}
+            {paymentRequested && (
+              <span className="customer-table-session-page__badge">
+                Đã gọi thanh toán
+              </span>
+            )}
+            <button
+              type="button"
+              className="customer-table-session-page__refresh-btn"
+              onClick={handleManualRefresh}
+              disabled={manualRefreshing || requestingPayment || callingStaff}
+            >
+              {manualRefreshing ? "Đang làm mới..." : "Làm mới"}
+            </button>
+          </div>
         </header>
 
         {feedback && (
@@ -386,7 +454,7 @@ const TableCurrentSessionPage = () => {
                       <h2>{`Đợt ${index + 1}`}</h2>
                       <p>{order.orderCode || `BATCH-${index + 1}`}</p>
                     </div>
-                    <span className="customer-table-session-page__status-pill">
+                    <span className={`customer-table-session-page__status-pill customer-table-session-page__status-pill--${getStatusTone(order.currentStatus)}`}>
                       {formatStatusLabel(order.currentStatus)}
                     </span>
                   </div>
@@ -403,7 +471,11 @@ const TableCurrentSessionPage = () => {
                             <span>Số lượng: {item.quantity}</span>
                             {item.unit && <span>Đơn vị: {item.unit}</span>}
                             {item.servingKey && <span>Phần: {item.servingKey}</span>}
-                            {item.status && <span>Trạng thái: {formatStatusLabel(item.status)}</span>}
+                            {item.status && (
+                              <span className={`customer-table-session-page__item-status customer-table-session-page__item-status--${getStatusTone(item.status)}`}>
+                                Trạng thái: {formatStatusLabel(item.status)}
+                              </span>
+                            )}
                           </div>
                           {item.note && (
                             <p className="customer-table-session-page__item-note">
