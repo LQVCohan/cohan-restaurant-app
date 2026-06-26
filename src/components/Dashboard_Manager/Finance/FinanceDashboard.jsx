@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Calendar, Download, RefreshCw, Route } from "lucide-react";
 import "./FinanceDashboard.scss";
 import "./FinanceDashboardPolish.scss";
+import "./FinanceDashboardPolishPriority.scss";
 import { FinanceStats, RevenueChart, ReceivableDebts } from "./FinanceComponents";
 import { useFinance } from "@/hooks/useFinance";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
