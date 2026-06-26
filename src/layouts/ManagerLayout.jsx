@@ -40,6 +40,7 @@ const ManagerRestaurantInfoManagement = lazy(() => import("@/components/Dashboar
 const AiHandoffInbox = lazy(() => import("@/components/communication/AiHandoffInbox"));
 
 const MANAGER_CANONICAL_PATH = "/manager";
+const BACKUP_PAGE_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard", "tables", "table-qr", "orders", "menu", "combos", "inventory", "staff", "customers",
@@ -92,7 +93,7 @@ const MANAGER_PAGE_PERMISSION_ACCESS = {
   settings: ["system.manage"],
   rates: ["system.manage"],
   setting: ["system.manage"],
-  backup: ["system.manage"],
+  backup: BACKUP_PAGE_PERMISSIONS,
   "print-management": ["print.read", "report.read"],
   rbac: ["role.read", "permission.read", "staff.write"],
   "system-users": ["system.manage"],
@@ -125,7 +126,7 @@ const PAGE_CONFIG = {
   promotions: page("Khuyến mãi", "Quản lý campaign, coupon, điều kiện và thời gian hiệu lực", "🎁", ["promotion", "coupon", "discount", "khuyến mãi"]),
   payroll: page("Bảng lương", "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên", "💼", ["payroll", "salary", "lương", "thưởng", "khấu trừ"]),
   reviews: page("Đánh giá khách hàng", "Xem đánh giá, phản hồi và kiểm duyệt nội dung review", "⭐", ["review", "đánh giá", "rating", "feedback"]),
-  "print-management": page("Quản lý in ấn", "Cấu hình máy in, mẫu in, hàng đợi và retry print job", "🖨️", ["print", "máy in", "phiếu bếp", "queue"]),
+  "print-management": page("Quản lý in ấn", "Cấu hình máy in, mẫu in, hàng đợi và gửi lại lệnh in lỗi", "🖨️", ["print", "máy in", "phiếu bếp", "hàng đợi"]),
   "restaurant-info-management": page("Thông tin nhà hàng", "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ", "🏪", ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"]),
   rbac: page("Phân quyền nhân viên", "Quản lý vai trò, quyền hạn và gán vai trò cho nhân viên", "🛡️", ["phân quyền", "vai trò", "quyền hạn", "rbac", "nhân viên"]),
   "system-users": page("Quản lý người dùng hệ thống", "Quản lý Admin, Manager và các tài khoản không thuộc nhóm Staff", "👤", ["admin", "manager", "người dùng", "tài khoản", "system user", "khóa tài khoản"]),
@@ -136,7 +137,7 @@ const PAGE_CONFIG = {
   settings: page("Cài đặt hệ thống", "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", "⚙️", ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"]),
   rates: page("Cài đặt hệ thống", "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", "⚙️", ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"]),
   setting: page("Cài đặt hệ thống", "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", "⚙️", ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"]),
-  backup: page("Sao lưu & khôi phục", "Checklist sao lưu dữ liệu, đối soát và điều hướng xuất báo cáo", "🗄️", ["backup", "sao lưu", "khôi phục", "export", "báo cáo"]),
+  backup: page("Sao lưu & khôi phục", "Sao lưu cấu hình, xem trước thay đổi và khôi phục an toàn", "🗄️", ["backup", "sao lưu", "khôi phục", "export", "cấu hình"]),
 };
 
 const PermissionFallback = () => <div className="manager-page-shell__empty">Bạn không có quyền truy cập chức năng này.</div>;
