@@ -12,6 +12,7 @@ import useGsapHomeMotion from "./hooks/useGsapHomeMotion";
 import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
 import "../../../styles/Homepage/HomePremiumPolish.scss";
+import "../../../styles/Homepage/HomeShortcutsBento.scss";
 
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
