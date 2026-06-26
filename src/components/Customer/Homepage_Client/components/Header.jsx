@@ -54,8 +54,7 @@ const countActiveRows = (rows, statusKey = "status", activeSet) =>
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, restaurants = [], refRestaurant = [] } =
-    useContext(AuthContext) || {};
+  const { user, logout } = useContext(AuthContext) || {};
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [lang, setLang] = useState("vi");
 
@@ -92,17 +91,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   }, [dropdownCountData]);
 
   const userMenuRef = useRef(null);
-  const couponRestaurantId = useMemo(() => {
-    const restaurant = [...restaurants, ...refRestaurant].find(Boolean);
-    if (!restaurant) return "";
-    return String(
-      restaurant.id || restaurant._id || restaurant.restaurantId || restaurant,
-    ).trim();
-  }, [restaurants, refRestaurant]);
-
-  const couponPath = couponRestaurantId
-    ? `/coupons/${couponRestaurantId}`
-    : "/coupons";
 
 
   const goto = (path) => {
@@ -232,7 +220,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     </button>
                     <button
                       className="header__menu-item"
-                      onClick={() => goto(couponPath)}
+                      onClick={() => goto("/coupons")}
                     >
                       <span className="header__item-label">🎟️ Kho Coupon</span>
                       {counts.coupons > 0 && (
