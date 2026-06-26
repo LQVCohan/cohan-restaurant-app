@@ -1,0 +1,42 @@
+.finance-dashboard.finance-dashboard--polished {
+  &.finance-dashboard {
+    min-height: calc(100vh - 118px);
+  }
+
+  .page-header.finance-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 0.96fr);
+    align-items: stretch;
+  }
+
+  .page-header.finance-hero .header-actions.finance-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    align-items: stretch;
+  }
+
+  .page-header.finance-hero .header-actions.finance-toolbar .btn-secondary,
+  .page-header.finance-hero .header-actions.finance-toolbar .btn-primary {
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    border-radius: 14px;
+  }
+
+  .page-header.finance-hero .header-actions.finance-toolbar .btn-primary {
+    border-color: #2f756c;
+    background: linear-gradient(180deg, #2f756c, #1f5d55);
+    color: #ffffff;
+  }
+}
+
+@media (max-width: 900px) {
+  .finance-dashboard.finance-dashboard--polished {
+    .page-header.finance-hero,
+    .page-header.finance-hero .header-actions.finance-toolbar {
+      grid-template-columns: 1fr;
+    }
+  }
+}
