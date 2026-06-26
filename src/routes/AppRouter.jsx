@@ -165,6 +165,7 @@ const AppRouter = () => (
     <Route path="/staff" element={withPrivateRoute(<Navigate to="/staff/dashboard" replace />, STAFF_SHARED_ROLES)} />
     <Route path="/staff/dashboard" element={withPrivateRoute(withStaffLayout(<StaffDashboardPage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/orders" element={withPrivateRoute(withStaffLayout(<StaffOrdering />), STAFF_ORDER_ROLES)} />
+    <Route path="/staff/reservation-changes" element={withPrivateRoute(withStaffLayout(<ReservationChangeReviewPage />), STAFF_ORDER_ROLES)} />
     <Route path="/staff/kitchen" element={withPrivateRoute(withStaffLayout(<StaffKitchenPage />), STAFF_KITCHEN_ROLES)} />
     <Route path="/staff/performance" element={withPrivateRoute(withStaffLayout(<StaffPerformancePage />), STAFF_SHARED_ROLES)} />
     <Route path="/staff/schedule" element={withPrivateRoute(withStaffLayout(<StaffSchedulePage />), STAFF_SHARED_ROLES)} />
@@ -189,7 +190,7 @@ const AppRouter = () => (
     <Route path="/settings" element={withPrivateRoute(<Navigate to="/manager#settings" replace />, ["admin"])} />
     <Route path="/employees" element={withPrivateRoute(<Navigate to="/manager#staff" replace />, ["admin", "manager"])} />
     <Route path="/inventory" element={withPrivateRoute(<Navigate to="/manager#inventory" replace />, ["admin", "manager"])} />
-    <Route path="/reservations" element={withPrivateRoute(<Navigate to="/manager#tables" replace />, ["admin", "manager"])} />
+    <Route path="/reservations" element={withPrivateRoute(<ManagerLayout><ReservationChangeReviewPage /></ManagerLayout>, ["admin", "manager"])} />
     <Route path="/promotions" element={withPrivateRoute(<Navigate to="/manager#promotions" replace />, ["admin", "manager"])} />
     <Route path="/analytics" element={withPrivateRoute(<Navigate to="/manager#analytics" replace />, ["admin", "manager"])} />
 
