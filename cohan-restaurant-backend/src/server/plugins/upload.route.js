@@ -17,6 +17,7 @@ import {
   shouldKeepAiInputFilesForResult as shouldKeepAiInputFilesForGenerationResult,
 } from "../../services/table3d/table3dAiGeneration.service.js";
 import { verifyAnyTokenAndIssueAuth } from "../../services/auth/accountVerification.service.js";
+import { handleRestaurantChatbotMessage } from "../../services/ai/restaurantChatbot.service.js";
 
 const MAX_FILE_SIZE_BYTES = Number.parseInt(
   process.env.UPLOAD_MAX_FILE_SIZE_BYTES || `${10 * 1024 * 1024}`,
@@ -352,6 +353,24 @@ const buildSignedPutUrl = ({ s3, key, mimeType }) => {
   return signedUrl.toString();
 };
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const writeSseEvent = (stream, event, payload) => {
+  stream.write(`event: ${event}\n`);
+  stream.write(`data: ${JSON.stringify(payload || {})}\n\n`);
+};
+
+const streamTextChunks = async ({ stream, event = "delta", text, isClosed }) => {
+  const value = String(text || "");
+  const chunkSize = Number.parseInt(process.env.AI_CHATBOT_STREAM_CHUNK_SIZE || "36", 10);
+  const delayMs = Number.parseInt(process.env.AI_CHATBOT_STREAM_DELAY_MS || "12", 10);
+  for (let index = 0; index < value.length; index += Math.max(8, chunkSize)) {
+    if (isClosed()) return;
+    writeSseEvent(stream, event, { text: value.slice(index, index + Math.max(8, chunkSize)) });
+    if (delayMs > 0) await wait(delayMs);
+  }
+};
+
 export default fp(
   async function uploadRoutes(app) {
     app.post("/auth/verify-account", {
@@ -378,6 +397,69 @@ export default fp(
           code,
           message: err?.message || "Verification failed",
         });
+      }
+    });
+
+    app.post("/ai/chatbot/stream", {
+      config: {
+        rateLimit: {
+          max: Number(process.env.RL_AI_CHATBOT_STREAM_MAX || 60),
+          timeWindow: process.env.RL_AI_CHATBOT_STREAM_WINDOW || "1 minute",
+        },
+      },
+    }, async function (req, reply) {
+      let closed = false;
+      req.raw.on("close", () => {
+        closed = true;
+      });
+
+      reply.hijack();
+      const stream = reply.raw;
+      stream.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+
+      const heartbeat = setInterval(() => {
+        if (!closed) stream.write(": ping\n\n");
+      }, 15000);
+
+      try {
+        const body = req.body || {};
+        writeSseEvent(stream, "status", { message: "AI đã nhận câu hỏi" });
+        const authUser = await resolveAuthenticatedUserFromRequest(req).catch(() => null);
+        writeSseEvent(stream, "status", { message: "AI đang kiểm tra ngữ cảnh" });
+        const result = await handleRestaurantChatbotMessage({
+          message: body.message,
+          restaurantId: body.restaurantId,
+          history: Array.isArray(body.history) ? body.history : [],
+          guestId: body.guestId,
+          conversationId: body.conversationId,
+          pageContext: body.pageContext || {},
+          user: authUser || null,
+          clientIp: req.ip || "",
+        });
+
+        if (closed) return;
+        writeSseEvent(stream, "status", { message: "AI đang trả lời" });
+        await streamTextChunks({
+          stream,
+          text: result?.answer || "",
+          isClosed: () => closed,
+        });
+        if (!closed) writeSseEvent(stream, "done", result);
+      } catch (err) {
+        if (!closed) {
+          writeSseEvent(stream, "error", {
+            message: err?.message || "Không thể xử lý tin nhắn chatbot",
+            code: err?.code || "AI_CHATBOT_STREAM_FAILED",
+          });
+        }
+      } finally {
+        clearInterval(heartbeat);
+        if (!closed) stream.end();
       }
     });
 
