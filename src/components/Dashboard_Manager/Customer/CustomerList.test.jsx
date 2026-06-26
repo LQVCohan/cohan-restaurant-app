@@ -91,7 +91,7 @@ describe("CustomerList manager workflow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /card nguyễn linh/i }));
 
-    expect(screen.getAllByText("Trang 1/1 • 1-2 / 2 khách")).toHaveLength(2);
+    expect(screen.getByText("Hiển thị 1-2 / 2 khách")).toBeInTheDocument();
     expect(onCustomerClick).toHaveBeenCalledWith(customers[0]);
   });
 
@@ -141,7 +141,8 @@ describe("CustomerList manager workflow", () => {
       />,
     );
 
-    expect(screen.getAllByText("Trang 3/8 • 21-21 / 67 khách")).toHaveLength(2);
+    expect(screen.getAllByText("Hiển thị 21-21 / 67 khách")).toHaveLength(2);
+    expect(screen.getAllByText(/Trang\s+2\s+\/\s+4/)).toHaveLength(2);
 
     const topPager = screen.getAllByLabelText("Phân trang khách hàng")[0];
     fireEvent.click(within(topPager).getByRole("button", { name: /trước/i }));
@@ -149,6 +150,6 @@ describe("CustomerList manager workflow", () => {
 
     expect(pagination.onPrevious).toHaveBeenCalledTimes(1);
     expect(pagination.onNext).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("9/trang")).toBeInTheDocument();
+    expect(screen.getByText("20/trang")).toBeInTheDocument();
   });
 });
