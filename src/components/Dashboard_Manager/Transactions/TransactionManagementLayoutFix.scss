@@ -1,0 +1,71 @@
+.transactions-page--polished {
+  .tx-context-pills span {
+    white-space: nowrap;
+  }
+
+  .tx-panel .table-responsive {
+    padding: 14px;
+    background: rgba(255, 253, 248, 0.34);
+  }
+
+  .tx-panel .clean-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+  }
+
+  .tx-panel .clean-table th,
+  .tx-panel .clean-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(133, 108, 74, 0.12);
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .tx-panel .clean-table th {
+    color: #68766f;
+    font-size: 0.74rem;
+    font-weight: 880;
+    letter-spacing: 0.015em;
+  }
+
+  .tx-panel .clean-table td {
+    color: #1f2d2a;
+    font-size: 0.84rem;
+    font-weight: 760;
+  }
+
+  .tx-panel .clean-table th:nth-child(1),
+  .tx-panel .clean-table td:nth-child(1) {
+    width: 92px;
+  }
+
+  .tx-panel .clean-table th:nth-child(2),
+  .tx-panel .clean-table td:nth-child(2) {
+    width: 34%;
+    white-space: normal;
+  }
+
+  .tx-panel .clean-table th:nth-child(4),
+  .tx-panel .clean-table td:nth-child(4) {
+    text-align: right;
+  }
+
+  .tx-panel .clean-table .text-center,
+  .tx-panel .clean-table .text-muted {
+    text-align: center;
+    color: #68766f;
+  }
+}
+
+@media (max-width: 900px) {
+  .transactions-page--polished {
+    .tx-panel .table-responsive {
+      padding: 10px;
+      overflow-x: auto;
+    }
+  }
+}
