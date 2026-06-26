@@ -167,6 +167,9 @@ test.describe("P1 staff leave self-service", () => {
     backendGuard.assertNoBackendErrors("staff leave create request");
 
     await expect(modal).toBeHidden();
-    await expect(page.getByText("P1 xin nghỉ phép tự phục vụ")).toBeVisible();
+    const createdRow = page.locator("tr.hover-row", { hasText: STAFF_USER.fullName });
+    await expect(createdRow).toBeVisible();
+    await expect(createdRow).toContainText("Nghỉ năm");
+    await expect(createdRow).toContainText("Chờ duyệt");
   });
 });
