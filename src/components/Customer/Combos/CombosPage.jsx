@@ -50,7 +50,7 @@ const filters = {
   budget: [
     ["", "Ngân sách"], ["under_100k", "dưới 100k"], ["100k_200k", "100k-200k"], ["200k_400k", "200k-400k"], ["unlimited", "không giới hạn"],
   ],
-  sourceType: [["", "tất cả"], ["COMBO", "combo cố định"], ["PROMOTION", "combo ưu đãi"]],
+  sourceType: [["", "tất cả"], ["COMBO", "combo trọn gói"], ["PROMOTION", "ưu đãi thanh toán"]],
 };
 
 const normalizeFilter = (filter) => Object.fromEntries(
@@ -104,7 +104,7 @@ export default function CombosPage() {
     try {
       await addComboToCartMutation({ variables: { comboId: combo.id, quantity: 1 } });
       await refetchServerCart?.();
-      showNotification("Đã thêm combo bundle vào giỏ.", "success");
+      showNotification("Đã thêm combo vào giỏ.", "success");
     } catch (err) {
       showNotification(err?.message || "Không thể thêm combo vào giỏ.", "error");
     } finally {
@@ -120,12 +120,12 @@ export default function CombosPage() {
       <article className={`combo-card${featuredCard ? " combo-card--featured" : ""} ${bundle ? "combo-card--bundle" : "combo-card--promotion"}`} key={`${combo.sourceType}-${combo.id}`}>
         <div className="combo-card__image-wrap">
           <img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} className="combo-card__image" loading="lazy" />
-          <span className="combo-card__badge">{combo.badge || (bundle ? "Combo cố định" : "Ưu đãi combo")}</span>
+          <span className="combo-card__badge">{combo.badge || (bundle ? "Combo trọn gói" : "Ưu đãi thanh toán")}</span>
           {combo.discountAmount > 0 && <span className="combo-card__saving-flag">- {money(combo.discountAmount)}đ</span>}
         </div>
         <div className="combo-card__body">
           <div className="combo-card__meta-row">
-            <p className="combo-card__eyebrow">{bundle ? "Combo bundle" : "Ưu đãi checkout"}</p>
+            <p className="combo-card__eyebrow">{bundle ? "Combo trọn gói" : "Ưu đãi khi thanh toán"}</p>
             <span>{itemCount || combo.items?.length || 0} món</span>
           </div>
           <h3>{combo.name}</h3>
@@ -140,7 +140,7 @@ export default function CombosPage() {
           {bundle ? (
             combo.discountAmount > 0 && <p className="combo-card__save">Tiết kiệm {money(combo.discountAmount)}đ so với gọi lẻ</p>
           ) : (
-            <p className="combo-card__save combo-card__save--notice">Ưu đãi sẽ được tính ở bước thanh toán khi giỏ đủ điều kiện.</p>
+            <p className="combo-card__save combo-card__save--notice">Ưu đãi sẽ tự áp dụng ở bước thanh toán khi giỏ hàng đủ điều kiện.</p>
           )}
           <div className="combo-card__actions">
             <button type="button" className="combo-card__secondary" onClick={() => setSelectedCombo(combo)}>{bundle ? "Xem combo" : "Xem ưu đãi"}</button>
@@ -166,7 +166,7 @@ export default function CombosPage() {
         <div className="combos-hero__content">
           <span className="combos-hero__label">Cohan combo</span>
           <h1 id="combos-title">Combo tiết kiệm hôm nay</h1>
-          <p>Combo cố định được thêm vào giỏ như một bundle riêng. Combo ưu đãi chỉ là điều kiện giảm giá và sẽ được tính ở bước thanh toán.</p>
+          <p>Chọn combo trọn gói để thêm nhanh vào giỏ, hoặc dùng ưu đãi thanh toán khi đơn hàng đủ điều kiện.</p>
           <div className="combos-hero__actions">
             <a href="#combo-results" className="combos-hero__primary">Xem combo</a>
             <Link className="combos-hero__link" to="/restaurants">Xem nhà hàng</Link>
@@ -183,7 +183,7 @@ export default function CombosPage() {
           </div>
           <div>
             <span>{comboOnlyCount}/{promotionCount}</span>
-            <small>bundle / ưu đãi</small>
+            <small>trọn gói / ưu đãi</small>
           </div>
         </aside>
       </section>
@@ -212,13 +212,13 @@ export default function CombosPage() {
       <section className="combos-curation" aria-label="Gợi ý chọn combo">
         <article>
           <span>01</span>
-          <strong>Bundle thật</strong>
-          <p>Combo cố định được giữ thành một dòng riêng trong giỏ và hóa đơn.</p>
+          <strong>Combo trọn gói</strong>
+          <p>Thêm cả set món vào giỏ chỉ với một lần bấm.</p>
         </article>
         <article>
           <span>02</span>
           <strong>Ưu đãi rõ ràng</strong>
-          <p>Combo promotion chỉ là điều kiện giảm giá ở checkout, không thêm sai như bundle.</p>
+          <p>Ưu đãi thanh toán sẽ tự tính khi giỏ hàng đủ điều kiện.</p>
         </article>
         <article>
           <span>03</span>
@@ -230,9 +230,9 @@ export default function CombosPage() {
       <div id="combo-results" />
       {loading && !combos.length ? <SkeletonGrid /> : error ? (
         <section className="combos-state combos-state--error" role="alert">
-          <span className="combos-state__mark">Không tải được dữ liệu</span>
+          <span className="combos-state__mark">Tạm thời chưa tải được</span>
           <h2>Combo chưa sẵn sàng để hiển thị</h2>
-          <p>Backend hoặc dữ liệu seed combo có thể chưa chạy. Thử tải lại sau khi kiểm tra server GraphQL.</p>
+          <p>Vui lòng thử lại sau vài phút hoặc khám phá các nhà hàng đang mở.</p>
           <div className="combos-state__actions">
             <button type="button" onClick={() => refetch()}>Thử lại</button>
             <Link to="/restaurants">Xem nhà hàng</Link>
@@ -244,7 +244,7 @@ export default function CombosPage() {
             <div className="combos-section__heading">
               <span>Combo nổi bật</span>
               <h2>Set món đáng thử</h2>
-              <p>Ưu tiên combo đang có mức tiết kiệm tốt và dễ kiểm tra điều kiện trước khi chọn món.</p>
+              <p>Ưu tiên combo có mức tiết kiệm tốt và dễ kiểm tra điều kiện trước khi chọn món.</p>
             </div>
             <div className={`combos-featured ${featured.length === 1 ? "combos-featured--single" : ""}`}>
               {featured.map((combo) => renderCard(combo, true))}
@@ -252,7 +252,7 @@ export default function CombosPage() {
                 <aside className="combos-section__helper" aria-label="Gợi ý sử dụng combo">
                   <span>Gợi ý nhanh</span>
                   <h3>Đọc nhãn trước khi thêm vào giỏ</h3>
-                  <p><strong>Combo bundle</strong> sẽ vào giỏ như một dòng combo riêng. <strong>Ưu đãi checkout</strong> chỉ giảm giá khi bạn chọn đủ món điều kiện.</p>
+                  <p><strong>Combo trọn gói</strong> sẽ vào giỏ như một set món riêng. <strong>Ưu đãi thanh toán</strong> chỉ giảm giá khi bạn chọn đủ món điều kiện.</p>
                   <Link to="/restaurants">Xem thêm nhà hàng</Link>
                 </aside>
               )}
@@ -273,7 +273,7 @@ export default function CombosPage() {
         <section className="combos-state">
           <span className="combos-state__mark">Bộ sưu tập trống</span>
           <h2>Chưa có combo phù hợp</h2>
-          <p>Bạn có thể xem nhà hàng hoặc để AI gợi ý món tương tự trong lúc quản lý cập nhật combo mới.</p>
+          <p>Bạn có thể xem nhà hàng hoặc quay lại sau khi có combo mới.</p>
           <div className="combos-state__actions"><Link to="/restaurants">Xem nhà hàng</Link><button type="button" onClick={clearFilters}>Xóa bộ lọc</button></div>
         </section>
       )}
@@ -296,14 +296,14 @@ function ComboModal({ combo, onClose, onAdd, isAdding }) {
         <button type="button" className="combo-modal__close" aria-label="Đóng chi tiết combo" onClick={onClose}>×</button>
         <div className="combo-modal__media"><img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} /><span>{combo.badge || (bundle ? "Combo" : "Ưu đãi")}</span></div>
         <div className="combo-modal__content">
-          <span className="combo-modal__eyebrow">{bundle ? "Combo bundle" : "Ưu đãi checkout"}</span>
+          <span className="combo-modal__eyebrow">{bundle ? "Combo trọn gói" : "Ưu đãi thanh toán"}</span>
           <h2>{combo.name}</h2>
           <p>{combo.restaurantName || "Nhà hàng đang cập nhật"}</p>
           {combo.description && <p>{combo.description}</p>}
           <ul>{(combo.items || []).map((item) => <li key={`${item.menuItemId || item.name}-modal`}><strong>{item.qty}× {item.name}</strong>{item.price ? <em>{money(item.price)}đ</em> : null}</li>)}</ul>
           <div className="combo-modal__total"><strong>{money(combo.comboPrice ?? combo.originalPrice)}đ</strong>{combo.discountAmount > 0 && <span>Tiết kiệm {money(combo.discountAmount)}đ</span>}</div>
           <p className="combo-modal__note">
-            {bundle ? "Combo này sẽ được thêm vào giỏ như một bundle riêng." : "Đây là combo ưu đãi: hệ thống chỉ áp dụng giảm giá ở bước thanh toán khi giỏ đủ điều kiện, không thêm như một bundle."}
+            {bundle ? "Combo này sẽ được thêm vào giỏ như một set món riêng." : "Ưu đãi này sẽ tự áp dụng ở bước thanh toán khi giỏ hàng đủ điều kiện."}
           </p>
           <div className="combo-modal__actions">
             {combo.restaurantId && <Link to={`/restaurant/${combo.restaurantId}`}>{bundle ? "Đến nhà hàng" : "Chọn món đủ điều kiện"}</Link>}
