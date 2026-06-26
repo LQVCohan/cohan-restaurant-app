@@ -1,0 +1,104 @@
+.customer-analytics-page {
+  --customer-scroll-thumb: rgba(47, 117, 108, 0.38);
+  --customer-scroll-track: rgba(233, 245, 241, 0.52);
+
+  .customer-analytics-panels,
+  .customer-insight-grid {
+    align-items: stretch;
+  }
+
+  .customer-panel {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .customer-panel__head {
+    flex: 0 0 auto;
+  }
+
+  .customer-dish-list,
+  .customer-day-list,
+  .customer-segment-list,
+  .customer-risk-list,
+  .customer-value-list,
+  .customer-cohort-list,
+  .customer-recommendation-list {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    padding-bottom: 2px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--customer-scroll-thumb) var(--customer-scroll-track);
+  }
+
+  .customer-dish-list,
+  .customer-day-list {
+    max-height: clamp(260px, 38vh, 372px);
+  }
+
+  .customer-segment-list,
+  .customer-cohort-list {
+    max-height: clamp(220px, 32vh, 336px);
+  }
+
+  .customer-risk-list,
+  .customer-value-list {
+    max-height: clamp(318px, 48vh, 520px);
+  }
+
+  .customer-panel--full .customer-recommendation-list {
+    max-height: clamp(220px, 34vh, 360px);
+  }
+
+  .customer-dish-list::-webkit-scrollbar,
+  .customer-day-list::-webkit-scrollbar,
+  .customer-segment-list::-webkit-scrollbar,
+  .customer-risk-list::-webkit-scrollbar,
+  .customer-value-list::-webkit-scrollbar,
+  .customer-cohort-list::-webkit-scrollbar,
+  .customer-recommendation-list::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .customer-dish-list::-webkit-scrollbar-track,
+  .customer-day-list::-webkit-scrollbar-track,
+  .customer-segment-list::-webkit-scrollbar-track,
+  .customer-risk-list::-webkit-scrollbar-track,
+  .customer-value-list::-webkit-scrollbar-track,
+  .customer-cohort-list::-webkit-scrollbar-track,
+  .customer-recommendation-list::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: var(--customer-scroll-track);
+  }
+
+  .customer-dish-list::-webkit-scrollbar-thumb,
+  .customer-day-list::-webkit-scrollbar-thumb,
+  .customer-segment-list::-webkit-scrollbar-thumb,
+  .customer-risk-list::-webkit-scrollbar-thumb,
+  .customer-value-list::-webkit-scrollbar-thumb,
+  .customer-cohort-list::-webkit-scrollbar-thumb,
+  .customer-recommendation-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--customer-scroll-thumb);
+  }
+}
+
+@media (max-width: 1200px) {
+  .customer-analytics-page {
+    .customer-dish-list,
+    .customer-day-list,
+    .customer-segment-list,
+    .customer-risk-list,
+    .customer-value-list,
+    .customer-cohort-list,
+    .customer-recommendation-list {
+      max-height: none;
+      overflow: visible;
+      padding-right: 0;
+      scrollbar-gutter: auto;
+    }
+  }
+}
