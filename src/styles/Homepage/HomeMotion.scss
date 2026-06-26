@@ -3,31 +3,8 @@
   --home-motion-ease: cubic-bezier(0.22, 0.9, 0.24, 1);
 }
 
-.home .hero__badge,
-.home .hero__title,
-.home .hero__subtitle,
-.home .hero__search-box,
-.home .hero__stats,
-.home .hero__image-area,
-.home .restaurant-grid__header,
-.home .categories__header,
-.home .dish-grid__header,
-.home .how-it-works__header,
-.home .footer-saas .footer-col {
-  opacity: 0;
-  transform: translateY(var(--home-motion-distance));
-  animation: homeFadeUp 0.55s var(--home-motion-ease) forwards;
-}
-
-.home .hero__badge { animation-delay: 0.04s; }
-.home .hero__title { animation-delay: 0.1s; }
-.home .hero__subtitle { animation-delay: 0.16s; }
-.home .hero__search-box { animation-delay: 0.22s; }
-.home .hero__stats { animation-delay: 0.28s; }
-.home .hero__image-area { animation-delay: 0.18s; }
-
 .home .hero__main-img.active {
-  animation: homeHeroImageFocus 0.72s ease both;
+  transition: opacity 0.32s ease, transform 0.42s ease;
 }
 
 .home .hero__float-card {
@@ -52,13 +29,20 @@
 .home .dish-card__btn-add,
 .home .dish-grid__fallback-body button,
 .home .footer-saas button,
-.home .footer-saas a {
+.home .footer-saas a,
+.home .home-shortcut-card,
+.home .categories__card,
+.home .res-card,
+.home .dish-card,
+.home .dish-grid__fallback-card,
+.home .how-it-works__card {
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    background 0.2s ease;
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    background 0.22s ease,
+    filter 0.22s ease;
 }
 
 .home .hero__btn-search:hover,
@@ -77,43 +61,12 @@
   transform: translateY(-1px);
 }
 
-.home .res-card,
-.home .categories__card,
-.home .dish-card,
-.home .dish-grid__fallback-card,
-.home .how-it-works__card {
-  opacity: 0;
-  transform: translateY(12px) scale(0.99);
-  animation: homeCardIn 0.48s var(--home-motion-ease) forwards;
-}
-
-.home .res-card:nth-child(1),
-.home .categories__card:nth-child(1),
-.home .dish-card:nth-child(1),
-.home .dish-grid__fallback-card:nth-child(1),
-.home .how-it-works__card:nth-child(1) { animation-delay: 0.05s; }
-
-.home .res-card:nth-child(2),
-.home .categories__card:nth-child(2),
-.home .dish-card:nth-child(2),
-.home .dish-grid__fallback-card:nth-child(2),
-.home .how-it-works__card:nth-child(2) { animation-delay: 0.11s; }
-
-.home .res-card:nth-child(3),
-.home .categories__card:nth-child(3),
-.home .dish-card:nth-child(3),
-.home .dish-grid__fallback-card:nth-child(3),
-.home .how-it-works__card:nth-child(3) { animation-delay: 0.17s; }
-
-.home .categories__card:nth-child(4),
-.home .dish-card:nth-child(4),
-.home .how-it-works__card:nth-child(4) { animation-delay: 0.23s; }
-
 .home .res-card:hover,
 .home .categories__card:hover,
 .home .dish-card:hover,
 .home .dish-grid__fallback-card:hover,
-.home .how-it-works__card:hover {
+.home .how-it-works__card:hover,
+.home .home-shortcut-card:hover {
   transform: translateY(-3px);
 }
 
@@ -134,19 +87,19 @@
 
 .home .restaurant-grid__nearby-note,
 .home .restaurant-grid__error,
+.home .restaurant-grid__empty,
 .home .dish-grid__empty,
 .home .dish-grid__fallback-head,
 .home .categories__hint,
 .home .categories__error {
-  animation: homeFadeUp 0.42s var(--home-motion-ease) both;
+  animation: homeSoftNoticeIn 0.42s var(--home-motion-ease) both;
 }
 
-.home .footer-saas .footer-col:nth-child(1) { animation-delay: 0.05s; }
-.home .footer-saas .footer-col:nth-child(2) { animation-delay: 0.11s; }
-.home .footer-saas .footer-col:nth-child(3) { animation-delay: 0.17s; }
-.home .footer-saas .footer-col:nth-child(4) { animation-delay: 0.23s; }
+.home .loading__spinner {
+  animation-duration: 0.8s;
+}
 
-@keyframes homeFadeUp {
+@keyframes homeSoftNoticeIn {
   from {
     opacity: 0;
     transform: translateY(var(--home-motion-distance));
@@ -154,28 +107,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes homeCardIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes homeHeroImageFocus {
-  from {
-    opacity: 0.72;
-    transform: scale(1.025);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -191,24 +122,6 @@
     animation: none !important;
     transition: none !important;
     transform: none !important;
-  }
-
-  .home .hero__badge,
-  .home .hero__title,
-  .home .hero__subtitle,
-  .home .hero__search-box,
-  .home .hero__stats,
-  .home .hero__image-area,
-  .home .restaurant-grid__header,
-  .home .categories__header,
-  .home .dish-grid__header,
-  .home .how-it-works__header,
-  .home .footer-saas .footer-col,
-  .home .res-card,
-  .home .categories__card,
-  .home .dish-card,
-  .home .dish-grid__fallback-card,
-  .home .how-it-works__card {
-    opacity: 1 !important;
+    scroll-behavior: auto !important;
   }
 }
