@@ -132,6 +132,57 @@
   color: #b91c1c;
 }
 
+.customer-table-session-page__status-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.customer-table-session-page__status-stat {
+  display: grid;
+  gap: 6px;
+  min-height: 78px;
+  padding: 14px 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.customer-table-session-page__status-stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #9ca3af;
+}
+
+.customer-table-session-page__status-stat span {
+  color: #6b7280;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.customer-table-session-page__status-stat strong {
+  color: #111827;
+  font-size: 1.38rem;
+  line-height: 1;
+}
+
+.customer-table-session-page__status-stat--working::before {
+  background: #1d4ed8;
+}
+
+.customer-table-session-page__status-stat--ready::before {
+  background: #c2410c;
+}
+
+.customer-table-session-page__status-stat--served::before {
+  background: #166534;
+}
+
 .customer-table-session-page__body {
   display: grid;
   gap: 24px;
@@ -361,6 +412,12 @@
 @media (prefers-reduced-motion: reduce) {
   .customer-table-session-page__live-pill.is-refreshing::before {
     animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .customer-table-session-page__status-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
