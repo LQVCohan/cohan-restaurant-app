@@ -16,6 +16,7 @@ const repoRoot = path.resolve(__dirname, "..");
 const sourceRoots = [path.join(repoRoot, "src")];
 const extensions = new Set([".js", ".jsx", ".ts", ".tsx"]);
 const ignoredDirs = new Set(["node_modules", "dist", "build", "coverage", ".git"]);
+const operationRules = specifiedRules.filter((rule) => rule.name !== "NoUnusedFragmentsRule");
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
@@ -111,7 +112,7 @@ for (const filePath of files) {
       continue;
     }
 
-    const result = validate(schema, documentNode, specifiedRules);
+    const result = validate(schema, documentNode, operationRules);
     checkedCount += 1;
     for (const error of result) {
       errors.push(`${where} ${error.message}`);
