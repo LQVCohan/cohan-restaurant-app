@@ -20,6 +20,7 @@ const NAVIGATION_SECTIONS = [
       { id: "combos", permissions: ["menu.read"], icon: "🍱", label: "Combo", page: "Combo" },
       { id: "inventory", permissions: ["inventory.read", "stock.read"], icon: "📦", label: "Kho hàng", page: "Kho hàng" },
       { id: "tables", permissions: ["table.read"], icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
+      { id: "table-qr", permissions: ["table.read"], icon: "📱", label: "QR bàn", page: "QR bàn" },
       { id: "restaurant-info-management", permissions: ["restaurant.read"], icon: "🏪", label: "Quản lý thông tin nhà hàng", page: "Quản lý thông tin nhà hàng" },
     ],
   },
