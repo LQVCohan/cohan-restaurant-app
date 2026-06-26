@@ -92,7 +92,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
 
   const userMenuRef = useRef(null);
 
-
   const goto = (path) => {
     setShowUserMenu(false);
     if (location.pathname !== path) navigate(path);
@@ -146,6 +145,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             { path: "/", label: "Trang chủ" },
             { path: "/restaurants", label: "Nhà hàng" },
             { path: "/cus-menu", label: "Thực đơn" },
+            { path: "/combos", label: "Combo" },
             { path: "/contact", label: "Liên hệ" },
           ].map((link) => (
             <button
