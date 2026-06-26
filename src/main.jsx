@@ -19,6 +19,7 @@ import "./styles/TableARNestedModals.css";
 import "./styles/Table3DToolbarMobileFix.css";
 import "./styles/TableCameraPreviewRepair.css";
 import "./styles/Table3DMainModalRepair.css";
+import "./styles/Table3DToolbarMobileFix.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 import "./components/Customer/Combos/CombosModalViewportFix.scss";
 import "./utils/staffPerformanceGlobalFormat.js";
@@ -62,9 +63,11 @@ import { installStaffPerformanceModalPortalFix } from "./components/Dashboard_Ma
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning.js";
 import { initFrontendErrorTracking } from "./observability/errorTracking.js";
 import { installAuthenticatedTable3DTransport } from "@/lib/installAuthenticatedTable3DTransport";
+import { installAiChatbotStreamFetchPatch } from "@/utils/aiChatbotStreamFetchPatch";
 import { installRbacVietnameseLabels } from "@/utils/rbacVietnameseLabels";
 
 void initFrontendErrorTracking();
+installAiChatbotStreamFetchPatch();
 installAuthenticatedTable3DTransport();
 installRbacVietnameseLabels();
 installRestaurantInfoCopyTuning();
