@@ -37,10 +37,15 @@ const readSchemaFile = (fileName) => {
     ? source
     : `${source.slice(0, lastWalletField)}${source.slice(lastWalletField + "\n  wallet: Wallet".length)}`;
 
-  return withoutDuplicateWallet.replace(
-    "updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!",
-    "updateCustomerMetrics(input: UpdateCustomerMetricsInput, id: ID, restaurantId: ID, loyaltyPoints: Int, customerType: CustomerType): User!",
-  );
+  return withoutDuplicateWallet
+    .replace(
+      "updateCustomerMetrics(input: UpdateCustomerMetricsInput!): User!",
+      "updateCustomerMetrics(input: UpdateCustomerMetricsInput, id: ID, restaurantId: ID, loyaltyPoints: Int, customerType: CustomerType): User!",
+    )
+    .replace(
+      "customerDetailAnalytics(userId: ID!, restaurantId: ID!",
+      "customerDetailAnalytics(userId: ID!, restaurantId: ID",
+    );
 };
 
 const files = [
