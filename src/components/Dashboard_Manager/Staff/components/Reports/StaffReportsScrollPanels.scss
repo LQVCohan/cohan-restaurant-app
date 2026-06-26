@@ -1,0 +1,101 @@
+.staff-reports-page {
+  --staff-report-scroll-thumb: rgba(31, 111, 74, 0.38);
+  --staff-report-scroll-track: rgba(237, 247, 240, 0.62);
+
+  .kpi-grid--compact,
+  .charts-grid,
+  .table-wrap {
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--staff-report-scroll-thumb) var(--staff-report-scroll-track);
+  }
+
+  .kpi-grid--compact {
+    max-height: clamp(154px, 22vh, 228px);
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-gutter: stable;
+  }
+
+  .charts-grid {
+    max-height: clamp(620px, 74vh, 860px);
+    overflow-y: auto;
+    padding-right: 4px;
+    align-items: stretch;
+    scrollbar-gutter: stable;
+  }
+
+  .chart-card {
+    display: flex;
+    min-height: 292px;
+    flex-direction: column;
+  }
+
+  .chart-card--wide {
+    min-height: 330px;
+  }
+
+  .chart-card > .recharts-responsive-container,
+  .chart-card > .chart-empty-state {
+    flex: 1 1 auto;
+  }
+
+  .tables-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .table-block {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .table-block__header {
+    flex: 0 0 auto;
+  }
+
+  .table-wrap {
+    flex: 1 1 auto;
+    max-height: clamp(300px, 48vh, 520px);
+    scrollbar-gutter: stable;
+  }
+
+  .kpi-grid--compact::-webkit-scrollbar,
+  .charts-grid::-webkit-scrollbar,
+  .table-wrap::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .kpi-grid--compact::-webkit-scrollbar-track,
+  .charts-grid::-webkit-scrollbar-track,
+  .table-wrap::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: var(--staff-report-scroll-track);
+  }
+
+  .kpi-grid--compact::-webkit-scrollbar-thumb,
+  .charts-grid::-webkit-scrollbar-thumb,
+  .table-wrap::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--staff-report-scroll-thumb);
+  }
+}
+
+@media (max-width: 1180px) {
+  .staff-reports-page {
+    .kpi-grid--compact,
+    .charts-grid,
+    .table-wrap {
+      max-height: none;
+      overflow: visible;
+      padding-right: 0;
+      scrollbar-gutter: auto;
+    }
+
+    .tables-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}
