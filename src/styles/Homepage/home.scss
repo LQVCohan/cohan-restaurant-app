@@ -260,6 +260,18 @@ body {
     }
   }
 
+  &__tag {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 4px 8px;
+    background: #fff1e5;
+    color: #c94f02;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 900;
+    line-height: 1;
+  }
+
   &__arrow {
     color: #c94f02;
     font-weight: 900;
