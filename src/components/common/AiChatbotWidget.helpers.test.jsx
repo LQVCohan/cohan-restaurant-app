@@ -115,6 +115,14 @@ describe("AiChatbotWidget helpers", () => {
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "cart", actionType: "openCart" })]));
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "xem đơn hàng ở đâu" }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "orders", path: "/orders" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "mã giảm giá ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "coupons", path: "/coupons" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "ví của tôi ở đâu" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "wallet", path: "/wallet" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "combo tiết kiệm cho 2 người" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "combos", path: "/combos" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "gợi ý món hợp với tôi" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "for-you", path: "/for-you" })]));
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "quản lý chatbot ở đâu" }).some((entry) => entry.key === "ai-chatbot-manager"))
       .toBe(false);
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "manager", query: "quản lý chatbot ở đâu" }))
