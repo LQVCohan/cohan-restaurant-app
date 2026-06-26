@@ -227,7 +227,7 @@ test.describe("manager table AR mobile smoke", () => {
     const tableCard = page.locator("article", { hasText: "A1" }).first();
     await tableCard.getByRole("button", { name: /Mở cấu hình bàn A1/i }).click();
 
-    await expect(page.getByRole("dialog", { name: /Cấu hình bàn ăn A1/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Cấu hình bàn ăn/i })).toBeVisible();
     await expect(page.getByText("Mã bàn:")).toBeVisible();
     await expect(page.getByText("A1").first()).toBeVisible();
   });
