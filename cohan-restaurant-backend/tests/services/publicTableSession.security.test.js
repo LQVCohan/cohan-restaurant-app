@@ -21,6 +21,16 @@ describe("public table session security", () => {
     expect(payload.restaurantId).toBe("r1");
   });
 
+  it("uses custom ttl for printed table QR tokens", async () => {
+    process.env.JWT_SECRET = "jwt-secret-123456789";
+    process.env.TABLE_ACCESS_TOKEN_SECRET = "table-secret-123456789";
+    process.env.TABLE_ACCESS_TOKEN_EXPIRES_IN = "1ms";
+    const { signTableAccessToken, verifyTableAccessToken } = await import("../../utils/publicTableSession.js");
+    const token = signTableAccessToken({ restaurantId: "r1", tableId: "t1", expiresIn: "1h" });
+    const payload = verifyTableAccessToken(token);
+    expect(payload.restaurantId).toBe("r1");
+  });
+
   it("rejects expired token", async () => {
     process.env.JWT_SECRET = "jwt-secret-123456789";
     process.env.TABLE_ACCESS_TOKEN_SECRET = "table-secret-123456789";
