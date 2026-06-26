@@ -9,6 +9,7 @@ import "./TableCurrentSessionPage.scss";
 
 const INVALID_TABLE_LINK_MESSAGE = "Link bàn không hợp lệ hoặc đã hết hạn.";
 const TABLE_SESSION_POLL_MS = 12000;
+const ACTIVE_REQUEST_STATUSES = new Set(["PENDING", "ACKNOWLEDGED"]);
 const isTablePageVisible = () =>
   typeof document === "undefined" || document.visibilityState !== "hidden";
 
@@ -30,6 +31,15 @@ const PUBLIC_ACTIVE_TABLE_SESSION_ORDERS = gql`
           status
           requestedAt
         }
+      }
+      customerRequests {
+        requestId
+        type
+        status
+        message
+        createdAt
+        acknowledgedAt
+        resolvedAt
       }
       orders {
         id
@@ -129,6 +139,26 @@ const getStatusTone = (status) => {
   if (["cancelled", "failed"].includes(normalized)) return "danger";
   return "pending";
 };
+
+const getRequestTypeLabel = (type) => {
+  const normalized = String(type || "").trim().toUpperCase();
+  if (normalized === "STAFF_CALL") return "Gọi nhân viên";
+  if (normalized === "PAYMENT_REQUEST") return "Yêu cầu thanh toán";
+  return "Yêu cầu hỗ trợ";
+};
+
+const getRequestStatusLabel = (status) => {
+  const normalized = String(status || "").trim().toUpperCase();
+  if (normalized === "ACKNOWLEDGED") return "Nhân viên đã tiếp nhận";
+  if (normalized === "RESOLVED") return "Đã hoàn tất";
+  return "Đang chờ nhân viên";
+};
+
+const isActiveCustomerRequest = (request) =>
+  ACTIVE_REQUEST_STATUSES.has(String(request?.status || "").toUpperCase());
+
+const isStaffCallRequest = (request) =>
+  String(request?.type || "").toUpperCase() === "STAFF_CALL";
 
 const getPublicTableErrorText = (inputError) => {
   const message = String(inputError?.message || "").trim();
@@ -264,6 +294,12 @@ const TableCurrentSessionPage = () => {
     () => normalizeBatchOrders(tableSessionData?.orders || []),
     [tableSessionData?.orders],
   );
+
+  const activeCustomerRequests = useMemo(
+    () => (tableSessionData?.customerRequests || []).filter(isActiveCustomerRequest),
+    [tableSessionData?.customerRequests],
+  );
+  const activeStaffCallRequest = activeCustomerRequests.find(isStaffCallRequest);
 
   const itemStatusStats = useMemo(
     () => buildItemStatusStats(batchOrders),
@@ -481,6 +517,21 @@ const TableCurrentSessionPage = () => {
           </div>
         )}
 
+        {activeCustomerRequests.length > 0 && (
+          <section className="customer-table-session-page__request-card" aria-label="Yêu cầu đang xử lý">
+            <strong>Yêu cầu đang xử lý</strong>
+            <div className="customer-table-session-page__request-list">
+              {activeCustomerRequests.map((request) => (
+                <div className="customer-table-session-page__request-item" key={request.requestId || `${request.type}-${request.createdAt}`}>
+                  <span>{getRequestTypeLabel(request.type)}</span>
+                  <p>{request.message || getRequestStatusLabel(request.status)}</p>
+                  <em>{getRequestStatusLabel(request.status)}</em>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {batchOrders.length > 0 && (
           <section className="customer-table-session-page__status-summary" aria-label="Tóm tắt trạng thái món">
             <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--total">
@@ -579,10 +630,10 @@ const TableCurrentSessionPage = () => {
                 <button
                   type="button"
                   className="customer-table-session-page__cta customer-table-session-page__cta--secondary"
-                  disabled={requestingPayment || callingStaff}
+                  disabled={Boolean(activeStaffCallRequest) || requestingPayment || callingStaff}
                   onClick={handleCallStaff}
                 >
-                  {callingStaff ? "Đang gọi nhân viên..." : "Gọi nhân viên"}
+                  {callingStaff ? "Đang gọi nhân viên..." : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
                 </button>
               </div>
               <p className="customer-table-session-page__hint">
