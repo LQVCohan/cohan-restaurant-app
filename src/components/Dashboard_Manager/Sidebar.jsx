@@ -150,11 +150,14 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="user-info">
-          <div className="user-avatar">{sidebarUserName.charAt(0).toUpperCase()}</div>
-          <div className="user-details">
-            <div className="user-name">{sidebarUserName}</div>
-            <div className="user-role">{sidebarUserRole}</div>
+        <div className="sidebar-user">
+          <div className="user-avatar-small" aria-hidden="true">{sidebarUserName.charAt(0).toUpperCase()}</div>
+          <div className="user-info-small">
+            <div className="user-name-small" title={sidebarUserName}>{sidebarUserName}</div>
+            <div className="user-status-small" title={sidebarUserRole}>
+              <span className="status-dot-small" aria-hidden="true" />
+              <span>{sidebarUserRole}</span>
+            </div>
           </div>
         </div>
       </div>
