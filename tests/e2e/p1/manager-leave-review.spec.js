@@ -125,12 +125,17 @@ const filterLeaveRequests = (requests, filter = {}) => {
 
 const installManagerLeaveMocks = async (page, initialRequests) => {
   let requests = initialRequests.map((request) => ({ ...request }));
+  const token = jwtLikeToken(MANAGER_USER.roleName);
+
+  await page.addInitScript((accessToken) => {
+    window.sessionStorage.setItem("foodhub_access_token", accessToken);
+  }, token);
 
   await page.route("**/api/auth/refresh", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ token: jwtLikeToken(MANAGER_USER.roleName), user: MANAGER_USER }),
+      body: JSON.stringify({ token, user: MANAGER_USER }),
     });
   });
 
