@@ -1,6 +1,29 @@
 # ponytail: compatibility SDL for existing FE queries while feature schemas are being hardened.
 # Typed loosely enough to validate real operations; replace field-by-field with domain types as screens are stabilized.
 
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+input UpdateAvatarInput {
+  fileBase64: String
+  fileUrl: String
+  clear: Boolean
+}
+
+input CreateWalletInput {
+  provider: String
+  currency: String
+}
+
+input AssignStaffRoleInput {
+  userId: ID
+  staffId: ID
+  roleId: ID!
+  restaurantId: ID
+}
+
 enum ShiftAcknowledgementStatus {
   PENDING
   ACCEPTED
@@ -718,13 +741,12 @@ extend type Mutation {
   requestContactChangeOtp(input: RequestContactChangeOtpInput!): ContactChangeOtpResult
   confirmContactChangeOtp(input: ConfirmContactChangeOtpInput!): ContactChangeOtpResult
   cancelContactChangeOtp(target: ContactChangeTarget, input: JSON): ContactChangeOtpResult
-  assignStaffRole(input: JSON): CompatibilityNode
+  assignStaffRole(input: AssignStaffRoleInput!): StaffPrivateProfile
   assignStaffRoleWithinRestaurant(input: JSON): CompatibilityNode
   createStaff(input: JSON): StaffPrivateProfile
   updateStaff(id: ID, input: JSON): StaffPrivateProfile
   deleteStaff(id: ID, userId: ID): Boolean
-  setStaffEmploymentStatus(input: JSON): StaffPrivateProfile
-  publishSchedule(input: PublishScheduleInput!): CompatibilityNode
+  setStaffEmploymentStatus(userId: ID, employmentStatus: EmploymentStatus, input: JSON): StaffPrivateProfile
   lockSchedule(input: LockScheduleInput!): CompatibilityNode
   reopenSchedule(input: ReopenScheduleInput!): CompatibilityNode
   closeSchedule(input: CloseScheduleInput!): CompatibilityNode
@@ -733,10 +755,7 @@ extend type Mutation {
   createStaffShift(input: CreateStaffShiftInput!): CompatibilityNode
   createStaffShifts(input: CreateStaffShiftInput, inputs: [CreateStaffShiftInput!]): [CompatibilityNode!]!
   updateStaffShift(id: ID, shiftId: ID, input: UpdateStaffShiftInput!): CompatibilityNode
-  changePublishedShiftGroupTime(input: ChangePublishedShiftGroupTimeInput!): CompatibilityNode
   deleteStaffShift(id: ID, shiftId: ID, reason: String, notifyEmployee: Boolean): Boolean
-  deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): CompatibilityNode
-  addStaffToPublishedShiftGroup(input: AddStaffToPublishedShiftGroupInput!): CompatibilityNode
   acceptShiftAcknowledgement(id: ID!): CompatibilityNode
   declineShiftAcknowledgement(id: ID!, reason: String): CompatibilityNode
   respondShiftAcknowledgement(input: RespondShiftAcknowledgementInput!): CompatibilityNode

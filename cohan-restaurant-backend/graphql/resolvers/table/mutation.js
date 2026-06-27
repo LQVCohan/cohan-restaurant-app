@@ -10,6 +10,15 @@ import {
   hasActiveReservationsForTable,
   getTableAvailabilityBlockReason,
 } from "../../../utils/tableStateGuards.js";
+
+const TABLE_QR_CLEAR_PATCH = {
+  tableAccessToken: null,
+  tableAccessUrl: null,
+  tableQrCodeDataUrl: null,
+  tableQrGeneratedAt: null,
+  tableQrExpiresAt: null,
+};
+
 const ensureFloorLevel = async (floorId) => {
   const f = await Floor.findById(floorId).select({ level: 1 }).lean();
   if (!f) throw new GraphQLError("Floor not found");
@@ -387,6 +396,9 @@ export default {
     });
 
     if (patch.code != null) patch.code = nextCode;
+    if (patch.code != null && nextCode !== current.code) {
+      Object.assign(patch, TABLE_QR_CLEAR_PATCH);
+    }
     if (Object.prototype.hasOwnProperty.call(patch, "visualConfig")) {
       patch.visualConfig = sanitizeVisualConfig(patch.visualConfig);
     }
@@ -614,8 +626,8 @@ export default {
     // Hoán đổi an toàn với code tạm
     const temp = `__SWAP__${a.code}__${Date.now()}`;
     await Table.updateOne({ _id: aId }, { $set: { code: temp } });
-    await Table.updateOne({ _id: bId }, { $set: { code: a.code } });
-    await Table.updateOne({ _id: aId }, { $set: { code: b.code } });
+    await Table.updateOne({ _id: bId }, { $set: { code: a.code, ...TABLE_QR_CLEAR_PATCH } });
+    await Table.updateOne({ _id: aId }, { $set: { code: b.code, ...TABLE_QR_CLEAR_PATCH } });
     logEvent({
       restaurantId,
       verb: "table.swap_codes",

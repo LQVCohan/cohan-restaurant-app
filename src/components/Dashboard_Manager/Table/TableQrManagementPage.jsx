@@ -78,6 +78,11 @@ const getTableQrLabel = (state) => {
   return "Chưa sinh QR";
 };
 
+const PUBLIC_TABLE_BASE_URL =
+  import.meta.env.VITE_PUBLIC_TABLE_BASE_URL ||
+  import.meta.env.VITE_PUBLIC_APP_URL ||
+  window.location.origin;
+
 export default function TableQrManagementPage() {
   const { restaurants = [] } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
@@ -105,6 +110,10 @@ export default function TableQrManagementPage() {
   );
   const readyCount = tables.filter((table) => getTableQrState(table) === "ready").length;
   const expiredCount = tables.filter((table) => getTableQrState(table) === "expired").length;
+  const missingTables = useMemo(
+    () => tables.filter((table) => ["missing", "expired"].includes(getTableQrState(table))),
+    [tables],
+  );
 
   const handleGenerate = async (table) => {
     if (!table?.id || busyTableId) return;
@@ -114,7 +123,7 @@ export default function TableQrManagementPage() {
         variables: {
           input: {
             tableId: table.id,
-            baseUrl: window.location.origin,
+            baseUrl: PUBLIC_TABLE_BASE_URL,
           },
         },
       });
@@ -122,6 +131,43 @@ export default function TableQrManagementPage() {
       showNotification("Đã sinh QR truy cập bàn.", "success");
     } catch (err) {
       showNotification(err?.message || "Không thể sinh QR bàn.", "error");
+    } finally {
+      setBusyTableId("");
+    }
+  };
+
+  const handleGenerateMissing = async () => {
+    if (busyTableId || !missingTables.length) return;
+    if (!window.confirm(`Sinh QR cho ${missingTables.length} bàn chưa có QR?`)) return;
+
+    setBusyTableId("__bulk__");
+    let successCount = 0;
+    let failedCount = 0;
+
+    try {
+      for (const table of missingTables) {
+        try {
+          await generateTableQr({
+            variables: {
+              input: {
+                tableId: table.id,
+                baseUrl: PUBLIC_TABLE_BASE_URL,
+              },
+            },
+          });
+          successCount += 1;
+        } catch {
+          failedCount += 1;
+        }
+      }
+
+      await refetch?.();
+      showNotification(
+        failedCount
+          ? `Đã sinh ${successCount} QR, lỗi ${failedCount} bàn.`
+          : `Đã sinh QR cho ${successCount} bàn.`,
+        failedCount ? "warning" : "success",
+      );
     } finally {
       setBusyTableId("");
     }
@@ -194,6 +240,10 @@ export default function TableQrManagementPage() {
         <span>2. In/dán QR tại bàn</span>
         <span>3. Khách quét QR mở trang bàn public</span>
         <span>4. Khách xem món, gọi nhân viên hoặc gọi thanh toán</span>
+        <small>QR sẽ mở tại: {PUBLIC_TABLE_BASE_URL}</small>
+        <button type="button" onClick={handleGenerateMissing} disabled={Boolean(busyTableId) || !missingTables.length}>
+          {busyTableId === "__bulk__" ? "Đang sinh QR..." : "Sinh QR cho bàn chưa có QR"}
+        </button>
       </section>
 
       {error ? (

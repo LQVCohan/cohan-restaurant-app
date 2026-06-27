@@ -356,25 +356,16 @@ type User {
   createdBy: User
   updatedBy: User
 
-  userType: UserType
-  taxCode: String
-
   employeeCode: String
   department: DepartmentType
   positionTitle: String
 
-  baseSalary: Int
   dateOfBirth: DateTime
   gender: StaffGender
-  nationalId: String
-  nationalIdIssuedAt: DateTime
-  nationalIdIssuedPlace: String
   maritalStatus: MaritalStatus
   permanentAddress: String
   temporaryAddress: String
 
-  contractCode: String
-  contractType: StaffContractType
   contractStartDate: DateTime
   contractEndDate: DateTime
   probationEndDate: DateTime
@@ -382,15 +373,7 @@ type User {
   terminationReason: String
 
   salaryType: StaffSalaryType
-  hourlyRate: Float
-  allowanceAmount: Float
 
-  bankName: String
-  bankAccountNumber: String
-  bankAccountHolder: String
-  socialInsuranceNumber: String
-  healthInsuranceNumber: String
-  unemploymentInsuranceNumber: String
   insuranceEligible: Boolean
   insuranceStartDate: DateTime
   educationLevel: String
@@ -414,9 +397,6 @@ type User {
   dateLeft: DateTime
 
   lastLoginAt: DateTime
-  forcePasswordChange: Boolean
-
-  noteInternal: String
   emergencyContact: EmergencyContact
 
   wallet: Wallet

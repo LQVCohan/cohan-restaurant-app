@@ -27,6 +27,8 @@ vi.mock("../shared/ManagementPageHeader", () => ({
 
 const restaurants = [{ id: "r1", name: "Nhà hàng 1" }, { id: "r2", name: "Nhà hàng 2" }];
 const renderPage = () => render(<AuthContext.Provider value={{ restaurants }}><BackupManagement /></AuthContext.Provider>);
+const getBackupFileInput = () =>
+  screen.getByLabelText("File sao lưu", { selector: 'input[type="file"]' });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -113,7 +115,7 @@ describe("BackupManagement config snapshot UI", () => {
   it("file input preview import calls preview mutation", async () => {
     renderPage();
     const file = new File([JSON.stringify({ kind: "cohan.restaurant_config_snapshot" })], "backup.json", { type: "application/json" });
-    fireEvent.change(screen.getByLabelText(/File sao lưu/i), { target: { files: [file] } });
+    fireEvent.change(getBackupFileInput(), { target: { files: [file] } });
     await waitFor(() => expect(screen.getByText(/Đã chọn: backup.json/)).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("Xem trước khôi phục")).not.toBeDisabled());
     fireEvent.click(screen.getByText("Xem trước khôi phục"));
@@ -126,7 +128,7 @@ describe("BackupManagement config snapshot UI", () => {
     const importButton = screen.getByText("Áp dụng khôi phục");
     expect(importButton).toBeDisabled();
     const file = new File(["{}"], "backup.json", { type: "application/json" });
-    fireEvent.change(screen.getByLabelText(/File sao lưu/i), { target: { files: [file] } });
+    fireEvent.change(getBackupFileInput(), { target: { files: [file] } });
     await waitFor(() => expect(screen.getByText(/Đã chọn/)).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("Xem trước khôi phục")).not.toBeDisabled());
     fireEvent.click(screen.getByText("Xem trước khôi phục"));
@@ -184,7 +186,7 @@ const conflictPreviewPayload = (overrides = {}) => ({
 
 const previewImportWithFile = async () => {
   const file = new File(["{}"], "backup.json", { type: "application/json" });
-  fireEvent.change(screen.getByLabelText(/File sao lưu/i), { target: { files: [file] } });
+  fireEvent.change(getBackupFileInput(), { target: { files: [file] } });
   await waitFor(() => expect(screen.getByText(/Đã chọn/)).toBeInTheDocument());
   await waitFor(() => expect(screen.getByText("Xem trước khôi phục")).not.toBeDisabled());
   fireEvent.click(screen.getByText("Xem trước khôi phục"));
@@ -230,7 +232,7 @@ describe("BackupManagement conflict resolver UI", () => {
     renderPage();
     await previewImportWithFile();
     fireEvent.change(screen.getByLabelText("Cách xử lý PHO"), { target: { value: "use_source" } });
-    fireEvent.click(screen.getByText("Giữ bản hiện tại"));
+    fireEvent.click(screen.getByRole("button", { name: "Giữ bản hiện tại" }));
     expect(screen.getByLabelText("Cách xử lý PHO")).toHaveValue("keep_target");
   });
 
