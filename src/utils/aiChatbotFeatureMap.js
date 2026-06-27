@@ -39,6 +39,14 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["lien he", "ho tro", "support", "gap nhan vien", "can ho tro", "khieu nai", "phan nan"],
   },
   {
+    key: "search",
+    label: "Tìm kiếm",
+    path: "/search",
+    intent: "navigation",
+    description: "Tìm kiếm nhanh nhà hàng, món ăn hoặc nội dung trong ứng dụng.",
+    aliases: ["tim kiem", "search", "tim nhanh", "o tim kiem", "thanh tim kiem", "tim trong app"],
+  },
+  {
     key: "restaurants",
     label: "Danh sách nhà hàng",
     path: "/restaurants",
@@ -287,6 +295,7 @@ const canUseFeature = (entry, role, { restaurantId } = {}) => {
 const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "home") return path === "/" || path === "";
   if (entry.key === "contact") return path === "/contact";
+  if (entry.key === "search") return path === "/search";
   if (entry.key === "restaurants") return path === "/restaurants";
   if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "restaurant-reviews") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
