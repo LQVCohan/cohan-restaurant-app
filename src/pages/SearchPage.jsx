@@ -12,8 +12,18 @@ import {
   User,
   Phone,
   Mail,
+  ChevronLeft,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import "./SearchPage.scss";
+
+const POPULAR_KEYWORDS = ["Pizza", "Sushi", "Cơm tấm", "Lẩu", "Cà phê"];
+const TABS = [
+  { value: "ALL", label: "Tất cả", icon: Sparkles },
+  { value: "RESTAURANT", label: "Nhà hàng", icon: Store },
+  { value: "MENU_ITEM", label: "Món ăn", icon: Utensils },
+];
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,6 +48,15 @@ export default function SearchPage() {
     }
     setSearchParams({});
   };
+
+  const tabCounts = useMemo(() => {
+    const items = results?.items || [];
+    return {
+      ALL: items.length,
+      RESTAURANT: items.filter((item) => item.type === "RESTAURANT").length,
+      MENU_ITEM: items.filter((item) => item.type === "MENU_ITEM").length,
+    };
+  }, [results]);
 
   const filteredItems = useMemo(() => {
     if (!results?.items) return [];
@@ -77,8 +96,14 @@ export default function SearchPage() {
     }
   };
 
+  const handleCardKeyDown = (event, item) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleClickItem(item);
+  };
+
   const renderSkeletons = () => (
-    <div className="sp-grid">
+    <div className="sp-grid" role="status" aria-live="polite" aria-label="Đang tải kết quả tìm kiếm">
       {[1, 2, 3, 4, 5, 6].map((i) => (
         <div key={i} className="sp-card skeleton">
           <div className="skeleton-img" />
@@ -92,69 +117,94 @@ export default function SearchPage() {
   );
 
   return (
-    <div className="sp-container">
-      <div className="sp-header">
-        <h1 className="sp-title">Kết quả tìm kiếm</h1>
+    <main className="sp-container">
+      <section className="sp-header" aria-labelledby="search-page-title">
+        <div className="sp-hero-copy">
+          <button type="button" className="sp-back-link" onClick={() => navigate(-1)}>
+            <ChevronLeft size={16} /> Quay lại
+          </button>
+          <span className="sp-kicker">Tìm kiếm thông minh</span>
+          <h1 id="search-page-title" className="sp-title">
+            Tìm đúng món, đúng quán nhanh hơn
+          </h1>
+          <p className="sp-subtitle">
+            Nhập tên món, nhà hàng hoặc khu vực. Cohan sẽ gom kết quả theo món ăn, nhà hàng và gợi ý liên quan để bạn chọn nhanh hơn.
+          </p>
+        </div>
 
-        <form className="sp-search-bar" onSubmit={handleSearch}>
-          <Search className="icon" size={20} />
+        <form className="sp-search-bar" onSubmit={handleSearch} aria-label="Tìm kiếm món ăn hoặc nhà hàng">
+          <Search className="icon" size={20} aria-hidden="true" />
           <input
-            type="text"
+            type="search"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Tìm món ăn, nhà hàng..."
+            placeholder="Tìm món ăn, nhà hàng, khu vực..."
+            aria-label="Từ khóa tìm kiếm"
           />
           <button type="submit" className="btn-search">
             Tìm kiếm
           </button>
         </form>
 
-        <div className="sp-tabs">
-          <button
-            className={`tab ${activeTab === "ALL" ? "active" : ""}`}
-            onClick={() => setActiveTab("ALL")}
-          >
-            Tất cả
-          </button>
-          <button
-            className={`tab ${activeTab === "RESTAURANT" ? "active" : ""}`}
-            onClick={() => setActiveTab("RESTAURANT")}
-          >
-            <Store size={16} /> Nhà hàng
-          </button>
-          <button
-            className={`tab ${activeTab === "MENU_ITEM" ? "active" : ""}`}
-            onClick={() => setActiveTab("MENU_ITEM")}
-          >
-            <Utensils size={16} /> Món ăn
-          </button>
+        <div className="sp-search-meta" aria-label="Gợi ý tìm kiếm">
+          <Clock size={16} aria-hidden="true" />
+          <span>Gợi ý nhanh:</span>
+          {POPULAR_KEYWORDS.map((keyword) => (
+            <button key={keyword} type="button" onClick={() => setSearchParams({ q: keyword })}>
+              {keyword}
+            </button>
+          ))}
         </div>
-      </div>
 
-      <div className="sp-content">
+        <div className="sp-tabs" role="tablist" aria-label="Lọc loại kết quả">
+          {TABS.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === value}
+              className={`tab ${activeTab === value ? "active" : ""}`}
+              onClick={() => setActiveTab(value)}
+            >
+              <Icon size={16} aria-hidden="true" />
+              <span>{label}</span>
+              <small>{tabCounts[value] || 0}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="sp-content" aria-live="polite">
+        <div className="sp-result-summary">
+          <div>
+            <span>Kết quả cho</span>
+            <strong>{q ? `“${q}”` : "từ khóa của bạn"}</strong>
+          </div>
+          <p>{loading ? "Đang tìm dữ liệu phù hợp..." : `${filteredItems.length} kết quả đang hiển thị`}</p>
+        </div>
+
         {loading ? (
           renderSkeletons()
         ) : !filteredItems || filteredItems.length === 0 ? (
           <div className="sp-empty">
             <div className="empty-img">🔍</div>
-            <h3>Không tìm thấy kết quả</h3>
+            <h3>Chưa có kết quả phù hợp</h3>
             <p>
-              Rất tiếc, chúng tôi không tìm thấy kết quả nào cho "
-              <strong>{q}</strong>".
-              <br />
-              Hãy thử từ khóa khác hoặc kiểm tra chính tả.
+              {q ? (
+                <>
+                  Chúng tôi chưa tìm thấy kết quả cho <strong>{q}</strong>. Hãy thử từ khóa ngắn hơn hoặc chọn một gợi ý bên dưới.
+                </>
+              ) : (
+                "Nhập tên món, nhà hàng hoặc khu vực để bắt đầu tìm kiếm."
+              )}
             </p>
             <div className="suggestions">
-              <span>Gợi ý:</span>
-              <button onClick={() => setSearchParams({ q: "Pizza" })}>
-                Pizza
-              </button>
-              <button onClick={() => setSearchParams({ q: "Sushi" })}>
-                Sushi
-              </button>
-              <button onClick={() => setSearchParams({ q: "Cơm tấm" })}>
-                Cơm tấm
-              </button>
+              <span>Thử nhanh:</span>
+              {POPULAR_KEYWORDS.slice(0, 3).map((keyword) => (
+                <button key={keyword} type="button" onClick={() => setSearchParams({ q: keyword })}>
+                  {keyword}
+                </button>
+              ))}
             </div>
           </div>
         ) : (
@@ -167,13 +217,16 @@ export default function SearchPage() {
                   r.avatar ||
                   "https://placehold.co/600x400?text=Restaurant";
                 return (
-                  <div
+                  <article
                     key={index}
                     className="sp-card"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleClickItem(item)}
+                    onKeyDown={(event) => handleCardKeyDown(event, item)}
                   >
                     <div className="card-media">
-                      <img src={img} alt={r.name} loading="lazy" />
+                      <img src={img} alt={`Không gian nhà hàng ${r.name}`} loading="lazy" />
                       <span className="badge badge-res">Nhà hàng</span>
                     </div>
                     <div className="card-info">
@@ -182,17 +235,17 @@ export default function SearchPage() {
                           {r.name}
                         </h3>
                         {r.avgRating > 0 && (
-                          <div className="rating">
-                            <Star size={14} fill="#eab308" stroke="none" />
+                          <div className="rating" aria-label={`Đánh giá ${r.avgRating} sao`}>
+                            <Star size={14} fill="currentColor" stroke="none" aria-hidden="true" />
                             <span>{r.avgRating}</span>
                           </div>
                         )}
                       </div>
                       <div className="meta">
                         <div className="row">
-                          <MapPin size={14} />
+                          <MapPin size={14} aria-hidden="true" />
                           <span className="address">
-                            {r.address?.district}, {r.address?.city}
+                            {[r.address?.district, r.address?.city].filter(Boolean).join(", ") || "Đang cập nhật vị trí"}
                           </span>
                         </div>
                         <div className="cuisine-tag">
@@ -202,9 +255,9 @@ export default function SearchPage() {
                     </div>
                     <div className="card-action">
                       <span>Xem chi tiết</span>
-                      <ArrowRight size={16} />
+                      <ArrowRight size={16} aria-hidden="true" />
                     </div>
-                  </div>
+                  </article>
                 );
               }
 
@@ -222,13 +275,16 @@ export default function SearchPage() {
                     : 0;
 
                 return (
-                  <div
+                  <article
                     key={index}
                     className="sp-card"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleClickItem(item)}
+                    onKeyDown={(event) => handleCardKeyDown(event, item)}
                   >
                     <div className="card-media">
-                      <img src={img} alt={m.name} loading="lazy" />
+                      <img src={img} alt={`Món ${m.name}`} loading="lazy" />
                       <span className="badge badge-food">Món ăn</span>
                     </div>
                     <div className="card-info">
@@ -244,30 +300,32 @@ export default function SearchPage() {
                             : "Giá liên hệ"}
                         </div>
                         <div className="restaurant-ref">
-                          tại{" "}
-                          <strong>{m.restaurant?.name || "Nhà hàng"}</strong>
+                          tại <strong>{m.restaurant?.name || "Nhà hàng"}</strong>
                         </div>
                       </div>
                     </div>
                     <div className="card-action">
                       <span>Xem chi tiết món</span>
-                      <ArrowRight size={16} />
+                      <ArrowRight size={16} aria-hidden="true" />
                     </div>
-                  </div>
+                  </article>
                 );
               }
 
               if (item.type === "OWNER" && item.owner) {
                 const o = item.owner;
                 return (
-                  <div
+                  <article
                     key={index}
                     className="sp-card sp-card--owner"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleClickItem(item)}
+                    onKeyDown={(event) => handleCardKeyDown(event, item)}
                   >
                     <div className="card-media owner-media">
                       <div className="owner-avatar">
-                        <User size={24} />
+                        <User size={24} aria-hidden="true" />
                       </div>
                       <span className="badge">Chủ / Quản lý</span>
                     </div>
@@ -280,13 +338,13 @@ export default function SearchPage() {
                       <div className="meta owner-meta">
                         {o.email && (
                           <div className="row">
-                            <Mail size={14} />
+                            <Mail size={14} aria-hidden="true" />
                             <span>{o.email}</span>
                           </div>
                         )}
                         {o.phone && (
                           <div className="row">
-                            <Phone size={14} />
+                            <Phone size={14} aria-hidden="true" />
                             <span>{o.phone}</span>
                           </div>
                         )}
@@ -294,9 +352,9 @@ export default function SearchPage() {
                     </div>
                     <div className="card-action">
                       <span>Xem hồ sơ</span>
-                      <ArrowRight size={16} />
+                      <ArrowRight size={16} aria-hidden="true" />
                     </div>
-                  </div>
+                  </article>
                 );
               }
 
@@ -305,14 +363,17 @@ export default function SearchPage() {
                 const city = item.locationCity;
                 const district = item.locationDistrict;
                 return (
-                  <div
+                  <article
                     key={index}
                     className="sp-card sp-card--location"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleClickItem(item)}
+                    onKeyDown={(event) => handleCardKeyDown(event, item)}
                   >
                     <div className="card-media location-media">
                       <div className="location-icon">
-                        <MapPin size={22} />
+                        <MapPin size={22} aria-hidden="true" />
                       </div>
                       <span className="badge">Khu vực</span>
                     </div>
@@ -332,9 +393,9 @@ export default function SearchPage() {
                     </div>
                     <div className="card-action">
                       <span>Lọc theo khu vực</span>
-                      <ArrowRight size={16} />
+                      <ArrowRight size={16} aria-hidden="true" />
                     </div>
-                  </div>
+                  </article>
                 );
               }
 
@@ -342,7 +403,7 @@ export default function SearchPage() {
             })}
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
