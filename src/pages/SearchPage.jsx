@@ -31,9 +31,12 @@ export default function SearchPage() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (localSearch.trim()) {
-      setSearchParams({ q: localSearch.trim() });
+    const nextQuery = localSearch.trim();
+    if (nextQuery) {
+      setSearchParams({ q: nextQuery });
+      return;
     }
+    setSearchParams({});
   };
 
   const filteredItems = useMemo(() => {
