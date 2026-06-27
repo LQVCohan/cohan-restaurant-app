@@ -557,6 +557,16 @@ const TableCurrentSessionPage = () => {
           <div className="customer-table-session-page__empty">
             <h2>Bàn hiện chưa có món đang phục vụ.</h2>
             <p>Khi có món mới được ghi nhận, danh sách sẽ hiện tại đây.</p>
+            {tableSessionData?.session && (
+              <button
+                type="button"
+                className="customer-table-session-page__cta customer-table-session-page__empty-cta"
+                disabled={Boolean(activeStaffCallRequest) || requestingPayment || callingStaff}
+                onClick={handleCallStaff}
+              >
+                {callingStaff ? "Đang gọi nhân viên..." : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
+              </button>
+            )}
           </div>
         ) : (
           <div className="customer-table-session-page__body">

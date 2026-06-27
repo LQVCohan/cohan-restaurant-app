@@ -116,7 +116,7 @@ export async function publicActiveTableSessionOrders(
   return buildPublicActiveTableSessionOrdersResult({
     tableId: table._id,
     tableCode: safeCode,
-    session: orders.length ? session : null,
+    session,
     orders,
   });
 }
