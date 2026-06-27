@@ -299,8 +299,11 @@ const RestaurantDetail = () => {
   const aiQuickPrompts = [
     { label: "Món bán chạy", message: "Gợi ý món bán chạy" },
     { label: "Món dưới 100k", message: "Gợi ý món dưới 100k" },
-    { label: "Món chay", message: "Gợi ý món chay" },
     { label: "Combo cho 2 người", message: "Gợi ý combo cho 2 người" },
+    { label: "Đặt bàn", message: "Tôi muốn đặt bàn ở nhà hàng này" },
+    { label: "Giờ mở cửa", message: "Nhà hàng này đang mở cửa không?" },
+    { label: "Ưu đãi", message: "Nhà hàng này có mã giảm giá hoặc ưu đãi nào không?" },
+    { label: "Đánh giá", message: "Xem đánh giá nhà hàng" },
   ];
   return (
     <div className="restaurant-detail-page">
@@ -437,14 +440,14 @@ const RestaurantDetail = () => {
 
         <aside className="sidebar-content">
           <div className="booking-widget booking-widget--ai">
-            <h3>AI gợi ý món</h3>
-            <p>Cho mình biết ngân sách, số người hoặc khẩu vị</p>
+            <h3>AI hỗ trợ nhà hàng</h3>
+            <p>Hỏi nhanh về món, combo, ưu đãi, giờ mở cửa hoặc đặt bàn</p>
             <button
               type="button"
               className="btn-book-full"
               onClick={() => openAiMenuAssistant({ message: "Gợi ý món cho 2 người dưới 100k", autoSend: false, restaurantId: resolvedRestaurant.id })}
             >
-              AI gợi ý món
+              Hỏi AI ngay
             </button>
             <div className="quick-prompts">
               {aiQuickPrompts.map((item) => (
