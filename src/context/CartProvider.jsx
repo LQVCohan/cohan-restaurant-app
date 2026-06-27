@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo } from "react";
-import { gql, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { useCart as useCartCore } from "../hooks/useCart";
 
@@ -34,6 +34,30 @@ const MY_CART = gql`
   }
 `;
 
+const CUSTOMER_MENU_ITEM = gql`
+  query CartCustomerMenuItem($id: ID!, $restaurantId: ID) {
+    customerMenuItem(id: $id, restaurantId: $restaurantId) {
+      id
+      restaurantId
+      menuId
+      categoryId
+      name
+      basePrice
+      thumbImage
+      defaultServingKey
+      servingUnit
+      servingVariants {
+        key
+        name
+        mode
+        price
+        sellQty
+        sellUnit
+      }
+    }
+  }
+`;
+
 const noopRefetchServerCart = async () => null;
 
 const mapServerCartItem = (cartId, item = {}) => ({
@@ -56,6 +80,57 @@ const mapServerCartItem = (cartId, item = {}) => ({
   backendCartItemId: item.id,
 });
 
+const resolveMenuItemId = (item = {}) => item.menuItemId || item.dishId || item.itemId || item.id;
+
+const isComboCartItem = (item = {}) => item.itemType === "COMBO" || item.comboId;
+
+const mergeLiveMenuItem = (cartItem = {}, menuItem = {}) => {
+  const wantedVariantKey = cartItem.servingVariantKey || cartItem.servingKey || cartItem.variantKey;
+  const variants = Array.isArray(menuItem.servingVariants) ? menuItem.servingVariants : [];
+  const variant =
+    variants.find((item) => item?.key === wantedVariantKey) ||
+    variants.find((item) => item?.key === menuItem.defaultServingKey) ||
+    variants[0] ||
+    null;
+  const servingVariantKey = variant?.key || menuItem.defaultServingKey || wantedVariantKey || "portion";
+  const price = Number(variant?.price ?? menuItem.basePrice ?? cartItem.price ?? 0);
+
+  return {
+    ...cartItem,
+    id: menuItem.id,
+    dishId: menuItem.id,
+    menuItemId: menuItem.id,
+    menuId: menuItem.menuId || cartItem.menuId || null,
+    categoryId: menuItem.categoryId || cartItem.categoryId || null,
+    restaurantId: menuItem.restaurantId || cartItem.restaurantId,
+    name: menuItem.name || cartItem.name || "Món ăn",
+    price,
+    unit: menuItem.servingUnit || cartItem.unit || "phần",
+    image: menuItem.thumbImage || cartItem.image || cartItem.thumbImage || "",
+    thumbImage: menuItem.thumbImage || cartItem.thumbImage || cartItem.image || "",
+    servingVariantKey,
+    servingKey: servingVariantKey,
+    method: variant?.name || cartItem.method || servingVariantKey,
+    servingVariant: variant || cartItem.servingVariant,
+  };
+};
+
+async function resolveLiveCartItem(client, cartItem = {}) {
+  if (!client || isComboCartItem(cartItem)) return cartItem;
+
+  const id = resolveMenuItemId(cartItem);
+  const restaurantId = cartItem.restaurantId;
+  if (!id || !restaurantId) return cartItem;
+
+  const { data } = await client.query({
+    query: CUSTOMER_MENU_ITEM,
+    variables: { id, restaurantId },
+    fetchPolicy: "network-only",
+  });
+
+  return data?.customerMenuItem ? mergeLiveMenuItem(cartItem, data.customerMenuItem) : null;
+}
+
 function buildCartContextValue(cartState, serverCart, loading, refetch) {
   return {
     ...cartState,
@@ -66,6 +141,7 @@ function buildCartContextValue(cartState, serverCart, loading, refetch) {
 }
 
 function ServerCartBridge({ cartState, children }) {
+  const client = useApolloClient();
   const { data, refetch, loading } = useQuery(MY_CART, {
     fetchPolicy: "cache-and-network",
   });
@@ -79,9 +155,27 @@ function ServerCartBridge({ cartState, children }) {
     cartState.syncServerCart?.(serverItems, { replace: false });
   }, [cartState, data?.myCart]);
 
+  const addToCart = useMemo(
+    () => async (item) => {
+      try {
+        const liveItem = await resolveLiveCartItem(client, item);
+        if (!liveItem) return false;
+        cartState.addToCart(liveItem);
+        return true;
+      } catch {
+        cartState.addToCart(item);
+        return true;
+      }
+    },
+    [cartState, client],
+  );
+
   const value = useMemo(
-    () => buildCartContextValue(cartState, data?.myCart, loading, refetch),
-    [cartState, data?.myCart, loading, refetch],
+    () => ({
+      ...buildCartContextValue(cartState, data?.myCart, loading, refetch),
+      addToCart,
+    }),
+    [cartState, data?.myCart, loading, refetch, addToCart],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
