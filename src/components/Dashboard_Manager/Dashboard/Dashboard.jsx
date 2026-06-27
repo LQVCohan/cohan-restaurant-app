@@ -12,6 +12,7 @@ import {
 import { AuthContext } from "@/context/AuthContext";
 import { useDashboard } from "../../../hooks/useDashboard";
 import { useDashboardActionQueue } from "../../../hooks/useDashboardActionQueue";
+import useSocketOrder from "../../../hooks/useSocketOrder";
 import StatsGrid from "./components/StatsGrid";
 import RevenueChart from "./components/RevenueChart";
 import RecentOrders from "./components/RecentOrders";
@@ -57,6 +58,11 @@ const Dashboard = () => {
   const dashboardQueue = useDashboardActionQueue({
     restaurantId: selectedRestaurantId,
     refetchDashboard,
+  });
+
+  useSocketOrder(selectedRestaurantId, {
+    onTableCustomerRequestCreated: () => refetchDashboard?.(),
+    onTablePaymentRequested: () => refetchDashboard?.(),
   });
 
   const safeRevenueTrend = Array.isArray(revenueTrend) ? revenueTrend : [];

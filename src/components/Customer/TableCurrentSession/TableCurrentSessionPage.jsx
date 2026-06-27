@@ -247,6 +247,7 @@ const TableCurrentSessionPage = () => {
 
   const {
     data,
+    previousData,
     loading,
     error,
     refetch,
@@ -265,7 +266,10 @@ const TableCurrentSessionPage = () => {
     PUBLIC_CALL_STAFF_FOR_TABLE,
   );
 
-  const tableSessionData = data?.publicActiveTableSessionOrders || null;
+  const tableSessionData =
+    data?.publicActiveTableSessionOrders ||
+    previousData?.publicActiveTableSessionOrders ||
+    null;
   const isRefreshingTable = loading && Boolean(tableSessionData);
 
   useEffect(() => {
@@ -463,7 +467,7 @@ const TableCurrentSessionPage = () => {
     );
   }
 
-  if (error) {
+  if (error && !tableSessionData) {
     return (
       <div className="customer-table-session-page">
         <div className="customer-table-session-page__container customer-table-session-page__container--state">
@@ -514,6 +518,12 @@ const TableCurrentSessionPage = () => {
             className={`customer-table-session-page__feedback customer-table-session-page__feedback--${feedback.type}`}
           >
             {feedback.text}
+          </div>
+        )}
+
+        {error && tableSessionData && (
+          <div className="customer-table-session-page__feedback customer-table-session-page__feedback--warning" role="status">
+            Đang hiển thị dữ liệu gần nhất. {getPublicTableErrorText(error)}
           </div>
         )}
 
@@ -635,7 +645,11 @@ const TableCurrentSessionPage = () => {
                   disabled={paymentRequested || requestingPayment || callingStaff || !batchOrders.length}
                   onClick={handleRequestPayment}
                 >
-                  {requestingPayment ? "Đang gửi yêu cầu..." : "Gọi thanh toán"}
+                  {requestingPayment
+                    ? "Đang gửi yêu cầu..."
+                    : paymentRequested
+                      ? "Đã gọi thanh toán"
+                      : "Gọi thanh toán"}
                 </button>
                 <button
                   type="button"

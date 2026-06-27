@@ -1,6 +1,7 @@
 import mongoose, { startSession } from "mongoose";
 
 import { EventLog, Order, Table } from "../../../models/index.js";
+import { emitRestaurantEvent } from "../order/helper/emitOrderEvent.js";
 import {
   ACTIVE_TABLE_SESSION_SORT,
   INACTIVE_ORDER_STATUSES,
@@ -116,6 +117,23 @@ function findActiveCustomerRequest(order, type) {
       request?.type === type &&
       ACTIVE_CUSTOMER_REQUEST_STATUSES.has(String(request?.status || "").toUpperCase()),
   );
+}
+
+
+async function emitTableCustomerRequestEvent(ctx, { eventType, restaurantId, tableId, tableCode, request }) {
+  try {
+    await emitRestaurantEvent(ctx, restaurantId, eventType, {
+      restaurantId: String(restaurantId),
+      tableId: String(tableId),
+      tableCode: tableCode || null,
+      requestType: request?.type || null,
+      requestStatus: request?.status || null,
+      requestId: request?.requestId || null,
+      createdAt: request?.createdAt ? new Date(request.createdAt).toISOString() : null,
+    });
+  } catch (error) {
+    console.warn("[SOCKET.IO] Failed to emit table customer request event", error?.message || error);
+  }
 }
 
 function serializeCustomerRequestResult(request, message) {
@@ -315,6 +333,14 @@ export async function publicRequestTablePayment(_parent, { input }, ctx) {
     await transaction.commitTransaction();
     transaction.endSession();
 
+    await emitTableCustomerRequestEvent(ctx, {
+      eventType: "TABLE_PAYMENT_REQUESTED",
+      restaurantId: rid,
+      tableId: tid,
+      tableCode: safeCode,
+      request: paymentRequest,
+    });
+
     return buildPublicRequestTablePaymentResult({
       ok: true,
       warning,
@@ -406,6 +432,14 @@ export async function publicCallStaffForTable(_parent, { input }, ctx) {
       tableCode: safeCode,
       message: request.message,
     },
+  });
+
+  await emitTableCustomerRequestEvent(ctx, {
+    eventType: "TABLE_CUSTOMER_REQUEST_CREATED",
+    restaurantId: rid,
+    tableId: tid,
+    tableCode: safeCode,
+    request,
   });
 
   return serializeCustomerRequestResult(
