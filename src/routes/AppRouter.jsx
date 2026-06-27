@@ -133,6 +133,12 @@ const StaffAwareProfileRoute = () => {
   return <ProfilePage />;
 };
 
+const AccountScopedRedirect = ({ basePath }) => {
+  const { user } = useContext(AuthContext);
+  const userId = user?.id || user?._id;
+  return userId ? <Navigate to={`${basePath}/${userId}`} replace /> : <Navigate to="/login" replace />;
+};
+
 const LogoutHandler = () => {
   const { logout } = useContext(AuthContext);
   useEffect(() => {
@@ -216,8 +222,11 @@ const AppRouter = () => (
       <Route path="/vouchers/:id" element={<Navigate to="/restaurants" replace />} />
       <Route path="/coupons" element={withPrivateRoute(<CouponPage />, ["customer", "manager", "admin"])} />
       <Route path="/coupons/:restaurantId" element={<CouponPage />} />
+      <Route path="/favorites" element={withPrivateRoute(<AccountScopedRedirect basePath="/favorites" />, ["customer", "manager", "admin"])} />
       <Route path="/favorites/:id" element={withPrivateRoute(<FavoritePage />, ["customer", "manager", "admin"])} />
+      <Route path="/address-book" element={withPrivateRoute(<AccountScopedRedirect basePath="/address-book" />, ["customer", "manager", "admin"])} />
       <Route path="/address-book/:id" element={withPrivateRoute(<AddressPage />, ["customer", "manager", "admin"])} />
+      <Route path="/help-center" element={withPrivateRoute(<AccountScopedRedirect basePath="/help-center" />, ["customer", "manager", "admin"], false)} />
       <Route path="/help-center/:id" element={<HelpPage />} />
       <Route path="/notifications" element={withPrivateRoute(<StaffAwareNotificationsRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
       <Route path="/profile" element={withPrivateRoute(<StaffAwareProfileRoute />, ["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES])} />
