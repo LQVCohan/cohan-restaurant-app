@@ -21,6 +21,23 @@ const isManagerHelpQuery = (query = "") => {
   return /\b(giup gi|co the giup|ban co the giup|dieu huong|huong dan|lam duoc gi|quan ly o dau|mo giup|di toi|vao trang|mo trang)\b/.test(q);
 };
 
+const extractSearchTerm = (query = "") => {
+  let value = String(query || "").trim();
+  if (!value) return "";
+
+  const normalized = normalizeText(value).trim();
+  if (/^(tim kiem|tim nhanh|o tim kiem|thanh tim kiem|search)(\s+(trong app|o dau|dau))?$/.test(normalized)) return "";
+
+  value = value
+    .replace(/^(tìm kiếm|tim kiem|tìm nhanh|tim nhanh|tìm|tim|search)\s+/i, "")
+    .replace(/\s+(trong app|ở đâu|o dau)$/i, "")
+    .trim();
+
+  const cleaned = normalizeText(value).trim();
+  if (!cleaned || ["trong app", "o dau", "dau", "app"].includes(cleaned)) return "";
+  return value.slice(0, 80);
+};
+
 export const AI_CHATBOT_FEATURE_MAP = [
   {
     key: "home",
@@ -284,6 +301,13 @@ const fillPath = (path = "", { restaurantId, menuItemId } = {}) =>
     .replace(":restaurantId", encodeURIComponent(restaurantId || ""))
     .replace(":menuItemId", encodeURIComponent(menuItemId || ""));
 
+const buildFeaturePath = (entry, { restaurantId, menuItemId, query } = {}) => {
+  const path = fillPath(entry.path, { restaurantId, menuItemId });
+  if (entry.key !== "search") return path;
+  const term = extractSearchTerm(query);
+  return term ? `${path}?q=${encodeURIComponent(term)}` : path;
+};
+
 const canUseFeature = (entry, role, { restaurantId } = {}) => {
   if (entry.requiresRestaurantId && !restaurantId) return false;
   if (!role) return !entry.managerOnly && !entry.allowedRoles;
@@ -345,7 +369,7 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
     return managerShortcutKeys
       .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
       .filter(Boolean)
-      .map((entry) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
+      .map((entry) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query }) }))
       .slice(0, 6);
   }
 
@@ -364,7 +388,7 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
     })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .map(({ entry }) => ({ ...entry, path: fillPath(entry.path, { restaurantId, menuItemId }) }))
+    .map(({ entry }) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query }) }))
     .slice(0, 6);
 };
 
