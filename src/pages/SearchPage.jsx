@@ -1,5 +1,5 @@
 // src/pages/SearchPage.jsx
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSearch } from "../hooks/useSearch";
 import {
@@ -22,6 +22,10 @@ export default function SearchPage() {
   const q = searchParams.get("q") || "";
   const [activeTab, setActiveTab] = useState("ALL");
   const [localSearch, setLocalSearch] = useState(q);
+
+  useEffect(() => {
+    setLocalSearch(q);
+  }, [q]);
 
   const { results, loading } = useSearch(q, {}, 30, 0);
 
