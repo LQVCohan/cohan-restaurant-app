@@ -163,8 +163,7 @@ function ServerCartBridge({ cartState, children }) {
         cartState.addToCart(liveItem);
         return true;
       } catch {
-        cartState.addToCart(item);
-        return true;
+        return false;
       }
     },
     [cartState, client],
