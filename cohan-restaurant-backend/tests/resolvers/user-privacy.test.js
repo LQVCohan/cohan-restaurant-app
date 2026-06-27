@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { mergeTypeDefs } from "@graphql-tools/merge";
 import { buildASTSchema, parse, validate } from "graphql";
 
 const schemaPath = path.resolve("graphql/schema/user.graphql");
@@ -12,17 +11,13 @@ function typeBody(typeName) {
   return match?.[1] || "";
 }
 
-function executableSchema() {
-  const schemaDir = path.resolve("graphql/schema");
-  const typeDefs = fs
-    .readdirSync(schemaDir)
-    .filter((file) => file.endsWith(".graphql"))
-    .map((file) => fs.readFileSync(path.join(schemaDir, file), "utf8"));
-  return buildASTSchema(mergeTypeDefs(typeDefs), { assumeValidSDL: true });
+async function executableSchema() {
+  const { default: typeDefs } = await import("../../graphql/schema/index.js");
+  return buildASTSchema(typeDefs, { assumeValidSDL: true });
 }
 
-function expectValidOperation(source) {
-  const errors = validate(executableSchema(), parse(source));
+async function expectValidOperation(source) {
+  const errors = validate(await executableSchema(), parse(source));
   expect(errors.map((error) => error.message)).toEqual([]);
 }
 
@@ -61,8 +56,8 @@ describe("GraphQL user privacy schema", () => {
     expect(privateType).toMatch(/\bnoteInternal\s*:/);
   });
 
-  it("keeps staff private fragments only on StaffPrivateProfile-returning staff operations", () => {
-    expectValidOperation(`
+  it("keeps staff private fragments only on StaffPrivateProfile-returning staff operations", async () => {
+    await expectValidOperation(`
       fragment StaffFields on StaffPrivateProfile {
         id
         fullName
@@ -89,8 +84,8 @@ describe("GraphQL user privacy schema", () => {
     `);
   });
 
-  it("validates RBAC staff role assignment against StaffPrivateProfile", () => {
-    expectValidOperation(`
+  it("validates RBAC staff role assignment against StaffPrivateProfile", async () => {
+    await expectValidOperation(`
       fragment RbacStaffRoleFields on StaffPrivateProfile {
         id
         fullName
@@ -109,8 +104,8 @@ describe("GraphQL user privacy schema", () => {
     `);
   });
 
-  it("validates customer table lookup without noteInternal on User", () => {
-    expectValidOperation(`
+  it("validates customer table lookup without noteInternal on User", async () => {
+    await expectValidOperation(`
       query GetCustomersForTableInfo($search: String, $includeGuests: Boolean) {
         customers(search: $search, includeGuests: $includeGuests) {
           name: fullName
