@@ -5,6 +5,7 @@ import { useCart as useCartCore } from "../hooks/useCart";
 
 const CartContext = createContext(null);
 const IS_TEST_ENV = import.meta.env.MODE === "test";
+const CART_ADD_VALIDATION_EVENT = "cohan:cart-add-validation";
 
 const MY_CART = gql`
   query MyActiveCustomerCartForContext {
@@ -84,6 +85,31 @@ const resolveMenuItemId = (item = {}) => item.menuItemId || item.dishId || item.
 
 const isComboCartItem = (item = {}) => item.itemType === "COMBO" || item.comboId;
 
+const emitCartAddValidation = (status) => {
+  if (typeof window === "undefined") return;
+
+  const now = Date.now();
+  const current = window.__cohanCartAddValidation;
+  const summary = current && now - current.updatedAt < 1200
+    ? current
+    : { total: 0, pending: 0, success: 0, skipped: 0, updatedAt: now };
+
+  if (status === "pending") {
+    summary.total += 1;
+    summary.pending += 1;
+  } else if (status === "success") {
+    summary.success += 1;
+    summary.pending = Math.max(0, summary.pending - 1);
+  } else if (status === "skipped") {
+    summary.skipped += 1;
+    summary.pending = Math.max(0, summary.pending - 1);
+  }
+
+  summary.updatedAt = now;
+  window.__cohanCartAddValidation = summary;
+  window.dispatchEvent(new CustomEvent(CART_ADD_VALIDATION_EVENT, { detail: summary }));
+};
+
 const mergeLiveMenuItem = (cartItem = {}, menuItem = {}) => {
   const wantedVariantKey = cartItem.servingVariantKey || cartItem.servingKey || cartItem.variantKey;
   const variants = Array.isArray(menuItem.servingVariants) ? menuItem.servingVariants : [];
@@ -157,12 +183,20 @@ function ServerCartBridge({ cartState, children }) {
 
   const addToCart = useMemo(
     () => async (item) => {
+      const shouldValidate = Boolean(client && !isComboCartItem(item) && resolveMenuItemId(item) && item?.restaurantId);
+      if (shouldValidate) emitCartAddValidation("pending");
+
       try {
         const liveItem = await resolveLiveCartItem(client, item);
-        if (!liveItem) return false;
+        if (!liveItem) {
+          if (shouldValidate) emitCartAddValidation("skipped");
+          return false;
+        }
         cartState.addToCart(liveItem);
+        if (shouldValidate) emitCartAddValidation("success");
         return true;
       } catch {
+        if (shouldValidate) emitCartAddValidation("skipped");
         return false;
       }
     },
