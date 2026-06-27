@@ -153,6 +153,33 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["don hang", "xem don hang", "ma don", "kiem tra don", "lich su don"],
   },
   {
+    key: "favorites",
+    label: "Yêu thích",
+    path: "/favorites",
+    intent: "profileHelp",
+    description: "Mở danh sách nhà hàng hoặc món đã lưu yêu thích.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    aliases: ["yeu thich", "danh sach yeu thich", "mon yeu thich", "nha hang yeu thich", "da luu"],
+  },
+  {
+    key: "address-book",
+    label: "Sổ địa chỉ",
+    path: "/address-book",
+    intent: "profileHelp",
+    description: "Quản lý địa chỉ giao hàng và thông tin nhận hàng.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    aliases: ["so dia chi", "dia chi cua toi", "dia chi giao hang", "quan ly dia chi", "address book"],
+  },
+  {
+    key: "help-center",
+    label: "Trợ giúp tài khoản",
+    path: "/help-center",
+    intent: "support",
+    description: "Mở trung tâm trợ giúp theo tài khoản hiện tại.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    aliases: ["tro giup", "help center", "cau hoi thuong gap", "huong dan su dung", "can tro giup"],
+  },
+  {
     key: "reservations",
     label: "Đặt bàn",
     path: "/restaurant/:restaurantId/layout",
@@ -274,6 +301,9 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "cart") return path.includes("cart");
   if (entry.key === "checkout") return path.includes("checkout");
   if (entry.key === "orders") return path.includes("order");
+  if (entry.key === "favorites") return path.includes("favorites");
+  if (entry.key === "address-book") return path.includes("address-book");
+  if (entry.key === "help-center") return path.includes("help-center");
   if (entry.key === "profile") return path.includes("profile") || path.includes("account");
   if (entry.key === "staff-schedule") return path.startsWith("/staff/schedule") || path.includes("schedule");
   if (entry.key === "manager-dashboard") return path === "/manager" || path === "/manager#dashboard";
