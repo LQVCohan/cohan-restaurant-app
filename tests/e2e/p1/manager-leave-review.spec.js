@@ -273,11 +273,11 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
 };
 
 const openManagerLeavePage = async (page) => {
-  await page.goto("/manager#staff");
-  await expect(page.locator(".staff-page-container")).toBeVisible();
+  await page.goto("/manager");
+  await expect(page.locator(".manager-layout")).toBeVisible();
   await page.evaluate(() => {
     window.dispatchEvent(
-      new CustomEvent("manager:navigation-query", {
+      new CustomEvent("manager:navigate", {
         detail: { page: "staff", query: { staffPage: "leave" }, source: "p1" },
       }),
     );
