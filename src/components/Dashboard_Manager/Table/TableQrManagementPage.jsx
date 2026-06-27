@@ -78,10 +78,10 @@ const getTableQrLabel = (state) => {
   return "Chưa sinh QR";
 };
 
-const PUBLIC_TABLE_BASE_URL =
+const getPublicTableBaseUrl = () =>
   import.meta.env.VITE_PUBLIC_TABLE_BASE_URL ||
   import.meta.env.VITE_PUBLIC_APP_URL ||
-  window.location.origin;
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:5173");
 
 export default function TableQrManagementPage() {
   const { restaurants = [] } = useContext(AuthContext) || {};
@@ -89,6 +89,7 @@ export default function TableQrManagementPage() {
   const restaurantList = useMemo(() => restaurants || [], [restaurants]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [busyTableId, setBusyTableId] = useState("");
+  const [copiedTableId, setCopiedTableId] = useState("");
 
   useEffect(() => {
     if (!selectedRestaurantId && restaurantList.length > 0) {
@@ -123,7 +124,7 @@ export default function TableQrManagementPage() {
         variables: {
           input: {
             tableId: table.id,
-            baseUrl: PUBLIC_TABLE_BASE_URL,
+            baseUrl: getPublicTableBaseUrl(),
           },
         },
       });
@@ -138,7 +139,7 @@ export default function TableQrManagementPage() {
 
   const handleGenerateMissing = async () => {
     if (busyTableId || !missingTables.length) return;
-    if (!window.confirm(`Sinh QR cho ${missingTables.length} bàn chưa có QR?`)) return;
+    if (!window.confirm(`Sinh QR cho ${missingTables.length} bàn thiếu hoặc hết hạn QR?`)) return;
 
     setBusyTableId("__bulk__");
     let successCount = 0;
@@ -151,7 +152,7 @@ export default function TableQrManagementPage() {
             variables: {
               input: {
                 tableId: table.id,
-                baseUrl: PUBLIC_TABLE_BASE_URL,
+                baseUrl: getPublicTableBaseUrl(),
               },
             },
           });
@@ -191,6 +192,8 @@ export default function TableQrManagementPage() {
     if (!table?.tableAccessUrl) return;
     try {
       await navigator.clipboard.writeText(table.tableAccessUrl);
+      setCopiedTableId(table.id);
+      window.setTimeout(() => setCopiedTableId(""), 1500);
       showNotification("Đã sao chép link bàn.", "success");
     } catch {
       showNotification("Không thể sao chép tự động, vui lòng copy thủ công.", "warning");
@@ -240,9 +243,9 @@ export default function TableQrManagementPage() {
         <span>2. In/dán QR tại bàn</span>
         <span>3. Khách quét QR mở trang bàn public</span>
         <span>4. Khách xem món, gọi nhân viên hoặc gọi thanh toán</span>
-        <small>QR sẽ mở tại: {PUBLIC_TABLE_BASE_URL}</small>
+        <small>QR sẽ mở tại: {getPublicTableBaseUrl()}</small>
         <button type="button" onClick={handleGenerateMissing} disabled={Boolean(busyTableId) || !missingTables.length}>
-          {busyTableId === "__bulk__" ? "Đang sinh QR..." : "Sinh QR cho bàn chưa có QR"}
+          {busyTableId === "__bulk__" ? "Đang sinh QR..." : "Sinh QR cho bàn thiếu/hết hạn QR"}
         </button>
       </section>
 
@@ -285,7 +288,7 @@ export default function TableQrManagementPage() {
                     {isBusy ? "Đang xử lý..." : qrState === "ready" ? "Sinh lại QR" : "Sinh QR"}
                   </button>
                   <button type="button" onClick={() => handleOpen(table)} disabled={!table.tableAccessUrl}>Mở link</button>
-                  <button type="button" onClick={() => handleCopy(table)} disabled={!table.tableAccessUrl}>Copy link</button>
+                  <button type="button" onClick={() => handleCopy(table)} disabled={!table.tableAccessUrl}>{copiedTableId === table.id ? "Đã copy" : "Copy link"}</button>
                   <button type="button" onClick={() => handlePrint(table)} disabled={!table.tableQrCodeDataUrl}>In QR</button>
                   <button type="button" className="danger" onClick={() => handleRevoke(table)} disabled={isBusy || !table.tableAccessUrl}>Thu hồi</button>
                 </div>

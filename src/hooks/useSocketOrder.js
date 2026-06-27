@@ -83,7 +83,7 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
     });
 
     socket.on("orderEvents", (evt) => {
-      if (!evt?.type || !evt?.order) return;
+      if (!evt?.type) return;
       if (evt.type === "ORDER_CREATED" && isUnverifiedTransferOrder(evt.order)) {
         console.log("📡 [SOCKET.IO] Hold transfer order until payment verification:", evt.order?.orderCode || evt.order?.id);
         return;
@@ -94,6 +94,12 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
       h.onAny?.(evt);
 
       switch (evt.type) {
+        case "TABLE_CUSTOMER_REQUEST_CREATED":
+          h.onTableCustomerRequestCreated?.(evt);
+          break;
+        case "TABLE_PAYMENT_REQUESTED":
+          h.onTablePaymentRequested?.(evt);
+          break;
         case "ORDER_CREATED":
           h.onCreated?.(evt.order);
           break;
