@@ -2,6 +2,13 @@ import React from "react";
 import "./OrderItem.scss";
 import { Receipt, Truck, CalendarCheck, ArrowRight } from "lucide-react";
 
+const CUSTOMER_CANCEL_ALLOWED_STATUSES = new Set([
+  "draft",
+  "pending",
+  "confirmed",
+  "customer_attached",
+]);
+
 const OrderItem = ({
   kind,
   status,
@@ -15,10 +22,15 @@ const OrderItem = ({
 }) => {
   const normalizedStatus = String(status || "unknown").toLowerCase();
   const statusLabels = {
+    draft: "Đang tạo",
     pending: "Đang xử lý",
     pending_payment: "Chờ cọc",
     pending_change: "Chờ nhà hàng duyệt",
     confirmed: "Đã xác nhận",
+    customer_attached: "Đã gắn khách hàng",
+    preparing: "Bếp đang chuẩn bị",
+    ready: "Sẵn sàng phục vụ",
+    served: "Đã phục vụ",
     shipping: "Đang giao",
     delivering: "Đang giao",
     completed: "Hoàn tất",
@@ -30,9 +42,15 @@ const OrderItem = ({
   };
   const statusLabel = statusLabels[normalizedStatus] || status || "--";
   const displayRestaurantName = restaurantName || "Nhà hàng";
-  const visibleActions = normalizedStatus === "pending_change"
-    ? actions.filter((action) => !["Đổi giờ", "Đổi bàn"].includes(action?.label))
-    : actions;
+  const visibleActions = actions
+    .filter((action) => {
+      if (normalizedStatus !== "pending_change") return true;
+      return !["Đổi giờ", "Đổi bàn"].includes(action?.label);
+    })
+    .filter((action) => {
+      if (action?.label !== "Hủy đơn") return true;
+      return CUSTOMER_CANCEL_ALLOWED_STATUSES.has(normalizedStatus);
+    });
 
   const handleKeyDown = (event) => {
     if (!onClick) return;
