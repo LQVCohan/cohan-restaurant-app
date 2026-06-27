@@ -49,6 +49,6 @@ junit-results.xml
 *.njsproj
 *.sln
 *.sw?
-
+*.local.config.mjs
 # Backend local upload artifacts
 cohan-restaurant-backend/uploads/
