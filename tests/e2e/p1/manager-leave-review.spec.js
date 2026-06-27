@@ -166,17 +166,17 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
     window.sessionStorage.setItem("foodhub_access_token", accessToken);
   }, token);
 
-  await page.route("**/api/auth/refresh", async (route) => {
+  await page.route("**/api/auth/refresh**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
     return fulfillJson(route, { token, user: MANAGER_USER });
   });
 
-  await page.route("**/api/auth/logout", async (route) => {
+  await page.route("**/api/auth/logout**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
     await route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
   });
 
-  await page.route("**/graphql", async (route) => {
+  await page.route("**/graphql**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
 
     const payload = route.request().postDataJSON();
