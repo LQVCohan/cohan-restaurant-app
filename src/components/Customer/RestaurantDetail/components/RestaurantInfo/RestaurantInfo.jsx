@@ -3,6 +3,8 @@ import { Clock, Info, MapPin, Phone, ShieldCheck, Sparkles } from "lucide-react"
 import { getOpeningStatusLabel } from "@/utils/restaurantStatus";
 import "./RestaurantInfo.scss";
 
+const MAPS_BASE_URL = ["https:", "//maps.google.com/?q="].join("");
+
 const formatAddress = (address) => {
   if (!address) return "";
   if (typeof address === "string") return address;
@@ -11,13 +13,13 @@ const formatAddress = (address) => {
 
 const getDirectionsUrl = (address, addressText) => {
   if (address?.lat && address?.lng) {
-    return `https://maps.google.com/?q=${address.lat},${address.lng}`;
+    return `${MAPS_BASE_URL}${address.lat},${address.lng}`;
   }
   if (!addressText) return "";
-  return `https://maps.google.com/?q=${encodeURIComponent(addressText)}`;
+  return `${MAPS_BASE_URL}${encodeURIComponent(addressText)}`;
 };
 
-const RestaurantInfo = ({ restaurant }) => {
+const RestaurantInfo = ({ restaurant, isPreviewMode = false }) => {
   const description = restaurant?.description?.trim();
   const amenities = Array.isArray(restaurant?.amenities) ? restaurant.amenities.filter(Boolean) : [];
   const openingText = restaurant?.openingStatusReason || restaurant?.openingHours || "";
@@ -25,6 +27,9 @@ const RestaurantInfo = ({ restaurant }) => {
   const phone = restaurant?.phone?.trim();
   const addressText = formatAddress(restaurant?.address);
   const directionsUrl = getDirectionsUrl(restaurant?.address, addressText);
+  const tableSpaceUrl = restaurant?.id && !isPreviewMode
+    ? `/restaurant/${encodeURIComponent(restaurant.id)}/layout?view=space`
+    : "";
 
   return (
     <div className="restaurant-info-premium">
@@ -45,6 +50,19 @@ const RestaurantInfo = ({ restaurant }) => {
         <div className="info-row">
           <p className={openingText ? "" : "placeholder-box"}>{openingText || "Lịch hoạt động đang được cập nhật."}</p>
         </div>
+      </section>
+
+      <section className="info-card">
+        <div className="title-row">
+          <span className="title-icon"><Sparkles size={15} /></span>
+          <h4>Không gian bàn</h4>
+        </div>
+        <p>Xem sơ đồ tầng, vị trí bàn, ảnh không gian, 360 hoặc mô hình 3D nếu nhà hàng đã cập nhật.</p>
+        {tableSpaceUrl ? (
+          <a className="direction-link" href={tableSpaceUrl}>Xem không gian bàn / 360</a>
+        ) : (
+          <p className="placeholder-box">Không gian bàn đang được cập nhật.</p>
+        )}
       </section>
 
       <section className="info-card">
