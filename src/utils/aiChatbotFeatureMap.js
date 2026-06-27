@@ -38,6 +38,11 @@ const extractSearchTerm = (query = "") => {
   return value.slice(0, 80);
 };
 
+const getCurrentOrderTrackingPath = (pathname = "") => {
+  const match = String(pathname || "").match(/^\/track-delivery\/[^/?#]+/);
+  return match?.[0] || "";
+};
+
 export const AI_CHATBOT_FEATURE_MAP = [
   {
     key: "home",
@@ -178,6 +183,16 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["don hang", "xem don hang", "ma don", "kiem tra don", "lich su don"],
   },
   {
+    key: "order-tracking",
+    label: "Theo dõi giao hàng",
+    path: "/track-delivery",
+    intent: "orderHelp",
+    description: "Mở lại trang theo dõi giao hàng của đơn hiện tại.",
+    allowedRoles: CUSTOMER_NAV_ROLES,
+    requiresCurrentOrderTrackingPath: true,
+    aliases: ["theo doi giao hang", "track delivery", "don dang giao", "tai xe dang o dau", "vi tri tai xe", "shipper dang o dau"],
+  },
+  {
     key: "favorites",
     label: "Yêu thích",
     path: "/favorites",
@@ -301,15 +316,17 @@ const fillPath = (path = "", { restaurantId, menuItemId } = {}) =>
     .replace(":restaurantId", encodeURIComponent(restaurantId || ""))
     .replace(":menuItemId", encodeURIComponent(menuItemId || ""));
 
-const buildFeaturePath = (entry, { restaurantId, menuItemId, query } = {}) => {
+const buildFeaturePath = (entry, { restaurantId, menuItemId, query, pathname } = {}) => {
   const path = fillPath(entry.path, { restaurantId, menuItemId });
+  if (entry.key === "order-tracking") return getCurrentOrderTrackingPath(pathname) || path;
   if (entry.key !== "search") return path;
   const term = extractSearchTerm(query);
   return term ? `${path}?q=${encodeURIComponent(term)}` : path;
 };
 
-const canUseFeature = (entry, role, { restaurantId } = {}) => {
+const canUseFeature = (entry, role, { restaurantId, pathname } = {}) => {
   if (entry.requiresRestaurantId && !restaurantId) return false;
+  if (entry.requiresCurrentOrderTrackingPath && !getCurrentOrderTrackingPath(pathname)) return false;
   if (!role) return !entry.managerOnly && !entry.allowedRoles;
   if (entry.allowedRoles?.length) return roleMatches(entry.allowedRoles, role);
   if (entry.managerOnly) return isManagerFeatureRole(role);
@@ -334,6 +351,7 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "cart") return path.includes("cart");
   if (entry.key === "checkout") return path.includes("checkout");
   if (entry.key === "orders") return path.includes("order");
+  if (entry.key === "order-tracking") return path.startsWith("/track-delivery/");
   if (entry.key === "favorites") return path.includes("favorites");
   if (entry.key === "address-book") return path.includes("address-book");
   if (entry.key === "help-center") return path.includes("help-center");
@@ -369,11 +387,11 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
     return managerShortcutKeys
       .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
       .filter(Boolean)
-      .map((entry) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query }) }))
+      .map((entry) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query, pathname }) }))
       .slice(0, 6);
   }
 
-  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role, { restaurantId }));
+  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role, { restaurantId, pathname }));
 
   return accessibleEntries
     .map((entry) => {
@@ -388,7 +406,7 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
     })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .map(({ entry }) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query }) }))
+    .map(({ entry }) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query, pathname }) }))
     .slice(0, 6);
 };
 
