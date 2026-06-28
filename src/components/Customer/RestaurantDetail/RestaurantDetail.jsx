@@ -159,12 +159,19 @@ const RestaurantDetail = () => {
   );
 
   useEffect(() => {
-    if (location.hash === "#reviews" || location.state?.openTab === "reviews") {
-      setActiveTab("reviews");
-      window.setTimeout(() => {
-        document.querySelector(".reviews-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
-    }
+    const tabFromHash =
+      location.hash === "#reviews"
+        ? "reviews"
+        : location.hash === "#promotions"
+        ? "promotions"
+        : location.state?.openTab;
+    if (!["reviews", "promotions"].includes(tabFromHash)) return;
+
+    setActiveTab(tabFromHash);
+    window.setTimeout(() => {
+      const selector = tabFromHash === "promotions" ? ".promo-section" : ".reviews-section";
+      document.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   }, [location.hash, location.state]);
 
   useEffect(() => {
