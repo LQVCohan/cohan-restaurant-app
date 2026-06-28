@@ -164,13 +164,19 @@ const RestaurantDetail = () => {
         ? "reviews"
         : location.hash === "#promotions"
         ? "promotions"
+        : location.hash === "#photos"
+        ? "photos"
         : location.state?.openTab;
-    if (!["reviews", "promotions"].includes(tabFromHash)) return;
+    if (!["reviews", "promotions", "photos"].includes(tabFromHash)) return;
 
     setActiveTab(tabFromHash);
     window.setTimeout(() => {
-      const selector = tabFromHash === "promotions" ? ".promo-section" : ".reviews-section";
-      document.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const selectorByTab = {
+        promotions: ".promo-section",
+        photos: ".photo-gallery",
+        reviews: ".reviews-section",
+      };
+      document.querySelector(selectorByTab[tabFromHash])?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   }, [location.hash, location.state]);
 
