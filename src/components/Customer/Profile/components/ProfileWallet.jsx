@@ -18,6 +18,17 @@ const CREATE_WALLET = gql`
   }
 `;
 
+const CREATE_WALLET_TOPUP = gql`
+  mutation CreateWalletTopup($input: WalletTopupInput!) {
+    createWalletTopup(input: $input) {
+      ok
+      message
+      wallet { provider status balance currency updatedAt }
+      transaction { id type amount balanceAfter status createdAt metadata }
+    }
+  }
+`;
+
 const MY_WALLET_TRANSACTIONS = gql`
   query MyWalletTransactions($limit: Int, $offset: Int) {
     myWalletTransactions(limit: $limit, offset: $offset) {
@@ -48,7 +59,9 @@ const transactionLabel = (type = "") => {
 
 export default function ProfileWallet({ user, refetchUser }) {
   const [topupAmount, setTopupAmount] = useState("100000");
+  const [walletMessage, setWalletMessage] = useState("");
   const [createWallet, { loading: creatingWallet }] = useMutation(CREATE_WALLET);
+  const [createWalletTopup, { loading: toppingUp }] = useMutation(CREATE_WALLET_TOPUP);
   const { data: txData, refetch: refetchTx } = useQuery(MY_WALLET_TRANSACTIONS, {
     variables: { limit: 8, offset: 0 },
     skip: !user?.wallet,
@@ -60,18 +73,41 @@ export default function ProfileWallet({ user, refetchUser }) {
 
   const handleCreateWallet = async () => {
     try {
+      setWalletMessage("");
       await createWallet({ variables: { input: { provider: "internal", currency: "VND" } } });
-      alert("Đã tạo ví điện tử thành công!");
+      setWalletMessage("Đã tạo ví điện tử thành công!");
       await refetchUser?.();
       refetchTx?.();
     } catch (err) {
       console.error(err);
-      alert("Không thể tạo ví: " + err.message);
+      setWalletMessage("Không thể tạo ví: " + err.message);
     }
   };
 
-  const handleTopupWallet = () => {
-    alert("Nạp ví tự động đang tạm tắt cho đến khi hoàn tất xác minh thanh toán.");
+  const handleTopupWallet = async () => {
+    const amount = Number(String(topupAmount || "").replace(/[^0-9]/g, ""));
+    if (!(amount > 0)) {
+      setWalletMessage("Vui lòng nhập số tiền nạp hợp lệ.");
+      return;
+    }
+    try {
+      setWalletMessage("");
+      const result = await createWalletTopup({
+        variables: {
+          input: {
+            amount,
+            provider: "sandbox",
+            metadata: { source: "customer_profile_wallet" },
+          },
+        },
+      });
+      setWalletMessage(result?.data?.createWalletTopup?.message || "Nạp ví thành công.");
+      await refetchUser?.();
+      refetchTx?.();
+    } catch (err) {
+      console.error(err);
+      setWalletMessage("Không thể nạp ví: " + err.message);
+    }
   };
 
   return (
@@ -83,12 +119,14 @@ export default function ProfileWallet({ user, refetchUser }) {
             <h3>{user?.wallet ? "FoodHub Wallet" : "Mở ví FoodHub"}</h3>
             <p>
               {user?.wallet
-                ? "Quản lý số dư, nạp ví và lịch sử giao dịch trong cùng một khu vực."
+                ? "Quản lý số dư, nạp ví sandbox và lịch sử giao dịch trong cùng một khu vực."
                 : "Tạo ví một lần để chuẩn bị cho thanh toán nhanh ở các đơn hàng sau."}
             </p>
           </div>
           {user?.wallet && <span className="wallet-status-badge">{user.wallet.status || "active"}</span>}
         </div>
+
+        {walletMessage && <div className="contact-modal-message">{walletMessage}</div>}
 
         {user?.wallet ? (
           <div className="wallet-dashboard">
@@ -108,11 +146,11 @@ export default function ProfileWallet({ user, refetchUser }) {
                   onChange={(e) => setTopupAmount(e.target.value.replace(/[^0-9]/g, ""))}
                   placeholder="Số tiền nạp"
                 />
-                <button className="btn-edit" onClick={handleTopupWallet}>
-                  Nạp tiền
+                <button className="btn-edit" onClick={handleTopupWallet} disabled={toppingUp}>
+                  {toppingUp ? "Đang nạp..." : "Nạp tiền"}
                 </button>
               </div>
-              <p>Nạp ví tự động sẽ hoạt động sau khi hoàn tất cổng thanh toán.</p>
+              <p>Nạp ví đang chạy sandbox để phục vụ demo luồng thanh toán.</p>
             </div>
 
             <div className="wallet-history-card">
