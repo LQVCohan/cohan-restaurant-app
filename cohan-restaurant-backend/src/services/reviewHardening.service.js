@@ -12,6 +12,13 @@ const MAX_TAG_LENGTH = 32;
 const MIN_CONTENT_LENGTH = 10;
 const MAX_CONTENT_LENGTH = 2000;
 const MAX_TITLE_LENGTH = 120;
+const REVIEW_RELIABILITY_SCORE_BY_SOURCE = Object.freeze({
+  order: 95,
+  payment: 85,
+  reservation: 80,
+  manual: 70,
+  none: 35,
+});
 
 export const REVIEW_SERVICE_TARGETS = Object.freeze([
   { id: "65f100000000000000000101", slug: "service_quality", name: "Chất lượng phục vụ" },
@@ -161,6 +168,17 @@ export async function resolveVerifiedReview({ userId, restaurantId, targetType, 
   }
 
   return { verifiedPurchase: false, verifiedSource: "none", verifiedSourceId: null, visitedAt: null, orderCompletedAt: null };
+}
+
+export function calculateReviewReliability(verified = {}) {
+  const source = String(verified.verifiedSource || "none").toLowerCase();
+  const reliabilityScore = REVIEW_RELIABILITY_SCORE_BY_SOURCE[source] ?? REVIEW_RELIABILITY_SCORE_BY_SOURCE.none;
+  const reliabilityLevel = reliabilityScore >= 80 ? "high" : reliabilityScore >= 60 ? "medium" : "low";
+  const reliabilitySignals = [
+    verified.verifiedPurchase ? "verified_experience" : "unverified_experience",
+    `source:${source}`,
+  ];
+  return { reliabilityScore, reliabilityLevel, reliabilitySignals };
 }
 
 export function buildReactionIncPayload({ inc = {}, dec = {}, likeCounter = true }) {
