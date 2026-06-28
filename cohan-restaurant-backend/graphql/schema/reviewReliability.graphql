@@ -1,0 +1,5 @@
+extend type Review {
+  reliabilityScore: Int
+  reliabilityLevel: String
+  reliabilitySignals: [String]
+}
