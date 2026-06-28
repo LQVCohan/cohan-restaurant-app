@@ -70,4 +70,5 @@ extend type Mutation {
   markChatThreadRead(threadId: ID!): Boolean!
   markNotificationRead(id: ID!): Boolean!
   markAllNotificationsRead(restaurantId: ID): Boolean!
+  archiveNotification(id: ID!): Boolean!
 }
