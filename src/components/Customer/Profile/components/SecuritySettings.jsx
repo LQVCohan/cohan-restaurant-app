@@ -223,7 +223,7 @@ const SecuritySettings = () => {
           <div className="setting-info">
             <span className="label">Xóa tài khoản</span>
             <span className="desc">
-              Hành động này không thể hoàn tác. Dữ liệu sẽ mất vĩnh viễn.
+              Tài khoản sẽ bị vô hiệu hóa và giữ trong 30 ngày trước khi xử lý tiếp.
             </span>
           </div>
           <button className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
