@@ -543,7 +543,6 @@ export const QUERY_PAYROLL_CONTEXT = gql`
       id
       restaurantForStaff
       roleName
-      userType
     }
   }
 `;
