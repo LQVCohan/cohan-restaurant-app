@@ -128,9 +128,7 @@ async function createRestaurant(_, { input }, ctx) {
     if (!await canManageBrandRestaurants(user, rest.brandId)) throw forbidden("Cannot create restaurant in this brand");
     rest.brandId = toObjectId(rest.brandId);
   } else if (!admin) {
-    const memberships = await BrandMembership.find({ userId: toObjectId(user.id), status: "active", role: { $in: ["owner", "admin", "manager"] } }).lean();
-    if (memberships.length === 1) rest.brandId = memberships[0].brandId;
-    else throw badInput("brandId is required");
+    throw forbidden("Admin only");
   }
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
@@ -177,11 +175,11 @@ async function updateRestaurant(_, { id, input }, ctx) {
 async function deleteRestaurant(_, { id }, ctx) {
   const { user } = ctx || {};
   await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
+  if (!isAdmin(user)) throw forbidden("Admin only");
   const _id = toObjectId(id);
 
   const doc = await Restaurant.findById(_id);
   if (!doc) throw notFound("Restaurant not found");
-  await assertCanMutateRestaurant(user, doc);
 
   await Restaurant.deleteOne({ _id });
   return true;
