@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import usePayroll from "@/hooks/usePayroll";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
+import PayrollReadinessPanel from "./components/PayrollReadinessPanel";
 import "./PayrollManagement.scss";
 import "../../../styles/PayrollPagination.css";
 
@@ -432,6 +433,17 @@ const PayrollManagement = () => {
           <small>{readiness?.readyToFinalize ? "Kỳ lương sẵn sàng chốt" : "Kiểm tra dữ liệu trước khi chốt"}</small>
         </aside>
       </section>
+
+      <PayrollReadinessPanel
+        readiness={payroll.payrollReadiness}
+        loading={payroll.readinessLoading}
+        error={payroll.readinessError}
+        onRefresh={() =>
+          effectivePeriodId
+            ? payroll.refetchPayrollReadiness?.({ periodId: effectivePeriodId })
+            : undefined
+        }
+      />
 
       <section className="table-card payroll-table-card">
         <div className="table-controls payroll-filter-row">

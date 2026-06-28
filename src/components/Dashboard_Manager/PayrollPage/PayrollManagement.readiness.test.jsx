@@ -89,10 +89,11 @@ describe("PayrollManagement readiness and data mode summary", () => {
   });
 
   it("shows readiness copy when payroll is not ready to finalize", () => {
-    usePayroll.mockReturnValue(buildHookValue({ payrollReadiness: { readyToFinalize: false } }));
+    usePayroll.mockReturnValue(buildHookValue({ payrollReadiness: { readyToFinalize: false, blockingCount: 1, warningCount: 0, sections: { approvals: { blockingCount: 1, warningCount: 0, issues: [{ code: "UNAPPROVED_OVERTIME", message: "Còn tăng ca chưa duyệt" }] } } } }));
 
     render(<PayrollManagement />);
 
+    expect(screen.getByText("Còn tăng ca chưa duyệt")).toBeInTheDocument();
     expect(screen.getByText("Kiểm tra dữ liệu trước khi chốt")).toBeInTheDocument();
     expect(screen.getByText("Dữ liệu tạm tính")).toBeInTheDocument();
     expect(screen.getByText("Đang xem dữ liệu lương tạm tính từ nhân viên.")).toBeInTheDocument();

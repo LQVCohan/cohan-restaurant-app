@@ -815,20 +815,30 @@ export async function completeOvertimeRequest({ input, ctx }) {
     throw new Error("TIMESHEET_NOT_FOUND_FOR_OVERTIME");
   }
 
+  const inputActualOvertimeMinutes = Number(input.actualOvertimeMinutes);
   const actualOvertimeMinutes =
-    Number(input.actualOvertimeMinutes || 0) > 0
-      ? Number(input.actualOvertimeMinutes)
+    Number.isFinite(inputActualOvertimeMinutes) && inputActualOvertimeMinutes >= 0
+      ? inputActualOvertimeMinutes
       : Number(timesheet.overtimeMinutes || 0);
 
-  const approvedOvertimeMinutes =
-    Number(input.approvedOvertimeMinutes || 0) >= 0
-      ? Number(input.approvedOvertimeMinutes)
-      : Math.min(
-          Number(request.approvedOvertimeMinutes || 0),
-          Number(actualOvertimeMinutes || 0),
-        );
+  const hasApprovedMinutesInput =
+    input.approvedOvertimeMinutes !== undefined &&
+    input.approvedOvertimeMinutes !== null &&
+    input.approvedOvertimeMinutes !== "";
 
-  if (actualOvertimeMinutes < 0 || approvedOvertimeMinutes < 0) {
+  const approvedOvertimeMinutes = hasApprovedMinutesInput
+    ? Number(input.approvedOvertimeMinutes)
+    : Math.min(
+        Number(request.approvedOvertimeMinutes || 0),
+        Number(actualOvertimeMinutes || 0),
+      );
+
+  if (
+    !Number.isFinite(actualOvertimeMinutes) ||
+    !Number.isFinite(approvedOvertimeMinutes) ||
+    actualOvertimeMinutes < 0 ||
+    approvedOvertimeMinutes < 0
+  ) {
     throw new Error("Số phút tăng ca không hợp lệ.");
   }
 

@@ -742,11 +742,17 @@ export async function buildPayrollItemsForRange({
       adjustmentOtherDeduction: 0,
     };
 
+    const paidLeaveWorkDays = settings.allowPaidLeaveInWorkDays
+      ? Number(leave.paidLeaveDays || 0)
+      : 0;
+    const paidWorkDateCount =
+      Number(ts.workedDateCount || 0) + paidLeaveWorkDays;
+
     const payroll = buildPayrollItem({
       staff,
       period: { start, end, calendarDays: workDays },
       aggregate: {
-        workedDateCount: ts.workedDateCount,
+        workedDateCount: paidWorkDateCount,
         totalHours: ts.totalHours,
         totalWage: ts.totalWage,
         totalAmount: ts.totalAmount,
@@ -760,14 +766,6 @@ export async function buildPayrollItemsForRange({
       payrollStatus: forceStatus || "draft",
       settings,
     });
-
-    let effectiveActualWorkDays = ts.workedDateCount;
-    if (settings.allowPaidLeaveInWorkDays) {
-      effectiveActualWorkDays += leave.paidLeaveDays;
-      payroll.actualWorkDays = effectiveActualWorkDays;
-      payroll.coefficient =
-        workDays > 0 ? effectiveActualWorkDays / workDays : 0;
-    }
 
     const withSettings = applySettingOverrides(
       payroll,
