@@ -104,6 +104,15 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["uu dai nha hang", "khuyen mai nha hang", "ma giam gia nha hang", "coupon nha hang", "deal nha hang"],
   },
   {
+    key: "restaurant-photos",
+    label: "Hình ảnh nhà hàng",
+    path: "/restaurant/:restaurantId#photos",
+    intent: "navigation",
+    description: "Mở thư viện hình ảnh của nhà hàng hiện tại.",
+    requiresRestaurantId: true,
+    aliases: ["hinh anh nha hang", "anh nha hang", "photos nha hang", "photo nha hang", "khong gian nha hang", "xem anh nha hang"],
+  },
+  {
     key: "menu",
     label: "Xem thực đơn",
     path: "/cus-menu",
@@ -350,6 +359,7 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "restaurant-reviews") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "restaurant-promotions") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
+  if (entry.key === "restaurant-photos") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "reservations") return path.includes("/layout") || path.includes("reservation");
   if (entry.key === "menu") return path.includes("menu") || path.includes("restaurant");
   if (entry.key === "combos") return path.includes("combo");
