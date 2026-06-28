@@ -1,6 +1,17 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Clock3, ShoppingBag, Store, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  ReceiptText,
+  ShieldCheck,
+  ShoppingBag,
+  Store,
+  Trash2,
+} from "lucide-react";
 import { useCart } from "@/context/CartProvider";
 import { AuthContext } from "@/context/AuthContext";
 import { useCustomerCartActions } from "@/hooks/useCustomerCartActions";
@@ -87,6 +98,7 @@ export default function CartPage() {
     : getTotalPrice();
   const hasWrongRestaurantItems = bookingAddonMode && otherRestaurantItems.length > 0;
   const hasNoBookingItems = bookingAddonMode && bookingCartItems.length === 0;
+  const checkoutDisabled = cartActions.isBusy || (isAuthenticated && (!canCheckout || (bookingAddonMode && (hasWrongRestaurantItems || hasNoBookingItems))));
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
@@ -109,16 +121,16 @@ export default function CartPage() {
         <button type="button" className="cart-page__back" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} /> Quay lại
         </button>
-        <div>
+        <div className="cart-page__hero-copy">
           <p className="cart-page__eyebrow">{bookingAddonMode ? "Order kèm đặt bàn" : "Giỏ hàng chính thức"}</p>
           <h1>{bookingAddonMode ? "Kiểm tra món đi kèm đặt bàn" : "Kiểm tra món trước khi đặt"}</h1>
           <p>
             {bookingAddonMode
-              ? "Giỏ order kèm chỉ được hoàn tất với món thuộc đúng nhà hàng đang đặt bàn. Sau khi hoàn tất, bạn sẽ quay lại đơn đặt bàn để thanh toán cọc."
-              : "Giỏ hàng được đồng bộ với hệ thống giữ món khi bạn đăng nhập, giúp hạn chế đặt trùng hoặc hết hàng khi thanh toán."}
+              ? "Chỉ món thuộc đúng nhà hàng đang đặt bàn mới được đưa vào order kèm. Kiểm tra nhanh trước khi quay lại bước đặt bàn."
+              : "Rà lại món, số lượng và thời gian giữ món trước khi thanh toán để đơn hàng đi đúng nhịp bếp."}
           </p>
         </div>
-        <div className="cart-page__summary-pill">
+        <div className="cart-page__summary-pill" aria-label={`${totalItems} món trong giỏ`}>
           <ShoppingBag size={18} />
           <strong>{totalItems}</strong>
           <span>món</span>
@@ -126,7 +138,7 @@ export default function CartPage() {
       </section>
 
       {serverCartLoading && (
-        <div className="cart-page__notice">
+        <div className="cart-page__notice" role="status">
           <Clock3 size={18} /> Đang đồng bộ giỏ hàng từ hệ thống...
         </div>
       )}
@@ -155,13 +167,13 @@ export default function CartPage() {
         </section>
       ) : (
         <div className="cart-page__layout">
-          <section className="cart-page__groups">
-            {groups.map((group) => (
+          <section className="cart-page__groups" aria-label="Danh sách món trong giỏ">
+            {groups.map((group, groupIndex) => (
               <article className="cart-page__group" key={group.restaurantId}>
                 <header className="cart-page__group-header">
                   <div>
-                    <span><Store size={17} /> Nhà hàng</span>
-                    <strong>{group.restaurantId}</strong>
+                    <span><Store size={17} /> Nhà hàng {groupIndex + 1}</span>
+                    <strong>{group.items.length} món · {formatVND(group.subtotal)}</strong>
                   </div>
                   <button
                     type="button"
@@ -203,10 +215,10 @@ export default function CartPage() {
                         </div>
                         <div className="cart-page__item-actions">
                           <strong>{formatVND(line.totalPrice)}</strong>
-                          <div className="cart-page__qty">
-                            <button type="button" disabled={itemBusy || item.quantity <= 1} onClick={() => cartActions.updateCartItemQuantity(item, -1)}>-</button>
+                          <div className="cart-page__qty" aria-label={`Số lượng ${line.displayName}`}>
+                            <button type="button" aria-label="Giảm số lượng" disabled={itemBusy || item.quantity <= 1} onClick={() => cartActions.updateCartItemQuantity(item, -1)}>-</button>
                             <span>{item.quantity || 1}</span>
-                            <button type="button" disabled={itemBusy} onClick={() => cartActions.updateCartItemQuantity(item, 1)}>+</button>
+                            <button type="button" aria-label="Tăng số lượng" disabled={itemBusy} onClick={() => cartActions.updateCartItemQuantity(item, 1)}>+</button>
                           </div>
                           <button type="button" className="cart-page__remove" disabled={itemBusy} onClick={() => cartActions.removeCartLineItem(item)}>
                             Xóa
@@ -220,12 +232,21 @@ export default function CartPage() {
             ))}
           </section>
 
-          <aside className="cart-page__checkout-card">
-            <p className="cart-page__eyebrow">{bookingAddonMode ? "Tóm tắt order kèm" : "Tóm tắt thanh toán"}</p>
+          <aside className="cart-page__checkout-card" aria-label="Tóm tắt thanh toán">
+            <div className="cart-page__checkout-head">
+              <ReceiptText size={20} />
+              <div>
+                <p className="cart-page__eyebrow">{bookingAddonMode ? "Tóm tắt order kèm" : "Tóm tắt thanh toán"}</p>
+                <h2>{formatVND(totalPrice)}</h2>
+              </div>
+            </div>
             <div className="cart-page__checkout-row"><span>Số lượng</span><strong>{totalItems} món</strong></div>
             <div className="cart-page__checkout-row"><span>Tạm tính</span><strong>{formatVND(totalPrice)}</strong></div>
             {bookingAddonMode && <div className="cart-page__checkout-row"><span>Cọc món tạm tính</span><strong>{formatVND(Math.round(totalPrice * 0.5))}</strong></div>}
-            <div className="cart-page__checkout-total"><span>{bookingAddonMode ? "Tổng món kèm" : "Tổng"}</span><strong>{formatVND(totalPrice)}</strong></div>
+            <div className="cart-page__trust-list">
+              <span><ShieldCheck size={16} /> Đồng bộ giữ món</span>
+              <span><CheckCircle2 size={16} /> Kiểm tra trước thanh toán</span>
+            </div>
             {!isAuthenticated && <p className="cart-page__helper">Bạn cần đăng nhập tài khoản khách hàng để thanh toán.</p>}
             {isAuthenticated && roleName !== "customer" && <p className="cart-page__helper">Vui lòng dùng tài khoản khách hàng để checkout.</p>}
             {bookingAddonMode && hasWrongRestaurantItems && <p className="cart-page__helper">Không thể hoàn tất vì có món từ nhà hàng khác.</p>}
@@ -234,9 +255,9 @@ export default function CartPage() {
               type="button"
               className="cart-page__checkout-btn"
               onClick={handleCheckout}
-              disabled={cartActions.isBusy || (isAuthenticated && (!canCheckout || (bookingAddonMode && (hasWrongRestaurantItems || hasNoBookingItems))))}
+              disabled={checkoutDisabled}
             >
-              {!isAuthenticated ? "Đăng nhập để thanh toán" : bookingAddonMode ? "Hoàn tất order kèm theo" : "Thanh toán ngay"}
+              <CreditCard size={18} /> {!isAuthenticated ? "Đăng nhập để thanh toán" : bookingAddonMode ? "Hoàn tất order kèm theo" : "Thanh toán ngay"}
             </button>
             <button type="button" className="cart-page__clear-btn" onClick={cartActions.clearCustomerCart} disabled={cartActions.isClearing}>
               Xóa toàn bộ giỏ
