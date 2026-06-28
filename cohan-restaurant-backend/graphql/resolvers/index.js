@@ -4,6 +4,7 @@ import baseResolvers from "./base.js";
 import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
 import user from "./user/index.js";
+import wallet from "./wallet/index.js";
 import permission from "./permission/index.js";
 import menu from "./menu/index.js";
 import category from "./category/index.js";
@@ -53,6 +54,7 @@ export default {
     ...(role.Query || {}),
     ...(restaurant.Query || {}),
     ...(user.Query || {}),
+    ...(wallet.Query || {}),
     ...(permission.Query || {}),
     ...(menu.Query || {}),
     ...(category.Query || {}),
@@ -98,6 +100,7 @@ export default {
     ...(role.Mutation || {}),
     ...(restaurant.Mutation || {}),
     ...(user.Mutation || {}),
+    ...(wallet.Mutation || {}),
     ...(permission.Mutation || {}),
     ...(category.Mutation || {}),
     ...(menu.Mutation || {}),
@@ -148,7 +151,6 @@ export default {
   ...(menu.MenuItem ? { MenuItem: menu.MenuItem } : {}),
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
-  ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
   ...(customerFavorite.CustomerFavorite
     ? { CustomerFavorite: customerFavorite.CustomerFavorite }
     : {}),
@@ -158,22 +160,4 @@ export default {
     : {}),
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
   ...(communication.ChatThread ? { ChatThread: communication.ChatThread } : {}),
-  ...(supplier.Supplier ? { Supplier: supplier.Supplier } : {}),
-  ...(availability.AvailabilityWindow
-    ? { AvailabilityWindow: availability.AvailabilityWindow }
-    : {}),
-  ...(review.ReactionSummary
-    ? { ReactionSummary: review.ReactionSummary }
-    : {}),
-  ...(attendanceOvertime.StaffAttendanceRecord
-    ? { StaffAttendanceRecord: attendanceOvertime.StaffAttendanceRecord }
-    : {}),
-  ...(auditLog.AuditLog ? { AuditLog: auditLog.AuditLog } : {}),
-  ...(systemSetting.SystemSetting
-    ? { SystemSetting: systemSetting.SystemSetting }
-    : {}),
-  ...(backup.BackupRun ? { BackupRun: backup.BackupRun } : {}),
-  ...(analytics.ManagerDashboard
-    ? { ManagerDashboard: analytics.ManagerDashboard }
-    : {}),
 };
