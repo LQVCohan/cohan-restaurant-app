@@ -1,0 +1,20 @@
+type CustomerLoginSession {
+  id: ID!
+  userAgent: String
+  ip: String
+  createdAt: DateTime
+  expiresAt: DateTime
+  revokedAt: DateTime
+  isCurrent: Boolean!
+  isActive: Boolean!
+}
+
+extend type Query {
+  myLoginSessions(limit: Int = 20): [CustomerLoginSession!]!
+}
+
+extend type Mutation {
+  revokeMyLoginSession(id: ID!): Boolean!
+  revokeOtherMyLoginSessions: Int!
+  deleteMyAccount(currentPassword: String, confirmText: String!): Boolean!
+}
