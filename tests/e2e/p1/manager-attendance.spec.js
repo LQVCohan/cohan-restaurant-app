@@ -109,13 +109,6 @@ const fulfillJson = (route, data) =>
     body: JSON.stringify(data),
   });
 
-const seedAccessToken = async (page, token) => {
-  await page.goto("/");
-  await page.evaluate((accessToken) => {
-    window.sessionStorage.setItem("foodhub_access_token", accessToken);
-  }, token);
-};
-
 const installManagerAttendanceMocks = async (page) => {
   let records = [];
   const token = jwtLikeToken(MANAGER_USER.roleName);
@@ -192,13 +185,10 @@ const installManagerAttendanceMocks = async (page) => {
 
     return fulfillJson(route, { data });
   });
-
-  return token;
 };
 
-const openManagerAttendancePage = async (page, token) => {
-  await seedAccessToken(page, token);
-  await page.goto("/manager");
+const openManagerAttendancePage = async (page) => {
+  await page.goto("/manager#staff");
   await expect(page.locator(".manager-layout")).toBeVisible();
   await page.evaluate(() => {
     window.dispatchEvent(
@@ -212,8 +202,8 @@ const openManagerAttendancePage = async (page, token) => {
 
 test.describe("P1 manager attendance", () => {
   test("manager quick check-in records attendance without hidden backend errors", async ({ page, backendGuard }) => {
-    const token = await installManagerAttendanceMocks(page);
-    await openManagerAttendancePage(page, token);
+    await installManagerAttendanceMocks(page);
+    await openManagerAttendancePage(page);
 
     await page.locator("select.quick-select").selectOption(STAFF_USER.id);
     await page.getByPlaceholder("VD: Quên thẻ, đổi ca, máy vân tay lỗi...").fill("P1 ghi nhận vào ca tại quầy");
