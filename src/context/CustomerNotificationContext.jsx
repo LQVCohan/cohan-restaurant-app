@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useMemo, useCallback } from "react";
+import { gql, useMutation } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
 
 const CustomerNotificationContext = createContext(null);
+
+const ARCHIVE_NOTIFICATION = gql`
+  mutation ArchiveNotification($id: ID!) {
+    archiveNotification(id: $id)
+  }
+`;
 
 const formatRelative = (iso) =>
   iso
@@ -38,6 +45,7 @@ export const CustomerNotificationProvider = ({ children }) => {
   const isCustomer = roleName === "customer";
   const restaurantId = isCustomer ? null : user?.refRestaurants?.[0] || null;
   const notificationsEnabled = Boolean(isAuthenticated && (user?.id || user?._id));
+  const [archiveNotification] = useMutation(ARCHIVE_NOTIFICATION);
 
   const {
     notifications: rawNotifications,
@@ -77,9 +85,9 @@ export const CustomerNotificationProvider = ({ children }) => {
   }, [markAllNotificationsRead, refetchNotifications, restaurantId]);
 
   const deleteNotification = useCallback(async (id) => {
-    await markNotificationRead({ variables: { id } });
+    await archiveNotification({ variables: { id } });
     refetchNotifications?.();
-  }, [markNotificationRead, refetchNotifications]);
+  }, [archiveNotification, refetchNotifications]);
 
   const value = useMemo(
     () => ({
