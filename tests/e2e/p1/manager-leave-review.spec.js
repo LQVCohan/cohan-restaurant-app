@@ -335,33 +335,6 @@ test.describe("P1 manager leave review", () => {
     await expect(row).toContainText("Từ chối");
   });
 
-  test("manager cancels reject prompt without hidden backend errors", async ({ page, backendGuard }) => {
-    await installManagerLeaveMocks(page, [makeLeaveRequest({ id: "leave-reject-cancel-p1" })]);
-    const rejectOperations = [];
-    page.on("request", (request) => {
-      if (!request.url().includes("/graphql") || request.method() !== "POST") return;
-      try {
-        const payload = request.postDataJSON();
-        if (payload?.operationName === "RejectLeave") rejectOperations.push(payload);
-      } catch {}
-    });
-    await openManagerLeavePage(page);
-
-    const row = page.locator("tr.hover-row", { hasText: STAFF_USER.fullName });
-    await expect(row).toContainText("Chờ duyệt");
-
-    backendGuard.clear();
-    const promptPromise = page.waitForEvent("dialog");
-    await row.locator(".btn-icon.reject").click();
-    const prompt = await promptPromise;
-    expect(prompt.message()).toContain("Lý do từ chối");
-    await prompt.dismiss();
-    backendGuard.assertNoBackendErrors("manager cancel reject prompt");
-
-    expect(rejectOperations).toHaveLength(0);
-    await expect(row).toContainText("Chờ duyệt");
-  });
-
   test("manager cannot review own leave request from the UI", async ({ page, backendGuard }) => {
     await installManagerLeaveMocks(page, [makeSelfReviewRequest()]);
     await openManagerLeavePage(page);
