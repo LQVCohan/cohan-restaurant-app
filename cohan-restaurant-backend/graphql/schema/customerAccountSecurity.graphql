@@ -12,9 +12,3 @@ type CustomerLoginSession {
 extend type Query {
   myLoginSessions(limit: Int = 20): [CustomerLoginSession!]!
 }
-
-extend type Mutation {
-  revokeMyLoginSession(id: ID!): Boolean!
-  revokeOtherMyLoginSessions: Int!
-  deleteMyAccount(currentPassword: String, confirmText: String!): Boolean!
-}
