@@ -422,3 +422,35 @@ $shadow: 0 16px 38px rgba(83, 46, 20, 0.08);
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.session-revoke-other {
+  margin-bottom: 12px;
+}
+
+.session-empty {
+  margin: 0;
+  color: $text-sub;
+  font-weight: 800;
+}
+
+.badge-revoked {
+  padding: 4px 8px;
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.danger-confirm p {
+  margin: 0;
+  color: #9f1239;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.btn-confirm-danger {
+  border-color: rgba(220, 38, 38, 0.22) !important;
+  background: linear-gradient(135deg, $danger, #9f1239) !important;
+}
