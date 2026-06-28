@@ -1,16 +1,41 @@
 import React, { useContext } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { AlertTriangle, ArrowLeft, LogIn, ShoppingBag } from "lucide-react";
 import OrderSummaryModal from "@/components/Customer/BookingDishesModal/OrderSummaryTransferModal";
 import { useCart } from "@/context/CartProvider";
 import { isHoldExpired } from "@/hooks/useCart";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
+import "./CheckoutPage.polish.css";
 
 const hasBackendCartRefs = (item) =>
   Boolean(
     (item?.backendCartId || item?.cartId) &&
       (item?.backendCartItemId || item?.cartItemId),
   );
+
+const CheckoutBlockedState = ({ icon: Icon, title, message, actionLabel, onAction, secondaryLabel, onSecondary }) => (
+  <main className="checkout-empty-state">
+    <section className="checkout-empty-state__card" aria-labelledby="checkout-blocked-title">
+      <div className="checkout-empty-state__icon" aria-hidden="true">
+        <Icon size={30} />
+      </div>
+      <p className="checkout-empty-state__eyebrow">Checkout tạm dừng</p>
+      <h2 id="checkout-blocked-title">{title}</h2>
+      <p>{message}</p>
+      <div className="checkout-empty-state__actions">
+        <button type="button" className="btn btn--primary" onClick={onAction}>
+          {actionLabel}
+        </button>
+        {secondaryLabel && (
+          <button type="button" className="btn btn--secondary" onClick={onSecondary}>
+            {secondaryLabel}
+          </button>
+        )}
+      </div>
+    </section>
+  </main>
+);
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -63,19 +88,15 @@ const CheckoutPage = () => {
 
   if (!isCustomer) {
     return (
-      <div className="checkout-empty-state">
-        <h2>Không thể checkout</h2>
-        <p>Vui lòng đăng nhập bằng tài khoản khách hàng để giữ món và đặt món.</p>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() =>
-            navigate("/login", { replace: true, state: { from: location } })
-          }
-        >
-          Đăng nhập tài khoản khách hàng
-        </button>
-      </div>
+      <CheckoutBlockedState
+        icon={LogIn}
+        title="Không thể checkout"
+        message="Vui lòng đăng nhập bằng tài khoản khách hàng để giữ món và đặt món."
+        actionLabel="Đăng nhập tài khoản khách hàng"
+        onAction={() => navigate("/login", { replace: true, state: { from: location } })}
+        secondaryLabel="Quay lại"
+        onSecondary={handleClose}
+      />
     );
   }
 
@@ -85,37 +106,43 @@ const CheckoutPage = () => {
 
   if (!checkoutCompleted && invalidCartRefItems.length > 0) {
     return (
-      <div className="checkout-empty-state">
-        <h2>Giỏ hàng chưa đồng bộ</h2>
-        <p>Vui lòng thêm lại món vào giỏ để hệ thống giữ món trước khi thanh toán.</p>
-        <button type="button" className="btn btn--primary" onClick={handleClose}>
-          Quay lại thực đơn
-        </button>
-      </div>
+      <CheckoutBlockedState
+        icon={AlertTriangle}
+        title="Giỏ hàng chưa đồng bộ"
+        message="Vui lòng thêm lại món vào giỏ để hệ thống giữ món trước khi thanh toán."
+        actionLabel="Quay lại thực đơn"
+        onAction={handleClose}
+        secondaryLabel="Về giỏ hàng"
+        onSecondary={() => navigate("/cart", { replace: true })}
+      />
     );
   }
 
   if (!checkoutCompleted && expiredHoldItems.length > 0) {
     return (
-      <div className="checkout-empty-state">
-        <h2>Giữ món đã hết hạn</h2>
-        <p>Vui lòng quay lại menu để thêm lại món trước khi thanh toán.</p>
-        <button type="button" className="btn btn--primary" onClick={handleClose}>
-          Quay lại thực đơn
-        </button>
-      </div>
+      <CheckoutBlockedState
+        icon={AlertTriangle}
+        title="Giữ món đã hết hạn"
+        message="Một số món đã hết thời gian giữ. Hãy quay lại menu để thêm lại món trước khi thanh toán."
+        actionLabel="Quay lại thực đơn"
+        onAction={handleClose}
+        secondaryLabel="Về giỏ hàng"
+        onSecondary={() => navigate("/cart", { replace: true })}
+      />
     );
   }
 
   if (!checkoutCompleted && (!checkoutItems || checkoutItems.length === 0)) {
     return (
-      <div className="checkout-empty-state">
-        <h2>Giỏ hàng đang trống</h2>
-        <p>Vui lòng thêm món trước khi thanh toán.</p>
-        <button type="button" className="btn btn--primary" onClick={handleClose}>
-          Quay lại thực đơn
-        </button>
-      </div>
+      <CheckoutBlockedState
+        icon={ShoppingBag}
+        title="Giỏ hàng đang trống"
+        message="Vui lòng thêm món trước khi thanh toán."
+        actionLabel="Quay lại thực đơn"
+        onAction={handleClose}
+        secondaryLabel="Khám phá nhà hàng"
+        onSecondary={() => navigate("/restaurants", { replace: true })}
+      />
     );
   }
 
