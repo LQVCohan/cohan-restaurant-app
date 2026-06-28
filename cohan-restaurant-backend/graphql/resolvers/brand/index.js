@@ -18,6 +18,7 @@ export const isBrandAdmin = async (user, brandId) => isSystemAdmin(user) || ["ow
 export const canManageBrand = isBrandAdmin;
 export const canReadBrand = async (user, brandId) => isSystemAdmin(user) || !!await Brand.findOne({ _id: oid(brandId), ownerId: oid(userId(user)) }).lean() || !!await activeMembership(user, brandId);
 export const canManageBrandRestaurants = async (user, brandId) => isSystemAdmin(user) || ["owner", "admin", "manager"].includes((await activeMembership(user, brandId))?.role);
+export const isActiveBrandOperator = async (candidateUserId, brandId) => !!await BrandMembership.exists({ userId: oid(candidateUserId), brandId: oid(brandId), status: "active", role: { $in: ["owner", "admin", "manager"] } });
 export async function getScopedRestaurantFilter(user) {
   if (!user) return {};
   if (isSystemAdmin(user)) return {};
@@ -65,16 +66,25 @@ const Query = {
 const Mutation = {
   registerBusinessOwner: async (_, { input }, ctx) => {
     if (!input?.email || !input?.password || !input?.brandName) throw bad("email, password and brandName are required");
-    if (await User.findOne({ email: String(input.email).trim().toLowerCase() })) throw bad("Email already exists");
-    const role = await ownerRole(); if (!role) throw bad("Manager role not found");
-    const user = new User({ fullName: input.fullName, email: input.email, phone: input.phone, role: role._id, userType: "MANAGER", status: "active" });
-    await user.setPassword(input.password); await user.save();
-    const brand = await Brand.create({ name: input.brandName, slug: slugify(input.brandSlug || input.brandName), ownerId: user._id, businessName: input.businessName, businessTaxCode: input.businessTaxCode, businessEmail: input.businessEmail, businessPhone: input.businessPhone, address: input.firstRestaurantAddress, createdBy: user._id });
-    await BrandMembership.create({ brandId: brand._id, userId: user._id, role: "owner", createdBy: user._id });
-    const restaurant = input.createFirstRestaurant === false ? null : await Restaurant.create({ name: input.firstRestaurantName || input.brandName, address: input.firstRestaurantAddress, brandId: brand._id, managerId: user._id });
-    const u = await publicUser(user._id); const token = signAccessToken({ ...u, _id: user._id });
-    if (ctx?.reply) await issueRefreshToken({ userId: user._id, reply: ctx.reply, userAgent: ctx?.request?.headers?.["user-agent"], ip: ctx?.request?.ip });
-    return { user: u, brand, restaurant, accessToken: token, refreshToken: null };
+    const session = await mongoose.startSession();
+    let result;
+    try {
+      await session.withTransaction(async () => {
+        if (await User.findOne({ email: String(input.email).trim().toLowerCase() }).session(session)) throw bad("Email already exists");
+        const role = await ownerRole(); if (!role) throw bad("Manager role not found");
+        const user = new User({ fullName: input.fullName, email: input.email, phone: input.phone, role: role._id, userType: "MANAGER", status: "active" });
+        await user.setPassword(input.password); await user.save({ session });
+        const [brand] = await Brand.create([{ name: input.brandName, slug: slugify(input.brandSlug || input.brandName), ownerId: user._id, businessName: input.businessName, businessTaxCode: input.businessTaxCode, businessEmail: input.businessEmail, businessPhone: input.businessPhone, address: input.firstRestaurantAddress, createdBy: user._id }], { session });
+        await BrandMembership.create([{ brandId: brand._id, userId: user._id, role: "owner", createdBy: user._id }], { session });
+        const [restaurant] = input.createFirstRestaurant === false ? [null] : await Restaurant.create([{ name: input.firstRestaurantName || input.brandName, address: input.firstRestaurantAddress, brandId: brand._id, managerId: user._id }], { session });
+        result = { userId: user._id, brand, restaurant };
+      });
+    } finally {
+      await session.endSession();
+    }
+    const u = await publicUser(result.userId); const token = signAccessToken({ ...u, _id: result.userId });
+    if (ctx?.reply) await issueRefreshToken({ userId: result.userId, reply: ctx.reply, userAgent: ctx?.request?.headers?.["user-agent"], ip: ctx?.request?.ip });
+    return { user: u, brand: result.brand, restaurant: result.restaurant, accessToken: token, refreshToken: null };
   },
   createBrand: async (_, { input }, ctx) => { if (!ctx?.user) throw auth(); const uid = oid(userId(ctx.user)); const brand = await Brand.create({ ...input, slug: slugify(input.slug || input.name), ownerId: uid, createdBy: uid }); await BrandMembership.findOneAndUpdate({ brandId: brand._id, userId: uid }, { $set: { role: "owner", status: "active", updatedBy: uid }, $setOnInsert: { createdBy: uid } }, { upsert: true }); return brand; },
   updateBrand: async (_, { id, input }, ctx) => { if (!ctx?.user || !await canManageBrand(ctx.user, id)) throw forbidden(); const patch = { ...input, ...(input.slug ? { slug: slugify(input.slug) } : {}), updatedBy: oid(userId(ctx.user)) }; return Brand.findByIdAndUpdate(oid(id), { $set: patch }, { new: true }).lean(); },

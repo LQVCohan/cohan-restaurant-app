@@ -133,6 +133,14 @@ function haversineDistanceKm(lat1, lng1, lat2, lng2) {
   return earthRadiusKm * c;
 }
 
+
+function combineFilters(...filters) {
+  const parts = filters.filter((filter) => filter && Object.keys(filter).length > 0);
+  if (parts.length === 0) return {};
+  if (parts.length === 1) return parts[0];
+  return { $and: parts };
+}
+
 function applyPublicAvailabilityFilters(docs, filter) {
   const f = filter || {};
   return docs.filter((doc) => {
@@ -155,10 +163,10 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }, ctx) {
   const lim = clampLimit(limit, 1, 100);
 
   const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
-  const baseFilter = { ...buildFilter(restaurantFilter), ...scopeFilter };
-  const queryFilter = { ...baseFilter };
   const cId = toObjectIdOrNull(cursor);
-  if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
+  const cursorFilter = cId ? { _id: { $gt: cId } } : {};
+  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopeFilter);
+  const queryFilter = combineFilters(baseFilter, cursorFilter);
 
   const docs = await Restaurant.find(queryFilter)
     .sort({ _id: 1 })
@@ -345,15 +353,10 @@ async function restaurantsByManager(
 
   const lim = clampLimit(limit, 1, 100);
   const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
-  const baseFilter = {
-    managerId: new mongoose.Types.ObjectId(managerId),
-    ...buildFilter(restaurantFilter),
-    ...scopeFilter,
-  };
-  const queryFilter = { ...baseFilter };
-
   const cId = toObjectIdOrNull(cursor);
-  if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
+  const cursorFilter = cId ? { _id: { $gt: cId } } : {};
+  const baseFilter = combineFilters({ managerId: new mongoose.Types.ObjectId(managerId) }, buildFilter(restaurantFilter), scopeFilter);
+  const queryFilter = combineFilters(baseFilter, cursorFilter);
 
   const docs = await Restaurant.find(queryFilter)
     .sort({ _id: 1 })

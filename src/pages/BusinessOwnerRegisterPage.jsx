@@ -26,16 +26,20 @@ export default function BusinessOwnerRegisterPage() {
   const submit = async (event) => {
     event.preventDefault();
     setMessage("");
-    const { address, ...input } = form;
-    if (address) input.firstRestaurantAddress = { line1: address, country: "Vietnam" };
-    const { data } = await registerOwner({ variables: { input } });
-    const payload = data?.registerBusinessOwner;
-    if (payload?.accessToken) {
-      login?.(payload.accessToken, payload.user);
-      navigate("/manager", { replace: true });
-      return;
+    try {
+      const { address, ...input } = form;
+      if (address) input.firstRestaurantAddress = { line1: address, country: "Vietnam" };
+      const { data } = await registerOwner({ variables: { input } });
+      const payload = data?.registerBusinessOwner;
+      if (payload?.accessToken) {
+        login?.(payload.accessToken, payload.user);
+        navigate("/manager", { replace: true });
+        return;
+      }
+      navigate("/login", { state: { message: "Đăng ký thành công, vui lòng đăng nhập" } });
+    } catch (_error) {
+      setMessage("Không thể đăng ký. Email hoặc slug thương hiệu có thể đã tồn tại.");
     }
-    navigate("/login", { state: { message: "Đăng ký thành công, vui lòng đăng nhập" } });
   };
   return <main className="min-h-screen bg-slate-50 px-4 py-10">
     <form onSubmit={submit} className="mx-auto max-w-3xl rounded-3xl bg-white p-6 shadow-sm space-y-4">

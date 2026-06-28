@@ -276,6 +276,7 @@ input CreateRestaurantInput {
   reservationPolicy: JSON
   orderPolicy: JSON
   managerId: ID!
+  brandId: ID
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
   defaultCurrency: String

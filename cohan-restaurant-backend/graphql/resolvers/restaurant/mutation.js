@@ -11,7 +11,7 @@ import {
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
-import { canManageBrandRestaurants, isBrandOwner, isSystemAdmin } from "../brand/index.js";
+import { canManageBrandRestaurants, isActiveBrandOperator, isBrandOwner, isSystemAdmin } from "../brand/index.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -142,7 +142,8 @@ async function createRestaurant(_, { input }, ctx) {
   const managerDoc = await User.findById(mId).populate("role");
   if (!managerDoc) throw badInput("Manager not found");
   const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
-  if (!isRoleManager && !rest.brandId) throw forbidden("Target user is not a manager");
+  const isBrandOperator = rest.brandId ? await isActiveBrandOperator(mId, rest.brandId) : false;
+  if (!isRoleManager && !isBrandOperator) throw forbidden("Target user is not allowed to manage this brand restaurant");
 
   const created = await Restaurant.create({ ...rest, managerId: mId });
   return created.toObject();
