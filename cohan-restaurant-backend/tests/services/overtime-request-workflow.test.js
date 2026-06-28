@@ -66,6 +66,64 @@ describe('Overtime request workflow polish', () => {
     expect(save).toHaveBeenCalled();
   });
 
+  it('falls back approved minutes to min approved request and actual timesheet when completion input omits approved minutes', async () => {
+    const request = {
+      _id: 'o1',
+      employeeId: 'u1',
+      restaurantId: 'r1',
+      shiftId: null,
+      workDate: new Date('2026-04-10'),
+      status: 'approved',
+      approvedOvertimeMinutes: 120,
+      auditLogs: [],
+      save: vi.fn(),
+    };
+    const timesheet = {
+      _id: 't1',
+      overtimeMinutes: 90,
+      approvedOvertimeMinutes: 0,
+      save: vi.fn(),
+    };
+    modelMocks.OvertimeRequest.findById.mockResolvedValue(request);
+    modelMocks.Timesheet.findOne.mockReturnValue({ sort: vi.fn().mockResolvedValue(timesheet) });
+    const { completeOvertimeRequest } = await import('../../src/services/overtime/overtimeRequest.service.js');
+
+    await completeOvertimeRequest({ input: { requestId:'o1' }, ctx: ctx('m1', 'MANAGER') });
+
+    expect(timesheet.approvedOvertimeMinutes).toBe(90);
+    expect(request.approvedOvertimeMinutes).toBe(90);
+    expect(Number.isNaN(timesheet.approvedOvertimeMinutes)).toBe(false);
+    expect(Number.isNaN(request.approvedOvertimeMinutes)).toBe(false);
+  });
+
+  it('accepts explicit zero approved minutes when completing overtime', async () => {
+    const request = {
+      _id: 'o1',
+      employeeId: 'u1',
+      restaurantId: 'r1',
+      shiftId: null,
+      workDate: new Date('2026-04-10'),
+      status: 'approved',
+      approvedOvertimeMinutes: 120,
+      auditLogs: [],
+      save: vi.fn(),
+    };
+    const timesheet = {
+      _id: 't1',
+      overtimeMinutes: 90,
+      approvedOvertimeMinutes: 120,
+      save: vi.fn(),
+    };
+    modelMocks.OvertimeRequest.findById.mockResolvedValue(request);
+    modelMocks.Timesheet.findOne.mockReturnValue({ sort: vi.fn().mockResolvedValue(timesheet) });
+    const { completeOvertimeRequest } = await import('../../src/services/overtime/overtimeRequest.service.js');
+
+    await completeOvertimeRequest({ input: { requestId:'o1', approvedOvertimeMinutes: 0 }, ctx: ctx('m1', 'MANAGER') });
+
+    expect(timesheet.approvedOvertimeMinutes).toBe(0);
+    expect(request.approvedOvertimeMinutes).toBe(0);
+  });
+
   it('blocks complete when timesheet missing', async () => {
     modelMocks.OvertimeRequest.findById.mockResolvedValue({ _id:'o1', employeeId:'u1', restaurantId:'r1', shiftId: null, workDate:new Date('2026-04-10'), status:'approved' });
     modelMocks.Timesheet.findOne.mockReturnValue({ sort: vi.fn().mockResolvedValue(null) });

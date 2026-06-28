@@ -499,6 +499,28 @@ input RestaurantPayoutAccountInput {
 
 input PayrollSettingsInput {
   restaurantId: ID
+  currentPayrollPeriodId: ID
+  standardWorkDaysPerMonth: Float
+  standardHoursPerDay: Float
+  overtimeMultiplierWeekday: Float
+  overtimeMultiplierWeekend: Float
+  overtimeMultiplierHoliday: Float
+  latenessPenaltyPerMinute: Float
+  earlyLeavePenaltyPerMinute: Float
+  unpaidLeaveDeductionPerDay: Float
+  defaultAllowance: Float
+  allowPaidLeaveInWorkDays: Boolean
+  defaultBonus: Float
+  defaultDeduction: Float
+  weekendDays: [String!]
+  holidayDates: [DateTime!]
+  nightShiftStart: String
+  nightShiftEnd: String
+  nightShiftAllowanceRate: Float
+  enablePersonalIncomeTax: Boolean
+  personalIncomeTaxRate: Float
+  personalIncomeTaxFreeThreshold: Float
+  notes: String
   settings: JSON
   policy: JSON
 }

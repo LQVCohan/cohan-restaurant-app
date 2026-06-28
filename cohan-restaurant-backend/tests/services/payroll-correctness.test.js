@@ -53,6 +53,59 @@ describe("Payroll runtime correctness", () => {
       lean: vi.fn().mockResolvedValue(null),
     });
   });
+
+  it("counts paid leave as paid work days before calculating salary when enabled", async () => {
+    modelMocks.Staff.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([{ _id: "s1", fullName: "A", employeeCode: "E1", baseSalary: 26000000 }]),
+    });
+    modelMocks.PayrollSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        restaurantId: "507f1f77bcf86cd799439011",
+        standardWorkDaysPerMonth: 26,
+        standardHoursPerDay: 8,
+        allowPaidLeaveInWorkDays: true,
+        enablePersonalIncomeTax: false,
+      }),
+    });
+    modelMocks.Timesheet.aggregate.mockResolvedValue([{ _id: "s1", totalHours: 80, totalWage: 0, totalAmount: 0, workedDateKeys: Array.from({ length: 10 }, (_, i) => `2026-04-${String(i + 1).padStart(2, "0")}`) }]);
+    modelMocks.LeaveRequest.aggregate.mockResolvedValue([{ _id: "s1", paidLeaveDays: 2, unpaidLeaveDays: 0 }]);
+
+    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
+    const [item] = await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+
+    expect(item.breakdown.actualWorkDays).toBe(12);
+    expect(item.breakdown.grossIncome).toBe(12000000);
+    expect(item.breakdown.totalIncome).toBe(12000000);
+    expect(item.breakdown.netSalary).toBe(12000000);
+  });
+
+  it("does not count paid leave as paid work days when disabled", async () => {
+    modelMocks.Staff.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([{ _id: "s1", fullName: "A", employeeCode: "E1", baseSalary: 26000000 }]),
+    });
+    modelMocks.PayrollSetting.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        restaurantId: "507f1f77bcf86cd799439011",
+        standardWorkDaysPerMonth: 26,
+        standardHoursPerDay: 8,
+        allowPaidLeaveInWorkDays: false,
+        enablePersonalIncomeTax: false,
+      }),
+    });
+    modelMocks.Timesheet.aggregate.mockResolvedValue([{ _id: "s1", totalHours: 80, totalWage: 0, totalAmount: 0, workedDateKeys: Array.from({ length: 10 }, (_, i) => `2026-04-${String(i + 1).padStart(2, "0")}`) }]);
+    modelMocks.LeaveRequest.aggregate.mockResolvedValue([{ _id: "s1", paidLeaveDays: 2, unpaidLeaveDays: 0 }]);
+
+    const { buildPayrollItemsForRange } = await import("../../src/services/payroll/payrollRuntime.service.js");
+    const [item] = await buildPayrollItemsForRange({ start: new Date("2026-04-01"), end: new Date("2026-04-30"), restaurantId: "507f1f77bcf86cd799439011" });
+
+    expect(item.breakdown.actualWorkDays).toBe(10);
+    expect(item.breakdown.grossIncome).toBe(10000000);
+    expect(item.breakdown.totalIncome).toBe(10000000);
+    expect(item.breakdown.netSalary).toBe(10000000);
+  });
+
   it("classifies approved overtime as holiday, weekend, normal and night work from settings", async () => {
     modelMocks.PayrollSetting.findOne.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
