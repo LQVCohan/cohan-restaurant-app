@@ -8,6 +8,7 @@ import {
   analyzeReviewText,
   badUserInput,
   buildReactionIncPayload,
+  calculateReviewReliability,
   clampReactionSummary,
   deriveCustomerIdentity,
   forbidden,
@@ -115,6 +116,7 @@ export default {
     const identity = deriveCustomerIdentity(ctx);
     const staff = await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: input.restaurantId });
     const verified = await resolveVerifiedReview({ userId, restaurantId: input.restaurantId, targetType: input.targetType, targetId: normalizedTargetId });
+    const reliability = calculateReviewReliability(verified);
     const insight = analyzeReviewText(normalized.title, normalized.content);
     const payload = {
       targetType: input.targetType,
@@ -126,6 +128,7 @@ export default {
       ...staff,
       ...normalized,
       ...verified,
+      ...reliability,
       ...insight,
       status: "published",
       likesCount: 0,
@@ -136,7 +139,7 @@ export default {
       createdBy: userId,
     };
     const created = await Review.create(payload);
-    await logReviewEvent({ review: created, verb: "review.create", ctx, meta: { rating: created.rating, verifiedSource: created.verifiedSource } });
+    await logReviewEvent({ review: created, verb: "review.create", ctx, meta: { rating: created.rating, verifiedSource: created.verifiedSource, reliabilityScore: created.reliabilityScore } });
     if (Number(created.rating) <= 2) {
       await notifyRestaurantManagers({
         review: created,
@@ -171,7 +174,7 @@ export default {
       }
     }
 
-    delete patch.restaurantId; delete patch.customerId; delete patch.customerName; delete patch.customerAvatar; delete patch.staffName; delete patch.verifiedPurchase; delete patch.verifiedSource; delete patch.verifiedSourceId; delete patch.helpfulCount; delete patch.reportsCount; delete patch.likesCount; delete patch.reactions;
+    delete patch.restaurantId; delete patch.customerId; delete patch.customerName; delete patch.customerAvatar; delete patch.staffName; delete patch.verifiedPurchase; delete patch.verifiedSource; delete patch.verifiedSourceId; delete patch.reliabilityScore; delete patch.reliabilityLevel; delete patch.reliabilitySignals; delete patch.helpfulCount; delete patch.reportsCount; delete patch.likesCount; delete patch.reactions;
     if (isOwner(ctx, before) && Object.prototype.hasOwnProperty.call(input || {}, "staffId")) Object.assign(patch, await normalizeReviewStaff({ staffId: input?.staffId, restaurantId: before.restaurantId }));
     patch.updatedBy = ctx?.user?.id || ctx?.user?._id || null;
     const updated = await Review.findByIdAndUpdate(id, patch, { new: true });
