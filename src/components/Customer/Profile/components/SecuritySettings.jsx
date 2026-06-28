@@ -1,9 +1,10 @@
 // src/components/Customer/Profile/components/SecuritySettings.jsx
-import React, { useState } from "react";
-import { useMutation, gql } from "@apollo/client";
+import React, { useContext, useState } from "react";
+import { useMutation, useQuery, gql } from "@apollo/client";
 import Modal from "../../../common/Modal"; // Đảm bảo đường dẫn đúng
 import ToggleSwitch from "../../../common/ToggleSwitch/ToggleSwitch";
 import { getCustomerActionErrorMessage } from "@/utils/customerFlowErrorMessages";
+import { AuthContext } from "@/context/AuthContext";
 import "./SecuritySettings.scss";
 
 const CHANGE_PASSWORD = gql`
@@ -12,6 +13,43 @@ const CHANGE_PASSWORD = gql`
   }
 `;
 
+const MY_LOGIN_SESSIONS = gql`
+  query MyLoginSessions($limit: Int) {
+    myLoginSessions(limit: $limit) {
+      id
+      userAgent
+      ip
+      createdAt
+      expiresAt
+      revokedAt
+      isCurrent
+      isActive
+    }
+  }
+`;
+
+const REVOKE_OTHER_SESSIONS = gql`
+  mutation RevokeOtherMyLoginSessions {
+    revokeOtherMyLoginSessions
+  }
+`;
+
+const REVOKE_SESSION = gql`
+  mutation RevokeMyLoginSession($id: ID!) {
+    revokeMyLoginSession(id: $id)
+  }
+`;
+
+const DELETE_MY_ACCOUNT = gql`
+  mutation DeleteMyAccount($currentPassword: String, $confirmText: String!) {
+    deleteMyAccount(currentPassword: $currentPassword, confirmText: $confirmText)
+  }
+`;
+
+const formatDate = (value) => value ? new Date(value).toLocaleString("vi-VN") : "Không xác định";
+const deviceIcon = (userAgent = "") => /mobile|iphone|android/i.test(userAgent) ? "📱" : "💻";
+const deviceName = (userAgent) => userAgent || "Thiết bị không xác định";
+
 const SecuritySettings = () => {
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [pwdForm, setPwdForm] = useState({
@@ -19,27 +57,15 @@ const SecuritySettings = () => {
     next: "",
     confirm: "",
   });
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirmText: "" });
+  const { logout } = useContext(AuthContext) || {};
   const [changePassword, { loading }] = useMutation(CHANGE_PASSWORD);
-
-  // Mock Data: Sessions
-  const [sessions, setSessions] = useState([
-    {
-      id: 1,
-      name: "Chrome trên Windows",
-      location: "TP. Hồ Chí Minh",
-      active: true,
-      time: "Đang hoạt động",
-      type: "desktop",
-    },
-    {
-      id: 2,
-      name: "iPhone 14 Pro Max",
-      location: "Hà Nội",
-      active: false,
-      time: "Hoạt động 5 giờ trước",
-      type: "mobile",
-    },
-  ]);
+  const { data, loading: sessionsLoading, refetch } = useQuery(MY_LOGIN_SESSIONS, { variables: { limit: 20 } });
+  const [revokeOther, { loading: revokingOther }] = useMutation(REVOKE_OTHER_SESSIONS);
+  const [revokeSession, { loading: revokingSession }] = useMutation(REVOKE_SESSION);
+  const [deleteMyAccount, { loading: deletingAccount }] = useMutation(DELETE_MY_ACCOUNT);
+  const sessions = data?.myLoginSessions || [];
 
   const submitPassword = async () => {
     if (pwdForm.next !== pwdForm.confirm) {
@@ -63,8 +89,26 @@ const SecuritySettings = () => {
     }
   };
 
-  const handleRevokeSession = (id) => {
-    setSessions(sessions.filter((s) => s.id !== id));
+  const handleRevokeSession = async (id) => {
+    await revokeSession({ variables: { id } });
+    alert("Đã đăng xuất phiên đã chọn.");
+    refetch();
+  };
+
+  const handleRevokeOther = async () => {
+    const result = await revokeOther();
+    alert(`Đã đăng xuất ${result.data?.revokeOtherMyLoginSessions || 0} phiên khác.`);
+    refetch();
+  };
+
+  const submitDeleteAccount = async () => {
+    try {
+      await deleteMyAccount({ variables: deleteForm });
+      setDeleteOpen(false);
+      logout?.();
+    } catch (err) {
+      alert(getCustomerActionErrorMessage(err, "Không thể xóa tài khoản."));
+    }
   };
 
   return (
@@ -109,27 +153,34 @@ const SecuritySettings = () => {
           <p>Bạn đã đăng nhập trên các thiết bị sau.</p>
         </div>
 
+        <button className="btn-outline session-revoke-other" onClick={handleRevokeOther} disabled={revokingOther}>
+          {revokingOther ? "Đang xử lý..." : "Đăng xuất khỏi thiết bị khác"}
+        </button>
+
         <div className="session-list">
+          {sessionsLoading && <p className="session-empty">Đang tải phiên đăng nhập...</p>}
+          {!sessionsLoading && sessions.length === 0 && <p className="session-empty">Chưa có phiên đăng nhập nào.</p>}
           {sessions.map((session) => (
             <div key={session.id} className="session-item">
-              <div className={`session-icon ${session.type}`}>
-                {session.type === "desktop" ? "💻" : "📱"}
-              </div>
+              <div className="session-icon">{deviceIcon(session.userAgent)}</div>
               <div className="session-details">
                 <div className="session-name">
-                  {session.name}
-                  {session.active && (
-                    <span className="badge-active">Thiết bị này</span>
-                  )}
+                  {deviceName(session.userAgent)}
+                  {session.isCurrent && <span className="badge-active">Phiên hiện tại</span>}
+                  <span className={session.isActive ? "badge-active" : "badge-revoked"}>
+                    {session.isActive ? "Đang hoạt động" : "Đã thu hồi"}
+                  </span>
                 </div>
                 <div className="session-meta">
-                  {session.location} • {session.time}
+                  IP: {session.ip || "Không rõ"} • Đăng nhập: {formatDate(session.createdAt)}
+                  {session.revokedAt ? ` • Thu hồi: ${formatDate(session.revokedAt)}` : ""}
                 </div>
               </div>
-              {!session.active && (
+              {!session.isCurrent && session.isActive && (
                 <button
                   className="btn-text-danger"
                   onClick={() => handleRevokeSession(session.id)}
+                  disabled={revokingSession}
                 >
                   Đăng xuất
                 </button>
@@ -175,7 +226,7 @@ const SecuritySettings = () => {
               Hành động này không thể hoàn tác. Dữ liệu sẽ mất vĩnh viễn.
             </span>
           </div>
-          <button className="btn-danger">Xóa tài khoản</button>
+          <button className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
         </div>
       </section>
 
@@ -229,6 +280,37 @@ const SecuritySettings = () => {
               disabled={loading}
             >
               {loading ? "Đang xử lý..." : "Xác nhận"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Xóa tài khoản"
+      >
+        <div className="pwd-form-content danger-confirm">
+          <p>Tài khoản sẽ bị vô hiệu hóa và giữ trong thùng rác 30 ngày. Nhập <strong>XOA TAI KHOAN</strong> để xác nhận.</p>
+          <div className="form-field">
+            <label>Mật khẩu hiện tại</label>
+            <input
+              type="password"
+              value={deleteForm.currentPassword}
+              onChange={(e) => setDeleteForm((f) => ({ ...f, currentPassword: e.target.value }))}
+            />
+          </div>
+          <div className="form-field">
+            <label>Nhập XOA TAI KHOAN</label>
+            <input
+              value={deleteForm.confirmText}
+              onChange={(e) => setDeleteForm((f) => ({ ...f, confirmText: e.target.value }))}
+            />
+          </div>
+          <div className="form-actions">
+            <button className="btn-cancel" onClick={() => setDeleteOpen(false)}>Hủy</button>
+            <button className="btn-confirm btn-confirm-danger" onClick={submitDeleteAccount} disabled={deletingAccount}>
+              {deletingAccount ? "Đang xử lý..." : "Xóa tài khoản"}
             </button>
           </div>
         </div>
