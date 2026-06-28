@@ -90,7 +90,6 @@ const toThreadOutput = (thread, userId) => {
   };
 };
 
-
 function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
@@ -110,7 +109,6 @@ async function requireRestaurantScopeIfProvided(ctx, restaurantId, { allowCustom
   await requireRestaurantAccess(ctx, rid);
   return rid;
 }
-
 
 const buildNotificationCondition = async (ctx, { restaurantId, unreadOnly = false } = {}) => {
   ensureAuth(ctx);
@@ -133,6 +131,7 @@ const buildNotificationCondition = async (ctx, { restaurantId, unreadOnly = fals
   }
   if (rid) cond.restaurantId = rid;
   if (unreadOnly) cond.readAt = null;
+  cond.dismissedByUserIds = { $ne: uid };
   return cond;
 };
 
@@ -383,6 +382,17 @@ const Mutation = {
     const cond = await buildNotificationCondition(ctx, { restaurantId, unreadOnly: true });
     await Notification.updateMany(cond, { $set: { readAt: new Date() } });
     return true;
+  },
+
+  archiveNotification: async (_, { id }, ctx) => {
+    const cond = await buildNotificationCondition(ctx);
+    if (!mongoose.isValidObjectId(id)) throw badInput("Invalid notification id");
+    const uid = toId(ctx.user.id);
+    const result = await Notification.updateOne(
+      { _id: id, ...cond },
+      { $set: { readAt: new Date() }, $addToSet: { dismissedByUserIds: uid } },
+    );
+    return result.modifiedCount > 0;
   },
 };
 
