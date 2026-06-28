@@ -5,6 +5,8 @@ export { default as User } from "./user.model.js";
 export { default as Customer } from "./customer.model.js";
 export { default as Staff } from "./staff.model.js";
 export { default as Restaurant } from "./restaurant.model.js";
+export { default as Brand } from "./brand.model.js";
+export { default as BrandMembership } from "./brandMembership.model.js";
 export { default as Floor } from "./floor.model.js";
 export { default as Table } from "./table.model.js";
 export { default as Category } from "./category.model.js";

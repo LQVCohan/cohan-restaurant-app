@@ -168,6 +168,7 @@ const files = [
   "managerDashboard.graphql",
   "frontendCompatibility.graphql",
   "restaurant.graphql",
+  "brand.graphql",
   "role.graphql",
   "permission.graphql",
   "menu.graphql",

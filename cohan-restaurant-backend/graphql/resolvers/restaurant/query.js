@@ -4,6 +4,7 @@ import { GraphQLError } from "graphql";
 import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
+import { getScopedRestaurantFilter, isSystemAdmin } from "../brand/index.js";
 
 /* ============================ Helpers ============================ */
 
@@ -150,10 +151,11 @@ function applyPublicAvailabilityFilters(docs, filter) {
  *  - sort theo _id tăng dần
  *  - cursor là _id, dùng $gt (forward pagination)
  */
-async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
+async function restaurants(_, { limit = 20, cursor, restaurantFilter }, ctx) {
   const lim = clampLimit(limit, 1, 100);
 
-  const baseFilter = buildFilter(restaurantFilter);
+  const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
+  const baseFilter = { ...buildFilter(restaurantFilter), ...scopeFilter };
   const queryFilter = { ...baseFilter };
   const cId = toObjectIdOrNull(cursor);
   if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
@@ -177,12 +179,14 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
 }
 
 /** Chi tiết nhà hàng */
-async function restaurant(_, { id }) {
+async function restaurant(_, { id }, ctx) {
   if (!mongoose.isValidObjectId(id)) {
     throw badInput("Invalid ID");
   }
   const doc = await Restaurant.findById(id).lean();
-  return doc || null; // SDL của bạn cho phép null
+  if (!doc || !ctx?.user || isSystemAdmin(ctx.user)) return doc || null;
+  const scoped = await Restaurant.exists({ _id: doc._id, ...(await getScopedRestaurantFilter(ctx.user)) });
+  return scoped ? doc : null;
 }
 
 /** Top nhà hàng theo rating với bộ lọc */
@@ -332,16 +336,19 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
 /** Danh sách nhà hàng theo manager với cursor pagination và bộ lọc */
 async function restaurantsByManager(
   _,
-  { managerId, limit = 20, cursor, restaurantFilter }
+  { managerId, limit = 20, cursor, restaurantFilter },
+  ctx
 ) {
   if (!mongoose.isValidObjectId(managerId)) {
     throw badInput("Invalid managerId");
   }
 
   const lim = clampLimit(limit, 1, 100);
+  const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
   const baseFilter = {
     managerId: new mongoose.Types.ObjectId(managerId),
     ...buildFilter(restaurantFilter),
+    ...scopeFilter,
   };
   const queryFilter = { ...baseFilter };
 

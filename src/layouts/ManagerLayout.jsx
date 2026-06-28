@@ -38,12 +38,13 @@ const BackupManagement = lazy(() => import("@/components/Dashboard_Manager/Backu
 const SystemUserManagement = lazy(() => import("@/components/Dashboard_Manager/SystemUsers/SystemUserManagement"));
 const ManagerRestaurantInfoManagement = lazy(() => import("@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx").then((module) => ({ default: module.ManagerRestaurantInfoManagement })));
 const AiHandoffInbox = lazy(() => import("@/components/communication/AiHandoffInbox"));
+const BrandManagement = lazy(() => import("@/components/Dashboard_Manager/Brand/BrandManagement.jsx"));
 
 const MANAGER_CANONICAL_PATH = "/manager";
 const BACKUP_PAGE_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 
 const VALID_MANAGER_PAGES = new Set([
-  "dashboard", "tables", "table-qr", "orders", "menu", "combos", "inventory", "staff", "customers",
+  "dashboard", "brands", "tables", "table-qr", "orders", "menu", "combos", "inventory", "staff", "customers",
   "customer-analytics", "analytics", "transactions", "transfer-review", "wallet", "reports", "schedules",
   "promotions", "finance", "payroll", "reviews", "settings", "rates", "setting",
   "backup", "print-management", "restaurant-info-management", "rbac", "system-users", "ai-handoff",
@@ -70,6 +71,7 @@ const buildManagerNavigationUrl = ({ page, query = {} }) => {
 
 const MANAGER_PAGE_PERMISSION_ACCESS = {
   dashboard: ["dashboard.read", "report.read"],
+  brands: ["restaurant.read", "restaurant.write", "system.manage"],
   analytics: ["report.read"],
   orders: ["order.read"],
   menu: ["menu.read"],
@@ -107,6 +109,7 @@ const ADMIN_ONLY_MANAGER_PAGES = new Set(["system-users"]);
 const page = (title, description, icon, keywords = []) => ({ title, description, icon, keywords });
 const PAGE_CONFIG = {
   dashboard: page("Tổng quan", "Tổng quan hiệu suất và số liệu vận hành nhà hàng", "📊", ["overview", "thống kê", "kpi", "doanh thu", "dashboard"]),
+  brands: page("Quản lý chuỗi", "Quản lý Brand, chi nhánh và chủ sở hữu", "🏢", ["brand", "chuỗi", "chi nhánh", "owner"]),
   tables: page("Quản lý bàn", "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ", "🪑", ["bàn", "table", "đặt bàn", "sơ đồ"]),
   "table-qr": page("QR truy cập bàn", "Sinh QR để khách quét tại bàn và xem order hiện tại", "📱", ["qr", "bàn", "quét", "order", "khách"]),
   orders: page("Quản lý đơn hàng", "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán", "🧾", ["order", "đơn", "timeline", "thanh toán"]),
@@ -226,6 +229,7 @@ const ManagerLayout = () => {
     if (!allowedPages.has(currentPage)) return <PermissionFallback />;
     switch (currentPage) {
       case "dashboard": return <Dashboard />;
+      case "brands": return <BrandManagement />;
       case "tables": return <TableManagement />;
       case "table-qr": return <TableQrManagementPage />;
       case "orders": return <OrderManagement />;
