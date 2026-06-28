@@ -12,6 +12,7 @@ const NotificationSchema = new Schema(
     uniqueKey: String,
     payload: Schema.Types.Mixed,
     readAt: Date,
+    dismissedByUserIds: [{ type: Types.ObjectId, ref: "User" }],
   },
   baseOptions
 );
@@ -19,6 +20,7 @@ const NotificationSchema = new Schema(
 NotificationSchema.index({ toUserId: 1, createdAt: -1 });
 NotificationSchema.index({ toUserId: 1, readAt: 1, createdAt: -1 });
 NotificationSchema.index({ toRole: 1, restaurantId: 1, readAt: 1, createdAt: -1 });
+NotificationSchema.index({ dismissedByUserIds: 1 });
 NotificationSchema.index({ uniqueKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Notification", NotificationSchema);
