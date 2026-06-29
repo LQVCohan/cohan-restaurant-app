@@ -16,20 +16,21 @@ const CouponCard = ({ coupon, busy, onSave, onRemove, onUse, onDetail }) => {
   const disabledReason = getDisabledReason(coupon);
   const canUse = !disabledReason && coupon.isSaved;
   const canSave = !disabledReason && !coupon.isSaved;
+  const titleId = `coupon-title-${coupon.id}`;
 
   return (
-    <article className={`coupon-card coupon-card--${coupon.status}`}>
-      <div className="coupon-card__accent"><Icon size={30} /></div>
+    <article className={`coupon-card coupon-card--${coupon.status}`} aria-labelledby={titleId}>
+      <div className="coupon-card__accent" aria-hidden="true"><Icon size={30} /></div>
       <div className="coupon-card__body">
         <div className="coupon-card__topline">
           <span className="coupon-card__category">{coupon.categoryLabel}</span>
           <span className={`coupon-card__status coupon-card__status--${coupon.status}`}>{coupon.statusLabel}</span>
         </div>
-        <h3>{coupon.name}</h3>
+        <h3 id={titleId}>{coupon.name}</h3>
         <p className="coupon-card__desc">{coupon.description}</p>
         <div className="coupon-card__code-row">
           <strong>{coupon.discountLabel}</strong>
-          <code>{coupon.code || "Không có mã"}</code>
+          <code aria-label={`Mã coupon ${coupon.code || "không có mã"}`}>{coupon.code || "Không có mã"}</code>
         </div>
         <dl className="coupon-card__meta">
           <div><dt>Hạn sử dụng</dt><dd>{formatDate(coupon.endAt)}</dd></div>
@@ -45,13 +46,15 @@ const CouponCard = ({ coupon, busy, onSave, onRemove, onUse, onDetail }) => {
         <p className="coupon-card__usage-text">{coupon.usageLabel}</p>
         {disabledReason && <p className="coupon-card__disabled-reason">{disabledReason}</p>}
         <div className="coupon-card__actions">
-          <button type="button" className="btn-secondary" onClick={() => onDetail(coupon)}><Info size={16} /> Điều kiện</button>
+          <button type="button" className="btn-secondary" onClick={() => onDetail(coupon)}><Info size={16} aria-hidden="true" /> Điều kiện</button>
           {coupon.isSaved ? (
             <button type="button" className="btn-outline" disabled={busy} onClick={() => onRemove(coupon)}>Bỏ lưu</button>
           ) : (
             <button type="button" className="btn-primary" disabled={busy || !canSave} onClick={() => onSave(coupon)}>Lưu coupon</button>
           )}
-          <button type="button" className="btn-primary btn-primary--dark" disabled={busy || !canUse} onClick={() => onUse(coupon)}>Dùng ngay {canUse && <Check size={15} />}</button>
+          <button type="button" className="btn-primary btn-primary--dark" disabled={busy || !canUse} onClick={() => onUse(coupon)}>
+            Dùng ngay {canUse && <Check size={15} aria-hidden="true" />}
+          </button>
         </div>
       </div>
     </article>
