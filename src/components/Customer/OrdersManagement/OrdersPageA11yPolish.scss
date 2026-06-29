@@ -1,0 +1,61 @@
+/* Scoped a11y polish for /orders. Keeps orders queries, mutations and modals untouched. */
+.orders-page {
+  .btn-create,
+  .btn-clear-filters,
+  .tab-btn,
+  .btn,
+  .orders-search,
+  .orders-select,
+  button,
+  a {
+    &:focus-visible {
+      outline: 3px solid rgba(255, 102, 0, 0.28);
+      outline-offset: 4px;
+    }
+  }
+
+  button,
+  .btn,
+  .btn-create,
+  .btn-clear-filters,
+  .tab-btn,
+  .orders-select {
+    min-height: 44px;
+  }
+
+  .orders-search {
+    min-height: 44px;
+  }
+
+  .tab-btn {
+    &[aria-selected="true"],
+    &.active {
+      box-shadow:
+        0 0 0 3px rgba(255, 102, 0, 0.1),
+        0 16px 32px rgba(255, 102, 0, 0.12);
+    }
+  }
+
+  .empty-state[role="status"],
+  .empty-state[role="alert"],
+  .orders-page__loading-note[role="status"] {
+    scroll-margin-top: 96px;
+  }
+
+  .summary-chip strong,
+  .detail-value,
+  .receipt-summary-amount strong {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orders-page *,
+  .orders-page *::before,
+  .orders-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
