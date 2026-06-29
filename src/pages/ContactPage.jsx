@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import "./ContactPage.scss";
 import "./ContactPage.product.css";
-// Giả sử bạn có component Toast, nếu chưa có thì dùng alert tạm
 
 const SocialFacebook = ({ size = 20 }) => (
   <svg
@@ -78,7 +77,7 @@ const ContactPage = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null); // { message, type }
+  const [toast, setToast] = useState(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -88,51 +87,45 @@ const ContactPage = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Giả lập gọi API gửi mail
-    setTimeout(() => {
+    window.setTimeout(() => {
       setLoading(false);
       setToast({
-        message: "Đã gửi tin nhắn thành công! Chúng tôi sẽ phản hồi sớm nhất.",
+        message: "Đã gửi tin nhắn thành công. Chúng tôi sẽ phản hồi sớm nhất.",
         type: "success",
       });
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-
-      // Tắt toast sau 3s
-      setTimeout(() => setToast(null), 3000);
+      window.setTimeout(() => setToast(null), 3000);
     }, 1500);
   };
 
   return (
-    <div className="contact-page">
-      {/* Toast Notification */}
+    <main className="contact-page" aria-labelledby="contact-title">
       {toast && (
-        <div className={`toast-notification ${toast.type}`}>
+        <div className={`toast-notification ${toast.type}`} role="status" aria-live="polite">
           {toast.message}
         </div>
       )}
 
-      {/* --- HEADER SECTION --- */}
-      <div className="contact-header">
-        <h1>Liên hệ với chúng tôi</h1>
+      <section className="contact-header" aria-labelledby="contact-title">
+        <h1 id="contact-title">Liên hệ với Cohan</h1>
         <p>
-          Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn 24/7. Hãy để lại tin
-          nhắn hoặc ghé thăm văn phòng của chúng tôi.
+          Cohan luôn sẵn sàng lắng nghe và hỗ trợ bạn. Hãy để lại tin nhắn hoặc liên hệ trực tiếp với đội hỗ trợ.
         </p>
-      </div>
+      </section>
 
       <div className="contact-container">
-        {/* --- LEFT: CONTACT FORM --- */}
-        <div className="contact-form-card">
+        <section className="contact-form-card" aria-labelledby="contact-form-title">
           <div className="card-title">
-            <h2>Gửi tin nhắn</h2>
+            <h2 id="contact-form-title">Gửi tin nhắn</h2>
             <p>Điền thông tin vào biểu mẫu bên dưới.</p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
-                <label>Họ và tên</label>
+                <label htmlFor="contact-name">Họ và tên</label>
                 <input
+                  id="contact-name"
                   type="text"
                   name="name"
                   placeholder="Nguyễn Văn A"
@@ -142,8 +135,9 @@ const ContactPage = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Số điện thoại</label>
+                <label htmlFor="contact-phone">Số điện thoại</label>
                 <input
+                  id="contact-phone"
                   type="tel"
                   name="phone"
                   placeholder="0909 xxx xxx"
@@ -154,8 +148,9 @@ const ContactPage = () => {
             </div>
 
             <div className="form-group">
-              <label>Email</label>
+              <label htmlFor="contact-email">Email</label>
               <input
+                id="contact-email"
                 type="email"
                 name="email"
                 placeholder="example@gmail.com"
@@ -166,8 +161,9 @@ const ContactPage = () => {
             </div>
 
             <div className="form-group">
-              <label>Chủ đề</label>
+              <label htmlFor="contact-subject">Chủ đề</label>
               <select
+                id="contact-subject"
                 name="subject"
                 value={formData.subject}
                 onChange={handleChange}
@@ -182,38 +178,38 @@ const ContactPage = () => {
             </div>
 
             <div className="form-group">
-              <label>Nội dung</label>
+              <label htmlFor="contact-message">Nội dung</label>
               <textarea
+                id="contact-message"
                 name="message"
                 rows="5"
                 placeholder="Nhập nội dung tin nhắn..."
                 value={formData.message}
                 onChange={handleChange}
                 required
-              ></textarea>
+              />
             </div>
 
             <button type="submit" className="btn-submit" disabled={loading}>
               {loading ? (
-                <span className="loader"></span>
+                <span className="loader" aria-hidden="true" />
               ) : (
                 <>
-                  <Send size={18} /> Gửi ngay
+                  <Send size={18} aria-hidden="true" /> Gửi ngay
                 </>
               )}
             </button>
           </form>
-        </div>
+        </section>
 
-        {/* --- RIGHT: INFO CARD --- */}
-        <div className="contact-info-wrapper">
-          <div className="contact-info-card">
-            <h3>Thông tin liên hệ</h3>
+        <aside className="contact-info-wrapper" aria-label="Thông tin liên hệ Cohan">
+          <section className="contact-info-card" aria-labelledby="contact-info-title">
+            <h2 id="contact-info-title">Thông tin liên hệ</h2>
             <p className="subtitle">Chi tiết liên lạc trực tiếp</p>
 
             <div className="info-list">
               <div className="info-item">
-                <div className="icon-box">
+                <div className="icon-box" aria-hidden="true">
                   <MapPin size={20} />
                 </div>
                 <div>
@@ -225,27 +221,27 @@ const ContactPage = () => {
               </div>
 
               <div className="info-item">
-                <div className="icon-box">
+                <div className="icon-box" aria-hidden="true">
                   <Phone size={20} />
                 </div>
                 <div>
-                  <span className="label">Hotline (24/7)</span>
-                  <p className="value highlight">1900 123 456</p>
+                  <span className="label">Hotline</span>
+                  <a className="value highlight" href="tel:1900123456">1900 123 456</a>
                 </div>
               </div>
 
               <div className="info-item">
-                <div className="icon-box">
+                <div className="icon-box" aria-hidden="true">
                   <Mail size={20} />
                 </div>
                 <div>
                   <span className="label">Email hỗ trợ</span>
-                  <p className="value">support@restaurant.com</p>
+                  <a className="value" href="mailto:support@cohan.vn">support@cohan.vn</a>
                 </div>
               </div>
 
               <div className="info-item">
-                <div className="icon-box">
+                <div className="icon-box" aria-hidden="true">
                   <Clock size={20} />
                 </div>
                 <div>
@@ -255,39 +251,38 @@ const ContactPage = () => {
               </div>
             </div>
 
-            <div className="divider"></div>
+            <div className="divider" />
 
             <div className="social-links">
-              <span className="label">Theo dõi chúng tôi:</span>
-              <div className="icons">
-                <a href="#" className="social-icon" aria-label="Facebook">
+              <span className="label">Theo dõi Cohan:</span>
+              <div className="icons" aria-label="Kênh mạng xã hội Cohan">
+                <a href="https://www.facebook.com" className="social-icon" aria-label="Facebook Cohan" target="_blank" rel="noreferrer">
                   <SocialFacebook size={20} />
                 </a>
-                <a href="#" className="social-icon" aria-label="Instagram">
+                <a href="https://www.instagram.com" className="social-icon" aria-label="Instagram Cohan" target="_blank" rel="noreferrer">
                   <SocialInstagram size={20} />
                 </a>
-                <a href="#" className="social-icon" aria-label="Twitter">
+                <a href="https://x.com" className="social-icon" aria-label="X Cohan" target="_blank" rel="noreferrer">
                   <SocialTwitter size={20} />
                 </a>
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Google Map Embed */}
-          <div className="map-card">
+          <section className="map-card" aria-label="Bản đồ vị trí văn phòng Cohan">
             <iframe
-              title="Google Map"
+              title="Bản đồ vị trí văn phòng Cohan"
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.517826541815!2d106.70134531480082!3d10.771595292324754!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f40a3b49e59%3A0xa1bd14e483a602db!2sBitexco%20Financial%20Tower!5e0!3m2!1sen!2s!4v1625625000000!5m2!1sen!2s"
               width="100%"
               height="250"
               style={{ border: 0 }}
               allowFullScreen=""
               loading="lazy"
-            ></iframe>
-          </div>
-        </div>
+            />
+          </section>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 };
 
