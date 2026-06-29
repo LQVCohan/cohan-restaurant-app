@@ -105,8 +105,8 @@ function assertCanView(ctx) {
     throw new Error("Bạn không có quyền xem yêu cầu tăng ca.");
   }
 }
-function assertRestaurantScope(ctx, restaurantId) {
-  if (!userCanAccessRestaurant(ctx?.user, restaurantId)) {
+async function assertRestaurantScope(ctx, restaurantId) {
+  if (!await userCanAccessRestaurant(ctx?.user, restaurantId)) {
     throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
   }
 }
@@ -388,7 +388,7 @@ export async function listOvertimeRequests({ filter = {}, ctx }) {
   const actorId = getActorId(ctx);
 
   if (filter.restaurantId) query.restaurantId = toObjectId(filter.restaurantId);
-  if (filter.restaurantId) assertRestaurantScope(ctx, filter.restaurantId);
+  if (filter.restaurantId) await assertRestaurantScope(ctx, filter.restaurantId);
   if (filter.employeeId) query.employeeId = toObjectId(filter.employeeId);
   if (filter.status && filter.status !== "all")
     query.status = String(filter.status);
@@ -456,7 +456,7 @@ export async function getOvertimeRequest({ id, ctx }) {
     .populate("completedBy", "fullName email username");
 
   if (!row) return null;
-  assertRestaurantScope(ctx, row.restaurantId);
+  await assertRestaurantScope(ctx, row.restaurantId);
 
   const actorRole = getActorRole(ctx);
   const actorId = getActorId(ctx);
@@ -479,7 +479,7 @@ export async function createOvertimeRequest({ input, ctx }) {
 
   if (!employeeId) throw new Error("employeeId không hợp lệ.");
   if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
-  assertRestaurantScope(ctx, restaurantId);
+  await assertRestaurantScope(ctx, restaurantId);
 
   assertCanCreate(ctx, employeeId);
 
@@ -619,7 +619,7 @@ export async function createOvertimeRequest({ input, ctx }) {
 export async function confirmOvertimeRequest({ input, ctx }) {
   const request = await OvertimeRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   assertCanConfirm(ctx, request);
 
@@ -654,7 +654,7 @@ export async function approveOvertimeRequest({ input, ctx }) {
 
   const request = await OvertimeRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "pending_approval") {
     throw new Error("Chỉ có thể duyệt yêu cầu đang chờ duyệt.");
@@ -720,7 +720,7 @@ export async function rejectOvertimeRequest({ input, ctx }) {
 
   const request = await OvertimeRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   if (
     !["pending_employee_confirmation", "pending_approval", "approved"].includes(
@@ -754,7 +754,7 @@ export async function rejectOvertimeRequest({ input, ctx }) {
 export async function cancelOvertimeRequest({ input, ctx }) {
   const request = await OvertimeRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   assertCanCancel(ctx, request);
 
@@ -796,7 +796,7 @@ export async function completeOvertimeRequest({ input, ctx }) {
 
   const request = await OvertimeRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "approved") {
     throw new Error("Chỉ có thể hoàn tất yêu cầu tăng ca đã duyệt.");

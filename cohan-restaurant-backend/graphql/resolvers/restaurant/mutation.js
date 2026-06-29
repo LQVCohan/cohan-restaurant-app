@@ -11,7 +11,7 @@ import {
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
-import { canAccessRestaurant, canManageBrand, isActiveBrandOperator, isBrandOwner, isSystemAdmin } from "../brand/index.js";
+import { canAccessRestaurant, canManageBrand, isActiveBrandOperator, isBrandOwner, isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -127,6 +127,7 @@ async function createRestaurant(_, { input }, ctx) {
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }
+  // Legacy/direct manager metadata kept for GraphQL contract; BrandMembership is the authorization source.
   const finalManagerId = managerId;
   if (!finalManagerId) throw badInput("managerId is required");
 

@@ -63,8 +63,8 @@ export async function getPerformanceIncidentById(incidentId) {
   return doc;
 }
 
-function assertRestaurantScope(user, restaurantId) {
-  if (!userCanAccessRestaurant(user, restaurantId)) throw new Error("FORBIDDEN");
+async function assertRestaurantScope(user, restaurantId) {
+  if (!await userCanAccessRestaurant(user, restaurantId)) throw new Error("FORBIDDEN");
 }
 
 function hasAnyRole(user, allowedRoles) {
@@ -72,16 +72,16 @@ function hasAnyRole(user, allowedRoles) {
   return roles.some((role) => allowedRoles.includes(role));
 }
 
-function assertCanReviewIncident(user, restaurantId) {
+async function assertCanReviewIncident(user, restaurantId) {
   if (!hasAnyRole(user, PERFORMANCE_REVIEW_ROLES)) throw new Error("FORBIDDEN");
-  assertRestaurantScope(user, restaurantId);
+  await assertRestaurantScope(user, restaurantId);
 }
 
 export async function reviewPerformanceIncident({ input, ctx }) {
   const user = ctx?.user;
   if (!user) throw new Error("UNAUTHENTICATED");
   const incident = await getPerformanceIncidentById(input.incidentId);
-  assertCanReviewIncident(user, incident.restaurantId);
+  await assertCanReviewIncident(user, incident.restaurantId);
 
   const nextResponsibility = input.responsibilityStatus || incident.responsibilityStatus;
   const nextImpact = input.scoreImpactStatus || incident.scoreImpactStatus;
@@ -110,7 +110,7 @@ export async function waivePerformanceIncident({ incidentId, reason, ctx }) {
   const trimReason = String(reason || "").trim();
   if (!trimReason) throw new Error("WAIVE_REASON_REQUIRED");
   const incident = await getPerformanceIncidentById(incidentId);
-  assertCanReviewIncident(user, incident.restaurantId);
+  await assertCanReviewIncident(user, incident.restaurantId);
   if (incident.scoreImpactStatus === "applied") throw new Error("INCIDENT_ALREADY_APPLIED");
   if (incident.scoreImpactStatus === "waived") return incident;
 
@@ -130,7 +130,7 @@ export async function markPerformanceIncidentEligible({ input, ctx }) {
   const user = ctx?.user;
   if (!user) throw new Error("UNAUTHENTICATED");
   const incident = await getPerformanceIncidentById(input.incidentId);
-  assertCanReviewIncident(user, incident.restaurantId);
+  await assertCanReviewIncident(user, incident.restaurantId);
   if (["applied", "waived"].includes(incident.scoreImpactStatus)) throw new Error("INVALID_INCIDENT_STATE");
   if (!["staff_responsible", "manager_responsible", "shared"].includes(input.responsibilityStatus)) throw new Error("INVALID_RESPONSIBILITY_STATUS");
   const proposed = Number(input.proposedScoreDelta);
@@ -155,9 +155,9 @@ const APPLY_ALLOWED_RESPONSIBILITY = ["staff_responsible", "manager_responsible"
 const SCORE_MIN = 0;
 const SCORE_DEFAULT = 100;
 
-function assertCanApplyIncident(user, restaurantId) {
+async function assertCanApplyIncident(user, restaurantId) {
   if (!hasAnyRole(user, PERFORMANCE_REVIEW_ROLES)) throw new Error("FORBIDDEN");
-  assertRestaurantScope(user, restaurantId);
+  await assertRestaurantScope(user, restaurantId);
 }
 
 function toPeriodBounds(dateLike) {
@@ -170,7 +170,7 @@ function toPeriodBounds(dateLike) {
 export async function applyPerformanceIncidentScore({ incidentId, actor, note }) {
   if (!actor) throw new Error("UNAUTHENTICATED");
   const incident = await getPerformanceIncidentById(incidentId);
-  assertCanApplyIncident(actor, incident.restaurantId);
+  await assertCanApplyIncident(actor, incident.restaurantId);
 
   if (incident.scoreImpactStatus === "waived") throw new Error("PERFORMANCE_INCIDENT_WAIVED");
   if (incident.scoreImpactStatus === "applied") throw new Error("PERFORMANCE_INCIDENT_ALREADY_APPLIED");

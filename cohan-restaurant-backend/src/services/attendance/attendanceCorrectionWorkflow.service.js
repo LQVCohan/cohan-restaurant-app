@@ -129,8 +129,8 @@ function assertAuthenticated(ctx) {
   if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
 }
 
-function assertRestaurantScope(ctx, restaurantId) {
-  if (!userCanAccessRestaurant(ctx?.user, restaurantId)) {
+async function assertRestaurantScope(ctx, restaurantId) {
+  if (!await userCanAccessRestaurant(ctx?.user, restaurantId)) {
     throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
   }
 }
@@ -514,7 +514,7 @@ export async function listAttendanceCorrectionRequests({ filter = {}, ctx }) {
   if (!restaurantId) {
     throw new Error("restaurantId không hợp lệ.");
   }
-  assertRestaurantScope(ctx, restaurantId);
+  await assertRestaurantScope(ctx, restaurantId);
 
   const query = { restaurantId };
 
@@ -593,7 +593,7 @@ export async function getAttendanceCorrectionRequest({ id, ctx }) {
     .populate("appliedBy", "fullName email username");
 
   if (!doc) return null;
-  assertRestaurantScope(ctx, doc.restaurantId);
+  await assertRestaurantScope(ctx, doc.restaurantId);
 
   const actorRole = getActorRole(ctx);
   const actorId = getActorId(ctx);
@@ -655,7 +655,7 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
   });
 
   assertCanCreateForEmployee(ctx, employeeId);
-  assertRestaurantScope(ctx, restaurantId);
+  await assertRestaurantScope(ctx, restaurantId);
 
   const staff = await resolveStaff(employeeId);
   if (!staffBelongsToRestaurant(staff, restaurantId)) {
@@ -961,7 +961,7 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
 
   const request = await AttendanceCorrectionRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "pending") {
     if (request.status === "applied") {
@@ -1071,7 +1071,7 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
 
   const request = await AttendanceCorrectionRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "pending") {
     throw new Error("Chỉ có thể từ chối yêu cầu đang chờ xử lý.");
@@ -1143,7 +1143,7 @@ export async function cancelAttendanceCorrectionRequest({ requestId, ctx }) {
 
   const request = await AttendanceCorrectionRequest.findById(requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
-  assertRestaurantScope(ctx, request.restaurantId);
+  await assertRestaurantScope(ctx, request.restaurantId);
 
   assertCanCancel(ctx, request);
 

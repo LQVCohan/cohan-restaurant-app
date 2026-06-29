@@ -3,6 +3,15 @@ import { GraphQLError } from "graphql";
 import { Brand, BrandMembership, Restaurant, User, Role } from "../../../models/index.js";
 import { signAccessToken, issueRefreshToken } from "../../../src/security/authTokens.js";
 import { sanitizeUserForClient } from "../../../src/security/sanitizeUserForClient.js";
+import {
+  canManageBrand,
+  canReadBrand,
+  ensureBrandRestaurants,
+  getScopedRestaurantFilter,
+  getUserId,
+  isBrandOwner,
+  isSystemAdmin,
+} from "../../../src/services/auth/restaurantScope.service.js";
 
 const bad = (m) => new GraphQLError(m, { extensions: { code: "BAD_USER_INPUT" } });
 const forbidden = (m = "Forbidden") => new GraphQLError(m, { extensions: { code: "FORBIDDEN" } });
@@ -10,46 +19,11 @@ const auth = () => new GraphQLError("Unauthorized", { extensions: { code: "UNAUT
 const oid = (id) => { if (!mongoose.isValidObjectId(id)) throw bad("Invalid ID"); return new mongoose.Types.ObjectId(id); };
 const slugify = (v) => String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const roleName = (u) => String(u?.roleName || u?.role?.slug || u?.role || "").toLowerCase();
-export const isSystemAdmin = (user) => String(user?.userType || "").toUpperCase() === "ADMIN" || roleName(user) === "admin";
-const userId = (u) => String(u?.id || u?._id || "");
-const activeMembership = (user, brandId) => BrandMembership.findOne({ userId: oid(userId(user)), brandId: oid(brandId), status: "active" }).lean();
-export const isBrandOwner = async (user, brandId) => isSystemAdmin(user) || !!await Brand.findOne({ _id: oid(brandId), ownerId: oid(userId(user)), status: { $ne: "inactive" } }).lean() || (await activeMembership(user, brandId))?.role === "owner";
-export const isBrandAdmin = async (user, brandId) => isSystemAdmin(user) || ["owner", "admin"].includes((await activeMembership(user, brandId))?.role);
-export const canManageBrand = isBrandAdmin;
-export const canReadBrand = async (user, brandId) => isSystemAdmin(user) || !!await Brand.findOne({ _id: oid(brandId), ownerId: oid(userId(user)) }).lean() || !!await activeMembership(user, brandId);
-export const canManageBrandRestaurants = canManageBrand;
-export const isActiveBrandOperator = async (candidateUserId, brandId) => !!await BrandMembership.exists({ userId: oid(candidateUserId), brandId: oid(brandId), status: "active", role: { $in: ["owner", "admin", "manager"] } });
-const userRestaurantIds = (user) => [user?.restaurantForStaff, ...(user?.refRestaurants || [])].filter(Boolean).map(oid);
-export async function getScopedRestaurantFilter(user) {
-  if (!user) return { _id: { $in: [] } };
-  if (isSystemAdmin(user)) return {};
-  const uid = oid(userId(user));
-  const memberships = await BrandMembership.find({ userId: uid, status: "active" }).lean();
-  const brandIds = memberships.filter((m) => ["owner", "admin"].includes(m.role)).map((m) => m.brandId);
-  const explicit = memberships.flatMap((m) => m.restaurantIds || []);
-  const direct = userRestaurantIds(user);
-  const ors = [
-    ...(brandIds.length ? [{ brandId: { $in: brandIds } }] : []),
-    ...(explicit.length ? [{ _id: { $in: explicit } }] : []),
-    ...(direct.length ? [{ _id: { $in: direct } }] : []),
-  ];
-  return ors.length ? { $or: ors } : { _id: { $in: [] } };
-}
-export async function canAccessRestaurant(user, restaurantId) {
-  if (isSystemAdmin(user)) return true;
-  return !!await Restaurant.exists({ _id: oid(restaurantId), ...(await getScopedRestaurantFilter(user)) });
-}
-async function ensureBrandRestaurants(brandId, restaurantIds = []) {
-  const ids = [...new Set((restaurantIds || []).filter(Boolean).map(String))];
-  if (!ids.length) return [];
-  const count = await Restaurant.countDocuments({ _id: { $in: ids.map(oid) }, brandId: oid(brandId) });
-  if (count !== ids.length) throw bad("restaurantIds must belong to the brand");
-  return ids.map(oid);
-}
+const userId = getUserId;
 function needsRestaurantScope(role) { return ["manager", "staff"].includes(role); }
 async function ensureMembershipInput(input) {
   if (needsRestaurantScope(input.role) && !(input.restaurantIds || []).filter(Boolean).length) throw bad("restaurantIds are required for manager/staff");
-  return ensureBrandRestaurants(input.brandId, input.restaurantIds);
+  try { return await ensureBrandRestaurants(input.brandId, input.restaurantIds); } catch (error) { throw bad(error.message); }
 }
 async function assertCanWriteMembership(actor, membership, nextRole) {
   if (isSystemAdmin(actor) || await isBrandOwner(actor, membership.brandId)) return;
@@ -113,5 +87,6 @@ const Mutation = {
   updateBrandMember: async (_, { input }, ctx) => { const m = await BrandMembership.findById(input.id); if (!m) throw bad("Membership not found"); if (!ctx?.user || !await canManageBrand(ctx.user, m.brandId)) throw forbidden(); await assertCanWriteMembership(ctx.user, m, input.role); if (m.role === "owner" && ((input.role && input.role !== "owner") || input.status === "inactive") && await BrandMembership.countDocuments({ brandId: m.brandId, role: "owner", status: "active" }) <= 1) throw bad("Cannot remove the last owner"); if (input.restaurantIds || needsRestaurantScope(input.role || m.role)) m.restaurantIds = await ensureMembershipInput({ ...input, brandId: m.brandId, role: input.role || m.role }); if (input.role) m.role = input.role; if (input.status) m.status = input.status; m.updatedBy = oid(userId(ctx.user)); await m.save(); return m.toObject(); },
   removeBrandMember: async (_, { id }, ctx) => { const m = await BrandMembership.findById(id); if (!m) throw bad("Membership not found"); if (!ctx?.user || !await canManageBrand(ctx.user, m.brandId)) throw forbidden(); await assertCanWriteMembership(ctx.user, m); if (m.role === "owner" && await BrandMembership.countDocuments({ brandId: m.brandId, role: "owner", status: "active" }) <= 1) throw bad("Cannot remove the last owner"); m.status = "inactive"; await m.save(); return true; },
 };
+
 
 export default { Query, Mutation, Brand: { id: (p) => p.id ?? String(p._id), owner: (p) => User.findById(p.ownerId).lean(), restaurantCount: (p) => Restaurant.countDocuments({ brandId: p._id || p.id }), restaurants: async (p, { limit = 50 }, ctx) => Restaurant.find({ brandId: p._id || p.id, ...(ctx?.user && !isSystemAdmin(ctx.user) ? await getScopedRestaurantFilter(ctx.user) : {}) }).limit(Math.min(limit, 100)).lean() }, BrandMembership: { id: (p) => p.id ?? String(p._id), brand: (p) => Brand.findById(p.brandId).lean(), user: (p) => User.findById(p.userId).lean(), restaurants: (p) => Restaurant.find({ _id: { $in: p.restaurantIds || [] } }).lean() } };

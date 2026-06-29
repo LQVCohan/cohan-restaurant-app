@@ -4,7 +4,7 @@ import { GraphQLError } from "graphql";
 import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
-import { getScopedRestaurantFilter, isSystemAdmin } from "../brand/index.js";
+import { canAccessRestaurant, getScopedRestaurantFilter, isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
 
 /* ============================ Helpers ============================ */
 
@@ -193,8 +193,7 @@ async function restaurant(_, { id }, ctx) {
   }
   const doc = await Restaurant.findById(id).lean();
   if (!doc || !ctx?.user || isSystemAdmin(ctx.user)) return doc || null;
-  const scoped = await Restaurant.exists({ _id: doc._id, ...(await getScopedRestaurantFilter(ctx.user)) });
-  return scoped ? doc : null;
+  return await canAccessRestaurant(ctx.user, id) ? doc : null;
 }
 
 /** Top nhà hàng theo rating với bộ lọc */
@@ -358,11 +357,12 @@ async function restaurantsByManager(
   const uid = String(ctx?.user?.id || ctx?.user?._id || "");
   const managerObjectId = new mongoose.Types.ObjectId(managerId);
   const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  // Legacy API name: scope comes from BrandMembership when users query themselves; only System Admin can inspect another managerId.
   const scopedAccessFilter = isSystemAdmin(ctx?.user)
-    ? {}
-    : includeBrandScope && uid === String(managerId)
+    ? { managerId: managerObjectId }
+    : uid === String(managerId)
       ? await getScopedRestaurantFilter(ctx.user)
-      : { managerId: managerObjectId };
+      : { _id: { $in: [] } };
   const legacyFilter = includeLegacyManaged ? {} : { brandId: { $ne: null } };
   const cId = toObjectIdOrNull(cursor);
   const cursorFilter = cId ? { _id: { $gt: cId } } : {};
