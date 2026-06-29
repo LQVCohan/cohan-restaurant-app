@@ -52,11 +52,11 @@ const makeAttendanceRecord = (overrides = {}) => ({
   employeeRole: STAFF_USER.positionTitle,
   employeeAvatar: null,
   restaurantId: TEST_RESTAURANT.id,
-  workDate: "2026-06-26T00:00:00.000+07:00",
+  workDate: "2099-06-26T00:00:00.000+07:00",
   shiftId: null,
   shiftType: "morning",
-  plannedStartTime: "2026-06-26T01:00:00.000Z",
-  plannedEndTime: "2026-06-26T09:00:00.000Z",
+  plannedStartTime: "2099-06-26T01:00:00.000Z",
+  plannedEndTime: "2099-06-26T09:00:00.000Z",
   actualCheckInAt: null,
   actualCheckOutAt: null,
   workedMinutes: 0,
@@ -169,8 +169,8 @@ const installManagerAttendanceMocks = async (page) => {
       case "UpsertAttendance": {
         const input = payload?.variables?.input || {};
         const checkedIn = makeAttendanceRecord({
-          workDate: input.workDate || "2026-06-26T00:00:00.000+07:00",
-          actualCheckInAt: "2026-06-26T02:00:00.000Z",
+          workDate: input.workDate || "2099-06-26T00:00:00.000+07:00",
+          actualCheckInAt: "2099-06-26T01:00:00.000Z",
           note: input.note || "",
           status: "checked_in",
           updatedAt: "2026-06-26T02:00:00.000Z",
