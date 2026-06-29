@@ -1,6 +1,6 @@
 import React, { useContext, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { Heart, Search, ShoppingBag, MapPin, Star, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Heart, Search, ShoppingBag, MapPin, Star, Trash2, Plus, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
@@ -120,12 +120,19 @@ const FavoritePage = () => {
     onError: () => showNotification("Không thể bỏ yêu thích. Vui lòng thử lại.", "error"),
   });
 
+  const rawFavorites = useMemo(() => (data?.myFavorites || []).map(normalizeFavorite).filter(Boolean), [data?.myFavorites]);
+
   const favorites = useMemo(() => {
-    const rows = (data?.myFavorites || []).map(normalizeFavorite).filter(Boolean);
     const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return rows;
-    return rows.filter((item) => [item.name, item.address].filter(Boolean).some((value) => String(value).toLowerCase().includes(keyword)));
-  }, [data?.myFavorites, searchTerm]);
+    if (!keyword) return rawFavorites;
+    return rawFavorites.filter((item) => [item.name, item.address].filter(Boolean).some((value) => String(value).toLowerCase().includes(keyword)));
+  }, [rawFavorites, searchTerm]);
+
+  const stats = useMemo(() => ({
+    all: rawFavorites.length,
+    restaurant: rawFavorites.filter((item) => item.type === "restaurant").length,
+    food: rawFavorites.filter((item) => item.type === "food").length,
+  }), [rawFavorites]);
 
   const handleRemove = (favoriteId) => {
     if (!favoriteId || removing) return;
@@ -137,34 +144,51 @@ const FavoritePage = () => {
     if (item.type === "food") navigate(buildFoodDetailPath(item.id, { restaurantId: item.restaurantId, menuId: item.menuId, categoryId: item.categoryId }));
   };
 
+  const openItemByKeyboard = (event, item) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openItem(item);
+  };
+
   const showUnsupportedNote = activeTab === "all";
 
   return (
-    <div className="favorite-page">
+    <main className="favorite-page">
       <div className="fav-container">
-        <div className="page-header">
-          <div className="header-content">
-            <h1>Danh sách yêu thích ❤️</h1>
-            <p>Lưu giữ nhà hàng và món ăn bạn muốn quay lại.</p>
-          </div>
-          <div className="search-bar-mini">
-            <Search size={18} />
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm trong yêu thích..." />
-          </div>
-        </div>
-
-        <div className="tabs-wrapper">
-          {TABS.map((tab) => (
-            <button key={tab.id} type="button" className={`tab-pill ${activeTab === tab.id ? "active" : ""}`} onClick={() => setActiveTab(tab.id)}>
-              {tab.icon}<span>{tab.label}</span>
+        <section className="fav-hero" aria-labelledby="favorite-title">
+          <div className="fav-hero__copy">
+            <button type="button" className="fav-back" onClick={() => navigate(-1)}>
+              <ArrowLeft size={17} /> Quay lại
             </button>
-          ))}
-        </div>
+            <span className="fav-eyebrow"><Sparkles size={15} /> Bộ sưu tập cá nhân</span>
+            <h1 id="favorite-title">Danh sách yêu thích</h1>
+            <p>Lưu lại nhà hàng và món ăn muốn quay lại, lọc nhanh để đặt món tiếp mà không phải tìm lại từ đầu.</p>
+          </div>
+          <div className="fav-summary" aria-label="Tổng quan yêu thích">
+            <article><Heart aria-hidden="true" /><strong>{stats.all}</strong><span>Tổng mục</span></article>
+            <article><MapPin aria-hidden="true" /><strong>{stats.restaurant}</strong><span>Nhà hàng</span></article>
+            <article><ShoppingBag aria-hidden="true" /><strong>{stats.food}</strong><span>Món ăn</span></article>
+          </div>
+        </section>
+
+        <section className="fav-toolbar" aria-label="Bộ lọc yêu thích">
+          <label className="search-bar-mini">
+            <Search size={18} aria-hidden="true" />
+            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm trong yêu thích..." />
+          </label>
+          <div className="tabs-wrapper" role="tablist" aria-label="Lọc loại yêu thích">
+            {TABS.map((tab) => (
+              <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={`tab-pill ${activeTab === tab.id ? "active" : ""}`} onClick={() => setActiveTab(tab.id)}>
+                {tab.icon}<span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
 
         {showUnsupportedNote && <div className="unsupported-note">Đầu bếp và bộ sưu tập chưa hỗ trợ dữ liệu yêu thích thật.</div>}
 
         {loading ? (
-          <div className="fav-grid" aria-busy="true">
+          <div className="fav-grid" aria-busy="true" aria-live="polite">
             {Array.from({ length: 6 }).map((_, index) => <div className="fav-card skeleton-card" key={index}><div className="skeleton-image" /><div className="skeleton-line wide" /><div className="skeleton-line" /><div className="skeleton-line short" /></div>)}
           </div>
         ) : error ? (
@@ -174,10 +198,10 @@ const FavoritePage = () => {
         ) : (
           <div className="fav-grid">
             {favorites.map((item) => (
-              <div key={item.favoriteId} className="fav-card">
-                <div className="card-image" onClick={() => openItem(item)} role="button" tabIndex={0}>
-                  <img src={item.image} alt={item.name} />
-                  <button className="btn-remove-fav" type="button" title="Bỏ yêu thích" onClick={(e) => { e.stopPropagation(); handleRemove(item.favoriteId); }} disabled={removing}>
+              <article key={item.favoriteId} className="fav-card">
+                <div className="card-image" onClick={() => openItem(item)} onKeyDown={(event) => openItemByKeyboard(event, item)} role="button" tabIndex={0} aria-label={`Mở ${item.name}`}>
+                  <img src={item.image} alt={item.name} loading="lazy" />
+                  <button className="btn-remove-fav" type="button" title="Bỏ yêu thích" aria-label={`Bỏ yêu thích ${item.name}`} onClick={(e) => { e.stopPropagation(); handleRemove(item.favoriteId); }} disabled={removing}>
                     <Trash2 size={16} color="#ff4d4f" />
                   </button>
                   {item.status === "closed" && <div className="overlay-closed">Đã đóng cửa</div>}
@@ -194,12 +218,12 @@ const FavoritePage = () => {
                     <div className="action-row"><button className="btn-cart" type="button" onClick={() => openItem(item)}><Plus size={16} /> Xem món</button></div>
                   </>}
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 };
 
