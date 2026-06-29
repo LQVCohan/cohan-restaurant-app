@@ -1,0 +1,84 @@
+/* Scoped a11y polish for /food/:foodId. Keeps FoodDetail realtime/cart logic untouched. */
+.food-detail-wrapper {
+  .btn-icon,
+  .radio-btn,
+  .quantity-control button,
+  .btn-add-cart,
+  .btn-buy-now,
+  .tab-btn,
+  .fd-cart-floating-btn,
+  .thumb-item {
+    &:focus-visible {
+      outline: 3px solid rgba(255, 102, 0, 0.28);
+      outline-offset: 4px;
+    }
+  }
+
+  .btn-icon,
+  .quantity-control button,
+  .fd-cart-floating-btn,
+  .thumb-item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .radio-btn {
+    min-height: 48px;
+    text-align: left;
+
+    &.selected {
+      box-shadow:
+        0 0 0 3px rgba(255, 102, 0, 0.12),
+        0 16px 34px rgba(255, 102, 0, 0.12);
+    }
+  }
+
+  .tabs-header {
+    .tab-btn {
+      min-height: 44px;
+
+      &.active {
+        box-shadow: inset 0 -3px 0 #ff6600;
+      }
+    }
+  }
+
+  .availability-box[role="status"],
+  .fd-for-you-panel[role="status"],
+  .fd-weight-note[role="note"] {
+    scroll-margin-top: 96px;
+  }
+
+  .quantity-control input[readonly] {
+    cursor: default;
+  }
+
+  .fd-live-state-countdown b {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .empty-reviews {
+    min-height: 180px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food-detail-wrapper *,
+  .food-detail-wrapper *::before,
+  .food-detail-wrapper *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .food-detail-wrapper .main-image-box:hover img,
+  .food-detail-wrapper .thumb-item:hover,
+  .food-detail-wrapper .btn-icon:hover,
+  .food-detail-wrapper .fd-cart-floating-btn:hover {
+    transform: none !important;
+  }
+}
