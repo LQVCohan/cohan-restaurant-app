@@ -142,15 +142,15 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
   };
 
   return (
-    <main className="account-verification-page">
-      <section className="account-verification-card">
+    <main className="account-verification-page" aria-labelledby="account-verification-title">
+      <section className="account-verification-card" aria-labelledby="account-verification-title" aria-live="polite">
         {status === "checking-session" && (
           <>
             <div className="account-verification-spinner" aria-hidden="true" />
             <div className="account-verification-icon" aria-hidden="true">{isSms ? "📱" : "📧"}</div>
-            <h1 className="account-verification-title">Đang kiểm tra phiên đăng nhập</h1>
+            <h1 className="account-verification-title" id="account-verification-title">Đang kiểm tra phiên đăng nhập</h1>
             <p className="account-verification-text">
-              FoodHub đang kiểm tra xem tài khoản đã được xác minh và đăng nhập trên thiết bị này chưa.
+              Cohan đang kiểm tra xem tài khoản đã được xác minh và đăng nhập trên thiết bị này chưa.
             </p>
           </>
         )}
@@ -158,19 +158,19 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "ready" && (
           <>
             <div className="account-verification-icon" aria-hidden="true">{isSms ? "📱" : "📧"}</div>
-            <h1 className="account-verification-title">Xác nhận kích hoạt tài khoản</h1>
+            <h1 className="account-verification-title" id="account-verification-title">Xác nhận kích hoạt tài khoản</h1>
             <p className="account-verification-text">
-              FoodHub đã nhận được liên kết xác minh. Nhấn nút bên dưới để kiểm tra mã xác minh, kích hoạt tài khoản và đăng nhập tự động.
+              Cohan đã nhận được liên kết xác minh. Nhấn nút bên dưới để kiểm tra mã xác minh, kích hoạt tài khoản và đăng nhập tự động.
             </p>
-            <div className="account-verification-contact">
+            <div className="account-verification-contact" aria-label="Thông tin liên kết xác minh">
               <p><strong>Kênh xác minh:</strong> {isSms ? "Số điện thoại" : "Email"}</p>
               <p><strong>Hiệu lực:</strong> Liên kết chỉ dùng được một lần và có thời hạn.</p>
             </div>
             <div className="account-verification-actions">
-              <button className="account-verification-button is-primary" onClick={handleConfirm} disabled={verifying}>
+              <button type="button" className="account-verification-button is-primary" onClick={handleConfirm} disabled={verifying}>
                 {verifying ? "Đang xác minh..." : "Xác nhận & đăng nhập"}
               </button>
-              <button className="account-verification-button is-muted" onClick={() => navigate("/login", { replace: true })}>
+              <button type="button" className="account-verification-button is-muted" onClick={() => navigate("/login", { replace: true })}>
                 Để sau
               </button>
             </div>
@@ -181,9 +181,9 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
           <>
             <div className="account-verification-spinner" aria-hidden="true" />
             <div className="account-verification-icon" aria-hidden="true">{isSms ? "📱" : "📧"}</div>
-            <h1 className="account-verification-title">Đang xác minh tài khoản</h1>
+            <h1 className="account-verification-title" id="account-verification-title">Đang xác minh tài khoản</h1>
             <p className="account-verification-text">
-              FoodHub đang kiểm tra mã xác minh, kích hoạt tài khoản và tạo phiên đăng nhập cho bạn.
+              Cohan đang kiểm tra mã xác minh, kích hoạt tài khoản và tạo phiên đăng nhập cho bạn.
             </p>
           </>
         )}
@@ -191,13 +191,13 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "success" && (
           <>
             <div className="account-verification-icon is-success" aria-hidden="true">✓</div>
-            <h1 className="account-verification-title">Xác minh thành công</h1>
+            <h1 className="account-verification-title" id="account-verification-title">Xác minh thành công</h1>
             <p className="account-verification-text">
               Tài khoản đã được kích hoạt và đăng nhập tự động trên thiết bị này.
             </p>
             <div className="account-verification-actions">
-              <button className="account-verification-button is-primary" onClick={() => navigate(redirectPath, { replace: true })}>
-                Vào FoodHub ngay
+              <button type="button" className="account-verification-button is-primary" onClick={() => navigate(redirectPath, { replace: true })}>
+                Vào Cohan ngay
               </button>
             </div>
           </>
@@ -206,12 +206,12 @@ export default function VerifyAccountConfirm({ forcedChannel }) {
         {status === "error" && (
           <>
             <div className="account-verification-icon is-error" aria-hidden="true">!</div>
-            <h1 className="account-verification-title">Không thể xác minh</h1>
-            <p className="account-verification-text">
+            <h1 className="account-verification-title" id="account-verification-title">Không thể xác minh</h1>
+            <p className="account-verification-text" role="alert">
               {errorMessage || "Liên kết xác minh có thể đã hết hạn hoặc không đúng. Vui lòng quay lại đăng nhập để yêu cầu gửi lại xác minh."}
             </p>
             <div className="account-verification-actions">
-              <button className="account-verification-button is-primary" onClick={() => navigate("/login")}>Quay lại đăng nhập</button>
+              <button type="button" className="account-verification-button is-primary" onClick={() => navigate("/login")}>Quay lại đăng nhập</button>
             </div>
           </>
         )}
