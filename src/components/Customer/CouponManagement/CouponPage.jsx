@@ -112,13 +112,13 @@ const CouponPage = () => {
   const retry = () => { couponsQuery.refetch?.(); userCoupons.refetch?.(); };
 
   return (
-    <main className="coupon-page">
+    <main className="coupon-page" aria-labelledby="coupon-title">
       <section className="coupon-hero" aria-labelledby="coupon-title">
         <div className="coupon-hero__copy">
           <button type="button" className="coupon-back" onClick={() => navigate(-1)}>
-            <ArrowLeft size={17} /> Quay lại
+            <ArrowLeft size={17} aria-hidden="true" /> Quay lại
           </button>
-          <span className="coupon-eyebrow"><Sparkles size={15} /> Ưu đãi Cohan</span>
+          <span className="coupon-eyebrow"><Sparkles size={15} aria-hidden="true" /> Ưu đãi Cohan</span>
           <h1 id="coupon-title">Kho Coupon</h1>
           <p>{isWalletPage ? "Quản lý coupon đã lưu và dùng ngay khi đặt món hoặc đặt bàn." : "Chọn ưu đãi đang hoạt động tại nhà hàng này, kiểm tra điều kiện rồi lưu vào tài khoản."}</p>
         </div>
@@ -133,7 +133,12 @@ const CouponPage = () => {
       <section className="coupon-toolbar" aria-label="Bộ lọc coupon">
         <label className="coupon-search">
           <Search size={19} aria-hidden="true" />
-          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm theo tên, mã, mô tả, danh mục..." />
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Tìm theo tên, mã, mô tả, danh mục..."
+            aria-label="Tìm coupon"
+          />
         </label>
         <div className="coupon-tabs" role="tablist" aria-label="Lọc coupon theo trạng thái">
           {FILTERS.map((filter) => (
@@ -151,18 +156,18 @@ const CouponPage = () => {
         </div>
       </section>
 
-      {actionError && <div className="coupon-alert" role="alert"><AlertCircle size={18} />{actionError}</div>}
+      {actionError && <div className="coupon-alert" role="alert"><AlertCircle size={18} aria-hidden="true" />{actionError}</div>}
 
       {!loggedIn && isWalletPage ? (
-        <div className="coupon-empty"><Inbox size={44} /><h2>Đăng nhập để xem Kho Coupon</h2><p>Kho Coupon dùng dữ liệu thật từ tài khoản của bạn.</p><button onClick={() => navigate("/login", { state: { from: location } })}>Đăng nhập</button></div>
+        <div className="coupon-empty" role="status"><Inbox size={44} aria-hidden="true" /><h2>Đăng nhập để xem Kho Coupon</h2><p>Kho Coupon dùng dữ liệu thật từ tài khoản của bạn.</p><button type="button" onClick={() => navigate("/login", { state: { from: location } })}>Đăng nhập</button></div>
       ) : pageLoading ? (
-        <div className="coupon-empty"><Ticket size={44} /><h2>Đang tải coupon...</h2><p>Cohan đang lấy ưu đãi mới nhất.</p></div>
+        <div className="coupon-empty" role="status" aria-live="polite"><Ticket size={44} aria-hidden="true" /><h2>Đang tải coupon...</h2><p>Cohan đang lấy ưu đãi mới nhất.</p></div>
       ) : pageError ? (
-        <div className="coupon-empty coupon-empty--error"><AlertCircle size={44} /><h2>Không thể tải coupon</h2><p>Đã có lỗi khi lấy dữ liệu thật. Vui lòng thử lại.</p><button onClick={retry}>Thử lại</button></div>
+        <div className="coupon-empty coupon-empty--error" role="alert"><AlertCircle size={44} aria-hidden="true" /><h2>Không thể tải coupon</h2><p>Đã có lỗi khi lấy dữ liệu thật. Vui lòng thử lại.</p><button type="button" onClick={retry}>Thử lại</button></div>
       ) : visibleCoupons.length ? (
-        <section className="coupon-grid">{visibleCoupons.map((coupon) => <CouponCard key={coupon.id} coupon={coupon} busy={userCoupons.loading} onSave={handleSave} onRemove={handleRemove} onUse={handleUseNow} onDetail={setSelectedCoupon} />)}</section>
+        <section className="coupon-grid" aria-label="Danh sách coupon">{visibleCoupons.map((coupon) => <CouponCard key={coupon.id} coupon={coupon} busy={userCoupons.loading} onSave={handleSave} onRemove={handleRemove} onUse={handleUseNow} onDetail={setSelectedCoupon} />)}</section>
       ) : (
-        <div className="coupon-empty"><Compass size={44} /><h2>Chưa có coupon phù hợp</h2><p>{isWalletPage ? "Bạn chưa lưu coupon nào hoặc bộ lọc hiện tại không có kết quả." : "Nhà hàng này hiện chưa có coupon phù hợp với bộ lọc."}</p><button onClick={() => navigate("/restaurants")}>Khám phá nhà hàng</button></div>
+        <div className="coupon-empty" role="status"><Compass size={44} aria-hidden="true" /><h2>Chưa có coupon phù hợp</h2><p>{isWalletPage ? "Bạn chưa lưu coupon nào hoặc bộ lọc hiện tại không có kết quả." : "Nhà hàng này hiện chưa có coupon phù hợp với bộ lọc."}</p><button type="button" onClick={() => navigate("/restaurants")}>Khám phá nhà hàng</button></div>
       )}
 
       <CouponDetailModal coupon={selectedCoupon} onClose={() => setSelectedCoupon(null)} />
