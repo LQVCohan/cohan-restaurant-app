@@ -212,7 +212,9 @@ extend type Query {
 
   restaurantsByManager(
     managerId: ID!
-  brandId: ID
+    brandId: ID
+    includeBrandScope: Boolean = true
+    includeLegacyManaged: Boolean = true
     limit: Int = 20
     cursor: ID
     restaurantFilter: RestaurantFilter

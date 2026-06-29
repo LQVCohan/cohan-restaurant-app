@@ -7,6 +7,7 @@ import "../components/Dashboard_Manager/Customer/AiChatbotAdminDashboardScale.sc
 import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 
 const Dashboard = lazy(() => import("../components/Dashboard_Manager/Dashboard"));
 const ManagerAnalyst = lazy(() => import("../components/Dashboard_Manager/Analyst/ManagerAnalyst"));
@@ -141,6 +142,50 @@ const PAGE_CONFIG = {
   rates: page("Cài đặt hệ thống", "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", "⚙️", ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"]),
   setting: page("Cài đặt hệ thống", "Cấu hình vận hành, phân quyền, in ấn và thông tin nhà hàng", "⚙️", ["settings", "cài đặt", "hệ thống", "cấu hình", "quyền"]),
   backup: page("Sao lưu & khôi phục", "Sao lưu cấu hình, xem trước thay đổi và khôi phục an toàn", "🗄️", ["backup", "sao lưu", "khôi phục", "export", "cấu hình"]),
+};
+
+
+const BrandRestaurantSelector = () => {
+  const {
+    selectedBrandId,
+    setSelectedBrandId,
+    selectedBrand,
+    brandOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    selectedRestaurant,
+    restaurantOptions,
+    hasBrands,
+    loading,
+  } = useManagerRestaurantSelection();
+
+  if (loading && !hasBrands && !restaurantOptions.length) return null;
+
+  return (
+    <div className="manager-scope-selector" aria-label="Phạm vi quản lý Brand và chi nhánh">
+      <label>
+        <span>Chuỗi</span>
+        {brandOptions.length > 1 ? (
+          <select value={selectedBrandId || ""} onChange={(event) => setSelectedBrandId(event.target.value)}>
+            <option value="">Nhà hàng chưa gán chuỗi</option>
+            {brandOptions.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+          </select>
+        ) : (
+          <strong>{selectedBrand?.name || (hasBrands ? brandOptions[0]?.name : "Nhà hàng chưa gán chuỗi")}</strong>
+        )}
+      </label>
+      <label>
+        <span>Chi nhánh</span>
+        {restaurantOptions.length > 1 ? (
+          <select value={selectedRestaurantId || ""} onChange={(event) => setSelectedRestaurantId(event.target.value)}>
+            {restaurantOptions.map((restaurant) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+          </select>
+        ) : (
+          <strong>{selectedRestaurant?.name || "Chưa có chi nhánh"}</strong>
+        )}
+      </label>
+    </div>
+  );
 };
 
 const PermissionFallback = () => <div className="manager-page-shell__empty">Bạn không có quyền truy cập chức năng này.</div>;
@@ -283,6 +328,7 @@ const ManagerLayout = () => {
               setSidebarOpen(false);
             }}
           />
+          <BrandRestaurantSelector />
         </div>
         <main className="manager-layout__content">
           <section className={`manager-page-shell manager-page-shell--${currentPage}`}>

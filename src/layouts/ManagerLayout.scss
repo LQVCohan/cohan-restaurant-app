@@ -224,3 +224,38 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     display: none;
   }
 }
+.manager-scope-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0 1rem 0.75rem;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    padding: 0.42rem 0.7rem;
+    color: #334155;
+    font-size: 0.86rem;
+  }
+
+  span {
+    color: #64748b;
+    font-weight: 700;
+  }
+
+  strong,
+  select {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  select {
+    border: 0;
+    background: transparent;
+    outline: 0;
+  }
+}

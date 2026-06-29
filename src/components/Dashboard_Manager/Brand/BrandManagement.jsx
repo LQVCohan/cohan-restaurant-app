@@ -13,7 +13,7 @@ const UPDATE_MEMBER = gql`mutation UpdateBrandMember($input: UpdateBrandMemberIn
 
 export default function BrandManagement() {
   const { user } = useContext(AuthContext) || {};
-  const { brands, selectedBrandId, setSelectedBrandId, selectedBrand, refetch, loading } = useBrandManagement();
+  const { brands, selectedBrandId, setSelectedBrandId, selectedBrand, setSelectedRestaurantId, refetch, loading } = useBrandManagement();
   const [brandForm, setBrandForm] = useState({ name: "", slug: "", businessName: "", businessEmail: "", businessPhone: "" });
   const [branchName, setBranchName] = useState("");
   const [member, setMember] = useState({ userId: "", role: "manager" });
@@ -24,7 +24,7 @@ export default function BrandManagement() {
   const [addMember] = useMutation(ADD_MEMBER);
   const [updateMember] = useMutation(UPDATE_MEMBER);
   const saveBrand = async (event) => { event.preventDefault(); const input = Object.fromEntries(Object.entries(brandForm).filter(([,v]) => v)); selectedBrand ? await updateBrand({ variables: { id: selectedBrand.id, input } }) : await createBrand({ variables: { input } }); setBrandForm({ name: "", slug: "", businessName: "", businessEmail: "", businessPhone: "" }); refetch(); };
-  const addBranch = async () => { if (!selectedBrandId || !branchName.trim()) return; await createRestaurant({ variables: { input: { name: branchName.trim(), brandId: selectedBrandId, managerId: user?.id || user?._id } } }); setBranchName(""); };
+  const addBranch = async () => { if (!selectedBrandId || !branchName.trim()) return; const result = await createRestaurant({ variables: { input: { name: branchName.trim(), brandId: selectedBrandId, managerId: user?.id || user?._id } } }); const newRestaurantId = result?.data?.createRestaurant?.id; if (newRestaurantId) setSelectedRestaurantId(newRestaurantId); setBranchName(""); refetch(); };
   const saveMember = async () => { if (!selectedBrandId || !member.userId) return; await addMember({ variables: { input: { brandId: selectedBrandId, userId: member.userId, role: member.role } } }); setMember({ userId: "", role: "manager" }); refetchMembers?.(); };
 
   return <div className="space-y-4">

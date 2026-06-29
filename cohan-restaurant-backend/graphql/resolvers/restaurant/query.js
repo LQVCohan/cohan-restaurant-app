@@ -344,18 +344,29 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
 /** Danh sách nhà hàng theo manager với cursor pagination và bộ lọc */
 async function restaurantsByManager(
   _,
-  { managerId, limit = 20, cursor, restaurantFilter },
+  { managerId, brandId, includeBrandScope = true, includeLegacyManaged = true, limit = 20, cursor, restaurantFilter },
   ctx
 ) {
   if (!mongoose.isValidObjectId(managerId)) {
     throw badInput("Invalid managerId");
   }
+  if (brandId && !mongoose.isValidObjectId(brandId)) {
+    throw badInput("Invalid brandId");
+  }
 
   const lim = clampLimit(limit, 1, 100);
-  const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
+  const uid = String(ctx?.user?.id || ctx?.user?._id || "");
+  const managerObjectId = new mongoose.Types.ObjectId(managerId);
+  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  const scopedAccessFilter = isSystemAdmin(ctx?.user)
+    ? {}
+    : includeBrandScope && uid === String(managerId)
+      ? await getScopedRestaurantFilter(ctx.user)
+      : { managerId: managerObjectId };
+  const legacyFilter = includeLegacyManaged ? {} : { brandId: { $ne: null } };
   const cId = toObjectIdOrNull(cursor);
   const cursorFilter = cId ? { _id: { $gt: cId } } : {};
-  const baseFilter = combineFilters({ managerId: new mongoose.Types.ObjectId(managerId) }, buildFilter(restaurantFilter), scopeFilter);
+  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopedAccessFilter, requestedBrandFilter, legacyFilter);
   const queryFilter = combineFilters(baseFilter, cursorFilter);
 
   const docs = await Restaurant.find(queryFilter)

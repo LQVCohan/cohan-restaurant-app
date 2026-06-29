@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
-import { AuthContext } from "@/context/AuthContext";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import "./ReportsManagement.scss";
 
 const STATUS_LABELS = {
@@ -111,16 +111,14 @@ export const buildReportsCsv = (summary, { restaurantId, dateRange }) => {
 const EmptySection = ({ children }) => <div className="manager-reports-page__empty">{children}</div>;
 
 export default function ReportsManagement() {
-  const { restaurants = [] } = useContext(AuthContext) || {};
-  const [restaurantId, setRestaurantId] = useState("");
+  const {
+    restaurantOptions: restaurants,
+    selectedRestaurantId: restaurantId,
+    setSelectedRestaurantId: setRestaurantId,
+  } = useManagerRestaurantSelection();
   const [quickRange, setQuickRange] = useState("30d");
   const [dateRange, setDateRange] = useState(() => buildRange(30));
 
-  useEffect(() => {
-    if (!restaurantId && restaurants.length > 0) {
-      setRestaurantId(restaurants[0]?.id || restaurants[0]?._id || "");
-    }
-  }, [restaurantId, restaurants]);
 
   const selectedRestaurant = useMemo(
     () => restaurants.find((restaurant) => String(restaurant.id || restaurant._id) === String(restaurantId)),

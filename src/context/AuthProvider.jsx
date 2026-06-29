@@ -50,6 +50,7 @@ const GET_ADMIN_RESTAURANTS = gql`
           id
           name
           avatar
+          brandId
           address {
             city
           }
@@ -76,6 +77,7 @@ const GET_MANAGER_RESTAURANTS = gql`
           id
           name
           avatar
+          brandId
           address {
             city
           }
