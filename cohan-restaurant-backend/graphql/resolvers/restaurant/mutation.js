@@ -11,7 +11,7 @@ import {
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
-import { canManageBrandRestaurants, isActiveBrandOperator, isBrandOwner, isSystemAdmin } from "../brand/index.js";
+import { canAccessRestaurant, canManageBrand, isActiveBrandOperator, isBrandOwner, isSystemAdmin } from "../brand/index.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -85,12 +85,7 @@ async function userHasRoleSlug(userDoc, slug) {
 }
 
 function isAdmin(user) {
-  return (
-    !!user &&
-    (user.roleName?.toLowerCase?.() === "admin" ||
-      user.role === "admin" ||
-      user.role?.slug?.toLowerCase?.() === "admin")
-  );
+  return isSystemAdmin(user);
 }
 
 async function isManager(user) {
@@ -105,12 +100,11 @@ async function isManager(user) {
 async function assertCanMutateRestaurant(user, restaurantDoc) {
   if (!user) throw forbidden("Unauthorized");
   if (isAdmin(user)) return true;
-  if (restaurantDoc.brandId && await canManageBrandRestaurants(user, restaurantDoc.brandId)) return true;
+  if (restaurantDoc.brandId && await canManageBrand(user, restaurantDoc.brandId)) return true;
   const manager = await isManager(user);
   if (!manager) throw forbidden("Insufficient permission");
-  if (String(restaurantDoc.managerId) !== String(user.id)) {
-    throw forbidden("You can only modify your own restaurant");
-  }
+  if (String(restaurantDoc.managerId || "") === String(user.id || user._id || "")) return true;
+  if (!restaurantDoc._id || !await canAccessRestaurant(user, restaurantDoc._id)) throw forbidden("You can only modify your own restaurant");
   return true;
 }
 
@@ -125,7 +119,7 @@ async function createRestaurant(_, { input }, ctx) {
 
   const { managerId, ...rest } = input || {};
   if (rest.brandId) {
-    if (!await canManageBrandRestaurants(user, rest.brandId)) throw forbidden("Cannot create restaurant in this brand");
+    if (!await canManageBrand(user, rest.brandId)) throw forbidden("Cannot create restaurant in this brand");
     rest.brandId = toObjectId(rest.brandId);
   } else if (!admin) {
     throw forbidden("Admin only");
