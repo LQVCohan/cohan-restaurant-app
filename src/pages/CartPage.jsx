@@ -116,14 +116,14 @@ export default function CartPage() {
   };
 
   return (
-    <main className="cart-page">
+    <main className="cart-page" aria-labelledby="cart-page-title">
       <section className="cart-page__hero">
         <button type="button" className="cart-page__back" onClick={() => navigate(-1)}>
-          <ArrowLeft size={18} /> Quay lại
+          <ArrowLeft size={18} aria-hidden="true" /> Quay lại
         </button>
         <div className="cart-page__hero-copy">
           <p className="cart-page__eyebrow">{bookingAddonMode ? "Order kèm đặt bàn" : "Giỏ hàng chính thức"}</p>
-          <h1>{bookingAddonMode ? "Kiểm tra món đi kèm đặt bàn" : "Kiểm tra món trước khi đặt"}</h1>
+          <h1 id="cart-page-title">{bookingAddonMode ? "Kiểm tra món đi kèm đặt bàn" : "Kiểm tra món trước khi đặt"}</h1>
           <p>
             {bookingAddonMode
               ? "Chỉ món thuộc đúng nhà hàng đang đặt bàn mới được đưa vào order kèm. Kiểm tra nhanh trước khi quay lại bước đặt bàn."
@@ -131,33 +131,33 @@ export default function CartPage() {
           </p>
         </div>
         <div className="cart-page__summary-pill" aria-label={`${totalItems} món trong giỏ`}>
-          <ShoppingBag size={18} />
+          <ShoppingBag size={18} aria-hidden="true" />
           <strong>{totalItems}</strong>
           <span>món</span>
         </div>
       </section>
 
       {serverCartLoading && (
-        <div className="cart-page__notice" role="status">
-          <Clock3 size={18} /> Đang đồng bộ giỏ hàng từ hệ thống...
+        <div className="cart-page__notice" role="status" aria-live="polite">
+          <Clock3 size={18} aria-hidden="true" /> Đang đồng bộ giỏ hàng từ hệ thống...
         </div>
       )}
 
       {bookingAddonMode && hasWrongRestaurantItems && (
         <div className="cart-page__notice cart-page__notice--warning" role="alert">
-          <AlertTriangle size={18} /> Giỏ có món từ nhà hàng khác. Vui lòng xóa nhóm không thuộc nhà hàng đặt bàn trước khi hoàn tất order kèm theo.
+          <AlertTriangle size={18} aria-hidden="true" /> Giỏ có món từ nhà hàng khác. Vui lòng xóa nhóm không thuộc nhà hàng đặt bàn trước khi hoàn tất order kèm theo.
         </div>
       )}
 
       {expiredHoldExists && (
         <div className="cart-page__notice cart-page__notice--warning" role="alert">
-          <AlertTriangle size={18} /> Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại trước khi thanh toán.
+          <AlertTriangle size={18} aria-hidden="true" /> Một số món đã hết thời gian giữ. Vui lòng xóa hoặc thêm lại trước khi thanh toán.
         </div>
       )}
 
       {!cart.length ? (
-        <section className="cart-page__empty">
-          <div className="cart-page__empty-icon"><ShoppingBag size={34} /></div>
+        <section className="cart-page__empty" role="status">
+          <div className="cart-page__empty-icon"><ShoppingBag size={34} aria-hidden="true" /></div>
           <h2>Giỏ hàng đang trống</h2>
           <p>Hãy chọn nhà hàng hoặc hỏi AI gợi ý món phù hợp cho hôm nay.</p>
           <div className="cart-page__empty-actions">
@@ -169,18 +169,19 @@ export default function CartPage() {
         <div className="cart-page__layout">
           <section className="cart-page__groups" aria-label="Danh sách món trong giỏ">
             {groups.map((group, groupIndex) => (
-              <article className="cart-page__group" key={group.restaurantId}>
+              <article className="cart-page__group" key={group.restaurantId} aria-labelledby={`cart-group-${group.restaurantId}`}>
                 <header className="cart-page__group-header">
                   <div>
-                    <span><Store size={17} /> Nhà hàng {groupIndex + 1}</span>
-                    <strong>{group.items.length} món · {formatVND(group.subtotal)}</strong>
+                    <span><Store size={17} aria-hidden="true" /> Nhà hàng {groupIndex + 1}</span>
+                    <strong id={`cart-group-${group.restaurantId}`}>{group.items.length} món · {formatVND(group.subtotal)}</strong>
                   </div>
                   <button
                     type="button"
                     onClick={() => cartActions.removeRestaurantScopedItems(group.restaurantId)}
                     disabled={cartActions.isBusy}
+                    aria-label={`Xóa nhóm nhà hàng ${groupIndex + 1}`}
                   >
-                    <Trash2 size={16} /> Xóa nhóm
+                    <Trash2 size={16} aria-hidden="true" /> Xóa nhóm
                   </button>
                 </header>
 
@@ -191,7 +192,7 @@ export default function CartPage() {
                     const line = getOrderLineDisplay(item);
                     return (
                       <div className="cart-page__item" key={item.cartLineKey || item.backendCartItemId || item.id}>
-                        <img src={item.image || item.thumbImage || "/default-dishes.jpg"} alt={line.displayName || "Món ăn"} />
+                        <img loading="lazy" src={item.image || item.thumbImage || "/default-dishes.jpg"} alt={line.displayName || "Món ăn"} />
                         <div className="cart-page__item-main">
                           <h3>{line.displayName}</h3>
                           {line.isComboLine && <span className="cart-page__item-chip cart-page__item-chip--combo">{line.badgeLabel}</span>}
@@ -216,9 +217,9 @@ export default function CartPage() {
                         <div className="cart-page__item-actions">
                           <strong>{formatVND(line.totalPrice)}</strong>
                           <div className="cart-page__qty" aria-label={`Số lượng ${line.displayName}`}>
-                            <button type="button" aria-label="Giảm số lượng" disabled={itemBusy || item.quantity <= 1} onClick={() => cartActions.updateCartItemQuantity(item, -1)}>-</button>
-                            <span>{item.quantity || 1}</span>
-                            <button type="button" aria-label="Tăng số lượng" disabled={itemBusy} onClick={() => cartActions.updateCartItemQuantity(item, 1)}>+</button>
+                            <button type="button" aria-label={`Giảm số lượng ${line.displayName}`} disabled={itemBusy || item.quantity <= 1} onClick={() => cartActions.updateCartItemQuantity(item, -1)}>-</button>
+                            <span aria-live="polite">{item.quantity || 1}</span>
+                            <button type="button" aria-label={`Tăng số lượng ${line.displayName}`} disabled={itemBusy} onClick={() => cartActions.updateCartItemQuantity(item, 1)}>+</button>
                           </div>
                           <button type="button" className="cart-page__remove" disabled={itemBusy} onClick={() => cartActions.removeCartLineItem(item)}>
                             Xóa
@@ -234,7 +235,7 @@ export default function CartPage() {
 
           <aside className="cart-page__checkout-card" aria-label="Tóm tắt thanh toán">
             <div className="cart-page__checkout-head">
-              <ReceiptText size={20} />
+              <ReceiptText size={20} aria-hidden="true" />
               <div>
                 <p className="cart-page__eyebrow">{bookingAddonMode ? "Tóm tắt order kèm" : "Tóm tắt thanh toán"}</p>
                 <h2>{formatVND(totalPrice)}</h2>
@@ -244,8 +245,8 @@ export default function CartPage() {
             <div className="cart-page__checkout-row"><span>Tạm tính</span><strong>{formatVND(totalPrice)}</strong></div>
             {bookingAddonMode && <div className="cart-page__checkout-row"><span>Cọc món tạm tính</span><strong>{formatVND(Math.round(totalPrice * 0.5))}</strong></div>}
             <div className="cart-page__trust-list">
-              <span><ShieldCheck size={16} /> Đồng bộ giữ món</span>
-              <span><CheckCircle2 size={16} /> Kiểm tra trước thanh toán</span>
+              <span><ShieldCheck size={16} aria-hidden="true" /> Đồng bộ giữ món</span>
+              <span><CheckCircle2 size={16} aria-hidden="true" /> Kiểm tra trước thanh toán</span>
             </div>
             {!isAuthenticated && <p className="cart-page__helper">Bạn cần đăng nhập tài khoản khách hàng để thanh toán.</p>}
             {isAuthenticated && roleName !== "customer" && <p className="cart-page__helper">Vui lòng dùng tài khoản khách hàng để checkout.</p>}
@@ -257,7 +258,7 @@ export default function CartPage() {
               onClick={handleCheckout}
               disabled={checkoutDisabled}
             >
-              <CreditCard size={18} /> {!isAuthenticated ? "Đăng nhập để thanh toán" : bookingAddonMode ? "Hoàn tất order kèm theo" : "Thanh toán ngay"}
+              <CreditCard size={18} aria-hidden="true" /> {!isAuthenticated ? "Đăng nhập để thanh toán" : bookingAddonMode ? "Hoàn tất order kèm theo" : "Thanh toán ngay"}
             </button>
             <button type="button" className="cart-page__clear-btn" onClick={cartActions.clearCustomerCart} disabled={cartActions.isClearing}>
               Xóa toàn bộ giỏ
