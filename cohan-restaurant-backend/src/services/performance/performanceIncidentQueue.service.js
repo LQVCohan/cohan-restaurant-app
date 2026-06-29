@@ -8,9 +8,9 @@ const MS_MINUTE = 60 * 1000;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-function assertQueueReadPermission(actor, restaurantId) {
+async function assertQueueReadPermission(actor, restaurantId) {
   if (!actor) throw new Error("UNAUTHENTICATED");
-  if (!userCanAccessRestaurant(actor, restaurantId)) throw new Error("FORBIDDEN");
+  if (!await userCanAccessRestaurant(actor, restaurantId)) throw new Error("FORBIDDEN");
   const roles = resolveUserRoles(actor);
   if (!roles.some((r) => PERFORMANCE_READ_ROLES.includes(r))) throw new Error("FORBIDDEN");
   return roles;
@@ -87,7 +87,7 @@ function buildBaseQuery(input) {
 
 export async function listManagerIncidentReviewQueue(input, actor) {
   const normalized = normalizeInput(input);
-  const roles = assertQueueReadPermission(actor, normalized.restaurantId);
+  const roles = await assertQueueReadPermission(actor, normalized.restaurantId);
   const canMutate = roles.some((r) => PERFORMANCE_REVIEW_ROLES.includes(r)) && !roles.some((r) => ACCOUNTANT_ROLES.includes(r));
   const rows = await PerformanceIncident.find(buildBaseQuery(normalized)).sort({ createdAt: -1 }).lean();
   const now = new Date();
@@ -125,7 +125,7 @@ export async function listManagerIncidentReviewQueue(input, actor) {
 function addBucket(map, key) { map.set(key, (map.get(key) || 0) + 1); }
 
 export async function getManagerIncidentReviewQueueSummary(input, actor) {
-  const roles = assertQueueReadPermission(actor, input.restaurantId);
+  const roles = await assertQueueReadPermission(actor, input.restaurantId);
   void roles;
   const q = buildBaseQuery({ ...input, onlyPendingReview: false, onlyEligible: false });
   if (input.includeResolved) delete q.$or;

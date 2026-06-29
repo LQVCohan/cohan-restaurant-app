@@ -98,14 +98,14 @@ function assertAuthenticated(ctx) {
   }
 }
 
-function assertCanReviewAttendanceOvertime(ctx, restaurantId) {
+async function assertCanReviewAttendanceOvertime(ctx, restaurantId) {
   assertAuthenticated(ctx);
 
   if (!userHasAnyRole(ctx?.user, ATTENDANCE_REVIEW_ROLES)) {
     throw new Error("FORBIDDEN");
   }
 
-  if (!userCanAccessRestaurant(ctx?.user, restaurantId)) {
+  if (!await userCanAccessRestaurant(ctx?.user, restaurantId)) {
     throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
   }
 }
@@ -402,7 +402,7 @@ export async function approveAttendanceOvertime({ input, ctx }) {
   const timesheet = await Timesheet.findById(timesheetId).populate("shiftId");
   if (!timesheet) throw new Error("TIMESHEET_NOT_FOUND");
 
-  assertCanReviewAttendanceOvertime(ctx, timesheet.restaurantId);
+  await assertCanReviewAttendanceOvertime(ctx, timesheet.restaurantId);
   assertAttendanceOvertimeReviewable(timesheet);
   await assertAttendanceOvertimePayrollEditable(timesheet);
 
@@ -457,7 +457,7 @@ export async function rejectAttendanceOvertime({ input, ctx }) {
   const timesheet = await Timesheet.findById(timesheetId).populate("shiftId");
   if (!timesheet) throw new Error("TIMESHEET_NOT_FOUND");
 
-  assertCanReviewAttendanceOvertime(ctx, timesheet.restaurantId);
+  await assertCanReviewAttendanceOvertime(ctx, timesheet.restaurantId);
   assertAttendanceOvertimeReviewable(timesheet);
   await assertAttendanceOvertimePayrollEditable(timesheet);
 

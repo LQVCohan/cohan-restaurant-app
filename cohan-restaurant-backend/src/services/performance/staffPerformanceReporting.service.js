@@ -48,14 +48,14 @@ function resolvePeriodBounds(input = {}) {
   };
 }
 
-function assertReadPermission(
+async function assertReadPermission(
   actor,
   restaurantId,
   employeeId,
   { allowList = false } = {},
 ) {
   if (!actor) throw new Error("UNAUTHENTICATED");
-  if (!restaurantId || !userCanAccessRestaurant(actor, restaurantId)) {
+  if (!restaurantId || !await userCanAccessRestaurant(actor, restaurantId)) {
     throw new Error("FORBIDDEN");
   }
   const roles = resolveUserRoles(actor);
@@ -176,7 +176,7 @@ function mapSummary({
 
 export async function getStaffPerformanceSummary(input, actor) {
   const { restaurantId, employeeId } = input;
-  assertReadPermission(actor, restaurantId, employeeId);
+  await assertReadPermission(actor, restaurantId, employeeId);
   const { periodStart, periodEnd } = resolvePeriodBounds(input);
   const periodFilter = {
     ...(periodStart ? { periodEnd: { $gte: periodStart } } : {}),
@@ -212,7 +212,7 @@ export async function getStaffPerformanceSummary(input, actor) {
 
 export async function listStaffPerformanceSummaries(input, actor) {
   const { restaurantId } = input;
-  assertReadPermission(actor, restaurantId, null, { allowList: true });
+  await assertReadPermission(actor, restaurantId, null, { allowList: true });
   const { periodStart, periodEnd } = resolvePeriodBounds(input);
   const employeeFilter = input.employeeIds?.length
     ? { _id: { $in: input.employeeIds } }
@@ -291,7 +291,7 @@ export async function listStaffPerformanceSummaries(input, actor) {
 }
 
 export async function listStaffPerformanceScoreAdjustments(input, actor) {
-  assertReadPermission(actor, input.restaurantId, input.employeeId);
+  await assertReadPermission(actor, input.restaurantId, input.employeeId);
   const query = {
     restaurantId: input.restaurantId,
     ...(input.employeeId ? { employeeId: input.employeeId } : {}),
@@ -311,7 +311,7 @@ export async function listStaffPerformanceScoreAdjustments(input, actor) {
 }
 
 export async function getStaffPerformanceScoreTimeline(input, actor) {
-  assertReadPermission(actor, input.restaurantId, input.employeeId);
+  await assertReadPermission(actor, input.restaurantId, input.employeeId);
   const adjustments = await listStaffPerformanceScoreAdjustments(input, actor);
   return adjustments
     .slice()

@@ -8,9 +8,9 @@ import { resolveUserRoles, userCanAccessRestaurant } from "../scheduling/schedul
 
 const READ_ROLES = ["MANAGER", "ADMIN", "HR", "ACCOUNTANT"];
 
-function assertDashboardPermission(actor, restaurantId) {
+async function assertDashboardPermission(actor, restaurantId) {
   if (!actor) throw new Error("UNAUTHENTICATED");
-  if (!userCanAccessRestaurant(actor, restaurantId)) throw new Error("FORBIDDEN");
+  if (!await userCanAccessRestaurant(actor, restaurantId)) throw new Error("FORBIDDEN");
   const roles = resolveUserRoles(actor);
   if (!roles.some((r) => READ_ROLES.includes(r))) throw new Error("FORBIDDEN");
 }
@@ -80,7 +80,7 @@ export async function getManagerPerformanceRiskEmployees(input, actor) {
 }
 
 export async function getManagerPerformanceDashboard(input, actor) {
-  assertDashboardPermission(actor, input.restaurantId);
+  await assertDashboardPermission(actor, input.restaurantId);
   const { periodStart, periodEnd } = resolvePeriodBounds(input);
   const incidentQuery = { restaurantId: input.restaurantId, ...(input.employeeIds?.length ? { employeeId: { $in: input.employeeIds } } : {}), ...(periodStart || periodEnd ? { occurredAt: { ...(periodStart ? { $gte: periodStart } : {}), ...(periodEnd ? { $lte: periodEnd } : {}) } } : {}) };
   const rows = await PerformanceIncident.find(incidentQuery).lean();

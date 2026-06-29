@@ -1,50 +1,5 @@
 import { normalizeRole, resolveUserRoles } from "../src/services/scheduling/schedulingPermission.service.js";
-
-const RESTAURANT_SCOPED_ROLES = new Set([
-  "HR", "ACCOUNTANT", "STAFF", "SERVER", "SUPERVISOR", "HOST", "CASHIER",
-  "CHEF", "COOK", "KITCHEN_HELPER", "CLEANER", "SHIPPER", "STOREKEEPER",
-  "BARTENDER",
-]);
-
-function restaurantIdToString(value) {
-  if (!value) return "";
-  if (typeof value === "object") {
-    return String(value._id || value.id || value.value || "");
-  }
-  return String(value);
-}
-
-function hasDirectRestaurantScope(ctx, restaurantId) {
-  const user = ctx?.user || {};
-  const roles = resolveUserRoles(user);
-  const isManager = roles.includes("MANAGER");
-  const isRestaurantScopedRole = roles.some((role) => RESTAURANT_SCOPED_ROLES.has(role));
-  const target = restaurantIdToString(restaurantId);
-  if (!target || (!isManager && !isRestaurantScopedRole)) return false;
-
-  const scopedIds = isManager
-    ? []
-    : [user.restaurantForStaff, user.restaurantId, ...(Array.isArray(user.restaurantIds) ? user.restaurantIds : [])];
-
-  return scopedIds.some((id) => restaurantIdToString(id) === target);
-}
-
-async function managerOwnsRestaurant(ctx, restaurantId) {
-  const managerId = ctx?.user?.id || ctx?.user?._id;
-  if (!managerId || !restaurantId) return false;
-
-  try {
-    const models = await import("../models/index.js");
-    const descriptor = Object.getOwnPropertyDescriptor(models, "Restaurant");
-    const Restaurant = descriptor?.value;
-    if (typeof Restaurant?.exists !== "function") return false;
-
-    return Boolean(await Restaurant.exists({ _id: restaurantId, managerId }));
-  } catch (error) {
-    if (error?.name === "CastError") return false;
-    throw error;
-  }
-}
+import { canAccessRestaurant } from "../src/services/auth/restaurantScope.service.js";
 
 export function requireAuth(ctx) {
   const userId = ctx?.user?.id || ctx?.user?._id;
@@ -69,11 +24,7 @@ export function requireRoles(ctx, allowed = []) {
 
 export async function requireRestaurantAccess(ctx, restaurantId) {
   requireAuth(ctx);
-  const roles = resolveUserRoles(ctx.user);
-  if (roles.includes("ADMIN")) return;
-  if (hasDirectRestaurantScope(ctx, restaurantId)) return;
-  if (roles.includes("MANAGER") && await managerOwnsRestaurant(ctx, restaurantId)) return;
-
+  if (await canAccessRestaurant(ctx.user, restaurantId)) return;
   const err = new Error("FORBIDDEN_SCOPE");
   err.statusCode = 403;
   throw err;

@@ -1,3 +1,4 @@
+import { canAccessRestaurant } from "../auth/restaurantScope.service.js";
 export const AVAILABILITY_WINDOW_ADMIN_ROLES = ["ADMIN", "MANAGER"];
 export const AVAILABILITY_REVIEW_ROLES = ["ADMIN", "MANAGER", "HR"];
 export const AVAILABILITY_READ_ROLES = ["ADMIN", "MANAGER", "HR"];
@@ -32,16 +33,6 @@ export function userHasAnyRole(user, allowedRoles = []) {
   return resolveUserRoles(user).some((role) => allowed.has(role));
 }
 
-export function userCanAccessRestaurant(user, restaurantId) {
-  const target = String(restaurantId || "");
-  if (!target) return false;
-  if (userHasAnyRole(user, ["ADMIN"])) return true;
-
-  const candidates = [
-    user?.restaurantId,
-    user?.restaurantForStaff,
-    ...(Array.isArray(user?.restaurants) ? user.restaurants : []),
-  ];
-
-  return candidates.some((item) => String(item?._id || item || "") === target);
+export async function userCanAccessRestaurant(user, restaurantId) {
+  return canAccessRestaurant(user, restaurantId);
 }

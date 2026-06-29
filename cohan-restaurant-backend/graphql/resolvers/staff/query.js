@@ -1735,7 +1735,7 @@ export default {
     requireAuth(ctx);
     const input = { ...(filter || {}) };
     const restaurantId = input.restaurantId;
-    if (!restaurantId || !userCanAccessRestaurant(ctx.user, restaurantId)) {
+    if (!restaurantId || !await userCanAccessRestaurant(ctx.user, restaurantId)) {
       throw new Error("FORBIDDEN");
     }
     const roles = resolveUserRoles(ctx.user);

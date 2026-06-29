@@ -11,7 +11,7 @@ const REVIEW_STATUSES = ["under_review", "needs_more_info", "accepted", "rejecte
 const toId = (v) => String(v || "");
 const trim = (v) => String(v || "").trim();
 function hasRole(user, roles){ return resolveUserRoles(user).some((r)=>roles.includes(r)); }
-function assertScope(user, restaurantId){ if (!userCanAccessRestaurant(user, restaurantId)) throw new Error("FORBIDDEN"); }
+async function assertScope(user, restaurantId){ if (!await userCanAccessRestaurant(user, restaurantId)) throw new Error("FORBIDDEN"); }
 
 const SCORE_MIN = 0;
 const SCORE_MAX = 100;
@@ -21,7 +21,7 @@ export async function createPerformanceIncidentAppeal(input, actor) {
   if (!actor) throw new Error("UNAUTHENTICATED");
   const incident = await PerformanceIncident.findById(input.incidentId);
   if (!incident) throw new Error("PERFORMANCE_INCIDENT_NOT_FOUND");
-  assertScope(actor, incident.restaurantId);
+  await assertScope(actor, incident.restaurantId);
   const actorId = toId(actor._id || actor.id);
   const roles = resolveUserRoles(actor);
   if (roles.some((r) => PERFORMANCE_SELF_ROLES.includes(r)) && toId(incident.employeeId) !== actorId) throw new Error("FORBIDDEN");
@@ -37,7 +37,7 @@ export async function createPerformanceIncidentAppeal(input, actor) {
 
 export async function listPerformanceIncidentAppeals(filter, actor) {
   if (!actor) throw new Error("UNAUTHENTICATED");
-  assertScope(actor, filter.restaurantId);
+  await assertScope(actor, filter.restaurantId);
   const roles = resolveUserRoles(actor);
   const actorId = toId(actor._id || actor.id);
   const q = { restaurantId: filter.restaurantId };
@@ -55,7 +55,7 @@ export async function getPerformanceIncidentAppealById(id, actor) { const d = aw
 
 export async function cancelPerformanceIncidentAppeal(appealId, actor){ const appeal = await getPerformanceIncidentAppealById(appealId, actor); const actorId = toId(actor._id || actor.id); if (toId(appeal.employeeId)!==actorId) throw new Error('FORBIDDEN'); if(!["submitted","needs_more_info"].includes(appeal.status)) throw new Error('INVALID_APPEAL_STATUS'); appeal.status='cancelled'; appeal.reviewedBy=actorId; appeal.reviewedAt=new Date(); appeal.reviewNote='Cancelled by staff'; return appeal.save(); }
 
-export async function reviewPerformanceIncidentAppeal(input, actor){ if(!actor) throw new Error('UNAUTHENTICATED'); const appeal = await PerformanceIncidentAppeal.findById(input.appealId); if(!appeal) throw new Error('PERFORMANCE_INCIDENT_APPEAL_NOT_FOUND'); assertScope(actor, appeal.restaurantId); if(!hasRole(actor, PERFORMANCE_REVIEW_ROLES)) throw new Error('FORBIDDEN'); if(!REVIEW_STATUSES.includes(input.status)) throw new Error('INVALID_REVIEW_STATUS'); if(["accepted","rejected"].includes(input.status) && !trim(input.decisionReason)) throw new Error('DECISION_REASON_REQUIRED'); appeal.status=input.status; appeal.reviewedBy=actor._id || actor.id; appeal.reviewedAt=new Date(); appeal.reviewNote=trim(input.reviewNote); appeal.decisionReason=trim(input.decisionReason);
+export async function reviewPerformanceIncidentAppeal(input, actor){ if(!actor) throw new Error('UNAUTHENTICATED'); const appeal = await PerformanceIncidentAppeal.findById(input.appealId); if(!appeal) throw new Error('PERFORMANCE_INCIDENT_APPEAL_NOT_FOUND'); await assertScope(actor, appeal.restaurantId); if(!hasRole(actor, PERFORMANCE_REVIEW_ROLES)) throw new Error('FORBIDDEN'); if(!REVIEW_STATUSES.includes(input.status)) throw new Error('INVALID_REVIEW_STATUS'); if(["accepted","rejected"].includes(input.status) && !trim(input.decisionReason)) throw new Error('DECISION_REASON_REQUIRED'); appeal.status=input.status; appeal.reviewedBy=actor._id || actor.id; appeal.reviewedAt=new Date(); appeal.reviewNote=trim(input.reviewNote); appeal.decisionReason=trim(input.decisionReason);
   if (input.status === "accepted") {
     const incident = await PerformanceIncident.findById(appeal.incidentId);
     appeal.scoreReversalStatus = incident?.scoreImpactStatus === "applied" ? "pending" : "not_required";
@@ -74,7 +74,7 @@ export async function reverseScoreForAcceptedAppeal({ appealId, actor, reversalD
   if (!hasRole(actor, PERFORMANCE_REVIEW_ROLES)) throw new Error("FORBIDDEN");
   const appeal = await PerformanceIncidentAppeal.findById(appealId);
   if (!appeal) throw new Error("PERFORMANCE_INCIDENT_APPEAL_NOT_FOUND");
-  assertScope(actor, appeal.restaurantId);
+  await assertScope(actor, appeal.restaurantId);
   if (appeal.status !== "accepted") throw new Error("PERFORMANCE_APPEAL_NOT_ACCEPTED");
   if (appeal.scoreReversalStatus === "reversed" || appeal.scoreReversalId) throw new Error("PERFORMANCE_APPEAL_ALREADY_REVERSED");
 

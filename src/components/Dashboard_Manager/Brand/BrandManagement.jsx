@@ -16,7 +16,7 @@ export default function BrandManagement() {
   const { brands, selectedBrandId, setSelectedBrandId, selectedBrand, setSelectedRestaurantId, refetch, loading } = useBrandManagement();
   const [brandForm, setBrandForm] = useState({ name: "", slug: "", businessName: "", businessEmail: "", businessPhone: "" });
   const [branchName, setBranchName] = useState("");
-  const [member, setMember] = useState({ userId: "", role: "manager" });
+  const [member, setMember] = useState({ userId: "", role: "manager", restaurantIds: [] });
   const { data: memberData, refetch: refetchMembers } = useQuery(MEMBERS, { variables: { brandId: selectedBrandId }, skip: !selectedBrandId });
   const [createBrand] = useMutation(CREATE_BRAND, { refetchQueries: [MY_BRANDS_QUERY] });
   const [updateBrand] = useMutation(UPDATE_BRAND, { refetchQueries: [MY_BRANDS_QUERY] });
@@ -25,7 +25,9 @@ export default function BrandManagement() {
   const [updateMember] = useMutation(UPDATE_MEMBER);
   const saveBrand = async (event) => { event.preventDefault(); const input = Object.fromEntries(Object.entries(brandForm).filter(([,v]) => v)); selectedBrand ? await updateBrand({ variables: { id: selectedBrand.id, input } }) : await createBrand({ variables: { input } }); setBrandForm({ name: "", slug: "", businessName: "", businessEmail: "", businessPhone: "" }); refetch(); };
   const addBranch = async () => { if (!selectedBrandId || !branchName.trim()) return; const result = await createRestaurant({ variables: { input: { name: branchName.trim(), brandId: selectedBrandId, managerId: user?.id || user?._id } } }); const newRestaurantId = result?.data?.createRestaurant?.id; if (newRestaurantId) setSelectedRestaurantId(newRestaurantId); setBranchName(""); refetch(); };
-  const saveMember = async () => { if (!selectedBrandId || !member.userId) return; await addMember({ variables: { input: { brandId: selectedBrandId, userId: member.userId, role: member.role } } }); setMember({ userId: "", role: "manager" }); refetchMembers?.(); };
+  const saveMember = async () => { if (!selectedBrandId || !member.userId || (["manager", "staff"].includes(member.role) && !member.restaurantIds.length)) return; const input = { brandId: selectedBrandId, userId: member.userId, role: member.role, restaurantIds: member.restaurantIds }; await addMember({ variables: { input } }); setMember({ userId: "", role: "manager", restaurantIds: [] }); refetchMembers?.(); };
+  const toggleMemberRestaurant = (id) => setMember((prev) => ({ ...prev, restaurantIds: prev.restaurantIds.includes(id) ? prev.restaurantIds.filter((item) => item !== id) : [...prev.restaurantIds, id] }));
+  const branchScopedMember = ["manager", "staff"].includes(member.role);
 
   return <div className="space-y-4">
     <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -49,8 +51,8 @@ export default function BrandManagement() {
     </section>
     <section className="rounded-2xl bg-white p-5 shadow-sm space-y-3">
       <h3 className="font-semibold">Thành viên Brand</h3>
-      <p className="text-xs text-slate-500">Nhập User ID của tài khoản đã tồn tại. Repo hiện chưa có query tìm user theo email/phone phù hợp để tái dùng ở màn này.</p><div className="grid gap-2 md:grid-cols-3"><input className="rounded-xl border px-3 py-2" placeholder="User ID của thành viên" value={member.userId} onChange={(e)=>setMember({...member,userId:e.target.value})}/><select className="rounded-xl border px-3 py-2" value={member.role} onChange={(e)=>setMember({...member,role:e.target.value})}>{["owner","admin","manager","staff"].map((r)=><option key={r}>{r}</option>)}</select><button className="rounded-xl bg-blue-600 px-4 py-2 text-white" onClick={saveMember}>Thêm thành viên</button></div>
-      <div className="divide-y">{(memberData?.brandMembers || []).map((m)=><div key={m.id} className="flex items-center justify-between py-2"><span>{m.user?.fullName || m.user?.email || m.userId} — {m.role} ({m.status})</span><button onClick={()=>updateMember({ variables:{ input:{ id:m.id, status:m.status === "active" ? "inactive" : "active" }}}).then(()=>refetchMembers?.())} className="text-sm text-blue-700">Đổi trạng thái</button></div>)}</div>
+      <p className="text-xs text-slate-500">Nhập User ID của tài khoản đã tồn tại. Repo hiện chưa có query tìm user theo email/phone phù hợp để tái dùng ở màn này.</p><div className="grid gap-2 md:grid-cols-3"><input className="rounded-xl border px-3 py-2" placeholder="User ID của thành viên" value={member.userId} onChange={(e)=>setMember({...member,userId:e.target.value})}/><select className="rounded-xl border px-3 py-2" value={member.role} onChange={(e)=>setMember({...member,role:e.target.value})}>{["admin","manager","staff"].map((r)=><option key={r} value={r}>{r === "admin" ? "Admin Brand" : r}</option>)}</select><button className="rounded-xl bg-blue-600 px-4 py-2 text-white disabled:opacity-50" disabled={branchScopedMember && !member.restaurantIds.length} onClick={saveMember}>Thêm thành viên</button></div>{branchScopedMember && <div className="flex flex-wrap gap-2">{(selectedBrand?.restaurants || []).map((r)=><label key={r.id} className="rounded-full border px-3 py-1 text-sm"><input type="checkbox" className="mr-2" checked={member.restaurantIds.includes(r.id)} onChange={()=>toggleMemberRestaurant(r.id)} />{r.name}</label>)}</div>}
+      <div className="divide-y">{(memberData?.brandMembers || []).map((m)=><div key={m.id} className="flex items-center justify-between py-2"><span>{m.user?.fullName || m.user?.email || m.userId} — {m.role === "owner" ? "Chủ doanh nghiệp / Admin Brand" : m.role === "admin" ? "Admin Brand" : m.role} ({m.status})</span><button onClick={()=>updateMember({ variables:{ input:{ id:m.id, status:m.status === "active" ? "inactive" : "active" }}}).then(()=>refetchMembers?.())} className="text-sm text-blue-700">Đổi trạng thái</button></div>)}</div>
     </section>
   </div>;
 }
