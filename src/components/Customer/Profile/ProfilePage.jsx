@@ -79,16 +79,16 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="profile-loading">
+      <div className="profile-loading" role="status" aria-live="polite" aria-label="Đang tải hồ sơ cá nhân">
         <LoadingSpinner size="large" />
       </div>
     );
   }
 
-  if (error) return <div className="profile-error">Lỗi tải trang: {error.message}</div>;
+  if (error) return <div className="profile-error" role="alert">Lỗi tải trang: {error.message}</div>;
 
   return (
-    <div className="profile-page">
+    <main className="profile-page" aria-label="Hồ sơ cá nhân">
       <div className="profile-container">
         <ProfileSidebar
           user={user}
@@ -101,7 +101,7 @@ const ProfilePage = () => {
           onAvatarChange={handleAvatarChange}
         />
 
-        <main className="profile-content">
+        <section className="profile-content" aria-live="polite">
           {activeTab === "info" && (
             <ProfileInfo
               user={user}
@@ -115,9 +115,9 @@ const ProfilePage = () => {
           {activeTab === "orders" && <OrderHistory user={user} />}
           {activeTab === "wallet" && <ProfileWallet user={user} refetchUser={handleRefetchUser} />}
           {activeTab === "security" && <SecuritySettings />}
-        </main>
+        </section>
       </div>
-    </div>
+    </main>
   );
 };
 
