@@ -84,45 +84,43 @@ const NotificationsPage = () => {
               <p>{filter === "unread" ? "Bạn không còn thông báo chưa đọc." : "Bạn đã xem hết tất cả các thông báo."}</p>
             </div>
           ) : (
-            <div role="list" className="notif-list__items">
-              {displayedNotifications.map((notif) => (
-                <article
-                  key={notif.id}
-                  className={`notif-card ${!notif.isRead ? "unread" : ""}`}
-                  onClick={() => handleOpenNotification(notif)}
-                  role="listitem"
-                  tabIndex={0}
-                  onKeyDown={(event) => handleCardKeyDown(event, notif)}
-                  aria-label={`${notif.isRead ? "Đã đọc" : "Chưa đọc"}: ${notif.text}`}
-                >
-                  <div className="notif-icon" aria-hidden="true">
-                    <img src={notif.image} alt="" />
-                  </div>
+            displayedNotifications.map((notif) => (
+              <article
+                key={notif.id}
+                className={`notif-card ${!notif.isRead ? "unread" : ""}`}
+                onClick={() => handleOpenNotification(notif)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => handleCardKeyDown(event, notif)}
+                aria-label={`${notif.isRead ? "Đã đọc" : "Chưa đọc"}: ${notif.text}`}
+              >
+                <div className="notif-icon" aria-hidden="true">
+                  <img src={notif.image} alt="" />
+                </div>
 
-                  <div className="notif-content">
-                    <p className="notif-text">{notif.text}</p>
-                    <span className="notif-time">{notif.time}</span>
-                  </div>
+                <div className="notif-content">
+                  <p className="notif-text">{notif.text}</p>
+                  <span className="notif-time">{notif.time}</span>
+                </div>
 
-                  <div className="notif-actions">
-                    {!notif.isRead && <div className="dot-unread" aria-hidden="true" />}
+                <div className="notif-actions">
+                  {!notif.isRead && <div className="dot-unread" aria-hidden="true" />}
 
-                    <button
-                      type="button"
-                      className="btn-delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNotification(notif.id);
-                      }}
-                      title="Ẩn thông báo"
-                      aria-label={`Ẩn thông báo: ${notif.text}`}
-                    >
-                      <Trash2 size={18} aria-hidden="true" />
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  <button
+                    type="button"
+                    className="btn-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNotification(notif.id);
+                    }}
+                    title="Ẩn thông báo"
+                    aria-label={`Ẩn thông báo: ${notif.text}`}
+                  >
+                    <Trash2 size={18} aria-hidden="true" />
+                  </button>
+                </div>
+              </article>
+            ))
           )}
         </section>
       </div>
