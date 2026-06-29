@@ -35,7 +35,7 @@
 }
 
 .contact-page .contact-header::before {
-  content: "FOODHUB CONTACT";
+  content: "COHAN CONTACT";
   display: inline-flex;
   width: fit-content;
   margin-bottom: 14px;
@@ -189,6 +189,7 @@
   padding: clamp(22px, 4vw, 32px) !important;
 }
 
+.contact-page .contact-info-card h2,
 .contact-page .contact-info-card h3 {
   color: #1e1915 !important;
   font-size: 1.35rem !important;
@@ -240,6 +241,12 @@
   color: #1e1915 !important;
   font-weight: 850 !important;
   line-height: 1.45 !important;
+  text-decoration: none;
+}
+
+.contact-page .contact-info-card a.value:hover {
+  color: #ff6600 !important;
+  text-decoration: underline;
 }
 
 .contact-page .contact-info-card .value.highlight {
@@ -295,6 +302,16 @@
   .contact-page .contact-info-card,
   .contact-page .map-card {
     animation: contactProductIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-page *,
+  .contact-page *::before,
+  .contact-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
