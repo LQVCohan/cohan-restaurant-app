@@ -23,31 +23,31 @@ import "./HelpPage.scss";
 const FAQ_DATA = [
   {
     category: "order",
-    question: "Làm thế nào để đặt món ăn trên FoodHub?",
+    question: "Làm thế nào để đặt món ăn trên Cohan?",
     answer:
-      "Để đặt món, bạn thực hiện các bước sau:\n1. Nhập địa chỉ của bạn để tìm quán gần nhất.\n2. Chọn nhà hàng và thêm món vào giỏ.\n3. Nhấn vào icon Giỏ hàng, kiểm tra lại món và chọn mã giảm giá.\n4. Chọn phương thức thanh toán và nhấn 'Đặt đơn'.",
-    icon: <ShoppingBag size={20} />,
+      "Để đặt món, bạn thực hiện các bước sau:\n1. Chọn nhà hàng và thêm món vào giỏ.\n2. Mở giỏ hàng, kiểm tra món và chọn mã giảm giá nếu có.\n3. Chọn phương thức thanh toán.\n4. Theo dõi trạng thái đơn trong mục Đơn hàng.",
+    icon: <ShoppingBag size={20} aria-hidden="true" />,
   },
   {
     category: "booking",
     question: "Quy trình đặt bàn tại nhà hàng như thế nào?",
     answer:
-      "Rất đơn giản! Tại trang chi tiết Nhà hàng:\n1. Nhấn nút 'Đặt bàn'.\n2. Chọn ngày, giờ và số lượng người.\n3. Điền thông tin liên hệ và ghi chú (nếu có).\n4. Nhận xác nhận qua SMS/App ngay lập tức.",
-    icon: <BookOpen size={20} />,
+      "Tại trang chi tiết nhà hàng, bạn nhấn Đặt bàn, chọn bàn trên sơ đồ, điền ngày giờ và thông tin liên hệ. Nếu có món đi kèm, hệ thống sẽ tính phần cọc món ở bước thanh toán.",
+    icon: <BookOpen size={20} aria-hidden="true" />,
   },
   {
     category: "payment",
     question: "Tôi có thể thanh toán bằng những hình thức nào?",
     answer:
-      "FoodHub hỗ trợ đa dạng phương thức:\n- Tiền mặt (COD)\n- Ví điện tử: MoMo, ZaloPay, ShopeePay\n- Thẻ ngân hàng (ATM/Visa/Mastercard)",
-    icon: <CreditCard size={20} />,
+      "Cohan hỗ trợ ví Cohan Balance, tiền mặt khi nhận món và các phương thức thanh toán được bật theo từng nhà hàng. Một số đơn đặt bàn có thể yêu cầu cọc để giữ chỗ.",
+    icon: <CreditCard size={20} aria-hidden="true" />,
   },
   {
     category: "account",
     question: "Làm sao để thay đổi địa chỉ giao hàng mặc định?",
     answer:
-      "Bạn vào mục 'Tài khoản' -> Chọn 'Sổ địa chỉ'. Tại đây bạn có thể thêm mới, sửa hoặc xóa địa chỉ. Nhấn 'Đặt làm mặc định' ở địa chỉ bạn muốn ưu tiên.",
-    icon: <User size={20} />,
+      "Bạn vào Hồ sơ hoặc Sổ địa chỉ, thêm địa chỉ mới hoặc chỉnh sửa địa chỉ hiện có. Nhấn Đặt làm mặc định ở địa chỉ muốn ưu tiên cho lần đặt món tiếp theo.",
+    icon: <User size={20} aria-hidden="true" />,
   },
 ];
 
@@ -58,6 +58,7 @@ const HelpPage = () => {
   const [threadId, setThreadId] = useState(null);
   const [searchParams] = useSearchParams();
   const [inputMsg, setInputMsg] = useState("");
+  const [supportNotice, setSupportNotice] = useState("");
   const messagesEndRef = useRef(null);
 
   const { user } = useContext(AuthContext) || {};
@@ -75,10 +76,20 @@ const HelpPage = () => {
     markThreadRead,
   } = useCommunication({ restaurantId });
 
+  const filteredFaqs = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return FAQ_DATA;
+    return FAQ_DATA.filter((item) =>
+      [item.question, item.answer, item.category]
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword)
+    );
+  }, [searchTerm]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages, isChatOpen]);
-
 
   useEffect(() => {
     const fromUrl = searchParams.get("threadId");
@@ -116,13 +127,21 @@ const HelpPage = () => {
     return id;
   };
 
+  const openSupportChat = async () => {
+    setIsChatOpen(true);
+    setSupportNotice("");
+    const id = await ensureSupportThread();
+    if (!id) setSupportNotice("Bạn cần đăng nhập hoặc có ngữ cảnh nhà hàng để chat hỗ trợ.");
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const content = inputMsg.trim();
     if (!content) return;
+    setSupportNotice("");
     const id = await ensureSupportThread();
     if (!id) {
-      alert("Bạn cần đăng nhập/tạo ngữ cảnh nhà hàng để chat hỗ trợ.");
+      setSupportNotice("Bạn cần đăng nhập hoặc có ngữ cảnh nhà hàng để chat hỗ trợ.");
       return;
     }
 
@@ -141,111 +160,142 @@ const HelpPage = () => {
   const messages = thread?.messages || [];
 
   return (
-    <div className="help-page">
-      <div className="help-hero">
-        <h1>Xin chào, chúng tôi có thể giúp gì?</h1>
-        <div className="search-box">
-          <Search className="search-icon" size={20} />
+    <main className="help-page">
+      <section className="help-hero" aria-labelledby="help-title">
+        <p className="help-eyebrow">Trung tâm hỗ trợ Cohan</p>
+        <h1 id="help-title">Cần hỗ trợ gì hôm nay?</h1>
+        <p className="subtitle">Tìm nhanh cách đặt món, đặt bàn, thanh toán hoặc chat trực tiếp với đội hỗ trợ.</p>
+        <label className="search-box" htmlFor="help-search">
+          <Search className="search-icon" size={20} aria-hidden="true" />
           <input
+            id="help-search"
             type="text"
-            placeholder="Tìm kiếm câu hỏi (ví dụ: hoàn tiền, đổi món...)"
+            placeholder="Tìm kiếm câu hỏi: hoàn tiền, đổi món, đặt bàn..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-      </div>
+        </label>
+      </section>
 
       <div className="help-container">
         <div className="content-grid">
-          <div className="faq-section">
-            <h2 className="section-title">
-              <HelpCircle size={24} /> Câu hỏi thường gặp
+          <section className="faq-section" aria-labelledby="faq-title">
+            <h2 className="section-title" id="faq-title">
+              <HelpCircle size={24} aria-hidden="true" /> Câu hỏi thường gặp
             </h2>
             <div className="faq-list">
-              {FAQ_DATA.filter((item) =>
-                item.question.toLowerCase().includes(searchTerm.toLowerCase())
-              ).map((item, index) => (
-                <div
-                  key={index}
-                  className={`faq-item ${openIndex === index ? "active" : ""}`}
-                >
-                  <button className="faq-question" onClick={() => toggleAccordion(index)}>
-                    <div className="q-content">
-                      <span className="icon">{item.icon}</span>
-                      <span>{item.question}</span>
-                    </div>
-                    {openIndex === index ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </button>
-                  <div className="faq-answer">
-                    <div className="answer-inner">
-                      {item.answer.split("\n").map((line, i) => (
-                        <p key={i}>{line}</p>
-                      ))}
-                    </div>
-                  </div>
+              {filteredFaqs.length ? (
+                filteredFaqs.map((item, index) => {
+                  const isOpen = openIndex === index;
+                  const answerId = `faq-answer-${index}`;
+                  return (
+                    <article
+                      key={`${item.category}-${item.question}`}
+                      className={`faq-item ${isOpen ? "active" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="faq-question"
+                        onClick={() => toggleAccordion(index)}
+                        aria-expanded={isOpen}
+                        aria-controls={answerId}
+                      >
+                        <span className="q-content">
+                          <span className="icon" aria-hidden="true">{item.icon}</span>
+                          <span>{item.question}</span>
+                        </span>
+                        {isOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+                      </button>
+                      <div className="faq-answer" id={answerId} hidden={!isOpen}>
+                        <div className="answer-inner">
+                          {item.answer.split("\n").map((line, i) => (
+                            <p key={i}>{line}</p>
+                          ))}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })
+              ) : (
+                <div className="faq-empty" role="status">
+                  Không tìm thấy câu hỏi phù hợp. Bạn có thể chat với hỗ trợ để được xử lý nhanh hơn.
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          </section>
 
-          <div className="contact-section">
+          <aside className="contact-section" aria-label="Liên hệ hỗ trợ">
             <div className="contact-card">
               <h3>Liên hệ trực tiếp</h3>
               <p className="desc">Đội ngũ CSKH hoạt động từ 8:00 - 22:00 hàng ngày.</p>
 
               <ul className="contact-list">
                 <li>
-                  <div className="icon"><Phone size={18} /></div>
+                  <div className="icon" aria-hidden="true"><Phone size={18} /></div>
                   <div><span className="label">Hotline</span><a href="tel:19001234" className="value">1900 1234</a></div>
                 </li>
                 <li>
-                  <div className="icon"><Mail size={18} /></div>
-                  <div><span className="label">Email</span><a href="mailto:support@foodhub.vn" className="value">support@foodhub.vn</a></div>
+                  <div className="icon" aria-hidden="true"><Mail size={18} /></div>
+                  <div><span className="label">Email</span><a href="mailto:support@cohan.vn" className="value">support@cohan.vn</a></div>
                 </li>
                 <li>
-                  <div className="icon"><MapPin size={18} /></div>
-                  <div><span className="label">Văn phòng</span><span className="value">Tầng 12, Tòa nhà Bitexco, Q.1, TP.HCM</span></div>
+                  <div className="icon" aria-hidden="true"><MapPin size={18} /></div>
+                  <div><span className="label">Văn phòng</span><span className="value">Khu vận hành Cohan</span></div>
                 </li>
               </ul>
 
-              <div className="divider"></div>
+              <div className="divider" />
+              {supportNotice && <p className="support-notice" role="status">{supportNotice}</p>}
               <button
+                type="button"
                 className="btn-chat-trigger"
-                onClick={async () => {
-                  setIsChatOpen(true);
-                  await ensureSupportThread();
-                }}
+                onClick={openSupportChat}
               >
-                <MessageCircle size={18} /> Chat với hỗ trợ ngay
+                <MessageCircle size={18} aria-hidden="true" /> Chat với hỗ trợ ngay
               </button>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
 
-      <div className={`chatbot-widget ${isChatOpen ? "open" : ""}`}>
-        <div className="chat-header" onClick={() => setIsChatOpen(!isChatOpen)}>
-          <div className="bot-info">
-            <div className="avatar-dot"></div>
-            <span>FoodHub Support</span>
-          </div>
-          <button
+      <section className={`chatbot-widget ${isChatOpen ? "open" : ""}`} aria-label="Chat hỗ trợ Cohan">
+        <button
+          type="button"
+          className="chat-header"
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          aria-expanded={isChatOpen}
+        >
+          <span className="bot-info">
+            <span className="avatar-dot" aria-hidden="true" />
+            <span>Cohan Support</span>
+          </span>
+          <span
+            role="button"
+            tabIndex={0}
             className="close-chat"
             onClick={(e) => {
               e.stopPropagation();
               setIsChatOpen(false);
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsChatOpen(false);
+              }
+            }}
+            aria-label="Đóng chat hỗ trợ"
           >
-            <X size={18} />
-          </button>
-        </div>
+            <X size={18} aria-hidden="true" />
+          </span>
+        </button>
 
         {isChatOpen && (
           <>
-            <div className="chat-body">
+            <div className="chat-body" aria-live="polite">
               {messages.length === 0 && (
                 <div className="message bot">
-                  <div className="bubble">Xin chào! Bạn cần hỗ trợ gì hôm nay?</div>
+                  <div className="bubble">Xin chào, bạn cần hỗ trợ gì hôm nay?</div>
                 </div>
               )}
               {messages.map((msg, idx) => (
@@ -260,26 +310,28 @@ const HelpPage = () => {
             </div>
 
             <form className="chat-input-area" onSubmit={handleSendMessage}>
+              <label className="sr-only" htmlFor="support-message">Nhập nội dung hỗ trợ</label>
               <input
+                id="support-message"
                 type="text"
                 placeholder="Nhập nội dung..."
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
               />
-              <button type="submit" disabled={!inputMsg.trim() || sendMessageState.loading}>
-                <Send size={16} />
+              <button type="submit" disabled={!inputMsg.trim() || sendMessageState.loading} aria-label="Gửi tin nhắn hỗ trợ">
+                <Send size={16} aria-hidden="true" />
               </button>
             </form>
           </>
         )}
-      </div>
+      </section>
 
       {!isChatOpen && (
-        <button className="floating-chat-btn" onClick={() => setIsChatOpen(true)}>
-          <MessageCircle size={28} />
+        <button className="floating-chat-btn" type="button" onClick={openSupportChat} aria-label="Mở chat hỗ trợ">
+          <MessageCircle size={28} aria-hidden="true" />
         </button>
       )}
-    </div>
+    </main>
   );
 };
 
