@@ -1,65 +1,162 @@
 // src/styles/orderTracking.scss
+$ot-primary: #ff6600;
+$ot-primary-dark: #b94705;
+$ot-soft: #fff1e5;
+$ot-ink: #211915;
+$ot-muted: #75675c;
+$ot-line: rgba(96, 62, 38, 0.13);
+$ot-surface: rgba(255, 255, 255, 0.92);
+$ot-shadow: 0 18px 44px rgba(91, 48, 17, 0.08);
+$ot-shadow-hover: 0 28px 68px rgba(91, 48, 17, 0.15);
 
 .ot-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 40%);
   display: flex;
   justify-content: center;
-  padding: 16px;
+  padding: clamp(76px, 7vw, 108px) 16px 72px;
   box-sizing: border-box;
+  color: $ot-ink;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(255, 186, 116, 0.22), transparent 30rem),
+    radial-gradient(circle at 92% 0%, rgba(255, 230, 202, 0.72), transparent 34rem),
+    linear-gradient(180deg, #fffaf4 0%, #fff7ed 50%, #ffffff 100%);
 }
 
 .ot-page-inner {
-  width: 100%;
-  max-width: 640px;
+  width: min(840px, 100%);
   margin: 0 auto;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
-    sans-serif;
-  color: #111827;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.ot-page-inner > h2,
+.ot-page-inner > p,
+.ot-page-inner > .ot-actions {
+  width: min(560px, 100%);
+  margin-inline: auto;
+}
+
+.ot-page-inner > h2,
+.ot-page-inner > p {
+  text-align: center;
+}
+
+.ot-page-inner > h2 {
+  margin: 0 0 10px;
+  color: $ot-ink;
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+}
+
+.ot-page-inner > p {
+  margin: 0;
+  color: $ot-muted;
+  line-height: 1.65;
+  font-weight: 700;
+}
+
+.ot-header,
+.ot-card,
+.tracking-map,
+.ot-page-inner > h2 + p,
+.ot-page-inner > .ot-actions {
+  border: 1px solid $ot-line;
+  background: $ot-surface;
+  box-shadow: $ot-shadow;
+  backdrop-filter: blur(14px);
 }
 
 .ot-header {
+  position: relative;
+  overflow: hidden;
   margin-bottom: 16px;
+  padding: clamp(22px, 4vw, 36px);
+  border-radius: 32px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 240, 0.88)),
+    radial-gradient(circle at 86% 20%, rgba(255, 102, 0, 0.14), transparent 18rem);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(rgba(255, 102, 0, 0.12) 1px, transparent 1px);
+    background-size: 18px 18px;
+    mask-image: linear-gradient(90deg, transparent, #000 56%, transparent);
+    opacity: 0.42;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
 
   .ot-header-main {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
+    display: grid;
+    gap: 10px;
+    margin-bottom: 20px;
   }
 
   .ot-title {
-    font-size: 22px;
-    font-weight: 700;
+    margin: 0;
+    max-width: 12ch;
+    color: $ot-ink;
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 950;
+    letter-spacing: -0.075em;
+    line-height: 0.96;
+    text-wrap: balance;
   }
 
   .ot-order-code {
-    font-size: 14px;
-    color: #4b5563;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 102, 0, 0.16);
+    border-radius: 999px;
+    background: #fff7ed;
+    color: $ot-primary-dark;
+    font-size: 0.86rem;
+    font-weight: 850;
+
+    strong {
+      margin-left: 4px;
+      color: $ot-primary;
+      font-variant-numeric: tabular-nums;
+    }
   }
 }
 
 .ot-progress {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: 8px;
-  font-size: 11px;
-  text-transform: uppercase;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
 
   .ot-progress-step {
-    flex: 1;
+    min-height: 42px;
+    display: grid;
+    place-items: center;
     text-align: center;
-    padding: 4px 6px;
+    padding: 7px 8px;
+    border: 1px solid rgba(96, 62, 38, 0.12);
     border-radius: 999px;
-    background: #e5e7eb;
-    color: #6b7280;
+    background: rgba(255, 255, 255, 0.72);
+    color: $ot-muted;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .ot-progress-step.active {
-    background: #16a34a;
-    color: #f9fafb;
-    font-weight: 600;
+    border-color: rgba(31, 122, 75, 0.16);
+    background: #e8f7ec;
+    color: #1f7a4b;
+    box-shadow: 0 10px 22px rgba(31, 122, 75, 0.1);
   }
 }
 
@@ -68,38 +165,59 @@
 }
 
 .ot-card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 14px 16px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  border-radius: 26px;
+  padding: 18px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 102, 0, 0.22);
+    box-shadow: $ot-shadow-hover;
+  }
+
+  h3 {
+    margin: 0 0 12px;
+    color: $ot-ink;
+    font-size: 1.05rem;
+    font-weight: 950;
+    letter-spacing: -0.035em;
+  }
 }
 
 // MAP
 .tracking-map {
   width: 100%;
-  height: 230px;
-  border-radius: 18px;
+  height: min(52vh, 420px);
+  min-height: 270px;
   overflow: hidden;
-  background: #e5e7eb;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 102, 0, 0.08), transparent 18rem),
+    #fffefd;
 
   &--fallback {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6b7280;
-    font-size: 14px;
+    color: $ot-muted;
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding: 20px;
+    text-align: center;
   }
 }
 
 .marker {
   font-size: 24px;
   transform: translate(-50%, -50%);
+
   &.marker-driver {
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+    filter: drop-shadow(0 4px 8px rgba(33, 25, 21, 0.28));
   }
+
   &.marker-customer,
   &.marker-restaurant {
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+    filter: drop-shadow(0 3px 6px rgba(33, 25, 21, 0.2));
   }
 }
 
@@ -107,47 +225,64 @@
 .ot-driver-card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .ot-driver-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-  background: #22c55e1a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(31, 122, 75, 0.16);
+  border-radius: 22px;
+  background: #e8f7ec;
+  color: #1f7a4b;
+  font-size: 28px;
+  box-shadow: 0 14px 28px rgba(31, 122, 75, 0.1);
 }
 
 .ot-driver-info {
   .ot-driver-name {
-    font-weight: 600;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+    color: $ot-ink;
+    font-size: 1.02rem;
+    font-weight: 950;
+    letter-spacing: -0.025em;
   }
+
   .ot-driver-phone,
   .ot-driver-plate {
-    font-size: 14px;
-    color: #4b5563;
+    color: $ot-muted;
+    font-size: 0.9rem;
+    font-weight: 750;
+    line-height: 1.45;
   }
 }
 
 // ETA CARD
 .ot-eta-card {
   .ot-eta-main {
-    margin-top: 6px;
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid rgba(255, 102, 0, 0.16);
+    border-radius: 20px;
+    background: #fff7ed;
   }
 
   .ot-eta-time {
-    font-size: 20px;
-    font-weight: 700;
+    color: $ot-primary-dark;
+    font-size: clamp(1.45rem, 4vw, 2.25rem);
+    font-weight: 950;
+    letter-spacing: -0.055em;
+    font-variant-numeric: tabular-nums;
   }
 
   .ot-eta-meta {
-    margin-top: 4px;
-    color: #6b7280;
-    font-size: 13px;
+    color: $ot-muted;
+    font-size: 0.9rem;
+    font-weight: 800;
   }
 }
 
@@ -157,29 +292,36 @@
     list-style: none;
     padding: 0;
     margin: 8px 0 0;
+    display: grid;
+    gap: 10px;
   }
 
   .ot-order-item {
-    padding: 6px 0;
-    border-bottom: 1px dashed #e5e7eb;
+    padding: 12px;
+    border: 1px solid rgba(96, 62, 38, 0.1);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.76);
+
+    > span {
+      color: $ot-ink;
+      font-weight: 850;
+    }
 
     .ot-order-proofs {
-      margin-top: 8px;
+      margin-top: 10px;
       display: flex;
       gap: 8px;
       overflow-x: auto;
+      padding-bottom: 4px;
 
       img {
-        width: 64px;
-        height: 64px;
-        border-radius: 8px;
+        width: 68px;
+        height: 68px;
+        border-radius: 16px;
         object-fit: cover;
-        border: 1px solid #e2e8f0;
+        border: 1px solid rgba(96, 62, 38, 0.12);
+        box-shadow: 0 10px 22px rgba(91, 48, 17, 0.08);
       }
-    }
-
-    &:last-child {
-      border-bottom: none;
     }
   }
 }
@@ -187,17 +329,17 @@
 // TIMELINE
 .ot-timeline-card {
   .ot-timeline {
-    margin-top: 8px;
+    margin: 8px 0 0;
     padding-left: 0;
     list-style: none;
   }
 
   .ot-timeline-item {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     position: relative;
-    padding-left: 16px;
-    margin-bottom: 10px;
+    padding-left: 22px;
+    margin-bottom: 14px;
 
     &:last-child {
       margin-bottom: 0;
@@ -207,36 +349,95 @@
   .ot-timeline-dot {
     position: absolute;
     left: 0;
-    top: 6px;
-    width: 8px;
-    height: 8px;
+    top: 7px;
+    width: 10px;
+    height: 10px;
     border-radius: 999px;
-    background: #16a34a;
+    background: $ot-primary;
+    box-shadow: 0 0 0 5px rgba(255, 102, 0, 0.14);
   }
 
   .ot-timeline-body {
     .ot-timeline-message {
-      font-size: 14px;
+      color: $ot-ink;
+      font-size: 0.95rem;
+      font-weight: 850;
+      line-height: 1.45;
     }
+
     .ot-timeline-time {
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 2px;
+      margin-top: 3px;
+      color: $ot-muted;
+      font-size: 0.78rem;
+      font-weight: 750;
     }
   }
 }
 
+.ot-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 22px;
+}
+
+.ot-btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 102, 0, 0.18);
+  border-radius: 14px;
+  background: #fff1e5;
+  color: $ot-primary-dark;
+  font-weight: 900;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 102, 0, 0.34);
+    box-shadow: 0 12px 24px rgba(255, 102, 0, 0.13);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 102, 0, 0.22);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ot-page *,
+  .ot-page *::before,
+  .ot-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 // Responsive
-@media (min-width: 640px) {
+@media (max-width: 640px) {
   .ot-page {
-    padding: 24px;
+    padding: 72px 12px 48px;
   }
 
-  .ot-title {
-    font-size: 24px;
-  }
-
+  .ot-header,
+  .ot-card,
   .tracking-map {
-    height: 260px;
+    border-radius: 24px;
+  }
+
+  .ot-progress {
+    grid-template-columns: 1fr;
+  }
+
+  .ot-driver-card,
+  .ot-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
