@@ -203,14 +203,14 @@ const RestaurantDetail = () => {
 
   if (loading) {
     return (
-      <div className="detail-loading">
+      <div className="detail-loading" role="status" aria-live="polite">
         <LoadingSpinner size="large" />
       </div>
     );
   }
 
   if (error || !restaurant) {
-    return <div className="detail-error">Không tìm thấy nhà hàng.</div>;
+    return <div className="detail-error" role="alert">Không tìm thấy nhà hàng.</div>;
   }
 
   const mergedAddress = {
@@ -319,8 +319,8 @@ const RestaurantDetail = () => {
     { label: "Đánh giá", message: "Xem đánh giá nhà hàng" },
   ];
   return (
-    <div className="restaurant-detail-page">
-      <section className="rd-hero">
+    <main className="restaurant-detail-page">
+      <section className="rd-hero" aria-labelledby="restaurant-detail-title">
         <div
           className={`hero-cover ${hasCoverImage ? "has-cover" : "fallback-cover"}`}
           style={{ backgroundImage: `url(${imgThumbUrl})` }}
@@ -328,20 +328,21 @@ const RestaurantDetail = () => {
           <div className="overlay" />
           {!hasCoverImage && (
             <div className="fallback-cover-copy" aria-hidden="true">
-              <span>FoodHub Pick</span>
+              <span>Cohan Pick</span>
               <strong>{cuisineText}</strong>
             </div>
           )}
           <button
             type="button"
             className="btn-back"
+            aria-label="Quay lại trang trước"
             onClick={() => {
               if (isPreviewMode) return;
               navigate(-1);
             }}
             disabled={isPreviewMode}
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={24} aria-hidden="true" />
           </button>
         </div>
 
@@ -353,34 +354,34 @@ const RestaurantDetail = () => {
               ) : (
                 <div className="avatar-fallback" aria-label={`Logo ${resolvedRestaurant.name}`}>
                   <span>{avatarInitials}</span>
-                  <small>FoodHub</small>
+                  <small>Cohan</small>
                 </div>
               )}
             </div>
 
             <div className="info-text">
               <div className="bread-crumbs">Trang chủ / Nhà hàng / {resolvedRestaurant.district}</div>
-              <h1 className="res-name">{resolvedRestaurant.name}</h1>
+              <h1 className="res-name" id="restaurant-detail-title">{resolvedRestaurant.name}</h1>
 
-              <div className="res-meta">
+              <div className="res-meta" aria-label="Thông tin nhanh của nhà hàng">
                 <span className="rating">
-                  <Star size={16} fill="#f59e0b" stroke="none" />
+                  <Star size={16} fill="#f59e0b" stroke="none" aria-hidden="true" />
                   <strong>{headerRating}</strong>
                   {headerReviewCount > 0 && <span> ({headerReviewCount} đánh giá)</span>}
                 </span>
-                <span className="dot">•</span>
+                <span className="dot" aria-hidden="true">•</span>
                 <span className="cuisine">{cuisineText}</span>
-                <span className="dot">•</span>
+                <span className="dot" aria-hidden="true">•</span>
                 <span className={`status ${resolvedRestaurant.openingStatus || "closed"}`}>
                   {getOpeningStatusLabel(resolvedRestaurant.openingStatus)}
                 </span>
               </div>
 
               <div className="res-address">
-                <MapPin size={16} /> {resolvedRestaurant.addressText || "Địa chỉ đang cập nhật"}
+                <MapPin size={16} aria-hidden="true" /> {resolvedRestaurant.addressText || "Địa chỉ đang cập nhật"}
               </div>
 
-              <div className="profile-summary">
+              <div className="profile-summary" aria-label="Tóm tắt nhà hàng">
                 {profileSummaryItems.map((item, idx) => (
                   <span key={`${item}-${idx}`} className="summary-chip">
                     {item}
@@ -397,12 +398,19 @@ const RestaurantDetail = () => {
                   disabled={isPreviewMode || favoriteLoading}
                   onClick={handleFavorite}
                   aria-pressed={favoriteActive}
+                  aria-label={favoriteActive ? "Bỏ lưu nhà hàng yêu thích" : "Lưu nhà hàng yêu thích"}
                   title={favoriteActive ? "Bỏ lưu nhà hàng" : "Lưu nhà hàng yêu thích"}
                 >
-                  <Heart size={20} />
+                  <Heart size={20} aria-hidden="true" />
                 </button>
-                <button type="button" className="btn-icon" disabled={isPreviewMode} onClick={handleShare}>
-                  <Share2 size={20} />
+                <button
+                  type="button"
+                  className="btn-icon"
+                  disabled={isPreviewMode}
+                  onClick={handleShare}
+                  aria-label="Chia sẻ nhà hàng"
+                >
+                  <Share2 size={20} aria-hidden="true" />
                 </button>
               </div>
               <button
@@ -418,12 +426,16 @@ const RestaurantDetail = () => {
         </div>
       </section>
 
-      <div className={`rd-tabs ${isScrolled ? "stuck" : ""}`}>
-        <div className="container tab-scroll">
+      <nav className={`rd-tabs ${isScrolled ? "stuck" : ""}`} aria-label="Nội dung nhà hàng">
+        <div className="container tab-scroll" role="tablist">
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              id={`rd-tab-${tab.id}`}
               type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`rd-panel-${tab.id}`}
               className={`tab-item ${activeTab === tab.id ? "active" : ""}`}
               onClick={() => !isPreviewMode && setActiveTab(tab.id)}
               disabled={isPreviewMode}
@@ -432,10 +444,15 @@ const RestaurantDetail = () => {
             </button>
           ))}
         </div>
-      </div>
+      </nav>
 
       <div className="rd-container container">
-        <div className="main-content">
+        <section
+          className="main-content"
+          id={`rd-panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`rd-tab-${activeTab}`}
+        >
           {activeTab === "menu" && (
             <MenuSection
               restaurantId={resolvedRestaurant.id}
@@ -449,9 +466,9 @@ const RestaurantDetail = () => {
           {activeTab === "promotions" && <PromotionsSection restaurantId={resolvedRestaurant.id} />}
           {activeTab === "photos" && <PhotoGallery photos={galleryPhotos} />}
           {activeTab === "info" && <RestaurantInfo restaurant={resolvedRestaurant} isPreviewMode={isPreviewMode} />}
-        </div>
+        </section>
 
-        <aside className="sidebar-content">
+        <aside className="sidebar-content" aria-label="Hành động nhà hàng">
           <div className="booking-widget booking-widget--ai">
             <h3>AI hỗ trợ nhà hàng</h3>
             <p>Hỏi nhanh về món, combo, ưu đãi, giờ mở cửa hoặc đặt bàn</p>
@@ -462,7 +479,7 @@ const RestaurantDetail = () => {
             >
               Hỏi AI ngay
             </button>
-            <div className="quick-prompts">
+            <div className="quick-prompts" aria-label="Gợi ý câu hỏi nhanh">
               {aiQuickPrompts.map((item) => (
                 <button
                   key={item.label}
@@ -480,7 +497,7 @@ const RestaurantDetail = () => {
             <h3>Đặt bàn giữ chỗ</h3>
             <p>Giữ chỗ miễn phí - Xác nhận tức thì</p>
             <div className="time-picker-mock">
-              <Clock size={16} /> {resolvedRestaurant.openingStatusReason || "Kiểm tra lịch trống khi đặt bàn"}
+              <Clock size={16} aria-hidden="true" /> {resolvedRestaurant.openingStatusReason || "Kiểm tra lịch trống khi đặt bàn"}
             </div>
             <button
               type="button"
@@ -514,7 +531,7 @@ const RestaurantDetail = () => {
           {primaryCtaText}
         </button>
       </div>
-    </div>
+    </main>
   );
 };
 
