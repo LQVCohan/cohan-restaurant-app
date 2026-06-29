@@ -1,0 +1,7 @@
+# ponytail: staff self-service operation compatibility fields.
+
+extend input RespondShiftAcknowledgementInput {
+  shiftId: ID
+  response: String
+  reasonCategory: String
+}
