@@ -116,8 +116,9 @@ export default function CombosPage() {
     const bundle = isBundleCombo(combo);
     const canAddBundle = bundle && combo.restaurantId && combo.items?.some((item) => item.menuItemId);
     const itemCount = (combo.items || []).reduce((sum, item) => sum + Number(item.qty || 1), 0);
+    const titleId = `combo-title-${combo.sourceType}-${combo.id}`;
     return (
-      <article className={`combo-card${featuredCard ? " combo-card--featured" : ""} ${bundle ? "combo-card--bundle" : "combo-card--promotion"}`} key={`${combo.sourceType}-${combo.id}`}>
+      <article className={`combo-card${featuredCard ? " combo-card--featured" : ""} ${bundle ? "combo-card--bundle" : "combo-card--promotion"}`} key={`${combo.sourceType}-${combo.id}`} aria-labelledby={titleId}>
         <div className="combo-card__image-wrap">
           <img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} className="combo-card__image" loading="lazy" />
           <span className="combo-card__badge">{combo.badge || (bundle ? "Combo trọn gói" : "Ưu đãi thanh toán")}</span>
@@ -128,7 +129,7 @@ export default function CombosPage() {
             <p className="combo-card__eyebrow">{bundle ? "Combo trọn gói" : "Ưu đãi khi thanh toán"}</p>
             <span>{itemCount || combo.items?.length || 0} món</span>
           </div>
-          <h3>{combo.name}</h3>
+          <h3 id={titleId}>{combo.name}</h3>
           <p className="combo-card__restaurant">{combo.restaurantName || "Nhà hàng đang cập nhật"}</p>
           <ul className="combo-card__items" aria-label={`Món trong ${combo.name}`}>
             {(combo.items || []).slice(0, 4).map((item) => <li key={`${combo.id}-${item.menuItemId || item.name}`}><span>{item.qty}×</span>{item.name}</li>)}
@@ -158,7 +159,7 @@ export default function CombosPage() {
   };
 
   return (
-    <main className="combos-page" id="main-content">
+    <main className="combos-page" id="main-content" aria-labelledby="combos-title">
       <div className="combos-page__glow combos-page__glow--left" aria-hidden="true" />
       <div className="combos-page__glow combos-page__glow--right" aria-hidden="true" />
 
@@ -191,12 +192,12 @@ export default function CombosPage() {
       <section className="combos-filter" aria-label="Bộ lọc combo">
         <label className="combos-filter__search">
           <span>Tìm combo</span>
-          <input aria-label="Tìm combo" value={filter.search} onChange={(e) => updateFilter("search", e.target.value)} placeholder="Tên combo, nhà hàng..." />
+          <input value={filter.search} onChange={(e) => updateFilter("search", e.target.value)} placeholder="Tên combo, nhà hàng..." />
         </label>
         {Object.entries(filters).map(([key, options]) => (
           <label key={key}>
             <span>{key === "people" ? "Số người" : key === "budget" ? "Ngân sách" : "Loại"}</span>
-            <select aria-label={key === "people" ? "Lọc theo số người" : key === "budget" ? "Lọc theo ngân sách" : "Lọc theo loại combo"} value={filter[key]} onChange={(e) => updateFilter(key, e.target.value)}>
+            <select value={filter[key]} onChange={(e) => updateFilter(key, e.target.value)}>
               {options.map(([value, label]) => <option key={value || key} value={value}>{label}</option>)}
             </select>
           </label>
@@ -240,10 +241,10 @@ export default function CombosPage() {
         </section>
       ) : combos.length ? (
         <>
-          <section className="combos-section combos-section--featured">
+          <section className="combos-section combos-section--featured" aria-labelledby="featured-combos-title">
             <div className="combos-section__heading">
               <span>Combo nổi bật</span>
-              <h2>Set món đáng thử</h2>
+              <h2 id="featured-combos-title">Set món đáng thử</h2>
               <p>Ưu tiên combo có mức tiết kiệm tốt và dễ kiểm tra điều kiện trước khi chọn món.</p>
             </div>
             <div className={`combos-featured ${featured.length === 1 ? "combos-featured--single" : ""}`}>
@@ -259,10 +260,10 @@ export default function CombosPage() {
             </div>
           </section>
           {remainingCombos.length > 0 && (
-            <section className="combos-section combos-section--all">
+            <section className="combos-section combos-section--all" aria-labelledby="all-combos-title">
               <div className="combos-section__heading">
                 <span>Tất cả combo</span>
-                <h2>Chọn theo bữa ăn của bạn</h2>
+                <h2 id="all-combos-title">Chọn theo bữa ăn của bạn</h2>
                 <p>So sánh các combo còn lại theo số người, ngân sách và loại ưu đãi.</p>
               </div>
               <div className="combos-grid">{remainingCombos.map((combo) => renderCard(combo))}</div>
@@ -270,7 +271,7 @@ export default function CombosPage() {
           )}
         </>
       ) : (
-        <section className="combos-state">
+        <section className="combos-state" role="status">
           <span className="combos-state__mark">Bộ sưu tập trống</span>
           <h2>Chưa có combo phù hợp</h2>
           <p>Bạn có thể xem nhà hàng hoặc quay lại sau khi có combo mới.</p>
@@ -284,20 +285,21 @@ export default function CombosPage() {
 }
 
 function SkeletonGrid() {
-  return <div className="combos-grid combos-grid--loading" aria-label="Đang tải combo">{Array.from({ length: 6 }).map((_, i) => <div className="combo-card combo-card--skeleton" key={i}><div /><span /><span /><span /></div>)}</div>;
+  return <div className="combos-grid combos-grid--loading" role="status" aria-live="polite" aria-label="Đang tải combo">{Array.from({ length: 6 }).map((_, i) => <div className="combo-card combo-card--skeleton" key={i}><div /><span /><span /><span /></div>)}</div>;
 }
 
 function ComboModal({ combo, onClose, onAdd, isAdding }) {
   const bundle = isBundleCombo(combo);
   const canAddBundle = bundle && combo.restaurantId && combo.items?.some((item) => item.menuItemId);
+  const titleId = "combo-modal-title";
   return (
     <div className="combo-modal" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <section className="combo-modal__panel" role="dialog" aria-modal="true" aria-label={`Chi tiết ${combo.name}`}>
+      <section className="combo-modal__panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <button type="button" className="combo-modal__close" aria-label="Đóng chi tiết combo" onClick={onClose}>×</button>
         <div className="combo-modal__media"><img src={combo.imageUrl || DEFAULT_IMAGE} alt={combo.name} /><span>{combo.badge || (bundle ? "Combo" : "Ưu đãi")}</span></div>
         <div className="combo-modal__content">
           <span className="combo-modal__eyebrow">{bundle ? "Combo trọn gói" : "Ưu đãi thanh toán"}</span>
-          <h2>{combo.name}</h2>
+          <h2 id={titleId}>{combo.name}</h2>
           <p>{combo.restaurantName || "Nhà hàng đang cập nhật"}</p>
           {combo.description && <p>{combo.description}</p>}
           <ul>{(combo.items || []).map((item) => <li key={`${item.menuItemId || item.name}-modal`}><strong>{item.qty}× {item.name}</strong>{item.price ? <em>{money(item.price)}đ</em> : null}</li>)}</ul>
