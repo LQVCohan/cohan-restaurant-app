@@ -13,6 +13,7 @@ import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
 import "../../../styles/Homepage/HomePremiumPolish.scss";
 import "../../../styles/Homepage/HomeShortcutsBento.scss";
+import "../../../styles/Homepage/HomeA11yPolish.scss";
 
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
@@ -37,6 +38,7 @@ const Home = () => {
   const [filterState, setFilterState] = useState({});
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [bookingNotice, setBookingNotice] = useState("");
   const homeMotionRef = useGsapHomeMotion();
 
   const handleCategorySelect = useCallback((category) => {
@@ -69,13 +71,13 @@ const Home = () => {
   }, []);
 
   const handleOpenBooking = useCallback((restaurant) => {
+    setBookingNotice("");
     setSelectedRestaurant(restaurant);
     setIsTableBookingOpen(true);
   }, []);
 
-  const handleBookTable = (bookingData) => {
-    console.log("Booking Data:", bookingData);
-    alert(`Đã gửi yêu cầu đặt bàn tại ${selectedRestaurant?.name}!`);
+  const handleBookTable = () => {
+    setBookingNotice(`Đã nhận yêu cầu đặt bàn tại ${selectedRestaurant?.name || "nhà hàng"}.`);
     setIsTableBookingOpen(false);
     setSelectedRestaurant(null);
   };
@@ -84,6 +86,12 @@ const Home = () => {
     <div className="home" ref={homeMotionRef}>
       <main className="home__main-content">
         <HeroSection onSearch={handleSearch} />
+
+        {bookingNotice && (
+          <div className="home__booking-notice" role="status" aria-live="polite">
+            {bookingNotice}
+          </div>
+        )}
 
         <RestaurantGrid
           restaurantFilter={filterState}
