@@ -250,4 +250,19 @@ test.describe("P1 manager schedule", () => {
     await expect(page.getByText("Ca trong tuần")).toBeVisible();
     backendGuard.assertNoBackendErrors("manager schedule workspace");
   });
+
+  test("manager opens create shift modal and selects staff without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerScheduleMocks(page);
+    await openManagerSchedulePage(page);
+
+    await page.getByRole("button", { name: /Tạo ca/ }).click();
+    await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+
+    const staffRow = page.locator(".staff-item", { hasText: STAFF_USER.fullName });
+    await expect(staffRow).toBeVisible();
+    backendGuard.clear();
+    await staffRow.click();
+    await expect(page.locator(".staff-item.selected", { hasText: STAFF_USER.fullName })).toBeVisible();
+    backendGuard.assertNoBackendErrors("manager schedule create shift modal");
+  });
 });
