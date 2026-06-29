@@ -347,48 +347,48 @@ const TableBooking = () => {
 
   if (floorsLoading) {
     return (
-      <div className="booking-loading-premium">
+      <div className="booking-loading-premium" role="status" aria-live="polite">
         <LoadingSpinner size="large" className="booking-loading-spinner" />
         <p>Đang chuẩn bị không gian...</p>
       </div>
     );
   }
-  if (restaurantLoading) return <div className="booking-loading-premium"><p>Đang tải thông tin nhà hàng...</p></div>;
-  if (!publicRestaurant) return <div className="booking-loading-premium"><p>Nhà hàng không khả dụng hoặc chưa công khai.</p></div>;
+  if (restaurantLoading) return <div className="booking-loading-premium" role="status" aria-live="polite"><p>Đang tải thông tin nhà hàng...</p></div>;
+  if (!publicRestaurant) return <div className="booking-loading-premium" role="alert"><p>Nhà hàng không khả dụng hoặc chưa công khai.</p></div>;
 
   return (
-    <div className="table-booking-premium">
-      <header className="premium-header">
+    <main className="table-booking-premium">
+      <header className="premium-header" aria-labelledby="table-booking-title">
         <div className="header-inner">
-          <button className="btn-back-link" onClick={() => navigate(-1)}>
-            <ChevronLeft size={20} /> Quay lại
+          <button type="button" className="btn-back-link" onClick={() => navigate(-1)}>
+            <ChevronLeft size={20} aria-hidden="true" /> Quay lại
           </button>
           <div className="header-center">
             <span className="sub-heading">Đặt bàn trực tuyến</span>
-            <h1 className="main-heading">Sơ đồ chỗ ngồi</h1>
+            <h1 className="main-heading" id="table-booking-title">Sơ đồ chỗ ngồi</h1>
           </div>
           <div className="header-actions">
-            <button className="btn-help"><Info size={20} /></button>
+            <button type="button" className="btn-help" aria-label="Xem hướng dẫn đặt bàn"><Info size={20} aria-hidden="true" /></button>
           </div>
         </div>
       </header>
 
       {isRebook && (
-        <div className="booking-alert">
+        <div className="booking-alert" role="status">
           🔁 Đang đặt lại bàn từ lịch sử cũ. Hệ thống sẽ ưu tiên chọn bàn cũ hoặc bàn đủ chỗ rồi tự mở form.
         </div>
       )}
       {fromMenu && (
-        <div className="booking-alert">
+        <div className="booking-alert" role="status">
           🛎️ Đã quay lại từ giỏ món. Hệ thống sẽ tính tiền cọc bàn + 50% cọc món trong bước thanh toán.
         </div>
       )}
-      {!canReserve && <div className="booking-alert">Nhà hàng hiện không nhận đặt bàn.</div>}
+      {!canReserve && <div className="booking-alert" role="alert">Nhà hàng hiện không nhận đặt bàn.</div>}
 
       <div className="booking-layout-grid">
-        <main className="main-visual-area">
+        <section className="main-visual-area" aria-label="Sơ đồ bàn nhà hàng">
           <div className="floor-control-bar">
-            <div className="bar-label"><Layers size={18} /> Chọn tầng:</div>
+            <div className="bar-label"><Layers size={18} aria-hidden="true" /> Chọn tầng:</div>
             <div className="floor-scroll-container">
               <FloorSelector
                 floors={floors}
@@ -398,17 +398,17 @@ const TableBooking = () => {
             </div>
           </div>
 
-          <div className="map-viewport-frame">
+          <div className="map-viewport-frame" role="region" aria-label="Bản đồ bàn" aria-busy={tablesLoading}>
             {!canReserve ? (
-              <div className="map-state-msg"><span>Nhà hàng hiện không nhận đặt bàn.</span></div>
+              <div className="map-state-msg" role="alert"><span>Nhà hàng hiện không nhận đặt bàn.</span></div>
             ) : tablesLoading ? (
-              <div className="map-state-msg">
+              <div className="map-state-msg" role="status" aria-live="polite">
                 <LoadingSpinner size="medium" />
                 <span>Đang tải dữ liệu bàn...</span>
               </div>
             ) : (
               <>
-                <div className="floor-name-watermark">{activeFloorData?.name}</div>
+                <div className="floor-name-watermark" aria-hidden="true">{activeFloorData?.name}</div>
                 <FloorMap
                   tables={tables}
                   selectedTable={selectedTable}
@@ -417,17 +417,17 @@ const TableBooking = () => {
                   meta={activeFloorData?.meta || null}
                   theme="premium"
                 />
-                <div className="legend-pill">
-                  <div className="l-item"><span className="dot available"></span> Trống</div>
-                  <div className="l-item"><span className="dot selected"></span> Đang chọn</div>
-                  <div className="l-item"><span className="dot occupied"></span> Đã đặt</div>
+                <div className="legend-pill" aria-label="Chú thích trạng thái bàn">
+                  <div className="l-item"><span className="dot available" aria-hidden="true" /> Trống</div>
+                  <div className="l-item"><span className="dot selected" aria-hidden="true" /> Đang chọn</div>
+                  <div className="l-item"><span className="dot occupied" aria-hidden="true" /> Đã đặt</div>
                 </div>
               </>
             )}
           </div>
-        </main>
+        </section>
 
-        <aside className="sidebar-summary-area">
+        <aside className="sidebar-summary-area" aria-label="Tóm tắt đặt bàn">
           <div className="summary-sticky-wrapper">
             <div className="summary-card-premium">
               <div className="card-header"><h3>Thông tin đặt bàn</h3></div>
@@ -473,7 +473,7 @@ const TableBooking = () => {
         booking={bookingData}
         type="reservation"
       />
-    </div>
+    </main>
   );
 };
 
