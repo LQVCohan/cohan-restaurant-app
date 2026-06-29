@@ -297,6 +297,7 @@ input CreateLeaveRequestInput {
   restaurantId: ID
   employeeId: ID
   replacementEmployeeId: ID
+  replacementManagerId: ID
   leaveType: String
   type: String
   startDate: DateTime
@@ -427,6 +428,11 @@ input UpsertStaffAttendanceInput {
   workDate: DateTime
   actualCheckInAt: DateTime
   actualCheckOutAt: DateTime
+  action: String
+  timestamp: DateTime
+  source: String
+  offScheduleReasonCategory: String
+  offScheduleReason: String
   note: String
 }
 

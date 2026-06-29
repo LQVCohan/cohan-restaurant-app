@@ -50,7 +50,7 @@ describe("CombosPage", () => {
     renderPage([{ request: { query: CUSTOMER_COMBOS, variables: baseVariables }, result: { data: { customerCombos: [promoComboFixture] } } }]);
     expect(await screen.findByText("Combo trưa")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Xem ưu đãi" })[0]);
-    expect(screen.getByRole("dialog", { name: "Chi tiết Combo trưa" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /combo trưa/i })).toBeInTheDocument();
     expect(screen.getByText("Ưu đãi này sẽ tự áp dụng ở bước thanh toán khi giỏ hàng đủ điều kiện.")).toBeInTheDocument();
   });
 
@@ -61,8 +61,8 @@ describe("CombosPage", () => {
       { request: { query: CUSTOMER_COMBOS, variables: { filter: { people: "two", onlyAvailable: true, limit: 36 } } }, result: { data: { customerCombos: [] } } },
       { request: { query: CUSTOMER_COMBOS, variables: filteredVariables }, result: { data: { customerCombos: [] } } },
     ]);
-    fireEvent.change(screen.getByLabelText("Lọc theo số người"), { target: { value: "two" } });
-    fireEvent.change(screen.getByLabelText("Lọc theo ngân sách"), { target: { value: "100k_200k" } });
+    fireEvent.change(screen.getByLabelText("Số người"), { target: { value: "two" } });
+    fireEvent.change(screen.getByLabelText("Ngân sách"), { target: { value: "100k_200k" } });
     await waitFor(() => expect(screen.getByText("Chưa có combo phù hợp")).toBeInTheDocument());
   });
 });

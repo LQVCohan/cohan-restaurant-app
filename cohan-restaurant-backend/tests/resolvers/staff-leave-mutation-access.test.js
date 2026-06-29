@@ -13,7 +13,7 @@ vi.mock("../../src/services/payroll/payrollLockGuard.service.js", () => ({ asser
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({ ATTENDANCE_REVIEW_ROLES: ["ADMIN", "MANAGER"], ATTENDANCE_OPERATION_ROLES: [], ATTENDANCE_SELF_ROLES: [], SCHEDULE_WRITE_ROLES: [], SHIFT_ACK_ADMIN_ROLES: [], resolveUserRoles: vi.fn(() => []), userCanAccessRestaurant: vi.fn(() => true) }));
 vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Types: { ObjectId: function ObjectId(v) { this.value=v; this.toString=()=>String(v); } } } }));
 
-const q = (v) => ({ populate: vi.fn(() => q(v)), select: vi.fn(() => q(v)), lean: vi.fn(async () => v) });
+const q = (v) => ({ populate: vi.fn(() => q(v)), select: vi.fn(() => q(v)), lean: vi.fn(async () => v), then: (resolve, reject) => Promise.resolve(v).then(resolve, reject) });
 const d = (v) => ({ ...v, save: vi.fn(async () => v), toObject: () => v, auditLogs: [] });
 
 describe("staff leave mutation access", () => {
@@ -43,5 +43,25 @@ describe("staff leave mutation access", () => {
     const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
     await expect(m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } })).rejects.toThrow("Staff does not belong to restaurant");
     expect(modelMocks.LeaveRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("createLeaveRequest accepts replacementEmployeeId as legacy manager replacement", async () => {
+    modelMocks.Staff.findById
+      .mockReturnValueOnce(q({ _id: "e1", userType: "STAFF", restaurantForStaff: "r1", refRestaurants: [], department: "management", positionTitle: "Manager", roleName: "manager" }))
+      .mockReturnValueOnce(q({ _id: "m2", department: "management", positionTitle: "Manager", roleName: "manager" }));
+    const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", replacementEmployeeId: "m2", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } });
+
+    expect(modelMocks.LeaveRequest.create.mock.calls[0][0].replacementManagerId.toString()).toBe("m2");
+  });
+
+  it("rejectLeaveRequest blocks approved request before balance changes", async () => {
+    const request = d({ _id: "lr1", employeeId: "e1", restaurantId: "r1", status: "approved", quotaImpact: { annual: 1 }, startDate: new Date(), endDate: new Date() });
+    modelMocks.LeaveRequest.findById.mockReturnValueOnce(q(request));
+    const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    await expect(m.rejectLeaveRequest(null, { requestId: "lr1", reason: "no" }, { user: { id: "m1" } })).rejects.toThrow("Đơn nghỉ đã duyệt không thể từ chối");
+    expect(request.save).not.toHaveBeenCalled();
+    expect(modelMocks.LeaveBalance.findOne).not.toHaveBeenCalled();
   });
 });

@@ -1556,6 +1556,13 @@ const mutationResolvers = {
     staff.status = "inactive";
     // Enum trong User.js: "working", "on_leave", "resigned", "suspended"
     staff.employmentStatus = "resigned";
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: staff.restaurantForStaff,
+      employeeId: staff._id,
+      startDate: staff.dateJoined || new Date("2000-01-01"),
+      endDate: new Date(),
+      action: "delete_staff",
+    });
     await staff.save();
 
     await logStaffEvent({
@@ -1589,6 +1596,13 @@ const mutationResolvers = {
       : "";
 
     staff.employmentStatus = normalizedStatus;
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: staff.restaurantForStaff,
+      employeeId: staff._id,
+      startDate: staff.dateJoined || new Date("2000-01-01"),
+      endDate: new Date(),
+      action: "set_staff_employment_status",
+    });
     await staff.save();
     await staff.populate(["role", "refRestaurants"]);
 
@@ -4034,15 +4048,38 @@ ${reviewLine}`
     if (!staff || staff.userType !== "STAFF")
       throw new Error("Staff not found");
 
-    const assignedShift = await Shift.findOne({
-      employeeId,
-      restaurantId,
-      startTime: { $lte: toEndOfDay(workDate) },
-      endTime: { $gte: toStartOfDay(workDate) },
-      status: { $in: ["scheduled", "pending", "completed"] },
-    })
-      .sort({ startTime: 1 })
-      .lean();
+    const requestedShiftId = toObjectId(input.shiftId);
+    let assignedShift = null;
+    if (requestedShiftId) {
+      assignedShift = await Shift.findOne({
+        _id: requestedShiftId,
+        employeeId,
+        restaurantId,
+        status: { $in: ["scheduled", "pending", "completed"] },
+      }).lean();
+      if (!assignedShift) {
+        throw new Error("Không tìm thấy ca làm phù hợp để chấm công.");
+      }
+    } else {
+      const shiftCandidates = await Shift.find({
+        employeeId,
+        restaurantId,
+        startTime: { $lte: toEndOfDay(workDate) },
+        endTime: { $gte: toStartOfDay(workDate) },
+        status: { $in: ["scheduled", "pending", "completed"] },
+      }).lean();
+
+      assignedShift =
+        shiftCandidates
+          .map((shift) => ({
+            shift,
+            distance: Math.min(
+              Math.abs(new Date(shift.startTime).getTime() - eventTime.getTime()),
+              Math.abs(new Date(shift.endTime).getTime() - eventTime.getTime()),
+            ),
+          }))
+          .sort((a, b) => a.distance - b.distance)[0]?.shift || null;
+    }
 
     const query = assignedShift
       ? { employeeId, workDate, shiftId: assignedShift._id }
@@ -4285,7 +4322,9 @@ ${reviewLine}`
         .toLowerCase()
         .includes("manager");
 
-    let replacementManagerId = toObjectId(input.replacementManagerId);
+    let replacementManagerId = toObjectId(
+      input.replacementManagerId || input.replacementEmployeeId,
+    );
     let replacementStatus = "not_required";
     let status = "pending";
 
@@ -4463,6 +4502,14 @@ ${reviewLine}`
       endDate: request.endDate,
       action: "leave",
     });
+    if (request.status === "approved") {
+      throw new Error(
+        "Đơn nghỉ đã duyệt không thể từ chối. Vui lòng dùng quy trình hủy/điều chỉnh riêng.",
+      );
+    }
+    if (request.status === "rejected") {
+      return mapLeaveOutput(request.toObject());
+    }
 
     request.status = "rejected";
     request.rejectedAt = new Date();
