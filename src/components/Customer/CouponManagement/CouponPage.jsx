@@ -1,7 +1,18 @@
 import React, { useContext, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, Check, Clock, Compass, Inbox, Search, Ticket, Wallet } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Clock,
+  Compass,
+  Inbox,
+  Search,
+  Sparkles,
+  Ticket,
+  Wallet,
+} from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import useUserCoupons from "@/hooks/useUserCoupons";
 import CouponCard from "./CouponCard";
@@ -65,6 +76,7 @@ const CouponPage = () => {
   }, [couponsQuery.data?.coupons, isWalletPage, savedByCouponId, userCoupons.myCoupons]);
 
   const visibleCoupons = useMemo(() => filterCoupons(coupons, activeTab, searchTerm), [activeTab, coupons, searchTerm]);
+  const savedCount = coupons.filter((coupon) => coupon.isSaved).length;
   const expiringCount = coupons.filter((coupon) => coupon.endAt && !isCouponExpired(coupon) && new Date(coupon.endAt).getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000).length;
   const validCount = coupons.filter((coupon) => ["active", "saved"].includes(coupon.status)).length;
   const pageLoading = (isWalletPage ? userCoupons.loading : couponsQuery.loading || userCoupons.loading) && !coupons.length;
@@ -101,19 +113,42 @@ const CouponPage = () => {
 
   return (
     <main className="coupon-page">
-      <section className="coupon-hero">
-        <div><span className="coupon-eyebrow">FoodHub / VPOS</span><h1>Kho Coupon</h1><p>{isWalletPage ? "Quản lý các coupon bạn đã lưu và dùng ngay khi đặt món." : "Chọn ưu đãi thật đang hoạt động tại nhà hàng này."}</p></div>
-        <div className="coupon-stats">
-          <div><Ticket /><strong>{coupons.length}</strong><span>Tổng coupon</span></div>
-          <div><Wallet /><strong>{coupons.filter((c) => c.isSaved).length}</strong><span>Đã lưu</span></div>
-          <div><Check /><strong>{validCount}</strong><span>Còn hiệu lực</span></div>
-          <div><Clock /><strong>{expiringCount}</strong><span>Sắp hết hạn</span></div>
+      <section className="coupon-hero" aria-labelledby="coupon-title">
+        <div className="coupon-hero__copy">
+          <button type="button" className="coupon-back" onClick={() => navigate(-1)}>
+            <ArrowLeft size={17} /> Quay lại
+          </button>
+          <span className="coupon-eyebrow"><Sparkles size={15} /> Ưu đãi Cohan</span>
+          <h1 id="coupon-title">Kho Coupon</h1>
+          <p>{isWalletPage ? "Quản lý coupon đã lưu và dùng ngay khi đặt món hoặc đặt bàn." : "Chọn ưu đãi đang hoạt động tại nhà hàng này, kiểm tra điều kiện rồi lưu vào tài khoản."}</p>
+        </div>
+        <div className="coupon-stats" aria-label="Tổng quan coupon">
+          <div><Ticket aria-hidden="true" /><strong>{coupons.length}</strong><span>Tổng coupon</span></div>
+          <div><Wallet aria-hidden="true" /><strong>{savedCount}</strong><span>Đã lưu</span></div>
+          <div><Check aria-hidden="true" /><strong>{validCount}</strong><span>Còn hiệu lực</span></div>
+          <div><Clock aria-hidden="true" /><strong>{expiringCount}</strong><span>Sắp hết hạn</span></div>
         </div>
       </section>
 
-      <section className="coupon-toolbar">
-        <label className="coupon-search"><Search size={19} /><input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm theo tên, mã, mô tả, danh mục..." /></label>
-        <div className="coupon-tabs">{FILTERS.map((filter) => <button key={filter.id} className={activeTab === filter.id ? "active" : ""} onClick={() => setActiveTab(filter.id)}>{filter.label}</button>)}</div>
+      <section className="coupon-toolbar" aria-label="Bộ lọc coupon">
+        <label className="coupon-search">
+          <Search size={19} aria-hidden="true" />
+          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm theo tên, mã, mô tả, danh mục..." />
+        </label>
+        <div className="coupon-tabs" role="tablist" aria-label="Lọc coupon theo trạng thái">
+          {FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === filter.id}
+              className={activeTab === filter.id ? "active" : ""}
+              onClick={() => setActiveTab(filter.id)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       {actionError && <div className="coupon-alert" role="alert"><AlertCircle size={18} />{actionError}</div>}
@@ -121,7 +156,7 @@ const CouponPage = () => {
       {!loggedIn && isWalletPage ? (
         <div className="coupon-empty"><Inbox size={44} /><h2>Đăng nhập để xem Kho Coupon</h2><p>Kho Coupon dùng dữ liệu thật từ tài khoản của bạn.</p><button onClick={() => navigate("/login", { state: { from: location } })}>Đăng nhập</button></div>
       ) : pageLoading ? (
-        <div className="coupon-empty"><Ticket size={44} /><h2>Đang tải coupon...</h2><p>FoodHub đang lấy ưu đãi mới nhất.</p></div>
+        <div className="coupon-empty"><Ticket size={44} /><h2>Đang tải coupon...</h2><p>Cohan đang lấy ưu đãi mới nhất.</p></div>
       ) : pageError ? (
         <div className="coupon-empty coupon-empty--error"><AlertCircle size={44} /><h2>Không thể tải coupon</h2><p>Đã có lỗi khi lấy dữ liệu thật. Vui lòng thử lại.</p><button onClick={retry}>Thử lại</button></div>
       ) : visibleCoupons.length ? (
