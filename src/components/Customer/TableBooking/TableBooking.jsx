@@ -107,6 +107,7 @@ const TableBooking = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingData, setBookingData] = useState(null);
+  const [bookingNotice, setBookingNotice] = useState(null);
   const { cart } = useCart();
   const searchParams = new URLSearchParams(search);
   const fromMenu = searchParams.get("fromMenu") === "1";
@@ -205,8 +206,12 @@ const TableBooking = () => {
   }, [isRebook, selectedTable?.id, showBookingModal]);
 
   const handleSelectTable = async (table) => {
+    setBookingNotice(null);
     if (!publicRestaurant || !canReserve) return;
-    if (table.status !== "available") return;
+    if (table.status !== "available") {
+      setBookingNotice({ type: "error", message: "Bàn này chưa sẵn sàng để đặt. Vui lòng chọn bàn đang trống." });
+      return;
+    }
 
     const lockedByOther =
       table.isViewingLocked &&
@@ -214,7 +219,10 @@ const TableBooking = () => {
       String(table.viewLockUserId) !== String(user?.id || "");
 
     if (lockedByOther) {
-      alert(`Bàn đang được ${table.viewLockViewerName || "khách khác"} xem trong 5 phút.`);
+      setBookingNotice({
+        type: "error",
+        message: `Bàn đang được ${table.viewLockViewerName || "khách khác"} xem trong 5 phút.`,
+      });
       return;
     }
 
@@ -235,7 +243,10 @@ const TableBooking = () => {
       });
       setSelectedTable(table);
     } catch (err) {
-      alert(getReservationActionErrorMessage(err, err?.message || "Bàn đang được khách khác xem."));
+      setBookingNotice({
+        type: "error",
+        message: getReservationActionErrorMessage(err, err?.message || "Bàn đang được khách khác xem."),
+      });
     }
   };
 
@@ -357,7 +368,7 @@ const TableBooking = () => {
   if (!publicRestaurant) return <div className="booking-loading-premium" role="alert"><p>Nhà hàng không khả dụng hoặc chưa công khai.</p></div>;
 
   return (
-    <main className="table-booking-premium">
+    <main className="table-booking-premium" aria-labelledby="table-booking-title">
       <header className="premium-header" aria-labelledby="table-booking-title">
         <div className="header-inner">
           <button type="button" className="btn-back-link" onClick={() => navigate(-1)}>
@@ -368,7 +379,14 @@ const TableBooking = () => {
             <h1 className="main-heading" id="table-booking-title">Sơ đồ chỗ ngồi</h1>
           </div>
           <div className="header-actions">
-            <button type="button" className="btn-help" aria-label="Xem hướng dẫn đặt bàn"><Info size={20} aria-hidden="true" /></button>
+            <button
+              type="button"
+              className="btn-help"
+              aria-label="Xem hướng dẫn đặt bàn"
+              onClick={() => setBookingNotice({ type: "info", message: "Chọn tầng, chọn bàn trống trên sơ đồ rồi kiểm tra thông tin ở khung bên phải để tiếp tục đặt bàn." })}
+            >
+              <Info size={20} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </header>
@@ -383,7 +401,16 @@ const TableBooking = () => {
           🛎️ Đã quay lại từ giỏ món. Hệ thống sẽ tính tiền cọc bàn + 50% cọc món trong bước thanh toán.
         </div>
       )}
-      {!canReserve && <div className="booking-alert" role="alert">Nhà hàng hiện không nhận đặt bàn.</div>}
+      {bookingNotice && (
+        <div
+          className={`booking-alert booking-alert--${bookingNotice.type}`}
+          role={bookingNotice.type === "error" ? "alert" : "status"}
+          aria-live="polite"
+        >
+          {bookingNotice.message}
+        </div>
+      )}
+      {!canReserve && <div className="booking-alert booking-alert--error" role="alert">Nhà hàng hiện không nhận đặt bàn.</div>}
 
       <div className="booking-layout-grid">
         <section className="main-visual-area" aria-label="Sơ đồ bàn nhà hàng">
