@@ -24,6 +24,7 @@ vi.mock("../../models/index.js", () => ({
   Brand: { exists: vi.fn(async () => false) },
   Restaurant: {
     findById: vi.fn((id) => chain(state.restaurants.get(String(id)) || null)),
+    exists: vi.fn(async ({ _id, managerId }) => !![...state.restaurants.values()].find((r) => String(r._id) === String(_id) && String(r.managerId) === String(managerId))),
     countDocuments: vi.fn(async ({ _id, brandId }) => {
       const allowed = new Set((_id?.$in || []).map(String));
       return [...state.restaurants.values()].filter((r) => allowed.has(String(r._id)) && String(r.brandId) === String(brandId)).length;
@@ -69,8 +70,18 @@ describe("restaurantScope.service", () => {
 
   it("uses legacy managerId fallback only without active BrandMembership", async () => {
     const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
-    await expect(canAccessRestaurant({ id: ids.user }, ids.a2)).resolves.toBe(true);
+    await expect(canAccessRestaurant({ id: ids.user, roleName: "manager" }, ids.a2)).resolves.toBe(true);
     state.memberships = [{ brandId: ids.brandA, role: "manager", restaurantIds: [ids.a1] }];
-    await expect(canAccessRestaurant({ id: ids.user }, ids.a2)).resolves.toBe(false);
+    await expect(canAccessRestaurant({ id: ids.user, roleName: "manager", restaurantForStaff: ids.a2, refRestaurants: [ids.a2] }, ids.a2)).resolves.toBe(false);
+  });
+
+  it("does not grant customers restaurant access through refRestaurants", async () => {
+    const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
+    await expect(canAccessRestaurant({ id: ids.user, roleName: "customer", refRestaurants: [ids.a1] }, ids.a1)).resolves.toBe(false);
+  });
+
+  it("allows operational legacy restaurantForStaff without active BrandMembership", async () => {
+    const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
+    await expect(canAccessRestaurant({ id: ids.user, roleName: "staff", restaurantForStaff: ids.a1 }, ids.a1)).resolves.toBe(true);
   });
 });

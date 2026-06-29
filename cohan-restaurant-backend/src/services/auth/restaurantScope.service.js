@@ -9,6 +9,9 @@ const emptyFilter = () => ({ _id: { $in: [] } });
 const roleName = (user) => String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase();
 const toObjectId = (id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
 const idString = (value) => String(value?._id || value?.id || value || "");
+const operationalRoles = new Set(["manager", "hr", "accountant", "staff", "server", "supervisor", "host", "cashier", "chef", "cook", "kitchen_helper", "cleaner", "shipper", "storekeeper", "bartender"]);
+const userRoleNames = (user) => [roleName(user), String(user?.userType || "").toLowerCase(), ...(Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [])].filter(Boolean);
+const hasOperationalRole = (user) => userRoleNames(user).some((role) => operationalRoles.has(role));
 
 export const getUserId = (user) => idString(user);
 export const isSystemAdmin = (user) => String(user?.userType || "").toUpperCase() === "ADMIN" || roleName(user) === "admin";
@@ -18,10 +21,10 @@ export const getUserBrandMemberships = async (user) => {
   return BrandMembership.find({ userId: uid, status: "active" }).lean();
 };
 
-const legacyRestaurantIdsFromUser = (user) => [user?.restaurantId, user?.restaurantForStaff, ...(user?.refRestaurants || []), ...(user?.restaurantIds || []), ...(user?.restaurants || [])]
+const legacyRestaurantIdsFromUser = (user) => [user?.restaurantId, user?.restaurantForStaff, ...(user?.restaurantIds || []), ...(user?.restaurants || [])]
   .map(toObjectId)
   .filter(Boolean);
-const legacyRestaurantIdStringsFromUser = (user) => [user?.restaurantId, user?.restaurantForStaff, ...(user?.refRestaurants || []), ...(user?.restaurantIds || []), ...(user?.restaurants || [])]
+const legacyRestaurantIdStringsFromUser = (user) => [user?.restaurantId, user?.restaurantForStaff, ...(user?.restaurantIds || []), ...(user?.restaurants || [])]
   .map(idString)
   .filter(Boolean);
 
@@ -41,9 +44,11 @@ export async function getScopedRestaurantFilter(user) {
     ...(brandIds.length ? [{ brandId: { $in: brandIds } }] : []),
     ...(restaurantIds.length ? [{ _id: { $in: restaurantIds } }] : []),
   ];
-  if (!memberships.length) {
+  if (!memberships.length && hasOperationalRole(user)) {
     const legacyIds = legacyRestaurantIdsFromUser(user);
-    if (legacyIds.length) ors.push({ _id: { $in: legacyIds } }, { managerId: toObjectId(getUserId(user)) });
+    if (legacyIds.length) ors.push({ _id: { $in: legacyIds } });
+    const uid = toObjectId(getUserId(user));
+    if (uid && userRoleNames(user).includes("manager")) ors.push({ managerId: uid });
   }
   return ors.length ? { $or: ors } : emptyFilter();
 }
@@ -56,7 +61,7 @@ async function loadRestaurantForScope(restaurantId) {
 
 async function legacyManagerOwnsRestaurant(user, restaurantId) {
   const uid = getUserId(user);
-  if (!uid || ![roleName(user), String(user?.userType || "").toLowerCase(), ...(Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [])].includes("manager") || typeof Restaurant?.exists !== "function") return false;
+  if (!uid || !userRoleNames(user).includes("manager") || typeof Restaurant?.exists !== "function") return false;
   return !!await Restaurant.exists({ _id: restaurantId, managerId: uid });
 }
 
@@ -72,6 +77,7 @@ export async function canAccessRestaurant(user, restaurantId) {
 
   // Legacy fallback only for users without active BrandMembership scope.
   if (memberships.length) return false;
+  if (!hasOperationalRole(user)) return false;
   const target = String(restaurant?._id || restaurantId);
   if (restaurant && String(restaurant.managerId || "") === getUserId(user)) return true;
   if (legacyRestaurantIdStringsFromUser(user).some((id) => id === target)) return true;

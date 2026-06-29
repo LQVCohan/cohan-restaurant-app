@@ -162,7 +162,7 @@ function applyPublicAvailabilityFilters(docs, filter) {
 async function restaurants(_, { limit = 20, cursor, restaurantFilter }, ctx) {
   const lim = clampLimit(limit, 1, 100);
 
-  const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
+  const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : { _id: { $in: [] } };
   const cId = toObjectIdOrNull(cursor);
   const cursorFilter = cId ? { _id: { $gt: cId } } : {};
   const baseFilter = combineFilters(buildFilter(restaurantFilter), scopeFilter);
@@ -192,7 +192,8 @@ async function restaurant(_, { id }, ctx) {
     throw badInput("Invalid ID");
   }
   const doc = await Restaurant.findById(id).lean();
-  if (!doc || !ctx?.user || isSystemAdmin(ctx.user)) return doc || null;
+  if (!doc || !ctx?.user) return null;
+  if (isSystemAdmin(ctx.user)) return doc;
   return await canAccessRestaurant(ctx.user, id) ? doc : null;
 }
 
