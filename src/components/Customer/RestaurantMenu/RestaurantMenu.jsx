@@ -466,9 +466,7 @@ const RestaurantMenu = () => {
       ) : (
         <section className="grid-container res-grid" aria-busy={restaurantsLoading} aria-live="polite" aria-label="Danh sách nhà hàng để đặt món">
           {restaurantsLoading ? (
-            <div role="status" aria-label="Đang tải danh sách nhà hàng">
-              {renderRestaurantSkeletons()}
-            </div>
+            renderRestaurantSkeletons()
           ) : restaurantsError ? (
             <div className="restaurant-state restaurant-state--error" role="alert">
               <span className="restaurant-state__icon" aria-hidden="true">!</span>
