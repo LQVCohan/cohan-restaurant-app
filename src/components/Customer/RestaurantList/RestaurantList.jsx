@@ -301,8 +301,10 @@ const RestaurantList = ({ restaurantFilter }) => {
     handleToggleFavorite(event, restaurantId);
   };
 
+  const resultCount = data?.publicRestaurants?.totalCount ?? filteredRestaurants.length;
+
   return (
-    <div className="restaurant-list-page">
+    <main className="restaurant-list-page" aria-labelledby="restaurants-results-title">
       {/* 1. DISCOVERY HERO */}
       <div className="hero-wrapper">
         <DiscoveryHero onQuickFilter={handleQuickFilter} />
@@ -312,7 +314,7 @@ const RestaurantList = ({ restaurantFilter }) => {
       <div className="list-container">
         <div className="content-layout">
           {/* Sidebar */}
-          <aside className="sidebar-wrapper">
+          <aside className="sidebar-wrapper" aria-label="Bộ lọc nhà hàng">
             <FiltersSidebar
               filters={filters}
               onFilterChange={handleFilterChange}
@@ -324,30 +326,36 @@ const RestaurantList = ({ restaurantFilter }) => {
           </aside>
 
           {/* Results Grid */}
-          <main className="results-area">
+          <section className="results-area" aria-labelledby="restaurants-results-title" aria-busy={loading}>
             {/* Toolbar */}
             <div className="results-header">
               <div className="header-left">
-                <h2 className="results-title">
+                <h2 className="results-title" id="restaurants-results-title">
                   {loading && accumulated.length === 0
                     ? "Đang tải dữ liệu..."
                     : error
                     ? "Không thể tải dữ liệu"
-                    : `Tìm thấy ${data?.publicRestaurants?.totalCount ?? filteredRestaurants.length} nhà hàng`}
+                    : `Tìm thấy ${resultCount} nhà hàng`}
                 </h2>
-                <div className="view-toggles">
+                <div className="view-toggles" role="group" aria-label="Chọn kiểu hiển thị">
                   <button
+                    type="button"
                     className={`toggle-btn ${
                       currentView === "grid" ? "active" : ""
                     }`}
+                    aria-pressed={currentView === "grid"}
+                    aria-label="Hiển thị dạng lưới"
                     onClick={() => setCurrentView("grid")}
                   >
                     ⊞
                   </button>
                   <button
+                    type="button"
                     className={`toggle-btn ${
                       currentView === "list" ? "active" : ""
                     }`}
+                    aria-pressed={currentView === "list"}
+                    aria-label="Hiển thị dạng danh sách"
                     onClick={() => setCurrentView("list")}
                   >
                     ☰
@@ -359,6 +367,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                 <select
                   className="sort-select"
                   value={sortBy}
+                  aria-label="Sắp xếp nhà hàng"
                   onChange={(e) => setSortBy(e.target.value)}
                 >
                   <option value="relevance">✨ Liên quan nhất</option>
@@ -395,22 +404,22 @@ const RestaurantList = ({ restaurantFilter }) => {
 
             {/* List Content */}
             {loading && accumulated.length === 0 && (
-              <div className="state-box loading">
+              <div className="state-box loading" role="status" aria-live="polite" aria-label="Đang tải danh sách nhà hàng">
                 <LoadingSpinner size="large" />
               </div>
             )}
 
             {error && accumulated.length === 0 && (
-              <div className="state-box error">Không thể tải dữ liệu nhà hàng.</div>
+              <div className="state-box error" role="alert">Không thể tải dữ liệu nhà hàng.</div>
             )}
 
             {!loading && !error && accumulated.length === 0 && (
-              <div className="state-box empty">Không tìm thấy nhà hàng phù hợp.</div>
+              <div className="state-box empty" role="status">Không tìm thấy nhà hàng phù hợp.</div>
             )}
 
             {accumulated.length > 0 && (
               <>
-                <div className={`restaurants-display mode-${currentView}`}>
+                <div className={`restaurants-display mode-${currentView}`} aria-label="Danh sách nhà hàng">
                   {currentRestaurants.map((restaurant, index) => (
                     <div
                       key={restaurant.id}
@@ -433,6 +442,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                 <div className="load-more-container">
                   {hasNextPage ? (
                     <button
+                      type="button"
                       className="btn-load-more"
                       onClick={handleLoadMore}
                       disabled={loading && accumulated.length === 0}
@@ -440,15 +450,15 @@ const RestaurantList = ({ restaurantFilter }) => {
                       {loading ? "Đang tải..." : "Xem thêm nhà hàng"}
                     </button>
                   ) : (
-                    <span className="end-text">Bạn đã xem hết danh sách.</span>
+                    <span className="end-text" role="status">Bạn đã xem hết danh sách.</span>
                   )}
                 </div>
               </>
             )}
-          </main>
+          </section>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
