@@ -28,7 +28,7 @@
 }
 
 .account-verification-card::before {
-  content: "FOODHUB ACCOUNT";
+  content: "COHAN ACCOUNT";
   display: inline-flex;
   width: fit-content;
   margin: 0 auto 14px;
@@ -259,6 +259,11 @@
   color: #766b61;
 }
 
+.account-verification-button:focus-visible {
+  outline: 3px solid rgba(255, 102, 0, 0.22);
+  outline-offset: 3px;
+}
+
 .account-verification-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -300,6 +305,16 @@
 @media (prefers-reduced-motion: no-preference) {
   .account-verification-card {
     animation: accountVerificationIn 0.56s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-verification-page *,
+  .account-verification-page *::before,
+  .account-verification-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
