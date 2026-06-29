@@ -23,6 +23,13 @@ const GET_ORDER_ITEMS_FOR_TRACKING = gql`
   }
 `;
 
+const PROGRESS_STEPS = [
+  { label: "Nhận đơn", statuses: ["driver_assigned", "preparing", "picked_up", "on_the_way", "arriving", "delivered"] },
+  { label: "Chuẩn bị", statuses: ["preparing", "picked_up", "on_the_way", "arriving", "delivered"] },
+  { label: "Đã lấy hàng", statuses: ["picked_up", "on_the_way", "arriving", "delivered"] },
+  { label: "Đang giao", statuses: ["on_the_way", "arriving", "delivered"] },
+  { label: "Hoàn tất", statuses: ["delivered"] },
+];
 
 function mapStatusLabel(status) {
   if (!status) return "Đang xử lý";
@@ -43,6 +50,27 @@ function formatTimeString(s) {
   if (!s) return "";
   const d = new Date(s);
   return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+}
+
+function TrackingState({ title, message, role = "status", children }) {
+  return (
+    <main className="ot-page" aria-labelledby="order-tracking-state-title">
+      <div className="ot-page-inner" role={role} aria-live={role === "alert" ? "assertive" : "polite"}>
+        <h2 id="order-tracking-state-title">{title}</h2>
+        {message && <p>{message}</p>}
+        {children}
+      </div>
+    </main>
+  );
+}
+
+function TrackingActions({ ordersLabel = "Quay lại đơn hàng của tôi" }) {
+  return (
+    <div className="ot-actions">
+      <Link to="/orders" className="ot-btn">{ordersLabel}</Link>
+      <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
+    </div>
+  );
 }
 
 export default function OrderTrackingPage() {
@@ -191,6 +219,11 @@ export default function OrderTrackingPage() {
     }));
   }, [orderData]);
 
+  const activeStepIndex = useMemo(() => {
+    const index = PROGRESS_STEPS.findLastIndex((step) => step.statuses.includes(deliveryStatus));
+    return Math.max(index, 0);
+  }, [deliveryStatus]);
+
   const driverCard = useMemo(() => {
     const info =
       driverInfo ||
@@ -213,100 +246,75 @@ export default function OrderTrackingPage() {
     if (!info) return null;
 
     return (
-      <div className="ot-card ot-driver-card">
-        <div className="ot-driver-avatar">🛵</div>
+      <article className="ot-card ot-driver-card" aria-label="Thông tin tài xế giao hàng">
+        <div className="ot-driver-avatar" aria-hidden="true">🛵</div>
         <div className="ot-driver-info">
-          <div className="ot-driver-name">{info.name}</div>
+          <div className="ot-driver-name">{info.name || "Tài xế"}</div>
           {info.phone && <div className="ot-driver-phone">📞 {info.phone}</div>}
           {info.vehiclePlate && (
             <div className="ot-driver-plate">🚗 {info.vehiclePlate}</div>
           )}
         </div>
-      </div>
+      </article>
     );
   }, [driverInfo, tracking]);
 
   if (!orderId) {
     return (
-      <div className="ot-page">
-        <div className="ot-page-inner">
-          <h2>Không tìm thấy thông tin đơn hàng</h2>
-          <p>Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng.</p>
-          <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
-            <Link to="/orders" className="ot-btn">Quay lại đơn hàng của tôi</Link>
-            <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
-          </div>
-        </div>
-      </div>
+      <TrackingState
+        title="Không tìm thấy thông tin đơn hàng"
+        message="Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng."
+        role="alert"
+      >
+        <TrackingActions />
+      </TrackingState>
     );
   }
 
   if (isResolvingRestaurant) {
     return (
-      <div className="ot-page">
-        <div className="ot-page-inner">
-          <h2>Đang tải trạng thái đơn hàng...</h2>
-          <p>Đang kiểm tra thông tin nhà hàng của đơn...</p>
-        </div>
-      </div>
+      <TrackingState
+        title="Đang tải trạng thái đơn hàng..."
+        message="Đang kiểm tra thông tin nhà hàng của đơn..."
+      />
     );
   }
 
   if (cannotResolveRestaurant) {
     return (
-      <div className="ot-page">
-        <div className="ot-page-inner">
-          <h2>Không tìm thấy thông tin đơn hàng</h2>
-          {orderLookupError ? (
-            <>
-              <p>Không thể kiểm tra thông tin đơn hàng.</p>
-              {orderLookupError?.message && <p>{orderLookupError.message}</p>}
-            </>
-          ) : (
-            <p>Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng.</p>
-          )}
-          <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
-            <Link to="/orders" className="ot-btn">Quay lại danh sách đơn hàng</Link>
-            <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
-          </div>
-        </div>
-      </div>
+      <TrackingState
+        title="Không tìm thấy thông tin đơn hàng"
+        message={orderLookupError?.message || "Không đủ thông tin theo dõi đơn. Vui lòng mở từ danh sách đơn hàng."}
+        role="alert"
+      >
+        <TrackingActions ordersLabel="Quay lại danh sách đơn hàng" />
+      </TrackingState>
     );
   }
 
   if (loading && !tracking) {
     return (
-      <div className="ot-page">
-        <div className="ot-page-inner">
-          <h2>Đang tải thông tin đơn hàng...</h2>
-          <p>Đang tải trạng thái đơn hàng...</p>
-        </div>
-      </div>
+      <TrackingState
+        title="Đang tải thông tin đơn hàng..."
+        message="Đang tải trạng thái đơn hàng..."
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="ot-page">
-        <div className="ot-page-inner">
-          <h2>Có lỗi xảy ra</h2>
-          <p>{error.message}</p>
-          <div className="ot-actions" style={{ display: "flex", gap: 12, marginTop: 16 }}>
-            <Link to="/orders" className="ot-btn">Quay lại đơn hàng của tôi</Link>
-            <Link to="/" className="ot-btn">Tiếp tục xem món</Link>
-          </div>
-        </div>
-      </div>
+      <TrackingState title="Có lỗi xảy ra" message={error.message} role="alert">
+        <TrackingActions />
+      </TrackingState>
     );
   }
 
   return (
-    <div className="ot-page">
+    <main className="ot-page" aria-labelledby="order-tracking-title">
       <div className="ot-page-inner">
-        {/* HEADER */}
-        <header className="ot-header">
+        <header className="ot-header" aria-labelledby="order-tracking-title">
           <div className="ot-header-main">
-            <h1 className="ot-title">{statusLabel}</h1>
+            <h1 className="ot-title" id="order-tracking-title">{statusLabel}</h1>
             {tracking?.orderCode && (
               <div className="ot-order-code">
                 Mã đơn: <strong>{tracking.orderCode}</strong>
@@ -314,61 +322,26 @@ export default function OrderTrackingPage() {
             )}
           </div>
 
-          <div className="ot-progress">
-            <div
-              className={`ot-progress-step ${
-                deliveryStatus && deliveryStatus !== "pending" ? "active" : ""
-              }`}
-            >
-              Nhận đơn
-            </div>
-            <div
-              className={`ot-progress-step ${
-                [
-                  "preparing",
-                  "picked_up",
-                  "on_the_way",
-                  "arriving",
-                  "delivered",
-                ].includes(deliveryStatus)
-                  ? "active"
-                  : ""
-              }`}
-            >
-              Chuẩn bị
-            </div>
-            <div
-              className={`ot-progress-step ${
-                ["picked_up", "on_the_way", "arriving", "delivered"].includes(
-                  deliveryStatus
-                )
-                  ? "active"
-                  : ""
-              }`}
-            >
-              Đã lấy hàng
-            </div>
-            <div
-              className={`ot-progress-step ${
-                ["on_the_way", "arriving", "delivered"].includes(deliveryStatus)
-                  ? "active"
-                  : ""
-              }`}
-            >
-              Đang giao
-            </div>
-            <div
-              className={`ot-progress-step ${
-                deliveryStatus === "delivered" ? "active" : ""
-              }`}
-            >
-              Hoàn tất
-            </div>
+          <div className="ot-progress" role="list" aria-label="Tiến trình giao hàng">
+            {PROGRESS_STEPS.map((step, index) => {
+              const isActive = step.statuses.includes(deliveryStatus);
+              const isCurrent = index === activeStepIndex;
+              return (
+                <div
+                  key={step.label}
+                  className={`ot-progress-step ${isActive ? "active" : ""}`}
+                  role="listitem"
+                  aria-current={isCurrent ? "step" : undefined}
+                  aria-label={`${step.label}${isActive ? " đã hoàn thành hoặc đang xử lý" : " chưa đến bước này"}`}
+                >
+                  {step.label}
+                </div>
+              );
+            })}
           </div>
         </header>
 
-        {/* MAP */}
-        <section className="ot-section">
+        <section className="ot-section" aria-label="Bản đồ theo dõi giao hàng">
           <OrderTrackingMap
             driverLocation={driverLocation}
             customerLocation={tracking?.customerLocation}
@@ -376,13 +349,11 @@ export default function OrderTrackingPage() {
           />
         </section>
 
-        {/* DRIVER */}
         {driverCard}
 
-        {/* ETA */}
-        <section className="ot-section">
+        <section className="ot-section" aria-labelledby="order-tracking-eta-title" aria-live="polite">
           <div className="ot-card ot-eta-card">
-            <h3>Thời gian dự kiến</h3>
+            <h2 id="order-tracking-eta-title">Thời gian dự kiến</h2>
             <div className="ot-eta-main">
               <div className="ot-eta-time">
                 {etaInfo?.eta
@@ -399,55 +370,57 @@ export default function OrderTrackingPage() {
           </div>
         </section>
 
-        {/* ORDER SUMMARY */}
-        <section className="ot-section">
+        <section className="ot-section" aria-labelledby="order-tracking-items-title">
           <div className="ot-card ot-order-card">
-            <h3>Chi tiết đơn hàng</h3>
-            <ul className="ot-order-items">
-              {items.map((item) => (
-                <li key={item._id || item.name} className="ot-order-item">
-                  <span>
-                    {item.quantity}× {item.name}
-                  </span>
-                  {item.proofImages?.length > 0 && (
-                    <div className="ot-order-proofs">
-                      {item.proofImages.map((src, idx) => (
-                        <img key={`${src}_${idx}`} src={src} alt={`${item.name}-${idx}`} />
-                      ))}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <h2 id="order-tracking-items-title">Chi tiết đơn hàng</h2>
+            {items.length ? (
+              <ul className="ot-order-items">
+                {items.map((item) => (
+                  <li key={item._id || item.name} className="ot-order-item">
+                    <span>
+                      {item.quantity}× {item.name}
+                    </span>
+                    {item.proofImages?.length > 0 && (
+                      <div className="ot-order-proofs" aria-label={`Ảnh xác nhận món ${item.name}`}>
+                        {item.proofImages.map((src, idx) => (
+                          <img key={`${src}_${idx}`} src={src} alt={`Ảnh xác nhận ${item.name} ${idx + 1}`} />
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p role="status">Chưa có dữ liệu món trong đơn.</p>
+            )}
           </div>
         </section>
 
-        {/* TIMELINE */}
-        <section className="ot-section">
+        <section className="ot-section" aria-labelledby="order-tracking-timeline-title">
           <div className="ot-card ot-timeline-card">
-            <h3>Lịch sử cập nhật</h3>
+            <h2 id="order-tracking-timeline-title">Lịch sử cập nhật</h2>
             {events?.length ? (
-              <ul className="ot-timeline">
+              <ul className="ot-timeline" aria-live="polite">
                 {events.map((e) => (
                   <li key={e.id} className="ot-timeline-item">
-                    <div className="ot-timeline-dot" />
+                    <div className="ot-timeline-dot" aria-hidden="true" />
                     <div className="ot-timeline-body">
                       <div className="ot-timeline-message">
                         {e.message || e.type}
                       </div>
-                      <div className="ot-timeline-time">
+                      <time className="ot-timeline-time" dateTime={e.createdAt}>
                         {formatTimeString(e.createdAt)}
-                      </div>
+                      </time>
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>Chưa có cập nhật nào.</p>
+              <p role="status">Chưa có cập nhật nào.</p>
             )}
           </div>
         </section>
       </div>
-    </div>
+    </main>
   );
 }
