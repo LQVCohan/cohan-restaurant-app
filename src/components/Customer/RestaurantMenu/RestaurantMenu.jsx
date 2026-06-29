@@ -395,7 +395,7 @@ const RestaurantMenu = () => {
   );
 
   return (
-    <main className="restaurant-app">
+    <main className="restaurant-app" aria-labelledby="restaurant-menu-title">
       {!selectedRes && (
         <section className="hero-section fade-in" aria-labelledby="restaurant-menu-title">
           <div className="hero-copy">
@@ -427,13 +427,13 @@ const RestaurantMenu = () => {
       )}
 
       {bookingAddonMode && selectedRes ? (
-        <div className="booking-alert" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
+        <div className="booking-alert" role="status" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
           Bạn đang chọn món đi kèm đặt bàn tại <strong>{selectedRes.name}</strong>. Giỏ chỉ được hoàn tất với món của nhà hàng này.
         </div>
       ) : null}
 
       {syncingReorder && selectedRes ? (
-        <div className="booking-alert" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
+        <div className="booking-alert" role="status" aria-live="polite" style={{ margin: "0 auto 16px", maxWidth: 1180 }}>
           Đang đồng bộ món đặt lại vào giỏ hàng để giữ món trước khi thanh toán...
         </div>
       ) : null}
@@ -464,18 +464,20 @@ const RestaurantMenu = () => {
           onOpenFoodDetail={handleOpenFoodDetail}
         />
       ) : (
-        <section className="grid-container res-grid" aria-busy={restaurantsLoading}>
+        <section className="grid-container res-grid" aria-busy={restaurantsLoading} aria-live="polite" aria-label="Danh sách nhà hàng để đặt món">
           {restaurantsLoading ? (
-            renderRestaurantSkeletons()
+            <div role="status" aria-label="Đang tải danh sách nhà hàng">
+              {renderRestaurantSkeletons()}
+            </div>
           ) : restaurantsError ? (
             <div className="restaurant-state restaurant-state--error" role="alert">
-              <span className="restaurant-state__icon">!</span>
+              <span className="restaurant-state__icon" aria-hidden="true">!</span>
               <h2>Không thể tải danh sách nhà hàng</h2>
               <p>Vui lòng kiểm tra kết nối hoặc tải lại trang để tiếp tục chọn món.</p>
             </div>
           ) : normalizedRestaurants.length === 0 ? (
-            <div className="restaurant-state">
-              <span className="restaurant-state__icon">🍽️</span>
+            <div className="restaurant-state" role="status">
+              <span className="restaurant-state__icon" aria-hidden="true">🍽️</span>
               <h2>Chưa có nhà hàng sẵn sàng</h2>
               <p>Hãy quay lại sau, đội ngũ Cohan đang cập nhật thêm thực đơn mới.</p>
             </div>
