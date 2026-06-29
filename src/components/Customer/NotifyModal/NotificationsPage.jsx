@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Trash2, Bell, CheckCheck } from "lucide-react";
+import { ArrowLeft, Trash2, Bell, CheckCheck, Sparkles } from "lucide-react";
 import "./NotificationsPage.scss";
 import { useCustomerNotifications } from "@/context/CustomerNotificationContext";
 
@@ -22,35 +22,51 @@ const NotificationsPage = () => {
     if (notif.link) navigate(notif.link);
   };
 
+  const handleCardKeyDown = (event, notif) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleOpenNotification(notif);
+  };
+
   return (
-    <div className="notifications-page">
+    <main className="notifications-page">
       <div className="notif-container">
-        <div className="notif-header">
+        <section className="notif-header" aria-labelledby="notifications-title">
           <div className="title-wrapper">
-            <h1>Thông báo của bạn</h1>
-            {unreadCount > 0 && (
-              <span className="badge">{unreadCount} mới</span>
-            )}
+            <button type="button" className="notif-back" onClick={() => navigate(-1)}>
+              <ArrowLeft size={17} /> Quay lại
+            </button>
+            <span className="notif-eyebrow"><Sparkles size={15} /> Trung tâm thông báo</span>
+            <h1 id="notifications-title">Thông báo của bạn</h1>
+            <p>Theo dõi trạng thái đơn hàng, đặt bàn và các cập nhật quan trọng từ nhà hàng.</p>
+            {unreadCount > 0 && <span className="badge">{unreadCount} mới</span>}
           </div>
 
           <button
+            type="button"
             className="btn-mark-all"
             onClick={markAllAsRead}
             disabled={unreadCount === 0}
           >
-            <CheckCheck size={18} />
+            <CheckCheck size={18} aria-hidden="true" />
             Đánh dấu tất cả đã đọc
           </button>
-        </div>
+        </section>
 
-        <div className="notif-tabs">
+        <div className="notif-tabs" role="tablist" aria-label="Lọc thông báo">
           <button
+            type="button"
+            role="tab"
+            aria-selected={filter === "all"}
             className={`tab-item ${filter === "all" ? "active" : ""}`}
             onClick={() => setFilter("all")}
           >
             Tất cả
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={filter === "unread"}
             className={`tab-item ${filter === "unread" ? "active" : ""}`}
             onClick={() => setFilter("unread")}
           >
@@ -58,29 +74,28 @@ const NotificationsPage = () => {
           </button>
         </div>
 
-        <div className="notif-list">
+        <div className="notif-list" aria-live="polite">
           {displayedNotifications.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">
-                <Bell size={48} />
+                <Bell size={48} aria-hidden="true" />
               </div>
               <h3>Không có thông báo nào</h3>
-              <p>Bạn đã xem hết tất cả các thông báo.</p>
+              <p>{filter === "unread" ? "Bạn không còn thông báo chưa đọc." : "Bạn đã xem hết tất cả các thông báo."}</p>
             </div>
           ) : (
             displayedNotifications.map((notif) => (
-              <div
+              <article
                 key={notif.id}
                 className={`notif-card ${!notif.isRead ? "unread" : ""}`}
                 onClick={() => handleOpenNotification(notif)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") handleOpenNotification(notif);
-                }}
+                onKeyDown={(event) => handleCardKeyDown(event, notif)}
+                aria-label={`${notif.isRead ? "Đã đọc" : "Chưa đọc"}: ${notif.text}`}
               >
-                <div className="notif-icon">
-                  <img src={notif.image} alt="icon" />
+                <div className="notif-icon" aria-hidden="true">
+                  <img src={notif.image} alt="" />
                 </div>
 
                 <div className="notif-content">
@@ -89,25 +104,27 @@ const NotificationsPage = () => {
                 </div>
 
                 <div className="notif-actions">
-                  {!notif.isRead && <div className="dot-unread"></div>}
+                  {!notif.isRead && <div className="dot-unread" aria-hidden="true" />}
 
                   <button
+                    type="button"
                     className="btn-delete"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteNotification(notif.id);
                     }}
                     title="Ẩn thông báo"
+                    aria-label="Ẩn thông báo"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} aria-hidden="true" />
                   </button>
                 </div>
-              </div>
+              </article>
             ))
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
