@@ -157,6 +157,17 @@ const HelpPage = () => {
     await loadThread({ variables: { id } });
   };
 
+  const toggleChatFromHeader = (event) => {
+    if (event.target.closest(".close-chat")) return;
+    setIsChatOpen((open) => !open);
+  };
+
+  const handleChatHeaderKeyDown = (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleChatFromHeader(event);
+  };
+
   const messages = thread?.messages || [];
 
   return (
@@ -259,36 +270,30 @@ const HelpPage = () => {
       </div>
 
       <section className={`chatbot-widget ${isChatOpen ? "open" : ""}`} aria-label="Chat hỗ trợ Cohan">
-        <button
-          type="button"
+        <div
           className="chat-header"
-          onClick={() => setIsChatOpen(!isChatOpen)}
+          role="button"
+          tabIndex={0}
+          onClick={toggleChatFromHeader}
+          onKeyDown={handleChatHeaderKeyDown}
           aria-expanded={isChatOpen}
         >
           <span className="bot-info">
             <span className="avatar-dot" aria-hidden="true" />
             <span>Cohan Support</span>
           </span>
-          <span
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             className="close-chat"
             onClick={(e) => {
               e.stopPropagation();
               setIsChatOpen(false);
             }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsChatOpen(false);
-              }
-            }}
             aria-label="Đóng chat hỗ trợ"
           >
             <X size={18} aria-hidden="true" />
-          </span>
-        </button>
+          </button>
+        </div>
 
         {isChatOpen && (
           <>
