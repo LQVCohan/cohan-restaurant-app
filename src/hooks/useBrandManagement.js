@@ -20,8 +20,14 @@ const getId = (item) => String(item?.id ?? item?._id ?? item?.restaurantId ?? ""
 const storageGet = (key) => (typeof localStorage === "undefined" ? "" : localStorage.getItem(key) || "");
 const storageSet = (key, value) => {
   if (typeof localStorage === "undefined") return;
-  if (value) localStorage.setItem(key, value);
+  const nextValue = value || "";
+  const currentValue = localStorage.getItem(key) || "";
+  if (nextValue === currentValue) return;
+  if (nextValue) localStorage.setItem(key, nextValue);
   else localStorage.removeItem(key);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("manager:scope-selection", { detail: { key, value: nextValue } }));
+  }
 };
 
 const normalizeRestaurant = (restaurant) => ({
@@ -75,6 +81,18 @@ export default function useBrandManagement(additionalRestaurants = []) {
 
   useEffect(() => storageSet("manager.selectedBrandId", selectedBrandId), [selectedBrandId]);
   useEffect(() => storageSet("manager.selectedRestaurantId", selectedRestaurantId), [selectedRestaurantId]);
+
+  useEffect(() => {
+    const syncSelection = (event) => {
+      const key = event?.detail?.key;
+      const value = event?.detail?.value || "";
+      if (key === "manager.selectedBrandId") setSelectedBrandId(value);
+      if (key === "manager.selectedRestaurantId") setSelectedRestaurantId(value);
+    };
+    if (typeof window === "undefined") return undefined;
+    window.addEventListener("manager:scope-selection", syncSelection);
+    return () => window.removeEventListener("manager:scope-selection", syncSelection);
+  }, []);
 
   useEffect(() => {
     setSelectedRestaurantId((currentId) => {

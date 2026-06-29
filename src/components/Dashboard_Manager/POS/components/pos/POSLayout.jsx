@@ -15,6 +15,7 @@ import ThirdPartyShippingPanel from "./ThirdPartyShippingPanel";
 import TransferQueueBell from "./TransferQueueBell";
 import PosProvider, { usePos } from "../../../../../context/PosContext";
 import { AuthContext } from "../../../../../context/AuthContext";
+import useManagerRestaurantSelection from "../../../../../hooks/useManagerRestaurantSelection";
 
 function POSContent({ restaurantId }) {
   const { loadPaymentRequestToPOS } = usePos();
@@ -57,27 +58,20 @@ function POSContent({ restaurantId }) {
 }
 
 export default function POSLayout() {
-  const { user, restaurants } = useContext(AuthContext) || {};
+  const { user } = useContext(AuthContext) || {};
+  const {
+    restaurantOptions,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    selectedRestaurant,
+    loading,
+  } = useManagerRestaurantSelection();
 
   const lockKey = useMemo(
     () => `pos_locked_restaurant_id:${user?.id || "anonymous"}`,
     [user?.id],
   );
 
-  const restaurantOptions = useMemo(() => {
-    return (Array.isArray(restaurants) ? restaurants : [])
-      .map((restaurant) => ({
-        id: String(restaurant?.id || restaurant?._id || ""),
-        name:
-          restaurant?.name ||
-          restaurant?.location ||
-          `Nhà hàng ${String(restaurant?.id || restaurant?._id || "").slice(-4)}`,
-        city: restaurant?.address?.city || "",
-      }))
-      .filter((restaurant) => restaurant.id);
-  }, [restaurants]);
-
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
@@ -87,27 +81,20 @@ export default function POSLayout() {
       return;
     }
 
+    const hasOption = (id) => restaurantOptions.some((restaurant) => restaurant.id === String(id));
     const storedId = localStorage.getItem(lockKey);
     const requestedId = new URLSearchParams(window.location.search || "").get("restaurantId");
-    const storedIsValid =
-      storedId &&
-      restaurantOptions.some(
-        (restaurant) => restaurant.id === String(storedId),
-      );
-    const requestedIsValid =
-      requestedId &&
-      restaurantOptions.some(
-        (restaurant) => restaurant.id === String(requestedId),
-      );
+    const currentIsValid = selectedRestaurantId && hasOption(selectedRestaurantId);
+    const storedIsValid = storedId && hasOption(storedId);
+    const requestedIsValid = requestedId && hasOption(requestedId);
 
-    if (storedIsValid) {
-      setSelectedRestaurantId(String(storedId));
-      setIsLocked(true);
+    if (storedId && !storedIsValid) localStorage.removeItem(lockKey);
+
+    if (currentIsValid) {
+      const locked = storedIsValid && String(storedId) === String(selectedRestaurantId);
+      if (storedIsValid && !locked) localStorage.removeItem(lockKey);
+      setIsLocked(Boolean(locked));
       return;
-    }
-
-    if (storedId && !storedIsValid) {
-      localStorage.removeItem(lockKey);
     }
 
     if (requestedIsValid) {
@@ -116,23 +103,22 @@ export default function POSLayout() {
       return;
     }
 
-    if (restaurantOptions.length === 1) {
-      setSelectedRestaurantId(restaurantOptions[0].id);
-    } else {
-      setSelectedRestaurantId("");
+    if (storedIsValid) {
+      setSelectedRestaurantId(String(storedId));
+      setIsLocked(true);
+      return;
     }
 
+    setSelectedRestaurantId(restaurantOptions.length === 1 ? restaurantOptions[0].id : "");
     setIsLocked(false);
-  }, [restaurantOptions, lockKey]);
+  }, [restaurantOptions, lockKey, selectedRestaurantId, setSelectedRestaurantId]);
 
   const restaurantId = selectedRestaurantId || null;
 
-  const selectedRestaurant = restaurantOptions.find(
-    (restaurant) => restaurant.id === restaurantId,
-  );
-
   const handleRestaurantChange = (event) => {
     setSelectedRestaurantId(event.target.value);
+    setIsLocked(false);
+    localStorage.removeItem(lockKey);
   };
 
   const handleToggleLock = () => {
@@ -196,12 +182,14 @@ export default function POSLayout() {
           </button>
         </div>
       </div>
-      {!restaurantId ? (
+      {loading ? (
+        <div className={styles.emptyState}>Đang tải nhà hàng POS...</div>
+      ) : !restaurantId ? (
         <div className={styles.emptyState}>
           Vui lòng chọn nhà hàng để mở POS.
         </div>
       ) : (
-        <PosProvider restaurantId={restaurantId}>
+        <PosProvider key={restaurantId} restaurantId={restaurantId}>
           <PosMenuAvailabilityRealtimeNotice restaurantId={restaurantId} />
           <PosReservationRealtimeNotice restaurantId={restaurantId} />
           <POSContent restaurantId={restaurantId} />

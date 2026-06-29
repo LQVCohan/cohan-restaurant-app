@@ -20,6 +20,12 @@ vi.mock("@apollo/client", () => ({
     },
   ],
   useMutation: () => [vi.fn(() => Promise.resolve({ data: {} }))],
+  useQuery: () => ({
+    data: { myBrands: [] },
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock("../../../hooks/useOrderManagement", () => ({

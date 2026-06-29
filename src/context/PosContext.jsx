@@ -183,6 +183,7 @@ export default function PosProvider({
   const [printStations, setPrintStations] = useState({});
   const printSettingsHydratingRef = useRef(false);
   const printSettingsDebounceRef = useRef(null);
+  const previousRestaurantIdRef = useRef(restaurantId || null);
   const [loadPosPaymentRequests] = useLazyQuery(Q_POS_PAYMENT_REQUESTS, {
     fetchPolicy: "network-only",
     onCompleted: (data) => {
@@ -573,6 +574,44 @@ export default function PosProvider({
     currentOrderId,
     setCurrentOrderId,
   });
+
+  useEffect(() => {
+    const previousRestaurantId = previousRestaurantIdRef.current;
+    if (String(previousRestaurantId || "") === String(restaurantId || "")) return;
+
+    previousRestaurantIdRef.current = restaurantId || null;
+    skipDraftAutosaveRef.current = true;
+    lastDraftKeyRef.current = null;
+    if (printSettingsDebounceRef.current) clearTimeout(printSettingsDebounceRef.current);
+    printSettingsHydratingRef.current = true;
+
+    setCurrentOrder([]);
+    setCurrentOrderCode(null);
+    setCurrentOrderId(null);
+    setCurrentTable(null);
+    setCurrentOrderType("dine_in");
+    setTableOrders({});
+    setPaymentRequests([]);
+    setMenuItems([]);
+    setCurrentCategory("all");
+    setSearchTerm("");
+    setPaymentMethod("cash");
+    setDeliveryCustomer(null);
+    setOrderNote?.("");
+    setShippingInfo(getDefaultShippingInfo("delivery"));
+    setPrinters({});
+    setPrintStations({});
+    setPrintQueue([]);
+    setSelectedPrinter(null);
+    setActiveFloorId(null);
+    setTableSearch("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+
+    setTimeout(() => {
+      printSettingsHydratingRef.current = false;
+    }, 0);
+  }, [restaurantId, getDefaultShippingInfo, setActiveFloorId, setOrderNote]);
 
   // --- [UTILITY] GENERATE VIRTUAL CODE ---
   const generateVirtualCode = useCallback((prefix) => {
