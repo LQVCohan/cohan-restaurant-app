@@ -265,4 +265,17 @@ test.describe("P1 manager schedule", () => {
     await expect(page.locator(".staff-item.selected", { hasText: STAFF_USER.fullName })).toBeVisible();
     backendGuard.assertNoBackendErrors("manager schedule create shift modal");
   });
+
+  test("manager sees validation before creating a shift without selected staff", async ({ page, backendGuard }) => {
+    await installManagerScheduleMocks(page);
+    await openManagerSchedulePage(page);
+
+    await page.getByRole("button", { name: /Tạo ca/ }).click();
+    await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+
+    backendGuard.clear();
+    await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
+    await expect(page.locator(".submit-error")).toContainText("Cần chọn ít nhất một nhân viên cho ca làm.");
+    backendGuard.assertNoBackendErrors("manager schedule empty create shift validation");
+  });
 });
