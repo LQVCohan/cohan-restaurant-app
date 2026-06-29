@@ -94,6 +94,141 @@
     margin-top: -46px;
   }
 
+  .results-header {
+    position: relative;
+
+    &::before {
+      content: "Danh sách nhà hàng";
+      position: absolute;
+      top: -11px;
+      left: 18px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #b94705;
+      font-size: 0.68rem;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  }
+
+  .view-toggles .toggle-btn,
+  .sort-select,
+  .recent-restaurant-chip,
+  .btn-load-more,
+  .restaurant-card button,
+  .restaurant-card [role="button"] {
+    &:focus-visible {
+      outline: 3px solid rgba(255, 102, 0, 0.22);
+      outline-offset: 3px;
+    }
+  }
+
+  .view-toggles .toggle-btn {
+    touch-action: manipulation;
+
+    &.active {
+      font-weight: 950;
+    }
+  }
+
+  .recent-restaurants-strip {
+    border: 1px solid rgba(255, 102, 0, 0.15);
+    border-radius: 26px;
+    background:
+      radial-gradient(circle at top right, rgba(255, 102, 0, 0.1), transparent 18rem),
+      rgba(255, 255, 255, 0.86);
+    box-shadow: 0 18px 44px rgba(91, 48, 17, 0.08);
+    padding: 18px;
+    backdrop-filter: blur(14px);
+
+    &__head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 12px;
+
+      span {
+        color: #ff6600;
+        font-size: 0.74rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h3 {
+        margin: 4px 0 0;
+        color: #211915;
+        font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+        font-weight: 950;
+        letter-spacing: -0.045em;
+      }
+
+      p {
+        max-width: 42ch;
+        margin: 0;
+        color: #75675c;
+        line-height: 1.55;
+      }
+    }
+
+    &__list {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+    }
+  }
+
+  .recent-restaurant-chip {
+    flex: 0 0 auto;
+    min-width: 180px;
+    display: grid;
+    gap: 4px;
+    text-align: left;
+    border: 1px solid rgba(255, 102, 0, 0.16);
+    border-radius: 18px;
+    background: #fff7ed;
+    color: #211915;
+    padding: 12px 13px;
+    cursor: pointer;
+    transition: 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 102, 0, 0.32);
+      background: #ffffff;
+    }
+
+    span {
+      font-weight: 950;
+    }
+
+    small {
+      color: #b94705;
+      font-weight: 850;
+    }
+  }
+
+  .state-box {
+    border: 1px dashed rgba(255, 102, 0, 0.22);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.86);
+    color: #75675c;
+    box-shadow: 0 18px 44px rgba(91, 48, 17, 0.08);
+    font-weight: 850;
+
+    &.error {
+      color: #9c3f31;
+      background: #fff0e8;
+      border-style: solid;
+      border-color: rgba(189, 91, 67, 0.22);
+    }
+  }
+
   .restaurant-card {
     .content-header .status-pill {
       display: inline-flex;
@@ -283,6 +418,11 @@
     .list-container {
       margin-top: -28px;
     }
+
+    .recent-restaurants-strip__head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
   }
 }
 
@@ -311,12 +451,8 @@
 }
 
 @keyframes restaurantListHighlightSweep {
-  from {
-    background-size: 0% 38%;
-  }
-  to {
-    background-size: 100% 38%;
-  }
+  from { background-size: 0% 38%; }
+  to { background-size: 100% 38%; }
 }
 
 @keyframes restaurantListVisualIn {
@@ -333,61 +469,31 @@
 }
 
 @keyframes restaurantListOrbPulse {
-  0%, 100% {
-    transform: scale(0.98);
-    opacity: 0.72;
-  }
-  50% {
-    transform: scale(1.07);
-    opacity: 1;
-  }
+  0%, 100% { transform: scale(0.98); opacity: 0.72; }
+  50% { transform: scale(1.07); opacity: 1; }
 }
 
 @keyframes restaurantListPlateFloat {
-  0%, 100% {
-    transform: rotate(-4deg) translate3d(0, 0, 0);
-  }
-  50% {
-    transform: rotate(-2deg) translate3d(0, -10px, 0);
-  }
+  0%, 100% { transform: rotate(-4deg) translate3d(0, 0, 0); }
+  50% { transform: rotate(-2deg) translate3d(0, -10px, 0); }
 }
 
 @keyframes restaurantListBadgeFloatA {
-  0%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -8px, 0);
-  }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -8px, 0); }
 }
 
 @keyframes restaurantListBadgeFloatB {
-  0%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, 8px, 0);
-  }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, 8px, 0); }
 }
 
 @keyframes restaurantListPanelIn {
-  from {
-    opacity: 0;
-    transform: translateY(22px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes restaurantListCardIn {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(24px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
