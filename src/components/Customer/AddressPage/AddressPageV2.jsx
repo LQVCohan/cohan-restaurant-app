@@ -77,9 +77,15 @@ const EMPTY_FORM = {
 const EMPTY_GEO = { province: "", district: "", ward: "" };
 
 const getIconByLabel = (label) => {
-  if (label === "home") return <Home size={18} />;
-  if (label === "office") return <Briefcase size={18} />;
-  return <MapPin size={18} />;
+  if (label === "home") return <Home size={18} aria-hidden="true" />;
+  if (label === "office") return <Briefcase size={18} aria-hidden="true" />;
+  return <MapPin size={18} aria-hidden="true" />;
+};
+
+const getLabelText = (label) => {
+  if (label === "home") return "Nhà riêng";
+  if (label === "office") return "Văn phòng";
+  return "Khác";
 };
 
 const getLocationSourceMessage = (source, loading) => {
@@ -271,43 +277,45 @@ export default function AddressPageV2() {
   };
 
   return (
-    <div className="address-page">
+    <main className="address-page" aria-labelledby="address-page-title">
       <div className="addr-container">
-        <div className="page-header">
+        <section className="page-header" aria-labelledby="address-page-title">
           <div className="header-content">
-            <h1>Sổ địa chỉ 📍</h1>
+            <h1 id="address-page-title">Sổ địa chỉ 📍</h1>
             <p>Quản lý nơi nhận món ngon của bạn</p>
           </div>
-          <button className="btn-add-new" onClick={openCreateModal}>
-            <div className="icon-wrap"><Plus size={20} /></div>
+          <button type="button" className="btn-add-new" onClick={openCreateModal}>
+            <div className="icon-wrap" aria-hidden="true"><Plus size={20} aria-hidden="true" /></div>
             <span>Thêm địa chỉ mới</span>
           </button>
-        </div>
+        </section>
 
         {formError && !showModal && <div className="address-page-error" role="alert">{formError}</div>}
 
         {loading ? (
-          <div className="address-list-wrapper">{[0, 1].map((item) => <div key={item} className="address-card-item skeleton-card" />)}</div>
+          <div className="address-list-wrapper" role="status" aria-live="polite" aria-label="Đang tải sổ địa chỉ">
+            {[0, 1].map((item) => <div key={item} className="address-card-item skeleton-card" />)}
+          </div>
         ) : error ? (
-          <div className="empty-state error-state">
-            <div className="empty-icon"><MapPin size={48} /></div>
-            <h3>Không thể tải sổ địa chỉ</h3>
+          <div className="empty-state error-state" role="alert">
+            <div className="empty-icon" aria-hidden="true"><MapPin size={48} aria-hidden="true" /></div>
+            <h2>Không thể tải sổ địa chỉ</h2>
             <p>{error.message}</p>
-            <button className="btn-add-new" onClick={() => refetch()}>Thử lại</button>
+            <button type="button" className="btn-add-new" onClick={() => refetch()}>Thử lại</button>
           </div>
         ) : addresses.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon"><MapPin size={48} /></div>
-            <h3>Chưa có địa chỉ nào</h3>
-            <p>Hãy thêm địa chỉ để chúng tôi giao hàng nhanh nhất nhé!</p>
+          <div className="empty-state" role="status">
+            <div className="empty-icon" aria-hidden="true"><MapPin size={48} aria-hidden="true" /></div>
+            <h2>Chưa có địa chỉ nào</h2>
+            <p>Hãy thêm địa chỉ để chúng tôi giao hàng nhanh nhất nhé.</p>
           </div>
         ) : (
-          <div className="address-list-wrapper">
+          <section className="address-list-wrapper" aria-label="Danh sách địa chỉ giao hàng">
             {addresses.map((item) => (
-              <div key={item.id} className={`address-card-item ${item.isDefault ? "active" : ""}`}>
-                {item.isDefault && <div className="badge-corner"><Star size={12} fill="currentColor" /> Mặc định</div>}
+              <article key={item.id} className={`address-card-item ${item.isDefault ? "active" : ""}`} aria-label={`${item.receiverName}, ${item.fullAddress}`}>
+                {item.isDefault && <div className="badge-corner"><Star size={12} fill="currentColor" aria-hidden="true" /> Mặc định</div>}
                 <div className="address-card-body">
-                  <div className={`address-icon-box ${item.label}`}>{getIconByLabel(item.label)}</div>
+                  <div className={`address-icon-box ${item.label}`} aria-hidden="true">{getIconByLabel(item.label)}</div>
                   <div className="address-info-box">
                     <div className="user-line"><span className="name">{item.receiverName}</span><span className="phone">{item.phone}</span></div>
                     <p className="address-text">{item.fullAddress}</p>
@@ -316,98 +324,101 @@ export default function AddressPageV2() {
                 </div>
                 <div className="address-card-footer">
                   <div className="actions-left">
-                    {!item.isDefault && <button className="btn-text-default" disabled={settingDefault} onClick={() => handleSetDefault(item.id)}>Đặt làm mặc định</button>}
+                    {!item.isDefault && <button type="button" className="btn-text-default" disabled={settingDefault} onClick={() => handleSetDefault(item.id)}>Đặt làm mặc định</button>}
                   </div>
                   <div className="actions-right">
-                    <button className="btn-circle edit" onClick={() => openEditModal(item)}><Edit3 size={16} /></button>
-                    {!item.isDefault && <button className="btn-circle delete" disabled={deleting} onClick={() => handleDelete(item.id)}><Trash2 size={16} /></button>}
+                    <button type="button" className="btn-circle edit" onClick={() => openEditModal(item)} aria-label={`Sửa địa chỉ của ${item.receiverName}`}><Edit3 size={16} aria-hidden="true" /></button>
+                    {!item.isDefault && <button type="button" className="btn-circle delete" disabled={deleting} onClick={() => handleDelete(item.id)} aria-label={`Xóa địa chỉ của ${item.receiverName}`}><Trash2 size={16} aria-hidden="true" /></button>}
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
-          </div>
+          </section>
         )}
       </div>
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="addr-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" role="presentation" onClick={() => setShowModal(false)}>
+          <section className="addr-modal" role="dialog" aria-modal="true" aria-labelledby="address-modal-title" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{isEditing ? "Cập nhật địa chỉ" : "Thêm địa chỉ mới"}</h2>
-              <button className="btn-close-icon" onClick={() => setShowModal(false)}><X size={20} /></button>
+              <h2 id="address-modal-title">{isEditing ? "Cập nhật địa chỉ" : "Thêm địa chỉ mới"}</h2>
+              <button type="button" className="btn-close-icon" onClick={() => setShowModal(false)} aria-label="Đóng form địa chỉ"><X size={20} aria-hidden="true" /></button>
             </div>
 
             <div className="modal-body">
               <div className="form-section">
                 <div className="form-grid">
                   <div className="input-group">
-                    <label>Họ và tên</label>
-                    <div className="input-wrapper"><User size={18} /><input type="text" placeholder="VD: Nguyễn Văn A" value={formData.receiverName} onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })} /></div>
+                    <label htmlFor="address-receiver-name">Họ và tên</label>
+                    <div className="input-wrapper"><User size={18} aria-hidden="true" /><input id="address-receiver-name" type="text" placeholder="VD: Nguyễn Văn A" value={formData.receiverName} onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })} /></div>
                   </div>
                   <div className="input-group">
-                    <label>Số điện thoại</label>
-                    <div className="input-wrapper"><Phone size={18} /><input type="text" placeholder="09xx..." value={formData.phone} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, phone: "" })); setFormData({ ...formData, phone: e.target.value }); }} /></div>
-                    {fieldErrors.phone && <span className="input-error-text">{fieldErrors.phone}</span>}
+                    <label htmlFor="address-phone">Số điện thoại</label>
+                    <div className="input-wrapper"><Phone size={18} aria-hidden="true" /><input id="address-phone" type="text" inputMode="tel" placeholder="09xx..." value={formData.phone} aria-invalid={!!fieldErrors.phone} aria-describedby={fieldErrors.phone ? "address-phone-error" : undefined} onChange={(e) => { setFieldErrors((prev) => ({ ...prev, phone: "" })); setFormData({ ...formData, phone: e.target.value }); }} /></div>
+                    {fieldErrors.phone && <span className="input-error-text" id="address-phone-error" role="alert">{fieldErrors.phone}</span>}
                   </div>
                 </div>
               </div>
 
               <div className="form-section">
                 <div className="geo-header">
-                  <label>Khu vực vận chuyển</label>
+                  <label id="address-region-label">Khu vực vận chuyển</label>
                   <button type="button" className="btn-geo-sm" onClick={handleGetCurrentLocation} disabled={loadingLoc || locationDataLoading}>{loadingLoc ? "Đang tìm..." : "📍 Định vị tôi"}</button>
                 </div>
-                <p className="geo-inline-message" role="status">{locationMessage || getLocationSourceMessage(locationSource, locationDataLoading)}</p>
-                <div className="geo-grid">
+                <p className="geo-inline-message" role="status" aria-live="polite">{locationMessage || getLocationSourceMessage(locationSource, locationDataLoading)}</p>
+                <div className="geo-grid" aria-labelledby="address-region-label">
                   <div className="select-wrapper">
-                    <select value={geo.province} onChange={(e) => setGeo({ province: e.target.value, district: "", ward: "" })} disabled={locationDataLoading}>
+                    <select aria-label="Tỉnh hoặc thành phố" value={geo.province} onChange={(e) => setGeo({ province: e.target.value, district: "", ward: "" })} disabled={locationDataLoading}>
                       <option value="">-- Tỉnh/Thành --</option>
                       {provinceOptions.map((key) => <option key={key} value={key}>{locationData[key].name}</option>)}
                     </select>
-                    <ChevronDown size={16} className="select-arrow" />
+                    <ChevronDown size={16} className="select-arrow" aria-hidden="true" />
                   </div>
                   <div className={`select-wrapper ${!geo.province ? "disabled" : ""}`}>
-                    <select value={geo.district} onChange={(e) => setGeo({ ...geo, district: e.target.value, ward: "" })} disabled={!geo.province}>
+                    <select aria-label="Quận hoặc huyện" value={geo.district} onChange={(e) => setGeo({ ...geo, district: e.target.value, ward: "" })} disabled={!geo.province}>
                       <option value="">-- Quận/Huyện --</option>
                       {Object.keys(districtOptions).map((key) => <option key={key} value={key}>{districtOptions[key].name}</option>)}
                     </select>
-                    <ChevronDown size={16} className="select-arrow" />
+                    <ChevronDown size={16} className="select-arrow" aria-hidden="true" />
                   </div>
                   <div className={`select-wrapper ${!geo.district ? "disabled" : ""}`}>
-                    <select value={geo.ward} onChange={(e) => setGeo({ ...geo, ward: e.target.value })} disabled={!geo.district}>
+                    <select aria-label="Phường hoặc xã" value={geo.ward} onChange={(e) => setGeo({ ...geo, ward: e.target.value })} disabled={!geo.district}>
                       <option value="">-- Phường/Xã --</option>
                       {wardOptions.map((ward) => <option key={ward} value={ward}>{ward}</option>)}
                     </select>
-                    <ChevronDown size={16} className="select-arrow" />
+                    <ChevronDown size={16} className="select-arrow" aria-hidden="true" />
                   </div>
                 </div>
-                <div className="input-group mt-3"><div className="input-wrapper textarea-wrapper"><MapPin size={18} className="mt-1" /><textarea rows="2" placeholder="Số nhà, tên đường, tòa nhà..." value={formData.specificAddress} onChange={(e) => setFormData({ ...formData, specificAddress: e.target.value })} /></div></div>
+                <div className="input-group mt-3">
+                  <label htmlFor="address-specific" className="sr-only">Địa chỉ cụ thể</label>
+                  <div className="input-wrapper textarea-wrapper"><MapPin size={18} className="mt-1" aria-hidden="true" /><textarea id="address-specific" rows="2" placeholder="Số nhà, tên đường, tòa nhà..." value={formData.specificAddress} onChange={(e) => setFormData({ ...formData, specificAddress: e.target.value })} /></div>
+                </div>
               </div>
 
               <div className="form-section">
                 <div className="input-group">
-                  <label>Ghi chú (Tùy chọn)</label>
-                  <div className="input-wrapper"><Edit3 size={18} /><input type="text" placeholder="VD: Gọi trước khi giao, cổng sau..." value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} /></div>
+                  <label htmlFor="address-note">Ghi chú (Tùy chọn)</label>
+                  <div className="input-wrapper"><Edit3 size={18} aria-hidden="true" /><input id="address-note" type="text" placeholder="VD: Gọi trước khi giao, cổng sau..." value={formData.note} onChange={(e) => setFormData({ ...formData, note: e.target.value })} /></div>
                 </div>
                 <div className="label-row">
-                  <div className="pills">
+                  <div className="pills" aria-label="Loại địa chỉ">
                     {["home", "office", "other"].map((type) => (
-                      <button key={type} className={`pill ${formData.label === type ? "selected" : ""}`} onClick={() => setFormData({ ...formData, label: type })}>{getIconByLabel(type)}<span>{type === "home" ? "Nhà riêng" : type === "office" ? "Văn phòng" : "Khác"}</span></button>
+                      <button type="button" key={type} className={`pill ${formData.label === type ? "selected" : ""}`} aria-pressed={formData.label === type} onClick={() => setFormData({ ...formData, label: type })}>{getIconByLabel(type)}<span>{getLabelText(type)}</span></button>
                     ))}
                   </div>
-                  {!isEditing && <label className="checkbox-styled"><input type="checkbox" checked={formData.isDefault} onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })} /><span className="checkmark"><CheckCircle size={14} /></span><span>Mặc định</span></label>}
+                  {!isEditing && <label className="checkbox-styled"><input type="checkbox" checked={formData.isDefault} onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })} /><span className="checkmark" aria-hidden="true"><CheckCircle size={14} aria-hidden="true" /></span><span>Mặc định</span></label>}
                 </div>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn-text" onClick={() => setShowModal(false)}>Hủy bỏ</button>
-              {formError && <p className="modal-error-text">{formError}</p>}
-              <button className="btn-primary" onClick={handleSave} disabled={creating || updating || locationDataLoading}>{creating || updating ? "Đang lưu..." : "Hoàn tất"}</button>
+              <button type="button" className="btn-text" onClick={() => setShowModal(false)}>Hủy bỏ</button>
+              {formError && <p className="modal-error-text" role="alert">{formError}</p>}
+              <button type="button" className="btn-primary" onClick={handleSave} disabled={creating || updating || locationDataLoading}>{creating || updating ? "Đang lưu..." : "Hoàn tất"}</button>
             </div>
-          </div>
+          </section>
         </div>
       )}
-    </div>
+    </main>
   );
 }
