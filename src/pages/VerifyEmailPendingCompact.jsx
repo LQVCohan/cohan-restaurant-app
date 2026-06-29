@@ -89,16 +89,16 @@ export default function VerifyEmailPendingCompact() {
   };
 
   return (
-    <main className="account-verification-page">
-      <section className="account-verification-card">
+    <main className="account-verification-page" aria-labelledby="account-verification-title">
+      <section className="account-verification-card" aria-labelledby="account-verification-title">
         <div className="account-verification-icon" aria-hidden="true">✉️</div>
-        <h1 className="account-verification-title">Xác minh tài khoản của bạn</h1>
+        <h1 className="account-verification-title" id="account-verification-title">Xác minh tài khoản của bạn</h1>
         <p className="account-verification-text">
-          Vui lòng xác minh email hoặc số điện thoại để hoàn tất kích hoạt tài khoản FoodHub.
+          Vui lòng xác minh email hoặc số điện thoại để hoàn tất kích hoạt tài khoản Cohan.
         </p>
 
         {(email || phone) && (
-          <div className="account-verification-contact">
+          <div className="account-verification-contact" aria-label="Thông tin cần xác minh">
             {email && <p><strong>Email:</strong> {email}</p>}
             {phone && <p><strong>SĐT:</strong> {phone}</p>}
           </div>
@@ -106,6 +106,7 @@ export default function VerifyEmailPendingCompact() {
 
         <div className="account-verification-actions">
           <button
+            type="button"
             className="account-verification-button is-primary"
             onClick={handleResendEmail}
             disabled={loading || !email || user?.emailVerified}
@@ -114,6 +115,7 @@ export default function VerifyEmailPendingCompact() {
           </button>
 
           <button
+            type="button"
             className="account-verification-button"
             disabled
             title="SMS chỉ khả dụng khi tài khoản có số điện thoại"
@@ -122,6 +124,7 @@ export default function VerifyEmailPendingCompact() {
           </button>
 
           <button
+            type="button"
             className="account-verification-button is-muted"
             onClick={() => {
               logout?.();
@@ -133,10 +136,14 @@ export default function VerifyEmailPendingCompact() {
         </div>
 
         {!email && !phone && (
-          <p className="account-verification-feedback is-error">Thiếu email/SĐT để gửi xác nhận.</p>
+          <p className="account-verification-feedback is-error" role="alert">Thiếu email/SĐT để gửi xác nhận.</p>
         )}
         {!!feedback && (
-          <p className={`account-verification-feedback ${feedbackType === "error" ? "is-error" : "is-success"}`}>
+          <p
+            className={`account-verification-feedback ${feedbackType === "error" ? "is-error" : "is-success"}`}
+            role={feedbackType === "error" ? "alert" : "status"}
+            aria-live="polite"
+          >
             {feedback}
           </p>
         )}
