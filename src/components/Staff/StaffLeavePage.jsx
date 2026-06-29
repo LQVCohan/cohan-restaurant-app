@@ -1,4 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import LeaveRequestForm from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm";
 import LeaveRequestsList from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestsList";
@@ -6,6 +7,21 @@ import { useLeaveManagement } from "@/hooks/useLeaveManagement";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveManagement.scss";
 import "./StaffLeavePage.scss";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveModal.scss";
+
+const Q_MANAGER_REPLACEMENT_STAFF = gql`
+  query StaffLeaveReplacementStaff($restaurantId: ID!) {
+    staffList(restaurantId: $restaurantId) {
+      id
+      fullName
+      employeeCode
+      positionTitle
+      roleName
+      department
+      avatarUrl
+      restaurantForStaff
+    }
+  }
+`;
 
 const resolveId = (value) => {
   if (!value) return "";
@@ -22,6 +38,14 @@ const getInitials = (name) => {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "NV";
   return parts.slice(-2).map((part) => part.charAt(0).toUpperCase()).join("");
+};
+
+const isManagerStaff = (staff) => {
+  const text = [staff?.roleName, staff?.positionTitle, staff?.department]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return text.includes("manager") || text.includes("quản lý") || text.includes("quan ly") || text.includes("management");
 };
 
 const buildSelfStaffOption = (user, restaurantId) => ({
@@ -52,6 +76,8 @@ export default function StaffLeavePage() {
   const initials = getInitials(staffName);
   const restaurantId = resolveId(user?.restaurantForStaff) || resolveId(user?.restaurant) || resolveId(restaurants?.[0]);
   const employeeId = getCurrentUserId(user);
+  const selfStaffOption = useMemo(() => buildSelfStaffOption(user, restaurantId), [restaurantId, user]);
+  const canNeedReplacementManager = isManagerStaff(selfStaffOption);
 
   const { leaveRequests, staffList, submitLeaveRequest, loading, error, isMutating } = useLeaveManagement({
     selectedDate,
@@ -61,11 +87,27 @@ export default function StaffLeavePage() {
     employeeId,
   });
 
-  const selfStaffList = useMemo(() => {
+  const { data: replacementData } = useQuery(Q_MANAGER_REPLACEMENT_STAFF, {
+    variables: { restaurantId },
+    skip: !restaurantId || !canNeedReplacementManager,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const formStaffList = useMemo(() => {
     if (!employeeId) return [];
-    const selfFromQuery = (staffList || []).find((item) => String(item.id) === String(employeeId));
-    return [selfFromQuery || buildSelfStaffOption(user, restaurantId)].filter((item) => item?.id);
-  }, [employeeId, restaurantId, staffList, user]);
+    const replacementStaff = replacementData?.staffList || [];
+    const allStaff = [...(staffList || []), ...replacementStaff];
+    const selfFromQuery = allStaff.find((item) => String(item.id) === String(employeeId));
+    const replacementManagers = canNeedReplacementManager
+      ? replacementStaff.filter((item) => String(item.id) !== String(employeeId) && isManagerStaff(item))
+      : [];
+    const seen = new Set();
+    return [selfFromQuery || selfStaffOption, ...replacementManagers].filter((item) => {
+      if (!item?.id || seen.has(String(item.id))) return false;
+      seen.add(String(item.id));
+      return true;
+    });
+  }, [canNeedReplacementManager, employeeId, replacementData?.staffList, selfStaffOption, staffList]);
 
   const leaveStats = useMemo(
     () => ({
@@ -159,7 +201,7 @@ export default function StaffLeavePage() {
               <button type="button" className="leave-modal__close" aria-label="Đóng form tạo đơn nghỉ phép" onClick={closeCreateModal}>×</button>
             </div>
             <LeaveRequestForm
-              staffList={selfStaffList}
+              staffList={formStaffList}
               onSubmit={submitLeaveRequest}
               disabled={isMutating}
               loading={loading}
