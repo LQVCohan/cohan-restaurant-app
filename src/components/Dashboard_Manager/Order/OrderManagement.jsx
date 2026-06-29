@@ -4,7 +4,6 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
-  useContext,
 } from "react";
 import {
   ChefHat,
@@ -29,8 +28,8 @@ import OrderSettingsModal from "./components/OrderSettingsModal";
 
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { useNotification } from "@/hooks/useNotification";
-import { AuthContext } from "@/context/AuthContext";
 import useSocketOrder from "@/hooks/useSocketOrder";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 
 import "./OrderManagement.scss";
 
@@ -231,11 +230,6 @@ const ACTIVE_ORDER_HIDDEN_STATUSES = new Set([
   "cancelled",
   "failed",
 ]);
-
-const useRestaurant = () => {
-  const { restaurants } = useContext(AuthContext);
-  return { restaurantList: restaurants || [] };
-};
 
 const normalizeStatus = (value) =>
   String(value || "")
@@ -493,8 +487,11 @@ const OrderManagement = () => {
   const { showNotification } = useNotification?.() || {
     showNotification: () => {},
   };
-  const { restaurantList } = useRestaurant();
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
+  const {
+    restaurantOptions: restaurantList,
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+  } = useManagerRestaurantSelection();
   const [
     loadOrders,
     { data: ordersData, loading: ordersLoading, error: ordersError },
@@ -573,11 +570,6 @@ const OrderManagement = () => {
     }));
   }, [ordersData]);
 
-  useEffect(() => {
-    if (restaurantList.length > 0 && !selectedRestaurantId) {
-      setSelectedRestaurantId(restaurantList[0].id);
-    }
-  }, [restaurantList, selectedRestaurantId]);
 
   useEffect(() => {
     setHiddenOrderIds([]);

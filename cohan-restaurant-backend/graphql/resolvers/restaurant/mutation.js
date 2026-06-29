@@ -6,10 +6,12 @@ import {
   Role,
   Restaurant,
   RestaurantCategoryIndex,
+  BrandMembership,
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
+import { canManageBrandRestaurants, isActiveBrandOperator, isBrandOwner, isSystemAdmin } from "../brand/index.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -103,6 +105,7 @@ async function isManager(user) {
 async function assertCanMutateRestaurant(user, restaurantDoc) {
   if (!user) throw forbidden("Unauthorized");
   if (isAdmin(user)) return true;
+  if (restaurantDoc.brandId && await canManageBrandRestaurants(user, restaurantDoc.brandId)) return true;
   const manager = await isManager(user);
   if (!manager) throw forbidden("Insufficient permission");
   if (String(restaurantDoc.managerId) !== String(user.id)) {
@@ -119,9 +122,14 @@ async function createRestaurant(_, { input }, ctx) {
   if (!user) throw forbidden("Unauthorized");
   await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);
   const admin = isAdmin(user);
-  if (!admin) throw forbidden("Admin only");
 
   const { managerId, ...rest } = input || {};
+  if (rest.brandId) {
+    if (!await canManageBrandRestaurants(user, rest.brandId)) throw forbidden("Cannot create restaurant in this brand");
+    rest.brandId = toObjectId(rest.brandId);
+  } else if (!admin) {
+    throw forbidden("Admin only");
+  }
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }
@@ -132,7 +140,8 @@ async function createRestaurant(_, { input }, ctx) {
   const managerDoc = await User.findById(mId).populate("role");
   if (!managerDoc) throw badInput("Manager not found");
   const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
-  if (!isRoleManager) throw forbidden("Target user is not a manager");
+  const isBrandOperator = rest.brandId ? await isActiveBrandOperator(mId, rest.brandId) : false;
+  if (!isRoleManager && !isBrandOperator) throw forbidden("Target user is not allowed to manage this brand restaurant");
 
   const created = await Restaurant.create({ ...rest, managerId: mId });
   return created.toObject();
@@ -150,6 +159,10 @@ async function updateRestaurant(_, { id, input }, ctx) {
   await assertCanMutateRestaurant(user, doc);
 
   const { managerId, ...rest } = input || {}; // chặn đổi manager ở mutation này
+  if (rest.brandId && String(rest.brandId) !== String(doc.brandId || "")) {
+    if (!isSystemAdmin(user) && !(doc.brandId && await isBrandOwner(user, doc.brandId))) throw forbidden("Only system admin or brand owner can move restaurant between brands");
+    rest.brandId = toObjectId(rest.brandId);
+  }
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }

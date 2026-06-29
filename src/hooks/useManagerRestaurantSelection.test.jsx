@@ -1,8 +1,16 @@
 import React from "react";
 import { renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import useManagerRestaurantSelection from "./useManagerRestaurantSelection";
 import { AuthContext } from "../context/AuthContext";
+
+vi.mock("@apollo/client", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({ data: null, loading: false, error: null, refetch: vi.fn() })),
+  };
+});
 
 const createMutableWrapper = (initialValue) => {
   const state = { value: initialValue };
@@ -13,6 +21,9 @@ const createMutableWrapper = (initialValue) => {
 };
 
 describe("useManagerRestaurantSelection", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
   it("auto chọn nhà hàng đầu tiên sau khi restaurants load async", async () => {
     const { state, Wrapper } = createMutableWrapper({ restaurants: [], restaurantsLoading: true });
     const { result, rerender } = renderHook(() => useManagerRestaurantSelection(), {

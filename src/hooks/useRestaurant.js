@@ -8,6 +8,7 @@ const RESTAURANT_FIELDS = gql`
     id
     name
     avatar
+    brandId
     coverImage
     spaceImages
     vrTourUrl

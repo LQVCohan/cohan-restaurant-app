@@ -5,6 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 import Home from "../components/Customer/Homepage_Client/Home";
 import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
+import BusinessOwnerRegisterPage from "../pages/BusinessOwnerRegisterPage.jsx";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import VerifyAccountConfirm from "../pages/VerifyAccountConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
@@ -159,6 +160,7 @@ const withStaffLayout = (children) => <StaffLayout>{children}</StaffLayout>;
 const AppRouter = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
+    <Route path="/business/register" element={<BusinessOwnerRegisterPage />} />
     <Route path="/verify-email" element={<VerifyEmailPending />} />
     <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
     <Route path="/verify-phone/confirm" element={<VerifyAccountConfirm forcedChannel="SMS" />} />

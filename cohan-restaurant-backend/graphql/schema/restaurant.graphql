@@ -96,6 +96,8 @@ type Restaurant {
   canDelivery: Boolean
   canPickup: Boolean
   manager: User
+  brandId: ID
+  brand: Brand
   tables: [Table]
   categories: [Category]
   avgRating: Float
@@ -210,6 +212,9 @@ extend type Query {
 
   restaurantsByManager(
     managerId: ID!
+    brandId: ID
+    includeBrandScope: Boolean = true
+    includeLegacyManaged: Boolean = true
     limit: Int = 20
     cursor: ID
     restaurantFilter: RestaurantFilter
@@ -273,6 +278,7 @@ input CreateRestaurantInput {
   reservationPolicy: JSON
   orderPolicy: JSON
   managerId: ID!
+  brandId: ID
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
   defaultCurrency: String
@@ -308,6 +314,7 @@ input UpdateRestaurantInput {
   capabilities: JSON
   reservationPolicy: JSON
   orderPolicy: JSON
+  brandId: ID
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
   defaultCurrency: String

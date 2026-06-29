@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   normalizeReviewStaff: vi.fn(),
   resolveVerifiedReview: vi.fn(),
   analyzeReviewText: vi.fn(),
+  calculateReviewReliability: vi.fn(),
 }));
 
 vi.mock("../../models/index.js", () => ({
@@ -54,6 +55,7 @@ vi.mock("../../src/services/reviewHardening.service.js", () => ({
   REVIEW_REPORT_REASONS: ["spam", "abuse", "offensive", "fake", "privacy", "other"],
   REVIEW_STATUSES: ["pending", "published", "hidden", "reported", "rejected"],
   analyzeReviewText: mocks.analyzeReviewText,
+  calculateReviewReliability: mocks.calculateReviewReliability,
   badUserInput: (message) => Object.assign(new Error(message), { extensions: { code: "BAD_USER_INPUT" } }),
   buildReactionIncPayload: vi.fn((x) => x),
   clampReactionSummary: vi.fn(() => ({})),
@@ -87,6 +89,7 @@ beforeEach(async () => {
   mocks.normalizeReviewStaff.mockResolvedValue({ staffId: null, staffName: "" });
   mocks.resolveVerifiedReview.mockResolvedValue({ verifiedPurchase: true, verifiedSource: "order", verifiedSourceId: "order1" });
   mocks.analyzeReviewText.mockReturnValue({ sentiment: "negative", topicTags: ["slow_service"] });
+  mocks.calculateReviewReliability.mockReturnValue({ reliabilityScore: 95, reliabilityLevel: "high", reliabilitySignals: ["verified_experience", "source:order"] });
   mocks.Review.findOne.mockReturnValue(leanResult(null));
   mocks.Restaurant.findById.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn(async () => ({ managerId: "manager1", name: "Cohan" })) })) });
   mocks.Notification.create.mockResolvedValue({ _id: "notification1" });

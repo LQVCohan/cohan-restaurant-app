@@ -69,6 +69,8 @@ const GET_MANAGER_RESTAURANTS = gql`
         node {
           id
           name
+          brandId
+          brand { id name slug }
         }
       }
     }
@@ -81,6 +83,8 @@ const GET_ALL_RESTAURANTS = gql`
         node {
           id
           name
+          brandId
+          brand { id name slug }
         }
       }
     }
@@ -136,6 +140,8 @@ const GET_RESTAURANT_DETAIL = gql`
     restaurant(id: $id) {
       id
       name
+      brandId
+      brand { id name slug }
       phone
       email
       description
@@ -198,6 +204,8 @@ const UPDATE_RESTAURANT = gql`
     updateRestaurant(id: $id, input: $input) {
       id
       name
+      brandId
+      brand { id name slug }
       phone
       email
       description
@@ -346,6 +354,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
+    brandId: "",
+    brandName: "",
     phone: "",
     email: "",
     description: "",
@@ -486,6 +496,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     const parsedCustomerInfo = parseCustomerInfo(r.notesOnAmenities);
     const nextState = {
       name: r.name || "",
+      brandId: r.brandId || "",
+      brandName: r.brand?.name || "Nhà hàng chưa gán chuỗi",
       phone: r.phone || "",
       email: r.email || "",
       description: r.description || "",
@@ -1096,6 +1108,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           <Text type="secondary">
             {restaurantForm.cuisineType || "Loại ẩm thực"}
           </Text>
+          <div><Tag color={restaurantForm.brandId ? "blue" : "default"}>{restaurantForm.brandName || "Nhà hàng chưa gán chuỗi"}</Tag></div>
         </div>
       </div>
     </div>

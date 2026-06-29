@@ -1,4 +1,4 @@
-import { User, Table, Category, Review } from "../../../models/index.js";
+import { User, Table, Category, Review, Brand } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 
 export default {
@@ -8,6 +8,8 @@ export default {
       if (!parent.managerId) return null;
       return User.findById(parent.managerId).lean();
     },
+    brandId: (parent) => parent.brandId ? String(parent.brandId) : null,
+    brand: (parent) => parent.brandId ? Brand.findById(parent.brandId).lean() : null,
     tables: (parent) => Table.find({ restaurantId: parent.id || parent._id }).lean(),
     categories: (parent) => Category.find({ restaurantId: parent.id || parent._id }).lean(),
     reviewCount: async (parent) => {

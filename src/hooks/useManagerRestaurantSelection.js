@@ -1,57 +1,39 @@
-import { useContext, useEffect, useMemo, useState } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { useMemo } from "react";
+import useBrandManagement from "./useBrandManagement";
 
 export const getRestaurantId = (restaurant) =>
   String(restaurant?.id ?? restaurant?._id ?? restaurant?.restaurantId ?? "");
 
-const normalizeRestaurantOption = (restaurant) => {
-  const id = getRestaurantId(restaurant);
-  return {
-    ...restaurant,
-    id,
-    name: restaurant?.name || "Nhà hàng chưa đặt tên",
-  };
-};
-
 const EMPTY_RESTAURANTS = [];
 
 const useManagerRestaurantSelection = (additionalRestaurants = EMPTY_RESTAURANTS) => {
-  const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-
-  const restaurantOptions = useMemo(() => {
-    const seen = new Set();
-    return [...(restaurants || []), ...(additionalRestaurants || [])]
-      .map(normalizeRestaurantOption)
-      .filter((restaurant) => {
-        if (!restaurant.id || seen.has(restaurant.id)) return false;
-        seen.add(restaurant.id);
-        return true;
-      });
-  }, [additionalRestaurants, restaurants]);
-
-  useEffect(() => {
-    setSelectedRestaurantId((currentId) => {
-      if (!restaurantOptions.length) return "";
-      if (currentId && restaurantOptions.some((restaurant) => restaurant.id === currentId)) {
-        return currentId;
-      }
-      return restaurantOptions[0].id;
-    });
-  }, [restaurantOptions]);
-
-  const selectedRestaurant = useMemo(
-    () => restaurantOptions.find((restaurant) => restaurant.id === selectedRestaurantId) || null,
-    [restaurantOptions, selectedRestaurantId],
+  const brandState = useBrandManagement(additionalRestaurants);
+  const brandOptions = useMemo(
+    () => brandState.brands.map((brand) => ({ ...brand, id: String(brand.id), name: brand.name || "Chuỗi chưa đặt tên" })),
+    [brandState.brands],
   );
+  const restaurantOptions = brandState.selectedBrandId
+    ? brandState.restaurantsInSelectedBrand
+    : brandState.legacyRestaurants.length
+      ? brandState.legacyRestaurants
+      : brandState.allManageableRestaurants;
 
   return {
+    selectedBrandId: brandState.selectedBrandId,
+    setSelectedBrandId: brandState.setSelectedBrandId,
+    selectedBrand: brandState.selectedBrand,
+    brandOptions,
     restaurantOptions,
-    selectedRestaurantId,
-    setSelectedRestaurantId,
-    selectedRestaurant,
-    restaurantsLoading,
-    hasRestaurants: restaurantOptions.length > 0,
+    selectedRestaurantId: brandState.selectedRestaurantId,
+    setSelectedRestaurantId: brandState.setSelectedRestaurantId,
+    selectedRestaurant: brandState.selectedRestaurant,
+    restaurantsLoading: brandState.loading,
+    loading: brandState.loading,
+    error: brandState.error,
+    refetch: brandState.refetch,
+    hasBrands: brandState.hasBrands,
+    hasRestaurants: brandState.hasRestaurants,
+    isLegacyRestaurantSelected: Boolean(brandState.selectedRestaurant && !brandState.selectedRestaurant.brandId),
   };
 };
 

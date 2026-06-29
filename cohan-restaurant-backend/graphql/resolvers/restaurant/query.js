@@ -4,6 +4,7 @@ import { GraphQLError } from "graphql";
 import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
+import { getScopedRestaurantFilter, isSystemAdmin } from "../brand/index.js";
 
 /* ============================ Helpers ============================ */
 
@@ -132,6 +133,14 @@ function haversineDistanceKm(lat1, lng1, lat2, lng2) {
   return earthRadiusKm * c;
 }
 
+
+function combineFilters(...filters) {
+  const parts = filters.filter((filter) => filter && Object.keys(filter).length > 0);
+  if (parts.length === 0) return {};
+  if (parts.length === 1) return parts[0];
+  return { $and: parts };
+}
+
 function applyPublicAvailabilityFilters(docs, filter) {
   const f = filter || {};
   return docs.filter((doc) => {
@@ -150,13 +159,14 @@ function applyPublicAvailabilityFilters(docs, filter) {
  *  - sort theo _id tăng dần
  *  - cursor là _id, dùng $gt (forward pagination)
  */
-async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
+async function restaurants(_, { limit = 20, cursor, restaurantFilter }, ctx) {
   const lim = clampLimit(limit, 1, 100);
 
-  const baseFilter = buildFilter(restaurantFilter);
-  const queryFilter = { ...baseFilter };
+  const scopeFilter = ctx?.user ? await getScopedRestaurantFilter(ctx.user) : {};
   const cId = toObjectIdOrNull(cursor);
-  if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
+  const cursorFilter = cId ? { _id: { $gt: cId } } : {};
+  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopeFilter);
+  const queryFilter = combineFilters(baseFilter, cursorFilter);
 
   const docs = await Restaurant.find(queryFilter)
     .sort({ _id: 1 })
@@ -177,12 +187,14 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
 }
 
 /** Chi tiết nhà hàng */
-async function restaurant(_, { id }) {
+async function restaurant(_, { id }, ctx) {
   if (!mongoose.isValidObjectId(id)) {
     throw badInput("Invalid ID");
   }
   const doc = await Restaurant.findById(id).lean();
-  return doc || null; // SDL của bạn cho phép null
+  if (!doc || !ctx?.user || isSystemAdmin(ctx.user)) return doc || null;
+  const scoped = await Restaurant.exists({ _id: doc._id, ...(await getScopedRestaurantFilter(ctx.user)) });
+  return scoped ? doc : null;
 }
 
 /** Top nhà hàng theo rating với bộ lọc */
@@ -332,21 +344,30 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
 /** Danh sách nhà hàng theo manager với cursor pagination và bộ lọc */
 async function restaurantsByManager(
   _,
-  { managerId, limit = 20, cursor, restaurantFilter }
+  { managerId, brandId, includeBrandScope = true, includeLegacyManaged = true, limit = 20, cursor, restaurantFilter },
+  ctx
 ) {
   if (!mongoose.isValidObjectId(managerId)) {
     throw badInput("Invalid managerId");
   }
+  if (brandId && !mongoose.isValidObjectId(brandId)) {
+    throw badInput("Invalid brandId");
+  }
 
   const lim = clampLimit(limit, 1, 100);
-  const baseFilter = {
-    managerId: new mongoose.Types.ObjectId(managerId),
-    ...buildFilter(restaurantFilter),
-  };
-  const queryFilter = { ...baseFilter };
-
+  const uid = String(ctx?.user?.id || ctx?.user?._id || "");
+  const managerObjectId = new mongoose.Types.ObjectId(managerId);
+  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  const scopedAccessFilter = isSystemAdmin(ctx?.user)
+    ? {}
+    : includeBrandScope && uid === String(managerId)
+      ? await getScopedRestaurantFilter(ctx.user)
+      : { managerId: managerObjectId };
+  const legacyFilter = includeLegacyManaged ? {} : { brandId: { $ne: null } };
   const cId = toObjectIdOrNull(cursor);
-  if (cId) queryFilter._id = { ...(queryFilter._id || {}), $gt: cId };
+  const cursorFilter = cId ? { _id: { $gt: cId } } : {};
+  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopedAccessFilter, requestedBrandFilter, legacyFilter);
+  const queryFilter = combineFilters(baseFilter, cursorFilter);
 
   const docs = await Restaurant.find(queryFilter)
     .sort({ _id: 1 })

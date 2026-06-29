@@ -3,6 +3,7 @@ import baseResolvers from "./base.js";
 
 import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
+import brand from "./brand/index.js";
 import user from "./user/index.js";
 import wallet from "./wallet/index.js";
 import permission from "./permission/index.js";
@@ -53,6 +54,7 @@ export default {
   Query: {
     ...(role.Query || {}),
     ...(restaurant.Query || {}),
+    ...(brand.Query || {}),
     ...(user.Query || {}),
     ...(wallet.Query || {}),
     ...(permission.Query || {}),
@@ -99,6 +101,7 @@ export default {
   Mutation: {
     ...(role.Mutation || {}),
     ...(restaurant.Mutation || {}),
+    ...(brand.Mutation || {}),
     ...(user.Mutation || {}),
     ...(wallet.Mutation || {}),
     ...(permission.Mutation || {}),
@@ -138,6 +141,8 @@ export default {
 
   ...(role.Role ? { Role: role.Role } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
+  ...(brand.Brand ? { Brand: brand.Brand } : {}),
+  ...(brand.BrandMembership ? { BrandMembership: brand.BrandMembership } : {}),
   ...(user.User ? { User: user.User } : {}),
   ...(permission.Permission ? { Permission: permission.Permission } : {}),
   ...(menu.Menu ? { Menu: menu.Menu } : {}),

@@ -1,0 +1,141 @@
+type BrandAddress {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+  postalCode: String
+  lat: Float
+  lng: Float
+}
+
+input BrandAddressInput {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+  postalCode: String
+  lat: Float
+  lng: Float
+}
+
+type Brand {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  logoUrl: String
+  coverImage: String
+  ownerId: ID!
+  owner: User
+  businessName: String
+  businessTaxCode: String
+  businessEmail: String
+  businessPhone: String
+  address: BrandAddress
+  status: String!
+  restaurantCount: Int!
+  restaurants(limit: Int = 50): [Restaurant!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type BrandMembership {
+  id: ID!
+  brandId: ID!
+  brand: Brand
+  userId: ID!
+  user: User
+  role: String!
+  restaurantIds: [ID!]!
+  restaurants: [Restaurant!]!
+  status: String!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreateBrandInput {
+  name: String!
+  slug: String
+  description: String
+  logoUrl: String
+  coverImage: String
+  businessName: String
+  businessTaxCode: String
+  businessEmail: String
+  businessPhone: String
+  address: BrandAddressInput
+}
+
+input UpdateBrandInput {
+  name: String
+  slug: String
+  description: String
+  logoUrl: String
+  coverImage: String
+  businessName: String
+  businessTaxCode: String
+  businessEmail: String
+  businessPhone: String
+  address: BrandAddressInput
+  status: String
+}
+
+input AddBrandMemberInput {
+  brandId: ID!
+  userId: ID!
+  role: String!
+  restaurantIds: [ID!]
+}
+
+input UpdateBrandMemberInput {
+  id: ID!
+  role: String
+  restaurantIds: [ID!]
+  status: String
+}
+
+input RegisterBusinessOwnerInput {
+  fullName: String!
+  email: String!
+  phone: String
+  password: String!
+  brandName: String!
+  brandSlug: String
+  businessName: String
+  businessTaxCode: String
+  businessEmail: String
+  businessPhone: String
+  createFirstRestaurant: Boolean = true
+  firstRestaurantName: String
+  firstRestaurantAddress: BrandAddressInput
+}
+
+type RegisterBusinessOwnerPayload {
+  user: User!
+  brand: Brand!
+  restaurant: Restaurant
+  accessToken: String
+  refreshToken: String
+}
+
+extend type Query {
+  myBrands: [Brand!]!
+  brand(id: ID!): Brand
+  brands(limit: Int = 50, cursor: ID, status: String, search: String): [Brand!]!
+  brandMembers(brandId: ID!): [BrandMembership!]!
+  myBrandMemberships: [BrandMembership!]!
+}
+
+extend type Mutation {
+  registerBusinessOwner(input: RegisterBusinessOwnerInput!): RegisterBusinessOwnerPayload!
+  createBrand(input: CreateBrandInput!): Brand!
+  updateBrand(id: ID!, input: UpdateBrandInput!): Brand!
+  archiveBrand(id: ID!): Boolean!
+  addBrandMember(input: AddBrandMemberInput!): BrandMembership!
+  updateBrandMember(input: UpdateBrandMemberInput!): BrandMembership!
+  removeBrandMember(id: ID!): Boolean!
+}
