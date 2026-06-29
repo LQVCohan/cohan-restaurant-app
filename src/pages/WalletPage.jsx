@@ -107,10 +107,10 @@ export default function WalletPage() {
   };
 
   return (
-    <main className="wallet-page">
+    <main className="wallet-page" aria-labelledby="wallet-title">
       <section className="wallet-page__hero" aria-labelledby="wallet-title">
         <button type="button" className="wallet-page__back" onClick={() => navigate(-1)}>
-          <ArrowLeft size={18} /> Quay lại
+          <ArrowLeft size={18} aria-hidden="true" /> Quay lại
         </button>
         <div className="wallet-page__brand">
           <div className="wallet-page__icon" aria-hidden="true"><WalletCards size={28} /></div>
@@ -142,14 +142,27 @@ export default function WalletPage() {
           <p>Ở bản MVP, nạp ví chạy chế độ sandbox. Khi đấu cổng thật, số dư chỉ cộng sau callback hợp lệ.</p>
           <div className="wallet-page__quick-amounts" aria-label="Chọn nhanh số tiền nạp">
             {quickAmounts.map((amount) => (
-              <button key={amount} type="button" className={Number(topupAmount) === amount ? "active" : ""} onClick={() => setTopupAmount(amount)}>
+              <button
+                key={amount}
+                type="button"
+                className={Number(topupAmount) === amount ? "active" : ""}
+                aria-pressed={Number(topupAmount) === amount}
+                onClick={() => setTopupAmount(amount)}
+              >
                 {formatVND(amount)}
               </button>
             ))}
           </div>
           <label className="wallet-page__amount-input">
             Số tiền nạp
-            <input type="number" min="1000" step="1000" value={topupAmount} onChange={(event) => setTopupAmount(event.target.value)} />
+            <input
+              type="number"
+              min="1000"
+              step="1000"
+              inputMode="numeric"
+              value={topupAmount}
+              onChange={(event) => setTopupAmount(event.target.value)}
+            />
           </label>
           <button type="button" className="wallet-page__primary" onClick={handleTopup} disabled={toppingUp}>
             <CreditCard size={18} aria-hidden="true" /> {toppingUp ? "Đang nạp..." : "Nạp ví sandbox"}
@@ -160,14 +173,14 @@ export default function WalletPage() {
           {stats.map((item) => {
             const Icon = item.icon;
             return (
-              <article key={item.label}>
+              <article key={item.label} aria-label={`${item.label}: ${item.value}`}>
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
               </article>
             );
           })}
-          <article className="wallet-page__updated-card">
+          <article className="wallet-page__updated-card" aria-label={`Cập nhật gần nhất: ${formatDateTime(walletUpdatedAt)}`}>
             <Clock3 size={18} aria-hidden="true" />
             <span>Cập nhật gần nhất</span>
             <strong>{formatDateTime(walletUpdatedAt)}</strong>
@@ -187,15 +200,15 @@ export default function WalletPage() {
         </div>
 
         {!transactions.length ? (
-          <div className="wallet-page__empty">Chưa có giao dịch ví nào.</div>
+          <div className="wallet-page__empty" role="status">Chưa có giao dịch ví nào.</div>
         ) : (
-          <div className="wallet-page__transactions">
+          <div className="wallet-page__transactions" role="list" aria-label="Danh sách giao dịch ví">
             {transactions.map((tx) => {
               const meta = typeMeta[tx.type] || typeMeta.ADJUSTMENT;
               const Icon = meta.icon;
               const sign = tx.type === "PAYMENT" ? "-" : "+";
               return (
-                <article className={`wallet-page__transaction wallet-page__transaction--${meta.tone}`} key={tx.id}>
+                <article className={`wallet-page__transaction wallet-page__transaction--${meta.tone}`} key={tx.id} role="listitem">
                   <div className="wallet-page__transaction-icon" aria-hidden="true"><Icon size={18} /></div>
                   <div>
                     <strong>{meta.label}</strong>
