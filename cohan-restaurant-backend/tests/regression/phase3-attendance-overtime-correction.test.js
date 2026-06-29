@@ -13,7 +13,7 @@ const modelMocks = vi.hoisted(() => {
   return {
     Staff: { findById: vi.fn(), find: vi.fn() },
     Timesheet: Object.assign(TimesheetCtor, { findOne: vi.fn(), findById: vi.fn(), find: vi.fn() }),
-    Shift: { findOne: vi.fn() },
+    Shift: { findOne: vi.fn(), find: vi.fn() },
     PerformanceIncident: { findOneAndUpdate: vi.fn() },
     EventLog: { create: vi.fn() },
     LeaveRequest: { find: vi.fn() },
@@ -63,6 +63,7 @@ describe('phase3 attendance/off-schedule regression', () => {
     permissionMocks.userCanAccessRestaurant.mockReturnValue(true);
     modelMocks.Staff.findById.mockReturnValue({ populate: vi.fn().mockResolvedValue({ _id: EMPLOYEE_ID, userType: 'STAFF', fullName: 'A' }) });
     modelMocks.Shift.findOne.mockReturnValue({ sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(null) });
+    modelMocks.Shift.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
     modelMocks.Timesheet.findById.mockReturnValue({ populate: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439031', employeeId: EMPLOYEE_ID, restaurantId: RESTAURANT_ID, isOffSchedule: true, approved: false, offScheduleApprovalStatus: 'pending' }) });
     modelMocks.Timesheet.findOne.mockResolvedValue(null);
   });
@@ -109,5 +110,22 @@ describe('phase3 attendance/off-schedule regression', () => {
     await Query.offScheduleAttendances({}, { input: { restaurantId: RESTAURANT_ID, employeeId: '507f1f77bcf86cd799439055' } }, ctx(EMPLOYEE_ID, 'STAFF'));
     const q = modelMocks.Timesheet.find.mock.calls[0][0];
     expect(String(q.employeeId)).toBe(EMPLOYEE_ID);
+  });
+
+  it('staff query leaveRequests without employeeId is constrained to own records', async () => {
+    modelMocks.LeaveRequest.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
+    await Query.leaveRequests({}, { filter: { restaurantId: RESTAURANT_ID } }, ctx(EMPLOYEE_ID, 'STAFF'));
+    const q = modelMocks.LeaveRequest.find.mock.calls[0][0];
+    expect(String(q.employeeId)).toBe(EMPLOYEE_ID);
+  });
+
+  it('forbids staff query leaveRequests for another employee', async () => {
+    await expect(Query.leaveRequests({}, { filter: { restaurantId: RESTAURANT_ID, employeeId: '507f1f77bcf86cd799439055' } }, ctx(EMPLOYEE_ID, 'STAFF'))).rejects.toThrow('FORBIDDEN');
+  });
+
+  it('allows manager query leaveRequests for restaurant scope', async () => {
+    modelMocks.LeaveRequest.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
+    await Query.leaveRequests({}, { filter: { restaurantId: RESTAURANT_ID } }, ctx('507f1f77bcf86cd799439099', 'MANAGER'));
+    expect(modelMocks.LeaveRequest.find.mock.calls[0][0]).toEqual({ restaurantId: expect.anything() });
   });
 });

@@ -1778,9 +1778,35 @@ export default {
     await requireRestaurantAccess(ctx, rid);
 
     const query = { restaurantId: rid };
+    const roles = resolveUserRoles(authUser);
+    const canReadLeave = roles.some((role) =>
+      ATTENDANCE_READ_ROLES.includes(role),
+    );
+    const canSelfLeave = roles.some((role) =>
+      ATTENDANCE_SELF_ROLES.includes(role),
+    );
+    const actorId = authUser?.id || authUser?._id || null;
+    const requestedEmployeeId = filter.employeeId
+      ? String(filter.employeeId)
+      : "";
+    const actorEmployeeId = actorId ? String(actorId) : "";
+    const isSelfRequest =
+      canSelfLeave &&
+      actorEmployeeId &&
+      (!requestedEmployeeId || requestedEmployeeId === actorEmployeeId);
+
+    if (!canReadLeave && !isSelfRequest) {
+      const err = new Error("FORBIDDEN");
+      err.statusCode = 403;
+      throw err;
+    }
 
     const eid = toObjectId(filter.employeeId);
-    if (eid) query.employeeId = eid;
+    if (isSelfRequest) {
+      query.employeeId = toObjectId(actorEmployeeId);
+    } else if (eid) {
+      query.employeeId = eid;
+    }
     if (filter.status) query.status = String(filter.status).toLowerCase();
     if (filter.startDate || filter.endDate) {
       query.startDate = {};

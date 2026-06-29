@@ -160,4 +160,36 @@ describe("staff mutation access hardening", () => {
     await expect(mutation.deleteStaff(null, { userId: "staff-1" }, { user: { id: "u1" } })).rejects.toThrow("FORBIDDEN");
     expect(doc.save).not.toHaveBeenCalled();
   });
+
+  it("setStaffEmploymentStatus is blocked by locked payroll guard before save", async () => {
+    const { assertNoLockedPayrollPeriodOverlap } = await import("../../src/services/payroll/payrollLockGuard.service.js");
+    assertNoLockedPayrollPeriodOverlap.mockRejectedValueOnce(new Error("PAYROLL_PERIOD_LOCKED"));
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+    const doc = makeStaffDoc({ _id: "staff-1", restaurantForStaff: "r1", dateJoined: new Date("2026-01-01") });
+    modelMocks.Staff.findById = vi
+      .fn()
+      .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
+      .mockResolvedValueOnce(doc);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    await expect(mutation.setStaffEmploymentStatus(null, { userId: "staff-1", employmentStatus: "RESIGNED" }, { user: { id: "u1" } })).rejects.toThrow("PAYROLL_PERIOD_LOCKED");
+    expect(doc.save).not.toHaveBeenCalled();
+    expect(assertNoLockedPayrollPeriodOverlap).toHaveBeenCalledWith(expect.objectContaining({ action: "set_staff_employment_status" }));
+  });
+
+  it("deleteStaff is blocked by locked payroll guard before save", async () => {
+    const { assertNoLockedPayrollPeriodOverlap } = await import("../../src/services/payroll/payrollLockGuard.service.js");
+    assertNoLockedPayrollPeriodOverlap.mockRejectedValueOnce(new Error("PAYROLL_PERIOD_LOCKED"));
+    const scoped = { _id: "staff-1", userType: "STAFF", deletedAt: null, restaurantForStaff: "r1", refRestaurants: [] };
+    const doc = makeStaffDoc({ _id: "staff-1", restaurantForStaff: "r1", dateJoined: new Date("2026-01-01") });
+    modelMocks.Staff.findById = vi
+      .fn()
+      .mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn(async () => scoped) })) })
+      .mockResolvedValueOnce(doc);
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    await expect(mutation.deleteStaff(null, { userId: "staff-1" }, { user: { id: "u1" } })).rejects.toThrow("PAYROLL_PERIOD_LOCKED");
+    expect(doc.save).not.toHaveBeenCalled();
+    expect(assertNoLockedPayrollPeriodOverlap).toHaveBeenCalledWith(expect.objectContaining({ action: "delete_staff" }));
+  });
 });

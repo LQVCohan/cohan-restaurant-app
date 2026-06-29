@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   shift: null,
+  shifts: null,
   publicationStatus: "published",
   timesheets: [],
   nextTimesheetId: 1,
@@ -207,9 +208,9 @@ function attachSave(doc) {
   return doc;
 }
 
-function buildShift({ employeeId = "staff-1", restaurantId = "rest-1", startTime = "2026-06-02T09:00:00.000Z", endTime = "2026-06-02T17:00:00.000Z" } = {}) {
+function buildShift({ _id = "shift-1", employeeId = "staff-1", restaurantId = "rest-1", startTime = "2026-06-02T09:00:00.000Z", endTime = "2026-06-02T17:00:00.000Z" } = {}) {
   return {
-    _id: "shift-1",
+    _id,
     employeeId,
     restaurantId,
     shiftType: "morning",
@@ -289,6 +290,7 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     db.timesheets = [];
     db.nextTimesheetId = 1;
     db.shift = buildShift();
+    db.shifts = null;
     db.publicationStatus = "published";
 
     modelMocks.Staff.findById.mockImplementation((id) => queryResult({
@@ -310,18 +312,27 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     lifecycleMocks.resolveScheduleLifecycleStatus.mockImplementation(({ publication }) => publication?.effectiveStatus || publication?.status || db.publicationStatus);
 
     modelMocks.Shift.findOne.mockImplementation((filter = {}) => {
-      const shift = db.shift;
-      if (!shift || !isOfficialPublicationStatus()) {
-        return { sort: vi.fn().mockReturnValue(queryResult(null)) };
-      }
+      const shifts = db.shifts || (db.shift ? [db.shift] : []);
+      if (!isOfficialPublicationStatus()) return queryResult(null);
+      const shift = shifts.find((candidate) => {
+        const employeeOk = !filter.employeeId || idOf(filter.employeeId) === idOf(candidate.employeeId);
+        const restaurantOk = !filter.restaurantId || idOf(filter.restaurantId) === idOf(candidate.restaurantId);
+        const idOk = !filter._id || idOf(filter._id) === idOf(candidate._id);
+        return employeeOk && restaurantOk && idOk;
+      });
+      return queryResult(shift || null);
+    });
+    modelMocks.Shift.find.mockImplementation((filter = {}) => {
+      const shifts = db.shifts || (db.shift ? [db.shift] : []);
+      if (!isOfficialPublicationStatus()) return queryResult([]);
+      return queryResult(shifts.filter((shift) => {
       const employeeOk = !filter.employeeId || idOf(filter.employeeId) === idOf(shift.employeeId);
       const restaurantOk = !filter.restaurantId || idOf(filter.restaurantId) === idOf(shift.restaurantId);
       const shiftStartsBeforeRangeEnd = !filter.startTime?.$lte || shift.startTime <= filter.startTime.$lte;
       const shiftEndsAfterRangeStart = !filter.endTime?.$gte || shift.endTime >= filter.endTime.$gte;
-      const matches = employeeOk && restaurantOk && shiftStartsBeforeRangeEnd && shiftEndsAfterRangeStart;
-      return { sort: vi.fn().mockReturnValue(queryResult(matches ? shift : null)) };
+      return employeeOk && restaurantOk && shiftStartsBeforeRangeEnd && shiftEndsAfterRangeStart;
+      }));
     });
-    modelMocks.Shift.find.mockImplementation(() => queryResult(db.shift ? [db.shift] : []));
     modelMocks.Shift.countDocuments.mockResolvedValue(0);
 
     modelMocks.Timesheet.findOne = vi.fn(async (filter = {}) => {
@@ -392,6 +403,24 @@ describe("Timesheet binding to official published/active staff shifts", () => {
     expect(result.shiftId).toBeNull();
     expect(result.restaurantId).toBe("rest-2");
     expect(result.isOffSchedule).toBe(true);
+  });
+
+  it("check-in with shiftId links the requested same-day shift", async () => {
+    db.shifts = [
+      buildShift({ _id: "shift-1", startTime: "2026-06-02T09:00:00.000Z", endTime: "2026-06-02T13:00:00.000Z" }),
+      buildShift({ _id: "shift-2", startTime: "2026-06-02T15:00:00.000Z", endTime: "2026-06-02T21:00:00.000Z" }),
+    ];
+    vi.setSystemTime(new Date("2026-06-02T15:02:00.000Z"));
+    const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+
+    const result = await mutation.upsertStaffAttendance(
+      null,
+      { input: { employeeId: "staff-1", restaurantId: "rest-1", shiftId: "shift-2", action: "check_in" } },
+      { user: { id: "staff-1", roles: ["STAFF"], restaurantForStaff: "rest-1" } },
+    );
+
+    expect(result.shiftId).toBe("shift-2");
+    expect(db.timesheets[0].shiftId).toBe("shift-2");
   });
 
   it("creates off-schedule attendance when no official StaffShift matches", async () => {
