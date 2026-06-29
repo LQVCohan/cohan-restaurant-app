@@ -417,7 +417,7 @@ const HeroSection = ({ onSearch }) => {
   };
 
   return (
-    <section id="home" className="hero">
+    <section id="home" className="hero" aria-labelledby="home-hero-title">
       <div className="hero__container">
         {/* --- LEFT CONTENT (Giữ nguyên) --- */}
         <div className="hero__content">
@@ -426,7 +426,7 @@ const HeroSection = ({ onSearch }) => {
             <span>Giao hàng nhanh trong 30 phút</span>
           </div>
 
-          <h1 className="hero__title">
+          <h1 className="hero__title" id="home-hero-title">
             Món ngon <span className="text-highlight">giao nhanh</span>
             <br /> đến bạn
           </h1>
@@ -435,9 +435,9 @@ const HeroSection = ({ onSearch }) => {
             Khám phá nhà hàng uy tín, đặt món dễ dàng và nhận món nóng hổi tại nhà.
           </p>
 
-          <div className="hero__search-box">
+          <div className="hero__search-box" role="search" aria-label="Tìm nhà hàng theo địa chỉ giao hàng">
             <div className="hero__input-wrapper">
-              <span className="hero__icon-location">
+              <span className="hero__icon-location" aria-hidden="true">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -448,6 +448,7 @@ const HeroSection = ({ onSearch }) => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  focusable="false"
                 >
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
@@ -456,6 +457,8 @@ const HeroSection = ({ onSearch }) => {
               <input
                 type="text"
                 placeholder="Nhập địa chỉ giao hàng của bạn..."
+                aria-label="Địa chỉ giao hàng"
+                aria-describedby={suggestionMessage ? "hero-suggestion-message" : undefined}
                 value={address}
                 onChange={(e) => {
                   setAddress(e.target.value);
@@ -470,6 +473,7 @@ const HeroSection = ({ onSearch }) => {
               onClick={handleUseCurrentLocation}
               className="hero__btn-location"
               type="button"
+              aria-label="Dùng vị trí hiện tại để tìm nhà hàng"
             >
               <LocateFixed className="hero__btn-icon" aria-hidden="true" />
               Vị trí hiện tại
@@ -483,44 +487,45 @@ const HeroSection = ({ onSearch }) => {
             (isSuggesting ||
               addressSuggestions.length > 0 ||
               suggestionMessage) && (
-              <div className="hero__suggestions">
+              <div className="hero__suggestions" aria-label="Gợi ý địa chỉ giao hàng">
                 {addressSuggestions.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     className="hero__suggestion-item"
                     onClick={() => handlePickSuggestion(item)}
+                    aria-label={`Chọn địa chỉ ${item.label}`}
                   >
                     {item.label}
                   </button>
                 ))}
                 {isSuggesting && (
-                  <div className="hero__suggestion-state">
+                  <div className="hero__suggestion-state" role="status" aria-live="polite">
                     Đang gợi ý địa chỉ...
                   </div>
                 )}
                 {!isSuggesting && suggestionMessage && (
-                  <div className="hero__suggestion-state">
+                  <div className="hero__suggestion-state" id="hero-suggestion-message" role="status" aria-live="polite">
                     {suggestionMessage}
                   </div>
                 )}
               </div>
             )}
 
-          <div className="hero__stats">
-            <div className="hero__stat-item">
+          <div className="hero__stats" aria-label="Số liệu nổi bật của Cohan">
+            <div className="hero__stat-item" aria-label="Hơn 500 đối tác">
               <Users className="stat-icon" aria-hidden="true" />
               <strong className="stat-num">500+</strong>
               <span className="stat-label">Đối tác</span>
             </div>
-            <div className="hero__stat-divider"></div>
-            <div className="hero__stat-item">
+            <div className="hero__stat-divider" aria-hidden="true"></div>
+            <div className="hero__stat-item" aria-label="Hơn 10 nghìn món ăn">
               <Utensils className="stat-icon" aria-hidden="true" />
               <strong className="stat-num">10k+</strong>
               <span className="stat-label">Món ăn</span>
             </div>
-            <div className="hero__stat-divider"></div>
-            <div className="hero__stat-item">
+            <div className="hero__stat-divider" aria-hidden="true"></div>
+            <div className="hero__stat-item" aria-label="Hơn 50 nghìn khách hàng">
               <Smile className="stat-icon" aria-hidden="true" />
               <strong className="stat-num">50k+</strong>
               <span className="stat-label">Khách hàng</span>
@@ -529,8 +534,8 @@ const HeroSection = ({ onSearch }) => {
         </div>
 
         {/* --- RIGHT IMAGE AREA (UPDATED SLIDER) --- */}
-        <div className="hero__image-area">
-          <div className="hero__image-bg"></div>
+        <div className="hero__image-area" aria-label="Ảnh món ăn nổi bật">
+          <div className="hero__image-bg" aria-hidden="true"></div>
 
           {/* Slider Wrapper */}
           <div
@@ -538,12 +543,14 @@ const HeroSection = ({ onSearch }) => {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            aria-live="polite"
           >
             {HERO_IMAGES.map((img, index) => (
               <img
                 key={img.id}
                 src={img.src}
-                alt={img.alt}
+                alt={index === currentSlide ? img.alt : ""}
+                aria-hidden={index !== currentSlide}
                 className={`hero__main-img ${
                   index === currentSlide ? "active" : ""
                 }`}
@@ -552,10 +559,10 @@ const HeroSection = ({ onSearch }) => {
           </div>
 
           {/* Navigation Buttons */}
-          <button className="hero__slider-btn prev" onClick={handlePrev}>
+          <button className="hero__slider-btn prev" type="button" onClick={handlePrev} aria-label="Xem ảnh món trước">
             ‹
           </button>
-          <button className="hero__slider-btn next" onClick={handleNext}>
+          <button className="hero__slider-btn next" type="button" onClick={handleNext} aria-label="Xem ảnh món tiếp theo">
             ›
           </button>
 
@@ -588,8 +595,8 @@ const HeroSection = ({ onSearch }) => {
       </div>
 
       {isLocationPickerOpen && selectedLocation && (
-        <div className="hero__modal-backdrop" role="dialog" aria-modal="true">
-          <div className="hero__modal-card">
+        <div className="hero__modal-backdrop" role="presentation">
+          <div className="hero__modal-card" role="dialog" aria-modal="true" aria-label="Chọn vị trí giao hàng trên bản đồ">
             <LocationPickerMap
               lat={selectedLocation.lat}
               lng={selectedLocation.lng}
@@ -606,12 +613,13 @@ const HeroSection = ({ onSearch }) => {
         </div>
       )}
 
-      <div className="hero__wave-container">
+      <div className="hero__wave-container" aria-hidden="true">
         <svg
           viewBox="0 0 1440 320"
           xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="none"
           className="hero__wave-svg"
+          focusable="false"
         >
           <path
             fill="#ffffff"
