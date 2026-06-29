@@ -8,8 +8,8 @@ const ForbiddenPage = () => {
   const { goBack } = useRouter();
 
   return (
-    <main className="forbidden-page-product">
-      <section className="forbidden-page-product__card">
+    <main className="forbidden-page-product" aria-labelledby="forbidden-title">
+      <section className="forbidden-page-product__card" aria-labelledby="forbidden-title" role="alert">
         <div className="forbidden-page-product__icon" aria-hidden="true">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -25,14 +25,17 @@ const ForbiddenPage = () => {
             />
           </svg>
         </div>
-        <h1 className="forbidden-page-product__title">Truy cập bị từ chối</h1>
+        <h1 className="forbidden-page-product__title" id="forbidden-title">Truy cập bị từ chối</h1>
         <p className="forbidden-page-product__text">
-          Tài khoản hiện không có quyền mở trang này. Bạn có thể quay lại trang trước hoặc liên hệ quản trị viên nếu cần hỗ trợ.
+          Tài khoản hiện không có quyền mở trang này. Bạn có thể quay lại trang trước hoặc dùng tài khoản phù hợp hơn.
         </p>
         <div className="forbidden-page-product__actions">
-          <button onClick={goBack} className="forbidden-page-product__button">
+          <button type="button" onClick={goBack} className="forbidden-page-product__button">
             Quay lại trang trước
           </button>
+          <a href="/login" className="forbidden-page-product__link">
+            Đăng nhập tài khoản khác
+          </a>
         </div>
       </section>
     </main>
