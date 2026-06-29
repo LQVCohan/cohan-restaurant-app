@@ -10,6 +10,7 @@ import "./components/LoginPolish.scss";
 import "./components/LoginAudiencePolish.scss";
 import "./components/Customer/ForYou/ForYouTypographyPolish.scss";
 import "./components/Customer/OrdersManagement/OrdersPagePolish.scss";
+import "./components/Customer/OrdersManagement/OrdersPageA11yPolish.scss";
 import "./components/Customer/RestaurantMenu/styles/MenuDetailViewPolish.scss";
 import "./components/Customer/Food/FoodDetailAccessibilityPolish.scss";
 import "./styles/Homepage/RestaurantGridServiceBadges.scss";
