@@ -129,8 +129,22 @@ const fulfillJson = (route, data) =>
     body: JSON.stringify(data),
   });
 
+const makeShift = (overrides = {}) => ({
+  id: "shift-p1-created",
+  employeeId: STAFF_USER.id,
+  employeeName: STAFF_USER.fullName,
+  restaurantId: TEST_RESTAURANT.id,
+  shiftType: "MORNING",
+  startTime: "2026-06-30T01:00:00.000Z",
+  endTime: "2026-06-30T09:00:00.000Z",
+  status: "scheduled",
+  notes: "",
+  ...overrides,
+});
+
 const installManagerScheduleMocks = async (page) => {
   const token = jwtLikeToken(MANAGER_USER.roleName);
+  let shifts = [];
 
   await page.addInitScript((accessToken) => {
     window.sessionStorage.setItem("foodhub_access_token", accessToken);
@@ -172,7 +186,7 @@ const installManagerScheduleMocks = async (page) => {
         data = { staffList: [STAFF_USER] };
         break;
       case "StaffShifts":
-        data = { staffShifts: [] };
+        data = { staffShifts: shifts };
         break;
       case "SchedulePublication":
         data = {
@@ -224,6 +238,27 @@ const installManagerScheduleMocks = async (page) => {
       case "ManagerShiftAttendances":
         data = { managerShiftAttendances: [] };
         break;
+      case "CreateStaffShifts": {
+        const input = payload?.variables?.inputs?.[0] || {};
+        const created = makeShift({
+          employeeId: input.employeeId || STAFF_USER.id,
+          restaurantId: input.restaurantId || TEST_RESTAURANT.id,
+          shiftType: input.shiftType || "MORNING",
+          startTime: input.startTime || "2026-06-30T01:00:00.000Z",
+          endTime: input.endTime || "2026-06-30T09:00:00.000Z",
+          notes: input.notes || "",
+        });
+        shifts = [created];
+        data = {
+          createStaffShifts: {
+            successCount: 1,
+            failedCount: 0,
+            shifts: [created],
+            errors: [],
+          },
+        };
+        break;
+      }
       case "AttendanceCorrectionRequests":
         data = { attendanceCorrectionRequests: [] };
         break;
@@ -277,5 +312,20 @@ test.describe("P1 manager schedule", () => {
     await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
     await expect(page.locator(".submit-error")).toContainText("Cần chọn ít nhất một nhân viên cho ca làm.");
     backendGuard.assertNoBackendErrors("manager schedule empty create shift validation");
+  });
+
+  test("manager creates a shift and sees it after refetch without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerScheduleMocks(page);
+    await openManagerSchedulePage(page);
+
+    await page.getByRole("button", { name: /Tạo ca/ }).click();
+    await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+    await page.locator(".staff-item", { hasText: STAFF_USER.fullName }).click();
+
+    backendGuard.clear();
+    await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
+    await expect(page.getByRole("status")).toContainText("Đã thêm 1 nhân viên vào ca.");
+    await expect(page.locator(".shift-card", { hasText: "1 nhân sự" })).toBeVisible();
+    backendGuard.assertNoBackendErrors("manager schedule create shift success");
   });
 });
