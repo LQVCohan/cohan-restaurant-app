@@ -145,6 +145,27 @@ const makeShift = (overrides = {}) => ({
 const installManagerScheduleMocks = async (page) => {
   const token = jwtLikeToken(MANAGER_USER.roleName);
   let shifts = [];
+  let publication = {
+    id: "schedule-publication-p1",
+    status: "draft",
+    effectiveStatus: "draft",
+    publishedAt: null,
+    publishedBy: null,
+    activatedAt: null,
+    lockedAt: null,
+    lockedBy: null,
+    lockReason: null,
+    closedAt: null,
+    closedBy: null,
+    closeReason: null,
+    reopenedAt: null,
+    reopenedBy: null,
+    reopenReason: null,
+    reopenCount: 0,
+    reminderSentAt: null,
+    lastChangedAt: null,
+    permissions: schedulePermissions,
+  };
 
   await page.addInitScript((accessToken) => {
     window.sessionStorage.setItem("foodhub_access_token", accessToken);
@@ -189,29 +210,7 @@ const installManagerScheduleMocks = async (page) => {
         data = { staffShifts: shifts };
         break;
       case "SchedulePublication":
-        data = {
-          schedulePublication: {
-            id: "schedule-publication-p1",
-            status: "draft",
-            effectiveStatus: "draft",
-            publishedAt: null,
-            publishedBy: null,
-            activatedAt: null,
-            lockedAt: null,
-            lockedBy: null,
-            lockReason: null,
-            closedAt: null,
-            closedBy: null,
-            closeReason: null,
-            reopenedAt: null,
-            reopenedBy: null,
-            reopenReason: null,
-            reopenCount: 0,
-            reminderSentAt: null,
-            lastChangedAt: null,
-            permissions: schedulePermissions,
-          },
-        };
+        data = { schedulePublication: publication };
         break;
       case "ScheduleAckSummary":
         data = {
@@ -265,6 +264,21 @@ const installManagerScheduleMocks = async (page) => {
         data = { createStaffShift: created };
         break;
       }
+      case "PublishSchedule":
+        publication = {
+          ...publication,
+          status: "published",
+          effectiveStatus: "published",
+          publishedAt: "2026-06-30T02:00:00.000Z",
+          publishedBy: MANAGER_USER.id,
+          lastChangedAt: "2026-06-30T02:00:00.000Z",
+          permissions: { ...schedulePermissions, canPublish: false, canReopen: true },
+        };
+        data = { publishSchedule: publication };
+        break;
+      case "ScheduleChangeLogs":
+        data = { scheduleChangeLogs: [] };
+        break;
       case "AttendanceCorrectionRequests":
         data = { attendanceCorrectionRequests: [] };
         break;
@@ -280,6 +294,14 @@ const openManagerSchedulePage = async (page) => {
   await page.goto("/manager#schedules");
   await expect(page.locator(".manager-layout")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lịch làm việc" })).toBeVisible();
+};
+
+const createOneShift = async (page) => {
+  await page.getByRole("button", { name: /Tạo ca/ }).click();
+  await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
+  await page.locator(".staff-item", { hasText: STAFF_USER.fullName }).click();
+  await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
+  await expect(page.getByRole("status")).toContainText("Đã tạo ca cho 1 nhân viên.");
 };
 
 test.describe("P1 manager schedule", () => {
@@ -324,14 +346,27 @@ test.describe("P1 manager schedule", () => {
     await installManagerScheduleMocks(page);
     await openManagerSchedulePage(page);
 
-    await page.getByRole("button", { name: /Tạo ca/ }).click();
-    await expect(page.getByText("Thêm Ca Làm Việc Mới")).toBeVisible();
-    await page.locator(".staff-item", { hasText: STAFF_USER.fullName }).click();
-
     backendGuard.clear();
-    await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
-    await expect(page.getByRole("status")).toContainText("Đã tạo ca cho 1 nhân viên.");
+    await createOneShift(page);
     await expect(page.locator(".shift-card", { hasText: "1 nhân sự" })).toBeVisible();
     backendGuard.assertNoBackendErrors("manager schedule create shift success");
+  });
+
+  test("manager publishes a created schedule without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerScheduleMocks(page);
+    await openManagerSchedulePage(page);
+    await createOneShift(page);
+
+    backendGuard.clear();
+    await page.locator(".btn-publish").click();
+
+    const dialog = page.getByRole("dialog", { name: "Xác nhận công bố lịch" });
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[type="checkbox"]').check();
+    await dialog.getByRole("button", { name: "Công bố lịch" }).click();
+
+    await expect(page.getByRole("status")).toContainText("Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.");
+    await expect(page.locator(".schedule-status-badge")).toContainText("Đã công bố");
+    backendGuard.assertNoBackendErrors("manager schedule publish");
   });
 });
