@@ -307,8 +307,15 @@ const installManagerScheduleMocks = async (page) => {
 };
 
 const openManagerSchedulePage = async (page) => {
-  await page.goto("/manager#schedules");
+  await page.goto("/manager#dashboard");
   await expect(page.locator(".manager-layout")).toBeVisible();
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new CustomEvent("manager:navigate", {
+        detail: { page: "schedules", source: "p1" },
+      }),
+    );
+  });
   await expect(page.getByRole("heading", { name: "Lịch làm việc" })).toBeVisible();
 };
 
