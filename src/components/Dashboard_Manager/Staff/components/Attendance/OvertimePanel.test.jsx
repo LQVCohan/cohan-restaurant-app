@@ -101,6 +101,19 @@ describe("OvertimePanel staff overtime requests", () => {
     });
   });
 
+  it("shows error feedback when rejecting request fails", async () => {
+    rejectOvertimeRequest.mockRejectedValueOnce(new Error("Không thể từ chối"));
+    renderPanel();
+
+    fireEvent.click(screen.getByTitle("Từ chối yêu cầu tăng ca"));
+
+    expect(rejectOvertimeRequest).toHaveBeenCalledWith({
+      requestId: "ot-request-1",
+      reason: "Quản lý từ chối yêu cầu tăng ca.",
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Không thể xử lý yêu cầu tăng ca.");
+  });
+
   it("completes approved request", () => {
     renderPanel([approvedRequest]);
 

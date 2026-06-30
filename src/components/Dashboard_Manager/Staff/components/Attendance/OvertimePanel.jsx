@@ -243,6 +243,7 @@ const buildDefaultDialog = (mode, record) => ({
 const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialog, setDialog] = useState(null);
+  const [requestActionFeedback, setRequestActionFeedback] = useState(null);
 
   const effectiveRestaurantId = useMemo(() => {
     const candidates = [
@@ -329,22 +330,46 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
   const openDialog = (mode, record) => setDialog(buildDefaultDialog(mode, record));
 
   const handleApproveRequest = async (request) => {
-    await approveOvertimeRequest({
-      requestId: request.id,
-      approvedOvertimeMinutes: Number(request.approvedOvertimeMinutes || request.plannedOvertimeMinutes || 0),
-      note: "Đã duyệt yêu cầu tăng ca.",
-    });
+    try {
+      await approveOvertimeRequest({
+        requestId: request.id,
+        approvedOvertimeMinutes: Number(request.approvedOvertimeMinutes || request.plannedOvertimeMinutes || 0),
+        note: "Đã duyệt yêu cầu tăng ca.",
+      });
+      setRequestActionFeedback({ type: "success", message: "Đã duyệt yêu cầu tăng ca." });
+    } catch (error) {
+      setRequestActionFeedback({
+        type: "error",
+        message: getOvertimeActionErrorMessage(error, "Không thể xử lý yêu cầu tăng ca."),
+      });
+    }
   };
 
   const handleRejectRequest = async (request) => {
-    await rejectOvertimeRequest({
-      requestId: request.id,
-      reason: "Quản lý từ chối yêu cầu tăng ca.",
-    });
+    try {
+      await rejectOvertimeRequest({
+        requestId: request.id,
+        reason: "Quản lý từ chối yêu cầu tăng ca.",
+      });
+      setRequestActionFeedback({ type: "success", message: "Đã từ chối yêu cầu tăng ca." });
+    } catch (error) {
+      setRequestActionFeedback({
+        type: "error",
+        message: getOvertimeActionErrorMessage(error, "Không thể xử lý yêu cầu tăng ca."),
+      });
+    }
   };
 
   const handleCompleteRequest = async (request) => {
-    await completeOvertimeRequest(request.id);
+    try {
+      await completeOvertimeRequest(request.id);
+      setRequestActionFeedback({ type: "success", message: "Đã hoàn tất yêu cầu tăng ca." });
+    } catch (error) {
+      setRequestActionFeedback({
+        type: "error",
+        message: getOvertimeActionErrorMessage(error, "Không thể xử lý yêu cầu tăng ca."),
+      });
+    }
   };
 
   const closeDialog = () => {
@@ -592,6 +617,21 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
         <div className="section-heading">
           <h3>Yêu cầu tăng ca nhân viên gửi</h3>
         </div>
+
+        {requestActionFeedback && (
+          <div
+            className={`empty-state ${requestActionFeedback.type}`}
+            role={requestActionFeedback.type === "error" ? "alert" : "status"}
+          >
+            {requestActionFeedback.message}
+          </div>
+        )}
+
+        {requestsLoading && !requestsError && (
+          <div className="empty-state" aria-live="polite">
+            Đang tải yêu cầu tăng ca...
+          </div>
+        )}
 
         {requestsError && (
           <div className="empty-state">
