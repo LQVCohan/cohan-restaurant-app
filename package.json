@@ -25,7 +25,7 @@
     "test:unit": "vitest run src/utils src/hooks src/context src/routes src/lib src/__tests__",
     "test:api": "npm --prefix cohan-restaurant-backend test",
     "test:component": "vitest run src/components",
-    "test:table-ar": "vitest run src/utils/arMobileTestReport.test.js src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx && playwright test tests/e2e/table-ar-mobile.spec.js",
+    "test:table-ar": "vitest run src/utils/arMobileTestReport.test.js src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx src/components/Dashboard_Manager/Table/ArTablePlacementModal.test.jsx && playwright test tests/e2e/table-ar-mobile.spec.js",
     "test:table-ar:unit": "vitest run src/utils/arMobileTestReport.test.js src/components/Dashboard_Manager/Table/Table3DActionBarV2.test.jsx src/components/Dashboard_Manager/Table/Table3DSimulatorModalV2.test.jsx src/components/Dashboard_Manager/Table/ArTablePlacementModal.test.jsx",
     "test:table-ar:e2e": "playwright test tests/e2e/table-ar-mobile.spec.js",
     "test:e2e": "playwright test tests/e2e",
