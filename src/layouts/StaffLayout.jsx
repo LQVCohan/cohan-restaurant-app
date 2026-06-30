@@ -256,21 +256,46 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   );
 };
 
-export default function StaffLayout({ children }) {
-  const { user } = useContext(AuthContext);
-  const restaurantId = resolveStaffRestaurantId(user);
-  if (IS_TEST_ENV) {
-    return <StaffLayoutShell>{children}</StaffLayoutShell>;
-  }
-  return <StaffLayoutWithQuery restaurantId={restaurantId}>{children}</StaffLayoutWithQuery>;
-}
-
-function StaffLayoutWithQuery({ children, restaurantId }) {
+const StaffLayoutWithRestaurantQuery = ({ children, restaurantId }) => {
   const { data } = useQuery(STAFF_RESTAURANT_BASIC, {
     variables: { id: restaurantId },
     skip: !restaurantId,
     fetchPolicy: "cache-first",
   });
 
-  return <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>{children}</StaffLayoutShell>;
+  return (
+    <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>
+      {children}
+    </StaffLayoutShell>
+  );
+};
+
+export default function StaffLayout({ children }) {
+  const { user } = useContext(AuthContext);
+  const restaurantId = resolveStaffRestaurantId(user);
+
+  if (!restaurantId || IS_TEST_ENV) {
+    return <StaffLayoutShell>{children}</StaffLayoutShell>;
+  }
+
+  return (
+    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
+      {children}
+    </StaffLayoutWithRestaurantQuery>
+  );
+}
+
+export default function StaffLayout({ children }) {
+  const { user } = useContext(AuthContext);
+  const restaurantId = resolveStaffRestaurantId(user);
+
+  if (!restaurantId || IS_TEST_ENV) {
+    return <StaffLayoutShell>{children}</StaffLayoutShell>;
+  }
+
+  return (
+    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
+      {children}
+    </StaffLayoutWithRestaurantQuery>
+  );
 }

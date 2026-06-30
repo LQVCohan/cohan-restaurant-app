@@ -109,7 +109,7 @@ describe("Login captcha config", () => {
   it("register submits without captcha token when disabled", async () => {
     renderLogin();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Đăng ký" })[0]);
+    fireEvent.click(screen.getByRole("tab", { name: "Đăng ký" }));
     const registerForm = getRegisterForm();
     fireEvent.change(within(registerForm).getByPlaceholderText("Họ và tên"), { target: { value: "Tester" } });
     fireEvent.change(within(registerForm).getByPlaceholderText("Email"), { target: { value: "tester@example.com" } });

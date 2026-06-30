@@ -19,6 +19,7 @@ const NAVIGATION_SECTIONS = [
     items: [
       { id: "orders", permissions: ["order.read"], icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
       { id: "menu", permissions: ["menu.read"], icon: "📋", label: "Thực đơn", page: "Thực đơn" },
+      { id: "modifiers", permissions: ["menu.read"], icon: "🧩", label: "Tuỳ chọn món", page: "Tuỳ chọn món" },
       { id: "combos", permissions: ["menu.read"], icon: "🍱", label: "Combo", page: "Combo" },
       { id: "inventory", permissions: ["inventory.read", "stock.read"], icon: "📦", label: "Kho hàng", page: "Kho hàng" },
       { id: "tables", permissions: ["table.read"], icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },

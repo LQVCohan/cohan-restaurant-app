@@ -6,13 +6,13 @@ import { formatCurrency } from "../../../utils/formatters";
 import "./ModifierModal.scss";
 
 /** ──────────────────────────────────────────────────────────────
- * GraphQL: lấy tất cả ModifierGroups của 1 nhà hàng
- * Ta sẽ lọc theo item.modifierGroupIds ở FE (vì schema chưa có query by IDs)
+ * GraphQL: lấy ModifierGroups áp dụng cho món hiện tại
+ * Backend trả cả nhóm GLOBAL và nhóm ITEMS gắn với menuItemId
  * ──────────────────────────────────────────────────────────────
  */
 const GET_MODIFIER_GROUPS = gql`
-  query ModifierGroups($restaurantId: ID!, $search: String) {
-    modifierGroups(filter: { restaurantId: $restaurantId, search: $search }) {
+  query ModifierGroups($restaurantId: ID!, $menuItemId: ID) {
+    modifierGroups(filter: { restaurantId: $restaurantId, menuItemId: $menuItemId }) {
       id
       name
       selectionType # "single" | "multiple"
@@ -32,30 +32,43 @@ const GET_MODIFIER_GROUPS = gql`
 `;
 
 const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
-  // item: { id, name, price (VND), modifierGroupIds: [ID!] }
+  // item: { id, dishId/menuItemId, name, price (VND), modifiers? }
   const [selected, setSelected] = useState({}); // { [groupId]: [optionId, ...] }
   const [totalPrice, setTotalPrice] = useState(0);
   const [validationError, setValidationError] = useState("");
 
-  // Query tất cả groups của nhà hàng => lọc theo item.modifierGroupIds
+  const menuItemId = item?.menuItemId || item?.dishId || item?.id;
+
   const { data, loading, error } = useQuery(GET_MODIFIER_GROUPS, {
-    variables: { restaurantId, search: null },
-    skip: !isOpen || !restaurantId,
+    variables: { restaurantId, menuItemId },
+    skip: !isOpen || !restaurantId || !menuItemId,
     fetchPolicy: "cache-first",
   });
 
-  const groupsForItem = useMemo(() => {
-    if (!data?.modifierGroups || !item?.modifierGroupIds?.length) return [];
-    const setIds = new Set(item.modifierGroupIds.map(String));
-    return data.modifierGroups.filter((g) => setIds.has(String(g.id)));
-  }, [data, item]);
+  const groupsForItem = useMemo(
+    () => (data?.modifierGroups || []).filter((group) => group.isActive !== false),
+    [data],
+  );
 
 /** Khởi tạo chọn mặc định mỗi khi mở modal / đổi item / dữ liệu groups sẵn sàng */
   useEffect(() => {
     if (!isOpen || !item || groupsForItem.length === 0) return;
 
     const init = {};
+    const existingByGroup = (item.modifiers || item.selectedModifiers || []).reduce((map, modifier) => {
+      if (!modifier?.groupId || !modifier?.optionId) return map;
+      const key = String(modifier.groupId);
+      map[key] = [...(map[key] || []), modifier.optionId];
+      return map;
+    }, {});
+
     groupsForItem.forEach((g) => {
+      const existing = existingByGroup[String(g.id)];
+      if (existing?.length) {
+        init[g.id] = g.selectionType === "single" ? [existing[0]] : existing;
+        return;
+      }
+
       const defaults = (g.options || [])
         .filter((o) => o.isDefault)
         .map((o) => o.id);
