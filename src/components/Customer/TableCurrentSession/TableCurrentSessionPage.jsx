@@ -230,6 +230,19 @@ const formatLastUpdated = (value) => {
   return value.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 };
 
+const TableSessionState = ({ title, message, role = "status" }) => (
+  <main className="customer-table-session-page" aria-labelledby="table-session-state-title">
+    <div
+      className="customer-table-session-page__container customer-table-session-page__container--state"
+      role={role}
+      aria-live={role === "alert" ? "assertive" : "polite"}
+    >
+      <h1 id="table-session-state-title">{title}</h1>
+      <p>{message}</p>
+    </div>
+  </main>
+);
+
 const TableCurrentSessionPage = () => {
   const { restaurantId, tableId } = useParams();
   const [searchParams] = useSearchParams();
@@ -447,58 +460,54 @@ const TableCurrentSessionPage = () => {
 
   if (!hasRouteParams || !hasTableAccessToken) {
     return (
-      <div className="customer-table-session-page">
-        <div className="customer-table-session-page__container customer-table-session-page__container--state">
-          <h1>Không tải được thông tin bàn</h1>
-          <p>{INVALID_TABLE_LINK_MESSAGE}</p>
-        </div>
-      </div>
+      <TableSessionState
+        title="Không tải được thông tin bàn"
+        message={INVALID_TABLE_LINK_MESSAGE}
+        role="alert"
+      />
     );
   }
 
   if (loading && !tableSessionData) {
     return (
-      <div className="customer-table-session-page">
-        <div className="customer-table-session-page__container customer-table-session-page__container--state">
-          <h1>Đang tải thông tin bàn...</h1>
-          <p>Vui lòng chờ trong giây lát.</p>
-        </div>
-      </div>
+      <TableSessionState
+        title="Đang tải thông tin bàn..."
+        message="Vui lòng chờ trong giây lát."
+      />
     );
   }
 
   if (error && !tableSessionData) {
     return (
-      <div className="customer-table-session-page">
-        <div className="customer-table-session-page__container customer-table-session-page__container--state">
-          <h1>Không tải được thông tin bàn</h1>
-          <p>{getPublicTableErrorText(error)}</p>
-        </div>
-      </div>
+      <TableSessionState
+        title="Không tải được thông tin bàn"
+        message={getPublicTableErrorText(error)}
+        role="alert"
+      />
     );
   }
 
   return (
-    <div className="customer-table-session-page">
+    <main className="customer-table-session-page" aria-labelledby="table-session-title">
       <div className="customer-table-session-page__container">
         <header className="customer-table-session-page__header">
           <div>
             <p className="customer-table-session-page__eyebrow">Thông tin bàn hiện tại</p>
-            <h1>
+            <h1 id="table-session-title">
               {tableSessionData?.tableCode
                 ? `Bàn ${tableSessionData.tableCode}`
                 : `Bàn ${tableId}`}
             </h1>
-            <p className="customer-table-session-page__live-note">
+            <p className="customer-table-session-page__live-note" role="status" aria-live="polite">
               Tự động cập nhật trạng thái món mỗi 12 giây. Cập nhật gần nhất: {formatLastUpdated(lastUpdatedAt)}.
             </p>
           </div>
           <div className="customer-table-session-page__header-actions">
-            <span className={`customer-table-session-page__live-pill ${isRefreshingTable ? "is-refreshing" : ""}`}>
+            <span className={`customer-table-session-page__live-pill ${isRefreshingTable ? "is-refreshing" : ""}`} role="status">
               {isRefreshingTable ? "Đang cập nhật" : "Live"}
             </span>
             {paymentRequested && (
-              <span className="customer-table-session-page__badge">
+              <span className="customer-table-session-page__badge" role="status">
                 Đã gọi thanh toán
               </span>
             )}
@@ -516,13 +525,15 @@ const TableCurrentSessionPage = () => {
         {feedback && (
           <div
             className={`customer-table-session-page__feedback customer-table-session-page__feedback--${feedback.type}`}
+            role={feedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
           >
             {feedback.text}
           </div>
         )}
 
         {error && tableSessionData && (
-          <div className="customer-table-session-page__feedback customer-table-session-page__feedback--warning" role="status">
+          <div className="customer-table-session-page__feedback customer-table-session-page__feedback--warning" role="status" aria-live="polite">
             Đang hiển thị dữ liệu gần nhất. {getPublicTableErrorText(error)}
           </div>
         )}
@@ -530,9 +541,9 @@ const TableCurrentSessionPage = () => {
         {activeCustomerRequests.length > 0 && (
           <section className="customer-table-session-page__request-card" aria-label="Yêu cầu đang xử lý">
             <strong>Yêu cầu đang xử lý</strong>
-            <div className="customer-table-session-page__request-list">
+            <div className="customer-table-session-page__request-list" role="list">
               {activeCustomerRequests.map((request) => (
-                <div className="customer-table-session-page__request-item" key={request.requestId || `${request.type}-${request.createdAt}`}>
+                <div className="customer-table-session-page__request-item" key={request.requestId || `${request.type}-${request.createdAt}`} role="listitem">
                   <span>{getRequestTypeLabel(request.type)}</span>
                   <p>{request.message || getRequestStatusLabel(request.status)}</p>
                   <em>{getRequestStatusLabel(request.status)}</em>
@@ -543,20 +554,20 @@ const TableCurrentSessionPage = () => {
         )}
 
         {batchOrders.length > 0 && (
-          <section className="customer-table-session-page__status-summary" aria-label="Tóm tắt trạng thái món">
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--total">
+          <section className="customer-table-session-page__status-summary" aria-label="Tóm tắt trạng thái món" role="list">
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--total" role="listitem">
               <span>Tổng món</span>
               <strong>{itemStatusStats.total}</strong>
             </div>
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--working">
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--working" role="listitem">
               <span>Đang xử lý</span>
               <strong>{itemStatusStats.working}</strong>
             </div>
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--ready">
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--ready" role="listitem">
               <span>Sẵn sàng</span>
               <strong>{itemStatusStats.ready}</strong>
             </div>
-            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--served">
+            <div className="customer-table-session-page__status-stat customer-table-session-page__status-stat--served" role="listitem">
               <span>Đã phục vụ</span>
               <strong>{itemStatusStats.served}</strong>
             </div>
@@ -564,7 +575,7 @@ const TableCurrentSessionPage = () => {
         )}
 
         {!batchOrders.length ? (
-          <div className="customer-table-session-page__empty">
+          <section className="customer-table-session-page__empty" role="status" aria-live="polite">
             <h2>Bàn hiện chưa có món đang phục vụ.</h2>
             <p>Khi có món mới được ghi nhận, danh sách sẽ hiện tại đây.</p>
             {tableSessionData?.session && (
@@ -577,10 +588,10 @@ const TableCurrentSessionPage = () => {
                 {callingStaff ? "Đang gọi nhân viên..." : activeStaffCallRequest ? "Đã gọi nhân viên" : "Gọi nhân viên"}
               </button>
             )}
-          </div>
+          </section>
         ) : (
           <div className="customer-table-session-page__body">
-            <section className="customer-table-session-page__batches">
+            <section className="customer-table-session-page__batches" aria-label="Các đợt món đang phục vụ">
               {batchOrders.map((order, index) => (
                 <article key={order.id} className="customer-table-session-page__batch-card">
                   <div className="customer-table-session-page__batch-header">
@@ -629,7 +640,7 @@ const TableCurrentSessionPage = () => {
               ))}
             </section>
 
-            <aside className="customer-table-session-page__summary-card">
+            <aside className="customer-table-session-page__summary-card" aria-label="Tạm tính và thao tác tại bàn">
               <div className="customer-table-session-page__summary-row customer-table-session-page__summary-row--muted">
                 <span>Đợt đang phục vụ</span>
                 <strong>{batchOrders.length}</strong>
@@ -667,7 +678,7 @@ const TableCurrentSessionPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 };
 
