@@ -216,6 +216,7 @@ export const PaymentQuery = {
     const session = await PaymentSession.findById(id);
     if (!session) return null;
     if (String(session.userId || "") !== String(ctx?.user?.id || "")) {
+      if (!session.restaurantId) throw new Error("Unauthorized");
       await requireRestaurantPermission(ctx, toObjectId(session.restaurantId), PERMISSIONS.PAYMENT_READ);
     }
     if (String(session.status || "").toLowerCase() === "pending" && session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()) {

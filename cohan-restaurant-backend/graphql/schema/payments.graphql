@@ -175,7 +175,7 @@ type PaymentTransaction {
 
 type PaymentSession {
   id: ID!
-  restaurantId: ID!
+  restaurantId: ID
   orderId: ID
   reservationId: ID
   userId: ID!
