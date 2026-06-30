@@ -1,6 +1,8 @@
 import { Notification, User } from "../../../models/index.js";
 
 const REVIEWER_TYPES = ["MANAGER", "ADMIN", "HR"];
+const STAFF_ATTENDANCE_REVIEW_SOURCES = new Set(["attendance_correction", "overtime_request"]);
+const STAFF_ATTENDANCE_REVIEW_URL = "/manager?staffPage=attendance#staff";
 const uniq = (arr = []) => [...new Set(arr.map(String).filter(Boolean))];
 
 let notificationIo = null;
@@ -11,6 +13,13 @@ export function setNotificationSocketServer(io) {
 
 function buildUniqueKey({ toUserId, type, sourceType, sourceId }) {
   return [String(toUserId), String(type), String(sourceType || ""), String(sourceId || "")].join(":");
+}
+
+function resolveReviewerActionUrl({ sourceType, actionUrl }) {
+  if (STAFF_ATTENDANCE_REVIEW_SOURCES.has(String(sourceType || ""))) {
+    return STAFF_ATTENDANCE_REVIEW_URL;
+  }
+  return actionUrl;
 }
 
 function emitNotificationCreated(notification) {
@@ -64,7 +73,8 @@ export async function createNotificationOnce({ toUserId, toRole = null, restaura
 
 export async function notifyReviewers({ restaurantId, type, payload, sourceType, sourceId, actionUrl }) {
   const ids = await reviewerIds(restaurantId);
-  return Promise.all(ids.map((id) => createNotificationOnce({ toUserId: id, restaurantId, type, payload: { ...payload, actionUrl }, sourceType, sourceId })));
+  const reviewerActionUrl = resolveReviewerActionUrl({ sourceType, actionUrl });
+  return Promise.all(ids.map((id) => createNotificationOnce({ toUserId: id, restaurantId, type, payload: { ...payload, actionUrl: reviewerActionUrl }, sourceType, sourceId })));
 }
 
 export async function notifyUser({ userId, restaurantId, type, payload, sourceType, sourceId, actionUrl }) {
