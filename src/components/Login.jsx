@@ -409,7 +409,7 @@ const LoginPage = () => {
 
             <label className="check-card check-card--terms"><input type="checkbox" checked={registerForm.terms} onChange={(e) => setRegisterForm({ ...registerForm, terms: e.target.checked })} /><span>Tôi đồng ý với chính sách & điều khoản</span></label>
             {renderCaptcha(recaptchaRegisterRef)}
-            <button type="submit" className="btn-primary" disabled={registerLoading || captchaConfigMissing}>{registerLoading ? "Đang tạo..." : "Đăng ký ngay"}</button>
+            <button type="submit" className="btn-primary" disabled={registerLoading || captchaConfigMissing}>{registerLoading ? "Đang tạo..." : "Đăng ký"}</button>
             <div className="social-container" aria-label="Đăng ký bằng mạng xã hội"><button type="button" className="social social-facebook" aria-label="Đăng ký bằng Facebook sắp ra mắt" disabled>f</button><button type="button" className="social social-google" aria-label="Đăng ký bằng Google sắp ra mắt" disabled>G</button></div>
           </form>
         </div>

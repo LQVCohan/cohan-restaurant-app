@@ -9,6 +9,7 @@ body:has(.camera-placement-shell) .modal-overlay {
   background:
     radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.18), transparent 30rem),
     rgba(21, 29, 32, 0.7) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(108%) !important;
   backdrop-filter: blur(10px) saturate(108%) !important;
 }
 
@@ -38,6 +39,7 @@ body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
   padding: 0.75rem 1rem !important;
   border-bottom: 1px solid rgba(222, 214, 203, 0.86) !important;
   background: rgba(255, 253, 249, 0.96) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 
@@ -256,6 +258,7 @@ body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
   background: rgba(21, 29, 32, 0.82);
   color: #fffdf9;
   text-align: center;
+  -webkit-backdrop-filter: blur(9px);
   backdrop-filter: blur(9px);
 }
 
@@ -302,6 +305,7 @@ body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
   touch-action: none !important;
   user-select: none !important;
   box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
 
@@ -342,6 +346,7 @@ body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
   font-weight: 760;
   text-overflow: ellipsis;
   white-space: nowrap;
+  -webkit-backdrop-filter: blur(7px);
   backdrop-filter: blur(7px);
 }
 
@@ -357,6 +362,7 @@ body:has(.camera-placement-shell) .modal-container.camera-placement-shell {
   color: rgba(255, 253, 249, 0.88) !important;
   font-size: 0.72rem !important;
   line-height: 1.35 !important;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 

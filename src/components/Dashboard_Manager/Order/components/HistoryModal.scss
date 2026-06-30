@@ -30,6 +30,7 @@ $status-blue-text: #1d4ed8; // Đã phục vụ
   justify-content: center;
   padding: 1rem;
   background-color: $hm-bg-overlay;
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   animation: hmFadeIn 0.2s ease-out;
 }

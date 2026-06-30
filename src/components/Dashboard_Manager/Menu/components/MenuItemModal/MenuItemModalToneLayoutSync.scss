@@ -139,6 +139,7 @@ $menu-modal-danger-soft: #fbefed;
     border-top: 1px solid rgba(128, 109, 83, 0.16) !important;
     background: rgba(255, 253, 249, 0.96) !important;
     box-shadow: 0 -14px 30px rgba(48, 40, 30, 0.05) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(122%);
     backdrop-filter: blur(12px) saturate(122%);
 
     &::before {
@@ -359,6 +360,7 @@ $menu-modal-danger-soft: #fbefed;
     padding: 16px 22px 12px !important;
     border-bottom: 1px solid rgba(128, 109, 83, 0.12) !important;
     background: linear-gradient(180deg, rgba(248, 246, 241, 0.99), rgba(248, 246, 241, 0.88)) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(122%);
     backdrop-filter: blur(10px) saturate(122%);
 
     .col-title {

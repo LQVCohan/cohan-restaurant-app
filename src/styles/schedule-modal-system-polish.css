@@ -12,6 +12,7 @@
 .manager-page-shell--schedules .publish-confirm-backdrop,
 .manager-page-shell--schedules .schedule-publish-modal-overlay {
   background: var(--schedule-modal-backdrop) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.04) !important;
   backdrop-filter: blur(8px) saturate(1.04) !important;
 }
 

@@ -1,6 +1,7 @@
 /* Product-ready polish for customer table booking modal. Logic remains unchanged. */
 .bkm-backdrop {
   background: rgba(30, 25, 21, 0.5) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.08) !important;
   backdrop-filter: blur(14px) saturate(1.08) !important;
   z-index: 1400 !important;
 }
@@ -306,6 +307,7 @@
   padding: 16px 22px !important;
   border-top: 1px solid rgba(92, 64, 51, 0.1) !important;
   background: rgba(255, 255, 255, 0.94) !important;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 

@@ -466,6 +466,7 @@ $il-radius: 14px;
   justify-content: center;
   padding: 18px;
   background: rgba(36, 48, 63, 0.42);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 

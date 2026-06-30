@@ -80,6 +80,7 @@ $dcm-danger: #b54747;
     border-radius: 20px !important;
     background: $dcm-panel !important;
     box-shadow: 0 12px 28px rgba(48, 40, 30, 0.07) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(122%);
     backdrop-filter: blur(12px) saturate(122%);
 
     .dc-search {
@@ -386,6 +387,7 @@ $dcm-danger: #b54747;
     place-items: center !important;
     padding: 24px !important;
     background: rgba(36, 48, 63, 0.34) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
     backdrop-filter: blur(6px) !important;
   }
 

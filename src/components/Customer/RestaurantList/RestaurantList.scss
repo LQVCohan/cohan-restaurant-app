@@ -75,6 +75,7 @@ $radius: 24px;
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.72);
     box-shadow: 0 16px 42px rgba(82, 47, 26, 0.08);
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
 
     .tags-label {
@@ -143,6 +144,7 @@ $radius: 24px;
   top: 104px;
   max-height: calc(100vh - 128px);
   overflow-y: auto;
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 
   &::-webkit-scrollbar {
@@ -238,6 +240,7 @@ $radius: 24px;
   border-radius: 24px;
   border: 1px solid $border;
   box-shadow: $shadow-card;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 
   @media (max-width: 768px) {
@@ -361,6 +364,7 @@ $radius: 24px;
     height: 40px;
     border: 1px solid rgba(255, 255, 255, 0.56);
     box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
 
@@ -492,6 +496,7 @@ $radius: 24px;
   border: 1px solid $border;
   box-shadow: $shadow-card;
   color: $text-sub;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 
   &.loading .loading-spinner {

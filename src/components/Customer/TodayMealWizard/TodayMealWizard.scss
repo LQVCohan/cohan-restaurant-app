@@ -29,6 +29,7 @@
   box-shadow: var(--meal-shadow), inset 0 1px rgba(255, 255, 255, 0.92);
   color: var(--meal-ink);
   overflow: hidden;
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   transform-origin: left bottom;
   animation: mealWizardEnter 0.48s cubic-bezier(0.2, 0.9, 0.2, 1.12) both;

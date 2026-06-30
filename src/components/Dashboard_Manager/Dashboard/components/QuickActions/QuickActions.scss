@@ -286,6 +286,7 @@ $color-themes: (
     width: 100vw;
     height: 100vh;
     background: rgba(15, 23, 42, 0.4); // Dark blue overlay
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     z-index: 9999; // Luôn trên cùng
     display: flex;

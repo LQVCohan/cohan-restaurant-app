@@ -41,6 +41,7 @@ $cm-focus: 0 0 0 4px rgba(31, 106, 96, 0.16);
       linear-gradient(rgba(36, 50, 59, 0.024) 1px, transparent 1px),
       linear-gradient(90deg, rgba(36, 50, 59, 0.024) 1px, transparent 1px);
     background-size: 30px 30px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 86%);
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 86%);
   }
 
@@ -73,6 +74,7 @@ $cm-focus: 0 0 0 4px rgba(31, 106, 96, 0.16);
     linear-gradient(135deg, rgba(255, 253, 250, 0.96), rgba(247, 241, 232, 0.92)),
     radial-gradient(circle at top right, rgba(31, 106, 96, 0.08), transparent 34%);
   box-shadow: $cm-shadow-soft, inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 
   &.density-compact {
@@ -202,6 +204,7 @@ $cm-focus: 0 0 0 4px rgba(31, 106, 96, 0.16);
   border-radius: 20px;
   background: rgba(255, 253, 250, 0.92);
   box-shadow: 0 14px 34px rgba(54, 44, 29, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 
   .mcb-controls {

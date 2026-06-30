@@ -63,6 +63,7 @@
   background:
     radial-gradient(circle at top, rgba(249, 115, 22, 0.12), transparent 34%),
     rgba(15, 23, 42, 0.68);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;

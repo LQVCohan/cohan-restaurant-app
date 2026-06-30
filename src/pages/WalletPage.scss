@@ -27,6 +27,7 @@ $wallet-shadow-hover: 0 28px 68px rgba(91, 48, 17, 0.15);
   border-radius: 30px;
   background: $wallet-surface;
   box-shadow: $wallet-shadow;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 
@@ -51,6 +52,7 @@ $wallet-shadow-hover: 0 28px 68px rgba(91, 48, 17, 0.15);
     pointer-events: none;
     background-image: radial-gradient(rgba(255, 102, 0, 0.12) 1px, transparent 1px);
     background-size: 18px 18px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 56%, transparent);
     mask-image: linear-gradient(90deg, transparent, #000 56%, transparent);
     opacity: 0.45;
   }

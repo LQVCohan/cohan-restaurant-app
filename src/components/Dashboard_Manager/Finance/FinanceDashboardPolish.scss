@@ -44,6 +44,7 @@ $finance-shadow-soft: 0 12px 28px rgba(62, 47, 26, 0.065);
       linear-gradient(rgba(31, 45, 42, 0.035) 1px, transparent 1px),
       linear-gradient(90deg, rgba(31, 45, 42, 0.035) 1px, transparent 1px);
     background-size: 34px 34px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.62) 42%, transparent 92%);
     mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.62) 42%, transparent 92%);
   }
 

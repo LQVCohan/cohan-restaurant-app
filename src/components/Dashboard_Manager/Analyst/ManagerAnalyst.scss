@@ -71,6 +71,7 @@
       linear-gradient(rgba(77, 66, 52, 0.035) 1px, transparent 1px),
       linear-gradient(90deg, rgba(77, 66, 52, 0.028) 1px, transparent 1px);
     background-size: 54px 54px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.24) 76%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.24) 76%, transparent 100%);
   }
 
@@ -107,6 +108,7 @@
     border: 1px solid var(--ana-border);
     border-radius: var(--ana-radius-xl);
     box-shadow: var(--ana-shadow-lg);
+    -webkit-backdrop-filter: blur(14px) saturate(118%);
     backdrop-filter: blur(14px) saturate(118%);
 
     &::before {
@@ -321,6 +323,7 @@
     border: 1px solid var(--ana-border-soft);
     border-radius: 22px;
     box-shadow: var(--ana-shadow-md);
+    -webkit-backdrop-filter: blur(10px) saturate(118%);
     backdrop-filter: blur(10px) saturate(118%);
   }
 

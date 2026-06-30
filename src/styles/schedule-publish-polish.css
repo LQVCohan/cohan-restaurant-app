@@ -5,6 +5,7 @@
 
 .manager-page-shell--schedules .publish-confirm-backdrop {
   background: rgba(15, 23, 42, 0.58) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.05) !important;
   backdrop-filter: blur(8px) saturate(1.05) !important;
 }
 

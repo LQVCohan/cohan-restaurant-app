@@ -8,6 +8,7 @@ body:has(.table-3d-modal__header) .modal-overlay {
   background:
     radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.18), transparent 30rem),
     rgba(21, 29, 32, 0.66) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(110%) !important;
   backdrop-filter: blur(10px) saturate(110%) !important;
 }
 
@@ -51,6 +52,7 @@ body:has(.table-3d-modal__header) .table-3d-modal__header {
   padding: clamp(0.85rem, 1.25vw, 1.05rem) clamp(1rem, 1.45vw, 1.35rem) !important;
   border-bottom: 1px solid rgba(222, 214, 203, 0.86) !important;
   background: rgba(255, 253, 249, 0.96) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(115%) !important;
   backdrop-filter: blur(12px) saturate(115%) !important;
 }
 

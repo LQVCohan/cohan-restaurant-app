@@ -226,6 +226,7 @@
   gap: 0.9rem !important;
   align-items: center !important;
   background: rgba(255, 253, 250, 0.94) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
   backdrop-filter: blur(14px) !important;
   border: 1px solid rgba(216, 208, 197, 0.88) !important;
 }

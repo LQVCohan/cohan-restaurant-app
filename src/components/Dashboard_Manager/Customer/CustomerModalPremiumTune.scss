@@ -322,6 +322,7 @@
   padding: 0.56rem 1.05rem !important;
   border-top-color: rgba(222, 211, 196, 0.56) !important;
   background: rgba(255, 253, 248, 0.88) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
   backdrop-filter: blur(10px) !important;
 }
 

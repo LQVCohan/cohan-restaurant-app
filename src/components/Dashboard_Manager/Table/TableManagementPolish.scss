@@ -215,6 +215,7 @@
   background:
     radial-gradient(circle at 18% 10%, rgba(168, 133, 95, 0.2), transparent 30rem),
     rgba(36, 48, 63, 0.48) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.05) !important;
   backdrop-filter: blur(8px) saturate(1.05) !important;
 }
 
@@ -238,6 +239,7 @@
   padding: 16px 20px !important;
   border-bottom: 1px solid rgba(229, 222, 211, 0.9) !important;
   background: rgba(255, 253, 248, 0.92) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 
@@ -388,6 +390,7 @@
   padding: 13px 18px !important;
   border-top: 1px solid rgba(229, 222, 211, 0.9) !important;
   background: rgba(255, 253, 248, 0.94) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 

@@ -9,6 +9,7 @@ body:has(.ar-placement-modal) .modal-overlay {
   background:
     radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.18), transparent 28rem),
     rgba(21, 29, 32, 0.68) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(108%) !important;
   backdrop-filter: blur(10px) saturate(108%) !important;
 }
 
@@ -140,6 +141,7 @@ body:has(.ar-placement-modal) .modal-container > .modal-body::-webkit-scrollbar-
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 11px !important;
   background: rgba(21, 29, 32, 0.72) !important;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 

@@ -211,6 +211,7 @@
   border-color: rgba(222, 212, 196, 0.94) !important;
   background: rgba(255, 253, 248, 0.86) !important;
   box-shadow: var(--st-shadow) !important;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 

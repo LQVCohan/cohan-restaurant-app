@@ -198,6 +198,7 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
     width: 220px;
     padding: 16px 12px;
     background: $c-surface;
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-radius: 12px;
     border: 1px solid $c-border;

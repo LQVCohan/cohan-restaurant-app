@@ -243,6 +243,7 @@
   border-color: var(--mm-work-border) !important;
   background: rgba(255, 255, 255, 0.96) !important;
   box-shadow: var(--mm-work-shadow-soft);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 

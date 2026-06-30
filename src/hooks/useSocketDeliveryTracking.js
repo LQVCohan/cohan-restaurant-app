@@ -29,7 +29,6 @@ export default function useSocketDeliveryTracking(orderCode, handlers = {}) {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log(`[SOCKET.IO][TRACKING] Connected (${socket.id})`);
       socket.emit("joinOrder", orderCode);
     });
 
@@ -44,7 +43,6 @@ export default function useSocketDeliveryTracking(orderCode, handlers = {}) {
     // Nhận event realtime từ BE
     socket.on("orderCustomerEvents", (evt) => {
       if (!evt?.type) return;
-      console.log("📡 [SOCKET.IO][TRACKING] Event received:", evt);
 
       handlers.onAny?.(evt);
 
@@ -67,7 +65,6 @@ export default function useSocketDeliveryTracking(orderCode, handlers = {}) {
     });
 
     return () => {
-      console.log("[SOCKET.IO][TRACKING] Disconnecting...");
       socket.emit("leaveOrder", orderCode);
       socket.disconnect();
     };

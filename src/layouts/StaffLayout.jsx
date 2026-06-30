@@ -263,8 +263,27 @@ const StaffLayoutWithRestaurantQuery = ({ children, restaurantId }) => {
     fetchPolicy: "cache-first",
   });
 
-  return <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>{children}</StaffLayoutShell>;
+  return (
+    <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>
+      {children}
+    </StaffLayoutShell>
+  );
 };
+
+export default function StaffLayout({ children }) {
+  const { user } = useContext(AuthContext);
+  const restaurantId = resolveStaffRestaurantId(user);
+
+  if (!restaurantId || IS_TEST_ENV) {
+    return <StaffLayoutShell>{children}</StaffLayoutShell>;
+  }
+
+  return (
+    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
+      {children}
+    </StaffLayoutWithRestaurantQuery>
+  );
+}
 
 export default function StaffLayout({ children }) {
   const { user } = useContext(AuthContext);

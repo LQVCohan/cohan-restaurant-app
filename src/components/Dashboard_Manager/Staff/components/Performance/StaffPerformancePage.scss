@@ -975,6 +975,7 @@
     inset: 0;
     z-index: 1300;
     background: rgba(15, 23, 42, 0.58);
+    -webkit-backdrop-filter: blur(3px);
     backdrop-filter: blur(3px);
     display: flex;
     align-items: center;

@@ -41,6 +41,7 @@
   margin: 0 0 0.9rem !important;
   background: transparent !important;
   border-bottom: 0 !important;
+  -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
 
@@ -52,6 +53,7 @@
     linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(255, 247, 235, 0.86)),
     radial-gradient(circle at 100% 0%, rgba(217, 119, 6, 0.13), transparent 16rem);
   box-shadow: rm.$shadow-sm, rm.$inner-glow;
+  -webkit-backdrop-filter: blur(16px) saturate(1.06);
   backdrop-filter: blur(16px) saturate(1.06);
 }
 

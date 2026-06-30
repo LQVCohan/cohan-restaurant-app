@@ -66,6 +66,7 @@ $radius-md: 14px;
     border: 1px solid rgba($color-brand, 0.14);
     border-radius: $radius-xl;
     box-shadow: $shadow-card;
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
   }
 
@@ -309,6 +310,7 @@ $radius-md: 14px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(15, 23, 42, 0.1);
   box-shadow: $shadow-float;
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 
   .l-item {

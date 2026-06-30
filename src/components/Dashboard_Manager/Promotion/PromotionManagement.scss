@@ -55,6 +55,7 @@ $pm-shadow-hover: 0 20px 46px rgba(42, 36, 27, 0.12);
       linear-gradient(rgba(77, 66, 52, 0.035) 1px, transparent 1px),
       linear-gradient(90deg, rgba(77, 66, 52, 0.028) 1px, transparent 1px);
     background-size: 54px 54px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.24) 76%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.24) 76%, transparent 100%);
   }
 
@@ -112,6 +113,7 @@ $pm-shadow-hover: 0 20px 46px rgba(42, 36, 27, 0.12);
       radial-gradient(circle at 100% 0%, rgba(131, 91, 32, 0.1), transparent 16rem),
       rgba(255, 253, 249, 0.78);
     box-shadow: $pm-shadow;
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
     backdrop-filter: blur(10px) saturate(120%);
   }
 
@@ -278,6 +280,7 @@ $pm-shadow-hover: 0 20px 46px rgba(42, 36, 27, 0.12);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.82),
       0 14px 38px rgba(48, 40, 30, 0.085);
+    -webkit-backdrop-filter: blur(10px) saturate(122%);
     backdrop-filter: blur(10px) saturate(122%);
     animation: promoFadeIn 0.34s ease-out;
   }
@@ -496,6 +499,7 @@ $pm-shadow-hover: 0 20px 46px rgba(42, 36, 27, 0.12);
       top: 0;
       z-index: 1;
       background: rgba(248, 246, 241, 0.96);
+      -webkit-backdrop-filter: blur(8px);
       backdrop-filter: blur(8px);
     }
 
@@ -897,6 +901,7 @@ $pm-shadow-hover: 0 20px 46px rgba(42, 36, 27, 0.12);
     display: flex;
     justify-content: flex-end;
     background: rgba(31, 42, 47, 0.42);
+    -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
     animation: promoFadeIn 0.18s ease-out;
   }

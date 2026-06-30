@@ -52,7 +52,6 @@ export default function useSocketReservation(restaurantId, handlers = {}) {
     const getHandlers = () => handlersRef.current || {};
 
     socket.on("connect", () => {
-      console.log(`[SOCKET.IO] Reservation connected (${socket.id})`);
       socket.emit("joinRestaurant", restaurantId);
     });
 
@@ -67,7 +66,6 @@ export default function useSocketReservation(restaurantId, handlers = {}) {
     socket.on("reservationEvents", (evt) => {
       if (!evt?.type) return;
       const h = getHandlers();
-      console.log("📡 [SOCKET.IO] Reservation event received:", evt);
       broadcastReservationEvent(evt, "restaurant");
 
       h.onAny?.(evt);
@@ -110,7 +108,6 @@ export default function useSocketReservation(restaurantId, handlers = {}) {
     });
 
     return () => {
-      console.log("[SOCKET.IO] Reservation disconnecting...");
       socket.disconnect();
       socketRef.current = null;
     };

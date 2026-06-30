@@ -64,6 +64,7 @@ $radius-lg: 16px;
 
       .draft-control {
         background: rgba(255, 255, 255, 0.85);
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         padding: 4px 12px;
         border-radius: 50px;
@@ -127,6 +128,7 @@ $radius-lg: 16px;
   // Card & Form Styling
   .saas-card {
     background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border-radius: $radius-lg;
     box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
@@ -340,6 +342,7 @@ $radius-lg: 16px;
       bottom: 8px;
       right: 8px;
       background: rgba(255, 255, 255, 0.9);
+      -webkit-backdrop-filter: blur(4px);
       backdrop-filter: blur(4px);
       border-color: #8b5cf6; // Purple for AI
       color: #8b5cf6;

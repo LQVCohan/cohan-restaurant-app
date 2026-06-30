@@ -47,6 +47,7 @@ $white: #ffffff;
     pointer-events: none;
     background-image: radial-gradient(rgba(255, 102, 0, 0.12) 1px, transparent 1px);
     background-size: 18px 18px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 56%, transparent);
     mask-image: linear-gradient(90deg, transparent, #000 56%, transparent);
     opacity: 0.45;
   }
@@ -160,6 +161,7 @@ $white: #ffffff;
   border: 1px solid $line;
   background: $surface;
   box-shadow: $shadow;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 
@@ -385,6 +387,7 @@ $white: #ffffff;
   border-radius: 26px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 26px 70px rgba(33, 25, 21, 0.2);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   transform: translateY(18px) scale(0.96);
   opacity: 0;

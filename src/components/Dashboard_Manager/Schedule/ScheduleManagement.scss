@@ -1424,6 +1424,7 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
   inset: 0;
   z-index: 80;
   background: rgba(15, 23, 42, 0.45);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
@@ -1438,6 +1439,7 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
   padding-top: 88px;
   padding-bottom: 24px;
   background: rgba(15, 23, 42, 0.48);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 
   display: flex;
@@ -2346,6 +2348,7 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
 /* Toolbar: stronger action hierarchy */
 .schedule-container .schedule-toolbar {
   background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
 }

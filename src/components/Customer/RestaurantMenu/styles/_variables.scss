@@ -55,6 +55,7 @@ $z-modal: 1200;
   background: $surface-elevated;
   border: 1px solid rgba(255, 255, 255, 0.65);
   box-shadow: $shadow-sm, $inner-glow;
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
   backdrop-filter: blur(18px) saturate(1.08);
 }
 

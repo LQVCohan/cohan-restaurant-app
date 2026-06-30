@@ -447,6 +447,7 @@
     position: sticky;
     bottom: 0;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), #ffffff);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     z-index: 2;
   }

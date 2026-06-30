@@ -104,6 +104,7 @@ $radius: 18px;
     border-radius: 22px;
     padding: 24px;
     box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(226, 232, 240, 0.9);
     display: flex;
@@ -288,6 +289,7 @@ $radius: 18px;
 
 .rd-tabs {
   background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   position: sticky;

@@ -109,6 +109,7 @@
 .tm-container .tm-sidebar,
 .tm-container .tm-grid-area,
 .tm-container .management-page-header.density-compact {
+  -webkit-backdrop-filter: blur(14px) saturate(1.04);
   backdrop-filter: blur(14px) saturate(1.04);
 }
 

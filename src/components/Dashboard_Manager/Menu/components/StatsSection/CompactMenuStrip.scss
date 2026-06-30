@@ -310,6 +310,7 @@ $cms-radius: 12px;
           font-size: 9px;
           text-align: center;
           padding: 2px 0;
+          -webkit-backdrop-filter: blur(2px);
           backdrop-filter: blur(2px);
           font-weight: 600;
           white-space: nowrap;

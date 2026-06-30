@@ -993,6 +993,7 @@ $border: #e2e8f0;
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.55);
+    -webkit-backdrop-filter: blur(3px);
     backdrop-filter: blur(3px);
     z-index: 1100;
     display: flex;

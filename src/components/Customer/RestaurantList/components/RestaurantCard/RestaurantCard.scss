@@ -73,6 +73,7 @@ $shadow-hover: 0 10px 25px -5px rgba(255, 102, 0, 0.15);
       font-weight: 700;
       text-transform: uppercase;
       color: white;
+      -webkit-backdrop-filter: blur(4px);
       backdrop-filter: blur(4px);
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       user-select: none;

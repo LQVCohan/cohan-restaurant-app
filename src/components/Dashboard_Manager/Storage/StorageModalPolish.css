@@ -32,6 +32,7 @@
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 253, 248, 0.18), transparent 28rem),
     var(--storage-modal-backdrop) !important;
+  -webkit-backdrop-filter: blur(11px) saturate(112%) !important;
   backdrop-filter: blur(11px) saturate(112%) !important;
   padding: clamp(18px, 2.2vw, 34px) !important;
 }
@@ -209,6 +210,7 @@
   padding: 15px 22px !important;
   border-top: 1px solid var(--storage-modal-border-soft) !important;
   background: rgba(255, 253, 248, 0.92) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(112%) !important;
   backdrop-filter: blur(12px) saturate(112%) !important;
   box-shadow: 0 -10px 24px rgba(54, 48, 40, 0.045) !important;
 }

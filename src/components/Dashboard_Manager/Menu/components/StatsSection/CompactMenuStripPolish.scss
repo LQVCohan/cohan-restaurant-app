@@ -5,6 +5,7 @@
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 20px;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 
   &.is-collapsed {
@@ -225,6 +226,7 @@
       box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
       border-color: rgba(226, 232, 240, 0.9);
       background: rgba(255, 255, 255, 0.96);
+      -webkit-backdrop-filter: blur(8px);
       backdrop-filter: blur(8px);
 
       .cms-tool-btn {

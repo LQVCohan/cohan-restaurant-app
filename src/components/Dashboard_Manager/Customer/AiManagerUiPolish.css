@@ -268,6 +268,7 @@
   bottom: 0 !important;
   border-color: rgba(31, 106, 96, 0.16) !important;
   background: rgba(255, 253, 250, 0.96) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 
