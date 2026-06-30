@@ -5,6 +5,7 @@ import Modal from "../../../common/Modal"; // Đảm bảo đường dẫn đún
 import ToggleSwitch from "../../../common/ToggleSwitch/ToggleSwitch";
 import { getCustomerActionErrorMessage } from "@/utils/customerFlowErrorMessages";
 import { AuthContext } from "@/context/AuthContext";
+import { useNotification } from "@/hooks/useNotification";
 import "./SecuritySettings.scss";
 
 const CHANGE_PASSWORD = gql`
@@ -60,6 +61,7 @@ const SecuritySettings = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirmText: "" });
   const { logout } = useContext(AuthContext) || {};
+  const { showNotification } = useNotification();
   const [changePassword, { loading }] = useMutation(CHANGE_PASSWORD);
   const { data, loading: sessionsLoading, refetch } = useQuery(MY_LOGIN_SESSIONS, { variables: { limit: 20 } });
   const [revokeOther, { loading: revokingOther }] = useMutation(REVOKE_OTHER_SESSIONS);
@@ -69,36 +71,45 @@ const SecuritySettings = () => {
 
   const submitPassword = async () => {
     if (pwdForm.next !== pwdForm.confirm) {
-      alert("Mật khẩu xác nhận không khớp!");
+      showNotification("Mật khẩu xác nhận không khớp.", "warning");
       return;
     }
     try {
       await changePassword({
         variables: { oldPassword: pwdForm.current, newPassword: pwdForm.next },
       });
-      alert("Đổi mật khẩu thành công!");
+      showNotification("Đổi mật khẩu thành công.", "success");
       setChangePwdOpen(false);
       setPwdForm({ current: "", next: "", confirm: "" });
     } catch (err) {
-      alert(
+      showNotification(
         getCustomerActionErrorMessage(
           err,
           "Lỗi: " + (err?.message || "Không thể đổi mật khẩu."),
         ),
+        "error",
       );
     }
   };
 
   const handleRevokeSession = async (id) => {
-    await revokeSession({ variables: { id } });
-    alert("Đã đăng xuất phiên đã chọn.");
-    refetch();
+    try {
+      await revokeSession({ variables: { id } });
+      showNotification("Đã đăng xuất phiên đã chọn.", "success");
+      refetch();
+    } catch (err) {
+      showNotification(getCustomerActionErrorMessage(err, "Không thể đăng xuất phiên đã chọn."), "error");
+    }
   };
 
   const handleRevokeOther = async () => {
-    const result = await revokeOther();
-    alert(`Đã đăng xuất ${result.data?.revokeOtherMyLoginSessions || 0} phiên khác.`);
-    refetch();
+    try {
+      const result = await revokeOther();
+      showNotification(`Đã đăng xuất ${result.data?.revokeOtherMyLoginSessions || 0} phiên khác.`, "success");
+      refetch();
+    } catch (err) {
+      showNotification(getCustomerActionErrorMessage(err, "Không thể đăng xuất các phiên khác."), "error");
+    }
   };
 
   const submitDeleteAccount = async () => {
@@ -107,7 +118,7 @@ const SecuritySettings = () => {
       setDeleteOpen(false);
       logout?.();
     } catch (err) {
-      alert(getCustomerActionErrorMessage(err, "Không thể xóa tài khoản."));
+      showNotification(getCustomerActionErrorMessage(err, "Không thể xóa tài khoản."), "error");
     }
   };
 
@@ -128,6 +139,7 @@ const SecuritySettings = () => {
             </span>
           </div>
           <button
+            type="button"
             className="btn-outline"
             onClick={() => setChangePwdOpen(true)}
           >
@@ -153,7 +165,7 @@ const SecuritySettings = () => {
           <p>Bạn đã đăng nhập trên các thiết bị sau.</p>
         </div>
 
-        <button className="btn-outline session-revoke-other" onClick={handleRevokeOther} disabled={revokingOther}>
+        <button type="button" className="btn-outline session-revoke-other" onClick={handleRevokeOther} disabled={revokingOther}>
           {revokingOther ? "Đang xử lý..." : "Đăng xuất khỏi thiết bị khác"}
         </button>
 
@@ -178,6 +190,7 @@ const SecuritySettings = () => {
               </div>
               {!session.isCurrent && session.isActive && (
                 <button
+                  type="button"
                   className="btn-text-danger"
                   onClick={() => handleRevokeSession(session.id)}
                   disabled={revokingSession}
@@ -202,14 +215,14 @@ const SecuritySettings = () => {
               <div className="social-logo google">G</div>
               <span>Google</span>
             </div>
-            <button className="btn-text">Hủy liên kết</button>
+            <button type="button" className="btn-text">Hủy liên kết</button>
           </div>
           <div className="social-item">
             <div className="social-left">
               <div className="social-logo facebook">f</div>
               <span>Facebook</span>
             </div>
-            <button className="btn-link">Kết nối</button>
+            <button type="button" className="btn-link">Kết nối</button>
           </div>
         </div>
       </section>
@@ -226,7 +239,7 @@ const SecuritySettings = () => {
               Tài khoản sẽ bị vô hiệu hóa và giữ trong 30 ngày trước khi xử lý tiếp.
             </span>
           </div>
-          <button className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
+          <button type="button" className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
         </div>
       </section>
 
@@ -269,12 +282,14 @@ const SecuritySettings = () => {
           </div>
           <div className="form-actions">
             <button
+              type="button"
               className="btn-cancel"
               onClick={() => setChangePwdOpen(false)}
             >
               Hủy
             </button>
             <button
+              type="button"
               className="btn-confirm"
               onClick={submitPassword}
               disabled={loading}
@@ -308,8 +323,8 @@ const SecuritySettings = () => {
             />
           </div>
           <div className="form-actions">
-            <button className="btn-cancel" onClick={() => setDeleteOpen(false)}>Hủy</button>
-            <button className="btn-confirm btn-confirm-danger" onClick={submitDeleteAccount} disabled={deletingAccount}>
+            <button type="button" className="btn-cancel" onClick={() => setDeleteOpen(false)}>Hủy</button>
+            <button type="button" className="btn-confirm btn-confirm-danger" onClick={submitDeleteAccount} disabled={deletingAccount}>
               {deletingAccount ? "Đang xử lý..." : "Xóa tài khoản"}
             </button>
           </div>
