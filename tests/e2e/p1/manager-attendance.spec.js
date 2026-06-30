@@ -109,20 +109,9 @@ const fulfillJson = (route, data) =>
     body: JSON.stringify(data),
   });
 
-const installSpaShellFallback = async (page) => {
-  await page.route("**/manager**", async (route) => {
-    if (route.request().resourceType() !== "document") return route.fallback();
-    const requestedUrl = new URL(route.request().url());
-    const response = await route.fetch({ url: `${requestedUrl.origin}/` });
-    return route.fulfill({ response });
-  });
-};
-
 const installManagerAttendanceMocks = async (page) => {
   let records = [];
   const token = jwtLikeToken(MANAGER_USER.roleName);
-
-  await installSpaShellFallback(page);
 
   await page.addInitScript((accessToken) => {
     window.sessionStorage.setItem("foodhub_access_token", accessToken);
