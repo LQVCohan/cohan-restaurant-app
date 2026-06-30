@@ -276,6 +276,22 @@ const installManagerScheduleMocks = async (page) => {
         };
         data = { publishSchedule: publication };
         break;
+      case "ReopenSchedule": {
+        const input = payload?.variables?.input || {};
+        publication = {
+          ...publication,
+          status: "revision_draft",
+          effectiveStatus: "revision_draft",
+          reopenedAt: "2026-06-30T03:00:00.000Z",
+          reopenedBy: MANAGER_USER.id,
+          reopenReason: input.reason || "P1 mở lại lịch để chỉnh sửa",
+          reopenCount: Number(publication.reopenCount || 0) + 1,
+          lastChangedAt: "2026-06-30T03:00:00.000Z",
+          permissions: { ...schedulePermissions, canPublish: true, canReopen: false },
+        };
+        data = { reopenSchedule: publication };
+        break;
+      }
       case "ScheduleChangeLogs":
         data = { scheduleChangeLogs: [] };
         break;
@@ -302,6 +318,16 @@ const createOneShift = async (page) => {
   await page.locator(".staff-item", { hasText: STAFF_USER.fullName }).click();
   await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
   await expect(page.getByRole("status")).toContainText("Đã tạo ca cho 1 nhân viên.");
+};
+
+const publishCreatedSchedule = async (page) => {
+  await page.locator(".btn-publish").click();
+
+  const dialog = page.getByRole("dialog", { name: "Xác nhận công bố lịch" });
+  await expect(dialog).toBeVisible();
+  await dialog.locator('input[type="checkbox"]').check();
+  await dialog.getByRole("button", { name: "Công bố lịch" }).click();
+  await expect(page.getByRole("status")).toContainText("Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.");
 };
 
 test.describe("P1 manager schedule", () => {
@@ -358,15 +384,27 @@ test.describe("P1 manager schedule", () => {
     await createOneShift(page);
 
     backendGuard.clear();
-    await page.locator(".btn-publish").click();
-
-    const dialog = page.getByRole("dialog", { name: "Xác nhận công bố lịch" });
-    await expect(dialog).toBeVisible();
-    await dialog.locator('input[type="checkbox"]').check();
-    await dialog.getByRole("button", { name: "Công bố lịch" }).click();
-
-    await expect(page.getByRole("status")).toContainText("Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.");
+    await publishCreatedSchedule(page);
     await expect(page.locator(".schedule-status-badge")).toContainText("Đã công bố");
     backendGuard.assertNoBackendErrors("manager schedule publish");
+  });
+
+  test("manager reopens a published schedule without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerScheduleMocks(page);
+    await openManagerSchedulePage(page);
+    await createOneShift(page);
+    await publishCreatedSchedule(page);
+
+    backendGuard.clear();
+    await page.getByRole("button", { name: "Mở lại để chỉnh sửa" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Mở lại lịch đã công bố?" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByPlaceholder("Nhập lý do mở lại lịch để chỉnh sửa...").fill("P1 cần chỉnh lịch sau khi công bố");
+    await dialog.getByRole("button", { name: "Xác nhận mở lại" }).click();
+
+    await expect(page.getByRole("status")).toContainText("Đã mở lại lịch để chỉnh sửa. Các thay đổi sẽ được gửi khi công bố lại.");
+    await expect(page.locator(".btn-publish")).toContainText("Công bố lại");
+    backendGuard.assertNoBackendErrors("manager schedule reopen");
   });
 });
