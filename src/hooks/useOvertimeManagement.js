@@ -133,7 +133,7 @@ const OVERTIME_FIELDS = gql`
 
 const MUTATION_CREATE_OVERTIME = gql`
   ${OVERTIME_FIELDS}
-  mutation CreateOvertimeRequest($input: CreateOvertimeRequestInput!) {
+  mutation CreateOvertimeRequest($input: JSON) {
     createOvertimeRequest(input: $input) {
       ...OvertimeFields
     }
@@ -142,8 +142,8 @@ const MUTATION_CREATE_OVERTIME = gql`
 
 const MUTATION_CONFIRM_OVERTIME = gql`
   ${OVERTIME_FIELDS}
-  mutation ConfirmOvertimeRequest($input: ConfirmOvertimeRequestInput!) {
-    confirmOvertimeRequest(input: $input) {
+  mutation ConfirmOvertimeRequest($id: ID!) {
+    confirmOvertimeRequest(id: $id) {
       ...OvertimeFields
     }
   }
@@ -151,7 +151,7 @@ const MUTATION_CONFIRM_OVERTIME = gql`
 
 const MUTATION_APPROVE_OVERTIME = gql`
   ${OVERTIME_FIELDS}
-  mutation ApproveOvertimeRequest($input: ApproveOvertimeRequestInput!) {
+  mutation ApproveOvertimeRequest($input: JSON) {
     approveOvertimeRequest(input: $input) {
       ...OvertimeFields
     }
@@ -160,7 +160,7 @@ const MUTATION_APPROVE_OVERTIME = gql`
 
 const MUTATION_REJECT_OVERTIME = gql`
   ${OVERTIME_FIELDS}
-  mutation RejectOvertimeRequest($input: RejectOvertimeRequestInput!) {
+  mutation RejectOvertimeRequest($input: JSON) {
     rejectOvertimeRequest(input: $input) {
       ...OvertimeFields
     }
@@ -169,8 +169,8 @@ const MUTATION_REJECT_OVERTIME = gql`
 
 const MUTATION_CANCEL_OVERTIME = gql`
   ${OVERTIME_FIELDS}
-  mutation CancelOvertimeRequest($input: CancelOvertimeRequestInput!) {
-    cancelOvertimeRequest(input: $input) {
+  mutation CancelOvertimeRequest($id: ID!) {
+    cancelOvertimeRequest(id: $id) {
       ...OvertimeFields
     }
   }
@@ -178,8 +178,8 @@ const MUTATION_CANCEL_OVERTIME = gql`
 
 const MUTATION_COMPLETE_OVERTIME = gql`
   ${OVERTIME_FIELDS}
-  mutation CompleteOvertimeRequest($input: CompleteOvertimeRequestInput!) {
-    completeOvertimeRequest(input: $input) {
+  mutation CompleteOvertimeRequest($id: ID!) {
+    completeOvertimeRequest(id: $id) {
       ...OvertimeFields
     }
   }
@@ -213,6 +213,16 @@ export const buildOvertimeFilter = ({
     endDate || (selectedDate ? toOvertimeIsoEndOfDay(selectedDate) : undefined),
   search: search?.trim() || undefined,
 });
+
+const normalizeRequestIdInput = (value) => {
+  if (!value || typeof value !== "object") return value;
+  return value.id || value.requestId || value.input?.requestId || value;
+};
+
+const normalizeOvertimeReviewInput = (value) => {
+  if (!value || typeof value !== "object") return value;
+  return value.input || value;
+};
 
 export default function useOvertimeManagement({
   selectedDate,
@@ -260,35 +270,71 @@ export default function useOvertimeManagement({
     },
   };
 
-  const [createOvertimeRequest, createState] = useMutation(
+  const [runCreateOvertimeRequest, createState] = useMutation(
     MUTATION_CREATE_OVERTIME,
     refetchAfter,
   );
 
-  const [confirmOvertimeRequest, confirmState] = useMutation(
+  const [runConfirmOvertimeRequest, confirmState] = useMutation(
     MUTATION_CONFIRM_OVERTIME,
     refetchAfter,
   );
 
-  const [approveOvertimeRequest, approveState] = useMutation(
+  const [runApproveOvertimeRequest, approveState] = useMutation(
     MUTATION_APPROVE_OVERTIME,
     refetchAfter,
   );
 
-  const [rejectOvertimeRequest, rejectState] = useMutation(
+  const [runRejectOvertimeRequest, rejectState] = useMutation(
     MUTATION_REJECT_OVERTIME,
     refetchAfter,
   );
 
-  const [cancelOvertimeRequest, cancelState] = useMutation(
+  const [runCancelOvertimeRequest, cancelState] = useMutation(
     MUTATION_CANCEL_OVERTIME,
     refetchAfter,
   );
 
-  const [completeOvertimeRequest, completeState] = useMutation(
+  const [runCompleteOvertimeRequest, completeState] = useMutation(
     MUTATION_COMPLETE_OVERTIME,
     refetchAfter,
   );
+
+  const createOvertimeRequest = (options) =>
+    runCreateOvertimeRequest({
+      ...options,
+      variables: { input: normalizeOvertimeReviewInput(options?.variables || options) },
+    });
+
+  const approveOvertimeRequest = (options) =>
+    runApproveOvertimeRequest({
+      ...options,
+      variables: { input: normalizeOvertimeReviewInput(options?.variables || options) },
+    });
+
+  const rejectOvertimeRequest = (options) =>
+    runRejectOvertimeRequest({
+      ...options,
+      variables: { input: normalizeOvertimeReviewInput(options?.variables || options) },
+    });
+
+  const confirmOvertimeRequest = (options) =>
+    runConfirmOvertimeRequest({
+      ...options,
+      variables: { id: normalizeRequestIdInput(options?.variables || options) },
+    });
+
+  const cancelOvertimeRequest = (options) =>
+    runCancelOvertimeRequest({
+      ...options,
+      variables: { id: normalizeRequestIdInput(options?.variables || options) },
+    });
+
+  const completeOvertimeRequest = (options) =>
+    runCompleteOvertimeRequest({
+      ...options,
+      variables: { id: normalizeRequestIdInput(options?.variables || options) },
+    });
 
   const overtimeRequests = useMemo(
     () => data?.overtimeRequests || [],
