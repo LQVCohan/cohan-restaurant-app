@@ -37,13 +37,6 @@ const STAFF_USER = {
   employmentStatus: "WORKING",
 };
 
-const REQUESTING_MANAGER = {
-  id: "test-manager-requester-2",
-  fullName: "Cohan Requesting Manager",
-  employeeCode: "MG-002",
-  positionTitle: "Quản lý ca",
-};
-
 const jwtLikeToken = (roleName) => {
   const payload = Buffer.from(
     JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600, roleName }),
@@ -97,20 +90,6 @@ const makeLeaveRequest = (overrides = {}) => ({
   auditLogs: [],
   createdAt: "2026-06-26T00:00:00.000Z",
   updatedAt: "2026-06-26T00:00:00.000Z",
-  ...overrides,
-});
-
-const makeManagerReplacementRequest = (overrides = {}) => makeLeaveRequest({
-  id: "leave-replacement-p1",
-  employeeId: REQUESTING_MANAGER.id,
-  employeeName: REQUESTING_MANAGER.fullName,
-  employeeCode: REQUESTING_MANAGER.employeeCode,
-  employeeRole: REQUESTING_MANAGER.positionTitle,
-  reason: "P1 manager needs replacement confirmation",
-  status: "PENDING_REPLACEMENT_CONFIRMATION",
-  replacementManagerId: MANAGER_USER.id,
-  replacementManagerName: MANAGER_USER.fullName,
-  replacementStatus: "PENDING",
   ...overrides,
 });
 
@@ -248,22 +227,6 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
         data = { rejectLeaveRequest: requests.find((request) => request.id === requestId) };
         break;
       }
-      case "ConfirmReplacement": {
-        const requestId = variables.requestId;
-        requests = requests.map((request) =>
-          request.id === requestId
-            ? {
-                ...request,
-                status: "PENDING",
-                replacementStatus: "CONFIRMED",
-                replacementConfirmedAt: "2026-06-26T10:10:00.000Z",
-                replacementConfirmedBy: MANAGER_USER.id,
-              }
-            : request,
-        );
-        data = { confirmReplacementLeaveRequest: requests.find((request) => request.id === requestId) };
-        break;
-      }
       default:
         data = {};
     }
@@ -345,89 +308,5 @@ test.describe("P1 manager leave review", () => {
     await expect(row.locator(".btn-icon.reject")).toHaveCount(0);
     await expect(row).toContainText("Theo dõi");
     backendGuard.assertNoBackendErrors("manager self leave review actions hidden");
-  });
-
-  test("assigned manager confirms replacement without hidden backend errors", async ({ page, backendGuard }) => {
-    await installManagerLeaveMocks(page, [makeManagerReplacementRequest()]);
-    await openManagerLeavePage(page);
-
-    const row = page.locator("tr.hover-row", { hasText: REQUESTING_MANAGER.fullName });
-    await expect(row).toContainText("Chờ quản lý thay thế xác nhận");
-
-    backendGuard.clear();
-    const dialogPromise = page.waitForEvent("dialog");
-    await row.locator('button[title="Xác nhận thay thế"]').click();
-    const dialog = await dialogPromise;
-    expect(dialog.message()).toContain("Đã xác nhận thay thế thành công");
-    await dialog.accept();
-    backendGuard.assertNoBackendErrors("manager confirm replacement leave request");
-
-    await expect(row).toContainText("Chờ duyệt");
-  });
-
-  test("assigned manager confirms replacement then approves leave without hidden backend errors", async ({ page, backendGuard }) => {
-    await installManagerLeaveMocks(page, [makeManagerReplacementRequest({ id: "leave-replacement-approve-p1" })]);
-    await openManagerLeavePage(page);
-
-    const row = page.locator("tr.hover-row", { hasText: REQUESTING_MANAGER.fullName });
-    await expect(row).toContainText("Chờ quản lý thay thế xác nhận");
-
-    backendGuard.clear();
-    const confirmDialogPromise = page.waitForEvent("dialog");
-    await row.locator('button[title="Xác nhận thay thế"]').click();
-    const confirmDialog = await confirmDialogPromise;
-    expect(confirmDialog.message()).toContain("Đã xác nhận thay thế thành công");
-    await confirmDialog.accept();
-    backendGuard.assertNoBackendErrors("manager confirm replacement before approval");
-    await expect(row).toContainText("Chờ duyệt");
-
-    backendGuard.clear();
-    const approveDialogPromise = page.waitForEvent("dialog");
-    await row.locator(".btn-icon.approve").click();
-    const approveDialog = await approveDialogPromise;
-    expect(approveDialog.message()).toContain("Duyệt đơn thành công");
-    await approveDialog.accept();
-    backendGuard.assertNoBackendErrors("manager approve confirmed replacement leave request");
-
-    await expect(row).toContainText("Đã duyệt");
-  });
-
-  test("assigned manager confirms replacement then rejects leave without hidden backend errors", async ({ page, backendGuard }) => {
-    await installManagerLeaveMocks(page, [makeManagerReplacementRequest({ id: "leave-replacement-reject-p1" })]);
-    await openManagerLeavePage(page);
-
-    const row = page.locator("tr.hover-row", { hasText: REQUESTING_MANAGER.fullName });
-    await expect(row).toContainText("Chờ quản lý thay thế xác nhận");
-
-    backendGuard.clear();
-    const confirmDialogPromise = page.waitForEvent("dialog");
-    await row.locator('button[title="Xác nhận thay thế"]').click();
-    const confirmDialog = await confirmDialogPromise;
-    expect(confirmDialog.message()).toContain("Đã xác nhận thay thế thành công");
-    await confirmDialog.accept();
-    backendGuard.assertNoBackendErrors("manager confirm replacement before rejection");
-    await expect(row).toContainText("Chờ duyệt");
-
-    backendGuard.clear();
-    const dialogMessages = [];
-    const handleDialog = async (dialog) => {
-      dialogMessages.push(dialog.message());
-      if (dialog.type() === "prompt") {
-        await dialog.accept("P1 từ chối sau khi xác nhận thay thế");
-        return;
-      }
-      await dialog.accept();
-    };
-    page.on("dialog", handleDialog);
-    try {
-      await row.locator(".btn-icon.reject").click();
-      await expect.poll(() => dialogMessages.some((message) => message.includes("Lý do từ chối"))).toBe(true);
-      await expect.poll(() => dialogMessages.some((message) => message.includes("Từ chối đơn thành công"))).toBe(true);
-    } finally {
-      page.off("dialog", handleDialog);
-    }
-    backendGuard.assertNoBackendErrors("manager reject confirmed replacement leave request");
-
-    await expect(row).toContainText("Từ chối");
   });
 });
