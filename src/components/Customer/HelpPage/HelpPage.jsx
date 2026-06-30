@@ -19,6 +19,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import useCommunication from "@/hooks/useCommunication";
 import "./HelpPage.scss";
+import "./HelpPageA11yPolish.scss";
 
 const FAQ_DATA = [
   {
@@ -157,21 +158,12 @@ const HelpPage = () => {
     await loadThread({ variables: { id } });
   };
 
-  const toggleChatFromHeader = (event) => {
-    if (event.target.closest(".close-chat")) return;
-    setIsChatOpen((open) => !open);
-  };
-
-  const handleChatHeaderKeyDown = (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    toggleChatFromHeader(event);
-  };
-
   const messages = thread?.messages || [];
+  const faqStatusId = "faq-results-status";
+  const chatPanelId = "support-chat-panel";
 
   return (
-    <main className="help-page">
+    <main className="help-page" aria-labelledby="help-title">
       <section className="help-hero" aria-labelledby="help-title">
         <p className="help-eyebrow">Trung tâm hỗ trợ Cohan</p>
         <h1 id="help-title">Cần hỗ trợ gì hôm nay?</h1>
@@ -184,6 +176,7 @@ const HelpPage = () => {
             placeholder="Tìm kiếm câu hỏi: hoàn tiền, đổi món, đặt bàn..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            aria-describedby={faqStatusId}
           />
         </label>
       </section>
@@ -194,6 +187,9 @@ const HelpPage = () => {
             <h2 className="section-title" id="faq-title">
               <HelpCircle size={24} aria-hidden="true" /> Câu hỏi thường gặp
             </h2>
+            <p id={faqStatusId} className="sr-only" role="status" aria-live="polite">
+              {filteredFaqs.length ? `Tìm thấy ${filteredFaqs.length} câu hỏi phù hợp.` : "Không tìm thấy câu hỏi phù hợp."}
+            </p>
             <div className="faq-list">
               {filteredFaqs.length ? (
                 filteredFaqs.map((item, index) => {
@@ -256,7 +252,7 @@ const HelpPage = () => {
               </ul>
 
               <div className="divider" />
-              {supportNotice && <p className="support-notice" role="status">{supportNotice}</p>}
+              {supportNotice && <p className="support-notice" role="status" aria-live="polite">{supportNotice}</p>}
               <button
                 type="button"
                 className="btn-chat-trigger"
@@ -270,25 +266,21 @@ const HelpPage = () => {
       </div>
 
       <section className={`chatbot-widget ${isChatOpen ? "open" : ""}`} aria-label="Chat hỗ trợ Cohan">
-        <div
-          className="chat-header"
-          role="button"
-          tabIndex={0}
-          onClick={toggleChatFromHeader}
-          onKeyDown={handleChatHeaderKeyDown}
-          aria-expanded={isChatOpen}
-        >
-          <span className="bot-info">
+        <div className="chat-header">
+          <button
+            type="button"
+            className="bot-info chat-toggle"
+            onClick={() => setIsChatOpen((open) => !open)}
+            aria-expanded={isChatOpen}
+            aria-controls={chatPanelId}
+          >
             <span className="avatar-dot" aria-hidden="true" />
             <span>Cohan Support</span>
-          </span>
+          </button>
           <button
             type="button"
             className="close-chat"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsChatOpen(false);
-            }}
+            onClick={() => setIsChatOpen(false)}
             aria-label="Đóng chat hỗ trợ"
           >
             <X size={18} aria-hidden="true" />
@@ -296,8 +288,8 @@ const HelpPage = () => {
         </div>
 
         {isChatOpen && (
-          <>
-            <div className="chat-body" aria-live="polite">
+          <div id={chatPanelId}>
+            <div className="chat-body" aria-live="polite" aria-label="Nội dung chat hỗ trợ">
               {messages.length === 0 && (
                 <div className="message bot">
                   <div className="bubble">Xin chào, bạn cần hỗ trợ gì hôm nay?</div>
@@ -327,7 +319,7 @@ const HelpPage = () => {
                 <Send size={16} aria-hidden="true" />
               </button>
             </form>
-          </>
+          </div>
         )}
       </section>
 
