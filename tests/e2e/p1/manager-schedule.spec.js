@@ -307,7 +307,11 @@ const installManagerScheduleMocks = async (page) => {
 };
 
 const openManagerSchedulePage = async (page) => {
-  await page.goto("/manager#dashboard");
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/manager#dashboard");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
   await expect(page.locator(".manager-layout")).toBeVisible();
   await page.evaluate(() => {
     window.dispatchEvent(
