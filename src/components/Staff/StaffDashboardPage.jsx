@@ -48,6 +48,7 @@ const ActionCard = ({ to, title, description, cta, tone = "neutral", disabled = 
 const taskItems = [
   { label: "Trước ca", title: "Kiểm tra lịch và phản hồi ca mới", to: "/staff/schedule" },
   { label: "Trong ca", title: "Chấm công vào/ra đúng thời điểm", to: "/staff/schedule" },
+  { label: "Sau ca", title: "Gửi chỉnh công hoặc tăng ca nếu phát sinh", to: "/staff/attendance" },
   { label: "Khi cần nghỉ", title: "Gửi đơn nghỉ phép để quản lý duyệt", to: "/staff/leave" },
   { label: "Sau ca", title: "Theo dõi nhắc việc và phản hồi quản lý", to: "/staff/notifications" },
 ];
@@ -66,6 +67,13 @@ const baseActions = [
     description: "Vào trang lịch để chấm công ca đang diễn ra hoặc sắp bắt đầu.",
     cta: "Chấm công",
     tone: "success",
+  },
+  {
+    to: "/staff/attendance",
+    title: "Chỉnh công / tăng ca",
+    description: "Xem công trong ngày, gửi yêu cầu chỉnh công hoặc tăng ca cho quản lý duyệt.",
+    cta: "Mở yêu cầu",
+    tone: "warm",
   },
   {
     to: "/staff/schedule",
@@ -114,8 +122,8 @@ const baseActions = [
 const notificationPreview = [
   { type: "Lịch làm", title: "Kiểm tra lịch tuần và phản hồi ca mới nếu có." },
   { type: "Chấm công", title: "Chấm công vào trước ca và chấm công ra khi kết thúc ca." },
+  { type: "Công phát sinh", title: "Gửi chỉnh công hoặc tăng ca ngay khi phát hiện lệch dữ liệu." },
   { type: "Nghỉ phép", title: "Gửi đơn nghỉ phép sớm để quản lý kịp xếp ca thay thế." },
-  { type: "Hồ sơ", title: "Cập nhật thiếu sót thông tin qua quản lý trực tiếp." },
 ];
 
 const StaffDashboardPage = () => {
@@ -161,6 +169,7 @@ const StaffDashboardPage = () => {
           </p>
           <div className="staff-hero-links" aria-label="Lối tắt ca làm">
             <Link className="staff-hero-link" to="/staff/schedule"><span>Ca hôm nay</span><strong>Xem lịch</strong></Link>
+            <Link className="staff-hero-link" to="/staff/attendance"><span>Công phát sinh</span><strong>Chỉnh công</strong></Link>
             <Link className="staff-hero-link" to="/staff/leave"><span>Nghỉ phép</span><strong>Tạo đơn</strong></Link>
             <Link className="staff-hero-link" to="/staff/notifications"><span>Nhắc việc</span><strong>Thông báo</strong></Link>
           </div>
@@ -189,7 +198,7 @@ const StaffDashboardPage = () => {
           </div>
           <div className="staff-shift-command-card__actions">
             <Link className="staff-primary-dashboard-button" to="/staff/schedule">Xem lịch tuần</Link>
-            <Link className="staff-secondary-dashboard-button" to="/staff/notifications">Xem nhắc việc</Link>
+            <Link className="staff-secondary-dashboard-button" to="/staff/attendance">Chỉnh công / tăng ca</Link>
           </div>
         </article>
 
