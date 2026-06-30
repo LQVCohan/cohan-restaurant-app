@@ -3889,9 +3889,10 @@ const mutationResolvers = {
     return createOvertimeRequestService({ input, ctx });
   },
 
-  confirmOvertimeRequest: async (_, { input }, ctx) => {
+  confirmOvertimeRequest: async (_, { id, input }, ctx) => {
     requireAuth(ctx);
-    const request = await OvertimeRequest.findById(input?.requestId).select({
+    const resolvedInput = input || { requestId: id };
+    const request = await OvertimeRequest.findById(resolvedInput?.requestId).select({
       _id: 1,
       employeeId: 1,
       restaurantId: 1,
@@ -3899,7 +3900,7 @@ const mutationResolvers = {
     });
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (!isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
-    return confirmOvertimeRequestService({ input, ctx });
+    return confirmOvertimeRequestService({ input: resolvedInput, ctx });
   },
 
   approveOvertimeRequest: async (_, { input }, ctx) => {
@@ -3946,10 +3947,11 @@ const mutationResolvers = {
     return cancelOvertimeRequestService({ input: resolvedInput, ctx });
   },
 
-  completeOvertimeRequest: async (_, { input }, ctx) => {
+  completeOvertimeRequest: async (_, { id, input }, ctx) => {
     requireAuth(ctx);
     requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
-    const request = await OvertimeRequest.findById(input?.requestId).select({
+    const resolvedInput = input || { requestId: id };
+    const request = await OvertimeRequest.findById(resolvedInput?.requestId).select({
       _id: 1,
       employeeId: 1,
       restaurantId: 1,
@@ -3957,7 +3959,7 @@ const mutationResolvers = {
     if (!request) throw new Error("Không tìm thấy yêu cầu tăng ca.");
     if (isSelf(ctx, request.employeeId)) throw new Error("FORBIDDEN");
     await requireRestaurantAccess(ctx, request.restaurantId);
-    return completeOvertimeRequestService({ input, ctx });
+    return completeOvertimeRequestService({ input: resolvedInput, ctx });
   },
   checkInShift: async (_, { shiftId }, ctx) => checkShiftAttendanceAction({ shiftId, ctx, action: "check_in" }),
   checkOutShift: async (_, { shiftId }, ctx) => checkShiftAttendanceAction({ shiftId, ctx, action: "check_out" }),

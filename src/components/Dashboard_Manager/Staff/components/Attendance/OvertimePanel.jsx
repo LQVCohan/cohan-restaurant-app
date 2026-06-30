@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import useAttendanceManagement from "@/hooks/useAttendanceManagement";
+import useOvertimeManagement from "@/hooks/useOvertimeManagement";
 import {
   isForbiddenError,
   isUnauthenticatedError,
@@ -92,6 +93,35 @@ const getOvertimeStatus = (record) => {
   if (status) return status;
   return Number(record?.overtimeMinutes || 0) > 0 ? "pending" : "not_required";
 };
+
+const REQUEST_STATUS_LABELS = {
+  pending_approval: { label: "Chờ quản lý duyệt", className: "warning", icon: "⏳" },
+  pending_employee_confirmation: { label: "Chờ nhân viên xác nhận", className: "warning", icon: "👤" },
+  approved: { label: "Đã duyệt", className: "success", icon: "✅" },
+  rejected: { label: "Từ chối", className: "danger", icon: "⛔" },
+  cancelled: { label: "Đã hủy", className: "neutral", icon: "•" },
+  completed: { label: "Hoàn tất", className: "success", icon: "🏁" },
+};
+
+const getRequestStatusBadge = (status) => {
+  const current = REQUEST_STATUS_LABELS[status] || {
+    label: status || "--",
+    className: "neutral",
+    icon: "•",
+  };
+  return (
+    <span className={`status-badge ${current.className}`}>
+      {current.icon} {current.label}
+    </span>
+  );
+};
+
+const getOvertimeTypeLabel = (value) => ({
+  weekday: "Ngày thường",
+  weekend: "Cuối tuần",
+  holiday: "Ngày lễ",
+  night: "Ca đêm",
+}[value] || value || "--");
 
 const getOvertimeStatusBadge = (status) => {
   const config = {
@@ -241,7 +271,25 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
     restaurantId: effectiveRestaurantId || undefined,
   });
 
+  const {
+    overtimeRequests,
+    loading: requestsLoading,
+    error: requestsError,
+    approveOvertimeRequest,
+    rejectOvertimeRequest,
+    completeOvertimeRequest,
+    approveState: approveRequestState,
+    rejectState: rejectRequestState,
+    completeState: completeRequestState,
+  } = useOvertimeManagement({
+    selectedDate,
+    status: "all",
+    search: searchQuery,
+    restaurantId: effectiveRestaurantId || undefined,
+  });
+
   const isBusy = approveOvertimeState.loading || rejectOvertimeState.loading;
+  const isRequestBusy = approveRequestState.loading || rejectRequestState.loading || completeRequestState.loading;
 
   const allOvertimeRecords = useMemo(
     () =>
@@ -279,6 +327,25 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
   }, [allOvertimeRecords]);
 
   const openDialog = (mode, record) => setDialog(buildDefaultDialog(mode, record));
+
+  const handleApproveRequest = async (request) => {
+    await approveOvertimeRequest({
+      requestId: request.id,
+      approvedOvertimeMinutes: Number(request.approvedOvertimeMinutes || request.plannedOvertimeMinutes || 0),
+      note: "Đã duyệt yêu cầu tăng ca.",
+    });
+  };
+
+  const handleRejectRequest = async (request) => {
+    await rejectOvertimeRequest({
+      requestId: request.id,
+      reason: "Quản lý từ chối yêu cầu tăng ca.",
+    });
+  };
+
+  const handleCompleteRequest = async (request) => {
+    await completeOvertimeRequest(request.id);
+  };
 
   const closeDialog = () => {
     if (isBusy) return;
@@ -385,6 +452,9 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
       </div>
 
       <div className="table-section overtime-section">
+        <div className="section-heading">
+          <h3>Tăng ca phát sinh từ bảng công</h3>
+        </div>
         <div className="table-toolbar">
           <div className="tabs">
             {OVERTIME_STATUS_TABS.map((tab) => (
@@ -507,6 +577,92 @@ const OvertimePanel = ({ user, selectedDate, searchQuery, restaurantId }) => {
                             ⛔
                           </button>
                         </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <div className="table-section overtime-section">
+        <div className="section-heading">
+          <h3>Yêu cầu tăng ca nhân viên gửi</h3>
+        </div>
+
+        {requestsError && (
+          <div className="empty-state">
+            ❌ Không tải được yêu cầu tăng ca: {getOvertimeLoadErrorMessage(requestsError)}
+          </div>
+        )}
+
+        <div className="table-container">
+          <table className="attendance-table overtime-table">
+            <thead>
+              <tr>
+                <th>Nhân viên</th>
+                <th>Ngày công</th>
+                <th>Giờ tăng ca dự kiến</th>
+                <th>Số phút dự kiến</th>
+                <th>Loại tăng ca</th>
+                <th>Lý do</th>
+                <th>Trạng thái</th>
+                <th className="text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!requestsLoading && overtimeRequests.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center">
+                    Không có yêu cầu tăng ca nhân viên gửi trong ngày đã chọn.
+                  </td>
+                </tr>
+              )}
+
+              {overtimeRequests.map((request) => {
+                const displayName = request.employeeName || "Nhân viên";
+                return (
+                  <tr key={request.id}>
+                    <td>
+                      <div className="employee-cell">
+                        <div
+                          className="avatar"
+                          style={{
+                            backgroundImage: request.employeeAvatar ? `url(${request.employeeAvatar})` : "none",
+                            backgroundColor: !request.employeeAvatar ? getAvatarColor(displayName) : "transparent",
+                          }}
+                        >
+                          {!request.employeeAvatar && displayName.charAt(0)}
+                        </div>
+                        <div className="info">
+                          <div className="name">{displayName}</div>
+                          <div className="role">{request.employeeCode || "--"} • {request.employeeRole || "--"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{formatDate(request.workDate)}</td>
+                    <td>
+                      <div className="compact-stack">
+                        <strong>{formatTime(request.plannedStartTime)} - {formatTime(request.plannedEndTime)}</strong>
+                        <span>{formatDateTime(request.requestedAt)}</span>
+                      </div>
+                    </td>
+                    <td>{formatMinutes(request.plannedOvertimeMinutes)}</td>
+                    <td>{getOvertimeTypeLabel(request.overtimeType)}</td>
+                    <td>{request.reason || "--"}</td>
+                    <td>{getRequestStatusBadge(request.status)}</td>
+                    <td className="text-right">
+                      {canReviewOvertime(user) && request.status === "pending_approval" && (
+                        <>
+                          <button type="button" className="action-btn approve" title="Duyệt yêu cầu tăng ca" disabled={isRequestBusy} onClick={() => handleApproveRequest(request)}>✅</button>
+                          <button type="button" className="action-btn reject" title="Từ chối yêu cầu tăng ca" disabled={isRequestBusy} onClick={() => handleRejectRequest(request)}>⛔</button>
+                        </>
+                      )}
+                      {canReviewOvertime(user) && request.status === "approved" && (
+                        <button type="button" className="action-btn approve" title="Hoàn tất yêu cầu tăng ca" disabled={isRequestBusy} onClick={() => handleCompleteRequest(request)}>🏁</button>
                       )}
                     </td>
                   </tr>
