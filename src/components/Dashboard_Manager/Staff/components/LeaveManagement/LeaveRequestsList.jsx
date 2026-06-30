@@ -15,7 +15,7 @@ export const getLeaveActionErrorMessage = (error, fallback) => {
 
 const statusLabel = {
   PENDING: "⏳ Chờ duyệt",
-  PENDING_REPLACEMENT_CONFIRMATION: "🧾 Chờ quản lý thay thế xác nhận",
+  PENDING_REPLACEMENT_CONFIRMATION: "⏳ Chờ duyệt",
   APPROVED: "✅ Đã duyệt",
   REJECTED: "❌ Từ chối",
 };
@@ -35,7 +35,6 @@ const LeaveRequestsList = ({
   requests = [],
   onApprove,
   onReject,
-  onConfirmReplacement,
   selectedDate,
   onDateChange,
   statusFilter,
@@ -57,12 +56,9 @@ const LeaveRequestsList = ({
   const stats = useMemo(
     () => ({
       total: requests.length,
-      pending: requests.filter((r) => r.status === "PENDING").length,
+      pending: requests.filter((r) => r.status === "PENDING" || r.status === "PENDING_REPLACEMENT_CONFIRMATION").length,
       approved: requests.filter((r) => r.status === "APPROVED").length,
       rejected: requests.filter((r) => r.status === "REJECTED").length,
-      pendingReplacement: requests.filter(
-        (r) => r.status === "PENDING_REPLACEMENT_CONFIRMATION"
-      ).length,
     }),
     [requests]
   );
@@ -110,7 +106,6 @@ const LeaveRequestsList = ({
           {[
             { key: "all", label: "Tất cả" },
             { key: "PENDING", label: "Chờ duyệt" },
-            { key: "PENDING_REPLACEMENT_CONFIRMATION", label: "Chờ thay thế", count: stats.pendingReplacement },
             { key: "APPROVED", label: "Đã duyệt" },
             { key: "REJECTED", label: "Từ chối" },
           ].map((tab) => (
@@ -119,7 +114,7 @@ const LeaveRequestsList = ({
               className={`tab-btn ${statusFilter === tab.key ? "active" : ""}`}
               onClick={() => onStatusFilterChange(tab.key)}
             >
-              {tab.label} {tab.count > 0 && <span className="badge-count">{tab.count}</span>}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -164,11 +159,6 @@ const LeaveRequestsList = ({
 
             {requestRows.map((req) => {
               const isOwnRequest = currentUserId && String(req.employeeId || "") === String(currentUserId);
-              const canConfirmReplacement =
-                allowDecisionActions &&
-                req.replacementStatus === "PENDING" &&
-                currentUserId &&
-                req.replacementManagerId === currentUserId;
               const canReview = allowDecisionActions && req.status === "PENDING" && !isOwnRequest;
 
               return (
@@ -201,23 +191,6 @@ const LeaveRequestsList = ({
                     </span>
                   </td>
                   <td className="actions-cell">
-                    {canConfirmReplacement && (
-                      <button
-                        className="btn-icon approve"
-                        title="Xác nhận thay thế"
-                          onClick={async () => {
-                            try {
-                              await onConfirmReplacement(req.id, "Đã xác nhận thay thế");
-                              alert("✅ Đã xác nhận thay thế thành công.");
-                            } catch (err) {
-                              alert(`❌ ${getLeaveActionErrorMessage(err, err?.message || "Xác nhận thay thế thất bại")}`);
-                            }
-                          }}
-                      >
-                        ↔
-                      </button>
-                    )}
-
                     {canReview && (
                       <div className="action-buttons">
                         <button
@@ -251,7 +224,7 @@ const LeaveRequestsList = ({
                       </div>
                     )}
 
-                    {!canConfirmReplacement && !canReview && (
+                    {!canReview && (
                       <span className="date-sub">Theo dõi</span>
                     )}
                   </td>
