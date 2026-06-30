@@ -1,3 +1,12 @@
+extend type WalletTransaction {
+  currency: String
+  referenceType: String
+  referenceId: ID
+  orderIds: [ID!]
+  metadata: JSON
+  updatedAt: DateTime
+}
+
 type WalletSummary {
   wallet: Wallet!
   balance: Float!
@@ -15,6 +24,7 @@ type WalletOperationResult {
   message: String
   wallet: Wallet!
   transaction: WalletTransaction
+  paymentSession: PaymentSession
   paymentTransactionId: ID
   refundId: ID
   orderIds: [ID!]
@@ -29,7 +39,7 @@ input WalletTransactionFilterInput {
 
 input WalletTopupInput {
   amount: Float!
-  provider: String = "sandbox"
+  provider: String = "momo"
   reference: String
   metadata: JSON
 }
