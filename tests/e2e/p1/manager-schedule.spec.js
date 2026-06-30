@@ -129,15 +129,6 @@ const fulfillJson = (route, data) =>
     body: JSON.stringify(data),
   });
 
-const installSpaShellFallback = async (page) => {
-  await page.route("**/manager**", async (route) => {
-    if (route.request().resourceType() !== "document") return route.fallback();
-    const requestedUrl = new URL(route.request().url());
-    const response = await route.fetch({ url: `${requestedUrl.origin}/` });
-    return route.fulfill({ response });
-  });
-};
-
 const makeShift = (overrides = {}) => ({
   id: "shift-p1-created",
   employeeId: STAFF_USER.id,
@@ -175,8 +166,6 @@ const installManagerScheduleMocks = async (page) => {
     lastChangedAt: null,
     permissions: schedulePermissions,
   };
-
-  await installSpaShellFallback(page);
 
   await page.addInitScript((accessToken) => {
     window.sessionStorage.setItem("foodhub_access_token", accessToken);
