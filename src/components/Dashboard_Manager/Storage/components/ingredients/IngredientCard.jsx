@@ -37,6 +37,7 @@ const IngredientCard = ({
   const canWriteInventory = hasPermission(user, "inventory.write");
   const canWriteStock = hasPermission(user, "stock.write");
   const baseUnit = ingredient.baseUnit || ingredient.unit || "";
+  const ingredientName = ingredient.name || "nguyên liệu";
   const statusObj = getStockStatus ? getStockStatus(ingredient) : null;
 
   const status = useMemo(() => {
@@ -111,7 +112,7 @@ const IngredientCard = ({
       <article className="il-card">
         {/* Header Section */}
         <div className="il-card__header">
-          <div className="il-card__icon-wrapper">
+          <div className="il-card__icon-wrapper" aria-hidden="true">
             {/* Fallback icon nếu ingredient.icon là emoji hoặc string không hợp lệ */}
             {typeof ingredient.icon === "string" &&
             ingredient.icon.length < 5 ? (
@@ -125,7 +126,7 @@ const IngredientCard = ({
               {ingredient.name}
             </h3>
             <div className="il-card__subtitle">
-              <Tag size={12} />
+              <Tag size={12} aria-hidden="true" />
               <span>{toIngredientCategoryVi(ingredient.category)}</span>
             </div>
           </div>
@@ -160,11 +161,12 @@ const IngredientCard = ({
               className={`il-stat-box ${canUpdateCost ? "il-stat-box--interactive" : ""}`}
               onClick={openPriceModal}
               title={canUpdateCost ? "Nhấp để cập nhật giá nhập" : NO_PERMISSION_MESSAGE}
+              aria-label={`Cập nhật giá nhập cho ${ingredientName}`}
               disabled={!canUpdateCost}
             >
               <div className="il-stat-label">
                 Giá nhập{" "}
-                {canUpdateCost && <Pencil size={10} className="il-stat-label__edit-icon" />}
+                {canUpdateCost && <Pencil size={10} className="il-stat-label__edit-icon" aria-hidden="true" />}
               </div>
               <div className="il-stat-value-group">
                 <span className="il-stat-value il-text-price">
@@ -195,6 +197,7 @@ const IngredientCard = ({
               }}
               disabled={!canEdit}
               title={canEdit ? "Chỉnh sửa thông tin" : NO_PERMISSION_MESSAGE}
+              aria-label={`Chỉnh sửa ${ingredientName}`}
             >
               <Pencil size={16} />
             </button>
@@ -209,6 +212,7 @@ const IngredientCard = ({
               }}
               disabled={!canAddStock}
               title={canAddStock ? "Nhập thêm hàng" : NO_PERMISSION_MESSAGE}
+              aria-label={`Nhập thêm hàng cho ${ingredientName}`}
             >
               <PackagePlus size={16} />
             </button>
@@ -223,11 +227,12 @@ const IngredientCard = ({
               }}
               disabled={!canShowUsage}
               title={canShowUsage ? "Xem món ăn sử dụng" : "Chưa có dữ liệu món ăn sử dụng nguyên liệu này"}
+              aria-label={`Xem món ăn sử dụng ${ingredientName}`}
             >
               <Eye size={16} />
             </button>
 
-            <div className="il-divider-vertical"></div>
+            <div className="il-divider-vertical" aria-hidden="true"></div>
 
             <button
               type="button"
@@ -239,6 +244,7 @@ const IngredientCard = ({
               }}
               disabled={!canDelete}
               title={canDelete ? "Xóa nguyên liệu" : NO_PERMISSION_MESSAGE}
+              aria-label={`Xóa ${ingredientName}`}
             >
               <Trash2 size={16} />
             </button>
@@ -255,12 +261,13 @@ const IngredientCard = ({
       >
         <div className="il-modal-content">
           <div className="il-form-group">
-            <label className="il-label">
+            <label className="il-label" htmlFor={`ingredient-price-${ingredient.id}`}>
               Giá nhập mới ({activeCurrency}) / {baseUnit}
             </label>
             <div className="il-input-wrapper">
-              <DollarSign size={16} className="il-input-icon" />
+              <DollarSign size={16} className="il-input-icon" aria-hidden="true" />
               <input
+                id={`ingredient-price-${ingredient.id}`}
                 type="number"
                 className="il-input"
                 min="0"
