@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   ArrowDownLeft,
@@ -51,6 +51,23 @@ const CREATE_WALLET_TOPUP = gql`
       message
       wallet { provider status balance currency updatedAt }
       transaction { id type amount balanceAfter status createdAt metadata }
+      paymentSession { id provider reference amount status payUrl qrCodeUrl deeplink createdAt }
+    }
+  }
+`;
+
+const PAYMENT_SESSION = gql`
+  query WalletPaymentSession($id: ID!) {
+    paymentSession(id: $id) {
+      id
+      provider
+      reference
+      amount
+      status
+      payUrl
+      qrCodeUrl
+      deeplink
+      createdAt
     }
   }
 `;
@@ -73,19 +90,47 @@ export default function WalletPage() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(MY_WALLET, { fetchPolicy: "cache-and-network" });
   const [topupAmount, setTopupAmount] = useState(100000);
+  const [topupProvider, setTopupProvider] = useState("momo");
   const [notice, setNotice] = useState("");
+  const [activePayment, setActivePayment] = useState(null);
   const [createTopup, { loading: toppingUp }] = useMutation(CREATE_WALLET_TOPUP, {
     onCompleted: (result) => {
-      setNotice(result?.createWalletTopup?.message || "Đã nạp ví thành công.");
-      refetch();
+      const session = result?.createWalletTopup?.paymentSession;
+      setActivePayment(session || null);
+      setNotice(result?.createWalletTopup?.message || "Đã tạo phiên nạp ví.");
+      if (!session) refetch();
     },
     onError: (err) => setNotice(err?.message || "Không thể nạp ví."),
   });
 
+  const { data: paymentData, startPolling, stopPolling } = useQuery(PAYMENT_SESSION, {
+    variables: { id: activePayment?.id || "000000000000000000000000" },
+    skip: !activePayment?.id,
+    fetchPolicy: "network-only",
+  });
   const summary = data?.myWallet;
   const transactions = data?.myWalletTransactions || [];
   const quickAmounts = [50000, 100000, 200000, 500000];
   const walletUpdatedAt = summary?.wallet?.updatedAt;
+  const currentPayment = paymentData?.paymentSession || activePayment;
+
+  useEffect(() => {
+    if (!activePayment?.id) return undefined;
+    startPolling(4000);
+    return () => stopPolling();
+  }, [activePayment?.id, startPolling, stopPolling]);
+
+  useEffect(() => {
+    const status = String(currentPayment?.status || "").toLowerCase();
+    if (!status || status === "pending") return;
+    stopPolling();
+    if (status === "success") {
+      setNotice("Đã nạp ví thành công.");
+      refetch();
+    } else {
+      setNotice(`Phiên nạp ví ${status}. Vui lòng thử lại.`);
+    }
+  }, [currentPayment?.status, stopPolling, refetch]);
 
   const stats = useMemo(
     () => [
@@ -103,7 +148,7 @@ export default function WalletPage() {
       setNotice("Số tiền nạp tối thiểu là 1.000đ.");
       return;
     }
-    createTopup({ variables: { input: { amount, provider: "sandbox", metadata: { source: "customer_wallet_page" } } } });
+    createTopup({ variables: { input: { amount, provider: topupProvider, metadata: { source: "customer_wallet_page" } } } });
   };
 
   return (
@@ -137,9 +182,16 @@ export default function WalletPage() {
 
       <div className="wallet-page__layout">
         <section className="wallet-page__panel wallet-page__topup" aria-labelledby="wallet-topup-title">
-          <p className="wallet-page__eyebrow">Nạp ví demo/sandbox</p>
+          <p className="wallet-page__eyebrow">Nạp ví qua cổng thanh toán</p>
           <h2 id="wallet-topup-title">Nạp tiền vào Cohan Balance</h2>
-          <p>Ở bản MVP, nạp ví chạy chế độ sandbox. Khi đấu cổng thật, số dư chỉ cộng sau callback hợp lệ.</p>
+          <p>Số dư chỉ được cộng sau khi MoMo/VNPAY xác nhận thanh toán thành công.</p>
+          <label className="wallet-page__amount-input">
+            Cổng thanh toán
+            <select value={topupProvider} onChange={(event) => setTopupProvider(event.target.value)}>
+              <option value="momo">MoMo</option>
+              <option value="vnpay">VNPAY</option>
+            </select>
+          </label>
           <div className="wallet-page__quick-amounts" aria-label="Chọn nhanh số tiền nạp">
             {quickAmounts.map((amount) => (
               <button
@@ -165,8 +217,21 @@ export default function WalletPage() {
             />
           </label>
           <button type="button" className="wallet-page__primary" onClick={handleTopup} disabled={toppingUp}>
-            <CreditCard size={18} aria-hidden="true" /> {toppingUp ? "Đang nạp..." : "Nạp ví sandbox"}
+            <CreditCard size={18} aria-hidden="true" /> {toppingUp ? "Đang tạo phiên..." : "Tạo phiên thanh toán"}
           </button>
+          {currentPayment && (
+            <div className="wallet-page__payment-session" role="status" aria-live="polite">
+              <strong>Phiên nạp {currentPayment.provider?.toUpperCase()}</strong>
+              <span>Số tiền: {formatVND(currentPayment.amount)}</span>
+              <span>Mã: {currentPayment.reference}</span>
+              <span>Trạng thái: {currentPayment.status}</span>
+              {currentPayment.qrCodeUrl && <img src={currentPayment.qrCodeUrl} alt={`QR thanh toán ${currentPayment.provider}`} />}
+              <div>
+                {currentPayment.payUrl && <a className="wallet-page__pay-link" href={currentPayment.payUrl} target="_blank" rel="noreferrer">Mở trang thanh toán</a>}
+                {currentPayment.deeplink && <a className="wallet-page__pay-link" href={currentPayment.deeplink}>Mở app</a>}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="wallet-page__stats" aria-label="Tổng quan ví">

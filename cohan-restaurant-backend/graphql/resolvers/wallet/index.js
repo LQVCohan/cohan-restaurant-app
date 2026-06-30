@@ -10,6 +10,20 @@ import {
   requireWalletUser,
 } from "../../../src/services/wallet/wallet.service.js";
 
+function getBaseApiUrl(ctx) {
+  if (process.env.API_PUBLIC_BASE_URL) return process.env.API_PUBLIC_BASE_URL.replace(/\/$/, "");
+  const req = ctx?.req || ctx?.request;
+  const headers = req?.headers || {};
+  const host = headers["x-forwarded-host"] || headers.host;
+  if (host) return `${headers["x-forwarded-proto"] || req?.protocol || "http"}://${host}`.replace(/\/$/, "");
+  return "http://localhost:5000";
+}
+
+function getClientIp(ctx) {
+  const req = ctx?.req || ctx?.request;
+  return String(req?.headers?.["x-forwarded-for"] || req?.ip || req?.socket?.remoteAddress || "127.0.0.1").split(",")[0].trim();
+}
+
 export default {
   Query: {
     myWallet: async (_, __, ctx) => {
@@ -30,6 +44,8 @@ export default {
         provider: input.provider,
         reference: input.reference,
         metadata: input.metadata || {},
+        baseApiUrl: getBaseApiUrl(ctx),
+        clientIp: getClientIp(ctx),
       });
     },
     payOrdersWithWallet: async (_, { input }, ctx) => {

@@ -16,6 +16,8 @@ import {
   CouponRedemption,
   Promotion,
   UserCoupon,
+  User,
+  WalletTransaction,
 } from "../../../models/index.js";
 import { generateInvoiceNumber } from "../../../utils/generateInvoiceNumber.ts";
 import { calculateDiscountBreakdown } from "../discountCalculation.service.js";
@@ -567,6 +569,46 @@ export async function settlePaidOrderPaymentSession({ payment, source = "callbac
   return payment.metadata.settlement;
 }
 
+async function creditWalletTopupPayment({ payment, provider, session }) {
+  if (payment?.metadata?.walletTopup?.walletTransactionId) {
+    payment.events.push({ type: "idempotent_skip", payload: { reason: "wallet_topup_already_credited" } });
+    await payment.save({ session });
+    return payment.metadata.walletTopup;
+  }
+  const user = await User.findById(payment.userId).session(session);
+  if (!user) throw new Error("Wallet topup user not found");
+  user.wallet = user.wallet || {};
+  const balanceBefore = Math.round(Number(user.wallet.balance || 0));
+  const balanceAfter = balanceBefore + Math.round(Number(payment.amount || 0));
+  user.wallet.balance = balanceAfter;
+  user.wallet.currency = user.wallet.currency || payment.currency || "VND";
+  user.wallet.provider = user.wallet.provider || "cohan_wallet";
+  user.wallet.status = user.wallet.status || "active";
+  user.wallet.updatedAt = new Date();
+  await user.save({ session });
+  const [walletTransaction] = await WalletTransaction.create([{
+    userId: payment.userId,
+    type: "TOPUP",
+    amount: Math.round(Number(payment.amount || 0)),
+    currency: user.wallet.currency,
+    balanceBefore,
+    balanceAfter,
+    status: "SUCCESS",
+    referenceType: "PAYMENT_SESSION",
+    referenceId: payment._id,
+    metadata: { provider, reference: payment.reference, providerTransactionId: payment.providerTransactionId, source: "wallet_topup" },
+  }], { session });
+  payment.metadata = {
+    ...(payment.metadata || {}),
+    walletTopup: { walletTransactionId: walletTransaction._id, creditedAt: new Date() },
+    settlement: { ...((payment.metadata || {}).settlement || {}), walletTransactionId: walletTransaction._id },
+  };
+  payment.events.push({ type: "wallet_topup_credited", payload: { walletTransactionId: String(walletTransaction._id) } });
+  await payment.save({ session });
+  await EventLog.log({ actorUserId: payment.userId, verb: "wallet.topup", object: { kind: "WalletTransaction", id: walletTransaction._id }, source: "api", status: "success", meta: { provider, paymentSessionId: String(payment._id), amount: payment.amount } }, { session }).catch(() => {});
+  return payment.metadata.walletTopup;
+}
+
 function mapProviderStatus(provider, payload) {
   if (provider === "momo") {
     return Number(payload?.resultCode) === 0 ? "success" : "failed";
@@ -632,8 +674,19 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
   }
 
   if (payment.status === "success") {
-    payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
-    await payment.save();
+    if (payment?.metadata?.source === "wallet_topup" && !payment?.metadata?.walletTopup?.walletTransactionId) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await creditWalletTopupPayment({ payment, provider: normalizedProvider, session });
+        });
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
+      await payment.save();
+    }
     const out = payment.toObject();
     out.realtimeEmitSkipped = true;
     return out;
@@ -686,6 +739,10 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
           await reservation.save({ session });
           await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "available" } }, { session });
         }
+      }
+
+      if (payment.status === "success" && payment?.metadata?.source === "wallet_topup") {
+        await creditWalletTopupPayment({ payment, provider: normalizedProvider, session });
       }
 
       if (payment.status === "success" && (payment.orderId || payment?.metadata?.orderIds?.length)) {

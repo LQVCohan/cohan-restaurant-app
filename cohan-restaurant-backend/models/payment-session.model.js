@@ -58,7 +58,7 @@ const TransferPaymentSchema = new Schema(
 );
 
 const PaymentSessionSchema = BaseSchemaModel({
-  restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
+  restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
   orderId: { type: Types.ObjectId, ref: "Order", index: true },
   reservationId: { type: Types.ObjectId, ref: "Reservation", index: true },
   userId: { type: Types.ObjectId, ref: "User", required: true, index: true },

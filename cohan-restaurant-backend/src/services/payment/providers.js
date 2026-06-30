@@ -18,6 +18,10 @@ function sortObject(input = {}) {
     }, {});
 }
 
+function getOrderInfo(payment) {
+  return String(payment?.metadata?.orderInfo || `Thanh toan Cohan ${payment?.reference || ""}`).trim();
+}
+
 export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sandbox" }) {
   const endpoint =
     mode === "production"
@@ -41,7 +45,7 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
     requestId,
     amount: String(Math.round(payment.amount)),
     orderId,
-    orderInfo: `Thanh toan dat coc ${payment.reference}`,
+    orderInfo: getOrderInfo(payment),
     redirectUrl: returnUrl,
     ipnUrl,
     lang: "vi",
@@ -51,6 +55,7 @@ export async function createMomoPayment({ payment, ipnUrl, returnUrl, mode = "sa
       JSON.stringify({
         paymentId: String(payment._id),
         reservationId: payment.reservationId ? String(payment.reservationId) : null,
+        source: payment?.metadata?.source || null,
       })
     ).toString("base64"),
   };
@@ -150,7 +155,7 @@ export function createVnpayPayment({ payment, ipAddr = "127.0.0.1", returnUrl, m
     vnp_Amount: Math.round(payment.amount * 100),
     vnp_CurrCode: "VND",
     vnp_TxnRef: payment.reference,
-    vnp_OrderInfo: `Thanh toan dat coc ${payment.reference}`,
+    vnp_OrderInfo: getOrderInfo(payment),
     vnp_OrderType: process.env.VNPAY_ORDER_TYPE || "other",
     vnp_Locale: "vn",
     vnp_ReturnUrl: returnUrl,

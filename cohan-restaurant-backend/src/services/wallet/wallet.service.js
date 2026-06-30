@@ -2,12 +2,15 @@ import crypto from "node:crypto";
 import mongoose from "mongoose";
 import {
   Cashflow,
+  EventLog,
   Order,
   PaymentRefund,
+  PaymentSession,
   PaymentTransaction,
   User,
   WalletTransaction,
 } from "../../../models/index.js";
+import { createMomoPayment, createVnpayPayment } from "../payment/providers.js";
 
 const DEFAULT_CURRENCY = "VND";
 const WALLET_PROVIDER = "cohan_wallet";
@@ -163,17 +166,56 @@ export async function creditWallet({ userId, amount, type = "TOPUP", referenceTy
   }
 }
 
-export async function createWalletTopup({ userId, amount, provider = "sandbox", reference, metadata = {} }) {
+export async function createWalletTopup({ userId, amount, provider = "momo", reference, metadata = {}, baseApiUrl = "http://localhost:5000", clientIp = "127.0.0.1" }) {
+  const uid = toObjectId(userId);
+  if (!uid) throw new Error("Unauthorized");
   const normalizedAmount = normalizeAmount(amount);
-  const topupReference = reference || createReference("TOPUP");
-  const result = await creditWallet({
-    userId,
+  const normalizedProvider = String(provider || "momo").toLowerCase();
+  if (normalizedProvider === "sandbox") {
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_SANDBOX_WALLET_TOPUP !== "true") {
+      throw new Error("Sandbox wallet topup is disabled in production");
+    }
+    const result = await creditWallet({
+      userId,
+      amount: normalizedAmount,
+      type: "TOPUP",
+      referenceType: "WALLET_TOPUP",
+      metadata: { provider: "sandbox", reference: reference || createReference("TOPUP"), sandbox: true, ...metadata },
+    });
+    return { ok: true, message: "Nạp ví sandbox thành công.", ...result };
+  }
+  if (!["momo", "vnpay"].includes(normalizedProvider)) throw new Error("Unsupported wallet topup provider");
+
+  const now = new Date();
+  const payment = await PaymentSession.create({
+    userId: uid,
+    provider: normalizedProvider,
+    paymentMethod: normalizedProvider,
     amount: normalizedAmount,
-    type: "TOPUP",
-    referenceType: "WALLET_TOPUP",
-    metadata: { provider: String(provider || "sandbox"), reference: topupReference, sandbox: String(provider || "sandbox").toLowerCase() === "sandbox", ...metadata },
+    currency: DEFAULT_CURRENCY,
+    status: "pending",
+    callbackStatus: "none",
+    expiresAt: new Date(now.getTime() + Number(process.env.PAYMENT_SESSION_TTL_MINUTES || 10) * 60 * 1000),
+    requestId: createReference("REQ"),
+    reference: reference || createReference(normalizedProvider.toUpperCase()),
+    metadata: { ...metadata, source: "wallet_topup", orderInfo: metadata?.orderInfo || `Nap vi Cohan ${normalizedAmount}` },
+    events: [{ type: "payment_created", payload: { provider: normalizedProvider, source: "wallet_topup" } }],
   });
-  return { ok: true, message: "Nạp ví thành công.", ...result };
+
+  const ipnUrl = `${baseApiUrl}/api/payments/webhooks/${normalizedProvider}`;
+  const returnUrl = `${baseApiUrl}/api/payments/return/${normalizedProvider}`;
+  const providerResult = normalizedProvider === "momo"
+    ? await createMomoPayment({ payment, ipnUrl, returnUrl, mode: process.env.NODE_ENV === "production" ? "production" : "sandbox" })
+    : createVnpayPayment({ payment, ipAddr: clientIp, returnUrl, mode: process.env.NODE_ENV === "production" ? "production" : "sandbox" });
+  payment.payUrl = providerResult.payUrl;
+  payment.qrCodeUrl = providerResult.qrCodeUrl || null;
+  payment.deeplink = providerResult.deeplink || null;
+  payment.providerTransactionId = providerResult.providerTransactionId || payment.providerTransactionId;
+  payment.providerResponseRaw = providerResult.raw;
+  payment.events.push({ type: "redirect_generated", payload: { provider: normalizedProvider } });
+  await payment.save();
+  await EventLog.log({ actorUserId: uid, verb: "payment.create", object: { kind: "PaymentSession", id: payment._id }, source: "api", status: "success", meta: { provider: normalizedProvider, amount: normalizedAmount, source: "wallet_topup" } }).catch(() => {});
+  return { ok: true, message: "Đã tạo phiên nạp ví. Vui lòng hoàn tất thanh toán.", wallet: (await getWalletSummary(uid)).wallet, transaction: null, paymentSession: payment.toObject(), amount: normalizedAmount };
 }
 
 export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [], idempotencyKey }) {
@@ -183,11 +225,15 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
   if (!rid) throw new Error("Invalid restaurantId");
   const uniqueOrderIds = [...new Set((orderIds || []).map(String))];
   if (!uniqueOrderIds.length || uniqueOrderIds.some((id) => !mongoose.isValidObjectId(id))) throw new Error("Invalid orderIds");
+  const safeIdempotencyKey = String(idempotencyKey || `${String(uid)}:${String(rid)}:${uniqueOrderIds.sort().join(":")}`).trim();
+  const existing = await PaymentTransaction.findOne({ restaurantId: rid, userId: uid, method: "e_wallet", externalRef: safeIdempotencyKey }).lean();
+  if (existing) return { ok: true, message: "Thanh toán bằng ví đã được xử lý.", wallet: (await getWalletSummary(uid)).wallet, paymentTransactionId: String(existing._id), orderIds: uniqueOrderIds, amount: Number(existing.paidAmount || 0) };
 
   const session = await mongoose.startSession();
   try {
     let result;
-    await session.withTransaction(async () => {
+    try {
+      await session.withTransaction(async () => {
       const orderObjectIds = uniqueOrderIds.map((id) => new mongoose.Types.ObjectId(id));
       const orders = await Order.find({ _id: { $in: orderObjectIds }, restaurantId: rid }).session(session);
       if (orders.length !== orderObjectIds.length) throw new Error("No eligible orders");
@@ -205,13 +251,13 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
       if (balanceBefore < amount) throw new Error("Insufficient wallet balance");
       const balanceAfter = balanceBefore - amount;
       const txnRef = createReference("WALLETPAY");
-      const [paymentTransaction] = await PaymentTransaction.create([{ restaurantId: rid, orderId: orderObjectIds[0], orderIds: orderObjectIds, userId: uid, method: "e_wallet", paidAmount: amount, changeAmount: 0, currency: wallet.currency || DEFAULT_CURRENCY, status: "SUCCESS", txnRef, externalRef: idempotencyKey || txnRef, meta: { provider: WALLET_PROVIDER, orderIds: uniqueOrderIds, idempotencyKey }, paidAt: new Date() }], { session });
+      const [paymentTransaction] = await PaymentTransaction.create([{ restaurantId: rid, orderId: orderObjectIds[0], orderIds: orderObjectIds, userId: uid, method: "e_wallet", paidAmount: amount, changeAmount: 0, currency: wallet.currency || DEFAULT_CURRENCY, status: "SUCCESS", txnRef, externalRef: safeIdempotencyKey, meta: { provider: WALLET_PROVIDER, orderIds: uniqueOrderIds, idempotencyKey: safeIdempotencyKey }, paidAt: new Date() }], { session });
       user.wallet.balance = balanceAfter;
       user.wallet.provider = wallet.provider || WALLET_PROVIDER;
       user.wallet.currency = wallet.currency || DEFAULT_CURRENCY;
       user.wallet.updatedAt = new Date();
       await user.save({ session });
-      const walletTransaction = await createWalletTransactionDoc({ userId: uid, type: "PAYMENT", amount, currency: user.wallet.currency, balanceBefore, balanceAfter, referenceType: "ORDER_PAYMENT", referenceId: paymentTransaction._id, orderIds: orderObjectIds, metadata: { restaurantId: String(rid), txnRef, idempotencyKey }, session });
+      const walletTransaction = await createWalletTransactionDoc({ userId: uid, type: "PAYMENT", amount, currency: user.wallet.currency, balanceBefore, balanceAfter, referenceType: "ORDER_PAYMENT", referenceId: paymentTransaction._id, orderIds: orderObjectIds, metadata: { restaurantId: String(rid), txnRef, idempotencyKey: safeIdempotencyKey }, session });
       for (const order of orders) {
         order.payment = { ...(order.payment || {}), method: "e_wallet", provider: WALLET_PROVIDER, transactionId: paymentTransaction._id, txnRef, status: "paid", paidAmount: roundMoney(order?.totals?.grandTotal || 0), currency: user.wallet.currency, paidAt: new Date(), paidBy: uid };
         order.orderPaymentStatus = "paid";
@@ -221,8 +267,16 @@ export async function payOrdersWithWallet({ userId, restaurantId, orderIds = [],
         await order.save({ session });
       }
       await Cashflow.create([{ restaurantId: rid, type: "INFLOW", amount, currency: user.wallet.currency, category: "sale", method: "e_wallet", status: "completed", source: "order", occurredAt: new Date(), ref: { kind: "PaymentTransaction", paymentTransactionId: paymentTransaction._id, orderIds: orderObjectIds }, note: "Customer paid by Cohan Wallet", createdBy: uid }], { session }).catch(() => {});
+      await EventLog.log({ restaurantId: rid, actorUserId: uid, verb: "order.pay", object: { kind: "PaymentTransaction", id: paymentTransaction._id }, source: "api", status: "success", meta: { method: "cohan_balance", amount, orderIds: uniqueOrderIds } }, { session }).catch(() => {});
       result = { ok: true, message: "Thanh toán bằng ví thành công.", wallet: serializeWallet(user.wallet), transaction: serializeWalletTransaction(walletTransaction), paymentTransactionId: String(paymentTransaction._id), orderIds: uniqueOrderIds, amount };
     });
+    } catch (err) {
+      if (err?.code === 11000) {
+        const dup = await PaymentTransaction.findOne({ restaurantId: rid, userId: uid, method: "e_wallet", externalRef: safeIdempotencyKey }).lean();
+        if (dup) return { ok: true, message: "Thanh toán bằng ví đã được xử lý.", wallet: (await getWalletSummary(uid)).wallet, paymentTransactionId: String(dup._id), orderIds: uniqueOrderIds, amount: Number(dup.paidAmount || 0) };
+      }
+      throw err;
+    }
     return result;
   } finally {
     session.endSession();
