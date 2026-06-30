@@ -69,6 +69,7 @@ const StaffHeader = ({
   searchValue = "",
   onSearchChange,
   pendingLeaveCount = 0,
+  pendingReviewCount,
 }) => {
   const [activeStaffPage, setActiveStaffPage] = useState(getStaffPageFromLocation);
 
@@ -95,6 +96,9 @@ const StaffHeader = ({
     };
   }, []);
 
+  const reviewCount = Number(pendingReviewCount ?? pendingLeaveCount ?? 0);
+  const leaveCount = Number(pendingLeaveCount || 0);
+
   const statsData = useMemo(() => {
     const parsedAverageRate = Number(stats.avgRate);
     const hasAverageRate =
@@ -118,11 +122,13 @@ const StaffHeader = ({
   }, [stats]);
 
   const pageStatsData = useMemo(() => {
+    const pendingValue = activeStaffPage === "leave" ? leaveCount : reviewCount;
+    const pendingLabel = activeStaffPage === "leave" ? "Đơn chờ duyệt" : "Cần xử lý";
     const base = {
       total: { id: "total", icon: "👥", label: "Nhân sự", value: stats.totalStaff || 0 },
       active: { id: "active", icon: "🟢", label: "Trực tuyến", value: stats.activeStaff || 0 },
       onLeave: { id: "leave", icon: "🏖️", label: "Đang nghỉ", value: stats.onLeaveStaff || 0 },
-      pending: { id: "pending", icon: "📝", label: "Đơn chờ duyệt", value: pendingLeaveCount || 0 },
+      pending: { id: "pending", icon: "📝", label: pendingLabel, value: pendingValue },
     };
 
     if (activeStaffPage === "attendance") {
@@ -161,7 +167,7 @@ const StaffHeader = ({
       ];
     }
     return statsData;
-  }, [activeStaffPage, pendingLeaveCount, stats.activeStaff, stats.onLeaveStaff, stats.totalStaff, statsData]);
+  }, [activeStaffPage, leaveCount, reviewCount, stats.activeStaff, stats.onLeaveStaff, stats.totalStaff, statsData]);
 
   const pageQuickActions = useMemo(() => {
     if (activeStaffPage === "dashboard") {
@@ -229,7 +235,7 @@ const StaffHeader = ({
     secondaryActions={onExportData && isOverviewPage ? [{ icon: "📤", label: "Xuất dữ liệu", onClick: onExportData }] : []}
     primaryAction={onAddEmployee ? { icon: "➕", label: isCollapsed ? "" : "Thêm nhân viên", onClick: onAddEmployee } : null}
     footerLeft={isOverviewPage ? <span>Trực tuyến: <strong>{loading ? "--" : (stats.activeStaff || 0)}</strong></span> : <span>Trang hiện tại: <strong>{pageCopy.compactTitle}</strong></span>}
-    footerRight={isOverviewPage ? <span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn nghỉ phép</strong></span> : <span>Cần duyệt: <strong>{loading ? "--" : pendingLeaveCount} đơn</strong></span>}
+    footerRight={isOverviewPage ? <span>Cần xử lý: <strong>{loading ? "--" : `${reviewCount} mục`}</strong></span> : <span>{activeStaffPage === "leave" ? "Đơn nghỉ phép" : "Cần xử lý"}: <strong>{loading ? "--" : (activeStaffPage === "leave" ? `${leaveCount} đơn` : `${reviewCount} mục`)}</strong></span>}
   />;
 };
 
