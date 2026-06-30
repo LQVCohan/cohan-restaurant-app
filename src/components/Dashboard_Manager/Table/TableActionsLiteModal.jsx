@@ -626,6 +626,10 @@ export default function TableActionsLiteModal({
 
     const currentFloorId = getTableFloorId(table);
     const isChangingFloor = String(currentFloorId) !== String(floorId);
+    if (table.joinGroupId && isChangingFloor) {
+      showNotification("Vui lòng tách bàn khỏi nhóm trước khi chuyển tầng.", "error");
+      return;
+    }
     const payload = { id: table.id, floorId };
 
     if (isChangingFloor) {
