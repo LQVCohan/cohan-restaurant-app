@@ -174,7 +174,7 @@ const SecuritySettings = () => {
           {!sessionsLoading && sessions.length === 0 && <p className="session-empty">Chưa có phiên đăng nhập nào.</p>}
           {sessions.map((session) => (
             <div key={session.id} className="session-item">
-              <div className="session-icon">{deviceIcon(session.userAgent)}</div>
+              <div className="session-icon" aria-hidden="true">{deviceIcon(session.userAgent)}</div>
               <div className="session-details">
                 <div className="session-name">
                   {deviceName(session.userAgent)}
@@ -212,14 +212,14 @@ const SecuritySettings = () => {
         <div className="social-list">
           <div className="social-item">
             <div className="social-left">
-              <div className="social-logo google">G</div>
+              <div className="social-logo google" aria-hidden="true">G</div>
               <span>Google</span>
             </div>
             <button type="button" className="btn-text">Hủy liên kết</button>
           </div>
           <div className="social-item">
             <div className="social-left">
-              <div className="social-logo facebook">f</div>
+              <div className="social-logo facebook" aria-hidden="true">f</div>
               <span>Facebook</span>
             </div>
             <button type="button" className="btn-link">Kết nối</button>
@@ -251,9 +251,12 @@ const SecuritySettings = () => {
       >
         <div className="pwd-form-content">
           <div className="form-field">
-            <label>Mật khẩu hiện tại</label>
+            <label htmlFor="profile-current-password">Mật khẩu hiện tại</label>
             <input
+              id="profile-current-password"
               type="password"
+              autoComplete="current-password"
+              required
               value={pwdForm.current}
               onChange={(e) =>
                 setPwdForm((f) => ({ ...f, current: e.target.value }))
@@ -261,9 +264,13 @@ const SecuritySettings = () => {
             />
           </div>
           <div className="form-field">
-            <label>Mật khẩu mới</label>
+            <label htmlFor="profile-new-password">Mật khẩu mới</label>
             <input
+              id="profile-new-password"
               type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
               value={pwdForm.next}
               onChange={(e) =>
                 setPwdForm((f) => ({ ...f, next: e.target.value }))
@@ -271,9 +278,13 @@ const SecuritySettings = () => {
             />
           </div>
           <div className="form-field">
-            <label>Xác nhận mật khẩu mới</label>
+            <label htmlFor="profile-confirm-password">Xác nhận mật khẩu mới</label>
             <input
+              id="profile-confirm-password"
               type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
               value={pwdForm.confirm}
               onChange={(e) =>
                 setPwdForm((f) => ({ ...f, confirm: e.target.value }))
@@ -308,16 +319,20 @@ const SecuritySettings = () => {
         <div className="pwd-form-content danger-confirm">
           <p>Tài khoản sẽ bị vô hiệu hóa và giữ trong thùng rác 30 ngày. Nhập <strong>XOA TAI KHOAN</strong> để xác nhận.</p>
           <div className="form-field">
-            <label>Mật khẩu hiện tại</label>
+            <label htmlFor="delete-account-current-password">Mật khẩu hiện tại</label>
             <input
+              id="delete-account-current-password"
               type="password"
+              autoComplete="current-password"
               value={deleteForm.currentPassword}
               onChange={(e) => setDeleteForm((f) => ({ ...f, currentPassword: e.target.value }))}
             />
           </div>
           <div className="form-field">
-            <label>Nhập XOA TAI KHOAN</label>
+            <label htmlFor="delete-account-confirm-text">Nhập XOA TAI KHOAN</label>
             <input
+              id="delete-account-confirm-text"
+              autoComplete="off"
               value={deleteForm.confirmText}
               onChange={(e) => setDeleteForm((f) => ({ ...f, confirmText: e.target.value }))}
             />
