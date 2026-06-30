@@ -8,6 +8,7 @@ import { getRoleHomeRoute, resolveRoleName } from "@/routes/routeGuard";
 import { isAccountVerified } from "@/utils/accountVerification";
 
 import "./Login.scss";
+import "./LoginAuthA11yPolish.scss";
 
 const CAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "";
 const CAPTCHA_ENABLED =
@@ -141,9 +142,9 @@ const FloatingFoodIcons = () => (
 );
 
 const AuthBrand = () => (
-  <div className="auth-brand-row" aria-label="VPOS Restaurant Platform">
-    <span className="auth-brand-mark">VPOS</span>
-    <span className="auth-brand-name">Restaurant Platform</span>
+  <div className="auth-brand-row" aria-label="Cohan Restaurant App">
+    <span className="auth-brand-mark">COHAN</span>
+    <span className="auth-brand-name">Restaurant App</span>
   </div>
 );
 
@@ -378,20 +379,20 @@ const LoginPage = () => {
   };
 
   return (
-    <main className="login-page-wrapper">
+    <main className="login-page-wrapper" aria-labelledby="login-form-title">
       <div className="login-bg-grain" aria-hidden="true" />
       <a className="login-skip-link" href="#login-form-title">Bỏ qua đến form đăng nhập</a>
 
-      <div className="mobile-switcher" aria-label="Chuyển chế độ đăng nhập">
-        <button type="button" className={mobileMode === "login" ? "active" : ""} onClick={() => togglePanel(false)}>Đăng nhập</button>
-        <button type="button" className={mobileMode === "register" ? "active" : ""} onClick={() => togglePanel(true)}>Đăng ký</button>
+      <div className="mobile-switcher" role="tablist" aria-label="Chuyển chế độ đăng nhập">
+        <button type="button" role="tab" aria-selected={mobileMode === "login"} aria-controls="login-panel" className={mobileMode === "login" ? "active" : ""} onClick={() => togglePanel(false)}>Đăng nhập</button>
+        <button type="button" role="tab" aria-selected={mobileMode === "register"} aria-controls="register-panel" className={mobileMode === "register" ? "active" : ""} onClick={() => togglePanel(true)}>Đăng ký</button>
       </div>
 
-      <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký VPOS">
-        <div className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}>
-          <form className="auth-form auth-form--register" onSubmit={handleRegister}>
+      <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký Cohan">
+        <div id="register-panel" className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}>
+          <form className="auth-form auth-form--register" onSubmit={handleRegister} aria-labelledby="register-form-title">
             <AuthBrand />
-            <h1>Tạo tài khoản</h1>
+            <h1 id="register-form-title">Tạo tài khoản</h1>
             <LoginAudience />
 
             <label className="field-label" htmlFor="register-full-name">Họ và tên</label>
@@ -413,8 +414,8 @@ const LoginPage = () => {
           </form>
         </div>
 
-        <div className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}>
-          <form className="auth-form auth-form--login" onSubmit={handleLogin}>
+        <div id="login-panel" className={`form-container sign-in-container ${mobileMode === "register" ? "mobile-hidden" : ""}`}>
+          <form className="auth-form auth-form--login" onSubmit={handleLogin} aria-labelledby="login-form-title">
             <AuthBrand />
             <h1 id="login-form-title">Đăng nhập</h1>
             <LoginAudience />
@@ -425,7 +426,7 @@ const LoginPage = () => {
             <label className="field-label" htmlFor="login-password">Mật khẩu</label>
             <div className="input-wrapper"><FieldIcon type="lock" /><input id="login-password" type={showPassword ? "text" : "password"} placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="current-password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} /><button type="button" className="toggle-pw-btn" aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowPassword(!showPassword)}><FieldIcon type={showPassword ? "eye" : "eyeOff"} /></button></div>
 
-            <a href="#" className="forgot-link" onClick={(e) => e.preventDefault()}>Quên mật khẩu?</a>
+            <button type="button" className="forgot-link" onClick={() => showNotification("Tính năng đặt lại mật khẩu đang được chuẩn bị. Vui lòng liên hệ hỗ trợ nếu cần đổi mật khẩu.", "info")}>Quên mật khẩu?</button>
             {renderCaptcha(recaptchaLoginRef)}
             <div className="remember-card"><label className="check-row"><input type="checkbox" checked={loginForm.rememberSession} onChange={(e) => setLoginForm({ ...loginForm, rememberSession: e.target.checked })} /><span>Duy trì đăng nhập tối đa 30 ngày trên thiết bị này</span></label><label className="check-row"><input type="checkbox" checked={loginForm.rememberIdentifier} onChange={(e) => setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })} /><span>Ghi nhớ tài khoản (chỉ lưu email/số điện thoại)</span></label></div>
             <button type="submit" className="btn-primary" disabled={loginLoading || captchaConfigMissing}>{loginLoading ? "Đang xử lý..." : "Đăng nhập"}</button>
@@ -438,7 +439,7 @@ const LoginPage = () => {
             <FloatingFoodIcons />
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
-              <p>Tạo tài khoản VPOS để bắt đầu đặt món hoặc quản lý vận hành nhà hàng trên cùng một nền tảng.</p>
+              <p>Tạo tài khoản Cohan để bắt đầu đặt món hoặc quản lý vận hành nhà hàng trên cùng một nền tảng.</p>
               <div className="overlay-access-stack">
                 <span><strong>Khách hàng</strong><small>Đặt món, ví, khẩu vị</small></span>
                 <span><strong>Quản lý</strong><small>Bàn, POS, đơn realtime</small></span>
@@ -447,7 +448,7 @@ const LoginPage = () => {
             </div>
             <div className="overlay-panel overlay-right">
               <h1>Xin chào</h1>
-              <p>Đăng nhập VPOS để tiếp tục với đúng vai trò: khách hàng đặt món hoặc quản lý vận hành nhà hàng.</p>
+              <p>Đăng nhập Cohan để tiếp tục với đúng vai trò: khách hàng đặt món hoặc quản lý vận hành nhà hàng.</p>
               <div className="overlay-access-stack">
                 <span><strong>Khách hàng</strong><small>Theo dõi đơn & ưu đãi</small></span>
                 <span><strong>Nhà hàng</strong><small>Kiểm soát bàn, ca, POS</small></span>
