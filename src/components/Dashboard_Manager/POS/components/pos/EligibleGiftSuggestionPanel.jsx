@@ -35,7 +35,7 @@ export default function EligibleGiftSuggestionPanel() {
     addToOrder,
   } = usePos();
   const { showNotification } = useNotification?.() || {
-    showNotification: (message, type) => console.log(type || "info", message),
+    showNotification: () => {},
   };
   const { previewOrderDiscount } = useDiscountPreview();
   const [eligibleGiftItems, setEligibleGiftItems] = useState([]);

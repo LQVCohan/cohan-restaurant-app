@@ -73,6 +73,7 @@ export default function POSLayout() {
   );
 
   const [isLocked, setIsLocked] = useState(false);
+  const [lockError, setLockError] = useState("");
 
   useEffect(() => {
     if (!restaurantOptions.length) {
@@ -117,15 +118,18 @@ export default function POSLayout() {
 
   const handleRestaurantChange = (event) => {
     setSelectedRestaurantId(event.target.value);
+    setLockError("");
     setIsLocked(false);
     localStorage.removeItem(lockKey);
   };
 
   const handleToggleLock = () => {
     if (!restaurantId) {
-      alert("Vui lòng chọn nhà hàng trước khi khóa POS.");
+      setLockError("Vui lòng chọn nhà hàng trước khi khóa POS.");
       return;
     }
+
+    setLockError("");
 
     if (isLocked) {
       localStorage.removeItem(lockKey);
@@ -167,6 +171,11 @@ export default function POSLayout() {
           <div className={styles.restaurantHint}>
             Đang chọn: <strong>{selectedRestaurant?.name || "Chưa chọn"}</strong>
           </div>
+          {lockError && (
+            <div className={styles.restaurantHint} role="alert">
+              {lockError}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0 }}>
