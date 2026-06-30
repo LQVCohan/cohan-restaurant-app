@@ -15,18 +15,8 @@ const leaveTypes = [
   { value: "HALF_DAY", label: "Nghỉ nửa ngày", icon: "🌗" },
 ];
 
-const isManagerStaff = (staff) => {
-  const roleText = `${staff?.positionTitle || ""} ${staff?.roleName || ""}`.toLowerCase();
-  return (
-    staff?.department === "management" ||
-    roleText.includes("manager") ||
-    roleText.includes("quản lý")
-  );
-};
-
 const initialFormData = {
   employee: "",
-  backupPerson: "",
   leaveType: "",
   startDate: "",
   startSession: "FULL",
@@ -83,11 +73,6 @@ const LeaveRequestForm = ({
     }
   }, [currentUserId, formData.employee, isStaffSelfService, staffList]);
 
-  const requiresReplacementManager = useMemo(
-    () => isManagerStaff(selectedEmployee),
-    [selectedEmployee]
-  );
-
   const filteredStaffList = useMemo(() => {
     const matched = staffList.filter((item) => matchesEmployeeSearch(item, employeeSearch));
     if (selectedEmployee && !matched.some((item) => item.id === selectedEmployee.id)) {
@@ -96,26 +81,8 @@ const LeaveRequestForm = ({
     return matched;
   }, [employeeSearch, selectedEmployee, staffList]);
 
-  const managerCandidates = useMemo(
-    () => staffList.filter((item) => isManagerStaff(item) && item.id !== formData.employee),
-    [formData.employee, staffList]
-  );
-
   const hasStaffList = staffList.length > 0;
   const hasEmployeeMatches = filteredStaffList.length > 0;
-
-  useEffect(() => {
-    if (!formData.backupPerson) return;
-    if (!requiresReplacementManager) {
-      setFormData((prev) => ({ ...prev, backupPerson: "" }));
-      return;
-    }
-
-    const isValidBackup = managerCandidates.some((item) => item.id === formData.backupPerson);
-    if (!isValidBackup) {
-      setFormData((prev) => ({ ...prev, backupPerson: "" }));
-    }
-  }, [formData.backupPerson, managerCandidates, requiresReplacementManager]);
 
   const totalDays = useMemo(() => {
     if (!formData.startDate || !formData.endDate) return 0;
@@ -155,15 +122,6 @@ const LeaveRequestForm = ({
       next.endDate = "Ngày kết thúc không hợp lệ";
     }
 
-    if (requiresReplacementManager) {
-      if (!formData.backupPerson) {
-        next.backupPerson = "Quản lý xin nghỉ phải chọn quản lý thay thế";
-      }
-      if (formData.backupPerson === formData.employee) {
-        next.backupPerson = "Quản lý thay thế không được trùng";
-      }
-    }
-
     if (formData.leaveType === "HALF_DAY" && formData.startDate !== formData.endDate) {
       next.endDate = "Nghỉ nửa ngày chỉ áp dụng trong 1 ngày";
     }
@@ -190,8 +148,7 @@ const LeaveRequestForm = ({
       return;
     }
 
-    const restaurantId =
-      selectedEmployee?.restaurantForStaff;
+    const restaurantId = selectedEmployee?.restaurantForStaff;
 
     if (!restaurantId) {
       alert("Không xác định được nhà hàng của nhân sự.");
@@ -208,9 +165,6 @@ const LeaveRequestForm = ({
         startSession: formData.startSession,
         endSession: formData.endSession,
         reason: formData.reason.trim(),
-        ...(requiresReplacementManager && formData.backupPerson
-          ? { replacementManagerId: formData.backupPerson }
-          : {}),
       });
       alert("Đã tạo đơn nghỉ phép và lưu database.");
       resetForm();
@@ -286,35 +240,6 @@ const LeaveRequestForm = ({
               )}
               {errors.employee && <span className="err-msg">{errors.employee}</span>}
             </div>
-            {requiresReplacementManager && (
-              <div className="form-group">
-                <label>Quản lý thay thế *</label>
-                <select
-                  name="backupPerson"
-                  value={formData.backupPerson}
-                  onChange={handleChange}
-                  aria-label="Quản lý thay thế"
-                  data-testid="leave-replacement-select"
-                  disabled={disabled || managerCandidates.length === 0}
-                >
-                  <option value="">-- Chọn quản lý thay thế --</option>
-                  {managerCandidates.map((manager) => (
-                    <option key={manager.id} value={manager.id}>
-                      [{manager.employeeCode || "--"}] {manager.fullName}
-                    </option>
-                  ))}
-                </select>
-                <span className="hint">
-                  Chỉ nhân sự quản lý xin nghỉ mới cần chọn người thay thế.
-                </span>
-                {managerCandidates.length === 0 && (
-                  <span className="err-msg state-msg">
-                    Chưa có quản lý thay thế hợp lệ cho nhân sự này.
-                  </span>
-                )}
-                {errors.backupPerson && <span className="err-msg">{errors.backupPerson}</span>}
-              </div>
-            )}
           </div>
         </div>
 
