@@ -192,7 +192,11 @@ const installManagerAttendanceMocks = async (page) => {
 };
 
 const openManagerAttendancePage = async (page) => {
-  await page.goto("/manager#staff");
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/manager#staff");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
   await expect(page.locator(".manager-layout")).toBeVisible();
   await page.evaluate(() => {
     window.dispatchEvent(
