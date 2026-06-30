@@ -76,6 +76,11 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
   const modalRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
 
+  const handleClose = () => {
+    setError("");
+    onClose();
+  };
+
   // Load dữ liệu khi Edit
   useEffect(() => {
     if (initialData) {
@@ -94,10 +99,28 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
 
   useEffect(() => {
     if (!isOpen) return undefined;
+    setError("");
     previouslyFocusedRef.current = document.activeElement;
     const timer = setTimeout(() => modalRef.current?.focus(), 0);
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        handleClose();
+        return;
+      }
+      if (event.key !== "Tab" || !modalRef.current) return;
+      const focusable = modalRef.current.querySelectorAll(
+        'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -145,13 +168,13 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
       fullAddress, // Trường này dùng để hiển thị trên Card
     });
     setError("");
-    onClose();
+    handleClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="address-modal-overlay" onClick={onClose}>
+    <div className="address-modal-overlay" onClick={handleClose}>
       <div
         className="address-modal-container"
         role="dialog"
@@ -164,7 +187,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
         {/* HEADER */}
         <div className="modal-header">
           <h3 id="address-modal-title">Thông tin địa chỉ</h3>
-          <button type="button" className="btn-close" onClick={onClose} aria-label="Đóng">
+          <button type="button" className="btn-close" onClick={handleClose} aria-label="Đóng">
             <X size={20} />
           </button>
         </div>
@@ -348,7 +371,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
 
         {/* FOOTER */}
         <div className="modal-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>
+          <button type="button" className="btn-cancel" onClick={handleClose}>
             Trở lại
           </button>
           <button type="button" className="btn-save" onClick={handleSubmit}>
