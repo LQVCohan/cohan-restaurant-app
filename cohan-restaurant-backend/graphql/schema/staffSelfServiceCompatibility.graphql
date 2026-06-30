@@ -5,3 +5,24 @@ extend input RespondShiftAcknowledgementInput {
   response: String
   reasonCategory: String
 }
+
+extend type AttendanceCorrectionRequest {
+  timesheetId: ID
+  shiftId: ID
+  workDate: DateTime
+  correctionType: String
+  requestedCheckInAt: DateTime
+  requestedCheckOutAt: DateTime
+  requestedAt: DateTime
+}
+
+extend type OvertimeRequest {
+  shiftId: ID
+  timesheetId: ID
+  workDate: DateTime
+  plannedStartTime: DateTime
+  plannedEndTime: DateTime
+  plannedOvertimeMinutes: Int
+  overtimeType: String
+  requestedAt: DateTime
+}
