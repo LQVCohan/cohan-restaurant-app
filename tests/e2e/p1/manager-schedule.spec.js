@@ -238,8 +238,21 @@ const installManagerScheduleMocks = async (page) => {
       case "ManagerShiftAttendances":
         data = { managerShiftAttendances: [] };
         break;
-      case "CreateStaffShifts": {
-        const input = payload?.variables?.inputs?.[0] || {};
+      case "ValidateShiftAssignment":
+        data = {
+          validateShiftAssignment: {
+            ok: true,
+            employeeId: STAFF_USER.id,
+            restaurantId: TEST_RESTAURANT.id,
+            score: 100,
+            blockingErrors: [],
+            warnings: [],
+            metrics: {},
+          },
+        };
+        break;
+      case "CreateStaffShift": {
+        const input = payload?.variables?.input || {};
         const created = makeShift({
           employeeId: input.employeeId || STAFF_USER.id,
           restaurantId: input.restaurantId || TEST_RESTAURANT.id,
@@ -249,14 +262,7 @@ const installManagerScheduleMocks = async (page) => {
           notes: input.notes || "",
         });
         shifts = [created];
-        data = {
-          createStaffShifts: {
-            successCount: 1,
-            failedCount: 0,
-            shifts: [created],
-            errors: [],
-          },
-        };
+        data = { createStaffShift: created };
         break;
       }
       case "AttendanceCorrectionRequests":
@@ -324,7 +330,7 @@ test.describe("P1 manager schedule", () => {
 
     backendGuard.clear();
     await page.getByRole("button", { name: "Lưu & Tạo Lịch" }).click();
-    await expect(page.getByRole("status")).toContainText("Đã thêm 1 nhân viên vào ca.");
+    await expect(page.getByRole("status")).toContainText("Đã tạo ca cho 1 nhân viên.");
     await expect(page.locator(".shift-card", { hasText: "1 nhân sự" })).toBeVisible();
     backendGuard.assertNoBackendErrors("manager schedule create shift success");
   });
