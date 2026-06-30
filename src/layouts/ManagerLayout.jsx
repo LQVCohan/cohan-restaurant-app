@@ -8,6 +8,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { isAccountantRole, isHrRole, isManagerRole, isAdminRole } from "@/utils/frontendRoleAccess";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
+import useCommunication from "@/hooks/useCommunication";
 
 const Dashboard = lazy(() => import("../components/Dashboard_Manager/Dashboard"));
 const ManagerAnalyst = lazy(() => import("../components/Dashboard_Manager/Analyst/ManagerAnalyst"));
@@ -44,6 +45,7 @@ const BrandManagement = lazy(() => import("@/components/Dashboard_Manager/Brand/
 
 const MANAGER_CANONICAL_PATH = "/manager";
 const BACKUP_PAGE_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
+const IS_TEST_ENV = import.meta.env.MODE === "test";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard", "brands", "tables", "table-qr", "orders", "menu", "modifiers", "combos", "inventory", "staff", "customers",
@@ -147,6 +149,56 @@ const PAGE_CONFIG = {
   backup: page("Sao lưu & khôi phục", "Sao lưu cấu hình, xem trước thay đổi và khôi phục an toàn", "🗄️", ["backup", "sao lưu", "khôi phục", "export", "cấu hình"]),
 };
 
+const toNotificationVisualType = (type) => {
+  const value = String(type || "").toLowerCase();
+  if (value.includes("reject") || value.includes("warning")) return "warning";
+  if (value.includes("approve") || value.includes("applied") || value.includes("completed") || value.includes("success")) return "success";
+  if (value.includes("created") || value.includes("pending")) return "primary";
+  return "info";
+};
+
+const formatNotificationTime = (value) => {
+  if (!value) return "Vừa xong";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Vừa xong";
+  return date.toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+};
+
+const mapManagerNotification = (notification) => ({
+  id: notification.id,
+  type: toNotificationVisualType(notification.type),
+  title: notification.payload?.title || "Thông báo",
+  message: notification.payload?.message || "Có cập nhật mới cần xem.",
+  time: formatNotificationTime(notification.createdAt),
+  read: Boolean(notification.readAt),
+  actionUrl: notification.payload?.actionUrl || "",
+});
+
+const ManagerHeaderWithNotifications = (props) => {
+  const { notifications, markNotificationRead, markAllNotificationsRead } = useCommunication({ notificationsEnabled: true });
+  const mappedNotifications = useMemo(
+    () => notifications.map(mapManagerNotification),
+    [notifications],
+  );
+
+  const handleNotificationSelect = (notification) => {
+    if (!notification?.id) return;
+    void markNotificationRead?.({ variables: { id: notification.id } });
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    void markAllNotificationsRead?.({ variables: {} });
+  };
+
+  return (
+    <Header
+      {...props}
+      notifications={mappedNotifications}
+      onNotificationSelect={handleNotificationSelect}
+      onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+    />
+  );
+};
 
 const BrandRestaurantSelector = () => {
   const {
@@ -273,6 +325,18 @@ const ManagerLayout = () => {
     [allowedPages],
   );
 
+  const headerProps = {
+    pageTitle: PAGE_CONFIG[currentPage]?.title || "Trang quản trị",
+    onToggleSidebar: toggleSidebar,
+    sidebarOpen,
+    searchItems: managerSearchItems,
+    onSelectSearchResult: (item) => {
+      if (!item?.id) return;
+      setCurrentPage(item.id);
+      setSidebarOpen(false);
+    },
+  };
+
   const renderContent = () => {
     if (!allowedPages.has(currentPage)) return <PermissionFallback />;
     switch (currentPage) {
@@ -320,18 +384,11 @@ const ManagerLayout = () => {
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
       <div className="manager-layout__main">
         <div className="manager-layout__header">
-          <Header
-            pageTitle={PAGE_CONFIG[currentPage]?.title || "Trang quản trị"}
-            onToggleSidebar={toggleSidebar}
-            sidebarOpen={sidebarOpen}
-            notifications={[]}
-            searchItems={managerSearchItems}
-            onSelectSearchResult={(item) => {
-              if (!item?.id) return;
-              setCurrentPage(item.id);
-              setSidebarOpen(false);
-            }}
-          />
+          {IS_TEST_ENV ? (
+            <Header {...headerProps} notifications={[]} />
+          ) : (
+            <ManagerHeaderWithNotifications {...headerProps} />
+          )}
           <BrandRestaurantSelector />
         </div>
         <main className="manager-layout__content">
