@@ -158,17 +158,6 @@ const M_REJECT = gql`
   }
 `;
 
-const M_CONFIRM_REPLACEMENT = gql`
-  mutation ConfirmReplacement($requestId: ID!, $note: String) {
-    confirmReplacementLeaveRequest(requestId: $requestId, note: $note) {
-      id
-      status
-      replacementStatus
-      replacementConfirmedAt
-    }
-  }
-`;
-
 export const useLeaveManagement = ({
   selectedDate,
   status,
@@ -201,9 +190,6 @@ export const useLeaveManagement = ({
   const [createLeaveMutation, createState] = useMutation(M_CREATE);
   const [approveLeaveMutation, approveState] = useMutation(M_APPROVE);
   const [rejectLeaveMutation, rejectState] = useMutation(M_REJECT);
-  const [confirmReplacementMutation, confirmState] = useMutation(
-    M_CONFIRM_REPLACEMENT,
-  );
 
   const leaveRequests = useMemo(
     () => data?.leaveRequests || [],
@@ -234,18 +220,10 @@ export const useLeaveManagement = ({
     await refetchIfReady();
   };
 
-  const confirmReplacement = async (requestId, note) => {
-    await confirmReplacementMutation({
-      variables: { requestId, note: note || undefined },
-    });
-    await refetchIfReady();
-  };
-
   const isMutating =
     createState.loading ||
     approveState.loading ||
-    rejectState.loading ||
-    confirmState.loading;
+    rejectState.loading;
 
   return {
     leaveRequests,
@@ -256,7 +234,6 @@ export const useLeaveManagement = ({
     submitLeaveRequest,
     approveLeave,
     rejectLeave,
-    confirmReplacement,
     refetch,
   };
 };
