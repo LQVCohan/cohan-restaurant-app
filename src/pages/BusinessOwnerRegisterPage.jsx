@@ -20,7 +20,7 @@ const BUSINESS_REGISTER_FIELDS = [
   { key: "fullName", label: "Họ tên", required: true, autoComplete: "name" },
   { key: "email", label: "Email", required: true, type: "email", autoComplete: "email" },
   { key: "phone", label: "Số điện thoại", type: "tel", autoComplete: "tel" },
-  { key: "password", label: "Mật khẩu", required: true, type: "password", autoComplete: "new-password" },
+  { key: "password", label: "Mật khẩu", required: true, type: "password", autoComplete: "new-password", minLength: 8 },
   { key: "brandName", label: "Tên chuỗi nhà hàng / Brand", required: true, autoComplete: "organization" },
   { key: "brandSlug", label: "Slug thương hiệu", autoComplete: "off" },
   { key: "businessName", label: "Tên pháp lý doanh nghiệp", autoComplete: "organization" },
@@ -89,7 +89,9 @@ export default function BusinessOwnerRegisterPage() {
                   required={field.required}
                   type={field.type || "text"}
                   autoComplete={field.autoComplete}
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
+                  minLength={field.minLength}
+                  disabled={loading}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 disabled:bg-slate-100 disabled:text-slate-500"
                   value={form[field.key]}
                   onChange={set(field.key)}
                 />
@@ -103,6 +105,7 @@ export default function BusinessOwnerRegisterPage() {
             id="business-register-create-first-restaurant"
             type="checkbox"
             checked={form.createFirstRestaurant}
+            disabled={loading}
             onChange={set("createFirstRestaurant")}
           />
           Tạo chi nhánh đầu tiên
