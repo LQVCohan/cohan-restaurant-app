@@ -30,6 +30,7 @@ const RecipeCard = ({
 }) => {
   const activeCurrency = normalizeCurrency(currency, "VND");
   const safeRecipe = recipe || {};
+  const recipeName = safeRecipe.name || "Chưa đặt tên";
 
   // Tận dụng _meta được truyền từ RecipeList để tối ưu hiệu năng
   // Nếu không có _meta (trường hợp dùng lẻ), fallback về giá trị mặc định
@@ -58,16 +59,29 @@ const RecipeCard = ({
     if (onEdit && safeRecipe.id) onEdit(safeRecipe.id);
   };
 
+  const handleCardKeyDown = (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleCardClick();
+  };
+
   const handleAction = (e, actionCallback) => {
     e.stopPropagation();
     if (actionCallback && safeRecipe.id) actionCallback(safeRecipe.id);
   };
 
   return (
-    <div className="rc-card" onClick={handleCardClick}>
+    <div
+      className="rc-card"
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Mở chỉnh sửa công thức ${recipeName}`}
+    >
       {/* 1. Header: Icon & Title */}
       <div className="rc-header">
-        <div className="rc-icon-box">
+        <div className="rc-icon-box" aria-hidden="true">
           {/* Nếu có icon từ BE thì hiển thị, nếu không dùng icon mặc định */}
           {safeRecipe.icon ? (
             <span className="rc-emoji-icon">{safeRecipe.icon}</span>
@@ -77,7 +91,7 @@ const RecipeCard = ({
         </div>
         <div className="rc-title-area">
           <h3 className="rc-name" title={safeRecipe.name}>
-            {safeRecipe.name || "Chưa đặt tên"}
+            {recipeName}
           </h3>
           <span className="rc-category">
             {safeRecipe.category
@@ -206,6 +220,7 @@ const RecipeCard = ({
       <div className="rc-actions">
         {onViewDetails && (
           <button
+            type="button"
             className="rc-btn rc-btn-view"
             onClick={(e) => handleAction(e, onViewDetails)}
             title="Xem chi tiết"
@@ -218,9 +233,11 @@ const RecipeCard = ({
         <div className="rc-actions-group">
           {onEdit && (
             <button
+              type="button"
               className="rc-icon-btn rc-btn-edit"
               onClick={(e) => handleAction(e, onEdit)}
               title="Chỉnh sửa"
+              aria-label={`Chỉnh sửa công thức ${recipeName}`}
             >
               <Edit size={16} />
             </button>
@@ -228,9 +245,11 @@ const RecipeCard = ({
 
           {onDelete && (
             <button
+              type="button"
               className="rc-icon-btn rc-btn-delete"
               onClick={(e) => handleAction(e, onDelete)}
               title="Xóa món"
+              aria-label={`Xóa công thức ${recipeName}`}
             >
               <Trash2 size={16} />
             </button>
