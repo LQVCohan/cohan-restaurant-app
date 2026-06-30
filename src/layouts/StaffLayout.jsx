@@ -67,7 +67,7 @@ const isActivePath = (location, target) => {
 };
 
 const navGroups = [
-  { label: "Công việc", keys: ["/staff/dashboard", "/staff/schedule", "/staff/leave", "/staff/orders", "/staff/kitchen", "/staff/contacts"] },
+  { label: "Công việc", keys: ["/staff/dashboard", "/staff/schedule", "/staff/attendance", "/staff/leave", "/staff/orders", "/staff/kitchen", "/staff/contacts"] },
   { label: "Tài khoản", keys: ["/staff/profile", "/staff/notifications", "/staff/payslips", "/staff/settings"] },
   { label: "Hỗ trợ", keys: ["/staff/ai-handoff"] },
 ];
@@ -84,6 +84,12 @@ const staffPageMeta = [
     eyebrow: "Lịch cá nhân",
     title: "Lịch làm và chấm công",
     description: "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm.",
+  },
+  {
+    path: "/staff/attendance",
+    eyebrow: "Chỉnh công & tăng ca",
+    title: "Yêu cầu công cá nhân",
+    description: "Xem công trong ngày, gửi chỉnh công hoặc yêu cầu tăng ca cho quản lý duyệt.",
   },
   {
     path: "/staff/leave",
@@ -165,6 +171,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
     () => [
       { label: "Tổng quan", to: "/staff/dashboard" },
       { label: "Lịch cá nhân", to: "/staff/schedule" },
+      { label: "Chỉnh công / tăng ca", to: "/staff/attendance" },
       { label: "Nghỉ phép", to: "/staff/leave" },
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
@@ -218,77 +225,45 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
             </button>
           </div>
 
-          <nav aria-label="Điều hướng nhân viên" className="staff-shell__nav">
-            {visibleNavItems.map((item) => {
-              const active = isActivePath(location, item.to);
-              const activeClass = "staff-shell__nav-link--active";
-              const inactiveClass = "staff-shell__nav-link--idle";
+          <nav className={`staff-shell__nav ${menuOpen ? "is-open" : ""}`} aria-label="Điều hướng khu vực nhân viên">
+            {navGroups.map((group) => {
+              const groupItems = visibleNavItems.filter((item) => group.keys.includes(item.to));
+              if (!groupItems.length) return null;
               return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={"staff-shell__nav-link " + (active ? activeClass : inactiveClass)}
-                  aria-current={active ? "page" : undefined}
-                >
-                  {item.label}
-                </Link>
+                <div className="staff-shell__nav-group" key={group.label}>
+                  <span>{group.label}</span>
+                  {groupItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      className={`staff-shell__nav-link ${isActivePath(location, item.to) ? "is-active" : ""}`}
+                      to={item.to}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               );
             })}
           </nav>
-
-          {menuOpen ? (
-            <div className="staff-shell__drawer" role="dialog" aria-label="Menu nhân viên">
-              {navGroups.map((group) => {
-                const items = visibleNavItems.filter((item) => group.keys.includes(item.to));
-                if (!items.length) return null;
-                return (
-                  <section key={group.label} className="staff-shell__drawer-group">
-                    <h2>{group.label}</h2>
-                    {items.map((item) => {
-                      const active = isActivePath(location, item.to);
-                      return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          className={"staff-shell__drawer-link " + (active ? "is-active" : "")}
-                          aria-current={active ? "page" : undefined}
-                          onClick={() => setMenuOpen(false)}
-                        >
-                          {item.label}
-                        </Link>
-                      );
-                    })}
-                  </section>
-                );
-              })}
-            </div>
-          ) : null}
         </div>
       </header>
 
-      <main id="staff-main-content" className="staff-shell__main">{children}</main>
+      <main className="staff-shell__main">
+        <div className="staff-shell__content">{children}</div>
+      </main>
     </div>
   );
 };
 
-const StaffRestaurantBridge = ({ children, restaurantId }) => {
-  const { data: restaurantData } = useQuery(STAFF_RESTAURANT_BASIC, {
+export default function StaffLayout({ children }) {
+  const { user } = useContext(AuthContext);
+  const restaurantId = resolveStaffRestaurantId(user);
+  const { data } = useQuery(STAFF_RESTAURANT_BASIC, {
     variables: { id: restaurantId },
+    skip: !restaurantId || IS_TEST_ENV,
     fetchPolicy: "cache-first",
   });
 
-  return <StaffLayoutShell restaurantFromQuery={restaurantData?.restaurant}>{children}</StaffLayoutShell>;
-};
-
-const StaffLayout = ({ children }) => {
-  const { user } = useContext(AuthContext);
-  const restaurantId = resolveStaffRestaurantId(user);
-
-  if (!restaurantId || IS_TEST_ENV) {
-    return <StaffLayoutShell>{children}</StaffLayoutShell>;
-  }
-
-  return <StaffRestaurantBridge restaurantId={restaurantId}>{children}</StaffRestaurantBridge>;
-};
-
-export default StaffLayout;
+  return <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>{children}</StaffLayoutShell>;
+}
