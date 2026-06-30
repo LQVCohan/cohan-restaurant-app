@@ -149,6 +149,7 @@ export default function TableActionsLiteModal({
 
 }) {
   const isOpen = !!open && !!table;
+  const titleId = "talite-title";
   const guardState = useMemo(() => getTableGuardState(table), [table]);
   const deleteDisabledReason = useMemo(
     () => getTableActionDisabledReason(table, "delete"),
@@ -802,12 +803,13 @@ export default function TableActionsLiteModal({
         className="talite-modal"
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="talite-header">
           <div>
-            <h3 className="talite-title">
+            <h3 id={titleId} className="talite-title">
               Cấu hình bàn ăn <b>{getTableDisplayCode(table) || "--"}</b>
             </h3>
             <p className="talite-subtitle">
@@ -815,6 +817,7 @@ export default function TableActionsLiteModal({
             </p>
           </div>
           <button
+            type="button"
             className="talite-close"
             onClick={() => handleRequestClose("x")}
             aria-label="Đóng"
@@ -1167,6 +1170,7 @@ export default function TableActionsLiteModal({
             </div>
             <div className="actions-end">
               <button
+                type="button"
                 className="btn primary"
                 disabled={isVrSaving}
                 onClick={handleSaveBasics}
@@ -1219,6 +1223,7 @@ export default function TableActionsLiteModal({
             <div className="actions-end" style={{ marginTop: 8 }}>
               {status === "reserved" && (
                 <button
+                  type="button"
                   className="btn"
                   onClick={() => handleChangeStatus("cleaning")}
                   disabled={busy.status}
@@ -1228,6 +1233,7 @@ export default function TableActionsLiteModal({
               )}
               {status === "cleaning" && (
                 <button
+                  type="button"
                   className="btn success"
                   onClick={() => handleChangeStatus("available")}
                 >
@@ -1268,6 +1274,7 @@ export default function TableActionsLiteModal({
               </div>
               <div className="actions-end" style={{ alignItems: "end" }}>
                 <button
+                  type="button"
                   className="btn ghost"
                   disabled={busy.move}
                   onClick={handleMove}
@@ -1304,6 +1311,7 @@ export default function TableActionsLiteModal({
               </div>
               <div className="actions-end" style={{ alignItems: "end" }}>
                 <button
+                  type="button"
                   className="btn ghost"
                   disabled={busy.swap}
                   onClick={handleSwap}
@@ -1342,6 +1350,7 @@ export default function TableActionsLiteModal({
                 style={{ alignItems: "end", gap: ".5rem" }}
               >
                 <button
+                  type="button"
                   className="btn ghost"
                   disabled={busy.merge}
                   onClick={handleMerge}
@@ -1349,6 +1358,7 @@ export default function TableActionsLiteModal({
                   {busy.merge ? "Đang gộp…" : "Gộp bàn"}
                 </button>
                 <button
+                  type="button"
                   className={`btn ${table?.joinGroupId ? "ghost" : "disabled"}`}
                   disabled={!table?.joinGroupId || busy.split}
                   onClick={handleSplitOut}
@@ -1506,6 +1516,7 @@ export default function TableActionsLiteModal({
             </div>
             <div className="talite-ai-grid">
               <button
+                type="button"
                 className="btn ghost"
                 onClick={handleSuggestMergeAI}
                 disabled={aiLoading.merge}
@@ -1513,6 +1524,7 @@ export default function TableActionsLiteModal({
                 {aiLoading.merge ? "Đang gợi ý..." : "Đề xuất ghép bàn"}
               </button>
               <button
+                type="button"
                 className="btn ghost"
                 onClick={handleSuggestPromoAI}
                 disabled={aiLoading.promo}
@@ -1520,6 +1532,7 @@ export default function TableActionsLiteModal({
                 {aiLoading.promo ? "Đang gợi ý..." : "Đề xuất ưu đãi"}
               </button>
               <button
+                type="button"
                 className="btn ghost"
                 onClick={handlePredictTurnoverAI}
                 disabled={aiLoading.turnover}
