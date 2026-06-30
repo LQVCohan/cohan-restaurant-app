@@ -168,15 +168,19 @@ const installManagerAttendanceMocks = async (page) => {
         break;
       case "UpsertAttendance": {
         const input = payload?.variables?.input || {};
-        const checkedIn = makeAttendanceRecord({
+        const isCheckOut = input.action === "check_out";
+        const record = makeAttendanceRecord({
           workDate: input.workDate || "2099-06-26T00:00:00.000+07:00",
           actualCheckInAt: "2099-06-26T01:00:00.000Z",
+          actualCheckOutAt: isCheckOut ? "2099-06-26T09:00:00.000Z" : null,
+          workedMinutes: isCheckOut ? 480 : 0,
+          hours: isCheckOut ? 8 : 0,
           note: input.note || "",
-          status: "checked_in",
+          status: isCheckOut ? "checked_out" : "checked_in",
           updatedAt: "2026-06-26T02:00:00.000Z",
         });
-        records = [checkedIn];
-        data = { upsertStaffAttendance: checkedIn };
+        records = [record];
+        data = { upsertStaffAttendance: record };
         break;
       }
       default:
@@ -216,6 +220,24 @@ test.describe("P1 manager attendance", () => {
     const row = page.locator(".attendance-table tbody tr", { hasText: STAFF_USER.fullName });
     await expect(row).toBeVisible();
     await expect(row).toContainText("Đang làm");
+    await expect(row).toContainText("quick");
+  });
+
+  test("manager quick check-out records attendance without hidden backend errors", async ({ page, backendGuard }) => {
+    await installManagerAttendanceMocks(page);
+    await openManagerAttendancePage(page);
+
+    await page.locator("select.quick-select").selectOption(STAFF_USER.id);
+    await page.getByPlaceholder("VD: Quên thẻ, đổi ca, máy vân tay lỗi...").fill("P1 ghi nhận tan ca tại quầy");
+
+    backendGuard.clear();
+    await page.getByRole("button", { name: "Chấm công tan ca cho nhân viên đã chọn" }).click();
+    await expect(page.getByRole("status")).toContainText("Đã lưu chấm công TAN CA thành công");
+    backendGuard.assertNoBackendErrors("manager quick attendance check-out");
+
+    const row = page.locator(".attendance-table tbody tr", { hasText: STAFF_USER.fullName });
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("Hoàn thành");
     await expect(row).toContainText("quick");
   });
 });
