@@ -3744,10 +3744,11 @@ const mutationResolvers = {
     return rejectAttendanceCorrectionRequestService({ input, ctx });
   },
 
-  cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
+  cancelAttendanceCorrectionRequest: async (_, { id, requestId }, ctx) => {
     requireAuth(ctx);
+    const resolvedRequestId = requestId || id;
     const existing = await AttendanceCorrectionRequest.findById(
-      requestId,
+      resolvedRequestId,
     ).select({
       _id: 1,
       employeeId: 1,
@@ -3761,7 +3762,7 @@ const mutationResolvers = {
       ]);
       await requireRestaurantAccess(ctx, existing.restaurantId);
     }
-    return cancelAttendanceCorrectionRequestService({ requestId, ctx });
+    return cancelAttendanceCorrectionRequestService({ requestId: resolvedRequestId, ctx });
   },
   reviewPerformanceIncident: async (_, { input }, ctx) => {
     requireAuth(ctx);
@@ -3929,9 +3930,10 @@ const mutationResolvers = {
     return rejectOvertimeRequestService({ input, ctx });
   },
 
-  cancelOvertimeRequest: async (_, { input }, ctx) => {
+  cancelOvertimeRequest: async (_, { id, input }, ctx) => {
     requireAuth(ctx);
-    const request = await OvertimeRequest.findById(input?.requestId).select({
+    const resolvedInput = input || { requestId: id };
+    const request = await OvertimeRequest.findById(resolvedInput?.requestId).select({
       _id: 1,
       employeeId: 1,
       restaurantId: 1,
@@ -3941,7 +3943,7 @@ const mutationResolvers = {
       requireRoles(ctx, ATTENDANCE_REVIEW_ROLES);
       await requireRestaurantAccess(ctx, request.restaurantId);
     }
-    return cancelOvertimeRequestService({ input, ctx });
+    return cancelOvertimeRequestService({ input: resolvedInput, ctx });
   },
 
   completeOvertimeRequest: async (_, { input }, ctx) => {

@@ -3,7 +3,7 @@ import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import "./StaffAttendancePage.scss";
 
-const STAFF_ATTENDANCE_SELF_SERVICE = gql`
+export const STAFF_ATTENDANCE_SELF_SERVICE = gql`
   query StaffAttendanceSelfService(
     $restaurantId: ID!
     $employeeId: ID!
@@ -78,7 +78,7 @@ const STAFF_ATTENDANCE_SELF_SERVICE = gql`
   }
 `;
 
-const CREATE_ATTENDANCE_CORRECTION = gql`
+export const CREATE_ATTENDANCE_CORRECTION = gql`
   mutation StaffCreateAttendanceCorrection($input: JSON) {
     createAttendanceCorrectionRequest(input: $input) {
       id
@@ -93,7 +93,7 @@ const CREATE_ATTENDANCE_CORRECTION = gql`
   }
 `;
 
-const CREATE_OVERTIME_REQUEST = gql`
+export const CREATE_OVERTIME_REQUEST = gql`
   mutation StaffCreateOvertimeRequest($input: JSON) {
     createOvertimeRequest(input: $input) {
       id
@@ -109,6 +109,25 @@ const CREATE_OVERTIME_REQUEST = gql`
   }
 `;
 
+
+export const CANCEL_ATTENDANCE_CORRECTION = gql`
+  mutation StaffCancelAttendanceCorrection($id: ID!) {
+    cancelAttendanceCorrectionRequest(id: $id) {
+      id
+      status
+    }
+  }
+`;
+
+export const CANCEL_OVERTIME_REQUEST = gql`
+  mutation StaffCancelOvertimeRequest($id: ID!) {
+    cancelOvertimeRequest(id: $id) {
+      id
+      status
+    }
+  }
+`;
+
 const correctionTypeOptions = [
   ["missing_check_in", "Thiếu check-in"],
   ["missing_check_out", "Thiếu check-out"],
@@ -117,6 +136,8 @@ const correctionTypeOptions = [
   ["wrong_check_in_out", "Sai cả vào/ra"],
   ["other", "Khác"],
 ];
+
+const cancellableStatuses = new Set(["pending", "pending_approval", "pending_employee_confirmation"]);
 
 const overtimeTypeOptions = [
   ["weekday", "Ngày thường"],
@@ -183,6 +204,8 @@ export default function StaffAttendancePage() {
 
   const [createCorrection, correctionState] = useMutation(CREATE_ATTENDANCE_CORRECTION);
   const [createOvertime, overtimeState] = useMutation(CREATE_OVERTIME_REQUEST);
+  const [cancelCorrection, cancelCorrectionState] = useMutation(CANCEL_ATTENDANCE_CORRECTION);
+  const [cancelOvertime, cancelOvertimeState] = useMutation(CANCEL_OVERTIME_REQUEST);
 
   const records = data?.staffAttendanceRecords || [];
   const corrections = data?.attendanceCorrectionRequests || [];
@@ -227,6 +250,21 @@ export default function StaffAttendancePage() {
       setFeedback({ type: "success", message: "Đã gửi yêu cầu chỉnh công." });
     } catch (submitError) {
       setFeedback({ type: "error", message: getGraphQLErrorMessage(submitError, "Không thể gửi yêu cầu chỉnh công.") });
+    }
+  };
+
+  const cancelRequest = async (kind, id) => {
+    setFeedback(null);
+    try {
+      if (kind === "correction") {
+        await cancelCorrection({ variables: { id } });
+      } else {
+        await cancelOvertime({ variables: { id } });
+      }
+      await refetch?.();
+      setFeedback({ type: "success", message: "Đã hủy yêu cầu." });
+    } catch (cancelError) {
+      setFeedback({ type: "error", message: getGraphQLErrorMessage(cancelError, "Không thể hủy yêu cầu.") });
     }
   };
 
@@ -367,7 +405,12 @@ export default function StaffAttendancePage() {
             {corrections.length ? corrections.map((item) => (
               <div className="staff-attendance-history-item" key={item.id}>
                 <div><strong>{item.correctionType?.replaceAll("_", " ") || "Chỉnh công"}</strong><span>{item.reason}</span></div>
-                <StatusPill status={item.status} />
+                <div className="staff-attendance-history-actions">
+                  <StatusPill status={item.status} />
+                  {cancellableStatuses.has(String(item.status || "").toLowerCase()) && (
+                    <button type="button" onClick={() => cancelRequest("correction", item.id)} disabled={cancelCorrectionState.loading}>Hủy</button>
+                  )}
+                </div>
               </div>
             )) : <div className="staff-attendance-empty" role="status">Chưa có yêu cầu chỉnh công.</div>}
           </div>
@@ -378,7 +421,12 @@ export default function StaffAttendancePage() {
             {overtimeRequests.length ? overtimeRequests.map((item) => (
               <div className="staff-attendance-history-item" key={item.id}>
                 <div><strong>{item.overtimeType || "Tăng ca"}</strong><span>{item.reason}</span></div>
-                <StatusPill status={item.status} />
+                <div className="staff-attendance-history-actions">
+                  <StatusPill status={item.status} />
+                  {cancellableStatuses.has(String(item.status || "").toLowerCase()) && (
+                    <button type="button" onClick={() => cancelRequest("overtime", item.id)} disabled={cancelOvertimeState.loading}>Hủy</button>
+                  )}
+                </div>
               </div>
             )) : <div className="staff-attendance-empty" role="status">Chưa có yêu cầu tăng ca.</div>}
           </div>
