@@ -1,5 +1,5 @@
 // src/components/Table/TableActionsLiteModal.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   loadTableVrImage,
@@ -150,6 +150,8 @@ export default function TableActionsLiteModal({
 }) {
   const isOpen = !!open && !!table;
   const titleId = "talite-title";
+  const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
   const guardState = useMemo(() => getTableGuardState(table), [table]);
   const deleteDisabledReason = useMemo(
     () => getTableActionDisabledReason(table, "delete"),
@@ -196,6 +198,7 @@ export default function TableActionsLiteModal({
 
   const [busy, setBusy] = useState({});
   const [cameraPreviewOpen, setCameraPreviewOpen] = useState(false);
+  const cameraPreviewOpenRef = useRef(false);
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
   const { allPromotions } = usePromotions();
   const { showNotification } = useNotification();
@@ -374,6 +377,52 @@ export default function TableActionsLiteModal({
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    cameraPreviewOpenRef.current = cameraPreviewOpen;
+  }, [cameraPreviewOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    previousFocusRef.current = document.activeElement;
+    const modal = modalRef.current;
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      Array.from(modal?.querySelectorAll(focusableSelector) || []).filter(
+        (element) => element.offsetParent !== null
+      );
+
+    requestAnimationFrame(() => {
+      const [firstFocusable] = getFocusable();
+      (firstFocusable || modal)?.focus?.();
+    });
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Tab" || cameraPreviewOpenRef.current) return;
+      const focusable = getFocusable();
+      if (!focusable.length) {
+        event.preventDefault();
+        modal?.focus?.();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    modal?.addEventListener("keydown", handleKeyDown);
+    return () => {
+      modal?.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus?.();
     };
   }, [isOpen]);
 
@@ -629,17 +678,28 @@ export default function TableActionsLiteModal({
     if (busy.merge) return;
     const raw = (mergeCodes || "").trim();
     if (!raw) return;
-    const anchorCode = getTableDisplayCode(table);
-    const ids = Array.from(
-      new Set(
-        [anchorCode, ...raw.split(/[,\s]+/)]
-          .map((c) => c.trim())
-          .filter(Boolean)
-          .map((c) => actions.fetchTableByCode?.(c))
-          .filter(Boolean)
-          .map((t) => t.id)
-      )
+    const codes = raw.split(/[,\s]+/).map((c) => c.trim()).filter(Boolean);
+    const missingCodes = codes.filter((c) => !actions.fetchTableByCode?.(c));
+    if (missingCodes.length) {
+      showNotification(`Không tìm thấy bàn: ${missingCodes.join(", ")}`, "error");
+      return;
+    }
+    const mergeTables = codes.map((c) => actions.fetchTableByCode?.(c));
+    const selfOnly =
+      mergeTables.length > 0 &&
+      mergeTables.every((item) => String(item.id) === String(table.id));
+    if (selfOnly) {
+      showNotification("Không thể gộp bàn với chính nó.", "error");
+      return;
+    }
+    const crossFloor = mergeTables.some(
+      (item) => String(getTableFloorId(item)) !== String(getTableFloorId(table))
     );
+    if (crossFloor) {
+      showNotification("Chỉ gộp các bàn cùng tầng.", "error");
+      return;
+    }
+    const ids = Array.from(new Set([table.id, ...mergeTables.map((item) => item.id)]));
     if (ids.length < 2) {
       showNotification("Cần ít nhất 2 bàn để gộp.", "error");
       return;
@@ -670,6 +730,22 @@ export default function TableActionsLiteModal({
       showNotification(resolveTableActionError(error, "Tách bàn thất bại."), "error");
     } finally {
       setBusyKey("split", false);
+    }
+  };
+
+  const handleSplitAll = async () => {
+    if (!table?.joinGroupId || busy.splitAll) return;
+    setBusyKey("splitAll", true);
+    try {
+      await actions.splitTables({
+        joinGroupId: table.joinGroupId,
+        mode: "ALL",
+      });
+      await onUpdated?.();
+    } catch (error) {
+      showNotification(resolveTableActionError(error, "Tách cả nhóm thất bại."), "error");
+    } finally {
+      setBusyKey("splitAll", false);
     }
   };
 
@@ -800,10 +876,12 @@ export default function TableActionsLiteModal({
   return createPortal(
     <div className="talite-backdrop" onMouseDown={handleBackdropMouseDownSafe}>
       <div
+        ref={modalRef}
         className="talite-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1360,11 +1438,21 @@ export default function TableActionsLiteModal({
                 <button
                   type="button"
                   className={`btn ${table?.joinGroupId ? "ghost" : "disabled"}`}
-                  disabled={!table?.joinGroupId || busy.split}
+                  disabled={!table?.joinGroupId || busy.split || busy.splitAll}
                   onClick={handleSplitOut}
                 >
                   {busy.split ? "Đang tách…" : "Tách bàn này"}
                 </button>
+                {table?.joinGroupId && (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={busy.split || busy.splitAll}
+                    onClick={handleSplitAll}
+                  >
+                    {busy.splitAll ? "Đang tách nhóm…" : "Tách cả nhóm"}
+                  </button>
+                )}
               </div>
             </div>
           </div>

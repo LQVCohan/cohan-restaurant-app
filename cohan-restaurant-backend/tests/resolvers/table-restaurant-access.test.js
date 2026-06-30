@@ -100,6 +100,21 @@ describe("table restaurant access guards", () => {
 
   it("createTable denied", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.createTable(null,{input:{restaurantId:"valid-r1",floorId:"valid-f1",code:"A"}},{})).rejects.toThrow(); expect(tableMocks.find).not.toHaveBeenCalled(); expect(floorMocks.findById).not.toHaveBeenCalled(); expect(tableMocks.create).not.toHaveBeenCalled(); });
   it("mergeTables denied", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.mergeTables(null,{input:{restaurantId:"valid-r1",tableIds:["valid-a","valid-b"]}},{})).rejects.toThrow(); expect(tableMocks.find).not.toHaveBeenCalled(); expect(tableMocks.updateMany).not.toHaveBeenCalled(); expect(eventMocks.logEvent).not.toHaveBeenCalled(); });
+  it("mergeTables rejects tables from different floors", async () => {
+    const m = (await import("../../graphql/resolvers/table/mutation.js")).default;
+    tableMocks.find.mockReturnValueOnce(
+      selectLeanWrap([
+        { _id: "valid-a", restaurantId: "valid-r1", floorId: "valid-f1", code: "A1" },
+        { _id: "valid-b", restaurantId: "valid-r1", floorId: "valid-f2", code: "B1" },
+      ])
+    );
+
+    await expect(
+      m.mergeTables(null, { input: { restaurantId: "valid-r1", tableIds: ["valid-a", "valid-b"] } }, {})
+    ).rejects.toThrow("Cannot merge tables from different floors");
+    expect(tableMocks.updateMany).not.toHaveBeenCalled();
+    expect(eventMocks.logEvent).not.toHaveBeenCalled();
+  });
   it("splitTables denied", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.splitTables(null,{input:{restaurantId:"valid-r1",joinGroupId:"g1",mode:"ALL"}},{})).rejects.toThrow(); expect(tableMocks.updateMany).not.toHaveBeenCalled(); expect(tableMocks.find).not.toHaveBeenCalled(); expect(eventMocks.logEvent).not.toHaveBeenCalled(); });
   it("swapTableCodes denied", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.swapTableCodes(null,{input:{restaurantId:"valid-r1",floorId:"valid-f1",aId:"valid-a",bId:"valid-b"}},{})).rejects.toThrow(); expect(tableMocks.findOne).not.toHaveBeenCalled(); expect(tableMocks.updateOne).not.toHaveBeenCalled(); expect(eventMocks.logEvent).not.toHaveBeenCalled(); });
   it("bulkUpsertTables denied", async () => { const m=(await import("../../graphql/resolvers/table/mutation.js")).default; authMocks.requireRestaurantPermission.mockRejectedValue(new Error("FORBIDDEN_SCOPE")); await expect(m.bulkUpsertTables(null,{input:{restaurantId:"valid-r1",floorId:"valid-f1",items:[]}},{})).rejects.toThrow(); expect(floorMocks.findById).not.toHaveBeenCalled(); expect(tableMocks.bulkWrite).not.toHaveBeenCalled(); });
