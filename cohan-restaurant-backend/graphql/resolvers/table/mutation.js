@@ -283,6 +283,10 @@ export default {
     if (tables.length !== tableIds.length) {
       throw new GraphQLError("Some tables not found or not in this restaurant");
     }
+    const floorIds = new Set(tables.map((item) => String(item.floorId || "")));
+    if (floorIds.size !== 1) {
+      throw new GraphQLError("Cannot merge tables from different floors");
+    }
 
     // Tạo joinGroupId nếu chưa truyền
     const groupId = joinGroupId || new mongoose.Types.ObjectId().toString();
