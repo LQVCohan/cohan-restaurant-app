@@ -13,7 +13,7 @@ enum PaymentStatus {
   CANCELED
 }
 input PayOrdersByTableIdInput {
-  restaurantId: ID
+  restaurantId: ID!
   tableId: ID!
   paidAmount: Float
   method: String! # "cash" | "card" | "bank_transfer" | "e_wallet" | ...

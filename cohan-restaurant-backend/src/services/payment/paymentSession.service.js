@@ -575,38 +575,65 @@ async function creditWalletTopupPayment({ payment, provider, session }) {
     await payment.save({ session });
     return payment.metadata.walletTopup;
   }
-  const user = await User.findById(payment.userId).session(session);
+
+  const claim = await PaymentSession.findOneAndUpdate(
+    {
+      _id: payment._id,
+      "metadata.source": "wallet_topup",
+      "metadata.walletTopup.walletTransactionId": { $exists: false },
+      "metadata.walletTopup.creditingAt": { $exists: false },
+    },
+    {
+      $set: { "metadata.walletTopup.creditingAt": new Date() },
+      $push: { events: { type: "wallet_topup_credit_claimed", payload: { provider }, at: new Date() } },
+    },
+    { new: true, session },
+  );
+
+  if (!claim) {
+    const latest = await PaymentSession.findById(payment._id).session(session);
+    if (latest?.metadata?.walletTopup?.walletTransactionId) {
+      latest.events.push({ type: "idempotent_skip", payload: { reason: "wallet_topup_already_credited" } });
+      await latest.save({ session });
+      payment.metadata = latest.metadata;
+      return latest.metadata.walletTopup;
+    }
+    throw new Error("Wallet topup settlement is already in progress");
+  }
+
+  const user = await User.findById(claim.userId).session(session);
   if (!user) throw new Error("Wallet topup user not found");
   user.wallet = user.wallet || {};
   const balanceBefore = Math.round(Number(user.wallet.balance || 0));
-  const balanceAfter = balanceBefore + Math.round(Number(payment.amount || 0));
+  const balanceAfter = balanceBefore + Math.round(Number(claim.amount || 0));
   user.wallet.balance = balanceAfter;
-  user.wallet.currency = user.wallet.currency || payment.currency || "VND";
+  user.wallet.currency = user.wallet.currency || claim.currency || "VND";
   user.wallet.provider = user.wallet.provider || "cohan_wallet";
   user.wallet.status = user.wallet.status || "active";
   user.wallet.updatedAt = new Date();
   await user.save({ session });
   const [walletTransaction] = await WalletTransaction.create([{
-    userId: payment.userId,
+    userId: claim.userId,
     type: "TOPUP",
-    amount: Math.round(Number(payment.amount || 0)),
+    amount: Math.round(Number(claim.amount || 0)),
     currency: user.wallet.currency,
     balanceBefore,
     balanceAfter,
     status: "SUCCESS",
     referenceType: "PAYMENT_SESSION",
-    referenceId: payment._id,
-    metadata: { provider, reference: payment.reference, providerTransactionId: payment.providerTransactionId, source: "wallet_topup" },
+    referenceId: claim._id,
+    metadata: { provider, reference: claim.reference, providerTransactionId: claim.providerTransactionId, source: "wallet_topup" },
   }], { session });
-  payment.metadata = {
-    ...(payment.metadata || {}),
-    walletTopup: { walletTransactionId: walletTransaction._id, creditedAt: new Date() },
-    settlement: { ...((payment.metadata || {}).settlement || {}), walletTransactionId: walletTransaction._id },
+  claim.metadata = {
+    ...(claim.metadata || {}),
+    walletTopup: { ...((claim.metadata || {}).walletTopup || {}), walletTransactionId: walletTransaction._id, creditedAt: new Date() },
+    settlement: { ...((claim.metadata || {}).settlement || {}), walletTransactionId: walletTransaction._id },
   };
-  payment.events.push({ type: "wallet_topup_credited", payload: { walletTransactionId: String(walletTransaction._id) } });
-  await payment.save({ session });
-  await EventLog.log({ actorUserId: payment.userId, verb: "wallet.topup", object: { kind: "WalletTransaction", id: walletTransaction._id }, source: "api", status: "success", meta: { provider, paymentSessionId: String(payment._id), amount: payment.amount } }, { session }).catch(() => {});
-  return payment.metadata.walletTopup;
+  claim.events.push({ type: "wallet_topup_credited", payload: { walletTransactionId: String(walletTransaction._id) } });
+  await claim.save({ session });
+  payment.metadata = claim.metadata;
+  await EventLog.log({ actorUserId: claim.userId, verb: "wallet.topup", object: { kind: "WalletTransaction", id: walletTransaction._id }, source: "api", status: "success", meta: { provider, paymentSessionId: String(claim._id), amount: claim.amount } }, { session }).catch(() => {});
+  return claim.metadata.walletTopup;
 }
 
 function mapProviderStatus(provider, payload) {
@@ -687,7 +714,7 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
       payment.events.push({ type: "idempotent_skip", payload: { reason: "already_success" } });
       await payment.save();
     }
-    const out = payment.toObject();
+    const out = (await PaymentSession.findById(payment._id).lean()) || payment.toObject();
     out.realtimeEmitSkipped = true;
     return out;
   }
@@ -773,7 +800,7 @@ export async function applyPaymentProviderCallback({ provider, payload, source =
     await session.endSession();
   }
 
-  return payment.toObject();
+  return (await PaymentSession.findById(payment._id).lean()) || payment.toObject();
 }
 
 export async function getPaymentSessionById(paymentId, userId = null) {
