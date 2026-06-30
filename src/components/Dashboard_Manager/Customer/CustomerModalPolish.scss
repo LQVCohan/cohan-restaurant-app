@@ -19,6 +19,7 @@
   padding: 0.9rem 1.2rem !important;
   border-bottom: 1px solid rgba(216, 208, 197, 0.66) !important;
   background: rgba(255, 253, 250, 0.72) !important;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   flex: 0 0 auto;
 }
@@ -635,6 +636,7 @@
   flex: 0 0 auto;
   border-top: 1px solid rgba(216, 208, 197, 0.66) !important;
   background: rgba(255, 253, 250, 0.82) !important;
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 

@@ -22,6 +22,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
   border: 1px solid $border-warm;
   border-radius: $radius;
   box-shadow: $shadow-card;
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -59,6 +60,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
       linear-gradient(rgba(185, 138, 80, 0.08) 1px, transparent 1px),
       linear-gradient(90deg, rgba(185, 138, 80, 0.08) 1px, transparent 1px);
     background-size: 34px 34px;
+    -webkit-mask-image: radial-gradient(circle at top left, black 0%, transparent 70%);
     mask-image: radial-gradient(circle at top left, black 0%, transparent 70%);
   }
 
@@ -312,6 +314,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
     padding: 1rem;
     border-bottom: 1px solid rgba(185, 138, 80, 0.2);
     background: rgba(255, 248, 237, 0.88);
+    -webkit-backdrop-filter: blur(18px);
     backdrop-filter: blur(18px);
 
     .left-controls {
@@ -396,6 +399,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
       letter-spacing: 0.035em;
       text-align: left;
       white-space: nowrap;
+      -webkit-backdrop-filter: blur(14px);
       backdrop-filter: blur(14px);
 
       &.text-right { text-align: right; }
@@ -770,6 +774,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
   justify-content: center;
   padding: clamp(1rem, 2vw, 2rem);
   background: rgba(21, 32, 51, 0.42);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   animation: fadeIn 0.2s ease-out;
 

@@ -50,6 +50,7 @@
   box-shadow:
     0 18px 42px rgba(48, 40, 30, 0.07),
     inset 0 1px rgba(255, 255, 255, 0.72) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 
@@ -203,6 +204,7 @@
   padding: 0.9rem !important;
   border-bottom-color: rgba(229, 222, 211, 0.92) !important;
   background: rgba(255, 253, 248, 0.86) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
   backdrop-filter: blur(14px) !important;
 }
 
@@ -532,6 +534,7 @@
     radial-gradient(circle at 20% 10%, rgba(168, 133, 95, 0.22), transparent 30rem),
     radial-gradient(circle at 84% 18%, rgba(83, 108, 97, 0.16), transparent 30rem),
     rgba(36, 48, 63, 0.46) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(1.04) !important;
   backdrop-filter: blur(9px) saturate(1.04) !important;
 }
 

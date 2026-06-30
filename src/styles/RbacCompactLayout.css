@@ -183,6 +183,7 @@
   padding: 0.15rem 0.15rem 0.75rem !important;
   border-bottom: 1px solid rgba(213, 200, 184, 0.48);
   background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 253, 248, 0.9));
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -295,6 +296,7 @@
   padding: 0.75rem 0.85rem;
   border-bottom: 1px solid rgba(213, 200, 184, 0.58);
   background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 250, 243, 0.9));
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 

@@ -214,6 +214,7 @@
 
 .ai-admin-tabs {
   background: rgba(255, 253, 248, 0.78) !important;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 

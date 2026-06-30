@@ -44,6 +44,7 @@
 
 .storage-management .sm-header-card,
 .storage-management .sm-tab-content-wrapper {
+  -webkit-backdrop-filter: blur(16px) saturate(112%) !important;
   backdrop-filter: blur(16px) saturate(112%) !important;
 }
 

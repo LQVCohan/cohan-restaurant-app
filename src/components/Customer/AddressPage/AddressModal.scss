@@ -10,6 +10,7 @@ $bg-input: #f8fafc;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   z-index: 9999;
   display: flex;
@@ -305,6 +306,13 @@ $bg-input: #f8fafc;
     }
   }
 
+  .address-modal-error {
+    margin: 0 24px 16px;
+    color: #b91c1c;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
   .modal-footer {
     padding: 16px 24px;
     border-top: 1px solid $border;
@@ -339,6 +347,16 @@ $bg-input: #f8fafc;
         background: color.adjust($primary, $lightness: -5%);
       }
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .address-modal-container {
+    animation: none;
+  }
+
+  .address-modal-container * {
+    transition-duration: 0.01ms !important;
   }
 }
 

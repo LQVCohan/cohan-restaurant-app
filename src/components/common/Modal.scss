@@ -51,6 +51,7 @@ body.modal-open {
     radial-gradient(circle at 22% 12%, rgba($modal-accent, 0.24), transparent 34rem),
     radial-gradient(circle at 82% 18%, rgba($modal-sage, 0.18), transparent 30rem),
     $modal-backdrop-bg;
+  -webkit-backdrop-filter: blur(7px) saturate(1.04);
   backdrop-filter: blur(7px) saturate(1.04);
   opacity: 0;
   overflow-x: hidden;
@@ -141,6 +142,7 @@ body.modal-open {
       linear-gradient(rgba(97, 82, 62, 0.026) 1px, transparent 1px),
       linear-gradient(90deg, rgba(97, 82, 62, 0.02) 1px, transparent 1px);
     background-size: 30px 30px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 62%);
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 62%);
   }
 
@@ -176,6 +178,7 @@ body.modal-open {
   border-bottom: 1px solid rgba($modal-border, 0.88);
   background:
     linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(248, 246, 241, 0.9));
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 
   h2,
@@ -269,6 +272,7 @@ body.modal-open {
   padding: 14px clamp(18px, 2.4vw, 26px);
   border-top: 1px solid rgba($modal-border, 0.88);
   background: linear-gradient(180deg, rgba(248, 246, 241, 0.88), rgba(255, 253, 248, 0.97));
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 

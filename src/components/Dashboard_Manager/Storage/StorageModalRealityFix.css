@@ -196,6 +196,7 @@
   padding: 12px 20px !important;
   border-top: 1px solid var(--sm-fix-border-soft) !important;
   background: rgba(255, 253, 248, 0.96) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(112%) !important;
   backdrop-filter: blur(12px) saturate(112%) !important;
   box-shadow: 0 -8px 22px rgba(54, 48, 40, 0.055) !important;
 }

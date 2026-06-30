@@ -58,6 +58,7 @@ $pm-shadow-xl: 0 28px 76px rgba(30, 25, 18, 0.24);
   background:
     radial-gradient(circle at 18% 8%, rgba($pm-sage, 0.18), transparent 26rem),
     rgba(31, 42, 47, 0.58);
+  -webkit-backdrop-filter: blur(8px) saturate(112%);
   backdrop-filter: blur(8px) saturate(112%);
   animation: overlayFadeIn 0.2s ease-out;
 

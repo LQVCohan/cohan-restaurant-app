@@ -53,6 +53,7 @@
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 253, 248, 0.18), transparent 28rem),
     rgba(31, 42, 47, 0.42) !important;
+  -webkit-backdrop-filter: blur(11px) saturate(112%) !important;
   backdrop-filter: blur(11px) saturate(112%) !important;
   padding: clamp(18px, 2.2vw, 34px) !important;
 }

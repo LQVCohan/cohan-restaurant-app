@@ -44,6 +44,7 @@
     linear-gradient(rgba(77, 66, 52, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(77, 66, 52, 0.028) 1px, transparent 1px);
   background-size: 54px 54px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 74%, transparent 100%);
   mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 74%, transparent 100%);
 }
 
@@ -70,6 +71,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.82),
     var(--ai-shadow-sm) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
   backdrop-filter: blur(10px) saturate(115%);
 }
 
@@ -427,6 +429,7 @@
 
 .manager-layout--ai-chatbot-analytics .ai-admin-review-modal__backdrop {
   background: rgba(36, 48, 63, 0.36) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(105%) !important;
   backdrop-filter: blur(8px) saturate(105%) !important;
 }
 

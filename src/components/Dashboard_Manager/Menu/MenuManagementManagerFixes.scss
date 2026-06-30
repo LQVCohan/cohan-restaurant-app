@@ -62,6 +62,7 @@ $mm-shadow-soft: 0 12px 32px rgba(48, 40, 30, 0.075);
       linear-gradient(rgba(77, 66, 52, 0.034) 1px, transparent 1px),
       linear-gradient(90deg, rgba(77, 66, 52, 0.026) 1px, transparent 1px);
     background-size: 54px 54px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 74%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.2) 74%, transparent 100%);
   }
 
@@ -103,6 +104,7 @@ $mm-shadow-soft: 0 12px 32px rgba(48, 40, 30, 0.075);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.84),
     $mm-shadow !important;
+  -webkit-backdrop-filter: blur(14px) saturate(122%);
   backdrop-filter: blur(14px) saturate(122%);
 }
 
@@ -351,6 +353,7 @@ $mm-shadow-soft: 0 12px 32px rgba(48, 40, 30, 0.075);
   border-radius: 22px !important;
   background: rgba(255, 255, 255, 0.74) !important;
   box-shadow: $mm-shadow-soft !important;
+  -webkit-backdrop-filter: blur(14px) saturate(125%) !important;
   backdrop-filter: blur(14px) saturate(125%) !important;
 }
 

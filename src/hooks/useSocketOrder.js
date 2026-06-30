@@ -66,7 +66,6 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
     const getHandlers = () => handlersRef.current || {};
 
     socket.on("connect", () => {
-      console.log(`[SOCKET.IO] Connected (${socket.id})`);
       socket.emit("joinRestaurant", restaurantId, (ack) => {
         if (!ack?.ok) {
           console.warn("[SOCKET.IO] joinRestaurant failed:", ack?.code || "UNKNOWN");
@@ -85,11 +84,9 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
     socket.on("orderEvents", (evt) => {
       if (!evt?.type) return;
       if (evt.type === "ORDER_CREATED" && isUnverifiedTransferOrder(evt.order)) {
-        console.log("📡 [SOCKET.IO] Hold transfer order until payment verification:", evt.order?.orderCode || evt.order?.id);
         return;
       }
       const h = getHandlers();
-      console.log("📡 [SOCKET.IO] Order event received:", evt);
 
       h.onAny?.(evt);
 
@@ -130,7 +127,6 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
     socket.on("inventoryEvents", (evt) => {
       if (!evt?.type) return;
       const h = getHandlers();
-      console.log("📡 [SOCKET.IO] Inventory event received:", evt);
       broadcastMenuAvailabilityEvent(evt, "inventory");
 
       h.onInventoryEvent?.(evt);
@@ -150,7 +146,6 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
     socket.on("menuAvailabilityNotifications", (evt) => {
       if (!evt?.type) return;
       const h = getHandlers();
-      console.log("📡 [SOCKET.IO] Menu availability notification received:", evt);
       broadcastMenuAvailabilityEvent(evt, "notification");
 
       h.onMenuAvailabilityNotification?.(evt);
@@ -160,7 +155,6 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
     });
 
     return () => {
-      console.log("[SOCKET.IO] Leaving restaurant realtime and disconnecting...");
       socket.emit("leaveRestaurant", restaurantId);
       socket.disconnect();
       socketRef.current = null;

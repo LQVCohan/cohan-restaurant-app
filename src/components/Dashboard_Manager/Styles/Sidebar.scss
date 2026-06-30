@@ -86,6 +86,7 @@ $manager-white: #ffffff;
       linear-gradient(rgba(77, 66, 52, 0.034) 1px, transparent 1px),
       linear-gradient(90deg, rgba(77, 66, 52, 0.026) 1px, transparent 1px);
     background-size: 34px 34px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.58), transparent 74%);
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.58), transparent 74%);
   }
 
@@ -322,6 +323,7 @@ $manager-white: #ffffff;
   padding: 0.95rem 1rem 1rem;
   border-top: 1px solid rgba($manager-border, 0.92);
   background: rgba($manager-surface-soft, 0.78);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 

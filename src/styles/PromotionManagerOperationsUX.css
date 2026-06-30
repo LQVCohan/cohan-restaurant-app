@@ -84,6 +84,7 @@
   color: #6d6258;
   font-size: 0.63rem;
   letter-spacing: 0.045em;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 

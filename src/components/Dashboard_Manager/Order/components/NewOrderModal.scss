@@ -91,6 +91,7 @@ $shadow-warm: rgba(48, 40, 30, 0.16);
       linear-gradient(rgba(97, 82, 62, 0.032) 1px, transparent 1px),
       linear-gradient(90deg, rgba(97, 82, 62, 0.026) 1px, transparent 1px);
     background-size: 28px 28px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.62), transparent 68%);
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.62), transparent 68%);
   }
 
@@ -132,6 +133,7 @@ $shadow-warm: rgba(48, 40, 30, 0.16);
   border-bottom: 1px solid rgba($border, 0.82);
   background:
     linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(248, 246, 241, 0.76));
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
   backdrop-filter: blur(18px) saturate(1.05);
   box-shadow: 0 12px 28px rgba(66, 49, 31, 0.06);
 }
@@ -745,6 +747,7 @@ $shadow-warm: rgba(48, 40, 30, 0.16);
     padding: 1rem;
     background:
       linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(248, 246, 241, 0.94));
+    -webkit-backdrop-filter: blur(14px) saturate(1.05);
     backdrop-filter: blur(14px) saturate(1.05);
     animation: fadeIn 0.2s ease;
   }
@@ -839,6 +842,7 @@ $shadow-warm: rgba(48, 40, 30, 0.16);
   background:
     radial-gradient(circle at 18% 18%, rgba($gold, 0.16), transparent 24rem),
     rgba($ink, 0.34);
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
   backdrop-filter: blur(8px) saturate(1.05);
   animation: fadeIn 0.22s ease;
 }

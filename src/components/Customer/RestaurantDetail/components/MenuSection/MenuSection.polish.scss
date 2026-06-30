@@ -81,6 +81,7 @@ $menu-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
     border: 1px solid $menu-border;
     background: rgba(255, 255, 255, 0.9);
     box-shadow: $menu-shadow;
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
 
     .sidebar-header {
@@ -269,6 +270,7 @@ $menu-shadow: 0 18px 48px rgba(83, 46, 20, 0.08);
       box-shadow: none;
       border: 0;
       background: transparent;
+      -webkit-backdrop-filter: none;
       backdrop-filter: none;
 
       .sidebar-header {

@@ -8,6 +8,7 @@
   background:
     radial-gradient(circle at 50% 0%, rgba(217, 119, 6, 0.18), transparent 32rem),
     rgba(36, 26, 19, 0.42);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
   backdrop-filter: blur(10px) saturate(1.08);
   z-index: rm.$z-modal;
   display: flex;

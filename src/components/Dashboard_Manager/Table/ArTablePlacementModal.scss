@@ -399,6 +399,7 @@
     background: rgba(23, 33, 31, 0.86);
     color: #fff;
     box-shadow: 0 18px 44px rgba(11, 25, 22, 0.28);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
 

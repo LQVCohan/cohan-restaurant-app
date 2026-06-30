@@ -133,6 +133,7 @@
   &__side-panel {
     border-radius: 24px;
     background: var(--surface);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
   }
 

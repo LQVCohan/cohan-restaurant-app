@@ -21,6 +21,7 @@ $mcb-canvas: #f8f5ee;
   border: 1px solid rgba(128, 109, 83, 0.15);
   border-radius: 21px;
   background: rgba(255, 255, 255, 0.76);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
   backdrop-filter: blur(14px) saturate(125%);
   box-shadow: 0 12px 32px rgba(48, 40, 30, 0.08);
 }

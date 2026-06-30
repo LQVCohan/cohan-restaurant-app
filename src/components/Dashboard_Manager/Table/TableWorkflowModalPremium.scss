@@ -14,6 +14,7 @@
   background:
     radial-gradient(circle at 18% 10%, rgba(83, 108, 97, 0.2), transparent 32rem),
     rgba(25, 34, 38, 0.52) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.08) !important;
   backdrop-filter: blur(10px) saturate(1.08) !important;
 }
 
@@ -337,6 +338,7 @@
   border-top: 1px solid var(--table-premium-stone) !important;
   border-radius: 16px !important;
   background: rgba(255, 253, 248, 0.94) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 

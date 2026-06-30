@@ -10,6 +10,7 @@
   align-items: center !important;
   margin: 0 0 0.72rem !important;
   background: rgba(255, 253, 250, 0.96) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(216, 208, 197, 0.9) !important;
   box-shadow: 0 10px 24px rgba(54, 44, 29, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;

@@ -29,6 +29,7 @@
   border-radius: 20px;
   background: rgba(255, 253, 248, 0.9);
   box-shadow: 0 12px 32px rgba(70, 58, 39, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
 
@@ -307,6 +308,7 @@ body .modal-container.size-full:has(.customer-modal-content) .modal-header,
 body .modal-container.size-full:has(.customer-modal-content) .modal-footer {
   background: rgba(255, 253, 248, 0.92);
   border-color: #ded4c4;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 

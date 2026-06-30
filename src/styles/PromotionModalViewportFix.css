@@ -10,6 +10,7 @@ body:has(.premium-modal-overlay)::before {
   background:
     radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.16), transparent 26rem),
     rgba(21, 29, 32, 0.62);
+  -webkit-backdrop-filter: blur(9px) saturate(108%);
   backdrop-filter: blur(9px) saturate(108%);
 }
 
@@ -29,6 +30,7 @@ body:has(.premium-modal-overlay) header {
   padding-top: max(0.35rem, env(safe-area-inset-top)) !important;
   padding-bottom: max(0.55rem, env(safe-area-inset-bottom)) !important;
   background: transparent !important;
+  -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
 

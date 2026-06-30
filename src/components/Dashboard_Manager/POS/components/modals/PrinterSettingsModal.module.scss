@@ -36,6 +36,7 @@ $radius: 16px;
   right: 0;
   bottom: 0;
   background-color: rgba(15, 23, 42, 0.6); // Darker backdrop styling
+  -webkit-backdrop-filter: blur(4px); // Glass effect
   backdrop-filter: blur(4px); // Glass effect
   display: flex;
   align-items: center;

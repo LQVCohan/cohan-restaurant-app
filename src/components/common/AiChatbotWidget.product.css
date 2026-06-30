@@ -38,6 +38,7 @@
   border-radius: 28px !important;
   background: linear-gradient(180deg, var(--chat-surface) 0%, var(--chat-soft) 100%) !important;
   box-shadow: 0 30px 84px rgba(47, 41, 35, 0.24) !important;
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -222,6 +223,7 @@
   border-top: 1px solid rgba(124, 93, 63, 0.12) !important;
   padding: 14px !important;
   background: rgba(255, 253, 248, 0.94) !important;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   MapPin,
@@ -72,6 +72,9 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
     district: "", // ID huyện
     ward: "", // Tên xã
   });
+  const [error, setError] = useState("");
+  const modalRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
 
   // Load dữ liệu khi Edit
   useEffect(() => {
@@ -88,6 +91,21 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
       // ở đây ta giả định là form thêm mới cho đơn giản)
     }
   }, [initialData]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    previouslyFocusedRef.current = document.activeElement;
+    const timer = setTimeout(() => modalRef.current?.focus(), 0);
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [isOpen, onClose]);
 
   // --- HANDLERS ---
 
@@ -111,7 +129,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
       !geo.ward ||
       !form.specificAddress
     ) {
-      alert("Vui lòng điền đầy đủ thông tin địa chỉ!");
+      setError("Vui lòng điền đầy đủ thông tin địa chỉ.");
       return;
     }
 
@@ -126,6 +144,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
       ...geo,
       fullAddress, // Trường này dùng để hiển thị trên Card
     });
+    setError("");
     onClose();
   };
 
@@ -135,12 +154,17 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
     <div className="address-modal-overlay" onClick={onClose}>
       <div
         className="address-modal-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="address-modal-title"
+        ref={modalRef}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         <div className="modal-header">
-          <h3>Thông tin địa chỉ</h3>
-          <button className="btn-close" onClick={onClose}>
+          <h3 id="address-modal-title">Thông tin địa chỉ</h3>
+          <button type="button" className="btn-close" onClick={onClose} aria-label="Đóng">
             <X size={20} />
           </button>
         </div>
@@ -155,7 +179,10 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <div className="input-wrapper">
                   <User size={18} />
                   <input
+                    id="address-recipient-name"
                     type="text"
+                    aria-label="Họ và tên người nhận"
+                    autoComplete="name"
                     placeholder="Họ và tên"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -166,7 +193,10 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <div className="input-wrapper">
                   <Phone size={18} />
                   <input
-                    type="text"
+                    id="address-recipient-phone"
+                    type="tel"
+                    aria-label="Số điện thoại người nhận"
+                    autoComplete="tel"
                     placeholder="Số điện thoại"
                     value={form.phone}
                     onChange={(e) =>
@@ -185,7 +215,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
             <div className="geo-grid">
               {/* TỈNH / THÀNH PHỐ */}
               <div className="select-wrapper">
-                <select value={geo.province} onChange={handleProvinceChange}>
+                <select aria-label="Tỉnh hoặc thành phố" value={geo.province} onChange={handleProvinceChange}>
                   <option value="">-- Tỉnh/Thành phố --</option>
                   {Object.keys(LOCATION_DATA).map((key) => (
                     <option key={key} value={key}>
@@ -201,6 +231,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
                 className={`select-wrapper ${!geo.province ? "disabled" : ""}`}
               >
                 <select
+                  aria-label="Quận hoặc huyện"
                   value={geo.district}
                   onChange={handleDistrictChange}
                   disabled={!geo.province}
@@ -223,6 +254,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
                 className={`select-wrapper ${!geo.district ? "disabled" : ""}`}
               >
                 <select
+                  aria-label="Phường hoặc xã"
                   value={geo.ward}
                   onChange={(e) => setGeo({ ...geo, ward: e.target.value })}
                   disabled={!geo.district}
@@ -246,7 +278,10 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
               <div className="input-wrapper textarea-wrapper">
                 <MapPin size={18} className="icon-top" />
                 <textarea
+                  id="address-specific"
                   rows="2"
+                  aria-label="Địa chỉ cụ thể"
+                  autoComplete="street-address"
                   placeholder="Số nhà, tên đường, tòa nhà, khu dân cư..."
                   value={form.specificAddress}
                   onChange={(e) =>
@@ -257,7 +292,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
             </div>
 
             {/* NÚT ĐỊNH VỊ NHANH */}
-            <button className="btn-locate">
+            <button type="button" className="btn-locate">
               <Navigation size={14} /> Chọn vị trí trên bản đồ
             </button>
           </div>
@@ -270,6 +305,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
                 <div className="tags">
                   {["home", "office", "other"].map((type) => (
                     <button
+                      type="button"
                       key={type}
                       className={`tag ${form.label === type ? "active" : ""}`}
                       onClick={() => setForm({ ...form, label: type })}
@@ -290,6 +326,7 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
               <label className="switch-wrapper">
                 <div className="switch">
                   <input
+                    aria-label="Đặt làm địa chỉ mặc định"
                     type="checkbox"
                     checked={form.isDefault}
                     onChange={(e) =>
@@ -303,13 +340,18 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
             </div>
           </div>
         </div>
+        {error && (
+          <p className="address-modal-error" role="alert">
+            {error}
+          </p>
+        )}
 
         {/* FOOTER */}
         <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>
+          <button type="button" className="btn-cancel" onClick={onClose}>
             Trở lại
           </button>
-          <button className="btn-save" onClick={handleSubmit}>
+          <button type="button" className="btn-save" onClick={handleSubmit}>
             Hoàn thành
           </button>
         </div>

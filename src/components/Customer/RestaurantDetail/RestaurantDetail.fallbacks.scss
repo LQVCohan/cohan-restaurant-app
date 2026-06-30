@@ -50,6 +50,7 @@ $rd-border: rgba(92, 64, 51, 0.12);
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+      -webkit-backdrop-filter: blur(12px);
       backdrop-filter: blur(12px);
     }
 

@@ -4,6 +4,7 @@
 .searchSection {
   padding: $spacing-3xl 0;
   background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   margin: $spacing-xl 0;
   border-radius: 40px;
@@ -61,6 +62,7 @@
 .quickFilterBtn {
   @include button-base;
   background: rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   color: $text-secondary;
   border: 2px solid rgba(102, 126, 234, 0.2);
@@ -86,6 +88,7 @@
 .form {
   @include glass-card;
   background: rgba(255, 255, 255, 0.8);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 25px;
@@ -414,6 +417,7 @@
 .foodCard {
   @include glass-card;
   background: rgba(255, 255, 255, 0.95);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
@@ -476,6 +480,7 @@
   top: $spacing-sm;
   right: $spacing-sm;
   background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   color: $text-primary;
   padding: $spacing-xs $spacing-sm;

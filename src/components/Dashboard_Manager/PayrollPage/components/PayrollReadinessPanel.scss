@@ -19,6 +19,7 @@ $font-stack: "Geist", "Outfit", "Inter", ui-sans-serif, system-ui, -apple-system
     radial-gradient(circle at top left, rgba(197, 164, 126, 0.2), transparent 18rem),
     rgba(255, 252, 246, 0.9);
   box-shadow: 0 20px 54px rgba(54, 42, 26, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   font-family: $font-stack;
 

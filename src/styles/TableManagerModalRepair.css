@@ -10,6 +10,7 @@ body:has(.tm-form) .modal-overlay {
   background:
     radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.16), transparent 28rem),
     rgba(21, 29, 32, 0.64) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(108%) !important;
   backdrop-filter: blur(9px) saturate(108%) !important;
 }
 
@@ -333,6 +334,7 @@ body:has(.table-3d-modal__header) .table-3d-modal__header {
   padding: 16px 18px !important;
   border-bottom: 1px solid rgba(222, 214, 203, 0.86) !important;
   background: rgba(255, 253, 249, 0.96) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   backdrop-filter: blur(12px) !important;
 }
 

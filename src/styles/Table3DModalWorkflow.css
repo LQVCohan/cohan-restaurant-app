@@ -184,6 +184,7 @@ body:has(.table-3d-modal__title-row) .viewer-placeholder {
   border-radius: 18px;
   background: rgba(255, 253, 249, 0.82);
   color: #24323b;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 
