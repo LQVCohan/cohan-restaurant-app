@@ -171,12 +171,12 @@ const installManagerScheduleMocks = async (page) => {
     window.sessionStorage.setItem("foodhub_access_token", accessToken);
   }, token);
 
-  await page.route("**/api/auth/refresh**", async (route) => {
+  await page.route("**/auth/refresh**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
     return fulfillJson(route, { token, user: MANAGER_USER });
   });
 
-  await page.route("**/api/auth/logout**", async (route) => {
+  await page.route("**/auth/logout**", async (route) => {
     if (route.request().method() === "OPTIONS") return fulfillOptions(route);
     return route.fulfill({ status: 204, headers: corsHeadersFor(route), body: "" });
   });
