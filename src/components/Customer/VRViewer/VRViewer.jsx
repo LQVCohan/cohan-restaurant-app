@@ -63,6 +63,12 @@ const VRViewer = () => {
     };
   }, [imageUrl, isDragging, offset]);
 
+  const handleCanvasKeyDown = (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setOffset((current) => clampPercentage(current + (event.key === "ArrowLeft" ? -4 : 4)));
+  };
+
   const backgroundStyle = useMemo(() => {
     if (!imageUrl) return {};
     return {
@@ -72,17 +78,17 @@ const VRViewer = () => {
   }, [imageUrl, offset]);
 
   return (
-    <div className="vr-viewer">
+    <main className="vr-viewer" aria-labelledby="vr-viewer-title">
       <header className="vr-viewer__header">
-        <button className="vr-viewer__back" onClick={() => navigate(-1)}>
+        <button type="button" className="vr-viewer__back" onClick={() => navigate(-1)}>
           ← Quay lại
         </button>
-        <div className="vr-viewer__title">VR 360° - Bàn {tableId}</div>
+        <h1 className="vr-viewer__title" id="vr-viewer-title">VR 360° - Bàn {tableId}</h1>
       </header>
 
       {!imageUrl ? (
-        <div className="vr-viewer__empty">
-          <h3>Chưa có ảnh 360° cho bàn này</h3>
+        <section className="vr-viewer__empty" role="status" aria-live="polite">
+          <h2>Chưa có ảnh 360° cho bàn này</h2>
           <p>
             Vào mục <b>Quản lý bàn</b> → mở <b>Hành động bàn</b> và tải ảnh
             360° lên để xem tại đây.
@@ -91,18 +97,25 @@ const VRViewer = () => {
             Ảnh được lưu trong <b>Local Storage</b> của trình duyệt hiện tại, nên
             chỉ xem được trên đúng máy đã upload.
           </p>
-        </div>
+        </section>
       ) : (
-        <div className="vr-viewer__canvas" ref={containerRef}>
-          <div className="vr-viewer__panorama" style={backgroundStyle} />
-          <div className="vr-viewer__overlay">
+        <section
+          className={`vr-viewer__canvas ${isDragging ? "is-dragging" : ""}`}
+          ref={containerRef}
+          tabIndex={0}
+          role="img"
+          aria-label="Ảnh panorama 360 độ của bàn. Kéo chuột hoặc dùng phím mũi tên trái phải để xoay ngang."
+          onKeyDown={handleCanvasKeyDown}
+        >
+          <div className="vr-viewer__panorama" style={backgroundStyle} aria-hidden="true" />
+          <div className="vr-viewer__overlay" aria-hidden="true">
             <div className="vr-viewer__badge">
-              Kéo để xoay ngang (panorama)
+              Kéo hoặc dùng ← → để xoay ngang
             </div>
           </div>
-        </div>
+        </section>
       )}
-    </div>
+    </main>
   );
 };
 
