@@ -4312,38 +4312,9 @@ ${reviewLine}`
     if (requestedDays <= 0) throw new Error("Invalid leave date range");
     const requestedHours = Number((requestedDays * 8).toFixed(2));
 
-    const isManager =
-      String(employee.department || "").toLowerCase() === "management" ||
-      String(employee.positionTitle || "")
-        .toLowerCase()
-        .includes("manager") ||
-      String(employee.roleName || "")
-        .toLowerCase()
-        .includes("manager") ||
-      String(employee.role?.slug || "")
-        .toLowerCase()
-        .includes("manager");
-
-    let replacementManagerId = toObjectId(
-      input.replacementManagerId || input.replacementEmployeeId,
-    );
-    let replacementStatus = "not_required";
-    let status = "pending";
-
-    if (isManager) {
-      if (!replacementManagerId) {
-        throw new Error("Manager leave requires replacement manager");
-      }
-      if (String(replacementManagerId) === String(employeeId)) {
-        throw new Error("Replacement manager cannot be requester");
-      }
-      const replacementManager = await Staff.findById(replacementManagerId)
-        .select({ _id: 1, department: 1, positionTitle: 1, roleName: 1 })
-        .lean();
-      if (!replacementManager) throw new Error("Replacement manager not found");
-      replacementStatus = "pending";
-      status = "pending_replacement_confirmation";
-    }
+    const replacementManagerId = null;
+    const replacementStatus = "not_required";
+    const status = "pending";
 
     const { payrollFlags, quotaImpact } = computeLeaveFlags(
       leaveType,

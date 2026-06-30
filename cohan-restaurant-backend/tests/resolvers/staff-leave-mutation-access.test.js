@@ -45,14 +45,27 @@ describe("staff leave mutation access", () => {
     expect(modelMocks.LeaveRequest.create).not.toHaveBeenCalled();
   });
 
-  it("createLeaveRequest accepts replacementEmployeeId as legacy manager replacement", async () => {
-    modelMocks.Staff.findById
-      .mockReturnValueOnce(q({ _id: "e1", userType: "STAFF", restaurantForStaff: "r1", refRestaurants: [], department: "management", positionTitle: "Manager", roleName: "manager" }))
-      .mockReturnValueOnce(q({ _id: "m2", department: "management", positionTitle: "Manager", roleName: "manager" }));
+  it("createLeaveRequest allows manager leave without replacement", async () => {
+    modelMocks.Staff.findById.mockReturnValueOnce(q({ _id: "e1", userType: "STAFF", restaurantForStaff: "r1", refRestaurants: [], department: "management", positionTitle: "Manager", roleName: "manager" }));
     const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    await m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", replacementEmployeeId: "m2", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } });
+    await m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } });
 
-    expect(modelMocks.LeaveRequest.create.mock.calls[0][0].replacementManagerId.toString()).toBe("m2");
+    expect(modelMocks.LeaveRequest.create.mock.calls[0][0]).toMatchObject({
+      status: "pending",
+      replacementManagerId: null,
+      replacementStatus: "not_required",
+    });
+  });
+
+  it("createLeaveRequest ignores legacy replacement ids", async () => {
+    const m = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    await m.createLeaveRequest(null, { input: { employeeId: "e1", restaurantId: "r1", replacementEmployeeId: "m2", replacementManagerId: "m3", leaveType: "ANNUAL", startDate: "2026-05-10", endDate: "2026-05-10", startSession: "FULL_DAY", endSession: "FULL_DAY" } }, { user: { id: "e1" } });
+
+    expect(modelMocks.LeaveRequest.create.mock.calls[0][0]).toMatchObject({
+      status: "pending",
+      replacementManagerId: null,
+      replacementStatus: "not_required",
+    });
   });
 
   it("rejectLeaveRequest blocks approved request before balance changes", async () => {
