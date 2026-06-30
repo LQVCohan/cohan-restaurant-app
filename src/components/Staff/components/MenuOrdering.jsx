@@ -66,6 +66,7 @@ export default function MenuOrdering({
   const [selectedVariantKey, setSelectedVariantKey] = useState("");
   const [draftProofImages, setDraftProofImages] = useState([]);
   const [proofDraftItem, setProofDraftItem] = useState(null);
+  const [actionError, setActionError] = useState("");
 
   const servingOptions = useMemo(() => {
     const options = new Map([["all", "Tất cả khẩu phần"]]);
@@ -183,6 +184,7 @@ export default function MenuOrdering({
     setServeOrder("Mang ra cùng lúc");
     setDraftProofImages([]);
     setProofDraftItem(null);
+    setActionError("");
   };
 
   const handleOpenItem = (item) => {
@@ -201,18 +203,21 @@ export default function MenuOrdering({
     setServeOrder("Mang ra cùng lúc");
     setDraftProofImages([]);
     setProofDraftItem(null);
+    setActionError("");
   };
 
   const handleConfirmAdd = () => {
     if (!permissions.canAddItems) {
-      alert(NO_PERMISSION_MESSAGE);
+      setActionError(NO_PERMISSION_MESSAGE);
       return;
     }
 
     if (selectedVariants.length > 1 && !selectedVariant) {
-      alert("Vui lòng chọn biến thể món.");
+      setActionError("Vui lòng chọn biến thể món.");
       return;
     }
+
+    setActionError("");
 
     onAdd(selectedItem, {
       variant: selectedVariant,
@@ -298,7 +303,7 @@ export default function MenuOrdering({
                 className="btn-remove-cus"
                 onClick={() => {
                   if (!permissions.canRemoveCustomer) {
-                    alert(NO_PERMISSION_MESSAGE);
+                    setActionError(NO_PERMISSION_MESSAGE);
                     return;
                   }
                   onRemoveCustomer?.();
@@ -324,6 +329,10 @@ export default function MenuOrdering({
           <Search size={16} />
           <span>Có thể gán khách quen từ thanh tìm khách phía trên.</span>
         </div>
+      )}
+
+      {actionError && (
+        <div className="staff-inline-state" role="alert">{actionError}</div>
       )}
 
       {permissions.isReadOnlyRole && (

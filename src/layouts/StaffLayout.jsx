@@ -82,7 +82,7 @@ const staffPageMeta = [
   {
     path: "/staff/schedule",
     eyebrow: "Lịch cá nhân",
-    title: "Lịch làm và chấm công",
+    title: "Vận hành ca làm",
     description: "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm.",
   },
   {
@@ -238,6 +238,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
                       className={`staff-shell__nav-link ${isActivePath(location, item.to) ? "is-active" : ""}`}
                       to={item.to}
                       onClick={() => setMenuOpen(false)}
+                      aria-current={isActivePath(location, item.to) ? "page" : undefined}
                     >
                       {item.label}
                     </Link>
@@ -285,17 +286,3 @@ export default function StaffLayout({ children }) {
   );
 }
 
-export default function StaffLayout({ children }) {
-  const { user } = useContext(AuthContext);
-  const restaurantId = resolveStaffRestaurantId(user);
-
-  if (!restaurantId || IS_TEST_ENV) {
-    return <StaffLayoutShell>{children}</StaffLayoutShell>;
-  }
-
-  return (
-    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
-      {children}
-    </StaffLayoutWithRestaurantQuery>
-  );
-}

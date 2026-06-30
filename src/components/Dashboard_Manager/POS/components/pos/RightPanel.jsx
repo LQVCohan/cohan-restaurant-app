@@ -282,7 +282,7 @@ export default function RightPanel() {
   } = usePos();
 
   const { showNotification } = useNotification?.() || {
-    showNotification: (msg, type) => console.log(type || "info", msg),
+    showNotification: () => {},
   };
 
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
