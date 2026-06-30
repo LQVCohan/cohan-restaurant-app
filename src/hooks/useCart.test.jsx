@@ -63,6 +63,23 @@ describe("useCart", () => {
     expect(result.current.getTotalPrice()).toBe(150000);
   });
 
+  it("includes modifier prices in cart totals", () => {
+    const { result } = renderHook(() => useCart());
+
+    act(() => {
+      result.current.addToCart({
+        id: "dish-1",
+        restaurantId: "r1",
+        name: "Phở",
+        price: 60000,
+        modifiersPrice: 15000,
+        quantity: 2,
+      });
+    });
+
+    expect(result.current.getTotalPrice()).toBe(150000);
+  });
+
   it("keeps different notes as different cart lines", () => {
     const { result } = renderHook(() => useCart());
 

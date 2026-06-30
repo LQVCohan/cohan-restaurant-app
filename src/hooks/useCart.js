@@ -225,7 +225,10 @@ export const useCart = () => {
   const getTotalPrice = useCallback(
     () =>
       cart.reduce(
-        (sum, i) => sum + (Number(i.price) || 0) * (i.quantity || 1),
+        (sum, i) =>
+          sum +
+          ((Number(i.price) || 0) + (Number(i.modifiersPrice) || 0)) *
+            (i.quantity || 1),
         0,
       ),
     [cart],
