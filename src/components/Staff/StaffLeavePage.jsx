@@ -1,5 +1,4 @@
 import React, { useContext, useMemo, useState } from "react";
-import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import LeaveRequestForm from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm";
 import LeaveRequestsList from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestsList";
@@ -7,21 +6,6 @@ import { useLeaveManagement } from "@/hooks/useLeaveManagement";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveManagement.scss";
 import "./StaffLeavePage.scss";
 import "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveModal.scss";
-
-const Q_MANAGER_REPLACEMENT_STAFF = gql`
-  query StaffLeaveReplacementStaff($restaurantId: ID!) {
-    staffList(restaurantId: $restaurantId) {
-      id
-      fullName
-      employeeCode
-      positionTitle
-      roleName
-      department
-      avatarUrl
-      restaurantForStaff
-    }
-  }
-`;
 
 const resolveId = (value) => {
   if (!value) return "";
@@ -38,14 +22,6 @@ const getInitials = (name) => {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "NV";
   return parts.slice(-2).map((part) => part.charAt(0).toUpperCase()).join("");
-};
-
-const isManagerStaff = (staff) => {
-  const text = [staff?.roleName, staff?.positionTitle, staff?.department]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return text.includes("manager") || text.includes("quản lý") || text.includes("quan ly") || text.includes("management");
 };
 
 const buildSelfStaffOption = (user, restaurantId) => ({
@@ -77,9 +53,8 @@ export default function StaffLeavePage() {
   const restaurantId = resolveId(user?.restaurantForStaff) || resolveId(user?.restaurant) || resolveId(restaurants?.[0]);
   const employeeId = getCurrentUserId(user);
   const selfStaffOption = useMemo(() => buildSelfStaffOption(user, restaurantId), [restaurantId, user]);
-  const canNeedReplacementManager = isManagerStaff(selfStaffOption);
 
-  const { leaveRequests, staffList, submitLeaveRequest, loading, error, isMutating } = useLeaveManagement({
+  const { leaveRequests, submitLeaveRequest, loading, error, isMutating } = useLeaveManagement({
     selectedDate,
     status: statusFilter,
     search,
@@ -87,27 +62,10 @@ export default function StaffLeavePage() {
     employeeId,
   });
 
-  const { data: replacementData } = useQuery(Q_MANAGER_REPLACEMENT_STAFF, {
-    variables: { restaurantId },
-    skip: !restaurantId || !canNeedReplacementManager,
-    fetchPolicy: "cache-and-network",
-  });
-
-  const formStaffList = useMemo(() => {
-    if (!employeeId) return [];
-    const replacementStaff = replacementData?.staffList || [];
-    const allStaff = [...(staffList || []), ...replacementStaff];
-    const selfFromQuery = allStaff.find((item) => String(item.id) === String(employeeId));
-    const replacementManagers = canNeedReplacementManager
-      ? replacementStaff.filter((item) => String(item.id) !== String(employeeId) && isManagerStaff(item))
-      : [];
-    const seen = new Set();
-    return [selfFromQuery || selfStaffOption, ...replacementManagers].filter((item) => {
-      if (!item?.id || seen.has(String(item.id))) return false;
-      seen.add(String(item.id));
-      return true;
-    });
-  }, [canNeedReplacementManager, employeeId, replacementData?.staffList, selfStaffOption, staffList]);
+  const formStaffList = useMemo(
+    () => (employeeId ? [selfStaffOption] : []),
+    [employeeId, selfStaffOption]
+  );
 
   const leaveStats = useMemo(
     () => ({
@@ -172,7 +130,6 @@ export default function StaffLeavePage() {
           requests={leaveRequests}
           onApprove={undefined}
           onReject={undefined}
-          onConfirmReplacement={undefined}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
           statusFilter={statusFilter}
