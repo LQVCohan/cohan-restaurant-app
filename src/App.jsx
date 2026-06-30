@@ -13,6 +13,7 @@ import "./components/Customer/OrdersManagement/OrdersPagePolish.scss";
 import "./components/Customer/OrdersManagement/OrdersPageA11yPolish.scss";
 import "./components/Customer/RestaurantMenu/styles/MenuDetailViewPolish.scss";
 import "./components/Customer/Food/FoodDetailAccessibilityPolish.scss";
+import "./components/Customer/AddressPage/AddressPageA11yPolish.scss";
 import "./styles/Homepage/RestaurantGridServiceBadges.scss";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
