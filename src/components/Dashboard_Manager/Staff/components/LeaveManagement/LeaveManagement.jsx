@@ -17,7 +17,6 @@ const LeaveManagement = ({ restaurantId }) => {
     submitLeaveRequest,
     approveLeave,
     rejectLeave,
-    confirmReplacement,
     loading,
     error,
     isMutating,
@@ -37,7 +36,6 @@ const LeaveManagement = ({ restaurantId }) => {
         staffList={staffList}
         onApprove={approveLeave}
         onReject={rejectLeave}
-        onConfirmReplacement={confirmReplacement}
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         statusFilter={statusFilter}
