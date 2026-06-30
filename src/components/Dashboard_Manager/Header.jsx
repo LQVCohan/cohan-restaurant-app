@@ -66,6 +66,8 @@ const Header = ({
   notifications = [],
   searchItems = [],
   onSelectSearchResult,
+  onNotificationSelect,
+  onMarkAllNotificationsRead,
 }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showNotifications, setShowNotifications] = useState(false);
@@ -204,8 +206,37 @@ const Header = ({
     setShowNotifications(false);
   };
 
+  const navigateToActionUrl = (actionUrl) => {
+    if (!actionUrl) return;
+    if (actionUrl.startsWith("/manager") && typeof window !== "undefined") {
+      const url = new URL(actionUrl, window.location.origin);
+      const page = url.hash?.replace("#", "") || "dashboard";
+      const query = Object.fromEntries(url.searchParams.entries());
+      window.dispatchEvent(
+        new CustomEvent("manager:navigate", {
+          detail: { page, query, source: "notification" },
+        }),
+      );
+      return;
+    }
+    navigate(actionUrl);
+  };
+
   const markAllAsRead = () => {
     setLocalNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+    onMarkAllNotificationsRead?.();
+  };
+
+  const handleNotificationItemClick = (notification) => {
+    if (!notification) return;
+    setLocalNotifications((prev) =>
+      prev.map((item) =>
+        item.id === notification.id ? { ...item, read: true } : item,
+      ),
+    );
+    onNotificationSelect?.(notification);
+    navigateToActionUrl(notification.actionUrl);
+    setShowNotifications(false);
   };
 
   const handleLogout = () => {
@@ -312,11 +343,13 @@ const Header = ({
                 <div className="notification-list">
                   {localNotifications.length > 0 ? (
                     localNotifications.map((notification, index) => (
-                      <div
-                        key={index}
+                      <button
+                        key={notification.id || index}
+                        type="button"
                         className={`notification-item ${
                           !notification.read ? "notification-item--unread" : ""
                         }`}
+                        onClick={() => handleNotificationItemClick(notification)}
                       >
                         <div
                           className={`notification-icon notification-icon--${notification.type}`}
@@ -333,7 +366,7 @@ const Header = ({
                         {!notification.read && (
                           <div className="unread-dot"></div>
                         )}
-                      </div>
+                      </button>
                     ))
                   ) : (
                     <div className="notification-empty">
@@ -423,18 +456,7 @@ const Header = ({
                     </span>
                     <span>Trợ giúp & Hỗ trợ</span>
                   </button>
-                  <button className="user-menu-item" onClick={() => goToManagerPage("dashboard")} type="button">
-                    <span className="menu-icon">
-                      <FiCommand />
-                    </span>
-                    <span>Về trang tổng quan</span>
-                  </button>
-                  <div className="menu-divider"></div>
-                  <button
-                    className="user-menu-item user-menu-item--danger"
-                    type="button"
-                    onClick={handleLogout}
-                  >
+                  <button className="user-menu-item" onClick={handleLogout} type="button">
                     <span className="menu-icon">
                       <FiLogOut />
                     </span>
@@ -445,6 +467,12 @@ const Header = ({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Keyboard shortcut hint */}
+      <div className="keyboard-shortcut-hint">
+        <FiCommand />
+        <span>Ctrl + K để tìm kiếm</span>
       </div>
     </header>
   );
