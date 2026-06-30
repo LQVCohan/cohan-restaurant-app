@@ -42,6 +42,28 @@ const QUERY_PENDING_LEAVE_REQUESTS = gql`
   }
 `;
 
+const QUERY_PENDING_ATTENDANCE_CORRECTIONS = gql`
+  query PendingAttendanceCorrections($filter: AttendanceCorrectionFilterInput) {
+    attendanceCorrectionRequests(filter: $filter) {
+      id
+      restaurantId
+      status
+    }
+  }
+`;
+
+const QUERY_REVIEW_OVERTIME_REQUESTS = gql`
+  query ReviewOvertimeRequests($filter: OvertimeRequestFilterInput) {
+    overtimeRequests(filter: $filter) {
+      id
+      restaurantId
+      status
+    }
+  }
+`;
+
+const ACTIONABLE_OVERTIME_STATUSES = new Set(["pending_approval", "approved"]);
+
 const STAFF_SUB_PAGES = new Set([
   "dashboard",
   "attendance",
@@ -190,6 +212,21 @@ const StaffManagement = () => {
     [selectedRestaurant],
   );
 
+  const pendingCorrectionFilter = useMemo(
+    () => ({
+      status: "pending",
+      restaurantId: selectedRestaurant || undefined,
+    }),
+    [selectedRestaurant],
+  );
+
+  const overtimeReviewFilter = useMemo(
+    () => ({
+      restaurantId: selectedRestaurant || undefined,
+    }),
+    [selectedRestaurant],
+  );
+
   const { data: pendingLeaveData, loading: pendingLeaveLoading } = useQuery(
     QUERY_PENDING_LEAVE_REQUESTS,
     {
@@ -200,6 +237,24 @@ const StaffManagement = () => {
       notifyOnNetworkStatusChange: true,
     },
   );
+
+  const { data: pendingCorrectionData, loading: pendingCorrectionLoading } =
+    useQuery(QUERY_PENDING_ATTENDANCE_CORRECTIONS, {
+      variables: { filter: pendingCorrectionFilter },
+      skip: !selectedRestaurant,
+      fetchPolicy: "cache-and-network",
+      pollInterval: 30000,
+      notifyOnNetworkStatusChange: true,
+    });
+
+  const { data: overtimeReviewData, loading: overtimeReviewLoading } =
+    useQuery(QUERY_REVIEW_OVERTIME_REQUESTS, {
+      variables: { filter: overtimeReviewFilter },
+      skip: !selectedRestaurant,
+      fetchPolicy: "cache-and-network",
+      pollInterval: 30000,
+      notifyOnNetworkStatusChange: true,
+    });
 
   const filteredStaff = useMemo(() => {
     if (!staffList) return [];
@@ -312,9 +367,34 @@ const StaffManagement = () => {
     ).length;
   }, [pendingLeaveData?.leaveRequests, selectedRestaurant]);
 
+  const pendingCorrectionCount = useMemo(() => {
+    const requests = pendingCorrectionData?.attendanceCorrectionRequests || [];
+    if (!requests.length || !selectedRestaurant) return 0;
+    return requests.filter(
+      (request) => request.restaurantId === selectedRestaurant && request.status === "pending",
+    ).length;
+  }, [pendingCorrectionData?.attendanceCorrectionRequests, selectedRestaurant]);
+
+  const pendingOvertimeReviewCount = useMemo(() => {
+    const requests = overtimeReviewData?.overtimeRequests || [];
+    if (!requests.length || !selectedRestaurant) return 0;
+    return requests.filter(
+      (request) =>
+        request.restaurantId === selectedRestaurant &&
+        ACTIONABLE_OVERTIME_STATUSES.has(String(request.status || "").toLowerCase()),
+    ).length;
+  }, [overtimeReviewData?.overtimeRequests, selectedRestaurant]);
+
+  const pendingReviewCount =
+    pendingLeaveCount + pendingCorrectionCount + pendingOvertimeReviewCount;
+
   const isLoading = staffListLoading || restaurantsLoading;
   const isHeaderLoading =
-    restaurantsLoading || staffListLoading || pendingLeaveLoading;
+    restaurantsLoading ||
+    staffListLoading ||
+    pendingLeaveLoading ||
+    pendingCorrectionLoading ||
+    overtimeReviewLoading;
 
   const openModal = useCallback(
     (name) => setModals((prev) => ({ ...prev, [name]: true })),
@@ -665,6 +745,7 @@ const StaffManagement = () => {
             stats={stats}
             loading={isHeaderLoading}
             pendingLeaveCount={pendingLeaveCount}
+            pendingReviewCount={pendingReviewCount}
             onPageChange={setCurrentPage}
             isCollapsed={isHeaderCollapsed}
             onToggle={() => setIsHeaderCollapsed((prev) => !prev)}
