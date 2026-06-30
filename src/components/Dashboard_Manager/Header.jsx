@@ -239,6 +239,12 @@ const Header = ({
     setShowNotifications(false);
   };
 
+  const handleNotificationItemKeyDown = (event, notification) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleNotificationItemClick(notification);
+  };
+
   const handleLogout = () => {
     logout?.();
     setShowUserMenu(false);
@@ -343,13 +349,15 @@ const Header = ({
                 <div className="notification-list">
                   {localNotifications.length > 0 ? (
                     localNotifications.map((notification, index) => (
-                      <button
+                      <div
                         key={notification.id || index}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         className={`notification-item ${
                           !notification.read ? "notification-item--unread" : ""
                         }`}
                         onClick={() => handleNotificationItemClick(notification)}
+                        onKeyDown={(event) => handleNotificationItemKeyDown(event, notification)}
                       >
                         <div
                           className={`notification-icon notification-icon--${notification.type}`}
@@ -366,7 +374,7 @@ const Header = ({
                         {!notification.read && (
                           <div className="unread-dot"></div>
                         )}
-                      </button>
+                      </div>
                     ))
                   ) : (
                     <div className="notification-empty">
