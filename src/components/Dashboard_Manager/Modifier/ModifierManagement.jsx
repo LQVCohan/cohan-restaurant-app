@@ -86,7 +86,7 @@ const DELETE_MODIFIER_GROUP = gql`
   }
 `;
 
-const blankOption = () => ({
+export const blankOption = () => ({
   id: "",
   name: "",
   isDefault: false,
@@ -95,7 +95,7 @@ const blankOption = () => ({
   inventoryRule: { rule: "NONE", ingredientLines: [] },
 });
 
-const blankForm = (restaurantId = "") => ({
+export const blankForm = (restaurantId = "") => ({
   id: "",
   restaurantId,
   name: "",
@@ -111,7 +111,7 @@ const blankForm = (restaurantId = "") => ({
   options: [blankOption()],
 });
 
-const toForm = (group, restaurantId) => ({
+export const toForm = (group, restaurantId) => ({
   ...blankForm(restaurantId),
   ...group,
   id: group?.id || "",
@@ -138,7 +138,7 @@ const toForm = (group, restaurantId) => ({
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 
-const buildOptionInput = (option) => ({
+export const buildOptionInput = (option) => ({
   name: String(option.name || "").trim(),
   isDefault: Boolean(option.isDefault),
   isActive: option.isActive !== false,
@@ -156,7 +156,7 @@ const buildOptionInput = (option) => ({
     : { rule: "NONE", ingredientLines: [] },
 });
 
-const buildModifierInput = (form, restaurantId) => {
+export const buildModifierInput = (form, restaurantId) => {
   const coverage = form.coverage || "GLOBAL";
   const selectionType = form.selectionType || "multiple";
   const input = {
@@ -176,6 +176,18 @@ const buildModifierInput = (form, restaurantId) => {
 
   if (input.maxSelected == null) delete input.maxSelected;
   return input;
+};
+
+export const getModifierFormValidationError = (form, restaurantId) => {
+  if (!restaurantId) return "Vui lòng chọn chi nhánh.";
+  if (!form.name.trim()) return "Tên nhóm tuỳ chọn là bắt buộc.";
+  if (form.coverage === "ITEMS" && !form.menuItemIds.length) return "Chọn ít nhất một món khi áp dụng theo món.";
+  const namedOptions = form.options.filter((option) => option.name.trim());
+  if (!namedOptions.length) return "Cần ít nhất một lựa chọn.";
+  if (form.selectionType === "multiple" && form.maxSelected && Number(form.maxSelected) < Number(form.minSelected || 0)) {
+    return "Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.";
+  }
+  return "";
 };
 
 const getGroupTypeLabel = (type) => ({
@@ -290,23 +302,11 @@ const ModifierManagement = () => {
     updateForm({ menuItemIds: [...current] });
   };
 
-  const validateForm = () => {
-    if (!selectedRestaurantId) return "Vui lòng chọn chi nhánh.";
-    if (!form.name.trim()) return "Tên nhóm tuỳ chọn là bắt buộc.";
-    if (form.coverage === "ITEMS" && !form.menuItemIds.length) return "Chọn ít nhất một món khi áp dụng theo món.";
-    const namedOptions = form.options.filter((option) => option.name.trim());
-    if (!namedOptions.length) return "Cần ít nhất một lựa chọn.";
-    if (form.selectionType === "multiple" && form.maxSelected && Number(form.maxSelected) < Number(form.minSelected || 0)) {
-      return "Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.";
-    }
-    return "";
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
     setToast("");
-    const validation = validateForm();
+    const validation = getModifierFormValidationError(form, selectedRestaurantId);
     if (validation) {
       setFormError(validation);
       return;
