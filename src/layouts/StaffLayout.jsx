@@ -249,21 +249,34 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
         </div>
       </header>
 
-      <main className="staff-shell__main">
+      <main id="staff-main-content" className="staff-shell__main">
         <div className="staff-shell__content">{children}</div>
       </main>
     </div>
   );
 };
 
-export default function StaffLayout({ children }) {
-  const { user } = useContext(AuthContext);
-  const restaurantId = resolveStaffRestaurantId(user);
+const StaffLayoutWithRestaurantQuery = ({ children, restaurantId }) => {
   const { data } = useQuery(STAFF_RESTAURANT_BASIC, {
     variables: { id: restaurantId },
-    skip: !restaurantId || IS_TEST_ENV,
+    skip: !restaurantId,
     fetchPolicy: "cache-first",
   });
 
   return <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>{children}</StaffLayoutShell>;
+};
+
+export default function StaffLayout({ children }) {
+  const { user } = useContext(AuthContext);
+  const restaurantId = resolveStaffRestaurantId(user);
+
+  if (!restaurantId || IS_TEST_ENV) {
+    return <StaffLayoutShell>{children}</StaffLayoutShell>;
+  }
+
+  return (
+    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
+      {children}
+    </StaffLayoutWithRestaurantQuery>
+  );
 }
