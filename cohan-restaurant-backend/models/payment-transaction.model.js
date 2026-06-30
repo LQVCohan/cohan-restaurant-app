@@ -37,6 +37,10 @@ TransactionSchema.index({ restaurantId: 1, orderId: 1 });
 TransactionSchema.index({ restaurantId: 1, orderIds: 1 });
 TransactionSchema.index({ paidAt: -1 });
 TransactionSchema.index({ restaurantId: 1, txnRef: 1 }, { unique: true, sparse: true });
+TransactionSchema.index(
+  { restaurantId: 1, userId: 1, method: 1, externalRef: 1 },
+  { unique: true, partialFilterExpression: { method: "e_wallet", externalRef: { $type: "string" } } },
+);
 
 export default mongoose.models.Transaction ||
   mongoose.model("Transaction", TransactionSchema);
