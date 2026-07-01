@@ -12,6 +12,7 @@ const idString = (value) => String(value?._id || value?.id || value || "");
 const operationalRoles = new Set(["manager", "hr", "accountant", "staff", "server", "supervisor", "host", "cashier", "chef", "cook", "kitchen_helper", "cleaner", "shipper", "storekeeper", "bartender"]);
 const userRoleNames = (user) => [roleName(user), String(user?.userType || "").toLowerCase(), ...(Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [])].filter(Boolean);
 const hasOperationalRole = (user) => userRoleNames(user).some((role) => operationalRoles.has(role));
+const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
 
 export const getUserId = (user) => idString(user);
 export const isSystemAdmin = (user) => String(user?.userType || "").toUpperCase() === "ADMIN" || roleName(user) === "admin";
@@ -35,13 +36,23 @@ function membershipScope(memberships) {
   };
 }
 
+async function ownedBrandIdsFromUser(user) {
+  const uid = toObjectId(getUserId(user));
+  if (!uid || typeof Brand?.find !== "function") return [];
+  const query = Brand.find({ ownerId: uid, status: { $ne: "inactive" }, deletedAt: null });
+  const rows = typeof query?.select === "function" ? await query.select("_id").lean() : await query;
+  return (rows || []).map((row) => row?._id).filter(Boolean);
+}
+
 export async function getScopedRestaurantFilter(user) {
   if (!user) return emptyFilter();
   if (isSystemAdmin(user)) return {};
   const memberships = await getUserBrandMemberships(user);
   const { brandIds, restaurantIds } = membershipScope(memberships);
+  const ownerBrandIds = await ownedBrandIdsFromUser(user);
+  const scopedBrandIds = uniqueIds([...brandIds, ...ownerBrandIds]);
   const ors = [
-    ...(brandIds.length ? [{ brandId: { $in: brandIds } }] : []),
+    ...(scopedBrandIds.length ? [{ brandId: { $in: scopedBrandIds } }] : []),
     ...(restaurantIds.length ? [{ _id: { $in: restaurantIds } }] : []),
   ];
   if (!memberships.length && hasOperationalRole(user)) {
@@ -119,7 +130,12 @@ export async function isBrandOwner(user, brandId) {
   return !!await Brand.exists({ _id: toObjectId(brandId), ownerId: uid, status: { $ne: "inactive" } });
 }
 
-export const isActiveBrandOperator = async (candidateUserId, brandId) => typeof BrandMembership?.exists === "function" && !!await BrandMembership.exists({ userId: toObjectId(candidateUserId), brandId: toObjectId(brandId), status: "active", role: { $in: ["owner", "admin", "manager"] } });
+export async function isActiveBrandOperator(candidateUserId, brandId) {
+  if (!candidateUserId || !brandId) return false;
+  if (typeof BrandMembership?.exists === "function" && await BrandMembership.exists({ userId: toObjectId(candidateUserId), brandId: toObjectId(brandId), status: "active", role: { $in: ["owner", "admin", "manager"] } })) return true;
+  if (typeof Brand?.exists !== "function") return false;
+  return !!await Brand.exists({ _id: toObjectId(brandId), ownerId: toObjectId(candidateUserId), status: { $ne: "inactive" } });
+}
 
 export async function ensureBrandRestaurants(brandId, restaurantIds = []) {
   const ids = [...new Set((restaurantIds || []).filter(Boolean).map(String))];
