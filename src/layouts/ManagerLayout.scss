@@ -100,6 +100,16 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     width: 100%;
     min-width: 0;
     height: $manager-header-height;
+    isolation: isolate;
+  }
+
+  &__header > .manager-scope-selector {
+    position: absolute;
+    top: 50%;
+    left: clamp(16rem, 22vw, 27.5rem);
+    z-index: 2;
+    max-width: min(34vw, 32rem);
+    transform: translateY(-50%);
   }
 
   &__content {
@@ -148,6 +158,23 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
           border-radius: 12px;
         }
       }
+    }
+  }
+
+  @media (max-width: 1380px) {
+    &__header > .manager-scope-selector {
+      left: clamp(13rem, 21vw, 20rem);
+      max-width: 27vw;
+    }
+
+    &__header > .manager-scope-selector label:first-child {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1180px) {
+    &__header > .manager-scope-selector {
+      display: none;
     }
   }
 
@@ -225,38 +252,56 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     display: none;
   }
 }
+
 .manager-scope-selector {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0 1rem 0.75rem;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0;
+  white-space: nowrap;
 
   label {
     display: inline-flex;
     align-items: center;
+    min-width: 0;
+    height: 38px;
     gap: 0.45rem;
-    border: 1px solid rgba(148, 163, 184, 0.28);
+    border: 1px solid rgba(168, 133, 95, 0.24);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
-    padding: 0.42rem 0.7rem;
+    background: rgba(255, 250, 243, 0.92);
+    box-shadow: 0 10px 22px rgba(75, 56, 32, 0.08);
+    padding: 0.34rem 0.68rem;
     color: #334155;
-    font-size: 0.86rem;
+    font-size: 0.82rem;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 
   span {
-    color: #64748b;
-    font-weight: 700;
+    flex: 0 0 auto;
+    color: #7a6b5b;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
   }
 
   strong,
   select {
-    color: #0f172a;
+    min-width: 0;
+    max-width: 11rem;
+    overflow: hidden;
+    color: #24303f;
     font-weight: 800;
+    text-overflow: ellipsis;
   }
 
   select {
     border: 0;
     background: transparent;
     outline: 0;
+    cursor: pointer;
   }
 }
