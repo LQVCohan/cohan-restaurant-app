@@ -228,6 +228,15 @@ function formatValidationError({ filePath, line, names }, errors) {
 }
 
 describe('frontend GraphQL documents', () => {
+  it('keeps staff shift acknowledgement compatibility input fields', async () => {
+    const schema = await buildBackendSchema();
+    const fields = schema.getType('RespondShiftAcknowledgementInput').getFields();
+
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining(['shiftId', 'response', 'reasonCategory', 'reason']),
+    );
+  });
+
   it('validate against the backend schema', async () => {
     const schema = await buildBackendSchema();
     const documents = getFrontendGraphQLDocuments();

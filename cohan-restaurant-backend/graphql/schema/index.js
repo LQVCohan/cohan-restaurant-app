@@ -212,6 +212,7 @@ const files = [
   "attendance_overtime.graphql",
   "staffSchedulingAssistant.graphql",
   "staffResolverCompatibility.graphql",
+  "staffSelfServiceCompatibility.graphql",
   "operationCompatibilityExtras.graphql",
   "operationCompatibilityExtras2.graphql",
   "audit_log.graphql",
