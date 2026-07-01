@@ -87,11 +87,11 @@
 @media (max-width: 1380px) {
   .manager-layout__header > .manager-scope-selector {
     left: calc(50% + min(13rem, 16vw)) !important;
-    max-width: 20rem !important;
+    max-width: 22rem !important;
   }
 
-  .manager-layout__header > .manager-scope-selector label:first-child {
-    display: none !important;
+  .manager-layout__header > .manager-scope-selector label {
+    max-width: 10.75rem;
   }
 }
 
