@@ -13,7 +13,7 @@
 Manager access to a restaurant is resolved from the restaurant record itself:
 
 - restaurant `_id` must match the requested restaurant;
-- restaurant `managerId` must match the authenticated manager user id.
+- Brand-scoped manager access must come from `BrandMembership.role = "manager"` and `BrandMembership.restaurantIds`.
+- restaurant `managerId` is legacy/cache fallback only for users without active BrandMembership.
 
-In code, manager scope should continue to flow through `requireRestaurantAccess` / `managerOwnsRestaurant`, which checks `Restaurant.exists({ _id: restaurantId, managerId })`.
-Do not add `refRestaurants` or customer browsing history as a shortcut for manager authorization.
+In code, manager scope should flow through `requireRestaurantAccess` / `canAccessRestaurant`. That service checks BrandMembership first and only falls back to `Restaurant.managerId` for legacy users with no active BrandMembership. Do not add `refRestaurants` or customer browsing history as a shortcut for manager authorization.

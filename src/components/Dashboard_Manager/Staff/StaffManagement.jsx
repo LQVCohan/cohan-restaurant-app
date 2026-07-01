@@ -90,6 +90,7 @@ const normalizeId = (value) => {
   return String(value);
 };
 
+// Legacy staff assignment fields; Brand role/scope should use BrandMembership.restaurantIds.
 const hasRestaurantMatch = (staff, restaurantIds) => {
   const allowedIds = (Array.isArray(restaurantIds) ? restaurantIds : [restaurantIds])
     .map(normalizeId)

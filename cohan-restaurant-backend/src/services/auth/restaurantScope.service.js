@@ -22,6 +22,7 @@ export const getUserBrandMemberships = async (user) => {
   return BrandMembership.find({ userId: uid, status: "active" }).lean();
 };
 
+// BrandMembership is the source of truth for Brand-scoped restaurant access. Legacy user.restaurantId/restaurantForStaff/Restaurant.managerId are fallback only.
 const legacyRestaurantIdsFromUser = (user) => [user?.restaurantId, user?.restaurantForStaff, ...(user?.restaurantIds || []), ...(user?.restaurants || [])]
   .map(toObjectId)
   .filter(Boolean);
