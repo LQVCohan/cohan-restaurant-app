@@ -188,6 +188,7 @@ const files = [
   "tableCustomer.graphql",
   "printSetting.graphql",
   "review.graphql",
+  "reviewReliability.graphql",
   "promotion.graphql",
   "customerCombo.graphql",
   "event_package.graphql",
