@@ -19,7 +19,7 @@ extend type CompatibilityNode {
   autoCreateWindow: Boolean
   averageResolutionHours: Float
   averageScore: Float
-  blockedAssignments: [CompatibilityNode!]
+  blockedAssignments: Int
   blockedCandidates: [CompatibilityNode!]
   canAddStaffToShift: Boolean
   canApply: Boolean
@@ -60,12 +60,12 @@ extend type CompatibilityNode {
   employmentTypeFit: Float
   enabled: Boolean
   existingShiftCount: Int
-  explanations: [String!]
+  explanations: [CompatibilityNode!]
   fairness: Float
   fallbackUsed: Boolean
   fatiguePenalty: Float
   full_time: Boolean
-  generatedFrom: String
+  generatedFrom: JSON
   hardMaxConsecutiveWorkingDays: Int
   halfDayFactor: Float
   highestScore: Float
@@ -115,9 +115,9 @@ extend type CompatibilityNode {
   publishTargetDayOfWeek: Int
   publishTargetTime: String
   records: Int
-  recommendedAssignments: [CompatibilityNode!]
-  recommendedRoles: [CompatibilityNode!]
-  recommendedShiftTemplates: [CompatibilityNode!]
+  recommendedAssignments: Int
+  recommendedRoles: JSON
+  recommendedShiftTemplates: JSON
   recommendedWeeklyHoursCap: Float
   reliability: Float
   reliabilityContribution: Float
@@ -137,7 +137,7 @@ extend type CompatibilityNode {
   reviewNote: String
   riskLevel: String
   riskReasons: [String!]
-  riskWarnings: [String!]
+  riskWarnings: [CompatibilityNode!]
   roleFit: Float
   ruleRiskPenalty: Float
   seasonal: Boolean
@@ -163,7 +163,7 @@ extend type CompatibilityNode {
   waivedAt: DateTime
   waiveReason: String
   waivedScoreDelta: Float
-  warningAssignments: [CompatibilityNode!]
+  warningAssignments: Int
   weeklyHoursAfter: Float
   weeklyHoursBefore: Float
   weeklyHoursCap: Float
