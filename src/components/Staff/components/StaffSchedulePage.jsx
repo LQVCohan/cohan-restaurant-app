@@ -169,8 +169,8 @@ const GET_STAFF_SHIFTS = gql`
   }
 `;
 const MY_SHIFT_ATTENDANCES = gql`
-  query MyShiftAttendances($periodStart: DateTime, $periodEnd: DateTime) {
-    myShiftAttendances(periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyShiftAttendances($restaurantId: ID, $periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAttendances(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
       id
       shiftId
       checkInAt
@@ -193,8 +193,8 @@ const CHECK_OUT_SHIFT = gql`
 `;
 
 const GET_MY_SHIFT_ACKS = gql`
-  query MyShiftAcknowledgements($periodStart: DateTime, $periodEnd: DateTime) {
-    myShiftAcknowledgements(periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyShiftAcknowledgements($restaurantId: ID, $periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
       id
       shiftId
       status
@@ -577,14 +577,14 @@ export default function StaffSchedulePage() {
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
     GET_MY_SHIFT_ACKS,
     {
-      variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
-      skip: !employeeId,
+      variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso },
+      skip: !employeeId || !restaurantId,
       fetchPolicy: "network-only",
     },
   );
   const { data: myShiftAttendancesData, refetch: refetchMyShiftAttendances } = useQuery(MY_SHIFT_ATTENDANCES, {
-    variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
-    skip: !employeeId,
+    variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso },
+    skip: !employeeId || !restaurantId,
     fetchPolicy: "network-only",
   });
   const [checkInShiftMutation] = useMutation(CHECK_IN_SHIFT);

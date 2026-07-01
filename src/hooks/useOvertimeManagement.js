@@ -185,11 +185,13 @@ const MUTATION_COMPLETE_OVERTIME = gql`
   }
 `;
 
+export const OVERTIME_TIMEZONE_OFFSET = "+07:00";
+
 export const toOvertimeIsoStartOfDay = (value) =>
-  value ? `${value}T00:00:00.000Z` : undefined;
+  value ? `${value}T00:00:00.000${OVERTIME_TIMEZONE_OFFSET}` : undefined;
 
 export const toOvertimeIsoEndOfDay = (value) =>
-  value ? `${value}T23:59:59.999Z` : undefined;
+  value ? `${value}T23:59:59.999${OVERTIME_TIMEZONE_OFFSET}` : undefined;
 
 export const buildOvertimeFilter = ({
   selectedDate,

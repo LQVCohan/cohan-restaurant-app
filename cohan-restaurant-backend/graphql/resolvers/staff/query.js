@@ -538,11 +538,13 @@ export default {
       createdAt: -1,
     });
   },
-  myShiftAttendances: async (_, { periodStart, periodEnd }, ctx) => {
+  myShiftAttendances: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
     requireAuth(ctx);
+    if (restaurantId) await requireRestaurantAccess(ctx, restaurantId);
     const employeeId = ctx?.user?.id || ctx?.user?._id;
     const actorOid = toObjectId(employeeId) || employeeId;
     const filter = { employeeId: actorOid, shiftId: { $ne: null }, isOffSchedule: { $ne: true } };
+    if (restaurantId) filter.restaurantId = toObjectId(restaurantId) || restaurantId;
     if (periodStart || periodEnd) {
       const start = periodStart ? new Date(periodStart) : null;
       const end = periodEnd ? new Date(periodEnd) : null;
@@ -673,12 +675,16 @@ export default {
   },
   myShiftAcknowledgements: async (
     _,
-    { periodStart, periodEnd, status },
+    { restaurantId, periodStart, periodEnd, status },
     ctx,
   ) => {
     requireAuth(ctx);
+    if (restaurantId) await requireRestaurantAccess(ctx, restaurantId);
     const employeeId = ctx?.user?.id || ctx?.user?._id;
     const filter = { employeeId: toObjectId(employeeId) || employeeId };
+    if (restaurantId) {
+      filter.restaurantId = toObjectId(restaurantId) || restaurantId;
+    }
 
     const start = periodStart ? new Date(periodStart) : null;
     const end = periodEnd ? new Date(periodEnd) : null;
@@ -1260,23 +1266,24 @@ export default {
     assertPayrollPermission(ctx, "payroll.payslip.self");
     const actorId = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
     if (!actorId) return [];
-    const items = await PayrollItem.find({ employeeId: actorId })
-      .sort({ updatedAt: -1 })
-      .limit(Math.max(1, Math.min(Number(limit || 12), 24)))
-      .lean();
+    const cappedLimit = Math.max(1, Math.min(Number(limit || 12), 24));
+    const items = await PayrollItem.find({ employeeId: actorId }).lean();
     if (!items.length) return [];
-    const periodIds = items.map((i) => i.periodId);
+    const periodIds = items.map((item) => item.periodId).filter(Boolean);
     const periods = await PayrollPeriod.find({
       _id: { $in: periodIds },
       status: { $in: ["finalized", "paying", "locked", "paid"] },
     })
+      .sort({ endDate: -1, startDate: -1 })
+      .limit(cappedLimit)
       .select({ _id: 1, name: 1, startDate: 1, endDate: 1, status: 1, finalizedAt: 1, paidAt: 1 })
       .lean();
-    const periodById = new Map(periods.map((p) => [String(p._id), p]));
-    return items
-      .filter((i) => periodById.has(String(i.periodId)))
-      .map((item) => {
-        const period = periodById.get(String(item.periodId));
+    if (!periods.length) return [];
+    const itemByPeriodId = new Map(items.map((item) => [String(item.periodId), item]));
+    return periods
+      .map((period) => {
+        const item = itemByPeriodId.get(String(period._id));
+        if (!item) return null;
         return mapPayrollDocToGql({
           ...item,
           periodName: period?.name || "",
@@ -1285,7 +1292,8 @@ export default {
           periodStatus: period?.status || null,
           periodFinalizedAt: period?.finalizedAt || null,
         });
-      });
+      })
+      .filter(Boolean);
   },
 
   myPayslip: async (_, { periodId }, ctx) => {

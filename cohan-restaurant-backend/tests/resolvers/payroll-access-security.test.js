@@ -225,6 +225,41 @@ describe("sensitive payroll and staff report access", () => {
     await expect(query.leaveBalance(null, { employeeId: "staff-a", year: 2026 }, staffCtx)).resolves.toMatchObject({ employeeId: "staff-a" });
   });
 
+  it("lists staff payslips after filtering out unpublished periods", async () => {
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    const staffCtx = { user: user({ id: "staff-a", userType: "STAFF", restaurantForStaff: "restaurant-a" }) };
+    modelMocks.PayrollItem.find.mockReturnValueOnce(queryChain([
+      { _id: "draft-item", periodId: "draft-period", employeeId: "staff-a", netSalary: 1000 },
+      { _id: "final-item", periodId: "final-period", employeeId: "staff-a", netSalary: 2000 },
+    ]));
+    modelMocks.PayrollPeriod.find.mockReturnValueOnce(queryChain([
+      {
+        _id: "final-period",
+        name: "Finalized period",
+        startDate: new Date("2026-05-01T00:00:00.000Z"),
+        endDate: new Date("2026-05-31T00:00:00.000Z"),
+        status: "finalized",
+        finalizedAt: new Date("2026-06-01T00:00:00.000Z"),
+        paidAt: null,
+      },
+    ]));
+
+    const result = await query.myPayslips(null, { limit: 1 }, staffCtx);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      _id: "final-item",
+      periodId: "final-period",
+      periodName: "Finalized period",
+      periodStatus: "finalized",
+    });
+    expect(modelMocks.PayrollPeriod.find).toHaveBeenCalledWith({
+      _id: { $in: ["draft-period", "final-period"] },
+      status: { $in: ["finalized", "paying", "locked", "paid"] },
+    });
+  });
+
+
   it("allows MANAGER to view payroll/report data only for their own restaurant", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     const managerCtx = { user: user() };
