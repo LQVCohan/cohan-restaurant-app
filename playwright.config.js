@@ -20,7 +20,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `npm run build && npm run preview -- --host ${HOST} --port ${PORT}`,
+    command: `npm run build && node ./node_modules/vite/bin/vite.js preview --host ${HOST} --port ${PORT} --strictPort`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
