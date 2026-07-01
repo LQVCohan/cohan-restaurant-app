@@ -21,6 +21,7 @@ import DashboardActionQueue from "./components/DashboardActionQueue";
 import DashboardSupportQueue from "./components/DashboardSupportQueue";
 import ManagerPerformancePanel from "../Performance/ManagerPerformancePanel";
 import "./Dashboard.scss";
+import "./DashboardEmptyState.scss";
 
 const RANGE_LABELS = {
   week: "7 ngày gần nhất",
@@ -134,9 +135,10 @@ const Dashboard = () => {
   const handleGoToHandoff = () => navigateManagerPage("ai-handoff");
   const handleGoToRestaurantInfo = () =>
     navigateManagerPage("restaurant-info-management");
+  const handleGoToBrands = () => navigateManagerPage("brands");
 
   return (
-    <div className="manager-dashboard">
+    <div className={`manager-dashboard ${showNoRestaurantState ? "manager-dashboard--no-restaurant" : ""} ${isResourceSetupEmpty ? "manager-dashboard--setup-empty" : ""}`}>
       <section
         className="dashboard-compact-header"
         aria-labelledby="dashboard-title"
@@ -202,7 +204,7 @@ const Dashboard = () => {
                 </option>
               ) : (
                 <option value="" disabled>
-                  Không có nhà hàng được gán
+                  Chưa có chi nhánh khả dụng
                 </option>
               )}
             </select>
@@ -230,7 +232,7 @@ const Dashboard = () => {
             {hasSelectedRestaurant ? "Tự động cập nhật" : "Trạng thái dữ liệu"}
           </span>
           <strong>
-            {hasSelectedRestaurant ? "Mỗi 30 giây" : "Chờ gán nhà hàng"}
+            {hasSelectedRestaurant ? "Mỗi 30 giây" : "Chờ chi nhánh"}
           </strong>
         </div>
       </section>
@@ -262,18 +264,25 @@ const Dashboard = () => {
           </div>
           <div className="dashboard-no-restaurant__content">
             <p className="dashboard-no-restaurant__eyebrow">
-              Chưa thể hiển thị dữ liệu vận hành
+              Cần hoàn tất chi nhánh
             </p>
             <h2 id="dashboard-no-restaurant-title">
-              Tài khoản chưa được gán nhà hàng
+              Chưa tìm thấy nhà hàng trong Brand hiện tại
             </h2>
             <p>
-              Hãy liên hệ quản trị viên để được gán nhà hàng. Nếu bạn có quyền
-              quản lý thông tin nhà hàng, hãy mở trang thông tin nhà hàng để
-              kiểm tra cấu hình.
+              Chi nhánh chính là nhà hàng đang vận hành. Nếu bạn vừa đăng ký
+              thương hiệu, hãy kiểm tra danh sách chi nhánh hoặc tạo chi nhánh
+              đầu tiên để dashboard có dữ liệu.
             </p>
           </div>
           <div className="dashboard-no-restaurant__actions">
+            <button
+              type="button"
+              className="dashboard-btn dashboard-btn--ghost"
+              onClick={handleGoToBrands}
+            >
+              Kiểm tra Brand
+            </button>
             <button
               type="button"
               className="dashboard-btn dashboard-btn--primary"
