@@ -538,11 +538,13 @@ export default {
       createdAt: -1,
     });
   },
-  myShiftAttendances: async (_, { periodStart, periodEnd }, ctx) => {
+  myShiftAttendances: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
     requireAuth(ctx);
+    if (restaurantId) await requireRestaurantAccess(ctx, restaurantId);
     const employeeId = ctx?.user?.id || ctx?.user?._id;
     const actorOid = toObjectId(employeeId) || employeeId;
     const filter = { employeeId: actorOid, shiftId: { $ne: null }, isOffSchedule: { $ne: true } };
+    if (restaurantId) filter.restaurantId = toObjectId(restaurantId) || restaurantId;
     if (periodStart || periodEnd) {
       const start = periodStart ? new Date(periodStart) : null;
       const end = periodEnd ? new Date(periodEnd) : null;

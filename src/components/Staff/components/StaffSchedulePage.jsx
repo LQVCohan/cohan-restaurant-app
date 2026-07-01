@@ -169,8 +169,8 @@ const GET_STAFF_SHIFTS = gql`
   }
 `;
 const MY_SHIFT_ATTENDANCES = gql`
-  query MyShiftAttendances($periodStart: DateTime, $periodEnd: DateTime) {
-    myShiftAttendances(periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyShiftAttendances($restaurantId: ID, $periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAttendances(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
       id
       shiftId
       checkInAt
@@ -583,8 +583,8 @@ export default function StaffSchedulePage() {
     },
   );
   const { data: myShiftAttendancesData, refetch: refetchMyShiftAttendances } = useQuery(MY_SHIFT_ATTENDANCES, {
-    variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
-    skip: !employeeId,
+    variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso },
+    skip: !employeeId || !restaurantId,
     fetchPolicy: "network-only",
   });
   const [checkInShiftMutation] = useMutation(CHECK_IN_SHIFT);

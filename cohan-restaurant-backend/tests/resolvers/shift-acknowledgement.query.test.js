@@ -5,7 +5,7 @@ const modelMocks = vi.hoisted(() => ({
   findMock: vi.fn(),
   Staff: {},
   Shift: {},
-  Timesheet: {},
+  Timesheet: { find: vi.fn() },
   LeaveRequest: {},
   LeaveBalance: {},
   Order: {},
@@ -64,6 +64,7 @@ describe("shift acknowledgement query resolvers", () => {
     modelMocks.ScheduleAcknowledgement.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
     modelMocks.ScheduleAcknowledgement.findOne.mockResolvedValue(null);
     modelMocks.Shift.find = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
+    modelMocks.Timesheet.find.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })) });
   });
 
   it("allows manager to query restaurant acknowledgements with filters", async () => {
@@ -160,6 +161,31 @@ describe("shift acknowledgement query resolvers", () => {
         { periodEnd: { $gte: new Date("2026-05-10T00:00:00.000Z") } },
         { periodStart: { $lte: new Date("2026-05-20T23:59:59.999Z") } },
       ],
+    });
+  });
+
+
+  it("myShiftAttendances filters current user attendance by restaurant", async () => {
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    await query.myShiftAttendances(
+      null,
+      {
+        restaurantId: "rest-1",
+        periodStart: "2026-05-10T00:00:00.000Z",
+        periodEnd: "2026-05-20T23:59:59.999Z",
+      },
+      { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-1" } },
+    );
+
+    expect(modelMocks.Timesheet.find).toHaveBeenCalledWith({
+      employeeId: { __oid: "staff-1" },
+      restaurantId: { __oid: "rest-1" },
+      shiftId: { $ne: null },
+      isOffSchedule: { $ne: true },
+      workDate: {
+        $gte: new Date("2026-05-10T00:00:00.000Z"),
+        $lte: new Date("2026-05-20T23:59:59.999Z"),
+      },
     });
   });
 

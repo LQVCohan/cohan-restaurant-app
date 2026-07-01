@@ -142,8 +142,8 @@ const GET_MY_SHIFT_ACKS = gql`
   }
 `;
 const MY_SHIFT_ATTENDANCES = gql`
-  query MyShiftAttendances($periodStart: DateTime, $periodEnd: DateTime) {
-    myShiftAttendances(periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyShiftAttendances($restaurantId: ID, $periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAttendances(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
       id
       shiftId
       checkInAt
@@ -281,8 +281,7 @@ const emptyShiftAcksMock = () => ({
 });
 const emptyMyShiftAttendancesMock = () => ({
   request: { query: MY_SHIFT_ATTENDANCES },
-  variableMatcher: (variables) =>
-    anyIsoDateRange(variables, "periodStart", "periodEnd"),
+  variableMatcher: matchShiftAckVars("r1"),
   result: { data: { myShiftAttendances: [] } },
 });
 
