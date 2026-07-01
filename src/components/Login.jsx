@@ -79,6 +79,38 @@ const CREATE_USER_MUTATION = gql`
   }
 `;
 
+const REGISTER_BUSINESS_OWNER = gql`
+  mutation RegisterBusinessOwner($input: RegisterBusinessOwnerInput!) {
+    registerBusinessOwner(input: $input) {
+      user { id fullName email roleName status }
+      brand { id name slug }
+      restaurant { id name brandId }
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
+const CUSTOMER_REGISTER_INITIAL = {
+  fullName: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  terms: false,
+};
+
+const BRAND_REGISTER_INITIAL = {
+  fullName: "",
+  email: "",
+  phone: "",
+  password: "",
+  confirmPassword: "",
+  brandName: "",
+  firstRestaurantName: "",
+  address: "",
+  terms: false,
+};
+
 const FieldIcon = ({ type }) => {
   const paths = {
     user: (
@@ -127,14 +159,14 @@ const FieldIcon = ({ type }) => {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {paths[type]}
+      {paths[type] || paths.user}
     </svg>
   );
 };
 
 const FloatingFoodIcons = () => (
   <div className="floating-food-layer" aria-hidden="true">
-    <span className="food-float food-float--1">POS</span>
+    <span className="food-float food-float--1">VPOS</span>
     <span className="food-float food-float--2">BÀN</span>
     <span className="food-float food-float--3">ĐƠN</span>
     <span className="food-float food-float--4">CA</span>
@@ -149,14 +181,14 @@ const AuthBrand = () => (
 );
 
 const LoginAudience = () => (
-  <div className="auth-audience-grid" aria-label="Đăng nhập cho khách hàng và quản lý">
+  <div className="auth-audience-grid" aria-label="Nền tảng cho khách hàng và thương hiệu">
     <span>
       <strong>Khách hàng</strong>
       <small>Đặt món, ví, khẩu vị</small>
     </span>
     <span>
-      <strong>Quản lý</strong>
-      <small>POS, bàn, đơn, ca</small>
+      <strong>Thương hiệu</strong>
+      <small>Brand, chi nhánh, POS</small>
     </span>
   </div>
 );
@@ -194,7 +226,7 @@ function resolveRegisterErrorMessage(error) {
   const code = first?.extensions?.code || "";
   const msg = String(first?.message || "").toLowerCase();
 
-  if (msg.includes("already in use") || msg.includes("duplicate")) return "Email hoặc tài khoản này đã được sử dụng.";
+  if (msg.includes("already in use") || msg.includes("duplicate") || msg.includes("already exists")) return "Email hoặc thương hiệu này đã được sử dụng.";
   if (msg.includes("weak password")) return first?.message || "Mật khẩu chưa đủ mạnh.";
   if (code === "BAD_USER_INPUT") return first?.message || "Dữ liệu đăng ký chưa hợp lệ.";
   if (error?.networkError) return "Không thể kết nối máy chủ. Vui lòng thử lại.";
@@ -228,19 +260,15 @@ const LoginPage = () => {
 
   const [isRightPanelActive, setIsRightPanelActive] = useState(false);
   const [mobileMode, setMobileMode] = useState("login");
+  const [registerMode, setRegisterMode] = useState("customer");
   const [loginForm, setLoginForm] = useState({
     identifier: "",
     password: "",
     rememberSession: true,
     rememberIdentifier: true,
   });
-  const [registerForm, setRegisterForm] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    terms: false,
-  });
+  const [registerForm, setRegisterForm] = useState(CUSTOMER_REGISTER_INITIAL);
+  const [brandRegisterForm, setBrandRegisterForm] = useState(BRAND_REGISTER_INITIAL);
   const [showPassword, setShowPassword] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
 
@@ -258,6 +286,18 @@ const LoginPage = () => {
     setMobileMode(isRegister ? "register" : "login");
     resetCaptcha();
   };
+
+  const switchRegisterMode = (mode) => {
+    setRegisterMode(mode);
+    resetCaptcha();
+  };
+
+  useEffect(() => {
+    if (location?.state?.authMode !== "register") return;
+    setIsRightPanelActive(true);
+    setMobileMode("register");
+    if (location.state.registerMode === "brand") setRegisterMode("brand");
+  }, [location?.state]);
 
   useEffect(() => {
     if (loading || !isAuthenticated || !user) return;
@@ -319,7 +359,23 @@ const LoginPage = () => {
         togglePanel(false);
       }
 
-      setRegisterForm({ fullName: "", email: "", password: "", confirmPassword: "", terms: false });
+      setRegisterForm(CUSTOMER_REGISTER_INITIAL);
+    },
+  });
+
+  const [registerBusinessOwner, { loading: brandRegisterLoading }] = useMutation(REGISTER_BUSINESS_OWNER, {
+    errorPolicy: "none",
+    onError: (error) => showNotification(resolveRegisterErrorMessage(error), "error"),
+    onCompleted: (data) => {
+      const payload = data?.registerBusinessOwner;
+      if (!payload?.accessToken || !payload?.user) {
+        showNotification("Đăng ký thương hiệu thành công. Vui lòng đăng nhập để tiếp tục.", "success");
+        togglePanel(false);
+        return;
+      }
+      authLogin(payload.accessToken, payload.user);
+      showNotification(`Đã tạo thương hiệu ${payload.brand?.name || "mới"}.`, "success");
+      navigate("/manager", { replace: true });
     },
   });
 
@@ -338,8 +394,7 @@ const LoginPage = () => {
     });
   };
 
-  const handleRegister = (e) => {
-    e.preventDefault();
+  const handleCustomerRegister = () => {
     const fullName = registerForm.fullName.trim();
     const email = registerForm.email.trim().toLowerCase();
 
@@ -363,6 +418,42 @@ const LoginPage = () => {
     });
   };
 
+  const handleBrandRegister = () => {
+    const fullName = brandRegisterForm.fullName.trim();
+    const email = brandRegisterForm.email.trim().toLowerCase();
+    const brandName = brandRegisterForm.brandName.trim();
+    const firstRestaurantName = brandRegisterForm.firstRestaurantName.trim();
+    const address = brandRegisterForm.address.trim();
+
+    if (!fullName || !email || !brandName || !brandRegisterForm.password) return showNotification("Vui lòng nhập người đại diện, email, mật khẩu và tên thương hiệu", "warning");
+    if (brandRegisterForm.password !== brandRegisterForm.confirmPassword) return showNotification("Mật khẩu xác nhận không khớp", "error");
+    if (!brandRegisterForm.terms) return showNotification("Bạn cần đồng ý với chính sách & điều khoản", "warning");
+
+    registerBusinessOwner({
+      variables: {
+        input: {
+          fullName,
+          email,
+          phone: brandRegisterForm.phone.trim() || undefined,
+          password: brandRegisterForm.password,
+          brandName,
+          businessName: brandName,
+          businessEmail: email,
+          businessPhone: brandRegisterForm.phone.trim() || undefined,
+          createFirstRestaurant: true,
+          firstRestaurantName: firstRestaurantName || brandName,
+          firstRestaurantAddress: address ? { line1: address, country: "Vietnam" } : undefined,
+        },
+      },
+    });
+  };
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+    if (registerMode === "brand") return handleBrandRegister();
+    return handleCustomerRegister();
+  };
+
   const renderCaptcha = (ref) => {
     if (!shouldRenderCaptcha && !captchaConfigMissing) return null;
     return (
@@ -378,6 +469,16 @@ const LoginPage = () => {
     );
   };
 
+  const renderRegisterModeSwitch = () => (
+    <div className="auth-mode-switch" role="tablist" aria-label="Chọn loại tài khoản đăng ký">
+      <button type="button" role="tab" aria-selected={registerMode === "customer"} className={registerMode === "customer" ? "active" : ""} onClick={() => switchRegisterMode("customer")}>Khách hàng</button>
+      <button type="button" role="tab" aria-selected={registerMode === "brand"} className={registerMode === "brand" ? "active" : ""} onClick={() => switchRegisterMode("brand")}>Thương hiệu</button>
+    </div>
+  );
+
+  const isBrandRegister = registerMode === "brand";
+  const submitLoading = isBrandRegister ? brandRegisterLoading : registerLoading;
+
   return (
     <main className="login-page-wrapper" aria-labelledby="login-form-title">
       <div className="login-bg-grain" aria-hidden="true" />
@@ -390,27 +491,59 @@ const LoginPage = () => {
 
       <section className={`container ${isRightPanelActive ? "right-panel-active" : ""}`} id="container" aria-label="Đăng nhập và đăng ký Cohan">
         <div id="register-panel" className={`form-container sign-up-container ${mobileMode === "login" ? "mobile-hidden" : ""}`}>
-          <form className="auth-form auth-form--register" onSubmit={handleRegister} aria-labelledby="register-form-title">
+          <form className={`auth-form auth-form--register ${isBrandRegister ? "auth-form--brand-register" : ""}`} onSubmit={handleRegister} aria-labelledby="register-form-title">
             <AuthBrand />
-            <h1 id="register-form-title">Tạo tài khoản</h1>
-            <LoginAudience />
+            <h1 id="register-form-title">Đăng ký</h1>
+            {renderRegisterModeSwitch()}
 
-            <label className="field-label" htmlFor="register-full-name">Họ và tên</label>
-            <div className="input-wrapper"><FieldIcon type="user" /><input id="register-full-name" type="text" placeholder="Họ và tên" aria-label="Họ và tên" autoComplete="name" value={registerForm.fullName} onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })} /></div>
+            {isBrandRegister ? (
+              <>
+                <p className="auth-subtitle">Tạo thương hiệu trước, sau đó hệ thống sẽ gắn chi nhánh đầu tiên vào Brand.</p>
+                <label className="field-label" htmlFor="brand-register-full-name">Người đại diện</label>
+                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-full-name" type="text" placeholder="Họ và tên" autoComplete="name" value={brandRegisterForm.fullName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, fullName: e.target.value })} /></div>
 
-            <label className="field-label" htmlFor="register-email">Email</label>
-            <div className="input-wrapper"><FieldIcon type="mail" /><input id="register-email" type="email" placeholder="Email" aria-label="Email" autoComplete="email" value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} /></div>
+                <label className="field-label" htmlFor="brand-register-email">Email quản trị</label>
+                <div className="input-wrapper"><FieldIcon type="mail" /><input id="brand-register-email" type="email" placeholder="Email" autoComplete="email" value={brandRegisterForm.email} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, email: e.target.value })} /></div>
 
-            <label className="field-label" htmlFor="register-password">Mật khẩu</label>
-            <div className="input-wrapper"><FieldIcon type="lock" /><input id="register-password" type="password" placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="new-password" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} /></div>
+                <label className="field-label" htmlFor="brand-register-phone">Số điện thoại</label>
+                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-phone" type="tel" placeholder="Số điện thoại" autoComplete="tel" value={brandRegisterForm.phone} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, phone: e.target.value })} /></div>
 
-            <label className="field-label" htmlFor="register-confirm-password">Nhập lại mật khẩu</label>
-            <div className="input-wrapper"><FieldIcon type="lock" /><input id="register-confirm-password" type="password" placeholder="Nhập lại mật khẩu" aria-label="Nhập lại mật khẩu" autoComplete="new-password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} /></div>
+                <label className="field-label" htmlFor="brand-register-password">Mật khẩu</label>
+                <div className="input-wrapper"><FieldIcon type="lock" /><input id="brand-register-password" type="password" placeholder="Mật khẩu" autoComplete="new-password" value={brandRegisterForm.password} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, password: e.target.value })} /></div>
 
-            <label className="check-card check-card--terms"><input type="checkbox" checked={registerForm.terms} onChange={(e) => setRegisterForm({ ...registerForm, terms: e.target.checked })} /><span>Tôi đồng ý với chính sách & điều khoản</span></label>
-            {renderCaptcha(recaptchaRegisterRef)}
-            <button type="submit" className="btn-primary" disabled={registerLoading || captchaConfigMissing}>{registerLoading ? "Đang tạo..." : "Đăng ký"}</button>
-            <div className="social-container" aria-label="Đăng ký bằng mạng xã hội"><button type="button" className="social social-facebook" aria-label="Đăng ký bằng Facebook sắp ra mắt" disabled>f</button><button type="button" className="social social-google" aria-label="Đăng ký bằng Google sắp ra mắt" disabled>G</button></div>
+                <label className="field-label" htmlFor="brand-register-confirm-password">Nhập lại mật khẩu</label>
+                <div className="input-wrapper"><FieldIcon type="lock" /><input id="brand-register-confirm-password" type="password" placeholder="Nhập lại mật khẩu" autoComplete="new-password" value={brandRegisterForm.confirmPassword} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, confirmPassword: e.target.value })} /></div>
+
+                <label className="field-label" htmlFor="brand-register-name">Tên thương hiệu</label>
+                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-name" type="text" placeholder="VD: Cohan Restaurant" autoComplete="organization" value={brandRegisterForm.brandName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, brandName: e.target.value })} /></div>
+
+                <label className="field-label" htmlFor="brand-register-restaurant">Chi nhánh đầu tiên</label>
+                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-restaurant" type="text" placeholder="Để trống sẽ dùng tên thương hiệu" autoComplete="organization" value={brandRegisterForm.firstRestaurantName} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, firstRestaurantName: e.target.value })} /></div>
+
+                <label className="field-label" htmlFor="brand-register-address">Địa chỉ chi nhánh</label>
+                <div className="input-wrapper"><FieldIcon type="user" /><input id="brand-register-address" type="text" placeholder="Địa chỉ" autoComplete="street-address" value={brandRegisterForm.address} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, address: e.target.value })} /></div>
+
+                <label className="check-card check-card--terms"><input type="checkbox" checked={brandRegisterForm.terms} onChange={(e) => setBrandRegisterForm({ ...brandRegisterForm, terms: e.target.checked })} /><span>Tôi đồng ý với chính sách & điều khoản</span></label>
+              </>
+            ) : (
+              <>
+                <label className="field-label" htmlFor="register-full-name">Họ và tên</label>
+                <div className="input-wrapper"><FieldIcon type="user" /><input id="register-full-name" type="text" placeholder="Họ và tên" aria-label="Họ và tên" autoComplete="name" value={registerForm.fullName} onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })} /></div>
+
+                <label className="field-label" htmlFor="register-email">Email</label>
+                <div className="input-wrapper"><FieldIcon type="mail" /><input id="register-email" type="email" placeholder="Email" aria-label="Email" autoComplete="email" value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} /></div>
+
+                <label className="field-label" htmlFor="register-password">Mật khẩu</label>
+                <div className="input-wrapper"><FieldIcon type="lock" /><input id="register-password" type="password" placeholder="Mật khẩu" aria-label="Mật khẩu" autoComplete="new-password" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} /></div>
+
+                <label className="field-label" htmlFor="register-confirm-password">Nhập lại mật khẩu</label>
+                <div className="input-wrapper"><FieldIcon type="lock" /><input id="register-confirm-password" type="password" placeholder="Nhập lại mật khẩu" aria-label="Nhập lại mật khẩu" autoComplete="new-password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} /></div>
+
+                <label className="check-card check-card--terms"><input type="checkbox" checked={registerForm.terms} onChange={(e) => setRegisterForm({ ...registerForm, terms: e.target.checked })} /><span>Tôi đồng ý với chính sách & điều khoản</span></label>
+                {renderCaptcha(recaptchaRegisterRef)}
+              </>
+            )}
+            <button type="submit" className="btn-primary" disabled={submitLoading || (!isBrandRegister && captchaConfigMissing)}>{submitLoading ? "Đang tạo..." : isBrandRegister ? "Đăng ký thương hiệu" : "Đăng ký"}</button>
           </form>
         </div>
 
@@ -439,19 +572,19 @@ const LoginPage = () => {
             <FloatingFoodIcons />
             <div className="overlay-panel overlay-left">
               <h1>Chào mừng</h1>
-              <p>Tạo tài khoản Cohan để bắt đầu đặt món hoặc quản lý vận hành nhà hàng trên cùng một nền tảng.</p>
+              <p>Đăng ký khách hàng để đặt món, hoặc đăng ký thương hiệu để tạo Brand và chi nhánh đầu tiên.</p>
               <div className="overlay-access-stack">
                 <span><strong>Khách hàng</strong><small>Đặt món, ví, khẩu vị</small></span>
-                <span><strong>Quản lý</strong><small>Bàn, POS, đơn realtime</small></span>
+                <span><strong>Thương hiệu</strong><small>Tạo Brand, chi nhánh, POS</small></span>
               </div>
               <button type="button" className="ghost" onClick={() => togglePanel(false)}>Đăng nhập</button>
             </div>
             <div className="overlay-panel overlay-right">
               <h1>Xin chào</h1>
-              <p>Đăng nhập Cohan để tiếp tục với đúng vai trò: khách hàng đặt món hoặc quản lý vận hành nhà hàng.</p>
+              <p>Đăng nhập Cohan để tiếp tục với đúng vai trò: khách hàng hoặc đội vận hành thương hiệu.</p>
               <div className="overlay-access-stack">
                 <span><strong>Khách hàng</strong><small>Theo dõi đơn & ưu đãi</small></span>
-                <span><strong>Nhà hàng</strong><small>Kiểm soát bàn, ca, POS</small></span>
+                <span><strong>Thương hiệu</strong><small>Kiểm soát Brand, bàn, ca, POS</small></span>
               </div>
               <button type="button" className="ghost" onClick={() => togglePanel(true)}>Đăng ký</button>
             </div>
