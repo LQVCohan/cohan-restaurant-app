@@ -23,9 +23,6 @@ const VALIDATION_RULES = specifiedRules.filter((rule) => rule !== NoUnusedFragme
 // These documents are covered by legacy compatibility resolvers that intentionally
 // remain looser than the hardened SDL. Keep validating every other document.
 const LEGACY_COMPATIBILITY_DOCUMENTS = new Set([
-  'src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx',
-  'src/components/Staff/components/StaffSchedulePage.jsx',
-  'src/components/Staff/components/StaffSchedulePage.test.jsx',
 ]);
 
 function listFilesRecursive(directory, predicate) {
@@ -377,6 +374,24 @@ describe('frontend GraphQL documents', () => {
     expect(Object.keys(fields)).toEqual(
       expect.arrayContaining(['reliabilityScore', 'reliabilityLevel', 'reliabilitySignals']),
     );
+  });
+
+  it('keeps AI schedule planner preview compatibility fields aligned with service payloads', async () => {
+    const schema = await buildBackendSchema();
+    const queryFields = schema.getType('Query').getFields();
+    const compatibilityFields = schema.getType('CompatibilityNode').getFields();
+
+    expect(queryFields.aiSchedulePlannerPreview.args.map((arg) => `${arg.name}:${arg.type}`)).toContain(
+      'input:AiSchedulePlannerPreviewInput',
+    );
+    expect(schema.getType('AiSchedulePlannerPreviewInput')).toBeTruthy();
+    expect(compatibilityFields.recommendedShiftTemplates.type.toString()).toBe('JSON');
+    expect(compatibilityFields.recommendedRoles.type.toString()).toBe('JSON');
+    expect(compatibilityFields.riskWarnings.type.toString()).toBe('[CompatibilityNode!]');
+    expect(compatibilityFields.explanations.type.toString()).toBe('[CompatibilityNode!]');
+    expect(compatibilityFields.recommendedAssignments.type.toString()).toBe('Int');
+    expect(compatibilityFields.warningAssignments.type.toString()).toBe('Int');
+    expect(compatibilityFields.blockedAssignments.type.toString()).toBe('Int');
   });
 
   it('validate against the backend schema', async () => {
