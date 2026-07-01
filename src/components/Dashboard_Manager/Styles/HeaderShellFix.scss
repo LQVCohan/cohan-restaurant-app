@@ -1,5 +1,12 @@
 .header {
-  --manager-header-inline-padding: clamp(0.95rem, 1.18vw, 1.15rem);
+  --manager-header-inline-padding: clamp(1rem, 1.6vw, 1.45rem);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(168, 133, 95, 0.12), transparent 20rem),
+    linear-gradient(90deg, rgba(255, 251, 244, 0.96), rgba(248, 246, 241, 0.92)) !important;
+  border-bottom: 1px solid rgba(226, 216, 201, 0.78) !important;
+  box-shadow: 0 14px 34px rgba(75, 56, 32, 0.08) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.08) !important;
+  backdrop-filter: blur(18px) saturate(1.08) !important;
 }
 
 .manager-layout__header {
@@ -11,6 +18,7 @@
   position: relative !important;
   display: flex !important;
   align-items: center !important;
+  gap: clamp(0.75rem, 1.4vw, 1.15rem) !important;
   max-width: none !important;
   margin: 0 !important;
   padding-inline: var(--manager-header-inline-padding) !important;
@@ -18,8 +26,8 @@
 
 .manager-layout__header .header .header__left,
 .header .header__left {
-  min-width: min(34vw, 21rem);
-  max-width: min(38vw, 26rem);
+  min-width: min(32vw, 20rem);
+  max-width: min(36vw, 25rem);
   flex: 0 1 auto;
   margin-inline-start: 0 !important;
 }
@@ -27,6 +35,18 @@
 .header .page-info {
   min-width: 0;
   padding-inline-start: 0.12rem;
+}
+
+.header .page-title {
+  color: #251f19 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.035em;
+}
+
+.header .page-subtitle {
+  color: rgba(107, 94, 78, 0.82) !important;
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
 }
 
 .header .page-title,
@@ -41,8 +61,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: clamp(18rem, 28vw, 31.25rem);
-  max-width: calc(100% - 40rem);
+  width: clamp(18rem, 30vw, 32rem);
+  max-width: calc(100% - 42rem);
   margin: 0 !important;
   transform: translate(-50%, -50%);
 }
@@ -52,6 +72,42 @@
   width: 100%;
 }
 
+.header .header__center .search-box {
+  height: 42px !important;
+  border: 1px solid rgba(168, 133, 95, 0.2) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 242, 0.9)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 26px rgba(75, 56, 32, 0.08) !important;
+}
+
+.header .header__center .search-box:hover,
+.header .header__center .search-box:focus-within {
+  border-color: rgba(21, 115, 98, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 0 4px rgba(21, 115, 98, 0.08),
+    0 14px 28px rgba(75, 56, 32, 0.1) !important;
+}
+
+.header .header__center .search-input {
+  color: #24303f !important;
+  font-size: 0.86rem !important;
+  font-weight: 650 !important;
+}
+
+.header .header__center .search-input::placeholder {
+  color: rgba(102, 112, 133, 0.72) !important;
+}
+
+.header .header__center .search-icon {
+  color: #157362 !important;
+  filter: saturate(0.9);
+}
+
+.header .header__center .search-shortcut,
 .header .keyboard-shortcut-hint,
 .manager-layout__header .keyboard-shortcut-hint {
   display: none !important;
@@ -72,6 +128,38 @@
 .header .header__right {
   margin-left: auto;
   min-width: max-content;
+  gap: 0.62rem !important;
+}
+
+.header .time-display {
+  padding: 0.18rem 0.8rem 0.18rem 0 !important;
+  border-right-color: rgba(226, 216, 201, 0.86) !important;
+}
+
+.header .current-time {
+  color: #251f19 !important;
+  font-weight: 850 !important;
+}
+
+.header .current-status {
+  color: rgba(107, 94, 78, 0.78) !important;
+  font-weight: 700 !important;
+}
+
+.header .notification-btn,
+.header .user-menu-btn {
+  border-color: rgba(168, 133, 95, 0.18) !important;
+  background: rgba(255, 250, 243, 0.82) !important;
+  box-shadow: 0 8px 18px rgba(75, 56, 32, 0.06) !important;
+}
+
+.header .notification-btn:hover,
+.header .user-menu-btn:hover,
+.header .notification-btn--active,
+.header .user-menu-btn--active {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(21, 115, 98, 0.22) !important;
+  transform: translateY(-1px);
 }
 
 @media (min-width: 769px) {
