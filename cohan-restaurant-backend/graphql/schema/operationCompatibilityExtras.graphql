@@ -245,7 +245,6 @@ extend type ContactChangeOtpResult {
   email: String
   id: ID
   phone: String
-  status: String
 }
 
 extend type Wallet {

@@ -23,16 +23,12 @@ const VALIDATION_RULES = specifiedRules.filter((rule) => rule !== NoUnusedFragme
 // These documents are covered by legacy compatibility resolvers that intentionally
 // remain looser than the hardened SDL. Keep validating every other document.
 const LEGACY_COMPATIBILITY_DOCUMENTS = new Set([
-  'src/components/Customer/Profile/ProfilePage.jsx',
-  'src/components/Customer/Profile/components/ProfileInfo.jsx',
-  'src/components/Customer/Profile/components/SecuritySettings.jsx',
   'src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx',
   'src/components/Staff/StaffProfilePage.jsx',
   'src/components/Staff/components/StaffProfile.jsx',
   'src/components/Staff/components/StaffSchedulePage.jsx',
   'src/components/Staff/components/StaffSchedulePage.test.jsx',
   'src/hooks/useAttendanceManagement.js',
-  'src/hooks/useFoodPreferences.js',
   'src/hooks/useOvertimeManagement.js',
   'src/hooks/usePayroll.js',
   'src/hooks/usePerformanceIncidentActions.js',
@@ -235,6 +231,28 @@ describe('frontend GraphQL documents', () => {
     expect(Object.keys(fields)).toEqual(
       expect.arrayContaining(['shiftId', 'response', 'reasonCategory', 'reason']),
     );
+  });
+
+  it('keeps customer profile compatibility fields typed for current operations', async () => {
+    const schema = await buildBackendSchema();
+    const userFields = schema.getType('User').getFields();
+    const foodPreferences = schema.getType('FoodPreferences');
+    const foodPreferenceHabits = schema.getType('FoodPreferenceHabits');
+    const contactChangeOtpResultFields = schema.getType('ContactChangeOtpResult').getFields();
+    const mutationFields = schema.getType('Mutation').getFields();
+
+    expect(userFields.foodPreferences.type.toString()).toBe('FoodPreferences');
+    expect(Object.keys(foodPreferences.getFields())).toEqual(
+      expect.arrayContaining(['diet', 'allergies', 'habits', 'autoNote', 'updatedAt']),
+    );
+    expect(Object.keys(foodPreferenceHabits.getFields())).toEqual(
+      expect.arrayContaining(['noOnion', 'noCilantro', 'sugar', 'spice', 'ice']),
+    );
+    expect(contactChangeOtpResultFields).toHaveProperty('status');
+    expect(['Boolean', 'Boolean!']).toContain(
+      mutationFields.cancelContactChangeOtp.type.toString(),
+    );
+    expect(['Boolean', 'Boolean!']).toContain(mutationFields.changeMyPassword.type.toString());
   });
 
   it('keeps review reliability compatibility fields', async () => {
