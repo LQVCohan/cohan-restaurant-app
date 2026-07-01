@@ -11,6 +11,7 @@ const ids = {
 
 const state = vi.hoisted(() => ({
   memberships: [],
+  brands: new Map(),
   restaurants: new Map(),
 }));
 
@@ -21,7 +22,7 @@ vi.mock("../../models/index.js", () => ({
     find: vi.fn(() => ({ lean: async () => state.memberships })),
     exists: vi.fn(),
   },
-  Brand: { exists: vi.fn(async () => false) },
+  Brand: { exists: vi.fn(async ({ _id, ownerId }) => !![...state.brands.values()].find((b) => String(b._id) === String(_id) && String(b.ownerId) === String(ownerId) && b.status !== "inactive")) },
   Restaurant: {
     findById: vi.fn((id) => chain(state.restaurants.get(String(id)) || null)),
     exists: vi.fn(async ({ _id, managerId }) => !![...state.restaurants.values()].find((r) => String(r._id) === String(_id) && String(r.managerId) === String(managerId))),
@@ -36,6 +37,10 @@ describe("restaurantScope.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.memberships = [];
+    state.brands = new Map([
+      [ids.brandA, { _id: ids.brandA, ownerId: ids.b1, status: "active" }],
+      [ids.brandB, { _id: ids.brandB, ownerId: ids.b1, status: "active" }],
+    ]);
     state.restaurants = new Map([
       [ids.a1, { _id: ids.a1, brandId: ids.brandA, managerId: ids.user }],
       [ids.a2, { _id: ids.a2, brandId: ids.brandA, managerId: ids.user }],
@@ -46,6 +51,13 @@ describe("restaurantScope.service", () => {
   it("allows System Admin across restaurants", async () => {
     const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
     await expect(canAccessRestaurant({ id: ids.user, userType: "ADMIN" }, ids.b1)).resolves.toBe(true);
+  });
+
+  it("allows Brand ownerId all restaurants in its Brand without BrandMembership", async () => {
+    state.brands.set(ids.brandA, { _id: ids.brandA, ownerId: ids.user, status: "active" });
+    const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
+    await expect(canAccessRestaurant({ id: ids.user }, ids.a2)).resolves.toBe(true);
+    await expect(canAccessRestaurant({ id: ids.user }, ids.b1)).resolves.toBe(false);
   });
 
   it.each(["owner", "admin"])("allows Brand %s all restaurants in its Brand", async (role) => {
