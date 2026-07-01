@@ -150,10 +150,10 @@ type CompatibilityNode {
   actualCheckOutAt: DateTime
   paidAt: DateTime
 
-  role: Role
+  role: String
   user: User
   customer: User
-  employee: StaffPrivateProfile
+  employee: PayrollCompatibilityEmployee
   staff: StaffPrivateProfile
   restaurant: Restaurant
   wallet: Wallet
@@ -185,7 +185,7 @@ type CompatibilityNode {
   logs: [ScheduleChangeLog!]
   issues: [CompatibilityNode!]
   warnings: [CompatibilityNode!]
-  errors: [String!]
+  errors: [PayrollCompatibilityError!]
   recommendations: [CompatibilityNode!]
   summaries: [CompatibilityNode!]
   timeline: [CompatibilityNode!]
@@ -845,11 +845,33 @@ extend type WalletTransaction {
   metadata: JSON
 }
 
+type PayrollCompatibilityEmployee {
+  id: ID
+  name: String
+  code: String
+  role: String
+  department: String
+  avatar: String
+}
+
+type VerificationChannelResult {
+  channel: String
+  attempted: Boolean
+  sent: Boolean
+  skipped: Boolean
+  status: String
+  provider: String
+  messageId: String
+  error: String
+  lastSentAt: DateTime
+  cooldownUntil: DateTime
+}
+
 extend type VerificationResult {
   ok: Boolean
   errors: [String!]
-  email: String
-  sms: String
+  email: VerificationChannelResult
+  sms: VerificationChannelResult
 }
 
 extend type StaffPrivateProfile {
@@ -952,8 +974,8 @@ extend type Mutation {
   cancelContactChangeOtp(target: ContactChangeTarget, input: JSON): Boolean
   assignStaffRole(input: AssignStaffRoleInput!): StaffPrivateProfile
   assignStaffRoleWithinRestaurant(input: JSON): CompatibilityNode
-  createStaff(input: JSON): StaffPrivateProfile
-  updateStaff(id: ID, input: JSON): StaffPrivateProfile
+  createStaff(input: CreateUserInput!): StaffPrivateProfile
+  updateStaff(id: ID, userId: ID, input: AdminUpdateUserInput!): StaffPrivateProfile
   deleteStaff(id: ID, userId: ID): Boolean
   setStaffEmploymentStatus(userId: ID, employmentStatus: EmploymentStatus, input: JSON): StaffPrivateProfile
   lockSchedule(input: LockScheduleInput!): CompatibilityNode
@@ -992,7 +1014,7 @@ extend type Mutation {
   upsertRestaurantPayoutAccount(input: RestaurantPayoutAccountInput!): CompatibilityNode
   updatePayrollSettings(input: PayrollSettingsInput!): CompatibilityNode
   upsertPayrollAdjustment(input: PayrollAdjustmentInput!): CompatibilityNode
-  deletePayrollAdjustment(id: ID, periodId: ID, employeeId: ID, adjustmentId: ID): Boolean
+  deletePayrollAdjustment(id: ID, periodId: ID, employeeId: ID, adjustmentId: ID): CompatibilityNode
   createAttendanceCorrectionRequest(input: CreateAttendanceCorrectionRequestInput!): AttendanceCorrectionRequest
   approveAttendanceCorrectionRequest(input: ReviewAttendanceCorrectionRequestInput!): AttendanceCorrectionRequest
   rejectAttendanceCorrectionRequest(input: RejectAttendanceCorrectionRequestInput!): AttendanceCorrectionRequest

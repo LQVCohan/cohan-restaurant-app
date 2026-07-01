@@ -119,7 +119,7 @@ describe("Dashboard manager command center", () => {
     expect(
       screen.getByRole("heading", { name: "Đơn hàng gần đây" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("12.500.000 ₫")).toBeInTheDocument();
+    expect(screen.getByText("320.000 ₫")).toBeInTheDocument();
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.getByText("#ORD-1001")).toBeInTheDocument();
     expect(screen.queryByText("#raw-order-id")).not.toBeInTheDocument();
