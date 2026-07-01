@@ -59,6 +59,13 @@ async function loadRestaurantForScope(restaurantId) {
   return typeof query?.select === "function" ? query.select("_id brandId managerId").lean() : query;
 }
 
+async function ownsBrand(user, brandId) {
+  const uid = toObjectId(getUserId(user));
+  const bid = toObjectId(brandId);
+  if (!uid || !bid || typeof Brand?.exists !== "function") return false;
+  return !!await Brand.exists({ _id: bid, ownerId: uid, status: { $ne: "inactive" } });
+}
+
 async function legacyManagerOwnsRestaurant(user, restaurantId) {
   const uid = getUserId(user);
   if (!uid || !userRoleNames(user).includes("manager") || typeof Restaurant?.exists !== "function") return false;
@@ -70,6 +77,7 @@ export async function canAccessRestaurant(user, restaurantId) {
   if (isSystemAdmin(user)) return true;
   const memberships = await getUserBrandMemberships(user);
   const restaurant = await loadRestaurantForScope(restaurantId);
+  if (restaurant?.brandId && await ownsBrand(user, restaurant.brandId)) return true;
   const matching = restaurant ? memberships.filter((m) => String(m.brandId) === String(restaurant.brandId || "")) : [];
   if (matching.some((m) => ["owner", "admin"].includes(m.role))) return true;
   if (matching.some((m) => ["manager", "staff"].includes(m.role) && (m.restaurantIds || []).some((id) => String(id) === String(restaurant._id)))) return true;
