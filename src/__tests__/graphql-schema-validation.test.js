@@ -26,15 +26,10 @@ const LEGACY_COMPATIBILITY_DOCUMENTS = new Set([
   'src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx',
   'src/components/Staff/components/StaffSchedulePage.jsx',
   'src/components/Staff/components/StaffSchedulePage.test.jsx',
-  'src/hooks/useAttendanceManagement.js',
-  'src/hooks/useOvertimeManagement.js',
   'src/hooks/usePayroll.js',
-  'src/hooks/usePerformanceIncidentActions.js',
-  'src/hooks/useSchedulingPolicy.js',
   'src/hooks/useStaffManagement.js',
   'src/hooks/useStaffPerformance.js',
   'src/hooks/useUserManagement.js',
-  'src/pages/VerifyEmailPendingCompact.jsx',
 ]);
 
 function listFilesRecursive(directory, predicate) {
@@ -260,6 +255,88 @@ describe('frontend GraphQL documents', () => {
       mutationFields.cancelContactChangeOtp.type.toString(),
     );
     expect(['Boolean', 'Boolean!']).toContain(mutationFields.changeMyPassword.type.toString());
+  });
+
+
+  it('keeps compatibility schema aligned with stabilized staff operations', async () => {
+    const schema = await buildBackendSchema();
+    const mutationFields = schema.getType('Mutation').getFields();
+
+    expect(['Boolean', 'Boolean!']).toContain(mutationFields.resendVerification.type.toString());
+    expect(mutationFields.cancelAttendanceCorrectionRequest.args.map((arg) => arg.name)).toEqual(
+      expect.arrayContaining(['requestId']),
+    );
+    expect(mutationFields.waivePerformanceIncident.args.map((arg) => arg.name)).toEqual(
+      expect.arrayContaining(['incidentId', 'reason']),
+    );
+
+    const compatibilityFields = schema.getType('CompatibilityNode').getFields();
+    expect(['SchedulingEmploymentTypePolicy', 'SchedulingEmploymentTypePolicy!']).toContain(
+      compatibilityFields.employmentTypePolicy.type.toString(),
+    );
+
+    const policyFields = schema.getType('SchedulingEmploymentTypePolicy').getFields();
+    expect(Object.keys(policyFields)).toEqual(
+      expect.arrayContaining(['full_time', 'part_time', 'probation', 'seasonal', 'contract']),
+    );
+    for (const field of ['full_time', 'part_time', 'probation', 'seasonal', 'contract']) {
+      expect(['SchedulingEmploymentTypePolicyRule', 'SchedulingEmploymentTypePolicyRule!']).toContain(
+        policyFields[field].type.toString(),
+      );
+    }
+
+    const ruleFields = schema.getType('SchedulingEmploymentTypePolicyRule').getFields();
+    expect(Object.keys(ruleFields)).toEqual(
+      expect.arrayContaining([
+        'minWeeklyHours',
+        'weeklyHoursTarget',
+        'weeklyHoursCap',
+        'maxShiftsPerWeek',
+        'maxConsecutiveWorkingDays',
+        'requireAvailability',
+        'allowOvertime',
+        'avoidSoloCriticalShift',
+        'priorityWeight',
+      ]),
+    );
+
+    expect(schema.getType('StaffAttendanceRecord').getFields()).toHaveProperty('overtimeMinutes');
+    expect(Object.keys(schema.getType('AttendanceCorrectionRequest').getFields())).toEqual(
+      expect.arrayContaining(['employeeName', 'timesheetId', 'requestedOvertimeMinutes', 'auditLogs']),
+    );
+    expect(schema.getType('CreateAttendanceCorrectionRequestInput')).toBeTruthy();
+    expect(schema.getType('ReviewAttendanceCorrectionRequestInput')).toBeTruthy();
+    expect(schema.getType('RejectAttendanceCorrectionRequestInput')).toBeTruthy();
+    expect(Object.keys(schema.getType('OffScheduleAttendanceFilterInput').getFields())).toEqual(
+      expect.arrayContaining(['approvalStatus', 'onlyPending', 'search']),
+    );
+    expect(schema.getType('AttendanceCorrectionFilterInput').getFields()).toHaveProperty('search');
+
+    expect(Object.keys(schema.getType('OvertimeRequest').getFields())).toEqual(
+      expect.arrayContaining(['employeeName', 'plannedStartTime', 'actualOvertimeMinutes', 'completionNote']),
+    );
+    expect(Object.keys(schema.getType('OvertimeRequestFilterInput').getFields())).toEqual(
+      expect.arrayContaining(['overtimeType', 'search']),
+    );
+
+    expect(Object.keys(schema.getType('PerformanceIncident').getFields())).toEqual(
+      expect.arrayContaining([
+        'responsibilityStatus',
+        'scoreImpactStatus',
+        'proposedScoreDelta',
+        'scoreDelta',
+        'reviewNote',
+        'responsibilityNote',
+        'waiveReason',
+        'reviewedAt',
+        'waivedAt',
+        'eligibleAt',
+        'appliedAt',
+      ]),
+    );
+    expect(schema.getType('ReviewPerformanceIncidentInput')).toBeTruthy();
+    expect(schema.getType('MarkPerformanceIncidentEligibleInput')).toBeTruthy();
+    expect(schema.getType('ApplyPerformanceIncidentScoreInput')).toBeTruthy();
   });
 
   it('keeps review reliability compatibility fields', async () => {

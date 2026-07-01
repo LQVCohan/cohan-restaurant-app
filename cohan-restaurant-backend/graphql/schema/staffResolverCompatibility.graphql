@@ -184,7 +184,7 @@ type CompatibilityNode {
   payouts: [CompatibilityNode!]
   logs: [ScheduleChangeLog!]
   issues: [CompatibilityNode!]
-  warnings: [String!]
+  warnings: [CompatibilityNode!]
   errors: [String!]
   recommendations: [CompatibilityNode!]
   summaries: [CompatibilityNode!]
@@ -219,10 +219,45 @@ type AttendanceCorrectionRequest {
   id: ID
   employeeId: ID
   restaurantId: ID
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+  timesheetId: ID
+  shiftId: ID
+  workDate: DateTime
+  correctionType: String
   status: String
   type: String
   reason: String
   note: String
+  originalCheckInAt: DateTime
+  originalCheckOutAt: DateTime
+  requestedCheckInAt: DateTime
+  requestedCheckOutAt: DateTime
+  originalWorkedMinutes: Float
+  requestedWorkedMinutes: Float
+  originalLatenessMinutes: Int
+  requestedLatenessMinutes: Int
+  originalEarlyLeaveMinutes: Int
+  requestedEarlyLeaveMinutes: Int
+  originalOvertimeMinutes: Int
+  requestedOvertimeMinutes: Int
+  evidenceNote: String
+  evidenceUrls: [String!]
+  requestedBy: ID
+  requestedByName: String
+  requestedByRole: String
+  requestedAt: DateTime
+  reviewedBy: ID
+  reviewedByName: String
+  reviewedAt: DateTime
+  reviewNote: String
+  rejectionReason: String
+  appliedBy: ID
+  appliedByName: String
+  appliedAt: DateTime
+  auditLogs: [CompatibilityNode!]
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -231,11 +266,51 @@ type OvertimeRequest {
   id: ID
   employeeId: ID
   restaurantId: ID
-  status: String
-  reason: String
-  note: String
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+  shiftId: ID
+  timesheetId: ID
+  workDate: DateTime
+  plannedStartTime: DateTime
+  plannedEndTime: DateTime
+  plannedOvertimeMinutes: Int
+  actualStartTime: DateTime
+  actualEndTime: DateTime
+  actualOvertimeMinutes: Int
   overtimeMinutes: Int
   approvedOvertimeMinutes: Int
+  overtimeType: String
+  reason: String
+  status: String
+  note: String
+  employeeConfirmationRequired: Boolean
+  employeeConfirmedAt: DateTime
+  employeeConfirmedBy: ID
+  employeeConfirmedByName: String
+  employeeConfirmationNote: String
+  requestedBy: ID
+  requestedByName: String
+  requestedByRole: String
+  requestedAt: DateTime
+  approvedBy: ID
+  approvedByName: String
+  approvedAt: DateTime
+  approvalNote: String
+  rejectedBy: ID
+  rejectedByName: String
+  rejectedAt: DateTime
+  rejectionReason: String
+  cancelledBy: ID
+  cancelledByName: String
+  cancelledAt: DateTime
+  cancelReason: String
+  completedBy: ID
+  completedByName: String
+  completedAt: DateTime
+  completionNote: String
+  payrollPeriodId: ID
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -250,6 +325,17 @@ type PerformanceIncident {
   reason: String
   note: String
   score: Float
+  responsibilityStatus: String
+  scoreImpactStatus: String
+  proposedScoreDelta: Float
+  scoreDelta: Float
+  reviewNote: String
+  responsibilityNote: String
+  waiveReason: String
+  reviewedAt: DateTime
+  waivedAt: DateTime
+  eligibleAt: DateTime
+  appliedAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -406,10 +492,33 @@ input SchedulingPolicyInput {
   settings: JSON
 }
 
+type SchedulingEmploymentTypePolicyRule {
+  minWeeklyHours: Float
+  weeklyHoursTarget: Float
+  weeklyHoursCap: Float
+  maxShiftsPerWeek: Int
+  maxConsecutiveWorkingDays: Int
+  requireAvailability: Boolean
+  allowOvertime: Boolean
+  avoidSoloCriticalShift: Boolean
+  priorityWeight: Float
+}
+
+type SchedulingEmploymentTypePolicy {
+  full_time: SchedulingEmploymentTypePolicyRule
+  part_time: SchedulingEmploymentTypePolicyRule
+  probation: SchedulingEmploymentTypePolicyRule
+  seasonal: SchedulingEmploymentTypePolicyRule
+  contract: SchedulingEmploymentTypePolicyRule
+}
+
 input OffScheduleAttendanceFilterInput {
   restaurantId: ID
   employeeId: ID
   status: String
+  approvalStatus: String
+  onlyPending: Boolean
+  search: String
   startDate: DateTime
   endDate: DateTime
 }
@@ -418,8 +527,40 @@ input AttendanceCorrectionFilterInput {
   restaurantId: ID
   employeeId: ID
   status: String
+  search: String
   startDate: DateTime
   endDate: DateTime
+}
+
+input CreateAttendanceCorrectionRequestInput {
+  restaurantId: ID
+  employeeId: ID
+  timesheetId: ID
+  shiftId: ID
+  workDate: DateTime
+  correctionType: String
+  requestedCheckInAt: DateTime
+  requestedCheckOutAt: DateTime
+  requestedWorkedMinutes: Float
+  requestedLatenessMinutes: Int
+  requestedEarlyLeaveMinutes: Int
+  requestedOvertimeMinutes: Int
+  reason: String
+  evidenceNote: String
+  evidenceUrls: [String!]
+}
+
+input ReviewAttendanceCorrectionRequestInput {
+  requestId: ID!
+  reviewNote: String
+  note: String
+}
+
+input RejectAttendanceCorrectionRequestInput {
+  requestId: ID!
+  rejectionReason: String
+  reviewNote: String
+  note: String
 }
 
 input UpsertStaffAttendanceInput {
@@ -441,6 +582,8 @@ input OvertimeRequestFilterInput {
   restaurantId: ID
   employeeId: ID
   status: String
+  overtimeType: String
+  search: String
   startDate: DateTime
   endDate: DateTime
 }
@@ -623,6 +766,27 @@ input ManagerPerformanceDashboardInput {
   periodEnd: DateTime
 }
 
+input ReviewPerformanceIncidentInput {
+  incidentId: ID!
+  responsibilityStatus: String
+  scoreImpactStatus: String
+  proposedScoreDelta: Float
+  reviewNote: String
+  responsibilityNote: String
+}
+
+input MarkPerformanceIncidentEligibleInput {
+  incidentId: ID!
+  responsibilityStatus: String
+  proposedScoreDelta: Float
+  note: String
+}
+
+input ApplyPerformanceIncidentScoreInput {
+  incidentId: ID!
+  note: String
+}
+
 input CreatePerformanceIncidentAppealInput {
   incidentId: ID
   reason: String
@@ -779,7 +943,7 @@ extend type Mutation {
   upsertCustomerRankSettings(restaurantId: ID!, ranks: [RankThresholdInput!]!): CustomerRankSettings
   requestEmailVerification(input: JSON): VerificationResult
   verifyEmail(input: JSON): VerificationResult
-  resendVerification(email: String, input: JSON): VerificationResult
+  resendVerification(email: String, input: JSON): Boolean
   requestMyVerification(input: JSON): VerificationResult
   verifyPhone(input: JSON): VerificationResult
   verifyAccountToken(input: JSON): VerificationResult
@@ -829,14 +993,14 @@ extend type Mutation {
   updatePayrollSettings(input: PayrollSettingsInput!): CompatibilityNode
   upsertPayrollAdjustment(input: PayrollAdjustmentInput!): CompatibilityNode
   deletePayrollAdjustment(id: ID, periodId: ID, employeeId: ID, adjustmentId: ID): Boolean
-  createAttendanceCorrectionRequest(input: JSON): AttendanceCorrectionRequest
-  approveAttendanceCorrectionRequest(input: JSON): AttendanceCorrectionRequest
-  rejectAttendanceCorrectionRequest(input: JSON): AttendanceCorrectionRequest
-  cancelAttendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
-  reviewPerformanceIncident(input: JSON): PerformanceIncident
-  waivePerformanceIncident(input: JSON): PerformanceIncident
-  markPerformanceIncidentEligible(input: JSON): PerformanceIncident
-  applyPerformanceIncidentScore(input: JSON): PerformanceIncident
+  createAttendanceCorrectionRequest(input: CreateAttendanceCorrectionRequestInput!): AttendanceCorrectionRequest
+  approveAttendanceCorrectionRequest(input: ReviewAttendanceCorrectionRequestInput!): AttendanceCorrectionRequest
+  rejectAttendanceCorrectionRequest(input: RejectAttendanceCorrectionRequestInput!): AttendanceCorrectionRequest
+  cancelAttendanceCorrectionRequest(id: ID, requestId: ID): AttendanceCorrectionRequest
+  reviewPerformanceIncident(input: ReviewPerformanceIncidentInput!): PerformanceIncident
+  waivePerformanceIncident(incidentId: ID!, reason: String!): PerformanceIncident
+  markPerformanceIncidentEligible(input: MarkPerformanceIncidentEligibleInput!): PerformanceIncident
+  applyPerformanceIncidentScore(input: ApplyPerformanceIncidentScoreInput!): PerformanceIncident
   createPerformanceIncidentAppeal(input: CreatePerformanceIncidentAppealInput!): PerformanceIncidentAppeal
   cancelPerformanceIncidentAppeal(id: ID!): PerformanceIncidentAppeal
   reviewPerformanceIncidentAppeal(input: ReviewPerformanceIncidentAppealInput!): PerformanceIncidentAppeal
@@ -852,8 +1016,8 @@ extend type Mutation {
   markShiftAttendanceReviewed(attendanceId: ID, note: String, input: JSON): StaffAttendanceRecord
   upsertStaffAttendance(input: UpsertStaffAttendanceInput!): StaffAttendanceRecord
   runAttendanceExceptionDetection(input: JSON): CompatibilityNode
-  approveOffScheduleAttendance(input: JSON): StaffAttendanceRecord
-  rejectOffScheduleAttendance(input: JSON): StaffAttendanceRecord
+  approveOffScheduleAttendance(timesheetId: ID, note: String, input: JSON): StaffAttendanceRecord
+  rejectOffScheduleAttendance(timesheetId: ID, note: String, input: JSON): StaffAttendanceRecord
   createLeaveRequest(input: CreateLeaveRequestInput!): CompatibilityNode
   approveLeaveRequest(requestId: ID, note: String, input: JSON): CompatibilityNode
   rejectLeaveRequest(requestId: ID, reason: String, input: JSON): CompatibilityNode
