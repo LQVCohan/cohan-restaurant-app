@@ -1,8 +1,12 @@
 .header {
-  --manager-header-inline-padding: clamp(1rem, 1.5vw, 1.35rem);
-  background: rgba(255, 250, 243, 0.96) !important;
-  border-bottom: 1px solid rgba(226, 216, 201, 0.86) !important;
-  box-shadow: 0 8px 22px rgba(75, 56, 32, 0.06) !important;
+  --manager-header-inline-padding: clamp(1rem, 1.6vw, 1.5rem);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(168, 133, 95, 0.08), transparent 18rem),
+    rgba(255, 250, 243, 0.96) !important;
+  border-bottom: 1px solid rgba(226, 216, 201, 0.88) !important;
+  box-shadow: 0 10px 24px rgba(75, 56, 32, 0.055) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.05) !important;
+  backdrop-filter: blur(14px) saturate(1.05) !important;
 }
 
 .manager-layout__header,
@@ -11,19 +15,19 @@
 }
 
 .header .header__content {
-  position: relative !important;
-  display: flex !important;
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 480px) minmax(260px, 1fr);
   align-items: center !important;
-  gap: clamp(0.75rem, 1.35vw, 1.1rem) !important;
+  column-gap: clamp(1rem, 2vw, 2rem) !important;
   max-width: none !important;
   margin: 0 !important;
   padding-inline: var(--manager-header-inline-padding) !important;
 }
 
 .header .header__left {
-  min-width: min(32vw, 20rem);
-  max-width: min(36vw, 25rem);
-  flex: 1 1 18rem !important;
+  grid-column: 1;
+  min-width: 0 !important;
+  max-width: 100% !important;
   margin-inline-start: 0 !important;
 }
 
@@ -42,22 +46,23 @@
 
 .header .page-title {
   color: #251f19 !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.03em;
+  font-weight: 820 !important;
+  letter-spacing: -0.032em;
 }
 
 .header .page-subtitle {
-  color: rgba(107, 94, 78, 0.82) !important;
+  color: rgba(107, 94, 78, 0.78) !important;
   font-size: 0.78rem !important;
   font-weight: 650 !important;
 }
 
 .header .header__center {
+  grid-column: 2;
+  justify-self: center;
   position: static !important;
-  flex: 0 1 clamp(18rem, 30vw, 31rem) !important;
-  width: auto !important;
-  max-width: clamp(18rem, 30vw, 31rem) !important;
-  margin: 0 auto !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  margin: 0 !important;
   transform: none !important;
 }
 
@@ -68,33 +73,39 @@
 
 .header .header__center .search-box {
   height: 40px !important;
-  padding: 0 0.82rem !important;
-  border: 1px solid rgba(221, 210, 196, 0.95) !important;
-  border-radius: 14px !important;
-  background: #fffdf8 !important;
-  box-shadow: 0 6px 14px rgba(75, 56, 32, 0.045) !important;
+  padding: 0 0.9rem !important;
+  border: 1px solid rgba(218, 205, 187, 0.98) !important;
+  border-radius: 15px !important;
+  background: rgba(255, 253, 248, 0.98) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 8px 18px rgba(75, 56, 32, 0.05) !important;
 }
 
 .header .header__center .search-box:hover,
 .header .header__center .search-box:focus-within {
-  border-color: rgba(21, 115, 98, 0.26) !important;
-  box-shadow: 0 7px 16px rgba(75, 56, 32, 0.06) !important;
+  border-color: rgba(21, 115, 98, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 0 3px rgba(21, 115, 98, 0.07),
+    0 10px 20px rgba(75, 56, 32, 0.065) !important;
 }
 
 .header .header__center .search-input {
   color: #24303f !important;
-  font-size: 0.84rem !important;
+  font-size: 0.86rem !important;
   font-weight: 650 !important;
 }
 
 .header .header__center .search-input::placeholder {
-  color: rgba(102, 112, 133, 0.66) !important;
+  color: rgba(102, 112, 133, 0.64) !important;
 }
 
 .header .header__center .search-icon {
   font-size: 0.95rem !important;
-  margin-right: 0.62rem !important;
+  margin-right: 0.64rem !important;
   color: #157362 !important;
+  opacity: 0.9;
 }
 
 .header .header__center .search-shortcut,
@@ -105,11 +116,10 @@
 }
 
 .header .header__right {
-  margin-left: 0 !important;
-  min-width: max-content;
+  grid-column: 3;
+  justify-self: end;
+  min-width: 0 !important;
   gap: 0.62rem !important;
-  flex: 1 1 18rem !important;
-  justify-content: flex-end;
 }
 
 .header .time-display {
@@ -119,54 +129,58 @@
 
 .header .current-time {
   color: #251f19 !important;
-  font-weight: 800 !important;
+  font-weight: 820 !important;
 }
 
 .header .current-status {
-  color: rgba(107, 94, 78, 0.78) !important;
+  color: rgba(107, 94, 78, 0.76) !important;
   font-weight: 700 !important;
 }
 
 .header .notification-btn,
 .header .user-menu-btn {
   border-color: rgba(168, 133, 95, 0.18) !important;
-  background: rgba(255, 250, 243, 0.82) !important;
-  box-shadow: 0 7px 16px rgba(75, 56, 32, 0.055) !important;
+  background: rgba(255, 250, 243, 0.84) !important;
+  box-shadow: 0 7px 16px rgba(75, 56, 32, 0.052) !important;
 }
 
 .header .notification-btn:hover,
 .header .user-menu-btn:hover,
 .header .notification-btn--active,
 .header .user-menu-btn--active {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(21, 115, 98, 0.22) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(21, 115, 98, 0.24) !important;
   transform: translateY(-1px);
 }
 
 @media (max-width: 1180px) {
-  .header .header__left {
-    min-width: 12rem;
-    max-width: 18rem;
+  .header .header__content {
+    grid-template-columns: minmax(180px, 0.9fr) minmax(260px, 360px) minmax(210px, 1fr);
+    column-gap: 0.8rem !important;
   }
 
   .header .header__center {
-    flex-basis: min(34vw, 24rem) !important;
-    max-width: 24rem !important;
+    max-width: 360px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .header .header__content {
+    grid-template-columns: minmax(160px, 1fr) minmax(220px, 300px) max-content;
+  }
+
+  .header .time-display {
+    display: none !important;
   }
 }
 
 @media (max-width: 768px) {
   .header .header__content {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 42vw) max-content;
     padding-inline: 0.85rem !important;
   }
 
-  .header .header__left {
-    min-width: 0;
-    max-width: 46vw;
-  }
-
   .header .header__center {
-    flex-basis: min(38vw, 18rem) !important;
     max-width: 18rem !important;
   }
 }
