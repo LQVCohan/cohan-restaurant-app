@@ -129,6 +129,24 @@ const sanitizeHttpUrl = (value) => {
   }
 };
 
+const sanitizeAssetUrl = (value) => {
+  const normalized = sanitizeString(value, 2048);
+  if (!normalized) return null;
+  if (
+    normalized.startsWith("/uploads/") &&
+    !normalized.includes("\\") &&
+    !normalized.split("/").includes("..")
+  ) {
+    return normalized;
+  }
+  return sanitizeHttpUrl(normalized);
+};
+
+const sanitizeNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
 const sanitizePositiveNumber = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
@@ -179,6 +197,81 @@ const sanitizePlacement = (placementInputValue) => {
   };
 };
 
+const sanitizePlanPoint = (point) => {
+  if (!isPlainObject(point)) return null;
+  const x = sanitizeNumber(point.x);
+  const y = sanitizeNumber(point.y);
+  return x == null || y == null ? null : { x, y };
+};
+
+const sanitizeArPoint = (point) => {
+  if (!isPlainObject(point)) return null;
+  const x = sanitizeNumber(point.x);
+  const z = sanitizeNumber(point.z ?? point.y);
+  if (x == null || z == null) return null;
+  const y = sanitizeNumber(point.y);
+  return y == null ? { x, z } : { x, y, z };
+};
+
+const sanitizeTransform = (transform) => {
+  if (!isPlainObject(transform)) return null;
+  const scale = sanitizePositiveNumber(transform.scale);
+  const rotation = sanitizeNumber(transform.rotation);
+  const arOrigin = sanitizeArPoint(transform.arOrigin);
+  const floorOrigin = sanitizePlanPoint(transform.floorOrigin);
+  if (scale == null || rotation == null || !arOrigin || !floorOrigin) return null;
+  return {
+    scale,
+    rotation,
+    arOrigin,
+    floorOrigin,
+    calibratedAt: sanitizeString(transform.calibratedAt, 80),
+  };
+};
+
+const sanitizeGeofence = (geofence) => {
+  if (!isPlainObject(geofence)) return null;
+  return {
+    canSaveArPosition: Boolean(geofence.canSaveArPosition),
+    isInsideRestaurant: Boolean(geofence.isInsideRestaurant),
+    distanceMeters: sanitizeNumber(geofence.distanceMeters),
+    radiusMeters: sanitizePositiveNumber(geofence.radiusMeters),
+    reason: sanitizeString(geofence.reason, 80),
+    warning: sanitizeString(geofence.warning, 360),
+    demoOverride: Boolean(geofence.demoOverride),
+    originalReason: sanitizeString(geofence.originalReason, 80),
+  };
+};
+
+const sanitizeModelRender = (modelRender) => {
+  if (!isPlainObject(modelRender)) return null;
+  const hasPinned = typeof modelRender.pinned === "boolean";
+  const sanitized = {
+    modelUrl: sanitizeAssetUrl(modelRender.modelUrl),
+    scale: sanitizePositiveNumber(modelRender.scale),
+    rotationDegrees: sanitizeNumber(modelRender.rotationDegrees),
+    pinned: hasPinned ? modelRender.pinned : false,
+    pinnedArPoint: sanitizeArPoint(modelRender.pinnedArPoint),
+  };
+  return sanitized.modelUrl || sanitized.scale != null || sanitized.rotationDegrees != null || hasPinned || sanitized.pinnedArPoint
+    ? sanitized
+    : null;
+};
+
+const sanitizeArPlacement = (arPlacement) => {
+  if (!isPlainObject(arPlacement)) return null;
+  const sanitized = {
+    modelKey: sanitizeString(arPlacement.modelKey, VISUAL_CONFIG_STRING_LIMITS.modelKey),
+    arPoint: sanitizeArPoint(arPlacement.arPoint),
+    floorPosition: sanitizePlanPoint(arPlacement.floorPosition),
+    transform: sanitizeTransform(arPlacement.transform),
+    geofence: sanitizeGeofence(arPlacement.geofence),
+    modelRender: sanitizeModelRender(arPlacement.modelRender),
+    savedAt: sanitizeString(arPlacement.savedAt, VISUAL_CONFIG_STRING_LIMITS.savedAt),
+  };
+  return Object.values(sanitized).some((value) => value != null) ? sanitized : null;
+};
+
 export const sanitizeVisualConfig = (value) => {
   if (value == null) return null;
   if (!isPlainObject(value)) {
@@ -194,7 +287,7 @@ export const sanitizeVisualConfig = (value) => {
   const sanitizedSourceType = SAFE_SOURCE_TYPES.has(sourceType)
     ? sourceType
     : "camera-preview";
-  const modelUrl = sanitizeHttpUrl(value.modelUrl);
+  const modelUrl = sanitizeAssetUrl(value.modelUrl);
 
   return {
     modelKey: sanitizeString(value.modelKey, VISUAL_CONFIG_STRING_LIMITS.modelKey),
@@ -203,7 +296,7 @@ export const sanitizeVisualConfig = (value) => {
     capacity: sanitizePositiveNumber(value.capacity),
     defaultScale: sanitizePositiveNumber(value.defaultScale),
     modelUrl,
-    thumbnailUrl: sanitizeHttpUrl(value.thumbnailUrl),
+    thumbnailUrl: sanitizeAssetUrl(value.thumbnailUrl),
     source: sanitizeString(value.source, VISUAL_CONFIG_STRING_LIMITS.source),
     sourceLabel: sanitizeString(value.sourceLabel, VISUAL_CONFIG_STRING_LIMITS.sourceLabel),
     licenseLabel: sanitizeString(value.licenseLabel, VISUAL_CONFIG_STRING_LIMITS.licenseLabel),
@@ -217,6 +310,7 @@ export const sanitizeVisualConfig = (value) => {
       VISUAL_CONFIG_STRING_LIMITS.customModelKind
     ),
     placement: sanitizePlacement(value.placement),
+    arPlacement: sanitizeArPlacement(value.arPlacement),
     savedAt:
       sanitizeString(value.savedAt, VISUAL_CONFIG_STRING_LIMITS.savedAt) ||
       new Date().toISOString(),
