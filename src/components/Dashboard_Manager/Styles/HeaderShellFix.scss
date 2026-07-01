@@ -2,6 +2,10 @@
   --manager-header-inline-padding: clamp(0.95rem, 1.18vw, 1.15rem);
 }
 
+.manager-layout__header {
+  overflow: visible !important;
+}
+
 .manager-layout__header .header .header__content,
 .header .header__content {
   position: relative !important;
@@ -43,6 +47,28 @@
   transform: translate(-50%, -50%);
 }
 
+.header .header__center .search-container,
+.header .header__center .search-box {
+  width: 100%;
+}
+
+.header .keyboard-shortcut-hint,
+.manager-layout__header .keyboard-shortcut-hint {
+  display: none !important;
+}
+
+.manager-layout__header > .manager-scope-selector {
+  position: absolute !important;
+  top: 50% !important;
+  left: calc(50% + min(18rem, 18vw)) !important;
+  right: auto !important;
+  z-index: calc(var(--z-header, 40) + 5) !important;
+  display: flex !important;
+  max-width: min(30vw, 34rem) !important;
+  transform: translateY(-50%) !important;
+  pointer-events: auto;
+}
+
 .header .header__right {
   margin-left: auto;
   min-width: max-content;
@@ -50,12 +76,22 @@
 
 @media (min-width: 769px) {
   .manager-layout:not(.sidebar-open) .manager-layout__header .header .header__content {
-    /* Collapsed rail handle sits near the sidebar edge; keep a small natural gap to the title. */
     padding-left: clamp(1rem, 1.25vw, 1.2rem) !important;
   }
 
   .manager-layout.sidebar-open .manager-layout__header .header .header__content {
     padding-left: clamp(1.05rem, 1.3vw, 1.25rem) !important;
+  }
+}
+
+@media (max-width: 1380px) {
+  .manager-layout__header > .manager-scope-selector {
+    left: calc(50% + min(13rem, 16vw)) !important;
+    max-width: 20rem !important;
+  }
+
+  .manager-layout__header > .manager-scope-selector label:first-child {
+    display: none !important;
   }
 }
 
@@ -71,6 +107,10 @@
   .header .header__left {
     min-width: 12rem;
     max-width: 18rem;
+  }
+
+  .manager-layout__header > .manager-scope-selector {
+    display: none !important;
   }
 }
 
