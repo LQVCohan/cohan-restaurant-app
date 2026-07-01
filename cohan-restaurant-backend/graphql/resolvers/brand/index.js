@@ -32,6 +32,20 @@ async function assertCanWriteMembership(actor, membership, nextRole) {
 async function ownerRole() { return await Role.findOne({ $or: [{ slug: "owner" }, { name: /^owner$/i }, { slug: "manager" }, { name: /^manager$/i }] }); }
 const publicUser = async (id) => { const u = await User.findById(id).populate("role").lean({ virtuals: true }); return sanitizeUserForClient({ ...u, roleName: roleName(u) }); };
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
+const parentId = (p) => p._id || p.id;
+
+async function restaurantsForBrand(parent, { limit = 50 } = {}, ctx) {
+  const brandId = parentId(parent);
+  const maxLimit = Math.min(Number(limit) || 50, 100);
+  if (!brandId) return [];
+
+  if (!ctx?.user || isSystemAdmin(ctx.user) || await canManageBrand(ctx.user, brandId)) {
+    return Restaurant.find({ brandId }).limit(maxLimit).lean();
+  }
+
+  const scopedFilter = await getScopedRestaurantFilter(ctx.user);
+  return Restaurant.find({ brandId, ...scopedFilter }).limit(maxLimit).lean();
+}
 
 const Query = {
   myBrands: async (_, __, ctx) => {
@@ -91,5 +105,19 @@ const Mutation = {
   removeBrandMember: async (_, { id }, ctx) => { const m = await BrandMembership.findById(id); if (!m) throw bad("Membership not found"); if (!ctx?.user || !await canManageBrand(ctx.user, m.brandId)) throw forbidden(); await assertCanWriteMembership(ctx.user, m); if (m.role === "owner" && await BrandMembership.countDocuments({ brandId: m.brandId, role: "owner", status: "active" }) <= 1) throw bad("Cannot remove the last owner"); m.status = "inactive"; await m.save(); return true; },
 };
 
-
-export default { Query, Mutation, Brand: { id: (p) => p.id ?? String(p._id), owner: (p) => User.findById(p.ownerId).lean(), restaurantCount: (p) => Restaurant.countDocuments({ brandId: p._id || p.id }), restaurants: async (p, { limit = 50 }, ctx) => Restaurant.find({ brandId: p._id || p.id, ...(ctx?.user && !isSystemAdmin(ctx.user) ? await getScopedRestaurantFilter(ctx.user) : {}) }).limit(Math.min(limit, 100)).lean() }, BrandMembership: { id: (p) => p.id ?? String(p._id), brand: (p) => Brand.findById(p.brandId).lean(), user: (p) => User.findById(p.userId).lean(), restaurants: (p) => Restaurant.find({ _id: { $in: p.restaurantIds || [] } }).lean() } };
+export default {
+  Query,
+  Mutation,
+  Brand: {
+    id: (p) => p.id ?? String(p._id),
+    owner: (p) => User.findById(p.ownerId).lean(),
+    restaurantCount: (p) => Restaurant.countDocuments({ brandId: parentId(p) }),
+    restaurants: restaurantsForBrand,
+  },
+  BrandMembership: {
+    id: (p) => p.id ?? String(p._id),
+    brand: (p) => Brand.findById(p.brandId).lean(),
+    user: (p) => User.findById(p.userId).lean(),
+    restaurants: (p) => Restaurant.find({ _id: { $in: p.restaurantIds || [] } }).lean(),
+  },
+};
