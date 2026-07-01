@@ -132,7 +132,7 @@ function extractGraphQLDocumentsFromFile(filePath) {
     plugins: ['jsx', 'typescript', 'classProperties', 'decorators-legacy'],
     errorRecovery: true,
   });
-  const relativePath = path.relative(process.cwd(), filePath);
+  const relativePath = path.relative(process.cwd(), filePath).replaceAll(path.sep, '/');
   const documents = [];
 
   visitAst(ast, (node) => {
