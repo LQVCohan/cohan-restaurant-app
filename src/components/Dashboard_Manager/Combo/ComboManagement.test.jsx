@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing";
 import { describe, expect, it, vi } from "vitest";
 import ComboManagement from "./ComboManagement";
@@ -12,5 +12,11 @@ describe("ComboManagement", () => {
     render(<MockedProvider mocks={[]} addTypename={false}><ComboManagement /></MockedProvider>);
     expect(screen.getByRole("heading", { name: "Quản lý combo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tạo combo" })).toBeInTheDocument();
+  });
+
+  it("opens create modal when clicking create combo", () => {
+    render(<MockedProvider mocks={[]} addTypename={false}><ComboManagement /></MockedProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Tạo combo" }));
+    expect(screen.getByRole("dialog", { name: "Tạo combo" })).toBeInTheDocument();
   });
 });
