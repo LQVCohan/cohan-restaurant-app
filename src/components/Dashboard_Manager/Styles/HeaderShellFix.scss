@@ -62,41 +62,62 @@
   grid-column: 2;
   justify-self: center;
   position: static !important;
-  width: 100% !important;
-  max-width: 360px !important;
+  width: min(100%, 340px) !important;
+  max-width: 340px !important;
   margin: 0 !important;
   transform: none !important;
 }
 
 .header .header__center .search-container {
   width: 100% !important;
+  height: 40px !important;
   padding: 0 !important;
+  margin: 0 !important;
   border: 0 !important;
+  border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  outline: 0 !important;
 }
 
 .header .header__center .search-box {
   width: 100% !important;
+  max-width: none !important;
   height: 40px !important;
-  padding: 0 0.8rem !important;
+  padding: 0 0.82rem !important;
+  margin: 0 !important;
   border: 1px solid rgba(218, 205, 187, 0.76) !important;
   border-radius: 999px !important;
   background: rgba(255, 253, 248, 0.98) !important;
   outline: 0 !important;
-  box-shadow: 0 5px 13px rgba(75, 56, 32, 0.035) !important;
+  box-shadow: 0 3px 10px rgba(75, 56, 32, 0.045) !important;
+}
+
+.header .header__center .search-box::before,
+.header .header__center .search-box::after,
+.header .header__center .search-container::before,
+.header .header__center .search-container::after {
+  content: none !important;
+  display: none !important;
 }
 
 .header .header__center .search-box:hover,
 .header .header__center .search-box:focus-within {
   border-color: rgba(21, 115, 98, 0.28) !important;
   background: #fffdf8 !important;
-  box-shadow: 0 6px 14px rgba(75, 56, 32, 0.05) !important;
+  box-shadow: 0 4px 12px rgba(75, 56, 32, 0.06) !important;
 }
 
 .header .header__center .search-input {
   height: 100% !important;
   min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
   color: #263238 !important;
   font-size: 0.82rem !important;
   font-weight: 650 !important;
