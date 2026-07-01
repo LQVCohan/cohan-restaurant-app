@@ -54,7 +54,7 @@ extend type CompatibilityNode {
   criticalCount: Int
   currentPayrollPeriodId: ID
   currentPeriod: CompatibilityNode
-  currentShift: CompatibilityNode
+  currentShift: String
   dailyLimit: Float
   deduction: Float
   defaultAllowance: Float
@@ -101,7 +101,7 @@ extend type CompatibilityNode {
   item: CompatibilityNode
   joinedEmployees: Int
   laborRules: CompatibilityNode
-  lastShift: CompatibilityNode
+  lastShift: String
   lateCount: Int
   latenessPenaltyPerMinute: Float
   latestAppliedAt: DateTime
@@ -223,7 +223,7 @@ extend type CompatibilityNode {
   successCount: Int
   suggestedAction: String
   tableCount: Int
-  tableList: [CompatibilityNode!]
+  tableList: [String!]
   teamworkScore: Float
   terminatedEmployees: Int
   timesheetCount: Int

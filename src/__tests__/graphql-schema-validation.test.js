@@ -24,8 +24,6 @@ const VALIDATION_RULES = specifiedRules.filter((rule) => rule !== NoUnusedFragme
 // remain looser than the hardened SDL. Keep validating every other document.
 const LEGACY_COMPATIBILITY_DOCUMENTS = new Set([
   'src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx',
-  'src/components/Staff/StaffProfilePage.jsx',
-  'src/components/Staff/components/StaffProfile.jsx',
   'src/components/Staff/components/StaffSchedulePage.jsx',
   'src/components/Staff/components/StaffSchedulePage.test.jsx',
   'src/hooks/useAttendanceManagement.js',
@@ -231,6 +229,15 @@ describe('frontend GraphQL documents', () => {
     expect(Object.keys(fields)).toEqual(
       expect.arrayContaining(['shiftId', 'response', 'reasonCategory', 'reason']),
     );
+  });
+
+  it('keeps staff account overview scalar compatibility fields typed for current operations', async () => {
+    const schema = await buildBackendSchema();
+    const fields = schema.getType('CompatibilityNode').getFields();
+
+    expect(['String', 'String!']).toContain(fields.currentShift.type.toString());
+    expect(['String', 'String!']).toContain(fields.lastShift.type.toString());
+    expect(['[String!]', '[String!]!']).toContain(fields.tableList.type.toString());
   });
 
   it('keeps customer profile compatibility fields typed for current operations', async () => {
