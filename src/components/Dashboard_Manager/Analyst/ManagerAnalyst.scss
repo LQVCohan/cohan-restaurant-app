@@ -251,6 +251,44 @@
     }
   }
 
+
+  .analyst-control-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: -6px 0 18px;
+    padding: 9px;
+    border: 1px solid var(--ana-border);
+    border-radius: var(--ana-radius-lg);
+    background: rgba(255, 253, 248, 0.82);
+    box-shadow: var(--ana-shadow-sm);
+    -webkit-backdrop-filter: blur(12px) saturate(112%);
+    backdrop-filter: blur(12px) saturate(112%);
+  }
+
+  .analyst-control-bar .picker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 11px;
+    border: 1px solid var(--ana-border);
+    border-radius: var(--ana-radius-md);
+    color: var(--ana-accent-strong);
+    background: rgba(255, 255, 255, 0.74);
+  }
+
+  .analyst-control-bar .picker-wrap select {
+    height: 100%;
+    min-width: 138px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ana-text);
+    font-weight: 760;
+  }
+
   .analytics-section {
     margin-bottom: 18px;
     scroll-margin-top: 84px;

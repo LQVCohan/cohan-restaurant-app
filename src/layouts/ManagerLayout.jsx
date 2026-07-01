@@ -125,7 +125,7 @@ const PAGE_CONFIG = {
   staff: page("Quản lý nhân viên", "Danh sách nhân viên, vai trò, trạng thái và phân công", "👥", ["staff", "nhân viên", "vai trò", "quyền"]),
   customers: page("Quản lý khách hàng", "Thông tin khách, hạng thành viên, điểm và hành vi mua", "🧑‍🤝‍🧑", ["khách hàng", "loyalty", "rank", "điểm"]),
   "customer-analytics": page("Phân tích khách hàng", "Phân tích phân khúc khách, khách quay lại, khách rời bỏ và cohort theo thời gian", "📈", ["analytics", "phân tích", "khách", "insight"]),
-  analytics: page("Phân tích kinh doanh", "Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành", "🧠", ["analyst", "ai", "chiến lược", "dự báo"]),
+  analytics: page("Quản lý kinh doanh", "Theo dõi doanh thu, nhu cầu, menu, nhân sự, khuyến mãi và hiệu suất vận hành", "🧠", ["analyst", "ai", "chiến lược", "dự báo"]),
   reports: page("Báo cáo", "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ", "📑", ["report", "báo cáo", "xuất file", "csv"]),
   finance: page("Tài chính", "Theo dõi thu chi, công nợ, hoàn tiền và đối soát", "💰", ["finance", "thu", "chi", "công nợ", "profit"]),
   transactions: page("Giao dịch", "Theo dõi thanh toán, hoàn tiền và đối soát giao dịch", "💳", ["transaction", "giao dịch", "payment", "thanh toán", "refund", "đối soát"]),
