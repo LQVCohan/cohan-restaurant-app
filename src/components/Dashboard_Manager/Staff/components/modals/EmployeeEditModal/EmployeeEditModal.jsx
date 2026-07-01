@@ -670,7 +670,7 @@ const EmployeeEditModal = ({
             value={formData.email || ""}
             onChange={(e) => handleInputChange("email", e.target.value)}
             onBlur={() => validateContactFieldOnBlur("email")}
-            placeholder="email@foodhub.vn"
+            placeholder="email@cohan.vn"
             disabled={isSubmitting}
           />
           {errors.email && <div className="error-message">{errors.email}</div>}

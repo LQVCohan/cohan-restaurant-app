@@ -56,7 +56,7 @@
 }
 
 .login-page-wrapper .form-container form::before {
-  content: "FOODHUB ACCOUNT";
+  content: "COHAN ACCOUNT";
   width: fit-content;
   margin: 0 0 12px;
   padding: 7px 11px;

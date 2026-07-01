@@ -1,5 +1,5 @@
 /* Product-ready polish for customer Orders page.
-   Keeps logic unchanged, reduces technical copy, and aligns with FoodHub orange/cream UI. */
+   Keeps logic unchanged, reduces technical copy, and aligns with Cohan orange/cream UI. */
 .orders-page {
   max-width: 1280px !important;
   padding-top: clamp(92px, 8vw, 118px) !important;

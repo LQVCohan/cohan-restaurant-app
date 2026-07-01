@@ -1,12 +1,12 @@
 // ================================
-// 🎨 FOODHUB DESIGN SYSTEM VARIABLES
+// 🎨 COHAN DESIGN SYSTEM VARIABLES
 // ================================
 
 // --------------------------------
 // 🌈 COLORS
 // --------------------------------
 
-// Brand (FoodHub)
+// Brand (Cohan)
 @use "sass:color";
 $primary: #0284c7; // alias để tương thích code cũ
 $primary-hover: #0369a1; // alias
@@ -336,10 +336,10 @@ $sidebar-width: 280px;
 $header-height: 70px;
 // ================================
 // APPEND – POS compatibility aliases & tokens
-// Mục tiêu: giữ nguyên hệ biến FoodHub, bổ sung alias để code POS chạy mượt
+// Mục tiêu: giữ nguyên hệ biến Cohan, bổ sung alias để code POS chạy mượt
 // ================================
 
-// ---- Font size aliases (map từ POS -> hệ FoodHub)
+// ---- Font size aliases (map từ POS -> hệ Cohan)
 $font-size-xs: $text-xs;
 $font-size-sm: $text-sm;
 $font-size-base: $text-base;
@@ -375,7 +375,7 @@ $z-dropdown: 1000 !default;
 $z-modal: 1050 !default;
 $z-toast: 1080 !default;
 // ================================
-// 🎨 FOODHUB DESIGN SYSTEM EXTENSIONS (2025-11)
+// 🎨 COHAN DESIGN SYSTEM EXTENSIONS (2025-11)
 // ================================
 
 // Bổ sung / chuẩn hóa palette cho consistency với toàn bộ scale

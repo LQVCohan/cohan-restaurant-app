@@ -1171,7 +1171,7 @@ const EmployeeFormModal = ({
           <h2>{mode === "add" ? "Thêm Nhân Viên Mới" : "Cập Nhật Hồ Sơ"}</h2>
           <p>
             {mode === "add"
-              ? "Tạo hồ sơ nhân viên cho FoodHub"
+              ? "Tạo hồ sơ nhân viên cho Cohan"
               : "Chỉnh sửa thông tin nhân viên"}
           </p>
         </div>

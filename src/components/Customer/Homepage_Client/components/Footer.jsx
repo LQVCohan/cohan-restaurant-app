@@ -55,10 +55,10 @@ const Footer = () => {
           <div className="footer-col brand-col">
             <div className="brand-logo">
               <span className="logo-icon" aria-hidden="true">🍽️</span>
-              <span className="logo-text">FoodHub</span>
+              <span className="logo-text">Cohan</span>
             </div>
             <p className="brand-desc">Trải nghiệm đặt bàn và gọi món đáng tin cậy. Kết nối thực khách với những nhà hàng phù hợp quanh bạn.</p>
-            <div className="social-links" aria-label="Kênh mạng xã hội FoodHub">
+            <div className="social-links" aria-label="Kênh mạng xã hội Cohan">
               {[
                 ["facebook", "https://www.facebook.com/"],
                 ["instagram", "https://www.instagram.com/"],
@@ -72,7 +72,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <nav className="footer-col links-col" aria-label="Khám phá FoodHub">
+          <nav className="footer-col links-col" aria-label="Khám phá Cohan">
             <h4>Khám phá</h4>
             <ul>
               <li><a href="/restaurants">Nhà hàng</a></li>
@@ -117,7 +117,7 @@ const Footer = () => {
 
         <div className="footer-divider" />
         <div className="footer-bottom">
-          <div className="copyright">© 2026 FoodHub. All rights reserved.</div>
+          <div className="copyright">© 2026 Cohan. All rights reserved.</div>
           <div className="bottom-right">
             <div className="contact-info">
               <span><Icon name="mapPin" size={14} /> TP. Hồ Chí Minh</span>

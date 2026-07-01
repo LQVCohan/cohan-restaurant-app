@@ -139,7 +139,7 @@ const OrderBillModal = ({ customer, order, onClose }) => {
           <div className="bill-content">
             {/* Header */}
             <div className="bill-brand">
-              <h2>FoodHub Bistro</h2>
+              <h2>Cohan Bistro</h2>
               <p>123 Nguyễn Huệ, Quận 1, TP.HCM</p>
               <p>Hotline: 1900 123 456</p>
             </div>
@@ -212,7 +212,7 @@ const OrderBillModal = ({ customer, order, onClose }) => {
               <div className="barcode-fake" />
               <div className="thank-you">*** CẢM ƠN QUÝ KHÁCH ***</div>
               <p style={{ fontSize: 11, color: "#94a3b8" }}>
-                Wifi: FoodHub_Free / Pass: 12345678
+                Wifi: Cohan_Free / Pass: 12345678
               </p>
             </div>
           </div>
