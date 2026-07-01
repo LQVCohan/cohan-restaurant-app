@@ -101,14 +101,26 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     min-width: 0;
     height: $manager-header-height;
     isolation: isolate;
+
+    .header {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(168, 133, 95, 0.14), transparent 22rem),
+        linear-gradient(90deg, rgba(255, 250, 243, 0.96), rgba(248, 246, 241, 0.92));
+      border-bottom: 1px solid rgba(229, 222, 211, 0.92);
+      box-shadow: 0 12px 30px rgba(75, 56, 32, 0.08);
+    }
+
+    .keyboard-shortcut-hint {
+      display: none;
+    }
   }
 
   &__header > .manager-scope-selector {
     position: absolute;
     top: 50%;
-    left: clamp(16rem, 22vw, 27.5rem);
-    z-index: 2;
-    max-width: min(34vw, 32rem);
+    right: clamp(17rem, 18vw, 21rem);
+    z-index: calc(var(--z-header) + 1);
+    max-width: min(30vw, 34rem);
     transform: translateY(-50%);
   }
 
@@ -163,8 +175,8 @@ $manager-sidebar-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   @media (max-width: 1380px) {
     &__header > .manager-scope-selector {
-      left: clamp(13rem, 21vw, 20rem);
-      max-width: 27vw;
+      right: clamp(12rem, 16vw, 17rem);
+      max-width: 23rem;
     }
 
     &__header > .manager-scope-selector label:first-child {
