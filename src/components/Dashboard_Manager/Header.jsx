@@ -17,7 +17,7 @@ import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
-import { getBrandRoleLabel, getCombinedRoleLabel, getRoleTooltip, getSystemRoleLabel } from "@/lib/userRoleDisplay";
+import { getBrandRoleLabel, getCombinedRoleLabel, getMembershipScopeLabel, getRoleTooltip, getSystemRoleLabel } from "@/lib/userRoleDisplay";
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -68,8 +68,10 @@ const Header = ({
   const normalizeUser = useMemo(() => getDisplayUser(user), [user]);
   const systemRoleLabel = useMemo(() => getSystemRoleLabel(user), [user]);
   const brandRoleLabel = useMemo(() => getBrandRoleLabel({ user, activeBrand }), [activeBrand, user]);
-  const roleLine = useMemo(() => getCombinedRoleLabel({ user, activeBrand }), [activeBrand, user]);
-  const roleTooltip = useMemo(() => getRoleTooltip({ user, activeBrand }), [activeBrand, user]);
+  const activeMembership = activeBrand?.membership || (activeBrand?.membershipRole ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] } : null);
+  const scopeLabel = useMemo(() => getMembershipScopeLabel(activeMembership || { role: activeBrand?.membershipRole }, activeBrand?.restaurants, activeBrand?.name), [activeBrand, activeMembership]);
+  const roleLine = useMemo(() => getCombinedRoleLabel({ user, activeBrand, membership: activeMembership }), [activeBrand, activeMembership, user]);
+  const roleTooltip = useMemo(() => getRoleTooltip({ user, activeBrand, membership: activeMembership }), [activeBrand, activeMembership, user]);
   const avatarSrc = useMemo(() => resolveUserAvatarSrc(normalizeUser), [normalizeUser]);
 
   const avatarFallback = useMemo(() => getInitials(normalizeUser.fullName), [normalizeUser.fullName]);
@@ -261,8 +263,9 @@ const Header = ({
                     <span className="user-badge">{brandRoleLabel || systemRoleLabel}</span>
                   </div>
                   <div className="user-role-breakdown" title={roleTooltip}>
-                    <span>Vai trò hệ thống: <strong>{systemRoleLabel}</strong></span>
-                    <span>Vai trò Brand: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span>
+                    <span>Loại tài khoản: <strong>{systemRoleLabel}</strong></span>
+                    <span>Vai trò trong thương hiệu: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span>
+                    <span>Phạm vi phụ trách: <strong>{scopeLabel}</strong></span>
                   </div>
                 </div>
 

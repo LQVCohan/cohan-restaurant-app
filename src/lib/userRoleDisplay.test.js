@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBrandRoleLabel, getCombinedRoleLabel, getRoleTooltip } from "./userRoleDisplay";
+import { getBrandRoleLabel, getCombinedRoleLabel, getMembershipScopeLabel, getRoleTooltip } from "./userRoleDisplay";
 
 describe("userRoleDisplay", () => {
   it("formats system and brand roles separately", () => {
@@ -14,7 +14,7 @@ describe("userRoleDisplay", () => {
 
     expect(getBrandRoleLabel({ user, activeBrand: { id: "b1" } })).toBeNull();
     expect(getRoleTooltip({ user, activeBrand: { id: "b1" } })).toBe(
-      "Vai trò Brand: Chưa gắn Brand hiện tại | Vai trò hệ thống: Quản lý hệ thống",
+      "Vai trò trong thương hiệu: Chưa gắn Brand hiện tại | Loại tài khoản: Quản lý hệ thống",
     );
   });
 
@@ -23,4 +23,16 @@ describe("userRoleDisplay", () => {
       "Chủ thương hiệu",
     );
   });
+});
+
+
+it("formats BrandMembership scope labels", () => {
+  const restaurants = [{ id: "r1", name: "Cohan Quận 7" }, { id: "r2", name: "Cohan Quận 1" }];
+
+  expect(getBrandRoleLabel({ membership: { role: "owner" } })).toBe("Chủ thương hiệu");
+  expect(getMembershipScopeLabel({ role: "admin" }, restaurants)).toBe("Toàn bộ Brand");
+  expect(getBrandRoleLabel({ membership: { role: "manager" } })).toBe("Quản lý nhà hàng");
+  expect(getMembershipScopeLabel({ role: "manager", restaurantIds: ["r1"] }, restaurants)).toBe("Cohan Quận 7");
+  expect(getBrandRoleLabel({ membership: { role: "staff" } })).toBe("Nhân viên nhà hàng");
+  expect(getMembershipScopeLabel({ role: "staff", restaurantIds: ["r1", "r2"] }, restaurants)).toBe("Cohan Quận 7, Cohan Quận 1");
 });

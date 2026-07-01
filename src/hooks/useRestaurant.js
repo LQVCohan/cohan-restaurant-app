@@ -100,15 +100,13 @@ const GET_RESTAURANTS_TOP = gql`
   ${RESTAURANT_FIELDS}
 `;
 
-const GET_RESTAURANTS_BY_MANAGER = gql`
-  query RestaurantsByManager(
-    $managerId: ID!
+const GET_SCOPED_RESTAURANTS = gql`
+  query ScopedRestaurants(
     $limit: Int = 20
     $cursor: ID
     $restaurantFilter: RestaurantFilter
   ) {
-    restaurantsByManager(
-      managerId: $managerId
+    scopedRestaurants(
       limit: $limit
       cursor: $cursor
       restaurantFilter: $restaurantFilter
@@ -224,14 +222,14 @@ export const useRestaurant = (restaurantId) => {
   ] = useLazyQuery(GET_RESTAURANTS_TOP, { fetchPolicy: "cache-first" });
 
   const [
-    runRestaurantsByManager,
+    runScopedRestaurants,
     {
-      data: byManagerData,
-      loading: byManagerLoading,
-      error: byManagerErr,
-      fetchMore: fetchMoreByManager,
+      data: scopedData,
+      loading: scopedLoading,
+      error: scopedErr,
+      fetchMore: fetchMoreScoped,
     },
-  ] = useLazyQuery(GET_RESTAURANTS_BY_MANAGER, {
+  ] = useLazyQuery(GET_SCOPED_RESTAURANTS, {
     fetchPolicy: "cache-and-network",
   });
 
@@ -324,43 +322,40 @@ export const useRestaurant = (restaurantId) => {
     return (data?.restaurantsTop || []).map(normalizeRestaurant);
   };
 
-  // 5) Theo manager (connection)
-  const listRestaurantsByManager = useCallback(
+  // 5) Theo scope hiện tại (connection)
+  const listScopedRestaurants = useCallback(
     async ({
-      managerId,
       limit = 20,
       cursor = null,
       restaurantFilter = {},
     }) => {
-      const { data } = await runRestaurantsByManager({
-        variables: { managerId, limit, cursor, restaurantFilter },
+      const { data } = await runScopedRestaurants({
+        variables: { limit, cursor, restaurantFilter },
       });
-      return data?.restaurantsByManager || null;
+      return data?.scopedRestaurants || null;
     },
-    [runRestaurantsByManager]
+    [runScopedRestaurants]
   );
 
-  const loadMoreRestaurantsByManager = async () => {
-    const pageInfo = byManagerData?.restaurantsByManager?.pageInfo;
+  const loadMoreScopedRestaurants = async () => {
+    const pageInfo = scopedData?.scopedRestaurants?.pageInfo;
     if (!pageInfo?.hasNextPage) return null;
-    const { data } = await fetchMoreByManager({
+    const { data } = await fetchMoreScoped({
       variables: {
         cursor: pageInfo.endCursor,
       },
     });
-    return data?.restaurantsByManager || null;
+    return data?.scopedRestaurants || null;
   };
 
   // 🔥 5b) Helper: trả về mảng nhà hàng đã normalize (không phải connection)
-  const listRestaurantsByManagerFlat = useCallback(
+  const listScopedRestaurantsFlat = useCallback(
     async ({
-      managerId,
       limit = 100,
       cursor = null,
       restaurantFilter = {},
     }) => {
-      const conn = await listRestaurantsByManager({
-        managerId,
+      const conn = await listScopedRestaurants({
         limit,
         cursor,
         restaurantFilter,
@@ -369,7 +364,7 @@ export const useRestaurant = (restaurantId) => {
       const edges = conn?.edges || [];
       return edges.map((e) => normalizeRestaurant(e.node));
     },
-    [listRestaurantsByManager, normalizeRestaurant]
+    [listScopedRestaurants, normalizeRestaurant]
   );
 
   // 6) refRestaurants theo user
@@ -409,29 +404,27 @@ export const useRestaurant = (restaurantId) => {
   /* ========== Convenience helpers cho StaffManagement ========== */
 
   /**
-   * Lấy danh sách nhà hàng mà 1 manager quản lý (đã normalize, mảng thường).
-   * Dùng cho case: "All" → lấy tất cả nhân viên trong các nhà hàng manager này quản lý.
+   * Lấy danh sách nhà hàng được phép quản lý (đã normalize, mảng thường).
+   * Dùng cho case: "All" → lấy tất cả nhân viên trong các nhà hàng người dùng hiện tại được phép quản lý.
    */
-  const getManagedRestaurants = useCallback(
-    async (managerId, options = {}) => {
-      if (!managerId) return [];
-      return listRestaurantsByManagerFlat({
-        managerId,
+  const getManageableRestaurants = useCallback(
+    async (options = {}) => {
+      return listScopedRestaurantsFlat({
         ...options,
       });
     },
-    [listRestaurantsByManagerFlat]
+    [listScopedRestaurantsFlat]
   );
 
   /**
-   * Lấy mảng ID nhà hàng mà manager quản lý.
+   * Lấy mảng ID nhà hàng được phép quản lý.
    */
-  const getManagedRestaurantIds = useCallback(
-    async (managerId, options = {}) => {
-      const list = await getManagedRestaurants(managerId, options);
+  const getManageableRestaurantIds = useCallback(
+    async (options = {}) => {
+      const list = await getManageableRestaurants(options);
       return list.map((r) => r.id);
     },
-    [getManagedRestaurants]
+    [getManageableRestaurants]
   );
 
   /* ========== UX helpers ========== */
@@ -474,7 +467,7 @@ export const useRestaurant = (restaurantId) => {
     fullLoading ||
     listLoading ||
     topLoading ||
-    byManagerLoading ||
+    scopedLoading ||
     refLoading ||
     creating ||
     updating ||
@@ -491,7 +484,7 @@ export const useRestaurant = (restaurantId) => {
       fullErr?.message ||
       listErr?.message ||
       topErr?.message ||
-      byManagerErr?.message ||
+      scopedErr?.message ||
       refErr?.message ||
       null,
 
@@ -502,14 +495,14 @@ export const useRestaurant = (restaurantId) => {
     listRestaurants,
     loadMoreRestaurants,
     listTopRestaurants,
-    listRestaurantsByManager,
-    loadMoreRestaurantsByManager,
+    listScopedRestaurants,
+    loadMoreScopedRestaurants,
     listRefRestaurants,
 
     // flat list helpers (dùng nhiều cho staff management)
-    listRestaurantsByManagerFlat,
-    getManagedRestaurants,
-    getManagedRestaurantIds,
+    listScopedRestaurantsFlat,
+    getManageableRestaurants,
+    getManageableRestaurantIds,
 
     // mutations
     createRestaurant,

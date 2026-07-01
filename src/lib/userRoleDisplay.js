@@ -13,14 +13,33 @@ export const SYSTEM_ROLE_LABELS = {
 export const BRAND_ROLE_LABELS = {
   owner: "Chủ thương hiệu",
   admin: "Quản trị Brand",
-  manager: "Quản lý chi nhánh",
-  staff: "Nhân viên Brand",
+  manager: "Quản lý nhà hàng",
+  staff: "Nhân viên nhà hàng",
 };
 
 export const normalizeSystemRole = (user) =>
   cleanRole(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType);
 
 export const normalizeBrandRole = (input) => cleanRole(typeof input === "string" ? input : input?.role);
+
+export const isBrandWideRole = (role) => ["owner", "admin"].includes(normalizeBrandRole(role));
+export const isSingleRestaurantRole = (role) => normalizeBrandRole(role) === "manager";
+
+export const normalizeMembershipRestaurantIds = (membership) =>
+  [...new Set((membership?.restaurantIds || membership?.restaurants || [])
+    .map((item) => String(item?.id || item?._id || item || ""))
+    .filter(Boolean))];
+
+export const getMembershipScopeLabel = (membership, restaurants = [], brandName = "") => {
+  const role = normalizeBrandRole(membership);
+  if (isBrandWideRole(role)) return brandName ? `Toàn bộ Brand ${brandName}` : "Toàn bộ Brand";
+  const ids = normalizeMembershipRestaurantIds(membership);
+  const byId = new Map((restaurants || []).map((restaurant) => [String(restaurant?.id || restaurant?._id), restaurant?.name || restaurant?.restaurantName]));
+  const names = ids.map((id) => byId.get(id) || id).filter(Boolean);
+  if (role === "manager") return names[0] || "Phạm vi: xem trong cấu hình Brand";
+  if (role === "staff") return names.length ? names.join(", ") : "Chưa gán nhà hàng";
+  return "Chưa gắn Brand hiện tại";
+};
 
 export const getSystemRoleLabel = (user) => {
   const role = normalizeSystemRole(user);
@@ -50,5 +69,5 @@ export const getCombinedRoleLabel = ({ user, activeBrand, membership, compact = 
 export const getRoleTooltip = ({ user, activeBrand, membership } = {}) => {
   const brandLabel = getBrandRoleLabel({ user, activeBrand, membership }) || "Chưa gắn Brand hiện tại";
   const systemLabel = getSystemRoleLabel(user);
-  return `Vai trò Brand: ${brandLabel} | Vai trò hệ thống: ${systemLabel}`;
+  return `Vai trò trong thương hiệu: ${brandLabel} | Loại tài khoản: ${systemLabel}`;
 };

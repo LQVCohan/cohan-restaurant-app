@@ -14,6 +14,9 @@ function badInput(message) {
 function notFound(message = "Resource not found") {
   return new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
 }
+function unauthenticated(message = "Unauthorized") {
+  return new GraphQLError(message, { extensions: { code: "UNAUTHENTICATED" } });
+}
 
 function toObjectIdOrNull(id) {
   if (!id) return null;
@@ -341,51 +344,48 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
     .slice(0, lim);
 }
 
-/** Danh sách nhà hàng theo manager với cursor pagination và bộ lọc */
-async function restaurantsByManager(
-  _,
-  { managerId, brandId, includeBrandScope = true, includeLegacyManaged = true, limit = 20, cursor, restaurantFilter },
-  ctx
-) {
-  if (!mongoose.isValidObjectId(managerId)) {
-    throw badInput("Invalid managerId");
-  }
-  if (brandId && !mongoose.isValidObjectId(brandId)) {
-    throw badInput("Invalid brandId");
-  }
-
+async function buildRestaurantConnection(baseFilter, { limit = 20, cursor } = {}) {
   const lim = clampLimit(limit, 1, 100);
-  const uid = String(ctx?.user?.id || ctx?.user?._id || "");
-  const managerObjectId = new mongoose.Types.ObjectId(managerId);
-  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
-  // Legacy API name: scope comes from BrandMembership when users query themselves; only System Admin can inspect another managerId.
-  const scopedAccessFilter = isSystemAdmin(ctx?.user)
-    ? { managerId: managerObjectId }
-    : uid === String(managerId)
-      ? await getScopedRestaurantFilter(ctx.user)
-      : { _id: { $in: [] } };
-  const legacyFilter = includeLegacyManaged ? {} : { brandId: { $ne: null } };
   const cId = toObjectIdOrNull(cursor);
-  const cursorFilter = cId ? { _id: { $gt: cId } } : {};
-  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopedAccessFilter, requestedBrandFilter, legacyFilter);
-  const queryFilter = combineFilters(baseFilter, cursorFilter);
+  const queryFilter = combineFilters(baseFilter, cId ? { _id: { $gt: cId } } : {});
 
-  const docs = await Restaurant.find(queryFilter)
-    .sort({ _id: 1 })
-    .limit(lim + 1)
-    .lean();
-
+  const docs = await Restaurant.find(queryFilter).sort({ _id: 1 }).limit(lim + 1).lean();
   const hasNextPage = docs.length > lim;
   const slice = hasNextPage ? docs.slice(0, lim) : docs;
 
   return {
     edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-    pageInfo: {
-      endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-      hasNextPage,
-    },
+    pageInfo: { endCursor: slice.length ? String(slice[slice.length - 1]._id) : null, hasNextPage },
     totalCount: await Restaurant.countDocuments(baseFilter),
   };
+}
+
+/** Danh sách nhà hàng theo quyền hiện tại với cursor pagination và bộ lọc */
+async function scopedRestaurants(_, { brandId, limit = 20, cursor, restaurantFilter } = {}, ctx) {
+  if (!ctx?.user) throw unauthenticated("Unauthorized");
+  if (brandId && !mongoose.isValidObjectId(brandId)) throw badInput("Invalid brandId");
+
+  const scopedAccessFilter = await getScopedRestaurantFilter(ctx.user);
+  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopedAccessFilter, requestedBrandFilter);
+  return buildRestaurantConnection(baseFilter, { limit, cursor });
+}
+
+/** Deprecated legacy alias. New clients must use scopedRestaurants. System admin legacy lookups may still use Restaurant.managerId until migration completes. */
+async function restaurantsByManager(_, { managerId, brandId, limit = 20, cursor, restaurantFilter } = {}, ctx) {
+  if (!ctx?.user) throw unauthenticated("Unauthorized");
+  if (!mongoose.isValidObjectId(managerId)) throw badInput("Invalid managerId");
+  if (brandId && !mongoose.isValidObjectId(brandId)) throw badInput("Invalid brandId");
+
+  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  if (isSystemAdmin(ctx.user)) {
+    const legacyManagerFilter = { managerId: new mongoose.Types.ObjectId(managerId) };
+    return buildRestaurantConnection(combineFilters(buildFilter(restaurantFilter), legacyManagerFilter, requestedBrandFilter), { limit, cursor });
+  }
+
+  const uid = String(ctx.user.id || ctx.user._id || "");
+  if (uid !== String(managerId)) return buildRestaurantConnection({ _id: { $in: [] } }, { limit, cursor });
+  return scopedRestaurants(_, { brandId, limit, cursor, restaurantFilter }, ctx);
 }
 
 /** Các nhà hàng tham chiếu theo user.refRestaurants */
@@ -400,24 +400,13 @@ async function refRestaurants(_, { userId }) {
   const ref = Array.isArray(user.refRestaurants) ? user.refRestaurants : [];
   if (ref.length === 0) return [];
 
-  // Chuẩn hoá về ObjectId, loại phần tử rỗng/trùng
-  const ids = [
-    ...new Set(
-      ref
-        .map((x) => (mongoose.isValidObjectId(x) ? String(x) : null))
-        .filter(Boolean)
-    ),
-  ].map((s) => new mongoose.Types.ObjectId(s));
+  const ids = [...new Set(ref.map((x) => (mongoose.isValidObjectId(x) ? String(x) : null)).filter(Boolean))]
+    .map((item) => new mongoose.Types.ObjectId(item));
 
   if (ids.length === 0) return [];
 
-  const restaurants = await Restaurant.find({ _id: { $in: ids } })
-    .sort({ _id: 1 })
-    .lean();
-
-  return restaurants;
+  return Restaurant.find({ _id: { $in: ids } }).sort({ _id: 1 }).lean();
 }
-
 
 async function refreshRestaurantCategoryIndexes(_, { timeSlot }) {
   if (!timeSlot) return 0;
@@ -527,6 +516,7 @@ async function restaurantsByCategoryTimeSlot(_, { categoryId, timeSlot, limit = 
   return enriched.slice(0, lim);
 }
 
+
 async function restaurantCategoryIndexes(_, { restaurantId, timeSlot }) {
   const q = {};
   if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
@@ -540,6 +530,7 @@ export const RestaurantQuery = {
   restaurant,
   restaurantsTop,
   restaurantsNearby,
+  scopedRestaurants,
   restaurantsByManager,
   refRestaurants,
   restaurantsByCategoryTimeSlot,

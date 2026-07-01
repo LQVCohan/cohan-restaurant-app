@@ -38,10 +38,9 @@ const ME_QUERY = gql`
   }
 `;
 
-const GET_MANAGER_RESTAURANTS = gql`
-  query ManagerRestaurants($managerId: ID!, $limit: Int = 100, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
+const GET_SCOPED_RESTAURANTS = gql`
+  query ScopedRestaurants($limit: Int = 100, $cursor: ID) {
+    scopedRestaurants(
       limit: $limit
       cursor: $cursor
     ) {
@@ -370,9 +369,9 @@ const ReviewManagement = () => {
     roleText.includes("manager") || roleText.includes("staff");
   const canReadAnalytics = hasPermission(me, "review.analytics.read");
 
-  const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
-    variables: { managerId: me?.id, limit: 100 },
-    skip: !me?.id || !isManagerOrStaffUser,
+  const { data: scopedRestaurantsData } = useQuery(GET_SCOPED_RESTAURANTS, {
+    variables: { limit: 100 },
+    skip: !me?.id || isAdminUser,
     fetchPolicy: "network-only",
   });
 
@@ -388,10 +387,10 @@ const ReviewManagement = () => {
         (edge) => edge.node,
       );
     }
-    return (managerRestaurantsData?.restaurantsByManager?.edges || []).map(
+    return (scopedRestaurantsData?.scopedRestaurants?.edges || []).map(
       (edge) => edge.node,
     );
-  }, [allRestaurantsData, isAdminUser, managerRestaurantsData]);
+  }, [allRestaurantsData, isAdminUser, scopedRestaurantsData]);
 
   useEffect(() => {
     if (!me || isAdminUser || filters.restaurant || !restaurantOptions.length)

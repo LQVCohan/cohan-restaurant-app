@@ -210,6 +210,14 @@ extend type Query {
   publicRestaurant(id: ID!): Restaurant
   similarRestaurants(restaurantId: ID!, limit: Int = 6): [Restaurant!]!
 
+  scopedRestaurants(
+    brandId: ID
+    limit: Int = 20
+    cursor: ID
+    restaurantFilter: RestaurantFilter
+  ): RestaurantConnection!
+
+  # Deprecated: use scopedRestaurants. Kept for backward compatibility.
   restaurantsByManager(
     managerId: ID!
     brandId: ID
@@ -218,7 +226,7 @@ extend type Query {
     limit: Int = 20
     cursor: ID
     restaurantFilter: RestaurantFilter
-  ): RestaurantConnection!
+  ): RestaurantConnection! @deprecated(reason: "Use scopedRestaurants")
 
   refRestaurants(userId: ID!): [Restaurant!]!
 
@@ -277,7 +285,8 @@ input CreateRestaurantInput {
   capabilities: JSON
   reservationPolicy: JSON
   orderPolicy: JSON
-  managerId: ID!
+  # Deprecated legacy/cache fallback. Brand flow assigns managers through BrandMembership.
+  managerId: ID
   brandId: ID
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput

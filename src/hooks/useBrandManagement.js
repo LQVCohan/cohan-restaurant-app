@@ -22,6 +22,7 @@ export const MY_BRANDS_QUERY = gql`
       brandId
       role
       status
+      restaurantIds
     }
   }
 `;

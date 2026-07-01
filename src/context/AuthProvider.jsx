@@ -64,10 +64,9 @@ const GET_ADMIN_RESTAURANTS = gql`
   }
 `;
 
-const GET_MANAGER_RESTAURANTS = gql`
-  query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
+const GET_SCOPED_RESTAURANTS = gql`
+  query ScopedRestaurants($limit: Int = 50, $cursor: ID) {
+    scopedRestaurants(
       limit: $limit
       cursor: $cursor
     ) {
@@ -291,7 +290,6 @@ export const AuthProvider = ({ children }) => {
 
   const isAuthenticated = !!token;
   const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
-  const managerId = user?.id;
   const { data: adminRestaurantsData, loading: adminRestaurantsLoading } = useQuery(
     GET_ADMIN_RESTAURANTS,
     {
@@ -299,11 +297,10 @@ export const AuthProvider = ({ children }) => {
       skip: roleName !== "admin",
     }
   );
-  const { data: mgrData, loading: managerRestaurantsLoading } = useQuery(GET_MANAGER_RESTAURANTS, {
-    variables: { managerId, limit: 50 },
+  const { data: scopedData, loading: scopedRestaurantsLoading } = useQuery(GET_SCOPED_RESTAURANTS, {
+    variables: { limit: 50 },
     skip:
-      !managerId ||
-      roleName !== "manager",
+      !user?.id || roleName === "customer" || roleName === "admin",
   });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
@@ -436,7 +433,7 @@ export const AuthProvider = ({ children }) => {
 
   const restaurantsLoading =
     (roleName === "admin" && adminRestaurantsLoading) ||
-    (roleName === "manager" && managerRestaurantsLoading);
+    (roleName !== "customer" && scopedRestaurantsLoading);
 
   useEffect(() => {
     if (isRestaurantScopedAccessRole(roleName)) {
@@ -458,23 +455,18 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    if (roleName === "manager") {
-      if (mgrData?.restaurantsByManager) {
-        setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
+    if (roleName !== "customer") {
+      if (scopedData?.scopedRestaurants) {
+        setRestaurants(scopedData.scopedRestaurants.edges.map((e) => e.node));
         return;
       }
-      if (!managerRestaurantsLoading) setRestaurants([]);
-      return;
-    }
-
-    if (roleName !== "customer") {
-      setRestaurants([]);
+      if (!scopedRestaurantsLoading) setRestaurants([]);
     }
   }, [
     adminRestaurantsData,
     adminRestaurantsLoading,
-    managerRestaurantsLoading,
-    mgrData,
+    scopedRestaurantsLoading,
+    scopedData,
     roleName,
     user?.restaurantForStaff,
   ]);

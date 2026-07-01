@@ -162,6 +162,8 @@ const restaurantSchema = BaseSchemaModel({
   defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
   manualUsdToVndRate: { type: Number, default: 26000, min: 1 },
 
+  // Legacy/cache fallback only. Brand-scoped manager assignment is sourced from
+  // BrandMembership.role = "manager" + BrandMembership.restaurantIds.
   managerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Brand, BrandMembership, Restaurant, User, Role } from "../../../models/index.js";
+import { validateBrandMembershipScope } from "../../../models/brandMembership.model.js";
 import { signAccessToken, issueRefreshToken } from "../../../src/security/authTokens.js";
 import { sanitizeUserForClient } from "../../../src/security/sanitizeUserForClient.js";
 import {
@@ -22,8 +23,21 @@ const roleName = (u) => String(u?.roleName || u?.role?.slug || u?.role || "").to
 const userId = getUserId;
 function needsRestaurantScope(role) { return ["manager", "staff"].includes(role); }
 async function ensureMembershipInput(input) {
-  if (needsRestaurantScope(input.role) && !(input.restaurantIds || []).filter(Boolean).length) throw bad("restaurantIds are required for manager/staff");
-  try { return await ensureBrandRestaurants(input.brandId, input.restaurantIds); } catch (error) { throw bad(error.message); }
+  let ids;
+  try { ids = validateBrandMembershipScope(input); } catch (error) { throw bad(error.message); }
+  try { return await ensureBrandRestaurants(input.brandId, ids); } catch (error) { throw bad(error.message); }
+}
+async function ensureSingleActiveManager({ brandId, role, restaurantIds, status = "active", excludeId }) {
+  if (role !== "manager" || status !== "active") return;
+  const [restaurantId] = restaurantIds || [];
+  const existing = await BrandMembership.findOne({
+    brandId: oid(brandId),
+    role: "manager",
+    status: "active",
+    restaurantIds: oid(restaurantId),
+    ...(excludeId ? { _id: { $ne: oid(excludeId) } } : {}),
+  }).select("_id").lean();
+  if (existing) throw bad("Nhà hàng này đã có quản lý. Vui lòng đổi quản lý hiện tại trước.");
 }
 async function assertCanWriteMembership(actor, membership, nextRole) {
   if (isSystemAdmin(actor) || await isBrandOwner(actor, membership.brandId)) return;
@@ -87,7 +101,7 @@ const Mutation = {
         await user.setPassword(input.password); await user.save({ session });
         const [brand] = await Brand.create([{ name: input.brandName, slug: slugify(input.brandSlug || input.brandName), ownerId: user._id, businessName: input.businessName, businessTaxCode: input.businessTaxCode, businessEmail: input.businessEmail, businessPhone: input.businessPhone, address: input.firstRestaurantAddress, createdBy: user._id }], { session });
         await BrandMembership.create([{ brandId: brand._id, userId: user._id, role: "owner", createdBy: user._id }], { session });
-        const [restaurant] = input.createFirstRestaurant === false ? [null] : await Restaurant.create([{ name: input.firstRestaurantName || input.brandName, address: input.firstRestaurantAddress, brandId: brand._id, managerId: user._id }], { session });
+        const [restaurant] = input.createFirstRestaurant === false ? [null] : await Restaurant.create([{ name: input.firstRestaurantName || input.brandName, address: input.firstRestaurantAddress, brandId: brand._id }], { session });
         result = { userId: user._id, brand, restaurant };
       });
     } finally {
@@ -100,8 +114,8 @@ const Mutation = {
   createBrand: async (_, { input }, ctx) => { if (!ctx?.user) throw auth(); const uid = oid(userId(ctx.user)); const brand = await Brand.create({ ...input, slug: slugify(input.slug || input.name), ownerId: uid, createdBy: uid }); await BrandMembership.findOneAndUpdate({ brandId: brand._id, userId: uid }, { $set: { role: "owner", status: "active", updatedBy: uid }, $setOnInsert: { createdBy: uid } }, { upsert: true }); return brand; },
   updateBrand: async (_, { id, input }, ctx) => { if (!ctx?.user || !await canManageBrand(ctx.user, id)) throw forbidden(); const patch = { ...input, ...(input.slug ? { slug: slugify(input.slug) } : {}), updatedBy: oid(userId(ctx.user)) }; return Brand.findByIdAndUpdate(oid(id), { $set: patch }, { new: true }).lean(); },
   archiveBrand: async (_, { id }, ctx) => { if (!ctx?.user || !await canManageBrand(ctx.user, id)) throw forbidden(); await Brand.updateOne({ _id: oid(id) }, { $set: { status: "inactive", deletedAt: new Date(), deletedBy: oid(userId(ctx.user)) } }); return true; },
-  addBrandMember: async (_, { input }, ctx) => { if (!ctx?.user || !await canManageBrand(ctx.user, input.brandId)) throw forbidden(); if (input.role === "owner" && !await isBrandOwner(ctx.user, input.brandId)) throw forbidden("Only brand owner can add owner"); if (!await User.exists({ _id: oid(input.userId) })) throw bad("User not found"); const restaurants = await ensureMembershipInput(input); return BrandMembership.findOneAndUpdate({ brandId: oid(input.brandId), userId: oid(input.userId) }, { $set: { role: input.role, restaurantIds: restaurants, status: "active", updatedBy: oid(userId(ctx.user)) }, $setOnInsert: { createdBy: oid(userId(ctx.user)), invitedBy: oid(userId(ctx.user)) } }, { new: true, upsert: true }).lean(); },
-  updateBrandMember: async (_, { input }, ctx) => { const m = await BrandMembership.findById(input.id); if (!m) throw bad("Membership not found"); if (!ctx?.user || !await canManageBrand(ctx.user, m.brandId)) throw forbidden(); await assertCanWriteMembership(ctx.user, m, input.role); if (m.role === "owner" && ((input.role && input.role !== "owner") || input.status === "inactive") && await BrandMembership.countDocuments({ brandId: m.brandId, role: "owner", status: "active" }) <= 1) throw bad("Cannot remove the last owner"); if (input.restaurantIds || needsRestaurantScope(input.role || m.role)) m.restaurantIds = await ensureMembershipInput({ ...input, brandId: m.brandId, role: input.role || m.role }); if (input.role) m.role = input.role; if (input.status) m.status = input.status; m.updatedBy = oid(userId(ctx.user)); await m.save(); return m.toObject(); },
+  addBrandMember: async (_, { input }, ctx) => { if (!ctx?.user || !await canManageBrand(ctx.user, input.brandId)) throw forbidden(); if (input.role === "owner") throw forbidden("Brand owner chính lấy từ Brand.ownerId; không thêm owner qua addBrandMember"); if (!await User.exists({ _id: oid(input.userId) })) throw bad("User not found"); const restaurants = await ensureMembershipInput(input); await ensureSingleActiveManager({ brandId: input.brandId, role: input.role, restaurantIds: restaurants }); return BrandMembership.findOneAndUpdate({ brandId: oid(input.brandId), userId: oid(input.userId) }, { $set: { role: input.role, restaurantIds: restaurants, status: "active", updatedBy: oid(userId(ctx.user)) }, $setOnInsert: { createdBy: oid(userId(ctx.user)), invitedBy: oid(userId(ctx.user)) } }, { new: true, upsert: true }).lean(); },
+  updateBrandMember: async (_, { input }, ctx) => { const m = await BrandMembership.findById(input.id); if (!m) throw bad("Membership not found"); if (!ctx?.user || !await canManageBrand(ctx.user, m.brandId)) throw forbidden(); await assertCanWriteMembership(ctx.user, m, input.role); if (m.role === "owner" && ((input.role && input.role !== "owner") || input.status === "inactive") && await BrandMembership.countDocuments({ brandId: m.brandId, role: "owner", status: "active" }) <= 1) throw bad("Cannot remove the last owner"); const nextRole = input.role || m.role; const nextStatus = input.status || m.status; const restaurants = ["owner", "admin"].includes(nextRole) ? [] : (input.restaurantIds || needsRestaurantScope(nextRole)) ? await ensureMembershipInput({ ...input, brandId: m.brandId, role: nextRole, restaurantIds: input.restaurantIds ?? m.restaurantIds }) : m.restaurantIds; await ensureSingleActiveManager({ brandId: m.brandId, role: nextRole, restaurantIds: restaurants, status: nextStatus, excludeId: m._id }); m.restaurantIds = restaurants; if (input.role) m.role = input.role; if (input.status) m.status = input.status; m.updatedBy = oid(userId(ctx.user)); await m.save(); return m.toObject(); },
   removeBrandMember: async (_, { id }, ctx) => { const m = await BrandMembership.findById(id); if (!m) throw bad("Membership not found"); if (!ctx?.user || !await canManageBrand(ctx.user, m.brandId)) throw forbidden(); await assertCanWriteMembership(ctx.user, m); if (m.role === "owner" && await BrandMembership.countDocuments({ brandId: m.brandId, role: "owner", status: "active" }) <= 1) throw bad("Cannot remove the last owner"); m.status = "inactive"; await m.save(); return true; },
 };
 

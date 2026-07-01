@@ -420,10 +420,9 @@ const GET_ALL_RESTAURANTS = gql`
     }
   }
 `;
-const GET_MANAGER_RESTAURANTS = gql`
-  query RestaurantsByManager($managerId: ID!, $limit: Int = 100, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
+const GET_SCOPED_RESTAURANTS = gql`
+  query ScopedRestaurants($limit: Int = 100, $cursor: ID) {
+    scopedRestaurants(
       limit: $limit
       cursor: $cursor
     ) {
@@ -1180,9 +1179,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "cache-and-network",
     nextFetchPolicy: "cache-first",
   });
-  const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
+  const { data: scopedRestaurantsData } = useQuery(GET_SCOPED_RESTAURANTS, {
     variables: {
-      managerId: me?.id,
       limit: 100,
     },
     skip: !me?.id || me?.roleName === "admin",
@@ -1196,10 +1194,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .filter(Boolean);
     }
 
-    return (managerRestaurantsData?.restaurantsByManager?.edges || [])
+    return (scopedRestaurantsData?.scopedRestaurants?.edges || [])
       .map((edge) => edge.node)
       .filter(Boolean);
-  }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
+  }, [allRestaurantsData, scopedRestaurantsData, me?.roleName]);
   useEffect(
     () => () => {
       const resolver = assignmentOverrideResolverRef.current;

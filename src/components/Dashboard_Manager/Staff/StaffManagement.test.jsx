@@ -51,8 +51,8 @@ vi.mock("../../../hooks/useTime", () => ({
 
 vi.mock("../../../hooks/useRestaurant", () => ({
   useRestaurant: () => ({
-    getManagedRestaurants: vi.fn().mockResolvedValue([]),
-    getManagedRestaurantIds: vi.fn().mockResolvedValue([]),
+    getManageableRestaurants: vi.fn().mockResolvedValue([]),
+    getManageableRestaurantIds: vi.fn().mockResolvedValue([]),
     loading: false,
   }),
 }));

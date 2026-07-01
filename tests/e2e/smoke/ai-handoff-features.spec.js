@@ -145,10 +145,10 @@ function buildHandoffGraphqlData(operationName, variables, mode) {
       return { me: MANAGER_USER };
 
     case "GetRestaurants":
-    case "ManagerRestaurants":
+    case "ScopedRestaurants":
       return {
         refRestaurants: [],
-        restaurantsByManager: {
+        scopedRestaurants: {
           edges:
             mode === "noRestaurants"
               ? []

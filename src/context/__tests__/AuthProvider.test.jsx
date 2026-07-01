@@ -186,7 +186,7 @@ describe("AuthProvider", () => {
   });
 
 
-  it("loads all restaurants for admin from the restaurants query instead of restaurantsByManager", async () => {
+  it("loads all restaurants for admin from the restaurants query instead of scopedRestaurants", async () => {
     const adminRestaurantsResult = {
       ...defaultQueryResult(),
       data: {
@@ -219,7 +219,7 @@ describe("AuthProvider", () => {
     );
 
     const managerRestaurantCalls = useQueryMock.mock.calls.filter(([query]) =>
-      getQueryText(query).includes("query ManagerRestaurants"),
+      getQueryText(query).includes("query ScopedRestaurants"),
     );
     expect(managerRestaurantCalls.every(([, options]) => options?.skip)).toBe(true);
   });

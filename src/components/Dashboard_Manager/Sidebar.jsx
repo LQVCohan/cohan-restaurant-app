@@ -4,7 +4,7 @@ import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
-import { getCombinedRoleLabel, getRoleTooltip } from "@/lib/userRoleDisplay";
+import { getCombinedRoleLabel, getMembershipScopeLabel, getRoleTooltip } from "@/lib/userRoleDisplay";
 
 const BACKUP_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 
@@ -83,8 +83,10 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const sidebarUser = useMemo(() => getDisplayUser(user), [user]);
   const sidebarUserName = sidebarUser.fullName || "Quản lý";
-  const sidebarUserRole = useMemo(() => getCombinedRoleLabel({ user, activeBrand, compact: true }), [activeBrand, user]);
-  const sidebarUserTooltip = useMemo(() => getRoleTooltip({ user, activeBrand }), [activeBrand, user]);
+  const activeMembership = activeBrand?.membership || (activeBrand?.membershipRole ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] } : null);
+  const sidebarUserRole = useMemo(() => getCombinedRoleLabel({ user, activeBrand, membership: activeMembership, compact: true }), [activeBrand, activeMembership, user]);
+  const sidebarScope = useMemo(() => getMembershipScopeLabel(activeMembership || { role: activeBrand?.membershipRole }, activeBrand?.restaurants, activeBrand?.name), [activeBrand, activeMembership]);
+  const sidebarUserTooltip = useMemo(() => `${getRoleTooltip({ user, activeBrand, membership: activeMembership })} | Phạm vi phụ trách: ${sidebarScope}`, [activeBrand, activeMembership, sidebarScope, user]);
   const sidebarAvatarSrc = useMemo(() => resolveUserAvatarSrc(sidebarUser), [sidebarUser]);
   const sidebarAvatarFallback = useMemo(() => getInitials(sidebarUserName, "QL"), [sidebarUserName]);
 
@@ -174,7 +176,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
             <div className="user-name-small" title={sidebarUserName}>{sidebarUserName}</div>
             <div className="user-status-small" title={sidebarUserTooltip}>
               <span className="status-dot-small" aria-hidden="true" />
-              <span>{sidebarUserRole}</span>
+              <span>{sidebarUserRole} · {sidebarScope}</span>
             </div>
           </div>
         </div>

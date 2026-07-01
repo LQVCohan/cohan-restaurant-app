@@ -1,7 +1,7 @@
 const SCHEDULE_QUERY_NAMES = new Set([
   "Me",
   "AllRestaurants",
-  "RestaurantsByManager",
+  "ScopedRestaurants",
   "StaffList",
   "ScheduleAvailabilityWindows",
   "ScheduleAvailabilitySubmissions",

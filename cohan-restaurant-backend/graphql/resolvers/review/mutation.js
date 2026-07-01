@@ -1,4 +1,4 @@
-import { Notification, Restaurant, Review, ReviewHelpful, ReviewReaction, ReviewReport } from "../../../models/index.js";
+import { BrandMembership, Notification, Restaurant, Review, ReviewHelpful, ReviewReaction, ReviewReport } from "../../../models/index.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
 import { logReviewEvent } from "../../../utils/logReview.js";
 import {
@@ -81,10 +81,16 @@ async function createReviewNotification({ review, type, message, toUserId = null
 }
 
 async function notifyRestaurantManagers({ review, type, message, ctx, payload = {} }) {
-  const restaurant = await Restaurant.findById(review.restaurantId).select("managerId name").lean();
+  const restaurant = await Restaurant.findById(review.restaurantId).select("name managerId").lean();
   const enrichedPayload = { restaurantName: restaurant?.name || review.restaurantName || "", ...payload };
-  if (restaurant?.managerId) {
-    await createReviewNotification({ review, type, message, toUserId: restaurant.managerId, ctx, payload: enrichedPayload });
+  const managerMemberships = await BrandMembership.find({ role: "manager", status: "active", restaurantIds: review.restaurantId }).select("userId").lean();
+  let managerIds = [...new Set(managerMemberships.map((membership) => String(membership.userId)).filter(Boolean))];
+  if (!managerIds.length && restaurant?.managerId) {
+    // Temporary legacy fallback until Restaurant.managerId values are migrated to BrandMembership.
+    managerIds = [String(restaurant.managerId)];
+  }
+  if (managerIds.length) {
+    await Promise.all(managerIds.map((toUserId) => createReviewNotification({ review, type, message, toUserId, ctx, payload: enrichedPayload })));
     return;
   }
   await createReviewNotification({ review, type, message, toRole: "manager", ctx, payload: enrichedPayload });

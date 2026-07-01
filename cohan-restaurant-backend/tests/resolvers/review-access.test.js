@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  BrandMembership: { find: vi.fn(() => ({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })) })) },
   Review: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn(), countDocuments: vi.fn(), aggregate: vi.fn(), findByIdAndUpdate: vi.fn(), findByIdAndDelete: vi.fn(), updateOne: vi.fn(), create: vi.fn() },
   ReviewReaction: { findOne: vi.fn(), create: vi.fn(), deleteOne: vi.fn(), findByIdAndUpdate: vi.fn() },
   ReviewReport: { countDocuments: vi.fn() },
@@ -92,6 +93,30 @@ describe("review/reviewComment access hardening", () => {
     await expect(m.createReview(null, { input: { status: "published" } }, {})).rejects.toThrow();
     await m.createReview(null, { input: { status: "published", createdBy: "x", rating: 5, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
     expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ status: "published", createdBy: "u1" }));
+  });
+
+
+  it("negative review notifies BrandMembership manager before legacy managerId", async () => {
+    const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
+    mocks.BrandMembership.find.mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([{ userId: "membership-manager" }]) })) });
+    mocks.Restaurant.findById.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ name: "Cohan", managerId: "legacy-manager" }) }) });
+    mocks.Review.create.mockResolvedValueOnce({ _id: "valid-rv1", rating: 1, restaurantId: "valid-r1", title: "bad", status: "published" });
+
+    await m.createReview(null, { input: { rating: 1, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
+
+    expect(mocks.Notification.create).toHaveBeenCalledWith(expect.objectContaining({ toUserId: "membership-manager" }));
+    expect(mocks.Notification.create).not.toHaveBeenCalledWith(expect.objectContaining({ toUserId: "legacy-manager" }));
+  });
+
+  it("negative review falls back to legacy managerId before migration", async () => {
+    const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
+    mocks.BrandMembership.find.mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })) });
+    mocks.Restaurant.findById.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ name: "Cohan", managerId: "legacy-manager" }) }) });
+    mocks.Review.create.mockResolvedValueOnce({ _id: "valid-rv1", rating: 1, restaurantId: "valid-r1", title: "bad", status: "published" });
+
+    await m.createReview(null, { input: { rating: 1, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
+
+    expect(mocks.Notification.create).toHaveBeenCalledWith(expect.objectContaining({ toUserId: "legacy-manager" }));
   });
 
   it("createReview with valid staff sets canonical staffId/staffName", async () => {
