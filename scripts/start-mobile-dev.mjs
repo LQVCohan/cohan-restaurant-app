@@ -19,6 +19,8 @@ const getLocalIPv4List = () => {
 const localIps = getLocalIPv4List();
 const primaryIp = process.env.VITE_DEV_HOST || localIps[0] || "localhost";
 const allowedHosts = Array.from(new Set(["localhost", "127.0.0.1", primaryIp, ...localIps])).join(",");
+const viteArgs = ["vite", "--host", "0.0.0.0", "--port", PORT];
+const isWindows = process.platform === "win32";
 
 console.log("\nCOHAN mobile dev server");
 console.log("────────────────────────");
@@ -29,8 +31,8 @@ console.log("Lưu ý: xem 3D có thể test qua LAN HTTP, nhưng camera/AR WebXR
 console.log("Khi cần test AR thật, dùng HTTPS/tunnel và mở cùng URL trên điện thoại.\n");
 
 const child = spawn(
-  process.platform === "win32" ? "npx.cmd" : "npx",
-  ["vite", "--host", "0.0.0.0", "--port", PORT],
+  isWindows ? "cmd.exe" : "npx",
+  isWindows ? ["/d", "/s", "/c", "npx", ...viteArgs] : viteArgs,
   {
     stdio: "inherit",
     shell: false,
