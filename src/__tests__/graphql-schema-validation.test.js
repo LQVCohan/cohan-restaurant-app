@@ -26,10 +26,6 @@ const LEGACY_COMPATIBILITY_DOCUMENTS = new Set([
   'src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx',
   'src/components/Staff/components/StaffSchedulePage.jsx',
   'src/components/Staff/components/StaffSchedulePage.test.jsx',
-  'src/hooks/usePayroll.js',
-  'src/hooks/useStaffManagement.js',
-  'src/hooks/useStaffPerformance.js',
-  'src/hooks/useUserManagement.js',
 ]);
 
 function listFilesRecursive(directory, predicate) {
@@ -337,6 +333,41 @@ describe('frontend GraphQL documents', () => {
     expect(schema.getType('ReviewPerformanceIncidentInput')).toBeTruthy();
     expect(schema.getType('MarkPerformanceIncidentEligibleInput')).toBeTruthy();
     expect(schema.getType('ApplyPerformanceIncidentScoreInput')).toBeTruthy();
+  });
+
+  it('keeps payroll and staff management hook compatibility fields typed for current operations', async () => {
+    const schema = await buildBackendSchema();
+    const compatibilityFields = schema.getType('CompatibilityNode').getFields();
+    const mutationFields = schema.getType('Mutation').getFields();
+    const verificationResultFields = schema.getType('VerificationResult').getFields();
+
+    expect(compatibilityFields.role.type.toString()).toBe('String');
+    expect(compatibilityFields.employee.type.toString()).toBe('PayrollCompatibilityEmployee');
+    expect(compatibilityFields.errors.type.toString()).toBe('[PayrollCompatibilityError!]');
+    expect(compatibilityFields.factors.type.toString()).toBe('JSON');
+    for (const field of ['productivity', 'punctuality', 'quality', 'managerReview', 'compliance']) {
+      expect(compatibilityFields[field].type.toString()).toBe('PerformanceScoreComponent');
+    }
+
+    expect(Object.keys(schema.getType('PayrollCompatibilityEmployee').getFields())).toEqual(
+      expect.arrayContaining(['id', 'name', 'code', 'role', 'department', 'avatar']),
+    );
+    expect(Object.keys(schema.getType('PayrollCompatibilityError').getFields())).toEqual(
+      expect.arrayContaining(['index', 'employeeId', 'code', 'message']),
+    );
+    expect(Object.keys(schema.getType('PerformanceScoreComponent').getFields())).toEqual(
+      expect.arrayContaining(['score', 'weight', 'note']),
+    );
+
+    expect(mutationFields.createStaff.args.map((arg) => `${arg.name}:${arg.type}`)).toContain(
+      'input:CreateUserInput!',
+    );
+    expect(mutationFields.updateStaff.args.map((arg) => `${arg.name}:${arg.type}`)).toEqual(
+      expect.arrayContaining(['userId:ID', 'input:AdminUpdateUserInput!']),
+    );
+    expect(mutationFields.deletePayrollAdjustment.type.toString()).toBe('CompatibilityNode');
+    expect(verificationResultFields.email.type.toString()).toBe('VerificationChannelResult');
+    expect(verificationResultFields.sms.type.toString()).toBe('VerificationChannelResult');
   });
 
   it('keeps review reliability compatibility fields', async () => {

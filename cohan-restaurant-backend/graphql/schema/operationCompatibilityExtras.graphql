@@ -1,5 +1,19 @@
 # ponytail: validation-only fields for FE operations that query legacy staff/payroll shapes.
 
+
+type PerformanceScoreComponent {
+  score: Float
+  weight: Float
+  note: String
+}
+
+type PayrollCompatibilityError {
+  index: Int
+  employeeId: ID
+  code: String
+  message: String
+}
+
 extend type CompatibilityNode {
   absentCount: Int
   accountHolderName: String
@@ -49,7 +63,7 @@ extend type CompatibilityNode {
   coefficient: Float
   comparison: [CompatibilityNode!]
   comparisonPeriod: CompatibilityNode
-  compliance: String
+  compliance: PerformanceScoreComponent
   createdBy: ID
   criticalCount: Int
   currentPayrollPeriodId: ID
@@ -77,7 +91,7 @@ extend type CompatibilityNode {
   endSession: String
   errorCount: Int
   eventType: String
-  factors: [CompatibilityNode!]
+  factors: JSON
   failedCount: Int
   failureReason: String
   finalPerformanceScore: Float
@@ -117,7 +131,7 @@ extend type CompatibilityNode {
   leftEmployees: Int
   lowPriorityCount: Int
   managerRatingScore: Float
-  managerReview: String
+  managerReview: PerformanceScoreComponent
   mandatoryShiftRoles: [String!]
   manualAdjustmentTotal: Float
   mediumPriorityCount: Int
@@ -170,13 +184,13 @@ extend type CompatibilityNode {
   presentCount: Int
   previousScore: Float
   processingCount: Int
-  productivity: String
+  productivity: PerformanceScoreComponent
   promotionCount: Int
   proposedScoreDelta: Float
   provider: String
   providerTransactionId: ID
-  punctuality: String
-  quality: String
+  punctuality: PerformanceScoreComponent
+  quality: PerformanceScoreComponent
   quotaImpact: CompatibilityNode
   reasonCategory: String
   recommendedAction: String
