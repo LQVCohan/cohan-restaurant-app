@@ -24,15 +24,18 @@ const MENU_MANAGER_PERMISSIONS = [
 ];
 
 const MANAGER_PERMISSIONS = [
-  ...MENU_MANAGER_PERMISSIONS,
   "dashboard.read",
   "restaurant.read",
   "restaurant.write",
   "report.read",
+  "report.export",
   "staff.read",
+  "staff.write",
   "shift.read",
   "shift.manage",
   "attendance.read",
+  "attendance.write",
+  "performance.read",
   "order.read",
   "order.create",
   "order.update",
@@ -45,22 +48,42 @@ const MANAGER_PERMISSIONS = [
   "reservation.update",
   "reservation.cancel",
   "customer.read",
+  "customer.update",
   "inventory.read",
   "inventory.write",
+  "stock.read",
+  "stock.write",
+  "supplier.read",
+  "supplier.write",
+  "promotion.read",
+  "promotion.write",
+  "coupon.read",
+  "coupon.write",
+  "review.read",
+  "review.reply",
+  "review.analytics.read",
   "payment.read",
+  "payment.write",
   "finance.read",
   "transaction.read",
+  "reconciliation.read",
+  "refund.write",
+  "payroll.read",
+  "print.read",
   "ai.chatbot.read",
   "ai.chatbot.write",
+  "ai.chatbot.moderate",
+  "ai.chatbot.evaluate",
   "ai.chatbot.handoff",
   "ai.chatbot.analytics.read",
+  ...MENU_MANAGER_PERMISSIONS,
 ];
 
 const roles = [
   { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true, permissions: [] },
   { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true, permissions: MANAGER_PERMISSIONS },
-  { name: "HR", slug: "hr", parentRole: "hr", isSystem: true, permissions: [] },
-  { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true, permissions: [] },
+  { name: "HR", slug: "hr", parentRole: "hr", isSystem: true, permissions: ["staff.read", "staff.write", "shift.read", "shift.manage", "attendance.read", "attendance.write", "performance.read"] },
+  { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true, permissions: ["finance.read", "transaction.read", "reconciliation.read", "payment.read", "payroll.read", "payroll.write", "report.read"] },
   { name: "Customer", slug: "customer", parentRole: "customer", isSystem: true, permissions: [] },
   { name: "Staff", slug: "staff", parentRole: "staff", isSystem: true, permissions: [] },
   { name: "Server", slug: "server", parentRole: "staff", department: "service", permissions: ["menu.read", "order.read", "order.create", "order.update", "table.read"] },
@@ -77,7 +100,12 @@ const roles = [
 ];
 
 async function idsFor(codes) {
-  return (await Permission.find({ code: { $in: codes } }).select("_id").lean()).map((p) => p._id);
+  const uniqueCodes = [...new Set(codes || [])];
+  const permissions = await Permission.find({ code: { $in: uniqueCodes } }).select("_id code").lean();
+  const found = new Set(permissions.map((p) => p.code));
+  const missing = uniqueCodes.filter((code) => !found.has(code));
+  if (missing.length) throw new Error(`Missing permissions. Run seed:permissions first or add codes: ${missing.join(", ")}`);
+  return permissions.map((p) => p._id);
 }
 
 async function run() {
@@ -103,7 +131,7 @@ async function run() {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
-    console.log(`✓ role: ${role.slug}`);
+    console.log(`✓ role: ${role.slug} (${permissions.length}/${[...new Set(role.permissions || [])].length} permissions)`);
   }
   await mongoose.disconnect();
   console.log("Done Role Seeding");
