@@ -31,13 +31,16 @@ async function assertCanWriteMembership(actor, membership, nextRole) {
 }
 async function ownerRole() { return await Role.findOne({ $or: [{ slug: "owner" }, { name: /^owner$/i }, { slug: "manager" }, { name: /^manager$/i }] }); }
 const publicUser = async (id) => { const u = await User.findById(id).populate("role").lean({ virtuals: true }); return sanitizeUserForClient({ ...u, roleName: roleName(u) }); };
+const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
 
 const Query = {
   myBrands: async (_, __, ctx) => {
     if (!ctx?.user) throw auth();
+    if (isSystemAdmin(ctx.user)) return Brand.find({ deletedAt: null }).sort({ createdAt: -1 }).lean();
     const uid = oid(userId(ctx.user));
     const memberships = await BrandMembership.find({ userId: uid, status: "active" }).select("brandId").lean();
-    const ids = memberships.map((m) => m.brandId);
+    const scopedBrandIds = memberships.length ? [] : (await Restaurant.find(await getScopedRestaurantFilter(ctx.user)).select("brandId").lean()).map((restaurant) => restaurant.brandId);
+    const ids = uniqueIds([...memberships.map((m) => m.brandId), ...scopedBrandIds]);
     return Brand.find({ $or: [{ ownerId: uid }, { _id: { $in: ids } }], deletedAt: null }).sort({ createdAt: -1 }).lean();
   },
   brand: async (_, { id }, ctx) => (ctx?.user && await canReadBrand(ctx.user, id)) ? Brand.findById(id).lean() : null,
