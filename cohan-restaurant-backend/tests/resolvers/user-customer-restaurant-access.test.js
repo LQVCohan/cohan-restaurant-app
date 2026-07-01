@@ -130,6 +130,33 @@ describe("user/customer restaurant access guards", () => {
     expect(result.ranks).toHaveLength(3);
   });
 
+  it("customerListPage excludes soft-deleted customers in restaurant scope", async () => {
+    requireRestaurantAccessMock.mockResolvedValue(undefined);
+    modelMocks.Role.findOne.mockReturnValue({ lean: async () => ({ _id: "valid-role-customer" }) });
+    modelMocks.Customer.countDocuments.mockResolvedValue(0);
+    modelMocks.Customer.find.mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      sort: vi.fn().mockReturnThis(),
+      skip: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      lean: vi.fn(async () => []),
+    });
+
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+    await UserQuery.customerListPage(
+      null,
+      { restaurantId: "valid-r1", includeGuests: true },
+      ctxFor(),
+    );
+
+    expect(modelMocks.Customer.countDocuments).toHaveBeenCalledWith({
+      $and: expect.arrayContaining([
+        { deletedAt: null },
+        expect.objectContaining({ refRestaurants: expect.any(Object) }),
+      ]),
+    });
+  });
+
   it("customerDetailAnalytics with restaurantId denied does not call Order.find or User.findById", async () => {
     requireRestaurantAccessMock.mockRejectedValue(new GraphQLError("FORBIDDEN_SCOPE"));
     const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
