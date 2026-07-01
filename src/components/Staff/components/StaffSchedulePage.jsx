@@ -193,8 +193,8 @@ const CHECK_OUT_SHIFT = gql`
 `;
 
 const GET_MY_SHIFT_ACKS = gql`
-  query MyShiftAcknowledgements($periodStart: DateTime, $periodEnd: DateTime) {
-    myShiftAcknowledgements(periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyShiftAcknowledgements($restaurantId: ID, $periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
       id
       shiftId
       status
@@ -577,8 +577,8 @@ export default function StaffSchedulePage() {
   const { data: myShiftAcksData, refetch: refetchShiftAcks } = useQuery(
     GET_MY_SHIFT_ACKS,
     {
-      variables: { periodStart: weekStartIso, periodEnd: weekEndIso },
-      skip: !employeeId,
+      variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso },
+      skip: !employeeId || !restaurantId,
       fetchPolicy: "network-only",
     },
   );

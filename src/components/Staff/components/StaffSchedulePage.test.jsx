@@ -130,8 +130,8 @@ const GET_SCHEDULING_POLICY = gql`
 `;
 
 const GET_MY_SHIFT_ACKS = gql`
-  query MyShiftAcknowledgements($periodStart: DateTime, $periodEnd: DateTime) {
-    myShiftAcknowledgements(periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyShiftAcknowledgements($restaurantId: ID, $periodStart: DateTime, $periodEnd: DateTime) {
+    myShiftAcknowledgements(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
       id
       shiftId
       status
@@ -190,8 +190,11 @@ const matchStaffShiftVars =
     variables?.employeeId === employeeId &&
     anyIsoDateRange(variables, "startDate", "endDate");
 
-const matchShiftAckVars = (variables) =>
-  anyIsoDateRange(variables, "periodStart", "periodEnd");
+const matchShiftAckVars =
+  (restaurantId = "r1") =>
+  (variables) =>
+    variables?.restaurantId === restaurantId &&
+    anyIsoDateRange(variables, "periodStart", "periodEnd");
 
 const shiftTemplates = [
   {
@@ -273,12 +276,13 @@ const emptyStaffShiftsMock = () => ({
 
 const emptyShiftAcksMock = () => ({
   request: { query: GET_MY_SHIFT_ACKS },
-  variableMatcher: matchShiftAckVars,
+  variableMatcher: matchShiftAckVars("r1"),
   result: { data: { myShiftAcknowledgements: [] } },
 });
 const emptyMyShiftAttendancesMock = () => ({
   request: { query: MY_SHIFT_ATTENDANCES },
-  variableMatcher: matchShiftAckVars,
+  variableMatcher: (variables) =>
+    anyIsoDateRange(variables, "periodStart", "periodEnd"),
   result: { data: { myShiftAttendances: [] } },
 });
 
@@ -340,7 +344,7 @@ const staffShiftsMock = (staffShifts) => ({
 
 const shiftAcksMock = (myShiftAcknowledgements) => ({
   request: { query: GET_MY_SHIFT_ACKS },
-  variableMatcher: matchShiftAckVars,
+  variableMatcher: matchShiftAckVars("r1"),
   result: { data: { myShiftAcknowledgements } },
 });
 

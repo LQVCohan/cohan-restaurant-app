@@ -127,16 +127,17 @@ describe("shift acknowledgement query resolvers", () => {
     expect(result).toEqual([]);
   });
 
-  it("myShiftAcknowledgements only filters by current user and lowercases status", async () => {
+  it("myShiftAcknowledgements filters by current user, restaurant, and lowercases status", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.myShiftAcknowledgements(
       null,
-      { status: "ACCEPTED" },
-      { user: { id: "staff-1" } },
+      { restaurantId: "rest-1", status: "ACCEPTED" },
+      { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-1" } },
     );
 
     expect(modelMocks.findMock).toHaveBeenCalledWith({
       employeeId: { __oid: "staff-1" },
+      restaurantId: { __oid: "rest-1" },
       status: "accepted",
     });
     expect(modelMocks.findSortMock).toHaveBeenCalledWith({ deadlineAt: 1 });
