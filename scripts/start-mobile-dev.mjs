@@ -21,6 +21,7 @@ const primaryIp = process.env.VITE_DEV_HOST || localIps[0] || "localhost";
 const allowedHosts = Array.from(new Set(["localhost", "127.0.0.1", primaryIp, ...localIps])).join(",");
 const viteArgs = ["vite", "--host", "0.0.0.0", "--port", PORT];
 const isWindows = process.platform === "win32";
+const windowsShell = process.env.ComSpec || "C:\\Windows\\System32\\cmd.exe";
 
 console.log("\nCOHAN mobile dev server");
 console.log("────────────────────────");
@@ -31,7 +32,7 @@ console.log("Lưu ý: xem 3D có thể test qua LAN HTTP, nhưng camera/AR WebXR
 console.log("Khi cần test AR thật, dùng HTTPS/tunnel và mở cùng URL trên điện thoại.\n");
 
 const child = spawn(
-  isWindows ? "cmd.exe" : "npx",
+  isWindows ? windowsShell : "npx",
   isWindows ? ["/d", "/s", "/c", "npx", ...viteArgs] : viteArgs,
   {
     stdio: "inherit",
@@ -48,4 +49,9 @@ const child = spawn(
   },
 );
 
+child.on("error", (error) => {
+  console.error(`Không thể khởi động Vite: ${error.message}`);
+  console.error("Chạy tạm lệnh: npx vite --host 0.0.0.0 --port 5173");
+  process.exit(1);
+});
 child.on("exit", (code) => process.exit(code ?? 0));
