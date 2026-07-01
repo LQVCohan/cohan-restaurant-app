@@ -47,6 +47,22 @@ const payrollItems = Array.from({ length: 14 }, (_, index) => ({
   status: "draft",
 }));
 
+const toDateInput = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const buildExpectedDefaultRange = (today = new Date()) => {
+  const start = toDateInput(new Date(today.getFullYear(), today.getMonth() - 1, 25));
+  const end = toDateInput(new Date(today.getFullYear(), today.getMonth(), 24));
+  return {
+    startDate: `${start}T00:00:00.000Z`,
+    endDate: `${end}T23:59:59.999Z`,
+  };
+};
+
 const buildPageOverview = ({ offset = 0, limit = 8, status, search } = {}) => {
   const keyword = String(search || "").trim().toLowerCase();
   const filtered = payrollItems.filter((item) => {
@@ -192,6 +208,7 @@ describe("PayrollManagement current manager payroll UI", () => {
     const refetchPeriods = vi.fn().mockResolvedValue({});
     const refetchDetail = vi.fn().mockResolvedValue({});
     const refetchPayrollReadiness = vi.fn().mockResolvedValue({});
+    const expectedDefaultRange = buildExpectedDefaultRange();
     usePayroll.mockReturnValue(
       buildHookValue({ createPeriod, refetchPeriods, refetchDetail, refetchPayrollReadiness }),
     );
@@ -204,8 +221,8 @@ describe("PayrollManagement current manager payroll UI", () => {
         variables: {
           input: expect.objectContaining({
             restaurantId: "restaurant-1",
-            startDate: expect.stringMatching(/^2026-05-25T00:00:00\.000Z$/),
-            endDate: expect.stringMatching(/^2026-06-24T23:59:59\.999Z$/),
+            startDate: expectedDefaultRange.startDate,
+            endDate: expectedDefaultRange.endDate,
           }),
         },
       });
