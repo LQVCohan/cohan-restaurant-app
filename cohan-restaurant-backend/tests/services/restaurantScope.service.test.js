@@ -20,9 +20,12 @@ const chain = (value) => ({ select: () => ({ lean: async () => value }) });
 vi.mock("../../models/index.js", () => ({
   BrandMembership: {
     find: vi.fn(() => ({ lean: async () => state.memberships })),
-    exists: vi.fn(),
+    exists: vi.fn(async () => false),
   },
-  Brand: { exists: vi.fn(async ({ _id, ownerId }) => !![...state.brands.values()].find((b) => String(b._id) === String(_id) && String(b.ownerId) === String(ownerId) && b.status !== "inactive")) },
+  Brand: {
+    exists: vi.fn(async ({ _id, ownerId }) => !![...state.brands.values()].find((b) => String(b._id) === String(_id) && String(b.ownerId) === String(ownerId) && b.status !== "inactive")),
+    find: vi.fn(({ ownerId }) => chain([...state.brands.values()].filter((b) => String(b.ownerId) === String(ownerId) && b.status !== "inactive"))),
+  },
   Restaurant: {
     findById: vi.fn((id) => chain(state.restaurants.get(String(id)) || null)),
     exists: vi.fn(async ({ _id, managerId }) => !![...state.restaurants.values()].find((r) => String(r._id) === String(_id) && String(r.managerId) === String(managerId))),
@@ -58,6 +61,19 @@ describe("restaurantScope.service", () => {
     const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
     await expect(canAccessRestaurant({ id: ids.user }, ids.a2)).resolves.toBe(true);
     await expect(canAccessRestaurant({ id: ids.user }, ids.b1)).resolves.toBe(false);
+  });
+
+  it("includes Brand ownerId brands in scoped restaurant filters", async () => {
+    state.brands.set(ids.brandA, { _id: ids.brandA, ownerId: ids.user, status: "active" });
+    const { getScopedRestaurantFilter } = await import("../../src/services/auth/restaurantScope.service.js");
+    await expect(getScopedRestaurantFilter({ id: ids.user })).resolves.toEqual({ $or: [{ brandId: { $in: [ids.brandA] } }] });
+  });
+
+  it("treats Brand ownerId as an active Brand operator", async () => {
+    state.brands.set(ids.brandA, { _id: ids.brandA, ownerId: ids.user, status: "active" });
+    const { isActiveBrandOperator } = await import("../../src/services/auth/restaurantScope.service.js");
+    await expect(isActiveBrandOperator(ids.user, ids.brandA)).resolves.toBe(true);
+    await expect(isActiveBrandOperator(ids.user, ids.brandB)).resolves.toBe(false);
   });
 
   it.each(["owner", "admin"])("allows Brand %s all restaurants in its Brand", async (role) => {
