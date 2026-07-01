@@ -86,7 +86,26 @@ describe("user admin management access hardening", () => {
     const result = await UserQuery.users(null, {}, ctxFor("admin"));
     expect(result).toEqual([]);
     expect(requireRoleMock).toHaveBeenCalledWith(expect.anything(), ["admin"]);
-    expect(modelMocks.User.find).toHaveBeenCalled();
+    expect(modelMocks.User.find).toHaveBeenCalledWith({ deletedAt: null });
+  });
+
+  it("users excludes soft-deleted rows when filtering", async () => {
+    modelMocks.User.find.mockReturnValue(createChain([]));
+    const { UserQuery } = await import("../../graphql/resolvers/user/query.js");
+
+    await UserQuery.users(
+      null,
+      { isGuest: false, search: "linh" },
+      ctxFor("admin"),
+    );
+
+    expect(modelMocks.User.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deletedAt: null,
+        isGuest: false,
+        $or: expect.any(Array),
+      }),
+    );
   });
 
   it("adminUpdateUser rejects manager before User.findById", async () => {

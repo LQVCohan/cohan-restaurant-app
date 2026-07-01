@@ -73,6 +73,7 @@ function buildCustomerQueryCondition({
   customerRoleId = null,
   customerRank = null,
 }) {
+  const activeCond = { deletedAt: null };
   const restaurantScopeCond = { refRestaurants: { $in: [toObjectId(restaurantId)] } };
   const searchCond = buildSearchCond(search);
   const customerRoleClause = customerRoleId ? { role: customerRoleId } : null;
@@ -91,7 +92,7 @@ function buildCustomerQueryCondition({
   const rankClauses = [];
   if (typeof customerRank?.minPoints === "number") rankClauses.push({ loyaltyPoints: { $gte: customerRank.minPoints } });
   if (typeof customerRank?.maxPointsExclusive === "number") rankClauses.push({ loyaltyPoints: { $lt: customerRank.maxPointsExclusive } });
-  const clauses = [restaurantScopeCond, kindClause, searchCond, ...rankClauses].filter(Boolean);
+  const clauses = [activeCond, restaurantScopeCond, kindClause, searchCond, ...rankClauses].filter(Boolean);
   return { finalCond: clauses.length === 1 ? clauses[0] : { $and: clauses }, empty: false };
 }
 
@@ -169,7 +170,7 @@ export const UserQuery = {
     try {
       requireRole(authUser, ["admin"]);
 
-      const cond = {};
+      const cond = { deletedAt: null };
       if (typeof isGuest === "boolean") cond.isGuest = isGuest;
       if (roleId) cond.role = toObjectId(roleId);
 
@@ -240,6 +241,7 @@ export const UserQuery = {
 
       if (!customerRole?._id) {
         const guestOnlyCond = {
+          deletedAt: null,
           isGuest: true,
           ...(s || {}),
           ...restaurantScopeCond,
@@ -256,6 +258,7 @@ export const UserQuery = {
       }
 
       const customerCond = {
+        deletedAt: null,
         role: customerRole._id,
         ...(s || {}),
         ...restaurantScopeCond,
@@ -269,6 +272,7 @@ export const UserQuery = {
       let guests = [];
       if (includeGuests) {
         const guestCond = {
+          deletedAt: null,
           isGuest: true,
           ...(s || {}),
           ...restaurantScopeCond,
