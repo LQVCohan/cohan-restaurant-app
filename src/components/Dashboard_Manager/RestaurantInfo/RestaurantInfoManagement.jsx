@@ -58,10 +58,9 @@ const ME_QUERY = gql`
     }
   }
 `;
-const GET_MANAGER_RESTAURANTS = gql`
-  query ManagerRestaurants($managerId: ID!, $limit: Int = 100, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
+const GET_SCOPED_RESTAURANTS = gql`
+  query ScopedRestaurants($limit: Int = 100, $cursor: ID) {
+    scopedRestaurants(
       limit: $limit
       cursor: $cursor
     ) {
@@ -431,10 +430,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
 
-  const { data: managerRestaurantsData, loading: managerRestaurantsLoading } =
-    useQuery(GET_MANAGER_RESTAURANTS, {
-      variables: { managerId: me?.id, limit: 100 },
-      skip: !me?.id || (role !== "manager" && me?.roleName !== "manager"),
+  const { data: scopedRestaurantsData, loading: scopedRestaurantsLoading } =
+    useQuery(GET_SCOPED_RESTAURANTS, {
+      variables: { limit: 100 },
+      skip: !me?.id || (role === "admin" || me?.roleName === "admin"),
       fetchPolicy: "network-only",
     });
 
@@ -463,10 +462,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     if (role === "admin" || me?.roleName === "admin") {
       return (allRestaurantsData?.restaurants?.edges || []).map((e) => e.node);
     }
-    return (managerRestaurantsData?.restaurantsByManager?.edges || []).map(
+    return (scopedRestaurantsData?.scopedRestaurants?.edges || []).map(
       (e) => e.node,
     );
-  }, [role, me, allRestaurantsData, managerRestaurantsData]);
+  }, [role, me, allRestaurantsData, scopedRestaurantsData]);
 
   useEffect(() => {
     if (!selectedRestaurantId && restaurantOptions.length > 0) {
@@ -1733,7 +1732,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
         restaurantList={restaurantOptions.map((r) => ({ id: r.id, name: r.name }))}
-        restaurantDisabled={managerRestaurantsLoading || allRestaurantsLoading}
+        restaurantDisabled={scopedRestaurantsLoading || allRestaurantsLoading}
         customFilters={(
           <select
             className="mph-select"

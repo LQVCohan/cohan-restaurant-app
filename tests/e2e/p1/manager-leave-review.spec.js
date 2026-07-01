@@ -168,10 +168,10 @@ const installManagerLeaveMocks = async (page, initialRequests) => {
         data = { me: MANAGER_USER };
         break;
       case "GetRestaurants":
-      case "ManagerRestaurants":
+      case "ScopedRestaurants":
         data = {
           refRestaurants: [],
-          restaurantsByManager: {
+          scopedRestaurants: {
             edges: [{ cursor: TEST_RESTAURANT.id, node: TEST_RESTAURANT }],
             pageInfo: { endCursor: TEST_RESTAURANT.id, hasNextPage: false },
           },

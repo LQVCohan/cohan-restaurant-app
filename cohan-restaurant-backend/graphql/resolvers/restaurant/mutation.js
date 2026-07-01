@@ -6,7 +6,6 @@ import {
   Role,
   Restaurant,
   RestaurantCategoryIndex,
-  BrandMembership,
 } from "../../../models/index.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
@@ -101,10 +100,7 @@ async function assertCanMutateRestaurant(user, restaurantDoc) {
   if (!user) throw forbidden("Unauthorized");
   if (isAdmin(user)) return true;
   if (restaurantDoc.brandId && await canManageBrand(user, restaurantDoc.brandId)) return true;
-  const manager = await isManager(user);
-  if (!manager) throw forbidden("Insufficient permission");
-  if (String(restaurantDoc.managerId || "") === String(user.id || user._id || "")) return true;
-  if (!restaurantDoc._id || !await canAccessRestaurant(user, restaurantDoc._id)) throw forbidden("You can only modify your own restaurant");
+  if (!restaurantDoc._id || !await canAccessRestaurant(user, restaurantDoc._id)) throw forbidden("You can only modify restaurants in your BrandMembership scope");
   return true;
 }
 
@@ -127,18 +123,18 @@ async function createRestaurant(_, { input }, ctx) {
   if (rest.address) {
     rest.address = normalizeRestaurantAddress(rest.address);
   }
-  // Legacy/direct manager metadata kept for GraphQL contract; BrandMembership is the authorization source.
-  const finalManagerId = managerId;
-  if (!finalManagerId) throw badInput("managerId is required");
+  // Legacy/direct manager metadata kept for GraphQL contract only; BrandMembership is the authorization source.
+  let legacyManagerId;
+  if (managerId) {
+    legacyManagerId = toObjectId(managerId);
+    const managerDoc = await User.findById(legacyManagerId).populate("role");
+    if (!managerDoc) throw badInput("Manager not found");
+    const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
+    const isBrandOperator = rest.brandId ? await isActiveBrandOperator(legacyManagerId, rest.brandId) : false;
+    if (!isRoleManager && !isBrandOperator) throw forbidden("Target user is not allowed to manage this brand restaurant");
+  }
 
-  const mId = toObjectId(finalManagerId);
-  const managerDoc = await User.findById(mId).populate("role");
-  if (!managerDoc) throw badInput("Manager not found");
-  const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
-  const isBrandOperator = rest.brandId ? await isActiveBrandOperator(mId, rest.brandId) : false;
-  if (!isRoleManager && !isBrandOperator) throw forbidden("Target user is not allowed to manage this brand restaurant");
-
-  const created = await Restaurant.create({ ...rest, managerId: mId });
+  const created = await Restaurant.create({ ...rest, ...(legacyManagerId ? { managerId: legacyManagerId } : {}) });
   return created.toObject();
 }
 
@@ -180,7 +176,7 @@ async function deleteRestaurant(_, { id }, ctx) {
   return true;
 }
 
-/** Cập nhật manager nhà hàng (Admin only) */
+/** Cập nhật legacy/cache managerId nhà hàng (Admin only). Brand flow should assign managers through BrandMembership. */
 async function updateRestaurantManager(_, { input }, ctx) {
   const { user } = ctx || {};
   await requirePermission(ctx, PERMISSIONS.RESTAURANT_WRITE);

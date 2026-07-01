@@ -193,11 +193,11 @@ const installManagerScheduleMocks = async (page) => {
         data = { me: MANAGER_USER };
         break;
       case "GetRestaurants":
-      case "ManagerRestaurants":
-      case "RestaurantsByManager":
+      case "ScopedRestaurants":
+      case "ScopedRestaurants":
         data = {
           refRestaurants: [],
-          restaurantsByManager: {
+          scopedRestaurants: {
             edges: [{ cursor: TEST_RESTAURANT.id, node: TEST_RESTAURANT }],
             pageInfo: { endCursor: TEST_RESTAURANT.id, hasNextPage: false },
           },

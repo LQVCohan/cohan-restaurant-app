@@ -12,10 +12,10 @@ vi.mock("@apollo/client", async () => {
     useQuery: vi.fn((query) => {
       const opName = query?.definitions?.find((def) => def.kind === "OperationDefinition")?.name?.value;
       const refetch = vi.fn(async () => ({ data: {} }));
-      if (opName === "ManagerRestaurants") {
+      if (opName === "ScopedRestaurants") {
         return {
           data: {
-            restaurantsByManager: {
+            scopedRestaurants: {
               edges: [{ node: { id: "res-1", name: "Cơm nhà Cohan" } }],
             },
           },

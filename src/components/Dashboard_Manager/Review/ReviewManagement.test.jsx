@@ -183,10 +183,10 @@ function mockQueries(
     const source = String(query?.loc?.source?.body || query || "");
     queryCalls.push({ source, options });
     if (source.includes("query Me")) return { data: { me } };
-    if (source.includes("ManagerRestaurants"))
+    if (source.includes("ScopedRestaurants"))
       return {
         data: {
-          restaurantsByManager: {
+          scopedRestaurants: {
             edges: restaurants.map((node) => ({ node })),
           },
         },

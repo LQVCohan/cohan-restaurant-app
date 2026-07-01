@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import {
+  BrandMembership,
   ChatThread,
   Notification,
   Restaurant,
@@ -28,6 +29,17 @@ const ensureAuth = (ctx) => {
     throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHORIZED" } });
   }
 };
+
+
+async function activeManagerIdsForRestaurant(restaurantId) {
+  if (!restaurantId) return [];
+  const memberships = await BrandMembership.find({
+    role: "manager",
+    status: "active",
+    restaurantIds: restaurantId,
+  }).select("userId").lean();
+  return memberships.map((membership) => String(membership.userId)).filter(Boolean);
+}
 
 const getUserRestaurantIds = (user) => {
   const ids = [user?.restaurantForStaff, user?.restaurantId];
@@ -73,8 +85,7 @@ const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
 
   const recipientIds = users.map((u) => String(u._id));
   if (["management", "manager", "support"].includes(String(thread.targetRole || "").toLowerCase())) {
-    const restaurant = await Restaurant.findById(thread.restaurantId).select("managerId").lean();
-    if (restaurant?.managerId) recipientIds.push(String(restaurant.managerId));
+    recipientIds.push(...await activeManagerIdsForRestaurant(thread.restaurantId));
   }
 
   return [...new Set(recipientIds)].filter((id) => id !== String(senderId));
@@ -218,9 +229,9 @@ const Mutation = {
     let uniqueParticipantIds = [...new Set(participantIds.map((id) => String(id)))].map(toId);
 
     if (!input?.participantIds?.length && input?.channel === "support") {
-      const restaurant = await Restaurant.findById(rid).select("managerId").lean();
-      if (restaurant?.managerId) {
-        uniqueParticipantIds = [...new Set([...uniqueParticipantIds.map(String), String(restaurant.managerId)])].map(toId);
+      const managerIds = await activeManagerIdsForRestaurant(rid);
+      if (managerIds.length) {
+        uniqueParticipantIds = [...new Set([...uniqueParticipantIds.map(String), ...managerIds])].map(toId);
       }
     }
 

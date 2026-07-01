@@ -40,7 +40,7 @@ vi.mock("@apollo/client", async () => {
         return { data: mockMeData, loading: false, error: null };
       }
 
-      if (body.includes("restaurantsByManager")) {
+      if (body.includes("scopedRestaurants")) {
         return { data: mockRestaurantData, loading: false, error: null, refetch: vi.fn() };
       }
 
@@ -105,7 +105,7 @@ vi.mock("@apollo/client", async () => {
         return { data: mockPublicationData, loading: false, error: null, refetch: vi.fn() };
       }
       if (body.includes("query ScheduleAcknowledgementSummary")) return safeResult;
-      if (body.includes("query RestaurantsByManager")) return { data: mockRestaurantData, loading: false, error: null, refetch: vi.fn() };
+      if (body.includes("query ScopedRestaurants")) return { data: mockRestaurantData, loading: false, error: null, refetch: vi.fn() };
       if (body.includes("query ManagerScheduleWeekAvailabilitySubmissions")) return safeResult;
       if (body.includes("query ScheduleChangeLogs")) return safeResult;
 
@@ -137,7 +137,7 @@ describe("ScheduleManagement", () => {
       },
     };
     mockRestaurantData = {
-      restaurantsByManager: {
+      scopedRestaurants: {
         edges: [
           { node: { id: "restaurant-1", name: "Chi nhánh A" } },
         ],

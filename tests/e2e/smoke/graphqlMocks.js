@@ -176,10 +176,10 @@ function buildGraphqlData(operationName, variables, authUser) {
     case "Me":
       return { me: authUser };
     case "GetRestaurants":
-    case "ManagerRestaurants":
+    case "ScopedRestaurants":
       return {
         refRestaurants: authUser?.roleName === "customer" ? [TEST_RESTAURANT] : [],
-        restaurantsByManager: {
+        scopedRestaurants: {
           edges: [{ cursor: TEST_RESTAURANT.id, node: TEST_RESTAURANT }],
           pageInfo: { endCursor: TEST_RESTAURANT.id, hasNextPage: false },
         },

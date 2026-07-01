@@ -60,4 +60,16 @@ describe("RestaurantQuery management scope", () => {
     const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
     await expect(RestaurantQuery.publicRestaurant(null, { id: "665f665f665f665f665f6611" })).resolves.toEqual(state.publicDoc);
   });
+
+  it("scopedRestaurants uses the central scoped restaurant filter", async () => {
+    const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
+    await RestaurantQuery.scopedRestaurants(null, { limit: 20 }, { user: { id: "admin-1", roleName: "admin" } });
+    expect(state.findFilter).toEqual({});
+  });
+
+  it("restaurantsByManager is a deprecated alias for scopedRestaurants", async () => {
+    const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
+    await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "admin-1", roleName: "admin" } });
+    expect(state.findFilter).toEqual({});
+  });
 });

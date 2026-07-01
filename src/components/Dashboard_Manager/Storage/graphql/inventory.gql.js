@@ -1,11 +1,10 @@
 // src/graphql/inventory.gql.js
 import { gql } from "@apollo/client";
 
-/** ===== Restaurants by Manager ===== */
-export const GET_MANAGER_RESTAURANTS = gql`
-  query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
-    restaurantsByManager(
-      managerId: $managerId
+/** ===== Scoped restaurants ===== */
+export const GET_SCOPED_RESTAURANTS = gql`
+  query ScopedRestaurants($limit: Int = 50, $cursor: ID) {
+    scopedRestaurants(
       limit: $limit
       cursor: $cursor
     ) {

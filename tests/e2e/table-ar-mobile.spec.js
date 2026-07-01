@@ -150,8 +150,8 @@ async function mockBackend(page) {
     const operationName = body?.operationName || "";
     const dataByOperation = {
       Me: { me: managerUser },
-      ManagerRestaurants: {
-        restaurantsByManager: {
+      ScopedRestaurants: {
+        scopedRestaurants: {
           __typename: "RestaurantConnection",
           edges: [{ __typename: "RestaurantEdge", cursor: "restaurant-1", node: restaurant }],
           pageInfo: { __typename: "PageInfo", endCursor: null, hasNextPage: false },
