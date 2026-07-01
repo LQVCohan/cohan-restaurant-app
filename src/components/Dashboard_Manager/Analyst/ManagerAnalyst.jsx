@@ -449,8 +449,8 @@ const ManagerAnalyst = () => {
         <header className="analyst-header">
           <div className="header-titles">
             <span className="status-chip"><Sparkles size={13} /> Cập nhật theo kỳ đã chọn</span>
-            <h1>Phân tích kinh doanh</h1>
-            <p>Theo dõi doanh thu, nhu cầu, nhân sự, thực đơn và cảnh báo trong ca.</p>
+            <h1>Quản lý kinh doanh</h1>
+            <p>Theo dõi doanh thu, nhu cầu, nhân sự, thực đơn và cảnh báo vận hành trong một màn hình gọn.</p>
           </div>
           <div className="header-actions">
             <button
@@ -484,41 +484,11 @@ const ManagerAnalyst = () => {
       <header className="analyst-header">
         <div className="header-titles">
           <span className="status-chip"><Sparkles size={13} /> Cập nhật theo kỳ đã chọn</span>
-          <h1>Phân tích kinh doanh</h1>
-          <p>Theo dõi doanh thu, nhu cầu, nhân sự, thực đơn và cảnh báo trong ca.</p>
+          <h1>Quản lý kinh doanh</h1>
+          <p>Theo dõi doanh thu, nhu cầu, nhân sự, thực đơn và cảnh báo vận hành trong một màn hình gọn.</p>
         </div>
 
         <div className="header-actions">
-          {hasRestaurants ? (
-            <div className="picker-wrap">
-              <Store size={16} />
-              <select
-                value={restaurantId}
-                onChange={(e) => setRestaurantId(e.target.value)}
-                disabled={!restaurantId}
-              >
-                {availableRestaurants.map((restaurant, idx) => {
-                  const optionId = getRestaurantId(restaurant);
-                  const optionLabel = getRestaurantLabel(restaurant);
-
-                  return (
-                    <option key={optionId || `restaurant-${idx}`} value={optionId}>
-                      {optionLabel}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          ) : null}
-
-          <div className="picker-wrap">
-            <Calendar size={16} />
-            <select value={range} onChange={(e) => setRange(e.target.value)}>
-              <option value="week">Tuần này</option>
-              <option value="month">Tháng này</option>
-            </select>
-          </div>
-
           <button
             className="btn-icon"
             type="button"
@@ -532,13 +502,44 @@ const ManagerAnalyst = () => {
           <button
             className="btn-primary"
             type="button"
-            disabled
-            aria-disabled="true"
+            onClick={() => navigateManager("reports")}
           >
-            <Download size={18} /> Sắp có
+            <Download size={18} /> Xem báo cáo
           </button>
         </div>
       </header>
+
+      <section className="analyst-control-bar" aria-label="Bộ lọc quản lý kinh doanh">
+        {hasRestaurants ? (
+          <div className="picker-wrap">
+            <Store size={16} />
+            <select
+              value={restaurantId}
+              onChange={(e) => setRestaurantId(e.target.value)}
+              disabled={!restaurantId}
+            >
+              {availableRestaurants.map((restaurant, idx) => {
+                const optionId = getRestaurantId(restaurant);
+                const optionLabel = getRestaurantLabel(restaurant);
+
+                return (
+                  <option key={optionId || `restaurant-${idx}`} value={optionId}>
+                    {optionLabel}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        ) : null}
+
+        <div className="picker-wrap">
+          <Calendar size={16} />
+          <select value={range} onChange={(e) => setRange(e.target.value)}>
+            <option value="week">Tuần này</option>
+            <option value="month">Tháng này</option>
+          </select>
+        </div>
+      </section>
 
       {!hasRestaurants ? (
         <div className="analyst-empty-page">

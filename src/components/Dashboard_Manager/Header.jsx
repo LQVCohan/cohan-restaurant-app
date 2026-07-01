@@ -16,23 +16,7 @@ import {
 import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
-import { toApiAssetUrl } from "@/lib/apiBaseUrl";
-
-const IMAGE_AVATAR_EXTENSION = /\.(png|jpe?g|webp|gif|svg|avif)(?:[?#].*)?$/i;
-
-const isImageAvatar = (value) =>
-  typeof value === "string" &&
-  (/^https?:\/\//.test(value) ||
-    value.startsWith("/") ||
-    value.startsWith("data:image") ||
-    value.startsWith("blob:") ||
-    IMAGE_AVATAR_EXTENSION.test(value));
-
-const getInitials = (name) => {
-  const words = String(name || "Người dùng").trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "ND";
-  return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join("");
-};
+import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -79,21 +63,8 @@ const Header = ({
     localStorage.setItem("manager.darkMode", isDarkMode ? "1" : "0");
   }, [isDarkMode]);
 
-  const normalizeUser = useMemo(() => {
-    if (!user) return { fullName: "Người dùng", roleName: "Đang tải...", email: "", avatar: "", status: "INACTIVE" };
-    return {
-      fullName: user.fullName || user.name || "Người dùng",
-      roleName: user.role?.name || user.roleName || "Nhân viên",
-      email: user.email || "",
-      avatar: user.avatarUrl || user.avatar || user.avatarIcon || "",
-      status: user.status || "ACTIVE",
-    };
-  }, [user]);
-
-  const avatarSrc = useMemo(() => {
-    if (!isImageAvatar(normalizeUser.avatar)) return "";
-    return toApiAssetUrl(normalizeUser.avatar);
-  }, [normalizeUser.avatar]);
+  const normalizeUser = useMemo(() => getDisplayUser(user), [user]);
+  const avatarSrc = useMemo(() => resolveUserAvatarSrc(normalizeUser), [normalizeUser]);
 
   const avatarFallback = useMemo(() => getInitials(normalizeUser.fullName), [normalizeUser.fullName]);
 

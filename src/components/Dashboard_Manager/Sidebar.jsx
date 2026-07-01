@@ -1,8 +1,9 @@
-import React, { useCallback, useContext, useEffect, useMemo } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
+import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
 
 const BACKUP_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 
@@ -11,7 +12,7 @@ const NAVIGATION_SECTIONS = [
     title: "Tổng quan",
     items: [
       { id: "dashboard", icon: "📊", label: "Dashboard", page: "Tổng quan", permissions: ["dashboard.read", "report.read"] },
-      { id: "analytics", icon: "📈", label: "Phân tích kinh doanh", page: "Phân tích kinh doanh", permissions: ["report.read"] },
+      { id: "analytics", icon: "📈", label: "Quản lý kinh doanh", page: "Quản lý kinh doanh", permissions: ["report.read"] },
     ],
   },
   {
@@ -78,8 +79,12 @@ const NAVIGATION_SECTIONS = [
 
 const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
   const { user } = useContext(AuthContext);
-  const sidebarUserName = user?.fullName || user?.name || "Quản lý";
-  const sidebarUserRole = user?.role?.name || user?.roleName || "Đang hoạt động";
+  const [avatarImageFailed, setAvatarImageFailed] = useState(false);
+  const sidebarUser = useMemo(() => getDisplayUser(user), [user]);
+  const sidebarUserName = sidebarUser.fullName || "Quản lý";
+  const sidebarUserRole = sidebarUser.roleName || "Đang hoạt động";
+  const sidebarAvatarSrc = useMemo(() => resolveUserAvatarSrc(sidebarUser), [sidebarUser]);
+  const sidebarAvatarFallback = useMemo(() => getInitials(sidebarUserName, "QL"), [sidebarUserName]);
 
   const visibleSections = useMemo(
     () => filterNavigationByPermissionAccess(NAVIGATION_SECTIONS, user),
@@ -90,6 +95,10 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
     onPageChange(item.id);
     if (window.innerWidth <= 768) onClose();
   }, [onClose, onPageChange]);
+
+  useEffect(() => {
+    setAvatarImageFailed(false);
+  }, [sidebarAvatarSrc]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -152,7 +161,13 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
 
       <div className="sidebar-footer">
         <div className="sidebar-user">
-          <div className="user-avatar-small" aria-hidden="true">{sidebarUserName.charAt(0).toUpperCase()}</div>
+          <div className="user-avatar-small" aria-hidden="true">
+            {sidebarAvatarSrc && !avatarImageFailed ? (
+              <img src={sidebarAvatarSrc} alt="" onError={() => setAvatarImageFailed(true)} />
+            ) : (
+              <span>{sidebarAvatarFallback}</span>
+            )}
+          </div>
           <div className="user-info-small">
             <div className="user-name-small" title={sidebarUserName}>{sidebarUserName}</div>
             <div className="user-status-small" title={sidebarUserRole}>
