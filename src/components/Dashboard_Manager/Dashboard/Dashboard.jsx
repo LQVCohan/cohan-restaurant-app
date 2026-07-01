@@ -86,9 +86,6 @@ const Dashboard = () => {
     [user],
   );
   const rangeLabel = RANGE_LABELS[range] || RANGE_LABELS.week;
-  const processingOrders =
-    (stats?.statusCounts?.pending || 0) +
-    (stats?.statusCounts?.preparing || 0);
   const alertsCount = safeLowStockItems.length;
   const resourceCounts = {
     customers: Number(stats?.customers || 0),
@@ -294,17 +291,6 @@ const Dashboard = () => {
         </section>
       ) : (
         <>
-          <StatsGrid
-            stats={{
-              ...stats,
-              processing: processingOrders,
-              alerts: alertsCount,
-            }}
-            isLoading={loading}
-            variant="summary"
-            alertsCount={alertsCount}
-          />
-
           <DashboardActionQueue
             orders={safePendingOrders}
             reservations={safePendingReservations}
