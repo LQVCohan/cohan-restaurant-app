@@ -10,6 +10,9 @@ export const MY_BRANDS_QUERY = gql`
       slug
       logoUrl
       status
+      businessName
+      businessEmail
+      businessPhone
       restaurantCount
       restaurants(limit: 100) { id name brandId avatar }
     }
