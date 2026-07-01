@@ -200,7 +200,7 @@ const ManagerHeaderWithNotifications = (props) => {
   );
 };
 
-const BrandRestaurantSelector = () => {
+const BrandRestaurantSelector = ({ selection }) => {
   const {
     selectedBrandId,
     setSelectedBrandId,
@@ -212,7 +212,7 @@ const BrandRestaurantSelector = () => {
     restaurantOptions,
     hasBrands,
     loading,
-  } = useManagerRestaurantSelection();
+  } = selection;
 
   if (loading && !hasBrands && !restaurantOptions.length) return null;
 
@@ -248,6 +248,7 @@ const PageLoadingFallback = () => <div className="manager-page-shell__empty">Đa
 
 const ManagerLayout = () => {
   const { user } = useContext(AuthContext);
+  const brandSelection = useManagerRestaurantSelection();
   const roleName = user?.roleName || user?.role?.slug;
   const isAdminUser = isAdminRole(user) || isAdminRole(roleName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -330,7 +331,8 @@ const ManagerLayout = () => {
     onToggleSidebar: toggleSidebar,
     sidebarOpen,
     searchItems: managerSearchItems,
-    scopeSelector: <BrandRestaurantSelector />,
+    scopeSelector: <BrandRestaurantSelector selection={brandSelection} />,
+    activeBrand: brandSelection.selectedBrand,
     onSelectSearchResult: (item) => {
       if (!item?.id) return;
       setCurrentPage(item.id);
@@ -382,7 +384,7 @@ const ManagerLayout = () => {
   return (
     <div className={`manager-layout manager-layout--${currentPage} ${sidebarOpen ? "sidebar-open" : ""}`}>
       {sidebarOpen && <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={closeSidebar} aria-hidden="true" />}
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={setCurrentPage} activeItem={currentPage} />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} onToggle={toggleSidebar} onPageChange={setCurrentPage} activeItem={currentPage} activeBrand={brandSelection.selectedBrand} />
       <div className="manager-layout__main">
         <div className="manager-layout__header">
           {IS_TEST_ENV ? (

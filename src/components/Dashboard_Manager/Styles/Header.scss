@@ -700,3 +700,20 @@ $gray-900: #2f2418;
   outline: 3px solid rgba(154, 91, 22, 0.28);
   outline-offset: 2px;
 }
+
+.user-role-breakdown {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(75, 104, 77, 0.16);
+  border-radius: 0.8rem;
+  background: rgba(248, 244, 232, 0.72);
+  color: #506052;
+  font-size: 0.78rem;
+}
+
+.user-role-breakdown strong {
+  color: #2f4f36;
+  font-weight: 700;
+}

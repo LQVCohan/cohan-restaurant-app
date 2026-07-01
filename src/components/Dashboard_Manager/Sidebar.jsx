@@ -4,6 +4,7 @@ import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
+import { getCombinedRoleLabel, getRoleTooltip } from "@/lib/userRoleDisplay";
 
 const BACKUP_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 
@@ -77,12 +78,13 @@ const NAVIGATION_SECTIONS = [
   },
 ];
 
-const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
+const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBrand = null }) => {
   const { user } = useContext(AuthContext);
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const sidebarUser = useMemo(() => getDisplayUser(user), [user]);
   const sidebarUserName = sidebarUser.fullName || "Quản lý";
-  const sidebarUserRole = sidebarUser.roleName || "Đang hoạt động";
+  const sidebarUserRole = useMemo(() => getCombinedRoleLabel({ user, activeBrand, compact: true }), [activeBrand, user]);
+  const sidebarUserTooltip = useMemo(() => getRoleTooltip({ user, activeBrand }), [activeBrand, user]);
   const sidebarAvatarSrc = useMemo(() => resolveUserAvatarSrc(sidebarUser), [sidebarUser]);
   const sidebarAvatarFallback = useMemo(() => getInitials(sidebarUserName, "QL"), [sidebarUserName]);
 
@@ -170,7 +172,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem }) => {
           </div>
           <div className="user-info-small">
             <div className="user-name-small" title={sidebarUserName}>{sidebarUserName}</div>
-            <div className="user-status-small" title={sidebarUserRole}>
+            <div className="user-status-small" title={sidebarUserTooltip}>
               <span className="status-dot-small" aria-hidden="true" />
               <span>{sidebarUserRole}</span>
             </div>

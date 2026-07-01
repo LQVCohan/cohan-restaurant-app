@@ -17,6 +17,7 @@ import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
+import { getBrandRoleLabel, getCombinedRoleLabel, getRoleTooltip, getSystemRoleLabel } from "@/lib/userRoleDisplay";
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -38,6 +39,7 @@ const Header = ({
   onSelectSearchResult,
   onNotificationSelect,
   onMarkAllNotificationsRead,
+  activeBrand = null,
 }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showNotifications, setShowNotifications] = useState(false);
@@ -64,6 +66,10 @@ const Header = ({
   }, [isDarkMode]);
 
   const normalizeUser = useMemo(() => getDisplayUser(user), [user]);
+  const systemRoleLabel = useMemo(() => getSystemRoleLabel(user), [user]);
+  const brandRoleLabel = useMemo(() => getBrandRoleLabel({ user, activeBrand }), [activeBrand, user]);
+  const roleLine = useMemo(() => getCombinedRoleLabel({ user, activeBrand }), [activeBrand, user]);
+  const roleTooltip = useMemo(() => getRoleTooltip({ user, activeBrand }), [activeBrand, user]);
   const avatarSrc = useMemo(() => resolveUserAvatarSrc(normalizeUser), [normalizeUser]);
 
   const avatarFallback = useMemo(() => getInitials(normalizeUser.fullName), [normalizeUser.fullName]);
@@ -235,11 +241,12 @@ const Header = ({
               type="button"
               aria-label="Mở menu tài khoản"
               aria-expanded={showUserMenu}
+              title={roleTooltip}
             >
               {renderUserAvatar("user-avatar", true)}
               <div className={`user-info ${sidebarOpen ? "hide-compact" : "hide-mobile"}`}>
                 <span className="user-name">{normalizeUser.fullName}</span>
-                <span className="user-roleName">{normalizeUser.roleName}</span>
+                <span className="user-roleName">{roleLine}</span>
               </div>
               <span className={`user-chevron ${sidebarOpen ? "hide-compact" : ""}`}><FiChevronDown /></span>
             </button>
@@ -251,7 +258,11 @@ const Header = ({
                   <div className="user-details">
                     <h3>{normalizeUser.fullName}</h3>
                     <p>{normalizeUser.email}</p>
-                    <span className="user-badge">{normalizeUser.roleName}</span>
+                    <span className="user-badge">{brandRoleLabel || systemRoleLabel}</span>
+                  </div>
+                  <div className="user-role-breakdown" title={roleTooltip}>
+                    <span>Vai trò hệ thống: <strong>{systemRoleLabel}</strong></span>
+                    <span>Vai trò Brand: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span>
                   </div>
                 </div>
 
