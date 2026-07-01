@@ -84,7 +84,7 @@ const ProfileSidebar = ({
       id: "wallet",
       label: "Ví điện tử",
       icon: "💳",
-      desc: user?.wallet ? "Số dư, nạp ví, giao dịch" : "Tạo ví FoodHub để thanh toán nhanh",
+      desc: user?.wallet ? "Số dư, nạp ví, giao dịch" : "Tạo ví Cohan để thanh toán nhanh",
     },
     {
       id: "security",

@@ -45,12 +45,12 @@ export const FOODHUB_DESIGN_TOKENS = {
 };
 
 export const RESTAURANTS = {
-  "hcm-center": "🏢 FoodHub Trung Tâm HCM",
-  "hcm-district7": "🌆 FoodHub Quận 7",
-  "hcm-thuduc": "🏙️ FoodHub Thủ Đức",
-  "hanoi-center": "🏛️ FoodHub Trung Tâm Hà Nội",
-  "hanoi-caugiay": "🌸 FoodHub Cầu Giấy",
-  "danang-center": "🌊 FoodHub Trung Tâm Đà Nẵng",
+  "hcm-center": "🏢 Cohan Trung Tâm HCM",
+  "hcm-district7": "🌆 Cohan Quận 7",
+  "hcm-thuduc": "🏙️ Cohan Thủ Đức",
+  "hanoi-center": "🏛️ Cohan Trung Tâm Hà Nội",
+  "hanoi-caugiay": "🌸 Cohan Cầu Giấy",
+  "danang-center": "🌊 Cohan Trung Tâm Đà Nẵng",
 };
 
 export const PROMOTION_TYPES = {

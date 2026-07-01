@@ -137,7 +137,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
       <div className="header__container">
         <button className="header__logo" onClick={() => goto("/")}>
           <div className="header__logo-icon">🍽️</div>
-          <h1 className="header__logo-text">FoodHub</h1>
+          <h1 className="header__logo-text">Cohan</h1>
         </button>
 
         <nav className="header__nav">

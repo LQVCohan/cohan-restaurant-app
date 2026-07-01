@@ -6,6 +6,7 @@ import Sidebar from "./Sidebar";
 
 const managerUser = {
   fullName: "Quản lý ca",
+  id: "u1",
   roleName: "manager",
   avatarUrl: "/uploads/avatars/manager.webp",
 };
@@ -51,6 +52,19 @@ describe("Manager Sidebar", () => {
 
     fireEvent.error(document.querySelector(".user-avatar-small img"));
     expect(screen.getByText("QL")).toBeInTheDocument();
+  });
+
+  it("prefers brand role over system role in the footer", () => {
+    renderSidebar({ activeBrand: { id: "b1", membershipRole: "admin" } });
+
+    expect(screen.getByText("Quản trị Brand")).toBeInTheDocument();
+    expect(screen.getByTitle("Vai trò Brand: Quản trị Brand | Vai trò hệ thống: Quản lý hệ thống")).toBeInTheDocument();
+  });
+
+  it("falls back to system role when no brand role exists", () => {
+    renderSidebar({ activeBrand: { id: "b1" } });
+
+    expect(screen.getByText("Quản lý hệ thống")).toBeInTheDocument();
   });
 
   it("keeps existing navigation callbacks when selecting an item", () => {

@@ -127,7 +127,7 @@ function buildEmailShell({ preview, badge, title, body, footer }) {
                     <td style="padding:28px 30px;color:#ffffff;">
                       <div style="display:inline-block;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,0.18);font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">${escapeHtml(badge)}</div>
                       <h1 style="margin:16px 0 6px;font-size:28px;line-height:1.08;font-weight:900;letter-spacing:-0.04em;">${escapeHtml(title)}</h1>
-                      <p style="margin:0;font-size:14px;line-height:1.6;color:#fff7ed;">Bảo vệ tài khoản và tiếp tục sử dụng FoodHub an toàn.</p>
+                      <p style="margin:0;font-size:14px;line-height:1.6;color:#fff7ed;">Bảo vệ tài khoản và tiếp tục sử dụng Cohan an toàn.</p>
                     </td>
                   </tr>
                 </table>
@@ -139,11 +139,11 @@ function buildEmailShell({ preview, badge, title, body, footer }) {
             <tr>
               <td style="padding:20px 30px;background:#fffaf4;border-top:1px solid #ffedd5;color:#78716c;font-size:12px;line-height:1.6;">
                 ${footer}
-                <div style="margin-top:12px;color:#9a3412;font-weight:700;">Cohan/FoodHub</div>
+                <div style="margin-top:12px;color:#9a3412;font-weight:700;">Cohan</div>
               </td>
             </tr>
           </table>
-          <p style="max-width:640px;margin:14px auto 0;color:#a8a29e;font-size:11px;line-height:1.5;text-align:center;">Email này được gửi tự động từ hệ thống Cohan/FoodHub. Vui lòng không trả lời trực tiếp email này.</p>
+          <p style="max-width:640px;margin:14px auto 0;color:#a8a29e;font-size:11px;line-height:1.5;text-align:center;">Email này được gửi tự động từ hệ thống Cohan. Vui lòng không trả lời trực tiếp email này.</p>
         </td>
       </tr>
     </table>
@@ -157,11 +157,11 @@ export function buildVerifyMail({ to, link, user, reason, ttlHours = 24 }) {
   const safeLink = escapeHtml(link);
   const isStaff = String(user?.userType || "").toUpperCase() === "STAFF";
   const subject = isStaff
-    ? "Xác minh tài khoản nhân viên Cohan/FoodHub"
-    : "Xác minh tài khoản Cohan/FoodHub";
+    ? "Xác minh tài khoản nhân viên Cohan"
+    : "Xác minh tài khoản Cohan";
   const intro = reason === "resend"
     ? "Bạn vừa yêu cầu gửi lại liên kết xác minh tài khoản."
-    : "Tài khoản của bạn đã được tạo trên hệ thống Cohan/FoodHub.";
+    : "Tài khoản của bạn đã được tạo trên hệ thống Cohan.";
   const text = [
     `Xin chào ${user?.fullName || user?.username || "bạn"},`,
     intro,
@@ -201,8 +201,8 @@ export function buildVerifyMail({ to, link, user, reason, ttlHours = 24 }) {
     subject,
     text,
     html: buildEmailShell({
-      preview: "Xác minh email để kích hoạt tài khoản Cohan/FoodHub.",
-      badge: "FoodHub Account",
+      preview: "Xác minh email để kích hoạt tài khoản Cohan.",
+      badge: "Cohan Account",
       title: "Xác minh tài khoản",
       body,
       footer,
@@ -216,7 +216,7 @@ export function buildContactChangeOtpMail({ to, otp, user, target, ttlMinutes = 
   const safeOtp = escapeHtml(otp);
   const text = [
     `Chào ${user?.fullName || user?.username || "bạn"},`,
-    `Bạn vừa yêu cầu đổi ${targetLabel} đăng nhập FoodHub.`,
+    `Bạn vừa yêu cầu đổi ${targetLabel} đăng nhập Cohan.`,
     `Mã OTP ${String(otp).length} số của bạn là: ${otp}`,
     `Mã sẽ hết hạn sau ${ttlMinutes} phút. Không chia sẻ mã này với người khác.`,
     "Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email này hoặc đổi mật khẩu để bảo vệ tài khoản.",
@@ -224,7 +224,7 @@ export function buildContactChangeOtpMail({ to, otp, user, target, ttlMinutes = 
 
   const body = `
     <p style="margin:0 0 14px;font-size:16px;line-height:1.7;color:#374151;">Chào <strong style="color:#111827;">${name}</strong>,</p>
-    <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#4b5563;">Bạn vừa yêu cầu đổi ${escapeHtml(targetLabel)} đăng nhập FoodHub. Nhập mã dưới đây để tiếp tục.</p>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#4b5563;">Bạn vừa yêu cầu đổi ${escapeHtml(targetLabel)} đăng nhập Cohan. Nhập mã dưới đây để tiếp tục.</p>
     <div style="margin:0 0 20px;padding:18px;border-radius:20px;background:#111827;color:#ffffff;text-align:center;font-size:32px;font-weight:900;letter-spacing:8px;">${safeOtp}</div>
     <div style="padding:14px 16px;border-radius:16px;background:#fffaf4;border:1px solid #ffedd5;color:#7c2d12;font-size:13px;line-height:1.6;">Mã hết hạn sau <strong>${Number(ttlMinutes)}</strong> phút. Không chia sẻ mã này với người khác.</div>
   `;
@@ -233,11 +233,11 @@ export function buildContactChangeOtpMail({ to, otp, user, target, ttlMinutes = 
 
   return {
     to,
-    subject: target === "phone" ? "Mã xác minh đổi số điện thoại FoodHub" : "Mã xác minh đổi email FoodHub",
+    subject: target === "phone" ? "Mã xác minh đổi số điện thoại Cohan" : "Mã xác minh đổi email Cohan",
     text,
     html: buildEmailShell({
-      preview: "Mã OTP xác minh thay đổi thông tin FoodHub.",
-      badge: "FoodHub Security",
+      preview: "Mã OTP xác minh thay đổi thông tin Cohan.",
+      badge: "Cohan Security",
       title: "Mã xác minh bảo mật",
       body,
       footer,

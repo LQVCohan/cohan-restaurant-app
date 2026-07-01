@@ -24,7 +24,7 @@ try {
     from,
     to,
     subject: "SMTP test",
-    text: "Hello from FoodHub SMTP test",
+    text: "Hello from Cohan SMTP test",
   });
   console.log("OK:", info.messageId);
 } catch (e) {

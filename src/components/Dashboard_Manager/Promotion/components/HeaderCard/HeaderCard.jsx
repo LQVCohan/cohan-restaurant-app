@@ -17,7 +17,7 @@ const HeaderCard = ({
           </div>
           <div className="text-content">
             <h1>Quan Ly Khuyen Mai</h1>
-            <p className="subtitle">He thong toi uu doanh thu FoodHub</p>
+            <p className="subtitle">He thong toi uu doanh thu Cohan</p>
           </div>
         </div>
 

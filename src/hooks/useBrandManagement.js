@@ -13,8 +13,15 @@ export const MY_BRANDS_QUERY = gql`
       businessName
       businessEmail
       businessPhone
+      ownerId
       restaurantCount
       restaurants(limit: 100) { id name brandId avatar }
+    }
+    myBrandMemberships {
+      id
+      brandId
+      role
+      status
     }
   }
 `;
@@ -43,7 +50,18 @@ const normalizeRestaurant = (restaurant) => ({
 export default function useBrandManagement(additionalRestaurants = []) {
   const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
   const { data, loading, error, refetch } = useQuery(MY_BRANDS_QUERY, { fetchPolicy: "cache-and-network" });
-  const brands = data?.myBrands || [];
+  const memberships = data?.myBrandMemberships || [];
+  const membershipByBrandId = useMemo(
+    () => new Map(memberships.map((membership) => [String(membership.brandId), membership])),
+    [memberships],
+  );
+  const brands = useMemo(
+    () => (data?.myBrands || []).map((brand) => ({
+      ...brand,
+      membershipRole: membershipByBrandId.get(String(brand.id))?.role || brand.membershipRole || brand.role || "",
+    })),
+    [data?.myBrands, membershipByBrandId],
+  );
   const [selectedBrandId, setSelectedBrandId] = useState(() => storageGet("manager.selectedBrandId"));
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(() => storageGet("manager.selectedRestaurantId"));
 

@@ -101,9 +101,9 @@ export async function sendSms({ to, text }) {
 }
 
 export function buildVerificationSms({ link }) {
-  return `Cohan/FoodHub: Xac minh tai khoan cua ban tai ${link}. Link het han sau 24 gio.`;
+  return `Cohan: Xac minh tai khoan cua ban tai ${link}. Link het han sau 24 gio.`;
 }
 
 export function buildContactChangeOtpSms({ otp, ttlMinutes = 10 }) {
-  return `FoodHub: Ma OTP doi so dien thoai cua ban la ${otp}. Het han sau ${ttlMinutes} phut. Khong chia se ma nay.`;
+  return `Cohan: Ma OTP doi so dien thoai cua ban la ${otp}. Het han sau ${ttlMinutes} phut. Khong chia se ma nay.`;
 }

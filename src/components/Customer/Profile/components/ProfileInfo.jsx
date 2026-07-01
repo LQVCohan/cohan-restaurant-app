@@ -491,7 +491,7 @@ const ProfileInfo = ({
         <div className="wallet-panel-header">
           <div>
             <span className="wallet-eyebrow">Ví điện tử</span>
-            <h3>{user?.wallet ? "FoodHub Wallet" : "Mở ví FoodHub"}</h3>
+            <h3>{user?.wallet ? "Cohan Wallet" : "Mở ví Cohan"}</h3>
             <p>{user?.wallet ? "Quản lý số dư và giao dịch gần đây trong cùng một khu vực." : "Tạo ví một lần để thanh toán nhanh hơn ở các đơn hàng sau."}</p>
           </div>
           {user?.wallet && <span className="wallet-status-badge">{user.wallet.status || "active"}</span>}
@@ -551,7 +551,7 @@ const ProfileInfo = ({
           <div className="wallet-empty-state">
             <div>
               <strong>Bạn chưa có ví điện tử</strong>
-              <p>Ví FoodHub giúp lưu số dư, theo dõi giao dịch và chuẩn bị cho thanh toán nhanh.</p>
+              <p>Ví Cohan giúp lưu số dư, theo dõi giao dịch và chuẩn bị cho thanh toán nhanh.</p>
             </div>
             <button className="btn-save" onClick={handleCreateWallet} disabled={creatingWallet}>
               {creatingWallet ? "Đang tạo ví..." : "Tạo ví điện tử"}

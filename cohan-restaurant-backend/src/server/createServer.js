@@ -389,7 +389,7 @@ export async function createServer() {
     try {
       const res = await fetch(url.toString(), {
         headers: {
-          "User-Agent": "FoodHubPOS/1.0 (your-email@example.com)",
+          "User-Agent": "CohanPOS/1.0 (your-email@example.com)",
         },
       });
 
