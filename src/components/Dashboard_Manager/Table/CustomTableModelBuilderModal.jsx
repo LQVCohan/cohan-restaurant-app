@@ -59,7 +59,7 @@ const MODEL_MAX_SIZE_BYTES = 15 * 1024 * 1024;
 const THUMBNAIL_MAX_SIZE_BYTES = 3 * 1024 * 1024;
 const AI_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const AI_MIN_IMAGES = 3;
-const AI_MAX_IMAGES = 5;
+const AI_MAX_IMAGES = 4;
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || "").trim());
@@ -249,6 +249,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
 
   const activeTab =
     BUILDER_TABS.find((tab) => tab.value === mode) || BUILDER_TABS[0];
+  const isAiGenerating = ["submitting", "queued", "processing"].includes(aiStatus);
   const isBusy = isUploading || aiStatus === "submitting";
 
   const updateField = (field, value) => {
@@ -331,7 +332,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
     const nextErrors = [];
     const images = Array.from(aiForm.images || []);
     if (images.length < AI_MIN_IMAGES) nextErrors.push("Cần ít nhất 3 ảnh tham chiếu.");
-    if (images.length > AI_MAX_IMAGES) nextErrors.push("Tối đa 5 ảnh tham chiếu.");
+    if (images.length > AI_MAX_IMAGES) nextErrors.push("Tối đa 4 ảnh tham chiếu.");
     images.forEach((file) => {
       if (!IMAGE_MIME_TYPES.has(file.type)) nextErrors.push(`${file.name}: chỉ hỗ trợ PNG, JPG hoặc WEBP.`);
       if (file.size > AI_IMAGE_MAX_SIZE_BYTES) nextErrors.push(`${file.name}: tối đa ${formatFileSize(AI_IMAGE_MAX_SIZE_BYTES)}.`);
@@ -419,6 +420,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
   };
 
   const handleSubmitAi = async () => {
+    if (isAiGenerating) return;
     const errors = validateAiForm();
     if (errors.length) {
       setError(errors.join(" "));
@@ -449,11 +451,11 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
       const payload = await requestAiTable3DGeneration(formData);
       setAiJob(payload);
       setAiStatus(payload.status || "queued");
-      if (payload?.modelUrl) {
+      if (payload?.generatedModelUrl) {
         onApply(buildAiGeneratedTableCatalogItem({
           ...aiForm,
-          modelUrl: payload.modelUrl,
-          thumbnailUrl: payload.thumbnailUrl,
+          modelUrl: payload.generatedModelUrl,
+          thumbnailUrl: payload.generatedThumbnailUrl,
           jobId: payload.jobId,
         }));
       }
@@ -471,11 +473,11 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
       const payload = await fetchAiTable3DJobStatus(jobId);
       setAiJob((prev) => ({ ...(prev || {}), ...payload }));
       setAiStatus(payload.status || "processing");
-      if (payload?.modelUrl) {
+      if (payload?.generatedModelUrl) {
         onApply(buildAiGeneratedTableCatalogItem({
           ...aiForm,
-          modelUrl: payload.modelUrl,
-          thumbnailUrl: payload.thumbnailUrl,
+          modelUrl: payload.generatedModelUrl,
+          thumbnailUrl: payload.generatedThumbnailUrl,
           jobId,
         }));
       }
@@ -606,7 +608,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
             <>
               <Section title="Tạo mẫu bằng AI" eyebrow="Preview provider">
                 <Field label="Tên mẫu"><input value={aiForm.label} onChange={(e) => updateAiField("label", e.target.value)} /></Field>
-                <Field label="Ảnh tham chiếu" className="span-2" hint="Cần 3–5 ảnh từ nhiều góc để tạo job.">
+                <Field label="Ảnh tham chiếu" className="span-2" hint="Cần 3–4 ảnh từ nhiều góc để tạo job.">
                   <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(e) => updateAiField("images", Array.from(e.target.files || []))} />
                 </Field>
                 <Field label="Prompt" className="span-2"><textarea value={aiForm.prompt} onChange={(e) => updateAiField("prompt", e.target.value)} rows={4} /></Field>
@@ -621,7 +623,7 @@ const CustomTableModelBuilderModal = ({ open, onClose, onApply }) => {
                 {aiJob?.message ? ` · ${aiJob.message}` : ""}
               </StatusCard>
               <div className="custom-table-builder__actions">
-                <Button variant="primary" onClick={handleSubmitAi} disabled={isBusy}>{aiStatus === "submitting" ? "Đang gửi..." : "Gửi job AI"}</Button>
+                <Button variant="primary" onClick={handleSubmitAi} disabled={isUploading || isAiGenerating}>{isAiGenerating ? "Đang tạo..." : "Gửi job AI"}</Button>
                 {aiJob?.jobId && <Button variant="secondary" onClick={handleRefreshAiJob}>Kiểm tra job</Button>}
               </div>
             </>

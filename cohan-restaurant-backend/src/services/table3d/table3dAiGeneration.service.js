@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import path from "node:path";
 
 const CONFIG_REQUIRED_MESSAGE = "AI 3D generation provider is not configured";
 const PENDING_PROVIDER_MESSAGE = "AI 3D generation provider adapter is pending implementation";
@@ -8,6 +9,7 @@ const PROMPT_READY_MESSAGE =
 const MOCK_PROVIDER = "mock";
 const OLLAMA_PROVIDER = "ollama";
 const GEMINI_PROVIDER = "gemini";
+const MESHY_PROVIDER = "meshy";
 const DEFAULT_OLLAMA_ENDPOINT = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "llava";
 const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
@@ -58,7 +60,7 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
   const isHybridAlias = HYBRID_PROVIDER_ALIASES.has(rawProvider);
   const provider = isHybridAlias ? GEMINI_PROVIDER : rawProvider;
   const enabled = normalizeBoolean(env.TABLE_3D_AI_ENABLED);
-  const apiKey = trim(env.TABLE_3D_AI_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY);
+  const apiKey = trim(provider === GEMINI_PROVIDER ? env.TABLE_3D_AI_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY : env.TABLE_3D_AI_API_KEY);
   const endpoint = trim(env.TABLE_3D_AI_ENDPOINT);
   const nodeEnv = trim(env.NODE_ENV) || "development";
   const preprocessingProvider = normalizeProviderName(
@@ -71,6 +73,7 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
   const geminiEndpoint = trim(env.TABLE_3D_AI_GEMINI_ENDPOINT || env.GEMINI_ENDPOINT);
   const isMock = provider === MOCK_PROVIDER && nodeEnv !== "production";
   const isGemini = provider === GEMINI_PROVIDER;
+  const isMeshy = provider === MESHY_PROVIDER;
   const configured = enabled && (
     isMock ||
     (isGemini ? Boolean(apiKey) : Boolean(provider && apiKey && endpoint))
@@ -86,6 +89,7 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
     nodeEnv,
     isMock,
     isGemini,
+    isMeshy,
     configured,
     preprocessingProvider,
     usesOllamaPreprocess,
@@ -118,6 +122,18 @@ export const getTable3DAiGenerationAvailability = (env = process.env) => {
       provider: MOCK_PROVIDER,
       pipelineProvider: MOCK_PROVIDER,
       isMock: true,
+    };
+  }
+
+  if (config.isMeshy) {
+    return {
+      configured: true,
+      status: "ready",
+      message: "Meshy AI 3D generation provider is configured.",
+      provider: MESHY_PROVIDER,
+      pipelineProvider: MESHY_PROVIDER,
+      preprocessingProvider: config.preprocessingProvider,
+      isMock: false,
     };
   }
 
@@ -154,8 +170,8 @@ export const shouldKeepAiInputFilesForResult = (result = {}) => {
 export const normalizeTableModelGenerationInput = (input = {}, context = {}) => ({
   userId: trim(input.userId || context.userId || context.user?.id),
   restaurantId: trim(input.restaurantId || context.restaurantId),
-  name: trim(input.name),
-  tableType: trim(input.tableType),
+  name: trim(input.name || input.label),
+  tableType: trim(input.tableType || input.type),
   capacity: Math.max(1, Math.round(Number(input.capacity || 1))),
   defaultScale: Number(input.defaultScale || 1),
   dimensions: normalizeDimensions(input.dimensions || input.dimensionsCm || input),
@@ -224,6 +240,109 @@ const readImageBase64List = async (images = [], limit = 5) => {
     }
   }
   return results;
+};
+
+const buildUploadsRoot = (env = process.env) => path.resolve(env.UPLOAD_DIR || path.join(process.cwd(), "uploads"));
+const getMaxModelBytes = (env = process.env) => Number.parseInt(env.TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES || `${15 * 1024 * 1024}`, 10);
+const asDataUri = async (image) => {
+  const buffer = await fs.readFile(image.path);
+  if (!buffer.length) throw new Error("AI reference image is empty");
+  return `data:${trim(image.mimeType) || "application/octet-stream"};base64,${buffer.toString("base64")}`;
+};
+
+const downloadTableModel = async ({ url, env }) => {
+  const response = await fetchWithTimeout(url, {}, 60000);
+  if (!response.ok) throw new Error(`Meshy model download failed with HTTP ${response.status}`);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const maxBytes = getMaxModelBytes(env);
+  if (!buffer.length) throw new Error("Meshy model download was empty");
+  if (buffer.length > maxBytes) throw new Error(`Meshy model exceeds max size of ${maxBytes} bytes`);
+  const fileName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.glb`;
+  const dir = path.join(buildUploadsRoot(env), "table-3d", "models");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, fileName), buffer, { flag: "wx" });
+  return `/uploads/table-3d/models/${fileName}`;
+};
+
+const requestMeshyGeneration = async ({ normalized, config }) => {
+  if (normalized.images.length < 3 || normalized.images.length > 4) {
+    throw new Error("Meshy table generation requires 3 to 4 reference images");
+  }
+  const imageUrls = await Promise.all(normalized.images.map(asDataUri));
+  const response = await fetchWithTimeout(`${config.endpoint.replace(/\/$/, "")}/openapi/v1/multi-image-to-3d`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      image_urls: imageUrls,
+      ai_model: process.env.TABLE_3D_AI_MESHY_MODEL || "meshy-5",
+      should_texture: true,
+      enable_pbr: false,
+      target_formats: ["glb"],
+      target_polycount: 15000,
+      image_enhancement: true,
+      remove_lighting: true,
+    }),
+  }, 45000);
+  if (!response.ok) throw new Error(`Meshy task creation failed with HTTP ${response.status}`);
+  const payload = await response.json();
+  if (!payload?.result) throw new Error("Meshy task creation response did not include result");
+  return String(payload.result);
+};
+
+const createMeshyJob = async ({ normalized, config }) => {
+  const providerTaskId = await requestMeshyGeneration({ normalized, config });
+  const jobId = `meshy-table3d-${crypto.randomUUID()}`;
+  const job = {
+    ok: true,
+    jobId,
+    providerTaskId,
+    status: "queued",
+    provider: MESHY_PROVIDER,
+    aiProvider: MESHY_PROVIDER,
+    generationStatus: "queued",
+    input: omitImagePayloads(normalized),
+    generatedModelUrl: "",
+    generatedThumbnailUrl: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  jobStore.set(jobId, job);
+  return job;
+};
+
+const pollMeshyJob = async ({ job, config, env }) => {
+  if (job.status === "completed" || job.status === "failed") return job;
+  const response = await fetchWithTimeout(`${config.endpoint.replace(/\/$/, "")}/openapi/v1/multi-image-to-3d/${encodeURIComponent(job.providerTaskId)}`, {
+    headers: { Authorization: `Bearer ${config.apiKey}` },
+  }, 30000);
+  if (!response.ok) throw new Error(`Meshy status check failed with HTTP ${response.status}`);
+  const payload = await response.json();
+  const providerStatus = trim(payload?.status).toUpperCase();
+  if (["PENDING", "IN_PROGRESS"].includes(providerStatus)) {
+    Object.assign(job, { status: "processing", generationStatus: "processing", progress: payload?.progress, updatedAt: new Date().toISOString() });
+    return job;
+  }
+  if (providerStatus === "SUCCEEDED" && payload?.model_urls?.glb) {
+    const generatedModelUrl = await downloadTableModel({ url: payload.model_urls.glb, env });
+    Object.assign(job, {
+      status: "completed",
+      generationStatus: "completed",
+      generatedModelUrl,
+      generatedThumbnailUrl: trim(payload?.thumbnail_url),
+      progress: 100,
+      updatedAt: new Date().toISOString(),
+    });
+    return job;
+  }
+  if (providerStatus === "FAILED") {
+    Object.assign(job, { status: "failed", generationStatus: "failed", message: trim(payload?.task_error?.message || payload?.message || payload?.error) || "Meshy generation failed", updatedAt: new Date().toISOString() });
+    return job;
+  }
+  Object.assign(job, { status: "processing", generationStatus: "processing", updatedAt: new Date().toISOString() });
+  return job;
 };
 
 const requestOllamaPreprocess = async ({ normalized, config }) => {
@@ -406,6 +525,21 @@ export const requestTableModelGeneration = async (input = {}, context = {}) => {
     };
   }
 
+  if (config.isMeshy) {
+    const job = await createMeshyJob({ normalized, config });
+    return {
+      ok: true,
+      status: "queued",
+      jobId: job.jobId,
+      providerTaskId: job.providerTaskId,
+      provider: MESHY_PROVIDER,
+      aiProvider: MESHY_PROVIDER,
+      generatedModelUrl: "",
+      generatedThumbnailUrl: "",
+      message: "Meshy generation task queued.",
+    };
+  }
+
   const preprocessing = await runOllamaPreprocessIfEnabled({ normalized, config, context });
 
   if (config.isGemini) {
@@ -472,6 +606,14 @@ export const getTableModelGenerationStatus = async (jobId, context = {}) => {
   }
 
   const job = jobStore.get(normalizedJobId);
+  if (config.isMeshy) {
+    if (!job || job.provider !== MESHY_PROVIDER) {
+      return { ok: false, jobId: normalizedJobId, status: "failed", provider: MESHY_PROVIDER, message: "Meshy AI 3D generation job was not found." };
+    }
+    const updated = await pollMeshyJob({ job, config, env: context.env || process.env });
+    return { ...updated, ok: true };
+  }
+
   if (job?.status === "prompt_ready") {
     return {
       ...job,

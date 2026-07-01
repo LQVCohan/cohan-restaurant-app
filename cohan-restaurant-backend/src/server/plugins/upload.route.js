@@ -36,7 +36,7 @@ const TABLE_3D_AI_IMAGE_MAX_FILE_SIZE_BYTES = Number.parseInt(
   10
 );
 const TABLE_3D_AI_MIN_IMAGES = 3;
-const TABLE_3D_AI_MAX_IMAGES = 5;
+const TABLE_3D_AI_MAX_IMAGES = 4;
 const TABLE_3D_MAX_MULTIPART_FILE_SIZE_BYTES = Math.max(
   MAX_FILE_SIZE_BYTES,
   TABLE_3D_MODEL_MAX_FILE_SIZE_BYTES,
@@ -533,7 +533,7 @@ export default fp(
           const ext = validateTable3DAiImageFile(part, buffer);
           if (images.length >= TABLE_3D_AI_MAX_IMAGES) {
             await cleanupSavedPaths(savedPaths, req.log);
-            return reply.code(400).send({ ok: false, message: "At most 5 AI reference images are allowed" });
+            return reply.code(400).send({ ok: false, message: "At most 4 AI reference images are allowed" });
           }
           const fileName = buildSafeAssetName(part.filename, ext);
           const filePath = path.join(imageDir, fileName);
