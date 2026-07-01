@@ -79,7 +79,7 @@ export const STAFF_ATTENDANCE_SELF_SERVICE = gql`
 `;
 
 export const CREATE_ATTENDANCE_CORRECTION = gql`
-  mutation StaffCreateAttendanceCorrection($input: JSON) {
+  mutation StaffCreateAttendanceCorrection($input: CreateAttendanceCorrectionRequestInput!) {
     createAttendanceCorrectionRequest(input: $input) {
       id
       status

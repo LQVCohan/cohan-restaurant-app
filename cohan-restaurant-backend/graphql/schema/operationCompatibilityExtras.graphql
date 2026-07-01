@@ -72,7 +72,7 @@ extend type CompatibilityNode {
   employeeName: String
   employeeRole: String
   employmentType: String
-  employmentTypePolicy: CompatibilityNode
+  employmentTypePolicy: SchedulingEmploymentTypePolicy
   enablePersonalIncomeTax: Boolean
   endSession: String
   errorCount: Int
@@ -118,7 +118,7 @@ extend type CompatibilityNode {
   lowPriorityCount: Int
   managerRatingScore: Float
   managerReview: String
-  mandatoryShiftRoles: [CompatibilityNode!]
+  mandatoryShiftRoles: [String!]
   manualAdjustmentTotal: Float
   mediumPriorityCount: Int
   method: String
