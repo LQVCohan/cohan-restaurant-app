@@ -125,6 +125,22 @@ describe("communication resolver restaurant access hardening", () => {
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
   });
 
+
+  it("openChatThread prefers BrandMembership manager over legacy managerId", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    modelMocks.BrandMembership.find.mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([{ userId: "valid-membership-manager" }]) })) });
+    await resolver.Mutation.openChatThread(null, { input: { restaurantId: "valid-r1", channel: "support" } }, ctx);
+    expect(modelMocks.Restaurant.findById).not.toHaveBeenCalled();
+    expect(modelMocks.ChatThread.create).toHaveBeenCalledWith(expect.objectContaining({ participants: expect.arrayContaining([expect.objectContaining({ value: "valid-membership-manager" })]) }));
+  });
+
+  it("openChatThread falls back to legacy managerId before migration", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    await resolver.Mutation.openChatThread(null, { input: { restaurantId: "valid-r1", channel: "support" } }, ctx);
+    expect(modelMocks.Restaurant.findById).toHaveBeenCalled();
+    expect(modelMocks.ChatThread.create).toHaveBeenCalledWith(expect.objectContaining({ participants: expect.arrayContaining([expect.objectContaining({ value: "valid-u2" })]) }));
+  });
+
   it("markAllNotificationsRead denied scope blocks updateMany", async () => {
     const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));

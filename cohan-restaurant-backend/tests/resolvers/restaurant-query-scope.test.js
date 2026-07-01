@@ -67,9 +67,21 @@ describe("RestaurantQuery management scope", () => {
     expect(state.findFilter).toEqual({});
   });
 
-  it("restaurantsByManager is a deprecated alias for scopedRestaurants", async () => {
+  it("restaurantsByManager keeps system-admin legacy managerId lookup", async () => {
     const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
     await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "admin-1", roleName: "admin" } });
-    expect(state.findFilter).toEqual({});
+    expect(String(state.findFilter.managerId)).toBe("665f665f665f665f665f6611");
+  });
+
+  it("restaurantsByManager uses scoped access for the current non-admin user", async () => {
+    const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
+    await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "665f665f665f665f665f6611", roleName: "manager" } });
+    expect(String(state.findFilter.$or[0].managerId)).toBe("665f665f665f665f665f6611");
+  });
+
+  it("restaurantsByManager returns empty scope for other non-admin users", async () => {
+    const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
+    await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "665f665f665f665f665f6622", roleName: "manager" } });
+    expect(state.findFilter).toEqual({ _id: { $in: [] } });
   });
 });

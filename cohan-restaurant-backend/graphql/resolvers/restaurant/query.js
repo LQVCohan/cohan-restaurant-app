@@ -344,22 +344,10 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
     .slice(0, lim);
 }
 
-/** Danh sách nhà hàng theo quyền hiện tại với cursor pagination và bộ lọc */
-async function scopedRestaurants(
-  _,
-  { brandId, limit = 20, cursor, restaurantFilter } = {},
-  ctx
-) {
-  if (!ctx?.user) throw unauthenticated("Unauthorized");
-  if (brandId && !mongoose.isValidObjectId(brandId)) throw badInput("Invalid brandId");
-
+async function buildRestaurantConnection(baseFilter, { limit = 20, cursor } = {}) {
   const lim = clampLimit(limit, 1, 100);
-  const scopedAccessFilter = await getScopedRestaurantFilter(ctx.user);
-  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
   const cId = toObjectIdOrNull(cursor);
-  const cursorFilter = cId ? { _id: { $gt: cId } } : {};
-  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopedAccessFilter, requestedBrandFilter);
-  const queryFilter = combineFilters(baseFilter, cursorFilter);
+  const queryFilter = combineFilters(baseFilter, cId ? { _id: { $gt: cId } } : {});
 
   const docs = await Restaurant.find(queryFilter).sort({ _id: 1 }).limit(lim + 1).lean();
   const hasNextPage = docs.length > lim;
@@ -372,9 +360,32 @@ async function scopedRestaurants(
   };
 }
 
-/** Deprecated: use scopedRestaurants. Kept for backward compatibility. */
-async function restaurantsByManager(_, args, ctx) {
-  return scopedRestaurants(_, args, ctx);
+/** Danh sách nhà hàng theo quyền hiện tại với cursor pagination và bộ lọc */
+async function scopedRestaurants(_, { brandId, limit = 20, cursor, restaurantFilter } = {}, ctx) {
+  if (!ctx?.user) throw unauthenticated("Unauthorized");
+  if (brandId && !mongoose.isValidObjectId(brandId)) throw badInput("Invalid brandId");
+
+  const scopedAccessFilter = await getScopedRestaurantFilter(ctx.user);
+  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  const baseFilter = combineFilters(buildFilter(restaurantFilter), scopedAccessFilter, requestedBrandFilter);
+  return buildRestaurantConnection(baseFilter, { limit, cursor });
+}
+
+/** Deprecated legacy alias. New clients must use scopedRestaurants. System admin legacy lookups may still use Restaurant.managerId until migration completes. */
+async function restaurantsByManager(_, { managerId, brandId, limit = 20, cursor, restaurantFilter } = {}, ctx) {
+  if (!ctx?.user) throw unauthenticated("Unauthorized");
+  if (!mongoose.isValidObjectId(managerId)) throw badInput("Invalid managerId");
+  if (brandId && !mongoose.isValidObjectId(brandId)) throw badInput("Invalid brandId");
+
+  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
+  if (isSystemAdmin(ctx.user)) {
+    const legacyManagerFilter = { managerId: new mongoose.Types.ObjectId(managerId) };
+    return buildRestaurantConnection(combineFilters(buildFilter(restaurantFilter), legacyManagerFilter, requestedBrandFilter), { limit, cursor });
+  }
+
+  const uid = String(ctx.user.id || ctx.user._id || "");
+  if (uid !== String(managerId)) return buildRestaurantConnection({ _id: { $in: [] } }, { limit, cursor });
+  return scopedRestaurants(_, { brandId, limit, cursor, restaurantFilter }, ctx);
 }
 
 /** Các nhà hàng tham chiếu theo user.refRestaurants */

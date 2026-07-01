@@ -9,7 +9,8 @@ const DB_NAME = process.env.MONGO_DB || "foodhub";
 const emptyReport = () => ({ created: 0, updated: 0, skippedNoBrandId: 0, skippedNoManagerId: 0, conflicts: [] });
 const id = (value) => String(value?._id || value?.id || value || "");
 
-export async function migrateRestaurantManagersToBrandMembership({ dryRun = true, models = { Restaurant, BrandMembership }, logger = console } = {}) {
+export async function migrateRestaurantManagersToBrandMembership({ dryRun = true, dbName = DB_NAME, models = { Restaurant, BrandMembership }, logger = console } = {}) {
+  logger.log(`Using database ${dbName}${process.env.MONGO_DB ? "" : " (default; MONGO_DB not set)"}`);
   const report = emptyReport();
   const restaurants = await models.Restaurant.find({}).select("_id brandId managerId name").lean();
 
@@ -57,7 +58,7 @@ async function main() {
   }
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   try {
-    await migrateRestaurantManagersToBrandMembership({ dryRun });
+    await migrateRestaurantManagersToBrandMembership({ dryRun, dbName: DB_NAME });
   } finally {
     await mongoose.disconnect();
   }

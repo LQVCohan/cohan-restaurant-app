@@ -26,10 +26,12 @@ describe("migrateRestaurantManagersToBrandMembership", () => {
       },
     };
 
-    const report = await migrateRestaurantManagersToBrandMembership({ models, logger: { log: vi.fn() } });
+    const logger = { log: vi.fn() };
+    const report = await migrateRestaurantManagersToBrandMembership({ models, logger });
 
     expect(report).toMatchObject({ created: 1, updated: 1, skippedNoBrandId: 1, skippedNoManagerId: 1 });
     expect(report.conflicts).toHaveLength(1);
     expect(updateOne).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(expect.stringContaining("Using database"));
   });
 });

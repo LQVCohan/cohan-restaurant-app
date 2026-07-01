@@ -38,7 +38,12 @@ async function activeManagerIdsForRestaurant(restaurantId) {
     status: "active",
     restaurantIds: restaurantId,
   }).select("userId").lean();
-  return memberships.map((membership) => String(membership.userId)).filter(Boolean);
+  const membershipManagerIds = [...new Set(memberships.map((membership) => String(membership.userId)).filter(Boolean))];
+  if (membershipManagerIds.length) return membershipManagerIds;
+
+  // Temporary legacy fallback until Restaurant.managerId values are migrated to BrandMembership.
+  const restaurant = await Restaurant.findById(restaurantId).select("managerId").lean();
+  return restaurant?.managerId ? [String(restaurant.managerId)] : [];
 }
 
 const getUserRestaurantIds = (user) => {
