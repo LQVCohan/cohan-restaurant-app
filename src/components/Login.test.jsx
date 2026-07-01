@@ -55,7 +55,7 @@ const renderLogin = () => render(
 const getLoginForm = () => screen.getAllByRole("heading", { name: "Đăng nhập" })
   .map((heading) => heading.closest("form"))
   .find((form) => form && within(form).queryByPlaceholderText("Email / Username / SĐT"));
-const getRegisterForm = () => screen.getByRole("heading", { name: "Tạo tài khoản" }).closest("form");
+const getRegisterForm = () => screen.getByRole("form", { name: "Đăng ký" });
 const getPrimaryLoginButton = () => within(getLoginForm()).getByRole("button", { name: "Đăng nhập" });
 
 describe("Login captcha config", () => {
