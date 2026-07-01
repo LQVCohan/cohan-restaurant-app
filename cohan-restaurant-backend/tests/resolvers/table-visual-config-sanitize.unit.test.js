@@ -81,6 +81,76 @@ describe("sanitizeVisualConfig", () => {
     expect(result.fallbackKind).toBe("placeholder");
   });
 
+  it("keeps safe internal upload URLs for generated table models", () => {
+    const result = sanitizeVisualConfig({
+      modelUrl: "/uploads/table-3d/models/demo.glb",
+      thumbnailUrl: "/uploads/table-3d/thumbnails/demo.webp",
+    });
+
+    expect(result.modelUrl).toBe("/uploads/table-3d/models/demo.glb");
+    expect(result.thumbnailUrl).toBe("/uploads/table-3d/thumbnails/demo.webp");
+    expect(result.fallbackKind).toBe("model");
+  });
+
+  it("keeps AR placement metadata from WebXR table positioning", () => {
+    const result = sanitizeVisualConfig({
+      modelKey: "round-catalog",
+      arPlacement: {
+        modelKey: "round-catalog",
+        arPoint: { x: "0.25", z: "-1.4" },
+        floorPosition: { x: "180", y: "260" },
+        transform: {
+          scale: "80",
+          rotation: "1.57",
+          arOrigin: { x: 0, z: 0 },
+          floorOrigin: { x: 50, y: 50 },
+          calibratedAt: "2026-07-02T00:00:00.000Z",
+        },
+        geofence: {
+          canSaveArPosition: true,
+          isInsideRestaurant: true,
+          distanceMeters: "12.5",
+          radiusMeters: "120",
+          warning: "",
+        },
+        modelRender: {
+          modelUrl: "/uploads/table-3d/models/demo.glb",
+          scale: "1.2",
+          rotationDegrees: "15",
+          pinned: true,
+          pinnedArPoint: { x: 0.25, y: 0, z: -1.4 },
+        },
+        savedAt: "2026-07-02T00:00:00.000Z",
+      },
+    });
+
+    expect(result.arPlacement).toMatchObject({
+      modelKey: "round-catalog",
+      arPoint: { x: 0.25, z: -1.4 },
+      floorPosition: { x: 180, y: 260 },
+      transform: {
+        scale: 80,
+        rotation: 1.57,
+        arOrigin: { x: 0, z: 0 },
+        floorOrigin: { x: 50, y: 50 },
+      },
+      geofence: {
+        canSaveArPosition: true,
+        isInsideRestaurant: true,
+        distanceMeters: 12.5,
+        radiusMeters: 120,
+      },
+      modelRender: {
+        modelUrl: "/uploads/table-3d/models/demo.glb",
+        scale: 1.2,
+        rotationDegrees: 15,
+        pinned: true,
+        pinnedArPoint: { x: 0.25, y: 0, z: -1.4 },
+      },
+      savedAt: "2026-07-02T00:00:00.000Z",
+    });
+  });
+
   it("keeps diameterCm and normalizes diameter alias in dimensions", () => {
     const withDiameterCm = sanitizeVisualConfig({
       modelKey: "round-diameter-cm",
