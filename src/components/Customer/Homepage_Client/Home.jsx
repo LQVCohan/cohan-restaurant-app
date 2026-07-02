@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
@@ -14,7 +13,6 @@ import useIsMobile from "../../../hooks/useIsMobile";
 import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
 import "../../../styles/Homepage/HomePremiumPolish.scss";
-import "../../../styles/Homepage/HomeShortcutsBento.scss";
 import "../../../styles/Homepage/HomeA11yPolish.scss";
 import "../../../styles/Homepage/HomeResponsiveFix.scss";
 
@@ -26,15 +24,7 @@ const getCurrentTimeSlot = () => {
   return "late_night";
 };
 
-const CUSTOMER_SHORTCUTS = [
-  { icon: "🎟️", tag: "Ưu đãi", title: "Kho Coupon", desc: "Xem ưu đãi đã lưu và dùng ngay khi đặt món.", path: "/coupons" },
-  { icon: "🍱", tag: "Tiết kiệm", title: "Combo", desc: "Chọn nhanh các combo món ăn đang có trên hệ thống.", path: "/combos" },
-  { icon: "📍", tag: "Gần nhất", title: "Gần bạn", desc: "Tìm nhà hàng thuận đường, quyết định nhanh hơn.", path: "/restaurants" },
-  { icon: "📦", tag: "Theo dõi", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
-];
-
 const DesktopHome = () => {
-  const navigate = useNavigate();
   const timeSlot = getCurrentTimeSlot();
   const [filterState, setFilterState] = useState({});
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
@@ -111,36 +101,6 @@ const DesktopHome = () => {
           selectedCategoryName={filterState.categoryName}
           timeSlot={timeSlot}
         />
-
-        <section className="home-shortcuts" aria-labelledby="home-shortcuts-title">
-          <div className="home-shortcuts__container">
-            <div className="home-shortcuts__wizard">
-              <span className="home-shortcuts__eyebrow">Khám phá nhanh</span>
-              <h3 id="home-shortcuts-title">Tiện ích hay dùng</h3>
-              <p>Mở nhanh ưu đãi, combo và các gợi ý cá nhân hóa trong một chạm.</p>
-              <button type="button" className="home-shortcuts__view-all" onClick={() => navigate("/for-you")}>Gợi ý cho bạn <span>→</span></button>
-            </div>
-
-            <div className="home-shortcuts__board" aria-label="Các tiện ích hay dùng">
-              {CUSTOMER_SHORTCUTS.map((item, index) => (
-                <button
-                  key={item.path}
-                  type="button"
-                  className={`home-shortcut-card home-shortcut-card--${index + 1} ${index === 0 ? "home-shortcut-card--featured" : ""}`}
-                  onClick={() => navigate(item.path)}
-                >
-                  <span className="home-shortcut-card__icon" aria-hidden="true">{item.icon}</span>
-                  <span className="home-shortcut-card__content">
-                    <em className="home-shortcut-card__tag">{item.tag}</em>
-                    <strong>{item.title}</strong>
-                    <small>{item.desc}</small>
-                  </span>
-                  <span className="home-shortcut-card__arrow" aria-hidden="true">→</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
 
         <HowItWorks />
       </main>

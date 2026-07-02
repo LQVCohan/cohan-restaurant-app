@@ -44,7 +44,6 @@ const HERO_TARGETS = [
 
 const SECTION_TARGETS = [
   ".restaurant-grid__header",
-  ".home-shortcuts__wizard",
   ".categories__header",
   ".dish-grid__header",
   ".how-it-works__header",
@@ -53,7 +52,6 @@ const SECTION_TARGETS = [
 
 const CARD_TARGETS = [
   ".res-card",
-  ".home-shortcut-card",
   ".categories__card",
   ".dish-card",
   ".dish-grid__fallback-card",
@@ -62,7 +60,6 @@ const CARD_TARGETS = [
 
 const DYNAMIC_ROOTS = [
   ".restaurant-grid__list",
-  ".home-shortcuts__board",
   ".categories__grid",
   ".dish-grid__list",
   ".dish-grid__grid",
@@ -77,7 +74,6 @@ const PRESS_TARGETS = [
   ".restaurant-grid__view-all",
   ".categories__view-all",
   ".dish-grid__view-all",
-  ".home-shortcut-card",
   ".res-card__btn",
   ".dish-card__btn-add",
   ".dish-grid__fallback-body button",

@@ -1,8 +1,20 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bot, ChevronLeft, ChevronRight, Loader2, Sparkles, Utensils, X } from "lucide-react";
+import {
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+  Gift,
+  Loader2,
+  MapPin,
+  Package,
+  Sparkles,
+  Ticket,
+  Utensils,
+  X,
+} from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
 import { openAiMenuAssistant } from "@/utils/aiChatbotEvents";
 import { buildFoodDetailPath, buildFoodDetailState } from "@/utils/customerFoodNavigation";
@@ -87,6 +99,44 @@ const WIZARD_HIDDEN_PREFIXES = [
   "/preview",
 ];
 
+const QUICK_UTILITIES = [
+  {
+    id: "meal-wizard",
+    label: "Chọn món nhanh",
+    hint: "AI hỏi 4 câu rồi gợi ý món phù hợp",
+    icon: Utensils,
+    action: "wizard",
+  },
+  {
+    id: "coupons",
+    label: "Kho Coupon",
+    hint: "Xem ưu đãi đang có",
+    icon: Ticket,
+    path: "/coupons",
+  },
+  {
+    id: "combos",
+    label: "Combo tiết kiệm",
+    hint: "Chọn nhanh phần ăn theo nhóm",
+    icon: Gift,
+    path: "/combos",
+  },
+  {
+    id: "nearby",
+    label: "Gần bạn",
+    hint: "Tìm nhà hàng thuận đường",
+    icon: MapPin,
+    path: "/restaurants",
+  },
+  {
+    id: "orders",
+    label: "Đơn của tôi",
+    hint: "Theo dõi hoặc đặt lại",
+    icon: Package,
+    path: "/orders",
+  },
+];
+
 const STEP_CONFIG = [
   {
     id: "occasion",
@@ -158,12 +208,11 @@ const LABELS = {
 };
 
 const readInitialMinimized = () => {
-  if (typeof window === "undefined") return false;
-  if (window.matchMedia?.("(max-width: 760px)").matches) return true;
+  if (typeof window === "undefined") return true;
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
+    return window.localStorage.getItem(STORAGE_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 };
 
@@ -260,6 +309,7 @@ export default function TodayMealWizard() {
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const [askAiChatbot, { loading: aiLoading }] = useMutation(ASK_AI_CHATBOT);
   const [isMinimized, setIsMinimized] = useState(readInitialMinimized);
+  const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState({
     occasion: "",
@@ -282,11 +332,30 @@ export default function TodayMealWizard() {
   const answerSummary = useMemo(() => buildAnswerSummary(answers), [answers]);
   const showResultMode = aiLoading || Boolean(aiResult);
 
+  useEffect(() => {
+    if (!isUtilityMenuOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setIsUtilityMenuOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isUtilityMenuOpen]);
+
   if (!visible) return null;
 
   const setMinimized = (value) => {
     setIsMinimized(value);
+    setIsUtilityMenuOpen(false);
     writeMinimized(value);
+  };
+
+  const handleUtilitySelect = (utility) => {
+    setIsUtilityMenuOpen(false);
+    if (utility.action === "wizard") {
+      setMinimized(false);
+      return;
+    }
+    navigate(utility.path);
   };
 
   const requestAiSuggestion = async (nextAnswers = answers) => {
@@ -384,10 +453,52 @@ export default function TodayMealWizard() {
 
   if (isMinimized) {
     return (
-      <button type="button" className="today-meal-wizard-launcher" onClick={() => setMinimized(false)} aria-label="Mở wizard chọn món nhanh">
-        <Sparkles size={18} />
-        <span>Chọn món nhanh</span>
-      </button>
+      <div className={`today-meal-utilities ${isUtilityMenuOpen ? "is-open" : ""}`}>
+        <nav
+          id="today-meal-utilities-menu"
+          className="today-meal-utilities__menu"
+          aria-label="Tiện ích nhanh"
+          hidden={!isUtilityMenuOpen}
+        >
+          <div className="today-meal-utilities__heading">
+            <span>Tiện ích nhanh</span>
+            <strong>Bạn muốn làm gì?</strong>
+          </div>
+          <div className="today-meal-utilities__cluster">
+            {QUICK_UTILITIES.map((utility, index) => {
+              const Icon = utility.icon;
+              return (
+                <button
+                  key={utility.id}
+                  type="button"
+                  className={`today-meal-utilities__item today-meal-utilities__item--${index + 1}`}
+                  onClick={() => handleUtilitySelect(utility)}
+                >
+                  <span className="today-meal-utilities__item-icon" aria-hidden="true">
+                    <Icon size={18} />
+                  </span>
+                  <span>
+                    <strong>{utility.label}</strong>
+                    <small>{utility.hint}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        <button
+          type="button"
+          className="today-meal-wizard-launcher"
+          onClick={() => setIsUtilityMenuOpen((current) => !current)}
+          aria-label={isUtilityMenuOpen ? "Đóng tiện ích nhanh" : "Mở tiện ích nhanh"}
+          aria-expanded={isUtilityMenuOpen}
+          aria-controls="today-meal-utilities-menu"
+        >
+          {isUtilityMenuOpen ? <X size={18} /> : <Sparkles size={18} />}
+          <span>{isUtilityMenuOpen ? "Đóng" : "Tiện ích"}</span>
+        </button>
+      </div>
     );
   }
 

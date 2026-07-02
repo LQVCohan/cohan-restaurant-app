@@ -26,6 +26,11 @@ const renderWizard = ({ route = "/restaurants", user = { id: "customer-1", fullN
     </AuthContext.Provider>,
   );
 
+const openMealWizard = () => {
+  fireEvent.click(screen.getByRole("button", { name: /mở tiện ích nhanh/i }));
+  fireEvent.click(screen.getByRole("button", { name: /chọn món nhanh/i }));
+};
+
 beforeEach(() => {
   window.localStorage.clear();
   vi.clearAllMocks();
@@ -60,17 +65,29 @@ beforeEach(() => {
 });
 
 describe("TodayMealWizard", () => {
-  it("renders on customer browsing pages", () => {
+  it("starts as a compact utility launcher on customer browsing pages", () => {
     renderWizard({ route: "/restaurants" });
 
+    expect(screen.getByRole("button", { name: /mở tiện ích nhanh/i })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /wizard hỗ trợ chọn món hôm nay/i })).not.toBeInTheDocument();
+  });
+
+  it("opens the utility palette before entering the meal wizard", () => {
+    renderWizard();
+
+    fireEvent.click(screen.getByRole("button", { name: /mở tiện ích nhanh/i }));
+    expect(screen.getByRole("navigation", { name: /tiện ích nhanh/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /kho coupon/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /combo tiết kiệm/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /chọn món nhanh/i }));
     expect(screen.getByRole("region", { name: /wizard hỗ trợ chọn món hôm nay/i })).toBeInTheDocument();
-    expect(screen.getByText("Hôm nay ăn gì?")).toBeInTheDocument();
     expect(screen.getByText("Bạn muốn bữa ăn kiểu nào?")).toBeInTheDocument();
   });
 
   it("does not render on checkout and manager pages", () => {
     const { rerender } = renderWizard({ route: "/checkout" });
-    expect(screen.queryByText("Hôm nay ăn gì?")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mở tiện ích nhanh/i })).not.toBeInTheDocument();
 
     rerender(
       <AuthContext.Provider value={{ user: { id: "manager-1", fullName: "Manager" }, isAuthenticated: true }}>
@@ -79,21 +96,20 @@ describe("TodayMealWizard", () => {
         </MemoryRouter>
       </AuthContext.Provider>,
     );
-    expect(screen.queryByText("Hôm nay ăn gì?")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mở tiện ích nhanh/i })).not.toBeInTheDocument();
   });
 
-  it("minimizes and restores from launcher", () => {
+  it("minimizes back to the utility launcher", () => {
     renderWizard();
+    openMealWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /thu nhỏ wizard/i }));
-    expect(screen.getByRole("button", { name: /mở wizard chọn món nhanh/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /mở wizard chọn món nhanh/i }));
-    expect(screen.getByRole("region", { name: /wizard hỗ trợ chọn món hôm nay/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mở tiện ích nhanh/i })).toBeInTheDocument();
   });
 
   it("automatically calls backend AI and renders meal suggestions after completing all steps", async () => {
     renderWizard({ route: "/restaurant/restaurant-1" });
+    openMealWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /nhanh gọn/i }));
     await waitFor(() => expect(screen.getByText("Bạn muốn chi khoảng bao nhiêu?")).toBeInTheDocument());
@@ -123,6 +139,7 @@ describe("TodayMealWizard", () => {
 
   it("can hand off the same prompt to the full chatbot after backend AI result", async () => {
     renderWizard({ route: "/restaurant/restaurant-1" });
+    openMealWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /nhanh gọn/i }));
     await waitFor(() => expect(screen.getByText("Bạn muốn chi khoảng bao nhiêu?")).toBeInTheDocument());

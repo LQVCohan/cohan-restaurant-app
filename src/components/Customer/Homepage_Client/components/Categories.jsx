@@ -28,6 +28,14 @@ const CATEGORY_DISPLAY_NAME_MAP = {
   chicken: "Món gà",
   rice: "Cơm",
   noodle: "Mì & bún",
+  "main course": "Món chính",
+  "mon chinh": "Món chính",
+  pasta: "Mì Ý",
+  "mi y": "Mì Ý",
+  grill: "Món nướng",
+  "mon nuong": "Món nướng",
+  hotpot: "Lẩu",
+  lau: "Lẩu",
 };
 
 const suggestedCategories = [
