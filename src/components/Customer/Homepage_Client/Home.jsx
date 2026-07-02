@@ -7,7 +7,9 @@ import HomeForYouSection from "./components/HomeForYouSection";
 import DishGrid from "./components/DishGrid";
 import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
+import MobileHome from "./MobileHome";
 import useGsapHomeMotion from "./hooks/useGsapHomeMotion";
+import useIsMobile from "../../../hooks/useIsMobile";
 
 import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
@@ -33,6 +35,7 @@ const CUSTOMER_SHORTCUTS = [
 
 const Home = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const timeSlot = getCurrentTimeSlot();
   const [filterState, setFilterState] = useState({});
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
@@ -80,6 +83,8 @@ const Home = () => {
     setIsTableBookingOpen(false);
     setSelectedRestaurant(null);
   };
+
+  if (isMobile) return <MobileHome />;
 
   return (
     <div className="home" ref={homeMotionRef}>
