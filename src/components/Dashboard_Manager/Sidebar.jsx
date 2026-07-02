@@ -19,6 +19,7 @@ const NAVIGATION_SECTIONS = [
   {
     title: "Quản lý",
     items: [
+      { id: "brands", permissions: ["restaurant.read", "restaurant.write", "system.manage"], icon: "🏢", label: "Quản lý chuỗi", page: "Quản lý chuỗi" },
       { id: "orders", permissions: ["order.read"], icon: "🛒", label: "Đơn hàng", page: "Đơn hàng" },
       { id: "menu", permissions: ["menu.read"], icon: "📋", label: "Thực đơn", page: "Thực đơn" },
       { id: "modifiers", permissions: ["menu.read"], icon: "🧩", label: "Tuỳ chọn món", page: "Tuỳ chọn món" },
