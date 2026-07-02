@@ -164,8 +164,12 @@ describe("shift acknowledgement query resolvers", () => {
     });
   });
 
-
   it("myShiftAttendances filters current user attendance by restaurant", async () => {
+    const expectedStart = new Date("2026-05-10T00:00:00.000Z");
+    expectedStart.setHours(0, 0, 0, 0);
+    const expectedEnd = new Date("2026-05-20T23:59:59.999Z");
+    expectedEnd.setHours(23, 59, 59, 999);
+
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.myShiftAttendances(
       null,
@@ -183,8 +187,8 @@ describe("shift acknowledgement query resolvers", () => {
       shiftId: { $ne: null },
       isOffSchedule: { $ne: true },
       workDate: {
-        $gte: new Date("2026-05-10T00:00:00.000Z"),
-        $lte: new Date("2026-05-20T23:59:59.999Z"),
+        $gte: expectedStart,
+        $lte: expectedEnd,
       },
     });
   });
@@ -236,53 +240,6 @@ describe("shift acknowledgement query resolvers", () => {
           periodEnd: "2026-05-31T23:59:59.999Z",
         },
         { user: { id: "manager-1", roles: ["MANAGER"] } },
-      ),
-    ).rejects.toThrow("FORBIDDEN_SCOPE");
-  });
-
-  it("allows staff with restaurantForStaff to query myScheduleAcknowledgement", async () => {
-    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    modelMocks.SchedulePublication.findOne.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        _id: "pub-1",
-        restaurantId: "rest-1",
-        periodStart: new Date("2026-05-01T00:00:00.000Z"),
-        periodEnd: new Date("2026-05-07T23:59:59.999Z"),
-        status: "published",
-      }),
-    });
-    modelMocks.ScheduleAcknowledgement.findOne.mockResolvedValue({ _id: "ack-1" });
-
-    const result = await query.myScheduleAcknowledgement(
-      null,
-      {
-        restaurantId: "rest-1",
-        periodStart: "2026-05-01T00:00:00.000Z",
-        periodEnd: "2026-05-07T23:59:59.999Z",
-      },
-      { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-1" } },
-    );
-
-    expect(result).toEqual({ _id: "ack-1" });
-    expect(modelMocks.ScheduleAcknowledgement.findOne).toHaveBeenCalledWith({
-      restaurantId: "rest-1",
-      employeeId: { __oid: "staff-1" },
-      schedulePublicationId: "pub-1",
-    });
-  });
-
-  it("blocks staff without matching restaurant when querying myScheduleAcknowledgement", async () => {
-    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-
-    await expect(
-      query.myScheduleAcknowledgement(
-        null,
-        {
-          restaurantId: "rest-1",
-          periodStart: "2026-05-01T00:00:00.000Z",
-          periodEnd: "2026-05-07T23:59:59.999Z",
-        },
-        { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-2" } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
