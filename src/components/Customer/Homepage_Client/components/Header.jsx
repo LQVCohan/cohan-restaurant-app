@@ -2,9 +2,18 @@ import React, { useContext, useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
+import useBrandManagement from "@/hooks/useBrandManagement";
+import { canAccessRoute, isAdminRole } from "@/utils/frontendRoleAccess";
+import {
+  getCombinedRoleLabel,
+  getRoleTooltip,
+  normalizeBrandRole,
+} from "@/lib/userRoleDisplay";
 import "../../../../styles/Homepage/Header.scss";
 import HeaderSearch from "./HeaderSearch.jsx";
 import CustomerNotificationBell from "@/components/Customer/common/CustomerNotificationBell";
+
+const EMPTY_RESTAURANTS = [];
 
 const CUSTOMER_DROPDOWN_COUNTS = gql`
   query CustomerDropdownCounts($userId: ID!, $orderLimit: Int = 50) {
@@ -59,6 +68,19 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const [lang, setLang] = useState("vi");
 
   const userId = user?.id || user?._id || "";
+  const brandState = useBrandManagement(EMPTY_RESTAURANTS, { skip: !userId });
+  const activeBrand = brandState.selectedBrand || brandState.brands[0] || null;
+  const activeMembership = activeBrand?.membership || (
+    activeBrand?.membershipRole
+      ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] }
+      : null
+  );
+  const brandRole = normalizeBrandRole(activeMembership || activeBrand?.membershipRole);
+  const hasManagerAccess = Boolean(user && canAccessRoute(user, "/manager"));
+  const hasBrandManagementAccess = hasManagerAccess && (
+    isAdminRole(user) || ["owner", "admin"].includes(brandRole)
+  );
+
   const { data: dropdownCountData } = useQuery(CUSTOMER_DROPDOWN_COUNTS, {
     variables: { userId, orderLimit: 50 },
     skip: !userId,
@@ -94,7 +116,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
 
   const goto = (path) => {
     setShowUserMenu(false);
-    if (location.pathname !== path) navigate(path);
+    if (`${location.pathname}${location.hash}` !== path) navigate(path);
   };
 
   useEffect(() => {
@@ -119,14 +141,19 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
     return "US";
   }, [user]);
 
-  const roleLabel = useMemo(() => {
-    const r = user?.role || "customer";
-    return r === "owner"
-      ? "Chủ nhà hàng"
-      : r === "admin"
-      ? "Quản trị viên"
-      : "Khách hàng";
-  }, [user]);
+  const roleLabel = useMemo(
+    () => getCombinedRoleLabel({
+      user,
+      activeBrand,
+      membership: activeMembership,
+      compact: true,
+    }),
+    [activeBrand, activeMembership, user],
+  );
+  const roleTooltip = useMemo(
+    () => getRoleTooltip({ user, activeBrand, membership: activeMembership }),
+    [activeBrand, activeMembership, user],
+  );
 
   const toggleUser = () => {
     setShowUserMenu(!showUserMenu);
@@ -179,10 +206,13 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                   showUserMenu ? "is-active" : ""
                 }`}
                 onClick={toggleUser}
+                title={roleTooltip}
+                aria-expanded={showUserMenu}
+                aria-label="Mở menu tài khoản"
               >
                 <div className="header__avatar">
                   {user.avatar ? (
-                    <img src={user.avatar} alt="avt" />
+                    <img src={user.avatar} alt={user.fullName || user.username || "Ảnh đại diện"} />
                   ) : (
                     avatarText
                   )}
@@ -204,6 +234,27 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     <p className="user-role">{roleLabel}</p>
                   </div>
                   <div className="header__user-dropdown-body">
+                    {hasManagerAccess && (
+                      <>
+                        <button
+                          className="header__menu-item"
+                          onClick={() => goto("/manager#dashboard")}
+                        >
+                          <span className="header__item-label">📊 Trang quản lý</span>
+                        </button>
+                        {hasBrandManagementAccess && (
+                          <button
+                            className="header__menu-item"
+                            onClick={() => goto("/manager#brands")}
+                          >
+                            <span className="header__item-label">
+                              🏢 Quản lý chuỗi{activeBrand?.name ? ` · ${activeBrand.name}` : ""}
+                            </span>
+                          </button>
+                        )}
+                        <div className="divider"></div>
+                      </>
+                    )}
                     <button
                       className="header__menu-item"
                       onClick={() => goto("/profile")}
@@ -250,20 +301,20 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     </button>
                     <button
                       className="header__menu-item"
-                      onClick={() => goto(`/favorites/${user.id}`)}
+                      onClick={() => goto(`/favorites/${userId}`)}
                     >
                       <span className="header__item-label">❤️ Yêu thích</span>
                     </button>
                     <button
                       className="header__menu-item"
-                      onClick={() => goto(`/address-book/${user.id}`)}
+                      onClick={() => goto(`/address-book/${userId}`)}
                     >
                       <span className="header__item-label">📍 Sổ địa chỉ</span>
                     </button>
                     <div className="divider"></div>
                     <button
                       className="header__menu-item"
-                      onClick={() => goto(`/help-center/${user.id}`)}
+                      onClick={() => goto(`/help-center/${userId}`)}
                     >
                       <span className="header__item-label">❓ Trợ giúp</span>
                     </button>
