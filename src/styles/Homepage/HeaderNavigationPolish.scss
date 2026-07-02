@@ -16,10 +16,10 @@
 }
 
 .header .header__container {
-  width: min(calc(100% - 32px), 1120px);
+  width: min(calc(100% - 40px), 1320px);
   height: 66px;
   padding: 0 14px;
-  gap: 12px;
+  gap: 14px;
   border: 1px solid var(--header-border);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.9);
@@ -35,6 +35,7 @@
   min-height: 46px;
   padding: 6px 8px;
   border-radius: 15px;
+  flex: 0 0 auto;
   transition:
     background-color 180ms ease,
     transform 180ms ease;
@@ -53,6 +54,7 @@
 
 .header .header__nav {
   flex: 0 0 auto;
+  min-width: max-content;
   gap: 3px;
   margin: 0;
   padding: 5px;
@@ -111,12 +113,20 @@
   min-width: 0;
   flex: 1 1 auto;
   justify-content: flex-end;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 9px;
+}
+
+.header .header__lang,
+.header .app-notification-bell,
+.header .header__user-menu,
+.header .header__login-btn,
+.header .header__cart-btn {
+  flex: 0 0 auto;
 }
 
 .header .header__lang {
   position: relative;
-  flex: 0 0 auto;
   margin: 0;
 }
 
@@ -161,10 +171,10 @@
 }
 
 .header .header-search {
-  width: clamp(180px, 19vw, 270px);
-  flex: 1 1 240px;
-  min-width: 180px;
-  max-width: 270px;
+  width: clamp(220px, 23vw, 340px);
+  min-width: 220px;
+  max-width: 340px;
+  flex: 1 1 280px;
 }
 
 .header .header-search__input {
@@ -344,7 +354,7 @@
   }
 
   .header .header__container {
-    width: min(calc(100% - 24px), 1120px);
+    width: calc(100% - 24px);
     gap: 9px;
     padding-inline: 10px;
   }
@@ -363,9 +373,24 @@
   }
 
   .header .header-search {
-    width: 200px;
-    min-width: 170px;
-    flex-basis: 200px;
+    width: 210px;
+    min-width: 180px;
+    max-width: 240px;
+    flex-basis: 210px;
+  }
+}
+
+@media (max-width: 1120px) {
+  .header .header-search {
+    width: 180px;
+    min-width: 160px;
+    max-width: 190px;
+    flex-basis: 180px;
+  }
+
+  .header .header__nav-link {
+    padding-inline: 9px;
+    font-size: 12.5px;
   }
 }
 
@@ -378,15 +403,8 @@
     width: 104px;
   }
 
-  .header .header__nav-link {
-    padding-inline: 8px;
-    font-size: 12px;
-  }
-
   .header .header-search {
-    width: 170px;
-    min-width: 150px;
-    flex-basis: 170px;
+    display: none;
   }
 
   .header .header__login-btn {
@@ -398,13 +416,6 @@
 @media (max-width: 992px) {
   .header .header__container {
     justify-content: space-between;
-  }
-
-  .header .header-search {
-    width: clamp(220px, 42vw, 360px);
-    min-width: 220px;
-    max-width: 360px;
-    flex-basis: auto;
   }
 }
 
