@@ -120,14 +120,8 @@ export const getDefaultPathForRole = (userOrRole) => {
   return "/";
 };
 
-const SHARED_USER_ALLOW = [
-  ...new Set([
-    "customer",
-    "admin",
-    "manager",
-    "hr",
-    ...STAFF_OPERATIONAL_ROLES,
-  ]),
+const PROFILE_NOTIFICATION_ROLES = [
+  ...new Set(["customer", "admin", "manager", ...STAFF_OPERATIONAL_ROLES]),
 ];
 
 // NOTE: public customer pages are protected in AppRouter only when wrapped by PrivateRoute.
@@ -138,9 +132,16 @@ const ROUTE_ACCESS_RULES = [
     test: /^\/staff(\/|$)/,
     allow: STAFF_SHARED_ROLES,
   },
-  { test: /^\/(profile|notifications|search)(\/|$)/, allow: SHARED_USER_ALLOW },
   {
-    test: /^\/(orders|restaurants|restaurant|checkout|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-delivery)(\/|$)/,
+    test: /^\/(profile|notifications)(\/|$)/,
+    allow: PROFILE_NOTIFICATION_ROLES,
+  },
+  {
+    test: /^\/(for-you|wallet|checkout)(\/|$)/,
+    allow: ["customer"],
+  },
+  {
+    test: /^\/(orders|restaurants|restaurant|cus-menu|food|coupons|vouchers|favorites|address-book|help-center|track-delivery)(\/|$)/,
     allow: ["customer", "admin", "manager"],
   },
 ];
