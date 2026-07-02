@@ -6,12 +6,7 @@ $muted: #786a5f;
 $container: 1080px;
 
 .home-shortcuts {
-  padding: 38px 0 48px;
-  background: transparent;
-
   &__container {
-    width: min($container, calc(100% - 40px));
-    margin-inline: auto;
     display: grid;
     grid-template-columns: 1fr;
     gap: 16px;

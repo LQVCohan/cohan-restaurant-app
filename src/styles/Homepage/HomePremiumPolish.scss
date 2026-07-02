@@ -139,8 +139,7 @@ body {
 .home .dish-grid__container,
 .home .home-for-you__container,
 .home .home-shortcuts__container,
-.home .how-it-works__container,
-.footer-saas .footer-container {
+.home .how-it-works__container {
   width: min(#{$container}, calc(100% - 40px));
   max-width: none;
   margin-inline: auto;
@@ -285,15 +284,11 @@ body {
 .home .categories,
 .home .dish-grid,
 .home .how-it-works,
-.home-shortcuts,
-.footer-saas {
+.home .home-shortcuts {
   position: relative;
 }
 
 .home .restaurant-grid {
-  &__container {
-  }
-
   &__header {
     margin-bottom: 18px;
   }
