@@ -4,6 +4,7 @@ import "./ProfileSidebar.scss";
 
 const ProfileSidebar = ({
   user,
+  roleLabel,
   activeTab,
   setActiveTab,
   isEditMode,
@@ -134,7 +135,7 @@ const ProfileSidebar = ({
 
           <div className="user-badge">
             <span className="badge-icon">👑</span>
-            <span>{user.roleName || "Thành viên thân thiết"}</span>
+            <span>{roleLabel || "Thành viên thân thiết"}</span>
           </div>
         </div>
       </div>
