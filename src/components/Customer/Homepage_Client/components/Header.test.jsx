@@ -48,7 +48,7 @@ const renderHeader = (authValue) =>
 describe("Header coupon navigation", () => {
   it("opens the customer coupon wallet from the account menu", () => {
     renderHeader({
-      user: { id: "user-1", username: "guest" },
+      user: { id: "user-1", username: "guest", roleName: "customer" },
       restaurants: [{ id: "restaurant-1" }],
       refRestaurant: [],
       logout: vi.fn(),
@@ -64,7 +64,7 @@ describe("Header coupon navigation", () => {
 
   it("opens coupon wallet when no coupon restaurant is available", () => {
     renderHeader({
-      user: { id: "user-1", username: "guest" },
+      user: { id: "user-1", username: "guest", roleName: "customer" },
       restaurants: [],
       refRestaurant: [],
       logout: vi.fn(),

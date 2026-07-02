@@ -1,0 +1,305 @@
+@media (max-width: 760px) {
+  .mobile-customer-shell__main {
+    padding-bottom: calc(116px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .restaurant-list-page .sidebar-wrapper {
+    display: contents !important;
+    max-height: none !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .restaurant-list-page .restaurant-card__image-wrapper {
+    padding-top: 48% !important;
+  }
+
+  .restaurant-list-page .restaurant-card__content {
+    padding: 13px !important;
+  }
+
+  .restaurant-list-page .restaurant-card__description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .restaurant-list-page .load-more-container {
+    padding-bottom: 12px !important;
+  }
+
+  .today-meal-utilities {
+    right: max(14px, env(safe-area-inset-right)) !important;
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher {
+    inset: 0 !important;
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
+    border: 1px solid rgba(255, 102, 0, 0.24) !important;
+    border-radius: 17px !important;
+    background: #fffaf4 !important;
+    box-shadow: 0 14px 32px rgba(92, 45, 12, 0.18) !important;
+    overflow: hidden !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::before {
+    inset: 2px !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 15px !important;
+    background-size: 154% !important;
+    box-shadow: none !important;
+    clip-path: inset(5% round 14px) !important;
+    animation: none !important;
+  }
+
+  .today-meal-utilities .today-meal-wizard-launcher::after,
+  .today-meal-utilities .today-meal-wizard-launcher span {
+    display: none !important;
+    content: none !important;
+  }
+
+  .today-meal-utilities__menu {
+    right: 12px !important;
+    bottom: calc(146px + env(safe-area-inset-bottom)) !important;
+    max-height: min(62dvh, 480px) !important;
+  }
+
+  .orders-page {
+    padding: 16px 14px calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .orders-page .page-header.orders-hero {
+    margin-bottom: 14px !important;
+    padding: 20px 16px !important;
+    border-radius: 24px !important;
+  }
+
+  .orders-page .orders-hero .eyebrow {
+    margin-bottom: 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .orders-page .orders-hero .title {
+    max-width: 12ch !important;
+    font-size: clamp(2rem, 10.5vw, 2.75rem) !important;
+    line-height: 1 !important;
+  }
+
+  .orders-page .orders-hero .subtitle {
+    margin-top: 10px !important;
+    font-size: 0.88rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .orders-page .summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-top: 16px !important;
+  }
+
+  .orders-page .summary-chip {
+    min-height: 82px;
+    display: grid !important;
+    align-content: center;
+    gap: 6px;
+    padding: 12px !important;
+  }
+
+  .orders-page .summary-chip span {
+    display: block !important;
+    font-size: 0.72rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .orders-page .summary-chip span::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .orders-page .summary-chip strong {
+    display: block !important;
+    margin: 0 !important;
+    font-size: 1.55rem !important;
+    line-height: 1 !important;
+  }
+
+  .orders-page .orders-hero .btn-create {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .orders-page .orders-toolbar {
+    margin-bottom: 14px !important;
+    padding: 10px !important;
+    border-radius: 20px !important;
+  }
+
+  .orders-page .orders-controls {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .orders-page .empty-state {
+    min-height: 180px !important;
+    padding: 24px 16px !important;
+    border-radius: 24px !important;
+  }
+
+  .profile-page {
+    padding: 16px 12px calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .profile-page .profile-container {
+    gap: 14px !important;
+  }
+
+  .profile-sidebar {
+    gap: 12px !important;
+  }
+
+  .profile-sidebar .user-card-pro {
+    border-radius: 24px !important;
+  }
+
+  .profile-sidebar .user-card-pro .card-cover {
+    height: 84px !important;
+  }
+
+  .profile-sidebar .user-card-pro .card-content {
+    margin-top: -42px !important;
+    padding: 0 18px 18px !important;
+  }
+
+  .profile-sidebar .user-card-pro .user-avatar {
+    width: 78px !important;
+    height: 78px !important;
+  }
+
+  .profile-sidebar .user-card-pro .avatar-area {
+    margin-bottom: 8px !important;
+  }
+
+  .profile-sidebar .user-card-pro .user-name {
+    font-size: 1.18rem !important;
+  }
+
+  .profile-sidebar .membership-card {
+    padding: 16px !important;
+    border-radius: 22px !important;
+  }
+
+  .profile-sidebar .membership-card .mem-points {
+    margin-bottom: 8px !important;
+    font-size: 1.8rem !important;
+  }
+
+  .profile-sidebar .profile-nav-pro {
+    gap: 8px !important;
+  }
+
+  .profile-sidebar .profile-nav-pro .nav-item {
+    min-height: 70px;
+    padding: 11px 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .profile-sidebar .profile-nav-pro .nav-item .nav-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 13px !important;
+  }
+
+  .profile-content {
+    padding-bottom: 14px;
+  }
+
+  .restaurant-app .hero-section {
+    margin-bottom: 12px !important;
+  }
+
+  .restaurant-app .hero-copy h1 {
+    font-size: clamp(2rem, 10vw, 2.55rem) !important;
+  }
+
+  .restaurant-app .hero-copy > p:not(.hero-eyebrow) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .restaurant-app .restaurant-card__image,
+  .restaurant-app .restaurant-image {
+    max-height: 220px !important;
+    object-fit: cover;
+  }
+
+  .cart-panel {
+    --c-bg: #ffffff;
+    --c-bg-subtle: #fffaf5;
+    --c-text-main: #201914;
+    --c-text-muted: #766b63;
+    --c-border: rgba(86, 55, 35, 0.12);
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .cart-header {
+    padding: calc(14px + env(safe-area-inset-top)) 16px 14px !important;
+    background: rgba(255, 252, 248, 0.96) !important;
+  }
+
+  .cart-header__top {
+    min-height: 42px;
+  }
+
+  .cart-header__title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 1.28rem !important;
+  }
+
+  .cart-body {
+    padding: 14px !important;
+    background: #fffaf5 !important;
+  }
+
+  .cart-empty {
+    min-height: calc(100dvh - 180px);
+    height: auto !important;
+    margin: 0 !important;
+    padding: 24px 8px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .cart-empty__btn {
+    width: min(100%, 360px);
+    min-height: 48px;
+    background: #fff !important;
+  }
+
+  .cart-footer {
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body:has(.cart-panel.open) .mobile-customer-shell__nav,
+  body:has(.cart-panel.open) .today-meal-utilities,
+  body:has(.cart-panel.open) .ai-chatbot-widget {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
