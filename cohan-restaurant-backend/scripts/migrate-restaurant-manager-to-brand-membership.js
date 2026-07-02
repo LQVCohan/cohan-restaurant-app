@@ -1,49 +1,241 @@
 import "dotenv/config.js";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
-import { BrandMembership, Restaurant } from "../models/index.js";
+import {
+  Brand,
+  BrandMembership,
+  Restaurant,
+  Role,
+  User,
+} from "../models/index.js";
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
 const DB_NAME = process.env.MONGO_DB || "foodhub";
-
-const emptyReport = () => ({ created: 0, updated: 0, skippedNoBrandId: 0, skippedNoManagerId: 0, conflicts: [] });
 const id = (value) => String(value?._id || value?.id || value || "");
 
-export async function migrateRestaurantManagersToBrandMembership({ dryRun = true, dbName = DB_NAME, models = { Restaurant, BrandMembership }, logger = console } = {}) {
-  logger.log(`Using database ${dbName}${process.env.MONGO_DB ? "" : " (default; MONGO_DB not set)"}`);
+const emptyReport = () => ({
+  ownerCandidates: 0,
+  managerCandidates: 0,
+  membershipsCreated: 0,
+  membershipsUpdated: 0,
+  restaurantsCleaned: 0,
+  usersCleaned: 0,
+  ownerUsersMigrated: 0,
+  ownerRolesRemoved: 0,
+  droppedIndexes: [],
+  conflicts: [],
+});
+
+async function backupLegacyData(payload) {
+  const directory = path.resolve("backups");
+  await fs.mkdir(directory, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filePath = path.join(directory, `brand-scope-cleanup-${stamp}.json`);
+  await fs.writeFile(
+    filePath,
+    JSON.stringify({ createdAt: new Date().toISOString(), ...payload }, null, 2),
+    "utf8",
+  );
+  return filePath;
+}
+
+export async function migrateRestaurantManagersToBrandMembership({
+  dryRun = true,
+  confirmCleanup = false,
+  dbName = DB_NAME,
+  models = { Brand, BrandMembership, Restaurant, Role, User },
+  logger = console,
+} = {}) {
+  if (!dryRun && !confirmCleanup) {
+    throw new Error("Apply requires confirmCleanup=true.");
+  }
+
   const report = emptyReport();
-  const restaurants = await models.Restaurant.find({}).select("_id brandId managerId name").lean();
+  logger.log(`Using database ${dbName}`);
+
+  const [brands, restaurants, users, roles, memberships] = await Promise.all([
+    models.Brand.find({}).select("_id ownerId name").lean(),
+    models.Restaurant.find({}).select("_id brandId managerId name").lean(),
+    models.User.find({}).select("_id role roleName userType restaurantId restaurantIds restaurants").lean(),
+    models.Role.find({}).select("_id slug name").lean(),
+    models.BrandMembership.find({}).select("_id brandId userId role status restaurantIds").lean(),
+  ]);
+
+  const managerRole = roles.find((role) =>
+    [role.slug, role.name].some((value) => /^manager$/i.test(String(value || ""))),
+  );
+  const ownerRoles = roles.filter((role) =>
+    [role.slug, role.name].some((value) => /^owner$/i.test(String(value || ""))),
+  );
+  const ownerRoleIds = new Set(ownerRoles.map((role) => id(role._id)));
+  const existingByKey = new Map(
+    memberships.map((membership) => [
+      `${id(membership.brandId)}:${id(membership.userId)}`,
+      membership,
+    ]),
+  );
+  const managerByRestaurant = new Map();
+
+  for (const membership of memberships) {
+    if (membership.status !== "active" || membership.role !== "manager") continue;
+    for (const restaurantId of membership.restaurantIds || []) {
+      managerByRestaurant.set(id(restaurantId), id(membership.userId));
+    }
+  }
+
+  const candidates = new Map();
+  const addCandidate = ({ brandId, userId, role, restaurantIds = [] }) => {
+    if (!id(brandId) || !id(userId)) {
+      report.conflicts.push({
+        type: "invalid_candidate",
+        brandId: id(brandId),
+        userId: id(userId),
+        role,
+      });
+      return;
+    }
+
+    const key = `${id(brandId)}:${id(userId)}`;
+    const current = candidates.get(key);
+    const priority = { owner: 4, admin: 3, manager: 2, staff: 1 };
+    if (current && priority[current.role] >= priority[role]) return;
+    candidates.set(key, { brandId, userId, role, restaurantIds });
+  };
+
+  for (const brand of brands) {
+    if (!brand.ownerId) {
+      report.conflicts.push({
+        type: "brand_missing_owner",
+        brandId: id(brand._id),
+        name: brand.name || "",
+      });
+      continue;
+    }
+    addCandidate({ brandId: brand._id, userId: brand.ownerId, role: "owner" });
+    report.ownerCandidates += 1;
+  }
 
   for (const restaurant of restaurants) {
-    if (!restaurant.brandId) { report.skippedNoBrandId += 1; continue; }
-    if (!restaurant.managerId) { report.skippedNoManagerId += 1; continue; }
+    if (!restaurant.brandId) {
+      report.conflicts.push({
+        type: "restaurant_missing_brand",
+        restaurantId: id(restaurant._id),
+        name: restaurant.name || "",
+      });
+      continue;
+    }
+    if (!restaurant.managerId) continue;
 
-    const existingForRestaurant = await models.BrandMembership.findOne({
-      brandId: restaurant.brandId,
-      role: "manager",
-      status: "active",
-      restaurantIds: restaurant._id,
-    }).lean();
-
-    if (existingForRestaurant && id(existingForRestaurant.userId) !== id(restaurant.managerId)) {
-      report.conflicts.push({ restaurantId: id(restaurant._id), brandId: id(restaurant.brandId), legacyManagerId: id(restaurant.managerId), existingManagerId: id(existingForRestaurant.userId) });
+    const currentManagerId = managerByRestaurant.get(id(restaurant._id));
+    if (currentManagerId && currentManagerId !== id(restaurant.managerId)) {
+      report.conflicts.push({
+        type: "restaurant_manager_conflict",
+        restaurantId: id(restaurant._id),
+        currentManagerId,
+        legacyManagerId: id(restaurant.managerId),
+      });
       continue;
     }
 
-    const existingForUser = await models.BrandMembership.findOne({
+    addCandidate({
       brandId: restaurant.brandId,
       userId: restaurant.managerId,
-    }).lean();
+      role: "manager",
+      restaurantIds: [restaurant._id],
+    });
+    report.managerCandidates += 1;
+  }
 
-    if (!dryRun) {
-      await models.BrandMembership.updateOne(
-        { brandId: restaurant.brandId, userId: restaurant.managerId },
-        { $set: { role: "manager", status: "active", restaurantIds: [restaurant._id] }, $setOnInsert: { createdBy: restaurant.managerId } },
-        { upsert: true },
-      );
+  const ownerUsers = users.filter((user) => ownerRoleIds.has(id(user.role)));
+  if (ownerUsers.length && !managerRole) {
+    report.conflicts.push({
+      type: "manager_system_role_missing",
+      userIds: ownerUsers.map((user) => id(user._id)),
+    });
+  }
+
+  logger.log(JSON.stringify({ dryRun, ...report }, null, 2));
+  if (dryRun || report.conflicts.length) {
+    if (!dryRun && report.conflicts.length) {
+      throw new Error(`Cleanup blocked by ${report.conflicts.length} conflict(s).`);
     }
-    if (existingForUser) report.updated += 1;
-    else report.created += 1;
+    return report;
+  }
+
+  const backupFile = await backupLegacyData({
+    brands,
+    restaurants,
+    users,
+    roles,
+    memberships,
+  });
+  logger.log(`Backup written: ${backupFile}`);
+
+  for (const candidate of candidates.values()) {
+    const key = `${id(candidate.brandId)}:${id(candidate.userId)}`;
+    const existing = existingByKey.get(key);
+    await models.BrandMembership.updateOne(
+      { brandId: candidate.brandId, userId: candidate.userId },
+      {
+        $set: {
+          role: candidate.role,
+          status: "active",
+          restaurantIds: candidate.role === "manager" ? candidate.restaurantIds : [],
+        },
+        $setOnInsert: { createdBy: candidate.userId },
+      },
+      { upsert: true },
+    );
+    if (existing) report.membershipsUpdated += 1;
+    else report.membershipsCreated += 1;
+  }
+
+  if (ownerUsers.length) {
+    const result = await models.User.updateMany(
+      { _id: { $in: ownerUsers.map((user) => user._id) } },
+      { $set: { role: managerRole._id, userType: "MANAGER" } },
+    );
+    report.ownerUsersMigrated = result.modifiedCount || 0;
+  }
+
+  const restaurantCleanup = await models.Restaurant.collection.updateMany(
+    { managerId: { $exists: true } },
+    { $unset: { managerId: "" } },
+  );
+  report.restaurantsCleaned = restaurantCleanup.modifiedCount || 0;
+
+  const userCleanup = await models.User.collection.updateMany(
+    {
+      $or: [
+        { restaurantId: { $exists: true } },
+        { restaurantIds: { $exists: true } },
+        { restaurants: { $exists: true } },
+      ],
+    },
+    {
+      $unset: {
+        restaurantId: "",
+        restaurantIds: "",
+        restaurants: "",
+      },
+    },
+  );
+  report.usersCleaned = userCleanup.modifiedCount || 0;
+
+  const indexes = await models.Restaurant.collection.indexes();
+  for (const index of indexes) {
+    if (!Object.prototype.hasOwnProperty.call(index.key || {}, "managerId")) continue;
+    await models.Restaurant.collection.dropIndex(index.name);
+    report.droppedIndexes.push(index.name);
+  }
+
+  if (ownerRoles.length) {
+    const result = await models.Role.deleteMany({
+      _id: { $in: ownerRoles.map((role) => role._id) },
+    });
+    report.ownerRolesRemoved = result.deletedCount || 0;
   }
 
   logger.log(JSON.stringify({ dryRun, ...report }, null, 2));
@@ -52,13 +244,26 @@ export async function migrateRestaurantManagersToBrandMembership({ dryRun = true
 
 async function main() {
   const apply = process.argv.includes("--apply");
-  const dryRun = !apply;
-  if (!dryRun && process.env.NODE_ENV === "production" && !process.argv.includes("--allow-production")) {
-    throw new Error("Refusing to run in production without --allow-production.");
+  const confirmCleanup = process.argv.includes("--confirm-cleanup");
+
+  if (apply && !confirmCleanup) {
+    throw new Error("Use --apply --confirm-cleanup.");
   }
+  if (
+    apply &&
+    process.env.NODE_ENV === "production" &&
+    !process.argv.includes("--allow-production")
+  ) {
+    throw new Error("Refusing production cleanup without --allow-production.");
+  }
+
   await mongoose.connect(MONGO_URI, { dbName: DB_NAME });
   try {
-    await migrateRestaurantManagersToBrandMembership({ dryRun, dbName: DB_NAME });
+    await migrateRestaurantManagersToBrandMembership({
+      dryRun: !apply,
+      confirmCleanup,
+      dbName: DB_NAME,
+    });
   } finally {
     await mongoose.disconnect();
   }
