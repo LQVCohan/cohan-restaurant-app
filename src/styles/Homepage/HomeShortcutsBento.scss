@@ -3,15 +3,14 @@
 $primary: #ff6600;
 $ink: #17120f;
 $muted: #786a5f;
-$container: 1080px;
 
-.home-shortcuts {
+.home .home-shortcuts {
   &__container {
     display: grid;
     grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
     align-items: center;
     gap: clamp(18px, 3vw, 34px);
-    padding: clamp(18px, 2.4vw, 26px) !important;
+    padding: clamp(18px, 2.4vw, 26px);
     border: 1px solid rgba(255, 255, 255, 0.78);
     border-radius: 30px;
     background:
@@ -22,22 +21,31 @@ $container: 1080px;
 
   &__wizard {
     position: relative;
+    isolation: isolate;
+    overflow: hidden;
     padding: clamp(18px, 2.4vw, 26px);
     border-radius: 24px;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 249, 242, 0.72));
     box-shadow: inset 0 0 0 1px rgba(92, 64, 51, 0.08);
 
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+
     &::after {
       content: "";
       position: absolute;
       right: 18px;
       bottom: 18px;
+      z-index: 0;
       width: 58px;
       height: 58px;
       border-radius: 20px;
       background: radial-gradient(circle at 30% 28%, #fff, rgba(255, 102, 0, 0.16));
       transform: rotate(-9deg);
+      pointer-events: none;
     }
 
     h3,
@@ -76,8 +84,6 @@ $container: 1080px;
   }
 
   &__view-all {
-    position: relative;
-    z-index: 1;
     min-height: 42px;
     margin-top: 18px;
     border: 1px solid rgba(255, 102, 0, 0.2);
@@ -222,10 +228,10 @@ $container: 1080px;
 }
 
 @media (max-width: 760px) {
-  .home-shortcuts__container {
+  .home .home-shortcuts__container {
     grid-template-columns: 1fr;
     gap: 14px;
-    padding: 16px !important;
+    padding: 16px;
     border-radius: 24px;
   }
 
