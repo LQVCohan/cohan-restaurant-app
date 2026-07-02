@@ -23,11 +23,22 @@ const iconByType = {
 const toTime = (iso) =>
   iso ? new Date(iso).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "";
 
-export default function NotificationBell({ restaurantId = null, title = "Thông báo", onOpenNotification, enabled = true }) {
+export default function NotificationBell({
+  restaurantId = null,
+  title = "Thông báo",
+  onOpenNotification,
+  enabled = true,
+  notificationState = null,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const dropdownRef = useRef(null);
-  const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead, refetchNotifications } = useCommunication({ restaurantId, notificationsEnabled: enabled });
+  const communicationState = useCommunication({
+    restaurantId,
+    notificationsEnabled: enabled && !notificationState,
+  });
+  const notifications = notificationState?.notifications ?? communicationState.notifications;
+  const unreadCount = notificationState?.unreadCount ?? communicationState.unreadCount;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -38,8 +49,10 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
   }, []);
 
   const rows = useMemo(() => {
-    const mapped = (notifications || []).map((n) => {
-      const payload = n.payload || {};
+    const mapped = (notifications || []).map((notification) => {
+      const source = notification.raw || notification;
+      const payload = source.payload || {};
+      const type = notification.type || source.type;
       const detailParts = [
         payload.restaurantName,
         payload.reviewTitle ? `Review: ${payload.reviewTitle}` : "",
@@ -47,36 +60,44 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
         payload.reason || payload.moderationReason ? `Lý do: ${payload.reason || payload.moderationReason}` : "",
       ].filter(Boolean);
       return {
-        id: n.id,
-        type: n.type,
-        title: payload.title || payload.message || payload.messagePreview || notificationTitleByType[n.type] || n.type,
+        id: notification.id || source.id,
+        type,
+        title: notification.text || payload.title || payload.message || payload.messagePreview || notificationTitleByType[type] || type,
         detail: detailParts.join(" • "),
-        time: toTime(n.createdAt),
-        isRead: Boolean(n.readAt),
-        icon: iconByType[n.type] || <Bell size={16} />,
-        raw: n,
+        time: notification.time || toTime(source.createdAt),
+        isRead: typeof notification.isRead === "boolean" ? notification.isRead : Boolean(source.readAt),
+        icon: iconByType[type] || <Bell size={16} />,
+        raw: notification,
       };
     });
-    return (activeTab === "unread" ? mapped.filter((n) => !n.isRead) : mapped).slice(0, 6);
+    return (activeTab === "unread" ? mapped.filter((notification) => !notification.isRead) : mapped).slice(0, 6);
   }, [activeTab, notifications]);
 
   const markAllAsRead = async () => {
     if (!enabled) return;
-    await markAllNotificationsRead({ variables: { restaurantId } });
-    await refetchNotifications?.();
+    if (notificationState?.markAllAsRead) {
+      await notificationState.markAllAsRead();
+      return;
+    }
+    await communicationState.markAllNotificationsRead({ variables: { restaurantId } });
+    await communicationState.refetchNotifications?.();
   };
 
   const handleClick = async (notification) => {
     if (!enabled) return;
-    await markNotificationRead({ variables: { id: notification.id } });
-    await refetchNotifications?.();
+    if (notificationState?.markAsRead) {
+      await notificationState.markAsRead(notification.id);
+    } else {
+      await communicationState.markNotificationRead({ variables: { id: notification.id } });
+      await communicationState.refetchNotifications?.();
+    }
     setIsOpen(false);
     onOpenNotification?.(notification.raw);
   };
 
   return (
     <div className="app-notification-bell" ref={dropdownRef}>
-      <button type="button" className="app-notification-bell__trigger" aria-label="Mở thông báo" disabled={!enabled} onClick={() => enabled && setIsOpen((v) => !v)}>
+      <button type="button" className="app-notification-bell__trigger" aria-label="Mở thông báo" disabled={!enabled} onClick={() => enabled && setIsOpen((value) => !value)}>
         <Bell size={21} />
         {unreadCount > 0 && <span className="app-notification-bell__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </button>
@@ -93,10 +114,10 @@ export default function NotificationBell({ restaurantId = null, title = "Thông 
           <div className="app-notification-bell__list">
             {rows.length === 0 ? (
               <div className="app-notification-bell__empty">Không có thông báo mới.</div>
-            ) : rows.map((n) => (
-              <button type="button" key={n.id} className={`app-notification-bell__item ${n.isRead ? "" : "unread"}`} onClick={() => handleClick(n)}>
-                <span className={`app-notification-bell__icon app-notification-bell__icon--${String(n.type).replaceAll(".", "-")}`}>{n.icon}</span>
-                <span className="app-notification-bell__content"><strong>{n.title}</strong>{n.detail && <small>{n.detail}</small>}<em><Clock size={12} /> {n.time}</em></span>
+            ) : rows.map((notification) => (
+              <button type="button" key={notification.id} className={`app-notification-bell__item ${notification.isRead ? "" : "unread"}`} onClick={() => handleClick(notification)}>
+                <span className={`app-notification-bell__icon app-notification-bell__icon--${String(notification.type).replaceAll(".", "-")}`}>{notification.icon}</span>
+                <span className="app-notification-bell__content"><strong>{notification.title}</strong>{notification.detail && <small>{notification.detail}</small>}<em><Clock size={12} /> {notification.time}</em></span>
               </button>
             ))}
           </div>
