@@ -16,8 +16,13 @@ describe("chatbot response sanitizer", () => {
       ],
     }, "mở trang quản lý");
 
-    expect(result.answer).toContain("mở trang quản lý nhà hàng");
-    expect(result.actions).toEqual([expect.objectContaining({ href: "/manager" })]);
+    expect(result.answer).toContain("trang quản lý nhà hàng");
+    expect(result.actions).toEqual([
+      expect.objectContaining({
+        href: "/manager",
+        label: "Mở trang quản lý nhà hàng",
+      }),
+    ]);
     expect(result.sources).toEqual([expect.objectContaining({ type: "restaurant" })]);
   });
 
