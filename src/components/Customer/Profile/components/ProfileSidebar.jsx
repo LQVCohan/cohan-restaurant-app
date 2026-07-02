@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { AuthContext } from "@/context/AuthContext";
 import { compressAvatar } from "@/utils/compressAvatar";
 import "./ProfileSidebar.scss";
 
@@ -12,6 +13,7 @@ const ProfileSidebar = ({
   isEditMode,
   onAvatarChange,
 }) => {
+  const { logout } = useContext(AuthContext) || {};
   const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [processingAvatar, setProcessingAvatar] = useState(false);
@@ -180,6 +182,7 @@ const ProfileSidebar = ({
         {navItems.map((item) => (
           <button
             key={item.id}
+            type="button"
             className={`nav-item ${activeTab === item.id ? "active" : ""}`}
             onClick={() => setActiveTab(item.id)}
           >
@@ -191,6 +194,19 @@ const ProfileSidebar = ({
             <div className="nav-arrow">›</div>
           </button>
         ))}
+        <button
+          type="button"
+          className="nav-item profile-logout"
+          onClick={() => logout?.()}
+          aria-label="Đăng xuất"
+        >
+          <div className="nav-icon">🚪</div>
+          <div className="nav-text">
+            <span className="label">Đăng xuất</span>
+            <span className="desc">Kết thúc phiên trên thiết bị này</span>
+          </div>
+          <div className="nav-arrow">›</div>
+        </button>
       </nav>
     </aside>
   );
