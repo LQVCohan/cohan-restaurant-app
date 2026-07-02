@@ -92,6 +92,17 @@
   display: none !important;
 }
 
+/* Raise the approved bubble above the mascot's speaking point. */
+body .today-meal-utilities .today-meal-wizard-launcher::after {
+  top: -24px !important;
+}
+
+@media (max-width: 760px) {
+  body .today-meal-utilities .today-meal-wizard-launcher::after {
+    top: -12px !important;
+  }
+}
+
 @media (max-width: 420px) {
   .ai-chatbot-actions,
   .ai-chatbot-quick-replies {
