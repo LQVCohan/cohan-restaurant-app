@@ -111,6 +111,10 @@ describe("AiChatbotWidget helpers", () => {
   it("feature map matches natural-language query aliases by role", () => {
     expect(getAiChatbotFeatureMatches({ pathname: "/", restaurantId: "resto-1", userRole: "customer", query: "đặt bàn ở đâu" }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "reservations", path: "/restaurant/resto-1/layout" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", restaurantId: "resto-1", userRole: "customer", query: "xem thực đơn nhà hàng" }))
+      .toEqual(expect.arrayContaining([expect.objectContaining({ key: "restaurant-menu", path: "/restaurant/resto-1#menu" })]));
+    expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "xem thực đơn nhà hàng" }).some((entry) => entry.key === "restaurant-menu"))
+      .toBe(false);
     expect(getAiChatbotFeatureMatches({ pathname: "/", restaurantId: "resto-1", userRole: "customer", query: "xem đánh giá nhà hàng" }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ key: "restaurant-reviews", path: "/restaurant/resto-1#reviews" })]));
     expect(getAiChatbotFeatureMatches({ pathname: "/", userRole: "customer", query: "xem đánh giá nhà hàng" }).some((entry) => entry.key === "restaurant-reviews"))
