@@ -21,18 +21,25 @@
 .header__logo {
   display: inline-flex !important;
   align-items: center !important;
-  width: 148px !important;
+  justify-content: flex-end !important;
+  flex: 0 0 154px !important;
+  width: 154px !important;
   height: 40px !important;
   padding: 0 !important;
   overflow: visible !important;
-  background: transparent !important;
+  background-color: transparent !important;
+  background-image: var(--cohan-brand-icon) !important;
+  background-position: left center !important;
+  background-repeat: no-repeat !important;
+  background-size: 34px 34px !important;
 }
 
 .header__logo-image {
   display: block;
-  width: 100%;
-  height: auto;
-  max-height: 40px;
+  flex: 0 0 112px;
+  width: 112px;
+  height: 30px;
+  max-height: 30px;
   object-fit: contain;
   object-position: left center;
   content: var(--cohan-brand-wordmark);
@@ -204,12 +211,17 @@
 
 @media (max-width: 600px) {
   .header__logo {
-    width: 126px !important;
+    flex-basis: 130px !important;
+    width: 130px !important;
     height: 34px !important;
+    background-size: 30px 30px !important;
   }
 
   .header__logo-image {
-    max-height: 34px;
+    flex-basis: 94px;
+    width: 94px;
+    height: 25px;
+    max-height: 25px;
   }
 
   .footer-saas .brand-logo {
