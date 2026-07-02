@@ -294,6 +294,16 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["thong tin ca nhan", "quan ly thong tin ca nhan", "mo thong tin ca nhan", "ho so ca nhan", "thong tin tai khoan", "cai dat tai khoan"],
   },
   {
+    key: "manager-promotions",
+    label: "Mở quản lý coupon",
+    path: "/manager#promotions",
+    intent: "managerFeatureHelp",
+    description: "Mở khu vực quản lý chương trình khuyến mãi và coupon.",
+    managerOnly: true,
+    allowedRoles: MANAGER_FEATURE_ROLES,
+    aliases: ["quan ly coupon", "coupon quan ly", "quan ly khuyen mai", "chuong trinh khuyen mai", "ma giam gia quan ly", "voucher quan ly"],
+  },
+  {
     key: "staff-schedule",
     label: "Lịch làm việc",
     path: "/staff/schedule",
@@ -409,6 +419,7 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "staff-schedule") return path.startsWith("/staff/schedule") || path.includes("schedule");
   if (entry.key === "manager-dashboard") return path === "/manager" || path === "/manager#dashboard";
   if (entry.key === "manager-personal-info") return path.includes("restaurant-info-management");
+  if (entry.key === "manager-promotions") return path.includes("promotions");
   if (entry.key === "storage-inventory") return path.includes("inventory") || path.includes("storage");
   if (entry.key === "ai-chatbot-manager") return path.includes("ai-chatbot");
   return false;
@@ -443,7 +454,7 @@ export const getAiChatbotFeatureMatches = ({
   const isManagerShell = path === "/manager" || path === "/manager#dashboard";
 
   if (isManagerShell && !resolvedQuery && isManagerFeatureRole(userRole)) {
-    const managerShortcutKeys = ["manager-dashboard", "manager-personal-info", "storage-inventory", "ai-chatbot-manager", "staff-schedule"];
+    const managerShortcutKeys = ["manager-dashboard", "manager-personal-info", "manager-promotions", "storage-inventory", "ai-chatbot-manager", "staff-schedule"];
     return managerShortcutKeys
       .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
       .filter(Boolean)
@@ -456,19 +467,23 @@ export const getAiChatbotFeatureMatches = ({
     return deferManagerRoleCheck || canUseFeature(entry, role, { restaurantId: resolvedRestaurantId, pathname });
   });
 
-  return accessibleEntries
+  const scoredEntries = accessibleEntries
     .map((entry) => {
       const queryScore = queryScoreEntry(entry, resolvedQuery);
-      const pathScore = pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
-      const managerShellScore = entry.managerOnly && isManagerShell ? 2 : 0;
-      const managerHelpScore = entry.managerOnly && helpQuery ? 4 : 0;
+      const pathScore = !resolvedQuery && pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
+      const managerShellScore = !resolvedQuery && entry.managerOnly && isManagerShell ? 2 : 0;
+      const managerHelpScore = entry.managerOnly && helpQuery && queryScore > 0 ? 4 : 0;
       return {
         entry,
         score: queryScore + managerHelpScore + managerShellScore + pathScore,
       };
     })
     .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score);
+
+  const limit = isManagerShell && resolvedQuery ? 1 : 6;
+  return scoredEntries
+    .slice(0, limit)
     .map(({ entry }) => ({
       ...entry,
       path: buildFeaturePath(entry, {
@@ -477,8 +492,7 @@ export const getAiChatbotFeatureMatches = ({
         query: resolvedQuery,
         pathname,
       }),
-    }))
-    .slice(0, 6);
+    }));
 };
 
 export const __aiChatbotFeatureMapTestables = {
