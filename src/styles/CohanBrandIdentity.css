@@ -188,6 +188,79 @@
   margin-bottom: 2px !important;
 }
 
+.ai-chatbot-message.loading {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 24px 47px !important;
+  align-items: end !important;
+  column-gap: 7px !important;
+  width: 78px !important;
+  max-width: 78px !important;
+  min-height: 30px !important;
+  margin: 0 auto 12px 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ai-chatbot-message.loading::before {
+  content: "" !important;
+  position: relative !important;
+  z-index: 2;
+  grid-column: 1;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background-color: #ff6a00;
+  background-image: var(--cohan-ai-chef-avatar);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 5px 12px rgba(255, 106, 0, 0.2);
+}
+
+.ai-chatbot-message.loading::after {
+  content: "" !important;
+  position: absolute !important;
+  z-index: 0;
+  left: 31px !important;
+  bottom: 0 !important;
+  width: 47px !important;
+  height: 30px !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
+  border-radius: 15px 15px 15px 5px !important;
+  background: #f0f2f5 !important;
+  box-shadow: none !important;
+}
+
+.ai-chatbot-message.loading > span:not([class]) {
+  position: absolute !important;
+  z-index: 1;
+  bottom: 12px !important;
+  width: 5px !important;
+  height: 5px !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  background: #8b8d91 !important;
+  animation: ai-chatbot-dot 0.9s infinite ease-in-out !important;
+}
+
+.ai-chatbot-message.loading > span:not([class]):nth-child(1) {
+  left: 42px !important;
+}
+
+.ai-chatbot-message.loading > span:not([class]):nth-child(2) {
+  left: 51px !important;
+  animation-delay: 0.12s !important;
+}
+
+.ai-chatbot-message.loading > span:not([class]):nth-child(3) {
+  left: 60px !important;
+  animation-delay: 0.24s !important;
+}
+
 .ai-chatbot-header > button[aria-label="Đóng chatbot"] {
   display: inline-flex !important;
   flex: 0 0 36px !important;
