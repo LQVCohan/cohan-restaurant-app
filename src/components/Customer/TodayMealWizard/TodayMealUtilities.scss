@@ -1,0 +1,216 @@
+.today-meal-utilities {
+  --utility-primary: #ff6600;
+  --utility-primary-deep: #e65c00;
+  --utility-ink: #201a16;
+  --utility-muted: #74665c;
+}
+
+.today-meal-utilities__menu {
+  position: fixed;
+  left: clamp(14px, 2.4vw, 28px);
+  bottom: clamp(80px, 7vw, 94px);
+  z-index: 1049;
+  width: min(430px, calc(100vw - 28px));
+  padding: 12px;
+  border: 1px solid rgba(255, 102, 0, 0.14);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 8% 100%, rgba(255, 102, 0, 0.14), transparent 15rem),
+    rgba(255, 250, 244, 0.82);
+  box-shadow: 0 28px 64px rgba(92, 45, 12, 0.18), inset 0 1px rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  transform-origin: left bottom;
+  animation: utilityMenuIn 0.24s cubic-bezier(0.2, 0.86, 0.24, 1) both;
+}
+
+.today-meal-utilities__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 5px 11px;
+}
+
+.today-meal-utilities__heading span {
+  color: var(--utility-primary-deep);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.today-meal-utilities__heading strong {
+  color: var(--utility-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.today-meal-utilities__cluster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 3px;
+}
+
+.today-meal-utilities__item {
+  --utility-x: 0px;
+  --utility-y: 0px;
+  --utility-rotate: 0deg;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(92, 64, 51, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--utility-ink);
+  padding: 11px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(92, 45, 12, 0.09);
+  transform: translate(var(--utility-x), var(--utility-y)) rotate(var(--utility-rotate));
+  animation: utilityItemFanOut 0.32s cubic-bezier(0.2, 0.9, 0.24, 1.08) both;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.today-meal-utilities__item--1 {
+  grid-column: 1 / -1;
+  --utility-x: 5px;
+  --utility-y: -4px;
+  --utility-rotate: -0.8deg;
+  animation-delay: 20ms;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(255, 102, 0, 0.16), transparent 9rem),
+    rgba(255, 255, 255, 0.97);
+}
+
+.today-meal-utilities__item--2 {
+  --utility-x: -5px;
+  --utility-y: 3px;
+  --utility-rotate: -0.7deg;
+  animation-delay: 55ms;
+}
+
+.today-meal-utilities__item--3 {
+  --utility-x: 6px;
+  --utility-y: -2px;
+  --utility-rotate: 0.8deg;
+  animation-delay: 90ms;
+}
+
+.today-meal-utilities__item--4 {
+  --utility-x: 4px;
+  --utility-y: 4px;
+  --utility-rotate: 0.6deg;
+  animation-delay: 125ms;
+}
+
+.today-meal-utilities__item--5 {
+  --utility-x: -5px;
+  --utility-y: -3px;
+  --utility-rotate: -0.6deg;
+  animation-delay: 160ms;
+}
+
+.today-meal-utilities__item:hover,
+.today-meal-utilities__item:focus-visible {
+  border-color: rgba(255, 102, 0, 0.3);
+  box-shadow: 0 20px 42px rgba(92, 45, 12, 0.14);
+  transform: translate(var(--utility-x), calc(var(--utility-y) - 5px)) rotate(0deg) scale(1.01);
+}
+
+.today-meal-utilities__item:active {
+  transform: translate(var(--utility-x), var(--utility-y)) rotate(0deg) scale(0.98);
+}
+
+.today-meal-utilities__item:focus-visible {
+  outline: 3px solid rgba(255, 102, 0, 0.22);
+  outline-offset: 3px;
+}
+
+.today-meal-utilities__item-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--utility-primary-deep);
+  background: #fff0e4;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.92);
+}
+
+.today-meal-utilities__item > span:last-child,
+.today-meal-utilities__item strong,
+.today-meal-utilities__item small {
+  min-width: 0;
+  display: block;
+}
+
+.today-meal-utilities__item strong {
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.today-meal-utilities__item small {
+  margin-top: 3px;
+  color: var(--utility-muted);
+  font-size: 0.73rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.today-meal-utilities.is-open .today-meal-wizard-launcher {
+  background: #fff7ed;
+  color: var(--utility-primary-deep);
+  border-color: rgba(255, 102, 0, 0.34);
+  animation: none;
+}
+
+@keyframes utilityMenuIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes utilityItemFanOut {
+  from { opacity: 0; transform: translate(-18px, 42px) rotate(-5deg) scale(0.84); }
+  to { opacity: 1; transform: translate(var(--utility-x), var(--utility-y)) rotate(var(--utility-rotate)) scale(1); }
+}
+
+@media (max-width: 760px) {
+  .today-meal-utilities__menu {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    width: min(310px, calc(100vw - 24px));
+    max-height: min(68dvh, 510px);
+    overflow-y: auto;
+    border-radius: 20px;
+  }
+
+  .today-meal-utilities__heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .today-meal-utilities__cluster {
+    grid-template-columns: 1fr;
+  }
+
+  .today-meal-utilities__item,
+  .today-meal-utilities__item--1 {
+    grid-column: auto;
+    --utility-x: 0px;
+    --utility-y: 0px;
+    --utility-rotate: 0deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .today-meal-utilities__menu,
+  .today-meal-utilities__item {
+    animation: none;
+  }
+}
