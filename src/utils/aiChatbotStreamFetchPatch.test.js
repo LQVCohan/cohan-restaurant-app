@@ -86,4 +86,75 @@ describe("aiChatbotStreamFetchPatch", () => {
     ]);
     expect(focused.quickReplies).toEqual([]);
   });
+
+  it("keeps only the customer action requested by the user", () => {
+    const focused = focusAiChatbotResponseActions(
+      {
+        answer: "Bạn có thể mở thực đơn bằng nút bên dưới.",
+        actions: [
+          { type: "link", label: "Đơn hàng của tôi", href: "/orders" },
+          { type: "link", label: "Xem thực đơn", href: "/cus-menu" },
+          { type: "openCart", label: "Giỏ hàng của tôi", href: "" },
+          { type: "link", label: "Thông báo", href: "/notifications" },
+        ],
+        quickReplies: ["Gợi ý cho tôi", "Mã giảm giá"],
+      },
+      {
+        message: "Tôi muốn xem thực đơn",
+        pageContext: {
+          pathname: "/",
+          userRole: "manager",
+          featureMatches: [
+            {
+              key: "menu",
+              label: "Xem thực đơn",
+              path: "/cus-menu",
+              description: "Xem món ăn, giá và các lựa chọn đang bán.",
+            },
+          ],
+        },
+      },
+    );
+
+    expect(focused.actions).toEqual([
+      expect.objectContaining({
+        label: "Xem thực đơn",
+        href: "/cus-menu",
+      }),
+    ]);
+    expect(focused.quickReplies).toEqual([]);
+  });
+
+  it("supports focused cart actions without an href", () => {
+    const focused = focusAiChatbotResponseActions(
+      {
+        actions: [
+          { type: "link", label: "Xem thực đơn", href: "/cus-menu" },
+          { type: "openCart", label: "Giỏ hàng của tôi", href: "" },
+        ],
+        quickReplies: ["Xem đơn hàng"],
+      },
+      {
+        pageContext: {
+          featureMatches: [
+            {
+              key: "cart",
+              label: "Giỏ hàng của tôi",
+              path: "",
+              actionType: "openCart",
+              description: "Mở giỏ hàng hiện tại.",
+            },
+          ],
+        },
+      },
+    );
+
+    expect(focused.actions).toEqual([
+      expect.objectContaining({
+        type: "openCart",
+        label: "Giỏ hàng của tôi",
+      }),
+    ]);
+    expect(focused.quickReplies).toEqual([]);
+  });
 });
