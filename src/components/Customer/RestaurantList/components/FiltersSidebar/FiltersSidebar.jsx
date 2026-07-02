@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./FiltersSidebar.scss";
 
-// --- DỮ LIỆU CẤU HÌNH (MOCK DATA) ---
 const DISTRICTS = [
   { id: "Quan 1", label: "Quận 1", count: 45 },
   { id: "Quan 3", label: "Quận 3", count: 32 },
@@ -32,18 +31,17 @@ const PRICES = [
   { id: "over-300k", label: "Trên 300k", count: 23 },
 ];
 
-// Component Checkbox Item
 const FilterItem = ({ label, count, checked, onChange }) => (
   <label className="filter-item">
-    <div className="checkbox-wrapper">
+    <span className="checkbox-wrapper">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
         className="real-checkbox"
       />
-      <span className="custom-checkbox"></span>
-    </div>
+      <span className="custom-checkbox" />
+    </span>
     <span className="filter-label">{label}</span>
     <span className="filter-count">{count}</span>
   </label>
@@ -54,102 +52,159 @@ const FiltersSidebar = ({
   onFilterChange,
   onClearFilters,
 }) => {
-  // Kiểm tra xem có filter nào đang active không để hiện nút Reset
-  const hasActiveFilters =
-    filters.districts?.length > 0 ||
-    filters.cuisines?.length > 0 ||
-    filters.ratings?.length > 0 ||
-    filters.priceRanges?.length > 0;
+  const [isOpen, setIsOpen] = useState(false);
+  const activeFilterCount = useMemo(
+    () =>
+      [filters.districts, filters.cuisines, filters.ratings, filters.priceRanges]
+        .reduce((total, values) => total + (values?.length || 0), 0),
+    [filters],
+  );
+  const hasActiveFilters = activeFilterCount > 0;
 
-  // Helper gọi hàm change
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
+
   const handleChange = (group, value) => {
-    onFilterChange && onFilterChange(group, value);
+    onFilterChange?.(group, value);
   };
 
   return (
-    <div className="filters-sidebar">
-      {/* Header */}
-      <div className="filters-header">
-        <h3 className="title">
-          <span className="icon">🌪️</span> Bộ lọc
-        </h3>
-        {hasActiveFilters && (
-          <button className="btn-reset" onClick={onClearFilters}>
-            Làm mới
-          </button>
+    <div className={`filters-sidebar${isOpen ? " is-open" : ""}`}>
+      <button
+        type="button"
+        className="filters-mobile-trigger"
+        onClick={() => setIsOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+      >
+        <span aria-hidden="true">🌪️</span>
+        Bộ lọc
+        {activeFilterCount > 0 && (
+          <span className="filters-mobile-count">{activeFilterCount}</span>
         )}
-      </div>
+      </button>
 
-      <div className="filters-body">
-        {/* 1. KHU VỰC */}
-        <section className="filter-section">
-          <h4 className="section-title">📍 Khu vực</h4>
-          <div className="filter-list">
-            {DISTRICTS.map((item) => (
-              <FilterItem
-                key={item.id}
-                label={item.label}
-                count={item.count}
-                checked={filters.districts?.includes(item.label)}
-                onChange={() => handleChange("districts", item.label)}
-              />
-            ))}
+      <button
+        type="button"
+        className="filters-mobile-backdrop"
+        aria-label="Đóng bộ lọc"
+        tabIndex={isOpen ? 0 : -1}
+        onClick={() => setIsOpen(false)}
+      />
+
+      <div className="filters-panel" role="dialog" aria-modal={isOpen || undefined} aria-label="Bộ lọc nhà hàng">
+        <div className="filters-header">
+          <h3 className="title">
+            <span className="icon" aria-hidden="true">🌪️</span> Bộ lọc
+          </h3>
+          <div className="filters-header__actions">
+            {hasActiveFilters && (
+              <button type="button" className="btn-reset" onClick={onClearFilters}>
+                Làm mới
+              </button>
+            )}
+            <button
+              type="button"
+              className="filters-mobile-close"
+              onClick={() => setIsOpen(false)}
+              aria-label="Đóng bộ lọc"
+            >
+              ×
+            </button>
           </div>
-        </section>
+        </div>
 
-        <div className="divider"></div>
+        <div className="filters-body">
+          <section className="filter-section">
+            <h4 className="section-title">📍 Khu vực</h4>
+            <div className="filter-list">
+              {DISTRICTS.map((item) => (
+                <FilterItem
+                  key={item.id}
+                  label={item.label}
+                  count={item.count}
+                  checked={filters.districts?.includes(item.label)}
+                  onChange={() => handleChange("districts", item.label)}
+                />
+              ))}
+            </div>
+          </section>
 
-        {/* 2. ẨM THỰC */}
-        <section className="filter-section">
-          <h4 className="section-title">🍜 Loại ẩm thực</h4>
-          <div className="filter-list">
-            {CUISINES.map((item) => (
-              <FilterItem
-                key={item.id}
-                label={item.label}
-                count={item.count}
-                checked={filters.cuisines?.includes(item.label)}
-                onChange={() => handleChange("cuisines", item.label)}
-              />
-            ))}
-          </div>
-        </section>
+          <div className="divider" />
 
-        <div className="divider"></div>
+          <section className="filter-section">
+            <h4 className="section-title">🍜 Loại ẩm thực</h4>
+            <div className="filter-list">
+              {CUISINES.map((item) => (
+                <FilterItem
+                  key={item.id}
+                  label={item.label}
+                  count={item.count}
+                  checked={filters.cuisines?.includes(item.label)}
+                  onChange={() => handleChange("cuisines", item.label)}
+                />
+              ))}
+            </div>
+          </section>
 
-        {/* 3. ĐÁNH GIÁ */}
-        <section className="filter-section">
-          <h4 className="section-title">⭐ Đánh giá</h4>
-          <div className="filter-list">
-            {RATINGS.map((item) => (
-              <FilterItem
-                key={item.id}
-                label={item.label}
-                count={item.count}
-                checked={filters.ratings?.includes(item.id)}
-                onChange={() => handleChange("ratings", item.id)}
-              />
-            ))}
-          </div>
-        </section>
+          <div className="divider" />
 
-        <div className="divider"></div>
+          <section className="filter-section">
+            <h4 className="section-title">⭐ Đánh giá</h4>
+            <div className="filter-list">
+              {RATINGS.map((item) => (
+                <FilterItem
+                  key={item.id}
+                  label={item.label}
+                  count={item.count}
+                  checked={filters.ratings?.includes(item.id)}
+                  onChange={() => handleChange("ratings", item.id)}
+                />
+              ))}
+            </div>
+          </section>
 
-        {/* 4. MỨC GIÁ */}
-        <section className="filter-section">
-          <h4 className="section-title">💰 Mức giá</h4>
-          <div className="filter-list">
-            {PRICES.map((item) => (
-              <FilterItem
-                key={item.id}
-                label={item.label}
-                count={item.count}
-                checked={filters.priceRanges?.includes(item.id)}
-                onChange={() => handleChange("priceRanges", item.id)}
-              />
-            ))}
-          </div>
-        </section>
+          <div className="divider" />
+
+          <section className="filter-section">
+            <h4 className="section-title">💰 Mức giá</h4>
+            <div className="filter-list">
+              {PRICES.map((item) => (
+                <FilterItem
+                  key={item.id}
+                  label={item.label}
+                  count={item.count}
+                  checked={filters.priceRanges?.includes(item.id)}
+                  onChange={() => handleChange("priceRanges", item.id)}
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="filters-mobile-footer">
+          {hasActiveFilters && (
+            <button type="button" className="filters-mobile-clear" onClick={onClearFilters}>
+              Xóa lọc
+            </button>
+          )}
+          <button type="button" className="filters-mobile-apply" onClick={() => setIsOpen(false)}>
+            Xem kết quả
+          </button>
+        </div>
       </div>
     </div>
   );

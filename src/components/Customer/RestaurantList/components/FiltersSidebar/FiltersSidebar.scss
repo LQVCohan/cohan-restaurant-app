@@ -1,4 +1,3 @@
-// --- VARIABLES ---
 $primary: #ff6600;
 $primary-hover: #e65c00;
 $primary-light: #fff5eb;
@@ -6,176 +5,334 @@ $text-main: #1a202c;
 $text-sub: #64748b;
 $border: #e2e8f0;
 $white: #ffffff;
-$radius: 8px;
 
 .filters-sidebar {
   width: 100%;
   font-family: "Inter", sans-serif;
 
-  // Header
+  .filters-mobile-trigger,
+  .filters-mobile-backdrop,
+  .filters-mobile-close,
+  .filters-mobile-footer {
+    display: none;
+  }
+
   .filters-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding-bottom: 20px;
     margin-bottom: 20px;
     border-bottom: 1px solid $border;
 
     .title {
-      font-size: 1.1rem;
-      font-weight: 800;
-      color: $text-main;
       margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
-      .icon {
-        font-size: 1.2rem;
-      }
+      color: $text-main;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .icon {
+      font-size: 1.2rem;
+    }
+
+    &__actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .btn-reset {
-      background: none;
-      border: none;
+      padding: 6px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: $primary-light;
       color: $primary;
       font-size: 0.85rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
-      padding: 6px 12px;
-      border-radius: 6px;
-      transition: 0.2s;
-      background-color: $primary-light;
 
       &:hover {
-        background-color: #ffe4cc;
+        background: #ffe4cc;
         color: $primary-hover;
       }
     }
   }
 
-  // Body
   .filters-body {
     display: flex;
     flex-direction: column;
     gap: 24px;
   }
 
-  // Section
-  .filter-section {
-    .section-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: $text-main;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .filter-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+  .filter-section .section-title {
+    margin: 0 0 16px;
+    color: $text-main;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
 
-  // Divider
+  .filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .divider {
+    width: 100%;
     height: 1px;
     background: $border;
-    width: 100%;
   }
 
-  // --- CUSTOM CHECKBOX ITEM ---
   .filter-item {
     display: flex;
     align-items: center;
     gap: 12px;
     cursor: pointer;
     user-select: none;
-    transition: 0.2s;
 
     &:hover {
       .filter-label {
         color: $primary;
       }
+
       .custom-checkbox {
         border-color: $primary;
       }
     }
+  }
 
-    // Label Text
-    .filter-label {
-      flex: 1;
-      font-size: 0.95rem;
-      color: $text-sub;
-      transition: color 0.2s;
+  .filter-label {
+    flex: 1;
+    color: $text-sub;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+  }
+
+  .filter-count {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .checkbox-wrapper {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+  }
+
+  .real-checkbox {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+
+    &:focus-visible ~ .custom-checkbox {
+      outline: 3px solid rgba(255, 102, 0, 0.2);
+      outline-offset: 3px;
     }
 
-    // Count Badge
-    .filter-count {
-      font-size: 0.75rem;
-      color: #94a3b8;
-      background: #f1f5f9;
-      padding: 2px 8px;
-      border-radius: 99px;
-      font-weight: 600;
-    }
+    &:checked ~ .custom-checkbox {
+      border-color: $primary;
+      background: $primary;
 
-    // --- LOGIC CUSTOM CHECKBOX ---
-    .checkbox-wrapper {
-      position: relative;
-      width: 20px;
-      height: 20px;
-      display: flex;
+      &::after {
+        display: block;
+      }
+    }
+  }
+
+  .custom-checkbox {
+    position: absolute;
+    inset: 0;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    background: $white;
+    transition: border-color 0.2s ease, background 0.2s ease;
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 2px;
+      display: none;
+      width: 5px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .filters-sidebar {
+    width: 0;
+    height: 0;
+
+    .filters-mobile-trigger {
+      position: fixed;
+      left: max(14px, env(safe-area-inset-left));
+      bottom: calc(82px + env(safe-area-inset-bottom));
+      z-index: 58;
+      min-height: 46px;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border: 1px solid rgba(255, 102, 0, 0.24);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      color: #b94705;
+      box-shadow: 0 14px 34px rgba(92, 45, 12, 0.16);
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 850;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+    }
 
-      // Ẩn checkbox thật
-      .real-checkbox {
-        position: absolute;
-        opacity: 0;
-        cursor: pointer;
-        height: 0;
-        width: 0;
+    .filters-mobile-count {
+      min-width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      padding-inline: 6px;
+      border-radius: 999px;
+      background: $primary;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 900;
+    }
 
-        // Khi checked -> đổi style cho custom box
-        &:checked ~ .custom-checkbox {
-          background-color: $primary;
-          border-color: $primary;
+    .filters-mobile-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 78;
+      display: block;
+      border: 0;
+      background: rgba(25, 18, 13, 0.42);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
 
-          // Hiện dấu tick
-          &::after {
-            display: block;
-          }
-        }
+    .filters-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 79;
+      max-height: min(82dvh, 720px);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      padding: 16px 16px calc(14px + env(safe-area-inset-bottom));
+      border-radius: 26px 26px 0 0;
+      background: #fffdf9;
+      box-shadow: 0 -22px 60px rgba(63, 34, 15, 0.22);
+      transform: translateY(105%);
+      transition: transform 0.24s cubic-bezier(0.2, 0.86, 0.24, 1);
+    }
+
+    .filters-header {
+      margin-bottom: 0;
+      padding-bottom: 12px;
+    }
+
+    .filters-mobile-close {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 12px;
+      background: #fff1e5;
+      color: #9a3412;
+      font-size: 1.45rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .filters-body {
+      gap: 18px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 14px 2px;
+    }
+
+    .filter-list {
+      gap: 6px;
+    }
+
+    .filter-item {
+      min-height: 44px;
+      padding: 7px 4px;
+    }
+
+    .filters-mobile-footer {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      padding-top: 12px;
+      border-top: 1px solid $border;
+      background: #fffdf9;
+    }
+
+    .filters-mobile-clear,
+    .filters-mobile-apply {
+      min-height: 46px;
+      border-radius: 14px;
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .filters-mobile-clear {
+      padding-inline: 16px;
+      border: 1px solid rgba(255, 102, 0, 0.2);
+      background: #fff;
+      color: #b94705;
+    }
+
+    .filters-mobile-apply {
+      border: 0;
+      background: linear-gradient(135deg, #ff6600, #ff8a3d);
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(255, 102, 0, 0.22);
+    }
+
+    &.is-open {
+      .filters-mobile-backdrop {
+        opacity: 1;
+        pointer-events: auto;
       }
 
-      // Checkbox giả
-      .custom-checkbox {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 20px;
-        width: 20px;
-        background-color: $white;
-        border: 2px solid #cbd5e1; // Viền xám
-        border-radius: 6px; // Bo góc
-        transition: all 0.2s ease;
+      .filters-panel {
+        transform: translateY(0);
+      }
 
-        // Dấu tick (V)
-        &::after {
-          content: "";
-          position: absolute;
-          display: none; // Mặc định ẩn
-          left: 6px;
-          top: 2px;
-          width: 5px;
-          height: 10px;
-          border: solid white;
-          border-width: 0 2px 2px 0;
-          transform: rotate(45deg);
-        }
+      .filters-mobile-trigger {
+        opacity: 0;
+        pointer-events: none;
       }
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filters-sidebar .filters-mobile-backdrop,
+  .filters-sidebar .filters-panel {
+    transition: none;
   }
 }
