@@ -7,6 +7,7 @@
 @import "./components/common/AiChatbotWidget.product.css";
 @import "./components/common/AiChatbotWidgetCustomerOrange.css";
 @import "./components/common/AiChatbotWidgetInlineSuggestions.css";
+@import "./styles/AiChefAvatarBranding.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotSettingsFinalPolish.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotSettingsHandoffExplain.css";
 @import "./components/Dashboard_Manager/Customer/AiChatbotSettingsDepthContrast.css";
