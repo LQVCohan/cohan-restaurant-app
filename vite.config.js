@@ -81,7 +81,8 @@ const staffPerformanceMonthRangeGuardPlugin = () => ({
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const mergedEnv = { ...process.env, ...env };
+  // Explicit process env from scripts/start-mobile-dev.mjs must win over .env files.
+  const mergedEnv = { ...env, ...process.env };
 
   const devBindHost = mergedEnv.VITE_DEV_BIND_HOST || "127.0.0.1";
   const devHost = mergedEnv.VITE_DEV_HOST || "localhost";
@@ -90,6 +91,9 @@ export default defineConfig(({ mode }) => {
   const devPort = toNumber(mergedEnv.VITE_DEV_PORT, 5173);
   const devHmrProtocol = mergedEnv.VITE_DEV_HMR_PROTOCOL || "ws";
   const devHmrClientPort = toNumber(mergedEnv.VITE_DEV_HMR_CLIENT_PORT, devPort);
+  const devBackendUrl =
+    mergedEnv.VITE_DEV_BACKEND_URL ||
+    `http://127.0.0.1:${mergedEnv.VITE_BACKEND_PORT || "4000"}`;
   const allowedHosts = (mergedEnv.VITE_DEV_ALLOWED_HOSTS || devHost)
     .split(",")
     .map((host) => host.trim())
@@ -122,6 +126,25 @@ export default defineConfig(({ mode }) => {
         host: devHost,
         port: devPort,
         clientPort: devHmrClientPort,
+      },
+      proxy: {
+        "/graphql": {
+          target: devBackendUrl,
+          changeOrigin: true,
+        },
+        "/api": {
+          target: devBackendUrl,
+          changeOrigin: true,
+        },
+        "/uploads": {
+          target: devBackendUrl,
+          changeOrigin: true,
+        },
+        "/socket.io": {
+          target: devBackendUrl,
+          changeOrigin: true,
+          ws: true,
+        },
       },
     },
   };

@@ -1,6 +1,7 @@
 // src/hooks/useSocketDeliveryTracking.js
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import { getBackendRootUrl } from "@/lib/apiBaseUrl";
 
 /**
  * Hook lắng nghe tracking giao hàng cho 1 đơn cụ thể (phía khách / tracking page).
@@ -19,7 +20,8 @@ export default function useSocketDeliveryTracking(orderCode, handlers = {}) {
   useEffect(() => {
     if (!orderCode) return;
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:4000", {
+    const socketOrigin = getBackendRootUrl() || window.location.origin;
+    const socket = io(socketOrigin, {
       transports: ["websocket"],
       reconnection: true,
       reconnectionDelay: 2000,
