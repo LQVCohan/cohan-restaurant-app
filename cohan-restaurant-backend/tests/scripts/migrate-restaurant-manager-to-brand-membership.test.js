@@ -2,35 +2,44 @@ import { describe, expect, it, vi } from "vitest";
 import { migrateRestaurantManagersToBrandMembership } from "../../scripts/migrate-restaurant-manager-to-brand-membership.js";
 
 const chain = (rows) => ({ select: () => ({ lean: async () => rows }) });
-const findOne = (value) => ({ lean: async () => value });
 
 describe("migrateRestaurantManagersToBrandMembership", () => {
-  it("reports dry-run creates/updates/skips/conflicts without writing", async () => {
+  it("assigns unbranded restaurants to the only Brand during dry-run", async () => {
     const updateOne = vi.fn();
-    const restaurants = [
-      { _id: "r-create", brandId: "b1", managerId: "m1" },
-      { _id: "r-update", brandId: "b1", managerId: "m2" },
-      { _id: "r-no-brand", managerId: "m3" },
-      { _id: "r-no-manager", brandId: "b1" },
-      { _id: "r-conflict", brandId: "b1", managerId: "m4" },
-    ];
     const models = {
-      Restaurant: { find: vi.fn(() => chain(restaurants)) },
+      Brand: {
+        find: vi.fn(() => chain([{ _id: "b1", ownerId: "owner1", name: "Cohan" }])),
+      },
+      Restaurant: {
+        find: vi.fn(() => chain([
+          { _id: "r1", brandId: "b1", managerId: "m1", name: "Branch 1" },
+          { _id: "r2", managerId: "m2", name: "Legacy branch" },
+        ])),
+      },
+      User: {
+        find: vi.fn(() => chain([])),
+      },
+      Role: {
+        find: vi.fn(() => chain([{ _id: "manager-role", slug: "manager" }])),
+      },
       BrandMembership: {
-        findOne: vi.fn((query) => {
-          if (String(query.restaurantIds || "") === "r-conflict") return findOne({ userId: "other" });
-          if (String(query.userId || "") === "m2") return findOne({ userId: "m2" });
-          return findOne(null);
-        }),
+        find: vi.fn(() => chain([])),
         updateOne,
       },
     };
 
     const logger = { log: vi.fn() };
-    const report = await migrateRestaurantManagersToBrandMembership({ models, logger });
+    const report = await migrateRestaurantManagersToBrandMembership({
+      models,
+      logger,
+    });
 
-    expect(report).toMatchObject({ created: 1, updated: 1, skippedNoBrandId: 1, skippedNoManagerId: 1 });
-    expect(report.conflicts).toHaveLength(1);
+    expect(report).toMatchObject({
+      ownerCandidates: 1,
+      managerCandidates: 2,
+      restaurantsAssignedToOnlyBrand: 1,
+      conflicts: [],
+    });
     expect(updateOne).not.toHaveBeenCalled();
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining("Using database"));
   });
