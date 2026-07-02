@@ -23,7 +23,7 @@ describe("focused manager chatbot features", () => {
     const matches = getAiChatbotFeatureMatches({
       pathname: "/manager",
       userRole: "manager",
-      message: "Mở quản lý coupon",
+      message: "Mo giup toi trang quan ly coupon",
     });
 
     expect(matches).toEqual([
