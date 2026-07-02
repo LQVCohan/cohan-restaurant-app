@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import { Clock, LocateFixed, Sparkles, Star, Truck, Utensils } from "lucide-react";
 import LocationPickerMap from "./LocationPickerMap";
 import "../../../../styles/Homepage/HeroSection.scss";
 
-// Danh sách ảnh món ăn demo
-const HERO_IMAGES = [
+const HERO_FALLBACK_IMAGES = [
   {
     id: 1,
     src: "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=1100&q=88",
@@ -21,6 +22,106 @@ const HERO_IMAGES = [
     alt: "Salad healthy",
   },
 ];
+
+const GET_HERO_TOP_RESTAURANTS = gql`
+  query GetHeroTopRestaurants($limit: Int) {
+    restaurantsTop(limit: $limit) {
+      id
+      name
+      coverImage
+      avatar
+      avgRating
+      reviewCount
+      capabilities
+    }
+  }
+`;
+
+const GET_HERO_NEARBY_RESTAURANTS = gql`
+  query GetHeroNearbyRestaurants($lat: Float!, $lng: Float!, $limit: Int) {
+    restaurantsNearby(lat: $lat, lng: $lng, limit: $limit) {
+      id
+      name
+      coverImage
+      avatar
+      avgRating
+      reviewCount
+      capabilities
+      estimatedTravelMinutes
+    }
+  }
+`;
+
+const FALLBACK_HERO_METRICS = {
+  ratingTitle: "4.9/5",
+  ratingDesc: "Đánh giá tốt",
+  timeTitle: "30 phút",
+  timeDesc: "Giao siêu tốc",
+  deliveryTitle: "Freeship",
+  deliveryDesc: "Đơn từ 0đ",
+};
+
+const toFiniteNumber = (value) => {
+  if (value == null) return null;
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : null;
+};
+
+export const buildHeroSlides = (restaurants = []) =>
+  HERO_FALLBACK_IMAGES.map((fallback, index) => {
+    const restaurant = restaurants[index] || null;
+    const image = String(restaurant?.coverImage || restaurant?.avatar || "").trim();
+
+    return {
+      id: restaurant?.id || fallback.id,
+      src: image || fallback.src,
+      fallbackSrc: fallback.src,
+      alt: restaurant?.name
+        ? `Món ăn nổi bật tại ${restaurant.name}`
+        : fallback.alt,
+      restaurant,
+    };
+  });
+
+export const buildHeroMetrics = (restaurant) => {
+  const rating = toFiniteNumber(restaurant?.avgRating);
+  const reviewCount = toFiniteNumber(restaurant?.reviewCount);
+  const estimatedTravelMinutes = toFiniteNumber(
+    restaurant?.estimatedTravelMinutes
+  );
+  const deliveryCapability = restaurant?.capabilities?.acceptsDelivery;
+
+  return {
+    ratingTitle:
+      rating != null && rating > 0
+        ? `${Math.min(rating, 5).toFixed(1)}/5`
+        : FALLBACK_HERO_METRICS.ratingTitle,
+    ratingDesc:
+      reviewCount != null && reviewCount > 0
+        ? `${Math.round(reviewCount)} đánh giá`
+        : FALLBACK_HERO_METRICS.ratingDesc,
+    timeTitle:
+      estimatedTravelMinutes != null && estimatedTravelMinutes > 0
+        ? `${Math.max(1, Math.round(estimatedTravelMinutes))} phút`
+        : FALLBACK_HERO_METRICS.timeTitle,
+    timeDesc:
+      estimatedTravelMinutes != null && estimatedTravelMinutes > 0
+        ? "Ước tính đến bạn"
+        : FALLBACK_HERO_METRICS.timeDesc,
+    deliveryTitle:
+      deliveryCapability === true
+        ? "Có giao hàng"
+        : deliveryCapability === false
+          ? "Nhận tại quán"
+          : FALLBACK_HERO_METRICS.deliveryTitle,
+    deliveryDesc:
+      deliveryCapability === true
+        ? "Nhà hàng hỗ trợ"
+        : deliveryCapability === false
+          ? "Chưa hỗ trợ giao"
+          : FALLBACK_HERO_METRICS.deliveryDesc,
+  };
+};
 
 const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
 const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
@@ -66,10 +167,45 @@ const HeroSection = ({ onSearch }) => {
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
+  const selectedLat = Number(selectedLocation?.lat);
+  const selectedLng = Number(selectedLocation?.lng);
+  const hasSelectedCoordinates =
+    Number.isFinite(selectedLat) && Number.isFinite(selectedLng);
+
+  const { data: topRestaurantData } = useQuery(GET_HERO_TOP_RESTAURANTS, {
+    variables: { limit: HERO_FALLBACK_IMAGES.length },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const { data: nearbyRestaurantData } = useQuery(
+    GET_HERO_NEARBY_RESTAURANTS,
+    {
+      skip: !hasSelectedCoordinates,
+      variables: {
+        lat: hasSelectedCoordinates ? selectedLat : 0,
+        lng: hasSelectedCoordinates ? selectedLng : 0,
+        limit: HERO_FALLBACK_IMAGES.length,
+      },
+      fetchPolicy: "cache-and-network",
+    }
+  );
+
+  const liveRestaurants =
+    nearbyRestaurantData?.restaurantsNearby?.length > 0
+      ? nearbyRestaurantData.restaurantsNearby
+      : topRestaurantData?.restaurantsTop || [];
+  const heroSlides = useMemo(
+    () => buildHeroSlides(liveRestaurants),
+    [liveRestaurants]
+  );
+
   // --- SLIDER LOGIC ---
   const [currentSlide, setCurrentSlide] = useState(0);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+
+  const activeSlide = heroSlides[currentSlide] || heroSlides[0];
+  const heroMetrics = buildHeroMetrics(activeSlide?.restaurant);
 
   const cacheRef = useRef(new Map());
   const abortRef = useRef(null);
@@ -82,14 +218,18 @@ const HeroSection = ({ onSearch }) => {
       handleNext();
     }, 5000);
     return () => clearInterval(timer);
-  }, [currentSlide]);
+  }, [currentSlide, heroSlides.length]);
 
   const handleNext = () => {
-    setCurrentSlide((prev) => (prev === HERO_IMAGES.length - 1 ? 0 : prev + 1));
+    setCurrentSlide((prev) =>
+      prev === heroSlides.length - 1 ? 0 : prev + 1
+    );
   };
 
   const handlePrev = () => {
-    setCurrentSlide((prev) => (prev === 0 ? HERO_IMAGES.length - 1 : prev - 1));
+    setCurrentSlide((prev) =>
+      prev === 0 ? heroSlides.length - 1 : prev - 1
+    );
   };
 
   // Xử lý vuốt tay (Swipe) trên Mobile
@@ -111,7 +251,6 @@ const HeroSection = ({ onSearch }) => {
       handlePrev();
     }
   };
-
 
   useEffect(() => {
     const q = address.trim().toLowerCase();
@@ -194,7 +333,9 @@ const HeroSection = ({ onSearch }) => {
         cacheRef.current.set(q, suggestions);
         setAddressSuggestions(suggestions);
         setSuggestionMessage(
-          suggestions.length === 0 ? "Không tìm thấy gợi ý địa chỉ phù hợp." : ""
+          suggestions.length === 0
+            ? "Không tìm thấy gợi ý địa chỉ phù hợp."
+            : ""
         );
       } catch (err) {
         if (err.name !== "AbortError") {
@@ -210,10 +351,10 @@ const HeroSection = ({ onSearch }) => {
     };
   }, [address, isLocationPickerOpen]);
 
-
   useEffect(() => {
     return () => {
-      if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+      if (reverseDebounceRef.current)
+        clearTimeout(reverseDebounceRef.current);
     };
   }, []);
 
@@ -307,7 +448,9 @@ const HeroSection = ({ onSearch }) => {
     onSearch({
       search: searchText || location?.shortLabel || location?.label || "",
       location:
-        location && Number.isFinite(location.lat) && Number.isFinite(location.lng)
+        location &&
+        Number.isFinite(location.lat) &&
+        Number.isFinite(location.lng)
           ? {
               lat: location.lat,
               lng: location.lng,
@@ -350,7 +493,9 @@ const HeroSection = ({ onSearch }) => {
         setSelectedLocation(location);
       },
       () => {
-        setSuggestionMessage("Không thể lấy vị trí hiện tại. Vui lòng bật GPS.");
+        setSuggestionMessage(
+          "Không thể lấy vị trí hiện tại. Vui lòng bật GPS."
+        );
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
@@ -382,9 +527,13 @@ const HeroSection = ({ onSearch }) => {
       shortLabel: fallbackLabel,
     }));
 
-    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    if (reverseDebounceRef.current)
+      clearTimeout(reverseDebounceRef.current);
     reverseDebounceRef.current = setTimeout(async () => {
-      const location = await reverseGeocodeLocation({ lat, lng }, fallbackLabel);
+      const location = await reverseGeocodeLocation(
+        { lat, lng },
+        fallbackLabel
+      );
       setSelectedLocation(location);
       setAddress(location.shortLabel || location.label);
     }, 550);
@@ -397,7 +546,8 @@ const HeroSection = ({ onSearch }) => {
       selectedLocation.shortLabel ||
       selectedLocation.label ||
       "Vị trí hiện tại của bạn";
-    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    if (reverseDebounceRef.current)
+      clearTimeout(reverseDebounceRef.current);
     setAddress(label);
     setIsLocationPickerOpen(false);
     setAddressSuggestions([]);
@@ -412,18 +562,18 @@ const HeroSection = ({ onSearch }) => {
   };
 
   const handleClosePicker = () => {
-    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    if (reverseDebounceRef.current)
+      clearTimeout(reverseDebounceRef.current);
     setIsLocationPickerOpen(false);
   };
 
   return (
     <section id="home" className="hero" aria-labelledby="home-hero-title">
       <div className="hero__container">
-        {/* --- LEFT CONTENT (Giữ nguyên) --- */}
         <div className="hero__content">
           <div className="hero__badge">
             <Sparkles className="hero__badge-icon" aria-hidden="true" />
-            <span>Giao hàng nhanh trong 30 phút</span>
+            <span>Giao hàng nhanh trong {heroMetrics.timeTitle}</span>
           </div>
 
           <h1 className="hero__title" id="home-hero-title">
@@ -435,7 +585,11 @@ const HeroSection = ({ onSearch }) => {
             Khám phá nhà hàng uy tín, đặt món dễ dàng và nhận món nóng hổi tại nhà.
           </p>
 
-          <div className="hero__search-box" role="search" aria-label="Tìm nhà hàng theo địa chỉ giao hàng">
+          <div
+            className="hero__search-box"
+            role="search"
+            aria-label="Tìm nhà hàng theo địa chỉ giao hàng"
+          >
             <div className="hero__input-wrapper">
               <span className="hero__icon-location" aria-hidden="true">
                 <svg
@@ -458,7 +612,9 @@ const HeroSection = ({ onSearch }) => {
                 type="text"
                 placeholder="Nhập địa chỉ giao hàng của bạn..."
                 aria-label="Địa chỉ giao hàng"
-                aria-describedby={suggestionMessage ? "hero-suggestion-message" : undefined}
+                aria-describedby={
+                  suggestionMessage ? "hero-suggestion-message" : undefined
+                }
                 value={address}
                 onChange={(e) => {
                   setAddress(e.target.value);
@@ -478,7 +634,11 @@ const HeroSection = ({ onSearch }) => {
               <LocateFixed className="hero__btn-icon" aria-hidden="true" />
               Vị trí hiện tại
             </button>
-            <button onClick={handleSearch} className="hero__btn-search" type="button">
+            <button
+              onClick={handleSearch}
+              className="hero__btn-search"
+              type="button"
+            >
               Tìm nhà hàng
             </button>
           </div>
@@ -487,7 +647,10 @@ const HeroSection = ({ onSearch }) => {
             (isSuggesting ||
               addressSuggestions.length > 0 ||
               suggestionMessage) && (
-              <div className="hero__suggestions" aria-label="Gợi ý địa chỉ giao hàng">
+              <div
+                className="hero__suggestions"
+                aria-label="Gợi ý địa chỉ giao hàng"
+              >
                 {addressSuggestions.map((item) => (
                   <button
                     key={item.id}
@@ -500,12 +663,21 @@ const HeroSection = ({ onSearch }) => {
                   </button>
                 ))}
                 {isSuggesting && (
-                  <div className="hero__suggestion-state" role="status" aria-live="polite">
+                  <div
+                    className="hero__suggestion-state"
+                    role="status"
+                    aria-live="polite"
+                  >
                     Đang gợi ý địa chỉ...
                   </div>
                 )}
                 {!isSuggesting && suggestionMessage && (
-                  <div className="hero__suggestion-state" id="hero-suggestion-message" role="status" aria-live="polite">
+                  <div
+                    className="hero__suggestion-state"
+                    id="hero-suggestion-message"
+                    role="status"
+                    aria-live="polite"
+                  >
                     {suggestionMessage}
                   </div>
                 )}
@@ -533,11 +705,16 @@ const HeroSection = ({ onSearch }) => {
           </div>
         </div>
 
-        {/* --- RIGHT IMAGE AREA (UPDATED SLIDER) --- */}
-        <div className="hero__image-area" aria-label="Ảnh món ăn nổi bật">
+        <div
+          className="hero__image-area"
+          aria-label={
+            activeSlide?.restaurant?.name
+              ? `Nhà hàng nổi bật ${activeSlide.restaurant.name}`
+              : "Ảnh món ăn nổi bật"
+          }
+        >
           <div className="hero__image-bg" aria-hidden="true"></div>
 
-          {/* Slider Wrapper */}
           <div
             className="hero__slider"
             onTouchStart={handleTouchStart}
@@ -545,7 +722,7 @@ const HeroSection = ({ onSearch }) => {
             onTouchEnd={handleTouchEnd}
             aria-live="polite"
           >
-            {HERO_IMAGES.map((img, index) => (
+            {heroSlides.map((img, index) => (
               <img
                 key={img.id}
                 src={img.src}
@@ -554,41 +731,59 @@ const HeroSection = ({ onSearch }) => {
                 className={`hero__main-img ${
                   index === currentSlide ? "active" : ""
                 }`}
+                onError={(event) => {
+                  if (event.currentTarget.dataset.fallbackApplied) return;
+                  event.currentTarget.dataset.fallbackApplied = "true";
+                  event.currentTarget.src = img.fallbackSrc;
+                }}
               />
             ))}
           </div>
 
-          {/* Navigation Buttons */}
-          <button className="hero__slider-btn prev" type="button" onClick={handlePrev} aria-label="Xem ảnh món trước">
+          <button
+            className="hero__slider-btn prev"
+            type="button"
+            onClick={handlePrev}
+            aria-label="Xem ảnh món trước"
+          >
             ‹
           </button>
-          <button className="hero__slider-btn next" type="button" onClick={handleNext} aria-label="Xem ảnh món tiếp theo">
+          <button
+            className="hero__slider-btn next"
+            type="button"
+            onClick={handleNext}
+            aria-label="Xem ảnh món tiếp theo"
+          >
             ›
           </button>
 
-          {/* Floating Card 1 */}
           <div className="hero__float-card float-review">
-            <div className="float-icon"><Star aria-hidden="true" /></div>
+            <div className="float-icon">
+              <Star aria-hidden="true" />
+            </div>
             <div className="float-content">
-              <span className="float-title">4.9/5</span>
-              <span className="float-desc">Đánh giá tốt</span>
+              <span className="float-title">{heroMetrics.ratingTitle}</span>
+              <span className="float-desc">{heroMetrics.ratingDesc}</span>
             </div>
           </div>
 
-          {/* Floating Card 2 */}
           <div className="hero__float-card float-time">
-            <div className="float-icon"><Clock aria-hidden="true" /></div>
+            <div className="float-icon">
+              <Clock aria-hidden="true" />
+            </div>
             <div className="float-content">
-              <span className="float-title">30 phút</span>
-              <span className="float-desc">Giao siêu tốc</span>
+              <span className="float-title">{heroMetrics.timeTitle}</span>
+              <span className="float-desc">{heroMetrics.timeDesc}</span>
             </div>
           </div>
 
           <div className="hero__float-card float-delivery">
-            <div className="float-icon"><Truck aria-hidden="true" /></div>
+            <div className="float-icon">
+              <Truck aria-hidden="true" />
+            </div>
             <div className="float-content">
-              <span className="float-title">Freeship</span>
-              <span className="float-desc">Đơn từ 0đ</span>
+              <span className="float-title">{heroMetrics.deliveryTitle}</span>
+              <span className="float-desc">{heroMetrics.deliveryDesc}</span>
             </div>
           </div>
         </div>
@@ -596,7 +791,12 @@ const HeroSection = ({ onSearch }) => {
 
       {isLocationPickerOpen && selectedLocation && (
         <div className="hero__modal-backdrop" role="presentation">
-          <div className="hero__modal-card" role="dialog" aria-modal="true" aria-label="Chọn vị trí giao hàng trên bản đồ">
+          <div
+            className="hero__modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chọn vị trí giao hàng trên bản đồ"
+          >
             <LocationPickerMap
               lat={selectedLocation.lat}
               lng={selectedLocation.lng}
