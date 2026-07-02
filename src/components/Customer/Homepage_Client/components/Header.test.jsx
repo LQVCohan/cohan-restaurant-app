@@ -54,7 +54,9 @@ describe("Header coupon navigation", () => {
       logout: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /guest/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /mở menu tài khoản/i }),
+    );
     fireEvent.click(screen.getByText("🎟️ Kho Coupon"));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/coupons");
@@ -68,7 +70,9 @@ describe("Header coupon navigation", () => {
       logout: vi.fn(),
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /guest/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /mở menu tài khoản/i }),
+    );
     fireEvent.click(screen.getByText("🎟️ Kho Coupon"));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/coupons");

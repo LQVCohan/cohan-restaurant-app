@@ -29,7 +29,7 @@ console.log("\nCOHAN mobile dev server");
 console.log("────────────────────────");
 console.log(`Local:   http://localhost:${PORT}`);
 localIps.forEach((ip) => console.log(`Phone:   http://${ip}:${PORT}`));
-console.log(`API:     ${frontendOrigin}/graphql → http://127.0.0.1:${BACKEND_PORT}/graphql`);
+console.log(`API:     /graphql (same origin) → http://127.0.0.1:${BACKEND_PORT}/graphql`);
 console.log("\nĐiện thoại và máy tính phải chung Wi-Fi.");
 console.log("Backend phải đang chạy trên máy tính trước khi mở trang trên điện thoại.");
 console.log("Lưu ý: xem 3D có thể test qua LAN HTTP, nhưng camera/AR WebXR thường cần HTTPS/secure context.");
@@ -43,7 +43,7 @@ const child = spawn(
     shell: false,
     env: {
       ...process.env,
-      VITE_API_URL: `${frontendOrigin}/graphql`,
+      VITE_API_URL: "/graphql",
       VITE_DEV_BACKEND_URL: `http://127.0.0.1:${BACKEND_PORT}`,
       VITE_DEV_BIND_HOST: "0.0.0.0",
       VITE_DEV_HOST: primaryIp,
