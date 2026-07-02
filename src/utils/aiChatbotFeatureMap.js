@@ -18,7 +18,7 @@ const normalizeText = (value = "") =>
 
 const isManagerHelpQuery = (query = "") => {
   const q = normalizeText(query);
-  return /\b(giup gi|co the giup|ban co the giup|dieu huong|huong dan|lam duoc gi|quan ly o dau|mo giup|di toi|vao trang|mo trang)\b/.test(q);
+  return /\b(giup gi|co the giup|ban co the giup|dieu huong|huong dan|lam duoc gi|quan ly|dashboard|mo giup|di toi|vao trang|mo trang)\b/.test(q);
 };
 
 const extractSearchTerm = (query = "") => {
@@ -41,6 +41,16 @@ const extractSearchTerm = (query = "") => {
 const getCurrentOrderTrackingPath = (pathname = "") => {
   const match = String(pathname || "").match(/^\/track-delivery\/[^/?#]+/);
   return match?.[0] || "";
+};
+
+const getRestaurantIdFromPath = (pathname = "") => {
+  const value = String(pathname || "").match(/^\/restaurant\/([^/?#]+)/)?.[1] || "";
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 };
 
 export const AI_CHATBOT_FEATURE_MAP = [
@@ -405,27 +415,39 @@ const queryScoreEntry = (entry, query) => {
   return score;
 };
 
-export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", selectedMenuItem = null, userRole = "", query = "" } = {}) => {
+export const getAiChatbotFeatureMatches = ({
+  pathname = "",
+  restaurantId = "",
+  selectedMenuItem = null,
+  userRole = "",
+  query = "",
+  message = "",
+} = {}) => {
   const path = String(pathname || "").toLowerCase();
   const role = normalizeRole(userRole);
+  const resolvedQuery = query || message;
+  const resolvedRestaurantId = restaurantId || getRestaurantIdFromPath(pathname);
   const menuItemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId || "";
-  const helpQuery = isManagerHelpQuery(query);
+  const helpQuery = isManagerHelpQuery(resolvedQuery);
   const isManagerShell = path === "/manager" || path === "/manager#dashboard";
 
-  if (isManagerShell && !query && isManagerFeatureRole(userRole)) {
+  if (isManagerShell && !resolvedQuery && isManagerFeatureRole(userRole)) {
     const managerShortcutKeys = ["manager-dashboard", "storage-inventory", "ai-chatbot-manager", "staff-schedule"];
     return managerShortcutKeys
       .map((key) => AI_CHATBOT_FEATURE_MAP.find((entry) => entry.key === key))
       .filter(Boolean)
-      .map((entry) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query, pathname }) }))
+      .map((entry) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId: resolvedRestaurantId, menuItemId, query: resolvedQuery, pathname }) }))
       .slice(0, 6);
   }
 
-  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => canUseFeature(entry, role, { restaurantId, pathname }));
+  const accessibleEntries = AI_CHATBOT_FEATURE_MAP.filter((entry) => {
+    const deferManagerRoleCheck = !role && entry.managerOnly && queryScoreEntry(entry, resolvedQuery) > 0;
+    return deferManagerRoleCheck || canUseFeature(entry, role, { restaurantId: resolvedRestaurantId, pathname });
+  });
 
   return accessibleEntries
     .map((entry) => {
-      const queryScore = queryScoreEntry(entry, query);
+      const queryScore = queryScoreEntry(entry, resolvedQuery);
       const pathScore = pathMatchesEntry(entry, path, menuItemId) ? 5 : 0;
       const managerShellScore = entry.managerOnly && isManagerShell ? 2 : 0;
       const managerHelpScore = entry.managerOnly && helpQuery ? 4 : 0;
@@ -436,13 +458,22 @@ export const getAiChatbotFeatureMatches = ({ pathname = "", restaurantId = "", s
     })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .map(({ entry }) => ({ ...entry, path: buildFeaturePath(entry, { restaurantId, menuItemId, query, pathname }) }))
+    .map(({ entry }) => ({
+      ...entry,
+      path: buildFeaturePath(entry, {
+        restaurantId: resolvedRestaurantId,
+        menuItemId,
+        query: resolvedQuery,
+        pathname,
+      }),
+    }))
     .slice(0, 6);
 };
 
 export const __aiChatbotFeatureMapTestables = {
   canUseFeature,
   fillPath,
+  getRestaurantIdFromPath,
   normalizeRole,
   normalizeText,
   queryScoreEntry,
