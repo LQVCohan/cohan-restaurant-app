@@ -44,7 +44,7 @@
   "dependencies": {
     "@apollo/client": "^4.0.5",
     "@fastify/cookie": "^11.0.2",
-    "@fastify/cors": "^11.1.3",
+    "@fastify/cors": "^11.1.2",
     "@fastify/helmet": "^13.0.1",
     "@fastify/multipart": "^9.2.1",
     "@fastify/rate-limit": "^10.3.0",
@@ -69,7 +69,7 @@
     "mime": "^4.1.0",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.2",
-    "mongoose-lean-virtuals": "^0.8.0",
+    "mongoose-lean-virtuals": "^2.0.0",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.10",
