@@ -4,6 +4,7 @@ import { getToken } from "@/lib/authStorage";
 const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
 const STREAM_BUBBLE_FLAG = "aiStreamBubble";
 const ANSWERING_CLASS = "is-ai-answering";
+const MANAGER_ROLES = new Set(["admin", "manager", "hr", "accountant"]);
 
 const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
 
@@ -70,7 +71,8 @@ export const isAskAiChatbotOperation = (payload) => {
 
 const getRequestedManagerFeature = (input = {}) => {
   const pageContext = input?.pageContext || {};
-  if (!String(pageContext.pathname || "").startsWith("/manager")) return null;
+  const role = String(pageContext.userRole || "").trim().toLowerCase();
+  if (!MANAGER_ROLES.has(role)) return null;
   return (Array.isArray(pageContext.featureMatches) ? pageContext.featureMatches : [])
     .find((feature) => String(feature?.path || "").startsWith("/manager")) || null;
 };
@@ -163,6 +165,14 @@ const setChatbotAnswering = (answering) => {
   }
 };
 
+const clearChatbotAnswering = () => {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setChatbotAnswering(false));
+    return;
+  }
+  setChatbotAnswering(false);
+};
+
 const setStreamStatus = () => {
   // Keep the Messenger-like typing bubble as dots only until real answer deltas arrive.
 };
@@ -249,7 +259,7 @@ export function installAiChatbotStreamFetchPatch() {
       const message = err?.code === "RATE_LIMITED" ? RATE_LIMIT_MESSAGE : err?.message;
       return jsonGraphqlResponse(fallbackResponse(message));
     } finally {
-      setChatbotAnswering(false);
+      clearChatbotAnswering();
     }
   };
 }
