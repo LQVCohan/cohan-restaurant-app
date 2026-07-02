@@ -18,6 +18,7 @@ const id = (value) => String(value?._id || value?.id || value || "");
 const emptyReport = () => ({
   ownerCandidates: 0,
   managerCandidates: 0,
+  restaurantsAssignedToOnlyBrand: 0,
   membershipsCreated: 0,
   membershipsUpdated: 0,
   restaurantsCleaned: 0,
@@ -63,6 +64,8 @@ export async function migrateRestaurantManagersToBrandMembership({
     models.BrandMembership.find({}).select("_id brandId userId role status restaurantIds").lean(),
   ]);
 
+  const onlyBrandId = brands.length === 1 ? brands[0]._id : null;
+  const missingBrandAssignments = [];
   const managerRole = roles.find((role) =>
     [role.slug, role.name].some((value) => /^manager$/i.test(String(value || ""))),
   );
@@ -118,14 +121,25 @@ export async function migrateRestaurantManagersToBrandMembership({
   }
 
   for (const restaurant of restaurants) {
+    const effectiveBrandId = restaurant.brandId || onlyBrandId;
+
     if (!restaurant.brandId) {
-      report.conflicts.push({
-        type: "restaurant_missing_brand",
-        restaurantId: id(restaurant._id),
-        name: restaurant.name || "",
+      if (!onlyBrandId) {
+        report.conflicts.push({
+          type: "restaurant_missing_brand",
+          restaurantId: id(restaurant._id),
+          name: restaurant.name || "",
+          brandCount: brands.length,
+        });
+        continue;
+      }
+      missingBrandAssignments.push({
+        restaurantId: restaurant._id,
+        brandId: onlyBrandId,
       });
-      continue;
+      report.restaurantsAssignedToOnlyBrand += 1;
     }
+
     if (!restaurant.managerId) continue;
 
     const currentManagerId = managerByRestaurant.get(id(restaurant._id));
@@ -140,7 +154,7 @@ export async function migrateRestaurantManagersToBrandMembership({
     }
 
     addCandidate({
-      brandId: restaurant.brandId,
+      brandId: effectiveBrandId,
       userId: restaurant.managerId,
       role: "manager",
       restaurantIds: [restaurant._id],
@@ -172,6 +186,20 @@ export async function migrateRestaurantManagersToBrandMembership({
     memberships,
   });
   logger.log(`Backup written: ${backupFile}`);
+
+  if (missingBrandAssignments.length) {
+    const result = await models.Restaurant.collection.updateMany(
+      {
+        _id: { $in: missingBrandAssignments.map((item) => item.restaurantId) },
+        $or: [
+          { brandId: { $exists: false } },
+          { brandId: null },
+        ],
+      },
+      { $set: { brandId: onlyBrandId } },
+    );
+    report.restaurantsAssignedToOnlyBrand = result.modifiedCount || 0;
+  }
 
   for (const candidate of candidates.values()) {
     const key = `${id(candidate.brandId)}:${id(candidate.userId)}`;
