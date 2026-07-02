@@ -39,6 +39,13 @@ const testItems = [
 ];
 
 describe("SearchBox regex-safe highlighting", () => {
+  it("renders a vector search icon instead of an emoji", () => {
+    const { container } = render(<SearchBox items={testItems} />);
+
+    expect(container.querySelector("svg.search-icon")).toBeInTheDocument();
+    expect(container.querySelector(".search-box")?.textContent).not.toContain("🔍");
+  });
+
   it("does not crash for regex-special queries and returns matching results", () => {
     render(<SearchBox items={testItems} />);
 
