@@ -1,0 +1,79 @@
+.profile-nav-pro .profile-logout {
+  border-color: rgba(180, 35, 24, 0.16);
+  background: #fffafa;
+
+  .nav-icon {
+    background: #fff0ee;
+  }
+
+  .nav-text .label,
+  .nav-arrow {
+    color: #b42318;
+  }
+
+  &:hover {
+    border-color: rgba(180, 35, 24, 0.3);
+    background: #fff5f3;
+  }
+}
+
+@media (max-width: 760px) {
+  .mobile-customer-shell ~ .today-meal-utilities {
+    left: max(14px, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-wizard-launcher {
+    inset: 0 !important;
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
+    max-width: 50px !important;
+    display: block !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255, 102, 0, 0.24) !important;
+    border-radius: 17px !important;
+    background: #fffaf4 !important;
+    padding: 0 !important;
+    box-shadow: 0 14px 32px rgba(92, 45, 12, 0.18) !important;
+    animation: none !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-wizard-launcher::before {
+    inset: 2px !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 15px !important;
+    background-position: center 18% !important;
+    background-size: 154% auto !important;
+    clip-path: inset(5% round 14px) !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-wizard-launcher::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  .mobile-customer-shell ~ .today-meal-utilities__menu,
+  .mobile-customer-shell ~ .today-meal-utilities .today-meal-utilities__menu {
+    left: max(12px, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    bottom: calc(146px + env(safe-area-inset-bottom)) !important;
+    width: min(320px, calc(100vw - 24px)) !important;
+    max-height: min(58dvh, 450px) !important;
+  }
+
+  .mobile-customer-shell .filters-mobile-trigger {
+    right: auto !important;
+    width: max-content !important;
+    max-width: calc(100vw - 94px);
+    white-space: nowrap;
+  }
+}
