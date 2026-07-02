@@ -7,7 +7,9 @@ import HomeForYouSection from "./components/HomeForYouSection";
 import DishGrid from "./components/DishGrid";
 import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
+import MobileHome from "./MobileHome";
 import useGsapHomeMotion from "./hooks/useGsapHomeMotion";
+import useIsMobile from "../../../hooks/useIsMobile";
 
 import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
@@ -31,7 +33,7 @@ const CUSTOMER_SHORTCUTS = [
   { icon: "📦", tag: "Theo dõi", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
 ];
 
-const Home = () => {
+const DesktopHome = () => {
   const navigate = useNavigate();
   const timeSlot = getCurrentTimeSlot();
   const [filterState, setFilterState] = useState({});
@@ -156,6 +158,11 @@ const Home = () => {
       />
     </div>
   );
+};
+
+const Home = () => {
+  const isMobile = useIsMobile();
+  return isMobile ? <MobileHome /> : <DesktopHome />;
 };
 
 export default Home;
