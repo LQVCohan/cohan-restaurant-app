@@ -67,11 +67,6 @@
 .logo-text-button.logo-text {
   min-width: 0;
   text-align: left;
-  transition:
-    width 0.18s ease,
-    max-width 0.18s ease,
-    opacity 0.14s ease,
-    transform 0.18s ease;
 }
 
 .logo-icon-button:hover,
@@ -162,15 +157,11 @@
     width: 72px;
     min-width: 72px;
     gap: 0;
+    overflow: hidden;
   }
 
   .manager-layout:not(.sidebar-open) .logo-text-button {
-    width: 0;
-    max-width: 0;
-    overflow: hidden;
-    opacity: 0;
-    transform: translateX(-8px);
-    pointer-events: none;
+    display: none;
   }
 
   .manager-layout:not(.sidebar-open) .nav-label,
@@ -200,10 +191,8 @@
   }
 
   .manager-layout.sidebar-open .logo-text-button {
-    width: auto;
+    display: inline-block;
     max-width: 14rem;
-    opacity: 1;
-    transform: none;
   }
 
   .manager-layout.sidebar-open .nav-item {
@@ -214,11 +203,5 @@
 @media (max-width: 768px) {
   .sidebar-rail-toggle {
     display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .logo-text-button.logo-text {
-    transition: none;
   }
 }
