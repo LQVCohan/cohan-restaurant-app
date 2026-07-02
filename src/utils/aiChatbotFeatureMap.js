@@ -281,7 +281,7 @@ export const AI_CHATBOT_FEATURE_MAP = [
     description: "Tổng quan vận hành nhà hàng.",
     managerOnly: true,
     allowedRoles: MANAGER_FEATURE_ROLES,
-    aliases: ["quan ly", "dashboard", "bao cao", "doanh thu", "trang quan ly", "dashboard quan ly"],
+    aliases: ["dashboard", "bao cao", "doanh thu", "dashboard quan ly"],
   },
   {
     key: "manager-personal-info",
