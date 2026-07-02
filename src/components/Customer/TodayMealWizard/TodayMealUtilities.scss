@@ -182,9 +182,9 @@
 @media (max-width: 760px) {
   .today-meal-utilities__menu {
     left: max(12px, env(safe-area-inset-left));
-    bottom: calc(78px + env(safe-area-inset-bottom));
+    bottom: calc(142px + env(safe-area-inset-bottom));
     width: min(310px, calc(100vw - 24px));
-    max-height: min(68dvh, 510px);
+    max-height: min(62dvh, 470px);
     overflow-y: auto;
     border-radius: 20px;
   }
