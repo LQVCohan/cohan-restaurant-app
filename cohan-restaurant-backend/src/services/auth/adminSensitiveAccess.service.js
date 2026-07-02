@@ -1,7 +1,7 @@
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { AuditLog } from "../../../models/index.js";
-import { hasPermission } from "./authorization.service.js";
+import { hasExplicitPermission } from "./authorization.service.js";
 import { isSystemAdmin } from "./restaurantScope.service.js";
 
 export const SENSITIVE_ACCESS = Object.freeze({
@@ -56,11 +56,11 @@ export async function requireAdminSensitiveAccess(ctx, { category, action = "rea
   if (!isSystemAdmin(user)) throw forbidden();
   if (!isStronglyVerifiedAdmin(user)) throw forbidden(STRONG_VERIFICATION_MESSAGE);
 
-  const permission = permissionFor(category, action);
-  if (!permission || !(await hasPermission(user, permission))) throw forbidden();
-
   const accessReason = reasonFrom(ctx, reason);
   if (!accessReason) throw forbidden("Admin access reason is required for sensitive data.");
+
+  const permission = permissionFor(category, action);
+  if (!permission || !(await hasExplicitPermission(user, permission))) throw forbidden();
 
   await AuditLog.create({
     actorId: toObjectId(idOf(user)),
@@ -86,7 +86,8 @@ export async function requireAdminSensitiveAccess(ctx, { category, action = "rea
   return true;
 }
 
-export async function canAdminSensitiveAccess(ctx, options) {
+// This helper writes an AuditLog on success. Use only when the resolver is about to return sensitive unmasked data.
+export async function tryAdminSensitiveAccessWithAudit(ctx, options) {
   if (!isSystemAdmin(ctx?.user)) return false;
   try {
     await requireAdminSensitiveAccess(ctx, options);

@@ -167,6 +167,23 @@ export async function hasPermission(user, permissionCode) {
   return codes.includes("*") || codes.includes("system.manage") || codes.includes(code);
 }
 
+export async function hasExplicitPermission(user, permissionCode) {
+  const code = normalizePermissionCode(permissionCode);
+  if (!user || !code) return false;
+
+  const role = await loadPopulatedRole(user.role);
+  const rolePermissions = Array.isArray(role?.permissions) ? role.permissions : [];
+  const parentPermissions = Array.isArray(role?.parentRole?.permissions)
+    ? role.parentRole.permissions
+    : [];
+  const directPermissions = Array.isArray(user.permissions) ? user.permissions : [];
+
+  const codes = dedupePermissions([...parentPermissions, ...rolePermissions, ...directPermissions])
+    .map(permissionKey)
+    .filter((value) => value && value !== "*" && value !== "system.manage");
+  return codes.includes(code);
+}
+
 export async function hasAnyPermission(user, permissionCodes = []) {
   if (!Array.isArray(permissionCodes) || permissionCodes.length === 0) return false;
   if (hasRole(user, ["admin"])) return true;

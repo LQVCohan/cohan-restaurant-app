@@ -53,7 +53,7 @@ import {
   sanitizeStaffPrivateProfile,
 } from "../../../src/security/userDtos.js";
 import { isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
-import { canAdminSensitiveAccess, SENSITIVE_ACCESS } from "../../../src/services/auth/adminSensitiveAccess.service.js";
+import { tryAdminSensitiveAccessWithAudit, SENSITIVE_ACCESS } from "../../../src/services/auth/adminSensitiveAccess.service.js";
 import {
   buildPayrollItemsForRange,
   getPayrollSettings,
@@ -497,7 +497,7 @@ export default {
       .populate("refRestaurants")
       .sort({ fullName: 1 });
 
-    const allowSensitive = await canAdminSensitiveAccess(ctx, {
+    const allowSensitive = await tryAdminSensitiveAccessWithAudit(ctx, {
       category: SENSITIVE_ACCESS.STAFF_INTERNAL,
       resourceType: "Staff",
       resourceId: "list",

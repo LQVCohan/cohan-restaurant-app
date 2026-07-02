@@ -30,7 +30,7 @@ describe("adminSensitiveAccess.service", () => {
   it("allows verified admin with reason and writes safe audit metadata", async () => {
     const { requireAdminSensitiveAccess, SENSITIVE_ACCESS } = await import("../../src/services/auth/adminSensitiveAccess.service.js");
     await expect(requireAdminSensitiveAccess({
-      user: { id: "507f1f77bcf86cd799439011", roleName: "admin", status: "active", emailVerified: true, phoneVerified: true },
+      user: { id: "507f1f77bcf86cd799439011", roleName: "admin", status: "active", emailVerified: true, phoneVerified: true, role: { permissions: [{ code: "admin.sensitive.customer_contact.read" }] } },
       headers: { "x-admin-access-reason": "ticket-123", "user-agent": "vitest" },
       ip: "127.0.0.1",
     }, { category: SENSITIVE_ACCESS.CUSTOMER_CONTACT, resourceType: "User", resourceId: "list" })).resolves.toBe(true);
@@ -42,6 +42,15 @@ describe("adminSensitiveAccess.service", () => {
       userAgent: "vitest",
     });
     expect(JSON.stringify(auditCreate.mock.calls[0][0])).not.toContain("safe@example.com");
+  });
+
+  it("rejects admin without explicit sensitive permission despite admin roleName", async () => {
+    const { requireAdminSensitiveAccess, SENSITIVE_ACCESS } = await import("../../src/services/auth/adminSensitiveAccess.service.js");
+    await expect(requireAdminSensitiveAccess({
+      user: { id: "507f1f77bcf86cd799439011", roleName: "admin", status: "active", emailVerified: true, phoneVerified: true, role: { permissions: [] } },
+      headers: { "x-admin-access-reason": "ticket-123" },
+    }, { category: SENSITIVE_ACCESS.CUSTOMER_CONTACT, resourceType: "User", resourceId: "list" })).rejects.toThrow("FORBIDDEN");
+    expect(auditCreate).not.toHaveBeenCalled();
   });
 
   it("masks contact and wallet fields", async () => {
