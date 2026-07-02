@@ -272,6 +272,150 @@
   color: #ff6600 !important;
 }
 
+/* Compact recommendation cards: status and price scan first, title second, actions last. */
+.ai-chatbot-menu-cards {
+  gap: 8px !important;
+  padding: 0 16px 10px !important;
+}
+
+.ai-chatbot-menu-card {
+  align-items: stretch !important;
+  gap: 9px !important;
+  padding: 11px 12px 12px !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 20px rgba(83, 46, 20, 0.055) !important;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ai-chatbot-menu-card > div:first-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "status price"
+    "title title";
+  align-items: center;
+  gap: 5px 9px;
+  min-width: 0;
+}
+
+.ai-chatbot-menu-card .ai-chatbot-status {
+  grid-area: status;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 23px;
+  padding: 3px 8px;
+  border: 1px solid rgba(190, 24, 93, 0.14);
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #be123c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ai-chatbot-menu-card .ai-chatbot-status--on {
+  border-color: rgba(21, 128, 61, 0.16);
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.ai-chatbot-menu-card h4 {
+  grid-area: title;
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #1f1914;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.32;
+  letter-spacing: -0.012em;
+  text-wrap: pretty;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ai-chatbot-menu-card > div:first-child > p {
+  grid-area: price;
+  justify-self: end;
+  margin: 0;
+  color: #e65c00;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-chatbot-menu-card > div:first-child > small {
+  display: none;
+}
+
+.ai-chatbot-menu-card__actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+.ai-chatbot-menu-card__actions button {
+  min-height: 36px !important;
+  border-radius: 12px !important;
+  padding: 7px 11px !important;
+  font-size: 0.74rem !important;
+  line-height: 1.15 !important;
+  text-align: center !important;
+  justify-content: center !important;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.ai-chatbot-menu-card__actions button:first-child {
+  border-color: #ff6600 !important;
+  background: linear-gradient(135deg, #ff6600, #ff7a24) !important;
+  color: #ffffff !important;
+  box-shadow: 0 7px 16px rgba(255, 102, 0, 0.19) !important;
+}
+
+.ai-chatbot-menu-card__actions .ai-chatbot-button--ghost {
+  border-color: rgba(255, 102, 0, 0.2) !important;
+  background: #ffffff !important;
+  color: #a44708 !important;
+  box-shadow: none !important;
+}
+
+.ai-chatbot-menu-card__actions button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+.ai-chatbot-menu-card__actions button:focus-visible {
+  outline: 3px solid rgba(255, 102, 0, 0.24);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ai-chatbot-menu-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 102, 0, 0.28) !important;
+    box-shadow: 0 12px 26px rgba(83, 46, 20, 0.09) !important;
+  }
+
+  .ai-chatbot-menu-card__actions button:first-child:hover:not(:disabled) {
+    background: linear-gradient(135deg, #e65c00, #ff6600) !important;
+  }
+
+  .ai-chatbot-menu-card__actions .ai-chatbot-button--ghost:hover:not(:disabled) {
+    background: #fff7ed !important;
+    color: #e65c00 !important;
+  }
+}
+
 /* Manager preview should mimic the customer chatbot structure but keep a clear customer-facing orange accent. */
 .ai-admin-page--settings .ai-admin-settings-preview__topbar i,
 .ai-admin-page--settings .ai-admin-settings-preview__footer button {
@@ -296,5 +440,21 @@
   .ai-chatbot-actions,
   .ai-chatbot-quick-replies {
     grid-template-columns: 1fr !important;
+  }
+
+  .ai-chatbot-menu-card__actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chatbot-menu-card,
+  .ai-chatbot-menu-card__actions button {
+    transition: none !important;
+  }
+
+  .ai-chatbot-menu-card:hover,
+  .ai-chatbot-menu-card__actions button:active:not(:disabled) {
+    transform: none !important;
   }
 }
