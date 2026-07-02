@@ -219,18 +219,14 @@ const MENU_ITEM_LIVE_STATE_FOR_AI = gql`
     menuItemLiveState(input: $input) {
       menuItemId
       restaurantId
-      variantKey
+      servingVariantKey
       blocked
-      blockReason
-      isAvailable
-      inventoryStatus
       maxAvailableQty
       viewerCount
       outOfStock
     }
   }
 `;
-
 const COMPACT_MENU_ANSWER =
   "Mình đã chọn một số món phù hợp bên dưới. Bạn có thể mở chi tiết hoặc thêm vào giỏ nếu món còn khả dụng.";
 
@@ -496,20 +492,21 @@ function AiChatbotWidget({ restaurantId: restaurantIdProp, testOverrides = {} })
   });
   const aiRestaurant = aiRestaurantData?.publicRestaurant;
   const { data: aiLiveStateData } = useQuery(MENU_ITEM_LIVE_STATE_FOR_AI, {
-    variables: {
-      input: {
-        menuItemId: selectedAiMenuItem?.id,
-        restaurantId: selectedAiMenuItem?.restaurantId,
-        variantKey: selectedVariantKey || undefined,
-        quantity: selectedQuantity,
-      },
+  variables: {
+    input: {
+      itemType: "menuItem",
+      menuItemId: selectedAiMenuItem?.id,
+      restaurantId: selectedAiMenuItem?.restaurantId,
+      servingVariantKey: selectedVariantKey || undefined,
+      userId: user?.id || undefined,
     },
-    skip:
-      !selectedAiMenuItem?.id ||
-      !selectedAiMenuItem?.restaurantId ||
-      !selectedVariantKey,
-    fetchPolicy: "network-only",
-  });
+  },
+  skip:
+    !selectedAiMenuItem?.id ||
+    !selectedAiMenuItem?.restaurantId ||
+    !selectedVariantKey,
+  fetchPolicy: "network-only",
+});
   const aiLiveState = aiLiveStateData?.menuItemLiveState;
   const aiLiveStateReady = Boolean(aiLiveState);
   const aiMaxAvailableQty = Number(aiLiveState?.maxAvailableQty || 0);

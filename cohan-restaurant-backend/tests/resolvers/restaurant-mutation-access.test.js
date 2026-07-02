@@ -10,6 +10,7 @@ const modelMocks = vi.hoisted(() => ({
     create: vi.fn(),
   },
   RestaurantCategoryIndex: { findOneAndUpdate: vi.fn() },
+  BrandMembership: { find: vi.fn() },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -21,21 +22,30 @@ vi.mock("mongoose", () => ({
 }));
 
 const ctxFor = (roleName, id) => ({ user: { roleName, id } });
+const membershipFindResult = (rows = []) => ({ lean: vi.fn(async () => rows) });
+const restaurantDoc = (overrides = {}) => ({
+  _id: "valid-r1",
+  brandId: "valid-b1",
+  managerId: "valid-manager-1",
+  ...overrides,
+});
 
 describe("restaurant mutation access hardening", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([]));
   });
 
   it("updateRestaurant denies manager for another restaurant before save", async () => {
     const save = vi.fn();
-    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-owner", save, toObject: vi.fn() });
+    modelMocks.Restaurant.findById.mockResolvedValue(restaurantDoc({ save, toObject: vi.fn() }));
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "valid-manager-other", brandId: "valid-b1", role: "manager", status: "active", restaurantIds: ["valid-r2"] }]));
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     await expect(
-      RestaurantMutation.updateRestaurant(null, { id: "valid-r1", input: { name: "New" } }, ctxFor("manager", "manager-other")),
-    ).rejects.toThrow("You can only modify your own restaurant");
+      RestaurantMutation.updateRestaurant(null, { id: "valid-r1", input: { name: "New" } }, ctxFor("manager", "valid-manager-other")),
+    ).rejects.toThrow("You can only modify restaurants in your BrandMembership scope");
 
     expect(save).not.toHaveBeenCalled();
   });
@@ -43,13 +53,14 @@ describe("restaurant mutation access hardening", () => {
   it("updateRestaurant allows manager owner", async () => {
     const save = vi.fn(async () => {});
     const resultObj = { _id: "valid-r1", name: "New Name" };
-    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-1", save, toObject: vi.fn(() => resultObj) });
+    modelMocks.Restaurant.findById.mockResolvedValue(restaurantDoc({ save, toObject: vi.fn(() => resultObj) }));
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "valid-manager-1", brandId: "valid-b1", role: "manager", status: "active", restaurantIds: ["valid-r1"] }]));
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     const result = await RestaurantMutation.updateRestaurant(
       null,
       { id: "valid-r1", input: { name: "New Name" } },
-      ctxFor("manager", "manager-1"),
+      ctxFor("manager", "valid-manager-1"),
     );
 
     expect(save).toHaveBeenCalled();
@@ -130,7 +141,7 @@ describe("restaurant mutation access hardening", () => {
       RestaurantMutation.updateRestaurantManager(
         null,
         { input: { restaurantId: "valid-r1", managerId: "valid-manager-1" } },
-        ctxFor("manager", "manager-1"),
+        ctxFor("manager", "valid-manager-1"),
       ),
     ).rejects.toThrow("Admin only");
 
@@ -154,36 +165,39 @@ describe("restaurant mutation access hardening", () => {
   });
 
   it("updateRestaurantCategoryIndex denies unrelated manager before upsert", async () => {
-    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-owner" });
+    modelMocks.Restaurant.findById.mockResolvedValue(restaurantDoc());
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "valid-manager-other", brandId: "valid-b1", role: "manager", status: "active", restaurantIds: ["valid-r2"] }]));
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
 
     await expect(
       RestaurantMutation.updateRestaurantCategoryIndex(
         null,
         { input: { restaurantId: "valid-r1", timeSlot: "MORNING", categoryIds: ["valid-c1"] } },
-        ctxFor("manager", "manager-other"),
+        ctxFor("manager", "valid-manager-other"),
       ),
-    ).rejects.toThrow("You can only modify your own restaurant");
+    ).rejects.toThrow("You can only modify restaurants in your BrandMembership scope");
 
     expect(modelMocks.RestaurantCategoryIndex.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
   it("updateRestaurantCategoryIndex allows manager owner", async () => {
-    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-1" });
+    modelMocks.Restaurant.findById.mockResolvedValue(restaurantDoc());
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "valid-manager-1", brandId: "valid-b1", role: "manager", status: "active", restaurantIds: ["valid-r1"] }]));
     modelMocks.RestaurantCategoryIndex.findOneAndUpdate.mockReturnValue({ lean: async () => ({ ok: 1 }) });
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     await RestaurantMutation.updateRestaurantCategoryIndex(
       null,
       { input: { restaurantId: "valid-r1", timeSlot: "MORNING", categoryIds: ["valid-c1", "valid-c1"] } },
-      ctxFor("manager", "manager-1"),
+      ctxFor("manager", "valid-manager-1"),
     );
 
     expect(modelMocks.RestaurantCategoryIndex.findOneAndUpdate).toHaveBeenCalled();
   });
 
   it("updateRestaurantCategoryIndex allows admin", async () => {
-    modelMocks.Restaurant.findById.mockResolvedValue({ managerId: "manager-1" });
+    modelMocks.Restaurant.findById.mockResolvedValue(restaurantDoc());
+    modelMocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "valid-manager-1", brandId: "valid-b1", role: "manager", status: "active", restaurantIds: ["valid-r1"] }]));
     modelMocks.RestaurantCategoryIndex.findOneAndUpdate.mockReturnValue({ lean: async () => ({ ok: 1 }) });
 
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");

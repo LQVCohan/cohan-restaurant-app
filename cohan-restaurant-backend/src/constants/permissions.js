@@ -80,6 +80,15 @@ export const PERMISSIONS = {
 
   RESTAURANT_READ: "restaurant.read",
   RESTAURANT_WRITE: "restaurant.write",
+
+  ADMIN_SENSITIVE_CUSTOMER_CONTACT_READ: "admin.sensitive.customer_contact.read",
+  ADMIN_SENSITIVE_STAFF_INTERNAL_READ: "admin.sensitive.staff_internal.read",
+  ADMIN_SENSITIVE_FINANCE_READ: "admin.sensitive.finance.read",
+  ADMIN_SENSITIVE_PAYROLL_READ: "admin.sensitive.payroll.read",
+  ADMIN_SENSITIVE_WALLET_READ: "admin.sensitive.wallet.read",
+  ADMIN_SENSITIVE_PAYMENT_READ: "admin.sensitive.payment.read",
+  ADMIN_SENSITIVE_TENANT_DATA_WRITE: "admin.sensitive.tenant_data.write",
+  ADMIN_AUDIT_READ: "admin.audit.read",
 };
 
 export const MENU_PERMISSION_FALLBACKS = {

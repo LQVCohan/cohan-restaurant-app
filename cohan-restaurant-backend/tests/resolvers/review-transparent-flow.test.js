@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   Notification: { create: vi.fn() },
   Restaurant: { findById: vi.fn() },
+  BrandMembership: { find: vi.fn() },
   Review: {
     findOne: vi.fn(),
     create: vi.fn(),
@@ -36,6 +37,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../models/index.js", () => ({
   Notification: mocks.Notification,
   Restaurant: mocks.Restaurant,
+  BrandMembership: mocks.BrandMembership,
   Review: mocks.Review,
   ReviewHelpful: mocks.ReviewHelpful,
   ReviewReaction: mocks.ReviewReaction,
@@ -70,6 +72,9 @@ vi.mock("../../src/services/reviewHardening.service.js", () => ({
 }));
 
 const leanResult = (value) => ({ lean: vi.fn(async () => value) });
+const membershipFindResult = (rows = []) => ({
+  select: vi.fn(() => ({ lean: vi.fn(async () => rows) })),
+});
 const managerCtx = { user: { id: "manager1", roleName: "Manager" } };
 const adminCtx = { user: { id: "admin1", roleName: "Admin" } };
 const customerCtx = { user: { id: "customer1", fullName: "Minh" } };
@@ -92,6 +97,7 @@ beforeEach(async () => {
   mocks.calculateReviewReliability.mockReturnValue({ reliabilityScore: 95, reliabilityLevel: "high", reliabilitySignals: ["verified_experience", "source:order"] });
   mocks.Review.findOne.mockReturnValue(leanResult(null));
   mocks.Restaurant.findById.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn(async () => ({ managerId: "manager1", name: "Cohan" })) })) });
+  mocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "manager1", brandId: "brand1", role: "manager", status: "active", restaurantIds: ["restaurant1"] }]));
   mocks.Notification.create.mockResolvedValue({ _id: "notification1" });
 } );
 
@@ -113,6 +119,7 @@ describe("transparent review flow", () => {
     }));
     expect(mocks.logReviewEvent).toHaveBeenCalledWith(expect.objectContaining({ verb: "review.create" }));
     expect(mocks.logReviewEvent).toHaveBeenCalledWith(expect.objectContaining({ verb: "review.notification.negative" }));
+    expect(mocks.BrandMembership.find).toHaveBeenCalledWith({ role: "manager", status: "active", restaurantIds: "restaurant1" });
     expect(mocks.Notification.create).toHaveBeenCalled();
   });
 
