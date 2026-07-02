@@ -113,6 +113,17 @@ body:has(.hero__modal-backdrop) .today-meal-utilities {
   pointer-events: none !important;
 }
 
+/* Address suggestions only belong to the active editing state. */
+.hero__suggestions {
+  display: none !important;
+}
+
+.hero__search-box:has(input:focus) + .hero__suggestions,
+.hero__suggestions:focus-within,
+.hero__suggestions:hover {
+  display: block !important;
+}
+
 /* Closed state: align the approved bubble tail with the mascot's raised hand. */
 body .today-meal-utilities .today-meal-wizard-launcher::after {
   top: -72px !important;
