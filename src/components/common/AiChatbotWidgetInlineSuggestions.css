@@ -92,6 +92,27 @@
   display: none !important;
 }
 
+/* Let the location modal escape the hero stacking context and own the viewport. */
+body:has(.hero__modal-backdrop) {
+  overflow: hidden !important;
+}
+
+.hero:has(.hero__modal-backdrop) {
+  isolation: auto !important;
+  overflow: visible !important;
+}
+
+.hero__modal-backdrop {
+  z-index: 5000 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+body:has(.hero__modal-backdrop) .today-meal-utilities {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* Closed state: align the approved bubble tail with the mascot's raised hand. */
 body .today-meal-utilities .today-meal-wizard-launcher::after {
   top: -72px !important;
