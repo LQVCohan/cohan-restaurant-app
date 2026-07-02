@@ -5,6 +5,47 @@ const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
 const STREAM_BUBBLE_FLAG = "aiStreamBubble";
 
 const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
+const MANAGER_PERSONAL_INFO_PATH = "/manager#restaurant-info-management";
+const MANAGER_ROLES = new Set(["admin", "manager", "hr", "accountant"]);
+const MANAGER_PERSONAL_INFO_ACTION = {
+  type: "link",
+  label: "Mở thông tin cá nhân",
+  href: MANAGER_PERSONAL_INFO_PATH,
+  description: "Mở trang thông tin cá nhân trong khu vực quản lý.",
+  icon: "profile",
+  priority: 1,
+};
+
+const normalizeText = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase();
+
+const isManagerPersonalInfoRequest = (input = {}) => {
+  const pageContext = input?.pageContext || {};
+  const pathname = String(pageContext.pathname || "");
+  const role = normalizeText(pageContext.userRole).trim();
+  const message = normalizeText(input?.message);
+  return (
+    pathname.startsWith("/manager") &&
+    MANAGER_ROLES.has(role) &&
+    /(thong tin ca nhan|ho so ca nhan|thong tin tai khoan|cai dat tai khoan)/.test(message)
+  );
+};
+
+export const ensureRequestedNavigationAction = (result, input) => {
+  if (!result || !isManagerPersonalInfoRequest(input)) return result;
+  const actions = Array.isArray(result.actions) ? result.actions : [];
+  const existing = actions.find((action) => action?.href === MANAGER_PERSONAL_INFO_PATH);
+  const remaining = actions.filter((action) => action?.href !== MANAGER_PERSONAL_INFO_PATH);
+  const primaryAction = existing
+    ? { ...existing, ...MANAGER_PERSONAL_INFO_ACTION }
+    : MANAGER_PERSONAL_INFO_ACTION;
+  return { ...result, actions: [primaryAction, ...remaining].slice(0, 6) };
+};
 
 const fallbackResponse = (message) => ({
   answer: message || "Hiện chatbot chưa kết nối được với hệ thống. Vui lòng thử lại sau.",
@@ -183,6 +224,7 @@ export function installAiChatbotStreamFetchPatch() {
     if (!isAskAiChatbotOperation(payload)) return originalFetch(input, init);
 
     try {
+      const requestInput = payload?.variables?.input || {};
       const authHeader = getAuthorizationHeader(input, init);
       const headers = { "Content-Type": "application/json" };
       if (authHeader) headers.Authorization = authHeader;
@@ -191,11 +233,14 @@ export function installAiChatbotStreamFetchPatch() {
         method: "POST",
         credentials: "include",
         headers,
-        body: JSON.stringify(payload?.variables?.input || {}),
+        body: JSON.stringify(requestInput),
       });
 
       if (!streamResponse.ok || !streamResponse.body) return originalFetch(input, init);
-      const result = await readStreamResponse(streamResponse);
+      const result = ensureRequestedNavigationAction(
+        await readStreamResponse(streamResponse),
+        requestInput,
+      );
       return jsonGraphqlResponse(result || fallbackResponse());
     } catch (err) {
       const message = err?.code === "RATE_LIMITED" ? RATE_LIMIT_MESSAGE : err?.message;
