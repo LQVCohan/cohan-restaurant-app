@@ -86,6 +86,15 @@ export const AI_CHATBOT_FEATURE_MAP = [
     aliases: ["nha hang", "chi tiet nha hang", "mo cua", "dia chi nha hang"],
   },
   {
+    key: "restaurant-menu",
+    label: "Thực đơn nhà hàng",
+    path: "/restaurant/:restaurantId#menu",
+    intent: "menu",
+    description: "Mở phần thực đơn của nhà hàng hiện tại.",
+    requiresRestaurantId: true,
+    aliases: ["thuc don nha hang", "xem thuc don nha hang", "menu nha hang", "mon cua nha hang", "xem menu nha hang"],
+  },
+  {
     key: "restaurant-reviews",
     label: "Đánh giá nhà hàng",
     path: "/restaurant/:restaurantId#reviews",
@@ -357,6 +366,7 @@ const pathMatchesEntry = (entry, path, menuItemId) => {
   if (entry.key === "search") return path === "/search";
   if (entry.key === "restaurants") return path === "/restaurants";
   if (entry.key === "restaurant-detail") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
+  if (entry.key === "restaurant-menu") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "restaurant-reviews") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "restaurant-promotions") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
   if (entry.key === "restaurant-photos") return path.startsWith("/restaurant/") && !path.endsWith("/layout");
