@@ -1,6 +1,7 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
 import { AlertCircle, Bell, CheckCheck, Clock, MessageCircle, Star } from "lucide-react";
 import useCommunication from "@/hooks/useCommunication";
+import loadGsapRuntime from "@/utils/gsapRuntime";
 import { NOTIFICATION_TYPES, notificationTitleByType } from "@/constants/notificationTypes";
 import "./NotificationBell.scss";
 
@@ -33,12 +34,28 @@ export default function NotificationBell({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const dropdownRef = useRef(null);
+  const panelRef = useRef(null);
+  const gsapRef = useRef(null);
   const communicationState = useCommunication({
     restaurantId,
     notificationsEnabled: enabled && !notificationState,
   });
   const notifications = notificationState?.notifications ?? communicationState.notifications;
   const unreadCount = notificationState?.unreadCount ?? communicationState.unreadCount;
+
+  useEffect(() => {
+    let isMounted = true;
+    loadGsapRuntime()
+      .then((gsap) => {
+        if (isMounted) gsapRef.current = gsap;
+      })
+      .catch(() => {
+        // Progressive enhancement: the dropdown remains fully usable without GSAP.
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -73,6 +90,54 @@ export default function NotificationBell({
     return (activeTab === "unread" ? mapped.filter((notification) => !notification.isRead) : mapped).slice(0, 6);
   }, [activeTab, notifications]);
 
+  useLayoutEffect(() => {
+    const gsap = gsapRef.current;
+    const panel = panelRef.current;
+    if (!isOpen || !gsap || !panel) return undefined;
+
+    const mediaContext = gsap.matchMedia();
+    mediaContext.add("(prefers-reduced-motion: no-preference)", () => {
+      const ctx = gsap.context(() => {
+        const items = Array.from(panel.querySelectorAll(".app-notification-bell__item"));
+        const animatedTargets = [panel, ...items];
+
+        gsap.set(panel, {
+          transformOrigin: "top right",
+          willChange: "transform, opacity",
+        });
+        if (items.length) gsap.set(items, { willChange: "transform, opacity" });
+
+        const timeline = gsap.timeline({
+          defaults: { overwrite: "auto" },
+          onComplete: () => {
+            gsap.set(animatedTargets, {
+              clearProps: "transform,opacity,visibility,willChange",
+            });
+          },
+        });
+
+        timeline.fromTo(
+          panel,
+          { autoAlpha: 0, y: -8, scale: 0.965 },
+          { autoAlpha: 1, y: 0, scale: 1, duration: 0.26, ease: "power3.out" },
+        );
+
+        if (items.length) {
+          timeline.fromTo(
+            items,
+            { autoAlpha: 0, y: -4 },
+            { autoAlpha: 1, y: 0, duration: 0.18, stagger: 0.025, ease: "power2.out" },
+            "<0.08",
+          );
+        }
+      }, panel);
+
+      return () => ctx.revert();
+    });
+
+    return () => mediaContext.revert();
+  }, [isOpen]);
+
   const markAllAsRead = async () => {
     if (!enabled) return;
     if (notificationState?.markAllAsRead) {
@@ -97,12 +162,19 @@ export default function NotificationBell({
 
   return (
     <div className="app-notification-bell" ref={dropdownRef}>
-      <button type="button" className="app-notification-bell__trigger" aria-label="Mở thông báo" disabled={!enabled} onClick={() => enabled && setIsOpen((value) => !value)}>
+      <button
+        type="button"
+        className="app-notification-bell__trigger"
+        aria-label="Mở thông báo"
+        aria-expanded={isOpen}
+        disabled={!enabled}
+        onClick={() => enabled && setIsOpen((value) => !value)}
+      >
         <Bell size={21} />
         {unreadCount > 0 && <span className="app-notification-bell__badge">{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </button>
       {isOpen && (
-        <div className="app-notification-bell__dropdown" role="dialog" aria-label="Danh sách thông báo">
+        <div ref={panelRef} className="app-notification-bell__dropdown" role="dialog" aria-label="Danh sách thông báo">
           <div className="app-notification-bell__header">
             <h3>{title}</h3>
             <button type="button" onClick={markAllAsRead}><CheckCheck size={15} /> Đọc hết</button>
