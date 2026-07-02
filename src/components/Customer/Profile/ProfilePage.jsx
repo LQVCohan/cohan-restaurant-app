@@ -7,6 +7,8 @@ import OrderHistory from "./components/OrderHistory";
 import SecuritySettings from "./components/SecuritySettings";
 import FoodPreferences from "./components/FoodPreferences";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import useBrandManagement from "@/hooks/useBrandManagement";
+import { getCombinedRoleLabel } from "@/lib/userRoleDisplay";
 import "./ProfilePage.scss";
 import "./ProfileVisibilityPolish.scss";
 
@@ -59,6 +61,8 @@ const ME_QUERY = gql`
   }
 `;
 
+const EMPTY_RESTAURANTS = [];
+
 const ProfilePage = () => {
   const { data, loading, error, refetch } = useQuery(ME_QUERY);
   const [activeTab, setActiveTab] = useState("info");
@@ -66,6 +70,22 @@ const ProfilePage = () => {
   const [tempAvatarFile, setTempAvatarFile] = useState(null);
 
   const user = useMemo(() => data?.me, [data]);
+  const brandState = useBrandManagement(EMPTY_RESTAURANTS, { skip: !user?.id });
+  const activeBrand = brandState.selectedBrand || brandState.brands[0] || null;
+  const activeMembership = activeBrand?.membership || (
+    activeBrand?.membershipRole
+      ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] }
+      : null
+  );
+  const roleLabel = useMemo(
+    () => getCombinedRoleLabel({
+      user,
+      activeBrand,
+      membership: activeMembership,
+      compact: true,
+    }),
+    [activeBrand, activeMembership, user],
+  );
 
   const handleAvatarChange = useCallback((file) => {
     setTempAvatarFile(file);
@@ -92,6 +112,7 @@ const ProfilePage = () => {
       <div className="profile-container">
         <ProfileSidebar
           user={user}
+          roleLabel={roleLabel}
           activeTab={activeTab}
           setActiveTab={(tab) => {
             setActiveTab(tab);
