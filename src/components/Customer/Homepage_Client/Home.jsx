@@ -114,21 +114,19 @@ const DesktopHome = () => {
 
         <section className="home-shortcuts" aria-labelledby="home-shortcuts-title">
           <div className="home-shortcuts__container">
-            <div className="home-shortcuts__header">
-              <div>
-                <span className="home-shortcuts__eyebrow">Khám phá nhanh</span>
-                <h3 id="home-shortcuts-title">Tiện ích hay dùng</h3>
-                <p>Mở nhanh ưu đãi, combo và các gợi ý cá nhân hóa trong một chạm.</p>
-              </div>
+            <div className="home-shortcuts__wizard">
+              <span className="home-shortcuts__eyebrow">Khám phá nhanh</span>
+              <h3 id="home-shortcuts-title">Tiện ích hay dùng</h3>
+              <p>Mở nhanh ưu đãi, combo và các gợi ý cá nhân hóa trong một chạm.</p>
               <button type="button" className="home-shortcuts__view-all" onClick={() => navigate("/for-you")}>Gợi ý cho bạn <span>→</span></button>
             </div>
 
-            <div className="home-shortcuts__grid">
+            <div className="home-shortcuts__board" aria-label="Các tiện ích hay dùng">
               {CUSTOMER_SHORTCUTS.map((item, index) => (
                 <button
                   key={item.path}
                   type="button"
-                  className={`home-shortcut-card ${index === 0 ? "home-shortcut-card--featured" : ""}`}
+                  className={`home-shortcut-card home-shortcut-card--${index + 1} ${index === 0 ? "home-shortcut-card--featured" : ""}`}
                   onClick={() => navigate(item.path)}
                 >
                   <span className="home-shortcut-card__icon" aria-hidden="true">{item.icon}</span>

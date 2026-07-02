@@ -44,7 +44,7 @@ const HERO_TARGETS = [
 
 const SECTION_TARGETS = [
   ".restaurant-grid__header",
-  ".home-shortcuts__header",
+  ".home-shortcuts__wizard",
   ".categories__header",
   ".dish-grid__header",
   ".how-it-works__header",
@@ -62,7 +62,7 @@ const CARD_TARGETS = [
 
 const DYNAMIC_ROOTS = [
   ".restaurant-grid__list",
-  ".home-shortcuts__grid",
+  ".home-shortcuts__board",
   ".categories__grid",
   ".dish-grid__list",
   ".dish-grid__grid",

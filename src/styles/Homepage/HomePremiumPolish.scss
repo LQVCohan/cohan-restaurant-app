@@ -163,8 +163,9 @@ body {
 
   &__container {
     min-height: 320px;
-    padding: clamp(24px, 2.9vw, 38px);
-    grid-template-columns: minmax(0, 0.94fr) minmax(320px, 0.78fr);
+    padding: clamp(30px, 3.4vw, 46px);
+    grid-template-columns: minmax(0, 0.94fr) minmax(300px, 0.78fr);
+    gap: clamp(24px, 3vw, 42px);
     border-radius: 32px;
     border: 1px solid rgba(255, 255, 255, 0.92);
     background:
@@ -207,7 +208,8 @@ body {
   }
 
   &__search-box {
-    max-width: 560px;
+    max-width: 540px;
+    margin-right: 6px;
     border-radius: 18px;
     border-color: rgba(92, 64, 51, 0.08);
     box-shadow: 0 20px 48px rgba(92, 45, 12, 0.11);
@@ -220,7 +222,8 @@ body {
 
   &__stats {
     width: fit-content;
-    margin-top: 20px;
+    max-width: 100%;
+    margin-top: 22px;
     padding: 10px 14px;
     border: 1px solid rgba(92, 64, 51, 0.08);
     border-radius: 20px;
@@ -232,6 +235,7 @@ body {
 
   &__image-area {
     min-height: 292px;
+    padding: 18px 22px 18px 10px;
   }
 
   &__image-bg {
@@ -244,7 +248,7 @@ body {
   }
 
   &__slider {
-    width: min(92%, 430px);
+    width: min(88%, 410px);
     height: 246px;
   }
 
@@ -275,9 +279,9 @@ body {
     font-size: 0.72rem;
   }
 
-  .float-review { top: 10%; right: 5%; }
-  .float-time { top: 39%; right: 1%; }
-  .float-delivery { bottom: 10%; right: 5%; }
+  .float-review { top: 13%; right: 8%; }
+  .float-time { top: 42%; right: 5%; }
+  .float-delivery { bottom: 12%; right: 8%; }
 }
 
 .home .restaurant-grid,
