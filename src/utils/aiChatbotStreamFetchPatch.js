@@ -3,6 +3,7 @@ import { getToken } from "@/lib/authStorage";
 
 const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
 const STREAM_BUBBLE_FLAG = "aiStreamBubble";
+const ANSWERING_CLASS = "is-ai-answering";
 
 const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
 
@@ -67,6 +68,38 @@ export const isAskAiChatbotOperation = (payload) => {
   return operationName === "AskAiChatbot" || query.includes("askAiChatbot");
 };
 
+const getRequestedManagerFeature = (input = {}) => {
+  const pageContext = input?.pageContext || {};
+  if (!String(pageContext.pathname || "").startsWith("/manager")) return null;
+  return (Array.isArray(pageContext.featureMatches) ? pageContext.featureMatches : [])
+    .find((feature) => String(feature?.path || "").startsWith("/manager")) || null;
+};
+
+export const focusAiChatbotResponseActions = (result, input = {}) => {
+  if (!result) return result;
+  const feature = getRequestedManagerFeature(input);
+  if (!feature?.path || !feature?.label) return result;
+
+  const actions = Array.isArray(result.actions) ? result.actions : [];
+  const matchingAction = actions.find(
+    (action) => String(action?.href || "") === String(feature.path),
+  );
+  const focusedAction = matchingAction || {
+    type: feature.actionType === "openCart" ? "openCart" : "link",
+    label: feature.label,
+    href: feature.actionType === "openCart" ? "" : feature.path,
+    description: feature.description || null,
+    icon: feature.key || null,
+    priority: 1,
+  };
+
+  return {
+    ...result,
+    actions: [{ ...focusedAction, label: feature.label }],
+    quickReplies: [],
+  };
+};
+
 const parseSseFrame = (frame) => {
   let event = "message";
   const data = [];
@@ -116,8 +149,18 @@ const getStreamingParagraph = () => {
 };
 
 const scrollChatbotToBottom = () => {
-  const body = document.querySelector(".ai-chatbot-body");
+  const body = typeof document === "undefined" ? null : document.querySelector(".ai-chatbot-body");
   if (body) body.scrollTop = body.scrollHeight;
+};
+
+const setChatbotAnswering = (answering) => {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(".ai-chatbot-panel").forEach((panel) => {
+    panel.classList.toggle(ANSWERING_CLASS, answering);
+  });
+  if (answering && typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(scrollChatbotToBottom);
+  }
 };
 
 const setStreamStatus = () => {
@@ -182,6 +225,8 @@ export function installAiChatbotStreamFetchPatch() {
 
     if (!isAskAiChatbotOperation(payload)) return originalFetch(input, init);
 
+    const requestInput = payload?.variables?.input || {};
+    setChatbotAnswering(true);
     try {
       const authHeader = getAuthorizationHeader(input, init);
       const headers = { "Content-Type": "application/json" };
@@ -191,15 +236,20 @@ export function installAiChatbotStreamFetchPatch() {
         method: "POST",
         credentials: "include",
         headers,
-        body: JSON.stringify(payload?.variables?.input || {}),
+        body: JSON.stringify(requestInput),
       });
 
       if (!streamResponse.ok || !streamResponse.body) return originalFetch(input, init);
-      const result = await readStreamResponse(streamResponse);
+      const result = focusAiChatbotResponseActions(
+        await readStreamResponse(streamResponse),
+        requestInput,
+      );
       return jsonGraphqlResponse(result || fallbackResponse());
     } catch (err) {
       const message = err?.code === "RATE_LIMITED" ? RATE_LIMIT_MESSAGE : err?.message;
       return jsonGraphqlResponse(fallbackResponse(message));
+    } finally {
+      setChatbotAnswering(false);
     }
   };
 }
