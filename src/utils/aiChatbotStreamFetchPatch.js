@@ -3,7 +3,6 @@ import { getToken } from "@/lib/authStorage";
 
 const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
 const STREAM_BUBBLE_FLAG = "aiStreamBubble";
-const STREAM_STATUS_FLAG = "aiStreamStatus";
 
 const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
 
@@ -108,7 +107,10 @@ const getStreamingParagraph = () => {
   if (!bubble.dataset?.[STREAM_BUBBLE_FLAG]) {
     bubble.dataset[STREAM_BUBBLE_FLAG] = "1";
     bubble.className = "ai-chatbot-message assistant ai-chatbot-streaming-message";
-    bubble.innerHTML = "<p></p>";
+    bubble.innerHTML = `
+      <span class="ai-chatbot-message-avatar ai-chatbot-message-avatar--assistant" title="AI" aria-hidden="true">AI</span>
+      <div class="ai-chatbot-message-content"><p></p></div>
+    `;
   }
   return bubble.querySelector("p");
 };
@@ -118,14 +120,8 @@ const scrollChatbotToBottom = () => {
   if (body) body.scrollTop = body.scrollHeight;
 };
 
-const setStreamStatus = (message) => {
-  const value = String(message || "").trim();
-  if (!value) return;
-  const paragraph = getStreamingParagraph();
-  if (!paragraph || paragraph.dataset?.[STREAM_STATUS_FLAG] === "done") return;
-  paragraph.dataset[STREAM_STATUS_FLAG] = "pending";
-  paragraph.textContent = value;
-  scrollChatbotToBottom();
+const setStreamStatus = () => {
+  // Keep the Messenger-like typing bubble as dots only until real answer deltas arrive.
 };
 
 const appendStreamText = (text) => {
@@ -133,10 +129,6 @@ const appendStreamText = (text) => {
   if (!value) return;
   const paragraph = getStreamingParagraph();
   if (!paragraph) return;
-  if (paragraph.dataset?.[STREAM_STATUS_FLAG] === "pending") {
-    paragraph.dataset[STREAM_STATUS_FLAG] = "done";
-    paragraph.textContent = "";
-  }
   paragraph.textContent = `${paragraph.textContent || ""}${value}`;
   scrollChatbotToBottom();
 };
@@ -155,7 +147,7 @@ const readStreamResponse = async (response) => {
     const parsed = parseSseEvents(buffer);
     buffer = parsed.rest;
     for (const item of parsed.events) {
-      if (item.event === "status") setStreamStatus(item.data?.message || "AI đang xử lý...");
+      if (item.event === "status") setStreamStatus();
       if (item.event === "delta") appendStreamText(item.data?.text || "");
       if (item.event === "done") donePayload = item.data;
       if (item.event === "error") throw Object.assign(new Error(item.data?.message || "AI stream failed"), { code: item.data?.code });
@@ -164,7 +156,7 @@ const readStreamResponse = async (response) => {
 
   const parsed = parseSseEvents(buffer + decoder.decode());
   for (const item of parsed.events) {
-    if (item.event === "status") setStreamStatus(item.data?.message || "AI đang xử lý...");
+    if (item.event === "status") setStreamStatus();
     if (item.event === "delta") appendStreamText(item.data?.text || "");
     if (item.event === "done") donePayload = item.data;
   }
