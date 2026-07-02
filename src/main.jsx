@@ -41,6 +41,7 @@ import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowFinalPolish.scss";
 import "./styles/AiChatbotMessageAvatars.scss";
 import "./styles/CohanBrandIdentity.css";
+import "./styles/AiChatbotRoleAvatars.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
 
