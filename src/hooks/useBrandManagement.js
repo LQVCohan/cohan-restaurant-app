@@ -53,10 +53,16 @@ export default function useBrandManagement(
   additionalRestaurants = EMPTY_RESTAURANTS,
   { skip = false } = {},
 ) {
-  const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
+  const {
+    user,
+    restaurants = [],
+    restaurantsLoading = false,
+  } = useContext(AuthContext) || {};
+  const userId = String(user?.id || user?._id || "");
+  const shouldSkip = skip || !userId;
   const { data, loading, error, refetch } = useQuery(MY_BRANDS_QUERY, {
     fetchPolicy: "cache-and-network",
-    skip,
+    skip: shouldSkip,
   });
   const memberships = data?.myBrandMemberships || [];
   const membershipByBrandId = useMemo(
@@ -110,8 +116,13 @@ export default function useBrandManagement(
   );
 
   useEffect(() => {
-    if (!selectedBrandId && brands.length === 1) setSelectedBrandId(String(brands[0].id));
-  }, [brands, selectedBrandId]);
+    if (shouldSkip || loading) return;
+    const availableBrandIds = brands.map((brand) => String(brand.id));
+    const nextBrandId = availableBrandIds.includes(selectedBrandId)
+      ? selectedBrandId
+      : availableBrandIds[0] || "";
+    if (nextBrandId !== selectedBrandId) setSelectedBrandId(nextBrandId);
+  }, [brands, loading, selectedBrandId, shouldSkip]);
 
   useEffect(() => storageSet("manager.selectedBrandId", selectedBrandId), [selectedBrandId]);
   useEffect(() => storageSet("manager.selectedRestaurantId", selectedRestaurantId), [selectedRestaurantId]);
@@ -143,7 +154,7 @@ export default function useBrandManagement(
 
   return {
     brands,
-    loading: loading || restaurantsLoading,
+    loading: !shouldSkip && (loading || restaurantsLoading),
     error,
     refetch,
     selectedBrandId,
