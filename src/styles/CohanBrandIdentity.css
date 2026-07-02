@@ -111,6 +111,27 @@
   margin-bottom: 2px !important;
 }
 
+.ai-chatbot-header > button[aria-label="Đóng chatbot"] {
+  display: inline-flex !important;
+  flex: 0 0 36px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  transform: none !important;
+}
+
+.ai-chatbot-header > button[aria-label="Đóng chatbot"] > svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
 @media (max-width: 600px) {
   .header__logo {
     width: 126px !important;
