@@ -227,300 +227,286 @@ const MENU_ITEM_LIVE_STATE_FOR_AI = gql`
     }
   }
 `;
-const ADD_CART_ITEM_FOR_AI = gql`
-  mutation AddCartItemFromAiChatbot($input: AddCartItemInput!) {
-    addCartItem(input: $input) {
-      id
-      totalQuantity
-      totalAmount
-      items {
-        id
-        restaurantId
-        menuItemId
-        name
-        price
-        quantity
-        thumbImage
-        note
-        servingVariantKey
-        holdExpiresAt
-        holdStatus
-      }
-    }
-  }
-`;
+const COMPACT_MENU_ANSWER =
+  "Mình đã chọn một số món phù hợp bên dưới. Bạn có thể mở chi tiết hoặc thêm vào giỏ nếu món còn khả dụng.";
 
-const getConversationStorageKey = (restaurantId) =>
-  `cohan_ai_conversation_id:${restaurantId || "global"}`;
-const getHandoffStorageKey = (conversationId) =>
-  `cohan_ai_handoff_requested:${conversationId}`;
-
-const generateGuestId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID)
-    return crypto.randomUUID();
-  return `guest_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
-
-const DEFAULT_WELCOME_MESSAGE =
-  "Xin chào, mình là trợ lý A.I của Cohan Restaurant App. Mình có thể hỗ trợ bạn về menu, đặt bàn, đơn hàng, coupon và hướng dẫn sử dụng hệ thống.";
-
-const INITIAL_MESSAGES = [
-  {
-    role: "assistant",
-    content: DEFAULT_WELCOME_MESSAGE,
-  },
+const PAGE_ROUTE_HINTS = [
+  { pattern: /\/cart|gio-hang/i, label: "giỏ hàng" },
+  { pattern: /\/checkout|thanh-toan/i, label: "thanh toán" },
+  { pattern: /\/orders?|don-hang/i, label: "đơn hàng" },
+  { pattern: /\/reservations?|dat-ban/i, label: "đặt bàn" },
+  { pattern: /\/restaurants?|nha-hang/i, label: "nhà hàng" },
+  { pattern: /\/foods?|menu|mon-an/i, label: "thực đơn" },
+  { pattern: /\/profile|tai-khoan/i, label: "tài khoản" },
+  { pattern: /\/manager/i, label: "quản lý" },
+  { pattern: /\/staff/i, label: "nhân viên" },
 ];
 
-export const extractRestaurantId = ({ params, pathname }) => {
-  if (params?.id && pathname.includes("/restaurant/")) return params.id;
-  if (params?.restaurantId) return params.restaurantId;
-  return null;
-};
-export const getInputPlaceholder = (restaurantId) =>
-  restaurantId
-    ? "Hỏi AI gợi ý món, combo, giá, món chay..."
-    : "Hỏi về món ăn, đặt bàn, đơn hàng...";
+const getRouteHint = (pathname = "") =>
+  PAGE_ROUTE_HINTS.find((item) => item.pattern.test(pathname))?.label || "trang hiện tại";
 
-export const buildMenuSourceCards = (response) => {
-  if (response?.intent !== "menu") return [];
-  const seen = new Set();
-  const cards = [];
-  for (const source of response?.sources || []) {
-    if (source?.type !== "menuItem" || !source?.id) continue;
-    const id = String(source.id);
-    if (seen.has(id)) continue;
-    seen.add(id);
-    cards.push(source);
-    if (cards.length >= 4) break;
+const isFoodDetailRoute = (pathname = "") =>
+  /(?:food|foods|menu|mon-an|dish|item)/i.test(pathname);
+
+const getPathLastSegment = (pathname = "") => {
+  const parts = String(pathname || "").split("/").filter(Boolean);
+  return parts[parts.length - 1] || "";
+};
+
+const getAiCannotOrderMessage = (restaurant) => {
+  if (!restaurant) return "Đang kiểm tra trạng thái nhận đơn của nhà hàng...";
+  if (!restaurant?.canOrder) return "Nhà hàng hiện chưa bật nhận đặt món trực tuyến.";
+  if (restaurant?.openingStatus && restaurant.openingStatus !== "open") {
+    return restaurant.openingStatusReason || "Nhà hàng hiện ngoài giờ nhận đơn.";
   }
-  return cards;
+  return "";
 };
 
-export const getSafeVisibleAiActions = ({ actions = [], handoffEnabled = true, limit = 6 } = {}) => {
-  const allowedTypes = new Set(["link", "openCart", "handoff", "search"]);
+const sourceTypeLabel = (type) => {
+  if (type === "menuItem") return "Món ăn";
+  if (type === "restaurant") return "Nhà hàng";
+  if (type === "coupon") return "Ưu đãi";
+  if (type === "order") return "Đơn hàng";
+  if (type === "reservation") return "Đặt bàn";
+  if (type === "knowledge") return "Tri thức";
+  return "Nguồn";
+};
+
+const normalizeHistory = (messages) =>
+  (messages || [])
+    .filter((item) => ["user", "assistant"].includes(item.role) && item.content)
+    .slice(-8)
+    .map((item) => ({
+      role: item.role === "assistant" ? "assistant" : "user",
+      content: item.content,
+    }));
+
+const generateGuestId = () =>
+  `guest_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+
+const getHandoffStorageKey = (conversationId) =>
+  conversationId ? `cohan_ai_handoff_${conversationId}` : "";
+
+const formatSelectedQuantityUnit = ({ quantity, variant }) => {
+  const unit = variant?.sellUnit ? ` ${variant.sellUnit}` : "";
+  return `${quantity}${unit}`;
+};
+
+const statusClass = (enabled) =>
+  enabled ? "ai-chatbot-status ai-chatbot-status--on" : "ai-chatbot-status";
+
+const getMessageAvatarLabel = (item) => {
+  if (item?.role === "staff") return "NV";
+  if (item?.role === "assistant") return "AI";
+  return "";
+};
+
+const getMessageSenderTitle = (item) => {
+  if (item?.role === "staff") return item?.meta?.senderLabel || "Nhân viên";
+  if (item?.role === "assistant") return "AI";
+  return "";
+};
+
+const renderMessageAvatar = (item) => {
+  const label = getMessageAvatarLabel(item);
+  if (!label) return null;
+  return (
+    <span
+      className={`ai-chatbot-message-avatar ai-chatbot-message-avatar--${item.role}`}
+      title={getMessageSenderTitle(item)}
+      aria-hidden="true"
+    >
+      {label}
+    </span>
+  );
+};
+
+const buildMenuSourceCards = (response) => {
+  const sources = Array.isArray(response?.sources) ? response.sources : [];
+  const menuSources = sources.filter(
+    (source) => source?.type === "menuItem" && source?.id && source?.label,
+  );
   const seen = new Set();
-  return (handoffEnabled
-    ? actions
-    : actions.filter((action) => action?.type !== "handoff")
-  )
-    .filter((action) => allowedTypes.has(action?.type))
-    .filter((action) => action?.type !== "add_to_cart_candidate")
-    .filter((action) => {
-      const href = String(action?.href || "").trim();
-      if (/^(?:javascript|data|mailto|tel):/i.test(href) || href.startsWith("//")) return false;
-      if (["openCart", "handoff", "search"].includes(action?.type)) return true;
-      return (href.startsWith("/") && !href.startsWith("//")) || /^https?:\/\//i.test(href);
-    })
-    .filter((action) => {
-      const key = action?.type === "openCart" || action?.href ? `${action?.type}:${action?.href || ""}` : `${action?.type}:${String(action?.label || "").toLowerCase()}`;
+  return menuSources
+    .filter((source) => {
+      const key = String(source.id);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     })
-    .slice(0, limit);
+    .slice(0, 4);
 };
 
-const normalizeHistory = (messages) =>
-  messages
-    .filter((item) => ["user", "assistant"].includes(item.role))
-    .slice(-8)
-    .map((item) => ({ role: item.role, content: item.content }));
-
-const COMPACT_MENU_ANSWER =
-  "Mình tìm được vài món phù hợp. Bạn bấm Chọn món để chọn tùy chọn trước khi thêm vào giỏ.";
-
-const OPENING_STATUS_LABELS = {
-  open: "Đang mở cửa",
-  closed: "Đã đóng cửa",
-  closing_soon: "Sắp đóng cửa",
-  opening_soon: "Sắp mở cửa",
-  paused: "Tạm dừng nhận đơn",
+const getSafeVisibleAiActions = ({ actions = [], handoffEnabled, limit = 6 }) => {
+  const safe = [];
+  const seen = new Set();
+  for (const action of Array.isArray(actions) ? actions : []) {
+    if (!action?.label) continue;
+    if (action.type === "handoff" && !handoffEnabled) continue;
+    const key = `${action.type || ""}:${action.href || ""}:${action.label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    safe.push(action);
+    if (safe.length >= limit) break;
+  }
+  return safe;
 };
 
-const formatVariantUnit = (variant) => {
-  const unit = String(variant?.sellUnit || "").trim();
-  if (!unit) return "";
-  const qty = Number(variant?.sellQty || 1);
-  if (!Number.isFinite(qty) || qty <= 0) return unit;
-  return `${qty}${unit}`;
+const formatSourcePrice = (source) => {
+  if (source?.formattedPrice) return source.formattedPrice;
+  const price = Number(source?.currentPrice ?? source?.basePrice ?? source?.price);
+  if (!Number.isFinite(price) || price <= 0) return "";
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(price);
 };
 
-const formatSelectedQuantityUnit = ({ quantity, variant }) => {
-  const unitLabel = formatVariantUnit(variant);
-  if (!unitLabel) return `Số lượng: ${quantity}`;
-  const totalQty = Number(quantity || 0) * Number(variant?.sellQty || 1);
-  const unit = String(variant?.sellUnit || "").trim();
-  const totalLabel =
-    Number.isFinite(totalQty) && unit
-      ? `${Number(totalQty.toFixed(3))}${unit}`
-      : "";
-  return totalLabel && totalLabel !== unitLabel
-    ? `Số lượng: ${quantity} x ${unitLabel} = ${totalLabel}`
-    : `Số lượng: ${quantity} x ${unitLabel}`;
+const formatMenuSourceStatus = (source) => {
+  if (source?.isAvailable === false) return "Tạm hết";
+  if (source?.status && source.status !== "available") return source.status;
+  if (source?.hasOptions || source?.hasVariants) return "Có tùy chọn";
+  return "Sẵn sàng";
 };
 
-const getAiCannotOrderMessage = (restaurant) => {
-  if (restaurant?.canOrder !== false) return "";
-  const status = String(restaurant?.openingStatus || "").trim();
-  const statusLabel = OPENING_STATUS_LABELS[status] || status;
-  const reason =
-    restaurant?.openingStatusReason ||
-    (statusLabel ? `Trạng thái: ${statusLabel}` : "");
-  return [
-    "Nhà hàng hiện chưa nhận đặt món. Bạn vẫn có thể xem chi tiết món hoặc quay lại sau.",
-    reason,
-  ]
-    .filter(Boolean)
-    .join(" ");
-};
-
-function AiChatbotWidget({ testOverrides = {} } = {}) {
-  const { user } = React.useContext(AuthContext);
-  const { addToCart } = useCart();
+function AiChatbotWidget({ restaurantId: restaurantIdProp, testOverrides = {} }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams();
+  const { user } = React.useContext(AuthContext) || {};
+  const { addItem } = useCart();
+  const routeRestaurantId =
+    restaurantIdProp || params.restaurantId || params.id || params.restaurant || "";
+  const [eventRestaurantId, setEventRestaurantId] = useState("");
+  const restaurantId = eventRestaurantId || routeRestaurantId;
+  const restaurantStorageKey = `cohan_ai_conversation_${restaurantId || "global"}`;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [guestId, setGuestId] = useState(() => {
+    if (typeof window === "undefined") return generateGuestId();
+    const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
+    if (existing) return existing;
+    const next = generateGuestId();
+    window.localStorage.setItem(GUEST_ID_STORAGE_KEY, next);
+    return next;
+  });
+  const [conversationId, setConversationId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem(restaurantStorageKey) || "";
+  });
+  const [handoffRequested, setHandoffRequested] = useState(false);
+  const [handoffClosed, setHandoffClosed] = useState(false);
+  const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
+  const [isSendInFlight, setIsSendInFlight] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Xin chào! Mình là trợ lý COHAN. Bạn muốn gợi ý món, đặt bàn hay cần hỗ trợ đơn hàng?",
+    },
+  ]);
   const [lastActions, setLastActions] = useState([]);
   const [lastQuickReplies, setLastQuickReplies] = useState(STARTER_MESSAGES);
-  const [lastIntent, setLastIntent] = useState("");
-  const [menuSourceCards, setMenuSourceCards] = useState([]);
   const [lastContextSummary, setLastContextSummary] = useState(null);
+  const [lastIntent, setLastIntent] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState({});
   const [selectedMenuItemSource, setSelectedMenuItemSource] = useState(null);
   const [selectedVariantKey, setSelectedVariantKey] = useState("");
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [selectedNote, setSelectedNote] = useState("");
-  const [isAiCartAdding, setIsAiCartAdding] = useState(false);
+  const [menuSourceCards, setMenuSourceCards] = useState([]);
   const [aiCartError, setAiCartError] = useState("");
   const [aiCartSuccess, setAiCartSuccess] = useState("");
+  const [isAiCartAdding, setIsAiCartAdding] = useState(false);
+  const sendInFlightRef = useRef(false);
+  const pollInFlightRef = useRef(false);
+  const hasJoinedSocketRef = useRef(false);
+
   const [askAiChatbot, { loading }] = useMutation(ASK_AI_CHATBOT);
   const [requestHandoff, { loading: handoffLoading }] = useMutation(
     REQUEST_AI_CHATBOT_HANDOFF,
   );
-  const [submitFeedback] = useMutation(SUBMIT_AI_CHATBOT_FEEDBACK);
   const [sendGuestMessage, { loading: guestSendLoading }] = useMutation(
     SEND_AI_CHATBOT_GUEST_MESSAGE,
   );
   const [loadGuestReplies] = useLazyQuery(Q_AI_CHATBOT_GUEST_REPLIES, {
     fetchPolicy: "network-only",
   });
-  const [addCartItemForAi] = useMutation(ADD_CART_ITEM_FOR_AI);
-  const [guestId, setGuestId] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const existing = window.localStorage.getItem(GUEST_ID_STORAGE_KEY);
-    if (existing) return existing;
-    const created = generateGuestId();
-    window.localStorage.setItem(GUEST_ID_STORAGE_KEY, created);
-    return created;
-  });
-  const [conversationId, setConversationId] = useState("");
-  const [handoffRequested, setHandoffRequested] = useState(false);
-  const [handoffClosed, setHandoffClosed] = useState(false);
-  const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
-  const [isSendInFlight, setIsSendInFlight] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState({});
-  const sendInFlightRef = useRef(false);
-  const pollInFlightRef = useRef(false);
-  const hasJoinedSocketRef = useRef(false);
-  const params = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const [eventRestaurantId, setEventRestaurantId] = useState("");
-  const routeRestaurantId = useMemo(
-    () => extractRestaurantId({ params, pathname: location.pathname }),
-    [params, location.pathname],
-  );
-  const restaurantId = eventRestaurantId || routeRestaurantId;
-  const selectedRouteMenuItem = useMemo(() => {
-    const query = new URLSearchParams(location.search || "");
-    const id = params?.foodId || query.get("menuItemId") || "";
-    return id ? { id, restaurantId: restaurantId || query.get("restaurantId") || null } : null;
-  }, [params?.foodId, location.search, restaurantId]);
-  const buildAiPageContext = useCallback((messageText = "") => {
-    const userRole = getAiChatbotUserRole(user);
-    const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
-    const effectiveRestaurantId = restaurantId || selectedMenuItem?.restaurantId || "";
-    return {
-      pathname: location.pathname,
-      restaurantId: effectiveRestaurantId || null,
-      selectedMenuItem: selectedMenuItem || null,
-      userRole,
-      featureMatches: getAiChatbotFeatureMatches({
-        pathname: location.pathname,
-        restaurantId: effectiveRestaurantId,
-        selectedMenuItem,
-        userRole,
-        query: messageText,
-      }),
-    };
-  }, [location.pathname, restaurantId, selectedMenuItemSource, selectedRouteMenuItem, user]);
-
-
-  useEffect(() => {
-    setEventRestaurantId("");
-  }, [location.pathname]);
-  const restaurantStorageKey = useMemo(
-    () => getConversationStorageKey(restaurantId),
-    [restaurantId],
-  );
+  const [submitFeedback] = useMutation(SUBMIT_AI_CHATBOT_FEEDBACK);
   const { data: publicSettingsData } = useQuery(Q_PUBLIC_AI_CHATBOT_SETTINGS, {
-    variables: { restaurantId: restaurantId || null },
-    fetchPolicy: "cache-first",
+    variables: { restaurantId: restaurantId || undefined },
+    fetchPolicy: "cache-and-network",
   });
   const publicSettings = publicSettingsData?.publicAiChatbotSettings;
-  const {
-    data: aiMenuItemData,
-    loading: aiMenuItemLoading,
-    error: aiMenuItemError,
-  } = useQuery(CUSTOMER_MENU_ITEM_FOR_AI, {
-    variables: {
-      id: selectedMenuItemSource?.id,
-      restaurantId:
-        selectedMenuItemSource?.restaurantId || restaurantId || null,
+
+  const buildAiPageContext = useCallback(
+    (latestMessage = "") => {
+      const pathname = location.pathname || "";
+      const searchParams = new URLSearchParams(location.search || "");
+      const routeHint = getRouteHint(pathname);
+      const maybeFoodId = isFoodDetailRoute(pathname)
+        ? params.foodId || params.menuItemId || params.itemId || getPathLastSegment(pathname)
+        : "";
+      return {
+        pathname,
+        routeHint,
+        restaurantId: restaurantId || undefined,
+        foodId: maybeFoodId || undefined,
+        orderId: params.orderId || params.id || searchParams.get("orderId") || undefined,
+        reservationId:
+          params.reservationId || searchParams.get("reservationId") || undefined,
+        userRole: getAiChatbotUserRole(user),
+        cartItemCount: 0,
+        featureMatches: getAiChatbotFeatureMatches({ pathname, message: latestMessage }),
+      };
     },
-    skip: !selectedMenuItemSource?.id,
-  });
-  const selectedAiMenuItem = aiMenuItemData?.customerMenuItem || null;
-  const { data: aiRestaurantData } = useQuery(PUBLIC_RESTAURANT_BY_ID_FOR_AI, {
-    variables: {
-      id:
-        selectedMenuItemSource?.restaurantId ||
-        selectedAiMenuItem?.restaurantId,
+    [location.pathname, location.search, params, restaurantId, user],
+  );
+
+  const selectedAiMenuItemId = selectedMenuItemSource?.id || "";
+  const selectedAiRestaurantId = selectedMenuItemSource?.restaurantId || restaurantId;
+  const { data: aiMenuItemData, loading: aiMenuItemLoading, error: aiMenuItemError } = useQuery(
+    CUSTOMER_MENU_ITEM_FOR_AI,
+    {
+      variables: { id: selectedAiMenuItemId, restaurantId: selectedAiRestaurantId || undefined },
+      skip: !selectedAiMenuItemId,
+      fetchPolicy: "cache-and-network",
     },
-    skip:
-      !selectedMenuItemSource?.restaurantId &&
-      !selectedAiMenuItem?.restaurantId,
-  });
-  const aiRestaurant = aiRestaurantData?.publicRestaurant || null;
+  );
+  const selectedAiMenuItem = aiMenuItemData?.customerMenuItem;
   const aiServingOptions = useMemo(
     () => buildMenuItemServingOptions(selectedAiMenuItem),
     [selectedAiMenuItem],
   );
   useEffect(() => {
-    if (!selectedMenuItemSource) return;
-    if (!selectedVariantKey && aiServingOptions.length)
-      setSelectedVariantKey(aiServingOptions[0].key);
-  }, [selectedMenuItemSource, selectedVariantKey, aiServingOptions]);
-  const selectedVariant = useMemo(
-    () => aiServingOptions.find((v) => v.key === selectedVariantKey) || null,
-    [aiServingOptions, selectedVariantKey],
-  );
-  const { data: aiLiveStateData } = useQuery(MENU_ITEM_LIVE_STATE_FOR_AI, {
-    variables: {
-      input: {
-        itemType: "menuItem",
-        menuItemId: selectedAiMenuItem?.id,
-        restaurantId: selectedAiMenuItem?.restaurantId,
-        servingVariantKey: selectedVariantKey || undefined,
-        userId: user?.id || undefined,
-      },
-    },
-    skip:
-      !selectedAiMenuItem?.id ||
-      !selectedAiMenuItem?.restaurantId ||
-      !selectedVariantKey,
-    fetchPolicy: "network-only",
+    if (!selectedAiMenuItem || selectedVariantKey) return;
+    const fallback = selectedMenuItemSource?.servingVariants?.[0]?.key || aiServingOptions?.[0]?.key || "standard";
+    setSelectedVariantKey(fallback);
+  }, [aiServingOptions, selectedAiMenuItem, selectedMenuItemSource, selectedVariantKey]);
+
+  const selectedVariant = aiServingOptions.find((item) => item.key === selectedVariantKey);
+  const { data: aiRestaurantData } = useQuery(PUBLIC_RESTAURANT_BY_ID_FOR_AI, {
+    variables: { id: selectedAiRestaurantId },
+    skip: !selectedAiRestaurantId,
+    fetchPolicy: "cache-and-network",
   });
+  const aiRestaurant = aiRestaurantData?.publicRestaurant;
+  const { data: aiLiveStateData } = useQuery(MENU_ITEM_LIVE_STATE_FOR_AI, {
+  variables: {
+    input: {
+      itemType: "menuItem",
+      menuItemId: selectedAiMenuItem?.id,
+      restaurantId: selectedAiMenuItem?.restaurantId,
+      servingVariantKey: selectedVariantKey || undefined,
+      userId: user?.id || undefined,
+    },
+  },
+  skip:
+    !selectedAiMenuItem?.id ||
+    !selectedAiMenuItem?.restaurantId ||
+    !selectedVariantKey,
+  fetchPolicy: "network-only",
+});
   const aiLiveState = aiLiveStateData?.menuItemLiveState;
   const aiLiveStateReady = Boolean(aiLiveState);
   const aiMaxAvailableQty = Number(aiLiveState?.maxAvailableQty || 0);
@@ -1036,118 +1022,101 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     setAiCartError("");
     setAiCartSuccess("");
   };
+
   const handleAddAiCart = async () => {
-    if (isAiCartAdding) return;
-    if (!user?.id)
-      return setAiCartError("Vui lòng đăng nhập để thêm món vào giỏ.");
-    if (!aiLiveStateReady) return setAiCartError("Đang kiểm tra tồn món...");
-    if (
-      !selectedAiMenuItem?.id ||
-      !selectedAiMenuItem?.restaurantId ||
-      !selectedVariantKey ||
-      selectedQuantity < 1
-    )
-      return;
-    if (!aiRestaurant?.canOrder)
-      return setAiCartError(
-        aiCannotOrderMessage ||
-          "Nhà hàng hiện chưa nhận đặt món. Bạn vẫn có thể xem chi tiết món hoặc quay lại sau.",
-      );
-    if (aiLiveState?.blocked)
-      return setAiCartError("Món này hiện chưa thể thêm vào giỏ.");
-    if (aiOutOfStock) return setAiCartError("Món đã hết hàng.");
-    if (aiQuantityExceedsAvailable)
-      return setAiCartError("Số lượng vượt quá số suất còn có thể đặt.");
-    setIsAiCartAdding(true);
     setAiCartError("");
     setAiCartSuccess("");
+    if (!selectedAiMenuItem || !selectedVariant) return;
+    if (!user?.id) {
+      setAiCartError("Vui lòng đăng nhập để thêm món vào giỏ.");
+      return;
+    }
+    if (!aiRestaurant?.canOrder) {
+      setAiCartError(getAiCannotOrderMessage(aiRestaurant));
+      return;
+    }
+    if (!aiLiveStateReady || aiLiveState?.blocked || aiOutOfStock || aiQuantityExceedsAvailable) {
+      setAiCartError(aiLiveState?.blockReason || "Món hiện chưa thể thêm vào giỏ.");
+      return;
+    }
     try {
-      const selectedPrice = Number(
-        selectedVariant?.price || selectedAiMenuItem?.basePrice || 0,
-      );
-      const note = selectedNote.trim() || null;
-      const { data } = await addCartItemForAi({
-        variables: {
-          input: {
-            userId: user.id,
-            restaurantId: selectedAiMenuItem.restaurantId,
-            menuItemId: selectedAiMenuItem.id,
-            name: selectedAiMenuItem.name,
-            price: selectedPrice,
-            quantity: selectedQuantity,
-            thumbImage: selectedAiMenuItem.thumbImage,
-            note,
-            servingVariantKey: selectedVariantKey || "portion",
-          },
-        },
+      setIsAiCartAdding(true);
+      const payload = buildCustomerCartPayload({
+        menuItem: selectedAiMenuItem,
+        quantity: selectedQuantity,
+        note: normalizeCartNote(selectedNote),
+        variant: selectedVariant,
       });
-      const returnedItem = data?.addCartItem?.items?.find(
-        (item) =>
-          String(item?.menuItemId) === String(selectedAiMenuItem.id) &&
-          String(item?.servingVariantKey) ===
-            String(selectedVariantKey || "portion") &&
-          normalizeCartNote(item?.note) === normalizeCartNote(note),
-      );
-      if (!data?.addCartItem?.id || !returnedItem?.id)
-        throw new Error("Không thể đồng bộ giỏ hàng.");
-      addToCart(
-        buildCustomerCartPayload({
-          item: selectedAiMenuItem,
-          restaurant: aiRestaurant,
-          selectedVariant: selectedVariant || aiServingOptions[0],
-          quantity: selectedQuantity,
-          note: returnedItem?.note ?? note,
-          backendCartId: data.addCartItem.id,
-          backendCartItemId: returnedItem.id,
-          holdExpiresAt: returnedItem?.holdExpiresAt || null,
-          holdStatus: returnedItem?.holdStatus || null,
-        }),
-      );
-      setAiCartSuccess(`Đã thêm ${selectedAiMenuItem.name} vào giỏ hàng.`);
-    } catch (error) {
-      setAiCartError(error?.message || "Không thể thêm món vào giỏ.");
+      await addItem(payload);
+      setAiCartSuccess("Đã thêm món vào giỏ.");
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: `Đã thêm ${selectedAiMenuItem.name} vào giỏ.`,
+        },
+      ]);
+    } catch (err) {
+      setAiCartError(err?.message || "Không thể thêm món vào giỏ lúc này.");
     } finally {
       setIsAiCartAdding(false);
     }
   };
 
-  return (
-    <div className="ai-chatbot-widget" aria-live="polite">
-      {open ? (
-        <section
-          className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""}`}
-          aria-label="ChatBot A.I hỗ trợ nhà hàng"
+  if (!open) {
+    return (
+      <div className="ai-chatbot-widget">
+        <button
+          className="ai-chatbot-toggle"
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Mở ChatBot A.I"
         >
-          <header className="ai-chatbot-header">
-            <div className="ai-chatbot-title">
-              <span className="ai-chatbot-avatar">
-                <Bot size={20} />
-              </span>
-              <div>
-                <strong>ChatBot A.I</strong>
-                <small>
-                  {restaurantId
-                    ? "Đang hiểu ngữ cảnh nhà hàng này"
-                    : "Hỗ trợ khách hàng & vận hành"}
-                </small>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Đóng chatbot"
-            >
-              <X size={18} />
-            </button>
-          </header>
+          <MessageCircle size={23} />
+          <span>AI</span>
+        </button>
+      </div>
+    );
+  }
 
-          <div className="ai-chatbot-body">
-            <div className="ai-chatbot-messages">
-              {messages.map((item, index) => (
-                <div
-                  key={`${item.role}-${index}`}
-                  className={`ai-chatbot-message ${item.role}`}
-                >
+  return (
+    <div className="ai-chatbot-widget">
+      <section
+        className={`ai-chatbot-panel ${selectedMenuItemSource ? "is-expanded" : ""}`}
+        aria-label="ChatBot A.I hỗ trợ nhà hàng"
+      >
+        <header className="ai-chatbot-header">
+          <div className="ai-chatbot-title">
+            <span className="ai-chatbot-avatar">
+              <Bot size={20} />
+            </span>
+            <div>
+              <strong>ChatBot A.I</strong>
+              <small>
+                {restaurantId
+                  ? "Đang hiểu ngữ cảnh nhà hàng này"
+                  : "Hỗ trợ khách hàng & vận hành"}
+              </small>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Đóng chatbot"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="ai-chatbot-body">
+          <div className="ai-chatbot-messages">
+            {messages.map((item, index) => (
+              <div
+                key={`${item.role}-${index}`}
+                className={`ai-chatbot-message ${item.role}`}
+              >
+                {renderMessageAvatar(item)}
+                <div className="ai-chatbot-message-content">
                   {item.role === "staff" ? (
                     <small>{item?.meta?.senderLabel || "Nhân viên"}</small>
                   ) : null}
@@ -1229,335 +1198,262 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                     </div>
                   ) : null}
                 </div>
-              ))}
-              {loading ? (
-                <div className="ai-chatbot-message assistant loading">
-                  <span /> <span /> <span />
-                </div>
-              ) : null}
-            </div>
-
-            {selectedMenuItemSource ? (
-              <div className="ai-chatbot-menu-detail">
-                {aiMenuItemLoading ? <p>Đang tải chi tiết món...</p> : null}
-                {aiMenuItemError ? (
-                  <p>
-                    Không thể tải chi tiết món. Bạn có thể bấm Xem chi tiết món.
-                  </p>
-                ) : null}
-                {selectedAiMenuItem ? (
-                  <>
-                    <h4>{selectedAiMenuItem.name}</h4>
-                    <p className="ai-chatbot-menu-card__price">
-                      {new Intl.NumberFormat("vi-VN", {
-                        style: "currency",
-                        currency: "VND",
-                      }).format(
-                        Number(
-                          selectedVariant?.price ||
-                            selectedAiMenuItem.basePrice ||
-                            0,
-                        ),
-                      )}
-                    </p>
-                    <div className="ai-chatbot-menu-detail__variants">
-                      {aiServingOptions.map((variant) => (
-                        <button
-                          key={variant.key}
-                          type="button"
-                          className={`ai-chatbot-menu-detail__variant ${selectedVariantKey === variant.key ? "is-selected" : ""}`}
-                          onClick={() => {
-                            setSelectedVariantKey(variant.key);
-                            setSelectedQuantity(1);
-                          }}
-                        >
-                          {variant.name}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="ai-chatbot-menu-detail__quantity">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedQuantity((q) => Math.max(1, q - 1))
-                        }
-                      >
-                        -
-                      </button>
-                      <span>{selectedQuantityUnitText}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedQuantity((q) => {
-                            const max = Number(
-                              aiLiveState?.maxAvailableQty || 0,
-                            );
-                            if (max > 0) return Math.min(max, q + 1);
-                            return q + 1;
-                          })
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-                    {selectedVariantHasUnit ? (
-                      <p className="ai-chatbot-menu-detail__helper">
-                        Món này đang tính theo đơn vị của tùy chọn. Chọn gói
-                        100g nếu muốn mua lẻ dưới 1kg.
-                      </p>
-                    ) : null}
-                    <textarea
-                      className="ai-chatbot-menu-detail__note"
-                      placeholder="Ví dụ: ít cay, không hành..."
-                      maxLength={180}
-                      value={selectedNote}
-                      onChange={(e) => setSelectedNote(e.target.value)}
-                    />
-                    {!user?.id ? (
-                      <p className="ai-chatbot-menu-detail__error">
-                        Vui lòng đăng nhập để thêm món vào giỏ.
-                      </p>
-                    ) : null}
-                    {user?.id && !aiLiveStateReady ? (
-                      <p className="ai-chatbot-menu-detail__error">
-                        Đang kiểm tra tồn món...
-                      </p>
-                    ) : null}
-                    {user?.id && aiLiveStateReady && aiOutOfStock ? (
-                      <p className="ai-chatbot-menu-detail__error">
-                        Món đã hết hàng.
-                      </p>
-                    ) : null}
-                    {user?.id &&
-                    aiLiveStateReady &&
-                    aiQuantityExceedsAvailable ? (
-                      <p className="ai-chatbot-menu-detail__error">
-                        Số lượng vượt quá số suất còn có thể đặt.
-                      </p>
-                    ) : null}
-                    {user?.id && aiCannotOrderMessage ? (
-                      <p className="ai-chatbot-menu-detail__error">
-                        {aiCannotOrderMessage}
-                      </p>
-                    ) : null}
-                    {aiCartError ? (
-                      <p className="ai-chatbot-menu-detail__error">
-                        {aiCartError}
-                      </p>
-                    ) : null}
-                    {aiCartSuccess ? (
-                      <p className="ai-chatbot-menu-detail__success">
-                        {aiCartSuccess}
-                      </p>
-                    ) : null}
-                  </>
-                ) : null}
-                <div className="ai-chatbot-menu-card__actions ai-chatbot-menu-detail__actions">
-                  <button
-                    type="button"
-                    disabled={aiAddDisabled}
-                    onClick={handleAddAiCart}
-                  >
-                    Thêm vào giỏ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const target = buildAiFoodDetailTarget(
-                        selectedMenuItemSource,
-                      );
-                      navigate(target.href, { state: target.state });
-                      setOpen(false);
-                    }}
-                  >
-                    Xem chi tiết món
-                  </button>
-                  {aiCartSuccess ? (
-                    <button type="button" onClick={() => openCustomerCart()}>
-                      Xem giỏ hàng
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMenuItemSource(null)}
-                  >
-                    Quay lại gợi ý
-                  </button>
-                </div>
               </div>
-            ) : (
-              <>
-                {lastContextSummary ? (
-                  <div className="ai-chatbot-context">
-                    <Sparkles size={14} />
-                    <span>
-                      {lastIntent === "menu"
-                        ? `Đã tham chiếu ${lastContextSummary.menuItemCount || 0} món trong menu nhà hàng này.`
-                        : `Đã tham chiếu ${lastContextSummary.menuItemCount || 0} món, ${lastContextSummary.couponCount || 0} coupon, ${lastContextSummary.orderCount || 0} đơn.`}
-                    </span>
-                  </div>
-                ) : null}
-                {menuSourceCards.length ? (
-                  <div className="ai-chatbot-menu-cards">
-                    {menuSourceCards.map((s) => (
-                      <div key={s.id} className="ai-chatbot-menu-card">
-                        <strong>{s.label}</strong>
-                        {s.formattedPrice ? (
-                          <span className="ai-chatbot-menu-card__price">
-                            {s.formattedPrice}
-                          </span>
-                        ) : null}
-                        {s.isAvailable === false ||
-                        s.status === "unavailable" ? (
-                          <span className="ai-chatbot-menu-card__status">
-                            Tạm hết món
-                          </span>
-                        ) : null}
-                        <div className="ai-chatbot-menu-card__actions">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const target = buildAiFoodDetailTarget(s);
-                              navigate(target.href, { state: target.state });
-                              setOpen(false);
-                            }}
-                          >
-                            Xem món
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onSelectMenuItem(s)}
-                          >
-                            Chọn món
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            )}
+            ))}
+            {loading ? (
+              <div className="ai-chatbot-message assistant loading">
+                <span className="ai-chatbot-message-avatar ai-chatbot-message-avatar--assistant" title="AI" aria-hidden="true">
+                  AI
+                </span>
+                <span className="ai-chatbot-loading-dot" />
+                <span className="ai-chatbot-loading-dot" />
+                <span className="ai-chatbot-loading-dot" />
+              </div>
+            ) : null}
           </div>
 
-          {!selectedMenuItemSource && visibleActions.length ? (
-            <div className="ai-chatbot-actions ai-chatbot-action-cards" aria-label="Hành động gợi ý">
-              {visibleActions.map((action, index) => (
+          {selectedMenuItemSource ? (
+            <div className="ai-chatbot-menu-detail">
+              {aiMenuItemLoading ? <p>Đang tải chi tiết món...</p> : null}
+              {aiMenuItemError ? (
+                <p>
+                  Không thể tải chi tiết món. Bạn có thể bấm Xem chi tiết món.
+                </p>
+              ) : null}
+              {selectedAiMenuItem ? (
+                <>
+                  <h4>{selectedAiMenuItem.name}</h4>
+                  <p className="ai-chatbot-menu-card__price">
+                    {new Intl.NumberFormat("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    }).format(
+                      Number(
+                        selectedVariant?.price ||
+                          selectedAiMenuItem.basePrice ||
+                          0,
+                      ),
+                    )}
+                  </p>
+                  <div className="ai-chatbot-menu-detail__variants">
+                    {aiServingOptions.map((variant) => (
+                      <button
+                        key={variant.key}
+                        type="button"
+                        className={`ai-chatbot-menu-detail__variant ${selectedVariantKey === variant.key ? "is-selected" : ""}`}
+                        onClick={() => {
+                          setSelectedVariantKey(variant.key);
+                          setSelectedQuantity(1);
+                        }}
+                      >
+                        {variant.name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="ai-chatbot-menu-detail__quantity">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedQuantity((q) => Math.max(1, q - 1))
+                      }
+                    >
+                      -
+                    </button>
+                    <span>{selectedQuantityUnitText}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedQuantity((q) => {
+                          const max = Number(
+                            aiLiveState?.maxAvailableQty || 0,
+                          );
+                          if (max > 0) return Math.min(max, q + 1);
+                          return q + 1;
+                        })
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                  {selectedVariantHasUnit ? (
+                    <p className="ai-chatbot-menu-detail__helper">
+                      Món này đang tính theo đơn vị của tùy chọn. Chọn gói
+                      100g nếu muốn mua lẻ dưới 1kg.
+                    </p>
+                  ) : null}
+                  <textarea
+                    className="ai-chatbot-menu-detail__note"
+                    placeholder="Ví dụ: ít cay, không hành..."
+                    maxLength={180}
+                    value={selectedNote}
+                    onChange={(e) => setSelectedNote(e.target.value)}
+                  />
+                  {!user?.id ? (
+                    <p className="ai-chatbot-menu-detail__error">
+                      Vui lòng đăng nhập để thêm món vào giỏ.
+                    </p>
+                  ) : null}
+                  {user?.id && !aiLiveStateReady ? (
+                    <p className="ai-chatbot-menu-detail__error">
+                      Đang kiểm tra tồn món...
+                    </p>
+                  ) : null}
+                  {user?.id && aiLiveStateReady && aiOutOfStock ? (
+                    <p className="ai-chatbot-menu-detail__error">
+                      Món đã hết hàng.
+                    </p>
+                  ) : null}
+                  {user?.id &&
+                  aiLiveStateReady &&
+                  aiQuantityExceedsAvailable ? (
+                    <p className="ai-chatbot-menu-detail__error">
+                      Số lượng vượt quá số suất còn có thể đặt.
+                    </p>
+                  ) : null}
+                  {user?.id && aiCannotOrderMessage ? (
+                    <p className="ai-chatbot-menu-detail__error">
+                      {aiCannotOrderMessage}
+                    </p>
+                  ) : null}
+                  {aiCartError ? (
+                    <p className="ai-chatbot-menu-detail__error">
+                      {aiCartError}
+                    </p>
+                  ) : null}
+                  {aiCartSuccess ? (
+                    <p className="ai-chatbot-menu-detail__success">
+                      {aiCartSuccess}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+              <div className="ai-chatbot-menu-card__actions ai-chatbot-menu-detail__actions">
                 <button
-                  key={`${action.type}-${action.href || action.label}-${index}`}
                   type="button"
-                  className={`ai-chatbot-action-card ${index === 0 ? "primary" : "secondary"}`}
-                  onClick={() => handleAction(action)}
+                  disabled={aiAddDisabled}
+                  onClick={handleAddAiCart}
                 >
-                  {action.icon ? <span className="ai-chatbot-action-card__icon" aria-hidden="true">{action.icon}</span> : null}
-                  <span className="ai-chatbot-action-card__text">
-                    <strong>{action.label}</strong>
-                    {action.description ? <small>{action.description}</small> : null}
-                  </span>
+                  Thêm vào giỏ
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = buildAiFoodDetailTarget(
+                      selectedMenuItemSource,
+                    );
+                    navigate(target.href, { state: target.state });
+                    setOpen(false);
+                  }}
+                >
+                  Xem chi tiết món
+                </button>
+                {aiCartSuccess ? (
+                  <button type="button" onClick={() => openCustomerCart()}>
+                    Xem giỏ hàng
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => setSelectedMenuItemSource(null)}>
+                  Đóng
+                </button>
+              </div>
             </div>
           ) : null}
+        </div>
 
-          {!selectedMenuItemSource && lastQuickReplies.length ? (
-            <div className="ai-chatbot-quick-replies">
-              {lastQuickReplies.map((reply) => (
-                <button
-                  key={reply}
-                  type="button"
-                  onClick={() => sendMessage(reply)}
-                  disabled={
-                    !chatbotEnabled ||
-                    loading ||
-                    guestSendLoading ||
-                    handoffLoading ||
-                    isSendInFlight
-                  }
-                >
-                  {reply}
-                </button>
-              ))}
-            </div>
-          ) : null}
+        {lastContextSummary ? (
+          <div className="ai-chatbot-context">
+            <Sparkles size={15} />
+            <span>
+              Đã xét {lastContextSummary.restaurantCount || 0} nhà hàng, {lastContextSummary.menuItemCount || 0} món
+              {lastIntent ? ` · ý định: ${lastIntent}` : ""}
+            </span>
+          </div>
+        ) : null}
 
-          {!selectedMenuItemSource && handoffEnabled ? (
-            <div className="ai-chatbot-actions">
+        {menuSourceCards.length ? (
+          <div className="ai-chatbot-menu-cards" aria-label="Món gợi ý">
+            {menuSourceCards.map((source) => {
+              const price = formatSourcePrice(source);
+              const status = formatMenuSourceStatus(source);
+              return (
+                <article key={source.id} className="ai-chatbot-menu-card">
+                  <div>
+                    <span className={statusClass(source?.isAvailable !== false)}>
+                      {status}
+                    </span>
+                    <h4>{source.label}</h4>
+                    {price ? <p>{price}</p> : null}
+                    <small>{sourceTypeLabel(source.type)}</small>
+                  </div>
+                  <div className="ai-chatbot-menu-card__actions">
+                    <button type="button" onClick={() => onSelectMenuItem(source)}>
+                      Thêm vào giỏ
+                    </button>
+                    <button
+                      type="button"
+                      className="ai-chatbot-button--ghost"
+                      onClick={() => {
+                        const target = buildAiFoodDetailTarget(source);
+                        navigate(target.href, { state: target.state });
+                        setOpen(false);
+                      }}
+                    >
+                      Xem món
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {visibleActions.length ? (
+          <div className="ai-chatbot-actions">
+            {visibleActions.map((action, idx) => (
               <button
+                key={`${action.type || "action"}-${action.label}-${idx}`}
                 type="button"
-                onClick={handleRequestHandoff}
-                disabled={!conversationId || handoffRequested || handoffLoading}
+                onClick={() => handleAction(action)}
+                title={action.description || ""}
               >
-                {handoffRequested ? "Đã yêu cầu nhân viên" : "Gặp nhân viên"}
+                {action.label}
               </button>
-            </div>
-          ) : null}
+            ))}
+          </div>
+        ) : null}
 
-          {!selectedMenuItemSource && handoffRequested ? (
-            <div className="ai-chatbot-context">
-              <Sparkles size={14} />
-              <span>
-                Nhân viên đã được thông báo. Bạn có thể tiếp tục gửi tin nhắn,
-                nhân viên sẽ xem lịch sử trước đó.
-              </span>
-            </div>
-          ) : null}
-          {!selectedMenuItemSource && handoffClosed ? (
-            <div className="ai-chatbot-context">
-              <Sparkles size={14} />
-              <span>Nhân viên đã kết thúc phiên hỗ trợ.</span>
-            </div>
-          ) : null}
+        {lastQuickReplies?.length ? (
+          <div className="ai-chatbot-quick-replies">
+            {lastQuickReplies.slice(0, 4).map((reply) => (
+              <button key={reply} type="button" onClick={() => sendMessage(reply)}>
+                {reply}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-          <form
-            className="ai-chatbot-input"
-            onSubmit={(event) => {
-              event.preventDefault();
-              sendMessage();
-            }}
-          >
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder={
-                chatbotEnabled
-                  ? getInputPlaceholder(restaurantId)
-                  : "Chatbot đang tạm tắt cho nhà hàng này"
-              }
-              maxLength={500}
-              disabled={
-                !chatbotEnabled ||
-                loading ||
-                guestSendLoading ||
-                handoffLoading ||
-                isSendInFlight
-              }
-            />
-            <button
-              type="submit"
-              disabled={
-                !chatbotEnabled ||
-                loading ||
-                guestSendLoading ||
-                handoffLoading ||
-                isSendInFlight ||
-                !input.trim()
-              }
-              aria-label="Gửi tin nhắn"
-            >
-              <Send size={18} />
-            </button>
-          </form>
-        </section>
-      ) : (
-        <button
-          className="ai-chatbot-toggle"
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Mở ChatBot A.I"
+        <form
+          className="ai-chatbot-input"
+          onSubmit={(event) => {
+            event.preventDefault();
+            sendMessage();
+          }}
         >
-          <MessageCircle size={24} />
-          <span>AI</span>
-        </button>
-      )}
+          <input
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder={handoffRequested ? "Nhắn với nhân viên..." : "Hỏi về món ăn, đặt bàn, ưu đãi..."}
+            disabled={loading || guestSendLoading || handoffLoading || isSendInFlight}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || loading || guestSendLoading || handoffLoading || isSendInFlight}
+            aria-label="Gửi câu hỏi"
+          >
+            <Send size={17} />
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

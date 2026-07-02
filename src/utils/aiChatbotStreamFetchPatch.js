@@ -3,7 +3,8 @@ import { getToken } from "@/lib/authStorage";
 
 const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
 const STREAM_BUBBLE_FLAG = "aiStreamBubble";
-const STREAM_STATUS_FLAG = "aiStreamStatus";
+const ANSWERING_CLASS = "is-ai-answering";
+const MANAGER_ROLES = new Set(["admin", "manager", "hr", "accountant"]);
 
 const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
 
@@ -68,6 +69,39 @@ export const isAskAiChatbotOperation = (payload) => {
   return operationName === "AskAiChatbot" || query.includes("askAiChatbot");
 };
 
+const getRequestedManagerFeature = (input = {}) => {
+  const pageContext = input?.pageContext || {};
+  const role = String(pageContext.userRole || "").trim().toLowerCase();
+  if (!MANAGER_ROLES.has(role)) return null;
+  return (Array.isArray(pageContext.featureMatches) ? pageContext.featureMatches : [])
+    .find((feature) => String(feature?.path || "").startsWith("/manager")) || null;
+};
+
+export const focusAiChatbotResponseActions = (result, input = {}) => {
+  if (!result) return result;
+  const feature = getRequestedManagerFeature(input);
+  if (!feature?.path || !feature?.label) return result;
+
+  const actions = Array.isArray(result.actions) ? result.actions : [];
+  const matchingAction = actions.find(
+    (action) => String(action?.href || "") === String(feature.path),
+  );
+  const focusedAction = matchingAction || {
+    type: feature.actionType === "openCart" ? "openCart" : "link",
+    label: feature.label,
+    href: feature.actionType === "openCart" ? "" : feature.path,
+    description: feature.description || null,
+    icon: feature.key || null,
+    priority: 1,
+  };
+
+  return {
+    ...result,
+    actions: [{ ...focusedAction, label: feature.label }],
+    quickReplies: [],
+  };
+};
+
 const parseSseFrame = (frame) => {
   let event = "message";
   const data = [];
@@ -108,24 +142,39 @@ const getStreamingParagraph = () => {
   if (!bubble.dataset?.[STREAM_BUBBLE_FLAG]) {
     bubble.dataset[STREAM_BUBBLE_FLAG] = "1";
     bubble.className = "ai-chatbot-message assistant ai-chatbot-streaming-message";
-    bubble.innerHTML = "<p></p>";
+    bubble.innerHTML = `
+      <span class="ai-chatbot-message-avatar ai-chatbot-message-avatar--assistant" title="AI" aria-hidden="true">AI</span>
+      <div class="ai-chatbot-message-content"><p></p></div>
+    `;
   }
   return bubble.querySelector("p");
 };
 
 const scrollChatbotToBottom = () => {
-  const body = document.querySelector(".ai-chatbot-body");
+  const body = typeof document === "undefined" ? null : document.querySelector(".ai-chatbot-body");
   if (body) body.scrollTop = body.scrollHeight;
 };
 
-const setStreamStatus = (message) => {
-  const value = String(message || "").trim();
-  if (!value) return;
-  const paragraph = getStreamingParagraph();
-  if (!paragraph || paragraph.dataset?.[STREAM_STATUS_FLAG] === "done") return;
-  paragraph.dataset[STREAM_STATUS_FLAG] = "pending";
-  paragraph.textContent = value;
-  scrollChatbotToBottom();
+const setChatbotAnswering = (answering) => {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(".ai-chatbot-panel").forEach((panel) => {
+    panel.classList.toggle(ANSWERING_CLASS, answering);
+  });
+  if (answering && typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(scrollChatbotToBottom);
+  }
+};
+
+const clearChatbotAnswering = () => {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setChatbotAnswering(false));
+    return;
+  }
+  setChatbotAnswering(false);
+};
+
+const setStreamStatus = () => {
+  // Keep the Messenger-like typing bubble as dots only until real answer deltas arrive.
 };
 
 const appendStreamText = (text) => {
@@ -133,10 +182,6 @@ const appendStreamText = (text) => {
   if (!value) return;
   const paragraph = getStreamingParagraph();
   if (!paragraph) return;
-  if (paragraph.dataset?.[STREAM_STATUS_FLAG] === "pending") {
-    paragraph.dataset[STREAM_STATUS_FLAG] = "done";
-    paragraph.textContent = "";
-  }
   paragraph.textContent = `${paragraph.textContent || ""}${value}`;
   scrollChatbotToBottom();
 };
@@ -155,7 +200,7 @@ const readStreamResponse = async (response) => {
     const parsed = parseSseEvents(buffer);
     buffer = parsed.rest;
     for (const item of parsed.events) {
-      if (item.event === "status") setStreamStatus(item.data?.message || "AI đang xử lý...");
+      if (item.event === "status") setStreamStatus();
       if (item.event === "delta") appendStreamText(item.data?.text || "");
       if (item.event === "done") donePayload = item.data;
       if (item.event === "error") throw Object.assign(new Error(item.data?.message || "AI stream failed"), { code: item.data?.code });
@@ -164,7 +209,7 @@ const readStreamResponse = async (response) => {
 
   const parsed = parseSseEvents(buffer + decoder.decode());
   for (const item of parsed.events) {
-    if (item.event === "status") setStreamStatus(item.data?.message || "AI đang xử lý...");
+    if (item.event === "status") setStreamStatus();
     if (item.event === "delta") appendStreamText(item.data?.text || "");
     if (item.event === "done") donePayload = item.data;
   }
@@ -190,6 +235,8 @@ export function installAiChatbotStreamFetchPatch() {
 
     if (!isAskAiChatbotOperation(payload)) return originalFetch(input, init);
 
+    const requestInput = payload?.variables?.input || {};
+    setChatbotAnswering(true);
     try {
       const authHeader = getAuthorizationHeader(input, init);
       const headers = { "Content-Type": "application/json" };
@@ -199,15 +246,20 @@ export function installAiChatbotStreamFetchPatch() {
         method: "POST",
         credentials: "include",
         headers,
-        body: JSON.stringify(payload?.variables?.input || {}),
+        body: JSON.stringify(requestInput),
       });
 
       if (!streamResponse.ok || !streamResponse.body) return originalFetch(input, init);
-      const result = await readStreamResponse(streamResponse);
+      const result = focusAiChatbotResponseActions(
+        await readStreamResponse(streamResponse),
+        requestInput,
+      );
       return jsonGraphqlResponse(result || fallbackResponse());
     } catch (err) {
       const message = err?.code === "RATE_LIMITED" ? RATE_LIMIT_MESSAGE : err?.message;
       return jsonGraphqlResponse(fallbackResponse(message));
+    } finally {
+      clearChatbotAnswering();
     }
   };
 }

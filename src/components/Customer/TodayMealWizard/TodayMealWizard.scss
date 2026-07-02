@@ -418,3 +418,35 @@
     bottom: 12px;
   }
 }
+
+@media (max-width: 760px) {
+  .today-meal-wizard-launcher {
+    left: max(12px, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    width: 54px !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    padding: 0 !important;
+    justify-content: center;
+    border-radius: 999px !important;
+  }
+
+  .today-meal-wizard-launcher span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .today-meal-wizard {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-height: min(70dvh, 520px);
+    overflow-y: auto;
+  }
+}

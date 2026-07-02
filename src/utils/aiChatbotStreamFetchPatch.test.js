@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isAskAiChatbotOperation, parseSseEvents } from "./aiChatbotStreamFetchPatch";
+import {
+  focusAiChatbotResponseActions,
+  isAskAiChatbotOperation,
+  parseSseEvents,
+} from "./aiChatbotStreamFetchPatch";
 
 describe("aiChatbotStreamFetchPatch", () => {
   it("parses complete SSE frames and keeps the partial tail", () => {
@@ -44,5 +48,42 @@ describe("aiChatbotStreamFetchPatch", () => {
     expect(isAskAiChatbotOperation({ operationName: "AskAiChatbot" })).toBe(true);
     expect(isAskAiChatbotOperation({ query: "mutation { askAiChatbot(input: $input) { answer } }" })).toBe(true);
     expect(isAskAiChatbotOperation({ operationName: "OtherMutation" })).toBe(false);
+  });
+
+  it("keeps only the manager action requested by the user", () => {
+    const focused = focusAiChatbotResponseActions(
+      {
+        answer: "Bạn có thể quản lý coupon tại Dashboard quản lý.",
+        actions: [
+          { type: "link", label: "Mở dashboard quản lý", href: "/manager" },
+          { type: "link", label: "Đơn hàng quản lý", href: "/manager#orders" },
+          { type: "link", label: "Mở quản lý coupon", href: "/manager#promotions" },
+        ],
+        quickReplies: ["Quản lý kho", "Thông tin cá nhân"],
+      },
+      {
+        message: "Mở giúp tôi trang quản lý coupon",
+        pageContext: {
+          pathname: "/",
+          userRole: "manager",
+          featureMatches: [
+            {
+              key: "manager-promotions",
+              label: "Mở quản lý coupon",
+              path: "/manager#promotions",
+              description: "Mở khu vực quản lý chương trình khuyến mãi và coupon.",
+            },
+          ],
+        },
+      },
+    );
+
+    expect(focused.actions).toEqual([
+      expect.objectContaining({
+        label: "Mở quản lý coupon",
+        href: "/manager#promotions",
+      }),
+    ]);
+    expect(focused.quickReplies).toEqual([]);
   });
 });

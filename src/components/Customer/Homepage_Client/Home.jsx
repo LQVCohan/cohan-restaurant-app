@@ -7,13 +7,16 @@ import HomeForYouSection from "./components/HomeForYouSection";
 import DishGrid from "./components/DishGrid";
 import HowItWorks from "./components/HowItWorks";
 import TableBooking from "./components/TableBooking";
+import MobileHome from "./MobileHome";
 import useGsapHomeMotion from "./hooks/useGsapHomeMotion";
+import useIsMobile from "../../../hooks/useIsMobile";
 
 import "../../../styles/Homepage/home.scss";
 import "../../../styles/Homepage/HomeMotion.scss";
 import "../../../styles/Homepage/HomePremiumPolish.scss";
 import "../../../styles/Homepage/HomeShortcutsBento.scss";
 import "../../../styles/Homepage/HomeA11yPolish.scss";
+import "../../../styles/Homepage/HomeResponsiveFix.scss";
 
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
@@ -25,14 +28,12 @@ const getCurrentTimeSlot = () => {
 
 const CUSTOMER_SHORTCUTS = [
   { icon: "🎟️", tag: "Ưu đãi", title: "Kho Coupon", desc: "Xem ưu đãi đã lưu và dùng ngay khi đặt món.", path: "/coupons" },
-  { icon: "💳", tag: "Thanh toán", title: "Ví của tôi", desc: "Quản lý ví và kiểm tra tiện ích thanh toán nhanh.", path: "/wallet" },
   { icon: "🍱", tag: "Tiết kiệm", title: "Combo", desc: "Chọn nhanh các combo món ăn đang có trên hệ thống.", path: "/combos" },
-  { icon: "✨", tag: "Cá nhân hóa", title: "Dành cho bạn", desc: "Món hợp khẩu vị, dựa trên thói quen gần đây.", path: "/for-you" },
   { icon: "📍", tag: "Gần nhất", title: "Gần bạn", desc: "Tìm nhà hàng thuận đường, quyết định nhanh hơn.", path: "/restaurants" },
   { icon: "📦", tag: "Theo dõi", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
 ];
 
-const Home = () => {
+const DesktopHome = () => {
   const navigate = useNavigate();
   const timeSlot = getCurrentTimeSlot();
   const [filterState, setFilterState] = useState({});
@@ -106,7 +107,7 @@ const Home = () => {
               <div>
                 <span className="home-shortcuts__eyebrow">Khám phá nhanh</span>
                 <h3 id="home-shortcuts-title">Tiện ích hay dùng</h3>
-                <p>Mở nhanh ưu đãi, ví, combo và các gợi ý cá nhân hóa trong một chạm.</p>
+                <p>Mở nhanh ưu đãi, combo và các gợi ý cá nhân hóa trong một chạm.</p>
               </div>
               <button type="button" className="home-shortcuts__view-all" onClick={() => navigate("/for-you")}>Gợi ý cho bạn <span>→</span></button>
             </div>
@@ -157,6 +158,11 @@ const Home = () => {
       />
     </div>
   );
+};
+
+const Home = () => {
+  const isMobile = useIsMobile();
+  return isMobile ? <MobileHome /> : <DesktopHome />;
 };
 
 export default Home;

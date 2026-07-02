@@ -144,6 +144,19 @@ function combineFilters(...filters) {
   return { $and: parts };
 }
 
+function buildPublicRestaurantFilter() {
+  return {
+    $or: [
+      { businessStatus: "active", publicationStatus: "published" },
+      {
+        businessStatus: { $exists: false },
+        publicationStatus: { $exists: false },
+        status: "active",
+      },
+    ],
+  };
+}
+
 function applyPublicAvailabilityFilters(docs, filter) {
   const f = filter || {};
   return docs.filter((doc) => {
@@ -203,7 +216,7 @@ async function restaurant(_, { id }, ctx) {
 /** Top nhà hàng theo rating với bộ lọc */
 async function restaurantsTop(_, { limit = 6, restaurantFilter }) {
   const lim = clampLimit(limit, 1, 100);
-  const f = buildFilter(restaurantFilter);
+  const f = combineFilters(buildFilter(restaurantFilter), buildPublicRestaurantFilter());
 
   const docs = await Restaurant.find(f)
     .sort({ avgRating: -1, _id: 1 })
@@ -229,16 +242,7 @@ async function restaurantsNearby(_, { lat, lng, radiusKm = 20, limit = 6, restau
   const lim = clampLimit(limit, 1, 100);
 
   const baseFilter = buildFilter(restaurantFilter);
-  const publicFilter = {
-    $or: [
-      { businessStatus: "active", publicationStatus: "published" },
-      {
-        businessStatus: { $exists: false },
-        publicationStatus: { $exists: false },
-        status: "active",
-      },
-    ],
-  };
+  const publicFilter = buildPublicRestaurantFilter();
   const filterWithoutLocationType = {
     ...baseFilter,
     $and: [

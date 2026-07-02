@@ -54,6 +54,41 @@ import {
   deleteRestaurantAiChatbotEvaluationCase,
 } from "../../../src/services/ai/restaurantChatbotEvaluation.service.js";
 
+const isManagerNavigationRequest = (message = "") =>
+  /(?:mở|mo|đi tới|di toi|vào|vao|truy cập|truy cap).*(?:quản lý|quan ly|dashboard)|(?:trang quản lý|trang quan ly|dashboard)/i.test(String(message || ""));
+
+const isManagerPath = (href = "") => /^\/manager(?:$|[/?#])/.test(String(href || ""));
+
+export const sanitizeAiChatbotResponse = (response = {}, message = "") => {
+  const intent = String(response?.intent || "general");
+  const originalActions = Array.isArray(response?.actions) ? response.actions : [];
+  const managerAction = originalActions.find((action) => action?.href === "/manager") || originalActions.find((action) => isManagerPath(action?.href));
+  const managerNavigation = Boolean(managerAction && isManagerNavigationRequest(message));
+  const keepMenuSources = intent === "menu" && !managerNavigation;
+  const sources = (Array.isArray(response?.sources) ? response.sources : [])
+    .filter((source) => keepMenuSources || source?.type !== "menuItem");
+
+  if (managerNavigation) {
+    return {
+      ...response,
+      answer: `Mình đã tìm thấy trang quản lý nhà hàng. Chọn "${managerAction.label || "Mở dashboard quản lý"}" bên dưới để mở.`,
+      intent: "managerFeatureHelp",
+      actions: [{ ...managerAction, label: "Mở trang quản lý nhà hàng" }],
+      sources,
+      contextSummary: response.contextSummary
+        ? { ...response.contextSummary, menuItemCount: 0 }
+        : response.contextSummary,
+    };
+  }
+
+  if (intent === "menu") return response;
+
+  const actions = originalActions
+    .filter((action) => !String(action?.href || "").startsWith("/food/"));
+
+  return { ...response, actions, sources };
+};
+
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
     try {
@@ -95,7 +130,7 @@ const Query = {
 const Mutation = {
   askAiChatbot: async (_, { input }, ctx) => {
     try {
-      return await handleRestaurantChatbotMessage({
+      const response = await handleRestaurantChatbotMessage({
         message: input?.message,
         restaurantId: input?.restaurantId,
         history: input?.history || [],
@@ -105,6 +140,7 @@ const Mutation = {
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
+      return sanitizeAiChatbotResponse(response, input?.message);
     } catch (err) {
       throw new GraphQLError(err?.message || "Không thể xử lý tin nhắn chatbot", {
         extensions: { code: err?.code || (err?.statusCode === 400 ? "BAD_USER_INPUT" : "AI_CHATBOT_FAILED") },
