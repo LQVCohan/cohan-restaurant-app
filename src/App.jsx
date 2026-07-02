@@ -15,6 +15,7 @@ import "./components/Customer/RestaurantMenu/styles/MenuDetailViewPolish.scss";
 import "./components/Customer/Food/FoodDetailAccessibilityPolish.scss";
 import "./components/Customer/AddressPage/AddressPageA11yPolish.scss";
 import "./styles/Homepage/RestaurantGridServiceBadges.scss";
+import "./styles/Homepage/HeaderNavigationPolish.scss";
 import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import GlobalMenuAvailabilityPrompt from "./components/common/GlobalMenuAvailabilityPrompt";
