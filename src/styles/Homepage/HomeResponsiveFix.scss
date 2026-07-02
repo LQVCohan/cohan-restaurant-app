@@ -81,7 +81,7 @@
   }
 
   .hero__container {
-    width: calc(100% - 24px);
+    width: calc(100% - 32px);
     max-width: 100% !important;
     min-height: 0 !important;
     margin: 0 auto;
@@ -244,8 +244,12 @@
   }
 
   .home .restaurant-grid__container,
-  .home-shortcuts__container {
-    width: calc(100% - 24px) !important;
+  .home .categories__container,
+  .home .dish-grid__container,
+  .home .home-for-you__container,
+  .home .home-shortcuts__container,
+  .home .how-it-works__container {
+    width: calc(100% - 32px) !important;
     max-width: 100% !important;
     padding-inline: 0 !important;
   }

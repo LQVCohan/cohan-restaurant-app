@@ -9,17 +9,10 @@ $cream: #fff8ef;
   z-index: 4;
   width: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(255, 102, 0, 0.08), transparent 24rem),
-    #ffffff;
-  padding: 18px 0 18px;
+  background: transparent;
 
   &__container {
-    max-width: 1180px;
     margin: 0 auto;
-    padding: 0 24px;
-
-    @media (max-width: 768px) { padding: 0 16px; }
   }
 
   &__header {

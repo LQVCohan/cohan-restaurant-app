@@ -94,12 +94,23 @@ const DesktopHome = () => {
           </div>
         )}
 
+        <Categories
+          onCategorySelect={handleCategorySelect}
+          timeSlot={timeSlot}
+        />
+
         <RestaurantGrid
           restaurantFilter={filterState}
           onBookingClick={handleOpenBooking}
         />
 
         <HomeForYouSection timeSlot={timeSlot} />
+
+        <DishGrid
+          selectedCategoryId={filterState.categoryId}
+          selectedCategoryName={filterState.categoryName}
+          timeSlot={timeSlot}
+        />
 
         <section className="home-shortcuts" aria-labelledby="home-shortcuts-title">
           <div className="home-shortcuts__container">
@@ -132,17 +143,6 @@ const DesktopHome = () => {
             </div>
           </div>
         </section>
-
-        <Categories
-          onCategorySelect={handleCategorySelect}
-          timeSlot={timeSlot}
-        />
-
-        <DishGrid
-          selectedCategoryId={filterState.categoryId}
-          selectedCategoryName={filterState.categoryName}
-          timeSlot={timeSlot}
-        />
 
         <HowItWorks />
       </main>

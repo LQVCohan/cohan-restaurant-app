@@ -65,7 +65,7 @@ const getCategoryImage = (category) => {
 const dedupeCategories = (items = []) => {
   const seen = new Set();
   return items.filter((item) => {
-    const key = normalizeCategoryName(item?.name || item?.id || item?.key);
+    const key = normalizeCategoryName(getDisplayCategoryName(item?.name || item?.id || item?.key));
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
