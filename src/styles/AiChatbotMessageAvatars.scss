@@ -114,3 +114,36 @@
 .ai-chatbot-streaming-message .ai-chatbot-message-content p {
   margin: 0;
 }
+
+.ai-chatbot-panel.is-ai-answering > .ai-chatbot-context,
+.ai-chatbot-panel.is-ai-answering > .ai-chatbot-menu-cards,
+.ai-chatbot-panel.is-ai-answering > .ai-chatbot-actions,
+.ai-chatbot-panel.is-ai-answering > .ai-chatbot-quick-replies {
+  display: none !important;
+}
+
+.ai-chatbot-panel > .ai-chatbot-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  overflow: visible;
+  padding: 2px 14px 12px;
+}
+
+.ai-chatbot-panel > .ai-chatbot-actions button {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  background: #fff7ed;
+  border-color: #fdba74;
+  box-shadow: 0 6px 16px rgba(234, 88, 12, 0.08);
+}
+
+.ai-chatbot-panel > .ai-chatbot-actions button:hover {
+  background: #ffedd5;
+  border-color: #fb923c;
+}
