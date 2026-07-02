@@ -68,6 +68,19 @@ export const isAskAiChatbotOperation = (payload) => {
   return operationName === "AskAiChatbot" || query.includes("askAiChatbot");
 };
 
+const normalizeText = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase();
+
+const isExplicitNavigationRequest = (input = {}) => {
+  const message = normalizeText(input?.message);
+  return /\b(xem|mo|di toi|truy cap|vao trang|mo trang|mo giup)\b/.test(message);
+};
+
 const getRequestedFeature = (input = {}) => {
   const features = Array.isArray(input?.pageContext?.featureMatches)
     ? input.pageContext.featureMatches
@@ -78,6 +91,13 @@ const getRequestedFeature = (input = {}) => {
     if (feature.actionType === "openCart") return true;
     return Boolean(String(feature?.path || "").trim());
   }) || null;
+};
+
+const buildExplicitNavigationAnswer = (feature) => {
+  if (feature?.actionType === "openCart") {
+    return "Bạn có thể mở giỏ hàng bằng nút bên dưới.";
+  }
+  return `Bạn có thể mở mục “${feature?.label || "được yêu cầu"}” bằng nút bên dưới.`;
 };
 
 export const focusAiChatbotResponseActions = (result, input = {}) => {
@@ -100,9 +120,17 @@ export const focusAiChatbotResponseActions = (result, input = {}) => {
     icon: feature.key || null,
     priority: 1,
   };
+  const explicitNavigation = isExplicitNavigationRequest(input);
 
   return {
     ...result,
+    ...(explicitNavigation
+      ? {
+          answer: buildExplicitNavigationAnswer(feature),
+          intent: feature.intent || result.intent,
+          isFallback: false,
+        }
+      : {}),
     actions: [{ ...focusedAction, label: feature.label }],
     quickReplies: [],
   };
