@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isAskAiChatbotOperation, parseSseEvents } from "./aiChatbotStreamFetchPatch";
+import {
+  ensureRequestedNavigationAction,
+  isAskAiChatbotOperation,
+  parseSseEvents,
+} from "./aiChatbotStreamFetchPatch";
 
 describe("aiChatbotStreamFetchPatch", () => {
   it("parses complete SSE frames and keeps the partial tail", () => {
@@ -44,5 +48,37 @@ describe("aiChatbotStreamFetchPatch", () => {
     expect(isAskAiChatbotOperation({ operationName: "AskAiChatbot" })).toBe(true);
     expect(isAskAiChatbotOperation({ query: "mutation { askAiChatbot(input: $input) { answer } }" })).toBe(true);
     expect(isAskAiChatbotOperation({ operationName: "OtherMutation" })).toBe(false);
+  });
+
+  it("adds a primary open button for manager personal information requests", () => {
+    const result = ensureRequestedNavigationAction(
+      {
+        answer: "Bạn có thể mở trang thông tin cá nhân.",
+        actions: [
+          { type: "link", label: "Mở dashboard quản lý", href: "/manager" },
+        ],
+      },
+      {
+        message: "Mở giúp tôi trang quản lý thông tin cá nhân",
+        pageContext: { pathname: "/manager", userRole: "manager" },
+      },
+    );
+
+    expect(result.actions[0]).toMatchObject({
+      type: "link",
+      label: "Mở thông tin cá nhân",
+      href: "/manager#restaurant-info-management",
+    });
+    expect(result.actions).toHaveLength(2);
+  });
+
+  it("does not expose the manager personal information action to customers", () => {
+    const result = { answer: "Test", actions: [] };
+    expect(
+      ensureRequestedNavigationAction(result, {
+        message: "Mở thông tin cá nhân",
+        pageContext: { pathname: "/manager", userRole: "customer" },
+      }),
+    ).toBe(result);
   });
 });
