@@ -27,6 +27,7 @@ export const MY_BRANDS_QUERY = gql`
   }
 `;
 
+const EMPTY_RESTAURANTS = [];
 const getId = (item) => String(item?.id ?? item?._id ?? item?.restaurantId ?? "");
 const storageGet = (key) => (typeof localStorage === "undefined" ? "" : localStorage.getItem(key) || "");
 const storageSet = (key, value) => {
@@ -48,19 +49,30 @@ const normalizeRestaurant = (restaurant) => ({
   brandId: restaurant?.brandId ? String(restaurant.brandId) : "",
 });
 
-export default function useBrandManagement(additionalRestaurants = []) {
+export default function useBrandManagement(
+  additionalRestaurants = EMPTY_RESTAURANTS,
+  { skip = false } = {},
+) {
   const { restaurants = [], restaurantsLoading = false } = useContext(AuthContext) || {};
-  const { data, loading, error, refetch } = useQuery(MY_BRANDS_QUERY, { fetchPolicy: "cache-and-network" });
+  const { data, loading, error, refetch } = useQuery(MY_BRANDS_QUERY, {
+    fetchPolicy: "cache-and-network",
+    skip,
+  });
   const memberships = data?.myBrandMemberships || [];
   const membershipByBrandId = useMemo(
     () => new Map(memberships.map((membership) => [String(membership.brandId), membership])),
     [memberships],
   );
   const brands = useMemo(
-    () => (data?.myBrands || []).map((brand) => ({
-      ...brand,
-      membershipRole: membershipByBrandId.get(String(brand.id))?.role || brand.membershipRole || brand.role || "",
-    })),
+    () => (data?.myBrands || []).map((brand) => {
+      const membership = membershipByBrandId.get(String(brand.id)) || null;
+      return {
+        ...brand,
+        membership,
+        membershipRole: membership?.role || brand.membershipRole || brand.role || "",
+        restaurantIds: membership?.restaurantIds || brand.restaurantIds || [],
+      };
+    }),
     [data?.myBrands, membershipByBrandId],
   );
   const [selectedBrandId, setSelectedBrandId] = useState(() => storageGet("manager.selectedBrandId"));
