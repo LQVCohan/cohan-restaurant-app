@@ -7,6 +7,7 @@ describe("userRoleDisplay", () => {
     const activeBrand = { id: "b1", membershipRole: "owner" };
 
     expect(getCombinedRoleLabel({ user, activeBrand })).toBe("Chủ thương hiệu · Quản lý hệ thống");
+    expect(getCombinedRoleLabel({ user, activeBrand, compact: true })).toBe("Chủ thương hiệu");
   });
 
   it("does not fallback system role into brand role", () => {
