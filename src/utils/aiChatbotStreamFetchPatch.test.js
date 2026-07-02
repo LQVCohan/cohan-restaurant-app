@@ -64,7 +64,8 @@ describe("aiChatbotStreamFetchPatch", () => {
       {
         message: "Mở giúp tôi trang quản lý coupon",
         pageContext: {
-          pathname: "/manager",
+          pathname: "/",
+          userRole: "manager",
           featureMatches: [
             {
               key: "manager-promotions",
