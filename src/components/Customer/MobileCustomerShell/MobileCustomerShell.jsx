@@ -61,6 +61,7 @@ export default function MobileCustomerShell({
   const visibleNavItems = NAV_ITEMS.filter(
     (item) => !item.requiresAuth || Boolean(user && canAccessRoute(user, item.to)),
   );
+  const navItemCount = visibleNavItems.length + 1;
 
   return (
     <div className="mobile-customer-shell">
@@ -110,7 +111,11 @@ export default function MobileCustomerShell({
 
       <main className="mobile-customer-shell__main">{children}</main>
 
-      <nav className="mobile-customer-shell__nav" aria-label="Điều hướng khách hàng">
+      <nav
+        className="mobile-customer-shell__nav"
+        aria-label="Điều hướng khách hàng"
+        style={{ gridTemplateColumns: `repeat(${navItemCount}, minmax(0, 1fr))` }}
+      >
         {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
