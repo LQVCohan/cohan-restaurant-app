@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="670" viewBox="0 0 500 670" role="img" aria-labelledby="title desc">
+  <title id="title">AI Chef Concierge</title>
+  <desc id="desc">Nhân vật robot đầu bếp AI thân thiện, đứng ở bên trái và hướng sang phải.</desc>
+  <defs>
+    <linearGradient id="cream" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffdf8"/><stop offset=".55" stop-color="#f8efe4"/><stop offset="1" stop-color="#e9d6c5"/></linearGradient>
+    <linearGradient id="creamHi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f1e2d4"/></linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9a2f"/><stop offset=".55" stop-color="#ff7308"/><stop offset="1" stop-color="#e95700"/></linearGradient>
+    <radialGradient id="screen" cx=".38" cy=".2" r=".95"><stop offset="0" stop-color="#36302b"/><stop offset=".55" stop-color="#151210"/><stop offset="1" stop-color="#050505"/></radialGradient>
+    <radialGradient id="eye" cx=".35" cy=".25" r=".8"><stop offset="0" stop-color="#ffe2a6"/><stop offset=".45" stop-color="#ff941d"/><stop offset="1" stop-color="#a83b00"/></radialGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#8e4315" flood-opacity=".2"/></filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <ellipse cx="250" cy="636" rx="132" ry="20" fill="#9c4b1d" opacity=".13"/>
+  <g stroke="#6e5849" stroke-width="5" stroke-linejoin="round">
+    <path d="M170 512h68l-7 91h-63Z" fill="url(#creamHi)"/><path d="M267 512h67l10 91h-63Z" fill="url(#creamHi)"/>
+    <path d="M154 599c7-18 20-28 43-28 22 0 38 11 44 32v21c-28 12-62 12-94 0Z" fill="url(#cream)"/><path d="M273 603c9-20 24-31 47-31 23 0 40 12 48 34v18c-33 12-67 12-99 0Z" fill="url(#cream)"/>
+    <path d="M166 585h70M278 586h65" stroke="#ff750b" stroke-width="8"/>
+  </g>
+  <g filter="url(#softShadow)" stroke="#6e5849" stroke-width="5" stroke-linejoin="round">
+    <path d="M144 344c25-28 61-42 106-42 51 0 89 16 111 47l20 156c-72 31-169 31-245 0Z" fill="url(#creamHi)"/>
+    <path d="M164 374c32 20 55 31 86 31 34 0 59-12 91-34" fill="none" stroke="#ff7408" stroke-width="7"/>
+    <path d="M205 351l44 42 45-44 27 25-43 58-28-28-29 29-43-58Z" fill="url(#orange)" stroke="#bf4c00"/>
+    <circle cx="330" cy="408" r="10" fill="url(#orange)" stroke="#bf4c00"/><circle cx="337" cy="447" r="10" fill="url(#orange)" stroke="#bf4c00"/>
+  </g>
+  <g transform="translate(170 410)">
+    <circle cx="42" cy="42" r="39" fill="#fffaf3" stroke="#ff760b" stroke-width="5"/><path d="M27 26c-6-1-9-7-6-12 3-6 10-7 15-3 4-7 15-7 19 0 7-2 13 3 13 10 0 5-3 9-8 11v9H30V31c-1-1-2-3-3-5Z" fill="url(#orange)"/>
+    <text x="42" y="58" text-anchor="middle" font-family="Outfit,Arial,sans-serif" font-size="13" font-weight="900" fill="#22150d">AI CHEF</text><text x="42" y="71" text-anchor="middle" font-family="Outfit,Arial,sans-serif" font-size="8" font-weight="800" fill="#7d5a43">CONCIERGE</text>
+  </g>
+  <g stroke="#6e5849" stroke-width="5" stroke-linejoin="round">
+    <path d="M150 375c-34 12-50 40-49 78 1 31 15 50 42 60l37-34c-19-13-25-31-19-54l20-34Z" fill="url(#cream)"/><path d="M111 454c18 0 33 8 45 24" fill="none" stroke="#ff7408" stroke-width="8"/>
+    <path d="M143 472c17-13 35-14 49-2 12 11 13 29 2 42-13 15-34 18-51 7-16-11-16-34 0-47Z" fill="url(#creamHi)"/><path d="M164 479l9 18M151 486l12 17M179 477l6 16" fill="none" stroke="#b79c89" stroke-width="3"/>
+  </g>
+  <g stroke="#6e5849" stroke-width="5" stroke-linejoin="round">
+    <path d="M344 371c32-8 58-1 78 21l-20 49c-17-12-32-17-50-16l-21-27Z" fill="url(#cream)"/><path d="M408 391c18-26 34-48 53-61 12-8 25 7 18 19-11 20-26 43-45 70Z" fill="url(#creamHi)"/><path d="M398 404c11 4 22 10 31 20" fill="none" stroke="#ff7408" stroke-width="8"/>
+    <path d="M455 320c17-19 30-25 39-19 8 6 4 18-7 30 13-9 24-10 29-3 6 8-2 17-16 24 15-5 25-2 27 6 2 9-9 15-25 18 14 1 22 7 20 14-3 10-18 12-38 7-23-6-39-17-49-32Z" fill="url(#creamHi)"/><path d="M463 327l26 12M457 340l31 10M454 354l29 8M453 369l24 6" fill="none" stroke="#b79c89" stroke-width="3"/>
+  </g>
+  <rect x="204" y="297" width="92" height="46" rx="22" fill="#111" stroke="#6e5849" stroke-width="5"/>
+  <g filter="url(#softShadow)" stroke="#6e5849" stroke-width="5" stroke-linejoin="round"><rect x="83" y="132" width="320" height="234" rx="104" fill="url(#creamHi)"/><circle cx="91" cy="247" r="47" fill="url(#cream)"/><circle cx="91" cy="247" r="29" fill="url(#orange)" stroke="#b94b00"/><circle cx="397" cy="247" r="45" fill="url(#cream)"/><circle cx="397" cy="247" r="25" fill="url(#orange)" stroke="#b94b00"/></g>
+  <rect x="122" y="169" width="244" height="164" rx="68" fill="url(#screen)" stroke="#4a3c33" stroke-width="6"/><path d="M151 190c51-22 130-29 187-6" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/>
+  <g filter="url(#glow)"><ellipse cx="196" cy="244" rx="36" ry="45" fill="#fff"/><ellipse cx="196" cy="248" rx="25" ry="33" fill="url(#eye)"/><ellipse cx="198" cy="254" rx="14" ry="21" fill="#120805"/><circle cx="187" cy="234" r="8" fill="#fff"/><ellipse cx="292" cy="234" rx="34" ry="43" fill="#fff"/><ellipse cx="292" cy="238" rx="24" ry="32" fill="url(#eye)"/><ellipse cx="294" cy="244" rx="13" ry="20" fill="#120805"/><circle cx="284" cy="224" r="8" fill="#fff"/></g>
+  <path d="M170 193c14-11 30-13 45-5M270 183c14-8 28-8 41 1" fill="none" stroke="#ff810f" stroke-width="10" stroke-linecap="round"/><path d="M221 289c17 17 39 18 58 0" fill="none" stroke="#ff8a1b" stroke-width="10" stroke-linecap="round" filter="url(#glow)"/>
+  <g filter="url(#softShadow)" stroke="#6e5849" stroke-width="5" stroke-linejoin="round"><path d="M135 148V98c0-38 31-62 67-53 17-28 61-32 83-7 31-8 62 13 66 43 32 4 53 32 44 61-7 23-27 38-51 38H178c-24 0-43-12-43-32Z" fill="url(#creamHi)"/><path d="M132 128h231v63H132Z" fill="url(#cream)"/><path d="M134 182c70 11 155 11 226 0" fill="none" stroke="#ff7408" stroke-width="8"/><rect x="226" y="119" width="58" height="56" rx="13" fill="url(#orange)" stroke="#b94b00"/><path d="M243 145c-4-1-6-5-4-9 2-4 7-5 10-2 3-5 11-5 14 0 5-1 9 3 9 8 0 4-2 7-6 8v9h-19v-9c-2-1-3-3-4-5Z" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg>
