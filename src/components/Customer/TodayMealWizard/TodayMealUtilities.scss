@@ -4,30 +4,30 @@
   --utility-ink: #201a16;
   --utility-muted: #74665c;
   position: fixed;
-  right: clamp(12px, 2vw, 24px);
-  bottom: clamp(8px, 1.5vw, 18px);
+  left: clamp(10px, 1.8vw, 24px);
+  bottom: clamp(8px, 1.4vw, 18px);
   z-index: 1050;
-  width: 340px;
-  height: 214px;
+  width: 520px;
+  height: 240px;
   pointer-events: none;
 }
 
 .today-meal-utilities__menu {
   position: fixed;
-  right: clamp(18px, 2.6vw, 34px);
-  bottom: 220px;
+  left: clamp(160px, 14vw, 210px);
+  bottom: 246px;
   z-index: 1049;
   width: min(430px, calc(100vw - 36px));
   padding: 12px;
   border: 1px solid rgba(255, 102, 0, 0.14);
   border-radius: 24px;
   background:
-    radial-gradient(circle at 92% 100%, rgba(255, 102, 0, 0.14), transparent 15rem),
-    rgba(255, 250, 244, 0.88);
+    radial-gradient(circle at 8% 100%, rgba(255, 102, 0, 0.14), transparent 15rem),
+    rgba(255, 250, 244, 0.9);
   box-shadow: 0 28px 64px rgba(92, 45, 12, 0.18), inset 0 1px rgba(255, 255, 255, 0.9);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
-  transform-origin: right bottom;
+  transform-origin: left bottom;
   animation: utilityMenuIn 0.24s cubic-bezier(0.2, 0.86, 0.24, 1) both;
   pointer-events: auto;
 }
@@ -85,40 +85,40 @@
 
 .today-meal-utilities__item--1 {
   grid-column: 1 / -1;
-  --utility-x: -5px;
+  --utility-x: 5px;
   --utility-y: -4px;
-  --utility-rotate: 0.8deg;
+  --utility-rotate: -0.8deg;
   animation-delay: 20ms;
   background:
-    radial-gradient(circle at 92% 20%, rgba(255, 102, 0, 0.16), transparent 9rem),
+    radial-gradient(circle at 8% 20%, rgba(255, 102, 0, 0.16), transparent 9rem),
     rgba(255, 255, 255, 0.97);
 }
 
 .today-meal-utilities__item--2 {
-  --utility-x: 5px;
+  --utility-x: -5px;
   --utility-y: 3px;
-  --utility-rotate: 0.7deg;
+  --utility-rotate: -0.7deg;
   animation-delay: 55ms;
 }
 
 .today-meal-utilities__item--3 {
-  --utility-x: -6px;
+  --utility-x: 6px;
   --utility-y: -2px;
-  --utility-rotate: -0.8deg;
+  --utility-rotate: 0.8deg;
   animation-delay: 90ms;
 }
 
 .today-meal-utilities__item--4 {
-  --utility-x: -4px;
+  --utility-x: 4px;
   --utility-y: 4px;
-  --utility-rotate: -0.6deg;
+  --utility-rotate: 0.6deg;
   animation-delay: 125ms;
 }
 
 .today-meal-utilities__item--5 {
-  --utility-x: 5px;
+  --utility-x: -5px;
   --utility-y: -3px;
-  --utility-rotate: 0.6deg;
+  --utility-rotate: -0.6deg;
   animation-delay: 160ms;
 }
 
@@ -172,16 +172,15 @@
 
 .today-meal-utilities .today-meal-wizard-launcher {
   position: absolute !important;
-  inset: auto 0 0 auto !important;
-  width: 340px !important;
-  height: 214px !important;
+  inset: auto auto 0 0 !important;
+  width: 520px !important;
+  height: 240px !important;
   min-height: 0 !important;
   display: block;
   overflow: visible;
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--utility-ink);
   padding: 0 !important;
   box-shadow: none;
   transform: none;
@@ -189,110 +188,70 @@
   pointer-events: auto;
 }
 
-.today-meal-utilities .today-meal-wizard-launcher::before {
+.today-meal-utilities .today-meal-wizard-launcher::before,
+.today-meal-utilities .today-meal-wizard-launcher::after {
   content: "";
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 158px;
-  height: 204px;
-  border-radius: 48% 48% 30% 30%;
-  background-image: var(--cohan-ai-chef-avatar);
+  display: block;
   background-repeat: no-repeat;
-  background-position: center 45%;
-  background-size: 148%;
-  box-shadow: 0 24px 48px rgba(92, 45, 12, 0.18);
-  clip-path: inset(4% 8% 0 8% round 48% 48% 28% 28%);
-  filter: drop-shadow(0 10px 16px rgba(255, 102, 0, 0.18));
+  background-position: center;
+  background-size: contain;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease, filter 0.22s ease;
+}
+
+.today-meal-utilities .today-meal-wizard-launcher::before {
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 175px;
+  height: 235px;
+  background-image: url("/ai-chef/ai-chef-concierge.svg");
+  filter: drop-shadow(0 12px 18px rgba(135, 63, 18, 0.18));
   transform-origin: center bottom;
-  animation: conciergeIdle 3.2s ease-in-out 0.5s infinite;
+  animation: conciergeIdle 3.4s ease-in-out 0.5s infinite;
 }
 
 .today-meal-utilities .today-meal-wizard-launcher::after {
-  content: "Hôm nay bạn cần gì?\A Mình giúp bạn chọn món, tìm ưu đãi và theo dõi đơn.";
-  position: absolute;
-  left: 0;
-  top: 22px;
-  width: 205px;
-  min-height: 102px;
-  display: block;
-  border: 1px solid rgba(255, 102, 0, 0.18);
-  border-radius: 22px 22px 8px 22px;
-  background:
-    radial-gradient(circle at 100% 100%, rgba(255, 102, 0, 0.11), transparent 8rem),
-    rgba(255, 255, 255, 0.94);
-  color: var(--utility-muted);
-  padding: 42px 16px 14px;
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.42;
-  text-align: left;
-  white-space: pre-line;
-  box-shadow: 0 18px 42px rgba(92, 45, 12, 0.14), inset 0 1px rgba(255, 255, 255, 0.95);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  left: 132px;
+  top: 8px;
+  z-index: 1;
+  width: 382px;
+  height: 262px;
+  background-image: url("/ai-chef/ai-chef-bubble.svg");
+  filter: drop-shadow(0 14px 24px rgba(135, 63, 18, 0.12));
 }
 
-.today-meal-utilities .today-meal-wizard-launcher span {
-  position: absolute !important;
-  left: 16px !important;
-  top: 34px !important;
-  z-index: 2;
-  width: auto !important;
-  height: auto !important;
-  overflow: visible !important;
-  clip: auto !important;
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  border-radius: 999px;
-  background: #fff0e4;
-  color: var(--utility-primary-deep);
-  padding: 0 9px;
-  font-size: 0.69rem;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.today-meal-utilities .today-meal-wizard-launcher svg {
+.today-meal-utilities .today-meal-wizard-launcher > svg,
+.today-meal-utilities .today-meal-wizard-launcher > span {
   display: none !important;
 }
 
 .today-meal-utilities .today-meal-wizard-launcher:hover::before,
 .today-meal-utilities .today-meal-wizard-launcher:focus-visible::before {
-  transform: translateY(-5px) rotate(-1deg) scale(1.02);
+  transform: translateY(-5px) rotate(1deg) scale(1.015);
 }
 
 .today-meal-utilities .today-meal-wizard-launcher:hover::after,
 .today-meal-utilities .today-meal-wizard-launcher:focus-visible::after {
-  border-color: rgba(255, 102, 0, 0.34);
-  box-shadow: 0 22px 48px rgba(92, 45, 12, 0.18), inset 0 1px rgba(255, 255, 255, 0.95);
+  transform: translateY(-3px) scale(1.01);
+  filter: drop-shadow(0 18px 30px rgba(135, 63, 18, 0.18));
 }
 
 .today-meal-utilities .today-meal-wizard-launcher:focus-visible {
-  outline: 0;
-}
-
-.today-meal-utilities .today-meal-wizard-launcher:focus-visible::after {
-  outline: 3px solid rgba(255, 102, 0, 0.25);
-  outline-offset: 3px;
-}
-
-.today-meal-utilities.is-open .today-meal-wizard-launcher::after {
-  content: "Bạn muốn dùng tiện ích nào?\A Chọn một mục trong bảng phía trên nhé.";
-  background: rgba(255, 247, 237, 0.96);
+  outline: 3px solid rgba(255, 102, 0, 0.28);
+  outline-offset: 4px;
+  border-radius: 28px;
 }
 
 .today-meal-utilities.is-open .today-meal-wizard-launcher::before {
   animation: none;
-  transform: translateY(-3px) rotate(-1deg);
+  transform: translateY(-3px) rotate(1deg);
 }
 
-body:has(.today-meal-utilities) .ai-chatbot-toggle {
-  transform: scale(0.88);
-  opacity: 0.72;
+.today-meal-utilities.is-open .today-meal-wizard-launcher::after {
+  opacity: 0.82;
+  transform: translateY(4px) scale(0.97);
 }
 
 body:has(.ai-chatbot-panel) .today-meal-utilities {
@@ -306,7 +265,7 @@ body:has(.ai-chatbot-panel) .today-meal-utilities {
 }
 
 @keyframes utilityItemFanOut {
-  from { opacity: 0; transform: translate(18px, 42px) rotate(5deg) scale(0.84); }
+  from { opacity: 0; transform: translate(-18px, 42px) rotate(-5deg) scale(0.84); }
   to { opacity: 1; transform: translate(var(--utility-x), var(--utility-y)) rotate(var(--utility-rotate)) scale(1); }
 }
 
@@ -317,21 +276,22 @@ body:has(.ai-chatbot-panel) .today-meal-utilities {
 
 @keyframes conciergeIdle {
   0%, 100% { transform: translateY(0) rotate(0); }
-  50% { transform: translateY(-4px) rotate(-1deg); }
+  50% { transform: translateY(-4px) rotate(1deg); }
 }
 
 @media (max-width: 760px) {
   .today-meal-utilities {
-    right: max(8px, env(safe-area-inset-right));
-    bottom: calc(70px + env(safe-area-inset-bottom));
-    width: 220px;
-    height: 142px;
+    left: max(6px, env(safe-area-inset-left));
+    right: auto;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    width: 310px;
+    height: 154px;
   }
 
   .today-meal-utilities__menu {
-    right: max(12px, env(safe-area-inset-right));
-    left: auto;
-    bottom: calc(216px + env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
+    bottom: calc(226px + env(safe-area-inset-bottom));
     width: min(310px, calc(100vw - 24px));
     max-height: min(58dvh, 450px);
     overflow-y: auto;
@@ -357,38 +317,24 @@ body:has(.ai-chatbot-panel) .today-meal-utilities {
   }
 
   .today-meal-utilities .today-meal-wizard-launcher {
-    left: auto !important;
-    right: 0 !important;
+    left: 0 !important;
+    right: auto !important;
     bottom: 0 !important;
-    width: 220px !important;
-    height: 142px !important;
+    width: 310px !important;
+    height: 154px !important;
+    max-width: none !important;
   }
 
   .today-meal-utilities .today-meal-wizard-launcher::before {
-    right: 0;
-    width: 98px;
-    height: 132px;
-    background-size: 150%;
+    width: 108px;
+    height: 148px;
   }
 
   .today-meal-utilities .today-meal-wizard-launcher::after {
-    content: "Bạn cần gì?\A Mình giúp ngay.";
-    left: 0;
-    top: 20px;
-    width: 134px;
-    min-height: 72px;
-    border-radius: 18px 18px 7px 18px;
-    padding: 34px 12px 10px;
-    font-size: 0.7rem;
-    line-height: 1.32;
-  }
-
-  .today-meal-utilities .today-meal-wizard-launcher span {
-    left: 12px !important;
-    top: 29px !important;
-    min-height: 20px;
-    padding-inline: 7px;
-    font-size: 0.6rem;
+    left: 82px;
+    top: 7px;
+    width: 225px;
+    height: 154px;
   }
 }
 
