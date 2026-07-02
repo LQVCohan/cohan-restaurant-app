@@ -55,27 +55,38 @@ import {
 } from "../../../src/services/ai/restaurantChatbotEvaluation.service.js";
 
 const isManagerNavigationRequest = (message = "") =>
-  /(mở|mo|đi tới|di toi|vào|vao)\s+(cho\s+(tôi|toi)\s+)?(trang\s+)?(quản lý|quan ly|dashboard)/i.test(String(message || ""));
+  /(?:mở|mo|đi tới|di toi|vào|vao|truy cập|truy cap).*(?:quản lý|quan ly|dashboard)|(?:trang quản lý|trang quan ly|dashboard)/i.test(String(message || ""));
+
+const isManagerPath = (href = "") => /^\/manager(?:$|[/?#])/.test(String(href || ""));
 
 export const sanitizeAiChatbotResponse = (response = {}, message = "") => {
   const intent = String(response?.intent || "general");
+  const originalActions = Array.isArray(response?.actions) ? response.actions : [];
+  const managerAction = originalActions.find((action) => action?.href === "/manager") || originalActions.find((action) => isManagerPath(action?.href));
+  const managerNavigation = Boolean(managerAction && isManagerNavigationRequest(message));
+  const keepMenuSources = intent === "menu" && !managerNavigation;
+  const sources = (Array.isArray(response?.sources) ? response.sources : [])
+    .filter((source) => keepMenuSources || source?.type !== "menuItem");
+
+  if (managerNavigation) {
+    return {
+      ...response,
+      answer: `Mình đã tìm thấy trang quản lý nhà hàng. Chọn "${managerAction.label || "Mở dashboard quản lý"}" bên dưới để mở.`,
+      intent: "managerFeatureHelp",
+      actions: [{ ...managerAction, label: "Mở trang quản lý nhà hàng" }],
+      sources,
+      contextSummary: response.contextSummary
+        ? { ...response.contextSummary, menuItemCount: 0 }
+        : response.contextSummary,
+    };
+  }
+
   if (intent === "menu") return response;
 
-  const sources = (Array.isArray(response?.sources) ? response.sources : [])
-    .filter((source) => source?.type !== "menuItem");
-  const actions = (Array.isArray(response?.actions) ? response.actions : [])
-    .filter((action) => !String(action?.href || "").startsWith("/food/"))
-    .map((action) => (
-      intent === "managerFeatureHelp" && action?.href === "/manager"
-        ? { ...action, label: "Mở trang quản lý nhà hàng" }
-        : action
-    ));
+  const actions = originalActions
+    .filter((action) => !String(action?.href || "").startsWith("/food/"));
 
-  const answer = intent === "managerFeatureHelp" && isManagerNavigationRequest(message)
-    ? "Bạn có thể mở trang quản lý nhà hàng bằng nút bên dưới."
-    : response?.answer;
-
-  return { ...response, answer, actions, sources };
+  return { ...response, actions, sources };
 };
 
 const Query = {
