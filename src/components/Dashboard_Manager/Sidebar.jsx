@@ -3,8 +3,14 @@ import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
+import { isAdminRole } from "@/utils/frontendRoleAccess";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
-import { getCombinedRoleLabel, getMembershipScopeLabel, getRoleTooltip } from "@/lib/userRoleDisplay";
+import {
+  getCombinedRoleLabel,
+  getMembershipScopeLabel,
+  getRoleTooltip,
+  isBrandWideRole,
+} from "@/lib/userRoleDisplay";
 
 const BACKUP_PERMISSIONS = ["backup.read", "backup.write", "backup.export", "backup.import", "system.manage"];
 
@@ -90,11 +96,21 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
   const sidebarUserTooltip = useMemo(() => `${getRoleTooltip({ user, activeBrand, membership: activeMembership })} | Phạm vi phụ trách: ${sidebarScope}`, [activeBrand, activeMembership, sidebarScope, user]);
   const sidebarAvatarSrc = useMemo(() => resolveUserAvatarSrc(sidebarUser), [sidebarUser]);
   const sidebarAvatarFallback = useMemo(() => getInitials(sidebarUserName, "QL"), [sidebarUserName]);
-
-  const visibleSections = useMemo(
-    () => filterNavigationByPermissionAccess(NAVIGATION_SECTIONS, user),
-    [user],
+  const ownsActiveBrand = Boolean(
+    activeBrand?.ownerId && user?.id && String(activeBrand.ownerId) === String(user.id),
   );
+  const canManageActiveBrand = isAdminRole(user) || ownsActiveBrand || isBrandWideRole(activeMembership);
+
+  const visibleSections = useMemo(() => {
+    const sections = filterNavigationByPermissionAccess(NAVIGATION_SECTIONS, user);
+    if (canManageActiveBrand) return sections;
+    return sections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => item.id !== "brands"),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [canManageActiveBrand, user]);
 
   const handleItemClick = useCallback((item) => {
     onPageChange(item.id);
