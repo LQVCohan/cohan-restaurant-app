@@ -41,6 +41,33 @@ describe("NotificationBell", () => {
     await waitFor(() => expect(markNotificationRead).toHaveBeenCalledWith({ variables: { id: "n1" } }));
   });
 
+  it("uses injected customer state without enabling another notification query", async () => {
+    const markAsRead = vi.fn().mockResolvedValue({});
+    const notificationState = {
+      notifications: [
+        {
+          id: "customer-n1",
+          type: "chat_message",
+          text: "Nhân viên vừa phản hồi",
+          time: "10:30 02/07",
+          isRead: false,
+          link: "/help-center/me?threadId=thread-1",
+          raw: { id: "customer-n1", type: "chat_message" },
+        },
+      ],
+      unreadCount: 1,
+      markAsRead,
+      markAllAsRead: vi.fn(),
+    };
+
+    render(<NotificationBell title="Thông báo của tôi" notificationState={notificationState} />);
+    expect(useCommunicationMock).toHaveBeenCalledWith({ restaurantId: null, notificationsEnabled: false });
+    fireEvent.click(screen.getByLabelText("Mở thông báo"));
+    fireEvent.click(screen.getByText("Nhân viên vừa phản hồi"));
+    await waitFor(() => expect(markAsRead).toHaveBeenCalledWith("customer-n1"));
+    expect(markNotificationRead).not.toHaveBeenCalled();
+  });
+
   it("passes disabled notification mode to the communication hook", () => {
     render(<NotificationBell restaurantId={null} title="Thông báo của tôi" enabled={false} />);
     expect(useCommunicationMock).toHaveBeenCalledWith({ restaurantId: null, notificationsEnabled: false });
