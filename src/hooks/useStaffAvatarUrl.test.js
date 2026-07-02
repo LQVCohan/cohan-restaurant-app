@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/apiBaseUrl", () => ({
+  getGraphqlUrl: () => "http://localhost:4000/graphql",
+}));
+
 import { normalizeStoredAvatarUrl } from "./useStaffAvatar";
 
 describe("staff avatar URL normalization", () => {
