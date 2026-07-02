@@ -33,9 +33,8 @@ const CUSTOMER_SHORTCUTS = [
   { icon: "📦", tag: "Theo dõi", title: "Đơn của tôi", desc: "Theo dõi đơn và đặt lại khi cần.", path: "/orders" },
 ];
 
-const Home = () => {
+const DesktopHome = () => {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const timeSlot = getCurrentTimeSlot();
   const [filterState, setFilterState] = useState({});
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
@@ -83,8 +82,6 @@ const Home = () => {
     setIsTableBookingOpen(false);
     setSelectedRestaurant(null);
   };
-
-  if (isMobile) return <MobileHome />;
 
   return (
     <div className="home" ref={homeMotionRef}>
@@ -161,6 +158,11 @@ const Home = () => {
       />
     </div>
   );
+};
+
+const Home = () => {
+  const isMobile = useIsMobile();
+  return isMobile ? <MobileHome /> : <DesktopHome />;
 };
 
 export default Home;
