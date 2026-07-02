@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Clock, LocateFixed, Smile, Sparkles, Star, Truck, Users, Utensils } from "lucide-react";
+import { Clock, LocateFixed, Sparkles, Star, Truck, Utensils } from "lucide-react";
 import LocationPickerMap from "./LocationPickerMap";
 import "../../../../styles/Homepage/HeroSection.scss";
 
@@ -512,23 +512,23 @@ const HeroSection = ({ onSearch }) => {
               </div>
             )}
 
-          <div className="hero__stats" aria-label="Số liệu nổi bật của Cohan">
-            <div className="hero__stat-item" aria-label="Hơn 500 đối tác">
-              <Users className="stat-icon" aria-hidden="true" />
-              <strong className="stat-num">500+</strong>
-              <span className="stat-label">Đối tác</span>
+          <div className="hero__stats" aria-label="Các thao tác chính trên Cohan">
+            <div className="hero__stat-item" aria-label="Tìm nhà hàng gần bạn">
+              <LocateFixed className="stat-icon" aria-hidden="true" />
+              <strong className="stat-num">Tìm gần bạn</strong>
+              <span className="stat-label">Gợi ý theo vị trí</span>
             </div>
             <div className="hero__stat-divider" aria-hidden="true"></div>
-            <div className="hero__stat-item" aria-label="Hơn 10 nghìn món ăn">
+            <div className="hero__stat-item" aria-label="Đặt món nhanh">
               <Utensils className="stat-icon" aria-hidden="true" />
-              <strong className="stat-num">10k+</strong>
-              <span className="stat-label">Món ăn</span>
+              <strong className="stat-num">Đặt món</strong>
+              <span className="stat-label">Giữ món trong giỏ</span>
             </div>
             <div className="hero__stat-divider" aria-hidden="true"></div>
-            <div className="hero__stat-item" aria-label="Hơn 50 nghìn khách hàng">
-              <Smile className="stat-icon" aria-hidden="true" />
-              <strong className="stat-num">50k+</strong>
-              <span className="stat-label">Khách hàng</span>
+            <div className="hero__stat-item" aria-label="Theo dõi trạng thái đơn">
+              <Clock className="stat-icon" aria-hidden="true" />
+              <strong className="stat-num">Theo dõi</strong>
+              <span className="stat-label">Cập nhật trạng thái</span>
             </div>
           </div>
         </div>
