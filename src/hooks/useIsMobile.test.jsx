@@ -35,4 +35,10 @@ describe("useIsMobile", () => {
 
     expect(result.current).toBe(true);
   });
+
+  it("falls back to desktop when matchMedia is unavailable", () => {
+    window.matchMedia = undefined;
+    const { result } = renderHook(() => useIsMobile());
+    expect(result.current).toBe(false);
+  });
 });
