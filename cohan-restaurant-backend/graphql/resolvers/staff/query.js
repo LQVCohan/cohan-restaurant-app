@@ -52,6 +52,8 @@ import {
   sanitizeAdminUserListItem,
   sanitizeStaffPrivateProfile,
 } from "../../../src/security/userDtos.js";
+import { isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
+import { canAdminSensitiveAccess, SENSITIVE_ACCESS } from "../../../src/services/auth/adminSensitiveAccess.service.js";
 import {
   buildPayrollItemsForRange,
   getPayrollSettings,
@@ -494,6 +496,21 @@ export default {
       .populate("role")
       .populate("refRestaurants")
       .sort({ fullName: 1 });
+
+    const allowSensitive = await canAdminSensitiveAccess(ctx, {
+      category: SENSITIVE_ACCESS.STAFF_INTERNAL,
+      resourceType: "Staff",
+      resourceId: "list",
+      restaurantId,
+    });
+    if (isSystemAdmin(ctx?.user) && !allowSensitive) {
+      return staff.map((item) => sanitizeAdminUserListItem(item, {
+        maskSensitive: true,
+        allowContact: false,
+        allowWallet: false,
+        allowStaffInternal: false,
+      }));
+    }
 
     return Promise.all(staff.map((item) => sanitizeStaffPrivateProfile(item, ctx, { restaurantId: item?.restaurantForStaff || restaurantId })));
   },

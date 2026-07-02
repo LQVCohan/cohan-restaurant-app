@@ -4,6 +4,7 @@ import {
   requirePermission,
   requireRestaurantPermission,
 } from "../services/auth/authorization.service.js";
+import { maskUserSensitiveFields } from "../services/auth/adminSensitiveAccess.service.js";
 
 function toPlainObject(user) {
   if (!user) return null;
@@ -101,11 +102,11 @@ export function sanitizeAuthUser(user) {
   });
 }
 
-export function sanitizeCustomerListUser(user) {
+export function sanitizeCustomerListUser(user, options = {}) {
   const source = toPlainObject(user);
   if (!source) return null;
 
-  return pickDefined({
+  const dto = pickDefined({
     ...baseUserFields(source),
     customerType: source.customerType,
     loyaltyPoints: source.loyaltyPoints,
@@ -125,13 +126,14 @@ export function sanitizeCustomerListUser(user) {
     isOnline: source.isOnline,
     loyaltyDurationScore: source.loyaltyDurationScore,
   });
+  return options.maskSensitive ? maskUserSensitiveFields(dto, options) : dto;
 }
 
-export function sanitizeAdminUserListItem(user) {
+export function sanitizeAdminUserListItem(user, options = {}) {
   const source = toPlainObject(user);
   if (!source) return null;
 
-  return pickDefined({
+  const dto = pickDefined({
     ...baseUserFields(source),
     address: source.address,
     provider: source.provider,
@@ -166,6 +168,7 @@ export function sanitizeAdminUserListItem(user) {
     isOnline: source.isOnline,
     loyaltyDurationScore: source.loyaltyDurationScore,
   });
+  return options.maskSensitive ? maskUserSensitiveFields(dto, options) : dto;
 }
 
 function notFound(message = "Staff not found") {

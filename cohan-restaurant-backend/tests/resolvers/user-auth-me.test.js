@@ -151,7 +151,7 @@ describe('User resolvers integration', () => {
     const result = await UserQuery.users(null, {}, { user: { id: 'admin', roleName: 'admin' } });
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ id: '67a1f8f6a2df3b17f0c12345', email: 'admin-list@example.com' });
+    expect(result[0]).toMatchObject({ id: '67a1f8f6a2df3b17f0c12345', email: 'ad***@example.com' });
     expect(result[0].passwordHash).toBeUndefined();
     expect(result[0].emailVerifyToken).toBeUndefined();
     expect(result[0].nationalId).toBeUndefined();

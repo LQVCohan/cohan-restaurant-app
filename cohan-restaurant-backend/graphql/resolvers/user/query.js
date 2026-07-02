@@ -11,6 +11,8 @@ import mongoose from "mongoose";
 import { requireRole } from "../../../utils/authz.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
+import { isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
+import { canAdminSensitiveAccess, SENSITIVE_ACCESS } from "../../../src/services/auth/adminSensitiveAccess.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { getEffectiveCustomerRankSetting } from "../../../src/services/customerRankSetting.service.js";
 import {
@@ -166,7 +168,8 @@ export const UserQuery = {
 
   // ========== Lấy toàn bộ users (mục đích: tổng quản trị) ==========
 
-  async users(_, { roleId, isGuest, search }, { user: authUser }) {
+  async users(_, { roleId, isGuest, search }, ctx) {
+    const authUser = ctx?.user;
     try {
       requireRole(authUser, ["admin"]);
 
@@ -182,7 +185,17 @@ export const UserQuery = {
         .sort({ createdAt: -1 })
         .lean();
 
-      return list.map(sanitizeAdminUserListItem);
+      const allowSensitive = await canAdminSensitiveAccess(ctx, {
+        category: SENSITIVE_ACCESS.STAFF_INTERNAL,
+        resourceType: "User",
+        resourceId: "list",
+      });
+      return list.map((item) => sanitizeAdminUserListItem(item, {
+        maskSensitive: isSystemAdmin(authUser) && !allowSensitive,
+        allowContact: allowSensitive,
+        allowWallet: allowSensitive,
+        allowStaffInternal: allowSensitive,
+      }));
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err.message || "Failed to fetch users", {
@@ -201,6 +214,17 @@ export const UserQuery = {
 
       const roleName = String(authUser?.roleName || "").toLowerCase();
       const isAdmin = roleName === "admin";
+      const allowCustomerSensitive = await canAdminSensitiveAccess(ctx, {
+        category: SENSITIVE_ACCESS.CUSTOMER_CONTACT,
+        resourceType: "Customer",
+        resourceId: "list",
+        restaurantId,
+      });
+      const customerSensitiveOptions = {
+        maskSensitive: isSystemAdmin(authUser) && !allowCustomerSensitive,
+        allowContact: allowCustomerSensitive,
+        allowWallet: allowCustomerSensitive,
+      };
 
       let scopedRestaurantId = null;
 
@@ -254,7 +278,7 @@ export const UserQuery = {
               .lean()
           : [];
 
-        return guestOnly.map(sanitizeCustomerListUser);
+        return guestOnly.map((item) => sanitizeCustomerListUser(item, customerSensitiveOptions));
       }
 
       const customerCond = {
@@ -293,7 +317,7 @@ export const UserQuery = {
         return acc;
       }, []);
 
-      return merged.map(sanitizeCustomerListUser);
+      return merged.map((item) => sanitizeCustomerListUser(item, customerSensitiveOptions));
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
 
@@ -372,8 +396,19 @@ export const UserQuery = {
       .lean();
     const nextOffset = offset + items.length;
     const hasNextPage = nextOffset < totalCount;
+    const allowCustomerSensitive = await canAdminSensitiveAccess(ctx, {
+      category: SENSITIVE_ACCESS.CUSTOMER_CONTACT,
+      resourceType: "Customer",
+      resourceId: "page",
+      restaurantId,
+    });
+    const customerSensitiveOptions = {
+      maskSensitive: isSystemAdmin(ctx?.user) && !allowCustomerSensitive,
+      allowContact: allowCustomerSensitive,
+      allowWallet: allowCustomerSensitive,
+    };
     return {
-      items: items.map(sanitizeCustomerListUser),
+      items: items.map((item) => sanitizeCustomerListUser(item, customerSensitiveOptions)),
       totalCount,
       pageInfo: {
         hasNextPage,

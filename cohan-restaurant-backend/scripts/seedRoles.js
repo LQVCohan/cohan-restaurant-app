@@ -79,8 +79,25 @@ const MANAGER_PERMISSIONS = [
   ...MENU_MANAGER_PERMISSIONS,
 ];
 
+
+const ADMIN_PERMISSIONS = [
+  "system.manage",
+  "system.read",
+  "role.read",
+  "permission.read",
+  "log.read",
+  "admin.sensitive.customer_contact.read",
+  "admin.sensitive.staff_internal.read",
+  "admin.sensitive.finance.read",
+  "admin.sensitive.payroll.read",
+  "admin.sensitive.wallet.read",
+  "admin.sensitive.payment.read",
+  "admin.sensitive.tenant_data.write",
+  "admin.audit.read",
+];
+
 const roles = [
-  { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true, permissions: [] },
+  { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true, permissions: ADMIN_PERMISSIONS },
   { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true, permissions: MANAGER_PERMISSIONS },
   { name: "HR", slug: "hr", parentRole: "hr", isSystem: true, permissions: ["staff.read", "staff.write", "shift.read", "shift.manage", "attendance.read", "attendance.write", "performance.read"] },
   { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true, permissions: ["finance.read", "transaction.read", "reconciliation.read", "payment.read", "payroll.read", "payroll.write", "report.read"] },
