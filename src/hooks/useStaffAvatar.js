@@ -26,12 +26,12 @@ const normalizeStoredAvatarUrl = (rawUrl) => {
   if (value.startsWith("/uploads/")) return value;
 
   try {
-    const graphqlUrl = getGraphqlUrl();
-    if (graphqlUrl.startsWith("/")) return value;
-
-    const apiOrigin = new URL(graphqlUrl).origin;
     const target = new URL(value);
-    if (target.origin !== apiOrigin) return value;
+    const graphqlUrl = getGraphqlUrl();
+    const apiOrigin = graphqlUrl.startsWith("/") ? "" : new URL(graphqlUrl).origin;
+    const isLoopbackHost = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"].includes(target.hostname);
+
+    if (target.origin !== apiOrigin && !isLoopbackHost) return value;
 
     if (target.pathname.startsWith("/api/uploads/")) {
       return `${target.pathname.slice(4)}${target.search}`;
