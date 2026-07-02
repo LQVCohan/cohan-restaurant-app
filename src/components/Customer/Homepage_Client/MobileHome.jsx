@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import Categories from "./components/Categories";
 import RestaurantGrid from "./components/RestaurantGrid";
-import TableBooking from "./components/TableBooking";
 import "./MobileHome.scss";
 
 const QUICK_ACTIONS = [
@@ -32,7 +31,6 @@ export default function MobileHome() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [restaurantFilter, setRestaurantFilter] = useState({});
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const timeSlot = getCurrentTimeSlot();
 
   const handleSearch = (event) => {
@@ -100,19 +98,9 @@ export default function MobileHome() {
         </div>
       </section>
 
-      <RestaurantGrid
-        restaurantFilter={restaurantFilter}
-        onBookingClick={setSelectedRestaurant}
-      />
+      <RestaurantGrid restaurantFilter={restaurantFilter} />
 
       <Categories onCategorySelect={handleCategorySelect} timeSlot={timeSlot} />
-
-      <TableBooking
-        restaurant={selectedRestaurant}
-        isOpen={Boolean(selectedRestaurant)}
-        onClose={() => setSelectedRestaurant(null)}
-        onBookTable={() => setSelectedRestaurant(null)}
-      />
     </div>
   );
 }
