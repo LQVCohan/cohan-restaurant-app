@@ -23,24 +23,24 @@
 .ai-chatbot-message .ai-chatbot-message-avatar,
 .ai-chatbot-message.loading > .ai-chatbot-message-avatar {
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   margin-bottom: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   color: #fff;
-  font-size: 0.64rem;
+  font-size: 0.58rem;
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   animation: none;
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
 }
 
 .ai-chatbot-message .ai-chatbot-message-avatar--assistant,
 .ai-chatbot-message.loading > .ai-chatbot-message-avatar--assistant {
-  background: linear-gradient(135deg, #f97316, #ef4444);
+  background: linear-gradient(135deg, #ff7a1a, #fb4d1e);
 }
 
 .ai-chatbot-message .ai-chatbot-message-avatar--staff {
@@ -55,28 +55,51 @@
 }
 
 .ai-chatbot-message.loading {
-  width: fit-content;
-  min-height: 30px;
+  position: relative;
+  width: 74px;
+  min-height: 28px;
   padding: 0;
   border: 0;
   background: transparent;
+  box-shadow: none;
+  gap: 5px;
 }
 
 .ai-chatbot-message.loading::before {
   content: none;
 }
 
+.ai-chatbot-message.loading::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: 0;
+  width: 42px;
+  height: 28px;
+  border-radius: 18px 18px 18px 5px;
+  background: #fff;
+  border: 1px solid rgba(254, 215, 170, 0.92);
+  box-shadow: 0 8px 18px rgba(251, 146, 60, 0.1);
+}
+
+.ai-chatbot-message.loading > .ai-chatbot-message-avatar,
+.ai-chatbot-message.loading > .ai-chatbot-loading-dot {
+  position: relative;
+  z-index: 1;
+}
+
 .ai-chatbot-message.loading > .ai-chatbot-loading-dot {
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
+  width: 5px;
+  height: 5px;
+  margin-bottom: 11px;
   border-radius: 50%;
   background: #fb923c;
   animation: ai-chatbot-dot 0.9s infinite ease-in-out;
 }
 
 .ai-chatbot-message.loading > .ai-chatbot-message-avatar + .ai-chatbot-loading-dot {
-  margin-left: 4px;
+  margin-left: 9px;
   animation-delay: 0s;
 }
 
