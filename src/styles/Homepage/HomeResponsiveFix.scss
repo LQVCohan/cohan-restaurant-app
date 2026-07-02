@@ -226,8 +226,8 @@
   }
 
   .hero .float-review {
-    top: 0 !important;
-    right: 0 !important;
+    top: 4px !important;
+    right: 8px !important;
   }
 
   .hero .float-time {
@@ -235,8 +235,8 @@
   }
 
   .hero .float-delivery {
-    right: -3px !important;
-    bottom: 0 !important;
+    right: 8px !important;
+    bottom: 4px !important;
   }
 
   .home .restaurant-grid {
@@ -259,11 +259,11 @@
     gap: 14px !important;
   }
 
-  .home-shortcuts__header {
-    gap: 12px;
+  .home-shortcuts__wizard {
+    padding: 16px !important;
   }
 
-  .home-shortcuts__grid {
+  .home-shortcuts__board {
     grid-template-columns: 1fr !important;
   }
 
