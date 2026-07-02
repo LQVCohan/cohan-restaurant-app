@@ -10,6 +10,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import CustomerNotificationBell from "@/components/Customer/common/CustomerNotificationBell";
 import "./MobileCustomerShell.scss";
 
 const NAV_ITEMS = [
@@ -62,19 +63,22 @@ export default function MobileCustomerShell({
           <span>{resolveTitle(location.pathname)}</span>
         </button>
 
-        <button
-          type="button"
-          className="mobile-customer-shell__cart"
-          onClick={onCartToggle}
-          aria-label={`Mở giỏ hàng${cartItemCount ? `, ${cartItemCount} món` : ""}`}
-        >
-          <ShoppingCart aria-hidden="true" />
-          {cartItemCount > 0 && (
-            <span className="mobile-customer-shell__cart-count">
-              {cartItemCount > 99 ? "99+" : cartItemCount}
-            </span>
-          )}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <CustomerNotificationBell />
+          <button
+            type="button"
+            className="mobile-customer-shell__cart"
+            onClick={onCartToggle}
+            aria-label={`Mở giỏ hàng${cartItemCount ? `, ${cartItemCount} món` : ""}`}
+          >
+            <ShoppingCart aria-hidden="true" />
+            {cartItemCount > 0 && (
+              <span className="mobile-customer-shell__cart-count">
+                {cartItemCount > 99 ? "99+" : cartItemCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       <main className="mobile-customer-shell__main">{children}</main>
