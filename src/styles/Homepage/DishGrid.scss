@@ -10,14 +10,10 @@ $cream: #fff8ef;
   z-index: 3;
   width: 100%;
   overflow: hidden;
-  background: #ffffff;
-  padding: 0;
+  background: transparent;
 
   &__container {
-    max-width: 1180px;
     margin: 0 auto;
-    padding: 0 24px;
-    @media (max-width: 768px) { padding: 0 16px; }
   }
 
   &__header {

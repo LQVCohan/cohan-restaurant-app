@@ -1,11 +1,14 @@
 .home-for-you {
-  padding: 12px 16px 0;
+  padding: 38px 0 48px;
+  background: transparent;
 }
 
 .home-for-you__container {
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
+  width: min(1080px, calc(100% - 40px));
+  margin-inline: auto;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .home-for-you__header {
@@ -24,7 +27,8 @@
 
 .home-for-you__title { margin: 0; font-size: 1.25rem; }
 .home-for-you__subtitle { margin: 6px 0 0; color: #5f6b7a; font-size: 0.9rem; }
-.home-for-you__cta { border: none; background: #0f766e; color: #fff; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.home-for-you__cta { border: none; background: #ff6600; color: #fff; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.home-for-you__cta:hover { background: #e65c00; }
 .home-for-you__profile-cta {
   border: 1px solid #d1d5db;
   background: #fff;
@@ -58,6 +62,5 @@
 }
 
 @media (min-width: 900px) {
-  .home-for-you { padding: 20px 24px 0; }
   .home-for-you__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

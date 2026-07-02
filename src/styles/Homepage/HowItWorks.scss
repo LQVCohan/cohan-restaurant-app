@@ -8,16 +8,12 @@ $line: rgba(92, 64, 51, 0.12);
   z-index: 3;
   width: 100%;
   overflow: hidden;
-  background: #fffaf4;
-  padding: 42px 0 54px;
+  background: transparent;
 
   &__wave-top { display: none; }
 
   &__container {
-    max-width: 1180px;
     margin: 0 auto;
-    padding: 0 24px;
-    @media (max-width: 768px) { padding: 0 16px; }
   }
 
   &__header {
