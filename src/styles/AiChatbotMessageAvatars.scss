@@ -20,7 +20,8 @@
   align-items: flex-start;
 }
 
-.ai-chatbot-message-avatar {
+.ai-chatbot-message .ai-chatbot-message-avatar,
+.ai-chatbot-message.loading > .ai-chatbot-message-avatar {
   flex: 0 0 auto;
   width: 26px;
   height: 26px;
@@ -33,14 +34,16 @@
   font-size: 0.64rem;
   font-weight: 900;
   letter-spacing: -0.02em;
+  animation: none;
   box-shadow: 0 7px 16px rgba(15, 23, 42, 0.14);
 }
 
-.ai-chatbot-message-avatar--assistant {
+.ai-chatbot-message .ai-chatbot-message-avatar--assistant,
+.ai-chatbot-message.loading > .ai-chatbot-message-avatar--assistant {
   background: linear-gradient(135deg, #f97316, #ef4444);
 }
 
-.ai-chatbot-message-avatar--staff {
+.ai-chatbot-message .ai-chatbot-message-avatar--staff {
   background: linear-gradient(135deg, #0f766e, #14b8a6);
 }
 
@@ -53,6 +56,7 @@
 
 .ai-chatbot-message.loading {
   width: fit-content;
+  min-height: 30px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -62,7 +66,8 @@
   content: none;
 }
 
-.ai-chatbot-message.loading .ai-chatbot-loading-dot {
+.ai-chatbot-message.loading > .ai-chatbot-loading-dot {
+  flex: 0 0 auto;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -70,34 +75,17 @@
   animation: ai-chatbot-dot 0.9s infinite ease-in-out;
 }
 
-.ai-chatbot-message.loading .ai-chatbot-loading-dot:nth-of-type(3) {
+.ai-chatbot-message.loading > .ai-chatbot-message-avatar + .ai-chatbot-loading-dot {
+  margin-left: 4px;
+  animation-delay: 0s;
+}
+
+.ai-chatbot-message.loading > .ai-chatbot-loading-dot:nth-of-type(3) {
   animation-delay: 0.12s;
 }
 
-.ai-chatbot-message.loading .ai-chatbot-loading-dot:nth-of-type(4) {
+.ai-chatbot-message.loading > .ai-chatbot-loading-dot:nth-of-type(4) {
   animation-delay: 0.24s;
-}
-
-.ai-chatbot-message.loading .ai-chatbot-loading-dot:first-of-type,
-.ai-chatbot-message.loading .ai-chatbot-loading-dot:nth-of-type(2),
-.ai-chatbot-message.loading .ai-chatbot-loading-dot:nth-of-type(3) {
-  margin-left: 0;
-}
-
-.ai-chatbot-message.loading {
-  min-height: 30px;
-}
-
-.ai-chatbot-message.loading .ai-chatbot-loading-dot:first-of-type {
-  margin-left: 6px;
-}
-
-.ai-chatbot-message.loading .ai-chatbot-message-avatar + .ai-chatbot-loading-dot {
-  margin-left: 4px;
-}
-
-.ai-chatbot-message.loading .ai-chatbot-message-avatar ~ .ai-chatbot-loading-dot {
-  display: inline-block;
 }
 
 .ai-chatbot-streaming-message .ai-chatbot-message-content p {
