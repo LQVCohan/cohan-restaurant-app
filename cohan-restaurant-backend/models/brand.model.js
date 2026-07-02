@@ -34,6 +34,5 @@ const BrandSchema = BaseSchemaModel({
 
 BrandSchema.index({ slug: 1 }, { unique: true });
 BrandSchema.index({ ownerId: 1, createdAt: -1 });
-BrandSchema.index({ status: 1 });
 
 export default mongoose.model("Brand", BrandSchema);
