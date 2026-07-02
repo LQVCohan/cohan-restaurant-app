@@ -92,14 +92,19 @@
   display: none !important;
 }
 
-/* Raise the approved bubble above the mascot's speaking point. */
+/* Align the approved bubble tail with the mascot's raised hand. */
 body .today-meal-utilities .today-meal-wizard-launcher::after {
-  top: -24px !important;
+  top: -72px !important;
+}
+
+body .today-meal-utilities.is-open .today-meal-wizard-launcher::after {
+  opacity: 0.18 !important;
+  transform: translateY(14px) scale(0.94) !important;
 }
 
 @media (max-width: 760px) {
   body .today-meal-utilities .today-meal-wizard-launcher::after {
-    top: -12px !important;
+    top: -42px !important;
   }
 }
 
