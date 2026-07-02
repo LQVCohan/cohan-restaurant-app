@@ -80,10 +80,20 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const hasBrandManagementAccess = hasManagerAccess && (
     isAdminRole(user) || ["owner", "admin"].includes(brandRole)
   );
+  const canOpenProfile = Boolean(user && canAccessRoute(user, "/profile"));
+  const canOpenForYou = Boolean(user && canAccessRoute(user, "/for-you"));
+  const canOpenCoupons = Boolean(user && canAccessRoute(user, "/coupons"));
+  const canOpenWallet = Boolean(user && canAccessRoute(user, "/wallet"));
+  const canOpenOrders = Boolean(user && canAccessRoute(user, "/orders"));
+  const canOpenFavorites = Boolean(user && canAccessRoute(user, "/favorites"));
+  const canOpenAddressBook = Boolean(user && canAccessRoute(user, "/address-book"));
+  const canOpenHelpCenter = Boolean(user && canAccessRoute(user, "/help-center"));
+  const shouldLoadCustomerCounts = canOpenCoupons || canOpenOrders;
+  const avatarSrc = user?.avatarUrl || user?.avatar || "";
 
   const { data: dropdownCountData } = useQuery(CUSTOMER_DROPDOWN_COUNTS, {
     variables: { userId, orderLimit: 50 },
-    skip: !userId,
+    skip: !userId || !shouldLoadCustomerCounts,
     fetchPolicy: "cache-and-network",
   });
 
@@ -218,8 +228,8 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                 aria-label="Mở menu tài khoản"
               >
                 <div className="header__avatar">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.fullName || user.username || "Ảnh đại diện"} />
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt={user.fullName || user.username || "Ảnh đại diện"} />
                   ) : (
                     avatarText
                   )}
@@ -262,69 +272,85 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                         <div className="divider"></div>
                       </>
                     )}
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto("/profile")}
-                    >
-                      <span className="header__item-label">
-                        👤 Hồ sơ cá nhân
-                      </span>
-                    </button>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto("/for-you")}
-                    >
-                      <span className="header__item-label">✨ Dành cho bạn</span>
-                    </button>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto("/coupons")}
-                    >
-                      <span className="header__item-label">🎟️ Kho Coupon</span>
-                      {counts.coupons > 0 && (
-                        <span className="header__item-badge">
-                          {counts.coupons}
+                    {canOpenProfile && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto("/profile")}
+                      >
+                        <span className="header__item-label">
+                          👤 Hồ sơ cá nhân
                         </span>
-                      )}
-                    </button>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto("/wallet")}
-                    >
-                      <span className="header__item-label">💳 Ví của tôi</span>
-                    </button>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto("/orders")}
-                    >
-                      <span className="header__item-label">
-                        📦 Đơn hàng của tôi
-                      </span>
-                      {counts.orders > 0 && (
-                        <span className="header__item-badge highlight">
-                          {counts.orders}
+                      </button>
+                    )}
+                    {canOpenForYou && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto("/for-you")}
+                      >
+                        <span className="header__item-label">✨ Dành cho bạn</span>
+                      </button>
+                    )}
+                    {canOpenCoupons && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto("/coupons")}
+                      >
+                        <span className="header__item-label">🎟️ Kho Coupon</span>
+                        {counts.coupons > 0 && (
+                          <span className="header__item-badge">
+                            {counts.coupons}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {canOpenWallet && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto("/wallet")}
+                      >
+                        <span className="header__item-label">💳 Ví của tôi</span>
+                      </button>
+                    )}
+                    {canOpenOrders && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto("/orders")}
+                      >
+                        <span className="header__item-label">
+                          📦 Đơn hàng của tôi
                         </span>
-                      )}
-                    </button>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto(`/favorites/${userId}`)}
-                    >
-                      <span className="header__item-label">❤️ Yêu thích</span>
-                    </button>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto(`/address-book/${userId}`)}
-                    >
-                      <span className="header__item-label">📍 Sổ địa chỉ</span>
-                    </button>
-                    <div className="divider"></div>
-                    <button
-                      className="header__menu-item"
-                      onClick={() => goto(`/help-center/${userId}`)}
-                    >
-                      <span className="header__item-label">❓ Trợ giúp</span>
-                    </button>
+                        {counts.orders > 0 && (
+                          <span className="header__item-badge highlight">
+                            {counts.orders}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {canOpenFavorites && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto(`/favorites/${userId}`)}
+                      >
+                        <span className="header__item-label">❤️ Yêu thích</span>
+                      </button>
+                    )}
+                    {canOpenAddressBook && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto(`/address-book/${userId}`)}
+                      >
+                        <span className="header__item-label">📍 Sổ địa chỉ</span>
+                      </button>
+                    )}
+                    {(canOpenHelpCenter || hasManagerAccess || canOpenProfile) && <div className="divider"></div>}
+                    {canOpenHelpCenter && (
+                      <button
+                        className="header__menu-item"
+                        onClick={() => goto(`/help-center/${userId}`)}
+                      >
+                        <span className="header__item-label">❓ Trợ giúp</span>
+                      </button>
+                    )}
                     <button
                       className="header__menu-item logout-btn"
                       onClick={handleLogout}
@@ -359,16 +385,13 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              aria-hidden="true"
             >
               <circle cx="9" cy="21" r="1"></circle>
               <circle cx="20" cy="21" r="1"></circle>
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
             </svg>
             {cartItemCount > 0 && (
-              <span className="badge">
-                {cartItemCount > 99 ? "99+" : cartItemCount}
-              </span>
+              <span className="badge">{cartItemCount > 99 ? "99+" : cartItemCount}</span>
             )}
           </button>
         </div>

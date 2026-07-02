@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MENU_MANAGEMENT_ACTIONS,
   canAccessMenuManagementAction,
+  canAccessRoute,
   isRestaurantScopedRole,
   isStaffOperationalRole,
 } from "./frontendRoleAccess";
@@ -23,6 +24,28 @@ describe("restaurant-scoped frontend roles", () => {
     expect(isRestaurantScopedRole("server")).toBe(true);
     expect(isRestaurantScopedRole("manager")).toBe(false);
     expect(isRestaurantScopedRole("customer")).toBe(false);
+  });
+});
+
+describe("frontend route access policy", () => {
+  it("keeps customer-only pages customer-only", () => {
+    expect(canAccessRoute("customer", "/for-you")).toBe(true);
+    expect(canAccessRoute("customer", "/wallet")).toBe(true);
+    expect(canAccessRoute("customer", "/checkout")).toBe(true);
+
+    expect(canAccessRoute("manager", "/for-you")).toBe(false);
+    expect(canAccessRoute("manager", "/wallet")).toBe(false);
+    expect(canAccessRoute("admin", "/checkout")).toBe(false);
+  });
+
+  it("keeps management and profile routes aligned with AppRouter", () => {
+    expect(canAccessRoute("manager", "/manager")).toBe(true);
+    expect(canAccessRoute("accountant", "/manager")).toBe(true);
+    expect(canAccessRoute("manager", "/orders")).toBe(true);
+
+    expect(canAccessRoute("staff", "/profile")).toBe(true);
+    expect(canAccessRoute("hr", "/profile")).toBe(false);
+    expect(canAccessRoute("accountant", "/notifications")).toBe(false);
   });
 });
 

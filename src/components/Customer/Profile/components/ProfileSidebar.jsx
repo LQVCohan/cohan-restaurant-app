@@ -5,6 +5,8 @@ import "./ProfileSidebar.scss";
 const ProfileSidebar = ({
   user,
   roleLabel,
+  showCustomerFeatures = false,
+  showOrderHistory = false,
   activeTab,
   setActiveTab,
   isEditMode,
@@ -60,7 +62,9 @@ const ProfileSidebar = ({
     user.avatarUrl ||
     `https://ui-avatars.com/api/?name=${user.fullName}&background=ff6600&color=fff`;
 
-  const progressPercent = Math.min(((user.loyaltyPoints || 0) / 1000) * 100, 100);
+  const loyaltyPoints = Number(user.loyaltyPoints || 0);
+  const progressPercent = Math.min((loyaltyPoints / 1000) * 100, 100);
+  const pointsToDiamond = Math.max(1000 - loyaltyPoints, 0);
 
   const navItems = [
     {
@@ -69,24 +73,36 @@ const ProfileSidebar = ({
       icon: "👤",
       desc: "Chỉnh sửa thông tin cá nhân",
     },
-    {
-      id: "preferences",
-      label: "Khẩu vị & Ăn uống",
-      icon: "🥗",
-      desc: "Thiết lập chế độ ăn, dị ứng",
-    },
-    {
-      id: "orders",
-      label: "Lịch sử đơn hàng",
-      icon: "🛍️",
-      desc: "Xem lại các đơn đã đặt",
-    },
-    {
-      id: "wallet",
-      label: "Ví điện tử",
-      icon: "💳",
-      desc: user?.wallet ? "Số dư, nạp ví, giao dịch" : "Tạo ví Cohan để thanh toán nhanh",
-    },
+    ...(showCustomerFeatures
+      ? [
+          {
+            id: "preferences",
+            label: "Khẩu vị & Ăn uống",
+            icon: "🥗",
+            desc: "Thiết lập chế độ ăn, dị ứng",
+          },
+        ]
+      : []),
+    ...(showOrderHistory
+      ? [
+          {
+            id: "orders",
+            label: "Lịch sử đơn hàng",
+            icon: "🛍️",
+            desc: "Xem lại các đơn đã đặt",
+          },
+        ]
+      : []),
+    ...(showCustomerFeatures
+      ? [
+          {
+            id: "wallet",
+            label: "Ví điện tử",
+            icon: "💳",
+            desc: user?.wallet ? "Số dư, nạp ví, giao dịch" : "Tạo ví Cohan để thanh toán nhanh",
+          },
+        ]
+      : []),
     {
       id: "security",
       label: "Bảo mật & Riêng tư",
@@ -140,21 +156,25 @@ const ProfileSidebar = ({
         </div>
       </div>
 
-      <div className="membership-card">
-        <div className="mem-header">
-          <span>Điểm tích lũy</span>
-          <span className="rank">GOLD MEMBER</span>
+      {showCustomerFeatures && (
+        <div className="membership-card">
+          <div className="mem-header">
+            <span>Điểm tích lũy</span>
+            <span className="rank">GOLD MEMBER</span>
+          </div>
+          <div className="mem-points">
+            {loyaltyPoints} <span>pts</span>
+          </div>
+          <div className="mem-progress">
+            <div className="bar" style={{ width: `${progressPercent}%` }}></div>
+          </div>
+          <p className="mem-note">
+            {pointsToDiamond > 0
+              ? `Cần thêm ${pointsToDiamond} điểm để lên hạng Diamond`
+              : "Bạn đã đạt mốc Diamond"}
+          </p>
         </div>
-        <div className="mem-points">
-          {user.loyaltyPoints || 0} <span>pts</span>
-        </div>
-        <div className="mem-progress">
-          <div className="bar" style={{ width: `${progressPercent}%` }}></div>
-        </div>
-        <p className="mem-note">
-          Cần thêm {1000 - (user.loyaltyPoints || 0)} điểm để lên hạng Diamond
-        </p>
-      </div>
+      )}
 
       <nav className="profile-nav-pro">
         {navItems.map((item) => (

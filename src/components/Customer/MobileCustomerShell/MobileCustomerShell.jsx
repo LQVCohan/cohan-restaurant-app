@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   Home,
+  LayoutDashboard,
   ReceiptText,
   ShoppingCart,
   Store,
@@ -10,6 +11,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import { canAccessRoute } from "@/utils/frontendRoleAccess";
 import CustomerNotificationBell from "@/components/Customer/common/CustomerNotificationBell";
 import "./MobileCustomerShell.scss";
 
@@ -17,7 +19,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Trang chủ", icon: Home, end: true },
   { to: "/restaurants", label: "Nhà hàng", icon: Store },
   { to: "/cus-menu", label: "Thực đơn", icon: UtensilsCrossed },
-  { to: "/orders", label: "Đơn hàng", icon: ReceiptText },
+  { to: "/orders", label: "Đơn hàng", icon: ReceiptText, requiresAuth: true },
 ];
 
 const resolveTitle = (pathname) => {
@@ -44,7 +46,22 @@ export default function MobileCustomerShell({
   const location = useLocation();
   const { user } = useContext(AuthContext) || {};
   const isHome = location.pathname === "/";
-  const accountPath = user ? "/profile" : "/login";
+  const hasManagerAccess = Boolean(user && canAccessRoute(user, "/manager"));
+  const canOpenProfile = Boolean(user && canAccessRoute(user, "/profile"));
+  const accountPath = !user
+    ? "/login"
+    : canOpenProfile
+      ? "/profile"
+      : hasManagerAccess
+        ? "/manager"
+        : "/login";
+  const accountLabel = accountPath === "/manager" ? "Quản lý" : "Tài khoản";
+  const AccountIcon = accountPath === "/manager" ? LayoutDashboard : UserRound;
+  const showManagerShortcut = hasManagerAccess && accountPath !== "/manager";
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.requiresAuth || Boolean(user && canAccessRoute(user, item.to)),
+  );
+  const navItemCount = visibleNavItems.length + 1;
 
   return (
     <div className="mobile-customer-shell">
@@ -64,6 +81,17 @@ export default function MobileCustomerShell({
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {showManagerShortcut && (
+            <button
+              type="button"
+              className="mobile-customer-shell__cart"
+              onClick={() => navigate("/manager")}
+              aria-label="Mở trang quản lý"
+              title="Trang quản lý"
+            >
+              <LayoutDashboard aria-hidden="true" />
+            </button>
+          )}
           <CustomerNotificationBell />
           <button
             type="button"
@@ -83,8 +111,12 @@ export default function MobileCustomerShell({
 
       <main className="mobile-customer-shell__main">{children}</main>
 
-      <nav className="mobile-customer-shell__nav" aria-label="Điều hướng khách hàng">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+      <nav
+        className="mobile-customer-shell__nav"
+        aria-label="Điều hướng khách hàng"
+        style={{ gridTemplateColumns: `repeat(${navItemCount}, minmax(0, 1fr))` }}
+      >
+        {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -103,8 +135,8 @@ export default function MobileCustomerShell({
             `mobile-customer-shell__nav-item${isActive ? " is-active" : ""}`
           }
         >
-          <UserRound aria-hidden="true" />
-          <span>Tài khoản</span>
+          <AccountIcon aria-hidden="true" />
+          <span>{accountLabel}</span>
         </NavLink>
       </nav>
     </div>

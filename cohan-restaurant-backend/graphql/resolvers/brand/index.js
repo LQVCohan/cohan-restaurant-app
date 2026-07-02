@@ -43,7 +43,7 @@ async function assertCanWriteMembership(actor, membership, nextRole) {
   if (isSystemAdmin(actor) || await isBrandOwner(actor, membership.brandId)) return;
   if (membership.role === "owner" || nextRole === "owner") throw forbidden("Only brand owner can change owner membership");
 }
-async function ownerRole() { return await Role.findOne({ $or: [{ slug: "owner" }, { name: /^owner$/i }, { slug: "manager" }, { name: /^manager$/i }] }); }
+async function ownerRole() { return Role.findOne({ $or: [{ slug: "manager" }, { name: /^manager$/i }] }); }
 const publicUser = async (id) => { const u = await User.findById(id).populate("role").lean({ virtuals: true }); return sanitizeUserForClient({ ...u, roleName: roleName(u) }); };
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
 const parentId = (p) => p._id || p.id;

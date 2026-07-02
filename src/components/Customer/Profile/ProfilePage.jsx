@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileInfo from "./components/ProfileInfo";
@@ -9,6 +9,7 @@ import FoodPreferences from "./components/FoodPreferences";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import useBrandManagement from "@/hooks/useBrandManagement";
 import { getCombinedRoleLabel } from "@/lib/userRoleDisplay";
+import { canAccessRoute, isCustomerRole } from "@/utils/frontendRoleAccess";
 import "./ProfilePage.scss";
 import "./ProfileVisibilityPolish.scss";
 
@@ -86,6 +87,18 @@ const ProfilePage = () => {
     }),
     [activeBrand, activeMembership, user],
   );
+  const showCustomerFeatures = isCustomerRole(user);
+  const showOrderHistory = Boolean(user && canAccessRoute(user, "/orders"));
+
+  useEffect(() => {
+    const allowedTabs = new Set([
+      "info",
+      "security",
+      ...(showCustomerFeatures ? ["preferences", "wallet"] : []),
+      ...(showOrderHistory ? ["orders"] : []),
+    ]);
+    if (!allowedTabs.has(activeTab)) setActiveTab("info");
+  }, [activeTab, showCustomerFeatures, showOrderHistory]);
 
   const handleAvatarChange = useCallback((file) => {
     setTempAvatarFile(file);
@@ -113,6 +126,8 @@ const ProfilePage = () => {
         <ProfileSidebar
           user={user}
           roleLabel={roleLabel}
+          showCustomerFeatures={showCustomerFeatures}
+          showOrderHistory={showOrderHistory}
           activeTab={activeTab}
           setActiveTab={(tab) => {
             setActiveTab(tab);
@@ -132,9 +147,9 @@ const ProfilePage = () => {
               newAvatarFile={tempAvatarFile}
             />
           )}
-          {activeTab === "preferences" && <FoodPreferences />}
-          {activeTab === "orders" && <OrderHistory user={user} />}
-          {activeTab === "wallet" && <ProfileWallet user={user} refetchUser={handleRefetchUser} />}
+          {showCustomerFeatures && activeTab === "preferences" && <FoodPreferences />}
+          {showOrderHistory && activeTab === "orders" && <OrderHistory user={user} />}
+          {showCustomerFeatures && activeTab === "wallet" && <ProfileWallet user={user} refetchUser={handleRefetchUser} />}
           {activeTab === "security" && <SecuritySettings />}
         </section>
       </div>
