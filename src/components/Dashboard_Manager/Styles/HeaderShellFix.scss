@@ -14,7 +14,7 @@
 
   > .header .header__content {
     display: grid !important;
-    grid-template-columns: minmax(360px, 1fr) minmax(320px, 400px) max-content;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px) max-content;
     align-items: center !important;
     column-gap: clamp(0.85rem, 1.3vw, 1.35rem) !important;
     width: calc(100% - var(--manager-page-gutter) - var(--manager-page-gutter));
@@ -33,8 +33,8 @@
   .header__center {
     grid-column: 1;
     position: static !important;
-    justify-self: stretch;
-    width: 100% !important;
+    justify-self: center !important;
+    width: min(100%, 560px) !important;
     max-width: 560px !important;
     margin: 0 !important;
     transform: none !important;
@@ -289,7 +289,13 @@
 @media (max-width: 1320px) {
   .manager-layout__header {
     > .header .header__content {
-      grid-template-columns: minmax(280px, 1fr) minmax(220px, 300px) max-content;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) max-content;
+    }
+
+    .header__center {
+      justify-self: center !important;
+      width: min(100%, 520px) !important;
+      max-width: 520px !important;
     }
 
     .time-display {
