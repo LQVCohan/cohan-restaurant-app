@@ -2,19 +2,30 @@ import { useEffect, useState } from "react";
 
 const MOBILE_QUERY = "(max-width: 760px)";
 
-const getMatches = () =>
-  typeof window !== "undefined" && window.matchMedia(MOBILE_QUERY).matches;
+const getMediaQuery = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia(MOBILE_QUERY)
+    : null;
+
+const getMatches = () => getMediaQuery()?.matches ?? false;
 
 export default function useIsMobile() {
   const [isMobile, setIsMobile] = useState(getMatches);
 
   useEffect(() => {
-    const media = window.matchMedia(MOBILE_QUERY);
-    const update = () => setIsMobile(media.matches);
+    const media = getMediaQuery();
+    if (!media) return undefined;
 
+    const update = () => setIsMobile(media.matches);
     update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+
+    media.addListener?.(update);
+    return () => media.removeListener?.(update);
   }, []);
 
   return isMobile;
