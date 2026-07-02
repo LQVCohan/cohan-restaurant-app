@@ -148,10 +148,16 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
 
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <button className="logo-icon logo-icon-button" type="button" onClick={onToggle} aria-label={isOpen ? "Thu gọn menu quản lý" : "Mở menu quản lý"} aria-expanded={isOpen}>🍽️</button>
-          {isOpen ? (
-            <button className="logo-text logo-text-button" type="button" onClick={onToggle} aria-label="Thu gọn menu quản lý" aria-expanded="true">Cohan Manager</button>
-          ) : null}
+          <button
+            className="logo-icon logo-icon-button"
+            type="button"
+            onClick={onToggle}
+            aria-label={isOpen ? "Thu gọn menu quản lý" : "Mở menu quản lý"}
+            aria-expanded={isOpen}
+            title="Cohan Manager"
+          >
+            🍽️
+          </button>
         </div>
         <button className="sidebar-close" onClick={onClose} type="button" aria-label="Đóng thanh điều hướng">✕</button>
       </div>
