@@ -11,6 +11,7 @@ import { useCustomerCartActions } from "../hooks/useCustomerCartActions";
 import useIsMobile from "../hooks/useIsMobile";
 import { OPEN_CUSTOMER_CART_EVENT } from "../utils/cartEvents";
 import "../styles/MobileCustomerPolish.scss";
+import "../styles/MobileCustomerFloatingControls.scss";
 
 export default function MainLayout({ children }) {
   const [isCartOpen, setIsCartOpen] = React.useState(false);
