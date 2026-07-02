@@ -92,19 +92,56 @@
   display: none !important;
 }
 
-/* Align the approved bubble tail with the mascot's raised hand. */
+/* Closed state: align the approved bubble tail with the mascot's raised hand. */
 body .today-meal-utilities .today-meal-wizard-launcher::after {
   top: -72px !important;
 }
 
+/* Open state: the utility menu becomes the new speech bubble. */
+body .today-meal-utilities__menu {
+  left: clamp(112px, 8vw, 132px) !important;
+  bottom: 68px !important;
+  width: min(390px, calc(100vw - 136px)) !important;
+  border-radius: 22px 22px 22px 10px !important;
+  transform-origin: left bottom !important;
+}
+
+body .today-meal-utilities__menu::after {
+  content: "";
+  position: absolute;
+  left: -13px;
+  bottom: 34px;
+  width: 26px;
+  height: 26px;
+  border-left: 1px solid rgba(255, 102, 0, 0.14);
+  border-bottom: 1px solid rgba(255, 102, 0, 0.14);
+  border-bottom-left-radius: 7px;
+  background: rgba(255, 250, 244, 0.96);
+  box-shadow: -8px 8px 18px rgba(92, 45, 12, 0.08);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
 body .today-meal-utilities.is-open .today-meal-wizard-launcher::after {
-  opacity: 0.18 !important;
-  transform: translateY(14px) scale(0.94) !important;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
 
 @media (max-width: 760px) {
   body .today-meal-utilities .today-meal-wizard-launcher::after {
     top: -42px !important;
+  }
+
+  body .today-meal-utilities__menu {
+    left: max(12px, env(safe-area-inset-left)) !important;
+    bottom: calc(206px + env(safe-area-inset-bottom)) !important;
+    width: min(310px, calc(100vw - 24px)) !important;
+    border-radius: 20px !important;
+  }
+
+  body .today-meal-utilities__menu::after {
+    display: none;
   }
 }
 
