@@ -26,6 +26,9 @@ const activeUserDoc = {
   email: "manager@example.com",
   fullName: "Manager User",
   status: "active",
+  emailVerified: true,
+  phoneVerified: true,
+  forcePasswordChange: false,
   userType: "staff",
   provider: "local",
   refRestaurants: ["restaurant-1"],
@@ -85,6 +88,9 @@ describe("resolveAuthenticatedUserFromRequest", () => {
     expect(userMocks.User.findById).toHaveBeenCalledWith("user-1");
     expect(user.roleName).toBe("manager");
     expect(user.restaurantId).toBe("restaurant-1");
+    expect(user.emailVerified).toBe(true);
+    expect(user.phoneVerified).toBe(true);
+    expect(user.forcePasswordChange).toBe(false);
     expect(user.permissions).toEqual(activeUserDoc.role.permissions);
     expect(user.effectivePermissions).toEqual([
       ...activeUserDoc.role.parentRole.permissions,
