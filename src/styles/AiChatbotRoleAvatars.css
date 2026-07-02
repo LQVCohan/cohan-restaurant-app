@@ -1,0 +1,103 @@
+:root {
+  --cohan-staff-avatar: url("data:image/webp;base64,UklGRowFAABXRUJQVlA4IIAFAABwGACdASpAAEAAPok0lkclIqIhMBn7AKARCWwAsSVBUR6O5md7F1A5DdZt4+sTbfeYD9ef2A92b0H+gB+xvWP+gB+0Xpl/t38IX7Vfut7U///rWXN379lUkxb+cwPgdpccgHotaAfqf2DVjP8TxDBited/Hf/f8k1BtTfgt6fy5yxZK5v5pOlzmkbYze8ncCvBvZaGqjkp67K+XH38Vu2Lco33mvJo0xGkvl0/IYifJ0Zbh0tNlMpB/mOkGAZi3a5O9cJbun6L1BYRIgAA/v9qFcRFYX5HczL5gbWNLTGnAozbdW0XuPmzpf/XVVM1tAqkrR2fj6MSDBi3JJMM161lOu+TEhYYnrsSLZH9ObD0uxVq/9jvXdV2ZV8aJ6yYXtoVqWcV36BwpZiRDj0QQTaj/h9EFWWtb8IKlsRhuGSpeZB5eP0GCMN2FDJgyLdN1/8pCwTl2Qi2WnY4McV3ZZszBQwsUj8KUdueYd8/TUFBS8tx1QhduWa+OSn9r3QdCMPsrb0+p9OOydo3jaAoeTqZgCMlqolNO6yD41X2xeYfn913DIOIyN6nQadG1grdxZPqYH3hX1Eq2I8unwZZS4INcKcmQsOVwmKPN2vWnpi3Z7DI/WLmE6oNewVD8FF/5vcRJRnGJR8XwhnYs7zXH+2nYeGQuBbK0sB5+bFyfcl5ssMCwFQ37jremNr1SFPXHfD54i9Tw4OHVxrCv4JaKTXinN8CSUHZPNpqUs1UNyEOldPUr5GGvhlQ+7etUIL0zWxNXJUGabOy/fz82N1+zky6tJNIhvipO7RdHJivDl2nvdDe0tFSVJTFIGthTnsojPo2rvhQIrx9jtMNMenX/1vxPwO7BSYJTJ17+rggsP0hGHuJXfdL5GP3rvYjT/1H5q1gBhVBLrgTxaXtiXqVKNz66cdiTVeGnGXGk00hn+h6EpqW19gGxmsi/AlnPWTShmfYKAgIYsOXR9aDoUc8OSFjP6ZTwjqwCTM03MtsJ/fzjbP2Pw6gwoPFrQrVneikrja0+skL23Sy+gKNUWCVkI7D26CZzV07mXXi1XgMAPnz6OEqJxWYirC27VIAqyegmem/oGUVa8HIT8exYQf44YcwSCM7ZSmq2p353Xpg3cembA/SP9bj9qhO6OJ/iXpfvNtmeJvZX92r9/njxI8PRFHao4sX5/Dn+KxtNRerse/PleQLgg/6fHr28OJrTSp6NYBaGMWi3Fmz2D7RKawN2V18i01NF/0Vy+Ed5b+KBGdqFNa7erzoR/liSpsGuq4slOpDjDe7YKJu2qJGkqzPq716bo8EW5SGUb06ctJ0SCIg2pTL1L11nUDkVI7OLcB7ZaBr8tnvU8k6YggvBiL4tRrqfM7SLqDQoAMV3DPXjrP81kibx0HYd+xblQo6PEGH9MkUe/qOIzMkBop3cY0CCskB7St/hmFiBKw/soYMSiTDnRDBlU/ikFnJ+u4tbAxYEVcdp2yqDPww5AOzzQPOC4Dldme3FZ//Vl0yszSr02rAWCE6qNmdjON+GWO6vnDtssdombgr6aiEqVp3hUbdFo7+/Blv+pgtKuiHZU9+VEj/w+jqPqC6A5KYzvQb3lQiH+os5WLjooJrKAd2OjYjbtY6MGBFEtwfRdxT7h+O7UoaJrhYER8BHMMSwBJy4t+Is6CEiW1WmYZCsYSAZy9kXM9MFAt5/NVTdOhLNdsOHt/xACBthE/sVClwLVDh6Y1DXkJ4R1rZigqhrLy4aXY/32dySKterRvi9fLuxtR2ad4+PVIW8ULdfeQ6U8qxiC8evPWq7qHonV0h8BA5fZQqmZaZEtZM/VLjAQuE2MhfAFQD8qYGkpqg8Oq7v+9EiR0C3hKX51hYa4JQhtaT5UYAAAAA");
+}
+
+.ai-chatbot-avatar {
+  width: 44px !important;
+  height: 44px !important;
+  flex: 0 0 44px !important;
+}
+
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message),
+.ai-chatbot-message.staff {
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  align-items: end !important;
+  column-gap: 8px !important;
+  max-width: 92% !important;
+}
+
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message)::before,
+.ai-chatbot-message.staff::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  align-self: end;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.14);
+}
+
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message)::before {
+  background-color: #ff6a00;
+  background-image: var(--cohan-ai-chef-avatar);
+}
+
+.ai-chatbot-message.staff::before {
+  background-color: #fff7ed;
+  background-image: var(--cohan-staff-avatar);
+  box-shadow: 0 6px 14px rgba(21, 128, 61, 0.16);
+}
+
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message) > p,
+.ai-chatbot-message.staff > p,
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message) > .ai-chatbot-note,
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message) > .ai-chatbot-actions,
+.ai-chatbot-message.staff > .ai-chatbot-note,
+.ai-chatbot-message.staff > .ai-chatbot-actions,
+.ai-chatbot-message.staff > small {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.ai-chatbot-message.staff > small {
+  margin: 0 0 3px 2px !important;
+}
+
+.ai-chatbot-message.assistant:not(.loading):not(.ai-chatbot-streaming-message) > p,
+.ai-chatbot-message.staff > p {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ai-chatbot-message-avatar--assistant,
+.ai-chatbot-message-avatar--staff,
+.ai-chatbot-streaming-message > .ai-chatbot-message-avatar--assistant {
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+}
+
+.ai-chatbot-message.loading {
+  grid-template-columns: 32px 50px !important;
+  column-gap: 8px !important;
+  width: 90px !important;
+  max-width: 90px !important;
+  min-height: 34px !important;
+}
+
+.ai-chatbot-message.loading::before {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.ai-chatbot-message.loading::after {
+  left: 40px !important;
+  width: 50px !important;
+  height: 32px !important;
+}
+
+.ai-chatbot-message.loading > span:not([class]) {
+  bottom: 13px !important;
+}
+
+.ai-chatbot-message.loading > span:not([class]):nth-child(1) { left: 52px !important; }
+.ai-chatbot-message.loading > span:not([class]):nth-child(2) { left: 61px !important; }
+.ai-chatbot-message.loading > span:not([class]):nth-child(3) { left: 70px !important; }
