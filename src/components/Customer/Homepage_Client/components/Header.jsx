@@ -162,9 +162,16 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   return (
     <header className="header">
       <div className="header__container">
-        <button className="header__logo" onClick={() => goto("/")}>
-          <div className="header__logo-icon">🍽️</div>
-          <h1 className="header__logo-text">Cohan</h1>
+        <button
+          className="header__logo"
+          onClick={() => goto("/")}
+          aria-label="Về trang chủ Cohan"
+        >
+          <img
+            className="header__logo-image"
+            src="/cohan-wordmark.svg"
+            alt="Cohan"
+          />
         </button>
 
         <nav className="header__nav">
@@ -337,7 +344,12 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             </button>
           )}
 
-          <button className="header__cart-btn" onClick={onCartToggle}>
+          <button
+            className={`header__cart-btn ${cartItemCount > 0 ? "has-items" : ""}`}
+            onClick={onCartToggle}
+            aria-label={`Mở giỏ hàng${cartItemCount > 0 ? `, ${cartItemCount} sản phẩm` : ""}`}
+            title="Giỏ hàng"
+          >
             <svg
               width="20"
               height="20"
@@ -347,13 +359,16 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <circle cx="9" cy="21" r="1"></circle>
               <circle cx="20" cy="21" r="1"></circle>
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
             </svg>
             {cartItemCount > 0 && (
-              <span className="badge">{cartItemCount}</span>
+              <span className="badge">
+                {cartItemCount > 99 ? "99+" : cartItemCount}
+              </span>
             )}
           </button>
         </div>
