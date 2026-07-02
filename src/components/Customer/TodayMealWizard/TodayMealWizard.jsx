@@ -159,6 +159,7 @@ const LABELS = {
 
 const readInitialMinimized = () => {
   if (typeof window === "undefined") return false;
+  if (window.matchMedia?.("(max-width: 760px)").matches) return true;
   try {
     return window.localStorage.getItem(STORAGE_KEY) === "1";
   } catch {

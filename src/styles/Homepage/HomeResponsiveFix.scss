@@ -366,3 +366,117 @@
     transform: none !important;
   }
 }
+
+/* Mobile Demo Mode: one intentional customer-home composition instead of desktop patches. */
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .home--mobile-demo {
+    --mobile-gutter: 14px;
+    --mobile-section-gap: 18px;
+    background: linear-gradient(180deg, #fff7ef 0%, #fffaf4 46%, #ffffff 100%);
+    overflow-x: clip;
+  }
+
+  .home--mobile-demo .home__main-content {
+    display: grid;
+    gap: var(--mobile-section-gap);
+    padding-bottom: 22px;
+  }
+
+  .home--mobile-demo .hero,
+  .home--mobile-demo .restaurant-grid,
+  .home--mobile-demo .categories,
+  .home--mobile-demo .dish-grid,
+  .home--mobile-demo .how-it-works {
+    margin: 0;
+    padding: 0 var(--mobile-gutter) !important;
+  }
+
+  .home--mobile-demo .home-for-you,
+  .home--mobile-demo .home-shortcuts {
+    display: none;
+  }
+
+  .home--mobile-demo .hero__container,
+  .home--mobile-demo .restaurant-grid__container,
+  .home--mobile-demo .categories__container,
+  .home--mobile-demo .dish-grid__container,
+  .home--mobile-demo .how-it-works__container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: auto;
+  }
+
+  .home--mobile-demo .hero__container {
+    min-height: 0 !important;
+    padding: 18px 14px 16px !important;
+  }
+
+  .home--mobile-demo .restaurant-grid__header,
+  .home--mobile-demo .categories__header,
+  .home--mobile-demo .dish-grid__header,
+  .home--mobile-demo .how-it-works__header {
+    margin-bottom: 12px !important;
+    text-align: left !important;
+  }
+
+  .home--mobile-demo .restaurant-grid__title,
+  .home--mobile-demo .categories__title,
+  .home--mobile-demo .dish-grid__title,
+  .home--mobile-demo .how-it-works__title {
+    font-size: clamp(1.35rem, 6vw, 1.8rem) !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.035em !important;
+  }
+
+  .home--mobile-demo .restaurant-grid__grid,
+  .home--mobile-demo .dish-grid__grid,
+  .home--mobile-demo .how-it-works__grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .home--mobile-demo .categories__grid {
+    display: flex !important;
+    gap: 10px !important;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-snap-type: x proximity;
+  }
+
+  .home--mobile-demo .category-card {
+    flex: 0 0 132px;
+    min-height: 112px !important;
+    scroll-snap-align: start;
+  }
+
+  .ai-chatbot-widget {
+    right: max(12px, env(safe-area-inset-right)) !important;
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .ai-chatbot-toggle {
+    width: 54px !important;
+    height: 54px !important;
+    max-width: 54px;
+    max-height: 54px;
+  }
+
+  .ai-chatbot-toggle span {
+    display: none;
+  }
+
+  .ai-chatbot-panel {
+    width: calc(100vw - 24px) !important;
+    height: min(72dvh, 620px) !important;
+    max-height: calc(100dvh - 96px);
+    border-radius: 22px !important;
+  }
+}

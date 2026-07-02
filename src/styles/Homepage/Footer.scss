@@ -331,3 +331,66 @@ $surface: rgba(255, 255, 255, 0.82);
     transition: none !important;
   }
 }
+
+@media (max-width: 760px) {
+  .footer-saas {
+    padding: 28px 0 calc(86px + env(safe-area-inset-bottom));
+  }
+
+  .footer-saas .footer-container {
+    padding: 0 16px;
+  }
+
+  .footer-saas .footer-top {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .footer-saas .brand-col .brand-desc {
+    max-width: none;
+    margin-bottom: 12px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .footer-saas .links-col ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .footer-saas .links-col li {
+    margin: 0 !important;
+  }
+
+  .footer-saas .links-col li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .footer-saas .newsletter-col .newsletter-form,
+  .footer-saas .newsletter-col .app-download {
+    display: none;
+  }
+
+  .footer-saas .newsletter-col .newsletter-text {
+    margin-bottom: 0;
+  }
+
+  .footer-saas .footer-divider {
+    margin-bottom: 16px;
+  }
+
+  .footer-saas .footer-bottom,
+  .footer-saas .footer-bottom .bottom-right,
+  .footer-saas .footer-bottom .contact-info {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .footer-saas .footer-bottom .bottom-right {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}

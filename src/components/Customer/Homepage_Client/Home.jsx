@@ -84,7 +84,7 @@ const Home = () => {
   };
 
   return (
-    <div className="home" ref={homeMotionRef}>
+    <div className="home home--mobile-demo" ref={homeMotionRef}>
       <main className="home__main-content">
         <HeroSection onSearch={handleSearch} />
 
