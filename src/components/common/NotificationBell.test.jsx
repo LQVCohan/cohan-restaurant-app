@@ -3,6 +3,34 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import NotificationBell from "./NotificationBell";
 
+const gsapMocks = vi.hoisted(() => {
+  const timeline = { fromTo: vi.fn() };
+  timeline.fromTo.mockReturnValue(timeline);
+
+  const contextRevert = vi.fn();
+  const mediaRevert = vi.fn();
+  const matchMediaAdd = vi.fn((_query, callback) => callback());
+  const gsap = {
+    matchMedia: vi.fn(() => ({ add: matchMediaAdd, revert: mediaRevert })),
+    context: vi.fn((callback) => {
+      callback();
+      return { revert: contextRevert };
+    }),
+    set: vi.fn(),
+    timeline: vi.fn(() => timeline),
+  };
+  const loadGsapRuntime = vi.fn(() => Promise.resolve(gsap));
+
+  return {
+    contextRevert,
+    gsap,
+    loadGsapRuntime,
+    matchMediaAdd,
+    mediaRevert,
+    timeline,
+  };
+});
+
 const markNotificationRead = vi.fn();
 const markAllNotificationsRead = vi.fn();
 const refetchNotifications = vi.fn();
@@ -10,6 +38,11 @@ const useCommunicationMock = vi.fn();
 
 vi.mock("@/hooks/useCommunication", () => ({
   default: (...args) => useCommunicationMock(...args),
+}));
+
+vi.mock("@/utils/gsapRuntime", () => ({
+  default: gsapMocks.loadGsapRuntime,
+  loadGsapRuntime: gsapMocks.loadGsapRuntime,
 }));
 
 const hookPayload = {
@@ -39,6 +72,22 @@ describe("NotificationBell", () => {
     expect(screen.getByText("Có báo cáo mới")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Có báo cáo mới"));
     await waitFor(() => expect(markNotificationRead).toHaveBeenCalledWith({ variables: { id: "n1" } }));
+  });
+
+  it("animates the opened panel and rows with a scoped GSAP timeline", async () => {
+    render(<NotificationBell restaurantId="res1" title="Thông báo review" />);
+    await waitFor(() => expect(gsapMocks.loadGsapRuntime).toHaveBeenCalled());
+    await Promise.resolve();
+
+    fireEvent.click(screen.getByLabelText("Mở thông báo"));
+
+    await waitFor(() => expect(gsapMocks.gsap.timeline).toHaveBeenCalled());
+    expect(gsapMocks.matchMediaAdd).toHaveBeenCalledWith(
+      "(prefers-reduced-motion: no-preference)",
+      expect.any(Function),
+    );
+    expect(gsapMocks.gsap.context).toHaveBeenCalled();
+    expect(gsapMocks.timeline.fromTo).toHaveBeenCalledTimes(2);
   });
 
   it("uses injected customer state without enabling another notification query", async () => {
