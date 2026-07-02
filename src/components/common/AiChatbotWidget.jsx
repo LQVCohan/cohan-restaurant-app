@@ -217,17 +217,13 @@ const PUBLIC_RESTAURANT_BY_ID_FOR_AI = gql`
 const MENU_ITEM_LIVE_STATE_FOR_AI = gql`
   query AiMenuItemLiveState($input: MenuItemLiveStateInput!) {
     menuItemLiveState(input: $input) {
-      viewerCount
-      maxAvailableQty
-      outOfStock
+      menuItemId
+      restaurantId
+      servingVariantKey
       blocked
-      blockedUntil
-      abuseWarning
-      policyMessage
-      holdTtlSeconds
-      myCartQty
-      myHoldExpiresAt
-      reservedCartQty
+      maxAvailableQty
+      viewerCount
+      outOfStock
     }
   }
 `;
@@ -512,10 +508,11 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const { data: aiLiveStateData } = useQuery(MENU_ITEM_LIVE_STATE_FOR_AI, {
     variables: {
       input: {
-        restaurantId: selectedAiMenuItem?.restaurantId,
+        itemType: "menuItem",
         menuItemId: selectedAiMenuItem?.id,
-        servingVariantKey: selectedVariantKey,
-        userId: user?.id,
+        restaurantId: selectedAiMenuItem?.restaurantId,
+        servingVariantKey: selectedVariantKey || undefined,
+        userId: user?.id || undefined,
       },
     },
     skip:
