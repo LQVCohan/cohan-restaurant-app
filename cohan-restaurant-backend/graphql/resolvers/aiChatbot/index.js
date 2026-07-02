@@ -54,6 +54,30 @@ import {
   deleteRestaurantAiChatbotEvaluationCase,
 } from "../../../src/services/ai/restaurantChatbotEvaluation.service.js";
 
+const isManagerNavigationRequest = (message = "") =>
+  /(mở|mo|đi tới|di toi|vào|vao)\s+(cho\s+(tôi|toi)\s+)?(trang\s+)?(quản lý|quan ly|dashboard)/i.test(String(message || ""));
+
+export const sanitizeAiChatbotResponse = (response = {}, message = "") => {
+  const intent = String(response?.intent || "general");
+  if (intent === "menu") return response;
+
+  const sources = (Array.isArray(response?.sources) ? response.sources : [])
+    .filter((source) => source?.type !== "menuItem");
+  const actions = (Array.isArray(response?.actions) ? response.actions : [])
+    .filter((action) => !String(action?.href || "").startsWith("/food/"))
+    .map((action) => (
+      intent === "managerFeatureHelp" && action?.href === "/manager"
+        ? { ...action, label: "Mở trang quản lý nhà hàng" }
+        : action
+    ));
+
+  const answer = intent === "managerFeatureHelp" && isManagerNavigationRequest(message)
+    ? "Bạn có thể mở trang quản lý nhà hàng bằng nút bên dưới."
+    : response?.answer;
+
+  return { ...response, answer, actions, sources };
+};
+
 const Query = {
   aiChatbotGuestReplies: async (_, { input }, ctx) => {
     try {
@@ -95,7 +119,7 @@ const Query = {
 const Mutation = {
   askAiChatbot: async (_, { input }, ctx) => {
     try {
-      return await handleRestaurantChatbotMessage({
+      const response = await handleRestaurantChatbotMessage({
         message: input?.message,
         restaurantId: input?.restaurantId,
         history: input?.history || [],
@@ -105,6 +129,7 @@ const Mutation = {
         user: ctx?.user || null,
         clientIp: ctx?.request?.ip || ctx?.reply?.request?.ip || "",
       });
+      return sanitizeAiChatbotResponse(response, input?.message);
     } catch (err) {
       throw new GraphQLError(err?.message || "Không thể xử lý tin nhắn chatbot", {
         extensions: { code: err?.code || (err?.statusCode === 400 ? "BAD_USER_INPUT" : "AI_CHATBOT_FAILED") },
