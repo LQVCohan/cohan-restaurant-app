@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { Search } from "lucide-react";
 import { searchData } from "../../data/searchData";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import "./SearchBox.scss";
@@ -15,14 +16,12 @@ const SearchBox = ({
   const inputRef = useRef(null);
   const searchSource = Array.isArray(items) && items.length > 0 ? items : searchData;
 
-  // Keyboard shortcuts
   useKeyboardShortcuts({
     "ctrl+k": () => {
       inputRef.current?.focus();
     },
   });
 
-  // Search function
   const performSearch = (searchQuery) => {
     if (!searchQuery || searchQuery.length < 1) {
       return [];
@@ -34,27 +33,23 @@ const SearchBox = ({
     searchSource.forEach((item) => {
       let score = 0;
 
-      // Check title match
       const titleLower = String(item.title || "").toLowerCase();
       if (titleLower.includes(normalizedQuery)) {
         score += titleLower.indexOf(normalizedQuery) === 0 ? 100 : 50;
       }
 
-      // Check description match
       const descriptionLower = String(item.description || "").toLowerCase();
       if (descriptionLower.includes(normalizedQuery)) {
         score += 25;
       }
 
-      // Check category match
       const categoryLower = String(item.category || "").toLowerCase();
       if (categoryLower.includes(normalizedQuery)) {
         score += 15;
       }
 
-      // Check keywords
       const keywords = Array.isArray(item.keywords) ? item.keywords : [];
-      if (keywords.some((k) => String(k).toLowerCase().includes(normalizedQuery))) {
+      if (keywords.some((keyword) => String(keyword).toLowerCase().includes(normalizedQuery))) {
         score += 35;
       }
 
@@ -71,7 +66,6 @@ const SearchBox = ({
     return searchResults.sort((a, b) => b.score - a.score).slice(0, 10);
   };
 
-  // Highlight matching text
   const renderHighlightedText = (text, searchQuery) => {
     const safeText = String(text || "");
     if (!searchQuery) return safeText;
@@ -87,7 +81,6 @@ const SearchBox = ({
     );
   };
 
-  // Handle search input
   const handleSearch = (event) => {
     const searchQuery = event.target.value;
     setQuery(searchQuery);
@@ -95,15 +88,9 @@ const SearchBox = ({
     const searchResults = performSearch(searchQuery);
     setResults(searchResults);
     setSelectedIndex(-1);
-
-    if (searchQuery.length > 0) {
-      setShowResults(true);
-    } else {
-      setShowResults(false);
-    }
+    setShowResults(searchQuery.length > 0);
   };
 
-  // Handle keyboard navigation
   const handleKeyDown = (event) => {
     if (!showResults) return;
 
@@ -112,28 +99,26 @@ const SearchBox = ({
         event.preventDefault();
         setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
         break;
-
       case "ArrowUp":
         event.preventDefault();
         setSelectedIndex((prev) => Math.max(prev - 1, -1));
         break;
-
       case "Enter":
         event.preventDefault();
         if (selectedIndex >= 0 && selectedIndex < results.length) {
           selectResult(results[selectedIndex]);
         }
         break;
-
       case "Escape":
         event.preventDefault();
         setShowResults(false);
         inputRef.current?.blur();
         break;
+      default:
+        break;
     }
   };
 
-  // Select a result
   const selectResult = (result) => {
     setQuery("");
     setShowResults(false);
@@ -149,7 +134,6 @@ const SearchBox = ({
     }
   };
 
-  // Group results by category
   const groupedResults = results.reduce((groups, result) => {
     const category = result.category;
     if (!groups[category]) {
@@ -162,7 +146,7 @@ const SearchBox = ({
   return (
     <div className="search-container">
       <div className="search-box">
-        <span className="search-icon">🔍</span>
+        <Search className="search-icon" size={17} strokeWidth={2} aria-hidden="true" />
         <input
           ref={inputRef}
           type="text"
@@ -184,7 +168,7 @@ const SearchBox = ({
           <div className="search-results-content">
             {results.length === 0 ? (
               <div className="search-no-results">
-                <div className="search-no-results-icon">🔍</div>
+                <Search className="search-no-results-icon" size={28} strokeWidth={1.8} aria-hidden="true" />
                 <div>
                   Không tìm thấy kết quả cho "<strong>{query}</strong>"
                 </div>
