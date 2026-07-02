@@ -160,18 +160,21 @@ const RestaurantDetail = () => {
 
   useEffect(() => {
     const tabFromHash =
-      location.hash === "#reviews"
+      location.hash === "#menu"
+        ? "menu"
+        : location.hash === "#reviews"
         ? "reviews"
         : location.hash === "#promotions"
         ? "promotions"
         : location.hash === "#photos"
         ? "photos"
         : location.state?.openTab;
-    if (!["reviews", "promotions", "photos"].includes(tabFromHash)) return;
+    if (!["menu", "reviews", "promotions", "photos"].includes(tabFromHash)) return;
 
     setActiveTab(tabFromHash);
     window.setTimeout(() => {
       const selectorByTab = {
+        menu: "#rd-panel-menu",
         promotions: ".promo-section",
         photos: ".photo-gallery",
         reviews: ".reviews-section",
@@ -310,6 +313,7 @@ const RestaurantDetail = () => {
   const profileSummaryItems = [cuisineText, areaText, reviewSummaryText];
 
   const aiQuickPrompts = [
+    { label: "Thực đơn", message: "Xem thực đơn nhà hàng" },
     { label: "Món bán chạy", message: "Gợi ý món bán chạy" },
     { label: "Món dưới 100k", message: "Gợi ý món dưới 100k" },
     { label: "Combo cho 2 người", message: "Gợi ý combo cho 2 người" },
