@@ -7,10 +7,10 @@ const getMediaQuery = () =>
     ? window.matchMedia(MOBILE_QUERY)
     : null;
 
-const getMatches = () => getMediaQuery()?.matches ?? false;
+export const readMobileViewport = () => getMediaQuery()?.matches ?? false;
 
 export default function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(getMatches);
+  const [isMobile, setIsMobile] = useState(readMobileViewport);
 
   useEffect(() => {
     const media = getMediaQuery();
