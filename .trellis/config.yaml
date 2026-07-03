@@ -1,0 +1,11 @@
+# COHAN Trellis configuration
+session_commit_message: "chore: record Trellis journal"
+max_journal_lines: 2000
+
+# Keep all generated task and journal changes reviewable.
+session_auto_commit: false
+
+# COHAN tasks are handled inline so the active agent keeps the full
+# schema -> resolver/service -> Apollo -> UI context.
+codex:
+  dispatch_mode: inline
