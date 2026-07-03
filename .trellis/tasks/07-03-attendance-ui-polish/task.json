@@ -1,11 +1,11 @@
 {
   "id": "attendance-ui-polish",
   "name": "attendance-ui-polish",
-  "title": "Polish manager attendance workspace UI",
-  "description": "Remove CSS collisions and repair cramped/empty states in the manager attendance workspace without changing attendance behavior.",
+  "title": "Unify manager UI with sage palette",
+  "description": "Repair the attendance workspace and replace mixed cream/green manager surfaces with one light sage visual system without changing behavior.",
   "status": "in_progress",
   "dev_type": "frontend",
-  "scope": "manager-staff-attendance",
+  "scope": "manager-visual-system",
   "package": null,
   "priority": "P1",
   "creator": "LQVCohan",
@@ -16,14 +16,16 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1177",
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/main.jsx",
-    "src/styles/AttendanceManagerVisualFix.css"
+    "src/layouts/ManagerUnifiedBackground.css",
+    "src/layouts/ManagerSageSurfaceOverrides.css",
+    "src/styles/AttendanceManagerVisualFix.css",
+    "src/main.jsx"
   ],
-  "notes": "Visual-only scoped CSS fix loaded last to beat global HR class collisions. No GraphQL/backend/permission changes.",
+  "notes": "Visual-only manager palette and attendance layout fix. Sage is the primary tone; warning, danger and success semantics remain distinct. No GraphQL/backend/permission changes.",
   "meta": {}
 }
