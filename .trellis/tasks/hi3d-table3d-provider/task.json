@@ -1,0 +1,8 @@
+{
+  "id": "hi3d-table3d-provider",
+  "title": "Integrate Hi3D image-to-3D provider",
+  "status": "in_progress",
+  "type": "feature",
+  "scope": "backend table 3D AI generation provider",
+  "createdAt": "2026-07-03"
+}
