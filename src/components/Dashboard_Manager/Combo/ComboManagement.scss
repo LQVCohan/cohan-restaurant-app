@@ -8,7 +8,6 @@
   --combo-sage-soft: #e7f3ef;
   --combo-danger: #a9463f;
   --combo-danger-soft: #f9ece9;
-  --combo-warning: #9a5b16;
   --combo-shadow: 0 16px 38px rgba(75, 56, 32, 0.08);
 
   min-width: 0;
@@ -22,16 +21,8 @@
   margin-bottom: 0;
   border-color: var(--combo-line);
   background:
-    radial-gradient(
-      circle at 10% 0%,
-      rgba(21, 115, 98, 0.12),
-      transparent 17rem
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 253, 248, 0.96),
-      rgba(249, 241, 229, 0.9)
-    );
+    radial-gradient(circle at 10% 0%, rgba(21, 115, 98, 0.12), transparent 17rem),
+    linear-gradient(135deg, rgba(255, 253, 248, 0.96), rgba(249, 241, 229, 0.9));
   box-shadow: var(--combo-shadow);
 }
 
@@ -68,14 +59,9 @@
   border-radius: 14px;
   background: rgba(255, 253, 249, 0.94);
   color: var(--combo-sage-dark);
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
 
   &:focus-within {
     border-color: rgba(21, 115, 98, 0.48);
-    background: #fff;
     box-shadow: 0 0 0 3px rgba(21, 115, 98, 0.12);
   }
 
@@ -151,10 +137,7 @@
 .combo-management__grid {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(min(100%, 330px), 390px)
-  );
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 390px));
   justify-content: start;
   align-items: stretch;
   gap: 1rem;
@@ -169,7 +152,6 @@
   border-radius: 22px;
   background: var(--combo-surface);
   box-shadow: var(--combo-shadow);
-  backdrop-filter: blur(12px) saturate(1.04);
   transition:
     transform 0.2s ease,
     border-color 0.2s ease,
@@ -215,9 +197,9 @@
   position: absolute;
   z-index: 1;
   top: 0.75rem;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
   padding: 0 0.62rem;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 9px;
@@ -251,8 +233,8 @@
 .manager-combo-card__body {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
-  gap: 0.72rem;
+  grid-template-rows: auto auto auto auto 1fr;
+  gap: 0.7rem;
   padding: 1rem;
 }
 
@@ -275,7 +257,7 @@
     text-wrap: balance;
   }
 
-  > span {
+  span {
     flex: 0 0 auto;
     min-height: 26px;
     display: inline-flex;
@@ -290,8 +272,8 @@
   }
 }
 
-.manager-combo-card__description {
-  min-height: 2.8em;
+.manager-combo-card__description,
+.manager-combo-card__item-summary {
   margin: 0;
   color: var(--combo-muted);
   font-size: 0.8rem;
@@ -299,45 +281,18 @@
   text-wrap: pretty;
 }
 
-.manager-combo-card__items {
-  min-width: 0;
-  display: grid;
-  gap: 0.38rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.manager-combo-card__description {
+  min-height: 2.8em;
+}
 
-  li {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.7rem;
-    padding: 0.42rem 0.55rem;
-    border-radius: 10px;
-    background: rgba(247, 242, 234, 0.72);
-    color: #4c4033;
-    font-size: 0.74rem;
-
-    span {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    strong {
-      flex: 0 0 auto;
-      color: var(--combo-sage-dark);
-      font-variant-numeric: tabular-nums;
-    }
-  }
-
-  .manager-combo-card__items-more {
-    justify-content: flex-start;
-    color: var(--combo-muted);
-    font-weight: 760;
-  }
+.manager-combo-card__item-summary {
+  overflow: hidden;
+  padding: 0.48rem 0.58rem;
+  border-radius: 10px;
+  background: rgba(247, 242, 234, 0.72);
+  color: #4c4033;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .manager-combo-card__prices {
@@ -377,6 +332,7 @@
 
 .manager-combo-card__footer {
   min-width: 0;
+  align-self: end;
   display: grid;
   gap: 0.68rem;
   padding-top: 0.72rem;
@@ -428,7 +384,7 @@
     }
 
     &:active:not(:disabled) {
-      transform: translateY(0) scale(0.98);
+      transform: scale(0.98);
     }
 
     &.is-danger {
@@ -438,7 +394,6 @@
       &:hover:not(:disabled) {
         border-color: rgba(169, 70, 63, 0.3);
         background: var(--combo-danger-soft);
-        box-shadow: 0 8px 18px rgba(169, 70, 63, 0.1);
       }
     }
 
@@ -450,8 +405,7 @@
 }
 
 .manager-combo-card--skeleton {
-  min-height: 440px;
-  border-color: rgba(218, 205, 187, 0.56);
+  min-height: 420px;
   background: linear-gradient(
     100deg,
     rgba(255, 253, 248, 0.76) 18%,
@@ -462,14 +416,6 @@
   animation: comboSkeleton 1.2s ease-in-out infinite;
 }
 
-.combo-management__state,
-.combo-management__dialog {
-  border: 1px solid var(--combo-line);
-  background: var(--combo-surface);
-  box-shadow: var(--combo-shadow);
-  backdrop-filter: blur(12px) saturate(1.05);
-}
-
 .combo-management__state {
   min-height: 230px;
   display: grid;
@@ -477,9 +423,12 @@
   align-content: center;
   gap: 0.55rem;
   padding: clamp(2rem, 5vw, 3.2rem);
+  border: 1px solid var(--combo-line);
   border-radius: 22px;
-  text-align: center;
+  background: var(--combo-surface);
+  box-shadow: var(--combo-shadow);
   color: var(--combo-sage-dark);
+  text-align: center;
 
   h2 {
     margin: 0.15rem 0 0;
@@ -501,17 +450,12 @@
 .combo-management__state--error {
   color: var(--combo-danger);
   border-color: rgba(169, 70, 63, 0.24);
-  background: linear-gradient(
-    180deg,
-    rgba(249, 236, 233, 0.82),
-    rgba(255, 253, 248, 0.94)
-  );
+  background: linear-gradient(180deg, rgba(249, 236, 233, 0.82), var(--combo-surface));
 }
 
 .combo-management__state-action,
 .combo-management__secondary-button,
 .combo-management__submit,
-.combo-management__close,
 .combo-management__remove-item {
   display: inline-flex;
   align-items: center;
@@ -532,7 +476,7 @@
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0) scale(0.98);
+    transform: scale(0.98);
   }
 
   &:disabled {
@@ -552,32 +496,22 @@
 
   &:hover:not(:disabled) {
     background: var(--combo-sage-dark);
-    box-shadow: 0 14px 28px rgba(21, 115, 98, 0.22);
   }
 }
 
-.combo-management__modal {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgba(44, 30, 22, 0.44);
-  backdrop-filter: blur(4px);
+.combo-management__dialog.modal-container {
+  border-color: var(--combo-line);
+  background: var(--combo-surface);
 }
 
-.combo-management__dialog {
-  position: relative;
-  width: min(780px, 100%);
-  max-height: min(90dvh, 860px);
-  overflow: auto;
+.combo-management__form {
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
   gap: 0.82rem;
-  padding: clamp(1rem, 2vw, 1.35rem);
-  border-radius: 22px;
+  padding: 1rem clamp(1rem, 2.4vw, 1.5rem) 1.25rem;
   scrollbar-width: thin;
-  scrollbar-color: rgba(21, 115, 98, 0.32) transparent;
+  scrollbar-color: rgba(21, 115, 98, 0.3) transparent;
 
   label {
     display: grid;
@@ -614,10 +548,8 @@
   }
 }
 
-.combo-management__dialog-heading {
-  padding-right: 3rem;
-
-  > span {
+.combo-management__dialog-intro {
+  span {
     color: var(--combo-sage-dark);
     font-size: 0.68rem;
     font-weight: 850;
@@ -625,37 +557,10 @@
     text-transform: uppercase;
   }
 
-  h2 {
-    margin: 0.18rem 0;
-    color: #251f19;
-    font-size: clamp(1.35rem, 3vw, 1.8rem);
-    font-weight: 900;
-    letter-spacing: -0.04em;
-  }
-
   p {
-    margin: 0;
+    margin: 0.18rem 0 0;
     color: var(--combo-muted);
     line-height: 1.45;
-  }
-}
-
-.combo-management__close {
-  position: absolute;
-  top: 0.9rem;
-  right: 0.9rem;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border-color: rgba(218, 205, 187, 0.82);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.86);
-  color: #4b4034;
-
-  &:hover:not(:disabled) {
-    border-color: rgba(169, 70, 63, 0.24);
-    background: var(--combo-danger-soft);
-    color: var(--combo-danger);
   }
 }
 
@@ -710,7 +615,6 @@
   color: var(--combo-sage-dark);
 
   &:hover:not(:disabled) {
-    border-color: rgba(21, 115, 98, 0.34);
     background: var(--combo-sage-soft);
   }
 }
@@ -721,11 +625,6 @@
   grid-template-columns: minmax(0, 1fr) 96px 42px;
   align-items: stretch;
   gap: 0.5rem;
-
-  input,
-  select {
-    min-height: 42px;
-  }
 }
 
 .combo-management__remove-item {
@@ -738,7 +637,6 @@
   color: var(--combo-danger);
 
   &:hover:not(:disabled) {
-    border-color: rgba(169, 70, 63, 0.3);
     background: var(--combo-danger-soft);
   }
 }
@@ -765,7 +663,6 @@
 
   span {
     display: flex;
-    align-items: center;
     justify-content: space-between;
     gap: 0.7rem;
     padding: 0.5rem 0.62rem;
@@ -776,28 +673,17 @@
   }
 
   strong {
-    font-size: 0.86rem;
     font-variant-numeric: tabular-nums;
   }
 }
 
-.combo-management__dialog-footer {
-  position: sticky;
-  bottom: -1.35rem;
-  z-index: 1;
+.combo-management__form-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin: 0 -0.2rem -0.2rem;
-  padding: 0.82rem 0.2rem 0.2rem;
+  padding-top: 0.8rem;
   border-top: 1px solid rgba(218, 205, 187, 0.7);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 253, 248, 0.78),
-    rgba(255, 253, 248, 0.98) 35%
-  );
-  backdrop-filter: blur(10px);
 }
 
 .combo-management__check {
@@ -815,11 +701,8 @@
   }
 }
 
-.combo-management__submit {
-  flex: 0 0 auto;
-}
-
-.combo-management :focus-visible {
+.combo-management :focus-visible,
+.combo-management__dialog :focus-visible {
   outline: 3px solid rgba(21, 115, 98, 0.22);
   outline-offset: 3px;
 }
@@ -843,10 +726,7 @@
   }
 
   .combo-management__grid {
-    grid-template-columns: repeat(
-      auto-fit,
-      minmax(min(100%, 320px), 1fr)
-    );
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   }
 }
 
@@ -869,7 +749,7 @@
     grid-template-columns: minmax(0, 1fr) 84px 42px;
   }
 
-  .combo-management__dialog-footer {
+  .combo-management__form-footer {
     align-items: stretch;
     flex-direction: column;
   }
