@@ -1,0 +1,18 @@
+{
+  "id": "rbac-vietnamese-permission-catalog",
+  "title": "Chuẩn hóa tiếng Việt và kiểm tra danh mục quyền RBAC",
+  "status": "in_progress",
+  "type": "cross-layer-maintenance",
+  "scope": [
+    "src/utils/rbacVietnameseLabels.js",
+    "src/main.jsx",
+    "cohan-restaurant-backend/scripts/seedPermissions.js",
+    "src/utils/rbacVietnameseLabels.test.js"
+  ],
+  "validation": [
+    "npm run check:conflicts",
+    "vitest run src/utils/rbacVietnameseLabels.test.js src/components/Dashboard_Manager/RBAC/RbacManagement.test.jsx src/hooks/useRbacManagement.test.js",
+    "npm run check:graphql",
+    "npm run build"
+  ]
+}
