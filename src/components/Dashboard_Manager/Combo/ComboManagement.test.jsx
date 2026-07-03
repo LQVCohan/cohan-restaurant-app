@@ -1,14 +1,8 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MockedProvider } from "@apollo/client/testing";
 import { describe, expect, it, vi } from "vitest";
 import ComboManagement from "./ComboManagement";
-
-vi.stubGlobal("requestAnimationFrame", (callback) => {
-  callback();
-  return 1;
-});
-vi.stubGlobal("cancelAnimationFrame", vi.fn());
 
 vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
   default: () => ({
@@ -52,14 +46,16 @@ describe("ComboManagement", () => {
     ).toBeInTheDocument();
   });
 
-  it("closes the create modal with Escape", () => {
+  it("closes the create modal with Escape", async () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Tạo combo" }));
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(
-      screen.queryByRole("dialog", { name: "Tạo combo" }),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Tạo combo" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
