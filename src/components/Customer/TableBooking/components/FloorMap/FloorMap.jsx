@@ -1,31 +1,42 @@
-import React, { useState, useContext, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { Eye, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { AuthContext } from "../../../../../context/AuthContext";
 import NotifyModal from "../../../NotifyModal/NotifyModal";
 import { useNotification } from "../../../../../hooks/useNotification";
-import { Plus, Minus, RotateCcw, Info, X } from "lucide-react"; // Import Icons
 import "./FloorMap.scss";
 
+const TABLE_STATUS_LABELS = {
+  available: "trống",
+  occupied: "đang có khách",
+  reserved: "đã được đặt",
+  cleaning: "đang chuẩn bị",
+  payment_pending: "đang chờ thanh toán",
+  offline: "không hoạt động",
+};
+
 const FloorMap = ({
-  tables,
-  onSelectTable,
+  tables = [],
+  onSelectTable = () => {},
   selectedTable,
   layout = [],
   meta = null,
-  theme = "premium", // Prop mới để kích hoạt style premium
+  floorName = "khu vực hiện tại",
+  theme = "premium",
 }) => {
-  const [isLegendOpen, setIsLegendOpen] = useState(false); // Mặc định đóng cho gọn
   const { user } = useContext(AuthContext) || {};
   const [notifyTable, setNotifyTable] = useState(null);
   const [visualTable, setVisualTable] = useState(null);
-  const { showNotification } = useNotification();
-  const hasLayout = layout && layout.length > 0;
-
-  // --- PAN & ZOOM ---
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [cursorState, setCursorState] = useState("grab");
+  const { showNotification } = useNotification();
+  const hasLayout = Array.isArray(layout) && layout.length > 0;
+
   const isPanning = useRef(false);
+  const activePointerId = useRef(null);
   const startPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
+  const visualTriggerRef = useRef(null);
+  const previewCloseRef = useRef(null);
 
   const hasVisualPreview = (table) =>
     Boolean(
@@ -35,61 +46,96 @@ const FloorMap = ({
         table?.visualConfig?.modelKey,
     );
 
-  const handleMouseDown = (e) => {
-    if (e.button !== 0) return;
+  const handlePointerDown = (event) => {
+    if (event.button != null && event.button !== 0) return;
+    if (event.target.closest("button, a")) return;
+
+    activePointerId.current = event.pointerId;
     isPanning.current = true;
     hasMoved.current = false;
     setCursorState("grabbing");
     startPos.current = {
-      x: e.clientX - transform.x,
-      y: e.clientY - transform.y,
+      x: event.clientX - transform.x,
+      y: event.clientY - transform.y,
     };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
-  const handleMouseMove = (e) => {
-    if (!isPanning.current) return;
-    e.preventDefault();
-    const newX = e.clientX - startPos.current.x;
-    const newY = e.clientY - startPos.current.y;
+  const handlePointerMove = (event) => {
+    if (!isPanning.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
+    const newX = event.clientX - startPos.current.x;
+    const newY = event.clientY - startPos.current.y;
     if (Math.abs(newX - transform.x) > 5 || Math.abs(newY - transform.y) > 5) {
       hasMoved.current = true;
     }
-    setTransform((prev) => ({ ...prev, x: newX, y: newY }));
+    setTransform((previous) => ({ ...previous, x: newX, y: newY }));
   };
 
-  const handleMouseUp = () => {
+  const handlePointerEnd = (event) => {
+    if (activePointerId.current !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    activePointerId.current = null;
     isPanning.current = false;
     setCursorState("grab");
-    setTimeout(() => {
+    window.setTimeout(() => {
       hasMoved.current = false;
-    }, 50);
+    }, 60);
   };
 
-  const handleTableClick = (e, table) => {
-    e.stopPropagation();
+  const handleTableAction = (event, table) => {
+    event.stopPropagation();
     if (hasMoved.current) return;
     if (table.status === "available") {
       onSelectTable(table);
-    } else {
-      setNotifyTable(table);
+      return;
     }
+    setNotifyTable(table);
+  };
+
+  const handleTableKeyDown = (event, table) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleTableAction(event, table);
   };
 
   const handleZoom = (delta) => {
-    setTransform((prev) => {
-      const newScale = Math.min(Math.max(0.5, prev.scale + delta), 3);
-      return { ...prev, scale: newScale };
-    });
+    setTransform((previous) => ({
+      ...previous,
+      scale: Math.min(Math.max(0.5, Number((previous.scale + delta).toFixed(2))), 3),
+    }));
   };
 
   const handleResetView = () => setTransform({ x: 0, y: 0, scale: 1 });
 
-  const handleRegisterNotify = (contact, table) => {
-    showNotification(`Đã đăng ký nhắc nhở cho bàn ${table.label}!`, "success");
+  const handleRegisterNotify = (_contact, table) => {
+    showNotification(`Đã đăng ký nhắc nhở cho bàn ${table.label}.`, "success");
     setNotifyTable(null);
   };
 
-  // Render các element kiến trúc (Tường, Cửa, Decor)
+  const openVisualPreview = (event, table) => {
+    event.stopPropagation();
+    visualTriggerRef.current = event.currentTarget;
+    setVisualTable(table);
+  };
+
+  const closeVisualPreview = () => {
+    setVisualTable(null);
+    window.requestAnimationFrame(() => visualTriggerRef.current?.focus());
+  };
+
+  useEffect(() => {
+    if (!visualTable) return undefined;
+    previewCloseRef.current?.focus();
+    const handleEscape = (event) => {
+      if (event.key === "Escape") closeVisualPreview();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [visualTable]);
+
   const renderLayoutItem = (item) => (
     <div
       key={item.id}
@@ -102,14 +148,11 @@ const FloorMap = ({
         transform: `rotate(${item.rotation || 0}deg)`,
       }}
     >
-      {/* Hiển thị label cho các khu vực lớn */}
       {item.label && !item.type.includes("table") && item.w > 40 && (
         <span className="layout-label">{item.label}</span>
       )}
-
-      {/* Decor cụ thể */}
-      {item.type === "plant" && <div className="plant-leaf-effect"></div>}
-      {item.type === "window" && <div className="window-glare"></div>}
+      {item.type === "plant" && <div className="plant-leaf-effect" />}
+      {item.type === "window" && <div className="window-glare" />}
     </div>
   );
 
@@ -117,95 +160,96 @@ const FloorMap = ({
     <div className={`floor-map-viz ${theme}`}>
       <div
         className={`viewport ${cursorState}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onLostPointerCapture={handlePointerEnd}
       >
         <div
+          id="floor-map-canvas"
           className="map-transform-layer"
-          style={{
-            transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-          }}
+          style={{ transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})` }}
         >
           <div
             className="map-container-realistic"
             style={meta?.width && meta?.height ? { width: meta.width, height: meta.height } : undefined}
           >
-            {/* 1. LAYOUT LAYER */}
             {hasLayout ? (
-              <div className="layout-layer">
-                {layout.map((item) => renderLayoutItem(item))}
-              </div>
+              <div className="layout-layer">{layout.map((item) => renderLayoutItem(item))}</div>
             ) : (
               <div className="empty-map-state">
                 <div className="empty-content">
-                  <span className="icon">📐</span>
+                  <span className="icon" aria-hidden="true">⌗</span>
                   <div>
-                    <h3>Sơ đồ kiến trúc</h3>
-                    <p>Dữ liệu đang được cập nhật</p>
+                    <h3>Sơ đồ đang được hoàn thiện</h3>
+                    <p>Bạn vẫn có thể chọn các bàn đang hiển thị.</p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 2. TABLES LAYER */}
-            <div className="tables-layer">
+            <div className="tables-layer" aria-label={`Danh sách bàn tại ${floorName}`}>
               {tables.map((table) => {
                 const isSelected = selectedTable?.id === table.id;
-                let statusClass = table.status;
-                if (isSelected) statusClass = "selected";
+                const statusClass = isSelected ? "selected" : table.status;
+                const capacity = Math.max(1, Number(table.capacity || 1));
+                const position = table.position || {};
+                const statusLabel = isSelected
+                  ? "đang được chọn"
+                  : TABLE_STATUS_LABELS[table.status] || table.status || "chưa rõ trạng thái";
+                const lockedLabel = table.isViewingLocked ? ", đang được một khách khác xem" : "";
+                const tableLabel = table.label || table.code || table.id;
+                const tableWidth = Math.max(56, Number(position.w || 68));
+                const tableHeight = Math.max(56, Number(position.h || 68));
 
                 return (
                   <div
                     key={table.id}
-                    className={`table-node ${statusClass}`}
-                    style={{ top: table.position.y, left: table.position.x }}
-                    onClick={(e) => handleTableClick(e, table)}
+                    className={`table-node ${statusClass} shape-${position.shape || "round"}`}
+                    style={{
+                      top: position.y ?? 0,
+                      left: position.x ?? 0,
+                      width: tableWidth,
+                      height: tableHeight,
+                      "--table-rotation": `${position.rotation || 0}deg`,
+                    }}
                   >
-                    {/* Ghế ngồi xung quanh */}
-                    <div className="chairs-wrapper">
-                      {[...Array(table.capacity > 4 ? 4 : table.capacity)].map(
-                        (_, i) => (
-                          <div key={i} className={`chair chair-${i}`}></div>
-                        ),
-                      )}
+                    <div className="chairs-wrapper" aria-hidden="true">
+                      {Array.from({ length: Math.min(capacity, 4) }).map((_, index) => (
+                        <span key={index} className={`chair chair-${index}`} />
+                      ))}
                     </div>
 
-                    {/* Mặt bàn chính */}
-                    <div className="table-surface">
-                      <span className="table-label">{table.label}</span>
+                    <button
+                      type="button"
+                      className="table-surface"
+                      aria-label={`Bàn ${tableLabel}, ${capacity} chỗ, ${statusLabel}${lockedLabel}`}
+                      aria-pressed={isSelected}
+                      onClick={(event) => handleTableAction(event, table)}
+                      onKeyDown={(event) => handleTableKeyDown(event, table)}
+                    >
+                      <span className="table-label">{tableLabel}</span>
+                      <span className="table-status-copy">{statusLabel}</span>
+                      {table.status === "payment_pending" && <span className="status-badge dollar">₫</span>}
+                      {table.status === "cleaning" && <span className="status-badge clean">Dọn</span>}
+                      {(table.status === "occupied" || table.status === "reserved") && (
+                        <span className="status-badge reserved">Đặt</span>
+                      )}
+                    </button>
 
-                      {/* Icons trạng thái */}
-                      {table.status === "payment_pending" && (
-                        <span className="status-badge dollar">$</span>
-                      )}
-                      {table.status === "cleaning" && (
-                        <span className="status-badge clean">🧹</span>
-                      )}
-                      {(table.status === "occupied" ||
-                        table.status === "reserved") && (
-                        <span className="status-badge bell">🔔</span>
-                      )}
-                      {hasVisualPreview(table) && (
-                        <button
-                          type="button"
-                          className="visual-preview-trigger"
-                          title="Xem ảnh/360/3D của bàn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setVisualTable(table);
-                          }}
-                        >
-                          👁
-                        </button>
-                      )}
-                    </div>
+                    {hasVisualPreview(table) && (
+                      <button
+                        type="button"
+                        className="visual-preview-trigger"
+                        aria-label={`Xem hình ảnh hoặc không gian 3D của bàn ${tableLabel}`}
+                        onClick={(event) => openVisualPreview(event, table)}
+                      >
+                        <Eye size={14} aria-hidden="true" />
+                      </button>
+                    )}
 
-                    {/* Capacity pill */}
-                    <div className="capacity-pill">
-                      {table.capacity} <span style={{ fontSize: 8 }}>👤</span>
-                    </div>
+                    <span className="capacity-pill" aria-hidden="true">{capacity} chỗ</span>
                   </div>
                 );
               })}
@@ -214,80 +258,58 @@ const FloorMap = ({
         </div>
       </div>
 
-      {/* CONTROLS (Floating) */}
-      <div className="map-controls-premium">
-        <button onClick={() => handleZoom(0.2)} title="Phóng to">
-          <Plus size={20} />
+      <div className="map-controls-premium" role="group" aria-label="Điều khiển sơ đồ">
+        <button type="button" onClick={() => handleZoom(0.2)} aria-label="Phóng to sơ đồ" aria-controls="floor-map-canvas">
+          <Plus size={19} aria-hidden="true" />
         </button>
-        <button onClick={() => handleZoom(-0.2)} title="Thu nhỏ">
-          <Minus size={20} />
+        <output className="zoom-output" aria-live="polite">{Math.round(transform.scale * 100)}%</output>
+        <button type="button" onClick={() => handleZoom(-0.2)} aria-label="Thu nhỏ sơ đồ" aria-controls="floor-map-canvas">
+          <Minus size={19} aria-hidden="true" />
         </button>
-        <div className="divider"></div>
-        <button onClick={handleResetView} title="Đặt lại">
-          <RotateCcw size={18} />
+        <span className="divider" aria-hidden="true" />
+        <button type="button" onClick={handleResetView} aria-label="Đặt lại vị trí và mức thu phóng" aria-controls="floor-map-canvas">
+          <RotateCcw size={17} aria-hidden="true" />
         </button>
-      </div>
-
-      {/* MINI LEGEND (Collapsible) */}
-      <div className={`mini-legend ${isLegendOpen ? "expanded" : "collapsed"}`}>
-        <button
-          className="legend-toggle"
-          onClick={() => setIsLegendOpen(!isLegendOpen)}
-        >
-          {isLegendOpen ? <X size={18} /> : <Info size={18} />}
-        </button>
-
-        {isLegendOpen && (
-          <div className="legend-content">
-            <h4>Chú thích</h4>
-            <div className="l-row">
-              <span className="dot avl"></span> Trống
-            </div>
-            <div className="l-row">
-              <span className="dot sel"></span> Đang chọn
-            </div>
-            <div className="l-row">
-              <span className="dot occ"></span> Có khách
-            </div>
-            <div className="l-row">
-              <span className="dot res"></span> Đặt trước
-            </div>
-            <div className="l-row">
-              <span className="dot cln"></span> Dọn dẹp
-            </div>
-          </div>
-        )}
       </div>
 
       {visualTable && (
-        <div className="table-visual-preview" role="dialog" aria-modal="true">
+        <div
+          className="table-visual-preview"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="table-visual-preview-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeVisualPreview();
+          }}
+        >
           <div className="table-visual-preview__card">
             <button
+              ref={previewCloseRef}
               type="button"
               className="table-visual-preview__close"
-              onClick={() => setVisualTable(null)}
+              aria-label="Đóng phần xem trước bàn"
+              onClick={closeVisualPreview}
             >
-              ×
+              <X size={18} aria-hidden="true" />
             </button>
-            <h3>Bàn {visualTable.label}</h3>
-            <p>Sức chứa: {visualTable.capacity} khách</p>
+            <span className="table-visual-preview__eyebrow">Góc nhìn trước khi đặt</span>
+            <h3 id="table-visual-preview-title">Bàn {visualTable.label}</h3>
+            <p>Sức chứa {visualTable.capacity} khách</p>
             {Array.isArray(visualTable.photos) && visualTable.photos.length > 0 && (
               <div className="table-visual-preview__photos">
                 {visualTable.photos.slice(0, 4).map((src, index) => (
-                  <img key={`${src}_${index}`} src={src} alt={`Bàn ${visualTable.label} ${index + 1}`} />
+                  <img key={`${src}_${index}`} src={src} alt={`Không gian bàn ${visualTable.label}, ảnh ${index + 1}`} />
                 ))}
               </div>
             )}
-            {visualTable.vrUrl && (
-              <a href={visualTable.vrUrl} target="_blank" rel="noreferrer">
-                Mở không gian 360
-              </a>
-            )}
-            {visualTable.visualConfig?.modelUrl && (
-              <a href={visualTable.visualConfig.modelUrl} target="_blank" rel="noreferrer">
-                Mở mô hình 3D
-              </a>
-            )}
+            <div className="table-visual-preview__links">
+              {visualTable.vrUrl && (
+                <a href={visualTable.vrUrl} target="_blank" rel="noreferrer">Mở không gian 360</a>
+              )}
+              {visualTable.visualConfig?.modelUrl && (
+                <a href={visualTable.visualConfig.modelUrl} target="_blank" rel="noreferrer">Mở mô hình 3D</a>
+              )}
+            </div>
             {!visualTable.vrUrl && !visualTable.visualConfig?.modelUrl && visualTable.visualConfig?.modelKey && (
               <p>Mô hình 3D: {visualTable.visualConfig.modelLabel || visualTable.visualConfig.modelKey}</p>
             )}
