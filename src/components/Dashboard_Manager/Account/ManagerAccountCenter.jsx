@@ -76,6 +76,12 @@ const M_REVOKE_OTHER_SESSIONS = gql`
 
 const TABS = new Set(["profile", "security", "notifications", "support"]);
 const DEFAULT_NOTIFICATION_PREFERENCES = { showBadge: true, browser: false };
+const ACCOUNT_STATUS_LABELS = {
+  active: "Đang hoạt động",
+  inactive: "Tạm ngưng",
+  disabled: "Đã vô hiệu hóa",
+  locked: "Đã khóa",
+};
 
 const readNotificationPreferences = () => {
   if (typeof window === "undefined") return DEFAULT_NOTIFICATION_PREFERENCES;
@@ -115,6 +121,9 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
     () => String(user?.fullName || "QL").split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase(),
     [user?.fullName],
   );
+  const accountStatus = ACCOUNT_STATUS_LABELS[String(user?.status || "active").toLowerCase()]
+    || user?.status
+    || "Đang hoạt động";
 
   useEffect(() => {
     setActiveTab(TABS.has(initialTab) ? initialTab : "profile");
@@ -216,70 +225,76 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
 
   const panel = (
     <div className="manager-account-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose?.()}>
-      <section className="manager-account-dialog" role="dialog" aria-modal="true" aria-label="Trung tâm tài khoản quản lý">
-        <button className="manager-account__close" type="button" onClick={onClose} aria-label="Đóng trung tâm tài khoản"><X size={19} /></button>
+      <section
+        className="manager-account-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manager-account-title"
+        aria-describedby="manager-account-description"
+      >
+        <button className="manager-account__close" type="button" onClick={onClose} aria-label="Đóng trung tâm tài khoản"><X size={19} aria-hidden="true" /></button>
         {loading ? (
-          <div className="manager-account__state">Đang tải thông tin tài khoản...</div>
+          <div className="manager-account__state" role="status">Đang tải thông tin tài khoản...</div>
         ) : error ? (
-          <div className="manager-account__state manager-account__state--error">Không thể tải tài khoản: {error.message}</div>
+          <div className="manager-account__state manager-account__state--error" role="alert">Không thể tải tài khoản: {error.message}</div>
         ) : (
           <main className="manager-account">
             <header className="manager-account__hero">
               <div>
                 <span className="manager-account__eyebrow">TÀI KHOẢN QUẢN LÝ</span>
-                <h1>Hồ sơ và bảo mật</h1>
-                <p>Quản lý tài khoản mà không rời khỏi không gian vận hành Cohan.</p>
+                <h1 id="manager-account-title">Hồ sơ và bảo mật</h1>
+                <p id="manager-account-description">Quản lý thông tin cá nhân, bảo mật và thông báo ngay trong không gian vận hành Cohan.</p>
               </div>
               <div className="manager-account__identity">
-                <div className="manager-account__avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : <span>{initials}</span>}</div>
+                <div className="manager-account__avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt={`Ảnh đại diện của ${user?.fullName || "quản lý"}`} /> : <span>{initials}</span>}</div>
                 <div><strong>{user?.fullName}</strong><span>{user?.email}</span></div>
-                <span className="manager-account__status"><CheckCircle2 size={14} /> {user?.status || "active"}</span>
+                <span className="manager-account__status"><CheckCircle2 size={14} aria-hidden="true" /> {accountStatus}</span>
               </div>
             </header>
 
             <div className="manager-account__layout">
               <nav className="manager-account__nav" aria-label="Cài đặt tài khoản">
-                <button className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")} type="button"><UserRound size={18} /><span>Thông tin cá nhân</span></button>
-                <button className={activeTab === "security" ? "active" : ""} onClick={() => setActiveTab("security")} type="button"><ShieldCheck size={18} /><span>Bảo mật tài khoản</span></button>
-                <button className={activeTab === "notifications" ? "active" : ""} onClick={() => setActiveTab("notifications")} type="button"><Bell size={18} /><span>Thông báo</span></button>
-                <button className={activeTab === "support" ? "active" : ""} onClick={() => setActiveTab("support")} type="button"><LifeBuoy size={18} /><span>Hỗ trợ</span></button>
+                <button className={activeTab === "profile" ? "active" : ""} aria-current={activeTab === "profile" ? "page" : undefined} onClick={() => setActiveTab("profile")} type="button"><UserRound size={18} aria-hidden="true" /><span>Thông tin cá nhân</span></button>
+                <button className={activeTab === "security" ? "active" : ""} aria-current={activeTab === "security" ? "page" : undefined} onClick={() => setActiveTab("security")} type="button"><ShieldCheck size={18} aria-hidden="true" /><span>Bảo mật tài khoản</span></button>
+                <button className={activeTab === "notifications" ? "active" : ""} aria-current={activeTab === "notifications" ? "page" : undefined} onClick={() => setActiveTab("notifications")} type="button"><Bell size={18} aria-hidden="true" /><span>Thông báo</span></button>
+                <button className={activeTab === "support" ? "active" : ""} aria-current={activeTab === "support" ? "page" : undefined} onClick={() => setActiveTab("support")} type="button"><LifeBuoy size={18} aria-hidden="true" /><span>Hỗ trợ</span></button>
               </nav>
 
               <section className="manager-account__content">
                 {activeTab === "profile" && (
                   <form className="manager-account__panel" onSubmit={saveProfile}>
-                    <div className="manager-account__panel-heading"><div><span>HỒ SƠ</span><h2>Thông tin cá nhân</h2><p>Dữ liệu lấy trực tiếp từ tài khoản đang đăng nhập.</p></div><UserRound size={22} /></div>
+                    <div className="manager-account__panel-heading"><div><span>HỒ SƠ</span><h2>Thông tin cá nhân</h2><p>Dữ liệu của tài khoản đang đăng nhập.</p></div><UserRound size={22} aria-hidden="true" /></div>
                     <div className="manager-account__form-grid">
                       <label><span>Họ và tên</span><input value={profileForm.fullName} onChange={(event) => setProfileForm({ fullName: event.target.value })} /></label>
                       <label><span>Email</span><input value={user?.email || ""} disabled /></label>
                       <label><span>Số điện thoại</span><input value={user?.phone || "Chưa cập nhật"} disabled /></label>
                       <label><span>Vai trò hệ thống</span><input value={user?.roleName || "manager"} disabled /></label>
                     </div>
-                    <div className="manager-account__actions"><button className="manager-account__primary" disabled={updateState.loading} type="submit"><Save size={16} />{updateState.loading ? "Đang lưu..." : "Lưu thay đổi"}</button></div>
+                    <div className="manager-account__actions"><button className="manager-account__primary" disabled={updateState.loading} type="submit"><Save size={16} aria-hidden="true" />{updateState.loading ? "Đang lưu..." : "Lưu thay đổi"}</button></div>
                   </form>
                 )}
 
                 {activeTab === "security" && (
                   <div className="manager-account__stack">
                     <form className="manager-account__panel" onSubmit={savePassword}>
-                      <div className="manager-account__panel-heading"><div><span>BẢO MẬT</span><h2>Đổi mật khẩu</h2><p>Cập nhật mật khẩu cho tài khoản hiện tại.</p></div><KeyRound size={22} /></div>
+                      <div className="manager-account__panel-heading"><div><span>BẢO MẬT</span><h2>Đổi mật khẩu</h2><p>Cập nhật mật khẩu cho tài khoản hiện tại.</p></div><KeyRound size={22} aria-hidden="true" /></div>
                       <div className="manager-account__form-grid">
                         <label><span>Mật khẩu hiện tại</span><input type="password" autoComplete="current-password" value={passwordForm.current} onChange={(event) => setPasswordForm((prev) => ({ ...prev, current: event.target.value }))} /></label>
                         <label><span>Mật khẩu mới</span><input type="password" autoComplete="new-password" value={passwordForm.next} onChange={(event) => setPasswordForm((prev) => ({ ...prev, next: event.target.value }))} /></label>
                         <label><span>Xác nhận mật khẩu</span><input type="password" autoComplete="new-password" value={passwordForm.confirm} onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirm: event.target.value }))} /></label>
                       </div>
-                      <div className="manager-account__actions"><button className="manager-account__primary" disabled={passwordState.loading} type="submit"><KeyRound size={16} />{passwordState.loading ? "Đang cập nhật..." : "Cập nhật mật khẩu"}</button></div>
+                      <div className="manager-account__actions"><button className="manager-account__primary" disabled={passwordState.loading} type="submit"><KeyRound size={16} aria-hidden="true" />{passwordState.loading ? "Đang cập nhật..." : "Cập nhật mật khẩu"}</button></div>
                     </form>
 
                     <section className="manager-account__panel">
-                      <div className="manager-account__panel-heading"><div><span>PHIÊN ĐĂNG NHẬP</span><h2>Thiết bị đang hoạt động</h2><p>Kiểm tra và thu hồi các phiên không còn sử dụng.</p></div><Laptop size={22} /></div>
+                      <div className="manager-account__panel-heading"><div><span>PHIÊN ĐĂNG NHẬP</span><h2>Thiết bị đang hoạt động</h2><p>Kiểm tra và thu hồi các phiên không còn sử dụng.</p></div><Laptop size={22} aria-hidden="true" /></div>
                       <div className="manager-account__session-actions"><button type="button" onClick={handleRevokeOtherSessions} disabled={revokeOtherState.loading}>Đăng xuất các thiết bị khác</button></div>
                       <div className="manager-account__sessions">
-                        {sessionsLoading && <p>Đang tải phiên đăng nhập...</p>}
+                        {sessionsLoading && <p role="status">Đang tải phiên đăng nhập...</p>}
                         {!sessionsLoading && sessions.length === 0 && <p>Chưa có phiên đăng nhập nào.</p>}
                         {sessions.map((session) => (
                           <article key={session.id}>
-                            <MonitorCog size={18} />
+                            <MonitorCog size={18} aria-hidden="true" />
                             <div><strong>{session.userAgent || "Thiết bị không xác định"}</strong><span>{session.ip || "IP không rõ"} · {formatDate(session.createdAt)}</span></div>
                             {session.isCurrent ? <em>Hiện tại</em> : session.isActive ? <button type="button" onClick={() => handleRevokeSession(session.id)} disabled={revokeState.loading}>Đăng xuất</button> : <em>Đã thu hồi</em>}
                           </article>
@@ -291,19 +306,19 @@ const ManagerAccountCenter = ({ initialTab = "profile", onClose }) => {
 
                 {activeTab === "notifications" && (
                   <section className="manager-account__panel">
-                    <div className="manager-account__panel-heading"><div><span>THÔNG BÁO</span><h2>Tùy chọn nhận thông báo</h2><p>Điều chỉnh cách header và trình duyệt hiển thị cập nhật.</p></div><Bell size={22} /></div>
-                    <div className="manager-account__setting-row"><div><strong>Hiện số chưa đọc trên header</strong><span>Hiển thị badge đếm ở biểu tượng chuông.</span></div><button type="button" className={`manager-account__switch ${notificationPreferences.showBadge ? "active" : ""}`} aria-pressed={notificationPreferences.showBadge} onClick={() => saveNotificationPreferences({ ...notificationPreferences, showBadge: !notificationPreferences.showBadge })}><span /></button></div>
-                    <div className="manager-account__setting-row"><div><strong>Thông báo trình duyệt</strong><span>Cho phép trình duyệt hiển thị thông báo khi Cohan đang mở.</span></div><button type="button" className={`manager-account__switch ${notificationPreferences.browser ? "active" : ""}`} aria-pressed={notificationPreferences.browser} onClick={toggleBrowserNotifications}><span /></button></div>
+                    <div className="manager-account__panel-heading"><div><span>THÔNG BÁO</span><h2>Tùy chọn nhận thông báo</h2><p>Điều chỉnh cách thanh tiêu đề và trình duyệt hiển thị cập nhật.</p></div><Bell size={22} aria-hidden="true" /></div>
+                    <div className="manager-account__setting-row"><div><strong>Hiện số thông báo chưa đọc</strong><span>Hiển thị số đếm tại biểu tượng chuông.</span></div><button type="button" className={`manager-account__switch ${notificationPreferences.showBadge ? "active" : ""}`} aria-label="Hiện số thông báo chưa đọc" aria-pressed={notificationPreferences.showBadge} onClick={() => saveNotificationPreferences({ ...notificationPreferences, showBadge: !notificationPreferences.showBadge })}><span /></button></div>
+                    <div className="manager-account__setting-row"><div><strong>Thông báo từ trình duyệt</strong><span>Cho phép trình duyệt báo khi Cohan đang mở.</span></div><button type="button" className={`manager-account__switch ${notificationPreferences.browser ? "active" : ""}`} aria-label="Bật thông báo từ trình duyệt" aria-pressed={notificationPreferences.browser} onClick={toggleBrowserNotifications}><span /></button></div>
                   </section>
                 )}
 
                 {activeTab === "support" && (
                   <section className="manager-account__panel">
-                    <div className="manager-account__panel-heading"><div><span>HỖ TRỢ VẬN HÀNH</span><h2>Công cụ hỗ trợ nhanh</h2><p>Xử lý sự cố mà không rời giao diện quản lý.</p></div><LifeBuoy size={22} /></div>
+                    <div className="manager-account__panel-heading"><div><span>HỖ TRỢ VẬN HÀNH</span><h2>Công cụ hỗ trợ nhanh</h2><p>Xử lý sự cố mà không rời giao diện quản lý.</p></div><LifeBuoy size={22} aria-hidden="true" /></div>
                     <div className="manager-account__support-grid">
-                      <button type="button" onClick={() => navigateManagerPage("settings")}><MonitorCog size={19} /><span><strong>Cài đặt hệ thống</strong><small>Kiểm tra cấu hình vận hành và module.</small></span></button>
-                      <button type="button" onClick={() => navigateManagerPage("rbac")}><ShieldCheck size={19} /><span><strong>Phân quyền</strong><small>Kiểm tra role và quyền truy cập.</small></span></button>
-                      <button type="button" onClick={copySupportInfo}><Copy size={19} /><span><strong>Sao chép thông tin hỗ trợ</strong><small>Gửi nhanh thông tin phiên và trang hiện tại.</small></span></button>
+                      <button type="button" onClick={() => navigateManagerPage("settings")}><MonitorCog size={19} aria-hidden="true" /><span><strong>Cài đặt hệ thống</strong><small>Kiểm tra cấu hình vận hành và các phân hệ.</small></span></button>
+                      <button type="button" onClick={() => navigateManagerPage("rbac")}><ShieldCheck size={19} aria-hidden="true" /><span><strong>Phân quyền</strong><small>Kiểm tra vai trò và quyền truy cập.</small></span></button>
+                      <button type="button" onClick={copySupportInfo}><Copy size={19} aria-hidden="true" /><span><strong>Sao chép thông tin hỗ trợ</strong><small>Gửi nhanh thông tin phiên và trang hiện tại.</small></span></button>
                     </div>
                   </section>
                 )}
