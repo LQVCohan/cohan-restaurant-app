@@ -3,6 +3,7 @@ import {
   blankForm,
   buildModifierInput,
   getModifierFormValidationError,
+  normalizeModifierOptions,
   toForm,
 } from "./ModifierManagement.jsx";
 
@@ -68,11 +69,32 @@ describe("ModifierManagement helpers", () => {
     expect(input).not.toHaveProperty("maxSelected");
   });
 
-  it("validates required item coverage, options and max selection", () => {
+  it("normalizes required multiple selection and keeps only one default", () => {
+    const options = normalizeModifierOptions([
+      { ...blankForm().options[0], name: "Ít cay", isDefault: true },
+      { ...blankForm().options[0], name: "Cay vừa", isDefault: true },
+    ], { selectionType: "multiple", required: true });
+
+    expect(options.map((option) => option.isDefault)).toEqual([true, false]);
+
+    const input = buildModifierInput({
+      ...blankForm("restaurant-1"),
+      name: "Độ cay",
+      required: true,
+      selectionType: "multiple",
+      minSelected: 0,
+      options,
+    }, "restaurant-1");
+
+    expect(input.minSelected).toBe(1);
+  });
+
+  it("validates required item coverage, options and selection limits", () => {
     expect(getModifierFormValidationError({ ...blankForm(), name: "Size" }, "")).toBe("Vui lòng chọn chi nhánh.");
     expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Theo món", coverage: "ITEMS" }, "r1")).toBe("Chọn ít nhất một món khi áp dụng theo món.");
     expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Rỗng", options: [] }, "r1")).toBe("Cần ít nhất một lựa chọn.");
-    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Giới hạn", minSelected: 3, maxSelected: 2, options: [{ ...blankForm().options[0], name: "Thêm bò" }] }, "r1")).toBe("Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.");
+    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Giới hạn", minSelected: 3, maxSelected: 2, options: [{ ...blankForm().options[0], name: "Thêm bò" }, { ...blankForm().options[0], name: "Thêm trứng" }, { ...blankForm().options[0], name: "Thêm rau" }] }, "r1")).toBe("Số lựa chọn tối đa phải lớn hơn hoặc bằng tối thiểu.");
+    expect(getModifierFormValidationError({ ...blankForm("r1"), name: "Thiếu lựa chọn", minSelected: 2, options: [{ ...blankForm().options[0], name: "Thêm bò" }] }, "r1")).toBe("Số lựa chọn tối thiểu không được vượt quá số lựa chọn đang có.");
   });
 
   it("maps existing groups back to form state without losing inventory rules", () => {
