@@ -110,6 +110,12 @@ const Header = ({
     setShowNotifications(false);
   };
 
+  const handleNotificationKeyDown = (event, notification) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openNotificationAction(notification);
+  };
+
   const handleLogout = () => { closeMenus(); logout?.(); };
   const toggleDarkMode = () => { setIsDarkMode((value) => !value); setShowUserMenu(false); };
 
@@ -139,11 +145,11 @@ const Header = ({
                   <div className="notification-header"><h3>Thông báo</h3><button className="mark-all-read" onClick={() => { setLocalNotifications((prev) => prev.map((item) => ({ ...item, read: true }))); onMarkAllNotificationsRead?.(); }} type="button">Đánh dấu đã đọc</button></div>
                   <div className="notification-list">
                     {localNotifications.length ? localNotifications.map((notification, index) => (
-                      <button key={notification.id || index} type="button" className={`notification-item ${!notification.read ? "notification-item--unread" : ""}`} onClick={() => openNotificationAction(notification)}>
-                        <span className={`notification-icon notification-icon--${notification.type}`}>{getNotificationIcon(notification.type)}</span>
-                        <span className="notification-content"><strong>{notification.title}</strong><span>{notification.message}</span><small>{notification.time}</small></span>
-                        {!notification.read && <span className="unread-dot" />}
-                      </button>
+                      <div key={notification.id || index} role="button" tabIndex={0} className={`notification-item ${!notification.read ? "notification-item--unread" : ""}`} onClick={() => openNotificationAction(notification)} onKeyDown={(event) => handleNotificationKeyDown(event, notification)}>
+                        <div className={`notification-icon notification-icon--${notification.type}`}>{getNotificationIcon(notification.type)}</div>
+                        <div className="notification-content"><h4>{notification.title}</h4><p>{notification.message}</p><span className="notification-time">{notification.time}</span></div>
+                        {!notification.read && <div className="unread-dot" />}
+                      </div>
                     )) : <div className="notification-empty"><p>Không có thông báo mới</p></div>}
                   </div>
                 </div>
@@ -165,13 +171,13 @@ const Header = ({
                     <div className="user-role-breakdown"><span>Loại tài khoản: <strong>{systemRoleLabel}</strong></span><span>Vai trò trong thương hiệu: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span><span>Phạm vi phụ trách: <strong>{scopeLabel}</strong></span></div>
                   </div>
                   <div className="user-menu-items">
-                    <button className="user-menu-item" type="button" onClick={() => openAccount("profile")}><FiUser /><span>Thông tin cá nhân</span></button>
-                    <button className="user-menu-item" type="button" onClick={() => openAccount("security")}><FiSettings /><span>Cài đặt tài khoản</span></button>
-                    <button className="user-menu-item" type="button" onClick={toggleDarkMode}><FiMoon /><span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span></button>
-                    <button className="user-menu-item" type="button" onClick={() => openAccount("notifications")}><FiBell /><span>Cài đặt thông báo</span></button>
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("profile")}><span className="menu-icon"><FiUser /></span><span>Thông tin cá nhân</span></button>
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("security")}><span className="menu-icon"><FiSettings /></span><span>Cài đặt tài khoản</span></button>
+                    <button className="user-menu-item" type="button" onClick={toggleDarkMode}><span className="menu-icon"><FiMoon /></span><span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span></button>
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("notifications")}><span className="menu-icon"><FiBell /></span><span>Cài đặt thông báo</span></button>
                     <div className="menu-divider" />
-                    <button className="user-menu-item" type="button" onClick={() => openAccount("support")}><FiHelpCircle /><span>Trợ giúp & Hỗ trợ</span></button>
-                    <button className="user-menu-item" type="button" onClick={handleLogout}><FiLogOut /><span>Đăng xuất</span></button>
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("support")}><span className="menu-icon"><FiHelpCircle /></span><span>Trợ giúp & Hỗ trợ</span></button>
+                    <button className="user-menu-item" type="button" onClick={handleLogout}><span className="menu-icon"><FiLogOut /></span><span>Đăng xuất</span></button>
                   </div>
                 </div>
               )}
