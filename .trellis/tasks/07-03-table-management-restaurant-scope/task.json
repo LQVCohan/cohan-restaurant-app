@@ -1,0 +1,29 @@
+{
+  "id": "table-management-restaurant-scope",
+  "name": "table-management-restaurant-scope",
+  "title": "Sync table management with manager restaurant scope",
+  "description": "Make the table management page reload its restaurant, floor, and table data when the manager header branch selector changes.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-page",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-03",
+  "completedAt": null,
+  "branch": "fix/table-management-restaurant-scope",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
+  ],
+  "notes": "Page-local wiring fix only; shared selector and backend remain unchanged.",
+  "meta": {}
+}
