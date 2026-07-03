@@ -49,35 +49,45 @@
   right: -15px;
 }
 
-.logo-icon-button,
-.logo-text-button {
-  border: 0;
+.manager-sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 48px;
   padding: 0;
-  font: inherit;
+  border: 0;
   color: inherit;
   background: transparent;
   cursor: pointer;
+  overflow: hidden;
 }
 
-.logo-icon-button.logo-icon {
-  color: #fffdf8;
-  flex: 0 0 40px;
-}
-
-.logo-text-button.logo-text {
-  min-width: 0;
-  text-align: left;
-}
-
-.logo-icon-button:hover,
-.logo-text-button:hover {
-  color: #735637;
-}
-
-.logo-icon-button:focus-visible,
-.logo-text-button:focus-visible {
+.manager-sidebar-brand:focus-visible {
   outline: 3px solid rgba(168, 133, 95, 0.28);
   outline-offset: 2px;
+  border-radius: 12px;
+}
+
+.manager-sidebar-brand__icon {
+  display: block;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.manager-sidebar-brand__wordmark {
+  display: block;
+  width: 134px;
+  height: 34px;
+  margin-left: 10px;
+  object-fit: contain;
+  object-position: left center;
+  transition:
+    width 0.18s ease,
+    margin 0.18s ease,
+    opacity 0.14s ease,
+    transform 0.18s ease;
 }
 
 .sidebar-header {
@@ -152,16 +162,16 @@
     overflow: hidden;
   }
 
-  .manager-layout:not(.sidebar-open) .sidebar-logo {
+  .manager-layout:not(.sidebar-open) .manager-sidebar-brand {
     justify-content: center;
     width: 72px;
-    min-width: 72px;
-    gap: 0;
-    overflow: hidden;
   }
 
-  .manager-layout:not(.sidebar-open) .logo-text-button {
-    display: none;
+  .manager-layout:not(.sidebar-open) .manager-sidebar-brand__wordmark {
+    width: 0;
+    margin-left: 0;
+    opacity: 0;
+    transform: translateX(-6px);
   }
 
   .manager-layout:not(.sidebar-open) .nav-label,
@@ -187,12 +197,19 @@
 
   .manager-layout.sidebar-open .sidebar-header {
     min-height: 64px;
-    padding-block: 0.75rem;
+    padding: 0 1.15rem;
   }
 
-  .manager-layout.sidebar-open .logo-text-button {
-    display: inline-block;
-    max-width: 14rem;
+  .manager-layout.sidebar-open .manager-sidebar-brand {
+    justify-content: flex-start;
+    width: 190px;
+  }
+
+  .manager-layout.sidebar-open .manager-sidebar-brand__wordmark {
+    width: 134px;
+    margin-left: 10px;
+    opacity: 1;
+    transform: none;
   }
 
   .manager-layout.sidebar-open .nav-item {
@@ -203,5 +220,15 @@
 @media (max-width: 768px) {
   .sidebar-rail-toggle {
     display: none;
+  }
+
+  .manager-sidebar-brand {
+    width: 190px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-sidebar-brand__wordmark {
+    transition: none;
   }
 }
