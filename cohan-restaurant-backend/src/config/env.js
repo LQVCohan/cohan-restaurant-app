@@ -46,6 +46,26 @@ function normalizeMongoEnvVars() {
   }
 }
 
+export function normalizeHi3dEnvVars(env = process.env) {
+  const accessKey = [
+    env.TABLE_3D_AI_HI3D_ACCESS_KEY,
+    env.HI3D_ACCESS_KEY,
+  ].find((value) => value && String(value).trim());
+  const secretKey = [
+    env.TABLE_3D_AI_HI3D_SECRET_KEY,
+    env.HI3D_SECRET_KEY,
+  ].find((value) => value && String(value).trim());
+
+  if ((!env.TABLE_3D_AI_HI3D_CLIENT_ID || !String(env.TABLE_3D_AI_HI3D_CLIENT_ID).trim()) && accessKey) {
+    env.TABLE_3D_AI_HI3D_CLIENT_ID = String(accessKey).trim();
+  }
+  if ((!env.TABLE_3D_AI_HI3D_CLIENT_SECRET || !String(env.TABLE_3D_AI_HI3D_CLIENT_SECRET).trim()) && secretKey) {
+    env.TABLE_3D_AI_HI3D_CLIENT_SECRET = String(secretKey).trim();
+  }
+
+  return env;
+}
+
 const CONDITIONAL_REQUIRED = [
   {
     when: (env) => String(env.ENABLE_RECAPTCHA || "").toLowerCase() === "true",
@@ -171,7 +191,6 @@ function validateProductionAuthTokenSettings() {
   return issues;
 }
 
-
 function validateProductionRecaptchaPolicy() {
   if ((process.env.NODE_ENV || "development") !== "production") return [];
   const issues = [];
@@ -218,6 +237,7 @@ function validateProductionGraphqlLimits() {
 }
 
 export function validateEnv() {
+  normalizeHi3dEnvVars();
   applyDevelopmentDefaults();
 
   const missing = [];
