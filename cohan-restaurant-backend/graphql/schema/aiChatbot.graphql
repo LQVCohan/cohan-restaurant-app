@@ -133,7 +133,7 @@ input UpdateAiChatbotKnowledgeItemInput {
 
 type AiChatbotAnswerFeedback {
   id: ID!
-  restaurantId: ID!
+  restaurantId: ID
   conversationId: ID
   messageId: ID
   guestId: String
@@ -153,7 +153,7 @@ type AiChatbotAnswerFeedback {
 }
 
 input SubmitAiChatbotAnswerFeedbackInput {
-  restaurantId: ID!
+  restaurantId: ID
   conversationId: ID
   messageId: ID
   guestId: String

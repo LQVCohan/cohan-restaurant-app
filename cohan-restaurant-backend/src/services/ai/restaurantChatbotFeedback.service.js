@@ -29,95 +29,119 @@ const ensureRating = (r) =>
 const toDto = (row) => ({
   ...row,
   id: String(row?._id || row?.id || ""),
-  restaurantId: row?.restaurantId ? String(row.restaurantId) : "",
+  restaurantId: row?.restaurantId ? String(row.restaurantId) : null,
   conversationId: row?.conversationId ? String(row.conversationId) : null,
   messageId: row?.messageId ? String(row.messageId) : null,
   userId: row?.userId ? String(row.userId) : null,
   reviewedBy: row?.reviewedBy ? String(row.reviewedBy) : null,
 });
 
-async function ensureSubmitOwnership({
+const buildConversationOwnerQuery = ({ conversationId, restaurantId, guestId, userId }) => {
+  const cid = toObjectId(conversationId);
+  if (!cid) return null;
+
+  const q = { _id: cid };
+  if (restaurantId) q.restaurantId = restaurantId;
+  if (userId) {
+    const uid = toObjectId(userId);
+    if (!uid) return null;
+    q.userId = uid;
+  } else {
+    const safeGuestId = clean(guestId, 128);
+    if (!safeGuestId) return null;
+    q.guestId = safeGuestId;
+  }
+  return q;
+};
+
+async function resolveSubmitContext({
   restaurantId,
   conversationId,
   messageId,
   guestId,
   userId,
 }) {
-  if (!conversationId && !messageId) return true;
-  const rid = toObjectId(restaurantId);
-  if (!rid) return false;
+  const explicitRestaurantId = toObjectId(restaurantId);
+  if (restaurantId && !explicitRestaurantId) return { ok: false, restaurantId: null };
 
   let conversation = null;
   if (conversationId) {
-    const cid = toObjectId(conversationId);
-    if (!cid) return false;
-    const q = { _id: cid, restaurantId: rid };
-    if (userId) q.userId = toObjectId(userId);
-    else q.guestId = clean(guestId, 128);
+    const q = buildConversationOwnerQuery({
+      conversationId,
+      restaurantId: explicitRestaurantId,
+      guestId,
+      userId,
+    });
+    if (!q) return { ok: false, restaurantId: null };
     conversation = await AiChatConversation.findOne(q).lean();
-    if (!conversation) return false;
+    if (!conversation) return { ok: false, restaurantId: null };
   }
 
+  let message = null;
   if (messageId) {
     const mid = toObjectId(messageId);
-    if (!mid) return false;
-    const message = await AiChatMessage.findById(mid).lean();
-    if (!message) return false;
-    if (String(message.role || "") !== "assistant") return false;
-    if (String(message.restaurantId || "") !== String(rid)) return false;
+    if (!mid) return { ok: false, restaurantId: null };
+    message = await AiChatMessage.findById(mid).lean();
+    if (!message || String(message.role || "") !== "assistant") {
+      return { ok: false, restaurantId: null };
+    }
 
-    if (conversationId) {
-      if (String(message.conversationId || "") !== String(conversation._id))
-        return false;
+    if (explicitRestaurantId && String(message.restaurantId || "") !== String(explicitRestaurantId)) {
+      return { ok: false, restaurantId: null };
+    }
+
+    if (conversation) {
+      if (String(message.conversationId || "") !== String(conversation._id)) {
+        return { ok: false, restaurantId: null };
+      }
     } else if (message.conversationId) {
-      const msgConversation = await AiChatConversation.findById(
-        message.conversationId,
-      ).lean();
-      if (!msgConversation) return false;
-      if (String(msgConversation.restaurantId || "") !== String(rid))
-        return false;
-      if (
-        userId &&
-        String(msgConversation.userId || "") !== String(toObjectId(userId))
-      )
-        return false;
-      if (
-        !userId &&
-        String(msgConversation.guestId || "") !== clean(guestId, 128)
-      )
-        return false;
+      const q = buildConversationOwnerQuery({
+        conversationId: message.conversationId,
+        restaurantId: explicitRestaurantId,
+        guestId,
+        userId,
+      });
+      if (!q) return { ok: false, restaurantId: null };
+      conversation = await AiChatConversation.findOne(q).lean();
+      if (!conversation) return { ok: false, restaurantId: null };
+    } else {
+      return { ok: false, restaurantId: null };
     }
   }
 
-  return true;
+  if (!conversation && !message) return { ok: false, restaurantId: null };
+
+  return {
+    ok: true,
+    restaurantId:
+      explicitRestaurantId ||
+      toObjectId(message?.restaurantId) ||
+      toObjectId(conversation?.restaurantId) ||
+      null,
+  };
 }
 
 export async function submitAiChatbotAnswerFeedback({ input, ctx }) {
-  const restaurantId = toObjectId(input?.restaurantId);
-  if (!restaurantId)
-    throw Object.assign(new Error("restaurantId không hợp lệ"), {
-      code: "BAD_USER_INPUT",
-    });
   if (!ensureRating(input?.rating))
     throw Object.assign(new Error("rating không hợp lệ"), {
       code: "BAD_USER_INPUT",
     });
   const guestId = clean(input?.guestId, 128).replace(/[^a-zA-Z0-9_-]/g, "");
   const userId = ctx?.user?.id || ctx?.user?._id;
-  const ok = await ensureSubmitOwnership({
-    restaurantId,
+  const submitContext = await resolveSubmitContext({
+    restaurantId: input?.restaurantId,
     conversationId: input?.conversationId,
     messageId: input?.messageId,
     guestId,
     userId,
   });
-  if (!ok)
+  if (!submitContext.ok)
     throw Object.assign(new Error("Không thể xác minh phản hồi"), {
       code: "BAD_USER_INPUT",
     });
 
   const doc = await AiChatbotAnswerFeedback.create({
-    restaurantId,
+    restaurantId: submitContext.restaurantId,
     conversationId: toObjectId(input?.conversationId),
     messageId: toObjectId(input?.messageId),
     guestId,
@@ -225,6 +249,7 @@ export async function bulkMarkAiChatbotAnswerFeedbackReviewed({
   }
   return true;
 }
+
 export async function bulkIgnoreAiChatbotAnswerFeedback({ ids = [], ctx }) {
   for (const id of ids) {
     if (mongoose.isValidObjectId(id))
@@ -232,6 +257,7 @@ export async function bulkIgnoreAiChatbotAnswerFeedback({ ids = [], ctx }) {
   }
   return true;
 }
+
 export async function bulkConvertAiChatbotFeedbackToSuggestion({
   ids = [],
   ctx,

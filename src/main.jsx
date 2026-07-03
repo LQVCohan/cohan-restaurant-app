@@ -43,6 +43,7 @@ import "./components/Dashboard_Manager/Table/TableWorkflowFinalPolish.scss";
 import "./styles/AiChatbotMessageAvatars.scss";
 import "./styles/CohanBrandIdentity.css";
 import "./styles/AiChatbotRoleAvatars.css";
+import "./styles/AiChatbotFeedbackControls.css";
 import "./layouts/ManagerSageSurfaceOverrides.css";
 import "./styles/AttendanceManagerVisualFix.css";
 import "./components/Dashboard_Manager/Account/ManagerAccountCenterPolish.scss";
