@@ -4,14 +4,14 @@
 
 .sidebar-rail-toggle {
   position: absolute;
-  top: 46px;
-  right: -15px;
-  z-index: 3;
+  top: 50px;
+  right: 22px;
+  z-index: 4;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid rgba(168, 133, 95, 0.3);
   border-radius: 50%;
@@ -23,6 +23,7 @@
   cursor: pointer;
   transition:
     top 0.18s ease,
+    right 0.18s ease,
     transform 0.18s ease,
     box-shadow 0.18s ease,
     border-color 0.18s ease,
@@ -30,16 +31,11 @@
     background 0.18s ease;
 }
 
-.sidebar-rail-toggle > span {
-  display: inline-grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  font-family: Arial, sans-serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1;
-  transform: translateY(-1px);
+.sidebar-rail-toggle > svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.2;
 }
 
 .sidebar-rail-toggle:hover {
@@ -49,7 +45,7 @@
   box-shadow:
     0 10px 22px rgba(48, 40, 30, 0.16),
     0 0 0 3px rgba(21, 115, 98, 0.06);
-  transform: translateX(1px) scale(1.04);
+  transform: scale(1.04);
 }
 
 .sidebar-rail-toggle:active {
@@ -62,8 +58,8 @@
 }
 
 .manager-layout.sidebar-open .sidebar-rail-toggle {
-  top: 17px;
-  right: -15px;
+  top: 18px;
+  right: 12px;
 }
 
 .manager-sidebar-brand {
@@ -214,7 +210,7 @@
 
   .manager-layout.sidebar-open .sidebar-header {
     min-height: 64px;
-    padding: 0 1.15rem;
+    padding: 0 3.25rem 0 1.15rem;
   }
 
   .manager-layout.sidebar-open .manager-sidebar-brand {
