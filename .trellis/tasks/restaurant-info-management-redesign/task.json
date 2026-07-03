@@ -1,0 +1,17 @@
+{
+  "id": "restaurant-info-management-redesign",
+  "title": "Nâng cấp trang hồ sơ nhà hàng",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.scss",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoCopyTuning.js"
+  ],
+  "validation": [
+    "npm run check:conflicts",
+    "npm run check:graphql",
+    "npm --prefix cohan-restaurant-backend test -- tests/services/restaurant-profile-rewrite.service.test.js",
+    "npm run build"
+  ]
+}
