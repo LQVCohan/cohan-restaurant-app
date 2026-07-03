@@ -32,13 +32,15 @@ const startServer = async () => {
     const env = validateEnv();
 
     // Import env-dependent modules only after .env has been loaded.
-    const [{ connectDB }, { createServer }] = await Promise.all([
+    const [{ connectDB }, { createServer }, { registerHi3dTableGenerationInterceptor }] = await Promise.all([
       import("../../config/db.js"),
       import("./createServer.js"),
+      import("./hi3dTableGeneration.interceptor.js"),
     ]);
 
     await connectDB();
     const app = await createServer();
+    registerHi3dTableGenerationInterceptor(app);
 
     const address = await app.listen({ port: env.PORT, host: env.HOST });
 
