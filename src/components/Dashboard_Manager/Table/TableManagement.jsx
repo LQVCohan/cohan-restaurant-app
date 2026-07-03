@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
 import Modal from "../../../components/common/Modal";
 import Button from "../../../components/common/Button";
-import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
 import useTableManagement from "@/hooks/useTableManagement";
 import useFloorManagement from "@/hooks/useFloorManagement";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import useManagerRestaurantSelection from "@/hooks/useManagerRestaurantSelection";
 import TableActionsLiteModal from "./TableActionsLiteModal";
 import Table3DSimulatorModal from "./Table3DSimulatorModal";
 import { loadTableVrImage } from "@/utils/vrStorage";
@@ -53,19 +53,11 @@ const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
 const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
   const { showNotification } = useNotification();
-  const { restaurants } = useContext(AuthContext);
-  const restaurantList = useMemo(() => restaurants || [], [restaurants]);
-
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-
-  // --- Init Restaurant ---
-  useEffect(() => {
-    if (!selectedRestaurantId && restaurantList?.length > 0) {
-      setSelectedRestaurantId(
-        String(restaurantList[0].id ?? restaurantList[0].restaurantId)
-      );
-    }
-  }, [restaurantList, selectedRestaurantId]);
+  const {
+    selectedRestaurantId,
+    setSelectedRestaurantId,
+    restaurantOptions: restaurantList,
+  } = useManagerRestaurantSelection();
 
   const restaurantId = selectedRestaurantId || null;
   const {
