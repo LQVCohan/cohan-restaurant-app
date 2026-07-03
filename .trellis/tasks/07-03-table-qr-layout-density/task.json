@@ -1,0 +1,30 @@
+{
+  "id": "table-qr-layout-density",
+  "name": "table-qr-layout-density",
+  "title": "Improve table QR page layout density",
+  "description": "Remove the false sidebar gap and compact the table QR management page without changing QR behavior.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-qr-ui",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-03",
+  "completedAt": null,
+  "branch": "fix/table-qr-layout-density",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/layouts/ManagerLayout.scss",
+    "src/components/Dashboard_Manager/Table/TableQrManagementPage.jsx",
+    "src/components/Dashboard_Manager/Table/TableQrManagementPage.scss"
+  ],
+  "notes": "UI-only task; no GraphQL or backend changes.",
+  "meta": {}
+}
