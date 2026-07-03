@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
 import { AuthContext } from "@/context/AuthContext";
@@ -143,7 +144,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
   return (
     <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`} aria-label="Thanh điều hướng quản lý">
       <button className="sidebar-rail-toggle" onClick={onToggle} type="button" aria-label={isOpen ? "Thu gọn menu quản lý" : "Mở menu quản lý"} aria-expanded={isOpen}>
-        <span aria-hidden="true">{isOpen ? "‹" : "›"}</span>
+        {isOpen ? <ChevronLeft aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
       </button>
 
       <div className="sidebar-header">
