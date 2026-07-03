@@ -29,15 +29,34 @@ describe("table3dAiGeneration.service", () => {
     UPLOAD_DIR: uploadDir,
   });
 
+  const hi3dEnv = (uploadDir) => ({
+    NODE_ENV: "development",
+    TABLE_3D_AI_ENABLED: "true",
+    TABLE_3D_AI_PROVIDER: "hi3d",
+    TABLE_3D_AI_HI3D_CLIENT_ID: "client-id",
+    TABLE_3D_AI_HI3D_CLIENT_SECRET: "client-secret",
+    TABLE_3D_AI_ENDPOINT: "https://api.hi3d.test",
+    UPLOAD_DIR: uploadDir,
+  });
+
   const makeImages = async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "table3d-ai-"));
     await Promise.all([1, 2, 3].map((n) => fs.writeFile(path.join(dir, `${n}.png`), `image-${n}`)));
     return {
       dir,
-      images: [1, 2, 3].map((n) => ({ path: path.join(dir, `${n}.png`), mimeType: "image/png" })),
+      images: [1, 2, 3].map((n) => ({
+        path: path.join(dir, `${n}.png`),
+        mimeType: "image/png",
+        originalFileName: `${n}.png`,
+      })),
     };
   };
 
+  const tokenResponse = (token = "hi3d-token") => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ code: 200, data: { accessToken: token, tokenType: "Bearer" }, msg: "success" }),
+  });
 
   it("normalizes frontend label/type and dimension fallbacks", () => {
     expect(normalizeTableModelGenerationInput({
@@ -56,6 +75,171 @@ describe("table3dAiGeneration.service", () => {
     expect(normalizeTableModelGenerationInput({
       dimensionsCm: { widthCm: "81", depth: "71" },
     }).dimensions).toEqual({ width: 81, depth: 71 });
+  });
+
+  it("configures Hi3D from backend-only credentials with web-friendly defaults", () => {
+    const config = getTable3DAiProviderConfig({
+      NODE_ENV: "development",
+      TABLE_3D_AI_ENABLED: "true",
+      TABLE_3D_AI_PROVIDER: "hitem3d",
+      TABLE_3D_AI_HI3D_CLIENT_ID: "client-id",
+      TABLE_3D_AI_HI3D_CLIENT_SECRET: "client-secret",
+    });
+
+    expect(config).toMatchObject({
+      provider: "hi3d",
+      configured: true,
+      isHi3d: true,
+      endpoint: "https://api.hitem3d.ai",
+      hi3dModel: "hitem3dv2.1",
+      hi3dResolution: "1536fast",
+      hi3dFaceCount: 200000,
+      hi3dPbr: true,
+    });
+    expect(getTable3DAiGenerationAvailability({
+      NODE_ENV: "development",
+      TABLE_3D_AI_ENABLED: "true",
+      TABLE_3D_AI_PROVIDER: "hi3d",
+      TABLE_3D_AI_HI3D_CLIENT_ID: "client-id",
+      TABLE_3D_AI_HI3D_CLIENT_SECRET: "client-secret",
+    })).toMatchObject({ configured: true, status: "ready", provider: "hi3d" });
+  });
+
+  it("exchanges Hi3D credentials and submits reference images as multipart", async () => {
+    const { dir, images } = await makeImages();
+    const env = hi3dEnv(dir);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { task_id: "hi3d-task-1" }, msg: "success" }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const created = await requestTableModelGeneration({ label: "Hi3D Table", images }, { env, userId: "u1" });
+
+    expect(created).toMatchObject({
+      ok: true,
+      status: "queued",
+      provider: "hi3d",
+      providerTaskId: "hi3d-task-1",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [tokenUrl, tokenOptions] = fetchMock.mock.calls[0];
+    expect(tokenUrl).toBe("https://api.hi3d.test/open-api/v1/auth/token");
+    expect(tokenOptions.headers.Authorization).toBe(
+      `Basic ${Buffer.from("client-id:client-secret").toString("base64")}`,
+    );
+
+    const [submitUrl, submitOptions] = fetchMock.mock.calls[1];
+    expect(submitUrl).toBe("https://api.hi3d.test/open-api/v1/submit-task");
+    expect(submitOptions.headers.Authorization).toBe("Bearer hi3d-token");
+    expect(submitOptions.body).toBeInstanceOf(FormData);
+    expect(submitOptions.body.getAll("multi_images")).toHaveLength(3);
+    expect(submitOptions.body.get("request_type")).toBe("3");
+    expect(submitOptions.body.get("model")).toBe("hitem3dv2.1");
+    expect(submitOptions.body.get("resolution")).toBe("1536fast");
+    expect(submitOptions.body.get("face")).toBe("200000");
+    expect(submitOptions.body.get("format")).toBe("2");
+    expect(submitOptions.body.get("pbr")).toBe("1");
+  });
+
+  it("maps Hi3D processing state without creating another generation task", async () => {
+    const { dir, images } = await makeImages();
+    const env = hi3dEnv(dir);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(tokenResponse("create-token"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { task_id: "hi3d-task-2" }, msg: "success" }),
+      })
+      .mockResolvedValueOnce(tokenResponse("poll-token"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { task_id: "hi3d-task-2", state: "processing" }, msg: "success" }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const created = await requestTableModelGeneration({ images }, { env, userId: "u1" });
+    const status = await getTableModelGenerationStatus(created.jobId, { env, userId: "u1" });
+
+    expect(status).toMatchObject({ ok: true, status: "processing", provider: "hi3d" });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[3][0]).toBe(
+      "https://api.hi3d.test/open-api/v1/query-task?task_id=hi3d-task-2",
+    );
+  });
+
+  it("downloads Hi3D GLB on success and returns the existing internal model contract", async () => {
+    const { dir, images } = await makeImages();
+    const env = hi3dEnv(dir);
+    const glb = new Uint8Array([103, 108, 84, 70]);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(tokenResponse("create-token"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { task_id: "hi3d-task-3" }, msg: "success" }),
+      })
+      .mockResolvedValueOnce(tokenResponse("poll-token"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          code: 200,
+          data: {
+            task_id: "hi3d-task-3",
+            state: "success",
+            url: "https://cdn.hi3d.test/model.glb",
+            cover_url: "https://cdn.hi3d.test/cover.webp",
+          },
+          msg: "success",
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200, arrayBuffer: async () => glb.buffer });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const created = await requestTableModelGeneration({ images }, { env, userId: "u1" });
+    const status = await getTableModelGenerationStatus(created.jobId, { env, userId: "u1" });
+
+    expect(status).toMatchObject({
+      ok: true,
+      status: "completed",
+      provider: "hi3d",
+      generatedThumbnailUrl: "https://cdn.hi3d.test/cover.webp",
+    });
+    expect(status.generatedModelUrl).toMatch(/^\/uploads\/table-3d\/models\/.+\.glb$/);
+    const saved = await fs.readFile(path.join(dir, status.generatedModelUrl.replace("/uploads/", "")));
+    expect([...saved]).toEqual([...glb]);
+  });
+
+  it("returns failed when Hi3D reports a failed task", async () => {
+    const { dir, images } = await makeImages();
+    const env = hi3dEnv(dir);
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(tokenResponse("create-token"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { task_id: "hi3d-task-4" }, msg: "success" }),
+      })
+      .mockResolvedValueOnce(tokenResponse("poll-token"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { task_id: "hi3d-task-4", state: "failed" }, msg: "bad refs" }),
+      }));
+
+    const created = await requestTableModelGeneration({ images }, { env, userId: "u1" });
+    await expect(getTableModelGenerationStatus(created.jobId, { env, userId: "u1" })).resolves.toMatchObject({
+      ok: true,
+      status: "failed",
+      message: "bad refs",
+    });
   });
 
   it("submits a Meshy task with mocked fetch and returns a pollable job", async () => {
@@ -151,7 +335,6 @@ describe("table3dAiGeneration.service", () => {
       generatedThumbnailUrl: "",
     });
   });
-
 
   it("reports availability for not_configured, mock/demo, and pending provider states", () => {
     expect(getTable3DAiGenerationAvailability({ NODE_ENV: "development" })).toMatchObject({
