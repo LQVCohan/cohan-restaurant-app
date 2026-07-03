@@ -1,59 +1,63 @@
-# Polish manager attendance workspace UI
+# Unify manager UI with a light sage palette
 
 ## Current behavior
 
-The manager attendance page shows several controls that look visually broken in the empty-data state:
+The manager workspace mixes two competing visual systems:
 
-- The employee search control renders as a bordered wrapper containing another bordered input.
-- The reconciliation surface inherits generic global card styles and looks nested.
-- The empty reconciliation badge renders `-- •` before its message.
-- The direct attendance action keeps a fixed 360px description next to a three-column form, so fields become cramped inside the real manager content width.
-- The empty attendance table keeps unnecessary minimum height.
+- light sage green on newer operational pages;
+- beige/cream backgrounds, borders and shadows in the manager shell, sidebar and legacy staff/HR surfaces.
+
+The attendance page also contains several layout defects: a double-bordered employee search, a nested-looking reconciliation card, a cramped quick attendance form, a misleading `-- •` empty score and excessive empty-table height.
 
 ## Root cause and flow
 
-Data flow remains valid:
+The business flow remains unchanged:
 
-`Timesheet schema -> staffAttendanceRecords resolver/restaurant guards -> QUERY_ATTENDANCE_PAGE/useAttendanceManagement -> AttendancePage -> attendance component tests and manager-attendance Playwright test`.
+`schema/model -> resolver/service/guard -> GraphQL operation/Apollo hook -> manager page action -> tests`.
 
-The defects are at the UI boundary. Attendance component styles, global HR polish files, and generic classes such as `search-box` and `card` share the global cascade. Later fixed-width attendance overrides also do not fit the nested manager content width.
+The palette inconsistency is at the shared frontend boundary:
+
+- `ManagerUnifiedBackground.css` defined the shared canvas with beige tokens and excluded the order page;
+- manager shell and sidebar component styles also contain cream and brown values;
+- legacy page styles load their own cream variables and global classes;
+- attendance-specific final CSS retained several cream values.
 
 ## Implementation
 
-Use one attendance-specific final CSS layer loaded after existing global styles. This is smaller and safer than rewriting the large attendance component or duplicating layout rules in multiple existing stylesheets.
+Use the existing manager layout boundary rather than editing every page separately:
 
-The layer will:
-
-- reset the attendance toolbar search wrapper so only the native input has a border;
-- stack the direct-action explanation above the form and preserve responsive form columns;
-- neutralize generic card side effects on the reconciliation panel;
-- visually remove the null-score `-- •` prefix while retaining the existing accessible headline;
-- remove the forced minimum height in empty attendance tables;
-- preserve native controls, focus indicators, queries, mutations, permissions, and restaurant scoping.
+- make `ManagerUnifiedBackground.css` the shared sage token source for every manager page, including orders;
+- apply sage canvas, header, sidebar, scope selector, neutral cards, forms, tables, modals and empty states;
+- add one scoped compatibility layer for legacy HR/staff and other common surface classes;
+- keep warning, danger and success colors distinct so status meaning is not lost;
+- update the attendance repair layer to consume the shared manager tokens;
+- preserve native controls, focus rings, responsive behavior, routing, permissions and data operations.
 
 ## Files
 
-- `src/main.jsx`
+- `src/layouts/ManagerUnifiedBackground.css`
+- `src/layouts/ManagerSageSurfaceOverrides.css`
 - `src/styles/AttendanceManagerVisualFix.css`
+- `src/main.jsx`
 
 ## Acceptance criteria
 
-- The attendance search field has one border and fills its intended toolbar column.
-- The quick attendance form is not compressed by the explanatory copy.
-- The reconciliation panel has one intentional surface and no generic card collision.
-- Empty reconciliation status does not visually show `-- •`.
-- Empty attendance tables do not leave a forced 400px blank panel.
-- Existing attendance behavior remains unchanged.
+- All `/manager` pages share a light sage canvas and neutral sage-tinted surfaces.
+- Header, sidebar, branch selector, cards, inputs, tables and neutral modals no longer use beige as the primary palette.
+- Warning, error, danger and success states remain visually distinguishable.
+- Staff/HR legacy pages consume the same sage variables without component rewrites.
+- Attendance search, quick action, reconciliation and empty-table fixes remain intact.
+- No GraphQL, resolver, permission, routing or mutation behavior changes.
 
 ## Validation
 
-- Existing Playwright path: `tests/e2e/p1/manager-attendance.spec.js`
-- Frontend lint/build and CI checks
-- Manual visual review at desktop and narrow breakpoints when a browser runtime is available
+- Frontend conflict check, lint, component/unit tests and build in CI.
+- Existing manager attendance Playwright smoke path.
+- Manual visual review across representative manager pages and narrow breakpoints when a browser runtime is available.
 
 ## Out of scope
 
-- Attendance data model, schema, resolver, or hook changes.
-- Redesigning the whole Staff Management page.
-- Changing attendance wording, permissions, mutations, corrections, or overtime workflows.
-- Adding dependencies or a new design system.
+- Rewriting page components or introducing a new design system.
+- Changing attendance, payroll, order, table, customer or finance behavior.
+- Recoloring semantic warning, danger and success states into sage.
+- Adding dependencies.
