@@ -1,0 +1,31 @@
+{
+  "id": "attendance-ui-polish",
+  "name": "attendance-ui-polish",
+  "title": "Unify manager UI with sage palette",
+  "description": "Repair the attendance workspace and replace mixed cream/green manager surfaces with one light sage visual system without changing behavior.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-visual-system",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-03",
+  "completedAt": null,
+  "branch": "fix/attendance-ui-polish",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1177",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/layouts/ManagerUnifiedBackground.css",
+    "src/layouts/ManagerSageSurfaceOverrides.css",
+    "src/styles/AttendanceManagerVisualFix.css",
+    "src/main.jsx"
+  ],
+  "notes": "Visual-only manager palette and attendance layout fix. Sage is the primary tone; warning, danger and success semantics remain distinct. No GraphQL/backend/permission changes.",
+  "meta": {}
+}
