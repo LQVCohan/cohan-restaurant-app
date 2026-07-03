@@ -1,0 +1,53 @@
+body.manager-dark-mode {
+  color-scheme: dark;
+  --manager-bg-base: #111815;
+  --manager-bg-mid: #151d1a;
+  --manager-bg-end: #1a211e;
+  --manager-surface: rgba(28, 38, 34, 0.92);
+  --manager-border: rgba(130, 148, 139, 0.22);
+  --manager-text: #edf4f0;
+  --manager-muted: #a7b5ae;
+  --manager-primary: #dce8e2;
+  --manager-primary-hover: #ffffff;
+  --manager-accent: #8eaaa0;
+  --manager-accent-soft: rgba(111, 145, 132, 0.16);
+  --manager-success: #86b39f;
+  --manager-danger: #e38d86;
+}
+
+body.manager-dark-mode .manager-layout,
+body.manager-dark-mode .manager-layout__main,
+body.manager-dark-mode .manager-layout__content,
+body.manager-dark-mode .manager-page-shell,
+body.manager-dark-mode .manager-page-shell__body {
+  color: var(--manager-text) !important;
+  background: linear-gradient(180deg, var(--manager-bg-base), var(--manager-bg-mid) 55%, var(--manager-bg-end)) !important;
+}
+
+body.manager-dark-mode .manager-layout__header > .header,
+body.manager-dark-mode .manager-layout .sidebar,
+body.manager-dark-mode .manager-account-dialog {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: rgba(20, 29, 25, 0.96) !important;
+}
+
+body.manager-dark-mode .manager-layout__header :is(.search-box, .manager-scope-selector, .notification-btn, .user-menu-btn),
+body.manager-dark-mode .manager-layout .sidebar :is(.nav-item, .manager-sidebar-brand),
+body.manager-dark-mode .manager-account :is(.manager-account__hero, .manager-account__panel, .manager-account__nav, .manager-account__identity) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: rgba(28, 38, 34, 0.9) !important;
+}
+
+body.manager-dark-mode .manager-account :is(input, .manager-account__sessions article, .manager-account__support-grid button) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: rgba(15, 22, 19, 0.7) !important;
+}
+
+body.manager-dark-mode .manager-account :is(p, small, label > span, .manager-account__sessions span, .manager-account__sessions em),
+body.manager-dark-mode .manager-layout__header .current-status,
+body.manager-dark-mode .manager-layout .sidebar :is(.nav-label, .nav-section-title) {
+  color: var(--manager-muted) !important;
+}
