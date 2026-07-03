@@ -1,0 +1,18 @@
+# Developer identity and session state are local only
+.developer
+.current-task
+.runtime/
+
+# Trellis runtime files
+.ralph-state.json
+.agents/
+.agent-log
+.session-id
+.plan-log
+
+# Temporary files
+*.tmp
+*.new
+.backup-*
+**/__pycache__/
+**/*.pyc
