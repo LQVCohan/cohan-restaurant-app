@@ -1,249 +1,559 @@
 .combo-management {
   --combo-ink: #2f2418;
-  --combo-muted: rgba(107, 94, 78, 0.72);
-  --combo-line: rgba(218, 205, 187, 0.74);
-  --combo-surface: rgba(255, 253, 248, 0.86);
+  --combo-muted: #74695d;
+  --combo-line: rgba(210, 196, 176, 0.78);
+  --combo-surface: rgba(255, 253, 248, 0.92);
   --combo-sage: #157362;
   --combo-sage-dark: #0f5f52;
-  --combo-shadow: 0 18px 42px rgba(75, 56, 32, 0.08);
+  --combo-sage-soft: #e7f3ef;
+  --combo-danger: #a9463f;
+  --combo-danger-soft: #f9ece9;
+  --combo-warning: #9a5b16;
+  --combo-shadow: 0 16px 38px rgba(75, 56, 32, 0.08);
 
+  min-width: 0;
   display: grid;
-  gap: 1rem;
-  padding: clamp(1rem, 2vw, 1.5rem);
+  gap: 0.9rem;
+  padding: clamp(0.9rem, 1.8vw, 1.35rem);
   color: var(--combo-ink);
 }
 
-.combo-management__header,
-.combo-management__filters,
-.manager-combo-card,
-.combo-management__dialog,
-.combo-management__empty {
+.combo-management__page-header.management-page-header {
+  margin-bottom: 0;
+  border-color: var(--combo-line);
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      rgba(21, 115, 98, 0.12),
+      transparent 17rem
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 253, 248, 0.96),
+      rgba(249, 241, 229, 0.9)
+    );
+  box-shadow: var(--combo-shadow);
+}
+
+.combo-management__page-header.management-page-header.density-compact {
+  .mph-title__icon {
+    color: var(--combo-sage-dark);
+    background: var(--combo-sage-soft);
+    border-color: rgba(21, 115, 98, 0.18);
+  }
+
+  .mph-eyebrow {
+    color: var(--combo-sage-dark);
+  }
+
+  .mph-btn--primary {
+    background: var(--combo-sage);
+    border-color: var(--combo-sage);
+    box-shadow: 0 10px 22px rgba(21, 115, 98, 0.2);
+  }
+}
+
+.combo-management__command-bar.manager-command-bar {
+  margin-bottom: 0;
+}
+
+.combo-management__restaurant-filter {
+  min-width: min(250px, 100%);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.72rem;
+  border: 1px solid rgba(128, 109, 83, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 253, 249, 0.94);
+  color: var(--combo-sage-dark);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+
+  &:focus-within {
+    border-color: rgba(21, 115, 98, 0.48);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(21, 115, 98, 0.12);
+  }
+
+  select {
+    min-width: 0;
+    flex: 1;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #24303f;
+    font: inherit;
+    font-weight: 720;
+  }
+}
+
+.combo-management__result-count {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.78rem;
+  border: 1px solid rgba(21, 115, 98, 0.14);
+  border-radius: 12px;
+  background: var(--combo-sage-soft);
+  color: var(--combo-sage-dark);
+  font-size: 0.78rem;
+  font-weight: 820;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.combo-management__list-heading {
+  min-width: 0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.1rem 0.15rem;
+
+  > div {
+    min-width: 0;
+  }
+
+  span {
+    color: var(--combo-sage-dark);
+    font-size: 0.68rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    margin: 0.16rem 0 0;
+    color: #251f19;
+    font-size: clamp(1.08rem, 2vw, 1.35rem);
+    font-weight: 900;
+    letter-spacing: -0.028em;
+    text-wrap: balance;
+  }
+
+  p {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--combo-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    text-align: right;
+    text-wrap: pretty;
+  }
+}
+
+.combo-management__grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, 330px), 390px)
+  );
+  justify-content: start;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.manager-combo-card {
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--combo-line);
+  border-radius: 22px;
+  background: var(--combo-surface);
+  box-shadow: var(--combo-shadow);
+  backdrop-filter: blur(12px) saturate(1.04);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(21, 115, 98, 0.25);
+    box-shadow: 0 20px 42px rgba(75, 56, 32, 0.12);
+  }
+}
+
+.manager-combo-card__media {
+  position: relative;
+  aspect-ratio: 16 / 8.5;
+  overflow: hidden;
+  background: #f4eadb;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 48%;
+    background: linear-gradient(180deg, transparent, rgba(36, 27, 19, 0.28));
+    pointer-events: none;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+  }
+}
+
+.manager-combo-card:hover .manager-combo-card__media img {
+  transform: scale(1.025);
+}
+
+.manager-combo-card__status,
+.manager-combo-card__saving {
+  position: absolute;
+  z-index: 1;
+  top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.62rem;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 9px;
+  box-shadow: 0 8px 18px rgba(52, 38, 24, 0.12);
+  backdrop-filter: blur(12px);
+  font-size: 0.68rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.manager-combo-card__status {
+  left: 0.75rem;
+
+  &.is-active {
+    color: #0d5c4e;
+    background: rgba(232, 247, 240, 0.92);
+  }
+
+  &.is-muted {
+    color: #7d4d16;
+    background: rgba(255, 247, 229, 0.92);
+  }
+}
+
+.manager-combo-card__saving {
+  right: 0.75rem;
+  color: #fff;
+  background: rgba(36, 50, 59, 0.84);
+}
+
+.manager-combo-card__body {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: 0.72rem;
+  padding: 1rem;
+}
+
+.manager-combo-card__title-row {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  h3 {
+    min-width: 0;
+    margin: 0;
+    color: #251f19;
+    font-size: 1.08rem;
+    line-height: 1.24;
+    font-weight: 900;
+    letter-spacing: -0.026em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+
+  > span {
+    flex: 0 0 auto;
+    min-height: 26px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.56rem;
+    border: 1px solid rgba(21, 115, 98, 0.14);
+    border-radius: 9px;
+    background: var(--combo-sage-soft);
+    color: var(--combo-sage-dark);
+    font-size: 0.68rem;
+    font-weight: 850;
+  }
+}
+
+.manager-combo-card__description {
+  min-height: 2.8em;
+  margin: 0;
+  color: var(--combo-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.manager-combo-card__items {
+  min-width: 0;
+  display: grid;
+  gap: 0.38rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.42rem 0.55rem;
+    border-radius: 10px;
+    background: rgba(247, 242, 234, 0.72);
+    color: #4c4033;
+    font-size: 0.74rem;
+
+    span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      flex: 0 0 auto;
+      color: var(--combo-sage-dark);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .manager-combo-card__items-more {
+    justify-content: flex-start;
+    color: var(--combo-muted);
+    font-weight: 760;
+  }
+}
+
+.manager-combo-card__prices {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+
+  div {
+    min-width: 0;
+    padding: 0.64rem 0.7rem;
+    border: 1px solid rgba(218, 205, 187, 0.68);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.64);
+  }
+
+  dt {
+    color: var(--combo-muted);
+    font-size: 0.66rem;
+    font-weight: 780;
+  }
+
+  dd {
+    margin: 0.16rem 0 0;
+    color: #24303f;
+    font-size: 0.94rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  div:first-child dd {
+    color: var(--combo-sage-dark);
+  }
+}
+
+.manager-combo-card__footer {
+  min-width: 0;
+  display: grid;
+  gap: 0.68rem;
+  padding-top: 0.72rem;
+  border-top: 1px solid rgba(218, 205, 187, 0.62);
+}
+
+.manager-combo-card__updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  color: var(--combo-muted);
+  font-size: 0.7rem;
+  font-weight: 720;
+}
+
+.manager-combo-card__actions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+
+  button {
+    min-width: 0;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.36rem;
+    padding: 0 0.55rem;
+    border: 1px solid rgba(21, 115, 98, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--combo-sage-dark);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 820;
+    cursor: pointer;
+    transition:
+      transform 0.16s ease,
+      border-color 0.16s ease,
+      background 0.16s ease,
+      box-shadow 0.16s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(21, 115, 98, 0.34);
+      background: var(--combo-sage-soft);
+      box-shadow: 0 8px 18px rgba(21, 115, 98, 0.1);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0) scale(0.98);
+    }
+
+    &.is-danger {
+      color: var(--combo-danger);
+      border-color: rgba(169, 70, 63, 0.18);
+
+      &:hover:not(:disabled) {
+        border-color: rgba(169, 70, 63, 0.3);
+        background: var(--combo-danger-soft);
+        box-shadow: 0 8px 18px rgba(169, 70, 63, 0.1);
+      }
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+}
+
+.manager-combo-card--skeleton {
+  min-height: 440px;
+  border-color: rgba(218, 205, 187, 0.56);
+  background: linear-gradient(
+    100deg,
+    rgba(255, 253, 248, 0.76) 18%,
+    rgba(237, 227, 211, 0.68) 38%,
+    rgba(255, 253, 248, 0.76) 58%
+  );
+  background-size: 220% 100%;
+  animation: comboSkeleton 1.2s ease-in-out infinite;
+}
+
+.combo-management__state,
+.combo-management__dialog {
   border: 1px solid var(--combo-line);
   background: var(--combo-surface);
   box-shadow: var(--combo-shadow);
   backdrop-filter: blur(12px) saturate(1.05);
 }
 
-.combo-management__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: clamp(1.1rem, 2vw, 1.45rem);
-  border-radius: 26px;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(21, 115, 98, 0.12), transparent 18rem),
-    linear-gradient(135deg, rgba(255, 253, 248, 0.94), rgba(249, 241, 229, 0.88));
-}
-
-.combo-management__header span,
-.combo-management__dialog-heading span {
-  color: var(--combo-sage);
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.combo-management__header h1,
-.combo-management__dialog h2,
-.combo-management__empty h2 {
-  margin: 0.2rem 0;
-  color: #251f19;
-  font-size: clamp(1.45rem, 3vw, 2rem);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-}
-
-.combo-management__header p,
-.combo-management__dialog-heading p,
-.combo-management__empty p,
-.manager-combo-card p,
-.combo-management__hint {
-  margin: 0;
-  color: var(--combo-muted);
-  line-height: 1.45;
-}
-
-.combo-management button {
-  min-height: 40px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0.68rem 1rem;
-  background: var(--combo-sage);
-  color: #fff;
-  font-weight: 850;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.combo-management button:hover:not(:disabled) {
-  background: var(--combo-sage-dark);
-  box-shadow: 0 10px 22px rgba(21, 115, 98, 0.18);
-  transform: translateY(-1px);
-}
-
-.combo-management button:disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
-}
-
-.combo-management__primary,
-.combo-management__submit {
-  box-shadow: 0 12px 26px rgba(21, 115, 98, 0.18);
-}
-
-.combo-management__filters {
-  display: grid;
-  grid-template-columns: minmax(190px, 0.9fr) minmax(240px, 1.4fr) minmax(150px, 0.55fr);
-  gap: 0.7rem;
-  padding: 0.8rem;
-  border-radius: 22px;
-}
-
-.combo-management input,
-.combo-management select,
-.combo-management textarea {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid rgba(218, 205, 187, 0.86);
-  border-radius: 14px;
-  padding: 0.68rem 0.78rem;
-  background: rgba(255, 255, 255, 0.74);
-  color: #24303f;
-  font: inherit;
-  font-weight: 650;
-  outline: 0;
-}
-
-.combo-management textarea {
-  min-height: 86px;
-  resize: vertical;
-}
-
-.combo-management input:focus,
-.combo-management select:focus,
-.combo-management textarea:focus {
-  border-color: rgba(21, 115, 98, 0.42);
-  box-shadow: 0 0 0 3px rgba(21, 115, 98, 0.1);
-}
-
-.combo-management__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-  gap: 1rem;
-}
-
-.manager-combo-card {
-  display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
-  min-height: 188px;
-  overflow: hidden;
-  border-radius: 24px;
-}
-
-.manager-combo-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #f6ecdd;
-}
-
-.manager-combo-card__body {
-  display: grid;
-  gap: 0.58rem;
-  padding: 1rem;
-}
-
-.manager-combo-card__topline,
-.manager-combo-card dl,
-.manager-combo-card__actions,
-.combo-management__items > div:first-child,
-.combo-management__item-row,
-.combo-management__preview {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.manager-combo-card__topline,
-.combo-management__items > div:first-child,
-.combo-management__preview {
-  justify-content: space-between;
-}
-
-.manager-combo-card__topline span,
-.is-active,
-.is-muted {
-  font-size: 0.72rem;
-  font-weight: 850;
-}
-
-.is-active { color: var(--combo-sage); }
-.is-muted { color: #9a5b16; }
-
-.manager-combo-card h3 {
-  margin: 0;
-  color: #251f19;
-  font-size: 1.05rem;
-  font-weight: 900;
-  letter-spacing: -0.025em;
-}
-
-.manager-combo-card dl {
-  flex-wrap: wrap;
-  margin: 0;
-}
-
-.manager-combo-card dl div {
-  min-width: 88px;
-  padding: 0.48rem 0.58rem;
-  border: 1px solid rgba(218, 205, 187, 0.64);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.62);
-}
-
-.manager-combo-card dt {
-  color: var(--combo-muted);
-  font-size: 0.66rem;
-  font-weight: 800;
-}
-
-.manager-combo-card dd {
-  margin: 0.12rem 0 0;
-  color: #24303f;
-  font-weight: 900;
-}
-
-.manager-combo-card__actions {
-  flex-wrap: wrap;
-  margin-top: 0.1rem;
-}
-
-.manager-combo-card__actions button,
-.combo-management__items button:not(.combo-management__submit) {
-  min-height: 34px;
-  padding: 0.48rem 0.72rem;
-  border: 1px solid rgba(21, 115, 98, 0.18);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--combo-sage-dark);
-  box-shadow: none;
-}
-
-.combo-management__empty {
+.combo-management__state {
+  min-height: 230px;
   display: grid;
   justify-items: center;
+  align-content: center;
   gap: 0.55rem;
   padding: clamp(2rem, 5vw, 3.2rem);
-  border-radius: 24px;
+  border-radius: 22px;
   text-align: center;
+  color: var(--combo-sage-dark);
+
+  h2 {
+    margin: 0.15rem 0 0;
+    color: #251f19;
+    font-size: clamp(1.2rem, 2.4vw, 1.55rem);
+    font-weight: 900;
+    letter-spacing: -0.035em;
+  }
+
+  p {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--combo-muted);
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
 }
 
-.manager-combo-card--skeleton {
-  min-height: 188px;
-  background: linear-gradient(100deg, rgba(255, 253, 248, 0.75), rgba(239, 229, 214, 0.64), rgba(255, 253, 248, 0.75));
-  background-size: 220% 100%;
-  animation: comboSkeleton 1.2s ease-in-out infinite;
+.combo-management__state--error {
+  color: var(--combo-danger);
+  border-color: rgba(169, 70, 63, 0.24);
+  background: linear-gradient(
+    180deg,
+    rgba(249, 236, 233, 0.82),
+    rgba(255, 253, 248, 0.94)
+  );
+}
+
+.combo-management__state-action,
+.combo-management__secondary-button,
+.combo-management__submit,
+.combo-management__close,
+.combo-management__remove-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 840;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+}
+
+.combo-management__state-action,
+.combo-management__submit {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border-radius: 12px;
+  background: var(--combo-sage);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(21, 115, 98, 0.18);
+
+  &:hover:not(:disabled) {
+    background: var(--combo-sage-dark);
+    box-shadow: 0 14px 28px rgba(21, 115, 98, 0.22);
+  }
 }
 
 .combo-management__modal {
@@ -253,83 +563,260 @@
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgba(44, 30, 22, 0.42);
+  background: rgba(44, 30, 22, 0.44);
+  backdrop-filter: blur(4px);
 }
 
 .combo-management__dialog {
   position: relative;
-  display: grid;
-  gap: 0.78rem;
-  width: min(820px, 100%);
+  width: min(780px, 100%);
   max-height: min(90dvh, 860px);
   overflow: auto;
+  display: grid;
+  gap: 0.82rem;
   padding: clamp(1rem, 2vw, 1.35rem);
-  border-radius: 24px;
+  border-radius: 22px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(21, 115, 98, 0.32) transparent;
+
+  label {
+    display: grid;
+    gap: 0.36rem;
+    color: #3b3025;
+    font-size: 0.84rem;
+    font-weight: 820;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    border: 1px solid rgba(218, 205, 187, 0.88);
+    border-radius: 12px;
+    padding: 0.66rem 0.75rem;
+    background: rgba(255, 255, 255, 0.82);
+    color: #24303f;
+    font: inherit;
+    font-weight: 650;
+    outline: 0;
+
+    &:focus {
+      border-color: rgba(21, 115, 98, 0.46);
+      box-shadow: 0 0 0 3px rgba(21, 115, 98, 0.1);
+    }
+  }
+
+  textarea {
+    min-height: 88px;
+    resize: vertical;
+  }
 }
 
-.combo-management__dialog label {
-  display: grid;
-  gap: 0.36rem;
-  color: #3b3025;
-  font-size: 0.86rem;
-  font-weight: 850;
+.combo-management__dialog-heading {
+  padding-right: 3rem;
+
+  > span {
+    color: var(--combo-sage-dark);
+    font-size: 0.68rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    margin: 0.18rem 0;
+    color: #251f19;
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  p {
+    margin: 0;
+    color: var(--combo-muted);
+    line-height: 1.45;
+  }
 }
 
 .combo-management__close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0.9rem;
+  right: 0.9rem;
   width: 38px;
-  min-height: 38px !important;
-  padding: 0 !important;
+  height: 38px;
+  padding: 0;
+  border-color: rgba(218, 205, 187, 0.82);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.86);
+  color: #4b4034;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(169, 70, 63, 0.24);
+    background: var(--combo-danger-soft);
+    color: var(--combo-danger);
+  }
 }
 
 .combo-management__form-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.45fr);
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.42fr);
   gap: 0.7rem;
 }
 
 .combo-management__items {
+  min-width: 0;
   display: grid;
-  gap: 0.58rem;
-  padding: 0.8rem;
-  border: 1px dashed rgba(21, 115, 98, 0.24);
-  border-radius: 18px;
+  gap: 0.6rem;
+  padding: 0.82rem;
+  border: 1px dashed rgba(21, 115, 98, 0.25);
+  border-radius: 16px;
   background: rgba(247, 237, 221, 0.42);
 }
 
+.combo-management__items-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+
+  > div {
+    min-width: 0;
+    display: grid;
+    gap: 0.12rem;
+  }
+
+  strong {
+    color: #3b3025;
+    font-size: 0.86rem;
+  }
+
+  span {
+    color: var(--combo-muted);
+    font-size: 0.7rem;
+    font-weight: 650;
+  }
+}
+
+.combo-management__secondary-button {
+  min-height: 36px;
+  flex: 0 0 auto;
+  padding: 0 0.72rem;
+  border-color: rgba(21, 115, 98, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--combo-sage-dark);
+
+  &:hover:not(:disabled) {
+    border-color: rgba(21, 115, 98, 0.34);
+    background: var(--combo-sage-soft);
+  }
+}
+
 .combo-management__item-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 42px;
   align-items: stretch;
+  gap: 0.5rem;
+
+  input,
+  select {
+    min-height: 42px;
+  }
 }
 
-.combo-management__item-row select {
-  flex: 1;
+.combo-management__remove-item {
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border-color: rgba(169, 70, 63, 0.18);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--combo-danger);
+
+  &:hover:not(:disabled) {
+    border-color: rgba(169, 70, 63, 0.3);
+    background: var(--combo-danger-soft);
+  }
 }
 
-.combo-management__item-row input {
-  width: 96px;
+.combo-management__hint {
+  margin: 0;
+  padding: 0.72rem;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--combo-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .combo-management__preview {
-  flex-wrap: wrap;
-  padding: 0.72rem 0.85rem;
-  border-radius: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  padding: 0.72rem;
+  border-radius: 14px;
   background: rgba(21, 115, 98, 0.08);
   color: var(--combo-sage-dark);
-  font-weight: 850;
+
+  span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.5rem 0.62rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.58);
+    font-size: 0.76rem;
+    font-weight: 720;
+  }
+
+  strong {
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.combo-management__dialog-footer {
+  position: sticky;
+  bottom: -1.35rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 -0.2rem -0.2rem;
+  padding: 0.82rem 0.2rem 0.2rem;
+  border-top: 1px solid rgba(218, 205, 187, 0.7);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 253, 248, 0.78),
+    rgba(255, 253, 248, 0.98) 35%
+  );
+  backdrop-filter: blur(10px);
 }
 
 .combo-management__check {
   display: flex !important;
+  grid-template-columns: none !important;
   align-items: center;
   gap: 0.55rem !important;
+  cursor: pointer;
+
+  input {
+    width: 18px;
+    min-height: 18px;
+    padding: 0;
+    accent-color: var(--combo-sage);
+  }
 }
 
-.combo-management__check input {
-  width: auto;
-  min-height: auto;
-  accent-color: var(--combo-sage);
+.combo-management__submit {
+  flex: 0 0 auto;
 }
 
 .combo-management :focus-visible {
@@ -338,34 +825,100 @@
 }
 
 @keyframes comboSkeleton {
-  to { background-position: -220% 0; }
+  to {
+    background-position: -220% 0;
+  }
 }
 
-@media (max-width: 1180px) {
-  .combo-management__filters {
-    grid-template-columns: 1fr 1fr;
+@media (max-width: 900px) {
+  .combo-management__list-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+
+    p {
+      max-width: none;
+      text-align: left;
+    }
+  }
+
+  .combo-management__grid {
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, 320px), 1fr)
+    );
   }
 }
 
 @media (max-width: 720px) {
-  .combo-management__header,
-  .combo-management__filters,
-  .manager-combo-card,
+  .combo-management {
+    padding-inline: 0.65rem;
+  }
+
+  .combo-management__restaurant-filter,
+  .combo-management__result-count {
+    width: 100%;
+  }
+
   .combo-management__form-grid,
-  .combo-management__item-row {
+  .combo-management__preview {
     grid-template-columns: 1fr;
   }
 
-  .combo-management__header {
+  .combo-management__item-row {
+    grid-template-columns: minmax(0, 1fr) 84px 42px;
+  }
+
+  .combo-management__dialog-footer {
     align-items: stretch;
+    flex-direction: column;
   }
 
-  .manager-combo-card img {
-    height: 180px;
-  }
-
-  .combo-management__item-row input {
+  .combo-management__submit {
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .manager-combo-card__media {
+    aspect-ratio: 4 / 2.5;
+  }
+
+  .manager-combo-card__saving {
+    top: auto;
+    right: auto;
+    left: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .manager-combo-card__prices {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-combo-card__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    .is-danger {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .combo-management__items-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .combo-management__secondary-button {
+    width: 100%;
+  }
+
+  .combo-management__item-row {
+    grid-template-columns: minmax(0, 1fr) 70px;
+
+    .combo-management__remove-item {
+      width: 100%;
+      grid-column: 1 / -1;
+    }
   }
 }
 
