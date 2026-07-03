@@ -1,0 +1,28 @@
+{
+  "id": "manager-backup-settings-redesign",
+  "title": "Nâng cấp trang Sao lưu và Cài đặt",
+  "status": "implemented_unverified",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/Backup/BackupManagement.scss",
+    "src/components/Dashboard_Manager/Settings/SettingsManagement.jsx",
+    "src/components/Dashboard_Manager/Settings/SettingsManagement.scss",
+    "src/components/Dashboard_Manager/Settings/SettingsOvertimePolicy.scss",
+    "src/components/Dashboard_Manager/Settings/SettingsManagement.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npx vitest run src/components/Dashboard_Manager/Backup/BackupManagement.test.jsx src/components/Dashboard_Manager/Settings/SettingsManagement.test.jsx",
+      "npm run build",
+      "browser smoke at desktop, 430x932 and 390x844"
+    ],
+    "completed": [
+      "traced backup and system-setting schema, resolver permissions, restaurant scope, audit flow, Apollo operations, UI actions and component tests",
+      "added a focused component test for backend-aligned fallback settings"
+    ],
+    "notRun": [
+      "automated checks and browser smoke test pending CI"
+    ]
+  }
+}

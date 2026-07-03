@@ -63,19 +63,28 @@ describe("SettingsManagement", () => {
   it("renders setting from query with metadata", () => {
     renderPage();
     expect(screen.getByDisplayValue("Asia/Ho_Chi_Minh")).toBeInTheDocument();
-    expect(screen.getByText(/Version 3/)).toBeInTheDocument();
+    expect(screen.getByText(/Phiên bản 3/)).toBeInTheDocument();
     expect(screen.getByText(/v3/)).toBeInTheDocument();
+  });
+
+  it("uses backend-aligned defaults when the setting payload is unavailable", () => {
+    useQueryMock.mockReturnValue({ data: {}, loading: false, error: null, refetch });
+    renderPage();
+
+    expect(screen.getByLabelText("Giờ bắt đầu ngày vận hành")).toHaveValue(5);
+    expect(screen.getByLabelText("Sao lưu")).toBeChecked();
+    expect(screen.getByText(/Phiên bản 1/)).toBeInTheDocument();
   });
 
   it("enables edit mode and saves updateSystemSetting variables", async () => {
     renderPage();
     fireEvent.click(screen.getByText("Chỉnh sửa"));
-    fireEvent.change(screen.getByLabelText("Timezone"), { target: { value: "UTC" } });
-    fireEvent.change(screen.getByLabelText("Currency"), { target: { value: "USD" } });
-    fireEvent.change(screen.getByLabelText("Date format"), { target: { value: "YYYY-MM-DD" } });
-    fireEvent.change(screen.getByLabelText("Business day start hour"), { target: { value: "5" } });
-    fireEvent.change(screen.getByLabelText("Default language"), { target: { value: "en" } });
-    fireEvent.click(screen.getByLabelText("Backup"));
+    fireEvent.change(screen.getByLabelText("Múi giờ"), { target: { value: "UTC" } });
+    fireEvent.change(screen.getByLabelText("Đơn vị tiền tệ"), { target: { value: "USD" } });
+    fireEvent.change(screen.getByLabelText("Định dạng ngày"), { target: { value: "YYYY-MM-DD" } });
+    fireEvent.change(screen.getByLabelText("Giờ bắt đầu ngày vận hành"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Ngôn ngữ mặc định"), { target: { value: "en" } });
+    fireEvent.click(screen.getByLabelText("Sao lưu"));
     fireEvent.change(screen.getByLabelText("Ghi chú cấu hình"), { target: { value: "updated note" } });
     fireEvent.click(screen.getByText("Lưu cấu hình"));
     await waitFor(() => expect(updateSystemSetting).toHaveBeenCalled());
@@ -95,7 +104,7 @@ describe("SettingsManagement", () => {
   it("validates businessDayStartHour", async () => {
     renderPage();
     fireEvent.click(screen.getByText("Chỉnh sửa"));
-    fireEvent.change(screen.getByLabelText("Business day start hour"), { target: { value: "24" } });
+    fireEvent.change(screen.getByLabelText("Giờ bắt đầu ngày vận hành"), { target: { value: "24" } });
     fireEvent.click(screen.getByText("Lưu cấu hình"));
     expect(await screen.findByText(/số nguyên từ 0 đến 23/)).toBeInTheDocument();
     expect(updateSystemSetting).not.toHaveBeenCalled();
