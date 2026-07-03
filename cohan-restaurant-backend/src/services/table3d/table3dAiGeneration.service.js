@@ -10,10 +10,16 @@ const MOCK_PROVIDER = "mock";
 const OLLAMA_PROVIDER = "ollama";
 const GEMINI_PROVIDER = "gemini";
 const MESHY_PROVIDER = "meshy";
+const HI3D_PROVIDER = "hi3d";
 const DEFAULT_OLLAMA_ENDPOINT = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "llava";
 const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
+const DEFAULT_HI3D_ENDPOINT = "https://api.hitem3d.ai";
+const DEFAULT_HI3D_MODEL = "hitem3dv2.1";
+const DEFAULT_HI3D_RESOLUTION = "1536fast";
+const DEFAULT_HI3D_FACE_COUNT = 200000;
 const HYBRID_PROVIDER_ALIASES = new Set(["ollama-gemini", "ollama_gemini", "hybrid", "local-gemini"]);
+const HI3D_PROVIDER_ALIASES = new Set([HI3D_PROVIDER, "hitem3d"]);
 const jobStore = new Map();
 
 const normalizeBoolean = (value) => ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
@@ -32,6 +38,10 @@ const normalizeDimensions = (dimensions = {}) => ["width", "depth", "height", "d
   if (Number.isFinite(parsed) && parsed > 0) acc[key] = parsed;
   return acc;
 }, {});
+const normalizeIntegerInRange = (value, fallback, min, max) => {
+  const parsed = Number.parseInt(String(value || ""), 10);
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+};
 
 const omitImagePayloads = (input = {}) => ({ ...input, images: [] });
 
@@ -58,10 +68,11 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 30000) => {
 export const getTable3DAiProviderConfig = (env = process.env) => {
   const rawProvider = normalizeProviderName(env.TABLE_3D_AI_PROVIDER || env.TABLE_3D_AI_FINAL_PROVIDER);
   const isHybridAlias = HYBRID_PROVIDER_ALIASES.has(rawProvider);
-  const provider = isHybridAlias ? GEMINI_PROVIDER : rawProvider;
+  const isHi3dAlias = HI3D_PROVIDER_ALIASES.has(rawProvider);
+  const provider = isHybridAlias ? GEMINI_PROVIDER : isHi3dAlias ? HI3D_PROVIDER : rawProvider;
   const enabled = normalizeBoolean(env.TABLE_3D_AI_ENABLED);
   const apiKey = trim(provider === GEMINI_PROVIDER ? env.TABLE_3D_AI_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY : env.TABLE_3D_AI_API_KEY);
-  const endpoint = trim(env.TABLE_3D_AI_ENDPOINT);
+  const endpoint = trim(env.TABLE_3D_AI_ENDPOINT) || (provider === HI3D_PROVIDER ? DEFAULT_HI3D_ENDPOINT : "");
   const nodeEnv = trim(env.NODE_ENV) || "development";
   const preprocessingProvider = normalizeProviderName(
     isHybridAlias ? OLLAMA_PROVIDER : env.TABLE_3D_AI_PREPROCESS_PROVIDER || env.TABLE_3D_AI_FIRST_PROVIDER,
@@ -71,12 +82,26 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
   const ollamaModel = trim(env.TABLE_3D_AI_OLLAMA_MODEL || env.OLLAMA_VISION_MODEL) || DEFAULT_OLLAMA_MODEL;
   const geminiModel = trim(env.TABLE_3D_AI_GEMINI_MODEL || env.GEMINI_MODEL) || DEFAULT_GEMINI_MODEL;
   const geminiEndpoint = trim(env.TABLE_3D_AI_GEMINI_ENDPOINT || env.GEMINI_ENDPOINT);
+  const hi3dClientId = trim(env.TABLE_3D_AI_HI3D_CLIENT_ID || env.HI3D_CLIENT_ID);
+  const hi3dClientSecret = trim(env.TABLE_3D_AI_HI3D_CLIENT_SECRET || env.HI3D_CLIENT_SECRET);
+  const hi3dModel = trim(env.TABLE_3D_AI_HI3D_MODEL) || DEFAULT_HI3D_MODEL;
+  const hi3dResolution = trim(env.TABLE_3D_AI_HI3D_RESOLUTION) || DEFAULT_HI3D_RESOLUTION;
+  const hi3dFaceCount = normalizeIntegerInRange(
+    env.TABLE_3D_AI_HI3D_FACE_COUNT,
+    DEFAULT_HI3D_FACE_COUNT,
+    100000,
+    2000000,
+  );
+  const hi3dPbr = env.TABLE_3D_AI_HI3D_PBR == null
+    ? true
+    : normalizeBoolean(env.TABLE_3D_AI_HI3D_PBR);
   const isMock = provider === MOCK_PROVIDER && nodeEnv !== "production";
   const isGemini = provider === GEMINI_PROVIDER;
   const isMeshy = provider === MESHY_PROVIDER;
+  const isHi3d = provider === HI3D_PROVIDER;
   const configured = enabled && (
     isMock ||
-    (isGemini ? Boolean(apiKey) : Boolean(provider && apiKey && endpoint))
+    (isGemini ? Boolean(apiKey) : isHi3d ? Boolean(hi3dClientId && hi3dClientSecret) : Boolean(provider && apiKey && endpoint))
   );
 
   return {
@@ -90,6 +115,7 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
     isMock,
     isGemini,
     isMeshy,
+    isHi3d,
     configured,
     preprocessingProvider,
     usesOllamaPreprocess,
@@ -97,6 +123,12 @@ export const getTable3DAiProviderConfig = (env = process.env) => {
     ollamaModel,
     geminiModel,
     geminiEndpoint,
+    hi3dClientId,
+    hi3dClientSecret,
+    hi3dModel,
+    hi3dResolution,
+    hi3dFaceCount,
+    hi3dPbr,
   };
 };
 
@@ -132,6 +164,18 @@ export const getTable3DAiGenerationAvailability = (env = process.env) => {
       message: "Meshy AI 3D generation provider is configured.",
       provider: MESHY_PROVIDER,
       pipelineProvider: MESHY_PROVIDER,
+      preprocessingProvider: config.preprocessingProvider,
+      isMock: false,
+    };
+  }
+
+  if (config.isHi3d) {
+    return {
+      configured: true,
+      status: "ready",
+      message: "Hi3D image-to-3D generation provider is configured.",
+      provider: HI3D_PROVIDER,
+      pipelineProvider: HI3D_PROVIDER,
       preprocessingProvider: config.preprocessingProvider,
       isMock: false,
     };
@@ -250,13 +294,13 @@ const asDataUri = async (image) => {
   return `data:${trim(image.mimeType) || "application/octet-stream"};base64,${buffer.toString("base64")}`;
 };
 
-const downloadTableModel = async ({ url, env }) => {
+const downloadTableModel = async ({ url, env, provider = "AI" }) => {
   const response = await fetchWithTimeout(url, {}, 60000);
-  if (!response.ok) throw new Error(`Meshy model download failed with HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`${provider} model download failed with HTTP ${response.status}`);
   const buffer = Buffer.from(await response.arrayBuffer());
   const maxBytes = getMaxModelBytes(env);
-  if (!buffer.length) throw new Error("Meshy model download was empty");
-  if (buffer.length > maxBytes) throw new Error(`Meshy model exceeds max size of ${maxBytes} bytes`);
+  if (!buffer.length) throw new Error(`${provider} model download was empty`);
+  if (buffer.length > maxBytes) throw new Error(`${provider} model exceeds max size of ${maxBytes} bytes`);
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}.glb`;
   const dir = path.join(buildUploadsRoot(env), "table-3d", "models");
   await fs.mkdir(dir, { recursive: true });
@@ -326,7 +370,7 @@ const pollMeshyJob = async ({ job, config, env }) => {
     return job;
   }
   if (providerStatus === "SUCCEEDED" && payload?.model_urls?.glb) {
-    const generatedModelUrl = await downloadTableModel({ url: payload.model_urls.glb, env });
+    const generatedModelUrl = await downloadTableModel({ url: payload.model_urls.glb, env, provider: "Meshy" });
     Object.assign(job, {
       status: "completed",
       generationStatus: "completed",
@@ -342,6 +386,156 @@ const pollMeshyJob = async ({ job, config, env }) => {
     return job;
   }
   Object.assign(job, { status: "processing", generationStatus: "processing", updatedAt: new Date().toISOString() });
+  return job;
+};
+
+const getHi3dPayloadError = (payload, fallback) => trim(payload?.msg || payload?.message) || fallback;
+const isHi3dSuccessPayload = (payload) => Number(payload?.code) === 200;
+
+const requestHi3dAccessToken = async (config) => {
+  const credentials = Buffer.from(`${config.hi3dClientId}:${config.hi3dClientSecret}`, "utf8").toString("base64");
+  const response = await fetchWithTimeout(`${config.endpoint.replace(/\/$/, "")}/open-api/v1/auth/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/json",
+    },
+  }, 30000);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !isHi3dSuccessPayload(payload) || !payload?.data?.accessToken) {
+    throw new Error(getHi3dPayloadError(payload, `Hi3D token request failed with HTTP ${response.status}`));
+  }
+  return String(payload.data.accessToken);
+};
+
+const buildHi3dTaskForm = async ({ normalized, config }) => {
+  if (normalized.images.length < 3 || normalized.images.length > 4) {
+    throw new Error("Hi3D table generation requires 3 to 4 reference images");
+  }
+
+  const form = new FormData();
+  for (const [index, image] of normalized.images.entries()) {
+    const buffer = await fs.readFile(image.path);
+    if (!buffer.length) throw new Error("AI reference image is empty");
+    form.append(
+      "multi_images",
+      new Blob([buffer], { type: trim(image.mimeType) || "application/octet-stream" }),
+      trim(image.originalFileName || image.fileName) || `reference-${index + 1}.png`,
+    );
+  }
+  form.append("request_type", "3");
+  form.append("model", config.hi3dModel);
+  form.append("resolution", config.hi3dResolution);
+  form.append("face", String(config.hi3dFaceCount));
+  form.append("format", "2");
+  form.append("pbr", config.hi3dPbr ? "1" : "0");
+  return form;
+};
+
+const requestHi3dGeneration = async ({ normalized, config }) => {
+  const accessToken = await requestHi3dAccessToken(config);
+  const body = await buildHi3dTaskForm({ normalized, config });
+  const response = await fetchWithTimeout(`${config.endpoint.replace(/\/$/, "")}/open-api/v1/submit-task`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body,
+  }, 60000);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !isHi3dSuccessPayload(payload) || !payload?.data?.task_id) {
+    throw new Error(getHi3dPayloadError(payload, `Hi3D task creation failed with HTTP ${response.status}`));
+  }
+  return String(payload.data.task_id);
+};
+
+const createHi3dJob = async ({ normalized, config }) => {
+  const providerTaskId = await requestHi3dGeneration({ normalized, config });
+  const jobId = `hi3d-table3d-${crypto.randomUUID()}`;
+  const job = {
+    ok: true,
+    jobId,
+    providerTaskId,
+    status: "queued",
+    provider: HI3D_PROVIDER,
+    aiProvider: HI3D_PROVIDER,
+    generationStatus: "queued",
+    input: omitImagePayloads(normalized),
+    generatedModelUrl: "",
+    generatedThumbnailUrl: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  jobStore.set(jobId, job);
+  return job;
+};
+
+const pollHi3dJob = async ({ job, config, env }) => {
+  if (job.status === "completed" || job.status === "failed") return job;
+  const accessToken = await requestHi3dAccessToken(config);
+  const queryUrl = `${config.endpoint.replace(/\/$/, "")}/open-api/v1/query-task?task_id=${encodeURIComponent(job.providerTaskId)}`;
+  const response = await fetchWithTimeout(queryUrl, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  }, 30000);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !isHi3dSuccessPayload(payload)) {
+    throw new Error(getHi3dPayloadError(payload, `Hi3D status check failed with HTTP ${response.status}`));
+  }
+
+  const providerStatus = normalizeProviderName(payload?.data?.state);
+  if (["created", "queueing"].includes(providerStatus)) {
+    Object.assign(job, {
+      status: "queued",
+      generationStatus: "queued",
+      updatedAt: new Date().toISOString(),
+    });
+    return job;
+  }
+  if (providerStatus === "processing") {
+    Object.assign(job, {
+      status: "processing",
+      generationStatus: "processing",
+      updatedAt: new Date().toISOString(),
+    });
+    return job;
+  }
+  if (providerStatus === "success") {
+    if (!payload?.data?.url) {
+      Object.assign(job, {
+        status: "failed",
+        generationStatus: "failed",
+        message: "Hi3D completed without a model URL",
+        updatedAt: new Date().toISOString(),
+      });
+      return job;
+    }
+    const generatedModelUrl = await downloadTableModel({ url: payload.data.url, env, provider: "Hi3D" });
+    Object.assign(job, {
+      status: "completed",
+      generationStatus: "completed",
+      generatedModelUrl,
+      generatedThumbnailUrl: trim(payload?.data?.cover_url),
+      progress: 100,
+      updatedAt: new Date().toISOString(),
+    });
+    return job;
+  }
+  if (providerStatus === "failed") {
+    Object.assign(job, {
+      status: "failed",
+      generationStatus: "failed",
+      message: getHi3dPayloadError(payload, "Hi3D generation failed"),
+      updatedAt: new Date().toISOString(),
+    });
+    return job;
+  }
+
+  Object.assign(job, {
+    status: "processing",
+    generationStatus: "processing",
+    updatedAt: new Date().toISOString(),
+  });
   return job;
 };
 
@@ -540,6 +734,21 @@ export const requestTableModelGeneration = async (input = {}, context = {}) => {
     };
   }
 
+  if (config.isHi3d) {
+    const job = await createHi3dJob({ normalized, config });
+    return {
+      ok: true,
+      status: "queued",
+      jobId: job.jobId,
+      providerTaskId: job.providerTaskId,
+      provider: HI3D_PROVIDER,
+      aiProvider: HI3D_PROVIDER,
+      generatedModelUrl: "",
+      generatedThumbnailUrl: "",
+      message: "Hi3D generation task queued.",
+    };
+  }
+
   const preprocessing = await runOllamaPreprocessIfEnabled({ normalized, config, context });
 
   if (config.isGemini) {
@@ -611,6 +820,14 @@ export const getTableModelGenerationStatus = async (jobId, context = {}) => {
       return { ok: false, jobId: normalizedJobId, status: "failed", provider: MESHY_PROVIDER, message: "Meshy AI 3D generation job was not found." };
     }
     const updated = await pollMeshyJob({ job, config, env: context.env || process.env });
+    return { ...updated, ok: true };
+  }
+
+  if (config.isHi3d) {
+    if (!job || job.provider !== HI3D_PROVIDER) {
+      return { ok: false, jobId: normalizedJobId, status: "failed", provider: HI3D_PROVIDER, message: "Hi3D AI 3D generation job was not found." };
+    }
+    const updated = await pollHi3dJob({ job, config, env: context.env || process.env });
     return { ...updated, ok: true };
   }
 
