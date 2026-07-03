@@ -32,12 +32,43 @@
 
 .dashboard-card--action-queue .dashboard-queue-sections {
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
-  align-items: start;
+  align-items: stretch;
 }
 
 .dashboard-card--action-queue .dashboard-queue-section {
   min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
+}
+
+.dashboard-card--action-queue .dashboard-queue-section__list,
+.dashboard-card--support-queue .dashboard-support-list {
+  min-width: 0;
+  max-height: min(440px, 55vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(111, 127, 122, 0.38) transparent;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding-right: 4px;
+}
+
+.dashboard-card--action-queue .dashboard-queue-section__list::-webkit-scrollbar,
+.dashboard-card--support-queue .dashboard-support-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboard-card--action-queue .dashboard-queue-section__list::-webkit-scrollbar-thumb,
+.dashboard-card--support-queue .dashboard-support-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(111, 127, 122, 0.38);
+  background-clip: padding-box;
 }
 
 .dashboard-card--action-queue .dashboard-queue-section__empty {
@@ -181,6 +212,11 @@
 }
 
 @media (max-width: 760px) {
+  .dashboard-card--action-queue .dashboard-queue-section__list,
+  .dashboard-card--support-queue .dashboard-support-list {
+    max-height: min(380px, 58vh);
+  }
+
   .dashboard-card--action-queue .dashboard-queue-item {
     grid-template-columns: 1fr;
   }
