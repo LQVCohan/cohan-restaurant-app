@@ -45,12 +45,14 @@ import "./styles/CohanBrandIdentity.css";
 import "./styles/AiChatbotRoleAvatars.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
+import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 
 installAiChatbotStreamFetchPatch();
+installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );
