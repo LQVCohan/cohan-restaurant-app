@@ -1,31 +1,28 @@
-import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiAlertTriangle, FiBell, FiCheckCircle, FiChevronDown, FiHelpCircle, FiInfo, FiLogOut, FiMoon, FiSettings, FiUser } from "react-icons/fi";
 import SearchBox from "../SearchBox/SearchBox";
-import {
-  FiBell,
-  FiChevronDown,
-  FiUser,
-  FiSettings,
-  FiMoon,
-  FiHelpCircle,
-  FiLogOut,
-  FiInfo,
-  FiCheckCircle,
-  FiAlertTriangle,
-} from "react-icons/fi";
+import ManagerAccountCenter from "./Account/ManagerAccountCenter";
 import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
+import "./Styles/ManagerDarkTheme.scss";
+import "./Account/ManagerAccountOverlay.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
 import { getBrandRoleLabel, getCombinedRoleLabel, getMembershipScopeLabel, getRoleTooltip, getSystemRoleLabel } from "@/lib/userRoleDisplay";
 
 const getNotificationIcon = (type) => {
-  switch (type) {
-    case "success": return <FiCheckCircle />;
-    case "warning": return <FiAlertTriangle />;
-    case "primary": return <FiInfo />;
-    case "info":
-    default: return <FiBell />;
+  if (type === "success") return <FiCheckCircle />;
+  if (type === "warning") return <FiAlertTriangle />;
+  if (type === "primary") return <FiInfo />;
+  return <FiBell />;
+};
+
+const readBadgePreference = () => {
+  try {
+    return JSON.parse(localStorage.getItem("manager.notificationPreferences") || "{}").showBadge !== false;
+  } catch {
+    return true;
   }
 };
 
@@ -44,258 +41,146 @@ const Header = ({
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [accountTab, setAccountTab] = useState(null);
   const [localNotifications, setLocalNotifications] = useState(notifications);
+  const [showBadge, setShowBadge] = useState(readBadgePreference);
   const [avatarImageFailed, setAvatarImageFailed] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("manager.darkMode") === "1";
-  });
-
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("manager.darkMode") === "1");
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setLocalNotifications(Array.isArray(notifications) ? notifications : []);
-  }, [notifications]);
+  const normalizedUser = useMemo(() => getDisplayUser(user), [user]);
+  const systemRoleLabel = useMemo(() => getSystemRoleLabel(user), [user]);
+  const brandRoleLabel = useMemo(() => getBrandRoleLabel({ user, activeBrand }), [activeBrand, user]);
+  const membership = activeBrand?.membership || (activeBrand?.membershipRole ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] } : null);
+  const scopeLabel = useMemo(() => getMembershipScopeLabel(membership || { role: activeBrand?.membershipRole }, activeBrand?.restaurants, activeBrand?.name), [activeBrand, membership]);
+  const roleLine = useMemo(() => getCombinedRoleLabel({ user, activeBrand, membership }), [activeBrand, membership, user]);
+  const roleTooltip = useMemo(() => getRoleTooltip({ user, activeBrand, membership }), [activeBrand, membership, user]);
+  const avatarSrc = useMemo(() => resolveUserAvatarSrc(normalizedUser), [normalizedUser]);
+  const avatarFallback = useMemo(() => getInitials(normalizedUser.fullName), [normalizedUser.fullName]);
+  const unreadCount = localNotifications.filter((item) => !item.read).length;
 
+  useEffect(() => setLocalNotifications(Array.isArray(notifications) ? notifications : []), [notifications]);
+  useEffect(() => setAvatarImageFailed(false), [avatarSrc]);
   useEffect(() => {
     document.body.classList.toggle("manager-dark-mode", isDarkMode);
     localStorage.setItem("manager.darkMode", isDarkMode ? "1" : "0");
+    return () => document.body.classList.remove("manager-dark-mode");
   }, [isDarkMode]);
-
-  const normalizeUser = useMemo(() => getDisplayUser(user), [user]);
-  const systemRoleLabel = useMemo(() => getSystemRoleLabel(user), [user]);
-  const brandRoleLabel = useMemo(() => getBrandRoleLabel({ user, activeBrand }), [activeBrand, user]);
-  const activeMembership = activeBrand?.membership || (activeBrand?.membershipRole ? { role: activeBrand.membershipRole, restaurantIds: activeBrand.restaurantIds || [] } : null);
-  const scopeLabel = useMemo(() => getMembershipScopeLabel(activeMembership || { role: activeBrand?.membershipRole }, activeBrand?.restaurants, activeBrand?.name), [activeBrand, activeMembership]);
-  const roleLine = useMemo(() => getCombinedRoleLabel({ user, activeBrand, membership: activeMembership }), [activeBrand, activeMembership, user]);
-  const roleTooltip = useMemo(() => getRoleTooltip({ user, activeBrand, membership: activeMembership }), [activeBrand, activeMembership, user]);
-  const avatarSrc = useMemo(() => resolveUserAvatarSrc(normalizeUser), [normalizeUser]);
-
-  const avatarFallback = useMemo(() => getInitials(normalizeUser.fullName), [normalizeUser.fullName]);
-
-  useEffect(() => {
-    setAvatarImageFailed(false);
-  }, [avatarSrc]);
-
-  const renderUserAvatar = (className, showStatus = false) => (
-    <div className={className}>
-      {avatarSrc && !avatarImageFailed ? (
-        <img src={avatarSrc} alt={normalizeUser.fullName} onError={() => setAvatarImageFailed(true)} />
-      ) : (
-        <span className="user-avatar-initials" aria-hidden="true">{avatarFallback}</span>
-      )}
-      {showStatus ? <div className="user-status"></div> : null}
-    </div>
-  );
-
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handler = (event) => setShowBadge(event.detail?.showBadge !== false);
+    window.addEventListener("manager:notification-preferences", handler);
+    return () => window.removeEventListener("manager:notification-preferences", handler);
+  }, []);
+  useEffect(() => {
+    const handler = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) setShowNotifications(false);
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) setShowUserMenu(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const formatTime = (date) => date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-  const formatDate = (date) => date.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const unreadCount = localNotifications.filter((n) => !n.read).length;
+  const renderAvatar = (className, showStatus = false) => (
+    <div className={className}>
+      {avatarSrc && !avatarImageFailed ? <img src={avatarSrc} alt={normalizedUser.fullName} onError={() => setAvatarImageFailed(true)} /> : <span className="user-avatar-initials">{avatarFallback}</span>}
+      {showStatus && <div className="user-status" />}
+    </div>
+  );
 
-  const handleToggleSidebar = () => onToggleSidebar?.();
-  const handleNotificationClick = () => { setShowNotifications((prev) => !prev); setShowUserMenu(false); };
-  const handleUserMenuClick = () => { setShowUserMenu((prev) => !prev); setShowNotifications(false); };
+  const closeMenus = () => { setShowNotifications(false); setShowUserMenu(false); };
+  const openAccount = (tab) => { closeMenus(); setAccountTab(tab); };
+  const formatTime = () => currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const formatDate = () => currentTime.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  const navigateToActionUrl = (actionUrl) => {
-    if (!actionUrl) return;
-    if (actionUrl.startsWith("/manager") && typeof window !== "undefined") {
-      const url = new URL(actionUrl, window.location.origin);
-      const page = url.hash?.replace("#", "") || "dashboard";
-      const query = Object.fromEntries(url.searchParams.entries());
-      window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page, query, source: "notification" } }));
-      return;
-    }
-    navigate(actionUrl);
-  };
-
-  const markAllAsRead = () => {
-    setLocalNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-    onMarkAllNotificationsRead?.();
-  };
-
-  const handleNotificationItemClick = (notification) => {
-    if (!notification) return;
+  const openNotificationAction = (notification) => {
     setLocalNotifications((prev) => prev.map((item) => item.id === notification.id ? { ...item, read: true } : item));
     onNotificationSelect?.(notification);
-    navigateToActionUrl(notification.actionUrl);
+    const actionUrl = notification.actionUrl;
+    if (actionUrl?.startsWith("/manager")) {
+      const url = new URL(actionUrl, window.location.origin);
+      window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: url.hash.replace("#", "") || "dashboard", query: Object.fromEntries(url.searchParams.entries()), source: "notification" } }));
+    } else if (actionUrl) navigate(actionUrl);
     setShowNotifications(false);
   };
 
-  const handleNotificationItemKeyDown = (event, notification) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    handleNotificationItemClick(notification);
-  };
-
-  const handleLogout = () => {
-    logout?.();
-    setShowUserMenu(false);
-  };
-
-  const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
-  const goToManagerPage = (hash) => { window.location.hash = hash; setShowUserMenu(false); setShowNotifications(false); };
-  const goToSupport = () => { navigate("/contact"); setShowUserMenu(false); };
+  const handleLogout = () => { closeMenus(); logout?.(); };
+  const toggleDarkMode = () => { setIsDarkMode((value) => !value); setShowUserMenu(false); };
 
   return (
-    <header className={`header ${sidebarOpen ? "header--compact" : ""}`}>
-      <div className="header__content">
-        <div className="header__left">
-          <button
-            className={`sidebar-toggle ${sidebarOpen ? "active" : ""}`}
-            onClick={handleToggleSidebar}
-            title="Mở/đóng thanh điều hướng"
-            type="button"
-            aria-label={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
-            aria-expanded={sidebarOpen}
-          >
-            <div className="hamburger">
-              <span className="hamburger-line"></span>
-              <span className="hamburger-line"></span>
-              <span className="hamburger-line"></span>
+    <>
+      <header className={`header ${sidebarOpen ? "header--compact" : ""}`}>
+        <div className="header__content">
+          <div className="header__left">
+            <button className={`sidebar-toggle ${sidebarOpen ? "active" : ""}`} onClick={onToggleSidebar} type="button" aria-label={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"} aria-expanded={sidebarOpen}>
+              <div className="hamburger"><span className="hamburger-line" /><span className="hamburger-line" /><span className="hamburger-line" /></div>
+            </button>
+            <div className="page-info"><h1 className="page-title">{pageTitle}</h1><span className="page-subtitle">{formatDate()}</span></div>
+          </div>
+
+          <div className="header__center"><SearchBox items={searchItems} onSelectItem={onSelectSearchResult} placeholder="Tìm kiếm trang quản lý..." /></div>
+          {scopeSelector && <div className="header__scope">{scopeSelector}</div>}
+
+          <div className="header__right">
+            <div className="time-display hide-mobile"><div className="current-time">{formatTime()}</div><div className="current-status"><span className="status-dot" />Đang hoạt động</div></div>
+
+            <div className="notification-container" ref={notificationRef}>
+              <button className={`notification-btn ${showNotifications ? "notification-btn--active" : ""}`} onClick={() => { setShowNotifications((value) => !value); setShowUserMenu(false); }} type="button" aria-label="Mở thông báo" aria-expanded={showNotifications}>
+                <FiBell />{showBadge && unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              </button>
+              {showNotifications && (
+                <div className="notification-dropdown">
+                  <div className="notification-header"><h3>Thông báo</h3><button className="mark-all-read" onClick={() => { setLocalNotifications((prev) => prev.map((item) => ({ ...item, read: true }))); onMarkAllNotificationsRead?.(); }} type="button">Đánh dấu đã đọc</button></div>
+                  <div className="notification-list">
+                    {localNotifications.length ? localNotifications.map((notification, index) => (
+                      <button key={notification.id || index} type="button" className={`notification-item ${!notification.read ? "notification-item--unread" : ""}`} onClick={() => openNotificationAction(notification)}>
+                        <span className={`notification-icon notification-icon--${notification.type}`}>{getNotificationIcon(notification.type)}</span>
+                        <span className="notification-content"><strong>{notification.title}</strong><span>{notification.message}</span><small>{notification.time}</small></span>
+                        {!notification.read && <span className="unread-dot" />}
+                      </button>
+                    )) : <div className="notification-empty"><p>Không có thông báo mới</p></div>}
+                  </div>
+                </div>
+              )}
             </div>
-          </button>
 
-          <div className="page-info">
-            <h1 className="page-title">{pageTitle}</h1>
-            <span className={`page-subtitle ${sidebarOpen ? "hide-compact" : "hide-mobile"}`}>{formatDate(currentTime)}</span>
-          </div>
-        </div>
+            <div className="user-menu-container" ref={userMenuRef}>
+              <button className={`user-menu-btn ${showUserMenu ? "user-menu-btn--active" : ""}`} onClick={() => { setShowUserMenu((value) => !value); setShowNotifications(false); }} type="button" aria-label="Mở menu tài khoản" aria-expanded={showUserMenu} title={roleTooltip}>
+                {renderAvatar("user-avatar", true)}
+                <div className="user-info"><span className="user-name">{normalizedUser.fullName}</span><span className="user-roleName">{roleLine}</span></div>
+                <span className="user-chevron"><FiChevronDown /></span>
+              </button>
 
-        <div className={`header__center ${sidebarOpen ? "header__center--compact" : ""}`}>
-          <SearchBox items={searchItems} onSelectItem={onSelectSearchResult} placeholder="Tìm kiếm trang quản lý..." />
-        </div>
-
-        {scopeSelector ? <div className="header__scope">{scopeSelector}</div> : null}
-
-        <div className="header__right">
-          <div className="time-display hide-mobile">
-            <div className="current-time">{formatTime(currentTime)}</div>
-            <div className="current-status"><span className="status-dot"></span>Đang hoạt động</div>
-          </div>
-
-          <div className="notification-container" ref={notificationRef}>
-            <button
-              className={`notification-btn ${showNotifications ? "notification-btn--active" : ""}`}
-              onClick={handleNotificationClick}
-              type="button"
-              aria-label={unreadCount > 0 ? `Mở thông báo, ${unreadCount} chưa đọc` : "Mở thông báo"}
-              aria-expanded={showNotifications}
-            >
-              <FiBell />
-              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-            </button>
-
-            {showNotifications && (
-              <div className="notification-dropdown">
-                <div className="notification-header">
-                  <h3>Thông báo</h3>
-                  <button className="mark-all-read" onClick={markAllAsRead} type="button">Đánh dấu đã đọc</button>
-                </div>
-                <div className="notification-list">
-                  {localNotifications.length > 0 ? (
-                    localNotifications.map((notification, index) => (
-                      <div
-                        key={notification.id || index}
-                        role="button"
-                        tabIndex={0}
-                        className={`notification-item ${!notification.read ? "notification-item--unread" : ""}`}
-                        onClick={() => handleNotificationItemClick(notification)}
-                        onKeyDown={(event) => handleNotificationItemKeyDown(event, notification)}
-                      >
-                        <div className={`notification-icon notification-icon--${notification.type}`}>{getNotificationIcon(notification.type)}</div>
-                        <div className="notification-content">
-                          <h4>{notification.title}</h4>
-                          <p>{notification.message}</p>
-                          <span className="notification-time">{notification.time}</span>
-                        </div>
-                        {!notification.read && <div className="unread-dot"></div>}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="notification-empty"><p>Không có thông báo mới</p></div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="user-menu-container" ref={userMenuRef}>
-            <button
-              className={`user-menu-btn ${showUserMenu ? "user-menu-btn--active" : ""}`}
-              onClick={handleUserMenuClick}
-              type="button"
-              aria-label="Mở menu tài khoản"
-              aria-expanded={showUserMenu}
-              title={roleTooltip}
-            >
-              {renderUserAvatar("user-avatar", true)}
-              <div className={`user-info ${sidebarOpen ? "hide-compact" : "hide-mobile"}`}>
-                <span className="user-name">{normalizeUser.fullName}</span>
-                <span className="user-roleName">{roleLine}</span>
-              </div>
-              <span className={`user-chevron ${sidebarOpen ? "hide-compact" : ""}`}><FiChevronDown /></span>
-            </button>
-
-            {showUserMenu && (
-              <div className="user-dropdown">
-                <div className="user-dropdown-header">
-                  {renderUserAvatar("user-avatar-large")}
-                  <div className="user-details">
-                    <h3>{normalizeUser.fullName}</h3>
-                    <p>{normalizeUser.email}</p>
-                    <span className="user-badge">{brandRoleLabel || systemRoleLabel}</span>
+              {showUserMenu && (
+                <div className="user-dropdown">
+                  <div className="user-dropdown-header">
+                    {renderAvatar("user-avatar-large")}
+                    <div className="user-details"><h3>{normalizedUser.fullName}</h3><p>{normalizedUser.email}</p><span className="user-badge">{brandRoleLabel || systemRoleLabel}</span></div>
+                    <div className="user-role-breakdown"><span>Loại tài khoản: <strong>{systemRoleLabel}</strong></span><span>Vai trò trong thương hiệu: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span><span>Phạm vi phụ trách: <strong>{scopeLabel}</strong></span></div>
                   </div>
-                  <div className="user-role-breakdown" title={roleTooltip}>
-                    <span>Loại tài khoản: <strong>{systemRoleLabel}</strong></span>
-                    <span>Vai trò trong thương hiệu: <strong>{brandRoleLabel || "Chưa gắn Brand hiện tại"}</strong></span>
-                    <span>Phạm vi phụ trách: <strong>{scopeLabel}</strong></span>
+                  <div className="user-menu-items">
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("profile")}><FiUser /><span>Thông tin cá nhân</span></button>
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("security")}><FiSettings /><span>Cài đặt tài khoản</span></button>
+                    <button className="user-menu-item" type="button" onClick={toggleDarkMode}><FiMoon /><span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span></button>
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("notifications")}><FiBell /><span>Cài đặt thông báo</span></button>
+                    <div className="menu-divider" />
+                    <button className="user-menu-item" type="button" onClick={() => openAccount("support")}><FiHelpCircle /><span>Trợ giúp & Hỗ trợ</span></button>
+                    <button className="user-menu-item" type="button" onClick={handleLogout}><FiLogOut /><span>Đăng xuất</span></button>
                   </div>
                 </div>
-
-                <div className="user-menu-items">
-                  <button className="user-menu-item" type="button" onClick={() => goToManagerPage("restaurant-info-management")}>
-                    <span className="menu-icon"><FiUser /></span><span>Thông tin cá nhân</span>
-                  </button>
-                  <button className="user-menu-item" type="button" onClick={() => goToManagerPage("restaurant-info-management")}>
-                    <span className="menu-icon"><FiSettings /></span><span>Cài đặt tài khoản</span>
-                  </button>
-                  <button className="user-menu-item" onClick={toggleDarkMode} type="button">
-                    <span className="menu-icon"><FiMoon /></span><span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span>
-                  </button>
-                  <button className="user-menu-item" onClick={handleNotificationClick} type="button">
-                    <span className="menu-icon"><FiBell /></span><span>Cài đặt thông báo</span>
-                  </button>
-                  <div className="menu-divider"></div>
-                  <button className="user-menu-item" onClick={goToSupport} type="button">
-                    <span className="menu-icon"><FiHelpCircle /></span><span>Trợ giúp & Hỗ trợ</span>
-                  </button>
-                  <button className="user-menu-item" onClick={handleLogout} type="button">
-                    <span className="menu-icon"><FiLogOut /></span><span>Đăng xuất</span>
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {accountTab && <ManagerAccountCenter initialTab={accountTab} onClose={() => setAccountTab(null)} />}
+    </>
   );
 };
 
