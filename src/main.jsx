@@ -46,6 +46,7 @@ import "./styles/AiChatbotRoleAvatars.css";
 import "./layouts/ManagerSageSurfaceOverrides.css";
 import "./styles/AttendanceManagerVisualFix.css";
 import "./components/Dashboard_Manager/Account/ManagerAccountCenterPolish.scss";
+import "./styles/ManagerDarkModeFinal.scss";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";

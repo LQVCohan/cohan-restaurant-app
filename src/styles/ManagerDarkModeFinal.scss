@@ -1,0 +1,199 @@
+@use "../components/Dashboard_Manager/Styles/ManagerDarkTheme";
+
+body.manager-dark-mode .manager-layout .manager-sidebar-brand__wordmark {
+  filter: brightness(0) invert(1) opacity(0.88) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container {
+  color: var(--manager-text) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(115, 169, 145, 0.12), transparent 30rem),
+    linear-gradient(180deg, #111a16 0%, #0d1512 100%) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container :is(
+    .management-page-header,
+    .tm-sidebar,
+    .tm-grid-area,
+    .mph-stat-card,
+    .tm-floor-item,
+    .tm-add-floor-btn,
+    .tm-floor-design-card,
+    .tm-empty,
+    .tm-form-section
+  ) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: rgba(27, 39, 34, 0.94) !important;
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .management-page-header {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(115, 169, 145, 0.13), transparent 22rem),
+    linear-gradient(135deg, rgba(31, 45, 38, 0.98), rgba(21, 32, 27, 0.96)) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container :is(
+    .mph-title,
+    .mph-stat-card__value,
+    .tm-panel-heading h2,
+    .tm-grid-toolbar h2,
+    .tm-filter-heading span,
+    .tm-table-card .table-no,
+    .tm-form-header h4,
+    .tm-form label
+  ) {
+  color: var(--manager-text) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container :is(
+    .mph-eyebrow,
+    .mph-subtitle,
+    .mph-stat-card__label,
+    .tm-panel-kicker,
+    .tm-filter-field > span,
+    .tm-result-count,
+    .tm-table-card .info-row,
+    .tm-form-header p,
+    .tm-field-hint,
+    .tm-template-preview__hint
+  ) {
+  color: var(--manager-muted) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container :is(
+    .mph-select,
+    .mph-btn,
+    .tm-filter-field input,
+    .tm-filter-field select,
+    .tm-form input,
+    .tm-form select
+  ) {
+  border-color: var(--manager-border-strong) !important;
+  color: var(--manager-text) !important;
+  background: rgba(17, 27, 23, 0.96) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container select option {
+  color: var(--manager-text);
+  background: #17211d;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .mph-btn--primary,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card .btn-mini.success {
+  border-color: rgba(115, 169, 145, 0.4) !important;
+  color: #f7fbf9 !important;
+  background: linear-gradient(135deg, #44705e, #2c5948) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-floor-item {
+  background: rgba(22, 33, 28, 0.92) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-floor-item :is(.icon, .count),
+body.manager-dark-mode .manager-layout__content .tm-container .tm-result-count {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-muted) !important;
+  background: rgba(39, 55, 47, 0.92) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-floor-item:hover,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-floor-item.active {
+  border-color: var(--manager-border-strong) !important;
+  color: var(--manager-text) !important;
+  background: rgba(52, 72, 62, 0.92) !important;
+  box-shadow: inset 3px 0 0 #73a991 !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-add-floor-btn {
+  border-style: dashed !important;
+  color: #9fc2b2 !important;
+  background: rgba(22, 33, 28, 0.72) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-filter-box,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-grid-toolbar {
+  border-color: var(--manager-border) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: linear-gradient(145deg, rgba(31, 44, 38, 0.98), rgba(24, 35, 30, 0.96)) !important;
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card:hover {
+  border-color: var(--manager-border-strong) !important;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card .card-body {
+  border-color: var(--manager-border) !important;
+  background: rgba(15, 24, 20, 0.72) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card .btn-mini.secondary {
+  border-color: var(--manager-border-strong) !important;
+  color: var(--manager-text) !important;
+  background: rgba(23, 35, 29, 0.96) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.available {
+  border-color: rgba(86, 168, 132, 0.42) !important;
+  background: linear-gradient(145deg, rgba(29, 44, 37, 0.98), rgba(22, 53, 41, 0.9)) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.available::before {
+  background: #56a884 !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.available .status-badge {
+  border-color: rgba(86, 168, 132, 0.44) !important;
+  color: #a9dcc7 !important;
+  background: rgba(50, 112, 86, 0.22) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.occupied,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.payment_pending {
+  border-color: rgba(213, 130, 105, 0.42) !important;
+  background: linear-gradient(145deg, rgba(43, 35, 31, 0.98), rgba(71, 41, 34, 0.9)) !important;
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.occupied .table-no,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.payment_pending .table-no {
+  color: #f1c0ae !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card :is(.status-badge, .tm-guard-badge) {
+  box-shadow: none !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.occupied .status-badge,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card.payment_pending .status-badge {
+  border-color: rgba(225, 138, 116, 0.4) !important;
+  color: #f3c3b3 !important;
+  background: rgba(163, 75, 56, 0.22) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card .btn-mini.warning,
+body.manager-dark-mode .manager-layout__content .tm-container .tm-table-card .btn-mini.primary {
+  border-color: rgba(190, 151, 104, 0.36) !important;
+  color: #f8ead8 !important;
+  background: linear-gradient(135deg, #765d42, #5e4934) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .tm-container :is(input, select, button):focus-visible {
+  outline: 3px solid rgba(115, 169, 145, 0.2) !important;
+  outline-offset: 2px;
+}

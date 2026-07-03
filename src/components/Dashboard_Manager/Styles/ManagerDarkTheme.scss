@@ -1,18 +1,32 @@
-body.manager-dark-mode {
+body.manager-dark-mode,
+body.manager-dark-mode .manager-layout {
   color-scheme: dark;
-  --manager-bg-base: #111815;
-  --manager-bg-mid: #151d1a;
-  --manager-bg-end: #1a211e;
-  --manager-surface: rgba(28, 38, 34, 0.92);
-  --manager-border: rgba(130, 148, 139, 0.22);
+  --manager-bg-base: #0f1714;
+  --manager-bg-mid: #131d19;
+  --manager-bg-end: #17211d;
+  --manager-bg-pearl: rgba(58, 78, 68, 0.28);
+  --manager-bg-sage-glow: rgba(92, 124, 109, 0.18);
+  --manager-bg-deep-glow: rgba(69, 104, 89, 0.14);
+  --manager-grid-line: rgba(214, 228, 220, 0.025);
+  --manager-surface: rgba(27, 39, 34, 0.94);
+  --manager-surface-soft: rgba(22, 33, 28, 0.94);
+  --manager-surface-muted: rgba(34, 48, 41, 0.9);
+  --manager-border: rgba(150, 176, 163, 0.2);
+  --manager-border-strong: rgba(150, 176, 163, 0.34);
   --manager-text: #edf4f0;
-  --manager-muted: #a7b5ae;
-  --manager-primary: #dce8e2;
-  --manager-primary-hover: #ffffff;
-  --manager-accent: #8eaaa0;
-  --manager-accent-soft: rgba(111, 145, 132, 0.16);
+  --manager-muted: #a7b6ae;
+  --manager-primary: #8eaaa0;
+  --manager-primary-hover: #a7beb5;
+  --manager-accent: #73a991;
+  --manager-accent-soft: rgba(115, 169, 145, 0.15);
   --manager-success: #86b39f;
-  --manager-danger: #e38d86;
+  --manager-success-soft: rgba(71, 126, 101, 0.18);
+  --manager-warning: #d7a95d;
+  --manager-warning-soft: rgba(167, 112, 32, 0.18);
+  --manager-danger: #e18a84;
+  --manager-danger-soft: rgba(170, 72, 67, 0.18);
+  --manager-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+  --manager-shadow-strong: 0 22px 48px rgba(0, 0, 0, 0.34);
 }
 
 body.manager-dark-mode .manager-layout,
@@ -21,33 +35,328 @@ body.manager-dark-mode .manager-layout__content,
 body.manager-dark-mode .manager-page-shell,
 body.manager-dark-mode .manager-page-shell__body {
   color: var(--manager-text) !important;
-  background: linear-gradient(180deg, var(--manager-bg-base), var(--manager-bg-mid) 55%, var(--manager-bg-end)) !important;
+  background:
+    radial-gradient(circle at 12% 0, var(--manager-bg-pearl), transparent 34rem),
+    radial-gradient(circle at 86% 5%, var(--manager-bg-deep-glow), transparent 32rem),
+    linear-gradient(180deg, var(--manager-bg-base), var(--manager-bg-mid) 52%, var(--manager-bg-end)) !important;
 }
 
-body.manager-dark-mode .manager-layout__header > .header,
-body.manager-dark-mode .manager-layout .sidebar,
-body.manager-dark-mode .manager-account-dialog {
+body.manager-dark-mode .manager-layout__content::before {
+  opacity: 0.18 !important;
+}
+
+body.manager-dark-mode .manager-layout__header > .header {
   border-color: var(--manager-border) !important;
   color: var(--manager-text) !important;
-  background: rgba(20, 29, 25, 0.96) !important;
+  background:
+    radial-gradient(circle at 18% 0, rgba(115, 169, 145, 0.12), transparent 22rem),
+    linear-gradient(90deg, rgba(19, 29, 25, 0.98), rgba(15, 24, 20, 0.98)) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26) !important;
 }
 
-body.manager-dark-mode .manager-layout__header :is(.search-box, .manager-scope-selector, .notification-btn, .user-menu-btn),
-body.manager-dark-mode .manager-layout .sidebar :is(.nav-item, .manager-sidebar-brand),
-body.manager-dark-mode .manager-account :is(.manager-account__hero, .manager-account__panel, .manager-account__nav, .manager-account__identity) {
+body.manager-dark-mode .manager-layout__header :is(
+    .search-box,
+    .manager-scope-selector,
+    .notification-btn,
+    .user-menu-btn,
+    .time-display
+  ) {
   border-color: var(--manager-border) !important;
   color: var(--manager-text) !important;
-  background: rgba(28, 38, 34, 0.9) !important;
+  background: rgba(28, 40, 35, 0.9) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035) !important;
 }
 
-body.manager-dark-mode .manager-account :is(input, .manager-account__sessions article, .manager-account__support-grid button) {
-  border-color: var(--manager-border) !important;
+body.manager-dark-mode .manager-layout__header :is(
+    .search-input,
+    .manager-scope-selector strong,
+    .manager-scope-selector select,
+    .current-time,
+    .user-name
+  ) {
   color: var(--manager-text) !important;
-  background: rgba(15, 22, 19, 0.7) !important;
 }
 
-body.manager-dark-mode .manager-account :is(p, small, label > span, .manager-account__sessions span, .manager-account__sessions em),
-body.manager-dark-mode .manager-layout__header .current-status,
-body.manager-dark-mode .manager-layout .sidebar :is(.nav-label, .nav-section-title) {
+body.manager-dark-mode .manager-layout__header :is(
+    .search-input::placeholder,
+    .manager-scope-selector span,
+    .current-status,
+    .user-roleName,
+    .user-chevron
+  ) {
   color: var(--manager-muted) !important;
+}
+
+body.manager-dark-mode .manager-layout .sidebar {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background:
+    radial-gradient(circle at 10% -8%, rgba(115, 169, 145, 0.14), transparent 24rem),
+    linear-gradient(180deg, rgba(20, 31, 26, 0.99), rgba(15, 24, 20, 0.99)) !important;
+  box-shadow: 18px 0 44px rgba(0, 0, 0, 0.28) !important;
+}
+
+body.manager-dark-mode .manager-layout :is(.sidebar-header, .sidebar-footer) {
+  border-color: var(--manager-border) !important;
+  background: rgba(24, 36, 30, 0.94) !important;
+}
+
+body.manager-dark-mode .manager-layout :is(.sidebar-user, .sidebar-rail-toggle, .nav-icon) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-primary) !important;
+  background: rgba(31, 44, 38, 0.92) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.manager-dark-mode .manager-layout .manager-sidebar-brand__wordmark {
+  filter: brightness(2.5) saturate(0.78);
+}
+
+body.manager-dark-mode .manager-layout .nav-section-title,
+body.manager-dark-mode .manager-layout .nav-item {
+  color: var(--manager-muted) !important;
+}
+
+body.manager-dark-mode .manager-layout .nav-item:hover,
+body.manager-dark-mode .manager-layout .nav-item.active {
+  border-color: var(--manager-border-strong) !important;
+  color: var(--manager-text) !important;
+  background: rgba(39, 55, 47, 0.94) !important;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.manager-dark-mode :is(.user-dropdown, .notification-dropdown, .manager-account-dialog) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: rgba(20, 29, 25, 0.98) !important;
+}
+
+body.manager-dark-mode :is(.user-menu-item, .notification-item) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: transparent !important;
+}
+
+body.manager-dark-mode :is(.user-menu-item, .notification-item):hover {
+  background: rgba(115, 169, 145, 0.12) !important;
+}
+
+body.manager-dark-mode :is(
+    .user-details h3,
+    .notification-content h4,
+    .manager-account h1,
+    .manager-account h2,
+    .manager-account strong
+  ) {
+  color: var(--manager-text) !important;
+}
+
+body.manager-dark-mode :is(
+    .user-details p,
+    .notification-content p,
+    .notification-time,
+    .manager-account p,
+    .manager-account small,
+    .manager-account label > span
+  ) {
+  color: var(--manager-muted) !important;
+}
+
+body.manager-dark-mode .manager-account :is(
+    .manager-account__hero,
+    .manager-account__panel,
+    .manager-account__nav,
+    .manager-account__identity,
+    input,
+    .manager-account__sessions article,
+    .manager-account__support-grid button
+  ) {
+  border-color: var(--manager-border) !important;
+  color: var(--manager-text) !important;
+  background: rgba(27, 39, 34, 0.92) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page {
+  --rbac-bg: #121b17;
+  --rbac-surface: #1b2721;
+  --rbac-surface-soft: #17211d;
+  --rbac-line: rgba(151, 177, 164, 0.18);
+  --rbac-line-strong: rgba(151, 177, 164, 0.32);
+  --rbac-text: #e9f1ed;
+  --rbac-ink: #f2f7f4;
+  --rbac-muted: #a5b3ac;
+  --rbac-sage: #8eaaa0;
+  --rbac-sage-dark: #73a991;
+  --rbac-sage-soft: rgba(115, 169, 145, 0.14);
+  --rbac-taupe: #bea27e;
+  --rbac-taupe-dark: #d1b48d;
+  --rbac-taupe-soft: rgba(190, 162, 126, 0.14);
+  --rbac-red: #e18a84;
+  --rbac-green: #86b39f;
+  --rbac-orange: #bea27e;
+  --rbac-orange-dark: #d1b48d;
+  --rbac-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+
+  border-color: var(--rbac-line) !important;
+  color: var(--rbac-text) !important;
+  background:
+    radial-gradient(circle at 14% -4%, rgba(142, 170, 160, 0.12), transparent 30rem),
+    radial-gradient(circle at 100% 8%, rgba(115, 169, 145, 0.09), transparent 28rem),
+    linear-gradient(180deg, #17211d 0%, #121b17 62%, #0f1714 100%) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.03) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-premium-header,
+    .rbac-card,
+    .rbac-tabs,
+    .rbac-premium-header__panel,
+    .rbac-premium-metric,
+    .rbac-role-row,
+    .rbac-selected-role,
+    .rbac-permission-summary,
+    .rbac-permission-group,
+    .rbac-assignment-preview,
+    .rbac-assignment-step,
+    .rbac-assignment-preview__summary,
+    .rbac-empty,
+    .rbac-role-form fieldset,
+    .rbac-card--form .rbac-permission-checklist,
+    .rbac-card--form .rbac-permission-checklist__groups fieldset
+  ) {
+  border-color: var(--rbac-line) !important;
+  color: var(--rbac-text) !important;
+  background: linear-gradient(180deg, rgba(31, 44, 38, 0.96), rgba(24, 35, 30, 0.94)) !important;
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    h1,
+    h2,
+    h3,
+    h4,
+    strong,
+    legend,
+    .rbac-role-row__top strong
+  ) {
+  color: var(--rbac-ink) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    p,
+    small,
+    .rbac-empty,
+    .rbac-note,
+    .rbac-form__hint,
+    .rbac-checkbox-row small,
+    .rbac-chip small,
+    .rbac-assignment-step small,
+    .rbac-premium-metric span
+  ) {
+  color: var(--rbac-muted) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-premium-controls label,
+    .rbac-tabs button,
+    .rbac-action-row button,
+    .rbac-form select,
+    .rbac-form button,
+    .rbac-role-form input,
+    .rbac-role-form select,
+    .rbac-role-form textarea,
+    .rbac-audit-filters select,
+    .rbac-chip
+  ) {
+  border-color: var(--rbac-line-strong) !important;
+  color: var(--rbac-text) !important;
+  background: rgba(22, 33, 28, 0.96) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-form label,
+    .rbac-role-form label,
+    .rbac-audit-filters label,
+    .rbac-checkbox-row
+  ) {
+  color: var(--rbac-text) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page select option {
+  color: var(--rbac-text);
+  background: #17211d;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-tabs button.is-active,
+    .rbac-action-row button.is-active,
+    .rbac-premium-controls button,
+    .rbac-form button,
+    .rbac-role-form button[type="submit"],
+    .rbac-audit-log .rbac-card__header button
+  ) {
+  border-color: rgba(142, 170, 160, 0.48) !important;
+  color: #f7fbf9 !important;
+  background: linear-gradient(135deg, #48685a, #2f5747) !important;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-section-kicker,
+    .rbac-assurance-strip span,
+    .rbac-count-pill,
+    .rbac-permission-checklist__header span,
+    .rbac-action-badge,
+    .rbac-role-badge,
+    .rbac-status
+  ) {
+  border-color: rgba(190, 162, 126, 0.24) !important;
+  color: #dec7a8 !important;
+  background: rgba(190, 162, 126, 0.11) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-role-row:hover,
+    .rbac-role-row.is-active,
+    .rbac-checkbox-row:hover,
+    .rbac-checkbox-row:has(input:checked)
+  ) {
+  border-color: rgba(115, 169, 145, 0.34) !important;
+  background: rgba(115, 169, 145, 0.11) !important;
+  box-shadow: inset 4px 0 0 #73a991 !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-audit-table-wrap,
+    .rbac-audit-table th,
+    .rbac-audit-table td
+  ) {
+  border-color: var(--rbac-line) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page .rbac-audit-table th {
+  color: var(--rbac-muted) !important;
+  background: rgba(19, 29, 25, 0.98) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page .rbac-audit-table td {
+  color: var(--rbac-text) !important;
+  background: rgba(27, 39, 34, 0.72) !important;
+}
+
+body.manager-dark-mode .manager-layout__content .rbac-page :is(
+    .rbac-permission-catalog .rbac-card__header,
+    .rbac-card--form .rbac-permission-checklist__header
+  ) {
+  border-color: var(--rbac-line) !important;
+  background: rgba(24, 35, 30, 0.96) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.manager-dark-mode :is(button, input, select, textarea, .nav-item) {
+    transition: none !important;
+  }
 }

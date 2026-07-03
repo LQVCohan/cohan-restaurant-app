@@ -5,7 +5,6 @@ import SearchBox from "../SearchBox/SearchBox";
 import ManagerAccountCenter from "./Account/ManagerAccountCenter";
 import "./Styles/Header.scss";
 import "./Styles/HeaderShellFix.scss";
-import "./Styles/ManagerDarkTheme.scss";
 import "./Account/ManagerAccountOverlay.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
