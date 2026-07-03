@@ -1,10 +1,9 @@
-import { toApiUrl } from "@/lib/apiBaseUrl";
+import { toBackendRootUrl } from "@/lib/apiBaseUrl";
 import { getToken } from "@/lib/authStorage";
 
 const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
 const STREAM_BUBBLE_FLAG = "aiStreamBubble";
 const ANSWERING_CLASS = "is-ai-answering";
-const MANAGER_ROLES = new Set(["admin", "manager", "hr", "accountant"]);
 
 const RATE_LIMIT_MESSAGE = "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.";
 
@@ -69,34 +68,69 @@ export const isAskAiChatbotOperation = (payload) => {
   return operationName === "AskAiChatbot" || query.includes("askAiChatbot");
 };
 
-const getRequestedManagerFeature = (input = {}) => {
-  const pageContext = input?.pageContext || {};
-  const role = String(pageContext.userRole || "").trim().toLowerCase();
-  if (!MANAGER_ROLES.has(role)) return null;
-  return (Array.isArray(pageContext.featureMatches) ? pageContext.featureMatches : [])
-    .find((feature) => String(feature?.path || "").startsWith("/manager")) || null;
+const normalizeText = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase();
+
+const isExplicitNavigationRequest = (input = {}) => {
+  const message = normalizeText(input?.message);
+  return /\b(xem|mo|di toi|truy cap|vao trang|mo trang|mo giup)\b/.test(message);
+};
+
+const getRequestedFeature = (input = {}) => {
+  const features = Array.isArray(input?.pageContext?.featureMatches)
+    ? input.pageContext.featureMatches
+    : [];
+
+  return features.find((feature) => {
+    if (!feature?.label) return false;
+    if (feature.actionType === "openCart") return true;
+    return Boolean(String(feature?.path || "").trim());
+  }) || null;
+};
+
+const buildExplicitNavigationAnswer = (feature) => {
+  if (feature?.actionType === "openCart") {
+    return "Bạn có thể mở giỏ hàng bằng nút bên dưới.";
+  }
+  return `Bạn có thể mở mục “${feature?.label || "được yêu cầu"}” bằng nút bên dưới.`;
 };
 
 export const focusAiChatbotResponseActions = (result, input = {}) => {
   if (!result) return result;
-  const feature = getRequestedManagerFeature(input);
-  if (!feature?.path || !feature?.label) return result;
+  const feature = getRequestedFeature(input);
+  if (!feature) return result;
 
+  const isOpenCart = feature.actionType === "openCart";
   const actions = Array.isArray(result.actions) ? result.actions : [];
-  const matchingAction = actions.find(
-    (action) => String(action?.href || "") === String(feature.path),
+  const matchingAction = actions.find((action) =>
+    isOpenCart
+      ? action?.type === "openCart"
+      : String(action?.href || "") === String(feature.path || ""),
   );
   const focusedAction = matchingAction || {
-    type: feature.actionType === "openCart" ? "openCart" : "link",
+    type: isOpenCart ? "openCart" : "link",
     label: feature.label,
-    href: feature.actionType === "openCart" ? "" : feature.path,
+    href: isOpenCart ? "" : feature.path,
     description: feature.description || null,
     icon: feature.key || null,
     priority: 1,
   };
+  const explicitNavigation = isExplicitNavigationRequest(input);
 
   return {
     ...result,
+    ...(explicitNavigation
+      ? {
+          answer: buildExplicitNavigationAnswer(feature),
+          intent: feature.intent || result.intent,
+          isFallback: false,
+        }
+      : {}),
     actions: [{ ...focusedAction, label: feature.label }],
     quickReplies: [],
   };
@@ -242,7 +276,7 @@ export function installAiChatbotStreamFetchPatch() {
       const headers = { "Content-Type": "application/json" };
       if (authHeader) headers.Authorization = authHeader;
 
-      const streamResponse = await originalFetch(toApiUrl("/ai/chatbot/stream"), {
+      const streamResponse = await originalFetch(toBackendRootUrl("/ai/chatbot/stream"), {
         method: "POST",
         credentials: "include",
         headers,
