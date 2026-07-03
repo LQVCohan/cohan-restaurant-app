@@ -36,7 +36,12 @@ const toDto = (row) => ({
   reviewedBy: row?.reviewedBy ? String(row.reviewedBy) : null,
 });
 
-const buildConversationOwnerQuery = ({ conversationId, restaurantId, guestId, userId }) => {
+const buildConversationOwnerQuery = ({
+  conversationId,
+  restaurantId,
+  guestId,
+  userId,
+}) => {
   const cid = toObjectId(conversationId);
   if (!cid) return null;
 
@@ -62,7 +67,14 @@ async function resolveSubmitContext({
   userId,
 }) {
   const explicitRestaurantId = toObjectId(restaurantId);
-  if (restaurantId && !explicitRestaurantId) return { ok: false, restaurantId: null };
+  if (restaurantId && !explicitRestaurantId)
+    return { ok: false, restaurantId: null };
+
+  if (!conversationId && !messageId) {
+    return explicitRestaurantId
+      ? { ok: true, restaurantId: explicitRestaurantId }
+      : { ok: false, restaurantId: null };
+  }
 
   let conversation = null;
   if (conversationId) {
@@ -86,7 +98,10 @@ async function resolveSubmitContext({
       return { ok: false, restaurantId: null };
     }
 
-    if (explicitRestaurantId && String(message.restaurantId || "") !== String(explicitRestaurantId)) {
+    if (
+      explicitRestaurantId &&
+      String(message.restaurantId || "") !== String(explicitRestaurantId)
+    ) {
       return { ok: false, restaurantId: null };
     }
 
