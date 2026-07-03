@@ -1,0 +1,60 @@
+.manager-account-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(31, 42, 43, 0.46);
+  backdrop-filter: blur(6px);
+}
+
+.manager-account-dialog {
+  position: relative;
+  width: min(1180px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--manager-border, rgba(213, 204, 190, 0.78));
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--manager-bg-base, #f8f7f2), var(--manager-bg-mid, #f4f1ea));
+  box-shadow: 0 28px 80px rgba(20, 28, 29, 0.24);
+}
+
+.manager-account__close {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 0 0.6rem auto;
+  border: 1px solid var(--manager-border, rgba(213, 204, 190, 0.78));
+  border-radius: 11px;
+  color: var(--manager-text, #1f2a2b);
+  background: var(--manager-surface, rgba(255, 253, 248, 0.94));
+  cursor: pointer;
+}
+
+.manager-account__close:hover {
+  background: var(--manager-accent-soft, #edf1ee);
+}
+
+.manager-account__close:focus-visible {
+  outline: 3px solid rgba(77, 117, 102, 0.22);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .manager-account-overlay {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .manager-account-dialog {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}
