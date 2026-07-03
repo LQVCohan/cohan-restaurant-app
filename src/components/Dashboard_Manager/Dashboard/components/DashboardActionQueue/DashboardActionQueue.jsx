@@ -224,67 +224,77 @@ export default function DashboardActionQueue({
               <span>{sections[0].count}</span>
             </div>
             {orders.length ? (
-              orders.map((order) => {
-                const orderType =
-                  ORDER_TYPE_LABELS[order.orderType] ||
-                  order.orderType ||
-                  "Chưa xác định hình thức";
-                const queueAge = getQueueAge(order.createdAt);
+              <div
+                className="dashboard-queue-section__list"
+                role="list"
+                aria-label="Đơn hàng chờ xác nhận"
+              >
+                {orders.map((order) => {
+                  const orderType =
+                    ORDER_TYPE_LABELS[order.orderType] ||
+                    order.orderType ||
+                    "Chưa xác định hình thức";
+                  const queueAge = getQueueAge(order.createdAt);
 
-                return (
-                  <div className="dashboard-queue-item" key={order.id}>
-                    <div className="dashboard-queue-item__main">
-                      <div className="dashboard-queue-item__title-row">
-                        <strong>#{order.orderCode || order.id}</strong>
-                        {queueAge ? (
-                          <span
-                            className={`queue-age queue-age--${queueAge.tone}`}
-                          >
-                            {queueAge.label}
-                          </span>
-                        ) : null}
+                  return (
+                    <div
+                      className="dashboard-queue-item"
+                      key={order.id}
+                      role="listitem"
+                    >
+                      <div className="dashboard-queue-item__main">
+                        <div className="dashboard-queue-item__title-row">
+                          <strong>#{order.orderCode || order.id}</strong>
+                          {queueAge ? (
+                            <span
+                              className={`queue-age queue-age--${queueAge.tone}`}
+                            >
+                              {queueAge.label}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p>
+                          {orderType}
+                          {order.tableCode ? ` • Bàn ${order.tableCode}` : ""}
+                          {order.customerName ? ` • ${order.customerName}` : ""}
+                        </p>
+                        <span>
+                          {formatCurrency(order.total)} •{" "}
+                          {formatDateTime(order.createdAt)}
+                        </span>
+                        <em>{itemSummary(order.itemNames)}</em>
                       </div>
-                      <p>
-                        {orderType}
-                        {order.tableCode ? ` • Bàn ${order.tableCode}` : ""}
-                        {order.customerName ? ` • ${order.customerName}` : ""}
-                      </p>
-                      <span>
-                        {formatCurrency(order.total)} •{" "}
-                        {formatDateTime(order.createdAt)}
-                      </span>
-                      <em>{itemSummary(order.itemNames)}</em>
+                      <div className="dashboard-queue-item__actions">
+                        <button
+                          type="button"
+                          className="queue-btn queue-btn--primary"
+                          disabled={Boolean(busyKey)}
+                          onClick={() => onConfirmOrder?.(order)}
+                        >
+                          {busyKey === `order-confirm:${order.id}`
+                            ? "Đang xác nhận..."
+                            : "Xác nhận"}
+                        </button>
+                        <button
+                          type="button"
+                          className="queue-btn queue-btn--danger"
+                          disabled={Boolean(busyKey)}
+                          onClick={() => setRejectTarget(order)}
+                        >
+                          Từ chối
+                        </button>
+                        <button
+                          type="button"
+                          className="queue-btn queue-btn--ghost"
+                          onClick={onOpenOrders}
+                        >
+                          Chi tiết
+                        </button>
+                      </div>
                     </div>
-                    <div className="dashboard-queue-item__actions">
-                      <button
-                        type="button"
-                        className="queue-btn queue-btn--primary"
-                        disabled={Boolean(busyKey)}
-                        onClick={() => onConfirmOrder?.(order)}
-                      >
-                        {busyKey === `order-confirm:${order.id}`
-                          ? "Đang xác nhận..."
-                          : "Xác nhận"}
-                      </button>
-                      <button
-                        type="button"
-                        className="queue-btn queue-btn--danger"
-                        disabled={Boolean(busyKey)}
-                        onClick={() => setRejectTarget(order)}
-                      >
-                        Từ chối
-                      </button>
-                      <button
-                        type="button"
-                        className="queue-btn queue-btn--ghost"
-                        onClick={onOpenOrders}
-                      >
-                        Chi tiết
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             ) : (
               <p className="dashboard-queue-section__empty">
                 Chưa có đơn hàng chờ xác nhận.
@@ -301,70 +311,87 @@ export default function DashboardActionQueue({
               <span>{sections[1].count}</span>
             </div>
             {reservations.length ? (
-              reservations.map((reservation) => {
-                const depositLabel =
-                  DEPOSIT_STATUS_LABELS[reservation.depositStatus] ||
-                  "Chưa có thông tin đặt cọc";
-                const queueAge = getQueueAge(reservation.createdAt);
+              <div
+                className="dashboard-queue-section__list"
+                role="list"
+                aria-label="Đặt bàn chờ xác nhận"
+              >
+                {reservations.map((reservation) => {
+                  const depositLabel =
+                    DEPOSIT_STATUS_LABELS[reservation.depositStatus] ||
+                    "Chưa có thông tin đặt cọc";
+                  const queueAge = getQueueAge(reservation.createdAt);
 
-                return (
-                  <div className="dashboard-queue-item" key={reservation.id}>
-                    <div className="dashboard-queue-item__main">
-                      <div className="dashboard-queue-item__title-row">
-                        <strong>#{reservation.orderCode || reservation.id}</strong>
-                        {queueAge ? (
-                          <span
-                            className={`queue-age queue-age--${queueAge.tone}`}
-                          >
-                            {queueAge.label}
-                          </span>
-                        ) : null}
+                  return (
+                    <div
+                      className="dashboard-queue-item"
+                      key={reservation.id}
+                      role="listitem"
+                    >
+                      <div className="dashboard-queue-item__main">
+                        <div className="dashboard-queue-item__title-row">
+                          <strong>
+                            #{reservation.orderCode || reservation.id}
+                          </strong>
+                          {queueAge ? (
+                            <span
+                              className={`queue-age queue-age--${queueAge.tone}`}
+                            >
+                              {queueAge.label}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p>
+                          {reservation.customerName || "Khách chưa xác định"} •{" "}
+                          {reservation.customerPhone || "Chưa có số điện thoại"}
+                          {reservation.tableCode
+                            ? ` • Bàn ${reservation.tableCode}`
+                            : ""}
+                        </p>
+                        <span>
+                          {reservation.partySize || 0} khách •{" "}
+                          {formatDateTime(reservation.timeTo)} • {depositLabel}
+                        </span>
+                        {reservation.note ? <em>{reservation.note}</em> : null}
                       </div>
-                      <p>
-                        {reservation.customerName || "Khách chưa xác định"} •{" "}
-                        {reservation.customerPhone || "Chưa có số điện thoại"}
-                        {reservation.tableCode
-                          ? ` • Bàn ${reservation.tableCode}`
-                          : ""}
-                      </p>
-                      <span>
-                        {reservation.partySize || 0} khách •{" "}
-                        {formatDateTime(reservation.timeTo)} • {depositLabel}
-                      </span>
-                      {reservation.note ? <em>{reservation.note}</em> : null}
+                      <div className="dashboard-queue-item__actions">
+                        <button
+                          type="button"
+                          className="queue-btn queue-btn--primary"
+                          disabled={Boolean(busyKey)}
+                          onClick={() =>
+                            onConfirmReservation?.(reservation)
+                          }
+                        >
+                          {busyKey ===
+                          `reservation-confirm:${reservation.id}`
+                            ? "Đang xác nhận..."
+                            : "Xác nhận"}
+                        </button>
+                        <button
+                          type="button"
+                          className="queue-btn queue-btn--danger"
+                          disabled={Boolean(busyKey)}
+                          onClick={() =>
+                            onCancelReservation?.(reservation)
+                          }
+                        >
+                          {busyKey === `reservation-cancel:${reservation.id}`
+                            ? "Đang từ chối..."
+                            : "Từ chối"}
+                        </button>
+                        <button
+                          type="button"
+                          className="queue-btn queue-btn--ghost"
+                          onClick={onOpenTables}
+                        >
+                          Sơ đồ bàn
+                        </button>
+                      </div>
                     </div>
-                    <div className="dashboard-queue-item__actions">
-                      <button
-                        type="button"
-                        className="queue-btn queue-btn--primary"
-                        disabled={Boolean(busyKey)}
-                        onClick={() => onConfirmReservation?.(reservation)}
-                      >
-                        {busyKey === `reservation-confirm:${reservation.id}`
-                          ? "Đang xác nhận..."
-                          : "Xác nhận"}
-                      </button>
-                      <button
-                        type="button"
-                        className="queue-btn queue-btn--danger"
-                        disabled={Boolean(busyKey)}
-                        onClick={() => onCancelReservation?.(reservation)}
-                      >
-                        {busyKey === `reservation-cancel:${reservation.id}`
-                          ? "Đang từ chối..."
-                          : "Từ chối"}
-                      </button>
-                      <button
-                        type="button"
-                        className="queue-btn queue-btn--ghost"
-                        onClick={onOpenTables}
-                      >
-                        Sơ đồ bàn
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             ) : (
               <p className="dashboard-queue-section__empty">
                 Không có yêu cầu đặt bàn mới.
