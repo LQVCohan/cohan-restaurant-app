@@ -190,7 +190,11 @@ const PayrollReadinessPanel = ({ readiness, loading = false, error = null, onRef
               </p>
 
               {issues.length > 0 ? (
-                <div className="payroll-readiness-issues">
+                <div
+                  className="payroll-readiness-issues"
+                  tabIndex={0}
+                  aria-label={`${sectionLabel}: ${issues.length} vấn đề cần xử lý`}
+                >
                   {issues.map((issue, index) => (
                     <PayrollReadinessIssue
                       key={`${key}-${issue.code || "issue"}-${issue.sourceId || index}`}

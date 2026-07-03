@@ -1,0 +1,29 @@
+{
+  "id": "manager-sage-payroll-density",
+  "name": "manager-sage-payroll-density",
+  "title": "Finish manager sage palette and compact payroll readiness",
+  "description": "Override lazy-loaded cream page themes with the shared sage palette and prevent payroll readiness issues from stretching the page indefinitely.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-visual-system-payroll",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-03",
+  "completedAt": null,
+  "branch": "fix/manager-sage-payroll-density",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "attendance-ui-polish",
+  "relatedFiles": [
+    "src/layouts/ManagerSageSurfaceOverrides.css",
+    "src/components/Dashboard_Manager/PayrollPage/components/PayrollReadinessPanel.jsx"
+  ],
+  "notes": "Visual-only route-specific palette overrides plus bounded, keyboard-scrollable payroll readiness lists. Backend readiness data remains complete.",
+  "meta": {}
+}

@@ -131,6 +131,434 @@
   background: rgba(229, 240, 235, 0.72) !important;
 }
 
+/*
+ * Route-local styles are loaded by lazy chunks after the shell. These selectors
+ * intentionally include the route class so hard-coded cream themes cannot win.
+ */
+
+/* Order manager */
+.manager-layout.manager-layout--orders .om-container:not(.om-container--focus) {
+  --om-bg: #e6f1eb !important;
+  --om-canvas: #eef7f2 !important;
+  --om-paper: #f7fbf9 !important;
+  --om-sage: var(--manager-accent, #2f7d68) !important;
+  --om-sage-dark: var(--manager-primary-hover, #40584e) !important;
+  --om-sage-soft: #dcece4 !important;
+  --om-sage-mist: #edf6f1 !important;
+  --om-ink: var(--manager-text, #24312c) !important;
+  --om-text: #405149 !important;
+  --om-muted: var(--manager-muted, #607069) !important;
+  --om-border: #b8d0c4 !important;
+  background: transparent !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  :is(
+    .management-page-header,
+    .om-kpi-card,
+    .om-toolbar,
+    .om-state,
+    .om-skeleton-card,
+    .oc-card
+  ) {
+  border-color: var(--manager-border-strong) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.97)
+  ) !important;
+  box-shadow:
+    0 12px 30px rgba(48, 72, 61, 0.09),
+    inset 0 1px rgba(255, 255, 255, 0.86) !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  :is(.mph-search, .mph-select, .mph-icon-btn, .mph-btn, .om-select-input) {
+  border-color: var(--manager-border-strong) !important;
+  color: var(--manager-text) !important;
+  background: rgba(247, 251, 249, 0.98) !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  :is(.oc-header, .oc-info-section, .oc-item-row, .oc-footer) {
+  border-color: var(--manager-border) !important;
+  background: rgba(240, 247, 243, 0.82) !important;
+}
+
+.manager-layout.manager-layout--orders
+  .om-container:not(.om-container--focus)
+  :is(.mph-btn--primary, .om-btn-primary, .oc-btn.primary, .oc-btn.success) {
+  color: #ffffff !important;
+  border-color: var(--manager-accent) !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-accent),
+    var(--manager-primary-hover)
+  ) !important;
+}
+
+/* Restaurant profile */
+.manager-layout.manager-layout--restaurant-info-management
+  .restaurant-management-container {
+  --ri-ink: var(--manager-text, #24312c) !important;
+  --ri-muted: var(--manager-muted, #607069) !important;
+  --ri-warm: var(--manager-accent, #2f7d68) !important;
+  --ri-warm-dark: var(--manager-primary-hover, #40584e) !important;
+  --ri-line: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  --ri-line-soft: rgba(83, 108, 97, 0.14) !important;
+  --ri-paper: rgba(247, 251, 249, 0.97) !important;
+  --ri-paper-strong: #f4faf6 !important;
+  --ri-sage: var(--manager-accent, #2f7d68) !important;
+  --ri-sage-soft: var(--manager-accent-soft, #e5f0eb) !important;
+  --ri-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--restaurant-info-management
+  .restaurant-management-container
+  :is(
+    .management-page-header,
+    .mph-left,
+    .mph-footer-row,
+    .profile-focus-panel__copy,
+    .profile-completion-card,
+    .quick-metrics-grid .metric-card,
+    .saas-card,
+    .hero-uploader-section,
+    .form-section,
+    .preview-card
+  ) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(230, 241, 235, 0.96)
+  ) !important;
+  box-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--restaurant-info-management
+  .restaurant-management-container
+  :is(.mph-btn--primary, .ant-btn-primary) {
+  color: #ffffff !important;
+  border-color: var(--manager-accent) !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-accent),
+    var(--manager-primary-hover)
+  ) !important;
+  box-shadow: 0 10px 22px rgba(47, 125, 104, 0.2) !important;
+}
+
+.manager-layout.manager-layout--restaurant-info-management
+  .restaurant-management-container
+  .profile-focus-panel__facts
+  span {
+  border-color: var(--manager-border) !important;
+  background: rgba(239, 247, 243, 0.94) !important;
+}
+
+/* Staff */
+.manager-layout.manager-layout--staff
+  .staff-page-container
+  :is(
+    .management-page-header,
+    .mph-stat-card,
+    .mph-search,
+    .mph-select,
+    .mph-icon-btn,
+    .mph-footer-row,
+    .staff-page-tabs,
+    .staff-navigation-tabs,
+    .employee-list-card,
+    .employee-detail-card,
+    .employee-list-section,
+    .employee-detail-section
+  ) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.96)
+  ) !important;
+  box-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--staff
+  .staff-page-container
+  :is(.mph-btn--primary, .btn-primary, button[type="submit"]) {
+  color: #ffffff !important;
+  border-color: var(--manager-accent) !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-accent),
+    var(--manager-primary-hover)
+  ) !important;
+}
+
+.manager-layout.manager-layout--staff
+  .staff-page-container
+  :is(.mph-eyebrow, .mph-stat-card__icon) {
+  color: var(--manager-primary-hover) !important;
+  background: var(--manager-accent-soft) !important;
+}
+
+/* RBAC */
+.manager-layout.manager-layout--rbac .rbac-page {
+  --rbac-bg: #e8f2ed !important;
+  --rbac-surface: #f7fbf9 !important;
+  --rbac-soft: #eef7f2 !important;
+  --rbac-soft-2: #dfeee7 !important;
+  --rbac-line: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  --rbac-line-strong: var(
+    --manager-border-strong,
+    rgba(83, 108, 97, 0.34)
+  ) !important;
+  --rbac-text: var(--manager-text, #24312c) !important;
+  --rbac-muted: var(--manager-muted, #607069) !important;
+  --rbac-orange: var(--manager-accent, #2f7d68) !important;
+  --rbac-orange-dark: var(--manager-primary-hover, #40584e) !important;
+  --rbac-green: var(--manager-accent, #2f7d68) !important;
+  --rbac-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--rbac
+  .rbac-page
+  :is(
+    .rbac-premium-header,
+    .rbac-premium-metric,
+    .rbac-card,
+    .rbac-role-item,
+    .rbac-selected-role,
+    .rbac-permission-summary,
+    .rbac-permission-group,
+    .rbac-assignment-preview,
+    .rbac-assignment-step
+  ) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.96)
+  ) !important;
+  box-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--rbac
+  .rbac-page
+  :is(.rbac-premium-header__icon, .rbac-assignment-preview__icon) {
+  color: var(--manager-primary-hover) !important;
+  border-color: var(--manager-border-strong) !important;
+  background: var(--manager-accent-soft) !important;
+  box-shadow: 0 10px 22px rgba(47, 125, 104, 0.14) !important;
+}
+
+.manager-layout.manager-layout--rbac
+  .rbac-page
+  .rbac-premium-controls
+  button {
+  color: #ffffff !important;
+  border-color: var(--manager-accent) !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-accent),
+    var(--manager-primary-hover)
+  ) !important;
+}
+
+/* Schedule */
+.manager-layout.manager-layout--schedules
+  :is(.schedule-container, .schedule-management, .schedule-management-page) {
+  --schedule-primary: var(--manager-accent, #2f7d68) !important;
+  --schedule-sage: var(--manager-primary, #536c61) !important;
+  --schedule-surface: #f7fbf9 !important;
+  --schedule-surface-soft: #edf6f1 !important;
+  --schedule-border: var(--manager-border) !important;
+  background: transparent !important;
+}
+
+.manager-layout.manager-layout--schedules
+  :is(.schedule-container, .schedule-management, .schedule-management-page)
+  :is(
+    .schedule-header,
+    .schedule-toolbar,
+    .schedule-summary,
+    .schedule-summary-card,
+    .schedule-kpi-card,
+    .schedule-command-center,
+    .schedule-grid,
+    .week-grid,
+    .day-column,
+    .schedule-panel,
+    .availability-registration-panel,
+    .schedule-bottom-panel
+  ) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.96)
+  ) !important;
+  box-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--schedules
+  :is(.schedule-container, .schedule-management, .schedule-management-page)
+  :is(.shift-slot, .add-shift-slot, .schedule-cell, .availability-slot) {
+  border-color: var(--manager-border) !important;
+  background: rgba(237, 246, 241, 0.92) !important;
+}
+
+/* Payroll: retain every readiness issue but keep the page at dashboard density. */
+.manager-layout.manager-layout--payroll .payroll-page-compact {
+  --payroll-primary: var(--manager-accent, #2f7d68) !important;
+  --payroll-accent: var(--manager-primary, #536c61) !important;
+  --payroll-paper: #f7fbf9 !important;
+  --payroll-soft: #edf6f1 !important;
+  --payroll-line: var(--manager-border) !important;
+}
+
+.manager-layout.manager-layout--payroll
+  .payroll-page-compact
+  :is(
+    .header-toolbar,
+    .payroll-control-card,
+    .metrics-strip,
+    .metric-item,
+    .progress-section,
+    .payroll-readiness-panel,
+    .payroll-readiness-section,
+    .payroll-readiness-panel__state-card,
+    .table-card,
+    .table-controls
+  ):not(.payroll-readiness-panel--error) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.96)
+  ) !important;
+  box-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout.manager-layout--payroll .payroll-readiness-sections {
+  align-items: start !important;
+}
+
+.manager-layout.manager-layout--payroll .payroll-readiness-section {
+  min-height: 0 !important;
+  align-self: start !important;
+}
+
+.manager-layout.manager-layout--payroll .payroll-readiness-issues {
+  max-height: min(28rem, 52vh) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 0.3rem;
+}
+
+.manager-layout.manager-layout--payroll
+  .payroll-readiness-issues:focus-visible {
+  outline: 3px solid rgba(83, 108, 97, 0.2);
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+
+.manager-layout.manager-layout--payroll .payroll-readiness-issue {
+  background: rgba(247, 251, 249, 0.96) !important;
+}
+
+.manager-layout.manager-layout--payroll
+  .payroll-readiness-issue:not(.payroll-readiness-issue--error):not(
+    .payroll-readiness-issue--warning
+  ) {
+  border-color: var(--manager-border) !important;
+}
+
+/* AI handoff and chatbot pages */
+.manager-layout.manager-layout--ai-handoff .ai-handoff-inbox {
+  --ai-bg: #e7f1ec !important;
+  --ai-surface: #f7fbf9 !important;
+  --ai-surface-soft: #eaf4ef !important;
+  --ai-border: var(--manager-border) !important;
+  --ai-border-strong: var(--manager-border-strong) !important;
+  --ai-text: var(--manager-text) !important;
+  --ai-muted: var(--manager-muted) !important;
+  --ai-accent: var(--manager-accent) !important;
+  --ai-accent-hover: var(--manager-primary-hover) !important;
+  --ai-accent-soft: var(--manager-accent-soft) !important;
+  background: transparent !important;
+}
+
+.manager-layout.manager-layout--ai-handoff
+  .ai-handoff-inbox
+  :is(
+    .ai-handoff-inbox__panel,
+    .ai-handoff-inbox__panel-header,
+    .ai-handoff-inbox__content,
+    .ai-handoff-inbox__message,
+    .ai-handoff-inbox__restaurant,
+    .ai-handoff-inbox__restaurant-select
+  ) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.96)
+  ) !important;
+}
+
+.manager-layout:is(
+    .manager-layout--ai-chatbot-analytics,
+    .manager-layout--ai-chatbot-settings
+  )
+  .ai-admin-page
+  :is(
+    .ai-admin-hero,
+    .ai-admin-toolbar,
+    .ai-admin-field,
+    .ai-admin-metrics > article,
+    .ai-admin-panel,
+    .ai-admin-settings-status-strip,
+    .ai-admin-settings-status-strip > article,
+    .ai-admin-check--card,
+    .ai-admin-empty,
+    .customer-analytics-card,
+    .customer-analytics-panel
+  ) {
+  border-color: var(--manager-border) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(247, 251, 249, 0.99),
+    rgba(232, 243, 237, 0.96)
+  ) !important;
+  box-shadow: var(--manager-shadow) !important;
+}
+
+.manager-layout:is(
+    .manager-layout--ai-chatbot-analytics,
+    .manager-layout--ai-chatbot-settings
+  )
+  .ai-admin-page
+  :is(button[type="submit"], .customer-analytics-refresh) {
+  color: #ffffff !important;
+  border-color: var(--manager-accent) !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-accent),
+    var(--manager-primary-hover)
+  ) !important;
+}
+
+@media (max-width: 760px) {
+  .manager-layout.manager-layout--payroll .payroll-readiness-issues {
+    max-height: 22rem !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .manager-layout :is(.nav-item, button, a, input, select, textarea) {
     transition-duration: 0.01ms !important;
