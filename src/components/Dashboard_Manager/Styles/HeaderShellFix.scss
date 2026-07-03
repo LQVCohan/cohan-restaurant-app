@@ -18,10 +18,10 @@
 
   > .header .header__content {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(26rem, 32rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(25rem, 30rem) minmax(0, 1fr);
     align-items: center;
-    gap: clamp(1rem, 1.5vw, 1.5rem);
-    width: min(calc(100% - 3rem), 1500px);
+    gap: clamp(0.75rem, 1vw, 1rem);
+    width: min(calc(100% - 2rem), 1160px);
     height: 100%;
     margin: 0 auto;
     padding: 0;
@@ -35,7 +35,7 @@
     grid-column: 1;
     grid-row: 1;
     justify-self: start;
-    width: min(100%, 20rem);
+    width: min(100%, 18rem);
     min-width: 0;
   }
 
@@ -287,13 +287,13 @@
 @media (max-width: 1320px) {
   .manager-layout__header {
     > .header .header__content {
-      grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem) minmax(0, 1fr);
-      width: min(calc(100% - 2rem), 1500px);
-      gap: 0.9rem;
+      grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem) minmax(0, 1fr);
+      width: min(calc(100% - 1.5rem), 1160px);
+      gap: 0.75rem;
     }
 
     .header__scope {
-      width: min(100%, 17.5rem);
+      width: min(100%, 16.5rem);
     }
 
     .time-display {
@@ -305,7 +305,7 @@
 @media (max-width: 1080px) {
   .manager-layout__header {
     > .header .header__content {
-      grid-template-columns: minmax(0, 1fr) minmax(20rem, 28rem) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) minmax(20rem, 27rem) minmax(0, 1fr);
     }
 
     .header__scope {
