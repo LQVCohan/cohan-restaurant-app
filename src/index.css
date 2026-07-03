@@ -24,7 +24,6 @@
 @import "./components/Customer/AddressPage/AddressPage.product.css";
 @import "./components/Customer/FavoritePage/AddressPage.product.css";
 @import "./components/Customer/FavoritePage/FavoriteFoodBuilder.product.css";
-@import "./components/Customer/CouponManagement/CouponPage.product.css";
 @import "./components/Customer/HelpPage/HelpPage.product.css";
 @import "./components/Login.product.css";
 @tailwind base;

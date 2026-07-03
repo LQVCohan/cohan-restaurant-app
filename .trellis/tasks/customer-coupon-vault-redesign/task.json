@@ -1,0 +1,26 @@
+{
+  "id": "customer-coupon-vault-redesign",
+  "title": "Nâng cấp giao diện Kho Coupon",
+  "status": "implemented_unverified",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Customer/CouponManagement/CouponPage.scss",
+    "src/components/Customer/CouponManagement/CouponPage.product.css",
+    "src/index.css"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npx vitest run src/components/Customer/CouponManagement/CouponPage.test.jsx",
+      "npm run build",
+      "browser smoke at desktop, 430x932 and 390x844"
+    ],
+    "completed": [
+      "traced Coupon/UserCoupon schema, resolvers, Apollo hooks, UI actions and component tests",
+      "removed the stale global coupon stylesheet and kept the component-owned SCSS as the single presentation source"
+    ],
+    "notRun": [
+      "automated checks and browser smoke test pending CI"
+    ]
+  }
+}
