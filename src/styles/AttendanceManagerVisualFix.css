@@ -10,6 +10,17 @@
   align-items: stretch !important;
   gap: 12px !important;
   padding: 16px 17px !important;
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  border-left-color: var(--manager-primary, #536c61) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(249, 252, 250, 0.98),
+    rgba(232, 241, 236, 0.94)
+  ) !important;
+  box-shadow: var(
+    --manager-shadow,
+    0 16px 36px rgba(48, 72, 61, 0.09)
+  ) !important;
 }
 
 .staff-page-container .attendance-management-page .quick-action-section::before {
@@ -76,12 +87,13 @@
   min-height: 0 !important;
   margin: 16px 16px 10px !important;
   padding: 14px 16px !important;
-  border: 1px solid rgba(154, 119, 78, 0.2) !important;
+  border: 1px solid
+    var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
   border-radius: 16px !important;
   background: linear-gradient(
     135deg,
-    rgba(255, 253, 248, 0.98),
-    rgba(248, 252, 255, 0.86)
+    rgba(249, 252, 250, 0.98),
+    rgba(232, 241, 236, 0.9)
   ) !important;
   box-shadow: none !important;
   transform: none !important;
@@ -96,6 +108,8 @@
   font-size: 0 !important;
   line-height: 1.25 !important;
   text-align: right !important;
+  color: var(--manager-muted, #607069) !important;
+  background: var(--manager-surface-muted, #e8f1ec) !important;
 }
 
 .staff-page-container
@@ -109,6 +123,12 @@
 
 .staff-page-container .attendance-management-page .table-section {
   min-height: 0 !important;
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  background: var(--manager-surface, rgba(249, 252, 250, 0.94)) !important;
+  box-shadow: var(
+    --manager-shadow,
+    0 16px 36px rgba(48, 72, 61, 0.09)
+  ) !important;
 }
 
 .staff-page-container
@@ -119,6 +139,11 @@
   grid-template-columns: minmax(0, 1fr) minmax(240px, 320px) !important;
   align-items: center !important;
   gap: 12px !important;
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  background: var(
+    --manager-surface-soft,
+    rgba(241, 247, 243, 0.94)
+  ) !important;
 }
 
 .staff-page-container
@@ -161,11 +186,12 @@
   margin: 0 !important;
   padding: 0 12px !important;
   box-sizing: border-box !important;
-  border: 1px solid rgba(154, 119, 78, 0.24) !important;
+  border: 1px solid
+    var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.94) !important;
+  background: var(--manager-surface, rgba(249, 252, 250, 0.96)) !important;
   box-shadow: none !important;
-  color: #24303f !important;
+  color: var(--manager-text, #24312c) !important;
 }
 
 .staff-page-container
@@ -174,8 +200,8 @@
   .search-box
   input:focus-visible {
   outline: none !important;
-  border-color: #536c61 !important;
-  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.14) !important;
+  border-color: var(--manager-primary, #536c61) !important;
+  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.16) !important;
 }
 
 .staff-page-container
