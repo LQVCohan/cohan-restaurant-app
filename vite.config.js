@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
+import { aiChatbotFeedbackControlsPlugin } from "./build/aiChatbotFeedbackControlsPlugin.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,7 +101,12 @@ export default defineConfig(({ mode }) => {
     .filter(Boolean);
 
   return {
-    plugins: [aiKnowledgeNoticeMessageGuardPlugin(), staffPerformanceMonthRangeGuardPlugin(), react()],
+    plugins: [
+      aiKnowledgeNoticeMessageGuardPlugin(),
+      staffPerformanceMonthRangeGuardPlugin(),
+      aiChatbotFeedbackControlsPlugin(),
+      react(),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
