@@ -1,0 +1,33 @@
+{
+  "id": "bootstrap-guidelines",
+  "name": "bootstrap-guidelines",
+  "title": "Bootstrap Trellis workflow for COHAN",
+  "description": "Add a reviewable Trellis-compatible workflow, project specs, and agent entrypoint without replacing existing skills.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "repository-workflow",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-03",
+  "completedAt": null,
+  "branch": "chore/trellis-pilot",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "AGENTS.md",
+    ".trellis/workflow.md",
+    ".trellis/config.yaml",
+    ".trellis/spec/backend/index.md",
+    ".trellis/spec/frontend/index.md",
+    ".trellis/spec/guides/index.md"
+  ],
+  "notes": "Pilot uses the existing ponytail skill and does not vendor Trellis platform hooks yet.",
+  "meta": {}
+}
