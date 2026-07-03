@@ -45,6 +45,7 @@ import "./styles/CohanBrandIdentity.css";
 import "./styles/AiChatbotRoleAvatars.css";
 import "./layouts/ManagerSageSurfaceOverrides.css";
 import "./styles/AttendanceManagerVisualFix.css";
+import "./styles/ManagerDarkModeFinal.scss";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
 
