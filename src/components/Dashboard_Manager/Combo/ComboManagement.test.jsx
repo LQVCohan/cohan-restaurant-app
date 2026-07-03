@@ -4,6 +4,15 @@ import { MockedProvider } from "@apollo/client/testing";
 import { describe, expect, it, vi } from "vitest";
 import ComboManagement from "./ComboManagement";
 
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal();
+  const TestIcon = (props) => <svg aria-hidden="true" {...props} />;
+  return {
+    ...actual,
+    BadgeDollarSign: actual.BadgeDollarSign || actual.DollarSign || TestIcon,
+  };
+});
+
 vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
   default: () => ({
     selectedRestaurantId: "r1",
