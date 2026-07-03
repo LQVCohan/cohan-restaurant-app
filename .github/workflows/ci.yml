@@ -52,20 +52,7 @@ jobs:
         run: npm run test:menu-rbac --if-present
 
       - name: Component tests
-        id: component-tests
-        continue-on-error: true
-        run: npm run test:component > component-test.log 2>&1
-
-      - name: Upload component test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: component-test-log
-          path: component-test.log
-
-      - name: Fail when component tests fail
-        if: steps.component-tests.outcome == 'failure'
-        run: exit 1
+        run: npm run test:component
 
       - name: Build
         run: npm run build
