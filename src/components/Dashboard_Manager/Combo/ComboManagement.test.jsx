@@ -4,6 +4,12 @@ import { MockedProvider } from "@apollo/client/testing";
 import { describe, expect, it, vi } from "vitest";
 import ComboManagement from "./ComboManagement";
 
+vi.stubGlobal("requestAnimationFrame", (callback) => {
+  callback();
+  return 1;
+});
+vi.stubGlobal("cancelAnimationFrame", vi.fn());
+
 vi.mock("@/hooks/useManagerRestaurantSelection", () => ({
   default: () => ({
     selectedRestaurantId: "r1",
