@@ -47,12 +47,14 @@ import "./layouts/ManagerSageSurfaceOverrides.css";
 import "./styles/AttendanceManagerVisualFix.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
+import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 
 installAiChatbotStreamFetchPatch();
+installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );
