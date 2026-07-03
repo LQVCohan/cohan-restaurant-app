@@ -30,15 +30,57 @@ const { submitAiChatbotAnswerFeedback } = await import(
   "../../src/services/ai/restaurantChatbotFeedback.service.js"
 );
 
+const restaurantId = "64a45f76c9a67c5f6f0d1000";
 const conversationId = "64a45f76c9a67c5f6f0d1001";
 const messageId = "64a45f76c9a67c5f6f0d1002";
 const feedbackId = "64a45f76c9a67c5f6f0d1003";
 
 const leanResult = (value) => ({ lean: vi.fn().mockResolvedValue(value) });
+const feedbackDocument = (overrides = {}) => ({
+  toObject: () => ({
+    _id: feedbackId,
+    restaurantId: null,
+    conversationId: null,
+    messageId: null,
+    rating: "helpful",
+    tags: [],
+    sourceTypes: [],
+    status: "new",
+    ...overrides,
+  }),
+});
 
-describe("global chatbot answer feedback", () => {
+describe("chatbot answer feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("keeps the existing restaurant-scoped feedback flow", async () => {
+    mocks.createFeedback.mockResolvedValue(
+      feedbackDocument({ restaurantId, rating: "helpful" }),
+    );
+
+    const result = await submitAiChatbotAnswerFeedback({
+      input: {
+        restaurantId,
+        question: "Món này còn bán không?",
+        answer: "Món vẫn đang được phục vụ.",
+        rating: "helpful",
+      },
+      ctx: {},
+    });
+
+    expect(mocks.findConversation).not.toHaveBeenCalled();
+    expect(mocks.findMessage).not.toHaveBeenCalled();
+    expect(mocks.createFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: expect.anything(),
+        conversationId: null,
+        messageId: null,
+        rating: "helpful",
+      }),
+    );
+    expect(result.restaurantId).toBe(restaurantId);
   });
 
   it("stores verified feedback when the conversation has no restaurant", async () => {
@@ -53,18 +95,14 @@ describe("global chatbot answer feedback", () => {
         role: "assistant",
       }),
     );
-    mocks.createFeedback.mockResolvedValue({
-      toObject: () => ({
-        _id: feedbackId,
-        restaurantId: null,
+    mocks.createFeedback.mockResolvedValue(
+      feedbackDocument({
         conversationId,
         messageId,
+        restaurantId: null,
         rating: "helpful",
-        tags: [],
-        sourceTypes: [],
-        status: "new",
       }),
-    });
+    );
 
     const result = await submitAiChatbotAnswerFeedback({
       input: {
