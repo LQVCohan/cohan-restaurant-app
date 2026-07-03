@@ -1,0 +1,85 @@
+@media (min-width: 1181px) {
+  .modifier-management__page-header.management-page-header.density-compact {
+    grid-template-columns: minmax(230px, 1.2fr) minmax(0, 3.5fr) minmax(142px, 0.78fr);
+    gap: 0.55rem;
+    padding: 0.55rem;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-left {
+    min-height: 78px;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(35, 119, 108, 0.12);
+    border-radius: 14px;
+    background:
+      radial-gradient(circle at 0 0, rgba(35, 119, 108, 0.12), transparent 9rem),
+      rgba(255, 253, 248, 0.76);
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-title {
+    margin-block: 0.22rem 0.3rem;
+    font-size: 1.32rem;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-subtitle {
+    max-width: 34ch;
+    line-height: 1.42;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-stats-grid {
+    gap: 0.5rem;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-stat-card {
+    min-height: 78px;
+    padding: 0.68rem 0.7rem;
+    border-color: rgba(35, 119, 108, 0.14);
+    background: rgba(255, 253, 248, 0.84);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-stat-card__icon {
+    width: 35px;
+    height: 35px;
+    color: #15564d;
+    background: #eaf4f0;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-stat-card__body {
+    display: grid;
+    align-content: center;
+    gap: 0.16rem;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-stat-card__label {
+    color: #66736f;
+    font-size: 0.7rem;
+    font-weight: 650;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-stat-card__value {
+    font-size: 1.24rem;
+    line-height: 1;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-controls-row {
+    min-width: 142px;
+    padding: 0;
+    border: 0;
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-btn--primary {
+    width: 100%;
+    height: 100%;
+    min-height: 78px;
+    flex-direction: column;
+    gap: 0.35rem;
+    border-radius: 14px;
+    font-size: 0.8rem;
+    box-shadow: 0 12px 24px rgba(35, 119, 108, 0.2);
+  }
+
+  .modifier-management__page-header.management-page-header.density-compact .mph-btn--primary svg {
+    width: 19px;
+    height: 19px;
+  }
+}
