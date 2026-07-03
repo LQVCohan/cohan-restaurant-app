@@ -71,7 +71,7 @@ export const normalizeCombo = (combo) => {
       restaurantName: getRestaurantName(restaurant),
       name: combo.name || "Combo nhà hàng",
       description: combo.description || null,
-      imageUrl: items.find((item) => item.imageUrl)?.imageUrl || null,
+      imageUrl: combo?.imageUrl || items.find((item) => item.imageUrl)?.imageUrl || null,
       items: items.map(({ _available, ...item }) => item),
       originalPrice,
       comboPrice,
@@ -155,13 +155,16 @@ const applyFilter = (combos, filter = {}) => {
   });
 };
 
-
-const serializeManagerCombo = (combo) => normalizeCombo(combo) && {
-  ...normalizeCombo(combo),
-  price: Number(combo?.price || 0),
-  isActive: combo?.isActive !== false,
-  createdAt: combo?.createdAt || null,
-  updatedAt: combo?.updatedAt || null,
+const serializeManagerCombo = (combo) => {
+  const normalized = normalizeCombo(combo);
+  if (!normalized) return null;
+  return {
+    ...normalized,
+    price: Number(combo?.price || 0),
+    isActive: combo?.isActive !== false,
+    createdAt: combo?.createdAt || null,
+    updatedAt: combo?.updatedAt || null,
+  };
 };
 
 async function validateComboInput(input, ctx) {
