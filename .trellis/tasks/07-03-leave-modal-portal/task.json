@@ -1,0 +1,31 @@
+{
+  "id": "leave-modal-portal",
+  "name": "leave-modal-portal",
+  "title": "Fix overlapping leave request modal",
+  "description": "Replace the in-layout leave request overlay with the shared portal modal so it cannot be clipped or stacked under manager/staff layout surfaces.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff-leave-modal",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-03",
+  "completedAt": null,
+  "branch": "fix/leave-request-modal-overlap",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveManagement.jsx",
+    "src/components/Staff/StaffLeavePage.jsx",
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveModal.scss",
+    "src/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveManagement.test.jsx"
+  ],
+  "notes": "Frontend-only modal boundary fix. Leave GraphQL schema, resolver, hook, permissions and mutations remain unchanged.",
+  "meta": {}
+}
