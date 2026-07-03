@@ -1,4 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
+import Modal from "@/components/common/Modal";
 import { AuthContext } from "@/context/AuthContext";
 import LeaveRequestForm from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestForm";
 import LeaveRequestsList from "@/components/Dashboard_Manager/Staff/components/LeaveManagement/LeaveRequestsList";
@@ -146,33 +147,33 @@ export default function StaffLeavePage() {
         />
       </section>
 
-      {isCreateModalOpen && (
-        <div className="leave-modal-overlay" role="presentation">
-          <section className="leave-modal" role="dialog" aria-modal="true" aria-labelledby="staff-leave-create-modal-title">
-            <div className="leave-modal__header">
-              <div>
-                <span className="leave-modal__eyebrow">Nghỉ phép nhân viên</span>
-                <h3 id="staff-leave-create-modal-title">Tạo đơn nghỉ phép</h3>
-                <p>Form được mở trong modal để màn lịch sử gọn hơn và dễ theo dõi.</p>
-              </div>
-              <button type="button" className="leave-modal__close" aria-label="Đóng form tạo đơn nghỉ phép" onClick={closeCreateModal}>×</button>
-            </div>
-            <LeaveRequestForm
-              staffList={formStaffList}
-              onSubmit={submitLeaveRequest}
-              disabled={isMutating}
-              loading={loading}
-              error={error}
-              selfServiceEmployeeId={employeeId}
-              compact
-              title=""
-              submitLabel="Gửi đơn"
-              onCancel={closeCreateModal}
-              onSubmitted={closeCreateModal}
-            />
-          </section>
-        </div>
-      )}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={closeCreateModal}
+        title="Tạo đơn nghỉ phép"
+        size="lg"
+        className="leave-request-modal"
+        autoWrapBody={false}
+      >
+        <Modal.Body className="leave-request-modal__body">
+          <p className="leave-request-modal__intro">
+            Tài khoản của bạn được chọn tự động. Hãy nhập thời gian và lý do nghỉ trước khi gửi.
+          </p>
+          <LeaveRequestForm
+            staffList={formStaffList}
+            onSubmit={submitLeaveRequest}
+            disabled={isMutating}
+            loading={loading}
+            error={error}
+            selfServiceEmployeeId={employeeId}
+            compact
+            title=""
+            submitLabel="Gửi đơn"
+            onCancel={closeCreateModal}
+            onSubmitted={closeCreateModal}
+          />
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }
