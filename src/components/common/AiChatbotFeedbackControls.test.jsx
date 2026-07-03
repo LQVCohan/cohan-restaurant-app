@@ -21,6 +21,18 @@ const messages = [
   item,
 ];
 
+const renderControls = (submitFeedback, restaurantId = "restaurant-1") =>
+  render(
+    <AiChatbotFeedbackControls
+      item={item}
+      index={2}
+      messages={messages}
+      restaurantId={restaurantId}
+      guestId="guest-1"
+      submitFeedback={submitFeedback}
+    />,
+  );
+
 describe("AiChatbotFeedbackControls", () => {
   it("builds a compact feedback reason", () => {
     expect(
@@ -34,20 +46,33 @@ describe("AiChatbotFeedbackControls", () => {
     );
   });
 
+  it("keeps the negative feedback form closed while a helpful vote is sending", async () => {
+    let resolveRequest;
+    const submitFeedback = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    renderControls(submitFeedback);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hữu ích" }));
+
+    expect(
+      screen.getByRole("button", { name: "Đang gửi..." }),
+    ).toBeDisabled();
+    expect(screen.queryByText("Điều gì chưa ổn?", { exact: false })).toBeNull();
+
+    resolveRequest({ data: {} });
+    expect(
+      await screen.findByText("Cảm ơn bạn! Phản hồi đã được ghi nhận."),
+    ).toBeInTheDocument();
+  });
+
   it("uses an inline form instead of window.prompt", async () => {
     const submitFeedback = vi.fn().mockResolvedValue({ data: {} });
     const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("");
-
-    render(
-      <AiChatbotFeedbackControls
-        item={item}
-        index={2}
-        messages={messages}
-        restaurantId="restaurant-1"
-        guestId="guest-1"
-        submitFeedback={submitFeedback}
-      />,
-    );
+    renderControls(submitFeedback);
 
     fireEvent.click(screen.getByRole("button", { name: "Không hữu ích" }));
     expect(
@@ -87,17 +112,7 @@ describe("AiChatbotFeedbackControls", () => {
     const submitFeedback = vi
       .fn()
       .mockRejectedValue(new Error("Mất kết nối"));
-
-    render(
-      <AiChatbotFeedbackControls
-        item={item}
-        index={2}
-        messages={messages}
-        restaurantId=""
-        guestId="guest-1"
-        submitFeedback={submitFeedback}
-      />,
-    );
+    renderControls(submitFeedback, "");
 
     fireEvent.click(screen.getByRole("button", { name: "Không hữu ích" }));
     fireEvent.click(screen.getByRole("button", { name: "Gửi phản hồi" }));
