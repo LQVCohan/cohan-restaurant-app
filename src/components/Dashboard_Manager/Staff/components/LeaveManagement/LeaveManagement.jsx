@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Modal from "@/components/common/Modal";
 import LeaveRequestForm from "./LeaveRequestForm";
 import LeaveRequestsList from "./LeaveRequestsList";
 import { useLeaveManagement } from "../../../../../hooks/useLeaveManagement";
@@ -55,50 +56,32 @@ const LeaveManagement = ({ restaurantId }) => {
         )}
       />
 
-      {isCreateModalOpen && (
-        <div
-          className="leave-modal-overlay"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeCreateModal();
-          }}
-        >
-          <section
-            className="leave-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="leave-create-modal-title"
-          >
-            <div className="leave-modal__header">
-              <div>
-                <span className="leave-modal__eyebrow">Đơn nghỉ phép</span>
-                <h3 id="leave-create-modal-title">Tạo đơn mới</h3>
-                <p>Điền thông tin nghỉ phép trong modal để giữ màn quản lý gọn hơn.</p>
-              </div>
-              <button
-                type="button"
-                className="leave-modal__close"
-                aria-label="Đóng form tạo đơn nghỉ phép"
-                onClick={closeCreateModal}
-              >
-                ×
-              </button>
-            </div>
-            <LeaveRequestForm
-              staffList={staffList}
-              onSubmit={submitLeaveRequest}
-              disabled={isMutating}
-              loading={loading}
-              error={error}
-              compact
-              title=""
-              submitLabel="Gửi đơn"
-              onCancel={closeCreateModal}
-              onSubmitted={closeCreateModal}
-            />
-          </section>
-        </div>
-      )}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={closeCreateModal}
+        title="Tạo đơn nghỉ phép"
+        size="lg"
+        className="leave-request-modal"
+        autoWrapBody={false}
+      >
+        <Modal.Body className="leave-request-modal__body">
+          <p className="leave-request-modal__intro">
+            Chọn nhân viên, thời gian và lý do nghỉ. Đơn sẽ được lưu để quản lý theo dõi và duyệt.
+          </p>
+          <LeaveRequestForm
+            staffList={staffList}
+            onSubmit={submitLeaveRequest}
+            disabled={isMutating}
+            loading={loading}
+            error={error}
+            compact
+            title=""
+            submitLabel="Gửi đơn"
+            onCancel={closeCreateModal}
+            onSubmitted={closeCreateModal}
+          />
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };
