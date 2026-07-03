@@ -1,4 +1,4 @@
-import { toBackendRootUrl } from "@/lib/apiBaseUrl";
+import { toApiUrl } from "@/lib/apiBaseUrl";
 import { getToken } from "@/lib/authStorage";
 
 const PATCH_FLAG = "__cohanAiChatbotStreamFetchPatched";
@@ -276,7 +276,7 @@ export function installAiChatbotStreamFetchPatch() {
       const headers = { "Content-Type": "application/json" };
       if (authHeader) headers.Authorization = authHeader;
 
-      const streamResponse = await originalFetch(toBackendRootUrl("/ai/chatbot/stream"), {
+      const streamResponse = await originalFetch(toApiUrl("/ai/chatbot/stream"), {
         method: "POST",
         credentials: "include",
         headers,
