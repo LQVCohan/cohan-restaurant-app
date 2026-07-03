@@ -1,16 +1,26 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthContext } from "@/context/AuthContext";
+
+const managerRestaurantSelectionState = vi.hoisted(() => ({
+  initialRestaurantId: "restaurant-1",
+  setSelectedRestaurantId: null,
+  restaurantOptions: [
+    { id: "restaurant-1", name: "Cơ sở trung tâm" },
+    { id: "restaurant-2", name: "Chi nhánh 2" },
+  ],
+}));
 
 const tableManagementState = vi.hoisted(() => ({
+  restaurantId: "",
   tables: [],
   tablesLoading: false,
   tablesError: null,
 }));
 
 const floorManagementState = vi.hoisted(() => ({
+  restaurantId: "",
   floors: [],
   floorsLoading: false,
   floorsError: null,
@@ -24,39 +34,62 @@ const tableActionsModalState = vi.hoisted(() => ({
   lastTable: null,
 }));
 
+vi.mock("@/hooks/useManagerRestaurantSelection", async () => {
+  const ReactModule = await vi.importActual("react");
+  return {
+    default: () => {
+      const [selectedRestaurantId, setSelectedRestaurantId] = ReactModule.useState(
+        managerRestaurantSelectionState.initialRestaurantId,
+      );
+      managerRestaurantSelectionState.setSelectedRestaurantId = setSelectedRestaurantId;
+      return {
+        selectedRestaurantId,
+        setSelectedRestaurantId,
+        restaurantOptions: managerRestaurantSelectionState.restaurantOptions,
+      };
+    },
+  };
+});
+
 vi.mock("@/hooks/useTableManagement", () => ({
-  default: () => ({
-    tables: tableManagementState.tables,
-    tablesLoading: tableManagementState.tablesLoading,
-    tablesError: tableManagementState.tablesError,
-    setTableStatus: vi.fn(),
-    createTable: vi.fn(),
-    updateTable: vi.fn(),
-    refetchTables: vi.fn(),
-    moveTable: vi.fn(),
-    deleteTable: vi.fn(),
-    fetchTableByCode: vi.fn(),
-    swapTableCodes: vi.fn(),
-    mergeTables: vi.fn(),
-    splitTables: vi.fn(),
-  }),
+  default: ({ restaurantId } = {}) => {
+    tableManagementState.restaurantId = restaurantId;
+    return {
+      tables: tableManagementState.tables,
+      tablesLoading: tableManagementState.tablesLoading,
+      tablesError: tableManagementState.tablesError,
+      setTableStatus: vi.fn(),
+      createTable: vi.fn(),
+      updateTable: vi.fn(),
+      refetchTables: vi.fn(),
+      moveTable: vi.fn(),
+      deleteTable: vi.fn(),
+      fetchTableByCode: vi.fn(),
+      swapTableCodes: vi.fn(),
+      mergeTables: vi.fn(),
+      splitTables: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("@/hooks/useFloorManagement", () => ({
-  default: () => ({
-    floors: floorManagementState.floors,
-    floorsLoading: floorManagementState.floorsLoading,
-    floorsError: floorManagementState.floorsError,
-    setActiveLevel: floorManagementState.setActiveLevel,
-    getIdFromLevel: floorManagementState.getIdFromLevel,
-    getLevelFromId: floorManagementState.getLevelFromId,
-    createFloor: vi.fn(),
-  }),
+  default: ({ restaurantId } = {}) => {
+    floorManagementState.restaurantId = restaurantId;
+    return {
+      floors: floorManagementState.floors,
+      floorsLoading: floorManagementState.floorsLoading,
+      floorsError: floorManagementState.floorsError,
+      setActiveLevel: floorManagementState.setActiveLevel,
+      getIdFromLevel: floorManagementState.getIdFromLevel,
+      getLevelFromId: floorManagementState.getLevelFromId,
+      createFloor: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("@/hooks/useRestaurant", () => ({
-  useRestaurant: () => ({
-    restaurant: { id: "restaurant-1", vrTourUrl: "" },
+  useRestaurant: (restaurantId) => ({
+    restaurant: { id: restaurantId, vrTourUrl: "" },
     updateRestaurant: vi.fn(),
     refetch: vi.fn(),
   }),
@@ -96,14 +129,8 @@ const renderTableManagement = async () => {
 
   return render(
     <MemoryRouter>
-      <AuthContext.Provider
-        value={{
-          restaurants: [{ id: "restaurant-1", name: "Cơ sở trung tâm" }],
-        }}
-      >
-        <TableManagement />
-      </AuthContext.Provider>
-    </MemoryRouter>
+      <TableManagement />
+    </MemoryRouter>,
   );
 };
 
@@ -137,10 +164,14 @@ const setDefaultData = () => {
 
 beforeEach(() => {
   vi.resetModules();
+  managerRestaurantSelectionState.initialRestaurantId = "restaurant-1";
+  managerRestaurantSelectionState.setSelectedRestaurantId = null;
   tableActionsModalState.renderCount = 0;
   tableActionsModalState.lastTable = null;
+  tableManagementState.restaurantId = "";
   tableManagementState.tablesLoading = false;
   tableManagementState.tablesError = null;
+  floorManagementState.restaurantId = "";
   floorManagementState.floorsLoading = false;
   floorManagementState.floorsError = null;
   floorManagementState.setActiveLevel.mockClear();
@@ -158,6 +189,23 @@ describe("TableManagement operations UI", () => {
     expect(screen.getAllByText("Trống").length).toBeGreaterThan(0);
     expect(screen.getByText("Đang sử dụng")).toBeInTheDocument();
     expect(screen.getByText("Số tầng")).toBeInTheDocument();
+  });
+
+  it("reloads table and floor data when the manager restaurant scope changes", async () => {
+    await renderTableManagement();
+
+    expect(tableManagementState.restaurantId).toBe("restaurant-1");
+    expect(floorManagementState.restaurantId).toBe("restaurant-1");
+
+    act(() => {
+      managerRestaurantSelectionState.setSelectedRestaurantId("restaurant-2");
+    });
+
+    await waitFor(() => {
+      expect(tableManagementState.restaurantId).toBe("restaurant-2");
+      expect(floorManagementState.restaurantId).toBe("restaurant-2");
+    });
+    expect(screen.getByDisplayValue("Chi nhánh 2")).toBeInTheDocument();
   });
 
   it("renders the table code instead of exposing the raw table id", async () => {
@@ -201,7 +249,7 @@ describe("TableManagement operations UI", () => {
     expect(paymentAction).toBeDisabled();
     expect(paymentAction).toHaveAttribute(
       "title",
-      "Vui lòng thao tác tại POS để đồng bộ order và phiên bàn."
+      "Vui lòng thao tác tại POS để đồng bộ order và phiên bàn.",
     );
   });
 });
