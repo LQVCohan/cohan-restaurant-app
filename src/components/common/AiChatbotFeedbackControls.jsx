@@ -35,12 +35,15 @@ function AiChatbotFeedbackControls({
     () => findAiChatbotFeedbackQuestion(messages, index),
     [messages, index],
   );
-  const submitting = mode === "submitting";
+  const submitting = mode.startsWith("submitting_");
+  const submittingHelpful = mode === "submitting_helpful";
+  const submittingNotHelpful = mode === "submitting_not_helpful";
+  const showNotHelpfulForm = mode === "form" || submittingNotHelpful;
   const sent = mode === "sent";
 
   const sendFeedback = async (rating, reason = "") => {
     if (submitting || sent) return;
-    setMode("submitting");
+    setMode(`submitting_${rating}`);
     setError("");
     try {
       await submitFeedback({
@@ -85,22 +88,22 @@ function AiChatbotFeedbackControls({
         disabled={submitting}
         onClick={() => sendFeedback("helpful")}
       >
-        {submitting ? "Đang gửi..." : "Hữu ích"}
+        {submittingHelpful ? "Đang gửi..." : "Hữu ích"}
       </button>
       <button
         type="button"
         className="ai-chatbot-feedback__trigger ai-chatbot-feedback__trigger--not-helpful"
         disabled={submitting}
-        aria-expanded={mode === "form"}
+        aria-expanded={showNotHelpfulForm}
         onClick={() => {
           setMode("form");
           setError("");
         }}
       >
-        Không hữu ích
+        {submittingNotHelpful ? "Đang gửi..." : "Không hữu ích"}
       </button>
 
-      {mode === "form" || submitting ? (
+      {showNotHelpfulForm ? (
         <form
           className="ai-chatbot-feedback__form"
           onSubmit={(event) => {
@@ -168,7 +171,7 @@ function AiChatbotFeedbackControls({
               className="ai-chatbot-feedback__submit"
               disabled={submitting}
             >
-              {submitting ? "Đang gửi..." : "Gửi phản hồi"}
+              {submittingNotHelpful ? "Đang gửi..." : "Gửi phản hồi"}
             </button>
           </div>
         </form>
