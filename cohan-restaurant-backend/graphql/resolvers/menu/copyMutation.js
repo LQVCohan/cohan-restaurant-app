@@ -42,6 +42,7 @@ function buildCopiedItemPayload(sourceItem, targetMenuId) {
     taxRate: sourceItem.taxRate,
     servingPortion: sourceItem.servingPortion,
     servingUnit: sourceItem.servingUnit,
+    prepStation: sourceItem.prepStation,
     printStationId: sourceItem.printStationId,
     thumbImage: sourceItem.thumbImage,
     mediaAssetIds: clonePlain(sourceItem.mediaAssetIds || []),
