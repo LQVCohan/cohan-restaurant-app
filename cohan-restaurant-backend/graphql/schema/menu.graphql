@@ -17,6 +17,11 @@ enum MenuItemStatus {
   hidden
 }
 
+enum PreparationStation {
+  kitchen
+  bar
+}
+
 enum MenuItemSort {
   default
   name_asc
@@ -163,6 +168,7 @@ type MenuItem {
   servingPortion: Float
   servingUnit: String
 
+  prepStation: PreparationStation
   printStationId: ID
 
   thumbImage: String
@@ -264,6 +270,7 @@ input CreateMenuItemInput {
   servingPortion: Float
   servingUnit: String
 
+  prepStation: PreparationStation!
   printStationId: ID
 
   thumbImage: String
@@ -305,6 +312,7 @@ input UpdateMenuItemInput {
   servingPortion: Float
   servingUnit: String
 
+  prepStation: PreparationStation
   printStationId: ID
 
   thumbImage: String
@@ -342,6 +350,7 @@ input UpdateMenuItemBasicInput {
   servingPortion: Float
   servingUnit: String
 
+  prepStation: PreparationStation
   printStationId: ID
   thumbImage: String
   mediaAssetIds: [ID!]
