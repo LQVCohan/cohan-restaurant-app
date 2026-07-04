@@ -180,6 +180,7 @@ const OrderItemSchema = new Schema(
       ref: "Category",
       required: true,
     },
+    prepStation: { type: String, enum: ["kitchen", "bar"] },
     name: { type: String, required: true, trim: true },
     unit: { type: String, default: "portion" },
     image: { type: String },
