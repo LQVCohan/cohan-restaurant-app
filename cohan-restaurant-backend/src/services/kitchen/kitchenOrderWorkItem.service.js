@@ -1,4 +1,8 @@
-import { KitchenOrderWorkItem, KitchenShiftRosterSnapshot } from "../../../models/index.js";
+import {
+  KitchenOrderWorkItem,
+  KitchenShiftRosterSnapshot,
+  MenuItem,
+} from "../../../models/index.js";
 import { classifyKitchenOrderIssueReason } from "./kitchenOrderIssueReason.service.js";
 
 export const DEFAULT_KITCHEN_TARGET_PREP_MINUTES = 20;
@@ -8,26 +12,7 @@ export const DEFAULT_VERY_LATE_GRACE_MINUTES = 15;
 export const DEFAULT_UNACCEPTED_GRACE_MINUTES = 5;
 export const DEFAULT_BAR_UNACCEPTED_GRACE_MINUTES = 3;
 
-const BAR_KEYWORDS = [
-  "drink",
-  "beverage",
-  "đồ uống",
-  "nuoc",
-  "nước",
-  "trà",
-  "tra",
-  "cà phê",
-  "ca phe",
-  "coffee",
-  "juice",
-  "b" + "eer",
-  "cock" + "tail",
-  "bar",
-];
-
-function normalizeText(value) {
-  return String(value || "").trim().toLowerCase();
-}
+const PREP_STATIONS = new Set(["kitchen", "bar"]);
 
 function toUniqueIds(values = []) {
   return [...new Set(values.map((v) => String(v || "")).filter(Boolean))];
@@ -35,6 +20,11 @@ function toUniqueIds(values = []) {
 
 function toPositiveNumber(value) {
   return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function normalizePrepStation(value) {
+  const station = String(value || "").trim().toLowerCase();
+  return PREP_STATIONS.has(station) ? station : null;
 }
 
 export function resolveUnacceptedGraceMinutes(workItem = {}) {
@@ -65,13 +55,40 @@ export function resolveUnacceptedResponsibleEmployeeIds(workItem = {}) {
   );
 }
 
-export function resolveOrderItemStation(item = {}) {
-  const signals = [item?.name, item?.categoryName, item?.category?.name]
-    .map(normalizeText)
-    .join(" ");
+export async function resolveOrderItemStation({
+  order,
+  item,
+  existingWorkItem,
+  session,
+}) {
+  if (existingWorkItem) {
+    const existingStation = normalizePrepStation(existingWorkItem.station);
+    if (!existingStation) {
+      throw new Error("Kitchen work item has an invalid preparation station");
+    }
+    return existingStation;
+  }
 
-  const isBar = BAR_KEYWORDS.some((keyword) => signals.includes(keyword));
-  return isBar ? "bar" : "kitchen";
+  if (!order?.restaurantId || !item?.dishId) {
+    throw new Error("Cannot resolve preparation station without restaurantId and dishId");
+  }
+
+  let query = MenuItem.findOne({
+    _id: item.dishId,
+    restaurantId: order.restaurantId,
+  })
+    .select({ prepStation: 1 })
+    .lean();
+  if (session) query = query.session(session);
+
+  const menuItem = await query;
+  const station = normalizePrepStation(menuItem?.prepStation);
+  if (!station) {
+    throw new Error(
+      `Menu item ${String(item.dishId)} is missing a valid prepStation`,
+    );
+  }
+  return station;
 }
 
 export function resolveTargetPrepMinutes(item, station) {
@@ -82,7 +99,9 @@ export function resolveTargetPrepMinutes(item, station) {
     toPositiveNumber(item?.servingVariant?.targetPrepMinutes);
 
   if (resolved) return resolved;
-  return station === "bar" ? DEFAULT_BAR_TARGET_PREP_MINUTES : DEFAULT_KITCHEN_TARGET_PREP_MINUTES;
+  return station === "bar"
+    ? DEFAULT_BAR_TARGET_PREP_MINUTES
+    : DEFAULT_KITCHEN_TARGET_PREP_MINUTES;
 }
 
 export function resolvePrepTimeLevel(actualPrepMinutes, targetPrepMinutes) {
@@ -173,7 +192,12 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     .lean()
     .session(session);
 
-  const station = resolveOrderItemStation(item);
+  const station = await resolveOrderItemStation({
+    order,
+    item,
+    existingWorkItem,
+    session,
+  });
   const set = {
     restaurantId: order?.restaurantId,
     orderId: order?._id,
@@ -198,10 +222,15 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
     set.readyAt = existingWorkItem?.readyAt || atNow;
     const baseStart = existingWorkItem?.preparingAt || existingWorkItem?.kitchenEnteredAt;
     if (baseStart) {
-      set.actualPrepMinutes = Math.max(0, Math.round((new Date(set.readyAt) - new Date(baseStart)) / 60000));
+      set.actualPrepMinutes = Math.max(
+        0,
+        Math.round((new Date(set.readyAt) - new Date(baseStart)) / 60000),
+      );
     }
 
-    const hasExistingTarget = Number.isFinite(existingWorkItem?.targetPrepMinutes) && existingWorkItem.targetPrepMinutes > 0;
+    const hasExistingTarget =
+      Number.isFinite(existingWorkItem?.targetPrepMinutes) &&
+      existingWorkItem.targetPrepMinutes > 0;
     const targetPrepMinutes = hasExistingTarget
       ? existingWorkItem.targetPrepMinutes
       : resolveTargetPrepMinutes(item, station);
@@ -212,7 +241,12 @@ export async function upsertKitchenOrderWorkItemForStatusChange({
   if (nextStatus === "cancelled") set.cancelledAt = existingWorkItem?.cancelledAt || atNow;
   if (nextStatus === "returned") set.returnedAt = existingWorkItem?.returnedAt || atNow;
 
-  const rosterAt = set.kitchenEnteredAt || existingWorkItem?.kitchenEnteredAt || atNow || order?.createdAt || new Date();
+  const rosterAt =
+    set.kitchenEnteredAt ||
+    existingWorkItem?.kitchenEnteredAt ||
+    atNow ||
+    order?.createdAt ||
+    new Date();
   const roster = await findKitchenRosterForOrderItem({
     restaurantId: order?.restaurantId,
     station,
@@ -255,13 +289,18 @@ export async function upsertKitchenOrderWorkItemForKitchenEntry({
 }) {
   if (!order?._id || !order?.restaurantId || !item?._id) return null;
 
-  const station = resolveOrderItemStation(item);
   const existingWorkItem = await KitchenOrderWorkItem.findOne({
     orderId: order._id,
     orderItemId: item._id,
   })
     .lean()
     .session(session);
+  const station = await resolveOrderItemStation({
+    order,
+    item,
+    existingWorkItem,
+    session,
+  });
 
   const at = existingWorkItem?.kitchenEnteredAt || now || order?.createdAt || new Date();
   const roster = await findKitchenRosterForOrderItem({
@@ -387,7 +426,6 @@ export async function markUnacceptedKitchenOrderWorkItems({
 
   return { matchedCount, modifiedCount };
 }
-
 
 export async function syncKitchenOrderWorkItemForVoidOrReturn({
   order,
