@@ -201,6 +201,7 @@ beforeEach(() => {
   });
   mocks.addToCartSpy.mockReset();
   mocks.authUser = { id: "user-1" };
+
 });
 
 afterEach(() => {
@@ -210,6 +211,7 @@ afterEach(() => {
   vi.useRealTimers();
   window.localStorage.clear();
   window.sessionStorage.clear();
+
 });
 
 describe("AiChatbotWidget basic", () => {
@@ -1221,4 +1223,107 @@ describe("AiChatbotWidget basic", () => {
     ).toBeInTheDocument();
     expect(mocks.addCartMutationSpy).not.toHaveBeenCalled();
   });
+
+
+  it("custom event override keeps input, pageContext, and conversation storage scoped", async () => {
+    window.localStorage.setItem("cohan_ai_conversation_id:resto-2", "conv-resto-2-old");
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Đã hiểu nhà hàng 2.",
+          intent: "general",
+          quickReplies: [],
+          actions: [],
+          sources: [],
+          contextSummary: null,
+          scopeMode: "restaurant",
+          resolvedRestaurantId: "resto-2",
+          scopeCandidates: [{ restaurantId: "resto-2", restaurantName: "Nhà hàng 2", reason: "event" }],
+          conversationId: "conv-resto-2-new",
+        },
+      },
+    });
+
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_AI_CHATBOT_EVENT, {
+          detail: { message: "Mở nhà hàng 2", restaurantId: "resto-2", autoSend: true },
+        }),
+      );
+    });
+
+    await waitFor(() => expect(mocks.askMutationSpy).toHaveBeenCalledTimes(1), { timeout: 1500 });
+    const input = mocks.askMutationSpy.mock.calls[0][0].variables.input;
+    expect(input.restaurantId).toBe("resto-2");
+    expect(input.pageContext.restaurantId).toBe("resto-2");
+    expect(input.conversationId).toBe("conv-resto-2-old");
+    await waitFor(() => expect(window.localStorage.getItem("cohan_ai_conversation_id:resto-2")).toBe("conv-resto-2-new"));
+  });
+
+  it("renders global menu card restaurant names from scoped sources", async () => {
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Gợi ý",
+          intent: "menu",
+          quickReplies: [],
+          actions: [],
+          contextSummary: { menuItemCount: 1, couponCount: 0, orderCount: 0 },
+          scopeMode: "global",
+          resolvedRestaurantId: null,
+          scopeCandidates: [],
+          conversationId: "conv-global",
+          sources: [
+            {
+              type: "menuItem",
+              id: "food-1",
+              label: "Bún bò",
+              restaurantId: "resto-2",
+              restaurantName: "Huế Kitchen",
+              formattedPrice: "80.000đ",
+            },
+          ],
+        },
+      },
+    });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("Nhà hàng nào có bún bò?");
+    await waitFor(() => expect(screen.getByText("Bún bò")).toBeInTheDocument(), { timeout: 1500 });
+    expect(screen.getByText("Huế Kitchen")).toBeInTheDocument();
+  });
+
+  it("submits inline helpful feedback with resolved restaurant scope", async () => {
+    mocks.askMutationSpy.mockResolvedValueOnce({
+      data: {
+        askAiChatbot: {
+          answer: "Câu trả lời có thể đánh giá.",
+          intent: "general",
+          quickReplies: [],
+          actions: [],
+          sources: [],
+          contextSummary: null,
+          scopeMode: "restaurant",
+          resolvedRestaurantId: "resto-2",
+          scopeCandidates: [],
+          conversationId: "conv-feedback",
+          answerMessageId: "msg-feedback",
+        },
+      },
+    });
+    render(<AiChatbotWidget testOverrides={{ disableSocket: true, disablePolling: true }} />);
+    open();
+    send("xin chào");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hữu ích" })).toBeInTheDocument(), { timeout: 1500 });
+    fireEvent.click(screen.getByRole("button", { name: "Hữu ích" }));
+    await waitFor(() => expect(mocks.submitFeedbackMutationSpy).toHaveBeenCalledTimes(1));
+    expect(mocks.submitFeedbackMutationSpy.mock.calls[0][0].variables.input).toMatchObject({
+      restaurantId: "resto-2",
+      conversationId: "conv-feedback",
+      messageId: "msg-feedback",
+      rating: "helpful",
+    });
+  });
+
 });

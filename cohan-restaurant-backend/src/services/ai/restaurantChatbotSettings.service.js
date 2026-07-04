@@ -46,6 +46,16 @@ const DEFAULT_SETTINGS = {
   updatedBy: null,
 };
 
+const PUBLIC_UNAVAILABLE_SETTINGS = {
+  enabled: false,
+  welcomeMessage:
+    "Nhà hàng này hiện chưa khả dụng. Bạn có thể chọn nhà hàng khác đang hiển thị công khai trên hệ thống.",
+  starterQuickReplies: [],
+  handoffEnabled: false,
+  handoffUnavailableMessage:
+    "Nhà hàng này hiện chưa khả dụng. Vui lòng chọn nhà hàng khác.",
+};
+
 const clamp01 = (n) => Math.max(0, Math.min(1, Number(n || 0)));
 const badInput = (message) =>
   Object.assign(new Error(message), { code: "BAD_USER_INPUT" });
@@ -168,6 +178,7 @@ export async function getRestaurantAiChatbotSettings({ restaurantId, ctx }) {
 
 export async function getPublicAiChatbotSettings({ restaurantId }) {
   if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) {
+    if (restaurantId) return PUBLIC_UNAVAILABLE_SETTINGS;
     const d = mergeWithDefaultAiChatbotSettings({});
     return {
       enabled: d.enabled,
@@ -181,8 +192,16 @@ export async function getPublicAiChatbotSettings({ restaurantId }) {
     publicSettingsCacheKey(restaurantId),
     async () => {
       const restaurant = await Restaurant.findById(restaurantId)
-        .select("aiChatbotSettings")
+        .select("businessStatus publicationStatus aiChatbotSettings")
         .lean();
+      if (
+        !restaurant ||
+        restaurant.businessStatus !== "active" ||
+        restaurant.publicationStatus !== "published" ||
+        restaurant.aiChatbotSettings?.enabled === false
+      ) {
+        return PUBLIC_UNAVAILABLE_SETTINGS;
+      }
       const d = mergeWithDefaultAiChatbotSettings(
         restaurant?.aiChatbotSettings || {},
       );

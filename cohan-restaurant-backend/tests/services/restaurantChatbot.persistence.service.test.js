@@ -53,16 +53,31 @@ vi.mock("../../models/index.js", () => {
     },
   };
 
-  const noopQuery = () => ({ sort: () => ({ limit: () => ({ lean: async () => [] }) }), lean: async () => [] });
+  const noopQuery = () => ({ sort: () => ({ limit: () => ({ lean: async () => [] }), lean: async () => [] }), limit: () => ({ lean: async () => [] }), lean: async () => [] });
 
   return {
     Coupon: { find: noopQuery },
     MenuItem: { find: noopQuery },
     Order: { find: noopQuery },
     Reservation: { find: noopQuery },
-    Restaurant: { findById: async () => null, find: noopQuery },
+    Restaurant: {
+      findById: (id) => ({
+        lean: async () => ({
+          _id: String(id),
+          name: `Restaurant ${String(id).slice(-4)}`,
+          businessStatus: "active",
+          publicationStatus: "published",
+          aiChatbotSettings: { enabled: true },
+          defaultCurrency: "VND",
+        }),
+        select() { return this; },
+      }),
+      find: noopQuery,
+    },
     AiChatConversation,
     AiChatMessage,
+    AiChatbotSafetyRule: { find: noopQuery },
+    AiChatbotKnowledgeItem: { find: noopQuery },
   };
 
 
@@ -129,13 +144,13 @@ describe("restaurantChatbot persistence", () => {
   it("rate limits askAiChatbot over limit and avoids persistence side effects", async () => {
     const guestId = "guest_rl";
     for (let i = 0; i < 20; i += 1) {
-      const out = await handleRestaurantChatbotMessage({ message: `m_${i}`, guestId, restaurantId: "rest_1", clientIp: "1.2.3.4" });
+      const out = await handleRestaurantChatbotMessage({ message: `m_${i}`, guestId, restaurantId: "507f1f77bcf86cd799439011", clientIp: "1.2.3.4" });
       expect(out.answer).toBeTruthy();
     }
 
     const messageCountBefore = messageStore.length;
     await expect(
-      handleRestaurantChatbotMessage({ message: "blocked", guestId, restaurantId: "rest_1", clientIp: "1.2.3.4" })
+      handleRestaurantChatbotMessage({ message: "blocked", guestId, restaurantId: "507f1f77bcf86cd799439011", clientIp: "1.2.3.4" })
     ).rejects.toMatchObject({ code: "RATE_LIMITED", message: "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút." });
     expect(messageStore.length).toBe(messageCountBefore);
   });
@@ -143,18 +158,18 @@ describe("restaurantChatbot persistence", () => {
   it("isolates askAiChatbot limits by guest/conversation/restaurant/ip key parts", async () => {
     const guestId = "guest_iso";
     for (let i = 0; i < 20; i += 1) {
-      await handleRestaurantChatbotMessage({ message: `a_${i}`, guestId, restaurantId: "rest_a", clientIp: "2.2.2.2" });
+      await handleRestaurantChatbotMessage({ message: `a_${i}`, guestId, restaurantId: "507f1f77bcf86cd7994390aa", clientIp: "2.2.2.2" });
     }
     await expect(
-      handleRestaurantChatbotMessage({ message: "blocked", guestId, restaurantId: "rest_a", clientIp: "2.2.2.2" })
+      handleRestaurantChatbotMessage({ message: "blocked", guestId, restaurantId: "507f1f77bcf86cd7994390aa", clientIp: "2.2.2.2" })
     ).rejects.toMatchObject({ code: "RATE_LIMITED" });
 
     await expect(
-      handleRestaurantChatbotMessage({ message: "allowed-other-ip", guestId, restaurantId: "rest_a", clientIp: "2.2.2.3" })
+      handleRestaurantChatbotMessage({ message: "allowed-other-ip", guestId, restaurantId: "507f1f77bcf86cd7994390aa", clientIp: "2.2.2.3" })
     ).resolves.toHaveProperty("answer");
 
     await expect(
-      handleRestaurantChatbotMessage({ message: "allowed-other-restaurant", guestId, restaurantId: "rest_b", clientIp: "2.2.2.2" })
+      handleRestaurantChatbotMessage({ message: "allowed-other-restaurant", guestId, restaurantId: "507f1f77bcf86cd7994390bb", clientIp: "2.2.2.2" })
     ).resolves.toHaveProperty("answer");
   });
 

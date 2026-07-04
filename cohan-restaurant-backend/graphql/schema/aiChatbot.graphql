@@ -11,6 +11,8 @@ type AiChatbotSource {
   type: String
   id: ID
   label: String
+  restaurantName: String
+  currency: String
   formattedPrice: String
   status: String
   isAvailable: Boolean
@@ -21,6 +23,12 @@ type AiChatbotSource {
   currentPrice: Float
   price: Float
   servingVariants: [JSON!]
+}
+
+type AiChatbotScopeCandidate {
+  restaurantId: ID!
+  restaurantName: String!
+  reason: String
 }
 
 type AiChatbotContextSummary {
@@ -214,6 +222,9 @@ type AiChatbotResponse {
   answer: String!
   intent: String
   confidence: Float
+  scopeMode: String!
+  resolvedRestaurantId: ID
+  scopeCandidates: [AiChatbotScopeCandidate!]!
   quickReplies: [String!]!
   actions: [AiChatbotAction!]!
   sources: [AiChatbotSource!]!

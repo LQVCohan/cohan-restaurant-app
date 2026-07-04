@@ -83,6 +83,32 @@ const toObjectId = (id) => {
   return new mongoose.Types.ObjectId(id);
 };
 
+const toIdString = (value) => String(value?._id || value?.id || value || "");
+const runQuery = async (query) => {
+  if (!query) return query;
+  if (typeof query.lean === "function") return query.lean();
+  return query;
+};
+const selectLean = async (query, fields = "") => {
+  if (!query) return query;
+  let next = query;
+  if (fields && typeof next.select === "function") next = next.select(fields);
+  if (typeof next.lean === "function") return next.lean();
+  return next;
+};
+const isChatbotEnabled = (restaurant = {}) => restaurant?.aiChatbotSettings?.enabled !== false;
+const ELIGIBLE_RESTAURANT_FILTER = {
+  businessStatus: "active",
+  publicationStatus: "published",
+  "aiChatbotSettings.enabled": { $ne: false },
+};
+const isEligibleRestaurant = (restaurant = {}) => Boolean(
+  restaurant &&
+  restaurant.businessStatus === "active" &&
+  restaurant.publicationStatus === "published" &&
+  isChatbotEnabled(restaurant)
+);
+
 const asLower = (value) => String(value || "").toLowerCase();
 
 const roleSlug = (user) =>
@@ -143,6 +169,8 @@ const serializeRestaurant = (restaurant) => {
     priceRange: restaurant.priceRange,
     avgRating: restaurant.avgRating,
     capabilities: restaurant.capabilities || {},
+    defaultCurrency: restaurant.defaultCurrency || "VND",
+    aiChatbotSettings: restaurant.aiChatbotSettings || {},
   };
 };
 
@@ -155,38 +183,54 @@ const maybeCategoryName = (item = {}) => {
   return null;
 };
 
-const serializeMenuItem = (item, currency = "VND") => ({
-  id: String(item._id || item.id),
-  name: item.name,
-  description: item.description,
-  labels: Array.isArray(item.labels) ? item.labels : [],
-  tags: Array.isArray(item.tags) ? item.tags : [],
-  category: maybeCategoryName(item),
-  categoryName: maybeCategoryName(item),
-  image: item.image || (Array.isArray(item.images) ? item.images[0] : null) || null,
-  images: Array.isArray(item.images) ? item.images.slice(0, 3) : [],
-  basePrice: Number(item.basePrice || 0),
-  currentPrice: Number(item.currentPrice || item.basePrice || 0),
-  discount: item.discount || null,
-  formattedPrice: formatCurrency(item.currentPrice || item.basePrice, currency),
-  status: item.status || (item.isAvailable ? "available" : "unavailable"),
-  isAvailable: item.isAvailable ?? item.status === "available",
-  rate: item.rate,
-  orderCounter: item.orderCounter,
-  avgPrepTimeMin: item.avgPrepTimeMin || item.preparationTime || null,
-  preparationTime: item.preparationTime || item.avgPrepTimeMin || null,
-  variants: Array.isArray(item.variants) ? item.variants.slice(0, 4) : [],
-  options: Array.isArray(item.options) ? item.options.slice(0, 4) : [],
-  servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants.slice(0, 4) : [],
-  spicyLevel: item.spicyLevel ?? null,
-  restaurantId: item.restaurantId ? String(item.restaurantId) : null,
-  hasVariants: (Array.isArray(item.variants) && item.variants.length > 0) || (Array.isArray(item.servingVariants) && item.servingVariants.length > 0),
-  hasOptions: Array.isArray(item.options) && item.options.length > 0,
-  isVegetarian: Boolean(item.isVegetarian),
-  isVegan: Boolean(item.isVegan),
-  allergens: Array.isArray(item.allergens) ? item.allergens : [],
-  calories: item.calories ?? null,
-});
+const getItemRestaurantMeta = (item = {}, fallbackRestaurant = null) => {
+  const owner = item.restaurant && typeof item.restaurant === "object" ? item.restaurant : fallbackRestaurant;
+  const restaurantId = item.restaurantId ? String(item.restaurantId) : owner ? toIdString(owner) : null;
+  return {
+    restaurantId: restaurantId || null,
+    restaurantName: owner?.name || item.restaurantName || null,
+    currency: owner?.defaultCurrency || item.currency || fallbackRestaurant?.defaultCurrency || "VND",
+  };
+};
+
+const serializeMenuItem = (item, currency = "VND", fallbackRestaurant = null) => {
+  const ownerMeta = getItemRestaurantMeta(item, fallbackRestaurant);
+  const itemCurrency = ownerMeta.currency || currency || "VND";
+  return {
+    id: String(item._id || item.id),
+    name: item.name,
+    description: item.description,
+    labels: Array.isArray(item.labels) ? item.labels : [],
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    category: maybeCategoryName(item),
+    categoryName: maybeCategoryName(item),
+    image: item.image || (Array.isArray(item.images) ? item.images[0] : null) || null,
+    images: Array.isArray(item.images) ? item.images.slice(0, 3) : [],
+    basePrice: Number(item.basePrice || 0),
+    currentPrice: Number(item.currentPrice || item.basePrice || 0),
+    discount: item.discount || null,
+    formattedPrice: formatCurrency(item.currentPrice || item.basePrice, itemCurrency),
+    currency: itemCurrency,
+    status: item.status || (item.isAvailable ? "available" : "unavailable"),
+    isAvailable: item.isAvailable ?? item.status === "available",
+    rate: item.rate,
+    orderCounter: item.orderCounter,
+    avgPrepTimeMin: item.avgPrepTimeMin || item.preparationTime || null,
+    preparationTime: item.preparationTime || item.avgPrepTimeMin || null,
+    variants: Array.isArray(item.variants) ? item.variants.slice(0, 4) : [],
+    options: Array.isArray(item.options) ? item.options.slice(0, 4) : [],
+    servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants.slice(0, 4) : [],
+    spicyLevel: item.spicyLevel ?? null,
+    restaurantId: ownerMeta.restaurantId,
+    restaurantName: ownerMeta.restaurantName,
+    hasVariants: (Array.isArray(item.variants) && item.variants.length > 0) || (Array.isArray(item.servingVariants) && item.servingVariants.length > 0),
+    hasOptions: Array.isArray(item.options) && item.options.length > 0,
+    isVegetarian: Boolean(item.isVegetarian),
+    isVegan: Boolean(item.isVegan),
+    allergens: Array.isArray(item.allergens) ? item.allergens : [],
+    calories: item.calories ?? null,
+  };
+};
 
 const parseBudgetMax = (message = "") => {
   const raw = asLower(message);
@@ -292,19 +336,28 @@ const rankMenuRecommendations = (menuItems = [], preferences = {}, limit = 6) =>
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-const serializeCoupon = (coupon, currency = "VND") => ({
-  id: String(coupon._id || coupon.id),
-  code: coupon.code,
-  name: coupon.name,
-  description: coupon.description,
-  discountType: coupon.discountType,
-  discountValue: coupon.discountValue,
-  minOrderValue: coupon.minOrderValue,
-  maxDiscount: coupon.maxDiscount,
-  formattedMinOrder: formatCurrency(coupon.minOrderValue, currency),
-  formattedMaxDiscount: coupon.maxDiscount ? formatCurrency(coupon.maxDiscount, currency) : null,
-  endAt: coupon.endAt,
-});
+const serializeCoupon = (coupon, currency = "VND", restaurantLookup = new Map()) => {
+  const restaurantId = coupon.restaurantId ? String(coupon.restaurantId) : null;
+  const owner = restaurantId ? restaurantLookup.get(restaurantId) : null;
+  const couponCurrency = owner?.defaultCurrency || currency || "VND";
+  return {
+    id: String(coupon._id || coupon.id),
+    code: coupon.code,
+    name: coupon.name,
+    description: coupon.description,
+    discountType: coupon.discountType,
+    discountValue: coupon.discountValue,
+    minOrderValue: coupon.minOrderValue,
+    maxDiscount: coupon.maxDiscount,
+    formattedMinOrder: formatCurrency(coupon.minOrderValue, couponCurrency),
+    formattedMaxDiscount: coupon.maxDiscount ? formatCurrency(coupon.maxDiscount, couponCurrency) : null,
+    endAt: coupon.endAt,
+    restaurantId,
+    restaurantName: owner?.name || null,
+    scope: restaurantId ? "restaurant" : "global",
+    currency: couponCurrency,
+  };
+};
 
 const serializeOrder = (order, currency = "VND") => ({
   id: String(order._id || order.id),
@@ -458,9 +511,9 @@ const recentHistoryForPrompt = (history = []) =>
     }))
     .filter((item) => item.content);
 
-const buildConversationScopeFilter = ({ userId, guestId, restaurantObjectId }) => {
+const buildConversationScopeFilter = ({ userId, guestId, scopeRestaurantObjectId }) => {
   const filter = { status: "open" };
-  if (restaurantObjectId) filter.restaurantId = restaurantObjectId;
+  if (scopeRestaurantObjectId) filter.restaurantId = scopeRestaurantObjectId;
   else filter.restaurantId = null;
 
   if (userId) filter.userId = userId;
@@ -493,18 +546,22 @@ const fetchPersistedHistoryForPrompt = async (conversationId) => {
 };
 
 
-const fetchRestaurants = async ({ restaurantId, message }) => {
-  const rid = toObjectId(restaurantId);
-  if (rid) {
-    const restaurant = await Restaurant.findById(rid).lean();
-    return restaurant ? [restaurant] : [];
-  }
+const sortRestaurants = (restaurants = []) => [...restaurants].sort((a, b) =>
+  Number(b.avgRating || 0) - Number(a.avgRating || 0) ||
+  Number(b.reviewCount || 0) - Number(a.reviewCount || 0) ||
+  new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+);
 
+const fetchEligibleRestaurantById = async (restaurantId) => {
+  const rid = toObjectId(restaurantId);
+  if (!rid) return null;
+  const restaurant = await selectLean(Restaurant.findById(rid));
+  return isEligibleRestaurant(restaurant) ? restaurant : null;
+};
+
+const findEligibleRestaurantsByMessage = async (message, limit = 6) => {
   const regex = buildSearchRegex(message);
-  const filter = {
-    businessStatus: "active",
-    publicationStatus: "published",
-  };
+  const filter = { ...ELIGIBLE_RESTAURANT_FILTER };
   if (regex) {
     filter.$or = [
       { name: regex },
@@ -515,18 +572,74 @@ const fetchRestaurants = async ({ restaurantId, message }) => {
       { "address.city": regex },
     ];
   }
-
-  return Restaurant.find(filter)
-    .sort({ avgRating: -1, reviewCount: -1, updatedAt: -1 })
-    .limit(4)
-    .lean();
+  const query = Restaurant.find(filter);
+  if (typeof query.sort === "function") return query.sort({ avgRating: -1, reviewCount: -1, updatedAt: -1 }).limit(limit).lean();
+  const rows = await runQuery(query);
+  return sortRestaurants(Array.isArray(rows) ? rows.filter(isEligibleRestaurant) : []).slice(0, limit);
 };
 
-const fetchMenuItems = async ({ restaurantId, message, limit = 8 }) => {
-  const rid = toObjectId(restaurantId);
+const fetchEligibleRestaurantsByIds = async (ids = []) => {
+  const uniqueIds = [...new Set(ids.map(String).filter((id) => mongoose.isValidObjectId(id)))];
+  if (!uniqueIds.length) return [];
+  const objectIds = uniqueIds.map((id) => new mongoose.Types.ObjectId(id));
+  const query = Restaurant.find({ ...ELIGIBLE_RESTAURANT_FILTER, _id: { $in: objectIds } });
+  const rows = typeof query.lean === "function" ? await query.lean() : await runQuery(query);
+  return Array.isArray(rows) ? rows.filter(isEligibleRestaurant) : [];
+};
+
+const findVerifiedMenuItemOwner = async (selectedMenuItem = null) => {
+  const itemId = selectedMenuItem?.id || selectedMenuItem?.menuItemId;
+  const oid = toObjectId(itemId);
+  if (!oid) return { menuItem: null, restaurant: null };
+  const item = await selectLean(MenuItem.findById ? MenuItem.findById(oid) : null);
+  if (!item?.restaurantId) return { menuItem: item || null, restaurant: null };
+  const restaurant = await fetchEligibleRestaurantById(item.restaurantId);
+  return restaurant ? { menuItem: item, restaurant } : { menuItem: item, restaurant: null };
+};
+
+const candidateDto = (restaurant, reason = "candidate") => ({
+  restaurantId: toIdString(restaurant),
+  restaurantName: String(restaurant?.name || "Nhà hàng"),
+  reason,
+});
+
+const resolveRestaurantScope = async ({ restaurantId, message, pageContext, user }) => {
+  const currentPage = normalizePageContext(pageContext, restaurantId, user);
+  const directCandidate = restaurantId || currentPage.restaurantId;
+  if (directCandidate) {
+    const restaurant = await fetchEligibleRestaurantById(directCandidate);
+    if (!restaurant) {
+      return { mode: "global", restaurantId: null, restaurant: null, reason: "unavailable", candidates: [], isResolved: false, currentPage };
+    }
+    return { mode: "restaurant", restaurantId: toIdString(restaurant), restaurant, reason: restaurantId ? "inputRestaurantId" : "pageContextRestaurantId", candidates: [candidateDto(restaurant, "resolved")], isResolved: true, currentPage: { ...currentPage, restaurantId: toIdString(restaurant) } };
+  }
+
+  const verifiedSelection = await findVerifiedMenuItemOwner(currentPage.selectedMenuItem);
+  if (verifiedSelection.restaurant) {
+    const restaurant = verifiedSelection.restaurant;
+    return { mode: "restaurant", restaurantId: toIdString(restaurant), restaurant, reason: "verifiedSelectedMenuItem", candidates: [candidateDto(restaurant, "selectedMenuItem")], isResolved: true, currentPage: { ...currentPage, restaurantId: toIdString(restaurant), selectedMenuItem: { ...currentPage.selectedMenuItem, restaurantId: toIdString(restaurant) } } };
+  }
+
+  const restaurantMatches = await findEligibleRestaurantsByMessage(message, 6);
+  if (restaurantMatches.length === 1) {
+    const restaurant = restaurantMatches[0];
+    return { mode: "restaurant", restaurantId: toIdString(restaurant), restaurant, reason: "uniqueRestaurantName", candidates: [candidateDto(restaurant, "uniqueName")], isResolved: true, currentPage: { ...currentPage, restaurantId: toIdString(restaurant) } };
+  }
+  return { mode: "global", restaurantId: null, restaurant: null, reason: restaurantMatches.length > 1 ? "ambiguousRestaurantName" : "global", candidates: restaurantMatches.map((r) => candidateDto(r, "nameMatch")), isResolved: false, currentPage: { ...currentPage, restaurantId: null } };
+};
+
+const fetchRestaurants = async ({ scope, message }) => {
+  if (scope?.mode === "restaurant" && scope.restaurant) return [scope.restaurant];
+  const candidates = await findEligibleRestaurantsByMessage(message, 4);
+  return candidates;
+};
+
+const fetchMenuItems = async ({ scope, message, limit = 8, perRestaurantLimit = 3 }) => {
   const regex = buildSearchRegex(message);
   const filter = { status: "available" };
-  if (rid) filter.restaurantId = rid;
+  if (scope?.mode === "restaurant" && scope.restaurantId) {
+    filter.restaurantId = toObjectId(scope.restaurantId);
+  }
   if (regex) {
     filter.$or = [
       { name: regex },
@@ -535,24 +648,41 @@ const fetchMenuItems = async ({ restaurantId, message, limit = 8 }) => {
       { code: regex },
     ];
   }
+  let items = [];
+  const query = MenuItem.find(filter);
+  if (typeof query.sort === "function") items = await query.sort({ orderCounter: -1, rate: -1, sortOrder: 1 }).limit(Math.max(limit * 3, limit)).lean();
+  else items = await runQuery(query);
+  items = Array.isArray(items) ? items : [];
 
-  let items = await MenuItem.find(filter)
-    .sort({ orderCounter: -1, rate: -1, sortOrder: 1 })
-    .limit(limit)
-    .lean();
-
-  if (!items.length && rid) {
-    items = await MenuItem.find({ restaurantId: rid, status: "available" })
-      .sort({ orderCounter: -1, rate: -1, sortOrder: 1 })
-      .limit(limit)
-      .lean();
+  if (!items.length && scope?.mode === "restaurant" && scope.restaurantId) {
+    const fallbackQuery = MenuItem.find({ restaurantId: toObjectId(scope.restaurantId), status: "available" });
+    items = typeof fallbackQuery.sort === "function"
+      ? await fallbackQuery.sort({ orderCounter: -1, rate: -1, sortOrder: 1 }).limit(limit).lean()
+      : await runQuery(fallbackQuery);
+    items = Array.isArray(items) ? items : [];
   }
 
-  return items;
+  if (scope?.mode === "restaurant") return items.slice(0, limit).map((item) => ({ ...item, restaurant: scope.restaurant }));
+
+  const ownerIds = items.map((item) => item.restaurantId).filter(Boolean).map(String);
+  const owners = await fetchEligibleRestaurantsByIds(ownerIds);
+  const ownerMap = new Map(owners.map((r) => [toIdString(r), r]));
+  const counts = new Map();
+  const output = [];
+  for (const item of items) {
+    const rid = String(item.restaurantId || "");
+    const owner = ownerMap.get(rid);
+    if (!owner) continue;
+    const count = counts.get(rid) || 0;
+    if (count >= perRestaurantLimit) continue;
+    counts.set(rid, count + 1);
+    output.push({ ...item, restaurant: owner });
+    if (output.length >= limit) break;
+  }
+  return output;
 };
 
-const fetchCoupons = async ({ restaurantId }) => {
-  const rid = toObjectId(restaurantId);
+const fetchCoupons = async ({ scope, eligibleRestaurants = [] }) => {
   const now = new Date();
   const filter = {
     isActive: true,
@@ -561,12 +691,16 @@ const fetchCoupons = async ({ restaurantId }) => {
       { $or: [{ endAt: null }, { endAt: { $exists: false } }, { endAt: { $gte: now } }] },
     ],
   };
-  if (rid) filter.$or = [{ restaurantId: rid }, { restaurantId: null }];
-
-  return Coupon.find(filter)
-    .sort({ discountValue: -1, endAt: 1, updatedAt: -1 })
-    .limit(6)
-    .lean();
+  if (scope?.mode === "restaurant" && scope.restaurantId) {
+    filter.$or = [{ restaurantId: toObjectId(scope.restaurantId) }, { restaurantId: null }];
+  } else {
+    const eligibleIds = eligibleRestaurants.map((r) => toObjectId(r?._id || r?.id)).filter(Boolean);
+    filter.$or = [{ restaurantId: null }, ...(eligibleIds.length ? [{ restaurantId: { $in: eligibleIds } }] : [])];
+  }
+  const query = Coupon.find(filter);
+  if (typeof query.sort === "function") return query.sort({ discountValue: -1, endAt: 1, updatedAt: -1 }).limit(6).lean();
+  const rows = await runQuery(query);
+  return Array.isArray(rows) ? rows : [];
 };
 
 // Phase 26 deliberately does not cache order/cart/reservation/profile context:
@@ -623,42 +757,48 @@ ${String(item.content || "").slice(0, 500)}`.trim();
   return lines;
 };
 
-const buildContext = async ({ message, restaurantId, user, pageContext = {} }) => {
+const buildContext = async ({ message, user, pageContext = {}, scope }) => {
   const intent = classifyIntent(message);
   const menuPreferences = extractMenuPreferences(message);
   const isMenuAssistant = isMenuAssistantRequest(message, intent, menuPreferences);
-  const currentPage = normalizePageContext(pageContext, restaurantId, user);
-  const effectiveRestaurantId = restaurantId || currentPage.restaurantId;
-  const restaurants = await fetchRestaurants({ restaurantId: effectiveRestaurantId, message });
-  const primaryRestaurant = restaurants[0] || null;
-  const currency = primaryRestaurant?.defaultCurrency || "VND";
-
+  const currentPage = scope?.currentPage || normalizePageContext(pageContext, scope?.restaurantId, user);
+  const restaurants = await fetchRestaurants({ scope, message });
+  const restaurantLookup = new Map(restaurants.map((r) => [toIdString(r), r]));
   const [menuItems, coupons, orders, reservations, cart] = await Promise.all([
-    fetchMenuItems({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id, message, limit: isMenuAssistant && (effectiveRestaurantId || primaryRestaurant?._id) ? 30 : 8 }),
-    fetchCoupons({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id }),
-    fetchOrders({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id, message, user }),
-    fetchReservations({ restaurantId: effectiveRestaurantId || primaryRestaurant?._id, message, user }),
+    fetchMenuItems({ scope, message, limit: isMenuAssistant ? 30 : 8 }),
+    fetchCoupons({ scope, eligibleRestaurants: restaurants }),
+    fetchOrders({ restaurantId: scope?.restaurantId, message, user }),
+    fetchReservations({ restaurantId: scope?.restaurantId, message, user }),
     fetchCart({ user }),
   ]);
 
-  const serializedMenuItems = menuItems.map((item) => serializeMenuItem(item, currency));
+  for (const item of menuItems || []) {
+    if (item?.restaurant) restaurantLookup.set(toIdString(item.restaurant), item.restaurant);
+  }
+
+  const serializedMenuItems = menuItems.map((item) => serializeMenuItem(item, scope?.restaurant?.defaultCurrency || "VND", item.restaurant || scope?.restaurant));
   const recommendedMenuItems = rankMenuRecommendations(serializedMenuItems, menuPreferences, 10);
   const userSafeProfile = buildUserSafeProfile(user);
   const matchedFeatureMapEntries = sanitizeFeatureMatches(pageContext?.featureMatches || [], currentPage.userRole || userSafeProfile.role);
+  const scopeMode = scope?.mode === "restaurant" ? "restaurant" : "global";
   return {
     intent,
+    scopeMode,
+    resolvedRestaurantId: scope?.mode === "restaurant" ? scope.restaurantId : null,
+    scopeCandidates: Array.isArray(scope?.candidates) ? scope.candidates : [],
+    scopeReason: scope?.reason || "global",
     user: userSafeProfile,
     userSafeProfile,
     currentPage,
     matchedFeatureMapEntries,
-    cartSummary: cart ? serializeCart(cart, currency) : null,
+    cartSummary: cart ? serializeCart(cart, scope?.restaurant?.defaultCurrency || "VND") : null,
     restaurants: restaurants.map(serializeRestaurant),
     menuItems: (isMenuAssistant ? recommendedMenuItems : serializedMenuItems).slice(0, 10),
     recommendedMenuItems: recommendedMenuItems.slice(0, 10),
     menuPreferences,
-    coupons: coupons.map((coupon) => serializeCoupon(coupon, currency)).slice(0, 3),
-    orders: orders.map((order) => serializeOrder(order, currency)),
-    reservations: reservations.map((reservation) => serializeReservation(reservation, currency)),
+    coupons: coupons.map((coupon) => serializeCoupon(coupon, scope?.restaurant?.defaultCurrency || "VND", restaurantLookup)).slice(0, 3),
+    orders: orders.map((order) => serializeOrder(order, scope?.restaurant?.defaultCurrency || "VND")),
+    reservations: reservations.map((reservation) => serializeReservation(reservation, scope?.restaurant?.defaultCurrency || "VND")),
   };
 };
 
@@ -698,7 +838,9 @@ const enrichMenuItemSource = (source, context = {}, menuItemLookup = buildMenuIt
     hasOptions: Boolean(item.options?.length || item.hasOptions),
     hasVariants: Boolean(item.variants?.length || item.servingVariants?.length || item.hasVariants),
     servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants : [],
-    restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null,
+    restaurantId: item.restaurantId || null,
+    restaurantName: item.restaurantName || null,
+    currency: item.currency || null,
     basePrice: item.basePrice,
     currentPrice: item.currentPrice,
     price: item.currentPrice ?? item.basePrice,
@@ -767,7 +909,7 @@ const buildDeterministicActions = (context = {}) => {
   const actions = [];
   const role = String(context.userSafeProfile?.role || context.user?.role || "guest").toLowerCase();
   const isLoggedIn = Boolean(context.userSafeProfile?.authenticated || context.user?.authenticated);
-  const restaurantId = context.restaurants?.[0]?.id || context.currentPage?.restaurantId || context.currentPage?.selectedMenuItem?.restaurantId;
+  const restaurantId = context.scopeMode === "restaurant" ? context.resolvedRestaurantId : null;
   const items = (context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || [];
 
   for (const entry of context.matchedFeatureMapEntries || []) {
@@ -812,7 +954,8 @@ const buildDeterministicActions = (context = {}) => {
     pushAction(actions, { type: "link", label: "Đơn hàng quản lý", href: "/manager#orders", description: "Mở khu vực đơn hàng trong dashboard.", icon: "orders", priority: 2 });
   }
 
-  if (context.intent === "support") pushAction(actions, { type: "handoff", label: "Gặp nhân viên", href: "/contact", description: "Gửi yêu cầu để nhân viên hỗ trợ trong luồng handoff hiện có.", icon: "support", priority: 1 });
+  if (context.intent === "support" && context.scopeMode === "restaurant") pushAction(actions, { type: "handoff", label: "Gặp nhân viên", href: "/contact", description: "Gửi yêu cầu để nhân viên hỗ trợ trong luồng handoff hiện có.", icon: "support", priority: 1 });
+  if (context.intent === "support" && context.scopeMode !== "restaurant") pushAction(actions, { type: "link", label: "Chọn nhà hàng", href: "/restaurants", description: "Chọn nhà hàng trước khi gặp nhân viên.", icon: "restaurant", priority: 1 });
 
   if (isLoggedIn && ["identity", "profileHelp", "navigation"].includes(context.intent)) {
     pushAction(actions, { type: "openCart", label: "Giỏ hàng của tôi", href: "", description: "Mở giỏ hàng hiện tại.", icon: "cart", priority: 4 });
@@ -850,6 +993,9 @@ const normalizeAiResult = (parsed, context) => {
 
 const buildProviderPromptContext = (context = {}) => ({
   userSafeProfile: context.userSafeProfile || context.user || { authenticated: false, role: "guest" },
+  scopeMode: context.scopeMode || "global",
+  resolvedRestaurantId: context.resolvedRestaurantId || null,
+  scopeCandidates: context.scopeCandidates?.slice(0, 4) || [],
   currentPage: context.currentPage || {},
   restaurants: context.restaurants?.slice(0, 2) || [],
   menuPreferences: context.menuPreferences || {},
@@ -1064,7 +1210,7 @@ const fallbackQuickReplies = (intent) => {
 };
 
 const fallbackActions = (context) => {
-  const restaurantId = context.restaurants?.[0]?.id;
+  const restaurantId = context.scopeMode === "restaurant" ? context.resolvedRestaurantId : null;
   const topItemId = context.currentPage?.selectedMenuItem?.id || context.recommendedMenuItems?.[0]?.id || context.menuItems?.[0]?.id;
   const actions = [];
   for (const entry of context.matchedFeatureMapEntries || []) {
@@ -1098,8 +1244,8 @@ const fallbackActions = (context) => {
 
 const fallbackSources = (context) => [
   ...(context.restaurants || []).slice(0, 2).map((item) => ({ type: "restaurant", id: item.id, label: item.name })),
-  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name, formattedPrice: item.formattedPrice, status: item.status, isAvailable: item.isAvailable, hasOptions: Boolean(item.options?.length), hasVariants: Boolean(item.variants?.length || item.servingVariants?.length || item.hasVariants), servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants : [], restaurantId: item.restaurantId || context.restaurants?.[0]?.id || null, basePrice: item.basePrice, currentPrice: item.currentPrice, price: item.currentPrice ?? item.basePrice })),
-  ...(context.coupons || []).slice(0, 2).map((item) => ({ type: "coupon", id: item.id, label: item.code })),
+  ...((context.recommendedMenuItems?.length ? context.recommendedMenuItems : context.menuItems) || []).slice(0, 5).map((item) => ({ type: "menuItem", id: item.id, label: item.name, formattedPrice: item.formattedPrice, status: item.status, isAvailable: item.isAvailable, hasOptions: Boolean(item.options?.length), hasVariants: Boolean(item.variants?.length || item.servingVariants?.length || item.hasVariants), servingVariants: Array.isArray(item.servingVariants) ? item.servingVariants : [], restaurantId: item.restaurantId || null, restaurantName: item.restaurantName || null, currency: item.currency || null, basePrice: item.basePrice, currentPrice: item.currentPrice, price: item.currentPrice ?? item.basePrice })),
+  ...(context.coupons || []).slice(0, 2).map((item) => ({ type: "coupon", id: item.id, label: item.restaurantName ? `${item.code} (${item.restaurantName})` : item.code, restaurantId: item.restaurantId || null, restaurantName: item.restaurantName || null })),
 ];
 
 const menuFallback = (context) => {
@@ -1109,7 +1255,8 @@ const menuFallback = (context) => {
   }
   const lines = items.slice(0, 5).map((item, index) => {
     const rating = Number(item.rate || 0) > 0 ? `, đánh giá ${item.rate}/5` : "";
-    return `${index + 1}. ${item.name} - ${item.formattedPrice}${rating} (${item.recommendationReason || "dựa trên dữ liệu hiện có"})`;
+    const owner = item.restaurantName ? ` tại ${item.restaurantName}` : "";
+    return `${index + 1}. ${item.name}${owner} - ${item.formattedPrice}${rating} (${item.recommendationReason || "dựa trên dữ liệu hiện có"})`;
   });
   return `Mình chỉ thấy các món sau trong dữ liệu hiện có:\n${lines.join("\n")}\nBạn muốn lọc theo ngân sách, món chay hay món ra nhanh không?`;
 };
@@ -1130,7 +1277,7 @@ const reservationFallback = (context) => {
   if (context.userSafeProfile?.authenticated && reservation) {
     return `Đặt bàn ${reservation.orderCode || "gần nhất"} tại ${reservation.restaurantName || context.restaurants?.[0]?.name || "nhà hàng"} cho ${reservation.partySize || "nhiều"} người hiện ở trạng thái ${reservation.status || "đang xử lý"}.${reservation.timeTo ? ` Thời gian: ${new Date(reservation.timeTo).toLocaleString("vi-VN")}.` : ""} Bạn có thể theo dõi trạng thái trong mục đặt bàn/đơn đặt chỗ.`;
   }
-  const restaurant = context.restaurants?.[0];
+  const restaurant = context.scopeMode === "restaurant" ? context.restaurants?.[0] : null;
   const prefix = restaurant ? `${restaurant.name}: ` : "Bạn hãy chọn nhà hàng trước. ";
   return `${prefix}Bạn có thể đặt bàn theo các bước:
 1. Chọn nhà hàng.
@@ -1155,7 +1302,8 @@ const promotionFallback = (context) => {
   if (!coupons.length) return "Hiện mình chưa thấy coupon đang hoạt động phù hợp. Bạn có thể kiểm tra lại trong trang coupon của nhà hàng hoặc hỏi mình gợi ý combo/menu tiết kiệm.";
   const lines = coupons.slice(0, 4).map((coupon) => {
     const value = coupon.discountType === "AMOUNT" ? formatCurrency(coupon.discountValue) : `${coupon.discountValue}%`;
-    return `- ${coupon.code}: ${coupon.name} giảm ${value}${coupon.minOrderValue ? `, đơn tối thiểu ${coupon.formattedMinOrder}` : ""}`;
+    const scope = coupon.restaurantName ? ` tại ${coupon.restaurantName}` : " trên hệ thống";
+    return `- ${coupon.code}${scope}: ${coupon.name} giảm ${value}${coupon.minOrderValue ? `, đơn tối thiểu ${coupon.formattedMinOrder}` : ""}`;
   });
   return `Các ưu đãi có thể dùng:\n${lines.join("\n")}`;
 };
@@ -1163,7 +1311,7 @@ const promotionFallback = (context) => {
 
 
 const restaurantInfoFallback = (context) => {
-  const restaurant = context.restaurants?.[0];
+  const restaurant = context.scopeMode === "restaurant" ? context.restaurants?.[0] : null;
   if (!restaurant) return "Mình chưa thấy nhà hàng cụ thể trong ngữ cảnh. Bạn có thể chọn nhà hàng rồi hỏi lại giờ mở cửa, địa chỉ hoặc trạng thái nhận đơn.";
   const hours = restaurant.openingHours || restaurant.closingHours
     ? `Giờ mở cửa: ${restaurant.openingHours || "chưa rõ"} - ${restaurant.closingHours || "chưa rõ"}.`
@@ -1273,29 +1421,33 @@ export const handleRestaurantChatbotMessage = async ({
   }
 
   const userObjectId = toObjectId(user?.id || user?._id);
-  const restaurantObjectId = toObjectId(restaurantId);
   const normalizedGuestId = normalizeGuestId(guestId);
   const normalizedConversationId = normalizeConversationId(conversationId);
-  let aiSettings = mergeWithDefaultAiChatbotSettings({});
-  if (restaurantObjectId) {
-    const settingsRestaurant = await Restaurant.findById(restaurantObjectId).select("aiChatbotSettings").lean();
-    aiSettings = mergeWithDefaultAiChatbotSettings(settingsRestaurant?.aiChatbotSettings || {});
-    if (aiSettings.enabled === false) {
-      return {
-        answer: aiSettings.handoffUnavailableMessage || "Chatbot hiện chưa khả dụng cho nhà hàng này.",
-        intent: "general",
-        confidence: 1,
-        quickReplies: aiSettings.starterQuickReplies || [],
-        actions: [],
-        sources: [],
-        contextSummary: { restaurantCount: 0, menuItemCount: 0, couponCount: 0, orderCount: 0, reservationCount: 0 },
-        conversationId: null,
-        isFallback: true,
-        handoffSuggested: false,
-        handoffReason: null,
-        handoffMessage: null,
-      };
-    }
+  const scope = await resolveRestaurantScope({ restaurantId, message: cleanMessage, pageContext, user });
+  const scopeRestaurantObjectId = toObjectId(scope.restaurantId);
+  if (scope.reason === "unavailable") {
+    return {
+      answer: "Nhà hàng này hiện chưa khả dụng. Bạn có thể chọn nhà hàng khác đang hiển thị công khai trên hệ thống.",
+      intent: "general",
+      confidence: 1,
+      quickReplies: [],
+      actions: [{ type: "link", label: "Chọn nhà hàng", href: "/restaurants", description: "Xem các nhà hàng đang khả dụng.", icon: "restaurant", priority: 1 }],
+      sources: [],
+      contextSummary: { restaurantCount: 0, menuItemCount: 0, couponCount: 0, orderCount: 0, reservationCount: 0 },
+      conversationId: null,
+      answerMessageId: null,
+      isFallback: true,
+      handoffSuggested: false,
+      handoffReason: null,
+      handoffMessage: null,
+      scopeMode: "global",
+      resolvedRestaurantId: null,
+      scopeCandidates: [],
+    };
+  }
+  let aiSettings = mergeWithDefaultAiChatbotSettings(scope.restaurant?.aiChatbotSettings || {});
+  if (scope.mode !== "restaurant") {
+    aiSettings = { ...aiSettings, handoffEnabled: false };
   }
 
   const askRateResult = consumeAiChatbotRateLimit({
@@ -1303,7 +1455,7 @@ export const handleRestaurantChatbotMessage = async ({
     keyParts: {
       guestId: normalizedGuestId,
       conversationId: normalizedConversationId || "",
-      restaurantId: String(restaurantId || ""),
+      restaurantId: String(scope.restaurantId || restaurantId || ""),
       clientIp,
     },
   });
@@ -1321,8 +1473,8 @@ export const handleRestaurantChatbotMessage = async ({
       const found = await AiChatConversation.findById(normalizedConversationId);
       if (found && isConversationOwned(found, { userId: userObjectId, guestId: normalizedGuestId })) {
         const sameRestaurant =
-          String(found.restaurantId || "") === String(restaurantObjectId || "") ||
-          (!found.restaurantId && !restaurantObjectId);
+          String(found.restaurantId || "") === String(scopeRestaurantObjectId || "") ||
+          (!found.restaurantId && !scopeRestaurantObjectId);
         if (sameRestaurant) persistedConversation = found;
       }
     }
@@ -1331,14 +1483,14 @@ export const handleRestaurantChatbotMessage = async ({
       const scopeFilter = buildConversationScopeFilter({
         userId: userObjectId,
         guestId: normalizedGuestId,
-        restaurantObjectId,
+        scopeRestaurantObjectId,
       });
       if (scopeFilter) persistedConversation = await AiChatConversation.findOne(scopeFilter).sort({ updatedAt: -1 });
     }
 
     if (!persistedConversation && (userObjectId || normalizedGuestId)) {
       persistedConversation = await AiChatConversation.create({
-        restaurantId: restaurantObjectId,
+        restaurantId: scopeRestaurantObjectId,
         userId: userObjectId,
         guestId: normalizedGuestId || null,
       });
@@ -1349,7 +1501,7 @@ export const handleRestaurantChatbotMessage = async ({
 
       await AiChatMessage.create({
         conversationId: persistedConversation._id,
-        restaurantId: restaurantObjectId,
+        restaurantId: scopeRestaurantObjectId,
         userId: userObjectId,
         guestId: normalizedGuestId || null,
         role: "user",
@@ -1361,7 +1513,7 @@ export const handleRestaurantChatbotMessage = async ({
     persistedHistory = [];
   }
 
-  const safetyEval = await evaluateRestaurantAiChatbotSafety({ restaurantId, message: cleanMessage });
+  const safetyEval = await evaluateRestaurantAiChatbotSafety({ restaurantId: scope.restaurantId, message: cleanMessage });
   if (safetyEval.blocked) {
     const blockedAnswer = String(safetyEval.blockedMessage || aiSettings.fallbackMessage || "Xin lỗi, mình chưa thể hỗ trợ nội dung này. Vui lòng liên hệ nhân viên để được hỗ trợ thêm.");
     return {
@@ -1387,10 +1539,13 @@ export const handleRestaurantChatbotMessage = async ({
       handoffSuggested: Boolean(aiSettings.handoffEnabled && safetyEval.handoffSuggested),
       handoffReason: safetyEval.outOfScope ? "out_of_scope" : "blocked_topic",
       handoffMessage: aiSettings.handoffEnabled && safetyEval.handoffSuggested ? (safetyEval.handoffMessage || "Nội dung này cần nhân viên hỗ trợ. Bạn có thể bấm 'Gặp nhân viên'.") : null,
+      scopeMode: scope.mode,
+      resolvedRestaurantId: scope.restaurantId,
+      scopeCandidates: scope.candidates || [],
     };
   }
 
-  const context = await buildContext({ message: cleanMessage, restaurantId, user, pageContext });
+  const context = await buildContext({ message: cleanMessage, user, pageContext, scope });
   const refusal = shouldRefuseRequest({ message: cleanMessage, context });
   if (refusal.refused) {
     return {
@@ -1410,9 +1565,12 @@ export const handleRestaurantChatbotMessage = async ({
       handoffSuggested: false,
       handoffReason: refusal.reason,
       handoffMessage: null,
+      scopeMode: context.scopeMode,
+      resolvedRestaurantId: context.resolvedRestaurantId,
+      scopeCandidates: context.scopeCandidates || [],
     };
   }
-  const knowledgeItems = await findRelevantKnowledgeForChatbot({ restaurantId, message: cleanMessage, limit: 4 });
+  const knowledgeItems = await findRelevantKnowledgeForChatbot({ restaurantId: scope.restaurantId, message: cleanMessage, limit: 4 });
   const aiResult = await callAiProvider({
     message: cleanMessage,
     context,
@@ -1456,6 +1614,9 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
       reservationCount: context.reservations.length,
     },
     conversationId: persistedConversation ? String(persistedConversation._id) : null,
+    scopeMode: context.scopeMode,
+    resolvedRestaurantId: context.resolvedRestaurantId,
+    scopeCandidates: context.scopeCandidates || [],
   };
   const handoffDecision = shouldSuggestHandoff({
     message: cleanMessage,
@@ -1464,14 +1625,14 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
     isFallback: finalResponse.isFallback,
     threshold: aiSettings.lowConfidenceHandoffThreshold,
   });
-  finalResponse.handoffSuggested = handoffDecision.suggested;
-  finalResponse.handoffReason = handoffDecision.reason;
-  finalResponse.handoffMessage = handoffDecision.suggested
+  finalResponse.handoffSuggested = scope.mode === "restaurant" && handoffDecision.suggested;
+  finalResponse.handoffReason = scope.mode === "restaurant" ? handoffDecision.reason : null;
+  finalResponse.handoffMessage = finalResponse.handoffSuggested
     ? "Nếu bạn cần hỗ trợ thêm, bạn có thể bấm 'Gặp nhân viên' để được hỗ trợ bởi người thật."
     : null;
 
   const shouldRecordKnowledgeGap = Boolean(
-    shouldRecordSuggestions && aiSettings.enabled && restaurantId && cleanMessage && (
+    shouldRecordSuggestions && aiSettings.enabled && scope.restaurantId && cleanMessage && (
       finalResponse.isFallback ||
       (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) ||
       !knowledgeItems.length ||
@@ -1487,7 +1648,7 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
       else if (Number.isFinite(Number(finalResponse.confidence)) && Number(finalResponse.confidence) < Number(aiSettings.lowConfidenceHandoffThreshold || 0.6)) triggerType = "low_confidence";
 
       await recordKnowledgeGapSuggestion({
-        restaurantId,
+        restaurantId: scope.restaurantId,
         question: cleanMessage,
         triggerType,
         confidence: finalResponse.confidence,
@@ -1503,7 +1664,7 @@ ${safetyEval.disclaimers.map((d) => `Lưu ý: ${d}`).join("\n")}`.trim();
     try {
       const assistantMessage = await AiChatMessage.create({
         conversationId: persistedConversation._id,
-        restaurantId: restaurantObjectId,
+        restaurantId: scopeRestaurantObjectId,
         userId: userObjectId,
         guestId: normalizedGuestId || null,
         role: "assistant",
@@ -1576,4 +1737,7 @@ export const __testables = {
   isSafeInternalPath,
   buildProviderPromptContext,
   shouldRefuseRequest,
+  resolveRestaurantScope,
+  fetchMenuItems,
+  isEligibleRestaurant,
 };

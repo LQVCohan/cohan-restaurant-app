@@ -65,7 +65,7 @@ describe("restaurant chatbot Phase 26 settings and knowledge cache", () => {
   });
 
   it("getPublicAiChatbotSettings uses cache on repeated call", async () => {
-    const findByIdSpy = vi.spyOn(Restaurant, "findById").mockReturnValue(findByIdSelect({ aiChatbotSettings: { welcomeMessage: "cached hello" } }));
+    const findByIdSpy = vi.spyOn(Restaurant, "findById").mockReturnValue(findByIdSelect({ businessStatus: "active", publicationStatus: "published", aiChatbotSettings: { welcomeMessage: "cached hello" } }));
 
     const first = await getPublicAiChatbotSettings({ restaurantId: rid });
     const second = await getPublicAiChatbotSettings({ restaurantId: rid });

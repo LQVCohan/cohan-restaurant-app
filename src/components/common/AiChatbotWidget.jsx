@@ -48,8 +48,17 @@ const ASK_AI_CHATBOT = gql`
         hasOptions
         hasVariants
         restaurantId
+        restaurantName
+        currency
         basePrice
         currentPrice
+      }
+      scopeMode
+      resolvedRestaurantId
+      scopeCandidates {
+        restaurantId
+        restaurantName
+        reason
       }
       contextSummary {
         restaurantCount
@@ -256,6 +265,10 @@ const ADD_CART_ITEM_FOR_AI = gql`
 
 const getConversationStorageKey = (restaurantId) =>
   `cohan_ai_conversation_id:${restaurantId || "global"}`;
+const getStoredConversationId = (restaurantId) => {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(getConversationStorageKey(restaurantId)) || "";
+};
 const getHandoffStorageKey = (conversationId) =>
   `cohan_ai_handoff_requested:${conversationId}`;
 
@@ -440,10 +453,10 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     const id = params?.foodId || query.get("menuItemId") || "";
     return id ? { id, restaurantId: restaurantId || query.get("restaurantId") || null } : null;
   }, [params?.foodId, location.search, restaurantId]);
-  const buildAiPageContext = useCallback((messageText = "") => {
+  const buildAiPageContext = useCallback((messageText = "", restaurantIdOverride = "") => {
     const userRole = getAiChatbotUserRole(user);
     const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
-    const effectiveRestaurantId = restaurantId || selectedMenuItem?.restaurantId || "";
+    const effectiveRestaurantId = restaurantIdOverride || selectedMenuItem?.restaurantId || restaurantId || "";
     return {
       pathname: location.pathname,
       restaurantId: effectiveRestaurantId || null,
@@ -480,7 +493,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
     variables: {
       id: selectedMenuItemSource?.id,
       restaurantId:
-        selectedMenuItemSource?.restaurantId || restaurantId || null,
+        selectedMenuItemSource?.restaurantId || null,
     },
     skip: !selectedMenuItemSource?.id,
   });
@@ -540,6 +553,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   });
   const selectedVariantHasUnit = Boolean(selectedVariant?.sellUnit);
   const aiAddDisabled =
+    !selectedMenuItemSource?.restaurantId ||
     !selectedAiMenuItem ||
     !selectedVariantKey ||
     isAiCartAdding ||
@@ -568,7 +582,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setConversationId(window.localStorage.getItem(restaurantStorageKey) || "");
+    setConversationId(getStoredConversationId(restaurantId));
   }, [restaurantStorageKey]);
 
   useEffect(() => {
@@ -786,6 +800,9 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       ]);
       return;
     }
+    const selectedMenuItem = selectedMenuItemSource || selectedRouteMenuItem;
+    const effectiveRestaurantId = restaurantIdOverride || selectedMenuItem?.restaurantId || restaurantId || "";
+    const effectiveConversationId = getStoredConversationId(effectiveRestaurantId);
     sendInFlightRef.current = true;
     setIsSendInFlight(true);
 
@@ -832,20 +849,22 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
         variables: {
           input: {
             message: content,
-            restaurantId: restaurantIdOverride || restaurantId,
+            restaurantId: effectiveRestaurantId || undefined,
             history: normalizeHistory(messages),
             guestId: safeGuestId || undefined,
-            conversationId: conversationId || undefined,
-            pageContext: buildAiPageContext(content),
+            conversationId: effectiveConversationId || undefined,
+            pageContext: buildAiPageContext(content, effectiveRestaurantId),
           },
         },
       });
       const response = data?.askAiChatbot;
       if (response?.conversationId && typeof window !== "undefined") {
-        window.localStorage.setItem(
-          restaurantStorageKey,
-          response.conversationId,
-        );
+        const resolvedRestaurantId = response.resolvedRestaurantId || effectiveRestaurantId || "";
+        const resolvedStorageKey = getConversationStorageKey(resolvedRestaurantId);
+        window.localStorage.setItem(resolvedStorageKey, response.conversationId);
+        if (response.resolvedRestaurantId && response.resolvedRestaurantId !== restaurantId) {
+          setEventRestaurantId(response.resolvedRestaurantId);
+        }
         setConversationId(response.conversationId);
       }
       const answer =
@@ -866,7 +885,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       setLastQuickReplies(
         response?.quickReplies?.length
           ? response.quickReplies
-          : buildStarterMessages({ restaurantId, publicSettings }),
+          : buildStarterMessages({ restaurantId: response?.resolvedRestaurantId || effectiveRestaurantId, publicSettings }),
       );
       setLastContextSummary(response?.contextSummary || null);
       setLastIntent(response?.intent || "");
@@ -922,7 +941,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   }, [loading, guestSendLoading, handoffLoading, sendMessage]);
 
   const buildAiFoodDetailTarget = (source) => {
-    const targetRestaurantId = source?.restaurantId || restaurantId;
+    const targetRestaurantId = source?.restaurantId || "";
     const href = buildFoodDetailPath(source?.id, {
       restaurantId: targetRestaurantId,
       timeSlot: source?.timeSlot,
@@ -986,6 +1005,10 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
       ]);
       return;
     }
+    if (!restaurantId) {
+      setMessages((c) => [...c, { role: "assistant", content: "Bạn hãy chọn nhà hàng trước khi gặp nhân viên hỗ trợ." }]);
+      return;
+    }
     if (!conversationId || handoffRequested || handoffLoading) return;
     try {
       const latestUserMessage =
@@ -1041,6 +1064,8 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   };
   const handleAddAiCart = async () => {
     if (isAiCartAdding) return;
+    if (!selectedMenuItemSource?.restaurantId)
+      return setAiCartError("Không xác định được nhà hàng của món này.");
     if (!user?.id)
       return setAiCartError("Vui lòng đăng nhập để thêm món vào giỏ.");
     if (!aiLiveStateReady) return setAiCartError("Đang kiểm tra tồn món...");
@@ -1177,7 +1202,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                               await submitFeedback({
                                 variables: {
                                   input: {
-                                    restaurantId,
+                                    restaurantId: item.meta?.resolvedRestaurantId || restaurantId,
                                     conversationId: item.meta?.conversationId,
                                     messageId: item.meta?.answerMessageId,
                                     guestId: guestId || undefined,
@@ -1208,7 +1233,7 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                               await submitFeedback({
                                 variables: {
                                   input: {
-                                    restaurantId,
+                                    restaurantId: item.meta?.resolvedRestaurantId || restaurantId,
                                     conversationId: item.meta?.conversationId,
                                     messageId: item.meta?.answerMessageId,
                                     guestId: guestId || undefined,
@@ -1405,6 +1430,11 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                     {menuSourceCards.map((s) => (
                       <div key={s.id} className="ai-chatbot-menu-card">
                         <strong>{s.label}</strong>
+                        {s.restaurantName ? (
+                          <span className="ai-chatbot-menu-card__restaurant">
+                            {s.restaurantName}
+                          </span>
+                        ) : null}
                         {s.formattedPrice ? (
                           <span className="ai-chatbot-menu-card__price">
                             {s.formattedPrice}

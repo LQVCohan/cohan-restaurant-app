@@ -30,6 +30,9 @@ const guestProfile = {
 };
 
 const baseContext = {
+  scopeMode: "restaurant",
+  resolvedRestaurantId: "resto-1",
+  scopeCandidates: [{ restaurantId: "resto-1", restaurantName: baseRestaurant.name, reason: "test" }],
   restaurants: [baseRestaurant],
   menuItems: [
     {
