@@ -11,6 +11,7 @@ import {
 import { MENU_PERMISSION, requireMenuPermission } from "./menuPermission.js";
 
 const MENU_ITEM_STATUS = ["available", "unavailable", "out_of_stock", "hidden"];
+const MENU_ITEM_PREP_STATIONS = ["kitchen", "bar"];
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 const MENU_ITEM_DIET_TAGS = ["vegan", "keto", "halal"];
 const MENU_ITEM_ALLERGEN_TAGS = ["seafood", "peanut", "milk", "egg", "gluten"];
@@ -54,6 +55,14 @@ function assertStatus(status) {
 }
 function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+}
+function normalizePrepStation(value, { required = false } = {}) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized && !required) return undefined;
+  if (!MENU_ITEM_PREP_STATIONS.includes(normalized)) {
+    throw badInput("prepStation must be kitchen or bar");
+  }
+  return normalized;
 }
 function normalizeStringTags(values, whitelist, fieldName) {
   if (values === undefined) return undefined;
@@ -173,6 +182,7 @@ function includesMeaningfulItemField(input = {}) {
     "modifierGroupIds",
     "notes",
     "status",
+    "prepStation",
     "avgPrepTimeMin",
     "foodType",
     "meatTypes",
@@ -298,6 +308,7 @@ export const MenuMutation = {
       mediaAssetIds,
       modifierGroupIds,
       status,
+      prepStation,
       avgPrepTimeMin,
       point,
       rate,
@@ -318,6 +329,9 @@ export const MenuMutation = {
       throw new GraphQLError("name is required");
     }
     if (status) assertStatus(status);
+    const normalizedPrepStation = normalizePrepStation(prepStation, {
+      required: true,
+    });
     await requireMenuPermission(ctx, restaurantId, MENU_PERMISSION.CREATE_ITEM);
 
     const basePriceNum = toNumOrUndef(basePrice);
@@ -396,6 +410,7 @@ export const MenuMutation = {
               mediaAssetIds,
               modifierGroupIds,
               status: status || undefined,
+              prepStation: normalizedPrepStation,
               avgPrepTimeMin: avgPrep ?? undefined,
               point: pointNum ?? undefined,
               rate: rateNum ?? undefined,
@@ -454,6 +469,7 @@ export const MenuMutation = {
           menuId: doc.menuId,
           categoryId: doc.categoryId,
           name: doc.name,
+          prepStation: doc.prepStation,
           basePrice: doc.basePrice,
           status: doc.status,
         },
@@ -500,6 +516,11 @@ export const MenuMutation = {
         ];
         for (const f of fields) {
           if (input[f] !== undefined) item[f] = input[f];
+        }
+        if (input.prepStation !== undefined) {
+          item.prepStation = normalizePrepStation(input.prepStation, {
+            required: true,
+          });
         }
         if (input.dietTags !== undefined) {
           item.dietTags = normalizeStringTags(input.dietTags, MENU_ITEM_DIET_TAGS, "dietTags");
@@ -620,6 +641,7 @@ export const MenuMutation = {
             name: existing.name,
             description: existing.description,
             thumbImage: existing.thumbImage,
+            prepStation: existing.prepStation,
             basePrice: existing.basePrice,
             status: existing.status,
             avgPrepTimeMin: existing.avgPrepTimeMin,
@@ -633,6 +655,7 @@ export const MenuMutation = {
             name: updatedItem.name,
             description: updatedItem.description,
             thumbImage: updatedItem.thumbImage,
+            prepStation: updatedItem.prepStation,
             basePrice: updatedItem.basePrice,
             status: updatedItem.status,
             avgPrepTimeMin: updatedItem.avgPrepTimeMin,
@@ -682,6 +705,7 @@ export const MenuMutation = {
             menuId: item.menuId,
             categoryId: item.categoryId,
             name: item.name,
+            prepStation: item.prepStation,
             basePrice: item.basePrice,
             status: item.status,
           },
@@ -713,6 +737,11 @@ export const MenuMutation = {
     if (typeof name === "string") patch.name = name;
     if (typeof description === "string") patch.description = description;
     if (categoryId) patch.categoryId = categoryId;
+    if (input.prepStation !== undefined) {
+      patch.prepStation = normalizePrepStation(input.prepStation, {
+        required: true,
+      });
+    }
     if (status !== undefined) {
       if (status) assertStatus(status);
       patch.status = status;
@@ -788,6 +817,7 @@ export const MenuMutation = {
               name: beforeItem.name,
               description: beforeItem.description,
               categoryId: beforeItem.categoryId,
+              prepStation: beforeItem.prepStation,
               status: beforeItem.status,
               point: beforeItem.point,
               rate: beforeItem.rate,
@@ -798,6 +828,7 @@ export const MenuMutation = {
           name: doc.name,
           description: doc.description,
           categoryId: doc.categoryId,
+          prepStation: doc.prepStation,
           status: doc.status,
           point: doc.point,
           rate: doc.rate,
