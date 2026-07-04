@@ -69,10 +69,24 @@ export async function resolveOrderItemStation({
     return existingStation;
   }
 
-  if (!order?.restaurantId || !item?.dishId) {
-    throw new Error("Cannot resolve preparation station without restaurantId and dishId");
+  const snapshotStation = normalizePrepStation(item?.prepStation);
+  if (snapshotStation) return snapshotStation;
+
+  const isCombo = String(item?.itemType || "").toUpperCase() === "COMBO";
+  if (!isCombo) {
+    throw new Error(
+      `Order item ${String(item?._id || "")} is missing a valid prepStation snapshot`,
+    );
   }
 
+  if (!order?.restaurantId || !item?.dishId) {
+    throw new Error(
+      "Cannot resolve combo preparation station without restaurantId and dishId",
+    );
+  }
+
+  // ponytail: combos are still one parent work item; use its current anchor dish
+  // until combo children become independent order lines.
   let query = MenuItem.findOne({
     _id: item.dishId,
     restaurantId: order.restaurantId,
@@ -85,7 +99,7 @@ export async function resolveOrderItemStation({
   const station = normalizePrepStation(menuItem?.prepStation);
   if (!station) {
     throw new Error(
-      `Menu item ${String(item.dishId)} is missing a valid prepStation`,
+      `Combo anchor menu item ${String(item.dishId)} is missing a valid prepStation`,
     );
   }
   return station;
