@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { gql, useMutation } from "@apollo/client";
 import { ChefHat, GlassWater } from "lucide-react";
-import "./PrepStationControl.scss";
+import styles from "./PrepStationControl.module.scss";
 
 const UPDATE_PREP_STATION = gql`
   mutation UpdateMenuItemPrepStation($input: UpdateMenuItemInput!) {
@@ -53,15 +53,13 @@ const PrepStationControl = ({ item, canUpdate }) => {
   const SelectedIcon = selectedOption?.Icon || ChefHat;
 
   return (
-    <div
-      className="prep-station-control"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <div className="prep-station-control__label">
+    <div className={styles.root} onClick={(event) => event.stopPropagation()}>
+      <div className={styles.label}>
         <SelectedIcon size={15} aria-hidden="true" />
         <span>Khu chế biến</span>
       </div>
       <select
+        className={styles.select}
         aria-label={`Khu chế biến của món ${item?.name || ""}`}
         value={currentStation}
         disabled={!canUpdate || loading || !itemId}
@@ -77,7 +75,7 @@ const PrepStationControl = ({ item, canUpdate }) => {
         ))}
       </select>
       {error ? (
-        <small className="prep-station-control__error" role="alert">
+        <small className={styles.error} role="alert">
           {error}
         </small>
       ) : null}
