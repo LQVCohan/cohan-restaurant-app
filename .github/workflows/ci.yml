@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          show-progress: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,7 +50,23 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: npm run test:unit -- --reporter=dot
+        run: |
+          set +e
+          npm run test:unit -- --reporter=verbose > unit-test.log 2>&1
+          status=$?
+          echo "$status" > unit-test-status.txt
+          exit "$status"
+
+      - name: Upload unit test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-unit-test-log
+          path: |
+            unit-test.log
+            unit-test-status.txt
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Test Menu RBAC
         run: npm run test:menu-rbac --if-present
