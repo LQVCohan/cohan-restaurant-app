@@ -40,7 +40,6 @@ type AiChatbotContextSummary {
 }
 
 
-
 type AiChatbotKnowledgeSuggestion {
   id: ID!
   restaurantId: ID!
@@ -257,4 +256,260 @@ input RequestAiChatbotHandoffInput {
   guestId: String
   reason: String
   latestUserMessage: String
+}
+
+type AiChatbotHandoffResponse {
+  ok: Boolean!
+  conversationId: ID!
+  handoffRequested: Boolean!
+  chatThreadId: ID
+  notificationCount: Int!
+  message: String!
+  alreadyRequested: Boolean!
+}
+
+input GetAiChatbotGuestRepliesInput {
+  conversationId: ID!
+  guestId: String!
+  after: String
+  limit: Int = 30
+}
+
+type AiChatbotGuestReply {
+  id: String!
+  role: String!
+  senderLabel: String!
+  content: String!
+  createdAt: String!
+}
+
+type AiChatbotGuestRepliesResponse {
+  ok: Boolean!
+  handoffRequested: Boolean!
+  conversationStatus: String
+  handoffClosed: Boolean!
+  conversationId: ID!
+  replies: [AiChatbotGuestReply!]!
+}
+
+input SendAiChatbotGuestMessageInput {
+  conversationId: ID!
+  guestId: String!
+  content: String!
+}
+
+type SendAiChatbotGuestMessageResponse {
+  ok: Boolean!
+  conversationId: ID!
+  message: AiChatbotGuestReply
+}
+
+input ResolveAiChatbotHandoffInput {
+  conversationId: ID
+  chatThreadId: ID
+  resolutionNote: String
+}
+
+
+type AiChatbotIntentMetric {
+  intent: String!
+  count: Int!
+}
+
+type AiChatbotRoleMetric {
+  role: String!
+  count: Int!
+}
+
+type AiChatbotRateLimitPolicy {
+  action: String!
+  max: Int!
+  windowMs: Int!
+}
+
+type AiChatbotRiskSignal {
+  code: String!
+  level: String!
+  count: Int!
+}
+
+type AiChatbotQualityQueueItem {
+  id: ID!
+  type: String!
+  label: String!
+  detail: String
+  createdAt: DateTime
+}
+
+type AiChatbotAnalyticsResponse {
+  totalConversations: Int!
+  totalMessages: Int!
+  openConversations: Int!
+  handoffRequested: Int!
+  resolvedHandoffs: Int!
+  fallbackResponses: Int!
+  lowConfidenceResponses: Int!
+  totalKnowledgeItems: Int!
+  pendingSuggestions: Int!
+  notHelpfulFeedback: Int!
+  activeSafetyRules: Int!
+  evaluationCaseCount: Int!
+  handoffConversionRate: Float!
+  averageMessagesPerConversation: Float!
+  averageHandoffResolutionMinutes: Float
+  topIntents: [AiChatbotIntentMetric!]!
+  messagesByRole: [AiChatbotRoleMetric!]!
+  rateLimitStatus: [AiChatbotRateLimitPolicy!]!
+  riskySignals: [AiChatbotRiskSignal!]!
+  recentQualityQueue: [AiChatbotQualityQueueItem!]!
+}
+
+input AiChatbotAnalyticsInput {
+  restaurantId: ID
+  from: DateTime
+  to: DateTime
+  groupBy: String
+}
+
+type ResolveAiChatbotHandoffResponse {
+  ok: Boolean!
+  conversationId: ID
+  chatThreadId: ID
+  status: String
+  alreadyClosed: Boolean!
+  message: String!
+}
+
+
+type AiChatbotSettings {
+  enabled: Boolean!
+  welcomeMessage: String!
+  starterQuickReplies: [String!]!
+  handoffEnabled: Boolean!
+  handoffUnavailableMessage: String!
+  lowConfidenceHandoffThreshold: Float!
+  fallbackMessage: String!
+  updatedAt: DateTime
+  updatedBy: ID
+}
+
+type PublicAiChatbotSettings {
+  enabled: Boolean!
+  welcomeMessage: String!
+  starterQuickReplies: [String!]!
+  handoffEnabled: Boolean!
+  handoffUnavailableMessage: String!
+}
+
+input UpdateAiChatbotSettingsInput {
+  restaurantId: ID!
+  enabled: Boolean
+  welcomeMessage: String
+  starterQuickReplies: [String!]
+  handoffEnabled: Boolean
+  handoffUnavailableMessage: String
+  lowConfidenceHandoffThreshold: Float
+  fallbackMessage: String
+}
+
+extend type Query {
+  aiChatbotGuestReplies(input: GetAiChatbotGuestRepliesInput!): AiChatbotGuestRepliesResponse!
+  aiChatbotAnalytics(input: AiChatbotAnalyticsInput!): AiChatbotAnalyticsResponse!
+  restaurantAiChatbotSettings(restaurantId: ID!): AiChatbotSettings!
+  publicAiChatbotSettings(restaurantId: ID): PublicAiChatbotSettings!
+  restaurantAiChatbotKnowledge(restaurantId: ID!, filter: AiChatbotKnowledgeFilterInput): [AiChatbotKnowledgeItem!]!
+  restaurantAiChatbotKnowledgeItem(id: ID!): AiChatbotKnowledgeItem
+  exportRestaurantAiChatbotKnowledge(restaurantId: ID!, format: String = "json"): String!
+  restaurantAiChatbotKnowledgeSuggestions(restaurantId: ID!, filter: AiChatbotKnowledgeSuggestionFilterInput): [AiChatbotKnowledgeSuggestion!]!
+  restaurantAiChatbotAnswerFeedback(restaurantId: ID!, filter: AiChatbotAnswerFeedbackFilterInput): [AiChatbotAnswerFeedback!]!
+  restaurantAiChatbotSafetyRules(restaurantId: ID!, filter: AiChatbotSafetyRuleFilterInput): [AiChatbotSafetyRule!]!
+}
+
+extend type Mutation {
+  askAiChatbot(input: AskAiChatbotInput!): AiChatbotResponse!
+  requestAiChatbotHandoff(input: RequestAiChatbotHandoffInput!): AiChatbotHandoffResponse!
+  sendAiChatbotGuestMessage(input: SendAiChatbotGuestMessageInput!): SendAiChatbotGuestMessageResponse!
+  resolveAiChatbotHandoff(input: ResolveAiChatbotHandoffInput!): ResolveAiChatbotHandoffResponse!
+  submitAiChatbotAnswerFeedback(input: SubmitAiChatbotAnswerFeedbackInput!): AiChatbotAnswerFeedback!
+  markAiChatbotAnswerFeedbackReviewed(id: ID!): Boolean!
+  ignoreAiChatbotAnswerFeedback(id: ID!): Boolean!
+  convertAiChatbotFeedbackToSuggestion(id: ID!): Boolean!
+  bulkMarkAiChatbotAnswerFeedbackReviewed(input: BulkAiChatbotIdsInput!): Boolean!
+  bulkIgnoreAiChatbotAnswerFeedback(input: BulkAiChatbotIdsInput!): Boolean!
+  bulkConvertAiChatbotFeedbackToSuggestion(input: BulkAiChatbotIdsInput!): Boolean!
+  updateRestaurantAiChatbotSettings(input: UpdateAiChatbotSettingsInput!): AiChatbotSettings!
+  createRestaurantAiChatbotKnowledgeItem(input: CreateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
+  updateRestaurantAiChatbotKnowledgeItem(input: UpdateAiChatbotKnowledgeItemInput!): AiChatbotKnowledgeItem!
+  deleteRestaurantAiChatbotKnowledgeItem(id: ID!): Boolean!
+  bulkUpdateRestaurantAiChatbotKnowledgeEnabled(input: BulkAiChatbotIdsInput!, enabled: Boolean!): Boolean!
+  bulkDeleteRestaurantAiChatbotKnowledge(input: BulkAiChatbotIdsInput!): Boolean!
+  importRestaurantAiChatbotKnowledge(input: ImportAiChatbotKnowledgeInput!): ImportAiChatbotKnowledgeResult!
+  rebuildRestaurantAiKnowledgeEmbeddings(restaurantId: ID!): AiKnowledgeEmbeddingRebuildResult!
+  generateRestaurantAiChatbotKnowledgeSuggestions(input: GenerateAiChatbotKnowledgeSuggestionsInput!): GenerateAiChatbotKnowledgeSuggestionsResult!
+  approveRestaurantAiChatbotKnowledgeSuggestion(id: ID!, input: ApproveAiChatbotKnowledgeSuggestionInput!): AiChatbotKnowledgeItem!
+  dismissRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
+  deleteRestaurantAiChatbotKnowledgeSuggestion(id: ID!): Boolean!
+  bulkDismissRestaurantAiChatbotKnowledgeSuggestions(input: BulkAiChatbotIdsInput!): Boolean!
+  bulkDeleteRestaurantAiChatbotKnowledgeSuggestions(input: BulkAiChatbotIdsInput!): Boolean!
+  createRestaurantAiChatbotSafetyRule(input: CreateAiChatbotSafetyRuleInput!): AiChatbotSafetyRule!
+  updateRestaurantAiChatbotSafetyRule(input: UpdateAiChatbotSafetyRuleInput!): AiChatbotSafetyRule!
+  deleteRestaurantAiChatbotSafetyRule(id: ID!): Boolean!
+  bulkUpdateRestaurantAiChatbotSafetyRuleEnabled(input: BulkAiChatbotIdsInput!, enabled: Boolean!): Boolean!
+  bulkDeleteRestaurantAiChatbotSafetyRules(input: BulkAiChatbotIdsInput!): Boolean!
+}
+
+type AiChatbotEvaluationSafetyResult { blocked: Boolean! outOfScope: Boolean! disclaimers: [String!]! handoffSuggested: Boolean! matchedRuleIds: [ID!]! }
+type AiChatbotKnowledgeMatch { id: ID title: String category: String sourceType: String score: Float }
+type AiChatbotEvaluationDebugInfo { evaluationMode: Boolean historyUsed: [String!] }
+type AiChatbotEvaluationResult {
+  caseId: ID
+  question: String
+  expectedBehavior: String
+  category: String
+  tags: [String!]
+  answer: String!
+  intent: String
+  confidence: Float
+  isFallback: Boolean
+  handoffSuggested: Boolean
+  handoffReason: String
+  handoffMessage: String
+  quickReplies: [String!]!
+  actions: [AiChatbotAction!]!
+  contextSummary: AiChatbotContextSummary
+  knowledgeMatches: [AiChatbotKnowledgeMatch!]!
+  safetyResult: AiChatbotEvaluationSafetyResult
+  sources: [AiChatbotSource!]!
+  debug: AiChatbotEvaluationDebugInfo
+}
+
+type AiChatbotEvaluationCase {
+  id: ID!
+  restaurantId: ID!
+  question: String!
+  expectedBehavior: String
+  category: String
+  tags: [String!]!
+  enabled: Boolean!
+  createdBy: ID
+  updatedBy: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input EvaluateAiChatbotPromptInput { restaurantId: ID! message: String! history: [AiChatbotHistoryInput!] includeDebug: Boolean }
+input RunAiChatbotEvaluationSetInput { restaurantId: ID! caseIds: [ID!] includeDebug: Boolean }
+input CreateAiChatbotEvaluationCaseInput { restaurantId: ID! question: String! expectedBehavior: String category: String tags: [String!] enabled: Boolean }
+input UpdateAiChatbotEvaluationCaseInput { id: ID! question: String expectedBehavior: String category: String tags: [String!] enabled: Boolean }
+
+extend type Query {
+  evaluateRestaurantAiChatbotPrompt(input: EvaluateAiChatbotPromptInput!): AiChatbotEvaluationResult!
+  runRestaurantAiChatbotEvaluationSet(input: RunAiChatbotEvaluationSetInput!): [AiChatbotEvaluationResult!]!
+  restaurantAiChatbotEvaluationCases(restaurantId: ID!): [AiChatbotEvaluationCase!]!
+}
+
+extend type Mutation {
+  createRestaurantAiChatbotEvaluationCase(input: CreateAiChatbotEvaluationCaseInput!): AiChatbotEvaluationCase!
+  updateRestaurantAiChatbotEvaluationCase(input: UpdateAiChatbotEvaluationCaseInput!): AiChatbotEvaluationCase!
+  deleteRestaurantAiChatbotEvaluationCase(id: ID!): Boolean!
 }
