@@ -1,0 +1,17 @@
+{
+  "id": "prep-station-routing",
+  "title": "Route order items by configured preparation station",
+  "status": "in_progress",
+  "createdAt": "2026-07-05",
+  "scope": [
+    "Configure kitchen or bar per menu item",
+    "Snapshot the configured station into order items",
+    "Use the order snapshot for KDS work items and print jobs",
+    "Remove runtime name/category keyword routing"
+  ],
+  "validation": [
+    "Targeted kitchen work item service tests",
+    "GraphQL schema check",
+    "Frontend build"
+  ]
+}
