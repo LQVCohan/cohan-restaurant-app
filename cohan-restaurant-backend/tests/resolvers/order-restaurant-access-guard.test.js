@@ -6,6 +6,13 @@ const modelMocks = vi.hoisted(() => ({
     countDocuments: vi.fn(),
     findOne: vi.fn(),
   },
+  KitchenOrderWorkItem: {
+    find: vi.fn(),
+  },
+  PrintSetting: {
+    findOne: vi.fn(),
+    updateOne: vi.fn(),
+  },
 }));
 
 const guardMocks = vi.hoisted(() => ({
@@ -135,7 +142,6 @@ describe("order mutation restaurant access guards", () => {
 
     expect(mutation.requestPaymentForOrder).not.toHaveBeenCalled();
   });
-
 
   it("allows requestPaymentForOrder when orderIds contain duplicates of valid scoped orders", async () => {
     modelMocks.Order.countDocuments.mockResolvedValue(1);
