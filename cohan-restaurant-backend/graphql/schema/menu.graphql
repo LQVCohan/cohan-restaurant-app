@@ -270,7 +270,7 @@ input CreateMenuItemInput {
   servingPortion: Float
   servingUnit: String
 
-  prepStation: PreparationStation!
+  prepStation: PreparationStation! = kitchen
   printStationId: ID
 
   thumbImage: String
