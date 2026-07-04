@@ -73,8 +73,7 @@ describe("kitchenOrderWorkItem service", () => {
     expect(resolvePrepTimeLevel(26, 20)).toBe("very_late");
   });
 
-  it("loads the station from the persisted menu item for a new work item", async () => {
-    mockMenuItem({ prepStation: "bar" });
+  it("loads the station from the order item snapshot for a new work item", async () => {
     const { resolveOrderItemStation } = await import(
       "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
     );
@@ -82,15 +81,12 @@ describe("kitchenOrderWorkItem service", () => {
     await expect(
       resolveOrderItemStation({
         order: { restaurantId: "restaurant-1" },
-        item: { dishId: "dish-1" },
+        item: { dishId: "dish-1", prepStation: "bar" },
         session: {},
       }),
     ).resolves.toBe("bar");
 
-    expect(modelMocks.MenuItem.findOne).toHaveBeenCalledWith({
-      _id: "dish-1",
-      restaurantId: "restaurant-1",
-    });
+    expect(modelMocks.MenuItem.findOne).not.toHaveBeenCalled();
   });
 
   it("keeps the existing work-item station after the menu item changes", async () => {
@@ -101,7 +97,7 @@ describe("kitchenOrderWorkItem service", () => {
     await expect(
       resolveOrderItemStation({
         order: { restaurantId: "restaurant-1" },
-        item: { dishId: "dish-1" },
+        item: { dishId: "dish-1", prepStation: "kitchen" },
         existingWorkItem: { station: "bar" },
         session: {},
       }),
@@ -110,8 +106,7 @@ describe("kitchenOrderWorkItem service", () => {
     expect(modelMocks.MenuItem.findOne).not.toHaveBeenCalled();
   });
 
-  it("fails clearly when a new work item has no configured station", async () => {
-    mockMenuItem({ prepStation: null });
+  it("fails clearly when a regular order item has no station snapshot", async () => {
     const { resolveOrderItemStation } = await import(
       "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
     );
@@ -119,15 +114,36 @@ describe("kitchenOrderWorkItem service", () => {
     await expect(
       resolveOrderItemStation({
         order: { restaurantId: "restaurant-1" },
-        item: { dishId: "dish-1" },
+        item: { _id: "item-1", dishId: "dish-1", itemType: "MENU_ITEM" },
         session: {},
       }),
-    ).rejects.toThrow("missing a valid prepStation");
+    ).rejects.toThrow("missing a valid prepStation snapshot");
+
+    expect(modelMocks.MenuItem.findOne).not.toHaveBeenCalled();
+  });
+
+  it("uses the anchor dish only for the current single-line combo model", async () => {
+    mockMenuItem({ prepStation: "bar" });
+    const { resolveOrderItemStation } = await import(
+      "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
+    );
+
+    await expect(
+      resolveOrderItemStation({
+        order: { restaurantId: "restaurant-1" },
+        item: { dishId: "dish-1", itemType: "COMBO" },
+        session: {},
+      }),
+    ).resolves.toBe("bar");
+
+    expect(modelMocks.MenuItem.findOne).toHaveBeenCalledWith({
+      _id: "dish-1",
+      restaurantId: "restaurant-1",
+    });
   });
 
   it("creates a bar work item and attaches the active bar roster", async () => {
     const now = new Date("2026-05-20T09:00:00.000Z");
-    mockMenuItem({ prepStation: "bar" });
     modelMocks.KitchenShiftRosterSnapshot.find.mockReturnValue({
       sort: vi.fn(() => ({
         lean: vi.fn(async () => [
@@ -158,6 +174,7 @@ describe("kitchenOrderWorkItem service", () => {
       item: {
         _id: "item-1",
         dishId: "dish-1",
+        prepStation: "bar",
         name: "Món dùng tại bar",
         quantity: 1,
         status: "pending",
@@ -189,7 +206,6 @@ describe("kitchenOrderWorkItem service", () => {
       preparingAt,
       targetPrepMinutes: 10,
     });
-    mockMenuItem({ prepStation: "kitchen" });
 
     const { upsertKitchenOrderWorkItemForStatusChange } = await import(
       "../../src/services/kitchen/kitchenOrderWorkItem.service.js"
@@ -197,7 +213,11 @@ describe("kitchenOrderWorkItem service", () => {
 
     await upsertKitchenOrderWorkItemForStatusChange({
       order: { _id: "order-1", restaurantId: "restaurant-1" },
-      item: { _id: "item-1", dishId: "dish-1" },
+      item: {
+        _id: "item-1",
+        dishId: "dish-1",
+        prepStation: "kitchen",
+      },
       previousStatus: "preparing",
       nextStatus: "ready",
       now: new Date("2026-05-20T09:08:00.000Z"),
@@ -229,7 +249,12 @@ describe("kitchenOrderWorkItem service", () => {
         _id: "order-1",
         restaurantId: "restaurant-1",
         items: [
-          { _id: "item-1", dishId: "dish-1", status: "pending" },
+          {
+            _id: "item-1",
+            dishId: "dish-1",
+            prepStation: "kitchen",
+            status: "pending",
+          },
           { _id: "item-2", dishId: "dish-2", status: "cancelled" },
         ],
       },
