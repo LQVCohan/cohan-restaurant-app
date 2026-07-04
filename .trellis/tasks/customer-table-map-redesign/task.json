@@ -1,0 +1,28 @@
+{
+  "id": "customer-table-map-redesign",
+  "title": "Nâng cấp sơ đồ bàn cho khách hàng",
+  "status": "implemented_unverified",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Customer/TableBooking/TableBooking.jsx",
+    "src/components/Customer/TableBooking/TableBooking.product.css",
+    "src/components/Customer/TableBooking/components/FloorMap/FloorMap.jsx",
+    "src/components/Customer/TableBooking/components/FloorMap/FloorMap.scss",
+    "src/components/Customer/TableBooking/components/FloorMap/FloorMap.test.jsx"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npx vitest run src/components/Customer/TableBooking/components/FloorMap/FloorMap.test.jsx",
+      "npm run build",
+      "browser smoke at desktop, 430x932 and 390x844"
+    ],
+    "completed": [
+      "traced Floor/Table schema, public resolvers, useFloorManagement queries, view-lock mutations and customer booking actions",
+      "added focused tests for accessible table selection, unavailable-table notification and pointer pan"
+    ],
+    "notRun": [
+      "automated checks and browser smoke pending CI"
+    ]
+  }
+}

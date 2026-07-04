@@ -17,12 +17,15 @@ jobs:
   frontend:
     name: frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: .
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -51,8 +54,22 @@ jobs:
       - name: Test Menu RBAC
         run: npm run test:menu-rbac --if-present
 
-      - name: Component tests
-        run: npm run test:component
+      - name: Component tests for changed code
+        if: github.event_name == 'pull_request'
+        run: >-
+          timeout --signal=TERM --kill-after=30s 15m
+          npm run test:component --
+          --changed "${{ github.event.pull_request.base.sha }}"
+          --detectAsyncLeaks
+          --maxWorkers=2
+
+      - name: Full component tests
+        if: github.event_name != 'pull_request'
+        run: >-
+          timeout --signal=TERM --kill-after=30s 30m
+          npm run test:component --
+          --detectAsyncLeaks
+          --maxWorkers=2
 
       - name: Build
         run: npm run build

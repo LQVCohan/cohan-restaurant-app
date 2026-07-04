@@ -164,6 +164,11 @@ const TableBooking = () => {
     0,
   );
   const menuDeposit = Math.round(menuSubtotal * 0.5);
+  const totalTableCount = tables.length;
+  const availableTableCount = tables.filter((table) => table.status === "available").length;
+  const bookingStage = selectedTable ? 3 : activeFloorData ? 2 : 1;
+  const activeFloorDescription = String(activeFloorData?.description || "").trim()
+    || "Khám phá sơ đồ, kéo để di chuyển và chọn bàn phù hợp với nhóm của bạn.";
 
   const canToggleWatching = (() => {
     const role = (user?.roleName || user?.role || "").toLowerCase();
@@ -374,20 +379,31 @@ const TableBooking = () => {
           <button type="button" className="btn-back-link" onClick={() => navigate(-1)}>
             <ChevronLeft size={20} aria-hidden="true" /> Quay lại
           </button>
+
           <div className="header-center">
-            <span className="sub-heading">Đặt bàn trực tuyến</span>
-            <h1 className="main-heading" id="table-booking-title">Sơ đồ chỗ ngồi</h1>
+            <span className="sub-heading">Chọn vị trí phù hợp</span>
+            <h1 className="main-heading" id="table-booking-title">
+              Chọn bàn tại {publicRestaurant.name}
+            </h1>
+            <p className="header-description">
+              Xem từng khu vực, chọn bàn trống và giữ chỗ trước khi hoàn tất thông tin đặt bàn.
+            </p>
           </div>
-          <div className="header-actions">
-            <button
-              type="button"
-              className="btn-help"
-              aria-label="Xem hướng dẫn đặt bàn"
-              onClick={() => setBookingNotice({ type: "info", message: "Chọn tầng, chọn bàn trống trên sơ đồ rồi kiểm tra thông tin ở khung bên phải để tiếp tục đặt bàn." })}
-            >
-              <Info size={20} aria-hidden="true" />
-            </button>
+
+          <div className="header-overview" aria-label="Tổng quan sơ đồ bàn">
+            <article><strong>{availableTableCount}</strong><span>Bàn trống</span></article>
+            <article><strong>{totalTableCount}</strong><span>Tổng bàn</span></article>
+            <article><strong>{floors.length}</strong><span>Khu vực</span></article>
           </div>
+
+          <button
+            type="button"
+            className="btn-help"
+            aria-label="Xem hướng dẫn đặt bàn"
+            onClick={() => setBookingNotice({ type: "info", message: "Chọn tầng, chọn bàn trống trên sơ đồ rồi kiểm tra thông tin ở khung bên phải để tiếp tục đặt bàn." })}
+          >
+            <Info size={20} aria-hidden="true" />
+          </button>
         </div>
       </header>
 
@@ -412,10 +428,24 @@ const TableBooking = () => {
       )}
       {!canReserve && <div className="booking-alert booking-alert--error" role="alert">Nhà hàng hiện không nhận đặt bàn.</div>}
 
+      <ol className="booking-progress-rail" aria-label="Các bước chọn bàn">
+        <li className={bookingStage === 1 ? "is-active" : "is-done"}><span>01</span><div><strong>Chọn khu vực</strong><small>Chuyển giữa các tầng</small></div></li>
+        <li className={bookingStage === 2 ? "is-active" : bookingStage > 2 ? "is-done" : ""}><span>02</span><div><strong>Chọn bàn</strong><small>Bàn xanh đang sẵn sàng</small></div></li>
+        <li className={bookingStage === 3 ? "is-active" : ""}><span>03</span><div><strong>Xác nhận</strong><small>Kiểm tra trước khi đặt</small></div></li>
+      </ol>
+
       <div className="booking-layout-grid">
         <section className="main-visual-area" aria-label="Sơ đồ bàn nhà hàng">
           <div className="floor-control-bar">
-            <div className="bar-label"><Layers size={18} aria-hidden="true" /> Chọn tầng:</div>
+            <div className="floor-context">
+              <div className="bar-label"><Layers size={18} aria-hidden="true" /> Khu vực đang xem</div>
+              <strong>{activeFloorData?.name || "Chưa có khu vực"}</strong>
+              <p>{activeFloorDescription}</p>
+            </div>
+            <div className="floor-availability" aria-label={`${availableTableCount} trên ${totalTableCount} bàn đang trống`}>
+              <strong>{availableTableCount}</strong>
+              <span>trống / {totalTableCount} bàn</span>
+            </div>
             <div className="floor-scroll-container">
               <FloorSelector
                 floors={floors}
@@ -425,7 +455,7 @@ const TableBooking = () => {
             </div>
           </div>
 
-          <div className="map-viewport-frame" role="region" aria-label="Bản đồ bàn" aria-busy={tablesLoading}>
+          <div className="map-viewport-frame" role="region" aria-label={`Sơ đồ bàn ${activeFloorData?.name || "nhà hàng"}`} aria-busy={tablesLoading}>
             {!canReserve ? (
               <div className="map-state-msg" role="alert"><span>Nhà hàng hiện không nhận đặt bàn.</span></div>
             ) : tablesLoading ? (
@@ -435,6 +465,11 @@ const TableBooking = () => {
               </div>
             ) : (
               <>
+                <div className="map-context-strip">
+                  <span>Chạm để chọn • kéo để di chuyển</span>
+                  <strong>{activeFloorData?.name}</strong>
+                  <small>{availableTableCount ? `${availableTableCount} bàn đang sẵn sàng` : "Chưa có bàn trống ở khu vực này"}</small>
+                </div>
                 <div className="floor-name-watermark" aria-hidden="true">{activeFloorData?.name}</div>
                 <FloorMap
                   tables={tables}
@@ -442,12 +477,14 @@ const TableBooking = () => {
                   onSelectTable={handleSelectTable}
                   layout={activeFloorData?.layout || []}
                   meta={activeFloorData?.meta || null}
+                  floorName={activeFloorData?.name}
                   theme="premium"
                 />
                 <div className="legend-pill" aria-label="Chú thích trạng thái bàn">
                   <div className="l-item"><span className="dot available" aria-hidden="true" /> Trống</div>
                   <div className="l-item"><span className="dot selected" aria-hidden="true" /> Đang chọn</div>
                   <div className="l-item"><span className="dot occupied" aria-hidden="true" /> Đã đặt</div>
+                  <div className="l-item"><span className="dot preparing" aria-hidden="true" /> Đang chuẩn bị</div>
                 </div>
               </>
             )}
@@ -457,7 +494,7 @@ const TableBooking = () => {
         <aside className="sidebar-summary-area" aria-label="Tóm tắt đặt bàn">
           <div className="summary-sticky-wrapper">
             <div className="summary-card-premium">
-              <div className="card-header"><h3>Thông tin đặt bàn</h3></div>
+              <div className="card-header"><span>Đặt chỗ của bạn</span><h3>Thông tin bàn</h3></div>
               <div className="card-body-wrapper">
                 <BookingSummary
                   selectedTable={selectedTable}
