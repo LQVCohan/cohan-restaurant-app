@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { ConfirmedOrderPrintMutation } from "./confirmedOrderPrintMutation.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -94,7 +95,13 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
         restaurantId: input.restaurantId,
         ctx,
       });
-      return mutation.confirmIncomingOrder.call(mutation, parent, args, ctx, info);
+      return ConfirmedOrderPrintMutation.confirmIncomingOrder.call(
+        mutation,
+        parent,
+        args,
+        ctx,
+        info,
+      );
     },
 
     async rejectIncomingOrder(parent, args, ctx, info) {
