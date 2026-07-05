@@ -8,8 +8,24 @@ const threads = [];
 const notifications = [];
 const users = [];
 const restaurants = [];
+const userFindFilters = [];
+const membershipIds = [];
 
 const mkId = () => new mongoose.Types.ObjectId().toString();
+
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  hasPermission: vi.fn(async (user) => user?.canHandoff === true),
+  requireAnyRestaurantPermission: vi.fn(),
+  requireRestaurantPermission: vi.fn(),
+}));
+
+vi.mock("../../src/services/notification/notificationWorkflow.service.js", () => ({
+  createNotificationOnce: vi.fn(async (payload) => {
+    const row = { _id: mkId(), ...payload };
+    notifications.push(row);
+    return row;
+  }),
+}));
 
 vi.mock("../../models/index.js", () => {
   const AiChatConversation = {
@@ -25,6 +41,9 @@ vi.mock("../../models/index.js", () => {
       return { sort: () => ({ limit: () => ({ lean: async () => rows.slice(-8) }) }) };
     },
   };
+  const BrandMembership = {
+    async distinct() { return membershipIds; },
+  };
   const ChatThread = {
     async findById(id) { return threads.find((t) => String(t._id) === String(id)) || null; },
     async create(payload) {
@@ -33,11 +52,11 @@ vi.mock("../../models/index.js", () => {
       return row;
     },
   };
-  const Notification = {
-    async insertMany(rows) { notifications.push(...rows); return rows; },
-  };
   const User = {
-    find() { return { select: () => ({ lean: async () => users }) }; },
+    find(filter) {
+      userFindFilters.push(filter);
+      return { select: () => ({ populate: () => ({ lean: async () => users }) }) };
+    },
   };
   const Restaurant = {
     findById(id) {
@@ -45,40 +64,66 @@ vi.mock("../../models/index.js", () => {
       return { select: () => ({ lean: async () => row }) };
     },
   };
-  return { AiChatConversation, AiChatMessage, ChatThread, Notification, User, Restaurant };
+  return { AiChatConversation, AiChatMessage, BrandMembership, ChatThread, User, Restaurant };
 });
 
 import { requestRestaurantChatbotHandoff } from "../../src/services/ai/restaurantChatbotHandoff.service.js";
 
 describe("restaurantChatbot handoff service", () => {
   beforeEach(() => {
-    conversations.length = 0; messages.length = 0; threads.length = 0; notifications.length = 0; users.length = 0; restaurants.length = 0;
+    conversations.length = 0;
+    messages.length = 0;
+    threads.length = 0;
+    notifications.length = 0;
+    users.length = 0;
+    restaurants.length = 0;
+    userFindFilters.length = 0;
+    membershipIds.length = 0;
     __resetAiChatbotRateLimitStoreForTests();
   });
 
-  it("guest valid handoff sets status and creates thread", async () => {
+  it("guest valid handoff notifies only eligible recipients", async () => {
     const convId = mkId();
     const restaurantId = mkId();
     const staffId = mkId();
+    const deniedStaffId = mkId();
     conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
-    restaurants.push({ _id: restaurantId, aiChatbot: { handoffEnabled: true } });
+    restaurants.push({ _id: restaurantId, aiChatbotSettings: { handoffEnabled: true } });
     messages.push({ conversationId: convId, role: "user", content: "help" });
-    users.push({ _id: staffId, userType: "STAFF" });
-    const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
+    users.push(
+      { _id: staffId, userType: "STAFF", canHandoff: true },
+      { _id: deniedStaffId, userType: "STAFF", canHandoff: false },
+    );
+
+    const out = await requestRestaurantChatbotHandoff({
+      input: { conversationId: convId, guestId: "guest_1", latestUserMessage: "Tôi cần hỗ trợ" },
+    });
+
     expect(out.ok).toBe(true);
     expect(out.handoffRequested).toBe(true);
     expect(conversations[0].status).toBe("handoff_requested");
-    expect(conversations[0].chatThreadId).toBeTruthy();
-    expect(threads.length).toBe(1);
-    expect((threads[0].participants || []).map(String)).toContain(staffId);
-    expect((threads[0].unreadBy || []).map(String)).toContain(staffId);
-    expect(threads[0].targetRole).toBe("support");
+    expect(threads).toHaveLength(1);
+    expect((threads[0].participants || []).map(String)).toEqual([staffId]);
+    expect((threads[0].unreadBy || []).map(String)).toEqual([staffId]);
+    expect(threads[0].targetRole).toBeNull();
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].toUserId).toBe(staffId);
+    expect(notifications[0].payload).toMatchObject({
+      title: "Khách hàng cần hỗ trợ",
+      actionUrl: "/staff/ai-handoff",
+      conversationId: convId,
+    });
+    expect(notifications[0].sourceType).toBe("ai_chatbot_conversation");
+    expect(String(notifications[0].sourceId)).toBe(convId);
+    expect(userFindFilters[0]).toMatchObject({ status: "active", deletedAt: null });
   });
 
   it("duplicate handoff is idempotent", async () => {
     const threadId = mkId();
     const convId = mkId();
-    conversations.push({ _id: convId, guestId: "guest_1", restaurantId: mkId(), status: "handoff_requested", chatThreadId: threadId, metadata: {} });
+    const restaurantId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "handoff_requested", chatThreadId: threadId, metadata: {} });
+    restaurants.push({ _id: restaurantId, aiChatbotSettings: { handoffEnabled: true } });
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
     expect(out.ok).toBe(true);
     expect(out.alreadyRequested).toBe(true);
@@ -93,7 +138,7 @@ describe("restaurantChatbot handoff service", () => {
     expect(out.ok).toBe(false);
   });
 
-  it("reused thread merges recipients into participants and sets unreadBy", async () => {
+  it("reused thread merges eligible recipients into participants and sets unreadBy", async () => {
     const convId = mkId();
     const restaurantId = mkId();
     const existingRecipient = mkId();
@@ -103,6 +148,7 @@ describe("restaurantChatbot handoff service", () => {
       _id: threadId,
       participants: [new mongoose.Types.ObjectId(existingRecipient)],
       unreadBy: [],
+      targetRole: "support",
       save: async function () {},
     };
     threads.push(thread);
@@ -114,30 +160,52 @@ describe("restaurantChatbot handoff service", () => {
       chatThreadId: threadId,
       metadata: null,
     });
-    restaurants.push({ _id: restaurantId, aiChatbot: { handoffEnabled: true } });
-    users.push({ _id: existingRecipient, userType: "STAFF" }, { _id: newRecipient, userType: "MANAGER" });
+    restaurants.push({ _id: restaurantId, aiChatbotSettings: { handoffEnabled: true } });
+    users.push(
+      { _id: existingRecipient, userType: "STAFF", canHandoff: true },
+      { _id: newRecipient, userType: "MANAGER", canHandoff: true },
+    );
+
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
+
     expect(out.ok).toBe(true);
     expect((thread.participants || []).map(String)).toContain(existingRecipient);
     expect((thread.participants || []).map(String)).toContain(newRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(existingRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(newRecipient);
-    expect(thread.targetRole || "support").toBe("support");
+    expect(thread.targetRole).toBeNull();
   });
 
-  it("fallback with no direct recipients sets manager role and keeps participants empty", async () => {
+  it("includes a permitted manager assigned through BrandMembership", async () => {
+    const convId = mkId();
+    const restaurantId = mkId();
+    const brandId = mkId();
+    const managerId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
+    restaurants.push({ _id: restaurantId, brandId, aiChatbotSettings: { handoffEnabled: true } });
+    membershipIds.push(managerId);
+    users.push({ _id: managerId, userType: "MANAGER", canHandoff: true });
+
+    const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
+
+    expect(out.ok).toBe(true);
+    expect((threads[0].participants || []).map(String)).toContain(managerId);
+    expect(notifications[0].payload.actionUrl).toBe("/manager#ai-handoff");
+  });
+
+  it("returns unavailable without creating an orphan thread when no eligible recipient exists", async () => {
     const convId = mkId();
     const restaurantId = mkId();
     conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
-    restaurants.push({ _id: restaurantId, aiChatbot: { handoffEnabled: true } });
-    messages.push({ conversationId: convId, role: "user", content: "need help" });
+    restaurants.push({ _id: restaurantId, aiChatbotSettings: { handoffEnabled: true } });
+    users.push({ _id: mkId(), userType: "STAFF", canHandoff: false });
 
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
-    expect(out.ok).toBe(true);
-    expect(threads).toHaveLength(1);
-    expect(threads[0].targetRole).toBe("manager");
-    expect((threads[0].participants || []).map(String)).toEqual([]);
-    expect(notifications).toHaveLength(1);
-    expect(notifications[0].toRole).toBe("manager");
+
+    expect(out.ok).toBe(false);
+    expect(out.handoffRequested).toBe(false);
+    expect(out.message).toMatch(/chưa có nhân viên được phân quyền/i);
+    expect(threads).toHaveLength(0);
+    expect(notifications).toHaveLength(0);
   });
 });

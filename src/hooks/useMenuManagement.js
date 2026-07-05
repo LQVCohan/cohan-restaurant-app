@@ -68,6 +68,7 @@ const FRAG_MENU_ITEM = gql`
     servingPortion
     servingUnit
 
+    prepStation
     printStationId
     thumbImage
     mediaAssetIds

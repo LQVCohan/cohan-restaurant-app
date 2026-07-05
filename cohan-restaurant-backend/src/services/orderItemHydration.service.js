@@ -7,6 +7,8 @@ import {
 
 export { OrderItemHydrationError };
 
+const PREP_STATIONS = new Set(["kitchen", "bar"]);
+
 const toObjectId = (value) =>
   mongoose.isValidObjectId(String(value || ""))
     ? new mongoose.Types.ObjectId(String(value))
@@ -19,7 +21,7 @@ const invalidItems = (message) => {
   throw new OrderItemHydrationError(message, "INVALID_ITEMS");
 };
 
-async function assertMenuItemsAvailable({ restaurantId, items, session }) {
+async function loadAvailableMenuItems({ restaurantId, items, session }) {
   const rid = toObjectId(restaurantId);
   if (!rid) invalidItems("Invalid restaurantId");
 
@@ -36,7 +38,7 @@ async function assertMenuItemsAvailable({ restaurantId, items, session }) {
   const query = MenuItem.find({
     restaurantId: rid,
     _id: { $in: ids },
-  }).select("_id name status");
+  }).select("_id name status prepStation");
   const docs = await (session ? query.session(session) : query).lean();
 
   if ((docs || []).length !== ids.length) {
@@ -50,6 +52,26 @@ async function assertMenuItemsAvailable({ restaurantId, items, session }) {
     invalidItems(
       `Menu item is not available: ${unavailable.name || unavailable._id}`,
     );
+  }
+
+  const missingStation = (docs || []).find(
+    (item) => !PREP_STATIONS.has(String(item.prepStation || "").toLowerCase()),
+  );
+  if (missingStation) {
+    invalidItems(
+      `Menu item preparation station is not configured: ${missingStation.name || missingStation._id}`,
+    );
+  }
+
+  return new Map((docs || []).map((item) => [String(item._id), item]));
+}
+
+function applyPrepStationSnapshots(hydratedItems, menuItemById) {
+  for (const item of hydratedItems || []) {
+    const menuItemId = resolveMenuItemId(item);
+    const menuItem = menuItemById.get(String(menuItemId || ""));
+    if (!menuItem) invalidItems("Unable to resolve menu item preparation station");
+    item.prepStation = String(menuItem.prepStation).toLowerCase();
   }
 }
 
@@ -89,7 +111,11 @@ export async function hydrateCheckoutOrderItems({
     invalidItems("No checkout items to hydrate");
   }
 
-  await assertMenuItemsAvailable({ restaurantId, items, session });
+  const menuItemById = await loadAvailableMenuItems({
+    restaurantId,
+    items,
+    session,
+  });
 
   const hydratedItems = await hydrateCoreCheckoutOrderItems({
     restaurantId,
@@ -97,6 +123,7 @@ export async function hydrateCheckoutOrderItems({
     session,
   });
 
+  applyPrepStationSnapshots(hydratedItems, menuItemById);
   assertTrustedHydrationResult(items, hydratedItems);
   return hydratedItems;
 }

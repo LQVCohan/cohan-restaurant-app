@@ -17,8 +17,14 @@ import { withOrderConflictHardening } from "./orderConflictHardening.js";
 import { withCheckoutIdempotency } from "./checkoutIdempotency.js";
 import publicTableSessionQuery from "./publicTableSessionQuery.js";
 
+// The guarded station-aware resolver owns confirmIncomingOrder. Keep the legacy
+// implementation out of every intermediate wrapper so it cannot be exported or
+// called accidentally from resolver composition.
+const BaseOrderMutation = { ...OrderMutation };
+delete BaseOrderMutation.confirmIncomingOrder;
+
 const PaymentGuardedOrderMutation = {
-  ...OrderMutation,
+  ...BaseOrderMutation,
   ...CustomerTrackingPaymentMutation,
 };
 const LifecycleOrderMutation = withTablePaymentRequestLifecycle(PaymentGuardedOrderMutation);

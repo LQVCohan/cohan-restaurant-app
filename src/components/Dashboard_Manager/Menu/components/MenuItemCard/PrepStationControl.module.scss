@@ -1,0 +1,51 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.select {
+  min-width: 116px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 30px 7px 10px;
+}
+
+.select:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.select:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.error {
+  grid-column: 1 / -1;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}

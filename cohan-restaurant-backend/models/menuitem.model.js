@@ -97,6 +97,12 @@ const menuItemSchema = BaseSchemaModel({
   servingPortion: { type: Number, default: 1 },
   servingUnit: { type: String, default: "người" },
 
+  prepStation: {
+    type: String,
+    enum: ["kitchen", "bar"],
+    required: true,
+    default: "kitchen",
+  },
   printStationId: { type: mongoose.Schema.Types.ObjectId, ref: "PrintStation" },
 
   thumbImage: { type: String, trim: true },

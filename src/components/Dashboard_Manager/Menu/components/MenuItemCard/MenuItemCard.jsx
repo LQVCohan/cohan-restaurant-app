@@ -17,6 +17,7 @@ import { LOCAL_IMAGE_VARIANTS } from "../../../../../utils/localImageStore";
 import { getMenuItemAvailability } from "../../../../../utils/menuItemAvailability";
 import LocalImageView from "../../../../common/LocalImageView";
 import AuditLogModal from "../AuditLogModal/AuditLogModal";
+import PrepStationControl from "./PrepStationControl";
 import "./MenuItemCard.scss";
 
 const STATUS_OPTIONS = [
@@ -274,6 +275,8 @@ const MenuItemCard = ({
               </span>
             </div>
           </div>
+
+          <PrepStationControl item={item} canUpdate={canUpdateItem} />
 
           {forYouMetadata?.status &&
             (forYouMetadata.status === "missing" && canUpdateItem ? (

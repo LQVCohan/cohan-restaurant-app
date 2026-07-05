@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { ConfirmedOrderPrintMutation } from "./confirmedOrderPrintMutation.js";
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -88,13 +89,16 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
     },
 
     async confirmIncomingOrder(parent, args, ctx, info) {
-      const input = args?.input || {};
-      await loadScopedOrder({
-        orderId: input.id,
-        restaurantId: input.restaurantId,
+      // The station-aware resolver loads the order and enforces ORDER_UPDATE
+      // against the persisted restaurant, so a guard-level lookup would duplicate
+      // both the database read and the permission check.
+      return ConfirmedOrderPrintMutation.confirmIncomingOrder.call(
+        mutation,
+        parent,
+        args,
         ctx,
-      });
-      return mutation.confirmIncomingOrder.call(mutation, parent, args, ctx, info);
+        info,
+      );
     },
 
     async rejectIncomingOrder(parent, args, ctx, info) {
