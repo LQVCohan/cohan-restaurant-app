@@ -8,8 +8,18 @@ import {
   User,
 } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { PERMISSIONS } from "../../../src/constants/permissions.js";
+import {
+  hasAnyPermission,
+  hasPermission,
+} from "../../../src/services/auth/authorization.service.js";
 import { emitAiChatbotStaffReplyIfLinked } from "../../../src/services/ai/restaurantChatbotRealtime.service.js";
 import { setNotificationSocketServer } from "../../../src/services/notification/notificationWorkflow.service.js";
+
+const HANDOFF_VIEW_PERMISSIONS = [
+  PERMISSIONS.AI_CHATBOT_HANDOFF,
+  PERMISSIONS.AI_CHATBOT_MODERATE,
+];
 
 const toId = (id) => {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -18,6 +28,10 @@ const toId = (id) => {
 
 const roleSlug = (user) =>
   String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase();
+
+const isAiHandoffThread = (thread) =>
+  String(thread?.subject || "").trim().toLowerCase().startsWith("ai handoff") ||
+  String(thread?.messages?.[0]?.content || "").includes("[AI HANDOFF]");
 
 const bindNotificationSocket = (ctx) => {
   if (ctx?.io) setNotificationSocketServer(ctx.io);
@@ -29,7 +43,6 @@ const ensureAuth = (ctx) => {
     throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHORIZED" } });
   }
 };
-
 
 async function activeManagerIdsForRestaurant(restaurantId) {
   if (!restaurantId) return [];
@@ -52,9 +65,23 @@ const getUserRestaurantIds = (user) => {
   return [...new Set(ids.map((id) => String(id || "")).filter(Boolean))];
 };
 
-const canAccessThread = (thread, user) => {
+const canAccessThread = async (thread, user, ctx, restaurantScopeChecked = false) => {
   const uid = String(user?.id || "");
   if (!uid || !thread) return false;
+
+  if (isAiHandoffThread(thread)) {
+    if (!(await hasAnyPermission(user, HANDOFF_VIEW_PERMISSIONS))) return false;
+    if (!thread.restaurantId) return false;
+    if (restaurantScopeChecked) return true;
+
+    try {
+      await requireRestaurantAccess(ctx, thread.restaurantId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   if (["admin"].includes(roleSlug(user))) return true;
   if ((thread.participants || []).some((p) => String(p) === uid)) return true;
 
@@ -179,14 +206,19 @@ const Query = {
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .limit(Math.min(Number(limit || 30), 100))
       .lean();
+    const access = await Promise.all(
+      rows.map((thread) => canAccessThread(thread, user, ctx, Boolean(rid))),
+    );
 
-    return rows.filter((t) => canAccessThread(t, user)).map((t) => toThreadOutput(t, user.id));
+    return rows
+      .filter((_, index) => access[index])
+      .map((thread) => toThreadOutput(thread, user.id));
   },
 
   chatThread: async (_, { id }, ctx) => {
     ensureAuth(ctx);
     const doc = await ChatThread.findById(id).lean();
-    if (!doc || !canAccessThread(doc, ctx.user)) return null;
+    if (!doc || !(await canAccessThread(doc, ctx.user, ctx))) return null;
     return toThreadOutput(doc, ctx.user.id);
   },
 
@@ -281,7 +313,16 @@ const Mutation = {
     }
 
     const thread = await ChatThread.findById(input.threadId);
-    if (!thread || !canAccessThread(thread.toObject(), user)) {
+    const threadData = thread?.toObject();
+    if (!thread || !(await canAccessThread(threadData, user, ctx))) {
+      throw new GraphQLError("Thread not found or forbidden", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+    if (
+      isAiHandoffThread(threadData) &&
+      !(await hasPermission(user, PERMISSIONS.AI_CHATBOT_HANDOFF))
+    ) {
       throw new GraphQLError("Thread not found or forbidden", {
         extensions: { code: "FORBIDDEN" },
       });
@@ -368,7 +409,7 @@ const Mutation = {
     ensureAuth(ctx);
     const uid = toId(ctx.user.id);
     const thread = await ChatThread.findById(threadId);
-    if (!thread || !canAccessThread(thread.toObject(), ctx.user)) return false;
+    if (!thread || !(await canAccessThread(thread.toObject(), ctx.user, ctx))) return false;
     thread.unreadBy = (thread.unreadBy || []).filter((x) => String(x) !== String(uid));
     await thread.save();
 
