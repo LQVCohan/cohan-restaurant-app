@@ -9,6 +9,7 @@ const notifications = [];
 const users = [];
 const restaurants = [];
 const userFindFilters = [];
+const membershipIds = [];
 
 const mkId = () => new mongoose.Types.ObjectId().toString();
 
@@ -38,6 +39,9 @@ vi.mock("../../models/index.js", () => {
       return { sort: () => ({ limit: () => ({ lean: async () => rows.slice(-8) }) }) };
     },
   };
+  const BrandMembership = {
+    async distinct() { return membershipIds; },
+  };
   const ChatThread = {
     async findById(id) { return threads.find((t) => String(t._id) === String(id)) || null; },
     async create(payload) {
@@ -58,7 +62,7 @@ vi.mock("../../models/index.js", () => {
       return { select: () => ({ lean: async () => row }) };
     },
   };
-  return { AiChatConversation, AiChatMessage, ChatThread, User, Restaurant };
+  return { AiChatConversation, AiChatMessage, BrandMembership, ChatThread, User, Restaurant };
 });
 
 import { requestRestaurantChatbotHandoff } from "../../src/services/ai/restaurantChatbotHandoff.service.js";
@@ -72,6 +76,7 @@ describe("restaurantChatbot handoff service", () => {
     users.length = 0;
     restaurants.length = 0;
     userFindFilters.length = 0;
+    membershipIds.length = 0;
     __resetAiChatbotRateLimitStoreForTests();
   });
 
@@ -164,6 +169,23 @@ describe("restaurantChatbot handoff service", () => {
     expect((thread.participants || []).map(String)).toContain(newRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(existingRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(newRecipient);
+  });
+
+  it("includes a permitted manager assigned through BrandMembership", async () => {
+    const convId = mkId();
+    const restaurantId = mkId();
+    const brandId = mkId();
+    const managerId = mkId();
+    conversations.push({ _id: convId, guestId: "guest_1", restaurantId, status: "open", metadata: null });
+    restaurants.push({ _id: restaurantId, brandId, aiChatbotSettings: { handoffEnabled: true } });
+    membershipIds.push(managerId);
+    users.push({ _id: managerId, userType: "MANAGER", canHandoff: true });
+
+    const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
+
+    expect(out.ok).toBe(true);
+    expect((threads[0].participants || []).map(String)).toContain(managerId);
+    expect(notifications[0].payload.actionUrl).toBe("/manager#ai-handoff");
   });
 
   it("returns unavailable without creating an orphan thread when no eligible recipient exists", async () => {
