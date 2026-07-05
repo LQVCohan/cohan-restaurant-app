@@ -1,9 +1,17 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import StaffLayout from "./StaffLayout";
+
+const { useCommunicationMock } = vi.hoisted(() => ({
+  useCommunicationMock: vi.fn(),
+}));
+
+vi.mock("@/hooks/useCommunication", () => ({
+  default: (...args) => useCommunicationMock(...args),
+}));
 
 const baseUser = {
   id: "staff-1",
@@ -23,6 +31,11 @@ const renderStaffLayout = ({ user = baseUser, route = "/staff/dashboard" } = {})
   );
 
 describe("StaffLayout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCommunicationMock.mockReturnValue({ notifications: [] });
+  });
+
   it("renders the shell header, shared navigation, and active route", () => {
     renderStaffLayout({ route: "/staff/schedule" });
 
@@ -37,14 +50,42 @@ describe("StaffLayout", () => {
     renderStaffLayout({ user: { ...baseUser, roleSlug: "cashier" } });
 
     expect(screen.getByRole("link", { name: "Order nội bộ" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Khu vực bếp" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Bếp / Quầy bar" })).not.toBeInTheDocument();
   });
 
   it("shows kitchen navigation only for kitchen-capable roles", () => {
     renderStaffLayout({ user: { ...baseUser, roleSlug: "chef" }, route: "/staff/kitchen" });
 
-    expect(screen.getByRole("link", { name: "Khu vực bếp" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Bếp / Quầy bar" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("link", { name: "Order nội bộ" })).not.toBeInTheDocument();
+  });
+
+  it("hides AI handoff navigation without handoff permissions", () => {
+    renderStaffLayout();
+
+    expect(screen.queryByRole("link", { name: /Bàn giao hỗ trợ/i })).not.toBeInTheDocument();
+    expect(useCommunicationMock).not.toHaveBeenCalled();
+  });
+
+  it("shows realtime unread AI handoff count for permitted staff", () => {
+    useCommunicationMock.mockReturnValue({
+      notifications: [
+        { id: "n1", type: "ai_chatbot_handoff", readAt: null },
+        { id: "n2", type: "ai_chatbot_handoff", readAt: null },
+        { id: "n3", type: "ai_chatbot_handoff", readAt: "2026-07-05T00:00:00.000Z" },
+      ],
+    });
+
+    renderStaffLayout({
+      user: {
+        ...baseUser,
+        restaurantForStaff: "r1",
+        permissions: ["ai.chatbot.handoff"],
+      },
+    });
+
+    expect(screen.getByRole("link", { name: /Bàn giao hỗ trợ/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("2 yêu cầu hỗ trợ chưa đọc")).toHaveTextContent("2");
   });
 
   it("creates one staff main landmark", () => {
