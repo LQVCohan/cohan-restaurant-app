@@ -19,6 +19,7 @@ import {
   buildFoodDetailState,
 } from "@/utils/customerFoodNavigation";
 import "./AiChatbotWidget.scss";
+import AiChatbotFeedbackControls from "./AiChatbotFeedbackControls";
 
 const ASK_AI_CHATBOT = gql`
   mutation AskAiChatbot($input: AskAiChatbotInput!) {
@@ -434,7 +435,6 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
   const [handoffClosed, setHandoffClosed] = useState(false);
   const [latestStaffReplyAt, setLatestStaffReplyAt] = useState("");
   const [isSendInFlight, setIsSendInFlight] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState({});
   const sendInFlightRef = useRef(false);
   const pollInFlightRef = useRef(false);
   const hasJoinedSocketRef = useRef(false);
@@ -1186,75 +1186,14 @@ function AiChatbotWidget({ testOverrides = {} } = {}) {
                     </span>
                   ) : null}
                   {item.role === "assistant" && item.meta?.conversationId ? (
-                    <div
-                      className="ai-chatbot-actions"
-                      style={{ marginTop: 6 }}
-                    >
-                      {feedbackSent[item.meta?.answerMessageId || index] ? (
-                        <small>Cảm ơn bạn đã phản hồi!</small>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const key = item.meta?.answerMessageId || index;
-                              if (feedbackSent[key]) return;
-                              await submitFeedback({
-                                variables: {
-                                  input: {
-                                    restaurantId: item.meta?.resolvedRestaurantId || restaurantId,
-                                    conversationId: item.meta?.conversationId,
-                                    messageId: item.meta?.answerMessageId,
-                                    guestId: guestId || undefined,
-                                    question:
-                                      messages[index - 1]?.role === "user"
-                                        ? messages[index - 1]?.content
-                                        : "",
-                                    answer: item.content,
-                                    rating: "helpful",
-                                  },
-                                },
-                              });
-                              setFeedbackSent((x) => ({ ...x, [key]: true }));
-                            }}
-                          >
-                            Hữu ích
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const key = item.meta?.answerMessageId || index;
-                              if (feedbackSent[key]) return;
-                              const reason =
-                                window.prompt(
-                                  "Lý do không hữu ích (không bắt buộc):",
-                                  "",
-                                ) || "";
-                              await submitFeedback({
-                                variables: {
-                                  input: {
-                                    restaurantId: item.meta?.resolvedRestaurantId || restaurantId,
-                                    conversationId: item.meta?.conversationId,
-                                    messageId: item.meta?.answerMessageId,
-                                    guestId: guestId || undefined,
-                                    question:
-                                      messages[index - 1]?.role === "user"
-                                        ? messages[index - 1]?.content
-                                        : "",
-                                    answer: item.content,
-                                    rating: "not_helpful",
-                                    reason,
-                                  },
-                                },
-                              });
-                              setFeedbackSent((x) => ({ ...x, [key]: true }));
-                            }}
-                          >
-                            Không hữu ích
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <AiChatbotFeedbackControls
+                      item={item}
+                      index={index}
+                      messages={messages}
+                      restaurantId={item.meta?.resolvedRestaurantId || restaurantId}
+                      guestId={guestId}
+                      submitFeedback={submitFeedback}
+                    />
                   ) : null}
                 </div>
               ))}

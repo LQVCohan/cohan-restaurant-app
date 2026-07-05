@@ -122,4 +122,20 @@ describe("AiChatbotFeedbackControls", () => {
       screen.getByRole("button", { name: "Gửi phản hồi" }),
     ).toBeEnabled();
   });
+  it("omits restaurantId for verified global feedback", async () => {
+    const submitFeedback = vi.fn().mockResolvedValue({ data: {} });
+    renderControls(submitFeedback, "");
+
+    fireEvent.click(screen.getByRole("button", { name: "Hữu ích" }));
+
+    await waitFor(() => expect(submitFeedback).toHaveBeenCalledTimes(1));
+    const input = submitFeedback.mock.calls[0][0].variables.input;
+    expect(input).not.toHaveProperty("restaurantId");
+    expect(input).toMatchObject({
+      conversationId: "conversation-1",
+      messageId: "message-1",
+      rating: "helpful",
+    });
+  });
+
 });
