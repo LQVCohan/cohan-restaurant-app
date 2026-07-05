@@ -133,6 +133,25 @@ const MENU_ITEM_STATUS_SET = new Set(
   MENU_ITEM_STATUS_OPTIONS.map(({ value }) => value),
 );
 
+const PREP_STATION_OPTIONS = [
+  {
+    value: "kitchen",
+    label: "Bếp chính",
+    helper: "Món sẽ xuất hiện trong hàng chờ của bếp chính.",
+  },
+  {
+    value: "bar",
+    label: "Quầy bar",
+    helper: "Đồ uống hoặc món sẽ xuất hiện trong hàng chờ của quầy bar.",
+  },
+];
+const PREP_STATION_SET = new Set(
+  PREP_STATION_OPTIONS.map(({ value }) => value),
+);
+const normalizePrepStation = (value) =>
+  PREP_STATION_SET.has(value) ? value : "kitchen";
+
+
 const FOR_YOU_DEFAULTS = {
   foodType: "UNKNOWN",
   meatTypes: [],
@@ -300,6 +319,7 @@ const MenuItemModal = ({
     name: "",
     categoryId: "",
     status: normalizeMenuItemStatus(),
+    prepStation: "kitchen",
     thumbImage: "",
     description: "",
     preparationMethods: [],
@@ -436,6 +456,7 @@ const MenuItemModal = ({
     const hasValues =
       (formData.name || "").trim() ||
       formData.categoryId ||
+      normalizePrepStation(formData.prepStation) !== "kitchen" ||
       (formData.description || "").trim() ||
       (formData.thumbImage || "").trim() ||
       formData.foodType !== FOR_YOU_DEFAULTS.foodType ||
@@ -469,6 +490,7 @@ const MenuItemModal = ({
       name: value?.name || "",
       categoryId: value?.categoryId || "",
       status: normalizeMenuItemStatus(value?.status),
+      prepStation: normalizePrepStation(value?.prepStation),
       thumbImage: value?.thumbImage || "",
       description: value?.description || "",
       foodType: value?.foodType || FOR_YOU_DEFAULTS.foodType,
@@ -560,6 +582,7 @@ const MenuItemModal = ({
             currentItem.category ||
             "",
           status: normalizeMenuItemStatus(currentItem.status),
+          prepStation: normalizePrepStation(currentItem.prepStation),
           thumbImage: currentItem.thumbImage || "",
           description: currentItem.description || "",
           preparationMethods: methods,
@@ -583,6 +606,7 @@ const MenuItemModal = ({
           name: "",
           categoryId: "",
           status: normalizeMenuItemStatus(),
+          prepStation: "kitchen",
           thumbImage: "",
           description: "",
           preparationMethods: [{ ...defaultMethod }],
@@ -745,6 +769,7 @@ const MenuItemModal = ({
         name: itemName,
         categoryId,
         status: normalizeMenuItemStatus(formData.status),
+        prepStation: normalizePrepStation(formData.prepStation),
         description: formData.description,
         ...(Number.isFinite(avgPrepTimeMin) ? { avgPrepTimeMin } : {}),
         ...(formData.thumbImage?.trim()
@@ -1005,6 +1030,38 @@ const MenuItemModal = ({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="menu-item-prep-station">
+                Khu chế biến <span className="req">*</span>
+              </label>
+              <select
+                id="menu-item-prep-station"
+                className="modern-select"
+                value={normalizePrepStation(formData.prepStation)}
+                onChange={(event) =>
+                  handleInputChange("prepStation", event.target.value)
+                }
+                aria-describedby="menu-item-prep-station-hint"
+                required
+                disabled={isSaving}
+              >
+                {PREP_STATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p
+                id="menu-item-prep-station-hint"
+                className="for-you-option-group__hint"
+              >
+                {PREP_STATION_OPTIONS.find(
+                  (option) =>
+                    option.value === normalizePrepStation(formData.prepStation),
+                )?.helper}
+              </p>
             </div>
 
             <div className="form-group">
