@@ -1,4 +1,5 @@
 import React from "react";
+import { MockedProvider } from "@apollo/client/testing";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AuthContext } from "../../../../../context/AuthContext";
@@ -25,15 +26,18 @@ const renderCard = (props = {}) => {
     categoryName: "Món nước",
     status: "available",
     inventoryStatus: "IN_STOCK",
+    prepStation: "kitchen",
     basePrice: 65000,
     servingVariants: [{ key: "regular", name: "Tô thường", price: 65000 }],
     ...props.item,
   };
 
   return render(
-    <AuthContext.Provider value={{ user: managerUser }}>
-      <MenuItemCard item={item} canUpdateItem {...props} />
-    </AuthContext.Provider>,
+    <MockedProvider>
+      <AuthContext.Provider value={{ user: managerUser }}>
+        <MenuItemCard item={item} canUpdateItem {...props} />
+      </AuthContext.Provider>
+    </MockedProvider>,
   );
 };
 

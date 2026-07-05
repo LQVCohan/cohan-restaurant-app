@@ -4,7 +4,7 @@ const { Schema, model } = mongoose;
 
 const schema = new Schema(
   {
-    restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant", required: true },
+    restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant", default: null },
     conversationId: { type: Schema.Types.ObjectId, ref: "AiChatConversation", default: null },
     messageId: { type: Schema.Types.ObjectId, ref: "AiChatMessage", default: null },
     guestId: { type: String, trim: true, maxlength: 128, default: "" },

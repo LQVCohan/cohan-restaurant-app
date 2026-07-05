@@ -174,6 +174,8 @@ describe("restaurantChatbotSettings permission + validation", () => {
 
   it("public settings works without auth and excludes internal fields", async () => {
     mockLeanRestaurantFindById({
+      businessStatus: "active",
+      publicationStatus: "published",
       aiChatbotSettings: {
         enabled: true,
         fallbackMessage: "internal",
@@ -188,4 +190,27 @@ describe("restaurantChatbotSettings permission + validation", () => {
     expect(out).not.toHaveProperty("fallbackMessage");
     expect(out).not.toHaveProperty("updatedBy");
   });
+
+  it("public settings returns global defaults for null restaurant", async () => {
+    const out = await getPublicAiChatbotSettings({ restaurantId: null });
+    expect(out.enabled).toBe(true);
+    expect(out.handoffEnabled).toBe(true);
+    expect(out.starterQuickReplies.length).toBeGreaterThan(0);
+  });
+
+  it("public settings disables unavailable direct restaurants", async () => {
+    const invalid = await getPublicAiChatbotSettings({ restaurantId: "not-an-id" });
+    expect(invalid).toMatchObject({ enabled: false, handoffEnabled: false, starterQuickReplies: [] });
+
+    mockLeanRestaurantFindById({ businessStatus: "inactive", publicationStatus: "published", aiChatbotSettings: { enabled: true } });
+    const inactive = await getPublicAiChatbotSettings({ restaurantId: rid });
+    expect(inactive).toMatchObject({ enabled: false, handoffEnabled: false, starterQuickReplies: [] });
+
+    clearAiChatbotCache();
+    vi.restoreAllMocks();
+    mockLeanRestaurantFindById({ businessStatus: "active", publicationStatus: "published", aiChatbotSettings: { enabled: false } });
+    const disabled = await getPublicAiChatbotSettings({ restaurantId: rid });
+    expect(disabled).toMatchObject({ enabled: false, handoffEnabled: false, starterQuickReplies: [] });
+  });
+
 });

@@ -35,7 +35,7 @@ describe("Manager Sidebar", () => {
     renderSidebar();
 
     expect(screen.getByRole("navigation", { name: "Điều hướng quản lý nhà hàng" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Tổng quan" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: "Đơn hàng" })).toBeInTheDocument();
     expect(screen.getByText("Quản lý ca")).toBeInTheDocument();
   });

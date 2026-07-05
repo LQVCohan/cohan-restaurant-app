@@ -100,7 +100,11 @@ export default defineConfig(({ mode }) => {
     .filter(Boolean);
 
   return {
-    plugins: [aiKnowledgeNoticeMessageGuardPlugin(), staffPerformanceMonthRangeGuardPlugin(), react()],
+    plugins: [
+      aiKnowledgeNoticeMessageGuardPlugin(),
+      staffPerformanceMonthRangeGuardPlugin(),
+      react(),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

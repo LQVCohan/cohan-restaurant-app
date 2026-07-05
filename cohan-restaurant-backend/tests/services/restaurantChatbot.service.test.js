@@ -130,11 +130,67 @@ describe("restaurantChatbot Phase 25 real-user scenario QA", () => {
 describe("restaurantChatbot menu assistant", () => {
   it("AiChatbotSource schema supports metadata fields", () => {
     const schema = readFileSync(new URL("../../graphql/schema/aiChatbot.graphql", import.meta.url), "utf8");
+    expect(schema).toMatch(/type AiChatbotSource[\s\S]*restaurantName: String/);
+    expect(schema).toMatch(/type AiChatbotSource[\s\S]*currency: String/);
+    expect(schema).toMatch(/type AiChatbotResponse[\s\S]*scopeMode: String!/);
+    expect(schema).toMatch(/type AiChatbotResponse[\s\S]*resolvedRestaurantId: ID/);
+    expect(schema).toMatch(/type AiChatbotResponse[\s\S]*scopeCandidates: \[AiChatbotScopeCandidate!\]!/);
     expect(schema).toMatch(/type AiChatbotSource[\s\S]*formattedPrice: String/);
     expect(schema).toMatch(/basePrice: Float/);
     expect(schema).toMatch(/currentPrice: Float/);
     expect(schema).toMatch(/price: Float/);
     expect(schema).toMatch(/servingVariants: \[JSON!\]/);
+  });
+
+
+  it("global support does not return handoff action before restaurant scope is resolved", () => {
+    const actions = buildDeterministicActions({
+      intent: "support",
+      scopeMode: "global",
+      resolvedRestaurantId: null,
+      restaurants: [{ id: "r1", name: "R1" }],
+      menuItems: [],
+      recommendedMenuItems: [],
+      userSafeProfile: buildUserSafeProfile(null),
+    });
+    expect(actions.some((action) => action.type === "handoff")).toBe(false);
+    expect(actions).toEqual(expect.arrayContaining([expect.objectContaining({ label: "Chọn nhà hàng", href: "/restaurants" })]));
+  });
+
+  it("restaurant support can return handoff action after scope resolves", () => {
+    const actions = buildDeterministicActions({
+      intent: "support",
+      scopeMode: "restaurant",
+      resolvedRestaurantId: "r1",
+      restaurants: [{ id: "r1", name: "R1" }],
+      menuItems: [],
+      recommendedMenuItems: [],
+      userSafeProfile: buildUserSafeProfile(null),
+    });
+    expect(actions).toEqual(expect.arrayContaining([expect.objectContaining({ type: "handoff" })]));
+  });
+
+  it("menu source serialization keeps owner restaurant name and currency", () => {
+    const source = fallbackSources({
+      intent: "menu",
+      scopeMode: "global",
+      restaurants: [],
+      recommendedMenuItems: [{
+        id: "food-1",
+        name: "Bún bò",
+        restaurantId: "resto-hue",
+        restaurantName: "Huế Kitchen",
+        currency: "VND",
+        formattedPrice: "80.000đ",
+        status: "available",
+        isAvailable: true,
+      }],
+      menuItems: [],
+      coupons: [],
+      orders: [],
+      reservations: [],
+    }).find((item) => item.type === "menuItem");
+    expect(source).toMatchObject({ restaurantId: "resto-hue", restaurantName: "Huế Kitchen", currency: "VND" });
   });
 
   it("isMenuAssistantRequest false for reservation/order", () => {
@@ -195,8 +251,11 @@ describe("restaurantChatbot menu assistant", () => {
     const context = {
       intent: "menu",
       restaurants: [{ id: "r1", name: "R1" }],
-      recommendedMenuItems: [{ id: "f1", name: "Phở bò", formattedPrice: "90.000đ", recommendationReason: "Phù hợp ngân sách của bạn" }],
-      menuItems: [{ id: "f2", name: "Bún", formattedPrice: "80.000đ" }],
+      scopeMode: "restaurant",
+      resolvedRestaurantId: "r1",
+      scopeCandidates: [{ restaurantId: "r1", restaurantName: "R1", reason: "test" }],
+      recommendedMenuItems: [{ id: "f1", name: "Phở bò", formattedPrice: "90.000đ", restaurantId: "r1", recommendationReason: "Phù hợp ngân sách của bạn" }],
+      menuItems: [{ id: "f2", name: "Bún", formattedPrice: "80.000đ", restaurantId: "r1" }],
       coupons: [],
       orders: [],
       reservations: [],
@@ -213,7 +272,9 @@ describe("restaurantChatbot menu assistant", () => {
     const context = {
       intent: "menu",
       restaurants: [{ id: "r1" }],
-      recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ", status: "available", isAvailable: true, options: [], variants: [], basePrice: 80000, currentPrice: 90000 }],
+      scopeMode: "restaurant",
+      resolvedRestaurantId: "r1",
+      recommendedMenuItems: [{ id: "f1", name: "Phở", formattedPrice: "90.000đ", status: "available", isAvailable: true, options: [], variants: [], restaurantId: "r1", basePrice: 80000, currentPrice: 90000 }],
       menuItems: [],
       coupons: [],
       orders: [],
@@ -418,7 +479,7 @@ describe("restaurantChatbot universal assistant safety", () => {
     const checkoutGuest = buildDeterministicActions({ intent: "checkout", userSafeProfile: buildUserSafeProfile(null), cartSummary: { totalQuantity: 2 }, restaurants: [], menuItems: [], recommendedMenuItems: [], coupons: [], orders: [], reservations: [] });
     expect(checkoutGuest.some((action) => action.href === "/checkout")).toBe(false);
 
-    expect(buildDeterministicActions({ intent: "reservationHelp", restaurants: [{ id: "r1" }], menuItems: [], recommendedMenuItems: [] }))
+    expect(buildDeterministicActions({ intent: "reservationHelp", scopeMode: "restaurant", resolvedRestaurantId: "r1", restaurants: [{ id: "r1" }], menuItems: [], recommendedMenuItems: [] }))
       .toEqual(expect.arrayContaining([expect.objectContaining({ label: "Mở trang đặt bàn", href: "/restaurant/r1/layout" })]));
     const noRestaurant = buildDeterministicActions({ intent: "reservationHelp", restaurants: [], menuItems: [], recommendedMenuItems: [] });
     expect(noRestaurant.some((action) => /undefined|null|fake/i.test(action.href || ""))).toBe(false);

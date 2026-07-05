@@ -23,6 +23,7 @@ import "./styles/Table3DMainModalRepair.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 import "./components/Customer/Combos/CombosModalViewportFix.scss";
 import "./styles/AiChatbotKnowledgeCompactList.scss";
+import "./styles/AiChatbotFeedbackControls.css";
 import "./utils/staffPerformanceGlobalFormat.js";
 
 import App from "./App.jsx";
@@ -48,10 +49,8 @@ import "./styles/AttendanceManagerVisualFix.css";
 import "./components/Dashboard_Manager/Account/ManagerAccountCenterPolish.scss";
 import "./styles/ManagerDarkModeFinal.scss";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
-import { installAiChatbotStreamFetchPatch } from "./utils/aiChatbotStreamFetchPatch";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 
-installAiChatbotStreamFetchPatch();
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 

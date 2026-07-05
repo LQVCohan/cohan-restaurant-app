@@ -11,6 +11,8 @@ type AiChatbotSource {
   type: String
   id: ID
   label: String
+  restaurantName: String
+  currency: String
   formattedPrice: String
   status: String
   isAvailable: Boolean
@@ -23,6 +25,12 @@ type AiChatbotSource {
   servingVariants: [JSON!]
 }
 
+type AiChatbotScopeCandidate {
+  restaurantId: ID!
+  restaurantName: String!
+  reason: String
+}
+
 type AiChatbotContextSummary {
   restaurantCount: Int
   menuItemCount: Int
@@ -30,7 +38,6 @@ type AiChatbotContextSummary {
   orderCount: Int
   reservationCount: Int
 }
-
 
 
 type AiChatbotKnowledgeSuggestion {
@@ -133,7 +140,7 @@ input UpdateAiChatbotKnowledgeItemInput {
 
 type AiChatbotAnswerFeedback {
   id: ID!
-  restaurantId: ID!
+  restaurantId: ID
   conversationId: ID
   messageId: ID
   guestId: String
@@ -153,7 +160,7 @@ type AiChatbotAnswerFeedback {
 }
 
 input SubmitAiChatbotAnswerFeedbackInput {
-  restaurantId: ID!
+  restaurantId: ID
   conversationId: ID
   messageId: ID
   guestId: String
@@ -214,6 +221,9 @@ type AiChatbotResponse {
   answer: String!
   intent: String
   confidence: Float
+  scopeMode: String!
+  resolvedRestaurantId: ID
+  scopeCandidates: [AiChatbotScopeCandidate!]!
   quickReplies: [String!]!
   actions: [AiChatbotAction!]!
   sources: [AiChatbotSource!]!
@@ -369,7 +379,6 @@ type ResolveAiChatbotHandoffResponse {
   alreadyClosed: Boolean!
   message: String!
 }
-
 
 
 type AiChatbotSettings {

@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
 import { AI_CHATBOT_RATE_LIMIT_CODE } from "../../../src/services/ai/restaurantChatbotRateLimit.service.js";
-import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbot.service.js";
+import { handleRestaurantChatbotMessage } from "../../../src/services/ai/restaurantChatbotReviewed.service.js";
 import { requestRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotHandoff.service.js";
 import { getRestaurantChatbotGuestReplies, sendRestaurantChatbotGuestMessage } from "../../../src/services/ai/restaurantChatbotGuestReplies.service.js";
 import { resolveRestaurantChatbotHandoff } from "../../../src/services/ai/restaurantChatbotResolveHandoff.service.js";
