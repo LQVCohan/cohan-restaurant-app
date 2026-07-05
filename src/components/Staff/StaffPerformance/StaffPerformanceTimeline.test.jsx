@@ -4,7 +4,7 @@ import StaffPerformanceTimeline from "./StaffPerformanceTimeline";
 
 describe("StaffPerformanceTimeline", () => {
   it("uses the API at field for the event time", () => {
-    render(
+    const { container } = render(
       <StaffPerformanceTimeline
         timeline={[{
           at: "2026-04-11T10:30:00.000Z",
@@ -17,14 +17,14 @@ describe("StaffPerformanceTimeline", () => {
       />,
     );
 
-    const time = screen.getByRole("time");
+    const time = container.querySelector("time");
     expect(time).toHaveAttribute("datetime", "2026-04-11T10:30:00.000Z");
     expect(time).not.toHaveTextContent("Không rõ thời gian");
     expect(screen.getByText("Điểm: 92 (+2)")).toBeInTheDocument();
   });
 
   it("supports the legacy date field", () => {
-    render(
+    const { container } = render(
       <StaffPerformanceTimeline
         timeline={[{
           date: "2026-04-10T08:00:00.000Z",
@@ -35,7 +35,7 @@ describe("StaffPerformanceTimeline", () => {
       />,
     );
 
-    expect(screen.getByRole("time")).toHaveAttribute(
+    expect(container.querySelector("time")).toHaveAttribute(
       "datetime",
       "2026-04-10T08:00:00.000Z",
     );
