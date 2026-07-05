@@ -26,11 +26,12 @@ vi.mock("@/hooks/useNotification", () => ({
   useNotification: () => ({ showNotification: vi.fn() }),
 }));
 
-const renderPage = () =>
+const renderPage = (roleName = "manager") =>
   render(
     <AuthContext.Provider
       value={{
         user: {
+          roleName,
           restaurantForStaff: { id: "restaurant-1", name: "Cohan Test" },
         },
       }}
@@ -41,8 +42,10 @@ const renderPage = () =>
 
 const getSummaryValue = (label) => {
   const heading = screen
-    .getAllByText(label)
-    .find((element) => element.tagName.toLowerCase() === "p");
+    .getAllByText((content, element) => {
+      return element?.tagName?.toLowerCase() === "p" && content.startsWith(label);
+    })
+    .find(Boolean);
   return heading?.nextSibling;
 };
 
@@ -124,20 +127,22 @@ describe("StaffKitchenPage", () => {
     mockUpdateItemStatus.mockResolvedValue({ success: true });
   });
 
-  it("renders the kitchen/bar dispatch title, filters, summaries, notes, and late indicators", async () => {
+  it("renders the shared kitchen/bar workspace with explicit dispatch modes", async () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Bảng điều phối bếp / bar" })).toBeInTheDocument();
-    expect(screen.getByText("Xem món cần chuẩn bị theo khu vực bếp/bar và cập nhật trạng thái chế biến cho nhà hàng được gán.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tất cả khu vực" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bếp" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bar" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Theo dõi và cập nhật trạng thái chế biến của cả bếp chính và quầy bar."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chế độ bếp chính" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chế độ quầy bar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tổng hợp" })).toBeInTheDocument();
 
     expect(getSummaryValue("Cần xử lý")).toHaveTextContent("2");
     expect(getSummaryValue("Chờ nhận")).toHaveTextContent("1");
     expect(getSummaryValue("Đang làm")).toHaveTextContent("1");
     expect(getSummaryValue("Sẵn sàng")).toHaveTextContent("1");
-    expect(getSummaryValue("Món trễ / quá thời gian chuẩn bị")).toHaveTextContent("2");
+    expect(getSummaryValue("Trễ / quá thời gian")).toHaveTextContent("2");
 
     expect(screen.getByText("x2 Phở bò")).toBeInTheDocument();
     expect(screen.getByText("Ghi chú món: Ít hành")).toBeInTheDocument();
@@ -153,44 +158,59 @@ describe("StaffKitchenPage", () => {
     });
   });
 
-  it("filters visible rows and summary counts by station", () => {
+  it("switches between bar, kitchen, and combined modes", () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chế độ quầy bar" }));
+    expect(screen.getByRole("heading", { name: "Chế độ quầy bar" })).toBeInTheDocument();
     expect(screen.getByText("x1 Trà đào")).toBeInTheDocument();
     expect(screen.queryByText("x2 Phở bò")).not.toBeInTheDocument();
     expect(getSummaryValue("Cần xử lý")).toHaveTextContent("1");
     expect(getSummaryValue("Chờ nhận")).toHaveTextContent("0");
     expect(getSummaryValue("Đang làm")).toHaveTextContent("1");
-    expect(getSummaryValue("Món trễ / quá thời gian chuẩn bị")).toHaveTextContent("1");
+    expect(getSummaryValue("Trễ / quá thời gian")).toHaveTextContent("1");
 
-    fireEvent.click(screen.getByRole("button", { name: "Bếp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chế độ bếp chính" }));
+    expect(screen.getByRole("heading", { name: "Chế độ bếp chính" })).toBeInTheDocument();
     expect(screen.getByText("x2 Phở bò")).toBeInTheDocument();
     expect(screen.queryByText("x1 Trà đào")).not.toBeInTheDocument();
     expect(getSummaryValue("Cần xử lý")).toHaveTextContent("1");
     expect(getSummaryValue("Chờ nhận")).toHaveTextContent("1");
     expect(getSummaryValue("Sẵn sàng")).toHaveTextContent("1");
 
-    fireEvent.click(screen.getByRole("button", { name: "Tất cả khu vực" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tổng hợp" }));
     expect(screen.getByText("x2 Phở bò")).toBeInTheDocument();
     expect(screen.getByText("x1 Trà đào")).toBeInTheDocument();
   });
 
-  it("filters rows by status while keeping station filter applied", () => {
+  it("opens bartender accounts directly in bar mode and hides kitchen mode", () => {
+    renderPage("bartender");
+
+    expect(screen.getByRole("heading", { name: "Chế độ quầy bar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Chế độ quầy bar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Chế độ bếp chính" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tổng hợp" })).not.toBeInTheDocument();
+    expect(screen.getByText("x1 Trà đào")).toBeInTheDocument();
+    expect(screen.queryByText("x2 Phở bò")).not.toBeInTheDocument();
+  });
+
+  it("keeps the selected station mode while filtering by status", () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Bar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chế độ quầy bar" }));
     fireEvent.click(screen.getByRole("button", { name: "Chờ nhận" }));
-    expect(screen.getByText("Không có món nào trong bộ lọc trạng thái và khu vực hiện tại.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Không có món nào trong chế độ và bộ lọc trạng thái hiện tại."),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Đang làm" }));
     expect(screen.getByText("x1 Trà đào")).toBeInTheDocument();
   });
 
-  it("updates pending items to preparing and preparing items to ready", async () => {
+  it("uses station-specific action copy while updating item status", async () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Nhận món vào chế biến" }));
+    fireEvent.click(screen.getByRole("button", { name: "Nhận món vào bếp" }));
     await waitFor(() => {
       expect(mockUpdateItemStatus).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -202,7 +222,7 @@ describe("StaffKitchenPage", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Báo món đã sẵn sàng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Báo đồ uống đã sẵn sàng" }));
     await waitFor(() => {
       expect(mockUpdateItemStatus).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -231,6 +251,6 @@ describe("StaffKitchenPage", () => {
 
     const itemCard = screen.getByText("x1 Món chưa phân khu").closest("div.rounded-lg");
     expect(within(itemCard).getByText("Chưa phân khu")).toBeInTheDocument();
-    expect(screen.getByText(/Đã chờ|Mới vào bếp\/bar/)).toBeInTheDocument();
+    expect(screen.getByText(/Đã chờ|Mới vào khu chế biến/)).toBeInTheDocument();
   });
 });
