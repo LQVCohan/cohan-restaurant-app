@@ -1,5 +1,12 @@
 import React from "react";
 
+const formatTimelineDate = (value) => {
+  if (!value) return "Không rõ thời gian";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Không rõ thời gian";
+  return date.toLocaleString("vi-VN");
+};
+
 const StaffPerformanceTimeline = ({ timeline = [] }) => {
   if (!timeline.length) {
     return (
@@ -12,14 +19,22 @@ const StaffPerformanceTimeline = ({ timeline = [] }) => {
 
   return (
     <div className="staff-performance-section staff-performance-timeline">
-      {timeline.map((point, idx) => (
-        <article key={`${point.adjustmentId || idx}-${point.date}`} className="staff-timeline-item">
-          <time dateTime={point.date}>{new Date(point.date).toLocaleString("vi-VN")}</time>
-          <strong>Điểm: {point.score} ({point.scoreDelta >= 0 ? "+" : ""}{point.scoreDelta || 0})</strong>
-          <span>Sự kiện: {point.eventType || "Không có nhãn"}</span>
-          {point.note ? <p>{point.note}</p> : null}
-        </article>
-      ))}
+      {timeline.map((point, idx) => {
+        const occurredAt = point.at || point.date || null;
+        return (
+          <article
+            key={`${point.incidentId || point.adjustmentId || idx}-${occurredAt || idx}`}
+            className="staff-timeline-item"
+          >
+            <time dateTime={occurredAt || undefined}>{formatTimelineDate(occurredAt)}</time>
+            <strong>
+              Điểm: {point.score} ({point.scoreDelta >= 0 ? "+" : ""}{point.scoreDelta || 0})
+            </strong>
+            <span>Sự kiện: {point.eventType || "Không có nhãn"}</span>
+            {point.note ? <p>{point.note}</p> : null}
+          </article>
+        );
+      })}
     </div>
   );
 };
