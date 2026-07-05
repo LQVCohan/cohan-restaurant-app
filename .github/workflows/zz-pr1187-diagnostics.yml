@@ -1,51 +1,6 @@
-name: pr1187-diagnostics
+name: disabled-pr1187-diagnostics
 
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
-permissions:
-  contents: read
-
-jobs:
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: cohan-restaurant-backend/package-lock.json
-      - run: npm --prefix cohan-restaurant-backend ci --silent
-      - name: Run backend tests
-        run: npm --prefix cohan-restaurant-backend run test --if-present > /tmp/backend.log 2>&1
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr1187-backend-log
-          path: /tmp/backend.log
-
-  frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            cohan-restaurant-backend/package-lock.json
-      - run: |
-          npm ci --silent
-          npm --prefix cohan-restaurant-backend ci --silent
-      - name: Run changed component tests
-        run: timeout --signal=TERM --kill-after=30s 15m npm run test:component -- --changed 6bfdb8757f4d859c1472631d44f024c36f6d82af --detectAsyncLeaks --maxWorkers=2 > /tmp/frontend.log 2>&1
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr1187-frontend-log
-          path: /tmp/frontend.log
+jobs: {}
