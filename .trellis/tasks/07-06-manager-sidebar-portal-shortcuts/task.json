@@ -22,7 +22,7 @@
   "parent": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Sidebar.jsx",
-    "src/components/Dashboard_Manager/Styles/SidebarShellFix.scss",
+    "src/components/Dashboard_Manager/Styles/SidebarPortalActions.scss",
     "src/components/Dashboard_Manager/Sidebar.test.jsx"
   ],
   "notes": "UI-only navigation change. Existing AppRouter and frontendRoleAccess remain the source of truth for route access.",
