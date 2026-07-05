@@ -89,12 +89,9 @@ export function withOrderRestaurantAccessGuards(mutation = {}) {
     },
 
     async confirmIncomingOrder(parent, args, ctx, info) {
-      const input = args?.input || {};
-      await loadScopedOrder({
-        orderId: input.id,
-        restaurantId: input.restaurantId,
-        ctx,
-      });
+      // The station-aware resolver loads the order and enforces ORDER_UPDATE
+      // against the persisted restaurant, so a guard-level lookup would duplicate
+      // both the database read and the permission check.
       return ConfirmedOrderPrintMutation.confirmIncomingOrder.call(
         mutation,
         parent,
