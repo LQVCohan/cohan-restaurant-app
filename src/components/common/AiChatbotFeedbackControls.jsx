@@ -49,7 +49,7 @@ function AiChatbotFeedbackControls({
       await submitFeedback({
         variables: {
           input: {
-            restaurantId: restaurantId || undefined,
+            ...(restaurantId ? { restaurantId } : {}),
             conversationId: item.meta?.conversationId,
             messageId: item.meta?.answerMessageId || undefined,
             guestId: guestId || undefined,
