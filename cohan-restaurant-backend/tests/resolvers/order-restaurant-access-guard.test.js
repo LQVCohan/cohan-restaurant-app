@@ -112,25 +112,20 @@ describe("order mutation restaurant access guards", () => {
     expect(mutation.createOffPremiseOrder).not.toHaveBeenCalled();
   });
 
-  it("routes confirmIncomingOrder through the station-aware resolver, not the legacy method", async () => {
-    const scopedOrder = {
+  it("routes confirmIncomingOrder through one station-aware order lookup", async () => {
+    const pendingOrder = {
       _id: "valid-order-1",
       restaurantId: "valid-restaurant-1",
-    };
-    const pendingOrder = {
-      ...scopedOrder,
       currentStatus: "pending",
     };
     const confirmedOrder = {
-      ...scopedOrder,
+      ...pendingOrder,
       currentStatus: "confirmed",
       orderCode: "ORD-1",
       items: [],
     };
 
-    modelMocks.Order.findById
-      .mockReturnValueOnce(leanResult(scopedOrder))
-      .mockReturnValueOnce(pendingOrder);
+    modelMocks.Order.findById.mockReturnValue(pendingOrder);
     modelMocks.PrintSetting.findOne.mockReturnValue(leanResult(null));
 
     const mutation = buildMutation();
@@ -152,7 +147,14 @@ describe("order mutation restaurant access guards", () => {
     );
 
     expect(result).toEqual({ order: confirmedOrder });
+    expect(modelMocks.Order.findById).toHaveBeenCalledTimes(1);
     expect(mutation.confirmIncomingOrder).not.toHaveBeenCalled();
+    expect(guardMocks.requireRestaurantAccess).not.toHaveBeenCalled();
+    expect(authorizationMocks.requireRestaurantPermission).toHaveBeenCalledWith(
+      expect.anything(),
+      "valid-restaurant-1",
+      expect.anything(),
+    );
     expect(mutation.updateOrderStatus).toHaveBeenCalledWith(
       null,
       expect.objectContaining({
