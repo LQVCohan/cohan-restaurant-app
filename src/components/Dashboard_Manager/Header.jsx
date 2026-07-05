@@ -103,6 +103,7 @@ const Header = ({
     onNotificationSelect?.(notification);
     const actionUrl = notification.actionUrl;
     if (actionUrl?.startsWith("/manager")) {
+      navigate(actionUrl, { replace: true });
       const url = new URL(actionUrl, window.location.origin);
       window.dispatchEvent(new CustomEvent("manager:navigate", { detail: { page: url.hash.replace("#", "") || "dashboard", query: Object.fromEntries(url.searchParams.entries()), source: "notification" } }));
     } else if (actionUrl) navigate(actionUrl);
