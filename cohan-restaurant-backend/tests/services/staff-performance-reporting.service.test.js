@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => ({
+  Staff: { find: vi.fn() },
   StaffPerformanceSnapshot: { findOne: mocks.snapshotFindOne, find: mocks.snapshotFind },
   StaffPerformanceScoreAdjustment: { find: mocks.adjustmentFind },
   PerformanceIncident: { find: mocks.incidentFind },
@@ -30,6 +31,7 @@ describe("staffPerformanceReporting.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resolveUserRoles.mockReturnValue(["MANAGER"]);
+    mocks.userCanAccessRestaurant.mockResolvedValue(true);
   });
 
   it("allows staff to read own summary only", async () => {
@@ -40,6 +42,34 @@ describe("staffPerformanceReporting.service", () => {
 
     await expect(getStaffPerformanceSummary({ restaurantId: "r1", employeeId: "u1" }, { id: "u1" })).resolves.toBeTruthy();
     await expect(getStaffPerformanceSummary({ restaurantId: "r1", employeeId: "u2" }, { id: "u1" })).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("returns zero instead of a perfect score when no snapshot exists", async () => {
+    mocks.snapshotFindOne.mockReturnValue({ sort: vi.fn().mockResolvedValue(null) });
+    mocks.adjustmentFind.mockReturnValue({ sort: vi.fn().mockResolvedValue([]) });
+    mocks.incidentFind.mockResolvedValue([]);
+
+    const result = await getStaffPerformanceSummary(
+      { restaurantId: "r1", employeeId: "e1", month: 7, year: 2026 },
+      { id: "m1" },
+    );
+
+    expect(result.finalPerformanceScore).toBe(0);
+    expect(result.appliedAdjustmentCount).toBe(0);
+    expect(result.totalScoreDelta).toBe(0);
+  });
+
+  it("preserves the calculated score when a snapshot exists", async () => {
+    mocks.snapshotFindOne.mockReturnValue({ sort: vi.fn().mockResolvedValue({ finalPerformanceScore: 100 }) });
+    mocks.adjustmentFind.mockReturnValue({ sort: vi.fn().mockResolvedValue([]) });
+    mocks.incidentFind.mockResolvedValue([]);
+
+    const result = await getStaffPerformanceSummary(
+      { restaurantId: "r1", employeeId: "e1", month: 7, year: 2026 },
+      { id: "m1" },
+    );
+
+    expect(result.finalPerformanceScore).toBe(100);
   });
 
   it("builds summary aggregates", async () => {
