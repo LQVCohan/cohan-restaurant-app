@@ -1,6 +1,0 @@
-name: disabled-pr1187-diagnostics
-
-on:
-  workflow_dispatch:
-
-jobs: {}
