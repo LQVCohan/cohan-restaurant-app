@@ -15,6 +15,8 @@ const mkId = () => new mongoose.Types.ObjectId().toString();
 
 vi.mock("../../src/services/auth/authorization.service.js", () => ({
   hasPermission: vi.fn(async (user) => user?.canHandoff === true),
+  requireAnyRestaurantPermission: vi.fn(),
+  requireRestaurantPermission: vi.fn(),
 }));
 
 vi.mock("../../src/services/notification/notificationWorkflow.service.js", () => ({
