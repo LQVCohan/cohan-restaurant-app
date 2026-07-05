@@ -1,8 +1,9 @@
 {
   "id": "pr1187-ci-green",
   "title": "Clear remaining PR 1187 CI failures",
-  "status": "in_progress",
+  "status": "completed",
   "createdAt": "2026-07-05",
+  "completedAt": "2026-07-05",
   "scope": [
     "Synchronize the existing PR branch with latest main",
     "Align stale backend and frontend fixtures with current production contracts",
@@ -10,9 +11,7 @@
     "Run targeted tests and the repository CI workflow"
   ],
   "validation": [
-    "Targeted order return resolver test",
-    "Targeted Sidebar and MenuItemCard component tests",
-    "Conflict and GraphQL checks when available",
-    "Full GitHub Actions CI"
+    "GitHub Actions CI #5532: backend lint, full tests, Menu RBAC and build passed",
+    "GitHub Actions CI #5532: frontend conflict check, lint, unit tests, Menu RBAC, changed component tests, build and smoke tests passed"
   ]
 }
