@@ -4,6 +4,8 @@
 
 Orders and print jobs inferred `kitchen` or `bar` from item/category names. The KDS service and print flow used different keyword rules, so the same item could be routed differently. `MenuItem.printStationId` is exposed but is not backed by a usable `PrintStation` model or persisted consistently.
 
+The staff UI also exposed bar work only as a small filter inside the kitchen page, while the `bartender` role could not enter that route or update item status.
+
 ## End-to-end flow
 
 `MenuItem.prepStation` -> backend order hydration -> immutable `OrderItem.prepStation` transaction snapshot -> immutable `KitchenOrderWorkItem.station` operational snapshot -> KDS and confirmed-order print grouping.
@@ -25,6 +27,8 @@ The three fields are not interchangeable:
 - Preserve station when copying a menu.
 - Replace keyword-routing tests with configured-station and snapshot-preservation tests.
 - Add deterministic dry-run migrations for existing menu items and active order items.
+- Present kitchen and bar as explicit modes in the same staff dispatch workspace.
+- Open bartender accounts directly in bar mode and grant the existing item-status permissions required by that workflow.
 
 ## Constraints
 
@@ -35,6 +39,7 @@ The three fields are not interchangeable:
 - Existing work items keep their stored station during later status changes.
 - Preserve existing permissions, audit logging, restaurant scoping, realtime behavior, and GraphQL contracts.
 - Current combos remain one parent order line and therefore one station; splitting mixed-station combo children is outside this task.
+- Reuse `/staff/kitchen`; do not create a duplicate bar page or duplicate order-fetching flow.
 
 ## Acceptance criteria
 
@@ -46,6 +51,8 @@ The three fields are not interchangeable:
 6. Missing station data fails clearly instead of silently guessing.
 7. The menu manager can create and edit the station value.
 8. Existing menu items and active orders can be backfilled without classifying by category or item-name keywords.
+9. Managers can switch between kitchen, bar, and combined modes in the same workspace.
+10. Bartenders can enter the workspace, see only bar work by default, and update bar item status.
 
 ## Files changed
 
@@ -58,7 +65,12 @@ The three fields are not interchangeable:
 - `cohan-restaurant-backend/src/services/kitchen/kitchenOrderWorkItem.service.js`
 - `cohan-restaurant-backend/graphql/resolvers/order/confirmedOrderPrintMutation.js`
 - `cohan-restaurant-backend/graphql/resolvers/order/accessGuard.js`
+- `cohan-restaurant-backend/scripts/seedRoles.js`
 - `src/hooks/useMenuManagement.js`
+- `src/utils/frontendRoleAccess.js`
+- `src/layouts/StaffLayout.jsx`
+- `src/components/Staff/StaffKitchenPage.jsx`
+- `src/components/Staff/StaffKitchenPage.test.jsx`
 - `src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.jsx`
 - `src/components/Dashboard_Manager/Menu/components/MenuItemCard/PrepStationControl.jsx`
 - `src/components/Dashboard_Manager/Menu/components/MenuItemCard/PrepStationControl.module.scss`
@@ -73,3 +85,4 @@ The three fields are not interchangeable:
 - A new print-station management model.
 - Splitting one combo into multiple station work items.
 - Migration of completed historical orders.
+- Station-specific backend permissions beyond the existing restaurant-scoped order update permission.
