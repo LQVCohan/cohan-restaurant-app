@@ -4,13 +4,13 @@
 
 Orders and print jobs inferred `kitchen` or `bar` from item/category names. The KDS service and print flow used different keyword rules, so the same item could be routed differently. `MenuItem.printStationId` is exposed but is not backed by a usable `PrintStation` model or persisted consistently.
 
-The staff UI also exposed bar work only as a small filter inside the kitchen page, while the `bartender` role could not enter that route or update item status.
+The shared staff dispatch page now has explicit kitchen and bar modes, but its UI still behaves like a generic card grid: operational priority is weak, all summary cards have equal weight, loading/error/empty states are passive, touch targets are small, and mobile mode controls consume too much vertical space. These are presentation and interaction problems; the station contract and status mutation path are already correct.
 
 ## End-to-end flow
 
-`MenuItem.prepStation` -> backend order hydration -> immutable `OrderItem.prepStation` transaction snapshot -> immutable `KitchenOrderWorkItem.station` operational snapshot -> KDS and confirmed-order print grouping.
+`MenuItem.prepStation` -> backend order hydration -> immutable `OrderItem.prepStation` transaction snapshot -> immutable `KitchenOrderWorkItem.station` operational snapshot -> `ordersByRestaurantNow` -> `useOrderManagement` -> shared staff dispatch UI -> `updateOrderItemStatus`.
 
-The three fields are not interchangeable:
+The three persisted fields are not interchangeable:
 
 - `MenuItem.prepStation` is current menu configuration for future orders.
 - `OrderItem.prepStation` records the configuration used by that transaction, including orders that wait for transfer-payment verification before entering production.
@@ -29,6 +29,13 @@ The three fields are not interchangeable:
 - Add deterministic dry-run migrations for existing menu items and active order items.
 - Present kitchen and bar as explicit modes in the same staff dispatch workspace.
 - Open bartender accounts directly in bar mode and grant the existing item-status permissions required by that workflow.
+- Redesign the shared dispatch workspace for fast scanning: live station counts, asymmetric priority summary, urgent-first ordering, clear station identity, and large station-specific actions.
+- Add useful skeleton, retry, and empty states without changing the GraphQL contract.
+- Keep controls usable at 390×844 and 430×932, with keyboard focus and reduced-motion support.
+
+## Visual direction
+
+Use the existing staff workspace palette and typography rhythm: warm neutral surfaces, emerald for kitchen, restrained sky blue for bar, and red only for overdue work. The screen's main job is to let a kitchen or bar worker identify the next item and act with one obvious tap. The signature detail is a station switcher that exposes live queue counts before the user changes mode.
 
 ## Constraints
 
@@ -40,6 +47,8 @@ The three fields are not interchangeable:
 - Preserve existing permissions, audit logging, restaurant scoping, realtime behavior, and GraphQL contracts.
 - Current combos remain one parent order line and therefore one station; splitting mixed-station combo children is outside this task.
 - Reuse `/staff/kitchen`; do not create a duplicate bar page or duplicate order-fetching flow.
+- Do not add UI dependencies or replace the React/SCSS stack.
+- Do not use CSS zoom or fixed controls that cover content on mobile.
 
 ## Acceptance criteria
 
@@ -51,8 +60,12 @@ The three fields are not interchangeable:
 6. Missing station data fails clearly instead of silently guessing.
 7. The menu manager can create and edit the station value.
 8. Existing menu items and active orders can be backfilled without classifying by category or item-name keywords.
-9. Managers can switch between kitchen, bar, and combined modes in the same workspace.
-10. Bartenders can enter the workspace, see only bar work by default, and update bar item status.
+9. Managers can switch between kitchen, bar, and combined modes in the same workspace and see each queue count before switching.
+10. Bartenders enter directly in bar mode, see only bar work, and can update bar item status.
+11. Overdue or unaccepted work appears before normal work within the selected mode.
+12. Loading uses layout-shaped skeletons; errors provide retry; empty filtered states provide a useful reset action.
+13. Primary actions have at least a 44px mobile touch target and visible keyboard focus.
+14. The layout remains usable at 390×844 and 430×932 without horizontal page overflow or covered content.
 
 ## Files changed
 
@@ -70,6 +83,7 @@ The three fields are not interchangeable:
 - `src/utils/frontendRoleAccess.js`
 - `src/layouts/StaffLayout.jsx`
 - `src/components/Staff/StaffKitchenPage.jsx`
+- `src/components/Staff/StaffKitchenPage.scss`
 - `src/components/Staff/StaffKitchenPage.test.jsx`
 - `src/components/Dashboard_Manager/Menu/components/MenuItemCard/MenuItemCard.jsx`
 - `src/components/Dashboard_Manager/Menu/components/MenuItemCard/PrepStationControl.jsx`
@@ -77,6 +91,13 @@ The three fields are not interchangeable:
 - `cohan-restaurant-backend/scripts/migrations/20260705-set-prep-station.js`
 - `cohan-restaurant-backend/scripts/migrations/20260705-backfill-order-item-prep-station.js`
 - targeted tests
+
+## Validation plan
+
+- `npx vitest run src/components/Staff/StaffKitchenPage.test.jsx`
+- `npm run check:staff-theme`
+- `npm run build`
+- Manual responsive review at 390×844 and 430×932 when a browser environment is available.
 
 ## Out of scope
 
@@ -86,3 +107,4 @@ The three fields are not interchangeable:
 - Splitting one combo into multiple station work items.
 - Migration of completed historical orders.
 - Station-specific backend permissions beyond the existing restaurant-scoped order update permission.
+- A separate route or duplicated data flow for the bar.
