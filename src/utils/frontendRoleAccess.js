@@ -42,6 +42,7 @@ export const STAFF_KITCHEN_ROLES = [
   "chef",
   "cook",
   "kitchen_helper",
+  "bartender",
 ];
 export const CUSTOMER_ROLES = new Set(["customer"]);
 
