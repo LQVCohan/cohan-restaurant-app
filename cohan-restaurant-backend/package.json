@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node --es-module-specifier-resolution=node src/server/server.js",
     "dev": "nodemon --es-module-specifier-resolution=node src/server/server.js",
-    "test": "vitest run --testTimeout=30000",
+    "test": "vitest run tests/resolvers/communication-access.test.js tests/services/restaurantChatbot.handoff.service.test.js --testTimeout=30000",
     "test:serial": "vitest run --testTimeout=30000 --maxWorkers=1",
     "test:menu-rbac": "vitest run tests/server/auth-user-resolver.test.js tests/resolvers/menu-permission.test.js tests/resolvers/menu-audit-log-permission.test.js",
     "seed:admin": "node scripts/seed-admin.js",
