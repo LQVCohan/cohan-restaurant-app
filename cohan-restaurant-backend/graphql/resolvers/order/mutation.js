@@ -159,8 +159,6 @@ function serializeCustomerRequestForStaff(order, req) {
 
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
 const PRINT_STATIONS = {
-  kitchen: "kitchen",
-  bar: "bar",
   cashier: "cashier",
 };
 const TRACKING_INVALID_MESSAGE = "Không thể xử lý yêu cầu. Vui lòng kiểm tra lại mã theo dõi hoặc liên hệ nhân viên.";
@@ -173,104 +171,6 @@ function normalizeCallStaffReason(reason) {
   const normalized = String(reason || "").trim().replace(/\s+/g, " ");
   if (!normalized) return DEFAULT_STAFF_CALL_REASON;
   return normalized.slice(0, STAFF_CALL_REASON_MAX_LENGTH);
-}
-
-function mapItemToStation(item = {}) {
-  const categoryName = String(
-    item?.categoryName || item?.category?.name || "",
-  ).toLowerCase();
-  const itemName = String(item?.name || "").toLowerCase();
-  const isDrink =
-    categoryName.includes("drink") ||
-    categoryName.includes("đồ uống") ||
-    itemName.includes("nước");
-  return isDrink ? PRINT_STATIONS.bar : PRINT_STATIONS.kitchen;
-}
-
-
-function buildPrintItemLine(it) {
-  const itemType = String(it?.itemType || "MENU_ITEM").toUpperCase();
-  const comboSnapshot = it?.comboSnapshot || null;
-  const quantity = Number(it?.quantity || 0);
-  const comboItems = itemType === "COMBO" && Array.isArray(comboSnapshot?.items)
-    ? comboSnapshot.items.map((child, index) => ({
-        menuItemId: String(child?.menuItemId || child?.id || ""),
-        name: child?.name || "Món trong combo",
-        quantity: Math.max(1, Number(child?.qty || child?.quantity || 1)) * Math.max(1, quantity || 1),
-        note: child?.note || child?.options || "",
-        index,
-      }))
-    : [];
-
-  return {
-    orderItemId: String(it?._id || ""),
-    dishId: String(it?.dishId || ""),
-    name: comboSnapshot?.name || it?.name || "",
-    quantity,
-    note: it?.note || "",
-    itemType,
-    comboId: it?.comboId ? String(it.comboId) : "",
-    comboSnapshot: itemType === "COMBO" ? comboSnapshot : null,
-    comboItems,
-  };
-}
-
-async function enqueuePrintJobsForConfirmedOrder({
-  order,
-  printType = "order_confirmed",
-}) {
-  if (
-    !order?.restaurantId ||
-    !Array.isArray(order?.items) ||
-    order.currentStatus !== "confirmed"
-  )
-    return [];
-  const printSetting = await PrintSetting.findOne({
-    restaurantId: order.restaurantId,
-  }).lean();
-  if (!printSetting) return [];
-  const stationPrinters = printSetting?.stations || {};
-  const itemsByStation = order.items.reduce((acc, item) => {
-    const stationId = mapItemToStation(item);
-    if (!acc[stationId]) acc[stationId] = [];
-    acc[stationId].push(item);
-    return acc;
-  }, {});
-
-  const jobs = Object.entries(itemsByStation)
-    .filter(
-      ([stationId]) =>
-        Array.isArray(stationPrinters?.[stationId]) &&
-        !!stationPrinters[stationId][0],
-    )
-    .map(([stationId, items]) => {
-      const printerId = stationPrinters[stationId][0];
-      const createdAt = new Date().toISOString();
-      return {
-        id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-        orderId: String(order._id),
-        stationId,
-        stationType: stationId,
-        printerId,
-        printType,
-        items: (items || []).map(buildPrintItemLine),
-        status: "pending",
-        retryCount: 0,
-        payload: { orderCode: order.orderCode, tableCode: order.tableCode },
-        createdAt,
-        printedAt: null,
-        updatedAt: createdAt,
-      };
-    });
-  if (!jobs.length) return [];
-  await PrintSetting.updateOne(
-    { _id: printSetting._id },
-    {
-      $push: { jobs: { $each: jobs, $position: 0, $slice: 300 } },
-      $set: { updatedAt: new Date() },
-    },
-  );
-  return jobs;
 }
 
 async function enqueueTemporaryBillPrintJob(order) {
@@ -1570,53 +1470,6 @@ export const OrderMutation = {
     );
 
     return { order: payload.order, idempotentHit: false };
-  },
-
-  async confirmIncomingOrder(_, { input }, ctx) {
-    const { id, restaurantId, note, warehouseId } = input || {};
-    const order = await Order.findById(id);
-    if (!order) throw new Error("Order not found");
-    await requireOrderPermission(ctx, order, PERMISSIONS.ORDER_UPDATE);
-    if (
-      restaurantId &&
-      String(order.restaurantId) !== String(toId(restaurantId))
-    )
-      throw new Error("Order not found");
-    if (order.currentStatus !== "pending")
-      throw new Error("Only pending orders can be confirmed");
-
-    const updated = await this.updateOrderStatus(
-      _,
-      {
-        input: {
-          id: String(order._id),
-          restaurantId: restaurantId || String(order.restaurantId),
-          status: "confirmed",
-          note: note || "Incoming order confirmed by POS",
-          warehouseId,
-        },
-      },
-      ctx,
-    );
-
-    const printJobs = await enqueuePrintJobsForConfirmedOrder({
-      order: updated,
-      printType: "order_confirmed",
-    });
-    if (printJobs.length) {
-      await emitOrderEvent(
-        ctx,
-        String(updated.restaurantId),
-        "ORDER_PRINT_JOBS_CREATED",
-        {
-          orderId: String(updated._id || updated.id),
-          orderCode: updated.orderCode,
-          printJobs,
-        },
-      );
-    }
-
-    return { order: updated };
   },
 
   async createTemporaryBillPrintJob(_, { input }, ctx) {

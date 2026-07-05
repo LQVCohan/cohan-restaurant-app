@@ -1,21 +1,27 @@
 {
   "id": "prep-station-routing",
   "title": "Route and operate order items by preparation station",
-  "status": "in_progress",
+  "status": "implemented_unverified",
   "createdAt": "2026-07-05",
   "scope": [
     "Configure kitchen or bar per menu item",
     "Snapshot the configured station into order items",
     "Use the order snapshot for KDS work items and print jobs",
-    "Remove runtime name/category keyword routing",
+    "Remove runtime and legacy name/category keyword routing",
     "Provide a responsive shared kitchen and bar dispatch workspace",
     "Prioritize urgent work and make loading, empty, error, and retry states actionable"
   ],
-  "validation": [
-    "Targeted kitchen work item service tests",
-    "StaffKitchenPage component test",
-    "Staff theme color check",
-    "Frontend build",
-    "Manual responsive review at 390x844 and 430x932"
-  ]
+  "validation": {
+    "completed": [
+      "Targeted frontend component tests",
+      "Targeted backend resolver and station print tests",
+      "Staff theme color check",
+      "Frontend production build"
+    ],
+    "notRun": [
+      "Manual responsive review at 390x844 and 430x932",
+      "Menu and active-order migration apply against the deployment database",
+      "RBAC reseed against the deployment database"
+    ]
+  }
 }

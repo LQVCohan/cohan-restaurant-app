@@ -108,3 +108,11 @@ Use the existing staff workspace palette and typography rhythm: warm neutral sur
 - Migration of completed historical orders.
 - Station-specific backend permissions beyond the existing restaurant-scoped order update permission.
 - A separate route or duplicated data flow for the bar.
+
+## Implementation status
+
+- Code path implemented from menu configuration through order/work-item snapshots, printing, and the shared kitchen/bar workspace.
+- Menu create/edit now requires an explicit preparation station.
+- Runtime and legacy name/category keyword routing have been removed.
+- Automated targeted checks and frontend build are completed by the preparation-station completion workflow.
+- Deployment database migrations, RBAC reseed, and manual responsive smoke testing remain environment operations.
