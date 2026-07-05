@@ -22,10 +22,10 @@ function resolveReviewerActionUrl({ sourceType, actionUrl }) {
   return actionUrl;
 }
 
-function emitNotificationCreated(notification) {
-  if (!notificationIo || !notification?.toUserId) return;
+function emitNotificationCreated(notification, io = notificationIo) {
+  if (!io || !notification?.toUserId) return;
   const userId = String(notification.toUserId);
-  notificationIo.to(`user_${userId}`).emit("notificationCreated", {
+  io.to(`user_${userId}`).emit("notificationCreated", {
     id: String(notification._id || notification.id || ""),
     toUserId: userId,
     toRole: notification.toRole || null,
@@ -44,7 +44,7 @@ async function reviewerIds(restaurantId) {
   return uniq(users.map((u) => u._id));
 }
 
-export async function createNotificationOnce({ toUserId, toRole = null, restaurantId = null, type, payload = {}, sourceType, sourceId }) {
+export async function createNotificationOnce({ toUserId, toRole = null, restaurantId = null, type, payload = {}, sourceType, sourceId, io = null }) {
   if (!toUserId || !type) return null;
   const uniqueKey = buildUniqueKey({ toUserId, type, sourceType, sourceId });
   const condition = { $or: [{ uniqueKey }, { "payload.uniqueKey": uniqueKey }] };
@@ -61,7 +61,7 @@ export async function createNotificationOnce({ toUserId, toRole = null, restaura
       payload: { ...payload, sourceType: sourceType || null, sourceId: sourceId || null, uniqueKey },
       readAt: null,
     });
-    emitNotificationCreated(notification);
+    emitNotificationCreated(notification, io || notificationIo);
     return notification;
   } catch (error) {
     if (error?.code === 11000) {
