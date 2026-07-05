@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
-import { AiChatConversation, AiChatMessage, ChatThread, User, Restaurant } from "../../../models/index.js";
+import { AiChatConversation, AiChatMessage, BrandMembership, ChatThread, User, Restaurant } from "../../../models/index.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { hasPermission } from "../auth/authorization.service.js";
 import { createNotificationOnce } from "../notification/notificationWorkflow.service.js";
@@ -46,11 +46,20 @@ const buildSummary = ({ conversation, guestId, reason, latestUserMessage, messag
 };
 
 const findRecipients = async (restaurant) => {
+  const membershipScope = restaurant.brandId
+    ? {
+        brandId: restaurant.brandId,
+        status: "active",
+        $or: [{ role: { $in: ["owner", "admin"] } }, { restaurantIds: restaurant._id }],
+      }
+    : { status: "active", restaurantIds: restaurant._id };
+  const membershipIds = await BrandMembership.distinct("userId", membershipScope);
+  const directIds = [...membershipIds, restaurant.managerId].filter(Boolean);
   const scope = [
     { restaurantForStaff: restaurant._id },
     { refRestaurants: restaurant._id },
+    ...(directIds.length ? [{ _id: { $in: directIds } }] : []),
   ];
-  if (restaurant.managerId) scope.push({ _id: restaurant.managerId });
 
   const users = await User.find({ status: "active", deletedAt: null, $or: scope })
     .select("_id userType role")
@@ -94,7 +103,7 @@ export async function requestRestaurantChatbotHandoff({ input, user, io, clientI
   }
 
   const restaurant = await Restaurant.findById(conversation.restaurantId)
-    .select("aiChatbotSettings managerId")
+    .select("aiChatbotSettings brandId managerId")
     .lean();
   if (!restaurant) return fail(conversationId, "Không thể xác định nhà hàng để chuyển hỗ trợ.");
 
