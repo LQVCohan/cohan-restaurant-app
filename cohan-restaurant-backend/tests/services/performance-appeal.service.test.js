@@ -97,6 +97,9 @@ describe("performanceAppeal.service", () => {
 
     await reverseScoreForAcceptedAppeal({ appealId: "a1", actor: { id: "m1" }, reversalDelta: 2, note: "reviewed" });
 
+    const snapshotQuery = mocks.snapshotFindOne.mock.calls[0][0];
+    expect(snapshotQuery.periodStart.$lte.toISOString()).toBe(incident.occurredAt);
+    expect(snapshotQuery.periodEnd.$gte.toISOString()).toBe(incident.occurredAt);
     expect(mocks.reversalCreate).toHaveBeenCalledWith([expect.objectContaining({ reversalDelta: 2, previousScore: 90, newScore: 92 })], { session: mocks.session });
     expect(snapshot.finalPerformanceScore).toBe(92);
     expect(snapshot.productivity.score).toBe(77);
