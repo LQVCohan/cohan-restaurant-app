@@ -27,6 +27,7 @@ function buildOrder({ quantity = 2, returnedQuantity = 0, originalQuantity = 2, 
   const item = {
     _id: "item1",
     name: "Món A",
+    prepStation: "kitchen",
     quantity,
     returnedQuantity,
     originalQuantity,
