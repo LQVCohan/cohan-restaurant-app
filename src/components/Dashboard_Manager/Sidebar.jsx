@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, House, UsersRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home, UsersRound } from "lucide-react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
 import "./Styles/SidebarPortalActions.scss";
@@ -209,7 +209,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
         </div>
         <nav className="sidebar-portal-actions" aria-label="Chuyển khu vực">
           <a className="sidebar-portal-action" href="/" aria-label="Chuyển đến trang chủ">
-            <House aria-hidden="true" />
+            <Home aria-hidden="true" />
             <span>Trang chủ</span>
           </a>
           {canAccessStaffPortal && (
