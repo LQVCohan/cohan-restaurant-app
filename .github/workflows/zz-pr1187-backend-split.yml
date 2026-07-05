@@ -1,0 +1,31 @@
+name: pr1187-backend-split
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
+      - run: npm --prefix cohan-restaurant-backend ci --silent
+      - name: Feedback service tests
+        run: npm --prefix cohan-restaurant-backend exec -- vitest run tests/services/restaurant-chatbot-feedback-global.test.js
+      - name: Chatbot service tests
+        if: always()
+        run: npm --prefix cohan-restaurant-backend exec -- vitest run tests/services/restaurantChatbot.service.test.js
+      - name: Persistence tests
+        if: always()
+        run: npm --prefix cohan-restaurant-backend exec -- vitest run tests/services/restaurantChatbot.persistence.service.test.js
+      - name: Settings tests
+        if: always()
+        run: npm --prefix cohan-restaurant-backend exec -- vitest run tests/services/restaurantChatbot.settings.service.test.js
