@@ -21,7 +21,20 @@ jobs:
           fetch-depth: 0
 
       - name: Apply focused source changes
-        run: python scripts/complete-prep-station.py
+        shell: bash
+        run: |
+          set +e
+          python scripts/complete-prep-station.py > prep-station-patch.log 2>&1
+          status=$?
+          cat prep-station-patch.log
+          if [ "$status" -ne 0 ]; then
+            git config user.name "cohan-prep-station-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add prep-station-patch.log
+            git commit -m "chore: record prep station patch failure [skip ci]"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+            exit "$status"
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -54,7 +67,8 @@ jobs:
           rm -f \
             .github/workflows/prep-station-complete.yml \
             .github/workflows/prep-station-pr.yml \
-            scripts/complete-prep-station.py
+            scripts/complete-prep-station.py \
+            prep-station-patch.log
           git config user.name "cohan-prep-station-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -A
