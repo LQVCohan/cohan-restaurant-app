@@ -147,7 +147,7 @@ function mapSummary({
     restaurantId: String(restaurantId),
     periodStart,
     periodEnd,
-    finalPerformanceScore: Number(snapshot?.finalPerformanceScore ?? 100),
+    finalPerformanceScore: Number(snapshot?.finalPerformanceScore ?? 0),
     baseScore: 100,
     totalScoreDelta,
     appliedAdjustmentCount: adjustments.length,
