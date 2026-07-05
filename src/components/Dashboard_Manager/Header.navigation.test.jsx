@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import Header from "./Header";
@@ -18,13 +18,17 @@ describe("Manager Header notification navigation", () => {
   };
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     navigationDetail = null;
     window.addEventListener("manager:navigate", handleManagerNavigate);
   });
 
   afterEach(() => {
+    cleanup();
     window.removeEventListener("manager:navigate", handleManagerNavigate);
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it("syncs a handoff notification URL with React Router before opening the manager page", () => {
