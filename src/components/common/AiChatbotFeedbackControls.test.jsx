@@ -122,6 +122,7 @@ describe("AiChatbotFeedbackControls", () => {
       screen.getByRole("button", { name: "Gửi phản hồi" }),
     ).toBeEnabled();
   });
+
   it("omits restaurantId for verified global feedback", async () => {
     const submitFeedback = vi.fn().mockResolvedValue({ data: {} });
     renderControls(submitFeedback, "");
@@ -137,5 +138,4 @@ describe("AiChatbotFeedbackControls", () => {
       rating: "helpful",
     });
   });
-
 });
