@@ -1,0 +1,18 @@
+{
+  "id": "pr1187-ci-green",
+  "title": "Clear remaining PR 1187 CI failures",
+  "status": "in_progress",
+  "createdAt": "2026-07-05",
+  "scope": [
+    "Synchronize the existing PR branch with latest main",
+    "Align stale backend and frontend fixtures with current production contracts",
+    "Keep production prep-station validation and accessible Vietnamese navigation labels unchanged",
+    "Run targeted tests and the repository CI workflow"
+  ],
+  "validation": [
+    "Targeted order return resolver test",
+    "Targeted Sidebar and MenuItemCard component tests",
+    "Conflict and GraphQL checks when available",
+    "Full GitHub Actions CI"
+  ]
+}
