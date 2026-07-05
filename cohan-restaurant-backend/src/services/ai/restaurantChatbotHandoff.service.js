@@ -1,244 +1,218 @@
 import mongoose from "mongoose";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
-import {
-  AiChatConversation,
-  AiChatMessage,
-  ChatThread,
-  Notification,
-  User,
-  Restaurant,
-} from "../../../models/index.js";
+import { AiChatConversation, AiChatMessage, ChatThread, User, Restaurant } from "../../../models/index.js";
+import { PERMISSIONS } from "../../constants/permissions.js";
+import { hasPermission } from "../auth/authorization.service.js";
+import { createNotificationOnce } from "../notification/notificationWorkflow.service.js";
 import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.service.js";
 
-const toObjectId = (id) => {
-  if (!id || !mongoose.isValidObjectId(id)) return null;
-  return new mongoose.Types.ObjectId(id);
-};
+const toId = (value) => mongoose.isValidObjectId(value) ? new mongoose.Types.ObjectId(value) : null;
+const cleanGuestId = (value) => String(value || "").trim().slice(0, 128).replace(/[^a-zA-Z0-9_-]/g, "");
+const preview = (value, max = 240) => String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+const fail = (conversationId, message) => ({
+  ok: false,
+  conversationId,
+  handoffRequested: false,
+  chatThreadId: null,
+  notificationCount: 0,
+  message,
+  alreadyRequested: false,
+});
 
-const normalizeGuestId = (guestId) => {
-  const value = String(guestId || "").trim().slice(0, 128);
-  return value ? value.replace(/[^a-zA-Z0-9_-]/g, "") : "";
+const ownsConversation = (conversation, user, guestId) => {
+  if (!conversation) return false;
+  const userId = user?.id || user?._id;
+  return userId
+    ? String(conversation.userId || "") === String(userId)
+    : Boolean(guestId) && String(conversation.guestId || "") === guestId;
 };
-
-const preview = (text, max = 240) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
 
 const buildSummary = ({ conversation, guestId, reason, latestUserMessage, messages }) => {
-  const lines = [];
-  lines.push("[AI HANDOFF]");
-  lines.push(`conversationId: ${String(conversation._id)}`);
-  if (conversation.restaurantId) lines.push(`restaurantId: ${String(conversation.restaurantId)}`);
-  if (conversation.userId) lines.push(`userId: ${String(conversation.userId)}`);
+  const lines = [
+    "[AI HANDOFF]",
+    `conversationId: ${conversation._id}`,
+    `restaurantId: ${conversation.restaurantId}`,
+  ];
+  if (conversation.userId) lines.push(`userId: ${conversation.userId}`);
   if (guestId) lines.push(`guestId: ${guestId}`);
   if (reason) lines.push(`reason: ${reason}`);
   if (latestUserMessage) lines.push(`latestUserMessage: ${preview(latestUserMessage, 300)}`);
   lines.push("--- Recent AI conversation ---");
-  for (const m of messages) {
-    const role = m.role === "assistant" ? "Assistant" : m.role === "user" ? "User" : "System";
-    lines.push(`${role}: ${preview(m.content, 400)}`);
+  for (const message of messages) {
+    const role = message.role === "assistant" ? "Assistant" : message.role === "user" ? "User" : "System";
+    lines.push(`${role}: ${preview(message.content, 400)}`);
   }
   return lines.join("\n");
 };
 
-const ensureOwnership = (conversation, { user, guestId }) => {
-  if (!conversation) return false;
-  if (user?.id || user?._id) return String(conversation.userId || "") === String(user.id || user._id);
-  return !!guestId && String(conversation.guestId || "") === String(guestId);
+const findRecipients = async (restaurant) => {
+  const scope = [
+    { restaurantForStaff: restaurant._id },
+    { refRestaurants: restaurant._id },
+  ];
+  if (restaurant.managerId) scope.push({ _id: restaurant.managerId });
+
+  const users = await User.find({ status: "active", deletedAt: null, $or: scope })
+    .select("_id userType role")
+    .populate({
+      path: "role",
+      populate: [
+        { path: "permissions" },
+        { path: "parentRole", populate: { path: "permissions" } },
+      ],
+    })
+    .lean();
+
+  const checked = await Promise.all(users.map(async (user) =>
+    (await hasPermission(user, PERMISSIONS.AI_CHATBOT_HANDOFF)) ? user : null));
+  return checked.filter(Boolean);
 };
 
 export async function requestRestaurantChatbotHandoff({ input, user, io, clientIp } = {}) {
   const conversationId = String(input?.conversationId || "").trim();
-  const normalizedGuestId = normalizeGuestId(input?.guestId);
-  const restaurantIdInput = toObjectId(input?.restaurantId);
+  const guestId = cleanGuestId(input?.guestId);
+  const restaurantId = toId(input?.restaurantId);
   const reason = String(input?.reason || "user_click").trim().slice(0, 80);
   const latestUserMessage = String(input?.latestUserMessage || "").trim().slice(0, 500);
 
-  const rateResult = consumeAiChatbotRateLimit({
+  const rate = consumeAiChatbotRateLimit({
     policy: AI_CHATBOT_RATE_LIMIT_POLICIES.requestAiChatbotHandoff,
-    keyParts: {
-      guestId: normalizedGuestId,
-      conversationId,
-      restaurantId: String(input?.restaurantId || ""),
-      clientIp,
-    },
+    keyParts: { guestId, conversationId, restaurantId: String(input?.restaurantId || ""), clientIp },
   });
-  if (!rateResult.allowed) {
-    return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: rateResult.safeMessage, alreadyRequested: false };
-  }
-
-  if (!toObjectId(conversationId)) {
-    return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: "Yêu cầu không hợp lệ.", alreadyRequested: false };
-  }
+  if (!rate.allowed) return fail(conversationId, rate.safeMessage);
+  if (!toId(conversationId)) return fail(conversationId, "Yêu cầu không hợp lệ.");
 
   const conversation = await AiChatConversation.findById(conversationId);
-  if (!ensureOwnership(conversation, { user, guestId: normalizedGuestId })) {
-    return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: "Không thể xử lý yêu cầu hỗ trợ cho hội thoại này.", alreadyRequested: false };
+  if (!ownsConversation(conversation, user, guestId)) {
+    return fail(conversationId, "Không thể xử lý yêu cầu hỗ trợ cho hội thoại này.");
   }
-
-  if (restaurantIdInput && String(restaurantIdInput) !== String(conversation.restaurantId || "")) {
-    return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: "Không thể xử lý yêu cầu hỗ trợ cho hội thoại này.", alreadyRequested: false };
+  if (restaurantId && String(restaurantId) !== String(conversation.restaurantId || "")) {
+    return fail(conversationId, "Không thể xử lý yêu cầu hỗ trợ cho hội thoại này.");
   }
-
   if (!conversation.restaurantId) {
-    return { ok: false, conversationId, handoffRequested: false, chatThreadId: null, notificationCount: 0, message: "Hiện chưa xác định được nhà hàng để chuyển nhân viên hỗ trợ.", alreadyRequested: false };
+    return fail(conversationId, "Hiện chưa xác định được nhà hàng để chuyển nhân viên hỗ trợ.");
   }
 
-  const restaurant = await Restaurant.findById(conversation.restaurantId).select("aiChatbotSettings").lean();
-  const aiSettings = mergeWithDefaultAiChatbotSettings(restaurant?.aiChatbotSettings || {});
-  if (!aiSettings.handoffEnabled) {
+  const restaurant = await Restaurant.findById(conversation.restaurantId)
+    .select("aiChatbotSettings managerId")
+    .lean();
+  if (!restaurant) return fail(conversationId, "Không thể xác định nhà hàng để chuyển hỗ trợ.");
+
+  const settings = mergeWithDefaultAiChatbotSettings(restaurant.aiChatbotSettings || {});
+  if (!settings.handoffEnabled) return fail(conversationId, settings.handoffUnavailableMessage);
+  if (conversation.status === "handoff_requested" && conversation.chatThreadId) {
     return {
-      ok: false,
-      conversationId: String(conversation._id),
-      handoffRequested: false,
-      chatThreadId: null,
+      ok: true,
+      conversationId,
+      handoffRequested: true,
+      chatThreadId: String(conversation.chatThreadId),
       notificationCount: 0,
-      message: aiSettings.handoffUnavailableMessage,
-      alreadyRequested: false,
+      message: "Yêu cầu hỗ trợ đã được ghi nhận trước đó.",
+      alreadyRequested: true,
     };
   }
 
-  if (conversation.status === "handoff_requested" && conversation.chatThreadId) {
-    return { ok: true, conversationId: String(conversation._id), handoffRequested: true, chatThreadId: String(conversation.chatThreadId), notificationCount: 0, message: "Yêu cầu hỗ trợ đã được ghi nhận trước đó.", alreadyRequested: true };
+  const recipients = await findRecipients(restaurant);
+  if (!recipients.length) {
+    return fail(conversationId, "Hiện chưa có nhân viên được phân quyền tiếp nhận hỗ trợ. Vui lòng liên hệ nhà hàng qua kênh khác.");
   }
 
-  const recentMessages = await AiChatMessage.find({ conversationId: conversation._id }).sort({ createdAt: -1 }).limit(8).lean();
-  const sortedMessages = [...recentMessages].reverse();
-  const summaryText = buildSummary({
+  const recent = await AiChatMessage.find({ conversationId: conversation._id })
+    .sort({ createdAt: -1 })
+    .limit(8)
+    .lean();
+  const summary = buildSummary({
     conversation,
-    guestId: normalizedGuestId,
+    guestId,
     reason,
     latestUserMessage,
-    messages: sortedMessages,
+    messages: [...recent].reverse(),
   });
+  const recipientIds = [...new Set(recipients.map(({ _id }) => String(_id)))];
+  const objectIds = recipientIds.map(toId).filter(Boolean);
 
-  const recipientUsers = await User.find({
-    userType: { $in: ["STAFF", "MANAGER", "ADMIN"] },
-    $or: [{ restaurantForStaff: conversation.restaurantId }, { refRestaurants: conversation.restaurantId }],
-  })
-    .select("_id userType")
-    .lean();
-
-  const recipientIds = [...new Set(recipientUsers.map((u) => String(u._id)))];
-  const recipientObjectIds = recipientIds.map((id) => toObjectId(id)).filter(Boolean);
-  const hasDirectRecipients = recipientObjectIds.length > 0;
-  const desiredTargetRole = hasDirectRecipients ? "support" : "manager";
-
-  let thread = null;
-  let shouldSaveThread = false;
-  if (conversation.chatThreadId) {
-    thread = await ChatThread.findById(conversation.chatThreadId);
-  }
-
+  let thread = conversation.chatThreadId
+    ? await ChatThread.findById(conversation.chatThreadId)
+    : null;
   if (!thread) {
     thread = await ChatThread.create({
       restaurantId: conversation.restaurantId,
       channel: "support",
-      targetRole: desiredTargetRole,
-      participants: recipientObjectIds,
+      targetRole: "support",
+      participants: objectIds,
       subject: "AI handoff - Khách cần hỗ trợ",
       status: "open",
-      messages: [
-        {
-          senderRole: "system",
-          senderName: "AI Chatbot",
-          messageType: "text",
-          content: summaryText,
-          createdAt: new Date(),
-        },
-      ],
+      messages: [{
+        senderRole: "system",
+        senderName: "AI Chatbot",
+        messageType: "text",
+        content: summary,
+        createdAt: new Date(),
+      }],
       lastMessageAt: new Date(),
-      lastMessagePreview: preview(summaryText, 140),
-      unreadBy: recipientObjectIds,
+      lastMessagePreview: preview(summary, 140),
+      unreadBy: objectIds,
     });
-  } else if (recipientObjectIds.length > 0) {
-    const existingParticipantIds = new Set((thread.participants || []).map((id) => String(id)));
-    const mergedParticipants = [
+  } else {
+    const current = new Set((thread.participants || []).map(String));
+    thread.participants = [
       ...(thread.participants || []),
-      ...recipientObjectIds.filter((id) => !existingParticipantIds.has(String(id))),
+      ...objectIds.filter((id) => !current.has(String(id))),
     ];
-    thread.participants = mergedParticipants;
-    shouldSaveThread = true;
-  } else if (!thread.targetRole || thread.targetRole === "support") {
-    thread.targetRole = "manager";
-    shouldSaveThread = true;
   }
 
-  let notifications = [];
-  if (recipientIds.length > 0) {
-    notifications = recipientIds.map((toUserId) => ({
-      toUserId,
+  const messagePreview = preview(latestUserMessage || summary, 160);
+  const notifications = await Promise.all(recipients.map((recipient) =>
+    createNotificationOnce({
+      toUserId: recipient._id,
       toRole: "support",
       restaurantId: conversation.restaurantId,
       type: "ai_chatbot_handoff",
+      sourceType: "ai_chatbot_conversation",
+      sourceId: conversation._id,
+      io,
       payload: {
+        title: "Khách hàng cần hỗ trợ",
+        message: latestUserMessage ? `Khách nhắn: ${messagePreview}` : "Có hội thoại được trợ lý AI chuyển giao.",
+        actionUrl: String(recipient.userType || "").toUpperCase() === "STAFF"
+          ? "/staff/ai-handoff"
+          : "/manager#ai-handoff",
         threadId: String(thread._id),
-        conversationId: String(conversation._id),
-        guestId: normalizedGuestId || null,
+        conversationId,
+        guestId: guestId || null,
         restaurantId: String(conversation.restaurantId),
         source: "ai_chatbot",
-        messagePreview: preview(summaryText, 160),
+        messagePreview,
       },
-    }));
-  } else {
-    notifications = [{
-      toRole: "manager",
-      restaurantId: conversation.restaurantId,
-      type: "ai_chatbot_handoff",
-      payload: {
-        threadId: String(thread._id),
-        conversationId: String(conversation._id),
-        guestId: normalizedGuestId || null,
-        restaurantId: String(conversation.restaurantId),
-        source: "ai_chatbot",
-        messagePreview: preview(summaryText, 160),
-      },
-    }];
-  }
+    })));
 
-  if (notifications.length > 0) await Notification.insertMany(notifications);
-
-  if (recipientObjectIds.length > 0) {
-    thread.unreadBy = recipientObjectIds;
-    await thread.save();
-  } else if (thread && !thread.unreadBy) {
-    thread.unreadBy = [];
-    await thread.save();
-  } else if (shouldSaveThread) {
-    await thread.save();
-  }
-
-  const metadata = { ...(conversation.metadata || {}) };
-  metadata.handoffRequestedAt = new Date().toISOString();
-  metadata.handoffReason = reason || "user_click";
-  metadata.handoffRequestedBy = user?.id || user?._id ? "user" : "guest";
-  metadata.handoffSummary = preview(summaryText, 2000);
-  if (normalizedGuestId) metadata.guestId = normalizedGuestId;
+  thread.unreadBy = objectIds;
+  await thread.save();
 
   conversation.status = "handoff_requested";
   conversation.chatThreadId = thread._id;
-  conversation.metadata = metadata;
+  conversation.metadata = {
+    ...(conversation.metadata || {}),
+    handoffRequestedAt: new Date().toISOString(),
+    handoffReason: reason,
+    handoffRequestedBy: user?.id || user?._id ? "user" : "guest",
+    handoffSummary: preview(summary, 2000),
+    ...(guestId ? { guestId } : {}),
+  };
   await conversation.save();
 
-  if (io) {
-    io.to(`restaurant_${conversation.restaurantId}`).emit("threadUpdated", {
-      threadId: String(thread._id),
-      lastMessagePreview: thread.lastMessagePreview,
-      lastMessageAt: thread.lastMessageAt,
-    });
-    recipientIds.forEach((uid) => {
-      io.to(`user_${uid}`).emit("notificationCreated", {
-        type: "ai_chatbot_handoff",
-        threadId: String(thread._id),
-        messagePreview: preview(summaryText, 140),
-      });
-    });
-  }
+  io?.to(`restaurant_${conversation.restaurantId}`).emit("threadUpdated", {
+    threadId: String(thread._id),
+    lastMessagePreview: thread.lastMessagePreview,
+    lastMessageAt: thread.lastMessageAt,
+  });
 
   return {
     ok: true,
-    conversationId: String(conversation._id),
+    conversationId,
     handoffRequested: true,
     chatThreadId: String(thread._id),
-    notificationCount: notifications.length,
+    notificationCount: notifications.filter(Boolean).length,
     message: "Nhân viên đã được thông báo. Bạn có thể tiếp tục gửi tin nhắn, nhân viên sẽ xem lịch sử trước đó.",
     alreadyRequested: false,
   };
