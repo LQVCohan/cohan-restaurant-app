@@ -105,9 +105,9 @@ const staffPageMeta = [
   },
   {
     path: "/staff/kitchen",
-    eyebrow: "Khu vực bếp",
-    title: "Món chờ xử lý",
-    description: "Theo dõi món mới, món đang làm và món đã hoàn tất trong luồng bếp.",
+    eyebrow: "Bếp / Quầy bar",
+    title: "Điều phối khu chế biến",
+    description: "Theo dõi món mới, món đang làm và món đã hoàn tất tại bếp chính hoặc quầy bar.",
   },
   {
     path: "/staff/performance",
@@ -179,7 +179,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
       { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff" },
       { label: "Phiếu lương", to: "/staff/payslips" },
       { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
-      { label: "Khu vực bếp", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
+      { label: "Bếp / Quầy bar", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
       { label: "Cài đặt", to: "/staff/settings" },
     ],
     [],
@@ -285,4 +285,3 @@ export default function StaffLayout({ children }) {
     </StaffLayoutWithRestaurantQuery>
   );
 }
-
