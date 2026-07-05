@@ -45,6 +45,17 @@ describe("performanceAppeal.service", () => {
     await expect(createPerformanceIncidentAppeal({ incidentId: "i1", reason: "Need review" }, { id: "u1" })).rejects.toThrow("OPEN_APPEAL_ALREADY_EXISTS");
   });
 
+  it("maps a duplicate-key race to the open appeal error", async () => {
+    mocks.incidentFindById.mockResolvedValue({ _id: "i1", restaurantId: "r1", employeeId: "u1", scoreImpactStatus: "pending" });
+    mocks.appealFindOne.mockResolvedValue(null);
+    mocks.appealCreate.mockRejectedValue(Object.assign(new Error("duplicate"), { code: 11000 }));
+
+    await expect(
+      createPerformanceIncidentAppeal({ incidentId: "i1", reason: "Need review" }, { id: "u1" }),
+    ).rejects.toThrow("OPEN_APPEAL_ALREADY_EXISTS");
+    expect(mocks.notifyReviewers).not.toHaveBeenCalled();
+  });
+
   it("forbids staff creating appeal for other employee and empty reason", async () => {
     mocks.incidentFindById.mockResolvedValue({ _id: "i1", restaurantId: "r1", employeeId: "u2", scoreImpactStatus: "pending" });
     await expect(createPerformanceIncidentAppeal({ incidentId: "i1", reason: "ok" }, { id: "u1" })).rejects.toThrow("FORBIDDEN");
@@ -60,6 +71,18 @@ describe("performanceAppeal.service", () => {
     await reviewPerformanceIncidentAppeal({ appealId: "a1", status: "accepted", decisionReason: "valid" }, { id: "m1" });
     expect(save).toHaveBeenCalled();
     expect(mocks.snapshotFindOne).not.toHaveBeenCalled();
+  });
+
+  it("does not reopen or change a terminal appeal decision", async () => {
+    mocks.resolveUserRoles.mockReturnValue(["MANAGER"]);
+    const save = vi.fn();
+    mocks.appealFindById.mockResolvedValue({ _id: "a1", incidentId: "i1", restaurantId: "r1", status: "accepted", save });
+
+    await expect(
+      reviewPerformanceIncidentAppeal({ appealId: "a1", status: "rejected", decisionReason: "changed" }, { id: "m1" }),
+    ).rejects.toThrow("PERFORMANCE_APPEAL_ALREADY_RESOLVED");
+    expect(mocks.incidentFindById).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
   });
 
   it("updates all reversal records in one transaction", async () => {
