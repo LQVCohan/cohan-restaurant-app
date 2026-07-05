@@ -159,13 +159,6 @@ async function assertCanApplyIncident(user, restaurantId) {
   await assertRestaurantScope(user, restaurantId);
 }
 
-function toPeriodBounds(dateLike) {
-  const dt = new Date(dateLike || Date.now());
-  const periodStart = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 0, 0, 0, 0));
-  const periodEnd = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-  return { periodStart, periodEnd };
-}
-
 export async function applyPerformanceIncidentScore({ incidentId, actor, note }) {
   if (!actor) throw new Error("UNAUTHENTICATED");
   const session = await mongoose.startSession();
@@ -187,13 +180,14 @@ export async function applyPerformanceIncidentScore({ incidentId, actor, note })
       const applyNote = String(note || "").trim();
       if (proposed === 0 && !applyNote) throw new Error("NOTE_REQUIRED_FOR_ZERO_DELTA");
 
-      const { periodStart, periodEnd } = toPeriodBounds(incident.occurredAt);
+      const occurredAt = new Date(incident.occurredAt);
+      if (Number.isNaN(occurredAt.getTime())) throw new Error("PERFORMANCE_INCIDENT_DATE_INVALID");
       const snapshot = await StaffPerformanceSnapshot.findOne(
         {
           employeeId: incident.employeeId,
           restaurantId: incident.restaurantId,
-          periodStart,
-          periodEnd,
+          periodStart: { $lte: occurredAt },
+          periodEnd: { $gte: occurredAt },
         },
         null,
         { session },
