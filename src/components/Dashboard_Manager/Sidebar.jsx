@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import { ChevronLeft, ChevronRight, House, UsersRound } from "lucide-react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
+import "./Styles/SidebarPortalActions.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
 import { canAccessRoute, isAdminRole } from "@/utils/frontendRoleAccess";
