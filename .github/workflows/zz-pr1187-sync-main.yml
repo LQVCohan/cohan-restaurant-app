@@ -1,0 +1,30 @@
+name: pr1187-sync-main
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize, opened, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.event.pull_request.head.ref == 'codex/sua-luong-du-lieu-cho-ai-chatbot' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/sua-luong-du-lieu-cho-ai-chatbot
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge latest main into the PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          rm .github/workflows/zz-pr1187-sync-main.yml
+          git add -A
+          git commit -m "chore: remove temporary sync workflow"
+          git push origin HEAD:codex/sua-luong-du-lieu-cho-ai-chatbot
