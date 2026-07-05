@@ -9,6 +9,15 @@ import { mergeWithDefaultAiChatbotSettings } from "./restaurantChatbotSettings.s
 const toId = (value) => mongoose.isValidObjectId(value) ? new mongoose.Types.ObjectId(value) : null;
 const cleanGuestId = (value) => String(value || "").trim().slice(0, 128).replace(/[^a-zA-Z0-9_-]/g, "");
 const preview = (value, max = 240) => String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+const buildHandoffActionUrl = ({ userType, restaurantId, threadId }) => {
+  const query = new URLSearchParams({
+    restaurantId: String(restaurantId),
+    threadId: String(threadId),
+  }).toString();
+  return String(userType || "").toUpperCase() === "STAFF"
+    ? `/staff/ai-handoff?${query}`
+    : `/manager?${query}#ai-handoff`;
+};
 const fail = (conversationId, message) => ({
   ok: false,
   conversationId,
@@ -184,9 +193,11 @@ export async function requestRestaurantChatbotHandoff({ input, user, io, clientI
       payload: {
         title: "Khách hàng cần hỗ trợ",
         message: latestUserMessage ? `Khách nhắn: ${messagePreview}` : "Có hội thoại được trợ lý AI chuyển giao.",
-        actionUrl: String(recipient.userType || "").toUpperCase() === "STAFF"
-          ? "/staff/ai-handoff"
-          : "/manager#ai-handoff",
+        actionUrl: buildHandoffActionUrl({
+          userType: recipient.userType,
+          restaurantId: conversation.restaurantId,
+          threadId: thread._id,
+        }),
         threadId: String(thread._id),
         conversationId,
         guestId: guestId || null,
