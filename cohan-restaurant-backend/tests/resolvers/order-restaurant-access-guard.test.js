@@ -19,8 +19,18 @@ const guardMocks = vi.hoisted(() => ({
   requireRestaurantAccess: vi.fn(),
 }));
 
+const authorizationMocks = vi.hoisted(() => ({
+  requireRestaurantPermission: vi.fn(),
+}));
+
+const eventMocks = vi.hoisted(() => ({
+  emitOrderEvent: vi.fn(),
+}));
+
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => authorizationMocks);
+vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => eventMocks);
 vi.mock("mongoose", () => ({
   default: {
     isValidObjectId: vi.fn((value) => String(value || "").startsWith("valid-")),
@@ -44,7 +54,8 @@ function buildMutation() {
     createOffPremiseOrder: vi.fn().mockResolvedValue({ ok: true }),
     createOrderForTable: vi.fn().mockResolvedValue({ ok: true }),
     createStaffRemoteOrder: vi.fn().mockResolvedValue({ ok: true }),
-    confirmIncomingOrder: vi.fn().mockResolvedValue({ ok: true }),
+    confirmIncomingOrder: vi.fn().mockResolvedValue({ legacy: true }),
+    updateOrderStatus: vi.fn().mockResolvedValue({ ok: true }),
     rejectIncomingOrder: vi.fn().mockResolvedValue({ ok: true }),
     createTemporaryBillPrintJob: vi.fn().mockResolvedValue({ ok: true }),
     requestPaymentForOrder: vi.fn().mockResolvedValue({ ok: true }),
@@ -58,6 +69,8 @@ describe("order mutation restaurant access guards", () => {
     vi.resetModules();
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue(undefined);
+    authorizationMocks.requireRestaurantPermission.mockResolvedValue(undefined);
+    eventMocks.emitOrderEvent.mockResolvedValue(undefined);
   });
 
   it("requires restaurant access before createOffPremiseOrder", async () => {
@@ -97,6 +110,60 @@ describe("order mutation restaurant access guards", () => {
     ).rejects.toThrow("FORBIDDEN_SCOPE");
 
     expect(mutation.createOffPremiseOrder).not.toHaveBeenCalled();
+  });
+
+  it("routes confirmIncomingOrder through the station-aware resolver, not the legacy method", async () => {
+    const scopedOrder = {
+      _id: "valid-order-1",
+      restaurantId: "valid-restaurant-1",
+    };
+    const pendingOrder = {
+      ...scopedOrder,
+      currentStatus: "pending",
+    };
+    const confirmedOrder = {
+      ...scopedOrder,
+      currentStatus: "confirmed",
+      orderCode: "ORD-1",
+      items: [],
+    };
+
+    modelMocks.Order.findById
+      .mockReturnValueOnce(leanResult(scopedOrder))
+      .mockReturnValueOnce(pendingOrder);
+    modelMocks.PrintSetting.findOne.mockReturnValue(leanResult(null));
+
+    const mutation = buildMutation();
+    mutation.updateOrderStatus.mockResolvedValue(confirmedOrder);
+    const { withOrderRestaurantAccessGuards } = await import(
+      "../../graphql/resolvers/order/accessGuard.js"
+    );
+    const guarded = withOrderRestaurantAccessGuards(mutation);
+
+    const result = await guarded.confirmIncomingOrder(
+      null,
+      {
+        input: {
+          id: "valid-order-1",
+          restaurantId: "valid-restaurant-1",
+        },
+      },
+      { user: { id: "manager-1" } },
+    );
+
+    expect(result).toEqual({ order: confirmedOrder });
+    expect(mutation.confirmIncomingOrder).not.toHaveBeenCalled();
+    expect(mutation.updateOrderStatus).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        input: expect.objectContaining({
+          id: "valid-order-1",
+          restaurantId: "valid-restaurant-1",
+          status: "confirmed",
+        }),
+      }),
+      expect.anything(),
+    );
   });
 
   it("checks scoped order before creating a temporary bill print job", async () => {
