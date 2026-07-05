@@ -38,7 +38,6 @@ import tableEvent from "./table_event/index.js";
 import * as printSetting from "./printSetting/index.js";
 import search from "./search/index.js";
 import communication from "./communication/index.js";
-import communicationHandoffAccess from "./communication/handoffAccess.js";
 import aiChatbot from "./aiChatbot/index.js";
 import availability from "./availability/index.js";
 import auditLog from "./audit_log/index.js";
@@ -88,7 +87,6 @@ export default {
     ...(tableEvent.Query || {}),
     ...(printSetting.Query || {}),
     ...(communication.Query || {}),
-    ...(communicationHandoffAccess.Query || {}),
     ...(aiChatbot.Query || {}),
     ...(availability.Query || {}),
     ...(auditLog.Query || {}),
@@ -132,7 +130,6 @@ export default {
     ...(tableEvent.Mutation || {}),
     ...(printSetting.Mutation || {}),
     ...(communication.Mutation || {}),
-    ...(communicationHandoffAccess.Mutation || {}),
     ...(aiChatbot.Mutation || {}),
     ...(availability.Mutation || {}),
     ...(posCustomer.Mutation || {}),
