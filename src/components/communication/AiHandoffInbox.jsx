@@ -1,8 +1,10 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import { useMutation } from "@apollo/client/react";
+import { useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import useCommunication from "@/hooks/useCommunication";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import AiHandoffBadge from "@/components/communication/AiHandoffBadge";
 import "./AiHandoffInbox.scss";
 
@@ -31,51 +33,6 @@ const formatTime = (iso) =>
         month: "2-digit",
       })
     : "";
-
-const collectPermissionCodes = (user) => {
-  const out = new Set();
-
-  const push = (value) => {
-    if (!value) return;
-
-    if (typeof value === "string") {
-      out.add(value);
-      return;
-    }
-
-    if (typeof value === "object") {
-      push(value.code || value.slug || value.name || value.permissionCode);
-    }
-  };
-
-  [
-    user?.permissions,
-    user?.permissionCodes,
-    user?.effectivePermissions,
-    user?.role?.permissions,
-    user?.role?.directPermissions,
-  ].forEach((list) => {
-    if (Array.isArray(list)) list.forEach(push);
-  });
-
-  if (
-    ["admin", "manager"].includes(
-      String(
-        user?.roleName || user?.role?.slug || user?.role?.name || "",
-      ).toLowerCase(),
-    )
-  ) {
-    out.add("ai.chatbot.moderate");
-    out.add("ai.chatbot.handoff");
-  }
-
-  return out;
-};
-
-const hasAnyPermission = (user, codes) => {
-  const permissions = collectPermissionCodes(user);
-  return permissions.has("*") || codes.some((code) => permissions.has(code));
-};
 
 const isAiHandoffThread = (thread) => {
   const fields = [
@@ -165,6 +122,12 @@ export default function AiHandoffInbox({
     restaurants = [],
     restaurantsLoading = false,
   } = useContext(AuthContext) || {};
+  const location = useLocation();
+  const requestedThreadId = useMemo(
+    () => new URLSearchParams(location.search).get("threadId") || "",
+    [location.search],
+  );
+  const openedThreadIdRef = useRef("");
 
   const canViewHandoff = hasAnyPermission(user, [
     "ai.chatbot.handoff",
@@ -372,6 +335,24 @@ export default function AiHandoffInbox({
     runBestEffort(refetchNotifications?.());
   };
 
+  useEffect(() => {
+    if (
+      activeTab !== TAB_ACTIVE ||
+      !requestedThreadId ||
+      openedThreadIdRef.current === requestedThreadId
+    ) {
+      return;
+    }
+
+    const item = mergedItems.find(
+      (candidate) => String(candidate.threadId || "") === requestedThreadId,
+    );
+    if (!item) return;
+
+    openedThreadIdRef.current = requestedThreadId;
+    void openItem(item);
+  }, [activeTab, mergedItems, openItem, requestedThreadId]);
+
   const onSend = async (event) => {
     event.preventDefault();
 
@@ -379,7 +360,7 @@ export default function AiHandoffInbox({
     const threadId = thread?.id || selectedItem?.threadId;
 
     if (
-      !canViewHandoff ||
+      !canResolveHandoff ||
       !content ||
       !threadId ||
       isThreadClosed ||
@@ -665,12 +646,14 @@ export default function AiHandoffInbox({
             onChange={(event) => setReply(event.target.value)}
             aria-label="Nội dung phản hồi cho khách"
             disabled={
-              activeTab === TAB_RESOLVED || isThreadClosed || !canViewHandoff
+              activeTab === TAB_RESOLVED || isThreadClosed || !canResolveHandoff
             }
             placeholder={
-              isThreadClosed
-                ? "Phiên hỗ trợ đã đóng"
-                : "Nhập phản hồi cho khách..."
+              !canResolveHandoff
+                ? "Bạn chỉ có quyền xem hội thoại"
+                : isThreadClosed
+                  ? "Phiên hỗ trợ đã đóng"
+                  : "Nhập phản hồi cho khách..."
             }
           />
 
@@ -679,7 +662,7 @@ export default function AiHandoffInbox({
             disabled={
               activeTab === TAB_RESOLVED ||
               isThreadClosed ||
-              !canViewHandoff ||
+              !canResolveHandoff ||
               !reply.trim() ||
               !!sendMessageState?.loading
             }
@@ -706,9 +689,7 @@ export default function AiHandoffInbox({
           </button>
 
           {!canResolveHandoff ? (
-            <small>
-              Bạn chưa được cấp quyền đánh dấu đã xử lý.
-            </small>
+            <small>Bạn chỉ có quyền xem hội thoại bàn giao.</small>
           ) : null}
 
           {isThreadClosed ? (
