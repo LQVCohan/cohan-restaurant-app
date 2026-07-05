@@ -8,6 +8,10 @@ const modelMocks = vi.hoisted(() => ({
   User: { find: vi.fn() },
 }));
 const guardMocks = vi.hoisted(() => ({ requireRestaurantAccess: vi.fn() }));
+const authMocks = vi.hoisted(() => ({
+  hasAnyPermission: vi.fn(),
+  hasPermission: vi.fn(),
+}));
 const mongooseMocks = vi.hoisted(() => ({
   isValidObjectId: vi.fn((v) => String(v).startsWith("valid-")),
   Types: { ObjectId: function ObjectId(v) { this.value = v; this.toString = () => String(v); } },
@@ -15,6 +19,7 @@ const mongooseMocks = vi.hoisted(() => ({
 
 vi.mock("../../models/index.js", () => modelMocks);
 vi.mock("../../graphql/guards.js", () => guardMocks);
+vi.mock("../../src/services/auth/authorization.service.js", () => authMocks);
 vi.mock("mongoose", () => ({ default: mongooseMocks }));
 
 const findChain = (rows) => ({
@@ -22,12 +27,33 @@ const findChain = (rows) => ({
 });
 const restaurantChain = (doc) => ({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(doc) })) });
 
+const handoffThread = (overrides = {}) => ({
+  _id: "valid-t1",
+  status: "open",
+  restaurantId: "valid-r1",
+  channel: "support",
+  targetRole: null,
+  subject: "AI handoff - guest",
+  participants: [],
+  messages: [],
+  unreadBy: [],
+  ...overrides,
+});
+
+const threadDocument = (data, save = vi.fn().mockResolvedValue(true)) => ({
+  ...data,
+  save,
+  toObject: () => ({ ...data }),
+});
+
 describe("communication resolver restaurant access hardening", () => {
   const ctx = { user: { id: "valid-u1", roleName: "manager" } };
 
   beforeEach(() => {
     vi.clearAllMocks();
     guardMocks.requireRestaurantAccess.mockResolvedValue();
+    authMocks.hasAnyPermission.mockResolvedValue(false);
+    authMocks.hasPermission.mockResolvedValue(false);
     modelMocks.ChatThread.find.mockReturnValue(findChain([]));
     modelMocks.Notification.find.mockReturnValue(findChain([]));
     modelMocks.Notification.countDocuments.mockResolvedValue(0);
@@ -59,8 +85,6 @@ describe("communication resolver restaurant access hardening", () => {
     expect(modelMocks.ChatThread.find).toHaveBeenCalledWith(expect.objectContaining({ $or: expect.any(Array), channel: "support" }));
   });
 
-
-
   it("chatThreads without status defaults to open", async () => {
     const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
     await resolver.Query.chatThreads(null, { restaurantId: "valid-r1" }, ctx);
@@ -81,6 +105,28 @@ describe("communication resolver restaurant access hardening", () => {
       extensions: { code: "BAD_USER_INPUT" },
     });
     expect(modelMocks.ChatThread.find).not.toHaveBeenCalled();
+  });
+
+  it("allows moderation-only users to view scoped handoff threads", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    authMocks.hasAnyPermission.mockResolvedValue(true);
+    modelMocks.ChatThread.find.mockReturnValue(findChain([handoffThread()]));
+
+    const rows = await resolver.Query.chatThreads(null, { restaurantId: "valid-r1" }, ctx);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe("valid-t1");
+  });
+
+  it("does not trust stale handoff participants after view permission is removed", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    modelMocks.ChatThread.find.mockReturnValue(findChain([
+      handoffThread({ participants: ["valid-u1"] }),
+    ]));
+
+    const rows = await resolver.Query.chatThreads(null, { restaurantId: "valid-r1" }, ctx);
+
+    expect(rows).toEqual([]);
   });
 
   it("notifications denied scope blocks Notification.find", async () => {
@@ -124,7 +170,6 @@ describe("communication resolver restaurant access hardening", () => {
     expect(modelMocks.ChatThread.create).toHaveBeenCalled();
     expect(guardMocks.requireRestaurantAccess).toHaveBeenCalled();
   });
-
 
   it("openChatThread prefers BrandMembership manager over legacy managerId", async () => {
     const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
@@ -176,6 +221,37 @@ describe("communication resolver restaurant access hardening", () => {
     await expect(
       resolver.Mutation.sendChatMessage(null, { input: { threadId: "valid-t1", content: "x" } }, ctx)
     ).rejects.toMatchObject({ extensions: { code: "CHAT_THREAD_CLOSED" } });
+  });
+
+  it("moderators can view but cannot reply to handoff threads", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    authMocks.hasAnyPermission.mockResolvedValue(true);
+    modelMocks.ChatThread.findById.mockResolvedValue(threadDocument(handoffThread()));
+
+    await expect(
+      resolver.Mutation.sendChatMessage(
+        null,
+        { input: { threadId: "valid-t1", content: "reply" } },
+        ctx,
+      ),
+    ).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
+  });
+
+  it("handoff permission allows replying to a scoped handoff thread", async () => {
+    const resolver = (await import("../../graphql/resolvers/communication/index.js")).default;
+    const save = vi.fn().mockResolvedValue(true);
+    authMocks.hasAnyPermission.mockResolvedValue(true);
+    authMocks.hasPermission.mockResolvedValue(true);
+    modelMocks.ChatThread.findById.mockResolvedValue(threadDocument(handoffThread(), save));
+
+    const out = await resolver.Mutation.sendChatMessage(
+      null,
+      { input: { threadId: "valid-t1", content: "reply" } },
+      { ...ctx, io: null },
+    );
+
+    expect(out.id).toBe("valid-t1");
+    expect(save).toHaveBeenCalled();
   });
 
   it("sendChatMessage still works for open thread", async () => {
