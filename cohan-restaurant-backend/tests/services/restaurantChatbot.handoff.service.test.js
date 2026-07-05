@@ -103,6 +103,7 @@ describe("restaurantChatbot handoff service", () => {
     expect(threads).toHaveLength(1);
     expect((threads[0].participants || []).map(String)).toEqual([staffId]);
     expect((threads[0].unreadBy || []).map(String)).toEqual([staffId]);
+    expect(threads[0].targetRole).toBeNull();
     expect(notifications).toHaveLength(1);
     expect(notifications[0].toUserId).toBe(staffId);
     expect(notifications[0].payload).toMatchObject({
@@ -145,6 +146,7 @@ describe("restaurantChatbot handoff service", () => {
       _id: threadId,
       participants: [new mongoose.Types.ObjectId(existingRecipient)],
       unreadBy: [],
+      targetRole: "support",
       save: async function () {},
     };
     threads.push(thread);
@@ -169,6 +171,7 @@ describe("restaurantChatbot handoff service", () => {
     expect((thread.participants || []).map(String)).toContain(newRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(existingRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(newRecipient);
+    expect(thread.targetRole).toBeNull();
   });
 
   it("includes a permitted manager assigned through BrandMembership", async () => {
