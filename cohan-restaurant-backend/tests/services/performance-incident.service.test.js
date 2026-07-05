@@ -151,6 +151,9 @@ describe("performanceIncident.service", () => {
 
     await applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply" });
 
+    const snapshotQuery = mocks.snapshotFindOne.mock.calls[0][0];
+    expect(snapshotQuery.periodStart.$lte.toISOString()).toBe(incident.occurredAt);
+    expect(snapshotQuery.periodEnd.$gte.toISOString()).toBe(incident.occurredAt);
     expect(mocks.adjustmentCreate).toHaveBeenCalledWith(
       [expect.objectContaining({ scoreDelta: -3, previousScore: 100, newScore: 97 })],
       { session: mocks.session },
