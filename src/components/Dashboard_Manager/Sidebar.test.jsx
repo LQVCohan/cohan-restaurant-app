@@ -11,12 +11,12 @@ const managerUser = {
   avatarUrl: "/uploads/avatars/manager.webp",
 };
 
-const renderSidebar = (props = {}) => {
+const renderSidebar = ({ user = managerUser, ...props } = {}) => {
   const onPageChange = vi.fn();
   const onClose = vi.fn();
 
   render(
-    <AuthContext.Provider value={{ user: managerUser }}>
+    <AuthContext.Provider value={{ user }}>
       <Sidebar
         isOpen
         activeItem="dashboard"
@@ -65,6 +65,20 @@ describe("Manager Sidebar", () => {
     renderSidebar({ activeBrand: { id: "b1" } });
 
     expect(screen.getByText(/Quản lý hệ thống/)).toBeInTheDocument();
+  });
+
+  it("renders Home and Staff portal shortcuts for managers", () => {
+    renderSidebar();
+
+    expect(screen.getByRole("link", { name: "Chuyển đến trang chủ" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Chuyển đến khu nhân viên" })).toHaveAttribute("href", "/staff/dashboard");
+  });
+
+  it("hides the Staff shortcut when the role cannot access the Staff portal", () => {
+    renderSidebar({ user: { ...managerUser, roleName: "accountant" } });
+
+    expect(screen.getByRole("link", { name: "Chuyển đến trang chủ" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Chuyển đến khu nhân viên" })).not.toBeInTheDocument();
   });
 
   it("keeps existing navigation callbacks when selecting an item", () => {

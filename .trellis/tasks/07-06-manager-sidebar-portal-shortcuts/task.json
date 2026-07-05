@@ -1,0 +1,30 @@
+{
+  "id": "manager-sidebar-portal-shortcuts",
+  "name": "manager-sidebar-portal-shortcuts",
+  "title": "Add Home and Staff shortcuts to the manager sidebar footer",
+  "description": "Add compact portal navigation links beside the existing manager identity block without changing manager page state or route access policy.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-sidebar-navigation",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-06",
+  "completedAt": null,
+  "branch": "manager-sidebar-portal-shortcuts",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Sidebar.jsx",
+    "src/components/Dashboard_Manager/Styles/SidebarPortalActions.scss",
+    "src/components/Dashboard_Manager/Sidebar.test.jsx"
+  ],
+  "notes": "UI-only navigation change. Existing AppRouter and frontendRoleAccess remain the source of truth for route access.",
+  "meta": {}
+}
