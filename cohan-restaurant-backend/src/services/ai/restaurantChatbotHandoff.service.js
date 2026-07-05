@@ -147,7 +147,7 @@ export async function requestRestaurantChatbotHandoff({ input, user, io, clientI
     thread = await ChatThread.create({
       restaurantId: conversation.restaurantId,
       channel: "support",
-      targetRole: "support",
+      targetRole: null,
       participants: objectIds,
       subject: "AI handoff - Khách cần hỗ trợ",
       status: "open",
@@ -163,6 +163,7 @@ export async function requestRestaurantChatbotHandoff({ input, user, io, clientI
       unreadBy: objectIds,
     });
   } else {
+    thread.targetRole = null;
     const current = new Set((thread.participants || []).map(String));
     thread.participants = [
       ...(thread.participants || []),
