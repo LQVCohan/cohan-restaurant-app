@@ -7,6 +7,7 @@ import { resolvePerformanceLevel } from "../staffPerformance/staffPerformance.se
 
 const OPEN_STATUSES = ["submitted", "under_review", "needs_more_info"];
 const REVIEW_STATUSES = ["under_review", "needs_more_info", "accepted", "rejected"];
+const TERMINAL_STATUSES = ["accepted", "rejected", "cancelled"];
 
 const toId = (v) => String(v || "");
 const trim = (v) => String(v || "").trim();
@@ -30,7 +31,15 @@ export async function createPerformanceIncidentAppeal(input, actor) {
   if (!reason) throw new Error("APPEAL_REASON_REQUIRED");
   const existing = await PerformanceIncidentAppeal.findOne({ incidentId: incident._id, status: { $in: OPEN_STATUSES } });
   if (existing) throw new Error("OPEN_APPEAL_ALREADY_EXISTS");
-  const appeal = await PerformanceIncidentAppeal.create({ restaurantId: incident.restaurantId, incidentId: incident._id, employeeId: incident.employeeId, submittedBy: actorId, submittedAt: new Date(), reason, evidenceNote: trim(input.evidenceNote), evidenceUrls: (input.evidenceUrls || []).map(trim).filter(Boolean), status: "submitted" });
+
+  let appeal;
+  try {
+    appeal = await PerformanceIncidentAppeal.create({ restaurantId: incident.restaurantId, incidentId: incident._id, employeeId: incident.employeeId, submittedBy: actorId, submittedAt: new Date(), reason, evidenceNote: trim(input.evidenceNote), evidenceUrls: (input.evidenceUrls || []).map(trim).filter(Boolean), status: "submitted" });
+  } catch (error) {
+    if (error?.code === 11000) throw new Error("OPEN_APPEAL_ALREADY_EXISTS");
+    throw error;
+  }
+
   try { await notifyReviewers({ restaurantId: incident.restaurantId, type: "appeal_submitted", sourceType: "performance_appeal", sourceId: String(appeal._id), actionUrl: "/manager/performance", payload: { title: "Có phản hồi/khiếu nại mới", message: "Một nhân viên đã gửi phản hồi cho incident hiệu suất." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
   return appeal;
 }
@@ -55,7 +64,7 @@ export async function getPerformanceIncidentAppealById(id, actor) { const d = aw
 
 export async function cancelPerformanceIncidentAppeal(appealId, actor){ const appeal = await getPerformanceIncidentAppealById(appealId, actor); const actorId = toId(actor._id || actor.id); if (toId(appeal.employeeId)!==actorId) throw new Error('FORBIDDEN'); if(!["submitted","needs_more_info"].includes(appeal.status)) throw new Error('INVALID_APPEAL_STATUS'); appeal.status='cancelled'; appeal.reviewedBy=actorId; appeal.reviewedAt=new Date(); appeal.reviewNote='Cancelled by staff'; return appeal.save(); }
 
-export async function reviewPerformanceIncidentAppeal(input, actor){ if(!actor) throw new Error('UNAUTHENTICATED'); const appeal = await PerformanceIncidentAppeal.findById(input.appealId); if(!appeal) throw new Error('PERFORMANCE_INCIDENT_APPEAL_NOT_FOUND'); await assertScope(actor, appeal.restaurantId); if(!hasRole(actor, PERFORMANCE_REVIEW_ROLES)) throw new Error('FORBIDDEN'); if(!REVIEW_STATUSES.includes(input.status)) throw new Error('INVALID_REVIEW_STATUS'); if(["accepted","rejected"].includes(input.status) && !trim(input.decisionReason)) throw new Error('DECISION_REASON_REQUIRED'); appeal.status=input.status; appeal.reviewedBy=actor._id || actor.id; appeal.reviewedAt=new Date(); appeal.reviewNote=trim(input.reviewNote); appeal.decisionReason=trim(input.decisionReason);
+export async function reviewPerformanceIncidentAppeal(input, actor){ if(!actor) throw new Error('UNAUTHENTICATED'); const appeal = await PerformanceIncidentAppeal.findById(input.appealId); if(!appeal) throw new Error('PERFORMANCE_INCIDENT_APPEAL_NOT_FOUND'); await assertScope(actor, appeal.restaurantId); if(!hasRole(actor, PERFORMANCE_REVIEW_ROLES)) throw new Error('FORBIDDEN'); if(TERMINAL_STATUSES.includes(appeal.status)) throw new Error('PERFORMANCE_APPEAL_ALREADY_RESOLVED'); if(!REVIEW_STATUSES.includes(input.status)) throw new Error('INVALID_REVIEW_STATUS'); if(["accepted","rejected"].includes(input.status) && !trim(input.decisionReason)) throw new Error('DECISION_REASON_REQUIRED'); appeal.status=input.status; appeal.reviewedBy=actor._id || actor.id; appeal.reviewedAt=new Date(); appeal.reviewNote=trim(input.reviewNote); appeal.decisionReason=trim(input.decisionReason);
   if (input.status === "accepted") {
     const incident = await PerformanceIncident.findById(appeal.incidentId);
     appeal.scoreReversalStatus = incident?.scoreImpactStatus === "applied" ? "pending" : "not_required";
