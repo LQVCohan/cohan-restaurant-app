@@ -28,7 +28,7 @@ No Mongoose schema, resolver, service, GraphQL operation, Apollo hook, audit log
 ## Files to change
 
 - `src/components/Dashboard_Manager/Sidebar.jsx`: render the two portal links and reuse `canAccessRoute` for the Staff link.
-- `src/components/Dashboard_Manager/Styles/SidebarShellFix.scss`: style the compact footer actions and preserve collapsed/mobile behavior.
+- `src/components/Dashboard_Manager/Styles/SidebarPortalActions.scss`: style the compact footer actions and preserve expanded, collapsed, and mobile behavior.
 - `src/components/Dashboard_Manager/Sidebar.test.jsx`: verify destinations and role-aware visibility.
 
 ## Acceptance criteria
