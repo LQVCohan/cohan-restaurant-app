@@ -16,7 +16,6 @@ async function assertScope(user, restaurantId){ if (!await userCanAccessRestaura
 
 const SCORE_MIN = 0;
 const SCORE_MAX = 100;
-function toPeriodBounds(dateLike) { const dt = new Date(dateLike || Date.now()); const periodStart = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 0, 0, 0, 0)); const periodEnd = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0, 23, 59, 59, 999)); return { periodStart, periodEnd }; }
 
 export async function createPerformanceIncidentAppeal(input, actor) {
   if (!actor) throw new Error("UNAUTHENTICATED");
@@ -104,8 +103,18 @@ export async function reverseScoreForAcceptedAppeal({ appealId, actor, reversalD
       const delta = reversalDelta == null ? maxDelta : Number(reversalDelta);
       if (!Number.isFinite(delta) || delta <= 0) throw new Error("PERFORMANCE_REVERSAL_DELTA_INVALID");
       if (delta > maxDelta) throw new Error("PERFORMANCE_REVERSAL_DELTA_EXCEEDS_ORIGINAL");
-      const { periodStart, periodEnd } = toPeriodBounds(incident.occurredAt);
-      const snapshot = await StaffPerformanceSnapshot.findOne({ employeeId: incident.employeeId, restaurantId: incident.restaurantId, periodStart, periodEnd }, null, { session });
+      const occurredAt = new Date(incident.occurredAt);
+      if (Number.isNaN(occurredAt.getTime())) throw new Error("PERFORMANCE_INCIDENT_DATE_INVALID");
+      const snapshot = await StaffPerformanceSnapshot.findOne(
+        {
+          employeeId: incident.employeeId,
+          restaurantId: incident.restaurantId,
+          periodStart: { $lte: occurredAt },
+          periodEnd: { $gte: occurredAt },
+        },
+        null,
+        { session },
+      );
       if (!snapshot) throw new Error("STAFF_PERFORMANCE_SNAPSHOT_NOT_FOUND");
       const previousScore = Number(snapshot.finalPerformanceScore);
       if (!Number.isFinite(previousScore)) throw new Error("STAFF_PERFORMANCE_SNAPSHOT_INVALID");
