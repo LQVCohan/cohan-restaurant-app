@@ -79,7 +79,6 @@ const MANAGER_PERMISSIONS = [
   ...MENU_MANAGER_PERMISSIONS,
 ];
 
-
 const ADMIN_PERMISSIONS = [
   "system.manage",
   "system.read",
@@ -113,7 +112,21 @@ const roles = [
   { name: "Cleaner", slug: "cleaner", parentRole: "staff", department: "cleaning", permissions: ["cleaning.read"] },
   { name: "Shipper", slug: "shipper", parentRole: "staff", department: "delivery", permissions: ["delivery.read", "delivery.update"] },
   { name: "Storekeeper", slug: "storekeeper", parentRole: "staff", department: "inventory", permissions: ["menu.read", "menu.inventory.sync", "inventory.read", "inventory.write", "stock.read", "stock.write", "supplier.read", "supplier.write"] },
-  { name: "Bartender", slug: "bartender", parentRole: "staff", department: "bar", permissions: ["menu.read", "menu.item.update", "order.read", "order.create"] },
+  {
+    name: "Bartender",
+    slug: "bartender",
+    parentRole: "staff",
+    department: "bar",
+    permissions: [
+      "menu.read",
+      "menu.item.update",
+      "kitchen.read",
+      "kitchen.write",
+      "order.read",
+      "order.create",
+      "order.update",
+    ],
+  },
 ];
 
 async function idsFor(codes) {
