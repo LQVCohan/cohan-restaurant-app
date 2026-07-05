@@ -102,23 +102,89 @@ const navGroups = [
 ];
 
 const staffPageMeta = [
-  { path: "/staff/dashboard", eyebrow: "Khu vực nhân viên", title: "Trung tâm ca làm", description: "Mở nhanh lịch, chấm công, nghỉ phép và các việc cần xử lý trong ca." },
-  { path: "/staff/schedule", eyebrow: "Lịch cá nhân", title: "Vận hành ca làm", description: "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm." },
-  { path: "/staff/attendance", eyebrow: "Chỉnh công & tăng ca", title: "Yêu cầu công cá nhân", description: "Xem công trong ngày, gửi chỉnh công hoặc yêu cầu tăng ca cho quản lý duyệt." },
-  { path: "/staff/leave", eyebrow: "Nghỉ phép nhân viên", title: "Tạo và theo dõi đơn nghỉ phép", description: "Gửi đơn xin nghỉ phép, xem trạng thái duyệt và lịch sử đơn ngay trong khu vực nhân viên." },
-  { path: "/staff/orders", eyebrow: "Vận hành đơn", title: "Order nội bộ", description: "Tiếp nhận đơn, cập nhật trạng thái phục vụ và phối hợp với bếp theo quyền được cấp." },
-  { path: "/staff/kitchen", eyebrow: "Bếp / Quầy bar", title: "Điều phối khu chế biến", description: "Theo dõi món mới, món đang làm và món đã hoàn tất tại bếp chính hoặc quầy bar." },
-  { path: "/staff/performance", eyebrow: "Hiệu suất", title: "Hiệu suất cá nhân", description: "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn." },
-  { path: "/staff/profile", eyebrow: "Tài khoản", title: "Hồ sơ nhân viên", description: "Kiểm tra thông tin cá nhân, vai trò, liên hệ và dữ liệu làm việc." },
-  { path: "/staff/notifications", eyebrow: "Nhắc việc", title: "Thông báo nhân viên", description: "Theo dõi lịch mới, yêu cầu phản hồi và các cập nhật quan trọng từ quản lý." },
-  { path: "/staff/contacts", eyebrow: "Liên lạc", title: "Trao đổi nội bộ", description: "Mở kênh liên lạc với quản lý, hỗ trợ và các bộ phận liên quan." },
-  { path: "/staff/ai-handoff", eyebrow: "Hỗ trợ", title: "Bàn giao hỗ trợ", description: "Theo dõi các hội thoại cần nhân viên tiếp nhận sau khi AI chuyển giao." },
-  { path: "/staff/payslips", eyebrow: "Phiếu lương", title: "Lương cá nhân", description: "Xem kỳ lương, khoản thanh toán và ghi chú liên quan đến lương." },
-  { path: "/staff/settings", eyebrow: "Thiết lập", title: "Cài đặt nhân viên", description: "Điều chỉnh các tuỳ chọn tài khoản và trải nghiệm trong khu vực nhân viên." },
+  {
+    path: "/staff/dashboard",
+    eyebrow: "Khu vực nhân viên",
+    title: "Trung tâm ca làm",
+    description: "Mở nhanh lịch, chấm công, nghỉ phép và các việc cần xử lý trong ca.",
+  },
+  {
+    path: "/staff/schedule",
+    eyebrow: "Lịch cá nhân",
+    title: "Vận hành ca làm",
+    description: "Xem ca được phân, phản hồi lịch và thực hiện check-in/check-out đúng thời điểm.",
+  },
+  {
+    path: "/staff/attendance",
+    eyebrow: "Chỉnh công & tăng ca",
+    title: "Yêu cầu công cá nhân",
+    description: "Xem công trong ngày, gửi chỉnh công hoặc yêu cầu tăng ca cho quản lý duyệt.",
+  },
+  {
+    path: "/staff/leave",
+    eyebrow: "Nghỉ phép nhân viên",
+    title: "Tạo và theo dõi đơn nghỉ phép",
+    description: "Gửi đơn xin nghỉ phép, xem trạng thái duyệt và lịch sử đơn ngay trong khu vực nhân viên.",
+  },
+  {
+    path: "/staff/orders",
+    eyebrow: "Vận hành đơn",
+    title: "Order nội bộ",
+    description: "Tiếp nhận đơn, cập nhật trạng thái phục vụ và phối hợp với bếp theo quyền được cấp.",
+  },
+  {
+    path: "/staff/kitchen",
+    eyebrow: "Bếp / Quầy bar",
+    title: "Điều phối khu chế biến",
+    description: "Theo dõi món mới, món đang làm và món đã hoàn tất tại bếp chính hoặc quầy bar.",
+  },
+  {
+    path: "/staff/performance",
+    eyebrow: "Hiệu suất",
+    title: "Hiệu suất cá nhân",
+    description: "Xem điểm làm việc, sự cố liên quan và phản hồi hiệu suất của bạn.",
+  },
+  {
+    path: "/staff/profile",
+    eyebrow: "Tài khoản",
+    title: "Hồ sơ nhân viên",
+    description: "Kiểm tra thông tin cá nhân, vai trò, liên hệ và dữ liệu làm việc.",
+  },
+  {
+    path: "/staff/notifications",
+    eyebrow: "Nhắc việc",
+    title: "Thông báo nhân viên",
+    description: "Theo dõi lịch mới, yêu cầu phản hồi và các cập nhật quan trọng từ quản lý.",
+  },
+  {
+    path: "/staff/contacts",
+    eyebrow: "Liên lạc",
+    title: "Trao đổi nội bộ",
+    description: "Mở kênh liên lạc với quản lý, hỗ trợ và các bộ phận liên quan.",
+  },
+  {
+    path: "/staff/ai-handoff",
+    eyebrow: "Hỗ trợ",
+    title: "Bàn giao hỗ trợ",
+    description: "Theo dõi các hội thoại cần nhân viên tiếp nhận sau khi AI chuyển giao.",
+  },
+  {
+    path: "/staff/payslips",
+    eyebrow: "Phiếu lương",
+    title: "Lương cá nhân",
+    description: "Xem kỳ lương, khoản thanh toán và ghi chú liên quan đến lương.",
+  },
+  {
+    path: "/staff/settings",
+    eyebrow: "Thiết lập",
+    title: "Cài đặt nhân viên",
+    description: "Điều chỉnh các tuỳ chọn tài khoản và trải nghiệm trong khu vực nhân viên.",
+  },
 ];
 
 const getStaffPageMeta = (pathname) =>
-  staffPageMeta.find((item) => pathname === item.path || pathname.startsWith(item.path + "/")) || staffPageMeta[0];
+  staffPageMeta.find((item) => pathname === item.path || pathname.startsWith(item.path + "/")) ||
+  staffPageMeta[0];
 
 const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   const { user, restaurants } = useContext(AuthContext);
@@ -150,11 +216,12 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   );
 
   const visibleNavItems = useMemo(
-    () => navItems.filter((item) => {
-      if (Array.isArray(item.permissions) && !hasAnyPermission(user, item.permissions)) return false;
-      if (!Array.isArray(item.roles)) return true;
-      return item.roles.includes(normalizedRole);
-    }),
+    () =>
+      navItems.filter((item) => {
+        if (Array.isArray(item.permissions) && !hasAnyPermission(user, item.permissions)) return false;
+        if (!Array.isArray(item.roles)) return true;
+        return item.roles.includes(normalizedRole);
+      }),
     [navItems, normalizedRole, user],
   );
 
@@ -176,8 +243,16 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
                 <small>{restaurantLabel} • Sẵn sàng</small>
               </div>
             </div>
-            <button type="button" className="staff-shell__menu-button" aria-label="Mở menu nhân viên" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>
-              <span /><span /><span />
+            <button
+              type="button"
+              className="staff-shell__menu-button"
+              aria-label="Mở menu nhân viên"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((value) => !value)}
+            >
+              <span />
+              <span />
+              <span />
             </button>
           </div>
 
@@ -189,9 +264,17 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
                 <div className="staff-shell__nav-group" key={group.label}>
                   <span>{group.label}</span>
                   {groupItems.map((item) => (
-                    <Link key={item.to} className={`staff-shell__nav-link ${isActivePath(location, item.to) ? "is-active" : ""}`} to={item.to} onClick={() => setMenuOpen(false)} aria-current={isActivePath(location, item.to) ? "page" : undefined}>
+                    <Link
+                      key={item.to}
+                      className={`staff-shell__nav-link ${isActivePath(location, item.to) ? "is-active" : ""}`}
+                      to={item.to}
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={isActivePath(location, item.to) ? "page" : undefined}
+                    >
                       {item.label}
-                      {item.to === "/staff/ai-handoff" ? <StaffHandoffUnreadCount restaurantId={restaurantId} /> : null}
+                      {item.to === "/staff/ai-handoff" ? (
+                        <StaffHandoffUnreadCount restaurantId={restaurantId} />
+                      ) : null}
                     </Link>
                   ))}
                 </div>
@@ -215,13 +298,24 @@ const StaffLayoutWithRestaurantQuery = ({ children, restaurantId }) => {
     fetchPolicy: "cache-first",
   });
 
-  return <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>{children}</StaffLayoutShell>;
+  return (
+    <StaffLayoutShell restaurantFromQuery={data?.restaurant || null}>
+      {children}
+    </StaffLayoutShell>
+  );
 };
 
 export default function StaffLayout({ children }) {
   const { user } = useContext(AuthContext);
   const restaurantId = resolveStaffRestaurantId(user);
 
-  if (!restaurantId || IS_TEST_ENV) return <StaffLayoutShell>{children}</StaffLayoutShell>;
-  return <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>{children}</StaffLayoutWithRestaurantQuery>;
+  if (!restaurantId || IS_TEST_ENV) {
+    return <StaffLayoutShell>{children}</StaffLayoutShell>;
+  }
+
+  return (
+    <StaffLayoutWithRestaurantQuery restaurantId={restaurantId}>
+      {children}
+    </StaffLayoutWithRestaurantQuery>
+  );
 }
