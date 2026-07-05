@@ -1,11 +1,19 @@
 from pathlib import Path
 import json
 import re
-from textwrap import dedent
 
 
-def block(value: str) -> str:
-    return dedent(value).lstrip("\n")
+def sub_once(text: str, pattern: str, replacement, label: str, flags: int = 0) -> str:
+    updated, count = re.subn(
+        pattern,
+        replacement,
+        text,
+        count=1,
+        flags=flags,
+    )
+    if count != 1:
+        raise RuntimeError(f"{label}: expected one match, found {count}")
+    return updated
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -20,227 +28,116 @@ modal_path = Path(
 )
 modal = modal_path.read_text(encoding="utf-8")
 
-modal = replace_once(
+station_constants = '''
+
+const PREP_STATION_OPTIONS = [
+  {
+    value: "kitchen",
+    label: "Bếp chính",
+    helper: "Món sẽ xuất hiện trong hàng chờ của bếp chính.",
+  },
+  {
+    value: "bar",
+    label: "Quầy bar",
+    helper: "Đồ uống hoặc món sẽ xuất hiện trong hàng chờ của quầy bar.",
+  },
+];
+const PREP_STATION_SET = new Set(
+  PREP_STATION_OPTIONS.map(({ value }) => value),
+);
+const normalizePrepStation = (value) =>
+  PREP_STATION_SET.has(value) ? value : "kitchen";
+'''
+
+modal = sub_once(
     modal,
-    block(
-        '''
-        const MENU_ITEM_STATUS_SET = new Set(
-          MENU_ITEM_STATUS_OPTIONS.map(({ value }) => value),
-        );
-
-        const FOR_YOU_DEFAULTS = {
-        '''
-    ),
-    block(
-        '''
-        const MENU_ITEM_STATUS_SET = new Set(
-          MENU_ITEM_STATUS_OPTIONS.map(({ value }) => value),
-        );
-
-        const PREP_STATION_OPTIONS = [
-          {
-            value: "kitchen",
-            label: "Bếp chính",
-            helper: "Món sẽ xuất hiện trong hàng chờ của bếp chính.",
-          },
-          {
-            value: "bar",
-            label: "Quầy bar",
-            helper: "Đồ uống hoặc món sẽ xuất hiện trong hàng chờ của quầy bar.",
-          },
-        ];
-        const PREP_STATION_SET = new Set(
-          PREP_STATION_OPTIONS.map(({ value }) => value),
-        );
-        const normalizePrepStation = (value) =>
-          PREP_STATION_SET.has(value) ? value : "kitchen";
-
-        const FOR_YOU_DEFAULTS = {
-        '''
-    ),
+    r'''(const MENU_ITEM_STATUS_SET = new Set\(\n  MENU_ITEM_STATUS_OPTIONS\.map\(\(\{ value \}\) => value\),\n\);)''',
+    lambda match: match.group(1) + station_constants,
     "add preparation station constants",
 )
 
-modal = replace_once(
+modal = sub_once(
     modal,
-    block(
-        '''
-          const [formData, setFormData] = useState({
-            name: "",
-            categoryId: "",
-            status: normalizeMenuItemStatus(),
-            thumbImage: "",
-        '''
-    ),
-    block(
-        '''
-          const [formData, setFormData] = useState({
-            name: "",
-            categoryId: "",
-            status: normalizeMenuItemStatus(),
-            prepStation: "kitchen",
-            thumbImage: "",
-        '''
-    ),
+    r'''(const \[formData, setFormData\] = useState\(\{\n    name: "",\n    categoryId: "",\n    status: normalizeMenuItemStatus\(\),\n)(    thumbImage: "",)''',
+    r'''\1    prepStation: "kitchen",\n\2''',
     "add initial preparation station",
 )
 
-modal = replace_once(
+modal = sub_once(
     modal,
-    block(
-        '''
-            const hasValues =
-              (formData.name || "").trim() ||
-              formData.categoryId ||
-              (formData.description || "").trim() ||
-        '''
-    ),
-    block(
-        '''
-            const hasValues =
-              (formData.name || "").trim() ||
-              formData.categoryId ||
-              normalizePrepStation(formData.prepStation) !== "kitchen" ||
-              (formData.description || "").trim() ||
-        '''
-    ),
+    r'''(const hasValues =\n      \(formData\.name \|\| ""\)\.trim\(\) \|\|\n      formData\.categoryId \|\|\n)(      \(formData\.description \|\| ""\)\.trim\(\) \|\|)''',
+    r'''\1      normalizePrepStation(formData.prepStation) !== "kitchen" ||\n\2''',
     "track preparation station draft changes",
 )
 
-modal = replace_once(
+modal = sub_once(
     modal,
-    block(
-        '''
-              status: normalizeMenuItemStatus(value?.status),
-              thumbImage: value?.thumbImage || "",
-        '''
-    ),
-    block(
-        '''
-              status: normalizeMenuItemStatus(value?.status),
-              prepStation: normalizePrepStation(value?.prepStation),
-              thumbImage: value?.thumbImage || "",
-        '''
-    ),
+    r'''(status: normalizeMenuItemStatus\(value\?\.status\),\n)(      thumbImage: value\?\.thumbImage \|\| "",)''',
+    r'''\1      prepStation: normalizePrepStation(value?.prepStation),\n\2''',
     "persist preparation station in modal draft",
 )
 
-modal = replace_once(
+modal = sub_once(
     modal,
-    block(
-        '''
-                  status: normalizeMenuItemStatus(currentItem.status),
-                  thumbImage: currentItem.thumbImage || "",
-        '''
-    ),
-    block(
-        '''
-                  status: normalizeMenuItemStatus(currentItem.status),
-                  prepStation: normalizePrepStation(currentItem.prepStation),
-                  thumbImage: currentItem.thumbImage || "",
-        '''
-    ),
+    r'''(status: normalizeMenuItemStatus\(currentItem\.status\),\n)(          thumbImage: currentItem\.thumbImage \|\| "",)''',
+    r'''\1          prepStation: normalizePrepStation(currentItem.prepStation),\n\2''',
     "hydrate preparation station while editing",
 )
 
-modal = replace_once(
+modal = sub_once(
     modal,
-    block(
-        '''
-                setFormData({
-                  name: "",
-                  categoryId: "",
-                  status: normalizeMenuItemStatus(),
-                  thumbImage: "",
-        '''
-    ),
-    block(
-        '''
-                setFormData({
-                  name: "",
-                  categoryId: "",
-                  status: normalizeMenuItemStatus(),
-                  prepStation: "kitchen",
-                  thumbImage: "",
-        '''
-    ),
+    r'''(else \{\n        setFormData\(\{\n          name: "",\n          categoryId: "",\n          status: normalizeMenuItemStatus\(\),\n)(          thumbImage: "",)''',
+    r'''\1          prepStation: "kitchen",\n\2''',
     "reset preparation station for new item",
 )
 
-modal = replace_once(
+modal = sub_once(
     modal,
-    block(
-        '''
-                status: normalizeMenuItemStatus(formData.status),
-                description: formData.description,
-        '''
-    ),
-    block(
-        '''
-                status: normalizeMenuItemStatus(formData.status),
-                prepStation: normalizePrepStation(formData.prepStation),
-                description: formData.description,
-        '''
-    ),
+    r'''(status: normalizeMenuItemStatus\(formData\.status\),\n)(        description: formData\.description,)''',
+    r'''\1        prepStation: normalizePrepStation(formData.prepStation),\n\2''',
     "submit preparation station",
 )
 
+image_field = '''
+            <div className="form-group">
+              <label>Ảnh món ăn</label>'''
+station_field = '''
+            <div className="form-group">
+              <label htmlFor="menu-item-prep-station">
+                Khu chế biến <span className="req">*</span>
+              </label>
+              <select
+                id="menu-item-prep-station"
+                className="modern-select"
+                value={normalizePrepStation(formData.prepStation)}
+                onChange={(event) =>
+                  handleInputChange("prepStation", event.target.value)
+                }
+                aria-describedby="menu-item-prep-station-hint"
+                required
+                disabled={isSaving}
+              >
+                {PREP_STATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p
+                id="menu-item-prep-station-hint"
+                className="for-you-option-group__hint"
+              >
+                {PREP_STATION_OPTIONS.find(
+                  (option) =>
+                    option.value === normalizePrepStation(formData.prepStation),
+                )?.helper}
+              </p>
+            </div>
+'''
 modal = replace_once(
     modal,
-    block(
-        '''
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Ảnh món ăn</label>
-        '''
-    ),
-    block(
-        '''
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="menu-item-prep-station">
-                        Khu chế biến <span className="req">*</span>
-                      </label>
-                      <select
-                        id="menu-item-prep-station"
-                        className="modern-select"
-                        value={normalizePrepStation(formData.prepStation)}
-                        onChange={(event) =>
-                          handleInputChange("prepStation", event.target.value)
-                        }
-                        aria-describedby="menu-item-prep-station-hint"
-                        required
-                        disabled={isSaving}
-                      >
-                        {PREP_STATION_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p
-                        id="menu-item-prep-station-hint"
-                        className="for-you-option-group__hint"
-                      >
-                        {PREP_STATION_OPTIONS.find(
-                          (option) =>
-                            option.value === normalizePrepStation(formData.prepStation),
-                        )?.helper}
-                      </p>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Ảnh món ăn</label>
-        '''
-    ),
+    image_field,
+    station_field + image_field,
     "render preparation station field",
 )
 
@@ -251,43 +148,40 @@ test_path = Path(
     "MenuItemModal.foodClassification.test.jsx"
 )
 test_path.write_text(
-    block(
-        '''
-        import { describe, expect, it } from "vitest";
-        import fs from "node:fs";
+    '''import { describe, expect, it } from "vitest";
+import fs from "node:fs";
 
-        const SOURCE_PATH = "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx";
+const SOURCE_PATH = "src/components/Dashboard_Manager/Menu/components/MenuItemModal/MenuItemModal.jsx";
 
-        describe("MenuItemModal item contract", () => {
-          it("supports foodType selection and conditional meatTypes selection", () => {
-            const source = fs.readFileSync(SOURCE_PATH, "utf8");
+describe("MenuItemModal item contract", () => {
+  it("supports foodType selection and conditional meatTypes selection", () => {
+    const source = fs.readFileSync(SOURCE_PATH, "utf8");
 
-            expect(source).toContain('foodType: "UNKNOWN"');
-            expect(source).toContain("const FOOD_TYPE_OPTIONS");
-            expect(source).toContain("const MEAT_TYPE_OPTIONS");
-            expect(source).toContain("Phân loại món ăn");
-            expect(source).toContain("Loại thịt / đạm động vật");
-            expect(source).toContain('["NON_VEGETARIAN", "MIXED"].includes(formData.foodType)');
-            expect(source).toContain('handleInputChange("foodType"');
-            expect(source).toContain('toggleArrayValue("meatTypes"');
-            expect(source).toContain("foodType: formData.foodType || FOR_YOU_DEFAULTS.foodType");
-          });
+    expect(source).toContain('foodType: "UNKNOWN"');
+    expect(source).toContain("const FOOD_TYPE_OPTIONS");
+    expect(source).toContain("const MEAT_TYPE_OPTIONS");
+    expect(source).toContain("Phân loại món ăn");
+    expect(source).toContain("Loại thịt / đạm động vật");
+    expect(source).toContain('["NON_VEGETARIAN", "MIXED"].includes(formData.foodType)');
+    expect(source).toContain('handleInputChange("foodType"');
+    expect(source).toContain('toggleArrayValue("meatTypes"');
+    expect(source).toContain("foodType: formData.foodType || FOR_YOU_DEFAULTS.foodType");
+  });
 
-          it("requires and submits an explicit preparation station", () => {
-            const source = fs.readFileSync(SOURCE_PATH, "utf8");
+  it("requires and submits an explicit preparation station", () => {
+    const source = fs.readFileSync(SOURCE_PATH, "utf8");
 
-            expect(source).toContain("const PREP_STATION_OPTIONS");
-            expect(source).toContain('prepStation: "kitchen"');
-            expect(source).toContain("prepStation: normalizePrepStation(currentItem.prepStation)");
-            expect(source).toContain("prepStation: normalizePrepStation(formData.prepStation)");
-            expect(source).toContain('handleInputChange("prepStation"');
-            expect(source).toContain("Khu chế biến");
-            expect(source).toContain("Bếp chính");
-            expect(source).toContain("Quầy bar");
-          });
-        });
-        '''
-    ),
+    expect(source).toContain("const PREP_STATION_OPTIONS");
+    expect(source).toContain('prepStation: "kitchen"');
+    expect(source).toContain("prepStation: normalizePrepStation(currentItem.prepStation)");
+    expect(source).toContain("prepStation: normalizePrepStation(formData.prepStation)");
+    expect(source).toContain('handleInputChange("prepStation"');
+    expect(source).toContain("Khu chế biến");
+    expect(source).toContain("Bếp chính");
+    expect(source).toContain("Quầy bar");
+  });
+});
+''',
     encoding="utf-8",
 )
 
@@ -295,50 +189,30 @@ mutation_path = Path(
     "cohan-restaurant-backend/graphql/resolvers/order/mutation.js"
 )
 mutation = mutation_path.read_text(encoding="utf-8")
-mutation = replace_once(
+mutation = sub_once(
     mutation,
-    block(
-        '''
-        const PRINT_STATIONS = {
-          kitchen: "kitchen",
-          bar: "bar",
-          cashier: "cashier",
-        };
-        '''
-    ),
-    block(
-        '''
-        const PRINT_STATIONS = {
-          cashier: "cashier",
-        };
-        '''
-    ),
+    r'''const PRINT_STATIONS = \{\n  kitchen: "kitchen",\n  bar: "bar",\n  cashier: "cashier",\n\};''',
+    '''const PRINT_STATIONS = {
+  cashier: "cashier",
+};''',
     "remove unused preparation print stations",
 )
 
-mutation, removed_helpers = re.subn(
-    r"\nfunction mapItemToStation\(item = \{\}\) \{.*?\nasync function enqueueTemporaryBillPrintJob",
+mutation = sub_once(
+    mutation,
+    r'''\nfunction mapItemToStation\(item = \{\}\) \{.*?\nasync function enqueueTemporaryBillPrintJob''',
     "\nasync function enqueueTemporaryBillPrintJob",
-    mutation,
-    count=1,
+    "remove legacy print helpers",
     flags=re.S,
 )
-if removed_helpers != 1:
-    raise RuntimeError(
-        f"remove legacy print helpers: expected one match, found {removed_helpers}"
-    )
 
-mutation, removed_confirm = re.subn(
-    r"\n  async confirmIncomingOrder\(_, \{ input \}, ctx\) \{.*?\n  async createTemporaryBillPrintJob",
-    "\n  async createTemporaryBillPrintJob",
+mutation = sub_once(
     mutation,
-    count=1,
+    r'''\n  async confirmIncomingOrder\(_, \{ input \}, ctx\) \{.*?\n  async createTemporaryBillPrintJob''',
+    "\n  async createTemporaryBillPrintJob",
+    "remove legacy confirm resolver",
     flags=re.S,
 )
-if removed_confirm != 1:
-    raise RuntimeError(
-        f"remove legacy confirm resolver: expected one match, found {removed_confirm}"
-    )
 
 if "mapItemToStation" in mutation or "enqueuePrintJobsForConfirmedOrder" in mutation:
     raise RuntimeError("legacy preparation-station routing remains in mutation.js")
@@ -346,31 +220,15 @@ mutation_path.write_text(mutation, encoding="utf-8")
 
 index_path = Path("cohan-restaurant-backend/graphql/resolvers/order/index.js")
 index_source = index_path.read_text(encoding="utf-8")
-index_source = replace_once(
+index_source = sub_once(
     index_source,
-    block(
-        '''
-        // The guarded station-aware resolver owns confirmIncomingOrder. Keep the legacy
-        // implementation out of every intermediate wrapper so it cannot be exported or
-        // called accidentally from resolver composition.
-        const BaseOrderMutation = { ...OrderMutation };
-        delete BaseOrderMutation.confirmIncomingOrder;
-
-        const PaymentGuardedOrderMutation = {
-          ...BaseOrderMutation,
-          ...CustomerTrackingPaymentMutation,
-        };
-        '''
-    ),
-    block(
-        '''
-        const PaymentGuardedOrderMutation = {
-          ...OrderMutation,
-          ...CustomerTrackingPaymentMutation,
-        };
-        '''
-    ),
+    r'''// The guarded station-aware resolver owns confirmIncomingOrder\..*?const PaymentGuardedOrderMutation = \{\n  \.\.\.BaseOrderMutation,\n  \.\.\.CustomerTrackingPaymentMutation,\n\};''',
+    '''const PaymentGuardedOrderMutation = {
+  ...OrderMutation,
+  ...CustomerTrackingPaymentMutation,
+};''',
     "remove obsolete resolver composition workaround",
+    flags=re.S,
 )
 index_path.write_text(index_source, encoding="utf-8")
 
@@ -408,17 +266,18 @@ Path(".trellis/tasks/prep-station-routing/task.json").write_text(
 
 prd_path = Path(".trellis/tasks/prep-station-routing/prd.md")
 prd = prd_path.read_text(encoding="utf-8")
-status_section = block(
-    '''
-
-    ## Implementation status
-
-    - Code path implemented from menu configuration through order/work-item snapshots, printing, and the shared kitchen/bar workspace.
-    - Menu create/edit now requires an explicit preparation station.
-    - Runtime and legacy name/category keyword routing have been removed.
-    - Automated targeted checks and frontend build are completed by the preparation-station completion workflow.
-    - Deployment database migrations, RBAC reseed, and manual responsive smoke testing remain environment operations.
-    '''
-)
 if "## Implementation status" not in prd:
-    prd_path.write_text(prd.rstrip() + status_section + "\n", encoding="utf-8")
+    prd_path.write_text(
+        prd.rstrip()
+        + '''
+
+## Implementation status
+
+- Code path implemented from menu configuration through order/work-item snapshots, printing, and the shared kitchen/bar workspace.
+- Menu create/edit now requires an explicit preparation station.
+- Runtime and legacy name/category keyword routing have been removed.
+- Automated targeted checks and frontend build are completed by the preparation-station completion workflow.
+- Deployment database migrations, RBAC reseed, and manual responsive smoke testing remain environment operations.
+''',
+        encoding="utf-8",
+    )
