@@ -1,18 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  create: vi.fn(),
-  findOneAndUpdate: vi.fn(),
-  find: vi.fn(() => ({ sort: vi.fn() })),
-  findById: vi.fn(),
-  adjustmentCreate: vi.fn(),
-  snapshotFindOne: vi.fn(),
-  snapshotFindOneAndUpdate: vi.fn(),
-  resolveUserRoles: vi.fn(() => ["MANAGER"]),
-  userCanAccessRestaurant: vi.fn(() => true),
-  resolvePerformanceLevel: vi.fn((score) => (score >= 90 ? "excellent" : score >= 80 ? "good" : score >= 65 ? "average" : score >= 50 ? "needs_attention" : "poor")),
-}));
+const mocks = vi.hoisted(() => {
+  const session = {
+    withTransaction: vi.fn(),
+    endSession: vi.fn(),
+  };
+  return {
+    create: vi.fn(),
+    findOneAndUpdate: vi.fn(),
+    find: vi.fn(() => ({ sort: vi.fn() })),
+    findById: vi.fn(),
+    adjustmentCreate: vi.fn(),
+    snapshotFindOne: vi.fn(),
+    resolveUserRoles: vi.fn(() => ["MANAGER"]),
+    userCanAccessRestaurant: vi.fn(() => true),
+    resolvePerformanceLevel: vi.fn((score) => (score >= 90 ? "excellent" : score >= 80 ? "good" : score >= 65 ? "average" : score >= 50 ? "needs_attention" : "poor")),
+    session,
+    startSession: vi.fn(),
+  };
+});
 
+vi.mock("mongoose", () => ({
+  default: {
+    startSession: mocks.startSession,
+  },
+}));
 vi.mock("../../models/index.js", () => ({
   PerformanceIncident: {
     create: mocks.create,
@@ -25,7 +37,6 @@ vi.mock("../../models/index.js", () => ({
   },
   StaffPerformanceSnapshot: {
     findOne: mocks.snapshotFindOne,
-    findOneAndUpdate: mocks.snapshotFindOneAndUpdate,
   },
 }));
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({
@@ -50,6 +61,8 @@ import {
 describe("performanceIncident.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.startSession.mockResolvedValue(mocks.session);
+    mocks.session.withTransaction.mockImplementation(async (callback) => callback());
   });
 
   it("creates incident with scoreDelta=0 by default", async () => {
@@ -111,9 +124,10 @@ describe("performanceIncident.service", () => {
     })).rejects.toThrow("INVALID_PROPOSED_SCORE_DELTA");
   });
 
-  it("applies eligible incident score and writes adjustment", async () => {
-    const save = vi.fn();
-    mocks.findById.mockResolvedValue({
+  it("applies an eligible incident inside one transaction", async () => {
+    const incidentSave = vi.fn();
+    const snapshotSave = vi.fn();
+    const incident = {
       _id: "i1",
       restaurantId: "r1",
       employeeId: "e1",
@@ -124,25 +138,53 @@ describe("performanceIncident.service", () => {
       scoreImpactStatus: "eligible",
       responsibilityStatus: "staff_responsible",
       proposedScoreDelta: -3,
-      save,
+      save: incidentSave,
+    };
+    const snapshot = {
+      finalPerformanceScore: 100,
+      performanceLevel: "excellent",
+      save: snapshotSave,
+    };
+    mocks.findById.mockResolvedValue(incident);
+    mocks.snapshotFindOne.mockResolvedValue(snapshot);
+    mocks.adjustmentCreate.mockResolvedValue([{ _id: "adj1" }]);
+
+    await applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply" });
+
+    expect(mocks.adjustmentCreate).toHaveBeenCalledWith(
+      [expect.objectContaining({ scoreDelta: -3, previousScore: 100, newScore: 97 })],
+      { session: mocks.session },
+    );
+    expect(snapshot.finalPerformanceScore).toBe(97);
+    expect(snapshotSave).toHaveBeenCalledWith({ session: mocks.session });
+    expect(incident.scoreImpactStatus).toBe("applied");
+    expect(incidentSave).toHaveBeenCalledWith({ session: mocks.session });
+    expect(mocks.session.endSession).toHaveBeenCalled();
+  });
+
+  it("requires a calculated snapshot before applying an incident", async () => {
+    mocks.findById.mockResolvedValue({
+      _id: "i1",
+      restaurantId: "r1",
+      employeeId: "e1",
+      occurredAt: "2026-04-10T00:00:00.000Z",
+      scoreImpactStatus: "eligible",
+      responsibilityStatus: "staff_responsible",
+      proposedScoreDelta: -3,
     });
     mocks.snapshotFindOne.mockResolvedValue(null);
-    mocks.adjustmentCreate.mockResolvedValue({ _id: "adj1" });
-    await applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply" });
-    expect(mocks.adjustmentCreate).toHaveBeenCalledWith(expect.objectContaining({ scoreDelta: -3, previousScore: 100, newScore: 97 }));
-    expect(mocks.snapshotFindOneAndUpdate).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.objectContaining({
-        $set: expect.objectContaining({ finalPerformanceScore: 97, performanceLevel: "excellent" }),
-      }),
-      expect.any(Object),
-    );
-    expect(save).toHaveBeenCalled();
+
+    await expect(
+      applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply" }),
+    ).rejects.toThrow("STAFF_PERFORMANCE_SNAPSHOT_NOT_FOUND");
+    expect(mocks.adjustmentCreate).not.toHaveBeenCalled();
+    expect(mocks.session.endSession).toHaveBeenCalled();
   });
 
   it("clamps adjusted score at 0 and syncs performanceLevel", async () => {
-    const save = vi.fn();
-    mocks.findById.mockResolvedValue({
+    const incidentSave = vi.fn();
+    const snapshotSave = vi.fn();
+    const incident = {
       _id: "i1",
       restaurantId: "r1",
       employeeId: "e1",
@@ -153,19 +195,17 @@ describe("performanceIncident.service", () => {
       scoreImpactStatus: "eligible",
       responsibilityStatus: "staff_responsible",
       proposedScoreDelta: -20,
-      save,
-    });
-    mocks.snapshotFindOne.mockResolvedValue({ finalPerformanceScore: 10 });
-    mocks.adjustmentCreate.mockResolvedValue({ _id: "adj2" });
+      save: incidentSave,
+    };
+    const snapshot = { finalPerformanceScore: 10, save: snapshotSave };
+    mocks.findById.mockResolvedValue(incident);
+    mocks.snapshotFindOne.mockResolvedValue(snapshot);
+    mocks.adjustmentCreate.mockResolvedValue([{ _id: "adj2" }]);
 
     await applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply clamp" });
-    expect(mocks.snapshotFindOneAndUpdate).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.objectContaining({
-        $set: expect.objectContaining({ finalPerformanceScore: 0, performanceLevel: "poor" }),
-      }),
-      expect.any(Object),
-    );
+    expect(snapshot.finalPerformanceScore).toBe(0);
+    expect(snapshot.performanceLevel).toBe("poor");
+    expect(snapshotSave).toHaveBeenCalledWith({ session: mocks.session });
   });
 
   it("blocks already applied incident", async () => {
@@ -182,5 +222,4 @@ describe("performanceIncident.service", () => {
     });
     await expect(applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "" })).rejects.toThrow("NOTE_REQUIRED_FOR_ZERO_DELTA");
   });
-
 });
