@@ -1,0 +1,45 @@
+name: pr1187-review-fix
+
+on:
+  push:
+    branches: [codex/sua-luong-du-lieu-cho-ai-chatbot]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/sua-luong-du-lieu-cho-ai-chatbot
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+      - name: Apply direct integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          python3 scripts/pr1187_apply_review_fixes.py
+      - name: Install and validate
+        run: |
+          npm ci
+          npm --prefix cohan-restaurant-backend ci
+          npm --prefix cohan-restaurant-backend exec -- vitest run tests/services/restaurant-chatbot-feedback-global.test.js tests/services/restaurantChatbot.service.test.js tests/services/restaurantChatbot.persistence.service.test.js tests/services/restaurantChatbot.settings.service.test.js
+          npx vitest run src/components/common/AiChatbotFeedbackControls.test.jsx src/components/common/AiChatbotWidget.basic.test.jsx
+          npm run check:conflicts
+      - name: Commit to existing PR branch
+        run: |
+          rm scripts/pr1187_apply_review_fixes.py .github/workflows/zz-pr1187-review-fix.yml
+          git add -A
+          git commit -m "fix(ai-chatbot): address PR 1187 review findings"
+          git push origin HEAD:codex/sua-luong-du-lieu-cho-ai-chatbot
