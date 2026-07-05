@@ -110,7 +110,7 @@ describe("restaurantChatbot handoff service", () => {
     expect(notifications[0].toUserId).toBe(staffId);
     expect(notifications[0].payload).toMatchObject({
       title: "Khách hàng cần hỗ trợ",
-      actionUrl: "/staff/ai-handoff",
+      actionUrl: `/staff/ai-handoff?restaurantId=${restaurantId}&threadId=${threads[0]._id}`,
       conversationId: convId,
     });
     expect(notifications[0].sourceType).toBe("ai_chatbot_conversation");
@@ -190,7 +190,9 @@ describe("restaurantChatbot handoff service", () => {
 
     expect(out.ok).toBe(true);
     expect((threads[0].participants || []).map(String)).toContain(managerId);
-    expect(notifications[0].payload.actionUrl).toBe("/manager#ai-handoff");
+    expect(notifications[0].payload.actionUrl).toBe(
+      `/manager?restaurantId=${restaurantId}&threadId=${threads[0]._id}#ai-handoff`,
+    );
   });
 
   it("returns unavailable without creating an orphan thread when no eligible recipient exists", async () => {
