@@ -141,7 +141,6 @@ describe("StaffKitchenPage", () => {
     expect(screen.getByRole("button", { name: "Chế độ bếp chính" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Chế độ quầy bar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tổng hợp" })).toBeInTheDocument();
-    expect(screen.getByLabelText("1 món cần xử lý")).toBeInTheDocument();
     expect(screen.getAllByLabelText("1 món cần xử lý")).toHaveLength(2);
     expect(screen.getByLabelText("2 món cần xử lý")).toBeInTheDocument();
 
