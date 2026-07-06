@@ -103,6 +103,7 @@ describe("restaurantChatbot handoff service", () => {
     expect(out.handoffRequested).toBe(true);
     expect(conversations[0].status).toBe("handoff_requested");
     expect(threads).toHaveLength(1);
+    expect(threads[0].kind).toBe("ai_chatbot_handoff");
     expect((threads[0].participants || []).map(String)).toEqual([staffId]);
     expect((threads[0].unreadBy || []).map(String)).toEqual([staffId]);
     expect(threads[0].targetRole).toBeNull();
@@ -169,6 +170,7 @@ describe("restaurantChatbot handoff service", () => {
     const out = await requestRestaurantChatbotHandoff({ input: { conversationId: convId, guestId: "guest_1" } });
 
     expect(out.ok).toBe(true);
+    expect(thread.kind).toBe("ai_chatbot_handoff");
     expect((thread.participants || []).map(String)).toContain(existingRecipient);
     expect((thread.participants || []).map(String)).toContain(newRecipient);
     expect((thread.unreadBy || []).map(String)).toContain(existingRecipient);

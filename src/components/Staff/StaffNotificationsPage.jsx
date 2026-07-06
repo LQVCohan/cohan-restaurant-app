@@ -12,15 +12,11 @@ import {
   Search,
   ShoppingBag,
   Trash2,
-  X,
   UserRound,
+  X,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import {
-  hasStaffKitchenAccess,
-  hasStaffOrderAccess,
-  resolveUserRoleName,
-} from "@/utils/frontendRoleAccess";
+import useCommunication from "@/hooks/useCommunication";
 import "./StaffNotificationsPage.scss";
 
 const tabs = [
@@ -43,151 +39,133 @@ const typeMeta = {
   profile: { label: "Hồ sơ", icon: UserRound },
 };
 
-const buildNotifications = ({ user, role, canOrder, canKitchen }) => {
-  const items = [
-    {
-      id: "check-week-schedule",
-      type: "schedule",
-      title: "Kiểm tra lịch tuần",
-      description: "Lịch cá nhân là nơi xác nhận ca, xem thay đổi và theo dõi yêu cầu nhận/từ chối ca.",
-      time: "Đầu ca",
-      status: "new",
-      cta: "Kiểm tra lịch",
-      to: "/staff/schedule",
-      unread: true,
-    },
-    {
-      id: "attendance-reminder",
-      type: "attendance",
-      title: "Nhắc chấm công",
-      description: "Chấm công vào khi sắp bắt đầu ca và chấm công ra sau khi hoàn tất để dữ liệu công không bị lệch.",
-      time: "Trong ca",
-      status: "action",
-      cta: "Chấm công",
-      to: "/staff/schedule",
-      unread: true,
-    },
-    {
-      id: "availability-window",
-      type: "request",
-      title: "Gửi lịch rảnh/bận đúng kỳ",
-      description: "Nhân viên bán thời gian chọn ca có thể làm; nhân viên toàn thời gian báo ca không thể làm nếu chính sách cho phép.",
-      time: "Theo tuần",
-      status: "action",
-      cta: "Đăng ký lịch",
-      to: "/staff/schedule",
-      unread: false,
-    },
-    {
-      id: "manager-feedback",
-      type: "system",
-      title: "Theo dõi phản hồi quản lý",
-      description: "Các yêu cầu thay đổi ca, chỉnh công hoặc phản hồi hiệu suất cần được kiểm tra thường xuyên.",
-      time: "Hôm nay",
-      status: "read",
-      cta: "Xem hiệu suất",
-      to: "/staff/performance",
-      unread: false,
-    },
-    {
-      id: "payroll-preview",
-      type: "payroll",
-      title: "Kiểm tra phiếu lương đã công bố",
-      description: "Xem kỳ lương, trạng thái thanh toán và ghi chú nếu có chênh lệch công.",
-      time: "Khi có kỳ lương",
-      status: "read",
-      cta: "Xem phiếu lương",
-      to: "/staff/payslips",
-      unread: false,
-    },
-  ];
-
-  if (!user?.phone || !user?.email || !user?.restaurantForStaff) {
-    items.push({
-      id: "missing-profile-info",
-      type: "profile",
-      title: "Hồ sơ cần bổ sung thông tin",
-      description: "Một số thông tin liên hệ/cơ sở còn thiếu. Trang hồ sơ chỉ đọc; vui lòng gửi yêu cầu cập nhật cho quản lý.",
-      time: "Cần kiểm tra",
-      status: "action",
-      cta: "Xem hồ sơ",
-      to: "/staff/profile",
-      unread: true,
-    });
-  }
-
-  if (canOrder) {
-    items.push({
-      id: "order-workspace",
-      type: "order",
-      title: "Đơn nội bộ đã sẵn sàng",
-      description: "Vai trò của bạn có quyền mở khu vực đơn nội bộ để xử lý bàn, đơn và thanh toán.",
-      time: "Theo ca",
-      status: "new",
-      cta: "Mở đơn",
-      to: "/staff/orders",
-      unread: true,
-    });
-  }
-
-  if (canKitchen) {
-    items.push({
-      id: "kitchen-workspace",
-      type: "kitchen",
-      title: "Theo dõi nhịp bếp",
-      description: "Vai trò bếp có thể mở khu vực bếp để nhận món chờ, đang làm và hoàn tất.",
-      time: "Theo ca",
-      status: "new",
-      cta: "Mở bếp",
-      to: "/staff/kitchen",
-      unread: true,
-    });
-  }
-
-  if (["cleaner", "shipper", "storekeeper", "bartender"].includes(role)) {
-    items.push({
-      id: "specialty-handoff",
-      type: "system",
-      title: "Theo dõi bàn giao chuyên môn",
-      description: "Vai trò của bạn chưa có khu vực đơn nội bộ hoặc bếp riêng; ưu tiên lịch, nhắc việc và bàn giao theo ca.",
-      time: "Theo vai trò",
-      status: "read",
-      cta: "Xem lịch",
-      to: "/staff/schedule",
-      unread: false,
-    });
-  }
-
-  return items;
-};
-
 const statusLabels = {
   new: "Mới",
   action: "Cần xử lý",
   read: "Đã đọc",
-  resolved: "Đã xử lý",
+};
+
+const getId = (value) => {
+  if (!value) return null;
+  if (typeof value === "object") return value.id || value._id || null;
+  return value;
+};
+
+const resolveStaffRestaurantId = (user) =>
+  getId(user?.restaurantForStaff) ||
+  getId(user?.restaurantId) ||
+  getId(user?.refRestaurants?.[0]) ||
+  null;
+
+const resolveType = (value) => {
+  const type = String(value || "").toLowerCase();
+  if (type.includes("schedule") || type.includes("shift")) return "schedule";
+  if (type.includes("attendance") || type.includes("timesheet") || type.includes("overtime")) return "attendance";
+  if (type.includes("handoff") || type.includes("leave") || type.includes("request") || type.includes("appeal") || type.includes("correction")) return "request";
+  if (type.includes("payroll") || type.includes("payslip")) return "payroll";
+  if (type.includes("kitchen")) return "kitchen";
+  if (type.includes("order") || type.includes("payment")) return "order";
+  if (type.includes("profile") || type.includes("account")) return "profile";
+  return "system";
+};
+
+const fallbackRoute = (notificationType, group) => {
+  const type = String(notificationType || "").toLowerCase();
+  if (type === "ai_chatbot_handoff") return "/staff/ai-handoff";
+  if (group === "schedule") return "/staff/schedule";
+  if (group === "attendance") return "/staff/attendance";
+  if (group === "payroll") return "/staff/payslips";
+  if (group === "order") return "/staff/orders";
+  if (group === "kitchen") return "/staff/kitchen";
+  if (group === "profile") return "/staff/profile";
+  if (type.includes("leave")) return "/staff/leave";
+  return "/staff/dashboard";
+};
+
+const actionLabel = (notificationType, group) => {
+  const type = String(notificationType || "").toLowerCase();
+  if (type === "ai_chatbot_handoff") return "Mở hỗ trợ";
+  if (group === "schedule") return "Xem lịch";
+  if (group === "attendance") return "Xem chấm công";
+  if (group === "payroll") return "Xem phiếu lương";
+  if (group === "order") return "Mở đơn";
+  if (group === "kitchen") return "Mở bếp";
+  if (group === "profile") return "Xem hồ sơ";
+  if (type.includes("leave")) return "Xem nghỉ phép";
+  return "Mở chi tiết";
+};
+
+const formatTime = (value) => {
+  if (!value) return "Vừa xong";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Vừa xong";
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
+const mapNotification = (notification) => {
+  const payload = notification?.payload && typeof notification.payload === "object"
+    ? notification.payload
+    : {};
+  const type = resolveType(notification?.type);
+  const actionUrl = String(payload.actionUrl || "");
+  const unread = !notification?.readAt;
+
+  return {
+    id: String(notification.id),
+    type,
+    title: payload.title || typeMeta[type]?.label || "Thông báo",
+    description:
+      payload.message ||
+      payload.messagePreview ||
+      "Có cập nhật mới liên quan đến công việc của bạn.",
+    time: formatTime(notification.createdAt),
+    status: unread && ["request", "attendance"].includes(type) ? "action" : unread ? "new" : "read",
+    cta: actionLabel(notification.type, type),
+    to: actionUrl.startsWith("/") ? actionUrl : fallbackRoute(notification.type, type),
+    unread,
+  };
+};
+
+const removeFromSet = (setter, id) => {
+  setter((previous) => {
+    const next = new Set(previous);
+    next.delete(id);
+    return next;
+  });
 };
 
 const StaffNotificationsPage = () => {
   const { user } = useContext(AuthContext) || {};
-  const role = useMemo(() => resolveUserRoleName(user), [user]);
-  const canOrder = hasStaffOrderAccess(role);
-  const canKitchen = hasStaffKitchenAccess(role);
-  const generatedNotifications = useMemo(
-    () => buildNotifications({ user, role, canOrder, canKitchen }),
-    [user, role, canOrder, canKitchen],
-  );
+  const restaurantId = useMemo(() => resolveStaffRestaurantId(user), [user]);
+  const {
+    notifications: backendNotifications,
+    notificationsLoading,
+    notificationsError,
+    markNotificationRead,
+    markAllNotificationsRead,
+    archiveNotification,
+    refetchNotifications,
+  } = useCommunication({ restaurantId, notificationsEnabled: true });
+
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [locallyReadIds, setLocallyReadIds] = useState(() => new Set());
   const [locallyDeletedIds, setLocallyDeletedIds] = useState(() => new Set());
+  const [actionError, setActionError] = useState("");
 
   const notifications = useMemo(
-    () => generatedNotifications
+    () => (backendNotifications || [])
+      .map(mapNotification)
       .filter((item) => !locallyDeletedIds.has(item.id))
       .map((item) => ({ ...item, unread: item.unread && !locallyReadIds.has(item.id) })),
-    [generatedNotifications, locallyDeletedIds, locallyReadIds],
+    [backendNotifications, locallyDeletedIds, locallyReadIds],
   );
+
   const unreadCount = notifications.filter((item) => item.unread).length;
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredNotifications = notifications.filter((item) => {
@@ -205,14 +183,51 @@ const StaffNotificationsPage = () => {
       meta.label,
       statusLabels[item.status],
     ].join(" ").toLowerCase();
-    const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
 
-    return matchesTab && matchesSearch;
+    return matchesTab && (!normalizedSearch || haystack.includes(normalizedSearch));
   });
 
-  const markRead = (id) => setLocallyReadIds((prev) => new Set(prev).add(id));
-  const markAllRead = () => setLocallyReadIds(new Set(generatedNotifications.map((item) => item.id)));
-  const deleteLocal = (id) => setLocallyDeletedIds((prev) => new Set(prev).add(id));
+  const markRead = async (id) => {
+    if (!id || locallyReadIds.has(id)) return;
+    setActionError("");
+    setLocallyReadIds((previous) => new Set(previous).add(id));
+    try {
+      const result = await markNotificationRead({ variables: { id } });
+      if (result?.data?.markNotificationRead === false) throw new Error("Không thể đánh dấu thông báo đã đọc.");
+      await refetchNotifications?.();
+    } catch (error) {
+      removeFromSet(setLocallyReadIds, id);
+      setActionError(error?.message || "Không thể đánh dấu thông báo đã đọc.");
+    }
+  };
+
+  const markAllRead = async () => {
+    const unreadIds = notifications.filter((item) => item.unread).map((item) => item.id);
+    if (!unreadIds.length) return;
+    setActionError("");
+    setLocallyReadIds((previous) => new Set([...previous, ...unreadIds]));
+    try {
+      const result = await markAllNotificationsRead({ variables: { restaurantId } });
+      if (result?.data?.markAllNotificationsRead === false) throw new Error("Không thể đánh dấu tất cả thông báo.");
+      await refetchNotifications?.();
+    } catch (error) {
+      unreadIds.forEach((id) => removeFromSet(setLocallyReadIds, id));
+      setActionError(error?.message || "Không thể đánh dấu tất cả thông báo.");
+    }
+  };
+
+  const archive = async (id) => {
+    setActionError("");
+    setLocallyDeletedIds((previous) => new Set(previous).add(id));
+    try {
+      const result = await archiveNotification({ variables: { id } });
+      if (result?.data?.archiveNotification === false) throw new Error("Không thể ẩn thông báo.");
+      await refetchNotifications?.();
+    } catch (error) {
+      removeFromSet(setLocallyDeletedIds, id);
+      setActionError(error?.message || "Không thể ẩn thông báo.");
+    }
+  };
 
   return (
     <div className="staff-notifications staff-page" aria-labelledby="staff-notifications-title">
@@ -227,7 +242,7 @@ const StaffNotificationsPage = () => {
             <span className="staff-notifications__unread-pill" aria-label={`${unreadCount} thông báo mới`}>
               <BellRing size={15} /> {unreadCount} mới
             </span>
-            <button type="button" onClick={markAllRead} disabled={unreadCount === 0}>
+            <button type="button" onClick={() => void markAllRead()} disabled={unreadCount === 0}>
               <CheckCheck size={16} /> Đánh dấu đã đọc
             </button>
           </div>
@@ -267,11 +282,25 @@ const StaffNotificationsPage = () => {
           </nav>
         </div>
 
-        <p className="staff-notifications__local-note">Các thay đổi chỉ áp dụng trong lần sử dụng hiện tại.</p>
+        <p className="staff-notifications__local-note" role={actionError ? "alert" : undefined}>
+          {actionError || "Thông báo được đồng bộ từ hệ thống và cập nhật theo thời gian thực."}
+        </p>
       </section>
 
       <section className="staff-notifications__list" aria-live="polite">
-        {filteredNotifications.length ? filteredNotifications.map((item) => {
+        {notificationsLoading && !notifications.length ? (
+          <div className="staff-notifications__empty" role="status">
+            <Inbox size={34} />
+            <h2>Đang tải thông báo</h2>
+            <p>Hệ thống đang đồng bộ dữ liệu mới nhất.</p>
+          </div>
+        ) : notificationsError && !notifications.length ? (
+          <div className="staff-notifications__empty" role="alert">
+            <Inbox size={34} />
+            <h2>Không thể tải thông báo</h2>
+            <p>Vui lòng tải lại trang hoặc thử lại sau.</p>
+          </div>
+        ) : filteredNotifications.length ? filteredNotifications.map((item) => {
           const meta = typeMeta[item.type] || typeMeta.system;
           const Icon = meta.icon;
           return (
@@ -285,14 +314,14 @@ const StaffNotificationsPage = () => {
                 <h2>{item.title}</h2>
                 <p>{item.description}</p>
                 <div className="staff-notification-card__actions">
-                  <Link to={item.to} onClick={() => markRead(item.id)}>{item.cta}</Link>
-                  {item.unread ? <button type="button" onClick={() => markRead(item.id)}>Đánh dấu đọc</button> : null}
+                  <Link to={item.to} onClick={() => void markRead(item.id)}>{item.cta}</Link>
+                  {item.unread ? <button type="button" onClick={() => void markRead(item.id)}>Đánh dấu đọc</button> : null}
                 </div>
               </div>
               <div className="staff-notification-card__state">
                 <span className={`staff-notification-card__status is-${item.status}`}>{statusLabels[item.status]}</span>
                 {item.unread ? <span className="staff-notification-card__dot" aria-label="Thông báo mới" /> : null}
-                <button type="button" aria-label={`Ẩn thông báo: ${item.title}`} title="Ẩn thông báo" onClick={() => deleteLocal(item.id)}>
+                <button type="button" aria-label={`Ẩn thông báo: ${item.title}`} title="Ẩn thông báo" onClick={() => void archive(item.id)}>
                   <Trash2 size={17} />
                 </button>
               </div>
@@ -301,9 +330,8 @@ const StaffNotificationsPage = () => {
         }) : (
           <div className="staff-notifications__empty" role="status">
             <Inbox size={34} />
-            <h2>{searchTerm ? "Không tìm thấy thông báo phù hợp." : "Không có thông báo phù hợp."}</h2>
-            <p>Hãy kiểm tra lịch cá nhân nếu bạn cần xem ca làm hoặc chấm công.</p>
-            <Link to="/staff/schedule">Xem lịch cá nhân</Link>
+            <h2>Chưa có thông báo phù hợp</h2>
+            <p>Thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
           </div>
         )}
       </section>

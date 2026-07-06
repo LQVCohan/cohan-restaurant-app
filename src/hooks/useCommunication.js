@@ -14,6 +14,7 @@ export const Q_CHAT_THREADS = gql`
       restaurantId
       participants
       channel
+      kind
       subject
       targetRole
       status
@@ -32,6 +33,7 @@ export const Q_CHAT_THREAD = gql`
       restaurantId
       participants
       channel
+      kind
       subject
       targetRole
       status
@@ -55,6 +57,7 @@ export const M_OPEN_CHAT_THREAD = gql`
       restaurantId
       participants
       channel
+      kind
       subject
       targetRole
       status
@@ -123,6 +126,12 @@ export const M_MARK_ALL_NOTIFICATIONS_READ = gql`
   }
 `;
 
+export const M_ARCHIVE_NOTIFICATION = gql`
+  mutation ArchiveNotification($id: ID!) {
+    archiveNotification(id: $id)
+  }
+`;
+
 export default function useCommunication({ restaurantId = null, status = "open", notificationsEnabled = true } = {}) {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id || auth?.user?._id || null;
@@ -158,6 +167,7 @@ export default function useCommunication({ restaurantId = null, status = "open",
   const [markThreadReadMut] = useMutation(M_MARK_THREAD_READ);
   const [markNotificationReadMut] = useMutation(M_MARK_NOTIFICATION_READ);
   const [markAllNotificationsReadMut] = useMutation(M_MARK_ALL_NOTIFICATIONS_READ);
+  const [archiveNotificationMut] = useMutation(M_ARCHIVE_NOTIFICATION);
 
   useEffect(() => {
     if (!notificationsEnabled || !userId) return undefined;
@@ -236,6 +246,7 @@ export default function useCommunication({ restaurantId = null, status = "open",
 
     notifications: notificationsQuery.data?.notifications || [],
     notificationsLoading: notificationsQuery.loading,
+    notificationsError: notificationsQuery.error || null,
     unreadCount: Number(unreadCountQuery.data?.unreadNotificationCount || 0),
     refetchNotifications: notificationsQuery.refetch,
 
@@ -251,5 +262,6 @@ export default function useCommunication({ restaurantId = null, status = "open",
     markThreadRead: markThreadReadMut,
     markNotificationRead: markNotificationReadMut,
     markAllNotificationsRead: markAllNotificationsReadMut,
+    archiveNotification: archiveNotificationMut,
   };
 }
