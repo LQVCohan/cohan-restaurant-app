@@ -1,19 +1,15 @@
 {
   "id": "optimize-menu-live-stock",
   "title": "Optimize customer menu live stock reads",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "branch": "optimize-menu-live-stock",
   "createdAt": "2026-07-07",
   "scope": [
-    "cohan-restaurant-backend/src/services/inventory.service.js",
     "cohan-restaurant-backend/graphql/resolvers/cart/query.js",
-    "cohan-restaurant-backend/tests/services/inventory-availability-read.test.js",
-    "cohan-restaurant-backend/tests/resolvers/cart-access.test.js",
-    "src/components/Customer/Food/FoodDetail.jsx"
+    "cohan-restaurant-backend/tests/resolvers/menu-item-live-state-performance.test.js"
   ],
   "validation": [
-    "npx vitest run tests/services/inventory-availability-read.test.js tests/resolvers/cart-access.test.js",
-    "npm run build",
+    "npx vitest run tests/resolvers/menu-item-live-state-performance.test.js tests/resolvers/cart-access.test.js",
     "GitHub Actions CI"
   ]
 }
