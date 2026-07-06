@@ -1,0 +1,19 @@
+type ArchivedCustomerList {
+  items: [User!]!
+  totalCount: Int!
+}
+
+extend type Query {
+  archivedCustomers(
+    restaurantId: ID!
+    limit: Int = 100
+  ): ArchivedCustomerList!
+}
+
+extend type Mutation {
+  archiveAllCustomers(
+    restaurantId: ID!
+    confirmText: String!
+  ): Int!
+  restoreAllArchivedCustomers(restaurantId: ID!): Int!
+}
