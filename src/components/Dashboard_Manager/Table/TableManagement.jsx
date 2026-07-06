@@ -888,6 +888,17 @@ const TableManagement = () => {
                     <div className="card-actions">
                       <button
                         type="button"
+                        className="btn-mini primary"
+                        aria-label={`Mở 3D và AR cho bàn ${t.number || "chưa có mã"}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenArPlacementForTable(t);
+                        }}
+                      >
+                        3D / AR
+                      </button>
+                      <button
+                        type="button"
                         className="btn-mini secondary"
                         aria-label={`Mở cấu hình bàn ${t.number || "chưa có mã"}`}
                         onClick={(event) => {
