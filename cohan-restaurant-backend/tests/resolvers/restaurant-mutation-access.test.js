@@ -77,6 +77,85 @@ describe("restaurant mutation access hardening", () => {
     expect(save).toHaveBeenCalled();
   });
 
+  it("updateRestaurant keeps a valid restaurant coordinate pair", async () => {
+    const save = vi.fn(async () => {});
+    const doc = {
+      managerId: "manager-1",
+      save,
+      toObject: vi.fn(() => ({ _id: "valid-r1" })),
+    };
+    modelMocks.Restaurant.findById.mockResolvedValue(doc);
+
+    const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
+    await RestaurantMutation.updateRestaurant(
+      null,
+      {
+        id: "valid-r1",
+        input: {
+          address: {
+            line1: "123 Existing Street",
+            lat: 10.7769,
+            lng: 106.7009,
+          },
+        },
+      },
+      ctxFor("admin", "admin-1"),
+    );
+
+    expect(doc.address).toEqual(
+      expect.objectContaining({
+        line1: "123 Existing Street",
+        lat: 10.7769,
+        lng: 106.7009,
+      }),
+    );
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateRestaurant rejects an incomplete coordinate pair before save", async () => {
+    const save = vi.fn(async () => {});
+    modelMocks.Restaurant.findById.mockResolvedValue({
+      managerId: "manager-1",
+      save,
+      toObject: vi.fn(() => ({ _id: "valid-r1" })),
+    });
+
+    const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
+    await expect(
+      RestaurantMutation.updateRestaurant(
+        null,
+        { id: "valid-r1", input: { address: { lat: 10.7769 } } },
+        ctxFor("admin", "admin-1"),
+      ),
+    ).rejects.toMatchObject({
+      message: "Restaurant latitude and longitude must be provided together",
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("updateRestaurant rejects out-of-range coordinates before save", async () => {
+    const save = vi.fn(async () => {});
+    modelMocks.Restaurant.findById.mockResolvedValue({
+      managerId: "manager-1",
+      save,
+      toObject: vi.fn(() => ({ _id: "valid-r1" })),
+    });
+
+    const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
+    await expect(
+      RestaurantMutation.updateRestaurant(
+        null,
+        { id: "valid-r1", input: { address: { lat: 91, lng: 106.7009 } } },
+        ctxFor("admin", "admin-1"),
+      ),
+    ).rejects.toMatchObject({
+      message: "Restaurant coordinates are out of range",
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("deleteRestaurant denies manager for another restaurant before deleteOne", async () => {
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
 
@@ -95,7 +174,7 @@ describe("restaurant mutation access hardening", () => {
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     await RestaurantMutation.deleteRestaurant(null, { id: "valid-r1" }, ctxFor("admin", "admin-1"));
 
-    expect(modelMocks.Restaurant.deleteOne).toHaveBeenCalledWith({ _id: { _mockObjectId: "valid-r1" } });
+    expect(modelMocks.Restaurant.deleteOne).toHaveBeenCalledWith({ _mockObjectId: "valid-r1" });
   });
 
   it("createRestaurant allows assigning one manager to many restaurants", async () => {
