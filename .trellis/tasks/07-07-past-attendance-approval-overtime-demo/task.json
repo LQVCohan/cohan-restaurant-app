@@ -1,0 +1,31 @@
+{
+  "id": "past-attendance-approval-overtime-demo",
+  "name": "past-attendance-approval-overtime-demo",
+  "title": "Seed past attendance approvals and overtime",
+  "description": "Keep the two-week schedule, but create attendance, review queues, and overtime only for completed Vietnam calendar days.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "staff-attendance-demo",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "feat/past-attendance-approval-overtime-demo",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "staff-performance-two-week-roster",
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/staffPerformance/staffPerformance.service.js",
+    "cohan-restaurant-backend/tests/services/staff-performance-core-formula.service.test.js",
+    "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
+    "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js"
+  ],
+  "notes": "As of 07/07/2026 Asia/Ho_Chi_Minh, attendance data stops at 06/07/2026. Future shifts remain scheduled, without timesheets, attendance approvals, correction reviews, or overtime records.",
+  "meta": {}
+}
