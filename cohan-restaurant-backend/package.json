@@ -27,7 +27,7 @@
     "verify:demo:staff-performance-data": "node scripts/verifyStaffPerformanceDemoDataUtc.js",
     "seed:permissions": "node scripts/seedPermissions.js",
     "seed:parent-roles": "node scripts/seedParentRoles.js",
-    "seed:roles": "node run seedRoles.js",
+    "seed:roles": "node scripts/seedRoles.js",
     "seed:rbac": "npm run seed:permissions && npm run seed:parent-roles && npm run seed:roles",
     "seed:demo:coupon-promotion": "node scripts/seedCouponPromotionDemo.js",
     "seed:demo:promotion-management": "node scripts/seedPromotionManagementDemo.js --restaurantId=69ce9e2e8d8d711f12e251b1",
