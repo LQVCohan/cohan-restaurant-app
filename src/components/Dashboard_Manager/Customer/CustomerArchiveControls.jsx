@@ -48,8 +48,7 @@ const RESTORE_ALL_ARCHIVED_CUSTOMERS = gql`
 const customerName = (customer) =>
   customer?.fullName || customer?.username || "Khách hàng";
 
-const CustomerArchiveControls = () => {
-  const { user } = useContext(AuthContext) || {};
+const CustomerArchiveControlsInner = ({ user }) => {
   const {
     selectedRestaurantId,
     selectedRestaurant,
@@ -59,7 +58,6 @@ const CustomerArchiveControls = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const isAdmin = isAdminRole(user);
-  const canArchive = isAdmin || isManagerRole(user);
 
   const { data, loading, error, refetch } = useQuery(
     GET_ARCHIVED_CUSTOMERS,
@@ -157,8 +155,6 @@ const CustomerArchiveControls = () => {
       );
     }
   };
-
-  if (!canArchive) return null;
 
   return (
     <>
@@ -284,6 +280,12 @@ const CustomerArchiveControls = () => {
       ) : null}
     </>
   );
+};
+
+const CustomerArchiveControls = () => {
+  const { user } = useContext(AuthContext) || {};
+  if (!isAdminRole(user) && !isManagerRole(user)) return null;
+  return <CustomerArchiveControlsInner user={user} />;
 };
 
 export default CustomerArchiveControls;
