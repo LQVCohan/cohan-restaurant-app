@@ -6,10 +6,12 @@
   "createdAt": "2026-07-06",
   "scope": [
     "cohan-restaurant-backend/scripts/seedProductionMenuCatalog.js",
+    "cohan-restaurant-backend/scripts/seedProductionMenuCatalogWithMenus.js",
     "cohan-restaurant-backend/package.json"
   ],
   "validation": [
     "node --check scripts/seedProductionMenuCatalog.js",
+    "node --check scripts/seedProductionMenuCatalogWithMenus.js",
     "node scripts/seedProductionMenuCatalog.js --validate-only"
   ],
   "databaseApplyRun": false
