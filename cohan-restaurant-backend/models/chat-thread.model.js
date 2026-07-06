@@ -27,6 +27,11 @@ const ChatThreadSchema = new Schema(
       enum: ["support", "order", "reservation", "other"],
       default: "support",
     },
+    kind: {
+      type: String,
+      enum: ["standard", "ai_chatbot_handoff"],
+      default: "standard",
+    },
     subject: { type: String, default: "" },
     targetRole: { type: String, default: null },
     messages: [MessageSchema],
@@ -39,6 +44,7 @@ const ChatThreadSchema = new Schema(
 );
 
 ChatThreadSchema.index({ restaurantId: 1, status: 1, updatedAt: -1 });
+ChatThreadSchema.index({ restaurantId: 1, kind: 1, status: 1, updatedAt: -1 });
 ChatThreadSchema.index({ participants: 1, updatedAt: -1 });
 
 export default mongoose.model("ChatThread", ChatThreadSchema);
