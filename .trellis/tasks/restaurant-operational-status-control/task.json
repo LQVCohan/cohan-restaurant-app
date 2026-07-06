@@ -1,7 +1,12 @@
 {
   "id": "restaurant-operational-status-control",
   "title": "Replace legacy restaurant status control",
-  "status": "in_progress",
+  "status": "completed",
   "scope": "frontend",
-  "createdAt": "2026-07-06"
+  "createdAt": "2026-07-06",
+  "completedAt": "2026-07-06",
+  "validation": {
+    "status": "not_run",
+    "reason": "No GitHub workflow was triggered and the execution environment could not run the repository test or build commands."
+  }
 }
