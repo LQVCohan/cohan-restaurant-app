@@ -1,10 +1,10 @@
 # Restaurant location production readiness
 
-## Current behavior
+## Previous behavior
 
-The restaurant profile page already renders a **Lấy vị trí hiện tại** action and calls `navigator.geolocation.getCurrentPosition`. The callback reads valid browser coordinates but only writes a fallback text into `address.line1`. The dedicated `lat` and `lng` form fields remain empty, so `UpdateRestaurantInput.address.lat/lng` are sent as `null` and AR/geofence features still see the restaurant as missing coordinates.
+The restaurant profile page already rendered a **Lấy vị trí hiện tại** action and called `navigator.geolocation.getCurrentPosition`. The callback read valid browser coordinates but only wrote a fallback text into `address.line1`. The dedicated `lat` and `lng` form fields remained empty, so `UpdateRestaurantInput.address.lat/lng` were sent as `null` and AR/geofence features still saw the restaurant as missing coordinates.
 
-The backend accepts any finite numeric pair in `normalizeRestaurantAddress`; range validation currently exists only when the Mongoose pre-validation hook builds the GeoJSON `location`. An out-of-range `address.lat/lng` pair can therefore be stored while `location` is removed, producing inconsistent location behavior.
+The backend accepted any finite numeric pair in `normalizeRestaurantAddress`; range validation existed only when the Mongoose pre-validation hook built the GeoJSON `location`. An out-of-range `address.lat/lng` pair could therefore be stored while `location` was removed, producing inconsistent location behavior.
 
 ## End-to-end flow
 
@@ -13,31 +13,27 @@ The backend accepts any finite numeric pair in `normalizeRestaurantAddress`; ran
 3. `normalizeRestaurantAddress` is the shared resolver trust boundary used by create and update mutations.
 4. `RestaurantInfoManagement` loads address fields, captures browser geolocation, validates the form, and sends `UpdateRestaurantInput`.
 5. `useRestaurant` and AR placement read the saved coordinates for geofence checks.
-6. Component and resolver tests are the nearest reliable automated boundaries; HTTPS/device permission behavior remains a physical-browser check.
+6. Component and resolver tests cover the browser-to-mutation path and the resolver persistence boundary; HTTPS/device permission behavior remains a physical-browser check.
 
-## Root causes
+## Implemented changes
 
-1. `fillCurrentLocation` updates `line1` instead of `lat/lng`.
-2. The UI has no locating state, timeout options, secure-context guidance, or differentiated geolocation errors.
-3. Frontend validation does not enforce numeric ranges or a complete coordinate pair.
-4. Resolver normalization does not reject incomplete or out-of-range coordinates before persistence.
-5. Existing tests do not cover the current-location action or resolver coordinate validation.
+- Browser latitude and longitude are written to the dedicated form fields with six decimal places.
+- The typed street address is preserved and is never replaced with a coordinate string.
+- The location button has a pending state and cannot start duplicate browser requests.
+- Geolocation uses `enableHighAccuracy: true`, `timeout: 10000`, and `maximumAge: 0`.
+- The UI reports unsupported browsers, insecure contexts, denied permission, unavailable location, timeouts, and invalid device coordinates separately.
+- Coordinates remain optional, but when present they must be supplied as a complete numeric pair.
+- Frontend validation enforces latitude `-90..90` and longitude `-180..180` before the mutation runs.
+- The resolver enforces the same complete-pair, finite-number, and range invariants before assigning data to the model.
+- Lat/Lng inputs use numeric semantics and accessible labels.
+- Browser API mocks are scoped to the affected component test instead of changing the shared test environment.
 
-## Scope
+## Changed files
 
-- Save browser latitude and longitude into the dedicated form fields without overwriting the typed street address.
-- Add a loading state and production-safe geolocation options.
-- Return clear messages for unsupported browser, insecure context, permission denied, unavailable location, timeout, and invalid coordinates.
-- Validate coordinates as an optional pair: both absent is allowed; otherwise both must be numeric and within latitude/longitude ranges.
-- Enforce the same invariant in the shared backend address normalizer.
-- Add focused frontend and backend regression tests.
-
-## Files to change
-
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: fix the UI handler, validation, input semantics, and locating state.
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: cover successful capture/save and failure boundaries.
-- `cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js`: reject invalid coordinate pairs at the resolver trust boundary.
-- `cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js`: cover valid, partial, and out-of-range coordinates.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: corrected the UI handler, validation, input semantics, secure-context behavior, error messages, and pending state.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: covers successful capture/save, address preservation, partial and out-of-range input, unsupported browser, and denied permission.
+- `cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js`: rejects invalid coordinate pairs at the shared resolver trust boundary.
+- `cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js`: covers valid, partial, and out-of-range coordinates before persistence.
 
 ## Acceptance criteria
 
@@ -47,8 +43,21 @@ The backend accepts any finite numeric pair in `normalizeRestaurantAddress`; ran
 - Saving after successful capture sends numeric `address.lat` and `address.lng` values.
 - Blank coordinates remain optional.
 - Partial, non-numeric, or out-of-range coordinate input is blocked in the UI.
-- Create/update resolver paths reject incomplete or out-of-range coordinate pairs with `BAD_USER_INPUT` before saving.
+- Create/update resolver paths reject incomplete, non-finite, or out-of-range coordinate pairs with `BAD_USER_INPUT` before saving.
 - Valid coordinates continue to pass through unchanged so the existing Mongoose location synchronization remains authoritative.
+
+## Automated validation completed
+
+- Focused frontend Vitest: `RestaurantInfoManagement.test.jsx` — 7/7 tests passed.
+- Focused backend Vitest: `restaurant-mutation-access.test.js` — 16/16 tests passed.
+- The repository CI remains the merge gate for conflict checks, lint, unit/component tests, build, backend suite, and Playwright smoke tests.
+
+## Manual validation still required
+
+- Open the profile page from a real HTTPS origin on the target phone.
+- Confirm location permission allow/deny behavior in the real browser.
+- Compare the captured coordinates with the physical restaurant position.
+- Save, reload, and confirm the persisted coordinates are available to the AR geofence.
 
 ## Out of scope
 
@@ -57,12 +66,3 @@ The backend accepts any finite numeric pair in `normalizeRestaurantAddress`; ran
 - Automatically saving immediately after location capture.
 - Changing geofence radius or AR calibration logic.
 - Replacing the existing restaurant address schema.
-
-## Validation plan
-
-- Targeted Vitest for `RestaurantInfoManagement.test.jsx`.
-- Targeted backend Vitest for `restaurant-mutation-access.test.js`.
-- `npm run check:graphql`.
-- `npm run build`.
-- Existing CI frontend/backend and smoke checks.
-- Manual HTTPS phone test for permission, timeout, and physical GPS accuracy.
