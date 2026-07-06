@@ -1,10 +1,11 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home, UsersRound } from "lucide-react";
 import "./Styles/Sidebar.scss";
 import "./Styles/SidebarShellFix.scss";
+import "./Styles/SidebarPortalActions.scss";
 import { AuthContext } from "@/context/AuthContext";
 import { filterNavigationByPermissionAccess } from "@/utils/frontendPermissionAccess";
-import { isAdminRole } from "@/utils/frontendRoleAccess";
+import { canAccessRoute, isAdminRole } from "@/utils/frontendRoleAccess";
 import { getDisplayUser, getInitials, resolveUserAvatarSrc } from "@/lib/userAvatar";
 import {
   getCombinedRoleLabel,
@@ -101,6 +102,7 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
     activeBrand?.ownerId && user?.id && String(activeBrand.ownerId) === String(user.id),
   );
   const canManageActiveBrand = isAdminRole(user) || ownsActiveBrand || isBrandWideRole(activeMembership);
+  const canAccessStaffPortal = canAccessRoute(user, "/staff/dashboard");
 
   const visibleSections = useMemo(() => {
     const sections = filterNavigationByPermissionAccess(NAVIGATION_SECTIONS, user);
@@ -205,6 +207,18 @@ const Sidebar = ({ isOpen, onClose, onToggle, onPageChange, activeItem, activeBr
             </div>
           </div>
         </div>
+        <nav className="sidebar-portal-actions" aria-label="Chuyển khu vực">
+          <a className="sidebar-portal-action" href="/" aria-label="Chuyển đến trang chủ">
+            <Home aria-hidden="true" />
+            <span>Trang chủ</span>
+          </a>
+          {canAccessStaffPortal && (
+            <a className="sidebar-portal-action" href="/staff/dashboard" aria-label="Chuyển đến khu nhân viên">
+              <UsersRound aria-hidden="true" />
+              <span>Khu nhân viên</span>
+            </a>
+          )}
+        </nav>
       </div>
     </aside>
   );
