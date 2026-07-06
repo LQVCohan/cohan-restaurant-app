@@ -1,0 +1,33 @@
+{
+  "id": "customer-archive-by-restaurant",
+  "name": "customer-archive-by-restaurant",
+  "title": "Archive customers per restaurant",
+  "description": "Allow managers to hide all customers for one restaurant without deleting accounts, and allow admins to query and restore archived customers.",
+  "status": "in_progress",
+  "dev_type": "feature",
+  "scope": "customer-management",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "feature/customer-archive-by-restaurant",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/customer.model.js",
+    "cohan-restaurant-backend/graphql/schema/user.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/user/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/user/mutation.js",
+    "src/hooks/useUserManagement.js",
+    "src/components/Dashboard_Manager/Customer/CustomerManagement.jsx",
+    "cohan-restaurant-backend/tests/resolvers/user-customer-restaurant-access.test.js"
+  ],
+  "notes": "Archive is restaurant-scoped. User status and deletedAt remain unchanged."
+}

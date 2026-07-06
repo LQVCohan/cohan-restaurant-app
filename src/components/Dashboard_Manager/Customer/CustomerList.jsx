@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import CustomerCard from "./CustomerCard";
+import CustomerArchiveControls from "./CustomerArchiveControls";
 import "./CustomerList.scss";
 import "./CustomerExperiencePolish.css";
 import "./CustomerOperationsPolish.scss";
@@ -306,6 +307,7 @@ const CustomerList = ({ customers, loading, onCustomerClick, pagination }) => {
         <strong>{managerSummary}</strong>
       </div>
       <div className="cl-strip-tools">
+        <CustomerArchiveControls />
         {hasPagination ? renderPager(true) : null}
         <div className="cl-view-toggle" aria-label="Kiểu hiển thị danh sách">
           <button
