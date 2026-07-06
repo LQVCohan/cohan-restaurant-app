@@ -47,13 +47,33 @@ No schema, resolver, service, or permission change is required.
 - User-facing labels use chain/branch wording instead of internal Brand terminology or raw status values.
 - Role/scope validation remains aligned with backend rules: admin is chain-wide, manager has exactly one branch, and staff has at least one branch.
 - Existing restaurant scoping and backend authorization remain unchanged.
-- Targeted component tests, frontend lint, production build, backend checks, and smoke tests must pass before merge.
+- Targeted component tests, frontend lint, production build, backend checks, and smoke tests pass.
 
 ## Changed files
 
 - `src/components/Dashboard_Manager/Brand/BrandManagement.jsx`
 - `src/components/Dashboard_Manager/Brand/BrandManagement.css`
 - `src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx`
+
+## Automated validation completed
+
+GitHub Actions run `28830462172` passed:
+
+- unresolved conflict-marker check;
+- frontend lint and unit tests;
+- menu RBAC tests;
+- changed component tests for the chain-management flows;
+- production frontend build;
+- Playwright browser installation and smoke tests;
+- backend lint, full tests, menu RBAC tests, and build.
+
+The focused regression suite verifies production wording, optional-field clearing, branch creation and scope selection, manager branch validation, member filtering, and membership-status changes.
+
+## Manual visual validation still required
+
+- Review the authenticated page at desktop width with realistic chain, branch, and member counts.
+- Review at 390x844 and 430x932 to confirm the form, branch cards, member controls, and status actions remain single-column without horizontal overflow.
+- Confirm logo and branch images retain readable contrast with production assets.
 
 ## Out of scope
 
@@ -62,11 +82,3 @@ No schema, resolver, service, or permission change is required.
 - Changing membership permission rules or owner-transfer behavior.
 - Archiving/restoring a chain.
 - Rebuilding the shared manager layout or introducing a new UI library.
-
-## Validation plan
-
-- Run the targeted BrandManagement component tests.
-- Run conflict-marker checks, frontend lint, unit tests, changed component tests, production build, and Playwright smoke tests through PR CI.
-- Run backend lint, tests, menu RBAC checks, and build to verify no contract regression.
-- Review the final diff for unrelated shared-file changes and duplicated fetch logic.
-- Manually inspect the authenticated page at desktop, 390x844, and 430x932 because CI cannot verify final visual contrast or actual production data density.
