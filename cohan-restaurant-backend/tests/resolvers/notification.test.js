@@ -7,8 +7,13 @@ const findOne = vi.fn();
 const updateMany = vi.fn();
 
 vi.mock("../../graphql/guards.js", () => ({ requireRestaurantAccess }));
+vi.mock("../../src/services/auth/authorization.service.js", () => ({
+  hasAnyPermission: vi.fn(),
+  hasPermission: vi.fn(),
+}));
 vi.mock("../../src/services/ai/restaurantChatbotRealtime.service.js", () => ({ emitAiChatbotStaffReplyIfLinked: vi.fn() }));
 vi.mock("../../models/index.js", () => ({
+  BrandMembership: {},
   ChatThread: {},
   Restaurant: {},
   User: {},
