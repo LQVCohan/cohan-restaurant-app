@@ -1,12 +1,12 @@
 # Restaurant chain management production upgrade
 
-## Current behavior
+## Previous behavior
 
-The manager chain-management page currently renders a small set of generic white cards with utility classes. It exposes internal terminology (`Brand`, `User ID`, `Slug`), has no composed loading/error/empty states, no action feedback, no form validation, and no readable summary of branch/member scope. Mutation calls also trigger both Apollo `refetchQueries` and manual `refetch`, causing duplicate network requests.
+The manager chain-management page rendered a small set of generic white cards with utility classes. It exposed internal terminology such as `Brand`, `User ID`, and `Slug`; had no composed loading, error, or empty states; provided no action feedback or form validation; and did not present branch/member scope clearly. Mutation handlers also combined Apollo `refetchQueries` with manual refetches for the same server data.
 
-## End-to-end flow
+## End-to-end flow reviewed
 
-`Brand` and `BrandMembership` Mongoose models -> `brand.graphql` -> brand resolvers and restaurant-scope service -> `useBrandManagement` and page-local GraphQL operations -> `BrandManagement` actions -> component tests.
+`Brand` and `BrandMembership` Mongoose models -> `brand.graphql` -> brand resolvers and restaurant-scope service -> page-local GraphQL operations -> `BrandManagement` actions -> component tests.
 
 The backend already provides:
 
@@ -14,62 +14,59 @@ The backend already provides:
 - `updateBrand` with `canManageBrand` enforcement;
 - `createRestaurant` with `brandId`;
 - `brandMembers`, `addBrandMember`, and `updateBrandMember`;
-- role scope validation and the single-active-manager guard.
+- role-scope validation and the single-active-manager guard.
 
-No schema or resolver change is required for this upgrade.
+No schema, resolver, service, or permission change is required.
 
 ## Root causes
 
-- The screen does not reuse `ManagementPageHeader` or shared manager palette variables.
-- The component is compressed into one-line handlers and markup, making loading/error/disabled states easy to miss.
-- Shared role wording still exposes `Brand` instead of user-facing Vietnamese chain terminology.
-- Brand details requested by the form are incomplete even though the existing GraphQL type already provides them.
-- Mutation actions do not catch errors or confirm success.
-- Apollo refetch and manual refetch are both used for the same actions.
+- The page did not reuse `ManagementPageHeader` or shared manager palette variables.
+- Dense one-line handlers and markup obscured loading, error, disabled, and validation states.
+- Page wording exposed internal Brand terminology instead of production Vietnamese chain/branch labels.
+- Mutation actions did not catch errors or confirm success.
+- Apollo refetch and manual refetch were both used for the same chain/branch actions.
 
-## Implementation
+## Implemented upgrade
 
-- Replace the generic layout with a scoped `brand-management` screen using `ManagementPageHeader`.
-- Add summary metrics, chain selector, clear selected-chain context, structured configuration, branch cards, member search, scope labels, and composed empty/error/loading states.
-- Use the shared manager sage palette and responsive CSS without a new dependency.
-- Keep stored enum values and backend payloads unchanged while displaying Vietnamese labels.
-- Add client-side validation for required chain name/slug, email format, branch name, account id, and membership scope.
-- Remove duplicate manual refetches where mutation `refetchQueries` already refreshes the same server truth.
-- Request `description` and `businessTaxCode` in the existing brand hook because the upgraded form uses them.
-- Update shared role/scope wording from `Brand` to `chuỗi/chi nhánh` and update the existing sidebar assertion.
+- Rebuilt the screen as a page-scoped `brand-management` workspace using `ManagementPageHeader`.
+- Added chain metrics, chain selection, selected-chain context, structured business settings, branch cards, member search, scope controls, and explicit loading/error/empty states.
+- Added client validation for required chain name/slug, email format, branch name, account id, and membership scope.
+- Added loading, success, and error feedback for saving a chain, creating a branch, adding a member, changing member status, and refreshing data.
+- Removed duplicate manual refetches where Apollo mutation refetch already refreshes the same server truth.
+- Kept role and scope wording local to this page so unrelated dashboard surfaces and tests remain untouched.
+- Kept the existing hook, shared role helper, schema, resolvers, enum values, and authorization behavior unchanged.
+- Added scoped responsive CSS using the existing manager sage variables without a new dependency.
 
 ## Acceptance criteria
 
-- The page matches the manager dashboard sage tone and uses the same surface, border, shadow, text, accent, focus, success, warning, and danger variables.
+- The page matches the manager dashboard sage tone and uses the shared surface, border, shadow, text, accent, focus, success, warning, and danger variables.
 - The page remains usable at desktop, 390x844, and 430x932 without horizontal overflow.
 - Loading, query error, no-chain, no-branch, no-member, and filtered-empty states are explicit.
-- Save chain, add branch, add member, and change member status actions show loading, success, and error feedback.
+- Save chain, add branch, add member, change member status, and refresh actions expose processing, success, and error states.
 - Empty optional business fields can be cleared while required `name` and `slug` remain validated.
-- The page does not display `Brand`, raw membership status values, or raw time/status terminology as primary labels.
-- Role and scope validation remains aligned with backend rules: admin is chain-wide, manager has exactly one branch, staff has at least one branch.
+- User-facing labels use chain/branch wording instead of internal Brand terminology or raw status values.
+- Role/scope validation remains aligned with backend rules: admin is chain-wide, manager has exactly one branch, and staff has at least one branch.
 - Existing restaurant scoping and backend authorization remain unchanged.
-- Targeted component tests, frontend lint, production build, and smoke tests pass.
+- Targeted component tests, frontend lint, production build, backend checks, and smoke tests must pass before merge.
 
-## Files
+## Changed files
 
 - `src/components/Dashboard_Manager/Brand/BrandManagement.jsx`
 - `src/components/Dashboard_Manager/Brand/BrandManagement.css`
 - `src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx`
-- `src/hooks/useBrandManagement.js`
-- `src/lib/userRoleDisplay.js`
-- `src/components/Dashboard_Manager/Sidebar.test.jsx`
 
 ## Out of scope
 
 - Creating a new account-search API.
-- Adding brand image upload or address editing.
+- Adding chain image upload, tax-profile expansion, or address editing.
 - Changing membership permission rules or owner-transfer behavior.
 - Archiving/restoring a chain.
 - Rebuilding the shared manager layout or introducing a new UI library.
 
 ## Validation plan
 
-- Run the targeted BrandManagement and Sidebar tests.
-- Run conflict-marker check, frontend lint, changed component tests, production build, and Playwright smoke tests through PR CI.
-- Review the final diff for duplicated logic and contract drift.
-- Manually inspect authenticated desktop and mobile layouts because CI cannot verify final visual contrast with real restaurant assets.
+- Run the targeted BrandManagement component tests.
+- Run conflict-marker checks, frontend lint, unit tests, changed component tests, production build, and Playwright smoke tests through PR CI.
+- Run backend lint, tests, menu RBAC checks, and build to verify no contract regression.
+- Review the final diff for unrelated shared-file changes and duplicated fetch logic.
+- Manually inspect the authenticated page at desktop, 390x844, and 430x932 because CI cannot verify final visual contrast or actual production data density.
