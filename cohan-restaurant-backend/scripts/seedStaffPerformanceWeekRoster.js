@@ -453,10 +453,7 @@ async function applyOvertimeState({ row, minutes, status, manager, reviewNote })
   row.actualCheckOutAt = new Date(row.plannedEndTime.getTime() + minutes * 60000);
   row.earlyLeaveMinutes = 0;
   row.overtimeMinutes = minutes;
-  row.workedMinutes = row.actualCheckInAt
-    ? Math.round((row.actualCheckOutAt.getTime() - row.actualCheckInAt.getTime()) / 60000)
-    : Number(row.workedMinutes || 0);
-  row.hours = Number((row.workedMinutes / 60).toFixed(2));
+  // ponytail: base workedMinutes stays separate so overtime is not counted twice in performance/payroll summaries.
   await row.save();
 
   if (status === "pending") return row;
