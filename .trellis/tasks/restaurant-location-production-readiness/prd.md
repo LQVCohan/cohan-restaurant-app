@@ -2,75 +2,70 @@
 
 ## Previous behavior
 
-The restaurant profile page already rendered a **Lấy vị trí hiện tại** action and called `navigator.geolocation.getCurrentPosition`. The callback read valid browser coordinates but only wrote a fallback text into `address.line1`. The dedicated `lat` and `lng` form fields remained empty, so `UpdateRestaurantInput.address.lat/lng` were sent as `null` and AR/geofence features still saw the restaurant as missing coordinates.
+The restaurant profile page could capture browser latitude and longitude, but the address form kept its old street, ward, district, and city values. This produced an inconsistent form: new GPS coordinates beside a stale address.
 
-The backend accepted any finite numeric pair in `normalizeRestaurantAddress`; range validation existed only when the Mongoose pre-validation hook built the GeoJSON `location`. An out-of-range `address.lat/lng` pair could therefore be stored while `location` was removed, producing inconsistent location behavior.
-
-The pull-request component-test step also compared against `github.event.pull_request.base.sha`. That SHA can become stale after the base branch advances, causing Vitest to treat unrelated base-branch changes as part of the PR and select the full component suite instead of only the tests related to this change.
+The repository already had a rate-limited backend reverse-geocode endpoint used by the customer address page, so adding a second provider or client-side integration was unnecessary.
 
 ## End-to-end flow
 
-1. `Restaurant.address.lat/lng` stores coordinates and the model hook synchronizes valid values to `location.coordinates = [lng, lat]`.
-2. `AddressInput` exposes optional Float `lat` and `lng` fields.
-3. `normalizeRestaurantAddress` is the shared resolver trust boundary used by create and update mutations.
-4. `RestaurantInfoManagement` loads address fields, captures browser geolocation, validates the form, and sends `UpdateRestaurantInput`.
-5. `useRestaurant` and AR placement read the saved coordinates for geofence checks.
-6. Component and resolver tests cover the browser-to-mutation path and the resolver persistence boundary; HTTPS/device permission behavior remains a physical-browser check.
-7. Pull-request CI computes the changed-test baseline from the merge-base with the current remote base branch.
+1. Browser geolocation returns latitude and longitude.
+2. `RestaurantInfoManagement` validates the coordinates and stores them in the form.
+3. The frontend calls the existing `/api/reverse-geocode` endpoint through the shared API URL helper.
+4. The backend calls Nominatim and normalizes house number, street, ward, district, province/city, country, and postal code.
+5. The manager form replaces stale address fields with the resolved address while preserving the manually entered `line2` field.
+6. `UpdateRestaurantInput.address` persists the address and coordinates.
+7. Existing model synchronization continues to build GeoJSON `location.coordinates = [lng, lat]` for AR and geofence consumers.
 
 ## Implemented changes
 
-- Browser latitude and longitude are written to the dedicated form fields with six decimal places.
-- The typed street address is preserved and is never replaced with a coordinate string.
-- The location button has a pending state and cannot start duplicate browser requests.
-- Geolocation uses `enableHighAccuracy: true`, `timeout: 10000`, and `maximumAge: 0`.
-- The UI reports unsupported browsers, insecure contexts, denied permission, unavailable location, timeouts, and invalid device coordinates separately.
-- Coordinates remain optional, but when present they must be supplied as a complete numeric pair.
-- Frontend validation enforces latitude `-90..90` and longitude `-180..180` before the mutation runs.
-- The resolver enforces the same complete-pair, finite-number, and range invariants before assigning data to the model.
-- Lat/Lng inputs use numeric semantics and accessible labels.
-- Browser API mocks are scoped to the affected component test instead of changing the shared test environment.
-- The component test avoids Ant Design async handles and passes with `--detectAsyncLeaks`.
-- Pull-request CI resolves `git merge-base HEAD origin/<base-ref>` before invoking `vitest --changed`, preventing stale-base expansion to unrelated tests.
+- Current location now updates both coordinates and visible address fields.
+- House number and road are combined into the street field.
+- Province-level data is preferred over city-level data when both are returned by the provider.
+- Street, ward, district, province/city, country, and postal code inputs have accessible labels.
+- The location button stays pending until reverse geocoding completes.
+- When reverse geocoding fails, the captured coordinates remain and the previous manual address is preserved with a warning.
+- No new map, geocoder, or frontend dependency was introduced.
 
 ## Changed files
 
-- `.github/workflows/ci.yml`: derives the changed-test baseline from the current remote base branch.
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: corrected the UI handler, validation, input semantics, secure-context behavior, error messages, and pending state.
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: covers successful capture/save, address preservation, partial and out-of-range input, unsupported browser, denied permission, and async-leak-safe interactions.
-- `cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js`: rejects invalid coordinate pairs at the shared resolver trust boundary.
-- `cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js`: covers valid, partial, and out-of-range coordinates before persistence.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: calls the shared reverse-geocode endpoint and fills the address form.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: covers successful address replacement and provider failure fallback.
+- `src/data/vietnamLocationData.js`: prefers province-level provider data when mapping Vietnamese locations.
+- `src/data/vietnamLocationData.test.js`: covers a city-within-province response such as Biên Hòa, Đồng Nai.
+- `cohan-restaurant-backend/src/server/createServer.js`: returns a normalized address hierarchy and combined house number/street.
+- `cohan-restaurant-backend/tests/server/reverse-geocode.security.test.js`: verifies normalized output and hidden upstream failures.
 
 ## Acceptance criteria
 
-- Clicking **Lấy vị trí hiện tại** writes six-decimal values to the Lat/Lng inputs and leaves `line1` unchanged.
-- The button cannot be triggered repeatedly while the browser request is pending.
-- The request uses high accuracy, a finite timeout, and no stale cached position.
-- Saving after successful capture sends numeric `address.lat` and `address.lng` values.
-- Blank coordinates remain optional.
-- Partial, non-numeric, or out-of-range coordinate input is blocked in the UI.
-- Create/update resolver paths reject incomplete, non-finite, or out-of-range coordinate pairs with `BAD_USER_INPUT` before saving.
-- Valid coordinates continue to pass through unchanged so the existing Mongoose location synchronization remains authoritative.
-- Component changed-tests are selected relative to the current base branch and complete within the PR timeout.
+- Clicking **Lấy vị trí hiện tại** updates Lat and Lng with six decimal places.
+- A successful reverse-geocode response replaces stale street, ward, district, city/province, country, and postal code fields.
+- `line2` is not overwritten.
+- Saving sends numeric coordinates and the resolved address in the restaurant mutation.
+- A reverse-geocode outage does not discard the captured coordinates or the existing manual address.
+- Invalid or partial coordinate pairs remain blocked at frontend and backend trust boundaries.
 
 ## Automated validation completed
 
-- Focused frontend Vitest: `RestaurantInfoManagement.test.jsx` — 7/7 tests passed.
-- Focused frontend Vitest with `--detectAsyncLeaks` — 7/7 tests passed with zero reported leaks.
-- Focused backend Vitest: `restaurant-mutation-access.test.js` — 16/16 tests passed.
-- The repository CI remains the merge gate for conflict checks, lint, unit/component tests, build, backend suite, and Playwright smoke tests.
+GitHub Actions run `28818809602` passed:
+
+- conflict-marker check;
+- frontend lint and unit tests;
+- menu RBAC tests;
+- changed component tests with async-leak detection;
+- production frontend build;
+- Playwright browser installation and smoke tests;
+- backend lint, full tests, menu RBAC tests, and build.
 
 ## Manual validation still required
 
-- Open the profile page from a real HTTPS origin on the target phone.
-- Confirm location permission allow/deny behavior in the real browser.
-- Compare the captured coordinates with the physical restaurant position.
-- Save, reload, and confirm the persisted coordinates are available to the AR geofence.
+- Open the manager restaurant profile from an HTTPS origin.
+- Grant location permission and confirm the visible address matches the device position closely enough for the available map data.
+- Review the suggested address before saving because reverse geocoding can return the nearest mapped road rather than an exact storefront.
+- Save, reload, and confirm address and coordinates persist.
 
 ## Out of scope
 
-- Reverse geocoding coordinates into street/ward/district/city fields.
-- Adding Google Maps, Mapbox, or another dependency.
 - Automatically saving immediately after location capture.
-- Changing geofence radius or AR calibration logic.
-- Replacing the existing restaurant address schema.
+- Adding Google Maps, Mapbox, or another geocoding provider.
+- Guaranteeing exact storefront or apartment-level accuracy when the upstream map data does not contain it.
+- Changing AR geofence radius or calibration logic.

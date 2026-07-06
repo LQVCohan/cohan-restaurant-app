@@ -39,6 +39,7 @@ import {
   FileTextOutlined,
 } from "@ant-design/icons";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
+import { toApiUrl } from "../../../lib/apiBaseUrl";
 import "./RestaurantInfoManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
@@ -786,7 +787,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
+      async ({ coords }) => {
         const latitude = Number(coords?.latitude);
         const longitude = Number(coords?.longitude);
         if (
@@ -802,16 +803,48 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           return;
         }
 
-        setRestaurantForm((prev) => ({
-          ...prev,
-          lat: latitude.toFixed(6),
-          lng: longitude.toFixed(6),
-        }));
+        const lat = latitude.toFixed(6);
+        const lng = longitude.toFixed(6);
+        setRestaurantForm((prev) => ({ ...prev, lat, lng }));
         setIsDirty(true);
-        setLocating(false);
-        message.success(
-          "Đã cập nhật tọa độ hiện tại. Vui lòng kiểm tra địa chỉ chi tiết trước khi lưu.",
-        );
+
+        try {
+          const query = new URLSearchParams({ lat, lng });
+          const response = await fetch(
+            toApiUrl(`/api/reverse-geocode?${query.toString()}`),
+            {
+              method: "GET",
+              credentials: "include",
+              headers: { Accept: "application/json" },
+            },
+          );
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result?.ok) {
+            throw new Error(result?.message || "reverse_geocode_failed");
+          }
+
+          const address = result.address || {};
+          setRestaurantForm((prev) => ({
+            ...prev,
+            lat,
+            lng,
+            line1: String(address.street || address.full || "").trim(),
+            ward: String(address.wardName || "").trim(),
+            district: String(address.districtName || "").trim(),
+            city: String(address.provinceName || address.cityName || "").trim(),
+            country: String(address.countryName || prev.country || "Vietnam").trim(),
+            postalCode: String(address.postalCode || "").trim(),
+          }));
+          message.success(
+            "Đã cập nhật tọa độ và gợi ý địa chỉ hiện tại. Vui lòng kiểm tra trước khi lưu.",
+          );
+        } catch {
+          message.warning(
+            "Đã cập nhật tọa độ nhưng chưa tra được địa chỉ. Vui lòng nhập địa chỉ thủ công.",
+          );
+        } finally {
+          setLocating(false);
+        }
       },
       (error) => {
         setLocating(false);
@@ -1458,6 +1491,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={8}>
                         <Form.Item label="Phường / Xã">
                           <Input
+                            aria-label="Phường / Xã"
                             value={restaurantForm.ward}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
@@ -1471,6 +1505,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={6}>
                         <Form.Item label="Quận / Huyện">
                           <Input
+                            aria-label="Quận / Huyện"
                             value={restaurantForm.district}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
@@ -1484,6 +1519,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={6}>
                         <Form.Item label="Tỉnh / Thành phố">
                           <Input
+                            aria-label="Tỉnh / Thành phố"
                             value={restaurantForm.city}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
@@ -1497,6 +1533,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={8}>
                         <Form.Item label="Quốc gia">
                           <Input
+                            aria-label="Quốc gia"
                             value={restaurantForm.country}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
@@ -1510,6 +1547,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={8}>
                         <Form.Item label="Mã bưu chính">
                           <Input
+                            aria-label="Mã bưu chính"
                             value={restaurantForm.postalCode}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
