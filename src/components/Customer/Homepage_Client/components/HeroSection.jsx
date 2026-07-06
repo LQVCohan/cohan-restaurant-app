@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import { Clock, LocateFixed, Sparkles, Star, Truck, Utensils } from "lucide-react";
 import LocationPickerMap from "./LocationPickerMap";
+import { reverseGeocodeCoordinates } from "../../../../lib/reverseGeocode";
 import "../../../../styles/Homepage/HeroSection.scss";
 
 const HERO_FALLBACK_IMAGES = [
@@ -124,7 +125,6 @@ export const buildHeroMetrics = (restaurant) => {
 };
 
 const NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
-const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
 
 const buildShortAddressLabel = (address = {}, fallback = "") => {
   const parts = [
@@ -364,22 +364,19 @@ const HeroSection = ({ onSearch }) => {
   ) => {
     try {
       setIsReverseGeocoding(true);
-      const url =
-        `${NOMINATIM_REVERSE}?format=jsonv2&addressdetails=1` +
-        `&lat=${lat}&lon=${lng}`;
-      const res = await fetch(url, {
-        headers: { "Accept-Language": "vi" },
-      });
-
-      if (!res.ok) {
-        throw new Error("Không thể lấy địa chỉ từ tọa độ");
-      }
-
-      const data = await res.json();
-      const label = buildShortAddressLabel(
-        data?.address,
-        data?.display_name || fallbackLabel
-      );
+      const resolvedAddress = await reverseGeocodeCoordinates({ lat, lng });
+      const labelParts = [
+        resolvedAddress.street,
+        resolvedAddress.wardName,
+        resolvedAddress.districtName,
+        resolvedAddress.provinceName || resolvedAddress.cityName,
+      ]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean);
+      const label =
+        [...new Set(labelParts)].slice(0, 4).join(", ") ||
+        resolvedAddress.full ||
+        fallbackLabel;
 
       return {
         id: `map-${Date.now()}`,
@@ -387,7 +384,7 @@ const HeroSection = ({ onSearch }) => {
         shortLabel: label,
         lat,
         lng,
-        address: data?.address || {},
+        address: resolvedAddress,
       };
     } catch {
       return {

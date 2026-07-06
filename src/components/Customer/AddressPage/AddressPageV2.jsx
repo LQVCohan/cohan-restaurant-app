@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { Briefcase, CheckCircle, ChevronDown, Edit3, Home, MapPin, Phone, Plus, Star, Trash2, User, X } from "lucide-react";
-import { toApiUrl } from "../../../lib/apiBaseUrl";
+import { reverseGeocodeCoordinates } from "../../../lib/reverseGeocode";
 import { isValidPhoneNumber, normalizePhoneNumber } from "../../../utils/phoneNumber";
 import { getFallbackLocationData, loadVietnamLocationData, mapReverseGeocodeToGeo } from "../../../data/vietnamLocationData";
 import "./AddressPage.scss";
@@ -245,16 +245,11 @@ export default function AddressPageV2() {
           const longitude = Number(position?.coords?.longitude);
           if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error("invalid_coordinates");
 
-          const query = new URLSearchParams({ lat: String(latitude), lng: String(longitude) });
-          const response = await fetch(toApiUrl(`/api/reverse-geocode?${query.toString()}`), {
-            method: "GET",
-            credentials: "include",
-            headers: { Accept: "application/json" },
+          const address = await reverseGeocodeCoordinates({
+            lat: latitude,
+            lng: longitude,
           });
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || !result?.ok) throw new Error(result?.message || "reverse_geocode_failed");
-
-          const mapped = mapReverseGeocodeToGeo(result.address || {}, locationData);
+          const mapped = mapReverseGeocodeToGeo(address, locationData);
           if (mapped.province && mapped.district && mapped.ward) {
             setGeo({ province: mapped.province, district: mapped.district, ward: mapped.ward });
             if (mapped.specificAddress) setFormData((prev) => ({ ...prev, specificAddress: mapped.specificAddress }));
