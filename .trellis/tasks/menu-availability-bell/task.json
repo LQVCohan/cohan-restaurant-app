@@ -1,7 +1,7 @@
 {
   "id": "menu-availability-bell",
   "title": "Complete customer menu availability bell notifications",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "branch": "complete-menu-availability-bell-v2",
   "createdAt": "2026-07-07",
   "scope": [
