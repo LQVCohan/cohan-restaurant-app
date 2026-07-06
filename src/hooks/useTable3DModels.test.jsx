@@ -2,14 +2,16 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useTable3DModels from "./useTable3DModels";
 
-const localCatalog = [
-  {
-    key: "demo-table",
-    label: "Bàn demo",
-    tableType: "rect-4-seat",
-    capacity: 4,
-  },
-];
+const { localCatalog } = vi.hoisted(() => ({
+  localCatalog: [
+    {
+      key: "demo-table",
+      label: "Bàn demo",
+      tableType: "rect-4-seat",
+      capacity: 4,
+    },
+  ],
+}));
 
 vi.mock("@/config/table3dCatalog", () => ({
   LOCAL_TABLE_3D_CATALOG: localCatalog,
