@@ -681,7 +681,7 @@ function buildKitchenMetricsSummary(workItems = [], employeeId) {
   }
 
   if (summary.totalItems > 0) {
-    summary.note = "Dữ liệu bếp/bar đã được đối chiếu; mức ảnh hưởng điểm phụ thuộc vai trò và lỗi có thể quy trách nhiệm.";
+    summary.note = "Dữ liệu bếp/bar là nguồn bằng chứng; việc có làm thay đổi điểm hay không được quyết định trong qualityEvidence theo vai trò và lỗi có thể quy trách nhiệm.";
   }
 
   return summary;
@@ -917,10 +917,9 @@ async function calculateSnapshotForEmployee({
     staffRateCount,
   });
   const qualityScore = qualityEvidence.score;
-  kitchenMetrics.affectsScore = qualityEvidence.kitchenPenalty > 0;
   if (Number(kitchenMetrics.totalItems || 0) > 0) {
-    kitchenMetrics.note = kitchenMetrics.affectsScore
-      ? `Dữ liệu bếp/bar đã giảm ${qualityEvidence.kitchenPenalty} điểm trong thành phần Chất lượng theo vai trò.`
+    kitchenMetrics.note = qualityEvidence.kitchenPenalty > 0
+      ? `Dữ liệu bếp/bar được dùng làm bằng chứng để giảm ${qualityEvidence.kitchenPenalty} điểm trong thành phần Chất lượng theo vai trò; đây không phải điều chỉnh điểm độc lập.`
       : "Dữ liệu bếp/bar đã được đối chiếu nhưng không phát sinh điều chỉnh điểm Chất lượng trong kỳ.";
   }
   const managerBaseScore = review ? clampScore(review.managerRatingScore, 75) : 75;
