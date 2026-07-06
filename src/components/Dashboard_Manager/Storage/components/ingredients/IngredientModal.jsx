@@ -89,8 +89,6 @@ const IngredientModal = ({
   usdToVndRate = 26000,
   categoryOptions = [],
 }) => {
-  // ... [GIỮ NGUYÊN TOÀN BỘ LOGIC XỬ LÝ (useEffect, useMemo, validate, save...) CỦA BẠN]
-  // Để code gọn trong câu trả lời, tôi giả định bạn giữ nguyên các hàm logic ở đây
   const activeCurrency = normalizeCurrency(currency, "VND");
   const { showNotification } = useNotification();
   const [form, setForm] = useState(defaultForm);
@@ -99,40 +97,40 @@ const IngredientModal = ({
   const [unitSuggested, setUnitSuggested] = useState(false);
   const submittedRef = useRef(false);
 
-  // ... (Giữ nguyên useMemo cho unitOptions, categoryNames)
-  const unitOptions = React.useMemo(() => {
+  const unitOptions = useMemo(() => {
     const suggested = suggestUnitOptionsByIngredientName(form.name);
     const selected = form.baseUnit || initial?.baseUnit || "g";
     const merged = [...new Set([...suggested, selected])];
-    return merged.filter((u) => ALL_UNITS.includes(u));
+    return merged.filter((unit) => ALL_UNITS.includes(unit));
   }, [form.name, form.baseUnit, initial?.baseUnit]);
 
-  const normalizedCategoryOptions = React.useMemo(
+  const normalizedCategoryOptions = useMemo(
     () => (Array.isArray(categoryOptions) ? categoryOptions : []),
     [categoryOptions],
   );
 
-  const categoryNames = React.useMemo(() => {
+  const categoryNames = useMemo(() => {
     const options = normalizedCategoryOptions
-      .map((c) => ({
-        id: String(c?.id || ""),
-        name: String(c?.name || "").trim(),
+      .map((category) => ({
+        id: String(category?.id || ""),
+        name: String(category?.name || "").trim(),
       }))
-      .filter((c) => c.id && c.name);
+      .filter((category) => category.id && category.name);
+
     if (initial?.ingredientCategoryId && initial?.category) {
       options.push({
         id: String(initial.ingredientCategoryId),
         name: String(initial.category).trim(),
       });
     }
-    return [...new Map(options.map((x) => [x.id, x])).values()];
+
+    return [...new Map(options.map((option) => [option.id, option])).values()];
   }, [
     normalizedCategoryOptions,
     initial?.ingredientCategoryId,
     initial?.category,
   ]);
 
-  // ... (Giữ nguyên các useEffect)
   useEffect(() => {
     if (initial) {
       setForm({
@@ -155,6 +153,7 @@ const IngredientModal = ({
     } else {
       setForm(defaultForm);
     }
+
     setErrors({});
     setPrevCurrency(activeCurrency);
     setUnitSuggested(false);
@@ -162,6 +161,7 @@ const IngredientModal = ({
 
   useEffect(() => {
     if (!isOpen || prevCurrency === activeCurrency) return;
+
     setForm((prev) => ({
       ...prev,
       costPerBaseUnit: convertAndRoundCurrencyAmount(
@@ -184,9 +184,11 @@ const IngredientModal = ({
     }
   }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const set = (patch) => setForm((current) => ({ ...current, ...patch }));
+
   const baselineForm = useMemo(() => {
     if (!initial) return toComparableForm(defaultForm);
+
     return toComparableForm({
       name: initial.name || "",
       sku: initial.sku || "",
@@ -214,17 +216,20 @@ const IngredientModal = ({
   const hasMeaningfulChanges = useMemo(() => {
     if (!isDirty) return false;
     const safeForm = toComparableForm(form);
+
     if (safeForm.baseUnit !== baselineForm.baseUnit) return true;
     if (safeForm.ingredientCategoryId !== baselineForm.ingredientCategoryId) return true;
     if (safeForm.isActive !== baselineForm.isActive) return true;
     if (normalizeDraftText(safeForm.name) !== normalizeDraftText(baselineForm.name)) return true;
     if (normalizeDraftText(safeForm.sku) !== normalizeDraftText(baselineForm.sku)) return true;
     if (normalizeDraftText(safeForm.notes) !== normalizeDraftText(baselineForm.notes)) return true;
-    if (Number(safeForm.costPerBaseUnit || 0) !== Number(baselineForm.costPerBaseUnit || 0))
+    if (Number(safeForm.costPerBaseUnit || 0) !== Number(baselineForm.costPerBaseUnit || 0)) {
       return true;
+    }
     if (Number(safeForm.minStock || 0) !== Number(baselineForm.minStock || 0)) return true;
-    if (Number(safeForm.initialStockQty || 0) !== Number(baselineForm.initialStockQty || 0))
+    if (Number(safeForm.initialStockQty || 0) !== Number(baselineForm.initialStockQty || 0)) {
       return true;
+    }
     return false;
   }, [baselineForm, form, isDirty]);
 
@@ -233,8 +238,7 @@ const IngredientModal = ({
     draftIdentity: {
       module: "storage",
       modal: "ingredient-modal",
-      route:
-        typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: isEditing ? "edit" : "create",
       entityType: "ingredient",
       recordId: initial?.id || null,
@@ -243,18 +247,18 @@ const IngredientModal = ({
     },
     formValue: form,
     isDirty,
-    sanitize: (v) =>
+    sanitize: (value) =>
       hasMeaningfulChanges
         ? {
-            name: v?.name || "",
-            sku: v?.sku || "",
-            ingredientCategoryId: v?.ingredientCategoryId || "",
-            baseUnit: v?.baseUnit || "g",
-            costPerBaseUnit: v?.costPerBaseUnit ?? "",
-            minStock: v?.minStock ?? "",
-            notes: v?.notes || "",
-            isActive: !!v?.isActive,
-            initialStockQty: v?.initialStockQty ?? "",
+            name: value?.name || "",
+            sku: value?.sku || "",
+            ingredientCategoryId: value?.ingredientCategoryId || "",
+            baseUnit: value?.baseUnit || "g",
+            costPerBaseUnit: value?.costPerBaseUnit ?? "",
+            minStock: value?.minStock ?? "",
+            notes: value?.notes || "",
+            isActive: !!value?.isActive,
+            initialStockQty: value?.initialStockQty ?? "",
           }
         : null,
     canRestoreDraft: (draft) => {
@@ -265,11 +269,13 @@ const IngredientModal = ({
       if (normalizeDraftText(restored.name) !== normalizeDraftText(baselineForm.name)) return true;
       if (normalizeDraftText(restored.sku) !== normalizeDraftText(baselineForm.sku)) return true;
       if (normalizeDraftText(restored.notes) !== normalizeDraftText(baselineForm.notes)) return true;
-      if (Number(restored.costPerBaseUnit || 0) !== Number(baselineForm.costPerBaseUnit || 0))
+      if (Number(restored.costPerBaseUnit || 0) !== Number(baselineForm.costPerBaseUnit || 0)) {
         return true;
+      }
       if (Number(restored.minStock || 0) !== Number(baselineForm.minStock || 0)) return true;
-      if (Number(restored.initialStockQty || 0) !== Number(baselineForm.initialStockQty || 0))
+      if (Number(restored.initialStockQty || 0) !== Number(baselineForm.initialStockQty || 0)) {
         return true;
+      }
       return false;
     },
     onRestore: (draft) => setForm((prev) => ({ ...prev, ...draft })),
@@ -277,36 +283,38 @@ const IngredientModal = ({
   });
 
   const validate = () => {
-    const e = {};
-    if (!form.name.trim()) e.name = "Tên không được để trống";
-    if (!form.baseUnit) e.baseUnit = "Chọn đơn vị";
+    const nextErrors = {};
+    if (!form.name.trim()) nextErrors.name = "Tên không được để trống";
+    if (!form.baseUnit) nextErrors.baseUnit = "Chọn đơn vị";
+
     const cost = Number(form.costPerBaseUnit);
-    if (!Number.isFinite(cost) || cost < 0) e.costPerBaseUnit = "Giá phải ≥ 0";
+    if (!Number.isFinite(cost) || cost < 0) nextErrors.costPerBaseUnit = "Giá phải ≥ 0";
+
     const min = Number(form.minStock);
-    if (!Number.isFinite(min) || min < 0) e.minStock = "Tồn tối thiểu ≥ 0";
+    if (!Number.isFinite(min) || min < 0) nextErrors.minStock = "Tồn tối thiểu ≥ 0";
+
     if (!isEditing && canInitStock) {
-      const qty0 =
-        form.initialStockQty === "" ? 0 : Number(form.initialStockQty);
-      if (!Number.isFinite(qty0) || qty0 < 0)
-        e.initialStockQty = "Số lượng ≥ 0";
-      if (Number.isFinite(qty0) && qty0 !== Math.round(qty0))
-        e.initialStockQty = "Phải là số nguyên";
+      const qty = form.initialStockQty === "" ? 0 : Number(form.initialStockQty);
+      if (!Number.isFinite(qty) || qty < 0) nextErrors.initialStockQty = "Số lượng ≥ 0";
+      if (Number.isFinite(qty) && qty !== Math.round(qty)) {
+        nextErrors.initialStockQty = "Phải là số nguyên";
+      }
     }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const save = async (e) => {
-    e.preventDefault();
-    if (saving) return;
-    if (!validate()) return;
+  const save = async (event) => {
+    event.preventDefault();
+    if (saving || !validate()) return;
+
     const payload = {
       name: form.name.trim(),
       sku: form.sku?.trim() || null,
       ingredientCategoryId: form.ingredientCategoryId || null,
       category:
-        categoryNames.find((c) => c.id === form.ingredientCategoryId)?.name ||
-        "",
+        categoryNames.find((category) => category.id === form.ingredientCategoryId)?.name || "",
       baseUnit: form.baseUnit,
       costPerBaseUnit:
         convertCurrencyAmount(
@@ -321,8 +329,10 @@ const IngredientModal = ({
       conversions: initial?.conversions || [],
       photos: initial?.photos || [],
     };
+
     const initialStockQty =
       !isEditing && canInitStock ? Number(form.initialStockQty || 0) : 0;
+
     try {
       await onSubmit?.({ payload, initialStockQty, isEditing, id: initial?.id });
       submittedRef.current = true;
@@ -344,305 +354,309 @@ const IngredientModal = ({
     }
   }, [clearDraft, isOpen, saving, showNotification]);
 
-  // ===== BẮT ĐẦU PHẦN RENDER GIAO DIỆN PREMIUM (ĐÃ FIX LỖI LAYOUT) =====
   if (!isOpen) return null;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={saving ? undefined : () => requestCloseWithDraft(onClose)}
-      title={
-        isEditing ? "Cập nhật nguyên vật liệu" : "Thêm nguyên vật liệu mới"
-      }
+      title={isEditing ? "Cập nhật nguyên vật liệu" : "Thêm nguyên vật liệu mới"}
       size="lg"
       closeOnOverlayClick={false}
+      className="ingredient-modal-shell"
     >
       <Modal.Body>
-        <form onSubmit={save} className="ingredient-form-premium">
-        {/* SECTION 1: THÔNG TIN CƠ BẢN */}
-        <div className="form-section">
-          {/* Đã đổi class để tránh xung đột */}
-          <div className="im-section-header">
-            <div className="icon-box">
-              <Info size={18} />
+        <form onSubmit={save} className="ingredient-form-premium" autoComplete="off">
+          <div className="form-section">
+            <div className="im-section-header">
+              <div className="icon-box" aria-hidden="true">
+                <Info size={18} />
+              </div>
+              <div className="header-text">
+                <h4 className="im-section-title">Thông tin định danh</h4>
+                <p className="im-section-desc">Tên gọi, danh mục và trạng thái hoạt động</p>
+              </div>
             </div>
-            <div className="header-text">
-              <h4 className="im-section-title">Thông tin định danh</h4>
-              <p className="im-section-desc">
-                Tên gọi, danh mục và trạng thái hoạt động
-              </p>
+
+            <div className="form-grid-2">
+              <div className={`form-group ${errors.name ? "has-error" : ""}`}>
+                <label htmlFor="ingredient-name">
+                  Tên nguyên liệu <span className="required">*</span>
+                </label>
+                <div className="input-with-icon">
+                  <Type size={16} className="icon" aria-hidden="true" />
+                  <input
+                    id="ingredient-name"
+                    name="ingredientName"
+                    value={form.name}
+                    onChange={(event) => set({ name: event.target.value })}
+                    placeholder="VD: Thịt bò thăn ngoại…"
+                    autoFocus
+                    disabled={saving}
+                  />
+                </div>
+                {errors.name && <span className="error-text">{errors.name}</span>}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="ingredient-category">Danh mục</label>
+                <div className="input-with-icon">
+                  <Tag size={16} className="icon" aria-hidden="true" />
+                  <select
+                    id="ingredient-category"
+                    name="ingredientCategoryId"
+                    value={form.ingredientCategoryId}
+                    onChange={(event) => set({ ingredientCategoryId: event.target.value })}
+                    disabled={saving}
+                  >
+                    <option value="">-- Chưa phân loại --</option>
+                    {categoryNames.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {toIngredientCategoryVi(category.name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="ingredient-sku">
+                  Mã SKU <span className="hint">(Tùy chọn)</span>
+                </label>
+                <div className="input-with-icon">
+                  <Barcode size={16} className="icon" aria-hidden="true" />
+                  <input
+                    id="ingredient-sku"
+                    name="ingredientSku"
+                    value={form.sku}
+                    onChange={(event) => set({ sku: event.target.value })}
+                    placeholder="VD: NL-BO-001"
+                    spellCheck={false}
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+
+              <fieldset className="form-group status-fieldset">
+                <legend>Trạng thái</legend>
+                <div className="segmented-control">
+                  <button
+                    type="button"
+                    className={`segment ${form.isActive ? "active" : ""}`}
+                    aria-pressed={form.isActive}
+                    onClick={() => set({ isActive: true })}
+                    disabled={saving}
+                  >
+                    <CheckCircle2 size={16} aria-hidden="true" /> Đang bán
+                  </button>
+                  <button
+                    type="button"
+                    className={`segment error ${!form.isActive ? "active" : ""}`}
+                    aria-pressed={!form.isActive}
+                    onClick={() => set({ isActive: false })}
+                    disabled={saving}
+                  >
+                    <XCircle size={16} aria-hidden="true" /> Tạm ngưng
+                  </button>
+                </div>
+              </fieldset>
             </div>
           </div>
 
-          <div className="form-grid-2">
-            <div className={`form-group ${errors.name ? "has-error" : ""}`}>
-              <label>
-                Tên nguyên liệu <span className="required">*</span>
-              </label>
-              <div className="input-with-icon">
-                <Type size={16} className="icon" />
-                <input
-                  value={form.name}
-                  onChange={(e) => set({ name: e.target.value })}
-                  placeholder="VD: Thịt bò thăn ngoại..."
-                  autoFocus
-                  disabled={saving}
-                />
+          <div className="form-section">
+            <div className="im-section-header">
+              <div className="icon-box warning" aria-hidden="true">
+                <Scale size={18} />
               </div>
-              {errors.name && <span className="error-text">{errors.name}</span>}
+              <div className="header-text">
+                <h4 className="im-section-title">Định lượng & Giá vốn</h4>
+                <p className="im-section-desc">Đơn vị tính gốc và chi phí tiêu chuẩn</p>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>Danh mục</label>
-              <div className="input-with-icon">
-                <Tag size={16} className="icon" />
+            <div className="form-grid-2">
+              <div className={`form-group ${errors.baseUnit ? "has-error" : ""}`}>
+                <label htmlFor="ingredient-base-unit">
+                  Đơn vị gốc <span className="required">*</span>
+                </label>
                 <select
-                  value={form.ingredientCategoryId}
-                  onChange={(e) =>
-                    set({ ingredientCategoryId: e.target.value })
-                  }
+                  id="ingredient-base-unit"
+                  name="ingredientBaseUnit"
+                  className="standard-input"
+                  value={form.baseUnit}
+                  onChange={(event) => set({ baseUnit: event.target.value })}
                   disabled={saving}
                 >
-                  <option value="">-- Chưa phân loại --</option>
-                  {categoryNames.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {toIngredientCategoryVi(cat.name)}
+                  {unitOptions.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
                     </option>
                   ))}
                 </select>
+                {unitSuggested && (
+                  <span className="help-text text-success">Gợi ý tự động từ AI.</span>
+                )}
+                {errors.baseUnit && <span className="error-text">{errors.baseUnit}</span>}
               </div>
-            </div>
 
-            <div className="form-group">
-              <label>
-                Mã SKU <span className="hint">(Tùy chọn)</span>
-              </label>
-              <div className="input-with-icon">
-                <Barcode size={16} className="icon" />
-                <input
-                  value={form.sku}
-                  onChange={(e) => set({ sku: e.target.value })}
-                  placeholder="VD: NL-BO-001"
-                  disabled={saving}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Trạng thái</label>
-              <div className="segmented-control">
-                <div
-                  className={`segment ${form.isActive ? "active" : ""}`}
-                  onClick={() => !saving && set({ isActive: true })}
-                >
-                  <CheckCircle2 size={16} /> Đang bán
-                </div>
-                <div
-                  className={`segment error ${!form.isActive ? "active" : ""}`}
-                  onClick={() => !saving && set({ isActive: false })}
-                >
-                  <XCircle size={16} /> Tạm ngưng
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 2: ĐỊNH LƯỢNG & ĐỊNH GIÁ */}
-        <div className="form-section">
-          <div className="im-section-header">
-            <div className="icon-box warning">
-              <Scale size={18} />
-            </div>
-            <div className="header-text">
-              <h4 className="im-section-title">Định lượng & Giá vốn</h4>
-              <p className="im-section-desc">
-                Đơn vị tính gốc và chi phí tiêu chuẩn
-              </p>
-            </div>
-          </div>
-
-          <div className="form-grid-2">
-            <div className={`form-group ${errors.baseUnit ? "has-error" : ""}`}>
-              <label>
-                Đơn vị gốc <span className="required">*</span>
-              </label>
-              <select
-                className="standard-input"
-                value={form.baseUnit}
-                onChange={(e) => set({ baseUnit: e.target.value })}
-                disabled={saving}
-              >
-                {unitOptions.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-              {unitSuggested && (
-                <span className="help-text text-success">
-                  Gợi ý tự động từ AI.
-                </span>
-              )}
-              {errors.baseUnit && (
-                <span className="error-text">{errors.baseUnit}</span>
-              )}
-            </div>
-
-            <div
-              className={`form-group ${errors.costPerBaseUnit ? "has-error" : ""}`}
-            >
-              <label>
-                Giá vốn tiêu chuẩn <span className="required">*</span>
-              </label>
-              <div className="input-addon-group">
-                <span className="addon-prefix">
-                  <DollarSign size={16} />
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.costPerBaseUnit}
-                  onChange={(e) => set({ costPerBaseUnit: e.target.value })}
-                  onBlur={() =>
-                    set({
-                      costPerBaseUnit: roundCurrencyValue(
-                        Number(form.costPerBaseUnit) || 0,
-                        activeCurrency,
-                        { usdDigits: 4 },
-                      ),
-                    })
-                  }
-                  placeholder="0.00"
-                  disabled={saving}
-                />
-                <span className="addon-suffix">
-                  {activeCurrency} / {form.baseUnit}
-                </span>
-              </div>
-              {errors.costPerBaseUnit && (
-                <span className="error-text">{errors.costPerBaseUnit}</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 3: KIỂM SOÁT TỒN KHO */}
-        <div className="form-section elevated-section">
-          <div className="im-section-header">
-            <div className="icon-box danger">
-              <Archive size={18} />
-            </div>
-            <div className="header-text">
-              <h4 className="im-section-title">Kiểm soát kho</h4>
-              <p className="im-section-desc">
-                Cảnh báo và khởi tạo số lượng ban đầu
-              </p>
-            </div>
-          </div>
-
-          <div className="form-grid-2">
-            <div className={`form-group ${errors.minStock ? "has-error" : ""}`}>
-              <label>
-                Mức cảnh báo tồn thấp <span className="required">*</span>
-              </label>
-              <div className="input-addon-group">
-                <span className="addon-prefix">
-                  <AlertTriangle size={16} />
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.minStock}
-                  onChange={(e) => set({ minStock: e.target.value })}
-                  placeholder="VD: 5"
-                  disabled={saving}
-                />
-                <span className="addon-suffix">{form.baseUnit}</span>
-              </div>
-              {errors.minStock && (
-                <span className="error-text">{errors.minStock}</span>
-              )}
-            </div>
-
-            {!isEditing && (
-              <div
-                className={`form-group ${errors.initialStockQty ? "has-error" : ""}`}
-              >
-                <label>
-                  Tồn kho ban đầu
-                  <span className="badge-hint">
-                    {canInitStock
-                      ? defaultWarehouseName || "Kho hiện tại"
-                      : "Chưa cấu hình kho"}
-                  </span>
+              <div className={`form-group ${errors.costPerBaseUnit ? "has-error" : ""}`}>
+                <label htmlFor="ingredient-cost">
+                  Giá vốn tiêu chuẩn <span className="required">*</span>
                 </label>
                 <div className="input-addon-group">
+                  <span className="addon-prefix" aria-hidden="true">
+                    <DollarSign size={16} />
+                  </span>
                   <input
+                    id="ingredient-cost"
+                    name="ingredientCostPerBaseUnit"
                     type="number"
                     min="0"
-                    step="1"
-                    value={form.initialStockQty}
-                    onChange={(e) => set({ initialStockQty: e.target.value })}
-                    placeholder="Nhập số lượng hiện có"
-                    disabled={!canInitStock || saving}
+                    step="0.01"
+                    inputMode="decimal"
+                    value={form.costPerBaseUnit}
+                    onChange={(event) => set({ costPerBaseUnit: event.target.value })}
+                    onBlur={() =>
+                      set({
+                        costPerBaseUnit: roundCurrencyValue(
+                          Number(form.costPerBaseUnit) || 0,
+                          activeCurrency,
+                          { usdDigits: 4 },
+                        ),
+                      })
+                    }
+                    placeholder="0.00"
+                    disabled={saving}
+                  />
+                  <span className="addon-suffix">
+                    {activeCurrency} / {form.baseUnit}
+                  </span>
+                </div>
+                {errors.costPerBaseUnit && (
+                  <span className="error-text">{errors.costPerBaseUnit}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section elevated-section">
+            <div className="im-section-header">
+              <div className="icon-box danger" aria-hidden="true">
+                <Archive size={18} />
+              </div>
+              <div className="header-text">
+                <h4 className="im-section-title">Kiểm soát kho</h4>
+                <p className="im-section-desc">Cảnh báo và khởi tạo số lượng ban đầu</p>
+              </div>
+            </div>
+
+            <div className="form-grid-2">
+              <div
+                className={`form-group ${isEditing ? "form-group--full" : ""} ${
+                  errors.minStock ? "has-error" : ""
+                }`}
+              >
+                <label htmlFor="ingredient-min-stock">
+                  Mức cảnh báo tồn thấp <span className="required">*</span>
+                </label>
+                <div className="input-addon-group">
+                  <span className="addon-prefix" aria-hidden="true">
+                    <AlertTriangle size={16} />
+                  </span>
+                  <input
+                    id="ingredient-min-stock"
+                    name="ingredientMinStock"
+                    type="number"
+                    min="0"
+                    inputMode="decimal"
+                    value={form.minStock}
+                    onChange={(event) => set({ minStock: event.target.value })}
+                    placeholder="VD: 5"
+                    disabled={saving}
                   />
                   <span className="addon-suffix">{form.baseUnit}</span>
                 </div>
-                {errors.initialStockQty && (
-                  <span className="error-text">{errors.initialStockQty}</span>
-                )}
+                {errors.minStock && <span className="error-text">{errors.minStock}</span>}
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* SECTION 4: GHI CHÚ */}
-        <div className="form-section borderless">
-          <div className="form-group">
-            <label>
-              <FileText size={16} /> Ghi chú nghiệp vụ
-            </label>
-            <textarea
-              className="standard-textarea"
-              value={form.notes}
-              onChange={(e) => set({ notes: e.target.value })}
-              placeholder="Ghi chú quy cách bảo quản, thông tin nhà cung cấp..."
-              rows={3}
+              {!isEditing && (
+                <div className={`form-group ${errors.initialStockQty ? "has-error" : ""}`}>
+                  <label htmlFor="ingredient-initial-stock">
+                    Tồn kho ban đầu
+                    <span className="badge-hint">
+                      {canInitStock
+                        ? defaultWarehouseName || "Kho hiện tại"
+                        : "Chưa cấu hình kho"}
+                    </span>
+                  </label>
+                  <div className="input-addon-group">
+                    <input
+                      id="ingredient-initial-stock"
+                      name="ingredientInitialStock"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={form.initialStockQty}
+                      onChange={(event) => set({ initialStockQty: event.target.value })}
+                      placeholder="Nhập số lượng hiện có…"
+                      disabled={!canInitStock || saving}
+                    />
+                    <span className="addon-suffix">{form.baseUnit}</span>
+                  </div>
+                  {errors.initialStockQty && (
+                    <span className="error-text">{errors.initialStockQty}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="form-section borderless">
+            <div className="form-group">
+              <label htmlFor="ingredient-notes">
+                <FileText size={16} aria-hidden="true" /> Ghi chú nghiệp vụ
+              </label>
+              <textarea
+                id="ingredient-notes"
+                name="ingredientNotes"
+                className="standard-textarea"
+                value={form.notes}
+                onChange={(event) => set({ notes: event.target.value })}
+                placeholder="Ghi chú quy cách bảo quản, thông tin nhà cung cấp…"
+                rows={3}
+                disabled={saving}
+              />
+            </div>
+          </div>
+
+          <div className="form-actions-premium">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => requestCloseWithDraft(onClose)}
               disabled={saving}
-            />
+              className="btn-cancel"
+            >
+              Hủy thao tác
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={saving}
+              className="btn-save"
+            >
+              {saving ? (
+                <span className="loading-state">
+                  <span className="spinner" aria-hidden="true" /> Đang xử lý…
+                </span>
+              ) : isEditing ? (
+                "Lưu thay đổi"
+              ) : (
+                "Hoàn tất thêm mới"
+              )}
+            </Button>
           </div>
-        </div>
-
-        {/* FOOTER ACTIONS */}
-        <div className="form-actions-premium">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => requestCloseWithDraft(onClose)}
-            disabled={saving}
-            className="btn-cancel"
-          >
-            Hủy thao tác
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={saving}
-            className="btn-save"
-          >
-            {saving ? (
-              <span className="loading-state">
-                <span className="spinner"></span> Đang xử lý...
-              </span>
-            ) : isEditing ? (
-              "Lưu thay đổi"
-            ) : (
-              "Hoàn tất thêm mới"
-            )}
-          </Button>
-        </div>
         </form>
       </Modal.Body>
     </Modal>
