@@ -163,7 +163,7 @@ export const findWardOption = (wards = [], value) => {
 };
 
 export const mapReverseGeocodeToGeo = (address = {}, locationData = FALLBACK_LOCATION_DATA) => {
-  const province = findLocationOption(locationData, address.cityName || address.provinceName);
+  const province = findLocationOption(locationData, address.provinceName || address.cityName);
   const districtOptions = province ? locationData[province]?.districts || {} : {};
   const district = findLocationOption(districtOptions, address.districtName);
   const wards = province && district ? locationData[province]?.districts?.[district]?.wards || [] : [];

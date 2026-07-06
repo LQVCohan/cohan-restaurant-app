@@ -271,6 +271,7 @@ beforeEach(() => {
     value: { getCurrentPosition: vi.fn() },
   });
   vi.spyOn(message, "success").mockImplementation(() => {});
+  vi.spyOn(message, "warning").mockImplementation(() => {});
   vi.spyOn(message, "error").mockImplementation(() => {});
 
   refetchRestaurantDetailMock.mockResolvedValue({
@@ -389,7 +390,7 @@ describe("RestaurantInfoManagement", () => {
     expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
   });
 
-  it("captures current coordinates without overwriting the street address and saves numbers", async () => {
+  it("reverse-geocodes current coordinates into the address form and saves numbers", async () => {
     const getCurrentPosition = vi.fn((success, _error, options) => {
       expect(options).toEqual({
         enableHighAccuracy: true,
@@ -398,8 +399,8 @@ describe("RestaurantInfoManagement", () => {
       });
       success({
         coords: {
-          latitude: 10.7769,
-          longitude: 106.7009,
+          latitude: 10.895109,
+          longitude: 106.83339,
         },
       });
     });
@@ -407,13 +408,38 @@ describe("RestaurantInfoManagement", () => {
       configurable: true,
       value: { getCurrentPosition },
     });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          address: {
+            full: "12 Nguyễn Ái Quốc, Long Bình, Biên Hòa, Đồng Nai",
+            street: "12 Nguyễn Ái Quốc",
+            wardName: "Phường Long Bình",
+            districtName: "TP. Biên Hòa",
+            cityName: "Biên Hòa",
+            provinceName: "Đồng Nai",
+            countryName: "Việt Nam",
+            postalCode: "810000",
+          },
+        }),
+      }),
+    );
 
     const locatedRestaurant = {
       ...restaurant,
       address: {
         ...restaurant.address,
-        lat: 10.7769,
-        lng: 106.7009,
+        line1: "12 Nguyễn Ái Quốc",
+        ward: "Phường Long Bình",
+        district: "TP. Biên Hòa",
+        city: "Đồng Nai",
+        country: "Việt Nam",
+        postalCode: "810000",
+        lat: 10.895109,
+        lng: 106.83339,
       },
     };
     updateRestaurantMock.mockResolvedValueOnce({
@@ -432,11 +458,18 @@ describe("RestaurantInfoManagement", () => {
     fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.7769);
-      expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.7009);
+      expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.895109);
+      expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.83339);
+      expect(screen.getByLabelText("Số nhà / Đường")).toHaveValue("12 Nguyễn Ái Quốc");
+      expect(screen.getByLabelText("Phường / Xã")).toHaveValue("Phường Long Bình");
+      expect(screen.getByLabelText("Quận / Huyện")).toHaveValue("TP. Biên Hòa");
+      expect(screen.getByLabelText("Tỉnh / Thành phố")).toHaveValue("Đồng Nai");
+      expect(screen.getByLabelText("Quốc gia")).toHaveValue("Việt Nam");
+      expect(screen.getByLabelText("Mã bưu chính")).toHaveValue("810000");
     });
-    expect(screen.getByLabelText("Số nhà / Đường")).toHaveValue(
-      "123 Existing Street",
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/reverse-geocode?lat=10.895109&lng=106.833390"),
+      expect.objectContaining({ method: "GET", credentials: "include" }),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
@@ -444,11 +477,45 @@ describe("RestaurantInfoManagement", () => {
 
     expect(updateRestaurantMock.mock.calls[0][0].variables.input.address).toEqual(
       expect.objectContaining({
-        line1: "123 Existing Street",
-        lat: 10.7769,
-        lng: 106.7009,
+        line1: "12 Nguyễn Ái Quốc",
+        ward: "Phường Long Bình",
+        district: "TP. Biên Hòa",
+        city: "Đồng Nai",
+        country: "Việt Nam",
+        postalCode: "810000",
+        lat: 10.895109,
+        lng: 106.83339,
       }),
     );
+  });
+
+  it("keeps captured coordinates and the manual address when reverse geocoding fails", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn((success) =>
+          success({ coords: { latitude: 10.895109, longitude: 106.83339 } }),
+        ),
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.895109);
+      expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.83339);
+      expect(screen.getByLabelText("Số nhà / Đường")).toHaveValue("123 Existing Street");
+      expect(message.warning).toHaveBeenCalledWith(
+        "Đã cập nhật tọa độ nhưng chưa tra được địa chỉ. Vui lòng nhập địa chỉ thủ công.",
+      );
+    });
   });
 
   it("blocks incomplete coordinates before calling the mutation", async () => {

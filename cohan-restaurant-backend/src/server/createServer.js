@@ -400,12 +400,26 @@ export async function createServer() {
 
       const data = await res.json();
       const addr = data.address || {};
-      const cityName = addr.city || addr.town || addr.village || addr.state || "";
-      const districtName = addr.county || addr.district || addr.city_district || addr.suburb || "";
-      const wardName = addr.suburb || addr.city_district || addr.quarter || addr.hamlet || "";
-      const street = addr.road || addr.residential || addr.neighbourhood || addr.house_number || "";
+      const provinceName = addr.state || addr.region || "";
+      const cityName = addr.city || addr.town || addr.municipality || addr.village || provinceName;
+      const districtName = addr.city_district || addr.district || addr.county || "";
+      const wardName = addr.suburb || addr.quarter || addr.neighbourhood || addr.hamlet || "";
+      const streetName = addr.road || addr.pedestrian || addr.residential || addr.neighbourhood || "";
+      const street = [addr.house_number, streetName].filter(Boolean).join(" ").trim();
 
-      return reply.send({ ok: true, address: { full: data.display_name || "", street, cityName, districtName, wardName } });
+      return reply.send({
+        ok: true,
+        address: {
+          full: data.display_name || "",
+          street,
+          provinceName,
+          cityName,
+          districtName,
+          wardName,
+          countryName: addr.country || "",
+          postalCode: addr.postcode || "",
+        },
+      });
     } catch (err) {
       req.log.error({ err }, "Reverse geocode error");
       return reply.code(500).send({ ok: false, message: "Không truy cập được dịch vụ địa chỉ (Nominatim).", error: "Internal server error" });

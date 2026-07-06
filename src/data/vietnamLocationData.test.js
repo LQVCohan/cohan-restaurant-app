@@ -51,6 +51,27 @@ describe("vietnamLocationData", () => {
     });
   });
 
+  it("prefers province-level data when the provider also returns a city", () => {
+    const data = getFallbackLocationData();
+    const mapped = mapReverseGeocodeToGeo(
+      {
+        provinceName: "Đồng Nai",
+        cityName: "Biên Hòa",
+        districtName: "TP. Biên Hòa",
+        wardName: "Phường Long Bình",
+        street: "12 Nguyễn Ái Quốc",
+      },
+      data,
+    );
+
+    expect(mapped).toEqual({
+      province: "75",
+      district: "731",
+      ward: "Phường Long Bình",
+      specificAddress: "12 Nguyễn Ái Quốc",
+    });
+  });
+
   it("loads remote province data when the API is available", async () => {
     vi.stubGlobal(
       "fetch",
