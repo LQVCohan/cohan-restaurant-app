@@ -1,7 +1,7 @@
 {
   "id": "rebuild-production-recipes",
   "title": "Rebuild production recipes for both Cohan restaurants",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "branch": "chore/rebuild-production-recipes",
   "createdAt": "2026-07-06",
   "scope": [
@@ -10,7 +10,8 @@
   ],
   "validation": [
     "node --check scripts/seedProductionRecipes.js",
-    "node scripts/seedProductionRecipes.js --validate-only"
+    "node scripts/seedProductionRecipes.js --validate-only",
+    "GitHub Actions CI"
   ],
   "databaseApplyRun": false
 }
