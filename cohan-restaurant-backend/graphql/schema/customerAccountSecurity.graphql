@@ -9,12 +9,20 @@ type CustomerLoginSession {
   isActive: Boolean!
 }
 
+type ArchivedCustomerList {
+  items: [User!]!
+  totalCount: Int!
+}
+
 extend type Query {
   myLoginSessions(limit: Int = 20): [CustomerLoginSession!]!
+  archivedCustomers(restaurantId: ID!, limit: Int = 100): ArchivedCustomerList!
 }
 
 extend type Mutation {
   revokeMyLoginSession(id: ID!): Boolean!
   revokeOtherMyLoginSessions: Int!
   deleteMyAccount(currentPassword: String, confirmText: String!): Boolean!
+  archiveAllCustomers(restaurantId: ID!, confirmText: String!): Int!
+  restoreAllArchivedCustomers(restaurantId: ID!): Int!
 }
