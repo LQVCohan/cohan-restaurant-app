@@ -1,0 +1,32 @@
+{
+  "id": "staff-performance-two-week-roster",
+  "name": "staff-performance-two-week-roster",
+  "title": "Seed previous and current week staff roster",
+  "description": "Extend the July 2026 staff performance demo with complete shifts, attendance records, and published schedule periods for 29 June through 12 July 2026.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "staff-performance-demo-roster",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "feat/staff-performance-two-week-roster",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "staff-performance-demo-data",
+  "relatedFiles": [
+    "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
+    "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRosterUtc.js",
+    "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js",
+    "cohan-restaurant-backend/tests/scripts/staff-performance-demo-scripts.test.js",
+    "cohan-restaurant-backend/package.json"
+  ],
+  "notes": "Create exactly fourteen calendar days for the seven existing performance demo staff accounts and preserve the existing July performance-level scenarios after recalculation.",
+  "meta": {}
+}
