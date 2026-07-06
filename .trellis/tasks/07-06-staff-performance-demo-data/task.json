@@ -16,7 +16,7 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1195",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -26,6 +26,6 @@
     "cohan-restaurant-backend/tests/scripts/staff-performance-demo-scripts.test.js",
     "cohan-restaurant-backend/package.json"
   ],
-  "notes": "Reuse the seven existing demo staff accounts, use only existing menu items, and delete only tagged demo records for the fixed demo periods.",
+  "notes": "Implementation and CI are in review. Local Mongo seed and verifier remain required before completion. Reuse the seven existing demo staff accounts, use only existing menu items, and delete only tagged demo records for the fixed demo periods.",
   "meta": {}
 }
