@@ -1,0 +1,149 @@
+/* Storage page tone aligned with the shared manager dashboard. */
+
+.storage-management {
+  --storage-surface: var(--manager-surface, rgba(249, 252, 250, 0.94));
+  --storage-surface-soft: var(--manager-surface-soft, rgba(241, 247, 243, 0.94));
+  --storage-border: var(--manager-border, rgba(83, 108, 97, 0.22));
+  --storage-border-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+  --storage-text: var(--manager-text, #24312c);
+  --storage-muted: var(--manager-muted, #607069);
+  --storage-primary: var(--manager-primary, #536c61);
+  --storage-primary-hover: var(--manager-primary-hover, #40584e);
+  --storage-accent: var(--manager-accent, #2f7d68);
+  --storage-accent-soft: var(--manager-accent-soft, #e5f0eb);
+  --storage-shadow: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09));
+
+  color: var(--storage-text);
+  background: transparent !important;
+}
+
+.storage-management .sm-header-card {
+  border-color: var(--storage-border) !important;
+  border-left: 4px solid rgba(47, 125, 104, 0.42) !important;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(47, 125, 104, 0.14), transparent 20rem),
+    linear-gradient(135deg, rgba(249, 252, 250, 0.99), rgba(229, 240, 235, 0.94)) !important;
+  box-shadow: var(--manager-shadow-strong, 0 22px 48px rgba(48, 72, 61, 0.13)) !important;
+}
+
+.storage-management .title-wrapper .icon-box {
+  color: var(--storage-accent);
+  border-color: rgba(47, 125, 104, 0.2);
+  background: var(--storage-accent-soft);
+}
+
+.storage-management .title-wrapper .page-eyebrow,
+.storage-management .filter-group label,
+.storage-management .filter-group label svg,
+.storage-management .sm-kpi-card__label {
+  color: var(--storage-accent);
+}
+
+.storage-management .title-wrapper .page-title,
+.storage-management .sm-kpi-card__value {
+  color: var(--storage-text);
+}
+
+.storage-management .title-wrapper .page-subtitle,
+.storage-management .sm-kpi-card__helper {
+  color: var(--storage-muted);
+}
+
+.storage-management .sm-kpi-card,
+.storage-management .sm-toolbar-wrapper,
+.storage-management .sm-tab-content-wrapper,
+.storage-management .ing-storage-wrapper .il-toolbar,
+.storage-management .supply-list-container .sl-toolbar,
+.storage-management .inventory-audit-tab .inv-toolbar,
+.storage-management .inventory-audit-tab .inv-table-wrap,
+.storage-management .inventory-audit-tab .inv-movement-block {
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface) !important;
+  box-shadow: var(--storage-shadow) !important;
+}
+
+.storage-management .sm-tab-content-wrapper {
+  background: rgba(249, 252, 250, 0.8) !important;
+}
+
+.storage-management .sm-kpi-card::after {
+  background: rgba(47, 125, 104, 0.5);
+}
+
+.storage-management .sm-kpi-card__icon,
+.storage-management .sm-kpi-card--good .sm-kpi-card__icon {
+  color: var(--storage-accent);
+  border-color: rgba(47, 125, 104, 0.18);
+  background: var(--storage-accent-soft);
+}
+
+.storage-management .sm-tabs-container {
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface-soft) !important;
+}
+
+.storage-management .sm-tab-item:hover:not(.active) {
+  color: var(--storage-text);
+  border-color: var(--storage-border);
+  background: var(--storage-accent-soft);
+}
+
+.storage-management .sm-tab-item.active,
+.storage-management .sm-btn.primary,
+.storage-management .il-btn-primary,
+.storage-management .sl-btn-add {
+  color: #fff !important;
+  border-color: rgba(64, 88, 78, 0.18) !important;
+  background: var(--storage-primary) !important;
+  box-shadow: 0 10px 22px rgba(64, 88, 78, 0.22) !important;
+}
+
+.storage-management .sm-btn.primary:hover:not(:disabled),
+.storage-management .il-btn-primary:hover:not(:disabled),
+.storage-management .sl-btn-add:hover:not(:disabled) {
+  background: var(--storage-primary-hover) !important;
+}
+
+.storage-management .sm-btn.ghost,
+.storage-management .sm-btn.secondary,
+.storage-management .il-btn-icon:not(.danger),
+.storage-management .sl-btn-icon:not(.sl-btn-trash-toggle) {
+  color: var(--storage-primary) !important;
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface-soft) !important;
+}
+
+.storage-management input,
+.storage-management select,
+.storage-management textarea {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background: rgba(252, 254, 253, 0.98) !important;
+}
+
+.storage-management :is(input, select, textarea, button):focus-visible,
+.storage-management .sm-tab-item:focus-visible {
+  outline: 3px solid rgba(47, 125, 104, 0.24) !important;
+  outline-offset: 3px !important;
+}
+
+.storage-management .ingredient-card,
+.storage-management .supply-card,
+.storage-management .recipe-card,
+.storage-management .il-trash-item,
+.storage-management .sl-trash-item {
+  border-color: var(--storage-border) !important;
+  background: rgba(249, 252, 250, 0.9) !important;
+  box-shadow: 0 10px 24px rgba(48, 72, 61, 0.08) !important;
+}
+
+.storage-management .il-badge,
+.storage-management .inv-badge--ok {
+  color: var(--storage-accent) !important;
+  background: var(--storage-accent-soft) !important;
+}
+
+.storage-management button,
+.storage-management .sm-tab-item {
+  touch-action: manipulation;
+}
