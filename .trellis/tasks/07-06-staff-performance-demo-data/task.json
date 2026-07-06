@@ -2,7 +2,7 @@
   "id": "staff-performance-demo-data",
   "name": "staff-performance-demo-data",
   "title": "Seed deterministic staff performance demo data",
-  "description": "Reuse existing local demo accounts and the existing restaurant menu to create a safe, idempotent July 2026 performance demo dataset.",
+  "description": "Repair stale HR/accountant demo account types, then reuse existing local demo accounts and the existing restaurant menu to create a safe, idempotent July 2026 performance demo dataset.",
   "status": "in_progress",
   "dev_type": "backend",
   "scope": "staff-performance-demo-seed",
@@ -21,11 +21,12 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
+    "cohan-restaurant-backend/scripts/repairDemoOperatorAccountTypes.js",
     "cohan-restaurant-backend/scripts/seedStaffPerformanceDemo.js",
     "cohan-restaurant-backend/scripts/verifyStaffPerformanceDemoData.js",
     "cohan-restaurant-backend/tests/scripts/staff-performance-demo-scripts.test.js",
     "cohan-restaurant-backend/package.json"
   ],
-  "notes": "Implementation and CI are in review. Local Mongo seed and verifier remain required before completion. Reuse the seven existing demo staff accounts, use only existing menu items, and delete only tagged demo records for the fixed demo periods.",
+  "notes": "The performance seed runs the operator account repair first. Local Mongo seed and verifier remain required before completion. Reuse the seven existing demo staff accounts, use only existing menu items, and delete only tagged demo records for the fixed demo periods.",
   "meta": {}
 }
