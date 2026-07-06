@@ -226,7 +226,7 @@ const operationSource = (operation) => String(operation?.[0] || operation || "")
 
 const openLocationTab = async () => {
   fireEvent.click(
-    screen.getByRole("tab", { name: /Địa điểm & Thời gian/i }),
+    screen.getByRole("tab", { name: /Địa chỉ & giờ hoạt động/i }),
   );
   await screen.findByRole("button", { name: /Lấy vị trí hiện tại/i });
 };
@@ -331,6 +331,20 @@ afterEach(async () => {
 });
 
 describe("RestaurantInfoManagement", () => {
+  it("shows production-ready Vietnamese labels for time slots and preview", async () => {
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    expect(
+      screen.getByRole("combobox", { name: "Khung giờ thực đơn" }),
+    ).toHaveDisplayValue("Bữa trưa");
+    expect(screen.getByText("Xem trước trên ứng dụng")).toBeInTheDocument();
+    expect(screen.queryByText("Live Preview")).not.toBeInTheDocument();
+  });
+
   it("preserves other capabilities when the manager disables remote orders", async () => {
     render(<RestaurantInfoManagement />);
 
