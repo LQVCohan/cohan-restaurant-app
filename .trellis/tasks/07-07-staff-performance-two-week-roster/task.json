@@ -1,8 +1,8 @@
 {
   "id": "staff-performance-two-week-roster",
   "name": "staff-performance-two-week-roster",
-  "title": "Seed previous and current week staff roster",
-  "description": "Extend the July 2026 staff performance demo with complete shifts, attendance records, and published schedule periods for 29 June through 12 July 2026.",
+  "title": "Seed previous/current week roster and staff profiles",
+  "description": "Extend the July 2026 staff performance demo with complete shifts, attendance records, published schedule periods, and manager-visible profile data for the existing demo staff accounts.",
   "status": "in_progress",
   "dev_type": "backend",
   "scope": "staff-performance-demo-roster",
@@ -25,9 +25,11 @@
     "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
     "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRosterUtc.js",
     "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js",
+    "cohan-restaurant-backend/scripts/seedStaffProfileDemoData.js",
+    "cohan-restaurant-backend/scripts/verifyStaffProfileDemoData.js",
     "cohan-restaurant-backend/tests/scripts/staff-performance-demo-scripts.test.js",
     "cohan-restaurant-backend/package.json"
   ],
-  "notes": "PR #1203 creates exactly fourteen calendar days for the seven existing performance demo staff accounts, clears the previous tagged roster before reseeding, and preserves the existing July performance-level scenarios after recalculation. Local Mongo seed and verifier remain required before completion.",
+  "notes": "PR #1203 creates fourteen calendar days for seven performance employees and completes the manager-visible profile fields for all fourteen existing demo staff accounts. Local Mongo seed and verifiers remain required before completion.",
   "meta": {}
 }
