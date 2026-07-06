@@ -1,0 +1,31 @@
+name: Apply shared reverse geocode consumers
+
+on:
+  push:
+    branches:
+      - fix/restaurant-location-production
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/restaurant-location-production
+
+      - name: Apply shared reverse geocode patch
+        run: python .github/scripts/apply_shared_reverse_geocode_consumers.py
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: reuse Home reverse geocoding across location forms"
+          git push origin HEAD:fix/restaurant-location-production
