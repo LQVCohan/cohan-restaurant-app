@@ -119,6 +119,48 @@ const savedRestaurant = {
   },
 };
 
+const queryResults = {
+  me: { data: { me: { id: "u1", roleName: "manager" } } },
+  scopedRestaurants: {
+    data: {
+      scopedRestaurants: {
+        edges: [
+          {
+            node: {
+              id: "r1",
+              name: "COHAN",
+              brandId: "b1",
+              brand: restaurant.brand,
+            },
+          },
+        ],
+      },
+    },
+    loading: false,
+  },
+  allRestaurants: {
+    data: { restaurants: { edges: [] } },
+    loading: false,
+  },
+  staffList: { data: { staffList: [] }, loading: false },
+  restaurantDetail: {
+    data: { restaurant },
+    loading: false,
+    error: null,
+    refetch: refetchRestaurantDetailMock,
+  },
+  layoutMetrics: { data: { floors: [], tables: [] } },
+  indexes: {
+    data: { restaurantCategoryIndexes: [] },
+    refetch: refetchIndexesMock,
+  },
+  categories: {
+    data: { categories: [] },
+    refetch: refetchCategoriesMock,
+  },
+  empty: { data: {}, loading: false },
+};
+
 const operationSource = (operation) => String(operation?.[0] || operation || "");
 
 beforeEach(() => {
@@ -140,47 +182,30 @@ beforeEach(() => {
   useQueryMock.mockImplementation((operation) => {
     const source = operationSource(operation);
 
-    if (source.includes("query Me")) {
-      return { data: { me: { id: "u1", roleName: "manager" } } };
-    }
+    if (source.includes("query Me")) return queryResults.me;
     if (source.includes("query ScopedRestaurants")) {
-      return {
-        data: {
-          scopedRestaurants: {
-            edges: [{ node: { id: "r1", name: "COHAN", brandId: "b1", brand: restaurant.brand } }],
-          },
-        },
-        loading: false,
-      };
+      return queryResults.scopedRestaurants;
     }
     if (source.includes("query AllRestaurants")) {
-      return { data: { restaurants: { edges: [] } }, loading: false };
+      return queryResults.allRestaurants;
     }
     if (source.includes("query StaffListForChefPicker")) {
-      return { data: { staffList: [] }, loading: false };
+      return queryResults.staffList;
     }
     if (source.includes("query GetRestaurantDetail")) {
-      return {
-        data: { restaurant },
-        loading: false,
-        error: null,
-        refetch: refetchRestaurantDetailMock,
-      };
+      return queryResults.restaurantDetail;
     }
     if (source.includes("query GetRestaurantLayoutMetrics")) {
-      return { data: { floors: [], tables: [] } };
+      return queryResults.layoutMetrics;
     }
     if (source.includes("query GetRestaurantCategoryIndexes")) {
-      return {
-        data: { restaurantCategoryIndexes: [] },
-        refetch: refetchIndexesMock,
-      };
+      return queryResults.indexes;
     }
     if (source.includes("query GetCategories")) {
-      return { data: { categories: [] }, refetch: refetchCategoriesMock };
+      return queryResults.categories;
     }
 
-    return { data: {}, loading: false };
+    return queryResults.empty;
   });
 
   useMutationMock.mockImplementation((operation) => {
