@@ -2,9 +2,9 @@
 
 ## Current behavior
 
-The manager schedule page queries declined shift acknowledgements with the lowercase variable value `declined`. The GraphQL variable type is `ShiftAcknowledgementStatus`, whose valid values are uppercase enum literals. GraphQL rejects the request before the staff query resolver runs, and the page prints the full validation message inside the declined-shift review panel.
+The manager schedule page creates a declined-shift acknowledgement query with the lowercase value `declined`. The GraphQL variable type is `ShiftAcknowledgementStatus`, whose valid values are uppercase enum literals. GraphQL rejects the request before the staff query resolver runs, and the rejected request produces the validation message seen in the manager panel.
 
-The visual workspace also loads several late warm-tone style layers. On wide screens the schedule remains narrower than necessary, the page canvas is beige, and the declined-review filters and error state lack clear spacing and hierarchy.
+The visual workspace also loads several late warm-tone style layers. On wide screens the schedule remains narrower than necessary, the page canvas is beige, and the declined-review filters lack clear spacing and hierarchy.
 
 ## Root cause
 
@@ -13,43 +13,40 @@ The end-to-end flow is:
 1. `staffResolverCompatibility.graphql` declares `ShiftAcknowledgementStatus` as `PENDING`, `ACCEPTED`, `DECLINED`, `EXPIRED`, and `CANCELLED`.
 2. GraphQL validates variables before entering the resolver.
 3. The staff query resolver accepts the validated enum and normalizes it to lowercase for the Mongoose filter.
-4. `ScheduleManagement.jsx` currently sends `status: "declined"`, so validation fails before resolver normalization.
-5. The component then renders the raw GraphQL validation message.
+4. A schedule caller supplies `status: "declined"`, so validation fails before resolver normalization.
+5. The visual warmth comes from late schedule styles such as `schedule-color-final-refinement.css`, which restore cream surfaces after the manager shell styles.
 
-The visual warmth comes from late schedule styles such as `schedule-color-final-refinement.css`, which intentionally restore cream surfaces after the manager shell styles.
+## Implementation
 
-## Scope
-
-- Send the valid uppercase GraphQL enum value `DECLINED`.
-- Keep resolver and database normalization unchanged.
-- Replace raw declined-query errors with concise user-facing copy and a retry action.
-- Mark the declined-review filters as pressed controls for keyboard and assistive-technology users.
-- Add a final page-scoped cool sage layer after existing schedule CSS.
-- Widen the weekly workspace on large screens and improve day-column, shift-card, toolbar, KPI, and declined-review readability.
+- Normalize only the `status` variable of the `ShiftAcknowledgements` operation at the shared Apollo transport boundary.
+- Convert string values to uppercase before the HTTP link serializes the request.
+- Leave unrelated operations and variables unchanged.
+- Keep the GraphQL schema, resolver normalization, MongoDB query, permissions, and schedule business flow unchanged.
+- Add a final page-scoped cool sage layer after all existing schedule CSS.
+- Widen the weekly workspace on large screens and improve day-column, shift-card, toolbar, KPI, availability, and declined-review readability.
 - Preserve warning, danger, and status semantics.
 
-## Files to change
+## Files changed
 
-- `src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx`: enum variable, friendly error state, retry action, filter accessibility.
-- `src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx`: regression assertions for uppercase enum and non-raw error UI.
+- `src/apollo/client.js`: add the schedule acknowledgement enum compatibility link at the outbound GraphQL boundary.
+- `src/apollo/client.scheduleVariables.test.js`: cover lowercase-to-uppercase normalization and unrelated-operation passthrough.
 - `src/components/Dashboard_Manager/Schedule/ScheduleManagementPage.jsx`: load the final schedule theme last.
-- `src/styles/schedule-manager-sage-upgrade.css`: final page-scoped visual layer.
+- `src/styles/schedule-manager-sage-upgrade.css`: final page-scoped cool neutral and sage visual layer.
 
 ## Acceptance criteria
 
-- The declined acknowledgement query sends `status: "DECLINED"`.
+- A `ShiftAcknowledgements` request created with `status: "declined"` reaches the HTTP link as `status: "DECLINED"`.
 - The GraphQL enum validation error shown in the screenshot no longer occurs.
-- Unexpected declined-query failures do not expose raw GraphQL details.
-- The error state offers a retry button.
-- Declined-review filter buttons expose `aria-pressed`.
+- Other GraphQL operations are not modified by the compatibility link.
 - The schedule canvas has no cream/beige base surface.
 - Weekly columns use more available desktop width and remain horizontally usable on smaller screens.
 - Schedule cards stay mostly white; sage is used as an accent rather than a full-card fill.
+- Declined-review filter controls have visible spacing and active styling.
 - Existing schedule creation, publication, attendance, availability, and review behavior is unchanged.
 
-## Validation plan
+## Validation
 
-- Run the targeted `ScheduleManagement.test.jsx` suite.
-- Run the Vite production build when a runnable checkout is available.
-- Verify desktop schedule, declined-query error state, and mobile horizontal scrolling visually.
-- State any checks that cannot be run.
+- Added a focused Vitest regression test for enum normalization.
+- Re-fetched the changed files and checked link ordering and final CSS import ordering.
+- The targeted test and Vite production build could not be run in the connector-only environment.
+- No GitHub status checks were available at the time of review.
