@@ -3,7 +3,7 @@
   "name": "restaurant-location-production-readiness",
   "title": "Harden restaurant current-location capture for production",
   "description": "Persist browser geolocation into restaurant latitude/longitude, validate the coordinate pair at frontend and backend boundaries, and cover the flow with focused tests.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "restaurant-profile-location-and-ar-geofence",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-06",
-  "completedAt": null,
-  "branch": "fix/table-ar-mobile-demo-readiness",
+  "completedAt": "2026-07-06",
+  "branch": "fix/restaurant-location-production",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1197",
+  "commit": "308d3f160a4a48bfe09c3e78a1868a4c7862383a",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1200",
   "subtasks": [],
   "children": [],
   "parent": "table-ar-mobile-demo-readiness",
@@ -26,6 +26,6 @@
     "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
     "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js"
   ],
-  "notes": "AddressInput and the Restaurant model already support lat/lng and synchronize valid values to GeoJSON. The current UI handler reads browser coordinates but writes only a display string into line1, so the mutation receives null coordinates.",
+  "notes": "The UI now writes browser GPS values to lat/lng without overwriting line1, validates the optional coordinate pair, and exposes production-safe loading/error states. The resolver rejects partial, non-finite, and out-of-range coordinates before persistence. Focused frontend tests (7/7) and resolver tests (16/16) pass. Physical HTTPS phone GPS accuracy and permission behavior remain manual validation.",
   "meta": {}
 }
