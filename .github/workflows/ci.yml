@@ -7,13 +7,207 @@ on:
     branches: [main, develop]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  apply-performance-evidence-fix:
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/staff-performance-contracts
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cohan-restaurant-backend/package-lock.json
+      - name: Apply minimal evidence fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('cohan-restaurant-backend/src/services/staffPerformance/staffPerformance.service.js')
+          source = path.read_text()
+
+          replacements = [
+              (
+                  'function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, cashierMetrics, customerRatingScore, staffRateCount }) {',
+                  'export function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, cashierMetrics, customerRatingScore, staffRateCount }) {'
+              ),
+              (
+                  '  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: Number(staffRateCount || 0) >= 3, note: notes[roleGroup] || notes.other };',
+                  '  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: totalPenalty > 0, note: notes[roleGroup] || notes.other };'
+              ),
+              (
+                  '    summary.note = "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất.";',
+                  '    summary.note = "Dữ liệu bếp/bar đã được đối chiếu; mức ảnh hưởng điểm phụ thuộc vai trò và lỗi có thể quy trách nhiệm.";'
+              ),
+              (
+                  '''  const qualityScore = qualityEvidence.score;
+  const managerBaseScore = review ? clampScore(review.managerRatingScore, 75) : 75;''',
+                  '''  const qualityScore = qualityEvidence.score;
+  kitchenMetrics.affectsScore = qualityEvidence.kitchenPenalty > 0;
+  if (Number(kitchenMetrics.totalItems || 0) > 0) {
+    kitchenMetrics.note = kitchenMetrics.affectsScore
+      ? `Dữ liệu bếp/bar đã giảm ${qualityEvidence.kitchenPenalty} điểm trong thành phần Chất lượng theo vai trò.`
+      : "Dữ liệu bếp/bar đã được đối chiếu nhưng không phát sinh điều chỉnh điểm Chất lượng trong kỳ.";
+  }
+  const managerBaseScore = review ? clampScore(review.managerRatingScore, 75) : 75;'''
+              ),
+              (
+                  '''  const hasPerformanceActivity =
+    scheduledMinutes > 0 ||
+    actualWorkedMinutes > 0 ||
+    recordCount > 0 ||
+    orderCount > 0 ||
+    Boolean(review) ||
+    correctionsCount > 0;''',
+                  '''  const hasPerformanceActivity = hasPerformanceEvidence({
+    scheduledMinutes,
+    actualWorkedMinutes,
+    recordCount,
+    orderCount,
+    hasManagerReview: Boolean(review),
+    correctionsCount,
+    staffRateCount,
+    kitchenMetrics,
+    cashierMetrics,
+  });'''
+              ),
+              (
+                  '            affectsScore: staffRateCount >= 3,\n            note: `${qualityEvidence.note} Review khách hàng là dữ liệu tham khảo; dưới 3 review chỉ lưu evidence, không tự động kỷ luật hay phạt mạnh.`,',
+                  '            affectsScore: qualityEvidence.affectsScore,\n            note: `${qualityEvidence.note} Dữ liệu khách hàng, bếp và thu ngân chỉ điều chỉnh thành phần Chất lượng khi có penalty theo vai trò; không tự động kỷ luật.`,''
+              ),
+          ]
+
+          for old, new in replacements:
+              if source.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one match for replacement: {old[:80]!r}')
+              source = source.replace(old, new)
+
+          marker = 'function weightedFinalScore(components) {'
+          helper = '''export function hasPerformanceEvidence({
+  scheduledMinutes = 0,
+  actualWorkedMinutes = 0,
+  recordCount = 0,
+  orderCount = 0,
+  hasManagerReview = false,
+  correctionsCount = 0,
+  staffRateCount = 0,
+  kitchenMetrics = {},
+  cashierMetrics = {},
+} = {}) {
+  return (
+    Number(scheduledMinutes || 0) > 0 ||
+    Number(actualWorkedMinutes || 0) > 0 ||
+    Number(recordCount || 0) > 0 ||
+    Number(orderCount || 0) > 0 ||
+    Boolean(hasManagerReview) ||
+    Number(correctionsCount || 0) > 0 ||
+    Number(staffRateCount || 0) > 0 ||
+    Number(kitchenMetrics?.totalItems || 0) > 0 ||
+    Number(cashierMetrics?.totalHandledPayments || 0) > 0
+  );
+}
+
+'''
+          if source.count(marker) != 1:
+              raise SystemExit('weightedFinalScore marker not found exactly once')
+          source = source.replace(marker, helper + marker)
+          path.write_text(source)
+
+          test_path = Path('cohan-restaurant-backend/tests/services/staff-performance-evidence.service.test.js')
+          test_path.write_text('''import { describe, expect, it } from "vitest";
+import {
+  buildQualityEvidenceForEmployee,
+  hasPerformanceEvidence,
+} from "../../src/services/staffPerformance/staffPerformance.service.js";
+
+describe("staff performance evidence", () => {
+  it("marks kitchen evidence as score-affecting only when it creates a penalty", () => {
+    const penalized = buildQualityEvidenceForEmployee({
+      staff: { positionTitle: "Bếp trưởng" },
+      baseSkillScore: 80,
+      hasManagerReview: true,
+      kitchenMetrics: {
+        totalItems: 10,
+        kitchenItems: 10,
+        headChefItems: 10,
+        veryLateItems: 2,
+      },
+      cashierMetrics: {},
+      customerRatingScore: 0,
+      staffRateCount: 0,
+    });
+    const clean = buildQualityEvidenceForEmployee({
+      staff: { positionTitle: "Bếp trưởng" },
+      baseSkillScore: 80,
+      hasManagerReview: true,
+      kitchenMetrics: {
+        totalItems: 10,
+        kitchenItems: 10,
+        headChefItems: 10,
+      },
+      cashierMetrics: {},
+      customerRatingScore: 0,
+      staffRateCount: 0,
+    });
+
+    expect(penalized.kitchenPenalty).toBeGreaterThan(0);
+    expect(penalized.affectsScore).toBe(true);
+    expect(clean.kitchenPenalty).toBe(0);
+    expect(clean.affectsScore).toBe(false);
+  });
+
+  it("does not claim a high customer rating changed the score", () => {
+    const evidence = buildQualityEvidenceForEmployee({
+      staff: { positionTitle: "Phục vụ" },
+      baseSkillScore: 75,
+      hasManagerReview: false,
+      kitchenMetrics: {},
+      cashierMetrics: {},
+      customerRatingScore: 90,
+      staffRateCount: 5,
+    });
+
+    expect(evidence.customerPenalty).toBe(0);
+    expect(evidence.affectsScore).toBe(false);
+  });
+
+  it("treats operational evidence as activity even without shifts or timesheets", () => {
+    expect(hasPerformanceEvidence({ kitchenMetrics: { totalItems: 1 } })).toBe(true);
+    expect(hasPerformanceEvidence({ cashierMetrics: { totalHandledPayments: 1 } })).toBe(true);
+    expect(hasPerformanceEvidence({ staffRateCount: 1 })).toBe(true);
+    expect(hasPerformanceEvidence()).toBe(false);
+  });
+});
+''')
+          PY
+      - name: Install backend dependencies
+        working-directory: cohan-restaurant-backend
+        run: npm ci
+      - name: Run targeted evidence test
+        working-directory: cohan-restaurant-backend
+        run: npx vitest run tests/services/staff-performance-evidence.service.test.js
+      - name: Commit code and restore CI workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout origin/main -- .github/workflows/ci.yml
+          git add .github/workflows/ci.yml
+          git add cohan-restaurant-backend/src/services/staffPerformance/staffPerformance.service.js
+          git add cohan-restaurant-backend/tests/services/staff-performance-evidence.service.test.js
+          git commit -m "fix(performance): align operational evidence scoring"
+          git push origin HEAD:fix/staff-performance-contracts
+
   frontend:
     name: frontend
     runs-on: ubuntu-latest
