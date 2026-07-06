@@ -24,29 +24,370 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Extract and apply focused patch
+      - name: Apply focused source patch
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
 
-          workflow_path = Path('.github/workflows/restaurant-location-production-autofix.yml')
-          text = workflow_path.read_text(encoding='utf-8')
-          marker = "          python <<'PY'\n"
-          start = text.index(marker) + len(marker)
-          end = text.index("\n          PY", start)
-          body = text[start:end]
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in body.splitlines()
+          def replace_once(path, old, new, label):
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              count = text.count(old)
+              print(f"{label}: {count} match(es)")
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match for {label}, found {count}")
+              target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          frontend = "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx"
+          backend = "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js"
+
+          replace_once(
+              frontend,
+              '''const parseOptionalNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+''',
+              '''const parseOptionalNumber = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getCoordinateValidationError = (latValue, lngValue) => {
+  const latText = String(latValue ?? "").trim();
+  const lngText = String(lngValue ?? "").trim();
+  const hasLat = latText !== "";
+  const hasLng = lngText !== "";
+
+  if (!hasLat && !hasLng) return "";
+  if (hasLat !== hasLng) return "Vui lòng nhập đầy đủ cả vĩ độ và kinh độ";
+
+  const lat = parseOptionalNumber(latValue);
+  const lng = parseOptionalNumber(lngValue);
+  if (lat === null || lng === null) return "Tọa độ nhà hàng phải là số hợp lệ";
+  if (lat < -90 || lat > 90) return "Vĩ độ phải nằm trong khoảng -90 đến 90";
+  if (lng < -180 || lng > 180) return "Kinh độ phải nằm trong khoảng -180 đến 180";
+  return "";
+};
+
+const getGeolocationErrorMessage = (error) => {
+  switch (error?.code) {
+    case 1:
+      return "Bạn đã từ chối quyền vị trí. Hãy cấp quyền trong cài đặt trình duyệt rồi thử lại.";
+    case 2:
+      return "Không xác định được vị trí hiện tại. Hãy bật GPS và thử lại.";
+    case 3:
+      return "Hết thời gian chờ lấy vị trí. Hãy di chuyển đến nơi có tín hiệu GPS tốt hơn rồi thử lại.";
+    default:
+      return "Không thể lấy vị trí hiện tại";
+  }
+};
+''',
+              "number helpers",
           )
-          Path('/tmp/apply-restaurant-location-fix.py').write_text(
-              script,
-              encoding='utf-8',
+
+          replace_once(
+              frontend,
+              '''  const [isDirty, setIsDirty] = useState(false);
+  const baselineRef = useRef("");
+''',
+              '''  const [isDirty, setIsDirty] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const baselineRef = useRef("");
+''',
+              "locating state",
           )
+
+          replace_once(
+              frontend,
+              '''    if (
+      restaurantForm.customerInfo?.website &&
+      !/^https?:\/\//i.test(restaurantForm.customerInfo.website)
+    ) {
+      return "Website phải bắt đầu bằng http:// hoặc https://";
+    }
+    return null;
+''',
+              '''    if (
+      restaurantForm.customerInfo?.website &&
+      !/^https?:\/\//i.test(restaurantForm.customerInfo.website)
+    ) {
+      return "Website phải bắt đầu bằng http:// hoặc https://";
+    }
+    const coordinateError = getCoordinateValidationError(
+      restaurantForm.lat,
+      restaurantForm.lng,
+    );
+    if (coordinateError) return coordinateError;
+    return null;
+''',
+              "frontend coordinate validation",
+          )
+
+          replace_once(
+              frontend,
+              '''  const fillCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      message.error("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lat = coords.latitude.toFixed(6);
+        const lng = coords.longitude.toFixed(6);
+        setRestaurantForm((prev) => ({
+          ...prev,
+          line1: prev.line1 || `Vị trí hiện tại (${lat}, ${lng})`,
+        }));
+        setIsDirty(true);
+        message.success(
+          "Đã lấy vị trí hiện tại, vui lòng bổ sung địa chỉ chi tiết",
+        );
+      },
+      () => message.error("Không thể lấy vị trí hiện tại"),
+    );
+  };
+''',
+              '''  const fillCurrentLocation = () => {
+    if (locating) return;
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      message.error("Định vị cần kết nối HTTPS an toàn");
+      return;
+    }
+    if (!navigator.geolocation) {
+      message.error("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const latitude = Number(coords?.latitude);
+        const longitude = Number(coords?.longitude);
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180
+        ) {
+          setLocating(false);
+          message.error("Thiết bị trả về tọa độ không hợp lệ");
+          return;
+        }
+
+        setRestaurantForm((prev) => ({
+          ...prev,
+          lat: latitude.toFixed(6),
+          lng: longitude.toFixed(6),
+        }));
+        setIsDirty(true);
+        setLocating(false);
+        message.success(
+          "Đã cập nhật tọa độ hiện tại. Vui lòng kiểm tra địa chỉ chi tiết trước khi lưu.",
+        );
+      },
+      (error) => {
+        setLocating(false);
+        message.error(getGeolocationErrorMessage(error));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
+  };
+''',
+              "geolocation handler",
+          )
+
+          replace_once(
+              frontend,
+              '''                      <Button
+                        type="link"
+                        size="small"
+                        onClick={fillCurrentLocation}
+                      >
+                        Lấy vị trí hiện tại
+                      </Button>
+''',
+              '''                      <Button
+                        type="link"
+                        size="small"
+                        icon={<EnvironmentOutlined />}
+                        onClick={fillCurrentLocation}
+                        loading={locating}
+                        disabled={locating}
+                      >
+                        {locating ? "Đang lấy vị trí" : "Lấy vị trí hiện tại"}
+                      </Button>
+''',
+              "location button",
+          )
+
+          replace_once(
+              frontend,
+              '''                          <Input
+                            value={restaurantForm.line1}
+''',
+              '''                          <Input
+                            aria-label="Số nhà / Đường"
+                            value={restaurantForm.line1}
+''',
+              "street input accessibility",
+          )
+
+          replace_once(
+              frontend,
+              '''                          <Input
+                            value={restaurantForm.lat}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                lat: e.target.value,
+                              }))
+                            }
+                          />
+''',
+              '''                          <Input
+                            aria-label="Vĩ độ"
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min={-90}
+                            max={90}
+                            value={restaurantForm.lat}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                lat: e.target.value,
+                              }))
+                            }
+                          />
+''',
+              "latitude input",
+          )
+
+          replace_once(
+              frontend,
+              '''                          <Input
+                            value={restaurantForm.lng}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                lng: e.target.value,
+                              }))
+                            }
+                          />
+''',
+              '''                          <Input
+                            aria-label="Kinh độ"
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min={-180}
+                            max={180}
+                            value={restaurantForm.lng}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                lng: e.target.value,
+                              }))
+                            }
+                          />
+''',
+              "longitude input",
+          )
+
+          replace_once(
+              backend,
+              '''function normalizeRestaurantAddress(addressInput = {}) {
+  if (!addressInput || typeof addressInput !== "object") return undefined;
+
+  const lat =
+    typeof addressInput.lat === "number" && Number.isFinite(addressInput.lat)
+      ? addressInput.lat
+      : undefined;
+  const lng =
+    typeof addressInput.lng === "number" && Number.isFinite(addressInput.lng)
+      ? addressInput.lng
+      : undefined;
+
+  return {
+    line1: cleanAddressValue(addressInput.line1),
+    line2: cleanAddressValue(addressInput.line2),
+    ward: cleanAddressValue(addressInput.ward),
+    district: cleanAddressValue(addressInput.district),
+    city: cleanAddressValue(addressInput.city),
+    country: cleanAddressValue(addressInput.country, "Vietnam"),
+    postalCode: cleanAddressValue(addressInput.postalCode),
+    ...(lat !== undefined ? { lat } : {}),
+    ...(lng !== undefined ? { lng } : {}),
+  };
+}
+''',
+              '''function normalizeRestaurantAddress(addressInput = {}) {
+  if (!addressInput || typeof addressInput !== "object") return undefined;
+
+  const hasLat = addressInput.lat !== null && addressInput.lat !== undefined;
+  const hasLng = addressInput.lng !== null && addressInput.lng !== undefined;
+  if (hasLat !== hasLng) {
+    throw badInput("Restaurant latitude and longitude must be provided together");
+  }
+
+  let lat;
+  let lng;
+  if (hasLat) {
+    if (
+      typeof addressInput.lat !== "number" ||
+      !Number.isFinite(addressInput.lat) ||
+      typeof addressInput.lng !== "number" ||
+      !Number.isFinite(addressInput.lng)
+    ) {
+      throw badInput("Restaurant coordinates must be finite numbers");
+    }
+    if (
+      addressInput.lat < -90 ||
+      addressInput.lat > 90 ||
+      addressInput.lng < -180 ||
+      addressInput.lng > 180
+    ) {
+      throw badInput("Restaurant coordinates are out of range");
+    }
+    lat = addressInput.lat;
+    lng = addressInput.lng;
+  }
+
+  return {
+    line1: cleanAddressValue(addressInput.line1),
+    line2: cleanAddressValue(addressInput.line2),
+    ward: cleanAddressValue(addressInput.ward),
+    district: cleanAddressValue(addressInput.district),
+    city: cleanAddressValue(addressInput.city),
+    country: cleanAddressValue(addressInput.country, "Vietnam"),
+    postalCode: cleanAddressValue(addressInput.postalCode),
+    ...(lat !== undefined ? { lat, lng } : {}),
+  };
+}
+''',
+              "backend coordinate validation",
+          )
+
+          Path(".github/workflows/restaurant-location-production-autofix.yml").unlink(missing_ok=True)
+          Path(".github/workflows/restaurant-location-production-pr.yml").unlink(missing_ok=True)
           PY
-          python /tmp/apply-restaurant-location-fix.py
-          rm -f .github/workflows/restaurant-location-production-pr.yml
 
       - name: Commit focused changes
         shell: bash
