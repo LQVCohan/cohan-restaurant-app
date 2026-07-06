@@ -55,6 +55,12 @@ const DEFAULT_RESTAURANT_CAPABILITIES = {
   acceptsDelivery: false,
   acceptsPickup: false,
 };
+const OPERATIONAL_STATUS_LABELS = {
+  normal: "Đang vận hành",
+  paused: "Tạm dừng vận hành",
+  maintenance: "Đang bảo trì",
+  holiday: "Nghỉ lễ",
+};
 
 // --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES (KHÔNG THAY ĐỔI) ---
 const ME_QUERY = gql`
@@ -156,7 +162,6 @@ const GET_RESTAURANT_DETAIL = gql`
       notesOnHours
       cuisineType
       priceRange
-      status
       businessStatus
       operationalStatus
       capabilities
@@ -224,7 +229,6 @@ const UPDATE_RESTAURANT = gql`
       notesOnHours
       cuisineType
       priceRange
-      status
       businessStatus
       operationalStatus
       capabilities
@@ -377,7 +381,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     closingHours: "",
     cuisineType: "",
     priceRange: "",
-    status: "active",
+    operationalStatus: "normal",
     capabilities: DEFAULT_RESTAURANT_CAPABILITIES,
     avgRating: 0,
     amenities: {
@@ -432,7 +436,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   }, [restaurantForm]);
 
   const quickProfileFacts = useMemo(() => [
-    { label: "Trạng thái", value: restaurantForm.status === "active" ? "Đang hoạt động" : "Tạm ngưng" },
+    {
+      label: "Trạng thái",
+      value: OPERATIONAL_STATUS_LABELS[restaurantForm.operationalStatus] || "Không xác định",
+    },
     { label: "Ẩm thực", value: restaurantForm.cuisineType || "Chưa chọn" },
     {
       label: "Giờ phục vụ",
@@ -440,7 +447,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         ? `${restaurantForm.openingHours}–${restaurantForm.closingHours}`
         : "Chưa cập nhật",
     },
-  ], [restaurantForm.closingHours, restaurantForm.cuisineType, restaurantForm.openingHours, restaurantForm.status]);
+  ], [
+    restaurantForm.closingHours,
+    restaurantForm.cuisineType,
+    restaurantForm.openingHours,
+    restaurantForm.operationalStatus,
+  ]);
 
   // --- QUERY HOOKS ---
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
@@ -521,7 +533,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       notesOnHours: r.notesOnHours || "",
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
-      status: r.status || "active",
+      operationalStatus: r.operationalStatus || "normal",
       capabilities: {
         ...DEFAULT_RESTAURANT_CAPABILITIES,
         ...(r.capabilities || {}),
@@ -765,7 +777,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const previewRestaurantData = useMemo(() => {
     const normalizedCustomerInfo = normalizeCustomerInfo(restaurantForm.customerInfo);
-    const normalizedStatus = restaurantForm.status === "active" ? "open" : "closed";
+    const normalizedStatus = restaurantForm.operationalStatus === "normal" ? "open" : "closed";
     const district = restaurantForm.district || "";
     const city = restaurantForm.city || "";
     const line1 = restaurantForm.line1 || "";
@@ -885,7 +897,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             notesOnHours: restaurantForm.notesOnHours || null,
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
-            status: restaurantForm.status || "active",
+            operationalStatus: restaurantForm.operationalStatus || "normal",
             capabilities,
             avatar: restaurantForm.avatar || null,
             coverImage: restaurantForm.coverImage || null,
@@ -955,7 +967,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             ["notesOnHours", restaurantForm.notesOnHours || "", latestRestaurant.notesOnHours || ""],
             ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
             ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
-            ["status", restaurantForm.status || "", latestRestaurant.status || ""],
+            [
+              "operationalStatus",
+              restaurantForm.operationalStatus || "normal",
+              latestRestaurant.operationalStatus || "normal",
+            ],
             [
               "capabilities.acceptsOrders",
               String(capabilities.acceptsOrders),
@@ -1183,19 +1199,29 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       </Form.Item>
                     </Col>
                     <Col span={6}>
-                      <Form.Item label="Trạng thái kinh doanh">
+                      <Form.Item label="Trạng thái vận hành">
                         <Select
+                          aria-label="Trạng thái vận hành"
                           size="large"
-                          value={restaurantForm.status}
+                          value={restaurantForm.operationalStatus}
                           onChange={(v) =>
-                            setRestaurantForm((p) => ({ ...p, status: v }))
+                            setRestaurantForm((p) => ({
+                              ...p,
+                              operationalStatus: v,
+                            }))
                           }
                         >
-                          <Option value="active">
-                            <Badge status="success" text="Đang hoạt động" />
+                          <Option value="normal">
+                            <Badge status="success" text="Đang vận hành" />
                           </Option>
-                          <Option value="inactive">
-                            <Badge status="error" text="Tạm đóng cửa" />
+                          <Option value="paused">
+                            <Badge status="warning" text="Tạm dừng vận hành" />
+                          </Option>
+                          <Option value="maintenance">
+                            <Badge status="processing" text="Đang bảo trì" />
+                          </Option>
+                          <Option value="holiday">
+                            <Badge status="default" text="Nghỉ lễ" />
                           </Option>
                         </Select>
                       </Form.Item>
@@ -1809,7 +1835,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           loading: savingRestaurant,
           disabled: savingRestaurant,
         }}
-        footerLeft={<span>{restaurantForm.status === "active" ? "Đang hoạt động" : "Tạm ngưng"}</span>}
+        footerLeft={(
+          <span>
+            {OPERATIONAL_STATUS_LABELS[restaurantForm.operationalStatus] || "Không xác định"}
+          </span>
+        )}
         footerRight={<span>{isDirty ? "Có thay đổi chưa lưu" : "Đã đồng bộ"}</span>}
       />
 
