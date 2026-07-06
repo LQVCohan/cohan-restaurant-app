@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { message } from "antd";
 import RestaurantInfoManagement from "./RestaurantInfoManagement";
 
@@ -17,6 +17,62 @@ vi.mock("@apollo/client", () => ({
   useQuery: (...args) => useQueryMock(...args),
   useMutation: (...args) => useMutationMock(...args),
 }));
+
+vi.mock("antd", async (importOriginal) => {
+  const actual = await importOriginal();
+  const reactModule = await import("react");
+  const ReactRuntime = reactModule.default || reactModule;
+
+  const getOptionLabel = (children) => {
+    if (
+      ReactRuntime.isValidElement(children) &&
+      typeof children.props?.text === "string"
+    ) {
+      return children.props.text;
+    }
+    return children;
+  };
+
+  const Option = ({ value, children }) =>
+    ReactRuntime.createElement(
+      "option",
+      { value },
+      getOptionLabel(children),
+    );
+
+  const Select = ({
+    value,
+    onChange,
+    options = [],
+    children,
+    disabled,
+    ...props
+  }) =>
+    ReactRuntime.createElement(
+      "select",
+      {
+        value: value ?? "",
+        disabled,
+        "aria-label": props["aria-label"],
+        onChange: (event) => onChange?.(event.target.value),
+      },
+      options.length
+        ? options.map((option) =>
+            ReactRuntime.createElement(
+              "option",
+              { key: option.value, value: option.value },
+              option.label,
+            ),
+          )
+        : children,
+    );
+  Select.Option = Option;
+
+  return {
+    ...actual,
+    Select,
+  };
+});
 
 vi.mock("../../../hooks/useAvatarUploadLocal", () => ({
   useAvatarUploadLocal: () => ({ upload: vi.fn() }),
@@ -268,6 +324,11 @@ beforeEach(() => {
   });
 });
 
+afterEach(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  vi.unstubAllGlobals();
+});
+
 describe("RestaurantInfoManagement", () => {
   it("preserves other capabilities when the manager disables remote orders", async () => {
     render(<RestaurantInfoManagement />);
@@ -314,8 +375,9 @@ describe("RestaurantInfoManagement", () => {
     const operationalStatusSelect = screen.getByRole("combobox", {
       name: "Trạng thái vận hành",
     });
-    fireEvent.mouseDown(operationalStatusSelect);
-    fireEvent.click(await screen.findByText("Tạm dừng vận hành"));
+    fireEvent.change(operationalStatusSelect, {
+      target: { value: "paused" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
