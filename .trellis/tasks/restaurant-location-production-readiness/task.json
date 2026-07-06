@@ -3,7 +3,7 @@
   "name": "restaurant-location-production-readiness",
   "title": "Harden restaurant current-location capture for production",
   "description": "Persist browser geolocation into restaurant latitude/longitude, reverse-geocode the current position into restaurant address fields, validate the coordinate pair at frontend and backend boundaries, and cover the flow with focused tests.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "restaurant-profile-location-and-ar-geofence",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-06",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "fix/restaurant-location-production",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "223b03668008d412cf34a6192ad80eab99adac4a",
+  "commit": "c9001e07aab9063cd818945c6bef67e72f1cf302",
   "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1205",
   "subtasks": [],
   "children": [],
@@ -28,6 +28,6 @@
     "cohan-restaurant-backend/src/server/createServer.js",
     "cohan-restaurant-backend/tests/server/reverse-geocode.security.test.js"
   ],
-  "notes": "Manual testing found a real gap: browser GPS updated lat/lng but left stale street, ward, district, and city values on the restaurant form. The manager flow now reuses the existing reverse-geocode endpoint. Automated CI is pending on PR #1205.",
+  "notes": "Manual testing exposed stale address fields after GPS capture. The manager flow now reuses the existing reverse-geocode endpoint, replaces stale address components on success, and preserves coordinates plus the manual address on provider failure. GitHub Actions run 28818809602 passed frontend and backend lint/tests/build plus Playwright smoke tests. Real device address accuracy remains a manual check because it depends on upstream map coverage.",
   "meta": {}
 }
