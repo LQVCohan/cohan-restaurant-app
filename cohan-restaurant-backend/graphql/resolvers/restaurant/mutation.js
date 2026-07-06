@@ -35,14 +35,34 @@ function cleanAddressValue(value, fallback = "") {
 function normalizeRestaurantAddress(addressInput = {}) {
   if (!addressInput || typeof addressInput !== "object") return undefined;
 
-  const lat =
-    typeof addressInput.lat === "number" && Number.isFinite(addressInput.lat)
-      ? addressInput.lat
-      : undefined;
-  const lng =
-    typeof addressInput.lng === "number" && Number.isFinite(addressInput.lng)
-      ? addressInput.lng
-      : undefined;
+  const hasLat = addressInput.lat !== null && addressInput.lat !== undefined;
+  const hasLng = addressInput.lng !== null && addressInput.lng !== undefined;
+  if (hasLat !== hasLng) {
+    throw badInput("Restaurant latitude and longitude must be provided together");
+  }
+
+  let lat;
+  let lng;
+  if (hasLat) {
+    if (
+      typeof addressInput.lat !== "number" ||
+      !Number.isFinite(addressInput.lat) ||
+      typeof addressInput.lng !== "number" ||
+      !Number.isFinite(addressInput.lng)
+    ) {
+      throw badInput("Restaurant coordinates must be finite numbers");
+    }
+    if (
+      addressInput.lat < -90 ||
+      addressInput.lat > 90 ||
+      addressInput.lng < -180 ||
+      addressInput.lng > 180
+    ) {
+      throw badInput("Restaurant coordinates are out of range");
+    }
+    lat = addressInput.lat;
+    lng = addressInput.lng;
+  }
 
   return {
     line1: cleanAddressValue(addressInput.line1),
@@ -52,8 +72,7 @@ function normalizeRestaurantAddress(addressInput = {}) {
     city: cleanAddressValue(addressInput.city),
     country: cleanAddressValue(addressInput.country, "Vietnam"),
     postalCode: cleanAddressValue(addressInput.postalCode),
-    ...(lat !== undefined ? { lat } : {}),
-    ...(lng !== undefined ? { lng } : {}),
+    ...(lat !== undefined ? { lat, lng } : {}),
   };
 }
 

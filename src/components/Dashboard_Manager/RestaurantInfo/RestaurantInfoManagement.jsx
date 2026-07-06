@@ -345,9 +345,45 @@ const parseCustomerInfo = (value) => {
 };
 
 const parseOptionalNumber = (value) => {
-  if (value === null || value === undefined || value === "") return null;
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getCoordinateValidationError = (latValue, lngValue) => {
+  const latText = String(latValue ?? "").trim();
+  const lngText = String(lngValue ?? "").trim();
+  const hasLat = latText !== "";
+  const hasLng = lngText !== "";
+
+  if (!hasLat && !hasLng) return "";
+  if (hasLat !== hasLng) return "Vui lòng nhập đầy đủ cả vĩ độ và kinh độ";
+
+  const lat = parseOptionalNumber(latValue);
+  const lng = parseOptionalNumber(lngValue);
+  if (lat === null || lng === null) return "Tọa độ nhà hàng phải là số hợp lệ";
+  if (lat < -90 || lat > 90) return "Vĩ độ phải nằm trong khoảng -90 đến 90";
+  if (lng < -180 || lng > 180) return "Kinh độ phải nằm trong khoảng -180 đến 180";
+  return "";
+};
+
+const getGeolocationErrorMessage = (error) => {
+  switch (error?.code) {
+    case 1:
+      return "Bạn đã từ chối quyền vị trí. Hãy cấp quyền trong cài đặt trình duyệt rồi thử lại.";
+    case 2:
+      return "Không xác định được vị trí hiện tại. Hãy bật GPS và thử lại.";
+    case 3:
+      return "Hết thời gian chờ lấy vị trí. Hãy di chuyển đến nơi có tín hiệu GPS tốt hơn rồi thử lại.";
+    default:
+      return "Không thể lấy vị trí hiện tại";
+  }
 };
 
 const RestaurantInfoManagement = ({ role = "manager" }) => {
@@ -365,6 +401,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [chefPickerOpen, setChefPickerOpen] = useState(false);
   const [chefSearch, setChefSearch] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const [locating, setLocating] = useState(false);
   const baselineRef = useRef("");
   const avatarInputRef = useRef(null);
   const coverInputRef = useRef(null);
@@ -707,6 +744,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     ) {
       return "Website phải bắt đầu bằng http:// hoặc https://";
     }
+    const coordinateError = getCoordinateValidationError(
+      restaurantForm.lat,
+      restaurantForm.lng,
+    );
+    if (coordinateError) return coordinateError;
     return null;
   };
 
@@ -732,25 +774,54 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   };
 
   const fillCurrentLocation = () => {
+    if (locating) return;
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      message.error("Định vị cần kết nối HTTPS an toàn");
+      return;
+    }
     if (!navigator.geolocation) {
       message.error("Trình duyệt không hỗ trợ định vị");
       return;
     }
 
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const lat = coords.latitude.toFixed(6);
-        const lng = coords.longitude.toFixed(6);
+        const latitude = Number(coords?.latitude);
+        const longitude = Number(coords?.longitude);
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180
+        ) {
+          setLocating(false);
+          message.error("Thiết bị trả về tọa độ không hợp lệ");
+          return;
+        }
+
         setRestaurantForm((prev) => ({
           ...prev,
-          line1: prev.line1 || `Vị trí hiện tại (${lat}, ${lng})`,
+          lat: latitude.toFixed(6),
+          lng: longitude.toFixed(6),
         }));
         setIsDirty(true);
+        setLocating(false);
         message.success(
-          "Đã lấy vị trí hiện tại, vui lòng bổ sung địa chỉ chi tiết",
+          "Đã cập nhật tọa độ hiện tại. Vui lòng kiểm tra địa chỉ chi tiết trước khi lưu.",
         );
       },
-      () => message.error("Không thể lấy vị trí hiện tại"),
+      (error) => {
+        setLocating(false);
+        message.error(getGeolocationErrorMessage(error));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
     );
   };
 
@@ -1347,9 +1418,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Button
                         type="link"
                         size="small"
+                        icon={<EnvironmentOutlined />}
                         onClick={fillCurrentLocation}
+                        loading={locating}
+                        disabled={locating}
                       >
-                        Lấy vị trí hiện tại
+                        {locating ? "Đang lấy vị trí" : "Lấy vị trí hiện tại"}
                       </Button>
                     }
                   >
@@ -1357,6 +1431,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={12}>
                         <Form.Item label="Số nhà / Đường">
                           <Input
+                            aria-label="Số nhà / Đường"
                             value={restaurantForm.line1}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
@@ -1448,6 +1523,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={4}>
                         <Form.Item label="Lat">
                           <Input
+                            aria-label="Vĩ độ"
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min={-90}
+                            max={90}
                             value={restaurantForm.lat}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
@@ -1461,6 +1542,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       <Col span={4}>
                         <Form.Item label="Lng">
                           <Input
+                            aria-label="Kinh độ"
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min={-180}
+                            max={180}
                             value={restaurantForm.lng}
                             onChange={(e) =>
                               setRestaurantForm((p) => ({
