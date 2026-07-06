@@ -1,7 +1,8 @@
 {
   "id": "restaurant-remote-order-query-fields",
   "title": "Expose remote-order fields in restaurant manager operations",
-  "status": "in_progress",
+  "status": "completed",
   "scope": "frontend",
-  "createdAt": "2026-07-06"
+  "createdAt": "2026-07-06",
+  "completedAt": "2026-07-06"
 }
