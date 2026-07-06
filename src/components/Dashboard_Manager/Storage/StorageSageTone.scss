@@ -1,149 +1,356 @@
-/* Storage page tone aligned with the shared manager dashboard. */
+/*
+ * Storage tone aligned with the shared manager dashboard.
+ * Higher page-scoped specificity intentionally wins over legacy warm component styles.
+ */
 
-.storage-management {
-  --storage-surface: var(--manager-surface, rgba(249, 252, 250, 0.94));
-  --storage-surface-soft: var(--manager-surface-soft, rgba(241, 247, 243, 0.94));
-  --storage-border: var(--manager-border, rgba(83, 108, 97, 0.22));
-  --storage-border-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
-  --storage-text: var(--manager-text, #24312c);
-  --storage-muted: var(--manager-muted, #607069);
-  --storage-primary: var(--manager-primary, #536c61);
-  --storage-primary-hover: var(--manager-primary-hover, #40584e);
-  --storage-accent: var(--manager-accent, #2f7d68);
-  --storage-accent-soft: var(--manager-accent-soft, #e5f0eb);
-  --storage-shadow: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09));
+.manager-layout .storage-management {
+  --storage-surface: rgba(247, 251, 248, 0.97);
+  --storage-surface-strong: #fbfdfc;
+  --storage-surface-soft: #edf5f0;
+  --storage-surface-muted: #e4eee8;
+  --storage-border: rgba(54, 91, 75, 0.2);
+  --storage-border-strong: rgba(54, 91, 75, 0.34);
+  --storage-text: #20342c;
+  --storage-muted: #60736a;
+  --storage-primary: #48695a;
+  --storage-primary-hover: #365447;
+  --storage-accent: #2f7d68;
+  --storage-accent-soft: #dcece4;
+  --storage-shadow: 0 14px 34px rgba(35, 73, 56, 0.09);
+  --storage-shadow-strong: 0 20px 46px rgba(35, 73, 56, 0.13);
 
-  color: var(--storage-text);
+  color: var(--storage-text) !important;
   background: transparent !important;
+  background-image: none !important;
 }
 
-.storage-management .sm-header-card {
+.manager-layout .storage-management .sm-header-card {
   border-color: var(--storage-border) !important;
-  border-left: 4px solid rgba(47, 125, 104, 0.42) !important;
+  border-left: 4px solid rgba(47, 125, 104, 0.46) !important;
   background:
     radial-gradient(circle at 94% 0%, rgba(47, 125, 104, 0.14), transparent 20rem),
-    linear-gradient(135deg, rgba(249, 252, 250, 0.99), rgba(229, 240, 235, 0.94)) !important;
-  box-shadow: var(--manager-shadow-strong, 0 22px 48px rgba(48, 72, 61, 0.13)) !important;
+    linear-gradient(135deg, #f8fcfa, #e7f1eb) !important;
+  box-shadow: var(--storage-shadow-strong) !important;
 }
 
-.storage-management .title-wrapper .icon-box {
-  color: var(--storage-accent);
-  border-color: rgba(47, 125, 104, 0.2);
-  background: var(--storage-accent-soft);
+.manager-layout .storage-management .title-wrapper .icon-box,
+.manager-layout .storage-management .sm-kpi-card__icon,
+.manager-layout .storage-management .sm-kpi-card--good .sm-kpi-card__icon {
+  color: var(--storage-accent) !important;
+  border-color: rgba(47, 125, 104, 0.18) !important;
+  background: var(--storage-accent-soft) !important;
 }
 
-.storage-management .title-wrapper .page-eyebrow,
-.storage-management .filter-group label,
-.storage-management .filter-group label svg,
-.storage-management .sm-kpi-card__label {
-  color: var(--storage-accent);
+.manager-layout .storage-management .title-wrapper .page-eyebrow,
+.manager-layout .storage-management .filter-group label,
+.manager-layout .storage-management .filter-group label svg,
+.manager-layout .storage-management .sm-kpi-card__label {
+  color: var(--storage-accent) !important;
 }
 
-.storage-management .title-wrapper .page-title,
-.storage-management .sm-kpi-card__value {
-  color: var(--storage-text);
+.manager-layout .storage-management .title-wrapper .page-title,
+.manager-layout .storage-management .sm-kpi-card__value,
+.manager-layout .storage-management .il-card__title,
+.manager-layout .storage-management .sc-name,
+.manager-layout .storage-management .rc-name {
+  color: var(--storage-text) !important;
 }
 
-.storage-management .title-wrapper .page-subtitle,
-.storage-management .sm-kpi-card__helper {
-  color: var(--storage-muted);
+.manager-layout .storage-management .title-wrapper .page-subtitle,
+.manager-layout .storage-management .sm-kpi-card__helper,
+.manager-layout .storage-management .il-card__subtitle,
+.manager-layout .storage-management .sc-sub-info,
+.manager-layout .storage-management .rc-desc {
+  color: var(--storage-muted) !important;
 }
 
-.storage-management .sm-kpi-card,
-.storage-management .sm-toolbar-wrapper,
-.storage-management .sm-tab-content-wrapper,
-.storage-management .ing-storage-wrapper .il-toolbar,
-.storage-management .supply-list-container .sl-toolbar,
-.storage-management .inventory-audit-tab .inv-toolbar,
-.storage-management .inventory-audit-tab .inv-table-wrap,
-.storage-management .inventory-audit-tab .inv-movement-block {
+.manager-layout .storage-management .sm-kpi-card,
+.manager-layout .storage-management .sm-toolbar-wrapper,
+.manager-layout .storage-management .sm-tab-content-wrapper,
+.manager-layout .storage-management .ing-storage-wrapper .il-toolbar,
+.manager-layout .storage-management .supply-list-container .sl-toolbar,
+.manager-layout .storage-management .inventory-audit-tab .inv-toolbar,
+.manager-layout .storage-management .inventory-audit-tab .inv-table-wrap,
+.manager-layout .storage-management .inventory-audit-tab .inv-movement-block {
   border-color: var(--storage-border) !important;
   background: var(--storage-surface) !important;
   box-shadow: var(--storage-shadow) !important;
 }
 
-.storage-management .sm-tab-content-wrapper {
-  background: rgba(249, 252, 250, 0.8) !important;
+.manager-layout .storage-management .sm-tab-content-wrapper {
+  background: rgba(242, 248, 244, 0.92) !important;
 }
 
-.storage-management .sm-kpi-card::after {
-  background: rgba(47, 125, 104, 0.5);
+.manager-layout .storage-management .sm-kpi-card:hover {
+  border-color: var(--storage-border-strong) !important;
+  box-shadow: var(--storage-shadow-strong) !important;
 }
 
-.storage-management .sm-kpi-card__icon,
-.storage-management .sm-kpi-card--good .sm-kpi-card__icon {
-  color: var(--storage-accent);
-  border-color: rgba(47, 125, 104, 0.18);
-  background: var(--storage-accent-soft);
+.manager-layout .storage-management .sm-kpi-card::after {
+  background: rgba(47, 125, 104, 0.52) !important;
 }
 
-.storage-management .sm-tabs-container {
+.manager-layout .storage-management .sm-kpi-card--warning .sm-kpi-card__icon {
+  color: #9a5d18 !important;
+  border-color: rgba(166, 106, 24, 0.2) !important;
+  background: #fff3da !important;
+}
+
+.manager-layout .storage-management .sm-kpi-card--danger .sm-kpi-card__icon {
+  color: #a13f3f !important;
+  border-color: rgba(181, 71, 71, 0.2) !important;
+  background: #fae9e7 !important;
+}
+
+.manager-layout .storage-management .sm-tabs-container,
+.manager-layout .storage-management .sm-workspace-strip,
+.manager-layout .storage-management .sm-action-group,
+.manager-layout .storage-management .sl-stats {
+  color: var(--storage-muted) !important;
   border-color: var(--storage-border) !important;
   background: var(--storage-surface-soft) !important;
+  box-shadow: none !important;
 }
 
-.storage-management .sm-tab-item:hover:not(.active) {
-  color: var(--storage-text);
-  border-color: var(--storage-border);
-  background: var(--storage-accent-soft);
+.manager-layout .storage-management .sm-tab-item {
+  color: var(--storage-muted) !important;
+  touch-action: manipulation;
 }
 
-.storage-management .sm-tab-item.active,
-.storage-management .sm-btn.primary,
-.storage-management .il-btn-primary,
-.storage-management .sl-btn-add {
+.manager-layout .storage-management .sm-tab-item:hover:not(.active) {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background: var(--storage-accent-soft) !important;
+}
+
+.manager-layout .storage-management .sm-tab-item.active,
+.manager-layout .storage-management .sm-btn.primary,
+.manager-layout .storage-management .il-btn-primary,
+.manager-layout .storage-management .sl-btn-add {
   color: #fff !important;
-  border-color: rgba(64, 88, 78, 0.18) !important;
+  border-color: rgba(54, 91, 75, 0.28) !important;
   background: var(--storage-primary) !important;
-  box-shadow: 0 10px 22px rgba(64, 88, 78, 0.22) !important;
+  box-shadow: 0 10px 22px rgba(54, 91, 75, 0.22) !important;
 }
 
-.storage-management .sm-btn.primary:hover:not(:disabled),
-.storage-management .il-btn-primary:hover:not(:disabled),
-.storage-management .sl-btn-add:hover:not(:disabled) {
+.manager-layout .storage-management .sm-btn.primary:hover:not(:disabled),
+.manager-layout .storage-management .il-btn-primary:hover:not(:disabled),
+.manager-layout .storage-management .sl-btn-add:hover:not(:disabled) {
   background: var(--storage-primary-hover) !important;
 }
 
-.storage-management .sm-btn.ghost,
-.storage-management .sm-btn.secondary,
-.storage-management .il-btn-icon:not(.danger),
-.storage-management .sl-btn-icon:not(.sl-btn-trash-toggle) {
+.manager-layout .storage-management .sm-btn.ghost,
+.manager-layout .storage-management .sm-btn.secondary,
+.manager-layout .storage-management .il-btn-icon:not(.danger),
+.manager-layout .storage-management .sl-btn-icon:not(.sl-btn-trash-toggle) {
   color: var(--storage-primary) !important;
   border-color: var(--storage-border) !important;
   background: var(--storage-surface-soft) !important;
 }
 
-.storage-management input,
-.storage-management select,
-.storage-management textarea {
-  color: var(--storage-text) !important;
-  border-color: var(--storage-border) !important;
-  background: rgba(252, 254, 253, 0.98) !important;
+.manager-layout .storage-management .sm-btn.ghost:hover:not(:disabled),
+.manager-layout .storage-management .sm-btn.secondary:hover:not(:disabled),
+.manager-layout .storage-management .il-btn-icon:not(.danger):hover:not(:disabled),
+.manager-layout .storage-management .sl-btn-icon:not(.sl-btn-trash-toggle):hover:not(:disabled) {
+  color: var(--storage-primary-hover) !important;
+  border-color: var(--storage-border-strong) !important;
+  background: var(--storage-accent-soft) !important;
+  box-shadow: 0 8px 18px rgba(35, 73, 56, 0.1) !important;
 }
 
-.storage-management :is(input, select, textarea, button):focus-visible,
-.storage-management .sm-tab-item:focus-visible {
+.manager-layout .storage-management input,
+.manager-layout .storage-management select,
+.manager-layout .storage-management textarea,
+.manager-layout .storage-management .il-input-search,
+.manager-layout .storage-management .il-select,
+.manager-layout .storage-management .custom-select-wrapper select {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface-strong) !important;
+}
+
+.manager-layout .storage-management input:hover:not(:disabled),
+.manager-layout .storage-management select:hover:not(:disabled),
+.manager-layout .storage-management textarea:hover:not(:disabled) {
+  border-color: var(--storage-border-strong) !important;
+}
+
+/* Ingredient cards */
+.manager-layout .storage-management .il-card,
+.manager-layout .storage-management .il-skeleton-card,
+.manager-layout .storage-management .il-trash-item,
+.manager-layout .storage-management .il-empty {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 10rem),
+    linear-gradient(180deg, #f9fcfa, #eff6f2) !important;
+  box-shadow: var(--storage-shadow) !important;
+}
+
+.manager-layout .storage-management .il-card:hover {
+  border-color: var(--storage-border-strong) !important;
+  box-shadow: var(--storage-shadow-strong) !important;
+}
+
+.manager-layout .storage-management .il-card__header {
+  border-bottom-color: var(--storage-border) !important;
+  background: rgba(247, 251, 248, 0.68) !important;
+}
+
+.manager-layout .storage-management .il-card__icon-wrapper,
+.manager-layout .storage-management .il-badge,
+.manager-layout .storage-management .inv-badge--ok {
+  color: var(--storage-accent) !important;
+  border-color: rgba(47, 125, 104, 0.18) !important;
+  background: var(--storage-accent-soft) !important;
+}
+
+.manager-layout .storage-management .il-stat-box,
+.manager-layout .storage-management .il-card__actions,
+.manager-layout .storage-management .il-action-btn {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface-soft) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.manager-layout .storage-management .il-stat-box--interactive:hover:not(:disabled),
+.manager-layout .storage-management .il-action-btn:hover:not(:disabled) {
+  border-color: var(--storage-border-strong) !important;
+  background: var(--storage-surface-strong) !important;
+  box-shadow: 0 8px 18px rgba(35, 73, 56, 0.09) !important;
+}
+
+.manager-layout .storage-management .il-stat-label,
+.manager-layout .storage-management .il-stat-unit {
+  color: var(--storage-muted) !important;
+}
+
+.manager-layout .storage-management .il-stat-value:not(.il-text-price) {
+  color: var(--storage-text) !important;
+}
+
+.manager-layout .storage-management .il-stat-value.il-text-price {
+  color: var(--storage-primary) !important;
+}
+
+.manager-layout .storage-management .il-divider-vertical {
+  background: var(--storage-border) !important;
+}
+
+/* Supply cards */
+.manager-layout .storage-management .supply-card {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 10rem),
+    linear-gradient(145deg, #f9fcfa, #eef5f1) !important;
+  box-shadow: var(--storage-shadow) !important;
+}
+
+.manager-layout .storage-management .supply-card:hover {
+  border-color: var(--storage-border-strong) !important;
+  box-shadow: var(--storage-shadow-strong) !important;
+}
+
+.manager-layout .storage-management .supply-header,
+.manager-layout .storage-management .supply-body,
+.manager-layout .storage-management .sc-actions {
+  background: transparent !important;
+}
+
+.manager-layout .storage-management .sc-icon-box,
+.manager-layout .storage-management .sc-stock-btn,
+.manager-layout .storage-management .sc-chip,
+.manager-layout .storage-management .sc-btn.variant-ghost,
+.manager-layout .storage-management .sc-btn.variant-icon {
+  color: var(--storage-primary) !important;
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface-soft) !important;
+}
+
+.manager-layout .storage-management .sc-stats-grid {
+  border-bottom-color: var(--storage-border) !important;
+}
+
+.manager-layout .storage-management .sc-stat-lbl {
+  color: var(--storage-muted) !important;
+}
+
+.manager-layout .storage-management .sc-stat-val {
+  color: var(--storage-text) !important;
+}
+
+.manager-layout .storage-management .sc-stat-val.highlight {
+  color: var(--storage-accent) !important;
+}
+
+/* Recipe cards */
+.manager-layout .storage-management .rc-card {
+  color: var(--storage-text) !important;
+  border-color: var(--storage-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 10rem),
+    linear-gradient(145deg, #f9fcfa, #eef5f1) !important;
+  box-shadow: var(--storage-shadow) !important;
+}
+
+.manager-layout .storage-management .rc-card:hover {
+  border-color: var(--storage-border-strong) !important;
+  box-shadow: var(--storage-shadow-strong) !important;
+}
+
+.manager-layout .storage-management .rc-icon-box,
+.manager-layout .storage-management .rc-category,
+.manager-layout .storage-management .rc-btn-view,
+.manager-layout .storage-management .rc-icon-btn {
+  color: var(--storage-primary) !important;
+  border-color: var(--storage-border) !important;
+  background: var(--storage-surface-soft) !important;
+}
+
+.manager-layout .storage-management .rc-stats,
+.manager-layout .storage-management .rc-actions {
+  border-color: var(--storage-border) !important;
+  background: rgba(237, 245, 240, 0.86) !important;
+}
+
+.manager-layout .storage-management .rc-stat-item {
+  border-right-color: var(--storage-border) !important;
+}
+
+.manager-layout .storage-management .rc-stat-icon,
+.manager-layout .storage-management .rc-stat-label {
+  color: var(--storage-muted) !important;
+}
+
+.manager-layout .storage-management .rc-stat-value {
+  color: var(--storage-text) !important;
+}
+
+.manager-layout .storage-management .rc-stat-item.is-cost,
+.manager-layout .storage-management .rc-stat-item.is-cost .rc-stat-value,
+.manager-layout .storage-management .rc-stat-item.is-cost .rc-stat-icon {
+  color: var(--storage-accent) !important;
+  background: rgba(220, 236, 228, 0.58) !important;
+}
+
+.manager-layout .storage-management :is(input, select, textarea, button):focus-visible,
+.manager-layout .storage-management .sm-tab-item:focus-visible,
+.manager-layout .storage-management .il-card:focus-visible,
+.manager-layout .storage-management .rc-card:focus-visible {
   outline: 3px solid rgba(47, 125, 104, 0.24) !important;
   outline-offset: 3px !important;
 }
 
-.storage-management .ingredient-card,
-.storage-management .supply-card,
-.storage-management .recipe-card,
-.storage-management .il-trash-item,
-.storage-management .sl-trash-item {
-  border-color: var(--storage-border) !important;
-  background: rgba(249, 252, 250, 0.9) !important;
-  box-shadow: 0 10px 24px rgba(48, 72, 61, 0.08) !important;
-}
-
-.storage-management .il-badge,
-.storage-management .inv-badge--ok {
-  color: var(--storage-accent) !important;
-  background: var(--storage-accent-soft) !important;
-}
-
-.storage-management button,
-.storage-management .sm-tab-item {
+.manager-layout .storage-management button,
+.manager-layout .storage-management .sm-tab-item {
   touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  .manager-layout .storage-management .sm-header-card {
+    border-left-width: 3px !important;
+  }
 }
