@@ -48,6 +48,13 @@ const { TextArea } = Input;
 
 const COVER_PLACEHOLDER = "linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)";
 const AVATAR_PLACEHOLDER = "/default-avatar.png";
+const DEFAULT_RESTAURANT_CAPABILITIES = {
+  acceptsReservations: true,
+  acceptsOrders: true,
+  acceptsTableOrders: true,
+  acceptsDelivery: false,
+  acceptsPickup: false,
+};
 
 // --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES (KHÔNG THAY ĐỔI) ---
 const ME_QUERY = gql`
@@ -371,6 +378,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     cuisineType: "",
     priceRange: "",
     status: "active",
+    capabilities: DEFAULT_RESTAURANT_CAPABILITIES,
     avgRating: 0,
     amenities: {
       wifi: false,
@@ -514,6 +522,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
       status: r.status || "active",
+      capabilities: {
+        ...DEFAULT_RESTAURANT_CAPABILITIES,
+        ...(r.capabilities || {}),
+      },
       avgRating: r.avgRating || 0,
       seatingCapacity: Number(r.seatingCapacity || 0),
       amenities: {
@@ -847,6 +859,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     const normalizedCustomerInfo = normalizeCustomerInfo(
       restaurantForm.customerInfo,
     );
+    const capabilities = {
+      ...DEFAULT_RESTAURANT_CAPABILITIES,
+      ...(restaurantForm.capabilities || {}),
+    };
 
     const amenityList = [
       restaurantForm.amenities?.wifi ? "wifi" : null,
@@ -870,6 +886,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
+            capabilities,
             avatar: restaurantForm.avatar || null,
             coverImage: restaurantForm.coverImage || null,
             seatingCapacity: parseOptionalNumber(restaurantForm.seatingCapacity) ?? 0,
@@ -939,6 +956,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
             ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
             ["status", restaurantForm.status || "", latestRestaurant.status || ""],
+            [
+              "capabilities.acceptsOrders",
+              String(capabilities.acceptsOrders),
+              String(
+                latestRestaurant.capabilities?.acceptsOrders ??
+                  DEFAULT_RESTAURANT_CAPABILITIES.acceptsOrders,
+              ),
+            ],
             ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
             ["coverImage", restaurantForm.coverImage || "", latestRestaurant.coverImage || ""],
             [
@@ -1141,7 +1166,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               children: (
                 <>
                   <Row gutter={24}>
-                    <Col span={16}>
+                    <Col span={12}>
                       <Form.Item label="Tên nhà hàng" required>
                         <Input
                           size="large"
@@ -1157,7 +1182,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col span={6}>
                       <Form.Item label="Trạng thái kinh doanh">
                         <Select
                           size="large"
@@ -1173,6 +1198,29 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                             <Badge status="error" text="Tạm đóng cửa" />
                           </Option>
                         </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={6}>
+                      <Form.Item label="Nhận đơn từ xa">
+                        <Space direction="vertical" size={2}>
+                          <Switch
+                            aria-label="Nhận đơn từ xa"
+                            checked={restaurantForm.capabilities?.acceptsOrders !== false}
+                            checkedChildren="Bật"
+                            unCheckedChildren="Tắt"
+                            onChange={(checked) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                capabilities: {
+                                  ...DEFAULT_RESTAURANT_CAPABILITIES,
+                                  ...(p.capabilities || {}),
+                                  acceptsOrders: checked,
+                                },
+                              }))
+                            }
+                          />
+                          <Text type="secondary">Áp dụng cho đơn khách đặt ngoài bàn.</Text>
+                        </Space>
                       </Form.Item>
                     </Col>
                   </Row>
