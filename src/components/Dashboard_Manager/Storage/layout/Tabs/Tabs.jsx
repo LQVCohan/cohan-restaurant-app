@@ -25,6 +25,7 @@ import "../../StorageRecipeModalUpgrade.css";
 import "../../StorageRecipeModalButtonToneFix.css";
 import "../../StorageRecipeModalSummaryHide.css";
 import "../../StorageRecipeModalPaletteBalance.css";
+import "../../StorageSageTone.scss";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => (
   <>
