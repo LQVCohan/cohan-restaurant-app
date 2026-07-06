@@ -1,0 +1,17 @@
+{
+  "id": "menu-availability-bell",
+  "title": "Complete customer menu availability bell notifications",
+  "status": "in_progress",
+  "branch": "complete-menu-availability-bell-v2",
+  "createdAt": "2026-07-07",
+  "scope": [
+    "cohan-restaurant-backend/src/services/menuAvailabilityWatch.service.js",
+    "cohan-restaurant-backend/tests/services/menu-availability-watch-notification.test.js",
+    "src/context/CustomerNotificationContext.jsx"
+  ],
+  "validation": [
+    "vitest run tests/services/menu-availability-watch-notification.test.js",
+    "npm run build",
+    "GitHub Actions CI"
+  ]
+}
