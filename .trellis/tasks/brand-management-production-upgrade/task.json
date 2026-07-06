@@ -15,7 +15,7 @@
   "branch": "style/brand-management-production-upgrade",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "02f2b707479233000cf9fc5ebaafcb45fb5f1269",
+  "commit": "4ea287c35ad0552f90bdf698b6aa04a04898918a",
   "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1213",
   "subtasks": [],
   "children": [],
@@ -25,7 +25,7 @@
     "src/components/Dashboard_Manager/Brand/BrandManagement.css",
     "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
   ],
-  "notes": "Backend Brand and BrandMembership contracts already support the required operations and scope rules. The production upgrade is page-scoped: it adds the shared sage dashboard treatment, explicit states, validation, mutation feedback, branch/member organization, and removes duplicate refetches without changing shared hooks, role helpers, schema, resolvers, or permissions. PR CI must pass before merge; authenticated desktop and mobile visual review remains manual.",
+  "notes": "Backend Brand and BrandMembership contracts already support the required operations and scope rules. The production upgrade is page-scoped: it adds the shared sage dashboard treatment, explicit states, validation, mutation feedback, branch/member organization, and removes duplicate refetches without changing shared hooks, role helpers, schema, resolvers, or permissions. GitHub Actions run 28830462172 passed frontend and backend lint/tests/build plus Playwright smoke tests. Authenticated desktop and mobile visual review remains manual.",
   "meta": {
     "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
   }
