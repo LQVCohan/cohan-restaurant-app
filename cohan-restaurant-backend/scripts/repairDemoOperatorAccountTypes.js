@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { Role, User } from "../models/index.js";
 import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
-export const DEMO_OPERATOR_ACCOUNT_CONTRACT = Object.freeze([
+const DEMO_OPERATOR_ACCOUNT_CONTRACT = Object.freeze([
   Object.freeze({
     email: "hr.demo@cohan.local",
     userType: "HR",
@@ -16,7 +16,7 @@ export const DEMO_OPERATOR_ACCOUNT_CONTRACT = Object.freeze([
   }),
 ]);
 
-export async function repairDemoOperatorAccountTypes() {
+async function repairDemoOperatorAccountTypes() {
   const emails = DEMO_OPERATOR_ACCOUNT_CONTRACT.map((item) => item.email);
   const roleSlugs = DEMO_OPERATOR_ACCOUNT_CONTRACT.map((item) => item.roleSlug);
 
@@ -94,13 +94,11 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href) {
-  main()
-    .catch((error) => {
-      console.error("[repair:demo:operator-account-types] failed", error);
-      process.exitCode = 1;
-    })
-    .finally(async () => {
-      await mongoose.disconnect().catch(() => {});
-    });
-}
+main()
+  .catch((error) => {
+    console.error("[repair:demo:operator-account-types] failed", error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await mongoose.disconnect().catch(() => {});
+  });
