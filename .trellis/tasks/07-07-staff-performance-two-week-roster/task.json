@@ -16,17 +16,18 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1203",
   "subtasks": [],
   "children": [],
   "parent": "staff-performance-demo-data",
   "relatedFiles": [
+    "cohan-restaurant-backend/scripts/prepareStaffPerformanceDemoPeriods.js",
     "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
     "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRosterUtc.js",
     "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js",
     "cohan-restaurant-backend/tests/scripts/staff-performance-demo-scripts.test.js",
     "cohan-restaurant-backend/package.json"
   ],
-  "notes": "Create exactly fourteen calendar days for the seven existing performance demo staff accounts and preserve the existing July performance-level scenarios after recalculation.",
+  "notes": "PR #1203 creates exactly fourteen calendar days for the seven existing performance demo staff accounts, clears the previous tagged roster before reseeding, and preserves the existing July performance-level scenarios after recalculation. Local Mongo seed and verifier remain required before completion.",
   "meta": {}
 }
