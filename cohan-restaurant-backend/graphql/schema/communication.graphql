@@ -19,6 +19,7 @@ type ChatThread {
   restaurantId: ID
   participants: [ID!]!
   channel: ChatChannel
+  kind: String
   subject: String
   targetRole: String
   status: String
