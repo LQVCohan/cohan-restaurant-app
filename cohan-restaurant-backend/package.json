@@ -36,6 +36,8 @@
     "seed:menu-catalog:apply": "node scripts/seedProductionMenuCatalogWithMenus.js --apply",
     "seed:recipes:validate": "node scripts/seedProductionRecipeBindings.js --validate-only",
     "seed:recipes:apply": "node scripts/seedProductionRecipeBindings.js --apply",
+    "seed:recipe-stock:validate": "node scripts/seedProductionRecipeStock.js --validate-only",
+    "seed:recipe-stock:apply": "node scripts/seedProductionRecipeStock.js --apply",
     "seed:demo:customers": "node scripts/seedCustomerDemoData.js --restaurantId=69ce9e2e8d8d711f12e251b1",
     "test:performance": "vitest run tests/services/staff-performance-core-formula.service.test.js tests/services/performance-incident.service.test.js tests/services/performance-appeal.service.test.js",
     "backfill:restaurant-location": "node scripts/backfillRestaurantLocation.js",
