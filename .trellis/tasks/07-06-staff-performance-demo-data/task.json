@@ -23,6 +23,7 @@
   "relatedFiles": [
     "cohan-restaurant-backend/scripts/seedStaffPerformanceDemo.js",
     "cohan-restaurant-backend/scripts/verifyStaffPerformanceDemoData.js",
+    "cohan-restaurant-backend/tests/scripts/staff-performance-demo-scripts.test.js",
     "cohan-restaurant-backend/package.json"
   ],
   "notes": "Reuse the seven existing demo staff accounts, use only existing menu items, and delete only tagged demo records for the fixed demo periods.",
