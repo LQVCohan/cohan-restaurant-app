@@ -109,6 +109,14 @@ export const CREATE_OVERTIME_REQUEST = gql`
   }
 `;
 
+export const CONFIRM_OVERTIME_REQUEST = gql`
+  mutation StaffConfirmOvertimeRequest($id: ID!) {
+    confirmOvertimeRequest(id: $id) {
+      id
+      status
+    }
+  }
+`;
 
 export const CANCEL_ATTENDANCE_CORRECTION = gql`
   mutation StaffCancelAttendanceCorrection($id: ID!) {
@@ -137,8 +145,6 @@ const correctionTypeOptions = [
   ["other", "Khác"],
 ];
 
-const cancellableStatuses = new Set(["pending", "pending_approval", "pending_employee_confirmation"]);
-
 const overtimeTypeOptions = [
   ["weekday", "Ngày thường"],
   ["weekend", "Cuối tuần"],
@@ -147,6 +153,11 @@ const overtimeTypeOptions = [
   ["other", "Khác"],
 ];
 
+const cancellableStatuses = new Set([
+  "pending",
+  "pending_approval",
+  "pending_employee_confirmation",
+]);
 const pad2 = (value) => String(value).padStart(2, "0");
 const todayKey = () => {
   const date = new Date();
@@ -154,11 +165,14 @@ const todayKey = () => {
 };
 const toDayStart = (dateKey) => `${dateKey}T00:00:00.000+07:00`;
 const toDayEnd = (dateKey) => `${dateKey}T23:59:59.999+07:00`;
-const toLocalDateTime = (dateKey, time) => (dateKey && time ? `${dateKey}T${time}:00.000+07:00` : null);
+const toLocalDateTime = (dateKey, time) =>
+  dateKey && time ? `${dateKey}T${time}:00.000+07:00` : null;
 const toMinutes = (value) => Math.max(0, Math.round(Number(value || 0)));
 const resolveId = (value) => {
   if (!value) return "";
-  if (typeof value === "object") return String(value.id || value._id || value.restaurantId || "");
+  if (typeof value === "object") {
+    return String(value.id || value._id || value.restaurantId || "");
+  }
   return String(value);
 };
 const resolveEmployeeId = (user) => String(user?.id || user?._id || user?.userId || "");
@@ -166,13 +180,23 @@ const formatDateTime = (value) => {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
-const getGraphQLErrorMessage = (error, fallback) => error?.graphQLErrors?.[0]?.message || error?.message || fallback;
+const getGraphQLErrorMessage = (error, fallback) =>
+  error?.graphQLErrors?.[0]?.message || error?.message || fallback;
 
 function StatusPill({ status }) {
   const normalized = String(status || "unknown").toLowerCase();
-  return <span className={`staff-attendance-pill staff-attendance-pill--${normalized}`}>{normalized.replaceAll("_", " ")}</span>;
+  return (
+    <span className={`staff-attendance-pill staff-attendance-pill--${normalized}`}>
+      {normalized.replaceAll("_", " ")}
+    </span>
+  );
 }
 
 export default function StaffAttendancePage() {
@@ -189,10 +213,18 @@ export default function StaffAttendancePage() {
   const [overtimeReason, setOvertimeReason] = useState("");
   const [feedback, setFeedback] = useState(null);
 
-  const restaurantId = resolveId(user?.restaurantForStaff) || resolveId(user?.restaurant) || resolveId(restaurants?.[0]);
+  const restaurantId =
+    resolveId(user?.restaurantForStaff) ||
+    resolveId(user?.restaurant) ||
+    resolveId(restaurants?.[0]);
   const employeeId = resolveEmployeeId(user);
   const variables = useMemo(
-    () => ({ restaurantId, employeeId, startDate: toDayStart(selectedDate), endDate: toDayEnd(selectedDate) }),
+    () => ({
+      restaurantId,
+      employeeId,
+      startDate: toDayStart(selectedDate),
+      endDate: toDayEnd(selectedDate),
+    }),
     [employeeId, restaurantId, selectedDate],
   );
 
@@ -201,24 +233,32 @@ export default function StaffAttendancePage() {
     fetchPolicy: "cache-and-network",
     skip: !restaurantId || !employeeId || !selectedDate,
   });
-
   const [createCorrection, correctionState] = useMutation(CREATE_ATTENDANCE_CORRECTION);
   const [createOvertime, overtimeState] = useMutation(CREATE_OVERTIME_REQUEST);
+  const [confirmOvertime, confirmOvertimeState] = useMutation(CONFIRM_OVERTIME_REQUEST);
   const [cancelCorrection, cancelCorrectionState] = useMutation(CANCEL_ATTENDANCE_CORRECTION);
   const [cancelOvertime, cancelOvertimeState] = useMutation(CANCEL_OVERTIME_REQUEST);
 
   const records = data?.staffAttendanceRecords || [];
   const corrections = data?.attendanceCorrectionRequests || [];
   const overtimeRequests = data?.overtimeRequests || [];
-  const selectedRecord = records.find((record) => String(record.id) === String(selectedRecordId)) || records[0] || null;
+  const selectedRecord =
+    records.find((record) => String(record.id) === String(selectedRecordId)) ||
+    records[0] ||
+    null;
 
   const stats = useMemo(() => {
-    const workedMinutes = records.reduce((sum, record) => sum + toMinutes(record.workedMinutes), 0);
+    const workedMinutes = records.reduce(
+      (sum, record) => sum + toMinutes(record.workedMinutes),
+      0,
+    );
     return {
       shifts: records.length,
       workedHours: Number((workedMinutes / 60).toFixed(2)),
       pendingCorrections: corrections.filter((item) => item.status === "pending").length,
-      pendingOvertime: overtimeRequests.filter((item) => ["pending_approval", "pending_employee_confirmation"].includes(item.status)).length,
+      pendingOvertime: overtimeRequests.filter((item) =>
+        ["pending_approval", "pending_employee_confirmation"].includes(item.status),
+      ).length,
     };
   }, [corrections, overtimeRequests, records]);
 
@@ -231,25 +271,93 @@ export default function StaffAttendancePage() {
     }
     try {
       const recordId = String(selectedRecord.id || "");
-      const payload = {
-        employeeId,
-        restaurantId,
-        workDate: selectedRecord.workDate || toDayStart(selectedDate),
-        shiftId: selectedRecord.shiftId || undefined,
-        timesheetId: recordId && !recordId.includes("virtual") ? recordId : undefined,
-        correctionType,
-        requestedCheckInAt: toLocalDateTime(selectedDate, requestedCheckIn),
-        requestedCheckOutAt: toLocalDateTime(selectedDate, requestedCheckOut),
-        reason: correctionReason,
-      };
-      await createCorrection({ variables: { input: payload } });
+      await createCorrection({
+        variables: {
+          input: {
+            employeeId,
+            restaurantId,
+            workDate: selectedRecord.workDate || toDayStart(selectedDate),
+            shiftId: selectedRecord.shiftId || undefined,
+            timesheetId:
+              recordId && !recordId.includes("virtual") ? recordId : undefined,
+            correctionType,
+            requestedCheckInAt: toLocalDateTime(selectedDate, requestedCheckIn),
+            requestedCheckOutAt: toLocalDateTime(selectedDate, requestedCheckOut),
+            reason: correctionReason,
+          },
+        },
+      });
       setCorrectionReason("");
       setRequestedCheckIn("");
       setRequestedCheckOut("");
       await refetch?.();
       setFeedback({ type: "success", message: "Đã gửi yêu cầu chỉnh công." });
     } catch (submitError) {
-      setFeedback({ type: "error", message: getGraphQLErrorMessage(submitError, "Không thể gửi yêu cầu chỉnh công.") });
+      setFeedback({
+        type: "error",
+        message: getGraphQLErrorMessage(
+          submitError,
+          "Không thể gửi yêu cầu chỉnh công.",
+        ),
+      });
+    }
+  };
+
+  const submitOvertime = async (event) => {
+    event.preventDefault();
+    setFeedback(null);
+    try {
+      await createOvertime({
+        variables: {
+          input: {
+            employeeId,
+            restaurantId,
+            workDate: toDayStart(selectedDate),
+            shiftId: selectedRecord?.shiftId || undefined,
+            timesheetId:
+              selectedRecord?.id && !String(selectedRecord.id).includes("virtual")
+                ? selectedRecord.id
+                : undefined,
+            plannedStartTime: toLocalDateTime(selectedDate, overtimeStart),
+            plannedEndTime: toLocalDateTime(selectedDate, overtimeEnd),
+            overtimeType,
+            reason: overtimeReason,
+          },
+        },
+      });
+      setOvertimeStart("");
+      setOvertimeEnd("");
+      setOvertimeReason("");
+      await refetch?.();
+      setFeedback({ type: "success", message: "Đã gửi yêu cầu tăng ca." });
+    } catch (submitError) {
+      setFeedback({
+        type: "error",
+        message: getGraphQLErrorMessage(
+          submitError,
+          "Không thể gửi yêu cầu tăng ca.",
+        ),
+      });
+    }
+  };
+
+  const confirmAssignedOvertime = async (id) => {
+    setFeedback(null);
+    try {
+      await confirmOvertime({ variables: { id } });
+      await refetch?.();
+      setFeedback({
+        type: "success",
+        message: "Đã xác nhận yêu cầu tăng ca. Yêu cầu đang chờ quản lý duyệt.",
+      });
+    } catch (confirmError) {
+      setFeedback({
+        type: "error",
+        message: getGraphQLErrorMessage(
+          confirmError,
+          "Không thể xác nhận yêu cầu tăng ca.",
+        ),
+      });
     }
   };
 
@@ -264,40 +372,19 @@ export default function StaffAttendancePage() {
       await refetch?.();
       setFeedback({ type: "success", message: "Đã hủy yêu cầu." });
     } catch (cancelError) {
-      setFeedback({ type: "error", message: getGraphQLErrorMessage(cancelError, "Không thể hủy yêu cầu.") });
-    }
-  };
-
-  const submitOvertime = async (event) => {
-    event.preventDefault();
-    setFeedback(null);
-    try {
-      const payload = {
-        employeeId,
-        restaurantId,
-        workDate: toDayStart(selectedDate),
-        shiftId: selectedRecord?.shiftId || undefined,
-        timesheetId: selectedRecord?.id && !String(selectedRecord.id).includes("virtual") ? selectedRecord.id : undefined,
-        plannedStartTime: toLocalDateTime(selectedDate, overtimeStart),
-        plannedEndTime: toLocalDateTime(selectedDate, overtimeEnd),
-        overtimeType,
-        reason: overtimeReason,
-      };
-      await createOvertime({ variables: { input: payload } });
-      setOvertimeStart("");
-      setOvertimeEnd("");
-      setOvertimeReason("");
-      await refetch?.();
-      setFeedback({ type: "success", message: "Đã gửi yêu cầu tăng ca." });
-    } catch (submitError) {
-      setFeedback({ type: "error", message: getGraphQLErrorMessage(submitError, "Không thể gửi yêu cầu tăng ca.") });
+      setFeedback({
+        type: "error",
+        message: getGraphQLErrorMessage(cancelError, "Không thể hủy yêu cầu."),
+      });
     }
   };
 
   if (!restaurantId || !employeeId) {
     return (
       <div className="staff-attendance-page staff-page">
-        <div className="staff-attendance-empty" role="status">Không xác định được tài khoản nhân viên hoặc nhà hàng.</div>
+        <div className="staff-attendance-empty" role="status">
+          Không xác định được tài khoản nhân viên hoặc nhà hàng.
+        </div>
       </div>
     );
   }
@@ -308,11 +395,15 @@ export default function StaffAttendancePage() {
         <div>
           <span className="staff-attendance-badge">Chỉnh công & tăng ca</span>
           <h1 id="staff-attendance-title">Theo dõi công trong ngày</h1>
-          <p>Kiểm tra ca đã chấm công, gửi yêu cầu chỉnh công hoặc tăng ca cho quản lý xử lý.</p>
+          <p>Kiểm tra ca, gửi chỉnh công, tạo hoặc xác nhận yêu cầu tăng ca.</p>
         </div>
         <label className="staff-attendance-date-picker">
           <span>Ngày làm việc</span>
-          <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+          />
         </label>
       </section>
 
@@ -323,8 +414,16 @@ export default function StaffAttendancePage() {
         <article><span>Tăng ca chờ duyệt</span><strong>{stats.pendingOvertime}</strong></article>
       </section>
 
-      {feedback && <div className={`staff-attendance-feedback staff-attendance-feedback--${feedback.type}`} role="status">{feedback.message}</div>}
-      {error && <div className="staff-attendance-feedback staff-attendance-feedback--error" role="alert">{getGraphQLErrorMessage(error, "Không tải được dữ liệu công.")}</div>}
+      {feedback && (
+        <div className={`staff-attendance-feedback staff-attendance-feedback--${feedback.type}`} role="status">
+          {feedback.message}
+        </div>
+      )}
+      {error && (
+        <div className="staff-attendance-feedback staff-attendance-feedback--error" role="alert">
+          {getGraphQLErrorMessage(error, "Không tải được dữ liệu công.")}
+        </div>
+      )}
 
       <section className="staff-attendance-grid">
         <article className="staff-attendance-card staff-attendance-card--records">
@@ -345,7 +444,9 @@ export default function StaffAttendancePage() {
                 <small>Vào: {formatDateTime(record.actualCheckInAt)} · Ra: {formatDateTime(record.actualCheckOutAt)}</small>
                 <StatusPill status={record.status} />
               </button>
-            )) : <div className="staff-attendance-empty" role="status">Chưa có ca/công trong ngày này.</div>}
+            )) : (
+              <div className="staff-attendance-empty" role="status">Chưa có ca/công trong ngày này.</div>
+            )}
           </div>
         </article>
 
@@ -368,10 +469,7 @@ export default function StaffAttendancePage() {
               <label><span>Giờ vào đề xuất</span><input type="time" value={requestedCheckIn} onChange={(event) => setRequestedCheckIn(event.target.value)} /></label>
               <label><span>Giờ ra đề xuất</span><input type="time" value={requestedCheckOut} onChange={(event) => setRequestedCheckOut(event.target.value)} /></label>
             </div>
-            <label>
-              <span>Lý do</span>
-              <textarea value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} placeholder="Ví dụ: Quên bấm check-out sau ca." required minLength={5} />
-            </label>
+            <label><span>Lý do</span><textarea value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} required minLength={5} /></label>
             <button type="submit" disabled={correctionState.loading || !records.length}>Gửi chỉnh công</button>
           </form>
         </article>
@@ -389,10 +487,7 @@ export default function StaffAttendancePage() {
                 {overtimeTypeOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
               </select>
             </label>
-            <label>
-              <span>Lý do</span>
-              <textarea value={overtimeReason} onChange={(event) => setOvertimeReason(event.target.value)} placeholder="Ví dụ: Hoàn tất dọn ca sau giờ đóng cửa." required minLength={5} />
-            </label>
+            <label><span>Lý do</span><textarea value={overtimeReason} onChange={(event) => setOvertimeReason(event.target.value)} required minLength={5} /></label>
             <button type="submit" disabled={overtimeState.loading}>Gửi tăng ca</button>
           </form>
         </article>
@@ -415,6 +510,7 @@ export default function StaffAttendancePage() {
             )) : <div className="staff-attendance-empty" role="status">Chưa có yêu cầu chỉnh công.</div>}
           </div>
         </article>
+
         <article className="staff-attendance-card">
           <h2>Lịch sử tăng ca</h2>
           <div className="staff-attendance-history-list">
@@ -423,6 +519,15 @@ export default function StaffAttendancePage() {
                 <div><strong>{item.overtimeType || "Tăng ca"}</strong><span>{item.reason}</span></div>
                 <div className="staff-attendance-history-actions">
                   <StatusPill status={item.status} />
+                  {item.status === "pending_employee_confirmation" && (
+                    <button
+                      type="button"
+                      onClick={() => confirmAssignedOvertime(item.id)}
+                      disabled={confirmOvertimeState.loading}
+                    >
+                      Xác nhận
+                    </button>
+                  )}
                   {cancellableStatuses.has(String(item.status || "").toLowerCase()) && (
                     <button type="button" onClick={() => cancelRequest("overtime", item.id)} disabled={cancelOvertimeState.loading}>Hủy</button>
                   )}
