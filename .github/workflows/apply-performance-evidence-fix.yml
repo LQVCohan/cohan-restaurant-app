@@ -1,9 +1,9 @@
 name: apply-performance-evidence-fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/staff-performance-contracts
+      - main
 
 permissions:
   contents: write
