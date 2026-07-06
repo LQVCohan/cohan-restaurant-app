@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const scripts = [
+  "scripts/repairDemoOperatorAccountTypes.js",
   "scripts/seedStaffPerformanceDemo.js",
   "scripts/verifyStaffPerformanceDemoData.js",
 ];
