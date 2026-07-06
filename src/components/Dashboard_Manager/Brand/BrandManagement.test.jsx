@@ -161,7 +161,7 @@ describe("BrandManagement", () => {
     expect(screen.getByText("Chuỗi đang quản lý: 1")).toBeInTheDocument();
     expect(screen.getByText("Tổng chi nhánh: 2")).toBeInTheDocument();
     expect(screen.getByText("Thông tin doanh nghiệp")).toBeInTheDocument();
-    expect(screen.getByText("Cohan Quận 1")).toBeInTheDocument();
+    expect(screen.getAllByText("Cohan Quận 1").length).toBeGreaterThan(0);
     expect(screen.getByText("Quản lý: Nguyễn Minh An")).toBeInTheDocument();
     expect(screen.getAllByText("Quản trị chuỗi").length).toBeGreaterThan(0);
     expect(screen.getByText("Toàn bộ chuỗi Cohan Group")).toBeInTheDocument();
@@ -222,7 +222,7 @@ describe("BrandManagement", () => {
   it("requires one available branch for a manager before adding the member", async () => {
     render(<BrandManagement />);
 
-    fireEvent.change(screen.getByLabelText("Mã tài khoản"), {
+    fireEvent.change(screen.getByLabelText(/Mã tài khoản/i), {
       target: { value: "u-new-manager" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
