@@ -3,7 +3,7 @@
   "name": "restaurant-profile-production-polish",
   "title": "Align restaurant profile with the manager dashboard for production",
   "description": "Replace the legacy warm-brown restaurant profile skin with the shared manager sage palette, improve information hierarchy, and convert internal or mixed-language labels into production-ready Vietnamese copy.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-restaurant-profile-ui-copy",
   "package": null,
@@ -11,7 +11,7 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "style/restaurant-profile-production-polish",
   "base_branch": "main",
   "worktree_path": null,
@@ -26,7 +26,7 @@
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.scss",
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.css"
   ],
-  "notes": "The restaurant profile now consumes the shared manager sage palette, removes the duplicate legacy theme block, localizes internal labels and time-slot display values, and keeps existing GraphQL/save/preview behavior unchanged. PR CI is running; authenticated desktop and mobile screenshot review remains manual.",
+  "notes": "The restaurant profile now consumes the shared manager sage palette, removes the duplicate legacy theme block, localizes internal labels and time-slot display values, and keeps existing GraphQL/save/preview behavior unchanged. GitHub Actions run 28823831694 passed frontend and backend lint/tests/build plus Playwright smoke tests. Authenticated desktop and mobile screenshot review remains manual.",
   "meta": {
     "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
   }
