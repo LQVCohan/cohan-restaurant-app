@@ -19,6 +19,9 @@ const RESTAURANT_FIELDS = gql`
       district
       city
       country
+      postalCode
+      lat
+      lng
     }
     phone
     email

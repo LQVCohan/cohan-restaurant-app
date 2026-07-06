@@ -24,6 +24,12 @@ const tableActionsModalState = vi.hoisted(() => ({
   lastTable: null,
 }));
 
+const table3dModalState = vi.hoisted(() => ({
+  open: false,
+  table: null,
+  floor: null,
+}));
+
 vi.mock("@/hooks/useTableManagement", () => ({
   default: () => ({
     tables: tableManagementState.tables,
@@ -56,7 +62,11 @@ vi.mock("@/hooks/useFloorManagement", () => ({
 
 vi.mock("@/hooks/useRestaurant", () => ({
   useRestaurant: () => ({
-    restaurant: { id: "restaurant-1", vrTourUrl: "" },
+    restaurant: {
+      id: "restaurant-1",
+      vrTourUrl: "",
+      address: { lat: 10.7769, lng: 106.7009 },
+    },
     updateRestaurant: vi.fn(),
     refetch: vi.fn(),
   }),
@@ -79,7 +89,12 @@ vi.mock("@/utils/vrStorage", () => ({
 }));
 
 vi.mock("./Table3DSimulatorModal", () => ({
-  default: () => null,
+  default: ({ open, table, floor }) => {
+    table3dModalState.open = open;
+    table3dModalState.table = table;
+    table3dModalState.floor = floor;
+    return open ? <div data-testid="table-3d-modal">3D {table?.code}</div> : null;
+  },
 }));
 
 vi.mock("./TableActionsLiteModal", () => ({
@@ -139,6 +154,9 @@ beforeEach(() => {
   vi.resetModules();
   tableActionsModalState.renderCount = 0;
   tableActionsModalState.lastTable = null;
+  table3dModalState.open = false;
+  table3dModalState.table = null;
+  table3dModalState.floor = null;
   tableManagementState.tablesLoading = false;
   tableManagementState.tablesError = null;
   floorManagementState.floorsLoading = false;
@@ -192,11 +210,26 @@ describe("TableManagement operations UI", () => {
     expect(tableActionsModalState.lastTable?.code).toBe("A1");
   });
 
+  it("opens 3D and AR with the concrete table and floor", async () => {
+    await renderTableManagement();
+
+    const tableCard = screen.getByText("A1").closest("article");
+    const arButton = within(tableCard).getByRole("button", {
+      name: /Mở 3D và AR cho bàn A1/i,
+    });
+    fireEvent.click(arButton);
+
+    expect(screen.getByTestId("table-3d-modal")).toBeInTheDocument();
+    expect(table3dModalState.open).toBe(true);
+    expect(table3dModalState.table?.code).toBe("A1");
+    expect(table3dModalState.floor?.id).toBe("floor-1");
+  });
+
   it("disables POS-managed quick actions with the guard reason", async () => {
     await renderTableManagement();
 
     const occupiedCard = screen.getByText("VIP-02").closest("article");
-    const paymentAction = within(occupiedCard).getByRole("button", { name: "Thanh toán" });
+    const paymentAction = within(occupiedCard).getByRole("button", { name: "Thanh to\u00e1n" });
 
     expect(paymentAction).toBeDisabled();
     expect(paymentAction).toHaveAttribute(
