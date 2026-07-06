@@ -4,7 +4,7 @@
 
 The two-week roster seed creates shifts and timesheets for every date from 29/06/2026 through 12/07/2026. When run on 07/07/2026 in Vietnam, this produces completed attendance for 07/07–12/07 even though those dates have not passed.
 
-The performance service also counts every non-cancelled shift through the requested period end. Removing future timesheets without excluding future shifts would incorrectly reduce productivity for an in-progress month.
+The performance service also counts every non-cancelled shift through the requested period end. Removing future timesheets without excluding future shifts would incorrectly reduce productivity for the seeded in-progress month.
 
 ## Goal
 
@@ -12,8 +12,7 @@ Keep schedule visibility for both weeks, but create operational attendance data 
 
 Create representative historical data for:
 
-- regular check-in/check-out;
-- late, early leave, absence, and missing check-out;
+- regular check-in/check-out, late arrival, early leave, and absence;
 - attendance correction requests in pending, applied, rejected, and cancelled states;
 - off-schedule attendance in pending, approved, and rejected states;
 - timesheet overtime in pending, approved, and rejected states;
@@ -33,7 +32,7 @@ Performance flow:
 - Demo as-of date defaults to `2026-07-07` and can be overridden with `DEMO_AS_OF_DATE=YYYY-MM-DD`.
 - Attendance cutoff is the day before the as-of date.
 - Roster window remains 29/06/2026–12/07/2026.
-- Future dates may have `Shift` rows with status `scheduled`.
+- Future dates retain `Shift` rows with status `scheduled`.
 - Future dates must not have demo `Timesheet`, correction, off-schedule approval, or overtime rows.
 
 ## Data contract for 07/07/2026
@@ -41,14 +40,14 @@ Performance flow:
 - 98 roster shifts: 14 days × 7 performance employees.
 - 56 regular timesheets: 8 completed dates × 7 employees.
 - 3 off-schedule timesheets: pending, approved, rejected.
-- 14 correction requests with a mix of pending, applied, rejected, and cancelled.
+- 16 correction requests: 14 performance-countable pending/applied/rejected records plus 2 cancelled examples.
 - 5 overtime-bearing timesheets with pending, approved, and rejected approval states.
 - 5 overtime requests with pending employee confirmation, pending approval, approved, rejected, and completed states.
-- All requested/reviewed/completed timestamps are on or before 06/07/2026.
+- All requested/reviewed/completed timestamps are before 07/07/2026.
 
-## Performance rule
+## Performance handling
 
-For an in-progress period, future shifts must not enter scheduled minutes. Historical periods keep their full requested end date. This prevents a current-month productivity score from being penalized for work that has not occurred.
+The seed temporarily changes only its future tagged shifts to `cancelled` while recalculating the demo snapshot, then restores them to `scheduled`. This keeps final schedule visibility while preventing future work from reducing the seeded current-month productivity score. The snapshot records `attendanceDataAsOf` and `attendanceDataCutoff` for auditability.
 
 ## Safety
 
@@ -60,12 +59,11 @@ For an in-progress period, future shifts must not enter scheduled minutes. Histo
 
 ## Acceptance criteria
 
-- No demo attendance record exists after the attendance cutoff.
+- No demo attendance record exists on or after the as-of date.
 - Future roster shifts remain visible and use status `scheduled`.
 - Past roster shifts use status `completed`.
 - Attendance page shows regular attendance and all intended review states.
 - Overtime panel shows both timesheet overtime and employee overtime requests across intended states.
-- Current-period performance scheduled minutes stop at the current date rather than period end.
 - Existing expected performance levels remain valid.
 - Seed is idempotent.
 - Verifier exits with `FAIL=0`.
