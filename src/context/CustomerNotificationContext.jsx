@@ -32,6 +32,11 @@ const iconByType = {
 
 const getNotificationLink = (notification) => {
   const payload = notification?.payload || {};
+  const actionUrl = String(payload.actionUrl || "").trim();
+  if (actionUrl.startsWith("/")) return actionUrl;
+  if (payload.menuItemId && payload.restaurantId) {
+    return `/food/${payload.menuItemId}?restaurantId=${payload.restaurantId}`;
+  }
   if (payload.orderId) return `/track-delivery/${payload.orderId}`;
   if (payload.reservationId) return "/orders?tab=reservations";
   if (payload.couponId && payload.restaurantId) return `/coupons/${payload.restaurantId}`;
