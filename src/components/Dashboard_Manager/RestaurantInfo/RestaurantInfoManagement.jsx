@@ -1375,7 +1375,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       </Form.Item>
                     </Col>
                     <Col span={8}>
-                      <Form.Item label="Website">
+                      <Form.Item label="Trang web">
                         <Input
                           prefix={<GlobalOutlined />}
                           value={restaurantForm.customerInfo?.website}
@@ -1866,7 +1866,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           </Form.Item>
                         </Col>
                         <Col span={5}>
-                          <Form.Item label="Ưu tiên">
+                          <Form.Item label="Thứ tự ưu tiên">
                             <Input
                               type="number"
                               value={provider.priority}
