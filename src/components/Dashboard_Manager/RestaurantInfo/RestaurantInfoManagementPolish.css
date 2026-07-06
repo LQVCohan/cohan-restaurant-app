@@ -1,28 +1,30 @@
-/* Scoped visual pass for manager#restaurant-info-management.
-   Keeps the current Apollo/upload/preview flow intact. */
+/* Restaurant profile production polish.
+   Uses the shared manager palette and keeps all Apollo/form behavior unchanged. */
 
 .manager-layout .restaurant-management-container {
-  --ri-ink: #302419;
-  --ri-muted: #75634f;
-  --ri-warm: #8f6a42;
-  --ri-warm-dark: #6f4b2a;
-  --ri-line: rgba(143, 106, 66, 0.2);
-  --ri-line-soft: rgba(143, 106, 66, 0.12);
-  --ri-paper: rgba(255, 253, 248, 0.94);
-  --ri-paper-strong: #fffdf8;
-  --ri-sage: #46705d;
-  --ri-sage-soft: #e8f1eb;
-  --ri-shadow: 0 18px 42px rgba(77, 54, 31, 0.09);
+  --ri-ink: var(--manager-text, #24312c);
+  --ri-muted: var(--manager-muted, #607069);
+  --ri-primary: var(--manager-primary, #536c61);
+  --ri-primary-hover: var(--manager-primary-hover, #40584e);
+  --ri-accent: var(--manager-accent, #2f7d68);
+  --ri-accent-soft: var(--manager-accent-soft, #e5f0eb);
+  --ri-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+  --ri-line-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+  --ri-surface: var(--manager-surface, rgba(249, 252, 250, 0.96));
+  --ri-surface-soft: var(--manager-surface-soft, rgba(241, 247, 243, 0.96));
+  --ri-surface-muted: var(--manager-surface-muted, rgba(232, 241, 236, 0.9));
+  --ri-paper: #fbfdfc;
+  --ri-shadow: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09));
+  --ri-shadow-strong: var(--manager-shadow-strong, 0 22px 48px rgba(48, 72, 61, 0.13));
 
   width: min(100%, 1440px);
   margin-inline: auto;
   padding: clamp(0.75rem, 1.5vw, 1.25rem) clamp(0.65rem, 2vw, 1.5rem) 2rem;
+  color: var(--ri-ink);
   font-family: inherit;
 }
 
-/* The page has no stat cards in ManagementPageHeader. Reflow the compact header
-   into a useful profile block + a dense 2x2 action matrix instead of leaving an
-   empty middle column. */
+/* Compact page header */
 @media (min-width: 1181px) {
   .manager-layout .restaurant-management-container > .management-page-header.density-compact {
     display: grid;
@@ -31,11 +33,6 @@
     align-items: stretch;
     gap: 0.5rem 0.75rem;
     padding: 0.55rem;
-    border-color: var(--ri-line);
-    background:
-      radial-gradient(circle at 8% 0, rgba(184, 147, 101, 0.16), transparent 18rem),
-      linear-gradient(135deg, rgba(255, 253, 248, 0.97), rgba(245, 237, 225, 0.9));
-    box-shadow: var(--ri-shadow);
   }
 
   .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-left {
@@ -46,11 +43,6 @@
     display: flex;
     justify-content: center;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--ri-line-soft);
-    border-radius: 14px;
-    background:
-      radial-gradient(circle at 0 0, rgba(184, 147, 101, 0.14), transparent 11rem),
-      rgba(255, 253, 248, 0.72);
   }
 
   .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-right {
@@ -74,33 +66,41 @@
     width: 100%;
   }
 
-  .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-select,
-  .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn {
-    width: 100%;
-    min-width: 0;
-    height: 38px;
-  }
-
   .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-footer-row {
     grid-column: 2;
     grid-row: 2;
-    min-width: 0;
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-    margin: 0;
-    padding: 0.42rem 0.65rem;
-    border: 1px solid var(--ri-line-soft);
-    border-radius: 10px;
-    background: rgba(255, 253, 248, 0.72);
-    color: var(--ri-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
   }
 }
 
+.manager-layout .restaurant-management-container > .management-page-header.density-compact {
+  border-color: var(--ri-line) !important;
+  background:
+    radial-gradient(circle at 6% 0, rgba(47, 125, 104, 0.12), transparent 19rem),
+    linear-gradient(135deg, rgba(251, 253, 252, 0.98), rgba(232, 241, 236, 0.94)) !important;
+  box-shadow: var(--ri-shadow) !important;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-left,
+.manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-footer-row {
+  border: 1px solid var(--ri-line);
+  border-radius: 14px;
+  background: rgba(249, 252, 250, 0.76);
+}
+
+.manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-footer-row {
+  min-width: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0.42rem 0.65rem;
+  color: var(--ri-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-eyebrow {
-  color: var(--ri-warm-dark);
+  color: var(--ri-primary);
   letter-spacing: 0.1em;
 }
 
@@ -114,13 +114,13 @@
 }
 
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-title__icon {
-  color: var(--ri-warm-dark);
-  background: #f2e4d1;
-  border-color: rgba(143, 106, 66, 0.18);
+  color: var(--ri-primary);
+  border-color: var(--ri-line);
+  background: var(--ri-accent-soft);
 }
 
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-subtitle {
-  max-width: 48ch;
+  max-width: 50ch;
   color: var(--ri-muted);
   line-height: 1.45;
   text-wrap: pretty;
@@ -128,23 +128,37 @@
 
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-select,
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn {
-  border-color: rgba(143, 106, 66, 0.18);
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border-color: var(--ri-line);
   border-radius: 10px;
-  background: rgba(255, 253, 248, 0.9);
+  background: var(--ri-surface);
   color: var(--ri-ink);
   font-weight: 720;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn:hover:not(:disabled),
+.manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-select:hover {
+  border-color: var(--ri-line-strong);
+  background: var(--ri-paper);
+}
+
+.manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn--primary {
-  background: var(--ri-warm);
-  border-color: var(--ri-warm);
+  border-color: var(--ri-primary);
+  background: var(--ri-primary);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(143, 106, 66, 0.18);
+  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.16);
 }
 
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn--primary:hover:not(:disabled) {
-  background: var(--ri-warm-dark);
-  border-color: var(--ri-warm-dark);
+  border-color: var(--ri-primary-hover);
+  background: var(--ri-primary-hover);
 }
 
 .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-btn:disabled {
@@ -152,7 +166,7 @@
   opacity: 0.54;
 }
 
-/* One coherent overview instead of disconnected white cards. */
+/* Overview and completion */
 .manager-layout .restaurant-management-container .profile-focus-panel {
   gap: 0.75rem;
   margin-bottom: 0.75rem;
@@ -161,21 +175,33 @@
 .manager-layout .restaurant-management-container .profile-focus-panel__copy,
 .manager-layout .restaurant-management-container .profile-completion-card {
   border-color: var(--ri-line);
-  background: var(--ri-paper);
+  background: var(--ri-surface);
   box-shadow: var(--ri-shadow);
 }
 
 .manager-layout .restaurant-management-container .profile-focus-panel__copy {
-  min-height: 170px;
+  min-height: 168px;
   padding: clamp(1rem, 2vw, 1.35rem);
   background:
-    radial-gradient(circle at 92% 10%, rgba(184, 147, 101, 0.18), transparent 28%),
-    linear-gradient(135deg, #fffdf8 0%, #f5ead9 100%);
+    radial-gradient(circle at 92% 10%, rgba(47, 125, 104, 0.14), transparent 28%),
+    linear-gradient(135deg, rgba(251, 253, 252, 0.99), rgba(229, 240, 235, 0.94));
 }
 
 .manager-layout .restaurant-management-container .profile-focus-panel__copy h2 {
   margin-block: 0.42rem 0.35rem;
+  color: var(--ri-ink);
   font-size: clamp(1.55rem, 3vw, 2.2rem);
+  letter-spacing: -0.05em;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__copy p {
+  color: var(--ri-muted);
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__eyebrow {
+  border: 1px solid var(--ri-line);
+  background: var(--ri-accent-soft);
+  color: var(--ri-primary-hover);
 }
 
 .manager-layout .restaurant-management-container .profile-focus-panel__facts {
@@ -188,15 +214,27 @@
 .manager-layout .restaurant-management-container .profile-focus-panel__facts span {
   min-width: 0;
   padding: 0.62rem 0.72rem;
+  border-color: var(--ri-line);
   border-radius: 12px;
+  background: rgba(249, 252, 250, 0.84);
+  color: var(--ri-ink);
 }
 
 .manager-layout .restaurant-management-container .profile-focus-panel__facts strong {
+  color: var(--ri-primary);
   white-space: nowrap;
 }
 
 .manager-layout .restaurant-management-container .profile-completion-card {
   padding: 1rem;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card__header {
+  color: var(--ri-muted);
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card__header strong {
+  color: var(--ri-ink);
 }
 
 .manager-layout .restaurant-management-container .profile-completion-card ul {
@@ -205,10 +243,27 @@
 }
 
 .manager-layout .restaurant-management-container .profile-completion-card li {
+  color: var(--ri-muted);
   font-size: 0.74rem;
 }
 
-/* Dock the existing metrics into one compact data rail. */
+.manager-layout .restaurant-management-container .profile-completion-card li span {
+  border: 1px solid var(--ri-line);
+  background: var(--ri-surface-soft);
+  color: var(--ri-muted);
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card li.is-done {
+  color: var(--ri-primary-hover);
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card li.is-done span {
+  border-color: rgba(47, 125, 104, 0.26);
+  background: var(--ri-accent-soft);
+  color: var(--ri-accent);
+}
+
+/* Compact metric rail */
 .manager-layout .restaurant-management-container .quick-metrics-grid {
   overflow: hidden;
   display: grid;
@@ -216,10 +271,9 @@
   gap: 1px;
   margin: 0 0 0.75rem;
   padding: 1px;
-  border: 0;
   border-radius: 16px;
   background: var(--ri-line);
-  box-shadow: 0 12px 28px rgba(77, 54, 31, 0.07);
+  box-shadow: 0 12px 28px rgba(48, 72, 61, 0.07);
 }
 
 .manager-layout .restaurant-management-container .quick-metrics-grid .metric-card.ant-card {
@@ -227,7 +281,7 @@
   min-height: 82px;
   border: 0 !important;
   border-radius: 0 !important;
-  background: rgba(255, 253, 248, 0.94) !important;
+  background: var(--ri-surface) !important;
   box-shadow: none !important;
 }
 
@@ -252,19 +306,21 @@
   height: 82px;
   right: -20px;
   bottom: -34px;
-  background: rgba(184, 147, 101, 0.1);
+  background: rgba(47, 125, 104, 0.08);
 }
 
 .manager-layout .restaurant-management-container .quick-metrics-grid .metric-subtitle {
+  color: var(--ri-muted);
   font-size: 0.7rem;
   font-weight: 650;
 }
 
 .manager-layout .restaurant-management-container .quick-metrics-grid .metric-value {
+  color: var(--ri-ink);
   font-size: clamp(1.35rem, 2vw, 1.75rem);
 }
 
-/* Form workspace: give the edit surface more width and align the phone preview. */
+/* Workspace and identity */
 @media (min-width: 1101px) {
   .manager-layout .restaurant-management-container .main-layout > .ant-col:first-child {
     flex: 0 0 64%;
@@ -279,20 +335,20 @@
 
 .manager-layout .restaurant-management-container .saas-card {
   border-color: var(--ri-line) !important;
-  background: var(--ri-paper) !important;
+  background: var(--ri-surface) !important;
   box-shadow: var(--ri-shadow) !important;
 }
 
-/* Replace the absolute avatar + 60px spacer with a real identity rail. */
 .manager-layout .restaurant-management-container .hero-uploader-section {
   margin-bottom: 0 !important;
   border-color: var(--ri-line) !important;
   border-radius: 18px 18px 0 0 !important;
-  background: var(--ri-paper-strong) !important;
+  background: var(--ri-paper) !important;
 }
 
 .manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
   height: 150px !important;
+  background-color: #a9bbb2 !important;
   background-position: center;
 }
 
@@ -301,7 +357,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(24, 20, 16, 0.03), rgba(24, 20, 16, 0.24));
+  background: linear-gradient(180deg, rgba(24, 39, 32, 0.02), rgba(24, 39, 32, 0.28));
 }
 
 .manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay {
@@ -317,16 +373,16 @@
   padding: 0 0.2rem 0.9rem !important;
   align-items: flex-end !important;
   gap: 0.8rem !important;
-  background: linear-gradient(180deg, transparent 0 44px, var(--ri-paper-strong) 44px);
+  background: linear-gradient(180deg, transparent 0 44px, var(--ri-paper) 44px);
 }
 
 .manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
   width: 92px !important;
   height: 92px !important;
   flex: 0 0 92px;
-  border: 4px solid var(--ri-paper-strong) !important;
+  border: 4px solid var(--ri-paper) !important;
   border-radius: 24px !important;
-  box-shadow: 0 12px 28px rgba(55, 38, 22, 0.18) !important;
+  box-shadow: 0 12px 28px rgba(48, 72, 61, 0.18) !important;
 }
 
 .manager-layout .restaurant-management-container .hero-uploader-section .avatar-overlay {
@@ -358,15 +414,16 @@
   margin-top: 0.25rem;
   border-color: var(--ri-line);
   border-radius: 7px;
-  background: #f3e7d6;
-  color: var(--ri-warm-dark);
+  background: var(--ri-accent-soft);
+  color: var(--ri-primary-hover);
 }
 
+/* Tabs and form controls */
 .manager-layout .restaurant-management-container .modern-form .ant-tabs-nav {
   margin: 0;
   padding: 0.45rem 0.75rem 0;
-  border-top: 1px solid var(--ri-line-soft);
-  background: var(--ri-paper-strong);
+  border-top: 1px solid var(--ri-line);
+  background: var(--ri-paper);
 }
 
 .manager-layout .restaurant-management-container .modern-form .ant-tabs-nav-wrap {
@@ -380,11 +437,33 @@
 }
 
 .manager-layout .restaurant-management-container .modern-form .ant-tabs-tab {
-  min-height: 38px;
+  min-height: 40px;
   margin: 0 0.15rem 0 0;
   padding: 0.55rem 0.75rem;
   border-radius: 10px 10px 0 0;
+  color: var(--ri-muted);
   font-size: 0.76rem;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-tab:hover {
+  color: var(--ri-primary-hover);
+  background: var(--ri-surface-soft);
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-tab-active {
+  background: var(--ri-accent-soft);
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--ri-primary-hover) !important;
+  font-weight: 760;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-ink-bar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ri-accent);
 }
 
 .manager-layout .restaurant-management-container .modern-form .form-content-padding {
@@ -401,39 +480,139 @@
 
 .manager-layout .restaurant-management-container .modern-form .ant-form-item-label label {
   height: auto;
-  color: #594531;
+  color: #43554d;
   font-size: 0.76rem;
   font-weight: 720;
 }
 
-.manager-layout .restaurant-management-container .modern-form :is(.ant-input, .ant-select-selector, textarea.ant-input) {
-  border-color: #e3d5c0 !important;
-  background: rgba(255, 250, 243, 0.88) !important;
+.manager-layout .restaurant-management-container .modern-form :is(
+  .ant-input,
+  .ant-input-number,
+  .ant-picker,
+  .ant-select-selector,
+  textarea.ant-input
+) {
+  min-height: 42px;
+  border-color: var(--ri-line) !important;
+  border-radius: 11px !important;
+  background: rgba(251, 253, 252, 0.96) !important;
+  color: var(--ri-ink) !important;
+  box-shadow: none !important;
 }
 
-.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper .ai-btn {
-  border-color: #b89365 !important;
-  background: rgba(255, 253, 248, 0.94) !important;
-  color: var(--ri-warm-dark) !important;
-  box-shadow: 0 7px 16px rgba(84, 55, 30, 0.1);
+.manager-layout .restaurant-management-container .modern-form :is(
+  .ant-input:hover,
+  .ant-input-number:hover,
+  .ant-picker:hover,
+  .ant-select-selector:hover
+) {
+  border-color: var(--ri-line-strong) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form :is(
+  .ant-input:focus,
+  .ant-input-focused,
+  .ant-input-number-focused,
+  .ant-select-focused .ant-select-selector
+) {
+  border-color: var(--ri-accent) !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 4px rgba(47, 125, 104, 0.12) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input::placeholder,
+.manager-layout .restaurant-management-container .modern-form textarea::placeholder {
+  color: #8a9992;
+}
+
+.manager-layout .restaurant-management-container .profile-section-card.ant-card,
+.manager-layout .restaurant-management-container .payment-provider-card.ant-card {
+  margin-bottom: 0.85rem;
+  border-color: var(--ri-line) !important;
+  border-radius: 14px !important;
+  background: var(--ri-surface-soft) !important;
+  box-shadow: none !important;
+}
+
+.manager-layout .restaurant-management-container .profile-section-card .ant-card-head,
+.manager-layout .restaurant-management-container .payment-provider-card .ant-card-head {
+  min-height: 44px;
+  border-bottom-color: var(--ri-line);
+  color: var(--ri-ink);
+}
+
+.manager-layout .restaurant-management-container .payment-info-alert {
+  margin-bottom: 1rem;
+  border-color: rgba(47, 125, 104, 0.24);
+  border-radius: 12px;
+  background: var(--ri-accent-soft);
 }
 
 .manager-layout .restaurant-management-container .modern-form .amenities-grid .amenity-card {
   min-height: 42px;
   border-color: var(--ri-line);
-  background: rgba(255, 250, 243, 0.86);
+  border-radius: 12px;
+  background: var(--ri-surface-soft);
+  color: var(--ri-muted);
 }
 
+.manager-layout .restaurant-management-container .modern-form .amenities-grid .amenity-card:hover {
+  border-color: var(--ri-line-strong);
+  color: var(--ri-primary-hover);
+  background: var(--ri-paper);
+}
+
+.manager-layout .restaurant-management-container .modern-form .amenities-grid .amenity-card.active {
+  border-color: var(--ri-accent);
+  background: var(--ri-accent-soft);
+  color: var(--ri-primary-hover);
+  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.1);
+}
+
+.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper .ai-btn {
+  border-color: var(--ri-line-strong) !important;
+  background: rgba(251, 253, 252, 0.96) !important;
+  color: var(--ri-primary-hover) !important;
+  box-shadow: 0 7px 16px rgba(48, 72, 61, 0.09);
+}
+
+.manager-layout .restaurant-management-container .modern-form .ai-textarea-wrapper .ai-btn:hover {
+  border-color: var(--ri-accent) !important;
+  background: var(--ri-accent-soft) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-divider {
+  color: var(--ri-primary-hover);
+  border-color: var(--ri-line);
+  font-weight: 760;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-collapse {
+  border-color: var(--ri-line) !important;
+  border-radius: 12px !important;
+  background: var(--ri-surface-soft) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-collapse-item {
+  border-bottom-color: var(--ri-line) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-switch-checked {
+  background: var(--ri-accent) !important;
+}
+
+/* Menu status */
 .manager-layout .restaurant-management-container .category-card.ant-card {
   margin-top: 0.75rem;
   border-color: var(--ri-line) !important;
-  background: var(--ri-paper) !important;
+  background: var(--ri-surface) !important;
   box-shadow: var(--ri-shadow) !important;
 }
 
 .manager-layout .restaurant-management-container .category-card .ant-card-head {
   min-height: 48px;
-  border-bottom-color: var(--ri-line-soft);
+  border-bottom-color: var(--ri-line);
+  color: var(--ri-ink);
 }
 
 .manager-layout .restaurant-management-container .category-card .ant-card-body {
@@ -447,14 +626,18 @@
 
 .manager-layout .restaurant-management-container .category-card .ant-tag {
   margin: 0;
-  border-color: rgba(143, 106, 66, 0.16);
+  border-color: var(--ri-line);
   border-radius: 7px;
-  background: #f4e9da;
-  color: var(--ri-warm-dark);
+  background: var(--ri-accent-soft) !important;
+  color: var(--ri-primary-hover) !important;
 }
 
-/* Keep the real preview, but present it as a deliberate phone tool rather than
-   a second oversized content column. */
+.manager-layout .restaurant-management-container .category-card .ant-btn:hover {
+  border-color: var(--ri-accent);
+  color: var(--ri-primary-hover);
+}
+
+/* Live customer preview */
 .manager-layout .restaurant-management-container .preview-wrapper {
   top: calc(var(--manager-header-height, 64px) + 0.75rem);
 }
@@ -473,10 +656,10 @@
 .manager-layout .restaurant-management-container .desktop-preview-card {
   width: min(100%, 380px) !important;
   padding: 0.7rem 0.65rem 0.8rem !important;
-  border-color: rgba(143, 106, 66, 0.24) !important;
+  border-color: rgba(83, 108, 97, 0.34) !important;
   border-radius: 30px !important;
-  background: linear-gradient(180deg, #34291f, #17120e) !important;
-  box-shadow: 0 24px 52px rgba(57, 39, 22, 0.22) !important;
+  background: linear-gradient(180deg, #26332e, #111a16) !important;
+  box-shadow: 0 24px 52px rgba(30, 50, 41, 0.24) !important;
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card::before {
@@ -491,7 +674,7 @@
 }
 
 .manager-layout .restaurant-management-container :is(button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 3px solid rgba(143, 106, 66, 0.24);
+  outline: 3px solid rgba(47, 125, 104, 0.24);
   outline-offset: 3px;
 }
 
@@ -516,10 +699,6 @@
   .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-controls-row > * {
     width: 100%;
     min-width: 0;
-  }
-
-  .manager-layout .restaurant-management-container > .management-page-header.density-compact .mph-footer-row {
-    margin-top: 0;
   }
 }
 
@@ -572,6 +751,7 @@
     gap: 0.3rem;
   }
 
+  .manager-layout .restaurant-management-container .profile-focus-panel,
   .manager-layout .restaurant-management-container .profile-focus-panel__facts,
   .manager-layout .restaurant-management-container .quick-metrics-grid {
     grid-template-columns: 1fr;
@@ -648,7 +828,7 @@
 
   .manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
     margin-top: -36px !important;
-    background: linear-gradient(180deg, transparent 0 36px, var(--ri-paper-strong) 36px);
+    background: linear-gradient(180deg, transparent 0 36px, var(--ri-paper) 36px);
   }
 
   .manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
@@ -662,15 +842,16 @@
     font-size: 1rem !important;
   }
 
+  .manager-layout .restaurant-management-container .profile-completion-card ul {
+    grid-template-columns: 1fr;
+  }
+
   .manager-layout .restaurant-management-container .desktop-preview-card {
-    width: min(100%, 330px) !important;
-    padding: 0.55rem !important;
-    border-radius: 26px !important;
+    width: min(100%, 350px) !important;
   }
 
   .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
-    height: min(570px, 68vh) !important;
-    border-radius: 17px !important;
+    height: min(590px, 68vh) !important;
   }
 }
 
@@ -679,7 +860,8 @@
   .manager-layout .restaurant-management-container *::before,
   .manager-layout .restaurant-management-container *::after {
     scroll-behavior: auto !important;
-    animation: none !important;
-    transition: none !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

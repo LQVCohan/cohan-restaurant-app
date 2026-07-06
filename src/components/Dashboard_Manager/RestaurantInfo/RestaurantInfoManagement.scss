@@ -1,9 +1,9 @@
 // Variables
-$primary-color: #8f6a42; // Warm brown
-$secondary-color: #7b6a58;
-$bg-color: #fbf6ee;
+$primary-color: #536c61; // Shared manager sage
+$secondary-color: #607069;
+$bg-color: #eef5f1;
 $card-bg: #ffffff;
-$border-color: #eadfce;
+$border-color: #c9d8d0;
 $shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 $shadow-md:
   0 4px 6px -1px rgba(0, 0, 0, 0.1),
@@ -19,15 +19,11 @@ $radius-lg: 16px;
   padding: 16px 24px 28px;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at top right, rgba(184, 147, 101, 0.16), transparent 35%),
-    radial-gradient(circle at top left, rgba(143, 106, 66, 0.10), transparent 42%),
+    radial-gradient(circle at top right, rgba(47, 125, 104, 0.16), transparent 35%),
+    radial-gradient(circle at top left, rgba(83, 108, 97, 0.10), transparent 42%),
     $bg-color;
   min-height: 100vh;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  font-family: inherit;
 
   // Header Styling
   .page-header-modern {
@@ -40,7 +36,7 @@ $radius-lg: 16px;
       h2 {
         margin: 0;
         font-weight: 700;
-        color: #33261a;
+        color: #24312c;
         font-size: clamp(24px, 2.6vw, 34px);
         letter-spacing: -0.02em;
       }
@@ -75,11 +71,11 @@ $radius-lg: 16px;
       }
 
       .save-btn-gradient {
-        background: linear-gradient(135deg, #9d7449 0%, #7f5731 60%, #b89365 100%);
+        background: linear-gradient(135deg, #5f796d 0%, #40584e 60%, #2f7d68 100%);
         border: none;
-        box-shadow: 0 10px 24px rgba(143, 106, 66, 0.28);
+        box-shadow: 0 10px 24px rgba(83, 108, 97, 0.28);
         &:hover {
-          box-shadow: 0 12px 28px rgba(143, 106, 66, 0.38);
+          box-shadow: 0 12px 28px rgba(83, 108, 97, 0.38);
           transform: translateY(-1px);
         }
       }
@@ -94,9 +90,9 @@ $radius-lg: 16px;
 
     .metric-card {
       border-radius: 14px;
-      border: 1px solid #eadfce;
-      background: linear-gradient(165deg, #fffdf8 0%, #f6ecdc 100%);
-      box-shadow: 0 12px 28px rgba(84, 55, 30, 0.08);
+      border: 1px solid #c9d8d0;
+      background: linear-gradient(165deg, #f9fcfa 0%, #e8f1ec 100%);
+      box-shadow: 0 12px 28px rgba(48, 72, 61, 0.08);
 
       .ant-card-body {
         display: flex;
@@ -279,7 +275,7 @@ $radius-lg: 16px;
           font-size: 22px;
 
           @media (max-width: 768px) {
-            color: #33261a;
+            color: #24312c;
             text-shadow: none;
             font-size: 18px;
           }
@@ -320,7 +316,7 @@ $radius-lg: 16px;
       }
 
       &.active {
-        background: #eff6ff;
+        background: #e5f0eb;
         border-color: $primary-color;
         color: $primary-color;
         font-weight: 500;
@@ -344,11 +340,11 @@ $radius-lg: 16px;
       background: rgba(255, 255, 255, 0.9);
       -webkit-backdrop-filter: blur(4px);
       backdrop-filter: blur(4px);
-      border-color: #8b5cf6; // Purple for AI
-      color: #8b5cf6;
+      border-color: #2f7d68; // Shared manager accent
+      color: #2f7d68;
 
       &:hover {
-        background: #f3e8ff;
+        background: #e5f0eb;
       }
     }
   }
@@ -398,7 +394,7 @@ $radius-lg: 16px;
 
   .desktop-preview-card {
     width: 100%;
-    border: 1px solid #eadfce;
+    border: 1px solid #c9d8d0;
     border-radius: 20px;
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     overflow: hidden;
@@ -478,393 +474,6 @@ $radius-lg: 16px;
     .hero-uploader-section .cover-image-area .cover-overlay {
       opacity: 1;
       background: rgba(0, 0, 0, 0.25);
-    }
-  }
-}
-
-
-// Premium warm-dashboard polish layered on top of the existing AntD markup.
-.restaurant-management-container {
-  .main-layout {
-    align-items: start;
-  }
-
-  .quick-metrics-grid {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-
-    .metric-card {
-      position: relative;
-      overflow: hidden;
-
-      &::after {
-        content: "";
-        position: absolute;
-        inset: auto -24px -34px auto;
-        width: 112px;
-        height: 112px;
-        border-radius: 999px;
-        background: rgba(184, 147, 101, 0.14);
-      }
-
-      .metric-value {
-        color: #3a2a1c;
-        font-variant-numeric: tabular-nums;
-        letter-spacing: -0.04em;
-      }
-    }
-  }
-
-  .saas-card {
-    border: 1px solid rgba(154, 119, 78, 0.2) !important;
-    border-radius: 22px;
-    background: rgba(255, 253, 248, 0.94);
-    box-shadow: 0 22px 50px rgba(84, 55, 30, 0.11);
-  }
-
-  .modern-form {
-    .ant-tabs-nav {
-      margin: 0;
-      padding: 12px 16px 0;
-      background: linear-gradient(180deg, #fffdf8, rgba(255, 253, 248, 0));
-    }
-
-    .ant-tabs-tab {
-      border-radius: 14px 14px 0 0;
-      padding: 10px 16px;
-      transition: background 0.2s ease, color 0.2s ease;
-
-      &:hover {
-        color: #7f5731;
-        background: #f8efe2;
-      }
-    }
-
-    .ant-tabs-tab-active {
-      background: #f3e5d1;
-
-      .ant-tabs-tab-btn {
-        color: #6f4b2a !important;
-        font-weight: 700;
-      }
-    }
-
-    .ant-tabs-ink-bar {
-      background: #b89365;
-      height: 3px;
-      border-radius: 99px;
-    }
-
-    .ant-form-item-label label {
-      color: #5b4632;
-      font-weight: 650;
-      letter-spacing: -0.01em;
-    }
-
-    .ant-input,
-    .ant-input-number,
-    .ant-picker,
-    .ant-select-selector,
-    textarea.ant-input {
-      min-height: 42px;
-      border-color: #e4d6c2 !important;
-      border-radius: 12px !important;
-      background: #fffaf3 !important;
-      box-shadow: none !important;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-
-    textarea.ant-input {
-      padding-bottom: 46px;
-    }
-
-    .ant-input:focus,
-    .ant-input-focused,
-    .ant-select-focused .ant-select-selector,
-    .ant-input-number-focused {
-      border-color: #b89365 !important;
-      background: #fffdf8 !important;
-      box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.16) !important;
-    }
-
-    .form-content-padding {
-      padding: 22px;
-    }
-  }
-
-  .hero-uploader-section {
-    border-radius: 20px;
-    overflow: hidden;
-    background: #fffaf3;
-    border: 1px solid #eadfce;
-
-    .cover-image-area {
-      height: 176px;
-    }
-  }
-
-  .amenities-grid .amenity-card {
-    border-radius: 14px;
-    background: #fffaf3;
-
-    &.active {
-      background: #f4e6d3;
-      color: #7f5731;
-      border-color: #b89365;
-      box-shadow: 0 8px 18px rgba(143, 106, 66, 0.12);
-    }
-  }
-
-  .ai-textarea-wrapper {
-    .ai-btn {
-      bottom: 10px;
-      right: 10px;
-      border-color: #b89365;
-      color: #7f5731;
-      border-radius: 999px;
-      box-shadow: 0 8px 18px rgba(84, 55, 30, 0.1);
-
-      &:hover {
-        background: #f4e6d3;
-        border-color: #8f6a42;
-        color: #5f3d20;
-      }
-    }
-  }
-
-  .preview-wrapper {
-    top: 20px;
-
-    .preview-header {
-      padding: 0 10px;
-    }
-
-    .preview-label {
-      color: #5b4632;
-      font-weight: 750;
-    }
-  }
-
-  .desktop-preview-card {
-    position: relative;
-    width: min(100%, 430px);
-    margin: 0 auto;
-    padding: 16px 14px 18px;
-    border: 1px solid rgba(143, 106, 66, 0.24);
-    border-radius: 34px;
-    background:
-      linear-gradient(180deg, #2f251d 0%, #18130f 100%) padding-box,
-      linear-gradient(135deg, rgba(255,255,255,0.45), rgba(184,147,101,0.3)) border-box;
-    box-shadow: 0 28px 60px rgba(69, 43, 21, 0.25);
-
-    &::before {
-      content: "";
-      display: block;
-      width: 74px;
-      height: 5px;
-      margin: 0 auto 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.34);
-    }
-
-    .desktop-iframe,
-    .empty-preview {
-      border-radius: 22px;
-      overflow: hidden;
-    }
-
-    .desktop-iframe {
-      height: min(720px, 72vh);
-    }
-  }
-
-  @media (max-width: 1100px) {
-    .main-layout {
-      display: block;
-
-      > .ant-col {
-        max-width: 100%;
-      }
-    }
-
-    .preview-wrapper {
-      position: static;
-      margin-top: 22px;
-    }
-  }
-}
-
-// Focused profile summary: helps managers prioritize the customer-facing restaurant profile.
-.restaurant-management-container {
-  .profile-focus-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.62fr);
-    gap: 16px;
-    align-items: stretch;
-    margin: 0 0 16px;
-  }
-
-  .profile-focus-panel__copy,
-  .profile-completion-card {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(143, 106, 66, 0.2);
-    border-radius: 24px;
-    background: rgba(255, 253, 248, 0.92);
-    box-shadow: 0 18px 42px rgba(84, 55, 30, 0.1);
-  }
-
-  .profile-focus-panel__copy {
-    padding: clamp(18px, 3vw, 26px);
-    background:
-      radial-gradient(circle at 88% 18%, rgba(184, 147, 101, 0.18), transparent 30%),
-      linear-gradient(135deg, #fffdf8 0%, #f5ead9 100%);
-
-    h2 {
-      max-width: 760px;
-      margin: 8px 0;
-      color: #33261a;
-      font-size: clamp(1.45rem, 3vw, 2.25rem);
-      line-height: 1.04;
-      letter-spacing: -0.055em;
-      text-wrap: balance;
-    }
-
-    p {
-      max-width: 68ch;
-      margin: 0;
-      color: #6f5a44;
-      font-weight: 560;
-      line-height: 1.58;
-      text-wrap: pretty;
-    }
-  }
-
-  .profile-focus-panel__eyebrow {
-    display: inline-flex;
-    width: fit-content;
-    border-radius: 999px;
-    background: #efe0cd;
-    color: #6f4b2a;
-    padding: 5px 10px;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .profile-focus-panel__facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 18px;
-
-    span {
-      display: grid;
-      min-width: min(180px, 100%);
-      gap: 2px;
-      border: 1px solid rgba(143, 106, 66, 0.16);
-      border-radius: 16px;
-      background: rgba(255, 250, 243, 0.78);
-      padding: 10px 12px;
-      color: #3a2a1c;
-      font-weight: 760;
-    }
-
-    strong {
-      color: #8f6a42;
-      font-size: 0.72rem;
-      font-weight: 820;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-  }
-
-  .profile-completion-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 18px;
-  }
-
-  .profile-completion-card__header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-    color: #6f5a44;
-    font-weight: 760;
-
-    strong {
-      color: #33261a;
-      font-size: clamp(1.6rem, 3vw, 2.25rem);
-      line-height: 1;
-      letter-spacing: -0.05em;
-      font-variant-numeric: tabular-nums;
-    }
-  }
-
-  .profile-completion-card ul {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin: 14px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .profile-completion-card li {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
-    color: #766451;
-    font-size: 0.82rem;
-    font-weight: 680;
-
-    span {
-      display: inline-grid;
-      width: 18px;
-      height: 18px;
-      flex: 0 0 18px;
-      place-items: center;
-      border-radius: 999px;
-      background: #f1e4d2;
-      color: #8f6a42;
-      font-size: 0.72rem;
-      font-weight: 900;
-    }
-
-    &.is-done {
-      color: #3f6b3f;
-
-      span {
-        background: #e3f0df;
-        color: #2f6b35;
-      }
-    }
-  }
-
-  .amenities-grid .amenity-card {
-    appearance: none;
-    font: inherit;
-    text-align: left;
-
-    &:focus-visible {
-      outline: 3px solid rgba(143, 106, 66, 0.22);
-      outline-offset: 3px;
-    }
-  }
-
-  @media (max-width: 1100px) {
-    .profile-focus-panel {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .profile-completion-card ul {
-      grid-template-columns: 1fr;
     }
   }
 }

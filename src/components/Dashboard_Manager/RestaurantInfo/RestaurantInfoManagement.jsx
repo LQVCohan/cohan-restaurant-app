@@ -284,6 +284,12 @@ const GET_STAFF_LIST = gql`
 `;
 
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
+const TIME_SLOT_LABELS = {
+  breakfast: "Bữa sáng",
+  lunch: "Bữa trưa",
+  dinner: "Bữa tối",
+  late_night: "Đêm muộn",
+};
 const DEFAULT_CUSTOMER_INFO = {
   story: "",
   chef: "",
@@ -562,7 +568,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     const nextState = {
       name: r.name || "",
       brandId: r.brandId || "",
-      brandName: r.brand?.name || "Nhà hàng chưa gán chuỗi",
+      brandName: r.brand?.name || "Chưa thuộc chuỗi nhà hàng",
       phone: r.phone || "",
       email: r.email || "",
       description: r.description || "",
@@ -1223,7 +1229,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         <div className="avatar-wrapper">
           <img
             src={restaurantForm.avatar || AVATAR_PLACEHOLDER}
-            alt="avatar"
+            alt={`Logo ${restaurantForm.name || "nhà hàng"}`}
           />
           <div
             className="avatar-overlay"
@@ -1242,11 +1248,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           )}
         </div>
         <div className="restaurant-title-preview">
-          <Title level={4}>{restaurantForm.name || "Tên Nhà Hàng"}</Title>
+          <Title level={4}>{restaurantForm.name || "Tên nhà hàng"}</Title>
           <Text type="secondary">
             {restaurantForm.cuisineType || "Loại ẩm thực"}
           </Text>
-          <div><Tag color={restaurantForm.brandId ? "blue" : "default"}>{restaurantForm.brandName || "Nhà hàng chưa gán chuỗi"}</Tag></div>
+          <div><Tag color={restaurantForm.brandId ? "blue" : "default"}>{restaurantForm.brandName || "Chưa thuộc chuỗi nhà hàng"}</Tag></div>
         </div>
       </div>
     </div>
@@ -1266,7 +1272,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               key: "1",
               label: (
                 <span>
-                  <InfoCircleOutlined /> Thông tin chính
+                  <InfoCircleOutlined /> Thông tin cơ bản
                 </span>
               ),
               children: (
@@ -1335,7 +1341,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                               }))
                             }
                           />
-                          <Text type="secondary">Áp dụng cho đơn khách đặt ngoài bàn.</Text>
+                          <Text type="secondary">Cho phép khách đặt món mang đi hoặc giao tận nơi.</Text>
                         </Space>
                       </Form.Item>
                     </Col>
@@ -1369,7 +1375,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       </Form.Item>
                     </Col>
                     <Col span={8}>
-                      <Form.Item label="Website">
+                      <Form.Item label="Trang web">
                         <Input
                           prefix={<GlobalOutlined />}
                           value={restaurantForm.customerInfo?.website}
@@ -1381,7 +1387,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Col>
                   </Row>
 
-                  <Form.Item label="Mô tả ngắn hiển thị">
+                  <Form.Item label="Giới thiệu nhà hàng">
                     <div className="ai-textarea-wrapper">
                       <TextArea
                         rows={4}
@@ -1391,7 +1397,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         }
                         showCount
                         maxLength={1200}
-                        placeholder="Nhập câu chuyện thương hiệu hiển thị ở phần 'Về chúng tôi'"
+                        placeholder="Viết ngắn gọn về phong cách, món nổi bật và trải nghiệm tại nhà hàng"
                       />
                       <Button
                         type="dashed"
@@ -1399,7 +1405,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         className="ai-btn"
                         onClick={generateAIDescription}
                       >
-                        ✨ AI Rewrite
+                        ✨ Viết lại bằng AI
                       </Button>
                     </div>
                   </Form.Item>
@@ -1425,14 +1431,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               key: "2",
               label: (
                 <span>
-                  <EnvironmentOutlined /> Địa điểm & Thời gian
+                  <EnvironmentOutlined /> Địa chỉ & giờ hoạt động
                 </span>
               ),
               children: (
                 <>
                   <Card
+                    className="profile-section-card address-section-card"
                     size="small"
-                    title="Địa chỉ hiển thị"
+                    title="Địa chỉ nhà hàng"
                     extra={
                       <Button
                         type="link"
@@ -1462,7 +1469,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         </Form.Item>
                       </Col>
                       <Col span={12}>
-                        <Form.Item label="Địa chỉ bổ sung (line2)">
+                        <Form.Item label="Tòa nhà, tầng hoặc thông tin bổ sung">
                           <Input
                             value={restaurantForm.line2}
                             onChange={(e) =>
@@ -1545,7 +1552,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         </Form.Item>
                       </Col>
                       <Col span={4}>
-                        <Form.Item label="Lat">
+                        <Form.Item label="Vĩ độ">
                           <Input
                             aria-label="Vĩ độ"
                             type="number"
@@ -1564,7 +1571,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         </Form.Item>
                       </Col>
                       <Col span={4}>
-                        <Form.Item label="Lng">
+                        <Form.Item label="Kinh độ">
                           <Input
                             aria-label="Kinh độ"
                             type="number"
@@ -1616,7 +1623,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         </Form.Item>
                       </Col>
                       <Col span={8}>
-                        <Form.Item label="Khoảng giá trung bình">
+                        <Form.Item label="Mức giá tham khảo">
                           <Input
                             prefix="₫"
                             value={restaurantForm.priceRange}
@@ -1630,7 +1637,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         </Form.Item>
                       </Col>
                       <Col span={8}>
-                        <Form.Item label="Sức chứa (khách)">
+                        <Form.Item label="Sức chứa tối đa">
                           <Input
                             value={restaurantForm.seatingCapacity}
                             onChange={(e) =>
@@ -1653,7 +1660,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                             notesOnHours: e.target.value,
                           }))
                         }
-                        placeholder="Ví dụ: nghỉ thứ 2 hàng tuần, lễ tết mở cửa theo lịch thông báo"
+                        placeholder="Ví dụ: nghỉ thứ Hai; ngày lễ áp dụng giờ phục vụ riêng"
                       />
                     </Form.Item>
                   </div>
@@ -1664,7 +1671,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               key: "3",
               label: (
                 <span>
-                  <SettingOutlined /> Tiện ích & FAQ
+                  <SettingOutlined /> Tiện ích & câu hỏi thường gặp
                 </span>
               ),
               children: (
@@ -1684,7 +1691,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           }))
                         }
                       >
-                        <WifiOutlined /> <span>Free Wifi</span>
+                        <WifiOutlined /> <span>Wi-Fi miễn phí</span>
                       </button>
                       <button
                         type="button"
@@ -1714,16 +1721,16 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           }))
                         }
                       >
-                        <CreditCardOutlined /> <span>Thẻ VISA/Master</span>
+                        <CreditCardOutlined /> <span>Thanh toán bằng thẻ</span>
                       </button>
                     </div>
                   </Form.Item>
 
                   <Row gutter={24}>
                     <Col span={12}>
-                      <Form.Item label="Tiện ích mở rộng (Nhập & Enter)">
+                      <Form.Item label="Tiện ích khác">
                         <Input
-                          placeholder="VD: Ghế trẻ em, Phòng riêng..."
+                          placeholder="Nhập một tiện ích rồi nhấn Enter"
                           value={extraAmenityInput}
                           onChange={(e) => setExtraAmenityInput(e.target.value)}
                           onPressEnter={() => {
@@ -1760,19 +1767,19 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       </Form.Item>
                     </Col>
                     <Col span={12}>
-                      <Form.Item label="Dress Code & Note">
+                      <Form.Item label="Quy định trang phục">
                         <Input
                           value={restaurantForm.customerInfo?.dressCode}
                           onChange={(e) =>
                             updateCustomerInfoField("dressCode", e.target.value)
                           }
-                          placeholder="VD: Smart Casual"
+                          placeholder="Ví dụ: lịch sự, không yêu cầu trang phục"
                         />
                       </Form.Item>
                     </Col>
                   </Row>
 
-                  <Divider orientation="left">FAQ - Câu hỏi thường gặp</Divider>
+                  <Divider orientation="left">Câu hỏi thường gặp</Divider>
                   <Collapse
                     ghost
                     items={[0, 1, 2].map((idx) => ({
@@ -1808,15 +1815,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               key: "4",
               label: (
                 <span>
-                  <CreditCardOutlined /> Thanh toán realtime
+                  <CreditCardOutlined /> Thanh toán trực tuyến
                 </span>
               ),
               children: (
                 <>
-                  <Alert type="info" showIcon message="Chỉ hỗ trợ provider callback realtime: MoMo và VNPAY." style={{ marginBottom: 16 }} />
+                  <Alert className="payment-info-alert" type="info" showIcon message="Hệ thống hiện hỗ trợ xác nhận thanh toán tự động qua MoMo và VNPAY." />
                   <Row gutter={16}>
                     <Col span={12}>
-                      <Form.Item label="Provider mặc định">
+                      <Form.Item label="Cổng thanh toán mặc định">
                         <Select
                           value={restaurantForm.paymentSettings?.defaultProvider || "momo"}
                           onChange={(v) =>
@@ -1837,10 +1844,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Col>
                   </Row>
                   {(restaurantForm.paymentSettings?.providers || []).map((provider, idx) => (
-                    <Card key={provider.provider} size="small" style={{ marginBottom: 12 }} title={provider.provider === "momo" ? "MoMo" : "VNPAY"}>
+                    <Card
+                      key={provider.provider}
+                      className="profile-section-card payment-provider-card"
+                      size="small"
+                      title={provider.provider === "momo" ? "MoMo" : "VNPAY"}
+                    >
                       <Row gutter={16}>
                         <Col span={8}>
-                          <Form.Item label="Label hiển thị">
+                          <Form.Item label="Tên hiển thị">
                             <Input
                               value={provider.label}
                               onChange={(e) =>
@@ -1854,7 +1866,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           </Form.Item>
                         </Col>
                         <Col span={5}>
-                          <Form.Item label="Ưu tiên">
+                          <Form.Item label="Thứ tự ưu tiên">
                             <Input
                               type="number"
                               value={provider.priority}
@@ -1869,7 +1881,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           </Form.Item>
                         </Col>
                         <Col span={5}>
-                          <Form.Item label="Môi trường">
+                          <Form.Item label="Môi trường kết nối">
                             <Select
                               value={provider.mode || "sandbox"}
                               onChange={(v) =>
@@ -1880,14 +1892,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                                 })
                               }
                               options={[
-                                { value: "sandbox", label: "Sandbox" },
-                                { value: "production", label: "Production" },
+                                { value: "sandbox", label: "Kiểm thử" },
+                                { value: "production", label: "Vận hành thực tế" },
                               ]}
                             />
                           </Form.Item>
                         </Col>
                         <Col span={6}>
-                          <Form.Item label="Kích hoạt">
+                          <Form.Item label="Đang sử dụng">
                             <Switch
                               checked={provider.active !== false}
                               onChange={(checked) =>
@@ -1918,9 +1930,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       <ManagementPageHeader
         density="compact"
         showTimeWidget={false}
-        eyebrow="RESTAURANT INFO"
+        eyebrow="THIẾT LẬP HIỂN THỊ"
         title="Hồ sơ nhà hàng"
-        subtitle="Quản lý hình ảnh và thông tin hiển thị trên ứng dụng khách hàng"
+        subtitle="Cập nhật thông tin khách hàng nhìn thấy trên ứng dụng"
         icon="🏪"
         selectedRestaurant={selectedRestaurantId}
         onRestaurantChange={setSelectedRestaurantId}
@@ -1932,7 +1944,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             value=""
             onChange={(e) => e.target.value && loadDraft(e.target.value)}
           >
-            <option value="">Lịch sử bản nháp</option>
+            <option value="">Chọn bản nháp đã lưu</option>
             {drafts.map((item) => (
               <option key={item.id} value={item.id}>{item.label}</option>
             ))}
@@ -1951,16 +1963,16 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             {OPERATIONAL_STATUS_LABELS[restaurantForm.operationalStatus] || "Không xác định"}
           </span>
         )}
-        footerRight={<span>{isDirty ? "Có thay đổi chưa lưu" : "Đã đồng bộ"}</span>}
+        footerRight={<span>{isDirty ? "Có thay đổi chưa lưu" : "Đã lưu"}</span>}
       />
 
       <section className="profile-focus-panel" aria-labelledby="restaurant-profile-focus-title">
         <div className="profile-focus-panel__copy">
-          <span className="profile-focus-panel__eyebrow">Mặt tiền số của nhà hàng</span>
+          <span className="profile-focus-panel__eyebrow">Hồ sơ hiển thị với khách hàng</span>
           <h2 id="restaurant-profile-focus-title">
             {restaurantForm.name || "Chọn nhà hàng để bắt đầu hoàn thiện hồ sơ"}
           </h2>
-          <p>Ưu tiên các thông tin khách nhìn thấy đầu tiên: hình ảnh, địa chỉ, giờ phục vụ và câu chuyện thương hiệu.</p>
+          <p>Kiểm tra hình ảnh, địa chỉ, giờ phục vụ và nội dung giới thiệu trước khi lưu.</p>
           <div className="profile-focus-panel__facts" aria-label="Tóm tắt hồ sơ">
             {quickProfileFacts.map((item) => (
               <span key={item.label}><strong>{item.label}</strong>{item.value}</span>
@@ -1973,7 +1985,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             <span>Hoàn thiện hồ sơ</span>
             <strong>{profileChecklist.percent}%</strong>
           </div>
-          <Progress percent={profileChecklist.percent} showInfo={false} strokeColor="#8f6a42" trailColor="#eadfce" />
+          <Progress percent={profileChecklist.percent} showInfo={false} strokeColor="#2f7d68" trailColor="#d7e4dd" />
           <ul>
             {profileChecklist.checks.map((item) => (
               <li key={item.key} className={item.done ? "is-done" : ""}>
@@ -1987,20 +1999,20 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
       <div className="quick-metrics-grid">
         <Card variant="borderless" className="metric-card">
-          <Badge color="#6366f1" />
+          <Badge color="#536c61" />
           <Text type="secondary" className="metric-subtitle">Đánh giá trung bình</Text>
           <Title level={4} className="metric-value">{Number(restaurantForm.avgRating || 0).toFixed(1)} / 5</Title>
         </Card>
         <Card variant="borderless" className="metric-card">
-          <Badge color="#0ea5e9" />
+          <Badge color="#2f7d68" />
           <Text type="secondary" className="metric-subtitle">Danh mục hiển thị</Text>
           <Title level={4} className="metric-value">
             {activeIndex?.distinctCategoryCount || categories.length || 0}
           </Title>
         </Card>
         <Card variant="borderless" className="metric-card">
-          <Badge color="#f59e0b" />
-          <Text type="secondary" className="metric-subtitle">Số tầng / số bàn</Text>
+          <Badge color="#789287" />
+          <Text type="secondary" className="metric-subtitle">Tầng / bàn</Text>
           <Title level={4} className="metric-value">
             {(layoutMetricsData?.floors || []).length} / {(layoutMetricsData?.tables || []).length}
           </Title>
@@ -2032,17 +2044,21 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           {/* Category Status Section */}
           <Card
             className="saas-card category-card"
-            title="Trạng thái thực đơn"
+            title="Danh mục món theo khung giờ"
             variant="borderless"
           >
             <Row justify="space-between" align="middle">
               <Col>
                 <Space>
                   <Select
+                    aria-label="Khung giờ thực đơn"
                     value={timeSlot}
                     onChange={setTimeSlot}
                     style={{ width: 120 }}
-                    options={TIME_SLOTS.map((t) => ({ value: t, label: t }))}
+                    options={TIME_SLOTS.map((slot) => ({
+                      value: slot,
+                      label: TIME_SLOT_LABELS[slot],
+                    }))}
                   />
                   <Text>
                     Đang có{" "}
@@ -2061,7 +2077,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                   onClick={onRefresh}
                   loading={syncingIndex}
                 >
-                  Đồng bộ
+                  Cập nhật danh mục
                 </Button>
               </Col>
             </Row>
@@ -2081,7 +2097,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           <div className="preview-wrapper">
             <div className="preview-header">
               <div className="preview-label">
-                <FileTextOutlined /> Xem trước (Live Preview)
+                <FileTextOutlined /> Xem trước trên ứng dụng
               </div>
             </div>
 
@@ -2090,7 +2106,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 {selectedRestaurantId ? (
                   <iframe
                     ref={previewIframeRef}
-                    title="RestaurantDetail Preview"
+                    title="Xem trước hồ sơ nhà hàng"
                     src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
                     className="desktop-iframe"
                     onLoad={() => pushPreviewUpdate(previewRestaurantData)}
@@ -2098,7 +2114,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 ) : (
                   <div className="empty-preview">
                     <ShopOutlined style={{ fontSize: 32, color: "#ccc" }} />
-                    <p>Vui lòng chọn nhà hàng</p>
+                    <p>Chọn nhà hàng để xem trước</p>
                   </div>
                 )}
               </div>
