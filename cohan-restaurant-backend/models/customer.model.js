@@ -18,6 +18,22 @@ const foodPreferencesSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const archivedRestaurantSchema = new mongoose.Schema(
+  {
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+    },
+    archivedAt: { type: Date, required: true },
+    archivedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { _id: false },
+);
 
 const customerSchema = new mongoose.Schema(
   {
@@ -36,6 +52,10 @@ const customerSchema = new mongoose.Schema(
     guestExpiresAt: { type: Date },
     guestLastSeenAt: { type: Date },
     registeredAt: { type: Date },
+    archivedRestaurants: {
+      type: [archivedRestaurantSchema],
+      default: [],
+    },
     foodPreferences: {
       type: foodPreferencesSchema,
       default: () => ({
@@ -46,13 +66,14 @@ const customerSchema = new mongoose.Schema(
         updatedAt: null,
       }),
     },
-  }
+  },
 );
 
 customerSchema.index(
   { guestExpiresAt: 1 },
-  { expireAfterSeconds: 0, partialFilterExpression: { isGuest: true } }
+  { expireAfterSeconds: 0, partialFilterExpression: { isGuest: true } },
 );
+customerSchema.index({ "archivedRestaurants.restaurantId": 1 });
 
 export const Customer =
   mongoose.models.Customer ||
