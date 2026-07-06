@@ -1,0 +1,19 @@
+{
+  "id": "production-recipe-stock",
+  "title": "Seed stock from production recipes",
+  "status": "in_progress",
+  "branch": "production-recipe-stock",
+  "createdAt": "2026-07-07",
+  "scope": [
+    "cohan-restaurant-backend/scripts/seedProductionRecipeStock.js",
+    "cohan-restaurant-backend/tests/scripts/seed-production-recipe-stock.test.js",
+    "cohan-restaurant-backend/package.json"
+  ],
+  "validation": [
+    "node --check scripts/seedProductionRecipeStock.js",
+    "node scripts/seedProductionRecipeStock.js --validate-only",
+    "vitest run tests/scripts/seed-production-recipe-stock.test.js",
+    "GitHub Actions CI"
+  ],
+  "databaseApplyRun": false
+}
