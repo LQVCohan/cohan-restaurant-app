@@ -1,0 +1,41 @@
+{
+  "id": "schedule-sage-ack-fix",
+  "name": "schedule-sage-ack-fix",
+  "title": "Fix declined shift query and polish schedule manager",
+  "description": "Fix the ShiftAcknowledgementStatus enum mismatch, replace raw GraphQL errors with a recoverable UI, and align the schedule workspace with the cool sage manager palette.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-schedule",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx",
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx",
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagementPage.jsx",
+    "src/styles/schedule-manager-sage-upgrade.css"
+  ],
+  "notes": "Frontend root-cause fix only. GraphQL schema, resolver normalization, MongoDB query, permissions, schedule lifecycle, and mutations remain unchanged.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "web-design-guidelines",
+      "wcag-ui-audit",
+      "react-ui-performance"
+    ]
+  }
+}
