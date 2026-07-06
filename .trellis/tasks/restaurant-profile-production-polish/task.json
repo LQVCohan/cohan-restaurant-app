@@ -1,0 +1,33 @@
+{
+  "id": "restaurant-profile-production-polish",
+  "name": "restaurant-profile-production-polish",
+  "title": "Align restaurant profile with the manager dashboard for production",
+  "description": "Replace the legacy warm-brown restaurant profile skin with the shared manager sage palette, improve information hierarchy, and convert internal or mixed-language labels into production-ready Vietnamese copy.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-restaurant-profile-ui-copy",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "style/restaurant-profile-production-polish",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.scss",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.css"
+  ],
+  "notes": "The page structure and behavior are already suitable. The root visual issue is the page-specific SCSS and polish stylesheet hardcoding cream/brown values instead of consuming the shared manager sage variables. Copy also exposes internal English terms and raw time-slot codes.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
+  }
+}
