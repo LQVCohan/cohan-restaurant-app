@@ -1,0 +1,40 @@
+name: component changed debug
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture selected tests and early output
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set +e
+          npx vitest list src/components --changed "$BASE_SHA" > component-selected.txt 2>&1
+          echo $? > component-list.status
+          timeout --signal=TERM --kill-after=30s 3m npm run test:component -- --changed "$BASE_SHA" --detectAsyncLeaks --maxWorkers=2 --reporter=verbose > component-changed.log 2>&1
+          echo $? > component-changed.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: component-changed-debug
+          path: |
+            component-selected.txt
+            component-list.status
+            component-changed.log
+            component-changed.status
