@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { message } from "antd";
 import RestaurantInfoManagement from "./RestaurantInfoManagement";
 
 const useQueryMock = vi.fn();
@@ -16,6 +17,62 @@ vi.mock("@apollo/client", () => ({
   useQuery: (...args) => useQueryMock(...args),
   useMutation: (...args) => useMutationMock(...args),
 }));
+
+vi.mock("antd", async (importOriginal) => {
+  const actual = await importOriginal();
+  const reactModule = await import("react");
+  const ReactRuntime = reactModule.default || reactModule;
+
+  const getOptionLabel = (children) => {
+    if (
+      ReactRuntime.isValidElement(children) &&
+      typeof children.props?.text === "string"
+    ) {
+      return children.props.text;
+    }
+    return children;
+  };
+
+  const Option = ({ value, children }) =>
+    ReactRuntime.createElement(
+      "option",
+      { value },
+      getOptionLabel(children),
+    );
+
+  const Select = ({
+    value,
+    onChange,
+    options = [],
+    children,
+    disabled,
+    ...props
+  }) =>
+    ReactRuntime.createElement(
+      "select",
+      {
+        value: value ?? "",
+        disabled,
+        "aria-label": props["aria-label"],
+        onChange: (event) => onChange?.(event.target.value),
+      },
+      options.length
+        ? options.map((option) =>
+            ReactRuntime.createElement(
+              "option",
+              { key: option.value, value: option.value },
+              option.label,
+            ),
+          )
+        : children,
+    );
+  Select.Option = Option;
+
+  return {
+    ...actual,
+    Select,
+  };
+});
 
 vi.mock("../../../hooks/useAvatarUploadLocal", () => ({
   useAvatarUploadLocal: () => ({ upload: vi.fn() }),
@@ -83,7 +140,7 @@ const restaurant = {
   avatar: "",
   coverImage: "",
   address: {
-    line1: "",
+    line1: "123 Existing Street",
     line2: "",
     ward: "",
     district: "",
@@ -167,8 +224,54 @@ const queryResults = {
 
 const operationSource = (operation) => String(operation?.[0] || operation || "");
 
+const openLocationTab = async () => {
+  fireEvent.click(
+    screen.getByRole("tab", { name: /Địa điểm & Thời gian/i }),
+  );
+  await screen.findByRole("button", { name: /Lấy vị trí hiện tại/i });
+};
+
+const installBrowserLayoutMocks = () => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class ResizeObserverMock {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+};
+
 beforeEach(() => {
+  vi.restoreAllMocks();
   vi.clearAllMocks();
+  installBrowserLayoutMocks();
+
+  Object.defineProperty(window, "isSecureContext", {
+    configurable: true,
+    value: true,
+  });
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: vi.fn() },
+  });
+  vi.spyOn(message, "success").mockImplementation(() => {});
+  vi.spyOn(message, "error").mockImplementation(() => {});
 
   refetchRestaurantDetailMock.mockResolvedValue({
     data: { restaurant: savedRestaurant },
@@ -221,6 +324,11 @@ beforeEach(() => {
   });
 });
 
+afterEach(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  vi.unstubAllGlobals();
+});
+
 describe("RestaurantInfoManagement", () => {
   it("preserves other capabilities when the manager disables remote orders", async () => {
     render(<RestaurantInfoManagement />);
@@ -267,8 +375,9 @@ describe("RestaurantInfoManagement", () => {
     const operationalStatusSelect = screen.getByRole("combobox", {
       name: "Trạng thái vận hành",
     });
-    fireEvent.mouseDown(operationalStatusSelect);
-    fireEvent.click(await screen.findByText("Tạm dừng vận hành"));
+    fireEvent.change(operationalStatusSelect, {
+      target: { value: "paused" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
@@ -278,5 +387,151 @@ describe("RestaurantInfoManagement", () => {
     expect(input.operationalStatus).toBe("paused");
     expect(input).not.toHaveProperty("status");
     expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("captures current coordinates without overwriting the street address and saves numbers", async () => {
+    const getCurrentPosition = vi.fn((success, _error, options) => {
+      expect(options).toEqual({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      });
+      success({
+        coords: {
+          latitude: 10.7769,
+          longitude: 106.7009,
+        },
+      });
+    });
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    const locatedRestaurant = {
+      ...restaurant,
+      address: {
+        ...restaurant.address,
+        lat: 10.7769,
+        lng: 106.7009,
+      },
+    };
+    updateRestaurantMock.mockResolvedValueOnce({
+      data: { updateRestaurant: locatedRestaurant },
+    });
+    refetchRestaurantDetailMock.mockResolvedValueOnce({
+      data: { restaurant: locatedRestaurant },
+    });
+
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Vĩ độ")).toHaveValue(10.7769);
+      expect(screen.getByLabelText("Kinh độ")).toHaveValue(106.7009);
+    });
+    expect(screen.getByLabelText("Số nhà / Đường")).toHaveValue(
+      "123 Existing Street",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+    await waitFor(() => expect(updateRestaurantMock).toHaveBeenCalledTimes(1));
+
+    expect(updateRestaurantMock.mock.calls[0][0].variables.input.address).toEqual(
+      expect.objectContaining({
+        line1: "123 Existing Street",
+        lat: 10.7769,
+        lng: 106.7009,
+      }),
+    );
+  });
+
+  it("blocks incomplete coordinates before calling the mutation", async () => {
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.change(screen.getByLabelText("Vĩ độ"), {
+      target: { value: "10.7769" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    expect(updateRestaurantMock).not.toHaveBeenCalled();
+    expect(message.error).toHaveBeenCalledWith(
+      "Vui lòng nhập đầy đủ cả vĩ độ và kinh độ",
+    );
+  });
+
+  it("blocks out-of-range coordinates before calling the mutation", async () => {
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.change(screen.getByLabelText("Vĩ độ"), {
+      target: { value: "91" },
+    });
+    fireEvent.change(screen.getByLabelText("Kinh độ"), {
+      target: { value: "106.7009" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    expect(updateRestaurantMock).not.toHaveBeenCalled();
+    expect(message.error).toHaveBeenCalledWith(
+      "Vĩ độ phải nằm trong khoảng -90 đến 90",
+    );
+  });
+
+  it("reports an unsupported geolocation browser", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: undefined,
+    });
+
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+
+    expect(message.error).toHaveBeenCalledWith(
+      "Trình duyệt không hỗ trợ định vị",
+    );
+  });
+
+  it("reports denied geolocation permission and clears the loading state", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn((_success, error) => error({ code: 1 })),
+      },
+    });
+
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.click(screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }));
+
+    await waitFor(() => {
+      expect(message.error).toHaveBeenCalledWith(
+        "Bạn đã từ chối quyền vị trí. Hãy cấp quyền trong cài đặt trình duyệt rồi thử lại.",
+      );
+      expect(
+        screen.getByRole("button", { name: /Lấy vị trí hiện tại/i }),
+      ).not.toBeDisabled();
+    });
   });
 });

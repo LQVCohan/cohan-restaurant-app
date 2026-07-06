@@ -1,0 +1,32 @@
+{
+  "id": "restaurant-location-production-readiness",
+  "name": "restaurant-location-production-readiness",
+  "title": "Harden restaurant current-location capture for production",
+  "description": "Persist browser geolocation into restaurant latitude/longitude, validate the coordinate pair at frontend and backend boundaries, and cover the flow with focused tests.",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": "restaurant-profile-location-and-ar-geofence",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-06",
+  "completedAt": "2026-07-06",
+  "branch": "fix/restaurant-location-production",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "6ea6191e300984e53241519497087be586a0d02d",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1200",
+  "subtasks": [],
+  "children": [],
+  "parent": "table-ar-mobile-demo-readiness",
+  "relatedFiles": [
+    ".github/workflows/ci.yml",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js"
+  ],
+  "notes": "The UI now writes browser GPS values to lat/lng without overwriting line1, validates the optional coordinate pair, and exposes production-safe loading/error states. The resolver rejects partial, non-finite, and out-of-range coordinates before persistence. Focused frontend tests (7/7) and resolver tests (16/16) pass. CI changed-test selection now compares against the current remote base merge-base instead of a potentially stale pull-request base SHA. Physical HTTPS phone GPS accuracy and permission behavior remain manual validation.",
+  "meta": {}
+}
