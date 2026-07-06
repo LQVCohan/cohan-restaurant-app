@@ -13,7 +13,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  apply:
+  diagnose:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -23,16 +23,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
-      - name: Load and apply reviewed polish patch
+      - name: Capture patch output
         run: |
           git fetch origin fix/restaurant-location-production
           git show origin/fix/restaurant-location-production:.github/scripts/apply_restaurant_profile_production_polish.py > /tmp/apply_restaurant_profile_production_polish.py
-          python /tmp/apply_restaurant_profile_production_polish.py
+          set +e
+          python /tmp/apply_restaurant_profile_production_polish.py > restaurant-profile-polish.log 2>&1
+          echo $? > restaurant-profile-polish.status
+          exit 0
 
-      - name: Commit patch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "style: align restaurant profile with manager dashboard"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: restaurant-profile-polish-debug
+          path: |
+            restaurant-profile-polish.log
+            restaurant-profile-polish.status
