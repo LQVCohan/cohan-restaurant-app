@@ -1,10 +1,19 @@
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const scripts = [
   "scripts/repairDemoOperatorAccountTypes.js",
+  "scripts/prepareStaffPerformanceDemoPeriods.js",
   "scripts/seedStaffPerformanceDemo.js",
+  "scripts/seedStaffPerformanceDemoUtc.js",
   "scripts/verifyStaffPerformanceDemoData.js",
+  "scripts/verifyStaffPerformanceDemoDataUtc.js",
+];
+
+const utcWrappers = [
+  "scripts/seedStaffPerformanceDemoUtc.js",
+  "scripts/verifyStaffPerformanceDemoDataUtc.js",
 ];
 
 describe("staff performance demo scripts", () => {
@@ -17,6 +26,16 @@ describe("staff performance demo scripts", () => {
 
       expect(result.stderr).toBe("");
       expect(result.status).toBe(0);
+    });
+  }
+
+  for (const script of utcWrappers) {
+    it(`${script} sets UTC before importing the worker`, () => {
+      const source = readFileSync(script, "utf8");
+      expect(source.indexOf('process.env.TZ = "UTC"')).toBeGreaterThanOrEqual(0);
+      expect(source.indexOf('process.env.TZ = "UTC"')).toBeLessThan(
+        source.indexOf("await import"),
+      );
     });
   }
 });
