@@ -6,6 +6,8 @@ The restaurant profile page already rendered a **Lấy vị trí hiện tại** 
 
 The backend accepted any finite numeric pair in `normalizeRestaurantAddress`; range validation existed only when the Mongoose pre-validation hook built the GeoJSON `location`. An out-of-range `address.lat/lng` pair could therefore be stored while `location` was removed, producing inconsistent location behavior.
 
+The pull-request component-test step also compared against `github.event.pull_request.base.sha`. That SHA can become stale after the base branch advances, causing Vitest to treat unrelated base-branch changes as part of the PR and select the full component suite instead of only the tests related to this change.
+
 ## End-to-end flow
 
 1. `Restaurant.address.lat/lng` stores coordinates and the model hook synchronizes valid values to `location.coordinates = [lng, lat]`.
@@ -14,6 +16,7 @@ The backend accepted any finite numeric pair in `normalizeRestaurantAddress`; ra
 4. `RestaurantInfoManagement` loads address fields, captures browser geolocation, validates the form, and sends `UpdateRestaurantInput`.
 5. `useRestaurant` and AR placement read the saved coordinates for geofence checks.
 6. Component and resolver tests cover the browser-to-mutation path and the resolver persistence boundary; HTTPS/device permission behavior remains a physical-browser check.
+7. Pull-request CI computes the changed-test baseline from the merge-base with the current remote base branch.
 
 ## Implemented changes
 
@@ -27,11 +30,14 @@ The backend accepted any finite numeric pair in `normalizeRestaurantAddress`; ra
 - The resolver enforces the same complete-pair, finite-number, and range invariants before assigning data to the model.
 - Lat/Lng inputs use numeric semantics and accessible labels.
 - Browser API mocks are scoped to the affected component test instead of changing the shared test environment.
+- The component test avoids Ant Design async handles and passes with `--detectAsyncLeaks`.
+- Pull-request CI resolves `git merge-base HEAD origin/<base-ref>` before invoking `vitest --changed`, preventing stale-base expansion to unrelated tests.
 
 ## Changed files
 
+- `.github/workflows/ci.yml`: derives the changed-test baseline from the current remote base branch.
 - `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: corrected the UI handler, validation, input semantics, secure-context behavior, error messages, and pending state.
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: covers successful capture/save, address preservation, partial and out-of-range input, unsupported browser, and denied permission.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: covers successful capture/save, address preservation, partial and out-of-range input, unsupported browser, denied permission, and async-leak-safe interactions.
 - `cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js`: rejects invalid coordinate pairs at the shared resolver trust boundary.
 - `cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js`: covers valid, partial, and out-of-range coordinates before persistence.
 
@@ -45,10 +51,12 @@ The backend accepted any finite numeric pair in `normalizeRestaurantAddress`; ra
 - Partial, non-numeric, or out-of-range coordinate input is blocked in the UI.
 - Create/update resolver paths reject incomplete, non-finite, or out-of-range coordinate pairs with `BAD_USER_INPUT` before saving.
 - Valid coordinates continue to pass through unchanged so the existing Mongoose location synchronization remains authoritative.
+- Component changed-tests are selected relative to the current base branch and complete within the PR timeout.
 
 ## Automated validation completed
 
 - Focused frontend Vitest: `RestaurantInfoManagement.test.jsx` — 7/7 tests passed.
+- Focused frontend Vitest with `--detectAsyncLeaks` — 7/7 tests passed with zero reported leaks.
 - Focused backend Vitest: `restaurant-mutation-access.test.js` — 16/16 tests passed.
 - The repository CI remains the merge gate for conflict checks, lint, unit/component tests, build, backend suite, and Playwright smoke tests.
 
