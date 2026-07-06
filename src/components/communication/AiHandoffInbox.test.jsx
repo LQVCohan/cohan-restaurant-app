@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import AiHandoffInbox from "./AiHandoffInbox";
 import { AuthContext } from "@/context/AuthContext";
@@ -19,7 +20,11 @@ const defaultUser = {
 };
 
 const renderWithUser = (ui, user = defaultUser) =>
-  render(<AuthContext.Provider value={{ user }}>{ui}</AuthContext.Provider>);
+  render(
+    <MemoryRouter initialEntries={["/staff/ai-handoff"]}>
+      <AuthContext.Provider value={{ user }}>{ui}</AuthContext.Provider>
+    </MemoryRouter>,
+  );
 
 const baseHook = {
   threads: [],

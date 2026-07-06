@@ -2,6 +2,7 @@ import React, { useContext, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
+import useCommunication from "@/hooks/useCommunication";
 import "./StaffLayout.scss";
 import "./StaffWorkspaceOverrides.scss";
 import {
@@ -9,9 +10,11 @@ import {
   STAFF_KITCHEN_ROLES,
   STAFF_ORDER_ROLES,
 } from "@/utils/frontendRoleAccess";
+import { hasAnyPermission } from "@/utils/frontendPermissionAccess";
 import { getStaffRoleDisplayLabel } from "@/utils/staffRoleOptions";
 
 const IS_TEST_ENV = import.meta.env.MODE === "test";
+const HANDOFF_PERMISSIONS = ["ai.chatbot.handoff", "ai.chatbot.moderate"];
 
 const STAFF_RESTAURANT_BASIC = gql`
   query StaffRestaurantBasic($id: ID!) {
@@ -55,15 +58,41 @@ const getRestaurantLabel = (user, restaurants, restaurantFromQuery) => {
   );
 };
 
-const resolveStaffRestaurantId = (user) => {
-  if (typeof user?.restaurantForStaff === "object") {
-    return user?.restaurantForStaff?.id || user?.restaurantForStaff?._id || null;
-  }
-  return user?.restaurantForStaff || null;
+const getRestaurantId = (value) => {
+  if (!value) return null;
+  if (typeof value === "object") return value.id || value._id || null;
+  return value;
 };
+
+const resolveStaffRestaurantId = (user) =>
+  getRestaurantId(user?.restaurantForStaff) ||
+  getRestaurantId(user?.restaurantId) ||
+  getRestaurantId(user?.refRestaurants?.[0]);
 
 const isActivePath = (location, target) => {
   return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));
+};
+
+const StaffHandoffUnreadCount = ({ restaurantId }) => {
+  const { notifications = [] } = useCommunication({
+    restaurantId,
+    notificationsEnabled: Boolean(restaurantId),
+  });
+  const unreadCount = notifications.filter(
+    (notification) =>
+      String(notification?.type || "").toLowerCase() === "ai_chatbot_handoff" &&
+      !notification?.readAt,
+  ).length;
+
+  if (!unreadCount) return null;
+  return (
+    <span
+      className="staff-shell__nav-count"
+      aria-label={`${unreadCount} yêu cầu hỗ trợ chưa đọc`}
+    >
+      {unreadCount}
+    </span>
+  );
 };
 
 const navGroups = [
@@ -165,6 +194,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   const displayName = getDisplayName(user);
   const roleLabel = getRoleLabel(user, normalizedRole);
   const restaurantLabel = getRestaurantLabel(user, restaurants, restaurantFromQuery);
+  const restaurantId = resolveStaffRestaurantId(user);
   const pageMeta = useMemo(() => getStaffPageMeta(location.pathname), [location.pathname]);
 
   const navItems = useMemo(
@@ -176,7 +206,7 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
       { label: "Hồ sơ", to: "/staff/profile" },
       { label: "Thông báo", to: "/staff/notifications" },
       { label: "Liên lạc", to: "/staff/contacts" },
-      { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff" },
+      { label: "Bàn giao hỗ trợ", to: "/staff/ai-handoff", permissions: HANDOFF_PERMISSIONS },
       { label: "Phiếu lương", to: "/staff/payslips" },
       { label: "Order nội bộ", to: "/staff/orders", roles: STAFF_ORDER_ROLES },
       { label: "Bếp / Quầy bar", to: "/staff/kitchen", roles: STAFF_KITCHEN_ROLES },
@@ -188,10 +218,11 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
   const visibleNavItems = useMemo(
     () =>
       navItems.filter((item) => {
+        if (Array.isArray(item.permissions) && !hasAnyPermission(user, item.permissions)) return false;
         if (!Array.isArray(item.roles)) return true;
         return item.roles.includes(normalizedRole);
       }),
-    [navItems, normalizedRole],
+    [navItems, normalizedRole, user],
   );
 
   return (
@@ -241,6 +272,9 @@ const StaffLayoutShell = ({ children, restaurantFromQuery = null }) => {
                       aria-current={isActivePath(location, item.to) ? "page" : undefined}
                     >
                       {item.label}
+                      {item.to === "/staff/ai-handoff" ? (
+                        <StaffHandoffUnreadCount restaurantId={restaurantId} />
+                      ) : null}
                     </Link>
                   ))}
                 </div>
