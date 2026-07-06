@@ -15,22 +15,19 @@
   "branch": "fix/restaurant-location-production",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1200",
+  "commit": "223b03668008d412cf34a6192ad80eab99adac4a",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1205",
   "subtasks": [],
   "children": [],
   "parent": "table-ar-mobile-demo-readiness",
   "relatedFiles": [
-    ".github/workflows/ci.yml",
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx",
     "src/data/vietnamLocationData.js",
     "src/data/vietnamLocationData.test.js",
     "cohan-restaurant-backend/src/server/createServer.js",
-    "cohan-restaurant-backend/tests/server/reverse-geocode.security.test.js",
-    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
-    "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js"
+    "cohan-restaurant-backend/tests/server/reverse-geocode.security.test.js"
   ],
-  "notes": "Manual testing found a real gap: browser GPS updated lat/lng but left stale street, ward, district, and city values on the restaurant form. The repository already has a hardened reverse-geocode endpoint used by the customer address page, so the manager flow should reuse it rather than add another provider or dependency.",
+  "notes": "Manual testing found a real gap: browser GPS updated lat/lng but left stale street, ward, district, and city values on the restaurant form. The manager flow now reuses the existing reverse-geocode endpoint. Automated CI is pending on PR #1205.",
   "meta": {}
 }
