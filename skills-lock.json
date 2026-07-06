@@ -22,12 +22,26 @@
       "localPath": ".agents/skills/ponytail/SKILL.md",
       "computedHash": "5814d4f63255cf3ce3a82d6fa863b70e3323ed82"
     },
+    "react-ui-performance": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "localPath": ".agents/skills/react-ui-performance/SKILL.md",
+      "computedHash": "7b98f6525fb2f20dde55bc661afc4c48d6fd9dc5"
+    },
     "redesign-existing-projects": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/redesign-skill/SKILL.md",
       "localPath": ".agents/skills/redesign-existing-projects/SKILL.md",
       "computedHash": "47eced3e960a2c961d3cbee11fa1216264f589344b586a5cbd03967cd6b9c54b"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "localPath": ".agents/skills/web-design-guidelines/SKILL.md",
+      "computedHash": "5635da3778d49e1ea6555c2ee1f8ef3c6ec64f4b"
     },
     "wcag-ui-audit": {
       "source": "accesslint/claude-marketplace",
