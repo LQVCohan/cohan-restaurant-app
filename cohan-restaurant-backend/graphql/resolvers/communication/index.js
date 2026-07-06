@@ -30,6 +30,7 @@ const roleSlug = (user) =>
   String(user?.roleName || user?.role?.slug || user?.role?.name || user?.userType || "").toLowerCase();
 
 const isAiHandoffThread = (thread) =>
+  String(thread?.kind || "").toLowerCase() === "ai_chatbot_handoff" ||
   String(thread?.subject || "").trim().toLowerCase().startsWith("ai handoff") ||
   String(thread?.messages?.[0]?.content || "").includes("[AI HANDOFF]");
 
