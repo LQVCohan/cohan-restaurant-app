@@ -174,7 +174,9 @@ describe("restaurant mutation access hardening", () => {
     const { RestaurantMutation } = await import("../../graphql/resolvers/restaurant/mutation.js");
     await RestaurantMutation.deleteRestaurant(null, { id: "valid-r1" }, ctxFor("admin", "admin-1"));
 
-    expect(modelMocks.Restaurant.deleteOne).toHaveBeenCalledWith({ _mockObjectId: "valid-r1" });
+    expect(modelMocks.Restaurant.deleteOne).toHaveBeenCalledWith({
+      _id: { _mockObjectId: "valid-r1" },
+    });
   });
 
   it("createRestaurant allows assigning one manager to many restaurants", async () => {
