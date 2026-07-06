@@ -21,11 +21,9 @@
   "children": [],
   "parent": "staff-performance-two-week-roster",
   "relatedFiles": [
-    "cohan-restaurant-backend/src/services/staffPerformance/staffPerformance.service.js",
-    "cohan-restaurant-backend/tests/services/staff-performance-core-formula.service.test.js",
     "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
     "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js"
   ],
-  "notes": "As of 07/07/2026 Asia/Ho_Chi_Minh, attendance data stops at 06/07/2026. Future shifts remain scheduled, without timesheets, attendance approvals, correction reviews, or overtime records.",
+  "notes": "As of 07/07/2026 Asia/Ho_Chi_Minh, attendance data stops at 06/07/2026. Future shifts remain scheduled without timesheets, correction reviews, off-schedule attendance, or overtime. The seed temporarily excludes future shifts only while recalculating the demo snapshot, then restores them to scheduled.",
   "meta": {}
 }
