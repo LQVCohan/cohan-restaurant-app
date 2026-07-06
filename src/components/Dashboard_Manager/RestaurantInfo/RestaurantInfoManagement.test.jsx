@@ -413,16 +413,16 @@ describe("RestaurantInfoManagement", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          ok: true,
+          display_name: "12 Nguyễn Ái Quốc, Long Bình, Biên Hòa, Đồng Nai",
           address: {
-            full: "12 Nguyễn Ái Quốc, Long Bình, Biên Hòa, Đồng Nai",
-            street: "12 Nguyễn Ái Quốc",
-            wardName: "Phường Long Bình",
-            districtName: "TP. Biên Hòa",
-            cityName: "Biên Hòa",
-            provinceName: "Đồng Nai",
-            countryName: "Việt Nam",
-            postalCode: "810000",
+            house_number: "12",
+            road: "Nguyễn Ái Quốc",
+            suburb: "Phường Long Bình",
+            city_district: "TP. Biên Hòa",
+            city: "Biên Hòa",
+            state: "Đồng Nai",
+            country: "Việt Nam",
+            postcode: "810000",
           },
         }),
       }),
@@ -468,8 +468,12 @@ describe("RestaurantInfoManagement", () => {
       expect(screen.getByLabelText("Mã bưu chính")).toHaveValue("810000");
     });
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/reverse-geocode?lat=10.895109&lng=106.833390"),
-      expect.objectContaining({ method: "GET", credentials: "include" }),
+      expect.stringContaining(
+        "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1",
+      ),
+      expect.objectContaining({
+        headers: expect.objectContaining({ "Accept-Language": "vi" }),
+      }),
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));

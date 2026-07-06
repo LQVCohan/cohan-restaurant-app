@@ -39,7 +39,7 @@ import {
   FileTextOutlined,
 } from "@ant-design/icons";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
-import { toApiUrl } from "../../../lib/apiBaseUrl";
+import { reverseGeocodeCoordinates } from "../../../lib/reverseGeocode";
 import "./RestaurantInfoManagement.scss";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 
@@ -809,21 +809,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         setIsDirty(true);
 
         try {
-          const query = new URLSearchParams({ lat, lng });
-          const response = await fetch(
-            toApiUrl(`/api/reverse-geocode?${query.toString()}`),
-            {
-              method: "GET",
-              credentials: "include",
-              headers: { Accept: "application/json" },
-            },
-          );
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || !result?.ok) {
-            throw new Error(result?.message || "reverse_geocode_failed");
-          }
-
-          const address = result.address || {};
+          const address = await reverseGeocodeCoordinates({ lat, lng });
           setRestaurantForm((prev) => ({
             ...prev,
             lat,

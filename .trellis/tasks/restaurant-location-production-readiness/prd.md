@@ -1,71 +1,57 @@
-# Restaurant location production readiness
+# Shared browser reverse geocoding
 
-## Previous behavior
+## Current behavior and root cause
 
-The restaurant profile page could capture browser latitude and longitude, but the address form kept its old street, ward, district, and city values. This produced an inconsistent form: new GPS coordinates beside a stale address.
+Browser geolocation succeeds and returns valid latitude/longitude values. The manager restaurant profile previously sent those coordinates to the backend `/api/reverse-geocode` proxy. Manual Network inspection showed that the backend could not reach Nominatim, so the form kept a stale street, district, and city beside the new coordinates.
 
-The repository already had a rate-limited backend reverse-geocode endpoint used by the customer address page, so adding a second provider or client-side integration was unnecessary.
+The customer Home page already uses browser-side Nominatim reverse geocoding successfully. The root cause is therefore the inconsistent reverse-geocoding path, not the GPS API, GraphQL mutation, or restaurant address schema.
 
 ## End-to-end flow
 
-1. Browser geolocation returns latitude and longitude.
-2. `RestaurantInfoManagement` validates the coordinates and stores them in the form.
-3. The frontend calls the existing `/api/reverse-geocode` endpoint through the shared API URL helper.
-4. The backend calls Nominatim and normalizes house number, street, ward, district, province/city, country, and postal code.
-5. The manager form replaces stale address fields with the resolved address while preserving the manually entered `line2` field.
-6. `UpdateRestaurantInput.address` persists the address and coordinates.
-7. Existing model synchronization continues to build GeoJSON `location.coordinates = [lng, lat]` for AR and geofence consumers.
+1. Browser `navigator.geolocation` returns latitude and longitude.
+2. Shared `reverseGeocodeCoordinates` calls Nominatim directly from the browser, matching the working Home flow.
+3. If direct access fails, the existing backend `/api/reverse-geocode` endpoint is used as a fallback.
+4. The normalized address updates the manager restaurant form or customer address form.
+5. `UpdateRestaurantInput.address` persists the restaurant address and coordinates.
+6. Existing model synchronization continues to build GeoJSON coordinates for AR and geofence consumers.
 
-## Implemented changes
+## Implementation
 
-- Current location now updates both coordinates and visible address fields.
-- House number and road are combined into the street field.
-- Province-level data is preferred over city-level data when both are returned by the provider.
-- Street, ward, district, province/city, country, and postal code inputs have accessible labels.
-- The location button stays pending until reverse geocoding completes.
-- When reverse geocoding fails, the captured coordinates remain and the previous manual address is preserved with a warning.
-- No new map, geocoder, or frontend dependency was introduced.
+- Add `src/lib/reverseGeocode.js` as the single shared reverse-geocoding boundary.
+- Normalize house number, road, ward, district, province/city, country, and postal code once.
+- Reuse the helper in Home, restaurant setup, and customer address management.
+- Preserve the previous manual address when both direct and backend lookup fail.
+- Keep the existing backend endpoint as a fallback; do not add a new provider or dependency.
 
-## Changed files
+## Files changed
 
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: calls the shared reverse-geocode endpoint and fills the address form.
-- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: covers successful address replacement and provider failure fallback.
-- `src/data/vietnamLocationData.js`: prefers province-level provider data when mapping Vietnamese locations.
-- `src/data/vietnamLocationData.test.js`: covers a city-within-province response such as Biên Hòa, Đồng Nai.
-- `cohan-restaurant-backend/src/server/createServer.js`: returns a normalized address hierarchy and combined house number/street.
-- `cohan-restaurant-backend/tests/server/reverse-geocode.security.test.js`: verifies normalized output and hidden upstream failures.
+- `src/lib/reverseGeocode.js`: browser-first Nominatim lookup with backend fallback.
+- `src/lib/reverseGeocode.test.js`: direct-success and backend-fallback coverage.
+- `src/components/Customer/Homepage_Client/components/HeroSection.jsx`: reuse the shared helper.
+- `src/components/Customer/AddressPage/AddressPageV2.jsx`: reuse the shared helper.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx`: reuse the shared helper and populate the form.
+- `src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx`: verify direct Nominatim request and saved address payload.
 
 ## Acceptance criteria
 
-- Clicking **Lấy vị trí hiện tại** updates Lat and Lng with six decimal places.
-- A successful reverse-geocode response replaces stale street, ward, district, city/province, country, and postal code fields.
-- `line2` is not overwritten.
-- Saving sends numeric coordinates and the resolved address in the restaurant mutation.
-- A reverse-geocode outage does not discard the captured coordinates or the existing manual address.
-- Invalid or partial coordinate pairs remain blocked at frontend and backend trust boundaries.
+- Restaurant setup no longer depends exclusively on backend access to Nominatim.
+- A successful browser lookup updates Lat/Lng and visible address fields.
+- Home current-location behavior remains unchanged from the user perspective.
+- Customer address current-location behavior uses the same shared path.
+- Backend fallback remains available when direct browser access is blocked.
+- If both paths fail, captured coordinates remain and existing manual address values are not erased.
+- No new package or external provider is introduced.
 
-## Automated validation completed
+## Validation plan
 
-GitHub Actions run `28818809602` passed:
-
-- conflict-marker check;
-- frontend lint and unit tests;
-- menu RBAC tests;
-- changed component tests with async-leak detection;
-- production frontend build;
-- Playwright browser installation and smoke tests;
-- backend lint, full tests, menu RBAC tests, and build.
-
-## Manual validation still required
-
-- Open the manager restaurant profile from an HTTPS origin.
-- Grant location permission and confirm the visible address matches the device position closely enough for the available map data.
-- Review the suggested address before saving because reverse geocoding can return the nearest mapped road rather than an exact storefront.
-- Save, reload, and confirm address and coordinates persist.
+- Targeted unit test for `reverseGeocodeCoordinates`.
+- Targeted component test for `RestaurantInfoManagement`.
+- Existing frontend unit/component suite, production build, and Playwright smoke tests through CI.
+- Existing backend suite through CI because the fallback endpoint remains part of the path.
+- Manual browser test at the reported coordinates with Network inspection.
 
 ## Out of scope
 
-- Automatically saving immediately after location capture.
-- Adding Google Maps, Mapbox, or another geocoding provider.
-- Guaranteeing exact storefront or apartment-level accuracy when the upstream map data does not contain it.
-- Changing AR geofence radius or calibration logic.
+- Guaranteeing exact storefront-level accuracy when OpenStreetMap lacks detailed address data.
+- Automatically saving after location capture.
+- Changing GraphQL address fields, restaurant schema, AR radius, or geofence calculations.
