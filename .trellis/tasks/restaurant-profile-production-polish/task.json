@@ -15,8 +15,8 @@
   "branch": "style/restaurant-profile-production-polish",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "5ce3375b32d382ef0f5c4ae15d8185fb33746963",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1209",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -26,7 +26,7 @@
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.scss",
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.css"
   ],
-  "notes": "The page structure and behavior are already suitable. The root visual issue is the page-specific SCSS and polish stylesheet hardcoding cream/brown values instead of consuming the shared manager sage variables. Copy also exposes internal English terms and raw time-slot codes.",
+  "notes": "The restaurant profile now consumes the shared manager sage palette, removes the duplicate legacy theme block, localizes internal labels and time-slot display values, and keeps existing GraphQL/save/preview behavior unchanged. PR CI is running; authenticated desktop and mobile screenshot review remains manual.",
   "meta": {
     "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
   }
