@@ -1,0 +1,35 @@
+{
+  "id": "brand-management-production-upgrade",
+  "name": "brand-management-production-upgrade",
+  "title": "Upgrade restaurant chain management for production",
+  "description": "Reshape the manager restaurant-chain screen into a production-ready dashboard using the shared sage visual system, clearer Vietnamese wording, resilient mutation feedback, and responsive branch/member management.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-brand-management-ui-ux",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "style/brand-management-production-upgrade",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.css",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx",
+    "src/hooks/useBrandManagement.js",
+    "src/lib/userRoleDisplay.js",
+    "src/components/Dashboard_Manager/Sidebar.test.jsx"
+  ],
+  "notes": "Backend Brand and BrandMembership schema/resolvers already support the required operations and enforce brand/restaurant scope. The root problems are the basic presentation layer, mixed internal wording, missing action feedback and validation, and duplicate refetches after mutations.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
+  }
+}
