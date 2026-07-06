@@ -9,9 +9,11 @@ const scripts = [
   "scripts/seedStaffPerformanceDemoUtc.js",
   "scripts/seedStaffPerformanceWeekRoster.js",
   "scripts/seedStaffPerformanceWeekRosterUtc.js",
+  "scripts/seedStaffProfileDemoData.js",
   "scripts/verifyStaffPerformanceDemoData.js",
   "scripts/verifyStaffPerformanceDemoDataUtc.js",
   "scripts/verifyStaffPerformanceWeekRoster.js",
+  "scripts/verifyStaffProfileDemoData.js",
 ];
 
 const utcWrappers = [
