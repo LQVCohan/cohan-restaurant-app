@@ -138,6 +138,9 @@ beforeEach(() => {
 
   useMutation.mockImplementation((operation) => {
     const source = operationSource(operation);
+    if (source.includes("mutation UpdateBrandMember")) {
+      return [updateMemberMock, { loading: false }];
+    }
     if (source.includes("mutation UpdateBrand")) {
       return [updateBrandMock, { loading: false }];
     }
@@ -147,7 +150,7 @@ beforeEach(() => {
     if (source.includes("mutation AddBrandMember")) {
       return [addMemberMock, { loading: false }];
     }
-    return [updateMemberMock, { loading: false }];
+    throw new Error(`Unexpected mutation in BrandManagement test: ${source}`);
   });
 });
 
