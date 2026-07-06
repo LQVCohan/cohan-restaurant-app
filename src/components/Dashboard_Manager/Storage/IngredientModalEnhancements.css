@@ -1,1 +1,87 @@
-/* Ingredient modal layout refinements. */
+/* Final interaction and layout pass for the ingredient modal. */
+
+.ingredient-modal-shell .status-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ingredient-modal-shell .status-fieldset > legend {
+  margin: 0 0 8px;
+  padding: 0;
+  color: #203229;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ingredient-modal-shell .form-group--full {
+  grid-column: 1 / -1;
+}
+
+.ingredient-modal-shell .segmented-control .segment {
+  min-height: 38px;
+  appearance: none;
+  border: 1px solid transparent !important;
+  cursor: pointer;
+}
+
+.ingredient-modal-shell .segmented-control .segment:hover:not(:disabled):not(.active) {
+  color: #33473d !important;
+  background: #edf2ef !important;
+}
+
+.ingredient-modal-shell .segmented-control .segment.active {
+  color: #3d574b !important;
+  border-color: rgba(79, 108, 94, 0.28) !important;
+  background: #dfe9e3 !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.68),
+    0 5px 14px rgba(34, 57, 46, 0.1) !important;
+}
+
+.ingredient-modal-shell .segmented-control .segment.error.active {
+  color: #9b3f3f !important;
+  border-color: rgba(181, 71, 71, 0.2) !important;
+  background: #f9e9e7 !important;
+}
+
+.ingredient-modal-shell .segmented-control .segment:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.ingredient-modal-shell .form-section.borderless {
+  margin-bottom: 14px !important;
+}
+
+.ingredient-modal-shell .modal-body {
+  scroll-padding-bottom: 96px;
+}
+
+.ingredient-modal-shell .form-actions-premium .btn-save {
+  color: #ffffff !important;
+  border-color: #5f7f70 !important;
+  background: #5f7f70 !important;
+  box-shadow: 0 10px 22px rgba(61, 87, 75, 0.18) !important;
+}
+
+.ingredient-modal-shell .form-actions-premium .btn-save:hover:not(:disabled) {
+  border-color: #4f6c5e !important;
+  background: #4f6c5e !important;
+  box-shadow: 0 14px 28px rgba(61, 87, 75, 0.24) !important;
+}
+
+.ingredient-modal-shell .form-actions-premium .btn-save:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+@media (max-width: 720px) {
+  .ingredient-modal-shell .form-group--full {
+    grid-column: auto;
+  }
+
+  .ingredient-modal-shell .status-fieldset > legend {
+    margin-bottom: 7px;
+  }
+}
