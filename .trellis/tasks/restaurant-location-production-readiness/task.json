@@ -1,0 +1,31 @@
+{
+  "id": "restaurant-location-production-readiness",
+  "name": "restaurant-location-production-readiness",
+  "title": "Harden restaurant current-location capture for production",
+  "description": "Persist browser geolocation into restaurant latitude/longitude, validate the coordinate pair at frontend and backend boundaries, and cover the flow with focused tests.",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "restaurant-profile-location-and-ar-geofence",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-06",
+  "completedAt": null,
+  "branch": "fix/table-ar-mobile-demo-readiness",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1197",
+  "subtasks": [],
+  "children": [],
+  "parent": "table-ar-mobile-demo-readiness",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js"
+  ],
+  "notes": "AddressInput and the Restaurant model already support lat/lng and synchronize valid values to GeoJSON. The current UI handler reads browser coordinates but writes only a display string into line1, so the mutation receives null coordinates.",
+  "meta": {}
+}
