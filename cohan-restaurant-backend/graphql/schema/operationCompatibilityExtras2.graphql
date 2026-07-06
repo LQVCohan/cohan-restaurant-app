@@ -209,3 +209,77 @@ extend type PerformanceIncidentAppeal {
 extend type SchedulePublication {
   lastChangedAt: DateTime
 }
+
+# Staff performance operations are implemented against richer service inputs than
+# the legacy compatibility SDL originally exposed. Keep the runtime contract aligned
+# with the actual manager/staff operations until these inputs move to domain schemas.
+extend input UpsertStaffPerformanceReviewInput {
+  managerRatingScore: Float
+  attitudeScore: Float
+  teamworkScore: Float
+  skillScore: Float
+}
+
+extend input StaffPerformanceSummaryInput {
+  month: Int
+  year: Int
+  fromDate: DateTime
+  toDate: DateTime
+}
+
+extend input StaffPerformanceScoreAdjustmentFilterInput {
+  incidentId: ID
+  eventType: String
+  appliedBy: ID
+  fromDate: DateTime
+  toDate: DateTime
+  limit: Int
+  offset: Int
+}
+
+extend input StaffPerformanceScoreTimelineInput {
+  incidentId: ID
+  eventType: String
+  appliedBy: ID
+  fromDate: DateTime
+  toDate: DateTime
+  limit: Int
+  offset: Int
+}
+
+extend input PerformanceIncidentFilterInput {
+  sourceType: String
+  eventType: String
+  severity: String
+  responsibilityStatus: String
+  scoreImpactStatus: String
+  fromDate: DateTime
+  toDate: DateTime
+  onlyPendingReview: Boolean
+  onlyEligible: Boolean
+  onlyWaived: Boolean
+  limit: Int
+  offset: Int
+}
+
+extend input PerformanceIncidentAppealFilterInput {
+  incidentId: ID
+  fromDate: DateTime
+  toDate: DateTime
+  limit: Int
+  offset: Int
+}
+
+extend input CreatePerformanceIncidentAppealInput {
+  evidenceNote: String
+  evidenceUrls: [String!]
+}
+
+extend input ReviewPerformanceIncidentAppealInput {
+  reviewNote: String
+  decisionReason: String
+}
+
+extend input ReverseScoreForAcceptedAppealInput {
+  reversalDelta: Float
+}

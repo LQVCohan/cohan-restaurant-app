@@ -2,6 +2,7 @@ import {
   PerformanceIncident,
   Staff,
   StaffPerformanceScoreAdjustment,
+  StaffPerformanceScoreReversal,
   StaffPerformanceSnapshot,
 } from "../../../models/index.js";
 import {
@@ -88,32 +89,51 @@ function mapSummary({
   periodStart,
   periodEnd,
   adjustments,
+  reversals,
   incidents,
 }) {
   const appliedAdjustments = adjustments.filter(
     (row) => Number(row.scoreDelta || 0) !== 0,
   );
-  const totalScoreDelta = appliedAdjustments.reduce(
-    (acc, row) => acc + Number(row.scoreDelta || 0),
-    0,
+  const appliedReversals = reversals.filter(
+    (row) => Number(row.reversalDelta || 0) !== 0,
   );
+  const totalScoreDelta =
+    appliedAdjustments.reduce(
+      (acc, row) => acc + Number(row.scoreDelta || 0),
+      0,
+    ) +
+    appliedReversals.reduce(
+      (acc, row) => acc + Number(row.reversalDelta || 0),
+      0,
+    );
   const latestAppliedAt =
-    adjustments
-      .map((row) => row.appliedAt)
+    [
+      ...adjustments.map((row) => row.appliedAt),
+      ...reversals.map((row) => row.reversedAt),
+    ]
       .filter(Boolean)
       .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ||
     null;
 
   const scoreBreakdownByEventType = Object.values(
-    appliedAdjustments.reduce((acc, row) => {
-      const eventType = String(
-        row.reason || row.metadata?.incidentEventType || "unknown",
-      );
-      if (!acc[eventType]) {
-        acc[eventType] = { eventType, totalDelta: 0, count: 0 };
+    [
+      ...appliedAdjustments.map((row) => ({
+        eventType: String(
+          row.reason || row.metadata?.incidentEventType || "unknown",
+        ),
+        delta: Number(row.scoreDelta || 0),
+      })),
+      ...appliedReversals.map((row) => ({
+        eventType: "APPEAL_SCORE_REVERSED",
+        delta: Number(row.reversalDelta || 0),
+      })),
+    ].reduce((acc, row) => {
+      if (!acc[row.eventType]) {
+        acc[row.eventType] = { eventType: row.eventType, totalDelta: 0, count: 0 };
       }
-      acc[eventType].totalDelta += Number(row.scoreDelta || 0);
-      acc[eventType].count += 1;
+      acc[row.eventType].totalDelta += row.delta;
+      acc[row.eventType].count += 1;
       return acc;
     }, {}),
   );
@@ -147,10 +167,10 @@ function mapSummary({
     restaurantId: String(restaurantId),
     periodStart,
     periodEnd,
-    finalPerformanceScore: Number(snapshot?.finalPerformanceScore ?? 100),
+    finalPerformanceScore: Number(snapshot?.finalPerformanceScore ?? 0),
     baseScore: 100,
     totalScoreDelta,
-    appliedAdjustmentCount: adjustments.length,
+    appliedAdjustmentCount: adjustments.length + reversals.length,
     pendingReviewIncidentCount: incidents.filter(
       (row) =>
         row.responsibilityStatus === "pending_review" ||
@@ -182,7 +202,7 @@ export async function getStaffPerformanceSummary(input, actor) {
     ...(periodStart ? { periodEnd: { $gte: periodStart } } : {}),
     ...(periodEnd ? { periodStart: { $lte: periodEnd } } : {}),
   };
-  const [snapshot, adjustments, incidents] = await Promise.all([
+  const [snapshot, adjustments, reversals, incidents] = await Promise.all([
     StaffPerformanceSnapshot.findOne({
       restaurantId,
       employeeId,
@@ -193,6 +213,11 @@ export async function getStaffPerformanceSummary(input, actor) {
       employeeId,
       ...buildRangeFilter("appliedAt", periodStart, periodEnd),
     }).sort({ appliedAt: -1, createdAt: -1 }),
+    StaffPerformanceScoreReversal.find({
+      restaurantId,
+      employeeId,
+      ...buildRangeFilter("reversedAt", periodStart, periodEnd),
+    }).sort({ reversedAt: -1, createdAt: -1 }),
     PerformanceIncident.find({
       restaurantId,
       employeeId,
@@ -206,6 +231,7 @@ export async function getStaffPerformanceSummary(input, actor) {
     periodStart,
     periodEnd,
     adjustments,
+    reversals,
     incidents,
   });
 }
@@ -312,20 +338,58 @@ export async function listStaffPerformanceScoreAdjustments(input, actor) {
 
 export async function getStaffPerformanceScoreTimeline(input, actor) {
   await assertReadPermission(actor, input.restaurantId, input.employeeId);
-  const adjustments = await listStaffPerformanceScoreAdjustments(input, actor);
-  return adjustments
-    .slice()
-    .sort(
-      (left, right) =>
-        new Date(left.appliedAt).getTime() -
-        new Date(right.appliedAt).getTime(),
-    )
-    .map((row) => ({
+  const fromDate = input.fromDate ? new Date(input.fromDate) : null;
+  const toDate = input.toDate ? new Date(input.toDate) : null;
+  const adjustmentQuery = {
+    restaurantId: input.restaurantId,
+    ...(input.employeeId ? { employeeId: input.employeeId } : {}),
+    ...(input.incidentId ? { incidentId: input.incidentId } : {}),
+    ...(input.eventType ? { reason: input.eventType } : {}),
+    ...(input.appliedBy ? { appliedBy: input.appliedBy } : {}),
+    ...buildRangeFilter("appliedAt", fromDate, toDate),
+  };
+  const reversalQuery = {
+    restaurantId: input.restaurantId,
+    ...(input.employeeId ? { employeeId: input.employeeId } : {}),
+    ...(input.incidentId ? { incidentId: input.incidentId } : {}),
+    ...(input.eventType
+      ? { "metadata.incidentEventType": input.eventType }
+      : {}),
+    ...(input.appliedBy ? { reversedBy: input.appliedBy } : {}),
+    ...buildRangeFilter("reversedAt", fromDate, toDate),
+  };
+  const [adjustments, reversals] = await Promise.all([
+    StaffPerformanceScoreAdjustment.find(adjustmentQuery).sort({
+      appliedAt: 1,
+      createdAt: 1,
+    }),
+    StaffPerformanceScoreReversal.find(reversalQuery).sort({
+      reversedAt: 1,
+      createdAt: 1,
+    }),
+  ]);
+  const timeline = [
+    ...adjustments.map((row) => ({
       at: row.appliedAt,
       score: Number(row.newScore || 0),
       scoreDelta: Number(row.scoreDelta || 0),
       incidentId: row.incidentId,
       eventType: row.reason || null,
       note: row.note || "",
-    }));
+    })),
+    ...reversals.map((row) => ({
+      at: row.reversedAt,
+      score: Number(row.newScore || 0),
+      scoreDelta: Number(row.reversalDelta || 0),
+      incidentId: row.incidentId,
+      eventType: "APPEAL_SCORE_REVERSED",
+      note: row.note || "",
+    })),
+  ].sort(
+    (left, right) =>
+      new Date(left.at).getTime() - new Date(right.at).getTime(),
+  );
+  const offset = Math.max(Number(input.offset || 0), 0);
+  const limit = Math.min(Math.max(Number(input.limit || 50), 1), 200);
+  return timeline.slice(offset, offset + limit);
 }

@@ -76,12 +76,18 @@ const StaffPerformanceReviewSchema = new Schema(
   { timestamps: true },
 );
 
-StaffPerformanceReviewSchema.index({
-  employeeId: 1,
-  restaurantId: 1,
-  periodStart: 1,
-  periodEnd: 1,
-});
+StaffPerformanceReviewSchema.index(
+  {
+    employeeId: 1,
+    restaurantId: 1,
+    periodStart: 1,
+    periodEnd: 1,
+  },
+  {
+    unique: true,
+    name: "uniq_staff_performance_review_period",
+  },
+);
 
 export default mongoose.model(
   "StaffPerformanceReview",

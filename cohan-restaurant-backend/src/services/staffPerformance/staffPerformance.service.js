@@ -198,7 +198,7 @@ function calculateAssistantChefQualityPenalty(kitchenMetrics = {}) {
     safeRate(kitchenMetrics?.kitchenRelatedCancelledItems, denom) * 2;
   return Math.min(18, roundOneDecimal(penalty));
 }
-function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, cashierMetrics, customerRatingScore, staffRateCount }) {
+export function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerReview, kitchenMetrics, cashierMetrics, customerRatingScore, staffRateCount }) {
   const roleGroup = resolveQualityRoleGroup(staff, kitchenMetrics);
   const kitchenPenalty =
     roleGroup === "head_chef"
@@ -256,7 +256,7 @@ function buildQualityEvidenceForEmployee({ staff, baseSkillScore, hasManagerRevi
       : "Không có lỗi nghiệp vụ thu ngân có thể quy trách nhiệm trong kỳ.",
     other: "Quality dựa trên điểm kỹ năng/chất lượng chuyên môn do quản lý nhập.",
   };
-  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: Number(staffRateCount || 0) >= 3, note: notes[roleGroup] || notes.other };
+  return { score, baseSkillScore, finalQualityScore: score, roleGroup, kitchenPenalty, customerPenalty, cashierOperationalPenalty, cashierMetrics, totalPenalty, hasManagerReview, hasKitchenEvidence, hasCustomerEvidence, hasCashierOperationalEvidence, evidenceSource, affectsScore: totalPenalty > 0, note: notes[roleGroup] || notes.other };
 }
 
 function getActorId(ctx) {
@@ -340,6 +340,30 @@ function sumScheduledMinutes(shifts, periodStart, periodEnd) {
         getOverlapMinutes(shift?.startTime, shift?.endTime, periodStart, periodEnd),
       0,
     ),
+  );
+}
+
+export function hasPerformanceEvidence({
+  scheduledMinutes = 0,
+  actualWorkedMinutes = 0,
+  recordCount = 0,
+  orderCount = 0,
+  hasManagerReview = false,
+  correctionsCount = 0,
+  staffRateCount = 0,
+  kitchenMetrics = {},
+  cashierMetrics = {},
+} = {}) {
+  return (
+    Number(scheduledMinutes || 0) > 0 ||
+    Number(actualWorkedMinutes || 0) > 0 ||
+    Number(recordCount || 0) > 0 ||
+    Number(orderCount || 0) > 0 ||
+    Boolean(hasManagerReview) ||
+    Number(correctionsCount || 0) > 0 ||
+    Number(staffRateCount || 0) > 0 ||
+    Number(kitchenMetrics?.totalItems || 0) > 0 ||
+    Number(cashierMetrics?.totalHandledPayments || 0) > 0
   );
 }
 
@@ -657,7 +681,7 @@ function buildKitchenMetricsSummary(workItems = [], employeeId) {
   }
 
   if (summary.totalItems > 0) {
-    summary.note = "Dữ liệu bếp/bar chỉ dùng tham khảo, chưa ảnh hưởng điểm hiệu suất.";
+    summary.note = "Dữ liệu bếp/bar là nguồn bằng chứng; việc có làm thay đổi điểm hay không được quyết định trong qualityEvidence theo vai trò và lỗi có thể quy trách nhiệm.";
   }
 
   return summary;
@@ -893,18 +917,27 @@ async function calculateSnapshotForEmployee({
     staffRateCount,
   });
   const qualityScore = qualityEvidence.score;
+  if (Number(kitchenMetrics.totalItems || 0) > 0) {
+    kitchenMetrics.note = qualityEvidence.kitchenPenalty > 0
+      ? `Dữ liệu bếp/bar được dùng làm bằng chứng để giảm ${qualityEvidence.kitchenPenalty} điểm trong thành phần Chất lượng theo vai trò; đây không phải điều chỉnh điểm độc lập.`
+      : "Dữ liệu bếp/bar đã được đối chiếu nhưng không phát sinh điều chỉnh điểm Chất lượng trong kỳ.";
+  }
   const managerBaseScore = review ? clampScore(review.managerRatingScore, 75) : 75;
 
   const compliancePenalty = correctionsCount * 7;
   const complianceScore = clampScore(100 - compliancePenalty, 75);
 
-  const hasPerformanceActivity =
-    scheduledMinutes > 0 ||
-    actualWorkedMinutes > 0 ||
-    recordCount > 0 ||
-    orderCount > 0 ||
-    Boolean(review) ||
-    correctionsCount > 0;
+  const hasPerformanceActivity = hasPerformanceEvidence({
+    scheduledMinutes,
+    actualWorkedMinutes,
+    recordCount,
+    orderCount,
+    hasManagerReview: Boolean(review),
+    correctionsCount,
+    staffRateCount,
+    kitchenMetrics,
+    cashierMetrics,
+  });
   const insufficientData = !hasPerformanceActivity;
 
   const productivityScore = insufficientData
@@ -1018,8 +1051,8 @@ async function calculateSnapshotForEmployee({
             hasCustomerEvidence: qualityEvidence.hasCustomerEvidence,
             hasCashierOperationalEvidence: qualityEvidence.hasCashierOperationalEvidence,
             evidenceSource: qualityEvidence.evidenceSource,
-            affectsScore: staffRateCount >= 3,
-            note: `${qualityEvidence.note} Review khách hàng là dữ liệu tham khảo; dưới 3 review chỉ lưu evidence, không tự động kỷ luật hay phạt mạnh.`,
+            affectsScore: qualityEvidence.affectsScore,
+            note: `${qualityEvidence.note} Dữ liệu khách hàng, bếp và thu ngân chỉ điều chỉnh thành phần Chất lượng khi có penalty theo vai trò; không tự động kỷ luật.`,
           },
           scheduledMinutes,
           actualWorkedMinutes,

@@ -4,6 +4,7 @@ import staffMutation from "./mutation.js";
 import staffPhotoActions from "./staffAvatar.mutation.js";
 import payrollFinalizeReadinessMutation from "./payrollFinalizeReadiness.mutation.js";
 import payrollProtectedAttendanceMutation from "./payrollProtectedAttendance.mutation.js";
+import { requireAuth, requireRestaurantAccess } from "../../guards.js";
 
 const toFiniteNumber = (value, fallback = 0) => {
   const numeric = Number(value);
@@ -76,6 +77,39 @@ const staffPayrollOverviewPage = async (parent, args, ctx, info) => {
   return paginatePayrollOverview(overview, args);
 };
 
+const staffPerformanceSnapshots = async (parent, args = {}, ctx, info) => {
+  requireAuth(ctx);
+  const inputFilter = args.filter || {};
+  const restaurantId = inputFilter.restaurantId || args.restaurantId || null;
+  const employeeId = inputFilter.employeeId || null;
+  const actorId = ctx?.user?.id || ctx?.user?._id || null;
+
+  if (restaurantId) {
+    await requireRestaurantAccess(ctx, restaurantId);
+  } else if (!employeeId || !actorId || String(employeeId) !== String(actorId)) {
+    throw new Error("restaurantId is required for staff performance list access");
+  }
+
+  return staffQuery.staffPerformanceSnapshots(
+    parent,
+    {
+      ...args,
+      filter: {
+        ...inputFilter,
+        ...(restaurantId ? { restaurantId } : {}),
+        ...(args.periodStart && !inputFilter.periodStart
+          ? { periodStart: args.periodStart }
+          : {}),
+        ...(args.periodEnd && !inputFilter.periodEnd
+          ? { periodEnd: args.periodEnd }
+          : {}),
+      },
+    },
+    ctx,
+    info,
+  );
+};
+
 const operationKey = ["Mut", "ation"].join("");
 
 const resolvers = {
@@ -83,6 +117,7 @@ const resolvers = {
     ...staffQuery,
     ...payrollReadinessQuery,
     staffPayrollOverviewPage,
+    staffPerformanceSnapshots,
   },
   [operationKey]: {
     ...staffMutation,
