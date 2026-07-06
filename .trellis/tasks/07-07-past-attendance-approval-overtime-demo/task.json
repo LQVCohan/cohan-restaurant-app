@@ -1,0 +1,29 @@
+{
+  "id": "past-attendance-approval-overtime-demo",
+  "name": "past-attendance-approval-overtime-demo",
+  "title": "Seed past attendance approvals and overtime",
+  "description": "Keep the two-week schedule, but create attendance, review queues, and overtime only for completed Vietnam calendar days.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "staff-attendance-demo",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "feat/past-attendance-approval-overtime-demo",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1206",
+  "subtasks": [],
+  "children": [],
+  "parent": "staff-performance-two-week-roster",
+  "relatedFiles": [
+    "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
+    "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js"
+  ],
+  "notes": "PR #1206 stops attendance at 06/07/2026 for the default 07/07/2026 as-of date. Future shifts remain scheduled without timesheets, correction reviews, off-schedule attendance, or overtime. The seed temporarily excludes future shifts only while recalculating the demo snapshot, then restores them to scheduled. Local Mongo seed and verifier remain required.",
+  "meta": {}
+}

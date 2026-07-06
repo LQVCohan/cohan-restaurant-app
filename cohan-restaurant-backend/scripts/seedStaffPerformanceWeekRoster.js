@@ -2,6 +2,7 @@ import "dotenv/config.js";
 import mongoose from "mongoose";
 import {
   AttendanceCorrectionRequest,
+  OvertimeRequest,
   SchedulePublication,
   Shift,
   Staff,
@@ -15,6 +16,7 @@ import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
 const RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
 const MANAGER_ID = process.env.DEMO_MANAGER_ID?.trim() || "69f7162dab80d0aaef80d5c8";
+const DEMO_AS_OF_DATE = process.env.DEMO_AS_OF_DATE?.trim() || "2026-07-07";
 const BASE_TAG = "[demo-staff-performance-2026-07]";
 const WEEK_TAG = "[demo-staff-performance-weeks-2026-07]";
 const TAG_PATTERN = /demo-staff-performance/;
@@ -38,34 +40,77 @@ const SCENARIOS = [
   ["staff.exception.demo@cohan.local", "afternoon", 12, 0.1875, [1, 3], { 0: 45 }, { 2: 60 }, 5, "poor"],
   ["staff.parttime.demo@cohan.local", "evening", 14, 0.875, [], { 0: 10 }, {}, 1, "good"],
 ].map(([email, shiftType, startHour, ratio, absences, late, early, corrections, level]) => ({
-  email, shiftType, startHour, ratio, absences, late, early, corrections, level,
+  email,
+  shiftType,
+  startHour,
+  ratio,
+  absences,
+  late,
+  early,
+  corrections,
+  level,
+}));
+
+const OFF_SCHEDULE_DEFINITIONS = [
+  ["staff.server.demo@cohan.local", "2026-07-02", "pending", 120, "manager_requested"],
+  ["staff.supervisor.demo@cohan.local", "2026-07-03", "approved", 120, "emergency_cover"],
+  ["staff.parttime.demo@cohan.local", "2026-07-04", "rejected", 90, "self_initiated"],
+].map(([email, workDate, approvalStatus, workedMinutes, reasonCategory]) => ({
+  email,
+  workDate,
+  approvalStatus,
+  workedMinutes,
+  reasonCategory,
+}));
+
+const OVERTIME_DEFINITIONS = [
+  ["staff.server.demo@cohan.local", "2026-07-01", 60, "completed", "weekday"],
+  ["staff.supervisor.demo@cohan.local", "2026-07-02", 90, "approved", "weekday"],
+  ["staff.cashier.demo@cohan.local", "2026-07-03", 45, "rejected", "weekday"],
+  ["staff.parttime.demo@cohan.local", "2026-07-05", 60, "pending_approval", "weekend"],
+  ["staff.kitchenhelper.demo@cohan.local", "2026-07-06", 30, "pending_employee_confirmation", "weekday"],
+].map(([email, workDate, minutes, requestStatus, overtimeType]) => ({
+  email,
+  workDate,
+  minutes,
+  requestStatus,
+  overtimeType,
 }));
 
 const utcDay = (ymd) => new Date(`${ymd}T00:00:00.000Z`);
 const addDays = (date, days) => new Date(date.getTime() + days * 86400000);
+const isoDate = (date) => date.toISOString().slice(0, 10);
 const hcmTime = (ymd, hour, minute = 0, second = 0, ms = 0) => {
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d, hour - 7, minute, second, ms));
+  const [year, month, day] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hour - 7, minute, second, ms));
 };
 const dateRange = (start, end) => {
   const rows = [];
-  for (let d = utcDay(start); d <= utcDay(end); d = addDays(d, 1)) {
-    rows.push(d.toISOString().slice(0, 10));
+  for (let date = utcDay(start); date <= utcDay(end); date = addDays(date, 1)) {
+    rows.push(isoDate(date));
   }
   return rows;
 };
+
+if (!/^\d{4}-\d{2}-\d{2}$/.test(DEMO_AS_OF_DATE)) {
+  throw new Error("DEMO_AS_OF_DATE_INVALID: expected YYYY-MM-DD");
+}
+
 const allDates = dateRange("2026-06-29", "2026-07-12");
-const julyDates = dateRange("2026-07-01", "2026-07-12");
-const julyIndex = new Map(julyDates.map((date, index) => [date, index]));
+const attendanceDates = allDates.filter((ymd) => ymd < DEMO_AS_OF_DATE);
+const julyAttendanceDates = attendanceDates.filter((ymd) => ymd.startsWith("2026-07-"));
+const julyIndex = new Map(julyAttendanceDates.map((date, index) => [date, index]));
+const attendanceCutoffDate = attendanceDates.at(-1) || null;
 
 function distributedMinutes(scenario) {
-  const result = Array(julyDates.length).fill(0);
+  const result = Array(julyAttendanceDates.length).fill(0);
   const working = result
     .map((_, index) => index)
     .filter((index) => !scenario.absences.includes(index));
-  const target = Math.round(julyDates.length * 480 * scenario.ratio);
+  const target = Math.round(julyAttendanceDates.length * 480 * scenario.ratio);
   const base = working.length ? Math.floor(target / working.length) : 0;
   let remainder = target - base * working.length;
+
   for (const index of working) {
     result[index] = base;
     if (remainder > 0) {
@@ -76,12 +121,25 @@ function distributedMinutes(scenario) {
   return result;
 }
 
+function actorAudit(action, actor, at, note, meta = null) {
+  return {
+    action,
+    actorId: actor._id,
+    actorName: actor.fullName || actor.email || "Demo Manager",
+    note,
+    at,
+    meta,
+  };
+}
+
 async function resolveContext() {
   if (!mongoose.isValidObjectId(RESTAURANT_ID)) throw new Error("DEMO_RESTAURANT_ID_INVALID");
   if (!mongoose.isValidObjectId(MANAGER_ID)) throw new Error("DEMO_MANAGER_ID_INVALID");
+
   const restaurantId = new mongoose.Types.ObjectId(RESTAURANT_ID);
   const manager = await User.findById(MANAGER_ID).populate("role", "slug").lean();
   if (!manager) throw new Error("DEMO_MANAGER_NOT_FOUND");
+
   const managerUser = {
     id: manager._id,
     _id: manager._id,
@@ -92,6 +150,7 @@ async function resolveContext() {
   if (!(await canAccessRestaurant(managerUser, restaurantId))) {
     throw new Error("DEMO_MANAGER_CANNOT_ACCESS_RESTAURANT");
   }
+
   const staff = await Staff.find({
     email: { $in: SCENARIOS.map((item) => item.email) },
     restaurantForStaff: restaurantId,
@@ -102,6 +161,7 @@ async function resolveContext() {
   const staffByEmail = new Map(staff.map((item) => [item.email, item]));
   const missing = SCENARIOS.map((item) => item.email).filter((email) => !staffByEmail.has(email));
   if (missing.length) throw new Error(`DEMO_STAFF_ACCOUNTS_MISSING: ${missing.join(", ")}`);
+
   return {
     restaurantId,
     manager,
@@ -122,12 +182,21 @@ async function resetRoster({ restaurantId, staffIds }) {
     },
     notes: TAG_PATTERN,
   }).distinct("_id");
-  await AttendanceCorrectionRequest.deleteMany({
-    restaurantId,
-    employeeId: { $in: staffIds },
-    workDate,
-    $or: [{ reason: TAG_PATTERN }, { evidenceNote: TAG_PATTERN }, { reviewNote: TAG_PATTERN }],
-  });
+
+  await Promise.all([
+    AttendanceCorrectionRequest.deleteMany({
+      restaurantId,
+      employeeId: { $in: staffIds },
+      workDate,
+      $or: [{ reason: TAG_PATTERN }, { evidenceNote: TAG_PATTERN }, { reviewNote: TAG_PATTERN }],
+    }),
+    OvertimeRequest.deleteMany({
+      restaurantId,
+      employeeId: { $in: staffIds },
+      workDate,
+      $or: [{ reason: TAG_PATTERN }, { approvalNote: TAG_PATTERN }, { completionNote: TAG_PATTERN }],
+    }),
+  ]);
   await Timesheet.deleteMany({
     restaurantId,
     employeeId: { $in: staffIds },
@@ -157,20 +226,40 @@ async function seedPublications({ restaurantId, manager }) {
   }
 }
 
-async function seedShiftsAndTimesheets({ restaurantId, staffByEmail }) {
-  const julyTimesheets = new Map(SCENARIOS.map((item) => [item.email, []]));
+async function seedShiftsAndPastTimesheets({ restaurantId, staffByEmail }) {
+  const regularTimesheetByKey = new Map();
+  const futureShiftIds = [];
+
   for (const scenario of SCENARIOS) {
     const staff = staffByEmail.get(scenario.email);
     const julyMinutes = distributedMinutes(scenario);
+
     for (const ymd of allDates) {
+      const isPastDate = ymd < DEMO_AS_OF_DATE;
       const index = julyIndex.get(ymd);
-      const isJuly = index !== undefined;
-      const absent = isJuly && scenario.absences.includes(index);
-      const late = isJuly ? Number(scenario.late[index] || 0) : 0;
-      const early = isJuly ? Number(scenario.early[index] || 0) : 0;
-      const worked = isJuly ? julyMinutes[index] : 420;
+      const isPastJuly = index !== undefined;
+      const absent = isPastJuly && scenario.absences.includes(index);
+      const late = isPastJuly ? Number(scenario.late[index] || 0) : 0;
+      const early = isPastJuly ? Number(scenario.early[index] || 0) : 0;
+      const worked = isPastJuly ? julyMinutes[index] : 420;
       const startTime = hcmTime(ymd, scenario.startHour);
       const endTime = hcmTime(ymd, scenario.startHour + 8);
+
+      const shift = await Shift.create({
+        restaurantId,
+        employeeId: staff._id,
+        shiftType: scenario.shiftType,
+        startTime,
+        endTime,
+        status: isPastDate ? "completed" : "scheduled",
+        notes: `${WEEK_TAG} ${scenario.email} ${ymd}`,
+      });
+
+      if (!isPastDate) {
+        futureShiftIds.push(shift._id);
+        continue;
+      }
+
       const checkIn = absent ? null : new Date(startTime.getTime() + late * 60000);
       const checkOut = absent ? null : new Date(checkIn.getTime() + worked * 60000);
       const status = absent
@@ -182,15 +271,7 @@ async function seedShiftsAndTimesheets({ restaurantId, staffByEmail }) {
             : early
               ? "early_leave"
               : "completed";
-      const shift = await Shift.create({
-        restaurantId,
-        employeeId: staff._id,
-        shiftType: scenario.shiftType,
-        startTime,
-        endTime,
-        status: "completed",
-        notes: `${WEEK_TAG} ${scenario.email} ${ymd}`,
-      });
+
       const timesheet = await Timesheet.create({
         restaurantId,
         employeeId: staff._id,
@@ -203,62 +284,318 @@ async function seedShiftsAndTimesheets({ restaurantId, staffByEmail }) {
         actualCheckOutAt: checkOut,
         latenessMinutes: late,
         earlyLeaveMinutes: early,
-        workedMinutes: worked,
-        hours: Number((worked / 60).toFixed(2)),
+        workedMinutes: absent ? 0 : worked,
+        hours: Number(((absent ? 0 : worked) / 60).toFixed(2)),
         status,
         approved: !absent,
         isOffSchedule: false,
         note: `${WEEK_TAG} ${scenario.email} ${ymd}`,
       });
-      if (isJuly) julyTimesheets.get(scenario.email).push(timesheet);
+      regularTimesheetByKey.set(`${scenario.email}:${ymd}`, timesheet);
     }
   }
-  return julyTimesheets;
+
+  return { regularTimesheetByKey, futureShiftIds };
 }
 
-async function seedCorrections(context, julyTimesheets) {
+async function seedCorrections(context, regularTimesheetByKey) {
+  const countableStatuses = ["pending", "applied", "rejected"];
+  let sequence = 0;
+
   for (const scenario of SCENARIOS) {
     const staff = context.staffByEmail.get(scenario.email);
-    const rows = julyTimesheets.get(scenario.email);
+    const availableRows = julyAttendanceDates
+      .map((ymd) => regularTimesheetByKey.get(`${scenario.email}:${ymd}`))
+      .filter(Boolean);
+
     for (let index = 0; index < scenario.corrections; index += 1) {
-      const row = rows[index];
-      const applied = index % 2 === 0;
+      const row = availableRows[index % availableRows.length];
+      const status = countableStatuses[sequence % countableStatuses.length];
+      sequence += 1;
+      const requestedAt = new Date((row.actualCheckOutAt || row.plannedEndTime).getTime() + 30 * 60000);
+      const reviewedAt = new Date(requestedAt.getTime() + 60 * 60000);
+      const requestedCheckInAt = row.actualCheckInAt || row.plannedStartTime;
+      const requestedCheckOutAt = row.actualCheckOutAt || row.plannedEndTime;
+      const auditLogs = [
+        actorAudit(
+          "attendance_correction.create",
+          staff,
+          requestedAt,
+          `${WEEK_TAG} nhân viên gửi yêu cầu chỉnh công`,
+        ),
+      ];
+
+      if (status === "applied") {
+        auditLogs.push(
+          actorAudit("attendance_correction.approve", context.manager, reviewedAt, `${WEEK_TAG} quản lý duyệt`),
+          actorAudit("attendance_correction.apply", context.manager, reviewedAt, `${WEEK_TAG} đã áp dụng`),
+        );
+      }
+      if (status === "rejected") {
+        auditLogs.push(
+          actorAudit("attendance_correction.reject", context.manager, reviewedAt, `${WEEK_TAG} từ chối do không đủ bằng chứng`),
+        );
+      }
+
       await AttendanceCorrectionRequest.create({
         restaurantId: context.restaurantId,
         employeeId: staff._id,
         requestedBy: staff._id,
         requestedByRole: "STAFF",
+        requestedAt,
         timesheetId: row._id,
         shiftId: row.shiftId,
         workDate: row.workDate,
         correctionType: "wrong_check_in_out",
-        reason: `${WEEK_TAG} correction ${index + 1}`,
-        evidenceNote: `${WEEK_TAG} deterministic correction`,
-        status: applied ? "applied" : "rejected",
-        reviewedBy: context.manager._id,
-        reviewedAt: new Date(),
-        reviewNote: `${WEEK_TAG} reviewed`,
-        appliedBy: applied ? context.manager._id : null,
-        appliedAt: applied ? new Date() : null,
+        originalCheckInAt: row.actualCheckInAt,
+        originalCheckOutAt: row.actualCheckOutAt,
+        requestedCheckInAt,
+        requestedCheckOutAt,
+        originalWorkedMinutes: Number(row.workedMinutes || 0),
+        requestedWorkedMinutes: Number(row.workedMinutes || 0),
+        originalLatenessMinutes: Number(row.latenessMinutes || 0),
+        requestedLatenessMinutes: Number(row.latenessMinutes || 0),
+        originalEarlyLeaveMinutes: Number(row.earlyLeaveMinutes || 0),
+        requestedEarlyLeaveMinutes: Number(row.earlyLeaveMinutes || 0),
+        originalOvertimeMinutes: Number(row.overtimeMinutes || 0),
+        requestedOvertimeMinutes: Number(row.overtimeMinutes || 0),
+        reason: `${WEEK_TAG} Nhân viên đề nghị đối chiếu lại giờ vào/ra`,
+        evidenceNote: `${WEEK_TAG} dữ liệu demo có lịch sử duyệt`,
+        status,
+        reviewedBy: status === "pending" ? null : context.manager._id,
+        reviewedAt: status === "pending" ? null : reviewedAt,
+        reviewNote: status === "applied" ? `${WEEK_TAG} đã đối chiếu và chấp nhận` : "",
+        rejectionReason: status === "rejected" ? `${WEEK_TAG} thông tin chưa đủ để điều chỉnh` : "",
+        appliedBy: status === "applied" ? context.manager._id : null,
+        appliedAt: status === "applied" ? reviewedAt : null,
+        auditLogs,
       });
     }
+  }
+
+  for (const [email, ymd] of [
+    ["staff.server.demo@cohan.local", "2026-07-03"],
+    ["staff.supervisor.demo@cohan.local", "2026-07-04"],
+  ]) {
+    const row = regularTimesheetByKey.get(`${email}:${ymd}`);
+    if (!row) continue;
+    const staff = context.staffByEmail.get(email);
+    const requestedAt = new Date((row.actualCheckOutAt || row.plannedEndTime).getTime() + 20 * 60000);
+    const cancelledAt = new Date(requestedAt.getTime() + 15 * 60000);
+    await AttendanceCorrectionRequest.create({
+      restaurantId: context.restaurantId,
+      employeeId: staff._id,
+      requestedBy: staff._id,
+      requestedByRole: "STAFF",
+      requestedAt,
+      timesheetId: row._id,
+      shiftId: row.shiftId,
+      workDate: row.workDate,
+      correctionType: "other",
+      originalCheckInAt: row.actualCheckInAt,
+      originalCheckOutAt: row.actualCheckOutAt,
+      requestedCheckInAt: row.actualCheckInAt,
+      requestedCheckOutAt: row.actualCheckOutAt,
+      originalWorkedMinutes: Number(row.workedMinutes || 0),
+      requestedWorkedMinutes: Number(row.workedMinutes || 0),
+      reason: `${WEEK_TAG} Yêu cầu được nhân viên hủy`,
+      evidenceNote: `${WEEK_TAG} cancelled demo`,
+      status: "cancelled",
+      auditLogs: [
+        actorAudit("attendance_correction.create", staff, requestedAt, `${WEEK_TAG} tạo yêu cầu`),
+        actorAudit("attendance_correction.cancel", staff, cancelledAt, `${WEEK_TAG} nhân viên tự hủy`),
+      ],
+    });
   }
 }
 
-async function recalculate(context) {
-  for (const [periodStart, periodEnd] of PERIODS) {
-    for (const employeeId of context.staffIds) {
-      await recalculateStaffPerformanceSnapshots({
-        input: {
-          restaurantId: String(context.restaurantId),
-          employeeId: String(employeeId),
-          periodStart,
-          periodEnd,
-        },
-        ctx: { user: context.managerUser },
-      });
+async function seedOffScheduleAttendance(context) {
+  const created = [];
+  for (const definition of OFF_SCHEDULE_DEFINITIONS.filter((item) => item.workDate < DEMO_AS_OF_DATE)) {
+    const staff = context.staffByEmail.get(definition.email);
+    const checkIn = hcmTime(definition.workDate, 18, 0);
+    const checkOut = new Date(checkIn.getTime() + definition.workedMinutes * 60000);
+    const reviewedAt = new Date(checkOut.getTime() + 30 * 60000);
+    const approved = definition.approvalStatus === "approved";
+    const reviewed = ["approved", "rejected"].includes(definition.approvalStatus);
+
+    const row = await Timesheet.create({
+      restaurantId: context.restaurantId,
+      employeeId: staff._id,
+      shiftId: null,
+      workDate: utcDay(definition.workDate),
+      source: "manual",
+      plannedStartTime: null,
+      plannedEndTime: null,
+      actualCheckInAt: checkIn,
+      actualCheckOutAt: checkOut,
+      workedMinutes: definition.workedMinutes,
+      hours: Number((definition.workedMinutes / 60).toFixed(2)),
+      status: "unscheduled_completed",
+      isOffSchedule: true,
+      offScheduleReasonCategory: definition.reasonCategory,
+      offScheduleReason: `${WEEK_TAG} phát sinh hỗ trợ ngoài lịch`,
+      offScheduleApprovalStatus: definition.approvalStatus,
+      offScheduleReviewedBy: reviewed ? context.manager._id : null,
+      offScheduleReviewedAt: reviewed ? reviewedAt : null,
+      offScheduleReviewNote: reviewed
+        ? `${WEEK_TAG} ${approved ? "đã duyệt" : "từ chối"} công ngoài lịch`
+        : "",
+      approved,
+      note: `${WEEK_TAG} off-schedule ${definition.approvalStatus}`,
+    });
+    created.push(row);
+  }
+  return created;
+}
+
+async function applyOvertimeState({ row, minutes, status, manager, reviewNote }) {
+  row.actualCheckOutAt = new Date(row.plannedEndTime.getTime() + minutes * 60000);
+  row.earlyLeaveMinutes = 0;
+  row.overtimeMinutes = minutes;
+  // ponytail: base workedMinutes stays separate so overtime is not counted twice in performance/payroll summaries.
+  await row.save();
+
+  if (status === "pending") return row;
+
+  row.overtimeApprovalStatus = status;
+  row.approvedOvertimeMinutes = status === "approved" ? minutes : 0;
+  row.overtimeReviewNote = reviewNote;
+  row.overtimeReviewedBy = manager._id;
+  row.overtimeReviewedAt = new Date(row.actualCheckOutAt.getTime() + 30 * 60000);
+  await row.save();
+  return row;
+}
+
+async function seedOvertime(context, regularTimesheetByKey) {
+  const requests = [];
+
+  for (const definition of OVERTIME_DEFINITIONS.filter((item) => item.workDate < DEMO_AS_OF_DATE)) {
+    const staff = context.staffByEmail.get(definition.email);
+    const row = regularTimesheetByKey.get(`${definition.email}:${definition.workDate}`);
+    if (!row || !row.actualCheckInAt || !row.actualCheckOutAt) {
+      throw new Error(`DEMO_OVERTIME_TIMESHEET_NOT_REVIEWABLE: ${definition.email} ${definition.workDate}`);
+    }
+
+    const timesheetStatus = definition.requestStatus === "rejected"
+      ? "rejected"
+      : ["approved", "completed"].includes(definition.requestStatus)
+        ? "approved"
+        : "pending";
+    await applyOvertimeState({
+      row,
+      minutes: definition.minutes,
+      status: timesheetStatus,
+      manager: context.manager,
+      reviewNote: `${WEEK_TAG} ${timesheetStatus === "rejected" ? "từ chối" : "duyệt"} tăng ca từ bảng công`,
+    });
+
+    const plannedStartTime = row.plannedEndTime;
+    const plannedEndTime = new Date(plannedStartTime.getTime() + definition.minutes * 60000);
+    const requestedAt = new Date(plannedStartTime.getTime() - 2 * 60 * 60000);
+    const approvedAt = new Date(plannedStartTime.getTime() - 60 * 60000);
+    const completedAt = new Date(row.actualCheckOutAt.getTime() + 15 * 60000);
+    const isApproved = ["approved", "completed"].includes(definition.requestStatus);
+    const isRejected = definition.requestStatus === "rejected";
+    const isCompleted = definition.requestStatus === "completed";
+    const employeeConfirmationRequired = definition.requestStatus === "pending_employee_confirmation";
+    const requestedBy = employeeConfirmationRequired ? context.manager._id : staff._id;
+    const requestedByRole = employeeConfirmationRequired ? "manager" : "staff";
+    const auditLogs = [
+      actorAudit("overtime.create", employeeConfirmationRequired ? context.manager : staff, requestedAt, `${WEEK_TAG} tạo yêu cầu tăng ca`, {
+        plannedOvertimeMinutes: definition.minutes,
+        overtimeType: definition.overtimeType,
+      }),
+    ];
+
+    if (isApproved) {
+      auditLogs.push(
+        actorAudit("overtime.approve", context.manager, approvedAt, `${WEEK_TAG} quản lý duyệt`, {
+          approvedOvertimeMinutes: definition.minutes,
+        }),
+      );
+    }
+    if (isRejected) {
+      auditLogs.push(actorAudit("overtime.reject", context.manager, approvedAt, `${WEEK_TAG} từ chối tăng ca`));
+    }
+    if (isCompleted) {
+      auditLogs.push(
+        actorAudit("overtime.complete", context.manager, completedAt, `${WEEK_TAG} hoàn tất tăng ca`, {
+          actualOvertimeMinutes: definition.minutes,
+          approvedOvertimeMinutes: definition.minutes,
+        }),
+        actorAudit("overtime.apply_to_timesheet", context.manager, completedAt, `${WEEK_TAG} ghi nhận vào bảng công`, {
+          timesheetId: String(row._id),
+        }),
+      );
+    }
+
+    const request = await OvertimeRequest.create({
+      employeeId: staff._id,
+      restaurantId: context.restaurantId,
+      shiftId: row.shiftId,
+      timesheetId: row._id,
+      workDate: row.workDate,
+      plannedStartTime,
+      plannedEndTime,
+      plannedOvertimeMinutes: definition.minutes,
+      actualStartTime: isCompleted ? plannedStartTime : null,
+      actualEndTime: isCompleted ? row.actualCheckOutAt : null,
+      actualOvertimeMinutes: isCompleted ? definition.minutes : 0,
+      approvedOvertimeMinutes: isApproved ? definition.minutes : 0,
+      overtimeType: definition.overtimeType,
+      reason: `${WEEK_TAG} hỗ trợ vận hành sau giờ phân ca`,
+      status: definition.requestStatus,
+      employeeConfirmationRequired,
+      requestedBy,
+      requestedByRole,
+      requestedAt,
+      approvedBy: isApproved ? context.manager._id : null,
+      approvedAt: isApproved ? approvedAt : null,
+      approvalNote: isApproved ? `${WEEK_TAG} duyệt theo nhu cầu vận hành` : "",
+      rejectedBy: isRejected ? context.manager._id : null,
+      rejectedAt: isRejected ? approvedAt : null,
+      rejectionReason: isRejected ? `${WEEK_TAG} không đủ nhu cầu tăng ca` : "",
+      completedBy: isCompleted ? context.manager._id : null,
+      completedAt: isCompleted ? completedAt : null,
+      completionNote: isCompleted ? `${WEEK_TAG} đã đối chiếu giờ thực tế` : "",
+      auditLogs,
+    });
+
+    row.overtimeRequestId = request._id;
+    await row.save();
+    requests.push(request);
+  }
+
+  return requests;
+}
+
+async function recalculate(context, futureShiftIds) {
+  // ponytail: the production formula has no as-of argument; hide future demo shifts only while calculating the current snapshot.
+  if (futureShiftIds.length) {
+    await Shift.updateMany({ _id: { $in: futureShiftIds } }, { $set: { status: "cancelled" } });
+  }
+
+  try {
+    for (const [periodStart, periodEnd] of PERIODS) {
+      for (const employeeId of context.staffIds) {
+        await recalculateStaffPerformanceSnapshots({
+          input: {
+            restaurantId: String(context.restaurantId),
+            employeeId: String(employeeId),
+            periodStart,
+            periodEnd,
+          },
+          ctx: { user: context.managerUser },
+        });
+      }
+    }
+  } finally {
+    if (futureShiftIds.length) {
+      await Shift.updateMany({ _id: { $in: futureShiftIds } }, { $set: { status: "scheduled" } });
     }
   }
+
   await StaffPerformanceSnapshot.updateMany(
     {
       restaurantId: context.restaurantId,
@@ -271,6 +608,8 @@ async function recalculate(context) {
         "factors.weekRosterTag": WEEK_TAG,
         "factors.weekRosterStart": "2026-06-29",
         "factors.weekRosterEnd": "2026-07-12",
+        "factors.attendanceDataAsOf": DEMO_AS_OF_DATE,
+        "factors.attendanceDataCutoff": attendanceCutoffDate,
       },
     },
   );
@@ -279,16 +618,21 @@ async function recalculate(context) {
 async function main() {
   assertDemoScriptAllowed("seedStaffPerformanceWeekRoster.js");
   console.log("Connecting with DB settings:", safeDbInfo());
+  console.log(`Attendance demo as-of=${DEMO_AS_OF_DATE}, cutoff=${attendanceCutoffDate || "none"}`);
   await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017", {
     dbName: process.env.MONGO_DB || "foodhub",
   });
+
   const context = await resolveContext();
   await resetRoster(context);
   await seedPublications(context);
-  const julyTimesheets = await seedShiftsAndTimesheets(context);
-  await seedCorrections(context, julyTimesheets);
-  await recalculate(context);
-  const [shiftCount, timesheetCount] = await Promise.all([
+  const { regularTimesheetByKey, futureShiftIds } = await seedShiftsAndPastTimesheets(context);
+  await seedCorrections(context, regularTimesheetByKey);
+  await seedOffScheduleAttendance(context);
+  await seedOvertime(context, regularTimesheetByKey);
+  await recalculate(context, futureShiftIds);
+
+  const [shiftCount, regularTimesheetCount, offScheduleCount, correctionCount, overtimeRequestCount, futureAttendanceCount] = await Promise.all([
     Shift.countDocuments({
       restaurantId: context.restaurantId,
       employeeId: { $in: context.staffIds },
@@ -298,12 +642,49 @@ async function main() {
       restaurantId: context.restaurantId,
       employeeId: { $in: context.staffIds },
       note: WEEK_TAG_PATTERN,
+      isOffSchedule: false,
+    }),
+    Timesheet.countDocuments({
+      restaurantId: context.restaurantId,
+      employeeId: { $in: context.staffIds },
+      note: WEEK_TAG_PATTERN,
+      isOffSchedule: true,
+    }),
+    AttendanceCorrectionRequest.countDocuments({
+      restaurantId: context.restaurantId,
+      employeeId: { $in: context.staffIds },
+      reason: WEEK_TAG_PATTERN,
+    }),
+    OvertimeRequest.countDocuments({
+      restaurantId: context.restaurantId,
+      employeeId: { $in: context.staffIds },
+      reason: WEEK_TAG_PATTERN,
+    }),
+    Timesheet.countDocuments({
+      restaurantId: context.restaurantId,
+      employeeId: { $in: context.staffIds },
+      note: WEEK_TAG_PATTERN,
+      workDate: { $gte: utcDay(DEMO_AS_OF_DATE) },
     }),
   ]);
-  if (shiftCount !== 98 || timesheetCount !== 98) {
-    throw new Error(`DEMO_TWO_WEEK_ROSTER_COUNT_MISMATCH: shifts=${shiftCount} timesheets=${timesheetCount}`);
+
+  const expectedRegularTimesheets = attendanceDates.length * SCENARIOS.length;
+  if (
+    shiftCount !== allDates.length * SCENARIOS.length ||
+    regularTimesheetCount !== expectedRegularTimesheets ||
+    offScheduleCount !== OFF_SCHEDULE_DEFINITIONS.filter((item) => item.workDate < DEMO_AS_OF_DATE).length ||
+    correctionCount !== SCENARIOS.reduce((sum, item) => sum + item.corrections, 0) + 2 ||
+    overtimeRequestCount !== OVERTIME_DEFINITIONS.filter((item) => item.workDate < DEMO_AS_OF_DATE).length ||
+    futureAttendanceCount !== 0
+  ) {
+    throw new Error(
+      `DEMO_ATTENDANCE_COUNT_MISMATCH: shifts=${shiftCount} regularTimesheets=${regularTimesheetCount} offSchedule=${offScheduleCount} corrections=${correctionCount} overtimeRequests=${overtimeRequestCount} futureAttendance=${futureAttendanceCount}`,
+    );
   }
-  console.log(`Two-week roster completed: shifts=${shiftCount}, timesheets=${timesheetCount}`);
+
+  console.log(
+    `Past attendance completed: shifts=${shiftCount}, regularTimesheets=${regularTimesheetCount}, offSchedule=${offScheduleCount}, corrections=${correctionCount}, overtimeRequests=${overtimeRequestCount}, futureAttendance=${futureAttendanceCount}`,
+  );
 }
 
 main()
