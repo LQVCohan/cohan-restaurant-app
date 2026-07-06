@@ -8,9 +8,11 @@ export const MY_BRANDS_QUERY = gql`
       id
       name
       slug
+      description
       logoUrl
       status
       businessName
+      businessTaxCode
       businessEmail
       businessPhone
       ownerId
