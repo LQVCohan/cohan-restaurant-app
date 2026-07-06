@@ -13,8 +13,8 @@ The manager shell and dashboard use a shared sage-green palette through `Manager
 1. `ManagerLayout.jsx` lazy-loads `StorageManagement` for the `inventory` manager page.
 2. `StorageManagement.jsx` runs the existing Apollo queries and renders Header, KPI cards, Tabs, and the active storage tab.
 3. Child components provide their current semantic classes and behavior.
-4. A final page-scoped theme stylesheet reuses `--manager-*` tokens to style the complete storage surface.
-5. Existing component tests remain the closest behavior check.
+4. `src/index.css` loads a final page-scoped theme after the existing manager styles.
+5. `StorageSageTone.scss` reuses `--manager-*` tokens to style the complete storage surface.
 
 No Mongoose schema, resolver, service, GraphQL operation, Apollo variables, permission guard, audit log, or realtime side effect changes.
 
@@ -33,9 +33,9 @@ No Mongoose schema, resolver, service, GraphQL operation, Apollo variables, perm
 - Restyle the header, filters, KPI cards, tabs, main content panel, storage cards, and interactive states.
 - Preserve existing responsive layout and reduced-motion rules.
 
-## Files to change
+## Files changed
 
-- `src/components/Dashboard_Manager/Storage/StorageManagement.jsx`: import the final storage theme after the existing storage stylesheet.
+- `src/index.css`: load the final storage theme through the repository's existing global style-entry pattern.
 - `src/components/Dashboard_Manager/Storage/StorageSageTone.scss`: apply the shared manager sage palette across the storage screen.
 
 ## Acceptance criteria
@@ -54,9 +54,9 @@ No Mongoose schema, resolver, service, GraphQL operation, Apollo variables, perm
 - Adding animation libraries, design-system dependencies, or new business features.
 - Restyling portal modals rendered outside the storage page root.
 
-## Validation plan
+## Validation
 
-- Run `vitest run src/components/Dashboard_Manager/Storage/StorageManagement.test.jsx`.
-- Run `npm run build` when a runnable checkout is available.
-- Review desktop and mobile layout visually if screenshot tooling is available.
-- Verify the diff contains only the two UI files and task records.
+- Re-fetched both changed files after commit and reviewed the scoped selectors and import order.
+- Confirmed `src/main.jsx` already loads `src/index.css`.
+- Local Vitest and Vite build were not run because the execution environment could not resolve `github.com` to clone a runnable checkout.
+- No CI status was available for the direct commits at the time of review.
