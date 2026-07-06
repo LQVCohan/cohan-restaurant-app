@@ -7,12 +7,18 @@ const scripts = [
   "scripts/prepareStaffPerformanceDemoPeriods.js",
   "scripts/seedStaffPerformanceDemo.js",
   "scripts/seedStaffPerformanceDemoUtc.js",
+  "scripts/seedStaffPerformanceWeekRoster.js",
+  "scripts/seedStaffPerformanceWeekRosterUtc.js",
+  "scripts/seedStaffProfileDemoData.js",
   "scripts/verifyStaffPerformanceDemoData.js",
   "scripts/verifyStaffPerformanceDemoDataUtc.js",
+  "scripts/verifyStaffPerformanceWeekRoster.js",
+  "scripts/verifyStaffProfileDemoData.js",
 ];
 
 const utcWrappers = [
   "scripts/seedStaffPerformanceDemoUtc.js",
+  "scripts/seedStaffPerformanceWeekRosterUtc.js",
   "scripts/verifyStaffPerformanceDemoDataUtc.js",
 ];
 
