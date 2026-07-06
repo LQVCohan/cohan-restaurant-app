@@ -3,7 +3,7 @@
   "name": "storage-sage-polish",
   "title": "Polish storage page with manager sage palette",
   "description": "Finish the ingredient modal layout, interaction semantics, active states, and footer spacing without changing inventory behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-storage-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "19762600f87fab12610321732fbeeba592ff8a43",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -23,9 +23,10 @@
   "relatedFiles": [
     "src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.jsx",
     "src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.test.jsx",
-    "src/components/Dashboard_Manager/Storage/StorageSageTone.scss"
+    "src/components/Dashboard_Manager/Storage/IngredientModalEnhancements.css",
+    "src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.jsx"
   ],
-  "notes": "UI-only follow-up. Schema, resolver, GraphQL mutation, payload mapping, permissions, and inventory behavior remain unchanged.",
+  "notes": "Completed UI-only follow-up. The edit layout now expands the single stock warning field, status choices use native pressed buttons, labels are explicitly associated with controls, the save action is visually lighter, and modal spacing is improved. Schema, resolver, GraphQL mutation, payload mapping, permissions, and inventory behavior remain unchanged. JSX syntax was checked locally with the TypeScript parser. The new Vitest regression test was added but not executed because this connector environment has no runnable checkout; no GitHub status checks were available.",
   "meta": {
     "skills": [
       "frontend-design",
