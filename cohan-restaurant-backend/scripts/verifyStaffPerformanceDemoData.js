@@ -26,6 +26,11 @@ const PERIOD_END = new Date("2026-07-31T23:59:59.999Z");
 const PREVIOUS_START = new Date("2026-06-01T00:00:00.000Z");
 const PREVIOUS_END = new Date("2026-06-30T23:59:59.999Z");
 
+const OPERATOR_EXPECTED = [
+  ["hr.demo@cohan.local", "HR", "hr"],
+  ["accountant.demo@cohan.local", "ACCOUNTANT", "accountant"],
+];
+
 const EXPECTED = [
   ["staff.server.demo@cohan.local", "excellent"],
   ["staff.supervisor.demo@cohan.local", "good"],
@@ -83,6 +88,21 @@ async function run() {
       }
     : null;
   assertCheck(Boolean(managerUser && await canAccessRestaurant(managerUser, restaurantId)), "manager can access the demo restaurant");
+
+  const operatorAccounts = await User.find({
+    email: { $in: OPERATOR_EXPECTED.map(([email]) => email) },
+  })
+    .populate("role", "slug")
+    .select("email userType role status")
+    .lean();
+  const operatorByEmail = new Map(operatorAccounts.map((item) => [item.email, item]));
+  for (const [email, expectedUserType, expectedRoleSlug] of OPERATOR_EXPECTED) {
+    const account = operatorByEmail.get(email);
+    assertCheck(Boolean(account), `found ${email}`);
+    assertCheck(account?.userType === expectedUserType, `${email} userType=${expectedUserType}`);
+    assertCheck(account?.role?.slug === expectedRoleSlug, `${email} role=${expectedRoleSlug}`);
+    assertCheck(account?.status === "active", `${email} is active`);
+  }
 
   const staff = await Staff.find({ email: { $in: EXPECTED.map(([email]) => email) } }).lean();
   const staffByEmail = new Map(staff.map((item) => [item.email, item]));
