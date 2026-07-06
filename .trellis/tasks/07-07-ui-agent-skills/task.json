@@ -1,0 +1,35 @@
+{
+  "id": "ui-agent-skills",
+  "name": "ui-agent-skills",
+  "title": "Add current UI audit and React performance skills",
+  "description": "Add two focused Vercel-derived skills that complement the existing frontend design, redesign, accessibility, and motion guidance without changing application runtime code.",
+  "status": "in_progress",
+  "dev_type": "tooling",
+  "scope": "agent-ui-guidance",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".agents/skills/web-design-guidelines/SKILL.md",
+    ".agents/skills/react-ui-performance/SKILL.md",
+    "skills-lock.json"
+  ],
+  "notes": "Repository guidance only. No schema, resolver, GraphQL operation, UI component, dependency, or runtime behavior changes.",
+  "meta": {
+    "sources": [
+      "vercel-labs/agent-skills:skills/web-design-guidelines",
+      "vercel-labs/agent-skills:skills/react-best-practices"
+    ]
+  }
+}
