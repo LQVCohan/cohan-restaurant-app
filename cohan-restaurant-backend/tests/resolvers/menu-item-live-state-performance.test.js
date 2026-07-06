@@ -67,12 +67,11 @@ describe("menuItemLiveState read optimization", () => {
     const first = CartQuery.menuItemLiveState(null, { input }, {});
     const second = CartQuery.menuItemLiveState(null, { input }, {});
 
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(model.Cart.find).toHaveBeenCalledTimes(1);
-    expect(model.Warehouse.findOne).toHaveBeenCalledTimes(1);
-    expect(inventory.checkAvailabilityForLinesTx).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(model.Cart.find).toHaveBeenCalledTimes(1);
+      expect(model.Warehouse.findOne).toHaveBeenCalledTimes(1);
+      expect(inventory.checkAvailabilityForLinesTx).toHaveBeenCalledTimes(1);
+    });
 
     reserved.resolve([]);
     availability.resolve({ isAvailable: true, maxAvailable: 8 });
@@ -103,13 +102,12 @@ describe("menuItemLiveState read optimization", () => {
       { user: { id: userId } },
     );
 
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(model.Cart.findOne).toHaveBeenCalledTimes(1);
-    expect(model.Cart.find).toHaveBeenCalledTimes(1);
-    expect(model.Warehouse.findOne).toHaveBeenCalledTimes(1);
-    expect(inventory.checkAvailabilityForLinesTx).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(model.Cart.findOne).toHaveBeenCalledTimes(1);
+      expect(model.Cart.find).toHaveBeenCalledTimes(1);
+      expect(model.Warehouse.findOne).toHaveBeenCalledTimes(1);
+      expect(inventory.checkAvailabilityForLinesTx).toHaveBeenCalledTimes(1);
+    });
 
     userCart.resolve({ abuse: null, items: [] });
     reserved.resolve([]);
