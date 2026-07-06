@@ -150,6 +150,10 @@ const GET_RESTAURANT_DETAIL = gql`
       cuisineType
       priceRange
       status
+      businessStatus
+      operationalStatus
+      capabilities
+      orderPolicy
       amenities
       notesOnAmenities
       avgRating
@@ -214,6 +218,10 @@ const UPDATE_RESTAURANT = gql`
       cuisineType
       priceRange
       status
+      businessStatus
+      operationalStatus
+      capabilities
+      orderPolicy
       amenities
       notesOnAmenities
       avgRating
