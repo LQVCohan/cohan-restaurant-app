@@ -16,7 +16,7 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1214",
   "subtasks": [],
   "children": [],
   "parent": "past-attendance-approval-overtime-demo",
@@ -26,6 +26,6 @@
     "src/components/Staff/StaffAttendancePage.jsx",
     "src/components/Staff/StaffAttendancePage.test.jsx"
   ],
-  "notes": "Backend contract remains authoritative: ADMIN/MANAGER/HR may create and review within restaurant scope; STAFF may create, confirm, and cancel only their own requests; ACCOUNTANT is read-only.",
+  "notes": "Backend contract remains authoritative: ADMIN/MANAGER/HR may create and review within restaurant scope; STAFF may create, confirm, and cancel only their own requests; ACCOUNTANT is read-only. PR #1214 contains the UI completion and role-matrix tests.",
   "meta": {}
 }
