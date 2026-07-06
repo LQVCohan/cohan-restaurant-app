@@ -1,7 +1,7 @@
 {
   "id": "production-recipe-stock",
   "title": "Seed stock from production recipes",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "branch": "production-recipe-stock",
   "createdAt": "2026-07-07",
   "scope": [
