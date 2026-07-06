@@ -109,6 +109,27 @@ function getStableCheckoutIdempotencyKey(input) {
   return key;
 }
 
+export function normalizeScheduleGraphqlVariables(
+  operationName,
+  variables = {},
+) {
+  if (operationName !== "ShiftAcknowledgements") return variables;
+  if (typeof variables?.status !== "string") return variables;
+
+  const status = variables.status.trim().toUpperCase();
+  if (!status || status === variables.status) return variables;
+
+  return { ...variables, status };
+}
+
+const scheduleEnumLink = new ApolloLink((operation, forward) => {
+  operation.variables = normalizeScheduleGraphqlVariables(
+    operation?.operationName,
+    operation?.variables,
+  );
+  return forward(operation);
+});
+
 const idempotencyLink = new ApolloLink((operation, forward) => {
   const operationName = operation?.operationName || "";
   const input = operation?.variables?.input;
@@ -213,7 +234,13 @@ const errorLink = onError(({ graphQLErrors, operation, forward, networkError }) 
 });
 
 /* ---------------- Link + Cache ---------------- */
-const link = ApolloLink.from([errorLink, idempotencyLink, authLink, httpLink]);
+const link = ApolloLink.from([
+  errorLink,
+  scheduleEnumLink,
+  idempotencyLink,
+  authLink,
+  httpLink,
+]);
 
 const imageFieldPolicy = {
   read(existing) {
