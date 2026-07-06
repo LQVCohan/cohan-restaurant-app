@@ -26,8 +26,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -e
-          rm -rf selection-debug
-          mkdir selection-debug
+          OUT_DIR="/tmp/component-selection-debug"
+          rm -rf "$OUT_DIR"
+          mkdir -p "$OUT_DIR"
 
           run_case() {
             name="$1"
@@ -37,9 +38,9 @@ jobs:
             for path in "$@"; do
               git checkout "$HEAD_SHA" -- "$path"
             done
-            git diff --name-only > "selection-debug/${name}-files.txt"
-            npx vitest list src/components --changed "$BASE_SHA" > "selection-debug/${name}-tests.txt" 2>&1
-            wc -l "selection-debug/${name}-tests.txt" > "selection-debug/${name}-count.txt"
+            git diff --name-only > "$OUT_DIR/${name}-files.txt"
+            npx vitest list src/components --changed "$BASE_SHA" > "$OUT_DIR/${name}-tests.txt" 2>&1
+            wc -l "$OUT_DIR/${name}-tests.txt" > "$OUT_DIR/${name}-count.txt"
           }
 
           run_case source-only \
@@ -55,6 +56,9 @@ jobs:
           run_case task-only \
             .trellis/tasks/restaurant-location-production-readiness/task.json \
             .trellis/tasks/restaurant-location-production-readiness/prd.md
+
+          mkdir -p "$GITHUB_WORKSPACE/selection-debug"
+          cp -R "$OUT_DIR"/. "$GITHUB_WORKSPACE/selection-debug/"
       - uses: actions/upload-artifact@v4
         with:
           name: component-selection-matrix
