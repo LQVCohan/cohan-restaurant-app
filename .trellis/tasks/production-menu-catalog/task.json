@@ -1,11 +1,16 @@
 {
   "id": "production-menu-catalog",
   "title": "Seed production-like menu catalogs for two Cohan restaurants",
-  "status": "in_progress",
+  "status": "ready_for_review",
   "branch": "chore/production-menu-catalog",
   "createdAt": "2026-07-06",
   "scope": [
     "cohan-restaurant-backend/scripts/seedProductionMenuCatalog.js",
     "cohan-restaurant-backend/package.json"
-  ]
+  ],
+  "validation": [
+    "node --check scripts/seedProductionMenuCatalog.js",
+    "node scripts/seedProductionMenuCatalog.js --validate-only"
+  ],
+  "databaseApplyRun": false
 }
