@@ -1,0 +1,38 @@
+{
+  "id": "storage-sage-polish",
+  "name": "storage-sage-polish",
+  "title": "Polish storage page with manager sage palette",
+  "description": "Align the storage management page with the existing manager dashboard sage-green visual system without changing inventory behavior.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-storage-ui",
+  "package": null,
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Storage/StorageManagement.jsx",
+    "src/components/Dashboard_Manager/Storage/StorageSageTone.scss"
+  ],
+  "notes": "Visual-only change. Reuse manager CSS tokens and preserve GraphQL, permissions, inventory actions, and responsive behavior.",
+  "meta": {
+    "skills": [
+      "frontend-design",
+      "taste-ui-redesign",
+      "web-design-guidelines",
+      "wcag-ui-audit",
+      "react-ui-performance",
+      "ponytail"
+    ]
+  }
+}
