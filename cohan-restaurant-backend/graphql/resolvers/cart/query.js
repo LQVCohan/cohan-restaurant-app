@@ -7,6 +7,23 @@ const POLICY_MESSAGE =
   "Chính sách giữ chỗ tồn kho: mỗi lần thêm món sẽ giữ chỗ tối đa 5 phút. Hủy/thoát quá nhiều lần có thể bị cảnh báo hoặc tạm chặn.";
 const HOLD_TTL_SECONDS = 5 * 60;
 
+const inFlightAvailabilityReads = new Map();
+const inFlightReservedHoldReads = new Map();
+
+function singleFlight(store, key, load) {
+  const existing = store.get(key);
+  if (existing) return existing;
+
+  const pending = Promise.resolve().then(load);
+  store.set(key, pending);
+
+  const cleanup = () => {
+    if (store.get(key) === pending) store.delete(key);
+  };
+  pending.then(cleanup, cleanup);
+  return pending;
+}
+
 async function resolveWarehouseIdOrDefault(restaurantId) {
   const wh = await Warehouse.findOne({ restaurantId, isActive: true })
     .sort({ createdAt: 1, _id: 1 })
@@ -32,6 +49,57 @@ function getMatchingHoldExpiry(item, { restaurantId, menuItemId, servingKey, now
   if (String(item?.menuItemId) !== String(menuItemId)) return null;
   if (getServingKey(item?.servingKey || item?.servingVariantKey) !== servingKey) return null;
   return getActiveHoldExpiry(item, now);
+}
+
+function liveStateKey({ restaurantId, menuItemId, servingKey }) {
+  return `${restaurantId}:${menuItemId}:${servingKey}`;
+}
+
+function readAvailability({ restaurantId, menuItemId, servingKey }) {
+  const key = liveStateKey({ restaurantId, menuItemId, servingKey });
+  return singleFlight(inFlightAvailabilityReads, key, async () => {
+    const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
+    return checkAvailabilityForLinesTx({
+      restaurantId,
+      warehouseId,
+      lines: [{ menuItemId, quantity: 1, servingKey }],
+    });
+  });
+}
+
+function readReservedCartQty({ restaurantId, menuItemId, servingKey, now }) {
+  const key = liveStateKey({ restaurantId, menuItemId, servingKey });
+  return singleFlight(inFlightReservedHoldReads, key, async () => {
+    const reservedCarts = await Cart.find({
+      status: "active",
+      items: {
+        $elemMatch: {
+          restaurantId,
+          menuItemId,
+          holdExpiresAt: { $gt: now },
+          $or: [{ holdStatus: "active" }, { holdStatus: { $exists: false } }],
+        },
+      },
+    })
+      .select({ items: 1 })
+      .lean();
+
+    let reservedCartQty = 0;
+    for (const cart of reservedCarts) {
+      const items = Array.isArray(cart?.items) ? cart.items : [];
+      for (const item of items) {
+        const holdExpiry = getMatchingHoldExpiry(item, {
+          restaurantId,
+          menuItemId,
+          servingKey,
+          now,
+        });
+        if (!holdExpiry) continue;
+        reservedCartQty += Number(item?.quantity) || 0;
+      }
+    }
+    return reservedCartQty;
+  });
 }
 
 function unauthenticated() {
@@ -80,16 +148,29 @@ export const CartQuery = {
     if (userId) uid = resolveSelfUserId(userId, ctx);
     else if (ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)) uid = ctx.user.id;
 
-    let abuse = null;
-    let cartItems = [];
-    if (uid) {
-      const cart = await Cart.findOne({ userId: uid, status: "active" })
-        .select({ abuse: 1, items: 1 })
-        .lean();
-      abuse = cart?.abuse || null;
-      cartItems = Array.isArray(cart?.items) ? cart.items : [];
-    }
+    const cartPromise = uid
+      ? Cart.findOne({ userId: uid, status: "active" })
+          .select({ abuse: 1, items: 1 })
+          .lean()
+      : Promise.resolve(null);
 
+    const [cart, reservedCartQty, availability] = await Promise.all([
+      cartPromise,
+      readReservedCartQty({
+        restaurantId,
+        menuItemId,
+        servingKey: normalizedServingKey,
+        now,
+      }),
+      readAvailability({
+        restaurantId,
+        menuItemId,
+        servingKey: normalizedServingKey,
+      }),
+    ]);
+
+    const abuse = cart?.abuse || null;
+    const cartItems = Array.isArray(cart?.items) ? cart.items : [];
     let myCartQty = 0;
     let myHoldExpiresAt = null;
     for (const item of cartItems) {
@@ -104,42 +185,6 @@ export const CartQuery = {
       myCartQty += Number(item?.quantity) || 0;
       if (!myHoldExpiresAt || holdExpiry < myHoldExpiresAt) myHoldExpiresAt = holdExpiry;
     }
-
-    const reservedCarts = await Cart.find({
-      status: "active",
-      items: {
-        $elemMatch: {
-          restaurantId,
-          menuItemId,
-          holdExpiresAt: { $gt: now },
-          $or: [{ holdStatus: "active" }, { holdStatus: { $exists: false } }],
-        },
-      },
-    })
-      .select({ items: 1 })
-      .lean();
-
-    let reservedCartQty = 0;
-    for (const cart of reservedCarts) {
-      const items = Array.isArray(cart?.items) ? cart.items : [];
-      for (const item of items) {
-        const holdExpiry = getMatchingHoldExpiry(item, {
-          restaurantId,
-          menuItemId,
-          servingKey: normalizedServingKey,
-          now,
-        });
-        if (!holdExpiry) continue;
-        reservedCartQty += Number(item?.quantity) || 0;
-      }
-    }
-
-    const warehouseId = await resolveWarehouseIdOrDefault(restaurantId);
-    const availability = await checkAvailabilityForLinesTx({
-      restaurantId,
-      warehouseId,
-      lines: [{ menuItemId, quantity: 1, servingKey: normalizedServingKey }],
-    });
 
     const key = `${restaurantId}:${menuItemId}`;
     const viewerCount = Number(ctx?.menuPresenceStore?.get?.(key) || 0);
