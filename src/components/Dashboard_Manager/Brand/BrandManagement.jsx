@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { message } from "antd";
 import ManagementPageHeader from "../shared/ManagementPageHeader";
 import useBrandManagement, { MY_BRANDS_QUERY } from "@/hooks/useBrandManagement";
-import { getBrandRoleLabel, getMembershipScopeLabel } from "@/lib/userRoleDisplay";
 import "./BrandManagement.css";
 
 const UPDATE_BRAND = gql`
@@ -13,9 +12,7 @@ const UPDATE_BRAND = gql`
       id
       name
       slug
-      description
       businessName
-      businessTaxCode
       businessEmail
       businessPhone
       status
@@ -85,13 +82,44 @@ const MEMBER_STATUS_LABELS = {
 };
 
 const ROLE_OPTIONS = ["admin", "manager", "staff"];
+const CHAIN_ROLE_LABELS = {
+  owner: "Chủ chuỗi nhà hàng",
+  admin: "Quản trị chuỗi",
+  manager: "Quản lý chi nhánh",
+  staff: "Nhân viên chi nhánh",
+};
+
+const normalizeChainRole = (value) =>
+  String(typeof value === "string" ? value : value?.role || "")
+    .trim()
+    .toLowerCase();
+
+const getChainRoleLabel = (value) =>
+  CHAIN_ROLE_LABELS[normalizeChainRole(value)] || null;
+
+const getChainScopeLabel = (membership, restaurants = [], chainName = "") => {
+  const role = normalizeChainRole(membership);
+  if (["owner", "admin"].includes(role)) {
+    return chainName ? `Toàn bộ chuỗi ${chainName}` : "Toàn bộ chuỗi";
+  }
+
+  const restaurantIds = [...new Set((membership?.restaurantIds || []).map(String))];
+  const restaurantById = new Map(
+    restaurants.map((restaurant) => [String(restaurant.id), restaurant.name]),
+  );
+  const names = restaurantIds
+    .map((restaurantId) => restaurantById.get(restaurantId) || restaurantId)
+    .filter(Boolean);
+
+  if (role === "manager") return names[0] || "Chưa gán chi nhánh";
+  if (role === "staff") return names.length ? names.join(", ") : "Chưa gán chi nhánh";
+  return "Chưa có phạm vi";
+};
 
 const emptyBrandForm = {
   name: "",
   slug: "",
-  description: "",
   businessName: "",
-  businessTaxCode: "",
   businessEmail: "",
   businessPhone: "",
 };
@@ -190,9 +218,7 @@ export default function BrandManagement() {
     setBrandForm({
       name: selectedBrand.name || "",
       slug: selectedBrand.slug || "",
-      description: selectedBrand.description || "",
       businessName: selectedBrand.businessName || "",
-      businessTaxCode: selectedBrand.businessTaxCode || "",
       businessEmail: selectedBrand.businessEmail || "",
       businessPhone: selectedBrand.businessPhone || "",
     });
@@ -233,8 +259,8 @@ export default function BrandManagement() {
     if (!keyword) return members;
 
     return members.filter((currentMember) => {
-      const roleLabel = getBrandRoleLabel({ membership: currentMember }) || "";
-      const scopeLabel = getMembershipScopeLabel(
+      const roleLabel = getChainRoleLabel(currentMember) || "";
+      const scopeLabel = getChainScopeLabel(
         currentMember,
         restaurants,
         selectedBrand?.name,
@@ -277,9 +303,7 @@ export default function BrandManagement() {
           input: {
             name: brandForm.name.trim(),
             slug: brandForm.slug.trim(),
-            description: trimOrNull(brandForm.description),
             businessName: trimOrNull(brandForm.businessName),
-            businessTaxCode: trimOrNull(brandForm.businessTaxCode),
             businessEmail: trimOrNull(brandForm.businessEmail),
             businessPhone: trimOrNull(brandForm.businessPhone),
           },
@@ -418,10 +442,9 @@ export default function BrandManagement() {
   };
 
   const selectedRoleLabel = selectedBrand
-    ? getBrandRoleLabel({
-      activeBrand: selectedBrand,
-      membership: selectedBrand.membership,
-    })
+    ? getChainRoleLabel(
+      selectedBrand.membership?.role || selectedBrand.membershipRole,
+    )
     : null;
   const selectedStatusLabel = selectedBrand
     ? BRAND_STATUS_LABELS[selectedBrand.status] || "Không xác định"
@@ -525,8 +548,8 @@ export default function BrandManagement() {
               <span className="brand-kicker">Chuỗi đang được cấu hình</span>
               <h2 id="selected-chain-title">{selectedBrand.name}</h2>
               <p>
-                {selectedBrand.description ||
-                  "Bổ sung mô tả ngắn để đội vận hành hiểu rõ định hướng của chuỗi."}
+                Quản lý tập trung thông tin doanh nghiệp, chi nhánh và thành viên
+                trong cùng một không gian vận hành.
               </p>
             </div>
             <div className="brand-identity-panel__facts" aria-label="Tóm tắt chuỗi">
@@ -593,32 +616,12 @@ export default function BrandManagement() {
                   )}
                 </label>
 
-                <label className="brand-field brand-field--full">
-                  <span>Giới thiệu chuỗi</span>
-                  <textarea
-                    rows={3}
-                    maxLength={500}
-                    value={brandForm.description}
-                    onChange={(event) => updateBrandField("description", event.target.value)}
-                    placeholder="Mô tả ngắn về mô hình, phong cách và định hướng phục vụ"
-                  />
-                </label>
-
                 <label className="brand-field">
                   <span>Tên pháp lý</span>
                   <input
                     value={brandForm.businessName}
                     onChange={(event) => updateBrandField("businessName", event.target.value)}
                     placeholder="Tên doanh nghiệp trên giấy phép"
-                  />
-                </label>
-
-                <label className="brand-field">
-                  <span>Mã số thuế</span>
-                  <input
-                    value={brandForm.businessTaxCode}
-                    onChange={(event) => updateBrandField("businessTaxCode", event.target.value)}
-                    placeholder="Nhập mã số thuế"
                   />
                 </label>
 
@@ -805,7 +808,7 @@ export default function BrandManagement() {
                   >
                     {ROLE_OPTIONS.map((role) => (
                       <option key={role} value={role}>
-                        {getBrandRoleLabel({ membership: { role } })}
+                        {getChainRoleLabel(role)}
                       </option>
                     ))}
                   </select>
@@ -913,9 +916,8 @@ export default function BrandManagement() {
                     currentMember.userId ||
                     "Tài khoản chưa có tên";
                   const roleLabel =
-                    getBrandRoleLabel({ membership: currentMember }) ||
-                    "Chưa có vai trò";
-                  const scopeLabel = getMembershipScopeLabel(
+                    getChainRoleLabel(currentMember) || "Chưa có vai trò";
+                  const scopeLabel = getChainScopeLabel(
                     currentMember,
                     restaurants,
                     selectedBrand.name,

@@ -188,9 +188,7 @@ describe("BrandManagement", () => {
       input: {
         name: "Cohan Group",
         slug: "cohan-group",
-        description: "Chuỗi nhà hàng Việt hiện đại",
         businessName: "Công ty Cohan",
-        businessTaxCode: "0312345678",
         businessEmail: null,
         businessPhone: null,
       },
