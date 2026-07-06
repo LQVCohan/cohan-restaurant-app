@@ -1,12 +1,12 @@
 {
   "id": "past-attendance-approval-overtime-demo",
   "name": "past-attendance-approval-overtime-demo",
-  "title": "Seed past attendance approvals and overtime",
-  "description": "Keep the two-week schedule, but create attendance, review queues, and overtime only for completed Vietnam calendar days.",
+  "title": "Seed past attendance approvals and complete overtime workflow",
+  "description": "Keep the two-week schedule, create attendance and overtime only for completed Vietnam calendar days, and expose the existing role-safe manager/staff overtime workflow in the UI.",
   "status": "in_progress",
-  "dev_type": "backend",
+  "dev_type": "fullstack",
   "scope": "staff-attendance-demo",
-  "package": "cohan-restaurant-backend",
+  "package": "cohan-restaurant-app",
   "priority": "P1",
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
@@ -22,8 +22,12 @@
   "parent": "staff-performance-two-week-roster",
   "relatedFiles": [
     "cohan-restaurant-backend/scripts/seedStaffPerformanceWeekRoster.js",
-    "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js"
+    "cohan-restaurant-backend/scripts/verifyStaffPerformanceWeekRoster.js",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel.test.jsx",
+    "src/components/Staff/StaffAttendancePage.jsx",
+    "src/components/Staff/StaffAttendancePage.test.jsx"
   ],
-  "notes": "PR #1206 stops attendance at 06/07/2026 for the default 07/07/2026 as-of date. Future shifts remain scheduled without timesheets, correction reviews, off-schedule attendance, or overtime. The seed temporarily excludes future shifts only while recalculating the demo snapshot, then restores them to scheduled. Local Mongo seed and verifier remain required.",
+  "notes": "PR #1206 stops attendance at 06/07/2026 for the default 07/07/2026 as-of date. The backend permission contract remains authoritative: ADMIN/MANAGER/HR may create and review within restaurant scope; STAFF may create, confirm, and cancel only their own requests; ACCOUNTANT is read-only. The UI must mirror that contract without broadening permissions.",
   "meta": {}
 }
