@@ -3,7 +3,7 @@
   "name": "restaurant-location-production-readiness",
   "title": "Harden restaurant current-location capture for production",
   "description": "Use the same browser-side reverse-geocoding path as Home across restaurant setup and customer addresses, with a backend fallback, then persist the resolved address and coordinates.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "fullstack",
   "scope": "shared-browser-reverse-geocoding",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-06",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "fix/restaurant-location-production",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1205",
+  "commit": "7de5b39992f97cecce00b264bfe788be1fc2c43b",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1207",
   "subtasks": [],
   "children": [],
   "parent": "table-ar-mobile-demo-readiness",
@@ -28,6 +28,6 @@
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
     "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
   ],
-  "notes": "Manual Network inspection showed browser GPS succeeds but the backend reverse-geocode proxy returns Nominatim access errors. Home already succeeds by calling Nominatim directly from the browser. The fix will reuse that path in a shared helper and keep the backend endpoint only as a fallback.",
+  "notes": "Manual Network inspection showed browser GPS succeeds but the backend reverse-geocode proxy cannot reach Nominatim. Home already succeeds with browser-side Nominatim. The shared helper now uses browser-side lookup first and the backend endpoint only as fallback. GitHub Actions run 28821226554 passed frontend and backend lint/tests/build plus Playwright smoke tests. Real address accuracy still depends on OpenStreetMap coverage and remains a manual review step.",
   "meta": {}
 }
