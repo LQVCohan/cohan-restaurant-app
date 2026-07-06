@@ -72,7 +72,6 @@ const restaurant = {
   notesOnHours: "",
   cuisineType: "",
   priceRange: "",
-  status: "active",
   businessStatus: "active",
   operationalStatus: "normal",
   capabilities: initialCapabilities,
@@ -117,6 +116,11 @@ const savedRestaurant = {
     ...initialCapabilities,
     acceptsOrders: false,
   },
+};
+
+const pausedRestaurant = {
+  ...restaurant,
+  operationalStatus: "paused",
 };
 
 const queryResults = {
@@ -217,7 +221,7 @@ beforeEach(() => {
   });
 });
 
-describe("RestaurantInfoManagement remote orders", () => {
+describe("RestaurantInfoManagement", () => {
   it("preserves other capabilities when the manager disables remote orders", async () => {
     render(<RestaurantInfoManagement />);
 
@@ -243,6 +247,36 @@ describe("RestaurantInfoManagement remote orders", () => {
       ...initialCapabilities,
       acceptsOrders: false,
     });
+    expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves paused operational status without sending legacy status", async () => {
+    updateRestaurantMock.mockResolvedValueOnce({
+      data: { updateRestaurant: pausedRestaurant },
+    });
+    refetchRestaurantDetailMock.mockResolvedValueOnce({
+      data: { restaurant: pausedRestaurant },
+    });
+
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    const operationalStatusSelect = screen.getByRole("combobox", {
+      name: "Trạng thái vận hành",
+    });
+    fireEvent.mouseDown(operationalStatusSelect);
+    fireEvent.click(await screen.findByText("Tạm dừng vận hành"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(updateRestaurantMock).toHaveBeenCalledTimes(1));
+
+    const input = updateRestaurantMock.mock.calls[0][0].variables.input;
+    expect(input.operationalStatus).toBe("paused");
+    expect(input).not.toHaveProperty("status");
     expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
   });
 });
