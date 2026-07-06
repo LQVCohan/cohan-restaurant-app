@@ -32,6 +32,9 @@ The requested change is data-only. No schema, resolver, Apollo or UI contract ch
 
 - Upsert only; never delete or reset existing records.
 - Verify both restaurants exist and belong to the expected brand before writing.
+- Bind Cohan Restaurant to the four confirmed menu IDs and verify restaurant/time-slot ownership before any catalog write.
+- Create the four missing time-slot menus for Cohan Restaurant 2 using the existing unique key `restaurantId + timeSlot`.
+- Replace development wording in the confirmed breakfast and late-night menu names/descriptions with production copy.
 - Create realistic Vietnamese restaurant names and descriptions without demo/test/dev wording.
 - Populate all four menu time slots, dish categories, ingredient categories, ingredients, recipe variants and usable stock.
 - Include portion-only, kilogram-only and mixed portion/kilogram dishes.
@@ -39,6 +42,13 @@ The requested change is data-only. No schema, resolver, Apollo or UI contract ch
 - Keep recipe and denormalized menu-item pricing fields synchronized.
 - Require explicit `--apply` before database writes.
 - Provide a no-database `--validate-only` check.
+
+## Confirmed Cohan Restaurant menus
+
+- breakfast: `69fe7335ce835ed35b6b90b9`
+- lunch: `69ce9e348d8d711f12e2521d`
+- dinner: `69ce9e348d8d711f12e25220`
+- late_night: `69fe7341ce835ed35b6b91ea`
 
 ## Acceptance criteria
 
@@ -52,12 +62,14 @@ The requested change is data-only. No schema, resolver, Apollo or UI contract ch
 ## Files
 
 - `cohan-restaurant-backend/scripts/seedProductionMenuCatalog.js`: catalog, validation and idempotent upsert.
-- `cohan-restaurant-backend/package.json`: runnable npm command.
+- `cohan-restaurant-backend/scripts/seedProductionMenuCatalogWithMenus.js`: validates confirmed menu IDs, normalizes production menu copy, creates missing menus for the second restaurant, then runs the catalog seed.
+- `cohan-restaurant-backend/package.json`: runnable npm commands.
 
 ## Validation
 
 ```bash
 node --check scripts/seedProductionMenuCatalog.js
+node --check scripts/seedProductionMenuCatalogWithMenus.js
 node scripts/seedProductionMenuCatalog.js --validate-only
 ```
 
