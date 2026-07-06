@@ -2,7 +2,7 @@
   "id": "storage-sage-polish",
   "name": "storage-sage-polish",
   "title": "Polish storage page with manager sage palette",
-  "description": "Remove the remaining cream surfaces and align the complete storage management page with the manager dashboard sage-green visual system without changing inventory behavior.",
+  "description": "Remove the remaining cream canvas, rebalance storage cards toward cool neutral surfaces, and upgrade the ingredient modal without changing inventory behavior.",
   "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-storage-ui",
@@ -15,16 +15,17 @@
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "d13953ba89cfd633db7eb4bfb23534f394a5be48",
+  "commit": "73b69ad5d33d2ee2a2a6352f3414f80d3882246b",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
     "src/index.css",
+    "src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.jsx",
     "src/components/Dashboard_Manager/Storage/StorageSageTone.scss"
   ],
-  "notes": "Screenshot review found remaining cream in child selectors. The final theme now targets the actual il-card, il-stat-box, supply-card, sc-*, rc-card, toolbar, KPI, form and tab classes with higher page-scoped specificity. Inventory behavior is unchanged. Local component tests and build were not run in the connector-only environment.",
+  "notes": "Root cause was stylesheet order: Tabs.jsx loaded legacy storage background and modal styles after the earlier global theme. The final theme now loads last, replaces the cream manager canvas with cool neutral gray-green, keeps cards mostly white, and adds a scoped ingredient modal presentation. Inventory behavior is unchanged. Local component tests and build were not run in the connector-only environment.",
   "meta": {
     "skills": [
       "frontend-design",
