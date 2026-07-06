@@ -1,43 +1,64 @@
 /*
- * Storage tone aligned with the shared manager dashboard.
- * Higher page-scoped specificity intentionally wins over legacy warm component styles.
+ * Final storage theme.
+ * Loaded after every legacy storage stylesheet from Tabs.jsx.
+ * Direction: cool white + graphite + restrained sage accents, never cream.
  */
 
-.manager-layout .storage-management {
-  --storage-surface: rgba(247, 251, 248, 0.97);
-  --storage-surface-strong: #fbfdfc;
-  --storage-surface-soft: #edf5f0;
-  --storage-surface-muted: #e4eee8;
-  --storage-border: rgba(54, 91, 75, 0.2);
-  --storage-border-strong: rgba(54, 91, 75, 0.34);
-  --storage-text: #20342c;
-  --storage-muted: #60736a;
-  --storage-primary: #48695a;
-  --storage-primary-hover: #365447;
-  --storage-accent: #2f7d68;
-  --storage-accent-soft: #dcece4;
-  --storage-shadow: 0 14px 34px rgba(35, 73, 56, 0.09);
-  --storage-shadow-strong: 0 20px 46px rgba(35, 73, 56, 0.13);
+.manager-layout:has(.storage-management),
+.manager-layout__main:has(.storage-management),
+.manager-layout__content:has(.storage-management),
+.manager-layout__content:has(.storage-management) .manager-page-shell,
+.manager-layout__content:has(.storage-management) .manager-page-shell__body,
+.manager-layout__content:has(.storage-management) .storage-management {
+  --storage-canvas: #edf2ef;
+  --storage-canvas-deep: #e5ebe7;
+  --storage-surface: #fbfcfb;
+  --storage-surface-soft: #f3f6f4;
+  --storage-surface-muted: #e9efec;
+  --storage-border: rgba(55, 76, 65, 0.17);
+  --storage-border-strong: rgba(55, 76, 65, 0.3);
+  --storage-text: #24332c;
+  --storage-muted: #65736d;
+  --storage-primary: #4f6c5e;
+  --storage-primary-hover: #3d574b;
+  --storage-accent: #5f7f70;
+  --storage-accent-soft: #e4ece8;
+  --storage-shadow: 0 12px 30px rgba(34, 57, 46, 0.07);
+  --storage-shadow-strong: 0 18px 42px rgba(34, 57, 46, 0.11);
 
   color: var(--storage-text) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.9), transparent 34rem),
+    radial-gradient(circle at 88% 8%, rgba(95, 127, 112, 0.08), transparent 30rem),
+    linear-gradient(180deg, #f4f7f5 0%, var(--storage-canvas) 48%, var(--storage-canvas-deep) 100%) !important;
+}
+
+.manager-layout__content:has(.storage-management)::before {
+  opacity: 0.28 !important;
+  background-image:
+    linear-gradient(rgba(55, 76, 65, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55, 76, 65, 0.025) 1px, transparent 1px) !important;
+}
+
+.manager-layout__content:has(.storage-management) .storage-management {
+  min-height: calc(100dvh - var(--manager-header-height, 64px));
   background: transparent !important;
-  background-image: none !important;
 }
 
 .manager-layout .storage-management .sm-header-card {
   border-color: var(--storage-border) !important;
-  border-left: 4px solid rgba(47, 125, 104, 0.46) !important;
+  border-left: 4px solid rgba(79, 108, 94, 0.58) !important;
   background:
-    radial-gradient(circle at 94% 0%, rgba(47, 125, 104, 0.14), transparent 20rem),
-    linear-gradient(135deg, #f8fcfa, #e7f1eb) !important;
+    radial-gradient(circle at 94% 0%, rgba(95, 127, 112, 0.08), transparent 18rem),
+    linear-gradient(135deg, #ffffff, #f4f7f5) !important;
   box-shadow: var(--storage-shadow-strong) !important;
 }
 
 .manager-layout .storage-management .title-wrapper .icon-box,
 .manager-layout .storage-management .sm-kpi-card__icon,
 .manager-layout .storage-management .sm-kpi-card--good .sm-kpi-card__icon {
-  color: var(--storage-accent) !important;
-  border-color: rgba(47, 125, 104, 0.18) !important;
+  color: var(--storage-primary) !important;
+  border-color: var(--storage-border) !important;
   background: var(--storage-accent-soft) !important;
 }
 
@@ -45,7 +66,7 @@
 .manager-layout .storage-management .filter-group label,
 .manager-layout .storage-management .filter-group label svg,
 .manager-layout .storage-management .sm-kpi-card__label {
-  color: var(--storage-accent) !important;
+  color: var(--storage-primary) !important;
 }
 
 .manager-layout .storage-management .title-wrapper .page-title,
@@ -73,12 +94,12 @@
 .manager-layout .storage-management .inventory-audit-tab .inv-table-wrap,
 .manager-layout .storage-management .inventory-audit-tab .inv-movement-block {
   border-color: var(--storage-border) !important;
-  background: var(--storage-surface) !important;
+  background: rgba(251, 252, 251, 0.96) !important;
   box-shadow: var(--storage-shadow) !important;
 }
 
 .manager-layout .storage-management .sm-tab-content-wrapper {
-  background: rgba(242, 248, 244, 0.92) !important;
+  background: rgba(247, 249, 248, 0.95) !important;
 }
 
 .manager-layout .storage-management .sm-kpi-card:hover {
@@ -87,7 +108,7 @@
 }
 
 .manager-layout .storage-management .sm-kpi-card::after {
-  background: rgba(47, 125, 104, 0.52) !important;
+  background: rgba(79, 108, 94, 0.38) !important;
 }
 
 .manager-layout .storage-management .sm-kpi-card--warning .sm-kpi-card__icon {
@@ -108,7 +129,7 @@
 .manager-layout .storage-management .sl-stats {
   color: var(--storage-muted) !important;
   border-color: var(--storage-border) !important;
-  background: var(--storage-surface-soft) !important;
+  background: #f5f7f6 !important;
   box-shadow: none !important;
 }
 
@@ -127,10 +148,10 @@
 .manager-layout .storage-management .sm-btn.primary,
 .manager-layout .storage-management .il-btn-primary,
 .manager-layout .storage-management .sl-btn-add {
-  color: #fff !important;
-  border-color: rgba(54, 91, 75, 0.28) !important;
+  color: #ffffff !important;
+  border-color: rgba(61, 87, 75, 0.28) !important;
   background: var(--storage-primary) !important;
-  box-shadow: 0 10px 22px rgba(54, 91, 75, 0.22) !important;
+  box-shadow: 0 10px 22px rgba(61, 87, 75, 0.18) !important;
 }
 
 .manager-layout .storage-management .sm-btn.primary:hover:not(:disabled),
@@ -145,7 +166,7 @@
 .manager-layout .storage-management .sl-btn-icon:not(.sl-btn-trash-toggle) {
   color: var(--storage-primary) !important;
   border-color: var(--storage-border) !important;
-  background: var(--storage-surface-soft) !important;
+  background: #f7f9f8 !important;
 }
 
 .manager-layout .storage-management .sm-btn.ghost:hover:not(:disabled),
@@ -155,7 +176,7 @@
   color: var(--storage-primary-hover) !important;
   border-color: var(--storage-border-strong) !important;
   background: var(--storage-accent-soft) !important;
-  box-shadow: 0 8px 18px rgba(35, 73, 56, 0.1) !important;
+  box-shadow: 0 8px 18px rgba(34, 57, 46, 0.08) !important;
 }
 
 .manager-layout .storage-management input,
@@ -166,7 +187,7 @@
 .manager-layout .storage-management .custom-select-wrapper select {
   color: var(--storage-text) !important;
   border-color: var(--storage-border) !important;
-  background: var(--storage-surface-strong) !important;
+  background: #ffffff !important;
 }
 
 .manager-layout .storage-management input:hover:not(:disabled),
@@ -175,16 +196,14 @@
   border-color: var(--storage-border-strong) !important;
 }
 
-/* Ingredient cards */
+/* Ingredient cards: nearly white, sage only for accents. */
 .manager-layout .storage-management .il-card,
 .manager-layout .storage-management .il-skeleton-card,
 .manager-layout .storage-management .il-trash-item,
 .manager-layout .storage-management .il-empty {
   color: var(--storage-text) !important;
   border-color: var(--storage-border) !important;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 10rem),
-    linear-gradient(180deg, #f9fcfa, #eff6f2) !important;
+  background: linear-gradient(180deg, #ffffff, #f6f8f7) !important;
   box-shadow: var(--storage-shadow) !important;
 }
 
@@ -195,14 +214,14 @@
 
 .manager-layout .storage-management .il-card__header {
   border-bottom-color: var(--storage-border) !important;
-  background: rgba(247, 251, 248, 0.68) !important;
+  background: rgba(252, 253, 252, 0.92) !important;
 }
 
 .manager-layout .storage-management .il-card__icon-wrapper,
 .manager-layout .storage-management .il-badge,
 .manager-layout .storage-management .inv-badge--ok {
-  color: var(--storage-accent) !important;
-  border-color: rgba(47, 125, 104, 0.18) !important;
+  color: var(--storage-primary) !important;
+  border-color: var(--storage-border) !important;
   background: var(--storage-accent-soft) !important;
 }
 
@@ -211,15 +230,15 @@
 .manager-layout .storage-management .il-action-btn {
   color: var(--storage-text) !important;
   border-color: var(--storage-border) !important;
-  background: var(--storage-surface-soft) !important;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72) !important;
+  background: #f2f5f3 !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.76) !important;
 }
 
 .manager-layout .storage-management .il-stat-box--interactive:hover:not(:disabled),
 .manager-layout .storage-management .il-action-btn:hover:not(:disabled) {
   border-color: var(--storage-border-strong) !important;
-  background: var(--storage-surface-strong) !important;
-  box-shadow: 0 8px 18px rgba(35, 73, 56, 0.09) !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(34, 57, 46, 0.07) !important;
 }
 
 .manager-layout .storage-management .il-stat-label,
@@ -239,17 +258,17 @@
   background: var(--storage-border) !important;
 }
 
-/* Supply cards */
-.manager-layout .storage-management .supply-card {
+/* Supply and recipe cards follow the same neutral surface. */
+.manager-layout .storage-management .supply-card,
+.manager-layout .storage-management .rc-card {
   color: var(--storage-text) !important;
   border-color: var(--storage-border) !important;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 10rem),
-    linear-gradient(145deg, #f9fcfa, #eef5f1) !important;
+  background: linear-gradient(180deg, #ffffff, #f6f8f7) !important;
   box-shadow: var(--storage-shadow) !important;
 }
 
-.manager-layout .storage-management .supply-card:hover {
+.manager-layout .storage-management .supply-card:hover,
+.manager-layout .storage-management .rc-card:hover {
   border-color: var(--storage-border-strong) !important;
   box-shadow: var(--storage-shadow-strong) !important;
 }
@@ -264,93 +283,323 @@
 .manager-layout .storage-management .sc-stock-btn,
 .manager-layout .storage-management .sc-chip,
 .manager-layout .storage-management .sc-btn.variant-ghost,
-.manager-layout .storage-management .sc-btn.variant-icon {
-  color: var(--storage-primary) !important;
-  border-color: var(--storage-border) !important;
-  background: var(--storage-surface-soft) !important;
-}
-
-.manager-layout .storage-management .sc-stats-grid {
-  border-bottom-color: var(--storage-border) !important;
-}
-
-.manager-layout .storage-management .sc-stat-lbl {
-  color: var(--storage-muted) !important;
-}
-
-.manager-layout .storage-management .sc-stat-val {
-  color: var(--storage-text) !important;
-}
-
-.manager-layout .storage-management .sc-stat-val.highlight {
-  color: var(--storage-accent) !important;
-}
-
-/* Recipe cards */
-.manager-layout .storage-management .rc-card {
-  color: var(--storage-text) !important;
-  border-color: var(--storage-border) !important;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 10rem),
-    linear-gradient(145deg, #f9fcfa, #eef5f1) !important;
-  box-shadow: var(--storage-shadow) !important;
-}
-
-.manager-layout .storage-management .rc-card:hover {
-  border-color: var(--storage-border-strong) !important;
-  box-shadow: var(--storage-shadow-strong) !important;
-}
-
+.manager-layout .storage-management .sc-btn.variant-icon,
 .manager-layout .storage-management .rc-icon-box,
 .manager-layout .storage-management .rc-category,
 .manager-layout .storage-management .rc-btn-view,
 .manager-layout .storage-management .rc-icon-btn {
   color: var(--storage-primary) !important;
   border-color: var(--storage-border) !important;
-  background: var(--storage-surface-soft) !important;
+  background: #f2f5f3 !important;
 }
 
+.manager-layout .storage-management .sc-stats-grid,
 .manager-layout .storage-management .rc-stats,
 .manager-layout .storage-management .rc-actions {
   border-color: var(--storage-border) !important;
-  background: rgba(237, 245, 240, 0.86) !important;
+  background: #f4f6f5 !important;
 }
 
-.manager-layout .storage-management .rc-stat-item {
-  border-right-color: var(--storage-border) !important;
-}
-
+.manager-layout .storage-management .sc-stat-lbl,
 .manager-layout .storage-management .rc-stat-icon,
 .manager-layout .storage-management .rc-stat-label {
   color: var(--storage-muted) !important;
 }
 
+.manager-layout .storage-management .sc-stat-val,
 .manager-layout .storage-management .rc-stat-value {
   color: var(--storage-text) !important;
 }
 
+.manager-layout .storage-management .sc-stat-val.highlight,
 .manager-layout .storage-management .rc-stat-item.is-cost,
 .manager-layout .storage-management .rc-stat-item.is-cost .rc-stat-value,
 .manager-layout .storage-management .rc-stat-item.is-cost .rc-stat-icon {
-  color: var(--storage-accent) !important;
-  background: rgba(220, 236, 228, 0.58) !important;
+  color: var(--storage-primary) !important;
+  background: var(--storage-accent-soft) !important;
+}
+
+/* Ingredient modal: cool neutral shell, clearer hierarchy and sticky actions. */
+.modal-overlay:has(.ingredient-form-premium) {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(95, 127, 112, 0.14), transparent 30rem),
+    rgba(25, 38, 32, 0.58) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(105%) !important;
+  backdrop-filter: blur(12px) saturate(105%) !important;
+  overscroll-behavior: contain;
+}
+
+.modal-container:has(.ingredient-form-premium) {
+  width: min(920px, calc(100vw - 36px)) !important;
+  max-height: min(900px, calc(100dvh - 32px)) !important;
+  border: 1px solid rgba(55, 76, 65, 0.22) !important;
+  border-radius: 26px !important;
+  color: var(--storage-text, #24332c) !important;
+  background: #f8faf9 !important;
+  box-shadow:
+    0 34px 90px rgba(18, 31, 25, 0.28),
+    0 12px 28px rgba(18, 31, 25, 0.14) !important;
+}
+
+.modal-container:has(.ingredient-form-premium)::before {
+  display: none !important;
+}
+
+.modal-container:has(.ingredient-form-premium) .modal-header {
+  min-height: 72px !important;
+  padding: 18px 24px !important;
+  border-bottom: 1px solid rgba(55, 76, 65, 0.16) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(95, 127, 112, 0.08), transparent 16rem),
+    linear-gradient(180deg, #ffffff, #f4f7f5) !important;
+}
+
+.modal-container:has(.ingredient-form-premium) .modal-header h2 {
+  color: #203229 !important;
+  font-size: clamp(1.15rem, 1.7vw, 1.42rem) !important;
+  font-weight: 820 !important;
+  letter-spacing: -0.035em !important;
+  text-wrap: balance;
+}
+
+.modal-container:has(.ingredient-form-premium) .modal-close {
+  color: #68766f !important;
+  border-color: rgba(55, 76, 65, 0.18) !important;
+  background: #ffffff !important;
+}
+
+.modal-container:has(.ingredient-form-premium) .modal-close:hover {
+  color: #a13f3f !important;
+  border-color: rgba(181, 71, 71, 0.22) !important;
+  background: #fae9e7 !important;
+}
+
+.modal-container:has(.ingredient-form-premium) .modal-body {
+  padding: 20px 22px 0 !important;
+  color: #33473d !important;
+  background: #eef3f0 !important;
+  scrollbar-color: rgba(79, 108, 94, 0.35) transparent !important;
+}
+
+.ingredient-form-premium {
+  --prem-primary: #4f6c5e;
+  --prem-primary-hover: #3d574b;
+  --prem-primary-ring: rgba(79, 108, 94, 0.16);
+  --prem-primary-bg: #e4ece8;
+  --prem-danger: #b54747;
+  --prem-warning: #a66a18;
+  --prem-success: #2f7d68;
+  --prem-text-title: #203229;
+  --prem-text-body: #33473d;
+  --prem-text-muted: #68766f;
+  --prem-bg-body: #ffffff;
+  --prem-bg-input: #f7f9f8;
+  --prem-bg-elevated: #f4f7f5;
+  --prem-border: rgba(55, 76, 65, 0.17);
+  --prem-shadow-sm: 0 8px 20px rgba(34, 57, 46, 0.06);
+  --prem-shadow-focus: 0 0 0 4px var(--prem-primary-ring);
+
+  gap: 16px !important;
+  color: var(--prem-text-body) !important;
+  font-family: inherit !important;
+}
+
+.ingredient-form-premium .form-section {
+  padding: 18px !important;
+  border: 1px solid var(--prem-border) !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  box-shadow: var(--prem-shadow-sm) !important;
+}
+
+.ingredient-form-premium .form-section.elevated-section,
+.ingredient-form-premium .form-section.borderless {
+  margin-top: 0 !important;
+  padding: 18px !important;
+  border: 1px solid var(--prem-border) !important;
+  background: #ffffff !important;
+}
+
+.ingredient-form-premium .im-section-header {
+  margin-bottom: 16px !important;
+}
+
+.ingredient-form-premium .im-section-header .icon-box {
+  color: var(--prem-primary) !important;
+  border: 1px solid var(--prem-border) !important;
+  background: var(--prem-primary-bg) !important;
+}
+
+.ingredient-form-premium .im-section-header .icon-box.warning {
+  color: var(--prem-warning) !important;
+  background: #fff3da !important;
+  border-color: rgba(166, 106, 24, 0.18) !important;
+}
+
+.ingredient-form-premium .im-section-header .icon-box.danger {
+  color: #a13f3f !important;
+  background: #fae9e7 !important;
+  border-color: rgba(181, 71, 71, 0.18) !important;
+}
+
+.ingredient-form-premium .im-section-title,
+.ingredient-form-premium .form-group label {
+  color: var(--prem-text-title) !important;
+}
+
+.ingredient-form-premium .im-section-desc,
+.ingredient-form-premium .help-text,
+.ingredient-form-premium .hint {
+  color: var(--prem-text-muted) !important;
+}
+
+.ingredient-form-premium .standard-input,
+.ingredient-form-premium select,
+.ingredient-form-premium .standard-textarea,
+.ingredient-form-premium .input-with-icon input,
+.ingredient-form-premium .input-with-icon select,
+.ingredient-form-premium .input-addon-group,
+.ingredient-form-premium .segmented-control {
+  border: 1px solid var(--prem-border) !important;
+  background: var(--prem-bg-input) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72) !important;
+}
+
+.ingredient-form-premium :is(input, select, textarea):hover:not(:disabled),
+.ingredient-form-premium .input-addon-group:hover {
+  border-color: rgba(79, 108, 94, 0.3) !important;
+  background: #ffffff !important;
+}
+
+.ingredient-form-premium :is(input, select, textarea):focus-visible,
+.ingredient-form-premium .input-addon-group:focus-within {
+  outline: none !important;
+  border-color: rgba(79, 108, 94, 0.58) !important;
+  background: #ffffff !important;
+  box-shadow: var(--prem-shadow-focus) !important;
+}
+
+.ingredient-form-premium .segmented-control .segment {
+  border: 1px solid transparent !important;
+  color: var(--prem-text-muted) !important;
+  background: transparent !important;
+}
+
+.ingredient-form-premium .segmented-control .segment.active {
+  color: var(--prem-primary) !important;
+  border-color: var(--prem-border) !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(34, 57, 46, 0.07) !important;
+}
+
+.ingredient-form-premium .segmented-control .segment.error.active {
+  color: #a13f3f !important;
+  border-color: rgba(181, 71, 71, 0.16) !important;
+  background: #fff7f6 !important;
+}
+
+.ingredient-form-premium .badge-hint {
+  color: var(--prem-primary) !important;
+  background: var(--prem-primary-bg) !important;
+}
+
+.ingredient-form-premium .form-actions-premium {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 2px -22px 0 !important;
+  padding: 14px 22px 18px !important;
+  border-top: 1px solid var(--prem-border) !important;
+  background: rgba(248, 250, 249, 0.94) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(105%);
+  backdrop-filter: blur(12px) saturate(105%);
+  box-shadow: 0 -10px 24px rgba(34, 57, 46, 0.05) !important;
+}
+
+.ingredient-form-premium .form-actions-premium .btn-cancel {
+  color: #43564c !important;
+  border-color: var(--prem-border) !important;
+  background: #ffffff !important;
+}
+
+.ingredient-form-premium .form-actions-premium .btn-save {
+  color: #ffffff !important;
+  border-color: var(--prem-primary) !important;
+  background: var(--prem-primary) !important;
+  box-shadow: 0 10px 22px rgba(61, 87, 75, 0.18) !important;
+}
+
+.ingredient-form-premium .form-actions-premium .btn-save:hover:not(:disabled) {
+  background: var(--prem-primary-hover) !important;
+  box-shadow: 0 14px 26px rgba(61, 87, 75, 0.22) !important;
 }
 
 .manager-layout .storage-management :is(input, select, textarea, button):focus-visible,
 .manager-layout .storage-management .sm-tab-item:focus-visible,
 .manager-layout .storage-management .il-card:focus-visible,
-.manager-layout .storage-management .rc-card:focus-visible {
-  outline: 3px solid rgba(47, 125, 104, 0.24) !important;
+.manager-layout .storage-management .rc-card:focus-visible,
+.modal-container:has(.ingredient-form-premium) :is(button, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(79, 108, 94, 0.24) !important;
   outline-offset: 3px !important;
 }
 
 .manager-layout .storage-management button,
-.manager-layout .storage-management .sm-tab-item {
+.manager-layout .storage-management .sm-tab-item,
+.modal-container:has(.ingredient-form-premium) button {
   touch-action: manipulation;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .manager-layout .storage-management .sm-header-card {
     border-left-width: 3px !important;
+  }
+
+  .modal-overlay:has(.ingredient-form-premium) {
+    align-items: flex-end !important;
+    padding: 10px !important;
+  }
+
+  .modal-container:has(.ingredient-form-premium) {
+    width: 100% !important;
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 22px 22px 16px 16px !important;
+  }
+
+  .modal-container:has(.ingredient-form-premium) .modal-header {
+    padding: 16px 18px !important;
+  }
+
+  .modal-container:has(.ingredient-form-premium) .modal-body {
+    padding: 14px 14px 0 !important;
+  }
+
+  .ingredient-form-premium .form-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .ingredient-form-premium .form-section,
+  .ingredient-form-premium .form-section.elevated-section,
+  .ingredient-form-premium .form-section.borderless {
+    padding: 15px !important;
+  }
+
+  .ingredient-form-premium .form-actions-premium {
+    margin-inline: -14px !important;
+    padding: 12px 14px 14px !important;
+  }
+
+  .ingredient-form-premium .form-actions-premium button {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .storage-management *,
+  .modal-container:has(.ingredient-form-premium) * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
