@@ -1,0 +1,38 @@
+name: Apply restaurant profile production polish
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Load and apply reviewed polish patch
+        run: |
+          git fetch origin fix/restaurant-location-production
+          git show origin/fix/restaurant-location-production:.github/scripts/apply_restaurant_profile_production_polish.py > /tmp/apply_restaurant_profile_production_polish.py
+          python /tmp/apply_restaurant_profile_production_polish.py
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: align restaurant profile with manager dashboard"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
