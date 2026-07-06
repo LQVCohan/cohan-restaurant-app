@@ -3,7 +3,7 @@
   "name": "storage-sage-polish",
   "title": "Polish storage page with manager sage palette",
   "description": "Remove the remaining cream surfaces and align the complete storage management page with the manager dashboard sage-green visual system without changing inventory behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-storage-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "d13953ba89cfd633db7eb4bfb23534f394a5be48",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -24,7 +24,7 @@
     "src/index.css",
     "src/components/Dashboard_Manager/Storage/StorageSageTone.scss"
   ],
-  "notes": "Screenshot review found remaining cream in child component selectors such as il-card, il-stat-box, supply-card, and rc-card. Fix stays visual-only and preserves all inventory behavior.",
+  "notes": "Screenshot review found remaining cream in child selectors. The final theme now targets the actual il-card, il-stat-box, supply-card, sc-*, rc-card, toolbar, KPI, form and tab classes with higher page-scoped specificity. Inventory behavior is unchanged. Local component tests and build were not run in the connector-only environment.",
   "meta": {
     "skills": [
       "frontend-design",
