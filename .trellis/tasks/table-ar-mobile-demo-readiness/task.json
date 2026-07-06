@@ -1,0 +1,33 @@
+{
+  "id": "table-ar-mobile-demo-readiness",
+  "name": "table-ar-mobile-demo-readiness",
+  "title": "Make table 3D and AR mobile demo flow reliable",
+  "description": "Wire the existing per-table AR action, expose restaurant coordinates to the AR geofence, avoid empty catalog requests, and update the closest automated and manual checks.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-table-3d-ar-mobile-demo",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-06",
+  "completedAt": null,
+  "branch": "fix/table-ar-mobile-demo-readiness",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/hooks/useRestaurant.js",
+    "src/hooks/useTable3DModels.js",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx",
+    "tests/e2e/table-ar-mobile.spec.js",
+    "docs/AR_MOBILE_TEST_CHECKLIST.md"
+  ],
+  "notes": "The backend Table schema, updateTable resolver, permission check, visualConfig sanitizer, audit log, and GraphQL inputs already support the AR save payload; no backend contract change is required.",
+  "meta": {}
+}
