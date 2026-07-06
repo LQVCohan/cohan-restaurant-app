@@ -15,6 +15,15 @@ export default function useTable3DModels() {
 
   const loadCatalog = useCallback(async () => {
     abortRef.current?.abort?.();
+
+    if (!TABLE_3D_PUBLIC_CATALOG_URL) {
+      abortRef.current = null;
+      setModels(LOCAL_TABLE_3D_CATALOG);
+      setLoading(false);
+      setError("");
+      return;
+    }
+
     const controller = new AbortController();
     abortRef.current = controller;
 
