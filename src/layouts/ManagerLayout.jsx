@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useMemo, useContext } from "react";
+import { useLocation } from "react-router-dom";
 import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
 import "./ManagerLayout.scss";
@@ -248,18 +249,43 @@ const PageLoadingFallback = () => <div className="manager-page-shell__empty">Đa
 
 const ManagerLayout = () => {
   const { user } = useContext(AuthContext);
+  const location = useLocation();
   const brandSelection = useManagerRestaurantSelection();
   const roleName = user?.roleName || user?.role?.slug;
   const isAdminUser = isAdminRole(user) || isAdminRole(roleName);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
   const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
+  const requestedRestaurantId = useMemo(
+    () => new URLSearchParams(location.search).get("restaurantId") || "",
+    [location.search],
+  );
   const allowedPages = useMemo(() => {
     const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(([id, permissions]) => ({ id, permissions }));
     const pageSet = new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
     if (!isAdminUser) ADMIN_ONLY_MANAGER_PAGES.forEach((pageId) => pageSet.delete(pageId));
     return pageSet;
   }, [isAdminUser, user]);
+
+  useEffect(() => {
+    if (!requestedRestaurantId) return;
+    const targetBrand = brandSelection.brandOptions.find((brand) =>
+      (brand.restaurants || []).some((restaurant) => String(restaurant.id || restaurant._id) === requestedRestaurantId),
+    );
+    if (targetBrand && String(targetBrand.id) !== String(brandSelection.selectedBrandId || "")) {
+      brandSelection.setSelectedBrandId(String(targetBrand.id));
+    }
+    if (requestedRestaurantId !== String(brandSelection.selectedRestaurantId || "")) {
+      brandSelection.setSelectedRestaurantId(requestedRestaurantId);
+    }
+  }, [
+    brandSelection.brandOptions,
+    brandSelection.selectedBrandId,
+    brandSelection.selectedRestaurantId,
+    brandSelection.setSelectedBrandId,
+    brandSelection.setSelectedRestaurantId,
+    requestedRestaurantId,
+  ]);
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -310,6 +336,7 @@ const ManagerLayout = () => {
       setSidebarOpen(false);
       localStorage.setItem("manager.currentPage", pageId);
       history.replaceState(null, "", buildManagerNavigationUrl({ page: pageId, query }));
+      window.dispatchEvent(new PopStateEvent("popstate"));
       window.dispatchEvent(new CustomEvent("manager:navigation-query", { detail: { page: pageId, query, source: event?.detail?.source || "manager:navigate" } }));
     };
     window.addEventListener("manager:navigate", handleManagerNavigate);
@@ -373,7 +400,7 @@ const ManagerLayout = () => {
       case "restaurant-info-management": return <ManagerRestaurantInfoManagement />;
       case "rbac": return <RbacManagement />;
       case "system-users": return <SystemUserManagement />;
-      case "ai-handoff": return <AiHandoffInbox />;
+      case "ai-handoff": return <AiHandoffInbox restaurantId={requestedRestaurantId || brandSelection.selectedRestaurantId || null} />;
       case "ai-chatbot-analytics": return <AiChatbotAnalyticsPage />;
       case "ai-chatbot-settings": return <AiChatbotSettingsPage />;
       case "ai-chatbot-knowledge": return <AiChatbotKnowledgePage />;
