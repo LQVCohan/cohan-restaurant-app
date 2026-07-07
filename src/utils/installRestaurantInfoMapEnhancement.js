@@ -1,16 +1,14 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 const RESTAURANT_ROUTE_RE = /^\/(manager|admin)(?:\/|$)/;
 const DEFAULT_CENTER = { lat: 10.7769, lng: 106.7009 };
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
+const RESTAURANT_MARKER_ICON = L.divIcon({
+  className: "restaurant-location-marker",
+  html: '<span class="restaurant-location-marker__pin" aria-hidden="true"><span></span></span>',
+  iconSize: [38, 46],
+  iconAnchor: [19, 44],
+  popupAnchor: [0, -40],
 });
 
 let activeCard = null;
@@ -105,9 +103,10 @@ const syncMapFromInputs = (card, context, { recenter = false } = {}) => {
   }
 
   if (!state.marker) {
-    state.marker = L.marker([pair.lat, pair.lng], { draggable: true }).addTo(
-      state.map,
-    );
+    state.marker = L.marker([pair.lat, pair.lng], {
+      draggable: true,
+      icon: RESTAURANT_MARKER_ICON,
+    }).addTo(state.map);
     state.marker.on("dragend", (event) => {
       const next = event.target.getLatLng();
       applyMapCoordinates(card, next.lat, next.lng);
