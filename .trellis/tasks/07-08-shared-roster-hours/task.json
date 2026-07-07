@@ -6,8 +6,8 @@
   "scope": [
     "Allow overlapping schedule templates for different employees",
     "Keep same-employee overlap validation in the backend",
-    "Seed 8-hour full-time and 4-hour part-time shifts for restaurant 69ce9e2e8d8d711f12e251b1",
-    "Verify planned hours and mixed-employment overlap in one roster"
+    "Update the existing two-week roster to 8-hour full-time and 4-hour part-time shifts",
+    "Verify planned hours and mixed-employment overlap without creating duplicate data"
   ],
-  "branch": "cohan-schedule-hours"
+  "branch": "fix-existing-roster-hours-data"
 }

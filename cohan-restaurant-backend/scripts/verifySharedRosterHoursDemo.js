@@ -10,14 +10,26 @@ import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 
 const RESTAURANT_ID =
   process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
-const TAG_PATTERN = /demo-shared-roster-hours-2026-07/;
-const HISTORICAL_START = "2026-06-15";
-const FUTURE_START = "2026-07-13";
-const EXPECTED_STAFF = 14;
-const EXPECTED_SHIFT_COUNT = EXPECTED_STAFF * 14;
-const EXPECTED_TIMESHEET_COUNT = EXPECTED_STAFF * 7;
+const WEEK_TAG_PATTERN = /demo-staff-performance-weeks-2026-07/;
+const LEGACY_TAG_PATTERN = /demo-shared-roster-hours-2026-07/;
+const EXPECTED_SHIFT_COUNT = 98;
 const OPEN_MINUTES = 7 * 60;
 const CLOSE_MINUTES = 23 * 60;
+
+const SCENARIOS = [
+  ["staff.server.demo@cohan.local", "morning", 7, 8],
+  ["staff.chef.demo@cohan.local", "morning", 7, 8],
+  ["staff.supervisor.demo@cohan.local", "evening", 15, 8],
+  ["staff.cashier.demo@cohan.local", "afternoon", 11, 4],
+  ["staff.kitchenhelper.demo@cohan.local", "afternoon", 11, 4],
+  ["staff.exception.demo@cohan.local", "afternoon", 11, 4],
+  ["staff.parttime.demo@cohan.local", "rotating", 19, 4],
+].map(([email, shiftType, startHour, shiftHours]) => ({
+  email,
+  shiftType,
+  startHour,
+  shiftHours,
+}));
 
 const state = { pass: 0, fail: 0 };
 const check = (condition, message) => {
@@ -57,60 +69,81 @@ async function run() {
   const restaurantId = new mongoose.Types.ObjectId(RESTAURANT_ID);
   const staff = await Staff.find({
     restaurantForStaff: restaurantId,
+    email: { $in: SCENARIOS.map((item) => item.email) },
     userType: "STAFF",
     deletedAt: null,
   })
     .select("_id email employmentType")
     .lean();
   const staffById = new Map(staff.map((item) => [String(item._id), item]));
+  const scenarioByEmail = new Map(SCENARIOS.map((item) => [item.email, item]));
 
-  const [shifts, timesheets, policy] = await Promise.all([
-    Shift.find({ restaurantId, notes: TAG_PATTERN }).sort({ startTime: 1 }).lean(),
-    Timesheet.find({ restaurantId, note: TAG_PATTERN }).sort({ workDate: 1 }).lean(),
+  const [
+    shifts,
+    timesheets,
+    policy,
+    legacyShiftCount,
+    legacyTimesheetCount,
+  ] = await Promise.all([
+    Shift.find({
+      restaurantId,
+      employeeId: { $in: staff.map((item) => item._id) },
+      notes: WEEK_TAG_PATTERN,
+    })
+      .sort({ startTime: 1 })
+      .lean(),
+    Timesheet.find({
+      restaurantId,
+      employeeId: { $in: staff.map((item) => item._id) },
+      note: WEEK_TAG_PATTERN,
+      shiftId: { $ne: null },
+    }).lean(),
     SchedulingPolicy.findOne({ restaurantId }).lean(),
+    Shift.countDocuments({ restaurantId, notes: LEGACY_TAG_PATTERN }),
+    Timesheet.countDocuments({ restaurantId, note: LEGACY_TAG_PATTERN }),
   ]);
 
-  const seededStaffIds = new Set(shifts.map((item) => String(item.employeeId)));
-  check(seededStaffIds.size === EXPECTED_STAFF, "roster contains all fourteen demo staff");
-  check(shifts.length === EXPECTED_SHIFT_COUNT, "created two complete seven-day rosters");
-  check(timesheets.length === EXPECTED_TIMESHEET_COUNT, "created attendance only for the historical week");
+  check(staff.length === SCENARIOS.length, "found the existing seven demo staff");
+  check(shifts.length === EXPECTED_SHIFT_COUNT, "reused the existing 98 shifts");
+  check(legacyShiftCount === 0, "removed legacy duplicate shifts if they existed");
+  check(legacyTimesheetCount === 0, "removed legacy duplicate timesheets if they existed");
 
   const shiftsByDate = new Map();
-  const shiftsByEmployeeDate = new Map();
-  let validDurationCount = 0;
-  let insideOperatingHoursCount = 0;
+  const employeeDates = new Set();
+  let validShiftCount = 0;
 
   for (const shift of shifts) {
     const staffRow = staffById.get(String(shift.employeeId));
-    const expectedMinutes = staffRow?.employmentType === "full_time" ? 480 : 240;
-    if (durationMinutes(shift.startTime, shift.endTime) === expectedMinutes) {
-      validDurationCount += 1;
-    }
+    const scenario = scenarioByEmail.get(staffRow?.email);
+    if (!scenario) continue;
+
+    const expectedStart = scenario.startHour * 60;
+    const expectedEnd = expectedStart + scenario.shiftHours * 60;
     if (
-      hcmMinutes(shift.startTime) >= OPEN_MINUTES &&
-      hcmMinutes(shift.endTime) <= CLOSE_MINUTES
+      shift.shiftType === scenario.shiftType &&
+      hcmMinutes(shift.startTime) === expectedStart &&
+      hcmMinutes(shift.endTime) === expectedEnd &&
+      durationMinutes(shift.startTime, shift.endTime) === scenario.shiftHours * 60 &&
+      expectedStart >= OPEN_MINUTES &&
+      expectedEnd <= CLOSE_MINUTES
     ) {
-      insideOperatingHoursCount += 1;
+      validShiftCount += 1;
     }
 
     const date = hcmDate(shift.startTime);
-    const dateRows = shiftsByDate.get(date) || [];
-    dateRows.push(shift);
-    shiftsByDate.set(date, dateRows);
-
-    const employeeDateKey = `${shift.employeeId}:${date}`;
-    const employeeRows = shiftsByEmployeeDate.get(employeeDateKey) || [];
-    employeeRows.push(shift);
-    shiftsByEmployeeDate.set(employeeDateKey, employeeRows);
+    const rows = shiftsByDate.get(date) || [];
+    rows.push(shift);
+    shiftsByDate.set(date, rows);
+    employeeDates.add(`${shift.employeeId}:${date}`);
   }
 
-  check(validDurationCount === shifts.length, "full-time shifts are 8 hours and part-time shifts are 4 hours");
-  check(insideOperatingHoursCount === shifts.length, "all planned shifts stay inside 07:00-23:00");
-  check(shiftsByDate.size === 14, "roster covers fourteen Vietnam calendar dates");
+  check(validShiftCount === shifts.length, "all existing shifts use the new 07:00-23:00 windows");
+  check(shiftsByDate.size === 14, "the original previous/current two-week range remains intact");
   check(
-    [...shiftsByDate.values()].every((rows) => rows.length === EXPECTED_STAFF),
-    "every roster date contains fourteen staff assignments",
+    [...shiftsByDate.values()].every((rows) => rows.length === SCENARIOS.length),
+    "every date still contains seven assignments",
   );
+  check(employeeDates.size === EXPECTED_SHIFT_COUNT, "no duplicate employee/date shift was created");
 
   const mixedOverlapDates = [...shiftsByDate.values()].filter((rows) => {
     const fullTime = rows.filter(
@@ -125,50 +158,33 @@ async function run() {
   });
   check(
     mixedOverlapDates.length === shiftsByDate.size,
-    "every date has full-time and part-time coverage overlapping in one roster",
+    "full-time and part-time coverage overlaps on every existing roster date",
   );
-
-  const duplicateEmployeeOverlap = [...shiftsByEmployeeDate.values()].some((rows) => {
-    const sorted = [...rows].sort(
-      (left, right) => new Date(left.startTime) - new Date(right.startTime),
-    );
-    return sorted.some(
-      (row, index) => index > 0 && new Date(row.startTime) < new Date(sorted[index - 1].endTime),
-    );
-  });
-  check(!duplicateEmployeeOverlap, "no employee receives overlapping assignments");
-
-  const historicalShifts = shifts.filter(
-    (item) => hcmDate(item.startTime) >= HISTORICAL_START && hcmDate(item.startTime) < FUTURE_START,
-  );
-  const futureShifts = shifts.filter((item) => hcmDate(item.startTime) >= FUTURE_START);
-  check(historicalShifts.every((item) => item.status === "completed"), "historical roster is completed");
-  check(futureShifts.every((item) => item.status === "scheduled"), "upcoming roster remains scheduled");
 
   const shiftById = new Map(shifts.map((item) => [String(item._id), item]));
   check(
     timesheets.every((row) => {
       const shift = shiftById.get(String(row.shiftId));
-      if (!shift || hcmDate(shift.startTime) >= FUTURE_START) return false;
       const staffRow = staffById.get(String(row.employeeId));
-      const expectedMinutes = staffRow?.employmentType === "full_time" ? 480 : 240;
+      const scenario = scenarioByEmail.get(staffRow?.email);
+      if (!shift || !scenario) return false;
       return (
-        durationMinutes(row.plannedStartTime, row.plannedEndTime) === expectedMinutes &&
-        Number(row.workedMinutes || 0) > 0 &&
-        Number(row.workedMinutes || 0) <= expectedMinutes &&
+        durationMinutes(row.plannedStartTime, row.plannedEndTime) ===
+          scenario.shiftHours * 60 &&
+        Number(row.workedMinutes || 0) <= scenario.shiftHours * 60 &&
         Math.abs(Number(row.hours || 0) * 60 - Number(row.workedMinutes || 0)) < 1
       );
     }),
-    "timesheets preserve planned and actual hours for each employment type",
+    "existing attendance rows match 8-hour full-time and 4-hour part-time plans",
   );
 
   const templates = policy?.shiftTemplates || [];
   const templateByKey = new Map(templates.map((item) => [item.key, item]));
   check(Boolean(policy), "restaurant scheduling policy exists");
-  check(templateByKey.get("morning")?.startTime === "07:00", "morning full-time template starts at 07:00");
-  check(templateByKey.get("evening")?.endTime === "23:00", "evening full-time template ends at 23:00");
-  check(templateByKey.get("afternoon")?.startTime === "11:00", "lunch part-time template starts at 11:00");
-  check(templateByKey.get("rotating")?.startTime === "19:00", "evening part-time template starts at 19:00");
+  check(templateByKey.get("morning")?.startTime === "07:00", "full-time morning starts at 07:00");
+  check(templateByKey.get("evening")?.endTime === "23:00", "full-time evening ends at 23:00");
+  check(templateByKey.get("afternoon")?.startTime === "11:00", "lunch part-time starts at 11:00");
+  check(templateByKey.get("rotating")?.startTime === "19:00", "evening part-time starts at 19:00");
   check(policy?.laborRules?.preventShiftOverlap === true, "same-employee overlap protection remains enabled");
   check(policy?.employmentTypePolicy?.full_time?.weeklyHoursTarget === 40, "full-time weekly target is 40 hours");
   check(policy?.employmentTypePolicy?.part_time?.weeklyHoursTarget === 20, "part-time weekly target is 20 hours");
