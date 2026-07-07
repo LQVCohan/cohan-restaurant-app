@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import ProfileSidebar from "./components/ProfileSidebar";
 import ProfileInfo from "./components/ProfileInfo";
 import ProfileWallet from "./components/ProfileWallet";
@@ -9,7 +10,11 @@ import FoodPreferences from "./components/FoodPreferences";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import useBrandManagement from "@/hooks/useBrandManagement";
 import { getCombinedRoleLabel } from "@/lib/userRoleDisplay";
-import { canAccessRoute, isCustomerRole } from "@/utils/frontendRoleAccess";
+import {
+  canAccessRoute,
+  getDefaultPathForRole,
+  isCustomerRole,
+} from "@/utils/frontendRoleAccess";
 import "./ProfilePage.scss";
 import "./ProfileVisibilityPolish.scss";
 
@@ -65,6 +70,7 @@ const ME_QUERY = gql`
 const EMPTY_RESTAURANTS = [];
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(ME_QUERY);
   const [activeTab, setActiveTab] = useState("info");
   const [isEditMode, setIsEditMode] = useState(false);
@@ -89,6 +95,13 @@ const ProfilePage = () => {
   );
   const showCustomerFeatures = isCustomerRole(user);
   const showOrderHistory = Boolean(user && canAccessRoute(user, "/orders"));
+  const managementPath = getDefaultPathForRole(user);
+  const showManagementShortcut = Boolean(
+    user
+      && !showCustomerFeatures
+      && canAccessRoute(user, managementPath)
+      && (managementPath === "/manager" || managementPath.startsWith("/staff/")),
+  );
 
   useEffect(() => {
     const allowedTabs = new Set([
@@ -139,13 +152,27 @@ const ProfilePage = () => {
 
         <section className="profile-content" aria-live="polite">
           {activeTab === "info" && (
-            <ProfileInfo
-              user={user}
-              isEditMode={isEditMode}
-              setIsEditMode={setIsEditMode}
-              refetchUser={handleRefetchUser}
-              newAvatarFile={tempAvatarFile}
-            />
+            <>
+              {showManagementShortcut && (
+                <aside className="profile-management-shortcut" aria-label="Chuyển đến trang quản lý">
+                  <div>
+                    <span>Khu vực nội bộ</span>
+                    <strong>Tiếp tục tại trang quản lý</strong>
+                    <p>Mở bảng điều khiển phù hợp với vai trò của tài khoản này.</p>
+                  </div>
+                  <button type="button" onClick={() => navigate(managementPath)}>
+                    Chuyển đến trang quản lý
+                  </button>
+                </aside>
+              )}
+              <ProfileInfo
+                user={user}
+                isEditMode={isEditMode}
+                setIsEditMode={setIsEditMode}
+                refetchUser={handleRefetchUser}
+                newAvatarFile={tempAvatarFile}
+              />
+            </>
           )}
           {showCustomerFeatures && activeTab === "preferences" && <FoodPreferences />}
           {showOrderHistory && activeTab === "orders" && <OrderHistory user={user} />}
