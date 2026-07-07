@@ -16,7 +16,6 @@ const roleSlug = (user) => String(user?.roleName || user?.role?.slug || user?.ro
 const getUserRestaurantIds = (user) => {
   const ids = [];
   if (user?.restaurantForStaff) ids.push(String(user.restaurantForStaff));
-  if (Array.isArray(user?.refRestaurants)) user.refRestaurants.forEach((id) => ids.push(String(id)));
   return [...new Set(ids.filter(Boolean))];
 };
 

@@ -91,7 +91,7 @@ export async function resolveOrCreateGuestCustomerForOrder({
   });
 
   if (out?.conflict) {
-    throw new Error("Contact information matches multiple customer profiles. Please contact support.");
+    throw new Error("Thông tin liên hệ khớp với nhiều hồ sơ khách hàng. Vui lòng liên hệ bộ phận hỗ trợ.");
   }
 
   return {

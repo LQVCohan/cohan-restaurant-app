@@ -33,6 +33,12 @@ describe("notification reviewer lookup", () => {
         { role: { $in: ["manager", "staff"] }, restaurantIds: "r1" },
       ]),
     }));
+    expect(modelMocks.User.find.mock.calls[0][0]).toMatchObject({
+      $or: expect.arrayContaining([
+        expect.objectContaining({ status: "active", deletedAt: null }),
+        { userType: "ADMIN", status: "active", deletedAt: null },
+      ]),
+    });
     expect(JSON.stringify(modelMocks.User.find.mock.calls[0][0])).not.toContain("refRestaurants");
     expect(ids).toEqual(["manager-1", "sys-admin"]);
   });

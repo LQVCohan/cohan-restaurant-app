@@ -22,7 +22,8 @@ describe("customer recent restaurants frontend contract", () => {
 
   it("RestaurantDetail records a recent restaurant once per restaurant id without blocking render", () => {
     expect(detail).toContain("recordRecentRestaurant(restaurantId: $restaurantId)");
-    expect(detail).toContain("recordedRestaurantIdRef.current === id");
+    expect(detail).toContain("recordedRestaurantIdRef.current === loadedRestaurantId");
+    expect(detail).toContain("recordingRestaurantIdRef.current === loadedRestaurantId");
     expect(detail).toContain("restaurantData?.publicRestaurant?.id");
     expect(detail).toContain("Không thể ghi nhận nhà hàng đã xem gần đây.");
   });

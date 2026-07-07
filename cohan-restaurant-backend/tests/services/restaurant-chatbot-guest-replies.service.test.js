@@ -1,6 +1,6 @@
 import { __resetAiChatbotRateLimitStoreForTests } from "../../src/services/ai/restaurantChatbotRateLimit.service.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AiChatConversation, ChatThread, User, Notification } from "../../models/index.js";
+import { AiChatConversation, ChatThread, User, Notification, Restaurant, BrandMembership } from "../../models/index.js";
 
 const {
   toGuestStaffReplies,
@@ -191,6 +191,8 @@ describe("sendRestaurantChatbotGuestMessage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     __resetAiChatbotRateLimitStoreForTests();
+    vi.spyOn(Restaurant, "findById").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) });
+    vi.spyOn(BrandMembership, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([]) }) });
   });
 
   it("appends guest message to linked handoff chat thread", async () => {
@@ -342,4 +344,38 @@ describe("sendRestaurantChatbotGuestMessage", () => {
     expect(saveThread).toHaveBeenCalled();
   });
 
+});
+
+describe("resolveRecipientIdsByRole", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("routes direct staff by restaurantForStaff and excludes other restaurants", async () => {
+    const { resolveRecipientIdsByRole } = await import("../../src/services/ai/restaurantChatbotGuestReplies.service.js");
+    vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "staff-r1" }]) }) });
+    const ids = await resolveRecipientIdsByRole({ thread: { targetRole: "staff", restaurantId: "r1" }, senderId: "guest:g1" });
+    expect(User.find).toHaveBeenCalledWith(expect.objectContaining({ userType: "STAFF", restaurantForStaff: "r1", status: "active", deletedAt: null }));
+    expect(ids).toEqual(["staff-r1"]);
+  });
+
+  it("routes management handoff through active BrandMembership", async () => {
+    const { resolveRecipientIdsByRole } = await import("../../src/services/ai/restaurantChatbotGuestReplies.service.js");
+    vi.spyOn(Restaurant, "findById").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "r1", brandId: "b1" }) }) });
+    vi.spyOn(BrandMembership, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ userId: "manager-1" }, { userId: "owner-1" }]) }) });
+    vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "manager-1" }, { _id: "owner-1" }]) }) });
+
+    const ids = await resolveRecipientIdsByRole({ thread: { targetRole: "management", restaurantId: "r1" }, senderId: "guest:g1" });
+
+    expect(BrandMembership.find).toHaveBeenCalledWith(expect.objectContaining({
+      brandId: "b1",
+      status: "active",
+      $or: expect.arrayContaining([
+        { role: { $in: ["owner", "admin"] } },
+        { role: "manager", restaurantIds: "r1" },
+      ]),
+    }));
+    expect(JSON.stringify(User.find.mock.calls)).not.toContain("refRestaurants");
+    expect(ids).toEqual(["manager-1", "owner-1"]);
+  });
 });

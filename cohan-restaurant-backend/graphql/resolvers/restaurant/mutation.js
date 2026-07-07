@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Restaurant, RestaurantCategoryIndex, Customer } from "../../../models/index.js";
 import { applyRecentRestaurant } from "../shared/customerIdentity.js";
+import { buildPublicRestaurantFilter } from "./publicRestaurantAccess.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
@@ -241,11 +242,7 @@ async function recordRecentRestaurant(_, { restaurantId }, ctx) {
   }
   if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Mã nhà hàng không hợp lệ.");
   if (String(ctx.user.userType || "").toUpperCase() !== "CUSTOMER") return false;
-  const restaurant = await Restaurant.exists({
-    _id: restaurantId,
-    businessStatus: "active",
-    publicationStatus: "published",
-  });
+  const restaurant = await Restaurant.exists(buildPublicRestaurantFilter({ _id: restaurantId }));
   if (!restaurant) throw notFound("Không tìm thấy nhà hàng.");
   const customer = await Customer.findOne({ _id: ctx.user.id || ctx.user._id, userType: "CUSTOMER", deletedAt: null });
   if (!customer) return false;

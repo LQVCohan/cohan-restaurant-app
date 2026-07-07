@@ -2,14 +2,17 @@
  * Normalize refRestaurants as CUSTOMER recent restaurant history only.
  * Usage:
  *   node scripts/migration/normalizeRefRestaurantsRecentHistory.js --dry-run
- *   node scripts/migration/normalizeRefRestaurantsRecentHistory.js
+ *   node scripts/migration/normalizeRefRestaurantsRecentHistory.js --apply
  */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { Customer, Order, Reservation, Restaurant, User } from "../../models/index.js";
 
 dotenv.config();
-const dryRun = process.argv.includes("--dry-run");
+const applyMode = process.argv.includes("--apply");
+const dryRun = !applyMode || process.argv.includes("--dry-run");
 const LIMIT = 12;
 const toId = (value) => String(value?._id || value || "");
 const isValidId = (id) => mongoose.isValidObjectId(String(id));
@@ -124,7 +127,18 @@ async function run() {
   await mongoose.disconnect();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+function normalizeEntrypointPath(value) {
+  return path.resolve(String(value || "").replace(/\\/g, "/").replace(/^([A-Za-z]):/, "/$1:"));
+}
+
+export function isMainModulePath(argvPath = process.argv[1], moduleUrl = import.meta.url) {
+  if (!argvPath) return false;
+  return normalizeEntrypointPath(argvPath) === normalizeEntrypointPath(fileURLToPath(moduleUrl));
+}
+
+export { run };
+
+if (isMainModulePath()) {
   run().catch(async (error) => {
     console.error(error);
     await mongoose.disconnect();

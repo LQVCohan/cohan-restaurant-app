@@ -53,8 +53,8 @@ export async function reviewerIds(restaurantId) {
   const candidateIds = uniq(memberships.map((item) => item.userId));
   const users = await User.find({
     $or: [
-      { _id: { $in: candidateIds }, userType: { $in: REVIEWER_TYPES } },
-      { userType: "ADMIN", deletedAt: null },
+      { _id: { $in: candidateIds }, userType: { $in: REVIEWER_TYPES }, status: "active", deletedAt: null },
+      { userType: "ADMIN", status: "active", deletedAt: null },
     ],
   }).select("_id").lean();
   return uniq(users.map((u) => u._id));

@@ -38,3 +38,42 @@ describe("normalizeRefRestaurantsRecentHistory migration helpers", () => {
     expect(stats.rebuiltRecent).toBe(1);
   });
 });
+
+import mongoose from "mongoose";
+import { Customer, Order, Reservation, Restaurant, User } from "../../models/index.js";
+import { isMainModulePath, run } from "../../scripts/migration/normalizeRefRestaurantsRecentHistory.js";
+
+describe("normalizeRefRestaurantsRecentHistory migration runtime", () => {
+  it("does not treat imported module as the main entrypoint and handles Windows paths", () => {
+    expect(isMainModulePath("C:\\repo\\other.js", "file:///C:/repo/normalizeRefRestaurantsRecentHistory.js")).toBe(false);
+    expect(isMainModulePath("C:\\repo\\normalizeRefRestaurantsRecentHistory.js", "file:///C:/repo/normalizeRefRestaurantsRecentHistory.js")).toBe(true);
+  });
+
+  it("does not write in dry-run mode", async () => {
+    const oldMongoUri = process.env.MONGO_URI;
+    process.env.MONGO_URI = "mongodb://example.test/cohan_test";
+    const connect = vi.spyOn(mongoose, "connect").mockImplementation(async () => {
+      mongoose.connection.db = { databaseName: "cohan_test" };
+      mongoose.connection.name = "cohan_test";
+      return mongoose;
+    });
+    const disconnect = vi.spyOn(mongoose, "disconnect").mockResolvedValue();
+    vi.spyOn(Restaurant, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: ids[1] }]) }) });
+    vi.spyOn(Customer, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: ids[0], refRestaurants: [ids[1]], customerRestaurants: [], archivedRestaurants: [] }]) }) });
+    vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "admin-1" }]) }) });
+    const userUpdate = vi.spyOn(User, "updateMany").mockResolvedValue({ modifiedCount: 0 });
+    const customerUpdate = vi.spyOn(Customer, "updateOne").mockResolvedValue({ modifiedCount: 0 });
+    vi.spyOn(Order, "aggregate").mockResolvedValue([]);
+    vi.spyOn(Reservation, "aggregate").mockResolvedValue([]);
+
+    await run();
+
+    expect(connect).toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(customerUpdate).not.toHaveBeenCalled();
+    await disconnect.mock.results[0]?.value;
+    if (oldMongoUri === undefined) delete process.env.MONGO_URI;
+    else process.env.MONGO_URI = oldMongoUri;
+    vi.restoreAllMocks();
+  });
+});

@@ -156,17 +156,42 @@ describe("customerIdentity shared service", () => {
     expect(out.mode).toBe("created_guest");
   });
 
-  it("creates guest with refRestaurants when restaurantId is provided", async () => {
+  it.each([
+    ["recent only", true, false, { refRestaurants: ["507f1f77bcf86cd799439011"], customerRestaurants: undefined }],
+    ["membership only", false, true, { refRestaurants: undefined, customerRestaurants: ["507f1f77bcf86cd799439011"] }],
+    ["recent and membership", true, true, { refRestaurants: ["507f1f77bcf86cd799439011"], customerRestaurants: ["507f1f77bcf86cd799439011"] }],
+    ["neither", false, false, { refRestaurants: undefined, customerRestaurants: undefined }],
+  ])("creates guest with independent restaurant options: %s", async (_label, touchRecentOnMatch, addCustomerRestaurant, expected) => {
+    const restaurantId = "507f1f77bcf86cd799439011";
     modelMocks.Customer.findOne
       .mockReturnValueOnce(makeQuery(null))
       .mockReturnValueOnce(makeQuery(null));
     modelMocks.Customer.create.mockResolvedValueOnce([{ _id: "g4", isGuest: true }]);
     const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
-    await resolveCustomerIdentityByContact({ email: "a2@b.com", createIfMissing: true, restaurantId: "rest-abc" });
-    expect(modelMocks.Customer.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ refRestaurants: ["rest-abc"] })],
-      undefined,
-    );
+    await resolveCustomerIdentityByContact({
+      email: "a2@b.com",
+      createIfMissing: true,
+      restaurantId,
+      touchRecentOnMatch,
+      addCustomerRestaurant,
+    });
+    expect(modelMocks.Customer.create.mock.calls[0][0][0]).toEqual(expect.objectContaining({
+      ...(expected.refRestaurants ? { refRestaurants: expected.refRestaurants } : {}),
+      ...(expected.customerRestaurants ? { customerRestaurants: expected.customerRestaurants } : {}),
+    }));
+    if (!expected.refRestaurants) expect(modelMocks.Customer.create.mock.calls[0][0][0]).not.toHaveProperty("refRestaurants");
+    if (!expected.customerRestaurants) expect(modelMocks.Customer.create.mock.calls[0][0][0]).not.toHaveProperty("customerRestaurants");
+  });
+
+  it("does not write invalid restaurant ids for new guests", async () => {
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(null))
+      .mockReturnValueOnce(makeQuery(null));
+    modelMocks.Customer.create.mockResolvedValueOnce([{ _id: "g5", isGuest: true }]);
+    const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    await resolveCustomerIdentityByContact({ email: "bad@b.com", createIfMissing: true, restaurantId: "rest-abc" });
+    expect(modelMocks.Customer.create.mock.calls[0][0][0]).not.toHaveProperty("refRestaurants");
+    expect(modelMocks.Customer.create.mock.calls[0][0][0]).not.toHaveProperty("customerRestaurants");
   });
 
   it("returns none when no match and createIfMissing=false", async () => {

@@ -120,7 +120,7 @@ describe("order userUtils identity helpers", () => {
         },
       })
     ).rejects.toThrow(
-      "Contact information matches multiple customer profiles. Please contact support.",
+      "Thông tin liên hệ khớp với nhiều hồ sơ khách hàng. Vui lòng liên hệ bộ phận hỗ trợ.",
     );
   });
 
@@ -178,7 +178,7 @@ describe("order userUtils identity helpers", () => {
 
     const out = await resolveOrCreateGuestCustomerForOrder({
       customer: { fullName: "Guest Updated", email: "guest@example.com" },
-      restaurantId: "rest-1",
+      restaurantId: "507f1f77bcf86cd799439011",
     });
     expect(out.mode).toBe("matched_guest");
     expect(guest.save).toHaveBeenCalledTimes(1);
@@ -196,11 +196,11 @@ describe("order userUtils identity helpers", () => {
 
     await resolveOrCreateGuestCustomerForOrder({
       customer: { email: "new-guest@example.com" },
-      restaurantId: "rest-xyz",
+      restaurantId: "507f1f77bcf86cd799439012",
     });
 
     expect(modelMocks.Customer.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ refRestaurants: ["rest-xyz"] })],
+      [expect.objectContaining({ refRestaurants: ["507f1f77bcf86cd799439012"] })],
       undefined,
     );
   });
@@ -214,9 +214,9 @@ describe("order userUtils identity helpers", () => {
       "../../graphql/resolvers/order/helper/userUtils.js"
     );
 
-    await ensureUserForOrder(null, { email: "ensure@example.com" }, { restaurantId: "rest-r1" });
+    await ensureUserForOrder(null, { email: "ensure@example.com" }, { restaurantId: "507f1f77bcf86cd799439013" });
     expect(modelMocks.Customer.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ refRestaurants: ["rest-r1"] })],
+      [expect.objectContaining({ refRestaurants: ["507f1f77bcf86cd799439013"] })],
       undefined,
     );
   });

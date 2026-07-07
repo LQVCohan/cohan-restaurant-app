@@ -359,7 +359,7 @@ export const useRestaurant = (restaurantId) => {
   );
 
   // 6) recent restaurants for current customer
-  const listRefRestaurants = async (_userId, limit = 12) => {
+  const listRecentRestaurants = async (limit = 12) => {
     const { data } = await runRefRestaurants({ variables: { limit } });
     return (data?.myRecentRestaurants || []).map(normalizeRestaurant);
   };
@@ -479,7 +479,7 @@ export const useRestaurant = (restaurantId) => {
     listTopRestaurants,
     listScopedRestaurants,
     loadMoreScopedRestaurants,
-    listRefRestaurants,
+    listRecentRestaurants,
 
     // flat list helpers (dùng nhiều cho staff management)
     listScopedRestaurantsFlat,

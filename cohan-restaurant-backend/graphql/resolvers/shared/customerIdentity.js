@@ -93,11 +93,6 @@ export function applyCustomerRestaurantTouch(customer, restaurantId, {
   return recentChanged || membershipChanged;
 }
 
-export async function touchRecentRestaurant(customer, restaurantId, { session = null } = {}) {
-  if (!applyRecentRestaurant(customer, restaurantId)) return false;
-  await customer.save(session ? { session } : undefined);
-  return true;
-}
 
 export async function findCustomerByContact({ email, phone, session = null }) {
   const [byEmail, byPhone] = await Promise.all([
@@ -197,24 +192,26 @@ export async function resolveCustomerIdentityByContact({
   }
 
   const now = new Date();
+  const guestPayload = {
+    fullName: customerName || guestFallbackName,
+    email,
+    phone,
+    status: "pending",
+    customerType: "NEW",
+    loyaltyPoints: 0,
+    totalOrders: 0,
+    totalSpending: 0,
+    isGuest: true,
+    guestExpiresAt: buildGuestExpiresAt(),
+    guestLastSeenAt: now,
+  };
+  if (mongoose.isValidObjectId(restaurantId)) {
+    if (touchRecentOnMatch) guestPayload.refRestaurants = [restaurantId];
+    if (addCustomerRestaurant) guestPayload.customerRestaurants = [restaurantId];
+  }
+
   const createdGuest = await Customer.create(
-    [{
-      fullName: customerName || guestFallbackName,
-      email,
-      phone,
-      status: "pending",
-      customerType: "NEW",
-      loyaltyPoints: 0,
-      totalOrders: 0,
-      totalSpending: 0,
-      isGuest: true,
-      guestExpiresAt: buildGuestExpiresAt(),
-      guestLastSeenAt: now,
-      ...(restaurantId ? {
-        refRestaurants: [restaurantId],
-        ...(addCustomerRestaurant ? { customerRestaurants: [restaurantId] } : {}),
-      } : {}),
-    }],
+    [guestPayload],
     session ? { session } : undefined,
   ).then((rows) => rows[0]);
 

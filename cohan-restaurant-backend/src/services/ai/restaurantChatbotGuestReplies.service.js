@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { AiChatConversation, ChatThread, Notification, User } from "../../../models/index.js";
+import { AiChatConversation, BrandMembership, ChatThread, Notification, Restaurant, User } from "../../../models/index.js";
 import { normalizeGuestId, buildGuestSafeStaffReplyPayload } from "./restaurantChatbotRealtime.service.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
 
@@ -157,26 +157,45 @@ const toObjectId = (value) => {
 
 const preview = (text, max = 140) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
 
-const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
+export const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
   const role = String(thread?.targetRole || "").toLowerCase();
   if (!role || !thread?.restaurantId) return [];
 
-  const roleMap = {
-    management: ["MANAGER", "ADMIN"],
-    manager: ["MANAGER", "ADMIN"],
-    kitchen: ["STAFF"],
-    cashier: ["STAFF"],
-    staff: ["STAFF"],
-    support: ["STAFF", "MANAGER", "ADMIN"],
-  };
+  const directStaffRoles = new Set(["kitchen", "cashier", "staff", "support"]);
+  const managementRoles = new Set(["management", "manager", "support"]);
+  const recipientIds = new Set();
 
-  const userTypes = roleMap[role] || [String(thread.targetRole || "").toUpperCase()];
-  const users = await User.find({
-    userType: { $in: userTypes },
-    restaurantForStaff: thread.restaurantId,
-  }).select("_id").lean();
+  if (directStaffRoles.has(role)) {
+    const users = await User.find({
+      userType: "STAFF",
+      status: "active",
+      deletedAt: null,
+      restaurantForStaff: thread.restaurantId,
+    }).select("_id").lean();
+    users.forEach((u) => recipientIds.add(String(u._id)));
+  }
 
-  return users.map((u) => String(u._id)).filter((id) => id !== String(senderId));
+  if (managementRoles.has(role)) {
+    const restaurant = await Restaurant.findById(thread.restaurantId).select("brandId").lean();
+    if (restaurant?.brandId) {
+      const memberships = await BrandMembership.find({
+        brandId: restaurant.brandId,
+        status: "active",
+        $or: [
+          { role: { $in: ["owner", "admin"] } },
+          { role: "manager", restaurantIds: thread.restaurantId },
+        ],
+      }).select("userId").lean();
+      const users = await User.find({
+        _id: { $in: memberships.map((item) => item.userId) },
+        status: "active",
+        deletedAt: null,
+      }).select("_id").lean();
+      users.forEach((u) => recipientIds.add(String(u._id)));
+    }
+  }
+
+  return [...recipientIds].filter((id) => id !== String(senderId));
 };
 
 export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } = {}) {

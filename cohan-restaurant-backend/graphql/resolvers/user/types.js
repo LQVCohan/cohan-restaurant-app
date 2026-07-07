@@ -1,5 +1,6 @@
 // src/graphql/resolvers/types/User.js
-import { Role, Restaurant, User } from "../../../models/index.js";
+import { Role, User } from "../../../models/index.js";
+import { loadPublicRestaurantsByRecentIds } from "../restaurant/publicRestaurantAccess.js";
 
 export default {
   User: {
@@ -15,11 +16,8 @@ export default {
       (parent.role?.slug || parent.role?.name || "").toLowerCase() || null,
 
     refRestaurants: (parent) => {
-      if (!parent.refRestaurants?.length) return [];
-      return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean().then((rows) => {
-        const byId = new Map(rows.map((row) => [String(row._id), row]));
-        return parent.refRestaurants.map((id) => byId.get(String(id))).filter(Boolean);
-      });
+      if (String(parent.userType || "").toUpperCase() !== "CUSTOMER" || !parent.refRestaurants?.length) return [];
+      return loadPublicRestaurantsByRecentIds(parent.refRestaurants, 12);
     },
     createdBy: (parent) => {
       if (!parent.createdBy) return null;

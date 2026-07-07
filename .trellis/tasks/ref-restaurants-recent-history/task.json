@@ -18,6 +18,15 @@
     "cohan-restaurant-backend/src/services/notification/notificationWorkflow.service.js",
     "cohan-restaurant-backend/scripts/migration/normalizeRefRestaurantsRecentHistory.js",
     "src/components/Customer/RestaurantList/RestaurantList.jsx",
-    "src/components/Customer/RestaurantDetail/RestaurantDetail.jsx"
+    "src/components/Customer/RestaurantDetail/RestaurantDetail.jsx",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/publicRestaurantAccess.js",
+    "cohan-restaurant-backend/graphql/resolvers/user/types.js",
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotGuestReplies.service.js",
+    "src/components/Customer/HelpPage/HelpPage.jsx",
+    "src/context/AuthProvider.jsx",
+    "src/hooks/useRestaurant.js",
+    "src/components/Customer/HelpPage/HelpPage.support-context.test.jsx",
+    "src/components/Customer/RestaurantDetail/RestaurantDetail.record-recent.test.jsx",
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotResolveHandoff.service.js"
   ]
 }

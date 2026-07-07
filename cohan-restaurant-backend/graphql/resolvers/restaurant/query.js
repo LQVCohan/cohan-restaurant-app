@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Restaurant, Customer, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
+import { buildPublicRestaurantFilter, loadPublicRestaurantsByRecentIds } from "./publicRestaurantAccess.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
 import { canAccessRestaurant, getScopedRestaurantFilter, isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
@@ -142,19 +143,6 @@ function combineFilters(...filters) {
   if (parts.length === 0) return {};
   if (parts.length === 1) return parts[0];
   return { $and: parts };
-}
-
-function buildPublicRestaurantFilter() {
-  return {
-    $or: [
-      { businessStatus: "active", publicationStatus: "published" },
-      {
-        businessStatus: { $exists: false },
-        publicationStatus: { $exists: false },
-        status: "active",
-      },
-    ],
-  };
 }
 
 function applyPublicAvailabilityFilters(docs, filter) {
@@ -383,15 +371,7 @@ async function loadRecentRestaurantsForCustomer(userId, limit = 12) {
   const ref = Array.isArray(customer.refRestaurants) ? customer.refRestaurants : [];
   if (ref.length === 0) return [];
 
-  const ids = [...new Set(ref.map((x) => (mongoose.isValidObjectId(x) ? String(x) : null)).filter(Boolean))].slice(0, 12);
-  if (ids.length === 0) return [];
-  const restaurants = await Restaurant.find({
-    _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
-    businessStatus: "active",
-    publicationStatus: "published",
-  }).lean();
-  const byId = new Map(restaurants.map((item) => [String(item._id), item]));
-  return ids.map((id) => byId.get(id)).filter(Boolean).slice(0, clampLimit(limit, 1, 12));
+  return loadPublicRestaurantsByRecentIds(ref, clampLimit(limit, 1, 12));
 }
 
 async function myRecentRestaurants(_, { limit = 6 } = {}, ctx) {
@@ -535,7 +515,7 @@ export const RestaurantQuery = {
 
 async function publicRestaurants(_, { limit = 20, cursor, filter }) {
   const lim = clampLimit(limit, 1, 100);
-  const baseFilter = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
+  const baseFilter = combineFilters(buildFilter(filter), buildPublicRestaurantFilter());
   const runtimeFilterEnabled = filter && (
     filter.openNow === true
     || !!filter.openingStatus
@@ -625,19 +605,17 @@ async function publicRestaurants(_, { limit = 20, cursor, filter }) {
 
 async function publicRestaurant(_, { id }) {
   if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
-  return Restaurant.findOne({ _id: id, businessStatus: "active", publicationStatus: "published" }).lean();
+  return Restaurant.findOne(buildPublicRestaurantFilter({ _id: id })).lean();
 }
 async function similarRestaurants(_, { restaurantId, limit = 6 }) {
-  const root = await Restaurant.findOne({ _id: restaurantId, businessStatus: "active", publicationStatus: "published" }).lean();
+  const root = await Restaurant.findOne(buildPublicRestaurantFilter({ _id: restaurantId })).lean();
   if (!root) return [];
   const lim = clampLimit(limit, 1, 20);
 
-  const sameCuisine = await Restaurant.find({
+  const sameCuisine = await Restaurant.find(buildPublicRestaurantFilter({
     _id: { $ne: root._id },
-    businessStatus: "active",
-    publicationStatus: "published",
     cuisineType: root.cuisineType,
-  }).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim).lean();
+  })).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim).lean();
 
   if (sameCuisine.length >= lim) return sameCuisine;
 
@@ -649,14 +627,10 @@ async function similarRestaurants(_, { restaurantId, limit = 6 }) {
     fallbackOrConditions.push({ "address.city": root.address.city });
   }
 
-  const fallbackFilter = {
-    _id: { $ne: root._id, $nin: sameCuisine.map((r) => r._id) },
-    businessStatus: "active",
-    publicationStatus: "published",
-  };
-  if (fallbackOrConditions.length > 0) {
-    fallbackFilter.$or = fallbackOrConditions;
-  }
+  const fallbackFilter = combineFilters(
+    buildPublicRestaurantFilter({ _id: { $ne: root._id, $nin: sameCuisine.map((r) => r._id) } }),
+    fallbackOrConditions.length > 0 ? { $or: fallbackOrConditions } : {},
+  );
 
   const fallback = await Restaurant.find(fallbackFilter)
     .sort({ avgRating: -1, reviewCount: -1, _id: -1 })
