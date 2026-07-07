@@ -260,12 +260,27 @@ const ManagerLayout = () => {
     () => new URLSearchParams(location.search).get("restaurantId") || "",
     [location.search],
   );
+  const brandAccessResolved = isAdminUser || !brandSelection.loading;
+  const hasBrandManagementAccess = useMemo(() => {
+    if (isAdminUser) return true;
+    const userId = String(user?.id || user?._id || "");
+    return brandSelection.brandOptions.some((brand) => {
+      const membershipRole = String(
+        brand?.membership?.role || brand?.membershipRole || "",
+      ).toLowerCase();
+      const ownsBrand = Boolean(
+        userId && brand?.ownerId && String(brand.ownerId) === userId,
+      );
+      return ownsBrand || ["owner", "admin"].includes(membershipRole);
+    });
+  }, [brandSelection.brandOptions, isAdminUser, user?.id, user?._id]);
   const allowedPages = useMemo(() => {
     const navItems = Object.entries(MANAGER_PAGE_PERMISSION_ACCESS).map(([id, permissions]) => ({ id, permissions }));
     const pageSet = new Set(filterNavigationByPermissionAccess(navItems, user).map((item) => item.id));
     if (!isAdminUser) ADMIN_ONLY_MANAGER_PAGES.forEach((pageId) => pageSet.delete(pageId));
+    if (brandAccessResolved && !hasBrandManagementAccess) pageSet.delete("brands");
     return pageSet;
-  }, [isAdminUser, user]);
+  }, [brandAccessResolved, hasBrandManagementAccess, isAdminUser, user]);
 
   useEffect(() => {
     if (!requestedRestaurantId) return;
@@ -322,10 +337,14 @@ const ManagerLayout = () => {
   }, [roleName]);
 
   useEffect(() => {
-    if (allowedPages.has(currentPage) || window.location.hash) return;
+    if (!brandAccessResolved || allowedPages.has(currentPage)) return;
     const nextPage = allowedPages.has(preferredFallbackPage) ? preferredFallbackPage : [...allowedPages][0] || "dashboard";
-    if (nextPage !== currentPage) setCurrentPage(nextPage);
-  }, [allowedPages, currentPage, preferredFallbackPage]);
+    setCurrentPage(nextPage);
+    setSidebarOpen(false);
+    localStorage.setItem("manager.currentPage", nextPage);
+    history.replaceState(null, "", buildManagerNavigationUrl({ page: nextPage }));
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, [allowedPages, brandAccessResolved, currentPage, preferredFallbackPage]);
 
   useEffect(() => {
     const handleManagerNavigate = (event) => {
@@ -368,6 +387,7 @@ const ManagerLayout = () => {
   };
 
   const renderContent = () => {
+    if (currentPage === "brands" && !brandAccessResolved) return <PageLoadingFallback />;
     if (!allowedPages.has(currentPage)) return <PermissionFallback />;
     switch (currentPage) {
       case "dashboard": return <Dashboard />;
