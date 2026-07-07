@@ -6,6 +6,10 @@ const bad = (message) => new GraphQLError(message, {
   extensions: { code: "BAD_USER_INPUT" },
 });
 
+const forbidden = (message) => new GraphQLError(message, {
+  extensions: { code: "FORBIDDEN" },
+});
+
 const roleSlug = (role) =>
   String(role?.slug || role?.name || "").trim().toLowerCase();
 
@@ -87,6 +91,16 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         !await canManageBrand(ctx.user, membership.brandId)
       ) {
         return mutations.updateBrandMember(root, { input }, ctx, info);
+      }
+
+      if (
+        membership.role === "owner" &&
+        input.status &&
+        input.status !== membership.status
+      ) {
+        throw forbidden(
+          "Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
+        );
       }
 
       const nextStatus = input.status || membership.status;
