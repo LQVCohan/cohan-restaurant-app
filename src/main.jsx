@@ -57,7 +57,10 @@ import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
-import { installTableTransferMergeEnhancement } from "./utils/installTableTransferMergeEnhancement";
+import {
+  __testables as tableTransferMergeEnhancement,
+  installTableTransferMergeEnhancement,
+} from "./utils/installTableTransferMergeEnhancement";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
 installRbacVietnameseLabels();
@@ -65,6 +68,17 @@ applyChatThreadToolbarStyle();
 installRestaurantHoursEnhancement();
 installTableTransferMergeEnhancement();
 installAttendanceWordingTuning();
+
+const TABLE_MERGE_INTERACTION_GUARD = "__cohanTableMergeInteractionGuard";
+if (!window[TABLE_MERGE_INTERACTION_GUARD]) {
+  window[TABLE_MERGE_INTERACTION_GUARD] = true;
+  const enhanceTableModalBeforeInteraction = (event) => {
+    const modal = event.target?.closest?.(".talite-modal");
+    if (modal) tableTransferMergeEnhancement.enhanceTableModal(modal);
+  };
+  document.addEventListener("pointerdown", enhanceTableModalBeforeInteraction, true);
+  document.addEventListener("focusin", enhanceTableModalBeforeInteraction, true);
+}
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
