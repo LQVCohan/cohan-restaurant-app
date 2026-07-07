@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 
@@ -82,7 +82,7 @@ export default function useBrandManagement(
     [data?.myBrands, membershipByBrandId],
   );
   const [selectedBrandId, setSelectedBrandId] = useState(() => storageGet("manager.selectedBrandId"));
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState(() => storageGet("manager.selectedRestaurantId"));
+  const [selectedRestaurantId, setSelectedRestaurantIdState] = useState(() => storageGet("manager.selectedRestaurantId"));
 
   const brandRestaurantIds = useMemo(() => new Set(brands.flatMap((brand) => (brand.restaurants || []).map(getId)).filter(Boolean)), [brands]);
   const authRestaurants = useMemo(() => [...(restaurants || []), ...(additionalRestaurants || [])].map(normalizeRestaurant).filter((r) => r.id), [additionalRestaurants, restaurants]);
@@ -98,6 +98,28 @@ export default function useBrandManagement(
 
   const selectedBrand = useMemo(() => brands.find((b) => String(b.id) === selectedBrandId) || null, [brands, selectedBrandId]);
   const restaurantsInSelectedBrand = useMemo(() => (selectedBrand?.restaurants || []).map(normalizeRestaurant), [selectedBrand]);
+
+  const setSelectedRestaurantId = useCallback((nextValue) => {
+    setSelectedRestaurantIdState(nextValue);
+
+    const nextRestaurantId = typeof nextValue === "function"
+      ? ""
+      : String(nextValue || "");
+    const shouldOpenDashboard =
+      typeof window !== "undefined" &&
+      window.location.hash === "#brands" &&
+      restaurantsInSelectedBrand.some((restaurant) => restaurant.id === nextRestaurantId);
+
+    if (shouldOpenDashboard) {
+      window.dispatchEvent(new CustomEvent("manager:navigate", {
+        detail: {
+          page: "dashboard",
+          query: { restaurantId: nextRestaurantId },
+          source: "brand-management",
+        },
+      }));
+    }
+  }, [restaurantsInSelectedBrand]);
 
   const allManageableRestaurants = useMemo(() => {
     const seen = new Set();
@@ -132,7 +154,7 @@ export default function useBrandManagement(
       const key = event?.detail?.key;
       const value = event?.detail?.value || "";
       if (key === "manager.selectedBrandId") setSelectedBrandId(value);
-      if (key === "manager.selectedRestaurantId") setSelectedRestaurantId(value);
+      if (key === "manager.selectedRestaurantId") setSelectedRestaurantIdState(value);
     };
     if (typeof window === "undefined") return undefined;
     window.addEventListener("manager:scope-selection", syncSelection);
@@ -140,7 +162,7 @@ export default function useBrandManagement(
   }, []);
 
   useEffect(() => {
-    setSelectedRestaurantId((currentId) => {
+    setSelectedRestaurantIdState((currentId) => {
       if (!activeRestaurantOptions.length) return "";
       if (currentId && activeRestaurantOptions.some((restaurant) => restaurant.id === currentId)) return currentId;
       return activeRestaurantOptions.length === 1 || !currentId ? activeRestaurantOptions[0].id : "";
