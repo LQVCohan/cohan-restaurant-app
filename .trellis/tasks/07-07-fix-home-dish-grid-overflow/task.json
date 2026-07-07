@@ -1,0 +1,31 @@
+{
+  "id": "fix-home-dish-grid-overflow",
+  "name": "fix-home-dish-grid-overflow",
+  "title": "Fix featured dish card overflow",
+  "description": "Make the customer homepage featured dish grid adapt to its actual container width so prices and action buttons are not clipped.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "customer-homepage",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/styles/Homepage/DishGrid.scss",
+    "src/components/Customer/Homepage_Client/components/DishGrid.jsx",
+    "src/components/Customer/Homepage_Client/Home.jsx",
+    "cohan-restaurant-backend/graphql/schema/menu.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/menu/query.js"
+  ],
+  "notes": "CSS-only root-cause fix. No GraphQL contract, data flow, ordering behavior, dependency, or runtime service change."
+}
