@@ -2,21 +2,21 @@
 
 ## Hiện trạng
 
-Trang chấm công đang dùng lẫn tiếng Việt và thuật ngữ tiếng Anh như `No-show`, `check-in`, `check-out`, `review`, `Timesheet`, `overtime`, `payroll`. Một số cụm cũng chưa thống nhất, ví dụ cùng một trạng thái được gọi là “Vắng lịch”, “No-show / Vắng lịch” hoặc “scheduled_absent”.
+Trang chấm công đang dùng lẫn tiếng Việt và thuật ngữ tiếng Anh như `No-show`, `check-in`, `check-out`, `review`, `Timesheet`, `overtime`, `payroll`. Một số trạng thái cũng chưa thống nhất, ví dụ cùng một trường hợp được gọi là “Vắng lịch”, “No-show / Vắng lịch” hoặc hiển thị trực tiếp mã kỹ thuật.
+
+Repository đã có `AttendanceWordingTuning.js` dành riêng cho việc chuẩn hóa câu chữ nhưng chưa được khởi chạy từ ứng dụng và mới chỉ bao phủ một phần nội dung.
 
 ## Luồng thực tế
 
-`StaffManagement.jsx` mở `AttendancePage.jsx` -> `useAttendanceManagement` cung cấp dữ liệu -> `AttendancePage.jsx` hiển thị bảng công, đối chiếu và chỉnh công -> `OvertimePanel.jsx` hiển thị tăng ca. `attendanceReconciliationUtils.js` tạo nhãn cảnh báo; `attendanceCorrectionUtils.js` tạo thông báo kiểm tra biểu mẫu.
+`src/main.jsx` khởi chạy các bộ tinh chỉnh giao diện toàn cục -> `AttendancePage.jsx` và `OvertimePanel.jsx` render nội dung chấm công -> `AttendanceWordingTuning.js` chỉ xử lý bên trong `.attendance-management-page` và theo dõi các nội dung động như phản hồi, hộp thoại và đổi tab.
 
-Không thay đổi schema, resolver, hook, biến trạng thái, giá trị enum hoặc payload mutation. Chỉ thay nội dung hiển thị cho người dùng.
+Không thay đổi schema, resolver, hook, biến trạng thái, giá trị enum hoặc payload mutation. Chỉ thay nội dung và thuộc tính hỗ trợ hiển thị cho người dùng.
 
 ## File sửa
 
-- `AttendancePage.jsx`: chuẩn hóa toàn bộ câu chữ của bảng công và chỉnh công.
-- `OvertimePanel.jsx`: Việt hóa câu chữ tăng ca.
-- `attendanceReconciliationUtils.js`: thống nhất nhãn đối chiếu.
-- `attendanceCorrectionUtils.js`: Việt hóa thông báo kiểm tra giờ.
-- Test liên quan: cập nhật và bổ sung kiểm tra câu chữ.
+- `AttendanceWordingTuning.js`: mở rộng bộ từ ngữ cho Bảng chấm công, Yêu cầu chỉnh công và Tăng ca; giữ nguyên icon khi thay chữ; xử lý placeholder, title và aria-label.
+- `src/main.jsx`: khởi chạy bộ chuẩn hóa câu chữ theo cùng pattern với RBAC và giờ hoạt động nhà hàng.
+- `AttendanceWordingTuning.test.js`: kiểm tra câu chữ tĩnh, nội dung động, placeholder và việc giữ icon.
 
 ## Quy ước từ ngữ
 
@@ -26,7 +26,7 @@ Không thay đổi schema, resolver, hook, biến trạng thái, giá trị enum
 - `missed checkout` -> `Quên tan ca`.
 - `off schedule` -> `Làm ngoài lịch`.
 - `review` -> `duyệt` hoặc `xử lý`.
-- `Timesheet` -> `bảng công`.
+- `Timesheet` -> `bảng chấm công`.
 - `overtime` -> `tăng ca`.
 - `payroll` -> `bảng lương`.
 
@@ -34,13 +34,14 @@ Không thay đổi schema, resolver, hook, biến trạng thái, giá trị enum
 
 - Các khu vực Bảng chấm công, Yêu cầu chỉnh công và Tăng ca dùng tiếng Việt tự nhiên, nhất quán.
 - Không còn thuật ngữ tiếng Anh hiển thị trực tiếp, trừ `Excel` và các giá trị kỹ thuật không hiển thị.
-- Nhãn ngắn, không làm thay đổi bố cục hoặc hành vi.
+- Icon, cấu trúc nút và hành vi vẫn được giữ nguyên khi thay chữ.
+- Nội dung được render sau khi chuyển tab hoặc mở hộp thoại cũng được chuẩn hóa.
 - Enum, bộ lọc, quyền, mutation và dữ liệu giữ nguyên.
 - Test mục tiêu chạy thành công.
 
 ## Kiểm tra
 
-- `npx vitest run src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.test.jsx src/components/Dashboard_Manager/Staff/components/Attendance/attendanceReconciliationUtils.test.js src/components/Dashboard_Manager/Staff/components/Attendance/attendanceCorrectionUtils.test.js`
+- `npx vitest run src/components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning.test.js`
 - `npm run build`
 
 ## Ngoài phạm vi
