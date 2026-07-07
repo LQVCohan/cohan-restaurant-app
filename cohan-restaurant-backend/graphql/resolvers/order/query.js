@@ -380,11 +380,17 @@ async function attachKitchenWorkItemInfoToOrders({ rid, orders }) {
   return slice.map((order) => ({
     ...order,
     items: (order.items || []).map((item) => {
+      const snapshotStation = item?.station || item?.prepStation || null;
       const workItem = byOrderItem.get(buildWorkItemKey(order._id, item?._id));
-      if (!workItem) return item;
+      if (!workItem) {
+        return {
+          ...item,
+          station: snapshotStation,
+        };
+      }
       return {
         ...item,
-        station: workItem.station || item?.station || null,
+        station: workItem.station || snapshotStation,
         kitchenEnteredAt: workItem.kitchenEnteredAt || null,
         preparingAt: workItem.preparingAt || null,
         readyAt: workItem.readyAt || null,

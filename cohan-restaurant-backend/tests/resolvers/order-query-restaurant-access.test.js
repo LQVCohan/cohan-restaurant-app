@@ -258,6 +258,34 @@ describe("OrderQuery restaurant access guard", () => {
     });
   });
 
+  it("falls back to the order item prepStation when no KitchenOrderWorkItem exists", async () => {
+    const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
+    const chain = buildFindChain([
+      {
+        _id: "valid-order-snapshot",
+        restaurantId: "valid-r1",
+        items: [
+          {
+            _id: "item-bar-snapshot",
+            name: "Trà vải",
+            status: "pending",
+            prepStation: "bar",
+          },
+        ],
+      },
+    ]);
+    modelMocks.Order.find.mockReturnValue(chain);
+    modelMocks.KitchenOrderWorkItem.find.mockReturnValue(buildLeanSelectChain([]));
+
+    const result = await OrderQuery.ordersByRestaurantNow(
+      null,
+      { restaurantId: "valid-r1", limit: 1 },
+      { user: { id: "manager-1", roleName: "manager" } },
+    );
+
+    expect(result.edges[0].node.items[0].station).toBe("bar");
+  });
+
   it("blocks ordersByRestaurantNow when access is denied", async () => {
     guardMocks.requireRestaurantAccess.mockRejectedValue(new Error("FORBIDDEN_SCOPE"));
     const { OrderQuery } = await import("../../graphql/resolvers/order/query.js");
