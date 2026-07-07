@@ -6,8 +6,9 @@ export default {
     id: (p) => p.id ?? String(p._id),
     manager: async (parent) => {
       const restaurantId = parent.id || parent._id;
-      if (!restaurantId || typeof BrandMembership?.findOne !== "function") return null;
+      if (!restaurantId || !parent.brandId || typeof BrandMembership?.findOne !== "function") return null;
       const membership = await BrandMembership.findOne({
+        brandId: parent.brandId,
         status: "active",
         role: "manager",
         restaurantIds: restaurantId,
