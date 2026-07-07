@@ -306,7 +306,18 @@ const Mutation = {
   addBrandMember: async (_, { input }, ctx) => {
     if (!ctx?.user || !await canManageBrand(ctx.user, input.brandId)) throw forbidden();
     if (input.role === "owner") throw forbidden("Use transferBrandOwnership to assign Brand ownership");
-    if (!await User.exists({ _id: oid(input.userId) })) throw bad("User not found");
+
+    const brandObjectId = oid(input.brandId);
+    const memberUserId = oid(input.userId);
+    if (!await User.exists({ _id: memberUserId })) throw bad("User not found");
+
+    const existingMembership = await BrandMembership.findOne({
+      brandId: brandObjectId,
+      userId: memberUserId,
+    }).select("role").lean();
+    if (existingMembership?.role === "owner") {
+      throw forbidden("Use transferBrandOwnership to change Brand ownership");
+    }
 
     const restaurants = await ensureMembershipInput(input);
     await ensureSingleActiveManager({
@@ -316,7 +327,7 @@ const Mutation = {
     });
 
     return BrandMembership.findOneAndUpdate(
-      { brandId: oid(input.brandId), userId: oid(input.userId) },
+      { brandId: brandObjectId, userId: memberUserId },
       {
         $set: {
           role: input.role,
