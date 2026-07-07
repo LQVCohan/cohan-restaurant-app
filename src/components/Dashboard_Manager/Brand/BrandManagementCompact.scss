@@ -4,7 +4,60 @@
 }
 
 .manager-layout.manager-layout--brands .brand-management > .management-page-header {
+  grid-template-columns: minmax(235px, 260px) minmax(0, 1fr) minmax(145px, 165px);
   margin-bottom: 0.6rem;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-management
+  > .management-page-header
+  .mph-title {
+  font-size: 1.25rem;
+  text-wrap: balance;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-management
+  > .management-page-header
+  .mph-subtitle {
+  max-width: 34ch;
+  text-wrap: pretty;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-management
+  > .management-page-header
+  .mph-stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.manager-layout.manager-layout--brands
+  .brand-management
+  > .management-page-header
+  .mph-stat-card__label {
+  white-space: normal;
+  line-height: 1.25;
+  text-wrap: pretty;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-management
+  > .management-page-header
+  .mph-footer-row {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  gap: 1rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+}
+
+.manager-layout.manager-layout--brands
+  .brand-management
+  > .management-page-header
+  .mph-footer-row
+  > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* The shared header already exposes chain, branch, member, role and status context. */
@@ -18,6 +71,7 @@
 }
 
 .manager-layout.manager-layout--brands .brand-panel {
+  overflow: visible;
   padding: 0.82rem;
   border-radius: 17px;
 }
@@ -32,10 +86,12 @@
 
 .manager-layout.manager-layout--brands .brand-panel__header h3 {
   margin-top: 0;
+  text-wrap: balance;
 }
 
 .manager-layout.manager-layout--brands .brand-panel__header p {
   line-height: 1.35;
+  text-wrap: pretty;
 }
 
 .manager-layout.manager-layout--brands .brand-form-grid {
@@ -61,11 +117,14 @@
 }
 
 .manager-layout.manager-layout--brands .brand-branch-list {
-  max-height: 248px;
+  max-height: none;
+  overflow: visible;
   gap: 0.4rem;
+  padding-right: 0;
 }
 
 .manager-layout.manager-layout--brands .brand-branch-card {
+  align-items: start;
   gap: 0.55rem;
   padding: 0.5rem 0.58rem;
   border-radius: 12px;
@@ -77,21 +136,39 @@
   border-radius: 10px;
 }
 
+.manager-layout.manager-layout--brands .brand-branch-card__body strong,
+.manager-layout.manager-layout--brands .brand-branch-card__body span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.manager-layout.manager-layout--brands .brand-branch-card .brand-link-button {
+  align-self: center;
+  white-space: nowrap;
+}
+
 .manager-layout.manager-layout--brands .brand-members-panel .brand-panel__header {
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  align-items: end;
+  gap: 1rem;
 }
 
 .manager-layout.manager-layout--brands .brand-member-search {
-  min-width: min(100%, 270px);
+  width: 100%;
+  min-width: 0;
 }
 
 .manager-layout.manager-layout--brands .brand-member-create {
   display: grid;
   grid-template-columns:
-    minmax(0, 1.35fr)
-    minmax(170px, 0.68fr)
-    minmax(220px, 0.88fr)
-    auto;
+    minmax(240px, 1.3fr)
+    minmax(170px, 0.72fr)
+    minmax(240px, 1fr)
+    minmax(132px, auto);
   align-items: end;
   gap: 0.55rem;
   margin-bottom: 0.6rem;
@@ -116,7 +193,8 @@
 .manager-layout.manager-layout--brands .brand-member-create__button {
   grid-column: 4;
   grid-row: 1;
-  min-width: 128px;
+  min-width: 132px;
+  white-space: nowrap;
 }
 
 .manager-layout.manager-layout--brands .brand-scope-control,
@@ -150,12 +228,18 @@
 }
 
 .manager-layout.manager-layout--brands .brand-member-list {
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .manager-layout.manager-layout--brands .brand-member-card {
-  gap: 0.58rem;
-  padding: 0.5rem 0.6rem;
+  grid-template-columns:
+    auto
+    minmax(190px, 0.9fr)
+    minmax(260px, 1.2fr)
+    minmax(116px, auto);
+  align-items: start;
+  gap: 0.65rem;
+  padding: 0.58rem 0.65rem;
   border-radius: 11px;
 }
 
@@ -168,7 +252,27 @@
 .manager-layout.manager-layout--brands .brand-member-card__identity,
 .manager-layout.manager-layout--brands .brand-member-card__meta,
 .manager-layout.manager-layout--brands .brand-member-card__status {
-  gap: 0.12rem;
+  gap: 0.16rem;
+}
+
+.manager-layout.manager-layout--brands .brand-member-card__identity strong,
+.manager-layout.manager-layout--brands .brand-member-card__identity span,
+.manager-layout.manager-layout--brands
+  .brand-member-card__meta
+  > span:not(.brand-role-badge) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.manager-layout.manager-layout--brands .brand-role-badge,
+.manager-layout.manager-layout--brands .brand-member-card .brand-status {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .manager-layout.manager-layout--brands .brand-member-card .brand-status {
@@ -176,11 +280,51 @@
   padding: 0.3rem 0.48rem;
 }
 
-.manager-layout.manager-layout--brands .brand-member-card .brand-link-button {
-  padding-block: 0.22rem;
+.manager-layout.manager-layout--brands .brand-member-card__status {
+  justify-items: end;
 }
 
-@media (max-width: 760px) {
+.manager-layout.manager-layout--brands .brand-member-card .brand-link-button {
+  padding-block: 0.22rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .manager-layout.manager-layout--brands
+    .brand-management
+    > .management-page-header {
+    grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+  }
+
+  .manager-layout.manager-layout--brands
+    .brand-management
+    > .management-page-header
+    .mph-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .manager-layout.manager-layout--brands
+    .brand-management
+    > .management-page-header
+    .mph-controls-row {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .manager-layout.manager-layout--brands
+    .brand-management
+    > .management-page-header
+    .mph-footer-row {
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 900px) {
+  .manager-layout.manager-layout--brands .brand-members-panel .brand-panel__header {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
   .manager-layout.manager-layout--brands .brand-member-create {
     grid-template-columns: 1fr 1fr;
   }
@@ -206,6 +350,36 @@
     grid-column: 1 / -1;
     grid-row: 3;
     width: 100%;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-card__meta {
+    grid-column: 2 / -1;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-card__status {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .manager-layout.manager-layout--brands
+    .brand-management
+    > .management-page-header
+    .mph-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manager-layout.manager-layout--brands
+    .brand-management
+    > .management-page-header
+    .mph-footer-row {
+    flex-direction: column;
+    gap: 0.3rem;
   }
 }
 
@@ -248,5 +422,21 @@
 
   .manager-layout.manager-layout--brands .brand-member-create__button {
     grid-row: 4;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-card {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-card__avatar,
+  .manager-layout.manager-layout--brands .brand-member-card__identity,
+  .manager-layout.manager-layout--brands .brand-member-card__meta,
+  .manager-layout.manager-layout--brands .brand-member-card__status {
+    grid-column: 1;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-card__status {
+    grid-row: auto;
+    justify-items: start;
   }
 }
