@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const originalWindow = globalThis.window;
-
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -32,10 +30,7 @@ describe("apiBaseUrl", () => {
 
   it("uses the same-origin proxy when local browser and API hostnames differ", async () => {
     vi.stubEnv("VITE_API_URL", "http://localhost:4000/graphql");
-    vi.stubGlobal("window", {
-      ...originalWindow,
-      location: { hostname: "127.0.0.1" },
-    });
+    vi.stubGlobal("window", { location: { hostname: "127.0.0.1" } });
 
     const mod = await import("./apiBaseUrl");
 
