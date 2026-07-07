@@ -1,0 +1,35 @@
+{
+  "id": "07-08-staff-brand-membership-sync",
+  "name": "staff-brand-membership-sync",
+  "title": "Synchronize new staff with BrandMembership",
+  "description": "Ensure the existing createStaff flow creates an active BrandMembership staff scope for the selected restaurant Brand without changing the frontend contract.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "staff-brand-membership-create-flow",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "codex/staff-brand-membership-sync",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/staff.model.js",
+    "cohan-restaurant-backend/models/brandMembership.model.js",
+    "cohan-restaurant-backend/graphql/resolvers/staff/mutation.js",
+    "src/hooks/useStaffManagement.js",
+    "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
+    "cohan-restaurant-backend/tests/models/staff-brand-membership-sync.test.js"
+  ],
+  "notes": "Frontend already sends restaurantForStaff through CreateStaff. The fix belongs at the Staff creation boundary so every new staff record receives the required BrandMembership scope.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
