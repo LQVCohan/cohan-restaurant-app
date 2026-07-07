@@ -1,5 +1,4 @@
-/* Compact Order Management theme.
-   The modal is portalled to body, so it mirrors the parent order palette locally. */
+/* Compact Order Management theme for the portalled new-order modal. */
 
 $surface: #fffdf9;
 $surface-soft: #f8f5ee;
@@ -12,7 +11,6 @@ $ink: #24303f;
 $text: #3c4650;
 $muted: #667085;
 $border: #ded6cb;
-$shadow: rgba(42, 36, 27, 0.1);
 
 .new-order-modal-shell {
   &.modal-container {
@@ -48,18 +46,13 @@ $shadow: rgba(42, 36, 27, 0.1);
   .modal-close {
     width: 34px;
     height: 34px;
-    border: 1px solid rgba(31, 106, 96, 0.18);
+    border: 1px solid rgba(31, 106, 96, 0.2);
     border-radius: 11px;
     color: $sage-dark;
     background: $sage-mist;
-    transition:
-      transform 0.2s ease,
-      border-color 0.2s ease,
-      background 0.2s ease,
-      color 0.2s ease;
 
     &:hover {
-      border-color: rgba(31, 106, 96, 0.36);
+      border-color: $sage;
       color: #fff;
       background: $sage;
       transform: translateY(-1px);
@@ -85,16 +78,10 @@ $shadow: rgba(42, 36, 27, 0.1);
     font-family: "Geist", "Outfit", Inter, system-ui, sans-serif;
     background:
       radial-gradient(circle at 8% 0%, rgba(31, 106, 96, 0.08), transparent 25rem),
-      radial-gradient(circle at 94% 8%, rgba(168, 133, 95, 0.035), transparent 20rem),
       linear-gradient(rgba(77, 66, 52, 0.022) 1px, transparent 1px),
       linear-gradient(90deg, rgba(77, 66, 52, 0.018) 1px, transparent 1px),
       $canvas;
-    background-size:
-      auto,
-      auto,
-      32px 32px,
-      32px 32px,
-      auto;
+    background-size: auto, 32px 32px, 32px 32px, auto;
   }
 
   .new-order-modal::before {
@@ -105,7 +92,7 @@ $shadow: rgba(42, 36, 27, 0.1);
     gap: 9px;
     padding: 12px 14px;
     border-bottom: 1px solid rgba(128, 109, 83, 0.15);
-    background: rgba(255, 253, 249, 0.93);
+    background: rgba(255, 253, 249, 0.94);
     box-shadow: 0 10px 28px rgba(42, 36, 27, 0.055);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
@@ -119,7 +106,6 @@ $shadow: rgba(42, 36, 27, 0.1);
 
   .new-order-modal__headline {
     max-width: 720px;
-    min-width: 0;
 
     h3 {
       margin: 3px 0;
@@ -137,20 +123,23 @@ $shadow: rgba(42, 36, 27, 0.1);
       color: $muted;
       font-size: 0.8rem;
       line-height: 1.42;
-      text-wrap: pretty;
     }
   }
 
   .new-order-modal__eyebrow {
     gap: 6px;
     padding: 4px 7px;
-    border: 1px solid rgba(31, 106, 96, 0.16);
+    border: 1px solid rgba(31, 106, 96, 0.18);
     border-radius: 8px;
     color: $sage-dark;
     background: $sage-mist;
     font-size: 0.65rem;
     font-weight: 850;
     letter-spacing: 0.075em;
+
+    svg {
+      color: $sage-dark;
+    }
   }
 
   .new-order-modal__summary-strip {
@@ -163,16 +152,13 @@ $shadow: rgba(42, 36, 27, 0.1);
     padding: 8px 10px;
     border: 1px solid rgba(128, 109, 83, 0.16);
     border-radius: 13px;
-    background: rgba(255, 253, 249, 0.94);
-    box-shadow:
-      0 8px 20px rgba(42, 36, 27, 0.055),
-      inset 0 1px rgba(255, 255, 255, 0.78);
+    background: rgba(255, 253, 249, 0.96);
+    box-shadow: 0 8px 20px rgba(42, 36, 27, 0.055);
 
     span {
       color: $muted;
       font-size: 0.64rem;
       font-weight: 760;
-      letter-spacing: 0.025em;
     }
 
     b {
@@ -185,7 +171,7 @@ $shadow: rgba(42, 36, 27, 0.1);
 
     &--total {
       min-width: 118px;
-      border-color: rgba(31, 106, 96, 0.2);
+      border-color: rgba(31, 106, 96, 0.22);
       background: $sage-mist;
 
       b {
@@ -222,17 +208,16 @@ $shadow: rgba(42, 36, 27, 0.1);
   .searchbox__input {
     border-color: $border;
     color: $text;
-    background: rgba(255, 253, 249, 0.94);
+    background: rgba(255, 253, 249, 0.96);
     box-shadow: none;
 
     &:hover:not(:disabled) {
-      border-color: rgba(31, 106, 96, 0.26);
+      border-color: rgba(31, 106, 96, 0.3);
       background: $sage-mist;
     }
 
     &:focus-visible {
-      border-color: rgba(31, 106, 96, 0.4);
-      background: $surface;
+      border-color: rgba(31, 106, 96, 0.48);
       box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.13);
       outline: none;
     }
@@ -241,11 +226,13 @@ $shadow: rgba(42, 36, 27, 0.1);
   .form-group__icon,
   .form-group__chevron,
   .searchbox__icon {
-    color: rgba(102, 112, 133, 0.88);
+    color: $sage-dark;
+    opacity: 1;
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.65));
   }
 
   .searchbox__input::placeholder {
-    color: rgba(102, 112, 133, 0.7);
+    color: rgba(102, 112, 133, 0.78);
   }
 
   .cart-toggle {
@@ -255,10 +242,10 @@ $shadow: rgba(42, 36, 27, 0.1);
     background: $sage;
     font-weight: 800;
     box-shadow: 0 10px 22px rgba(31, 106, 96, 0.18);
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      background 0.2s ease;
+
+    svg {
+      color: #fff;
+    }
 
     &:hover:not(:disabled) {
       background: $sage-dark;
@@ -266,15 +253,15 @@ $shadow: rgba(42, 36, 27, 0.1);
       box-shadow: 0 14px 26px rgba(31, 106, 96, 0.24);
     }
 
-    &:active:not(:disabled) {
-      transform: scale(0.985);
-    }
-
     &:disabled {
       border-color: $border;
       color: rgba(102, 112, 133, 0.72);
       background: #efede8;
       box-shadow: none;
+
+      svg {
+        color: rgba(102, 112, 133, 0.72);
+      }
     }
   }
 
@@ -302,11 +289,6 @@ $shadow: rgba(42, 36, 27, 0.1);
     &:hover {
       color: $sage-dark;
       background: rgba(255, 255, 255, 0.72);
-    }
-
-    &:focus-visible {
-      outline: 3px solid rgba(31, 106, 96, 0.14);
-      outline-offset: 2px;
     }
 
     &--active {
@@ -338,10 +320,13 @@ $shadow: rgba(42, 36, 27, 0.1);
       font-weight: 780;
     }
 
+    svg {
+      color: $sage;
+    }
+
     strong {
       color: $ink;
       font-size: 0.98rem;
-      letter-spacing: -0.024em;
     }
   }
 
@@ -360,7 +345,7 @@ $shadow: rgba(42, 36, 27, 0.1);
     }
 
     button:hover {
-      border-color: rgba(31, 106, 96, 0.25);
+      border-color: rgba(31, 106, 96, 0.28);
       color: $sage-dark;
       background: $sage-mist;
     }
@@ -383,18 +368,12 @@ $shadow: rgba(42, 36, 27, 0.1);
     overflow: hidden;
     border: 1px solid rgba(128, 109, 83, 0.16);
     border-radius: 16px;
-    background: rgba(255, 253, 249, 0.95);
-    box-shadow:
-      0 10px 24px rgba(42, 36, 27, 0.065),
-      inset 0 1px rgba(255, 255, 255, 0.78);
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      border-color 0.2s ease;
+    background: rgba(255, 253, 249, 0.96);
+    box-shadow: 0 10px 24px rgba(42, 36, 27, 0.065);
 
     &:hover,
     &:focus-within {
-      border-color: rgba(31, 106, 96, 0.28);
+      border-color: rgba(31, 106, 96, 0.3);
       transform: translateY(-2px);
       box-shadow: 0 16px 30px rgba(42, 36, 27, 0.1);
     }
@@ -403,24 +382,21 @@ $shadow: rgba(42, 36, 27, 0.1);
   .dish-card__thumb {
     height: 116px;
     background:
-      radial-gradient(circle at 50% 24%, rgba(31, 106, 96, 0.09), transparent 8rem),
+      radial-gradient(circle at 50% 24%, rgba(31, 106, 96, 0.1), transparent 8rem),
       linear-gradient(135deg, #edf4f1, #f5f6f2);
   }
 
-  .dish-card__thumb--placeholder::before {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 12px;
-    background: rgba(255, 253, 249, 0.92);
-    box-shadow:
-      0 8px 18px rgba(42, 36, 27, 0.06),
-      inset 0 1px rgba(255, 255, 255, 0.82);
-  }
-
-  .dish-card__thumb--placeholder svg {
-    width: 21px;
-    height: 21px;
+  .dish-card__thumb--placeholder {
     color: $sage;
+    background: linear-gradient(135deg, rgba(220, 239, 233, 0.62), rgba(242, 250, 247, 0.88));
+
+    svg {
+      width: 25px;
+      height: 25px;
+      color: $sage;
+      opacity: 1;
+      filter: drop-shadow(0 2px 4px rgba(31, 106, 96, 0.14));
+    }
   }
 
   .dish-card__info {
@@ -437,14 +413,25 @@ $shadow: rgba(42, 36, 27, 0.1);
 
   .dish-card__price {
     color: $sage-dark;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 820;
     font-variant-numeric: tabular-nums;
   }
 
   .badge {
     border-radius: 8px;
-    font-size: 0.65rem;
+    font-size: 0.64rem;
+
+    &--info,
+    &--weight {
+      color: $sage-dark;
+      background: $sage-soft;
+    }
+
+    &--warning {
+      color: #835b20;
+      background: #fbf1df;
+    }
   }
 
   .dish-card__add {
@@ -452,24 +439,285 @@ $shadow: rgba(42, 36, 27, 0.1);
     bottom: 10px;
     width: 33px;
     height: 33px;
-    border: 1px solid rgba(31, 106, 96, 0.2);
+    border: 1px solid rgba(31, 106, 96, 0.24);
     border-radius: 10px;
     color: $sage-dark;
     background: $sage-mist;
     box-shadow: 0 7px 16px rgba(31, 106, 96, 0.08);
 
+    svg {
+      color: $sage-dark;
+    }
+
     &:hover {
       border-color: $sage !important;
       color: #fff !important;
       background: $sage !important;
+
+      svg {
+        color: #fff;
+      }
     }
   }
 
   .dish-card__click:focus-visible,
   .dish-card__add:focus-visible,
+  .dish-card__config-pop button:focus-visible,
+  .dish-card__config-pop input:focus-visible,
   .cart-panel button:focus-visible {
-    outline: 3px solid rgba(31, 106, 96, 0.15) !important;
+    outline: 3px solid rgba(31, 106, 96, 0.16) !important;
     outline-offset: 2px;
+  }
+
+  .dish-card__config-pop {
+    gap: 8px;
+    padding: 10px;
+    overflow-y: auto;
+    color: $ink;
+    background: rgba(255, 253, 249, 0.985);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+
+  .dish-card__methods-title {
+    gap: 8px;
+    color: $ink;
+    font-size: 0.82rem;
+    font-weight: 800;
+
+    > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    svg {
+      color: $sage-dark;
+    }
+  }
+
+  .dish-card__methods-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(31, 106, 96, 0.18);
+    border-radius: 9px;
+    color: $sage-dark;
+    background: $sage-mist;
+
+    &:hover {
+      color: #fff;
+      background: $sage;
+    }
+  }
+
+  .dish-card__methods-list {
+    flex: 0 1 auto;
+    max-height: 104px;
+    gap: 5px;
+    overflow-y: auto;
+  }
+
+  .dish-card__method-btn {
+    min-height: 42px;
+    padding: 6px 8px;
+    border: 1px solid rgba(128, 109, 83, 0.18);
+    border-radius: 10px;
+    color: $text;
+    background: $surface;
+
+    > span {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      text-align: left;
+    }
+
+    strong {
+      max-width: 100%;
+      overflow: hidden;
+      color: $ink;
+      font-size: 0.74rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      color: $muted;
+      font-size: 0.63rem;
+      font-weight: 650;
+    }
+
+    b {
+      flex: 0 0 auto;
+      color: $sage-dark;
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &:hover,
+    &--active {
+      border-color: rgba(31, 106, 96, 0.38);
+      color: $sage-dark;
+      background: $sage-mist;
+      transform: none;
+    }
+
+    &--active {
+      box-shadow: inset 3px 0 $sage;
+    }
+  }
+
+  .dish-card__config-warning {
+    padding: 8px 9px;
+    border: 1px solid rgba(131, 91, 32, 0.2);
+    border-radius: 10px;
+    color: #835b20;
+    background: #fbf1df;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .dish-card__quantity-block {
+    display: grid;
+    gap: 5px;
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: $text;
+      font-size: 0.68rem;
+      font-weight: 780;
+
+      svg {
+        color: $sage-dark;
+      }
+    }
+  }
+
+  .dish-card__quantity-control {
+    display: grid;
+    grid-template-columns: 31px minmax(44px, 1fr) auto 31px;
+    gap: 5px;
+    align-items: center;
+
+    button,
+    input,
+    > span {
+      min-height: 31px;
+      border: 1px solid rgba(31, 106, 96, 0.18);
+      border-radius: 9px;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      color: $sage-dark;
+      background: $sage-mist;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        color: #fff;
+        background: $sage;
+      }
+
+      &:disabled {
+        color: rgba(102, 112, 133, 0.5);
+        background: #efede8;
+        cursor: not-allowed;
+      }
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      padding: 0 6px;
+      color: $ink;
+      background: $surface;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    > span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      color: $sage-dark;
+      background: $sage-mist;
+      font-size: 0.66rem;
+      font-weight: 760;
+    }
+  }
+
+  .dish-card__config-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: end;
+    padding-top: 7px;
+    border-top: 1px solid rgba(128, 109, 83, 0.14);
+
+    > span {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 1px;
+      color: $muted;
+      font-size: 0.62rem;
+      font-weight: 700;
+
+      b {
+        overflow: hidden;
+        color: $sage-dark;
+        font-size: 0.78rem;
+        font-variant-numeric: tabular-nums;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .dish-card__confirm-add {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 10px;
+    border: 1px solid $sage;
+    border-radius: 10px;
+    color: #fff;
+    background: $sage;
+    font-size: 0.68rem;
+    font-weight: 800;
+    cursor: pointer;
+
+    svg {
+      color: #fff;
+    }
+
+    &:hover:not(:disabled) {
+      background: $sage-dark;
+    }
+
+    &:disabled {
+      border-color: $border;
+      color: rgba(102, 112, 133, 0.68);
+      background: #efede8;
+      cursor: not-allowed;
+
+      svg {
+        color: rgba(102, 112, 133, 0.68);
+      }
+    }
   }
 
   .menu-skeleton-card {
@@ -494,14 +742,16 @@ $shadow: rgba(42, 36, 27, 0.1);
     border: 1px dashed rgba(31, 106, 96, 0.2);
     border-radius: 16px;
     color: $muted;
-    background:
-      radial-gradient(circle at 50% 0%, rgba(31, 106, 96, 0.08), transparent 16rem),
-      rgba(255, 253, 249, 0.68);
+    background: rgba(255, 253, 249, 0.7);
   }
 
   .empty-state__icon {
     color: $sage-dark;
     background: $sage-mist;
+
+    svg {
+      color: $sage-dark;
+    }
   }
 
   .cart-overlay {
@@ -512,7 +762,6 @@ $shadow: rgba(42, 36, 27, 0.1);
     background: rgba(36, 48, 63, 0.28) !important;
     -webkit-backdrop-filter: blur(2px) !important;
     backdrop-filter: blur(2px) !important;
-    overscroll-behavior: contain;
   }
 
   .cart-overlay::before {
@@ -531,16 +780,11 @@ $shadow: rgba(42, 36, 27, 0.1);
     border-left: 1px solid rgba(128, 109, 83, 0.16);
     background: linear-gradient(180deg, $surface, $canvas) !important;
     box-shadow: -24px 0 52px rgba(36, 48, 63, 0.22) !important;
-    overscroll-behavior: contain;
   }
 
   .cart-panel__header,
   .save-button {
     background: $sage !important;
-  }
-
-  .cart-panel__header {
-    border-bottom-color: rgba(255, 255, 255, 0.14);
   }
 
   .cart-panel__clear,
@@ -560,7 +804,7 @@ $shadow: rgba(42, 36, 27, 0.1);
   .order-item {
     border: 1px solid rgba(128, 109, 83, 0.15);
     border-radius: 13px;
-    background: rgba(255, 253, 249, 0.94);
+    background: rgba(255, 253, 249, 0.96);
     box-shadow: 0 8px 18px rgba(42, 36, 27, 0.05);
   }
 
@@ -569,17 +813,37 @@ $shadow: rgba(42, 36, 27, 0.1);
     color: $ink;
   }
 
+  .order-item__method {
+    color: $sage-dark;
+    font-weight: 700;
+  }
+
   .order-item__line-total,
   .order-totals__line--grand span:last-child {
     color: $sage-dark !important;
     font-variant-numeric: tabular-nums;
   }
 
-  .order-item__qty-controls button,
+  .order-item__qty-controls {
+    span {
+      min-width: 70px;
+      color: $ink;
+      font-size: 0.68rem;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+
+    button {
+      border-color: rgba(31, 106, 96, 0.18);
+      color: $sage-dark;
+      background: $sage-mist;
+    }
+  }
+
   .order-item__remove-btn {
     border-color: $border;
-    color: $sage-dark;
-    background: $surface;
+    color: #9a413d;
+    background: #faece8;
   }
 
   .save-button {
@@ -634,7 +898,6 @@ $shadow: rgba(42, 36, 27, 0.1);
     .new-order-modal__sessions {
       justify-content: flex-start;
       overflow-x: auto;
-      scrollbar-width: thin;
     }
 
     .menu-grid,
@@ -668,23 +931,6 @@ $shadow: rgba(42, 36, 27, 0.1);
 
     .new-order-modal__headline p {
       display: none;
-    }
-
-    .new-order-modal__summary-strip {
-      gap: 6px;
-    }
-
-    .summary-pill {
-      padding: 7px 8px;
-      border-radius: 11px;
-
-      span {
-        font-size: 0.6rem;
-      }
-
-      b {
-        font-size: 0.78rem;
-      }
     }
 
     .controls__row--top {
