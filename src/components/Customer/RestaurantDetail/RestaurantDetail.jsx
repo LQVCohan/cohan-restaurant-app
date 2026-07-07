@@ -21,7 +21,7 @@ import "./RestaurantDetail.fallbacks.scss";
 const DETAIL_FALLBACK_COVERS = [
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=82",
   "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=82",
-  "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1600&q=82",
+  "https://images.unsplash.com/photo-1528605248644-14dd04022da1c?auto=format&fit=crop&w=1600&q=82",
   "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1600&q=82",
   "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1600&q=82",
 ];
@@ -72,6 +72,9 @@ const GET_PUBLIC_RESTAURANT = gql`
       coverImage
       spaceImages
       description
+      openingHours
+      amenities
+      notesOnAmenities
       cuisineType
       avgRating
       reviewCount
