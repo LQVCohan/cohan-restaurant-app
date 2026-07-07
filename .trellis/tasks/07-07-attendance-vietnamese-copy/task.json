@@ -11,15 +11,11 @@
   "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "64983ea8b80dc2f2f50cf90f36605230a81399ca",
   "pr_url": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceReconciliationUtils.js",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceCorrectionUtils.js",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.test.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceReconciliationUtils.test.js",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/attendanceCorrectionUtils.test.js"
+    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning.js",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning.test.js",
+    "src/main.jsx"
   ]
 }
