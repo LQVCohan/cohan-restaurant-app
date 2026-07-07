@@ -1,0 +1,28 @@
+{
+  "id": "staff-scheduling-availability-fail-closed",
+  "name": "staff-scheduling-availability-fail-closed",
+  "title": "Fail closed when staff availability cannot be verified",
+  "description": "Prevent unverified or hard-blocked employees from appearing as safe scheduling suggestions.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "analytics-scheduling",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/staff-scheduling-availability-fail-closed",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/ai/staffSchedulingAssistant.service.js",
+    "cohan-restaurant-backend/tests/analytics/staff-scheduling-assistant.test.js"
+  ],
+  "notes": "Keep GraphQL and frontend contracts unchanged. Fix candidate filtering at the shared scheduling-assistant boundary."
+}
