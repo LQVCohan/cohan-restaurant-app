@@ -40,6 +40,7 @@ import "./components/Dashboard_Manager/Table/TableManagementFinalQC.scss";
 import "./components/Dashboard_Manager/Table/TableManagementScorePolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowFinalPolish.scss";
+import "./components/Dashboard_Manager/Table/TableWorkflowModalOverlapFix.scss";
 import "./styles/AiChatbotMessageAvatars.scss";
 import "./styles/CohanBrandIdentity.css";
 import "./styles/AiChatbotRoleAvatars.css";
