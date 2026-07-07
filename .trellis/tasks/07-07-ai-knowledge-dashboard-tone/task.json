@@ -1,0 +1,29 @@
+{
+  "id": "ai-knowledge-dashboard-tone",
+  "name": "ai-knowledge-dashboard-tone",
+  "title": "Align AI knowledge page with manager dashboard tone",
+  "description": "Use the shared manager dashboard palette, surfaces, borders, shadows, focus states, and semantic colors on the AI chatbot knowledge page.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-ai-chatbot-knowledge",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.scss",
+    "src/layouts/ManagerUnifiedBackground.css",
+    "src/components/Dashboard_Manager/Customer/AiManagerUiPolish.css"
+  ],
+  "notes": "Visual-only change. Reuse shared --manager-* tokens; no data, GraphQL, permissions, or runtime behavior changes."
+}
