@@ -1,5 +1,6 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "../components/Dashboard_Manager/RestaurantInfo/RestaurantChefMapPolish.css";
 
 const RESTAURANT_ROUTE_RE = /^\/(manager|admin)(?:\/|$)/;
 const DEFAULT_CENTER = { lat: 10.7769, lng: 106.7009 };
