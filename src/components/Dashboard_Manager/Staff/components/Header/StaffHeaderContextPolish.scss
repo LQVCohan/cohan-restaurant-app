@@ -76,6 +76,40 @@
   }
 }
 
+.staff-page-container
+  .management-page-header.staff-page-header.density-compact.stats-right {
+  .mph-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+    align-content: center !important;
+  }
+
+  .mph-stat-card {
+    min-width: 0 !important;
+    max-height: none !important;
+  }
+
+  .mph-stat-card__body {
+    min-width: 0 !important;
+  }
+
+  .mph-stat-card__label {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    text-wrap: pretty;
+  }
+
+  .mph-stat-card__value-wrap {
+    flex-wrap: wrap !important;
+    row-gap: 2px !important;
+  }
+
+  .mph-stat-card__suffix,
+  .mph-stat-card__trend {
+    white-space: normal !important;
+  }
+}
+
 .staff-page-container .attendance-readiness-focus-banner {
   display: none !important;
 }
