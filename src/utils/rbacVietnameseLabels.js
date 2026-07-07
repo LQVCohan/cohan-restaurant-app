@@ -300,6 +300,18 @@ const setElementText = (element, nextText) => {
   return 1;
 };
 
+const setControlText = (element, nextText) => {
+  if (!element || !nextText) return 0;
+  const textNode = Array.from(element.childNodes)
+    .find((node) => node.nodeType === 3 && node.nodeValue?.trim());
+  if (!textNode) return setElementText(element, nextText);
+  const current = textNode.nodeValue || "";
+  const trimmed = current.trim();
+  if (trimmed === nextText) return 0;
+  textNode.nodeValue = current.replace(trimmed, nextText);
+  return 1;
+};
+
 function applyStaticCopy(page) {
   const walker = document.createTreeWalker(page, window.NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
@@ -393,8 +405,8 @@ export function applyRbacVietnameseLabels(root = document) {
   if (historyMetric?.textContent?.trim() === "Ẩn") changes += setElementText(historyMetric, "Không xem");
 
   const tabs = page.querySelectorAll(".rbac-tabs button");
-  if (tabs[1]) changes += setElementText(tabs[1], "Cập nhật vai trò");
-  if (tabs[2]) changes += setElementText(tabs[2], "Quản lý vai trò");
+  if (tabs[1]) changes += setControlText(tabs[1], "Cập nhật vai trò");
+  if (tabs[2]) changes += setControlText(tabs[2], "Quản lý vai trò");
 
   return changes;
 }
