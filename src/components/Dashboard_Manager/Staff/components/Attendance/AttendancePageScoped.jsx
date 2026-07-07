@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { AttendanceScopeContext } from "@/context/AttendanceScopeContext";
+import React, { useContext, useEffect, useMemo } from "react";
+import { AuthContext } from "@/context/AuthContext";
 import AttendancePage from "./AttendancePage";
 
 const normalizeRestaurantId = (value) => {
@@ -26,7 +26,10 @@ const syncAttendanceRestaurantQuery = (restaurantId) => {
     params.delete("restaurantId");
   }
 
-  if (currentRestaurantId === (params.get("restaurantId") || "") && params.get("staffPage") === "attendance") {
+  if (
+    currentRestaurantId === (params.get("restaurantId") || "") &&
+    params.get("staffPage") === "attendance"
+  ) {
     return;
   }
 
@@ -35,21 +38,34 @@ const syncAttendanceRestaurantQuery = (restaurantId) => {
 };
 
 const AttendancePageScoped = ({ restaurantId, ...props }) => {
-  const normalizedRestaurantId = useMemo(() => normalizeRestaurantId(restaurantId), [restaurantId]);
-  const [readyKey, setReadyKey] = useState("");
-  const targetKey = normalizedRestaurantId || "attendance-unscoped";
+  const auth = useContext(AuthContext);
+  const normalizedRestaurantId = useMemo(
+    () => normalizeRestaurantId(restaurantId),
+    [restaurantId],
+  );
+  const scopedAuth = useMemo(() => {
+    if (!auth?.user || !normalizedRestaurantId) return auth;
+
+    return {
+      ...auth,
+      user: {
+        ...auth.user,
+        // Frontend query scope only. Backend authorization still uses BrandMembership.
+        restaurantForStaff: normalizedRestaurantId,
+      },
+    };
+  }, [auth, normalizedRestaurantId]);
 
   useEffect(() => {
     syncAttendanceRestaurantQuery(normalizedRestaurantId);
-    setReadyKey(targetKey);
-  }, [normalizedRestaurantId, targetKey]);
+  }, [normalizedRestaurantId]);
 
-  if (!normalizedRestaurantId || readyKey !== targetKey) return null;
+  if (!normalizedRestaurantId) return null;
 
   return (
-    <AttendanceScopeContext.Provider value={normalizedRestaurantId}>
-      <AttendancePage key={targetKey} {...props} />
-    </AttendanceScopeContext.Provider>
+    <AuthContext.Provider value={scopedAuth}>
+      <AttendancePage {...props} />
+    </AuthContext.Provider>
   );
 };
 
