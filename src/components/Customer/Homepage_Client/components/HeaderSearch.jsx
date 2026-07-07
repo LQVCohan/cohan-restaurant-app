@@ -4,9 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { useSearchSuggestions } from "../../../../hooks/useSearchSuggestions";
 import { debounce } from "../../../../utils/debounce";
 
-// --- CONSTANTS & HELPERS ---
 const HISTORY_KEY = "foodhub_search_history_v1";
-const HISTORY_LIMIT = 5; // Giảm xuống 5 để dropdown gọn hơn
+const HISTORY_LIMIT = 5;
 
 function loadHistory() {
   try {
@@ -30,7 +29,6 @@ function saveHistory(list) {
   }
 }
 
-// Helper để lấy icon và label đẹp hơn
 function getTypeInfo(type) {
   switch (type) {
     case "RESTAURANT":
@@ -63,6 +61,24 @@ function getTypeInfo(type) {
           >
             <circle cx="12" cy="12" r="10" />
             <path d="M8 12h8" />
+          </svg>
+        ),
+      };
+    case "CHEF":
+      return {
+        label: "Bếp trưởng",
+        icon: (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M6 13.8V20h12v-6.2" />
+            <path d="M6.5 13.5a4 4 0 1 1 2.7-7A4.5 4.5 0 0 1 18 8a3.5 3.5 0 0 1-.5 5.5Z" />
+            <path d="M9 17h6" />
           </svg>
         ),
       };
@@ -105,7 +121,39 @@ function getTypeInfo(type) {
   }
 }
 
-// --- COMPONENT ---
+function getSuggestionSubText(item) {
+  const data = item?.data || {};
+
+  if (item?.type === "MENU_ITEM") {
+    return [
+      data.restaurantName,
+      data.categoryName,
+      data.servingLabel,
+      data.cookingMethods?.join(", "),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (item?.type === "CHEF") {
+    return [data.positionTitle, data.restaurantName, data.contactPhone]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (item?.type === "RESTAURANT") {
+    return [data.fullAddress || data.shortAddress, data.phone]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (item?.type === "OWNER") {
+    return [data.email, data.phone].filter(Boolean).join(" · ");
+  }
+
+  return data.fullAddress || data.shortAddress || data.restaurantName || "";
+}
+
 export default function HeaderSearch() {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -118,33 +166,30 @@ export default function HeaderSearch() {
   const navigate = useNavigate();
 
   const { run, cancel, suggestions, loading } = useSearchSuggestions();
-
-  // Debounce API call
   const debouncedSearch = useMemo(() => debounce((q) => run(q), 300), [run]);
 
-  // Logic Idle Timer
   const resetIdleTimer = () => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => {
       cancel();
       setIsFocused(false);
       setActiveIndex(-1);
-    }, 5000); // Tăng lên 5s cho thoải mái
+    }, 5000);
   };
 
-  // Handlers
-  const handleInputChange = (e) => {
-    const value = e.target.value;
+  const handleInputChange = (event) => {
+    const value = event.target.value;
     setQuery(value);
 
     if (!isFocused) return;
     resetIdleTimer();
 
     const trimmed = value.trim();
-    if (!trimmed || trimmed.length < 2) {
+    if (trimmed.length < 2) {
       cancel();
       return;
     }
+
     debouncedSearch(trimmed);
     setIsOpen(true);
   };
@@ -157,46 +202,61 @@ export default function HeaderSearch() {
     }
   };
 
-  // Click Outside to close
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsFocused(false);
         setIsOpen(false);
         setActiveIndex(-1);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Flatten suggestions data
+  useEffect(
+    () => () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      cancel();
+    },
+    [cancel]
+  );
+
   const flatItems = useMemo(() => {
     if (!suggestions) return [];
+
     const list = [];
-    if (suggestions.restaurants)
-      suggestions.restaurants.forEach((r) =>
-        list.push({ type: "RESTAURANT", data: r })
+    suggestions.restaurants?.forEach((restaurant) =>
+      list.push({ type: "RESTAURANT", data: restaurant })
+    );
+    suggestions.menuItems
+      ?.slice(0, 3)
+      .forEach((menuItem) =>
+        list.push({ type: "MENU_ITEM", data: menuItem })
       );
-    if (suggestions.menuItems)
-      suggestions.menuItems
-        .slice(0, 3)
-        .forEach((m) => list.push({ type: "MENU_ITEM", data: m }));
-    if (suggestions.owners)
-      suggestions.owners.forEach((o) => list.push({ type: "OWNER", data: o }));
-    if (suggestions.locations)
-      suggestions.locations.forEach((l) =>
-        list.push({ type: "LOCATION", data: l })
-      );
+    suggestions.chefs
+      ?.slice(0, 3)
+      .forEach((chef) => list.push({ type: "CHEF", data: chef }));
+    suggestions.owners?.forEach((owner) =>
+      list.push({ type: "OWNER", data: owner })
+    );
+    suggestions.locations?.forEach((location) =>
+      list.push({ type: "LOCATION", data: location })
+    );
+
     return list;
   }, [suggestions]);
 
-  // History Actions
   const pushHistory = (text) => {
-    const q = text?.trim();
-    if (!q) return;
-    setHistory((prev) => {
-      const next = [q, ...prev.filter((x) => x !== q)].slice(0, HISTORY_LIMIT);
+    const normalized = text?.trim();
+    if (!normalized) return;
+
+    setHistory((previous) => {
+      const next = [
+        normalized,
+        ...previous.filter((item) => item !== normalized),
+      ].slice(0, HISTORY_LIMIT);
       saveHistory(next);
       return next;
     });
@@ -207,14 +267,13 @@ export default function HeaderSearch() {
     saveHistory([]);
   };
 
-  const removeHistoryItem = (e, text) => {
-    e.stopPropagation(); // Stop click event propagation
-    const next = history.filter((x) => x !== text);
+  const removeHistoryItem = (event, text) => {
+    event.stopPropagation();
+    const next = history.filter((item) => item !== text);
     setHistory(next);
     saveHistory(next);
   };
 
-  // Navigation Logic
   const handleSelect = (item, fromHistory = false) => {
     setIsOpen(false);
     setActiveIndex(-1);
@@ -227,7 +286,6 @@ export default function HeaderSearch() {
       setQuery(item);
     }
 
-    // Nếu không có item cụ thể (User nhấn Enter khi đang gõ)
     if (!item) {
       if (keyword) {
         pushHistory(keyword);
@@ -236,15 +294,19 @@ export default function HeaderSearch() {
       return;
     }
 
-    // Xử lý navigate theo Type
     if (item.type === "RESTAURANT") {
       pushHistory(item.data.name);
       navigate(`/restaurant/${item.data.id}`);
     } else if (item.type === "MENU_ITEM") {
       pushHistory(item.data.name);
       navigate(
-        `/cus-menu?restaurantId=${item.data.restaurantId}&menuItemId=${item.data.id}`
+        `/cus-menu?restaurantId=${encodeURIComponent(
+          item.data.restaurantId
+        )}&menuItemId=${encodeURIComponent(item.data.id)}`
       );
+    } else if (item.type === "CHEF") {
+      pushHistory(item.data.fullName || item.data.restaurantName);
+      navigate(`/restaurant/${item.data.restaurantId}`);
     } else if (item.type === "OWNER") {
       pushHistory(item.data.fullName);
       navigate(`/owner/${item.data.id}`);
@@ -258,29 +320,33 @@ export default function HeaderSearch() {
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape") {
       setIsOpen(false);
       return;
     }
-    if (e.key === "Enter") {
-      e.preventDefault();
+
+    if (event.key === "Enter") {
+      event.preventDefault();
       if (activeIndex >= 0 && activeIndex < flatItems.length) {
         handleSelect(flatItems[activeIndex]);
       } else {
-        handleSelect(null); // Search keyword hiện tại
+        handleSelect(null);
       }
       return;
     }
+
     if (!flatItems.length || !isOpen) return;
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex((prev) => (prev + 1 >= flatItems.length ? 0 : prev + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex((prev) =>
-        prev - 1 < 0 ? flatItems.length - 1 : prev - 1
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((previous) =>
+        previous + 1 >= flatItems.length ? 0 : previous + 1
+      );
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((previous) =>
+        previous - 1 < 0 ? flatItems.length - 1 : previous - 1
       );
     }
   };
@@ -288,45 +354,43 @@ export default function HeaderSearch() {
   const clearInput = () => {
     setQuery("");
     setActiveIndex(-1);
-    // Nếu có lịch sử, focus lại để hiện lịch sử
     if (history.length > 0) setIsOpen(true);
     cancel();
   };
 
-  // Conditions to show dropdown
   const showHistory =
     isOpen && isFocused && !query.trim() && history.length > 0;
   const showSuggestions = isOpen && (flatItems.length > 0 || loading);
 
   return (
     <div className="header-search" ref={wrapperRef}>
-      {/* Wrapper input để bo tròn và chứa icon */}
       <div className="header-search__input-wrapper">
         <input
           type="text"
           className="header-search__input"
-          placeholder="Tìm nhà hàng, món ăn, khu vực..."
+          placeholder="Tìm món, nhà hàng, bếp trưởng..."
           value={query}
           onFocus={handleFocus}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
         />
 
-        {/* Nút Clear Input (X) */}
         {query.length > 0 && (
           <button
             type="button"
             className="header-search__clear-input"
             onClick={clearInput}
+            aria-label="Xóa từ khóa tìm kiếm"
           >
             ✕
           </button>
         )}
 
-        {/* Nút Search Icon (🔍) */}
         <button
+          type="button"
           className="header-search__icon-btn"
           onClick={() => handleSelect(null)}
+          aria-label="Tìm kiếm"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -345,10 +409,8 @@ export default function HeaderSearch() {
         </button>
       </div>
 
-      {/* DROPDOWN */}
       {(showHistory || showSuggestions) && (
         <div className="header-search__dropdown">
-          {/* --- HISTORY SECTION --- */}
           {showHistory && (
             <div className="header-search__group">
               <div className="header-search__dropdown-header">
@@ -358,8 +420,8 @@ export default function HeaderSearch() {
                 <button
                   type="button"
                   className="header-search__dropdown-clear"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
+                  onMouseDown={(event) => {
+                    event.preventDefault();
                     clearHistoryAll();
                   }}
                 >
@@ -367,14 +429,13 @@ export default function HeaderSearch() {
                 </button>
               </div>
 
-              {history.map((h, idx) => (
+              {history.map((item, index) => (
                 <div
-                  key={`hist-${idx}`}
+                  key={`hist-${index}`}
                   className="header-search__dropdown-item"
-                  onClick={() => handleSelect(h, true)}
+                  onClick={() => handleSelect(item, true)}
                 >
                   <div className="header-search__item-content">
-                    {/* Icon đồng hồ */}
                     <svg
                       width="14"
                       height="14"
@@ -387,12 +448,15 @@ export default function HeaderSearch() {
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
-                    <span className="header-search__item-main">{h}</span>
+                    <span className="header-search__item-main">{item}</span>
                   </div>
                   <button
                     type="button"
                     className="header-search__remove-history-item"
-                    onMouseDown={(e) => removeHistoryItem(e, h)}
+                    onMouseDown={(event) =>
+                      removeHistoryItem(event, item)
+                    }
+                    aria-label={`Xóa ${item} khỏi lịch sử`}
                   >
                     ✕
                   </button>
@@ -401,7 +465,6 @@ export default function HeaderSearch() {
             </div>
           )}
 
-          {/* --- SUGGESTIONS SECTION --- */}
           {showSuggestions && (
             <div className="header-search__group">
               <div className="header-search__dropdown-header">
@@ -410,26 +473,24 @@ export default function HeaderSearch() {
                 </span>
               </div>
 
-              {flatItems.map((item, idx) => {
-                const active = idx === activeIndex;
+              {flatItems.map((item, index) => {
+                const active = index === activeIndex;
                 const typeInfo = getTypeInfo(item.type);
                 const mainText =
-                  item.data.name || item.data.fullName || item.data.label;
-                const subText =
-                  item.data.address ||
-                  item.data.fullAddress ||
-                  item.data.shortAddress ||
-                  item.data.restaurantName ||
-                  "";
+                  item.data.name ||
+                  item.data.fullName ||
+                  item.data.label ||
+                  "Kết quả tìm kiếm";
+                const subText = getSuggestionSubText(item);
 
                 return (
                   <div
-                    key={`${item.type}-${idx}`}
+                    key={`${item.type}-${item.data.id || item.data.label || index}`}
                     className={`header-search__dropdown-item ${
                       active ? "header-search__dropdown-item--active" : ""
                     }`}
                     onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setActiveIndex(idx)}
+                    onMouseEnter={() => setActiveIndex(index)}
                   >
                     <div className="header-search__item-content">
                       <div className="flex items-center gap-2">
@@ -443,7 +504,9 @@ export default function HeaderSearch() {
                         )}
                       </div>
                       {subText && (
-                        <div className="header-search__item-sub">{subText}</div>
+                        <div className="header-search__item-sub">
+                          {subText}
+                        </div>
                       )}
                     </div>
                   </div>
