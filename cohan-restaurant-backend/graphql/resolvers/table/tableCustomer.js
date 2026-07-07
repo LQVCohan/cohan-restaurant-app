@@ -44,8 +44,8 @@ function buildTableLookup(restaurantId, tableId, tableCode) {
 /* ============================ Queries ============================ */
 
 /**
- * Lấy thông tin khách cho 1 bàn
- * Ưu tiên: tableId > tableCode
+ * Lấy thông tin khách cho 1 bàn.
+ * Client cũ chỉ nhận một hồ sơ nên bàn ghép trả hồ sơ đầu tiên theo mã bàn gốc.
  */
 async function tableCustomer(
   _,
@@ -67,8 +67,19 @@ async function tableCustomer(
       : { restaurantId: rid, tableCode: String(tableCode) };
 
   const doc = await TableCustomer.findOne(cond).lean();
+  if (doc) return serializeCustomer(doc);
 
-  return serializeCustomer(doc);
+  try {
+    const group = await tableCustomerGroup(
+      _,
+      { restaurantId, tableId, tableCode },
+      { user },
+    );
+    return group.profiles.find((profile) => profile.customer)?.customer || null;
+  } catch (error) {
+    if (error?.extensions?.code === "NOT_FOUND") return null;
+    throw error;
+  }
 }
 
 /**
