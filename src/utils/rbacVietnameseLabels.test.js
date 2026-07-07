@@ -52,12 +52,24 @@ describe("rbacVietnameseLabels", () => {
     expect(getRbacPermissionMeta("customer.read")).toBe("Mã quyền: customer.read");
     expect(getRbacRoleLabel({ slug: "bartender", name: "Bartender" })).toBe("Nhân viên pha chế");
     expect(getRbacRoleLabel({ slug: "cleaner", name: "Cleaner" })).toBe("Nhân viên vệ sinh");
+    expect(getRbacRoleLabel({ slug: "shipper", name: "Shipper" })).toBe("Nhân viên giao hàng");
   });
 
-  it("updates RBAC copy without dropping permission rows", () => {
+  it("updates RBAC copy without dropping permission rows or tab icons", () => {
     document.body.innerHTML = `
       <main class="rbac-page">
         <span>An toàn truy cập</span>
+        <div class="rbac-premium-metrics">
+          <div class="rbac-premium-metric"><strong>17</strong></div>
+          <div class="rbac-premium-metric"><strong>14</strong></div>
+          <div class="rbac-premium-metric"><strong>Bật</strong></div>
+        </div>
+        <nav class="rbac-tabs">
+          <button><svg data-tab-icon="overview"></svg>Vai trò & quyền</button>
+          <button><svg data-tab-icon="assignment"></svg>Gán vai trò</button>
+          <button><svg data-tab-icon="roles"></svg>Tạo vai trò</button>
+        </nav>
+        <span class="rbac-count-pill">2 quyền hạn</span>
         <section class="rbac-permission-group">
           <div class="rbac-permission-group__title"><h4>ai-chatbot</h4></div>
           <div class="rbac-checkbox-row">
@@ -73,6 +85,11 @@ describe("rbacVietnameseLabels", () => {
           <span class="rbac-role-row__top"><strong>Bartender</strong></span>
           <span class="rbac-role-row__meta">Tên rút gọn: bartender</span>
         </button>
+        <div class="rbac-selected-role"><h4>Manager</h4><span>Nhóm kế thừa: Manager</span></div>
+        <form class="rbac-form--assignment">
+          <label>Nhà hàng<select><option>Nhà hàng A</option></select></label>
+          <label>Nhân viên<select><option>Demo Bartender (Bartender)</option></select></label>
+        </form>
       </main>
     `;
 
@@ -87,6 +104,13 @@ describe("rbacVietnameseLabels", () => {
     expect(document.querySelectorAll(".rbac-checkbox-row small")[0]).toHaveTextContent("Mã quyền: ai.chatbot.analytics.read");
     expect(document.querySelector(".rbac-role-row__top strong")).toHaveTextContent("Nhân viên pha chế");
     expect(document.querySelector(".rbac-role-row__meta")).toHaveTextContent("Mã vai trò: bartender");
+    expect(document.querySelector(".rbac-selected-role > span")).toHaveTextContent("Kế thừa từ: Quản lý nhà hàng");
+    expect(document.querySelector(".rbac-form--assignment label:nth-child(2) option")).toHaveTextContent("Demo Bartender (Nhân viên pha chế)");
+    expect(document.querySelector(".rbac-count-pill")).toHaveTextContent("2 quyền");
+    expect(document.querySelector(".rbac-premium-metric:nth-child(3) strong")).toHaveTextContent("Đang ghi");
+    expect(document.querySelectorAll(".rbac-tabs button")[1]).toHaveTextContent("Cập nhật vai trò");
+    expect(document.querySelectorAll(".rbac-tabs button")[2]).toHaveTextContent("Quản lý vai trò");
+    expect(document.querySelectorAll(".rbac-tabs svg")).toHaveLength(3);
     expect(document.querySelector(".rbac-page > span")).toHaveTextContent("Kiểm soát truy cập");
   });
 });
