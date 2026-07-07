@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(),
+}));
 const modelMocks = vi.hoisted(() => ({
   findSortMock: vi.fn(),
   findMock: vi.fn(),
@@ -25,6 +28,10 @@ modelMocks.findMock.mockImplementation(() => ({ sort: modelMocks.findSortMock })
 modelMocks.ShiftAcknowledgement.find = modelMocks.findMock;
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({ listStaffPerformanceSnapshots: vi.fn() }));
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({ getSchedulingPolicy: vi.fn() }));
 vi.mock("../../src/services/scheduling/shiftAssignmentValidation.service.js", () => ({ validateShiftAssignment: vi.fn() }));
@@ -58,6 +65,8 @@ vi.mock("mongoose", () => ({
 describe("shift acknowledgement query resolvers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.findSortMock.mockResolvedValue([]);
     modelMocks.Restaurant.exists.mockResolvedValue(null);
     modelMocks.SchedulePublication.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
@@ -68,7 +77,6 @@ describe("shift acknowledgement query resolvers", () => {
   });
 
   it("allows manager to query restaurant acknowledgements with filters", async () => {
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.shiftAcknowledgements(
       null,
@@ -79,7 +87,7 @@ describe("shift acknowledgement query resolvers", () => {
         employeeId: "emp-1",
         status: "PENDING",
       },
-      { user: { id: "manager-1", roles: ["manager"], restaurantId: "rest-1" } },
+      { user: { id: "manager-1", roles: ["manager"] } },
     );
 
     expect(modelMocks.findMock).toHaveBeenCalledWith({
@@ -94,13 +102,12 @@ describe("shift acknowledgement query resolvers", () => {
     expect(modelMocks.findSortMock).toHaveBeenCalledWith({ deadlineAt: 1, createdAt: -1 });
   });
 
-  it("allows manager access through restaurant ownership for shiftAcknowledgements", async () => {
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
+  it("allows manager access through BrandMembership for shiftAcknowledgements", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     await query.shiftAcknowledgements(
       null,
       { restaurantId: "rest-1", status: "declined" },
-      { user: { id: "manager-1", roles: ["manager"], restaurantIds: ["rest-1"] } },
+      { user: { id: "manager-1", roles: ["manager"] } },
     );
 
     expect(modelMocks.findMock).toHaveBeenCalledWith({
@@ -110,7 +117,6 @@ describe("shift acknowledgement query resolvers", () => {
   });
 
   it("returns empty for another week when filters do not overlap", async () => {
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
     modelMocks.findSortMock.mockResolvedValue([]);
 
@@ -122,7 +128,7 @@ describe("shift acknowledgement query resolvers", () => {
         periodEnd: "2026-06-07T23:59:59.999Z",
         status: "declined",
       },
-      { user: { id: "manager-1", roles: ["manager"], restaurantId: "rest-1" } },
+      { user: { id: "manager-1", roles: ["manager"] } },
     );
 
     expect(result).toEqual([]);
@@ -133,7 +139,7 @@ describe("shift acknowledgement query resolvers", () => {
     await query.myShiftAcknowledgements(
       null,
       { restaurantId: "rest-1", status: "ACCEPTED" },
-      { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-1" } },
+      { user: { id: "staff-1", roles: ["staff"] } },
     );
 
     expect(modelMocks.findMock).toHaveBeenCalledWith({
@@ -178,7 +184,7 @@ describe("shift acknowledgement query resolvers", () => {
         periodStart: "2026-05-10T00:00:00.000Z",
         periodEnd: "2026-05-20T23:59:59.999Z",
       },
-      { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-1" } },
+      { user: { id: "staff-1", roles: ["staff"] } },
     );
 
     expect(modelMocks.Timesheet.find).toHaveBeenCalledWith({
@@ -201,9 +207,8 @@ describe("shift acknowledgement query resolvers", () => {
     ).rejects.toThrow("UNAUTHENTICATED");
   });
 
-  it("allows manager-owned restaurant access for scheduleAcknowledgementSummary without user.restaurantId", async () => {
+  it("allows manager BrandMembership access for scheduleAcknowledgementSummary", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.SchedulePublication.findOne.mockReturnValue({
       lean: vi.fn().mockResolvedValue(null),
     });
@@ -227,9 +232,9 @@ describe("shift acknowledgement query resolvers", () => {
     });
   });
 
-  it("blocks manager without access for scheduleAcknowledgementSummary", async () => {
+  it("blocks manager without BrandMembership access for scheduleAcknowledgementSummary", async () => {
     const query = (await import("../../graphql/resolvers/staff/query.js")).default;
-    modelMocks.Restaurant.exists.mockResolvedValue(null);
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
 
     await expect(
       query.scheduleAcknowledgementSummary(
