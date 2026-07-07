@@ -116,6 +116,9 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+const hasHardAvailabilityBlock = (issues = []) =>
+  issues.some((issue) => issue?.hardBlock === true || issue?.severity === "high");
+
 function buildFallbackDemandByShift(orders, timezone, horizonDays, startDate) {
   const now = new Date();
   const start = new Date(now);
@@ -449,6 +452,7 @@ export async function buildStaffSchedulingAssistant({
   }
 
   const shiftsOutput = [];
+  let availabilityCheckFailed = false;
 
   for (const group of [...shiftMap.values()].sort((a, b) =>
     a.shiftKey.localeCompare(b.shiftKey),
@@ -549,19 +553,25 @@ export async function buildStaffSchedulingAssistant({
               availabilityIssues: availability.issues || [],
             };
           } catch {
+            availabilityCheckFailed = true;
             return {
               ...candidate,
-              availabilityIssues: [],
+              availabilityIssues: [
+                {
+                  code: "AVAILABILITY_CHECK_FAILED",
+                  severity: "high",
+                  hardBlock: true,
+                  message: "Không thể xác minh lịch rảnh của nhân viên.",
+                },
+              ],
             };
           }
         }),
       );
 
       const selectedPool = evaluatedPool
+        .filter((candidate) => !hasHardAvailabilityBlock(candidate.availabilityIssues))
         .sort((a, b) => {
-          const leftHardBlock = (a.availabilityIssues || []).some((i) => i?.severity === "high" || i?.hardBlock === true) ? 1 : 0;
-          const rightHardBlock = (b.availabilityIssues || []).some((i) => i?.severity === "high" || i?.hardBlock === true) ? 1 : 0;
-          if (leftHardBlock !== rightHardBlock) return leftHardBlock - rightHardBlock;
           const leftWarn = (a.availabilityIssues || []).length > 0 ? 1 : 0;
           const rightWarn = (b.availabilityIssues || []).length > 0 ? 1 : 0;
           if (leftWarn !== rightWarn) return leftWarn - rightWarn;
@@ -657,6 +667,11 @@ export async function buildStaffSchedulingAssistant({
   if (usedPerformanceFallback) {
     summaryNotes.push(
       "Thiếu dữ liệu performance xác thực, đang dùng điểm trung lập 75/100 cho gợi ý nhân sự.",
+    );
+  }
+  if (availabilityCheckFailed) {
+    summaryNotes.push(
+      "Không thể xác minh lịch rảnh của một số nhân viên; hệ thống đã loại họ khỏi danh sách gợi ý.",
     );
   }
 
