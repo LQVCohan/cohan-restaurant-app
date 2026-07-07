@@ -49,6 +49,7 @@ import "./components/Dashboard_Manager/Account/ManagerAccountCenterPolish.scss";
 import "./styles/ManagerDarkModeFinal.scss";
 import "./styles/MobileAuthTableExperience.css";
 import "./styles/ManagerMobileRefinement.css";
+import "./styles/TableManagerMobileActionFix.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 
