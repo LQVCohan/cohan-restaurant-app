@@ -1,0 +1,20 @@
+{
+  "id": "staff-header-stat-layout",
+  "name": "staff-header-stat-layout",
+  "title": "Fix staff header stat layout",
+  "description": "Make staff header metrics adapt to the available content width.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff-header-ui",
+  "priority": "P1",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/Header/StaffHeaderContextPolish.scss",
+    "src/components/Dashboard_Manager/Staff/StaffPremiumBoard.scss"
+  ]
+}
