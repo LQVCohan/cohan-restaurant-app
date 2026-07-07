@@ -163,20 +163,11 @@ const DELETE_RESTAURANT = gql`
   }
 `;
 
-const UPDATE_RESTAURANT_MANAGER = gql`
-  mutation UpdateRestaurantManager($input: UpdateRestaurantManagerInput!) {
-    updateRestaurantManager(input: $input) {
-      ...RestaurantFields
-    }
-  }
-  ${RESTAURANT_FIELDS}
-`;
-
 /* ============================ Hook ============================ */
 /**
  * useRestaurant:
  * - Nếu truyền restaurantId: sẽ tự fetch nhà hàng đó (đầy đủ field).
- * - Cung cấp đầy đủ API: getRestaurantFull, list, top, byManager, ref, create, update, delete, updateManager
+ * - Cung cấp API: getRestaurantFull, list, top, scoped, ref, create, update, delete.
  */
 export const useRestaurant = (restaurantId) => {
   const [error, setError] = useState(null);
@@ -245,9 +236,6 @@ export const useRestaurant = (restaurantId) => {
   const [mutCreate, { loading: creating }] = useMutation(CREATE_RESTAURANT);
   const [mutUpdate, { loading: updating }] = useMutation(UPDATE_RESTAURANT);
   const [mutDelete, { loading: deleting }] = useMutation(DELETE_RESTAURANT);
-  const [mutUpdateManager, { loading: updatingManager }] = useMutation(
-    UPDATE_RESTAURANT_MANAGER
-  );
 
   /* ------- Adapters / helpers ------- */
   const normalizeRestaurant = useCallback((r) => {
@@ -396,14 +384,6 @@ export const useRestaurant = (restaurantId) => {
     return !!data?.deleteRestaurant;
   };
 
-  // 10) Update Manager (Admin only)
-  const updateRestaurantManager = async (restaurantId, managerId) => {
-    const { data } = await mutUpdateManager({
-      variables: { input: { restaurantId, managerId } },
-    });
-    return normalizeRestaurant(data?.updateRestaurantManager);
-  };
-
   /* ========== Convenience helpers cho StaffManagement ========== */
 
   /**
@@ -474,8 +454,7 @@ export const useRestaurant = (restaurantId) => {
     refLoading ||
     creating ||
     updating ||
-    deleting ||
-    updatingManager;
+    deleting;
 
   return {
     // states
@@ -511,7 +490,6 @@ export const useRestaurant = (restaurantId) => {
     createRestaurant,
     updateRestaurant,
     deleteRestaurant,
-    updateRestaurantManager,
 
     // helpers
     toggleFavorite,
