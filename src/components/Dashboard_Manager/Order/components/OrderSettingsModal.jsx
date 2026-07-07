@@ -1,18 +1,26 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../components/common/Modal";
 import useModalDraft from "../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../hooks/useNotification";
 import {
-  Clock,
-  Palette,
-  Layout,
-  RotateCcw,
-  CheckCircle2,
-  AlertTriangle,
-  Flame,
   AlertOctagon,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Flame,
+  Layout,
+  MonitorCog,
+  Palette,
+  RotateCcw,
+  Settings2,
 } from "lucide-react";
 import "./OrderSettingsModal.scss";
+
+const DEFAULT_TIME_SETTINGS = {
+  warn: 10,
+  danger: 20,
+  critical: 30,
+};
 
 const DEFAULT_TIME_COLORS = {
   ok: "#16a34a",
@@ -20,6 +28,19 @@ const DEFAULT_TIME_COLORS = {
   danger: "#f97316",
   critical: "#b91c1c",
 };
+
+const COLOR_LABELS = {
+  ok: "Mới / ổn",
+  warn: "Cảnh báo",
+  danger: "Nguy hiểm",
+  critical: "Khẩn cấp",
+};
+
+const CHIP_SIZE_OPTIONS = [
+  { value: "s", label: "Nhỏ", description: "Hiển thị được nhiều món" },
+  { value: "m", label: "Vừa", description: "Cân bằng, dùng mặc định" },
+  { value: "l", label: "Lớn", description: "Dễ đọc từ xa" },
+];
 
 const COLOR_PRESETS = [
   {
@@ -32,7 +53,7 @@ const COLOR_PRESETS = [
     },
   },
   {
-    name: "Pastel (Dịu mắt)",
+    name: "Dịu mắt",
     colors: {
       ok: "#4ade80",
       warn: "#facc15",
@@ -51,46 +72,75 @@ const COLOR_PRESETS = [
   },
 ];
 
-/* --- Mock Component để Preview --- */
+const isHexColor = (value) => /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
+
+const normalizeChipSize = (value) =>
+  CHIP_SIZE_OPTIONS.some((option) => option.value === value) ? value : "m";
+
+const normalizeTimeColors = (colors) =>
+  Object.fromEntries(
+    Object.keys(DEFAULT_TIME_COLORS).map((key) => [
+      key,
+      isHexColor(colors?.[key]) ? colors[key] : DEFAULT_TIME_COLORS[key],
+    ]),
+  );
+
+const toPositiveNumber = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+};
+
+const normalizeTimeSettings = (settings) => {
+  const warn = toPositiveNumber(settings?.warn, DEFAULT_TIME_SETTINGS.warn);
+  const dangerValue = toPositiveNumber(
+    settings?.danger,
+    DEFAULT_TIME_SETTINGS.danger,
+  );
+  const danger = dangerValue > warn ? dangerValue : warn + 5;
+  const criticalValue = toPositiveNumber(
+    settings?.critical,
+    DEFAULT_TIME_SETTINGS.critical,
+  );
+  const critical = criticalValue > danger ? criticalValue : danger + 5;
+
+  return { warn, danger, critical };
+};
+
 const MockOrderCard = ({ chipSize, colors, timeSettings }) => {
-  // Giả lập thời gian trôi qua để demo màu sắc
   const [demoMinutes, setDemoMinutes] = useState(5);
 
   useEffect(() => {
-    // Loop demo time từ 0 -> critical + 5 rồi quay lại
-    const maxTime = (Number(timeSettings.critical) || 30) + 5;
-    const interval = setInterval(() => {
-      setDemoMinutes((prev) => (prev > maxTime ? 1 : prev + 1));
-    }, 2000); // 2 giây nhảy 1 phút giả lập
-    return () => clearInterval(interval);
-  }, [timeSettings]);
+    const maxTime = timeSettings.critical + 5;
+    const interval = window.setInterval(() => {
+      setDemoMinutes((previous) => (previous > maxTime ? 1 : previous + 1));
+    }, 2000);
 
-  // Xác định màu hiện tại dựa trên demoMinutes
+    return () => window.clearInterval(interval);
+  }, [timeSettings.critical]);
+
   const currentColor = useMemo(() => {
-    const m = demoMinutes;
-    if (m >= timeSettings.critical) return colors.critical;
-    if (m >= timeSettings.danger) return colors.danger;
-    if (m >= timeSettings.warn) return colors.warn;
+    if (demoMinutes >= timeSettings.critical) return colors.critical;
+    if (demoMinutes >= timeSettings.danger) return colors.danger;
+    if (demoMinutes >= timeSettings.warn) return colors.warn;
     return colors.ok;
-  }, [demoMinutes, timeSettings, colors]);
+  }, [colors, demoMinutes, timeSettings]);
 
-  const getStatusIcon = () => {
-    const m = demoMinutes;
-    if (m >= timeSettings.critical) return <AlertOctagon size={16} />;
-    if (m >= timeSettings.danger) return <Flame size={16} />;
-    if (m >= timeSettings.warn) return <AlertTriangle size={16} />;
+  const statusIcon = useMemo(() => {
+    if (demoMinutes >= timeSettings.critical) return <AlertOctagon size={16} />;
+    if (demoMinutes >= timeSettings.danger) return <Flame size={16} />;
+    if (demoMinutes >= timeSettings.warn) return <AlertTriangle size={16} />;
     return <CheckCircle2 size={16} />;
-  };
+  }, [demoMinutes, timeSettings]);
 
   return (
-    <div className="mockCard">
+    <div className="mockCard" aria-label="Xem trước thẻ chế biến">
       <div className="mockCard__header" style={{ borderColor: currentColor }}>
         <span className="mockCard__id">#0123</span>
         <div
           className="mockCard__timer"
           style={{ backgroundColor: currentColor, color: "#fff" }}
         >
-          {getStatusIcon()}
+          {statusIcon}
           <span>{demoMinutes}p</span>
         </div>
       </div>
@@ -103,16 +153,13 @@ const MockOrderCard = ({ chipSize, colors, timeSettings }) => {
           <span className="qty">2</span>
           <span>Mì Ý sốt kem</span>
         </div>
-        <div className="mockItem note">Note: Ít cay, không hành</div>
+        <div className="mockItem note">Ghi chú: Ít cay, không hành</div>
       </div>
-      <div className="mockCard__hint">
-        Preview: Màu sẽ thay đổi theo thời gian cài đặt
-      </div>
+      <div className="mockCard__hint">Màu tự đổi theo ngưỡng thời gian đã chọn</div>
     </div>
   );
 };
 
-/* --- Main Component --- */
 const OrderSettingsModal = ({
   open,
   onClose,
@@ -125,22 +172,54 @@ const OrderSettingsModal = ({
 }) => {
   const { showNotification } = useNotification();
   const [localTime, setLocalTime] = useState(
-    timeSettings || { warn: 10, danger: 20, critical: 30 }
+    timeSettings || DEFAULT_TIME_SETTINGS,
   );
-  const [localChip, setLocalChip] = useState(chipSize || "m");
+  const [localChip, setLocalChip] = useState(normalizeChipSize(chipSize));
   const [localColors, setLocalColors] = useState(
-    timeColors || DEFAULT_TIME_COLORS
+    normalizeTimeColors(timeColors),
   );
-  const isDirty = useMemo(() => {
-    const baseTime = timeSettings || { warn: 10, danger: 20, critical: 30 };
-    const baseChip = chipSize || "m";
-    const baseColors = timeColors || DEFAULT_TIME_COLORS;
-    return (
-      JSON.stringify(localTime) !== JSON.stringify(baseTime) ||
-      localChip !== baseChip ||
-      JSON.stringify(localColors) !== JSON.stringify(baseColors)
-    );
-  }, [chipSize, localChip, localColors, localTime, timeColors, timeSettings]);
+
+  const normalizedBaseTime = useMemo(
+    () => normalizeTimeSettings(timeSettings),
+    [timeSettings],
+  );
+  const normalizedBaseColors = useMemo(
+    () => normalizeTimeColors(timeColors),
+    [timeColors],
+  );
+  const previewTimeSettings = useMemo(
+    () => normalizeTimeSettings(localTime),
+    [localTime],
+  );
+  const previewColors = useMemo(
+    () => normalizeTimeColors(localColors),
+    [localColors],
+  );
+  const normalizedLocalChip = normalizeChipSize(localChip);
+
+  const activePresetName = useMemo(
+    () =>
+      COLOR_PRESETS.find(
+        (preset) =>
+          JSON.stringify(preset.colors) === JSON.stringify(previewColors),
+      )?.name || null,
+    [previewColors],
+  );
+
+  const isDirty = useMemo(
+    () =>
+      JSON.stringify(localTime) !== JSON.stringify(normalizedBaseTime) ||
+      normalizedLocalChip !== normalizeChipSize(chipSize) ||
+      JSON.stringify(localColors) !== JSON.stringify(normalizedBaseColors),
+    [
+      chipSize,
+      localColors,
+      localTime,
+      normalizedBaseColors,
+      normalizedBaseTime,
+      normalizedLocalChip,
+    ],
+  );
 
   const { requestCloseWithDraft, clearDraft, didRestore } = useModalDraft({
     enabled: open,
@@ -152,71 +231,74 @@ const OrderSettingsModal = ({
       entityType: "order-settings",
       recordId: null,
       context: "kitchen-board",
-      schemaVersion: "1",
+      schemaVersion: "2",
     },
     formValue: { localTime, localChip, localColors },
     isDirty,
-    sanitize: (v) => ({
-      localTime: v?.localTime || { warn: 10, danger: 20, critical: 30 },
-      localChip: v?.localChip || "m",
-      localColors: v?.localColors || DEFAULT_TIME_COLORS,
+    sanitize: (value) => ({
+      localTime: value?.localTime || DEFAULT_TIME_SETTINGS,
+      localChip: normalizeChipSize(value?.localChip),
+      localColors: normalizeTimeColors(value?.localColors),
     }),
     onRestore: (draft) => {
-      setLocalTime(draft?.localTime || { warn: 10, danger: 20, critical: 30 });
-      setLocalChip(draft?.localChip || "m");
-      setLocalColors(draft?.localColors || DEFAULT_TIME_COLORS);
+      setLocalTime(draft?.localTime || DEFAULT_TIME_SETTINGS);
+      setLocalChip(normalizeChipSize(draft?.localChip));
+      setLocalColors(normalizeTimeColors(draft?.localColors));
     },
     notify: showNotification,
   });
 
-  // Sync props -> state
   useEffect(() => {
-    if (open) {
-      if (didRestore) return;
-      setLocalTime(timeSettings || { warn: 10, danger: 20, critical: 30 });
-      setLocalChip(chipSize || "m");
-      setLocalColors(timeColors || DEFAULT_TIME_COLORS);
-    }
-  }, [timeSettings, chipSize, timeColors, open, didRestore]);
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.orderChipSize = normalizeChipSize(chipSize);
+  }, [chipSize]);
+
+  useEffect(() => {
+    if (!open || didRestore) return;
+    setLocalTime(timeSettings || DEFAULT_TIME_SETTINGS);
+    setLocalChip(normalizeChipSize(chipSize));
+    setLocalColors(normalizeTimeColors(timeColors));
+  }, [chipSize, didRestore, open, timeColors, timeSettings]);
 
   const handleTimeChange = (field, value) => {
-    setLocalTime((prev) => ({
-      ...prev,
+    setLocalTime((previous) => ({
+      ...previous,
       [field]: value === "" ? "" : Number(value),
     }));
   };
 
   const handleColorChange = (field, value) => {
-    setLocalColors((prev) => ({ ...prev, [field]: value }));
+    setLocalColors((previous) => ({ ...previous, [field]: value }));
   };
 
   const applyPreset = (presetColors) => {
-    setLocalColors(presetColors);
+    setLocalColors({ ...presetColors });
   };
 
   const handleResetDefaults = () => {
-    setLocalTime({ warn: 10, danger: 20, critical: 30 });
+    setLocalTime({ ...DEFAULT_TIME_SETTINGS });
     setLocalChip("m");
-    setLocalColors(DEFAULT_TIME_COLORS);
+    setLocalColors({ ...DEFAULT_TIME_COLORS });
   };
 
   const handleSave = () => {
-    let normalized = {
-      warn: Number(localTime.warn) || 0,
-      danger: Number(localTime.danger) || 0,
-      critical: Number(localTime.critical) || 0,
-    };
+    const savedTimeSettings = normalizeTimeSettings(localTime);
+    const savedColors = normalizeTimeColors(localColors);
+    const savedChipSize = normalizeChipSize(localChip);
 
-    // Auto-fix logic: ensure strict generic ascending order
-    if (normalized.danger <= normalized.warn)
-      normalized.danger = normalized.warn + 5;
-    if (normalized.critical <= normalized.danger)
-      normalized.critical = normalized.danger + 5;
+    onSaveTimeSettings?.(savedTimeSettings);
+    onSaveChipSize?.(savedChipSize);
+    onSaveTimeColors?.(savedColors);
 
-    onSaveTimeSettings?.(normalized);
-    onSaveChipSize?.(localChip);
-    onSaveTimeColors?.(localColors);
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.orderChipSize = savedChipSize;
+    }
+
     clearDraft();
+    showNotification?.(
+      "Đã lưu cài đặt hiển thị trên trình duyệt này.",
+      "success",
+    );
     onClose?.();
   };
 
@@ -224,179 +306,192 @@ const OrderSettingsModal = ({
     <Modal
       isOpen={open}
       onClose={() => requestCloseWithDraft(onClose)}
-      title="⚙️ Cài đặt hiển thị & Bếp"
+      title={
+        <span className="osm-modal-title">
+          <Settings2 size={18} aria-hidden="true" />
+          <span>Cài đặt màn hình chế biến</span>
+        </span>
+      }
       size="xl"
     >
+      <div className="osm-scope-note" role="note">
+        <MonitorCog size={20} aria-hidden="true" />
+        <div>
+          <strong>Áp dụng cho màn hình Bếp và Quầy bar</strong>
+          <span>
+            Cài đặt được lưu trên trình duyệt hiện tại và có hiệu lực sau khi bấm Lưu thay đổi.
+          </span>
+        </div>
+      </div>
+
       <div className="osm-layout">
-        {/* LEFT COLUMN: Settings Form */}
         <div className="osm-form">
-          {/* 1. Time Thresholds */}
-          <section className="osm-section">
+          <section className="osm-section" aria-labelledby="osm-time-title">
             <div className="osm-section__header">
-              <Clock className="icon" size={20} />
+              <Clock className="icon" size={20} aria-hidden="true" />
               <div>
-                <h4>Ngưỡng cảnh báo thời gian</h4>
-                <p>Đơn vị: phút. Màu sắc thẻ sẽ đổi khi vượt quá mốc này.</p>
+                <h4 id="osm-time-title">Ngưỡng đổi màu theo thời gian</h4>
+                <p>
+                  Mốc sau phải lớn hơn mốc trước. Hệ thống tự điều chỉnh khi lưu nếu cần.
+                </p>
               </div>
             </div>
+
             <div className="osm-time-inputs">
-              <div className="input-group">
-                <label>Cảnh báo</label>
-                <div className="input-wrapper warn">
-                  <input
-                    type="number"
-                    min="1"
-                    value={localTime.warn}
-                    onChange={(e) => handleTimeChange("warn", e.target.value)}
-                  />
-                  <span>phút</span>
+              {[
+                { key: "warn", label: "Cảnh báo", tone: "warn" },
+                { key: "danger", label: "Nguy hiểm", tone: "danger" },
+                { key: "critical", label: "Khẩn cấp", tone: "critical" },
+              ].map((item) => (
+                <div className="input-group" key={item.key}>
+                  <label htmlFor={`osm-time-${item.key}`}>{item.label}</label>
+                  <div className={`input-wrapper ${item.tone}`}>
+                    <input
+                      id={`osm-time-${item.key}`}
+                      type="number"
+                      min="1"
+                      inputMode="numeric"
+                      value={localTime[item.key]}
+                      onChange={(event) =>
+                        handleTimeChange(item.key, event.target.value)
+                      }
+                      aria-label={`${item.label} (phút)`}
+                    />
+                    <span>phút</span>
+                  </div>
                 </div>
-              </div>
-              <div className="input-group">
-                <label>Nguy hiểm</label>
-                <div className="input-wrapper danger">
-                  <input
-                    type="number"
-                    min={localTime.warn}
-                    value={localTime.danger}
-                    onChange={(e) => handleTimeChange("danger", e.target.value)}
-                  />
-                  <span>phút</span>
-                </div>
-              </div>
-              <div className="input-group">
-                <label>Khẩn cấp</label>
-                <div className="input-wrapper critical">
-                  <input
-                    type="number"
-                    min={localTime.danger}
-                    value={localTime.critical}
-                    onChange={(e) =>
-                      handleTimeChange("critical", e.target.value)
-                    }
-                  />
-                  <span>phút</span>
-                </div>
-              </div>
+              ))}
             </div>
           </section>
 
-          {/* 2. Colors */}
-          <section className="osm-section">
+          <section className="osm-section" aria-labelledby="osm-color-title">
             <div className="osm-section__header">
-              <Palette className="icon" size={20} />
+              <Palette className="icon" size={20} aria-hidden="true" />
               <div>
-                <h4>Màu sắc nhận diện</h4>
-                <p>Tùy chỉnh màu theo ánh sáng bếp hoặc sở thích.</p>
+                <h4 id="osm-color-title">Màu cảnh báo</h4>
+                <p>Chọn bộ màu phù hợp với ánh sáng tại khu vực chế biến.</p>
               </div>
             </div>
 
-            {/* Color Pickers */}
             <div className="osm-colors-grid">
               {Object.keys(DEFAULT_TIME_COLORS).map((key) => (
                 <div key={key} className="color-picker-item">
-                  <label>
-                    {key === "ok" && "Mới / Ổn"}
-                    {key === "warn" && "Cảnh báo"}
-                    {key === "danger" && "Nguy hiểm"}
-                    {key === "critical" && "Khẩn cấp"}
-                  </label>
+                  <label htmlFor={`osm-color-${key}`}>{COLOR_LABELS[key]}</label>
                   <div className="color-input-wrapper">
                     <input
+                      id={`osm-color-${key}`}
                       type="color"
-                      value={localColors[key]}
-                      onChange={(e) => handleColorChange(key, e.target.value)}
+                      value={previewColors[key]}
+                      onChange={(event) =>
+                        handleColorChange(key, event.target.value)
+                      }
+                      aria-label={`Màu ${COLOR_LABELS[key]}`}
                     />
-                    <span className="hex-code">{localColors[key]}</span>
+                    <span className="hex-code">{previewColors[key]}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Presets */}
             <div className="osm-presets">
-              <span>Mẫu nhanh:</span>
-              <div className="preset-badges">
-                {COLOR_PRESETS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    className="preset-btn"
-                    onClick={() => applyPreset(preset.colors)}
-                    title="Áp dụng bộ màu này"
-                  >
-                    <div className="preset-dots">
-                      {Object.values(preset.colors).map((c, i) => (
-                        <span key={i} style={{ background: c }} />
-                      ))}
-                    </div>
-                    {preset.name}
-                  </button>
-                ))}
+              <span>Mẫu nhanh</span>
+              <div className="preset-badges" role="group" aria-label="Bộ màu mẫu">
+                {COLOR_PRESETS.map((preset) => {
+                  const active = activePresetName === preset.name;
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      className={`preset-btn ${active ? "active" : ""}`}
+                      onClick={() => applyPreset(preset.colors)}
+                      aria-pressed={active}
+                    >
+                      <span className="preset-dots" aria-hidden="true">
+                        {Object.values(preset.colors).map((color) => (
+                          <span key={color} style={{ background: color }} />
+                        ))}
+                      </span>
+                      {preset.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </section>
 
-          {/* 3. Layout / Size */}
-          <section className="osm-section">
+          <section className="osm-section" aria-labelledby="osm-size-title">
             <div className="osm-section__header">
-              <Layout className="icon" size={20} />
+              <Layout className="icon" size={20} aria-hidden="true" />
               <div>
-                <h4>Chế độ hiển thị món (Chip Size)</h4>
-                <p>Điều chỉnh độ lớn chữ để đầu bếp dễ nhìn từ xa.</p>
+                <h4 id="osm-size-title">Cỡ hiển thị món</h4>
+                <p>Thay đổi kích thước dòng món trên thẻ Bếp và Quầy bar.</p>
               </div>
             </div>
+
             <div className="osm-chip-options">
-              {[
-                { val: "s", label: "Nhỏ (Nhiều món)" },
-                { val: "m", label: "Vừa (Tiêu chuẩn)" },
-                { val: "l", label: "Lớn (Dễ đọc)" },
-              ].map((opt) => (
+              {CHIP_SIZE_OPTIONS.map((option) => (
                 <label
-                  key={opt.val}
+                  key={option.value}
                   className={`chip-radio ${
-                    localChip === opt.val ? "active" : ""
+                    normalizedLocalChip === option.value ? "active" : ""
                   }`}
                 >
                   <input
                     type="radio"
                     name="chipSize"
-                    value={opt.val}
-                    checked={localChip === opt.val}
-                    onChange={(e) => setLocalChip(e.target.value)}
+                    value={option.value}
+                    checked={normalizedLocalChip === option.value}
+                    onChange={(event) => setLocalChip(event.target.value)}
                   />
-                  {opt.label}
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>{option.description}</small>
+                  </span>
                 </label>
               ))}
             </div>
           </section>
         </div>
 
-        {/* RIGHT COLUMN: Live Preview */}
-        <div className="osm-preview">
+        <aside className="osm-preview" aria-label="Xem trước cấu hình">
           <div className="osm-preview__sticky">
-            <h3 className="preview-title">Xem trước hiển thị</h3>
+            <h3 className="preview-title">Xem trước thẻ chế biến</h3>
             <div className="preview-container">
               <MockOrderCard
-                chipSize={localChip}
-                colors={localColors}
-                timeSettings={localTime}
+                chipSize={normalizedLocalChip}
+                colors={previewColors}
+                timeSettings={previewTimeSettings}
               />
             </div>
             <div className="osm-preview__actions">
-              <button className="btn-reset" onClick={handleResetDefaults}>
-                <RotateCcw size={14} /> Khôi phục mặc định
+              <button
+                type="button"
+                className="btn-reset"
+                onClick={handleResetDefaults}
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+                Khôi phục mặc định
               </button>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
 
       <Modal.Footer>
-        <button className="btn btn--secondary" onClick={() => requestCloseWithDraft(onClose)}>
-          Hủy bỏ
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() => requestCloseWithDraft(onClose)}
+        >
+          Hủy
         </button>
-        <button className="btn btn--primary" onClick={handleSave}>
-          Lưu cài đặt
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={handleSave}
+          disabled={!isDirty}
+        >
+          Lưu thay đổi
         </button>
       </Modal.Footer>
     </Modal>
