@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import Table from "../../../models/table.model.js";
+import TableCustomer from "../../../models/tableCustomer.model.js";
 import { logEvent } from "../../../src/services/eventLog.service.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requireRestaurantPermission } from "../../../src/services/auth/authorization.service.js";
@@ -33,6 +34,15 @@ const uniqueTags = (tables) =>
           : [],
       ),
     ),
+  );
+
+const hasCustomerIdentity = (row) =>
+  Boolean(
+    String(row?.customerName || "").trim() ||
+      String(row?.customerPhone || "").trim() ||
+      String(row?.customerEmail || "").trim() ||
+      row?.customerUserId ||
+      Number(row?.partySize || 0) > 0,
   );
 
 const assertTablesCanMerge = async (tables, restaurantId) => {
@@ -153,6 +163,24 @@ const mergeTables = async (_parent, { input }, ctx) => {
 
   await assertTablesCanMerge(tables, restaurantId);
 
+  const sourceCodes = tables.map((table) => String(table.code || ""));
+  const customerRows = await TableCustomer.find({
+    restaurantId,
+    $or: [
+      { tableId: { $in: uniqueIds } },
+      { tableCode: { $in: sourceCodes } },
+    ],
+  })
+    .select({
+      customerName: 1,
+      customerPhone: 1,
+      customerEmail: 1,
+      customerUserId: 1,
+      partySize: 1,
+    })
+    .lean();
+  const customerProfileCount = customerRows.filter(hasCustomerIdentity).length;
+
   const anchor = tables.find((table) => tableId(table) === String(anchorId));
   const groupId = joinGroupId || new mongoose.Types.ObjectId().toString();
   const mergedCode = mergedCodeFor(tables);
@@ -160,11 +188,13 @@ const mergeTables = async (_parent, { input }, ctx) => {
     (total, table) => total + Math.max(0, Number(table.capacity) || 0),
     0,
   );
-  const mergedStatus = tables.some(
-    (table) => String(table.status || "").toLowerCase() === "occupied",
-  )
-    ? "occupied"
-    : "available";
+  const mergedStatus =
+    customerProfileCount > 0 ||
+    tables.some(
+      (table) => String(table.status || "").toLowerCase() === "occupied",
+    )
+      ? "occupied"
+      : "available";
 
   if (!mergedCode || capacity < 2 || !anchor?.position) {
     throw businessError(
@@ -243,11 +273,12 @@ const mergeTables = async (_parent, { input }, ctx) => {
     meta: {
       joinGroupId: groupId,
       sourceTableIds: uniqueIds,
-      sourceCodes: tables.map((table) => table.code),
+      sourceCodes,
       sourceAnchorId: anchorId,
       mergedTableId,
       capacity,
       status: mergedStatus,
+      customerProfileCount,
     },
     actorUserId: ctx.user?.id,
     ip: ctx.req?.ip,
