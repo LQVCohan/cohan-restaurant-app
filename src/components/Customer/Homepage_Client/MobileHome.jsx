@@ -30,17 +30,13 @@ const getCurrentTimeSlot = () => {
 export default function MobileHome() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [restaurantFilter, setRestaurantFilter] = useState({});
   const timeSlot = getCurrentTimeSlot();
 
   const handleSearch = (event) => {
     event.preventDefault();
     const search = query.trim();
     if (!search) return;
-    setRestaurantFilter((current) => ({ ...current, search }));
-    requestAnimationFrame(() => {
-      document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
-    });
+    navigate(`/search?q=${encodeURIComponent(search)}`);
   };
 
   const handleCategorySelect = useCallback(
@@ -98,7 +94,7 @@ export default function MobileHome() {
         </div>
       </section>
 
-      <RestaurantGrid restaurantFilter={restaurantFilter} />
+      <RestaurantGrid />
 
       <Categories onCategorySelect={handleCategorySelect} timeSlot={timeSlot} />
     </div>
