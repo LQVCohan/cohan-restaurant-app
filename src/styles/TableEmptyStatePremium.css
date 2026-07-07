@@ -1,6 +1,53 @@
-/* Final no-floor state for manager table management.
-   Loaded after legacy table polish layers so shared Button markup is not styled as an icon. */
+/* Safe final polish for the React-rendered table empty state.
+   Do not inject or rearrange DOM in this area: React owns the table grid. */
 
+.manager-layout--tables .tm-empty:not(.tm-empty--error) {
+  min-height: 280px !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: clamp(28px, 4vw, 48px) !important;
+  overflow: hidden;
+  border: 1px dashed rgba(31, 106, 96, 0.24) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(31, 106, 96, 0.1), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 253, 249, 0.98), rgba(244, 249, 246, 0.96)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  text-align: center;
+}
+
+.manager-layout--tables .tm-empty > span[aria-hidden="true"] {
+  display: grid !important;
+  place-items: center !important;
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  margin: 0 0 4px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(31, 106, 96, 0.18) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(145deg, #edf7f3, #dcefe9) !important;
+  color: #17554d !important;
+  box-shadow: 0 14px 28px rgba(31, 106, 96, 0.12);
+  font-size: 1.8rem !important;
+  line-height: 1 !important;
+}
+
+.manager-layout--tables .tm-empty > p {
+  max-width: 34rem;
+  margin: 0 !important;
+  color: #5f6d68 !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+/* Earlier theme files use `.tm-empty span`; restore shared Button internals. */
 .manager-layout--tables .tm-empty .btn__text {
   display: inline !important;
   place-items: initial !important;
@@ -8,339 +55,36 @@
   height: auto !important;
   min-width: 0 !important;
   min-height: 0 !important;
+  margin: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: inherit !important;
+  box-shadow: none !important;
   font: inherit !important;
+  line-height: inherit !important;
 }
 
-.manager-layout--tables .tm-container--no-floors .tm-filter-box {
-  display: none !important;
+.manager-layout--tables .tm-empty > .btn {
+  min-height: 40px;
+  margin-top: 6px;
+  border-radius: 11px;
 }
 
-.manager-layout--tables .tm-container--no-floors .tm-add-floor-btn {
-  border-style: solid !important;
-  border-color: #17554d !important;
-  background: linear-gradient(180deg, #1f6a60, #17554d) !important;
-  color: #fffdf8 !important;
-  box-shadow: 0 12px 26px rgba(31, 106, 96, 0.16) !important;
-}
-
-.manager-layout--tables .tm-container--no-floors .tm-add-floor-btn:hover {
-  transform: translateY(-1px) !important;
-  background: linear-gradient(180deg, #24786c, #17554d) !important;
-  box-shadow: 0 16px 30px rgba(31, 106, 96, 0.2) !important;
-}
-
-.manager-layout--tables .tm-container--no-floors .tm-add-floor-btn:active {
-  transform: translateY(0) !important;
-}
-
-.manager-layout--tables .tm-setup-note {
-  display: grid;
-  gap: 6px;
-  padding: 14px;
-  border: 1px solid rgba(31, 106, 96, 0.2);
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.1), transparent 9rem),
-    linear-gradient(145deg, rgba(255, 253, 249, 0.98), rgba(242, 250, 247, 0.94));
-  box-shadow: inset 3px 0 0 rgba(31, 106, 96, 0.26);
-}
-
-.manager-layout--tables .tm-setup-note__eyebrow {
-  display: inline !important;
-  width: auto !important;
-  height: auto !important;
-  background: transparent !important;
-  color: #17554d !important;
-  font-size: 0.68rem !important;
-  font-weight: 850 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase;
-}
-
-.manager-layout--tables .tm-setup-note strong {
-  color: #24323b;
-  font-size: 0.9rem;
-  line-height: 1.3;
-}
-
-.manager-layout--tables .tm-setup-note p {
-  margin: 0;
-  color: #667085;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  text-wrap: pretty;
-}
-
-.manager-layout--tables .tm-empty.tm-empty--setup {
-  position: relative;
-  isolation: isolate;
-  display: grid !important;
-  grid-template-columns: minmax(132px, 0.42fr) minmax(0, 1.58fr);
-  grid-template-areas:
-    "visual eyebrow"
-    "visual title"
-    "visual message"
-    "steps steps"
-    "action action";
-  align-items: center;
-  justify-items: start !important;
-  gap: 8px 28px !important;
-  min-height: 360px !important;
-  padding: clamp(28px, 3.8vw, 48px) !important;
-  overflow: hidden;
-  border: 1px solid rgba(31, 106, 96, 0.18) !important;
-  border-radius: 24px !important;
-  background:
-    radial-gradient(circle at 11% 35%, rgba(31, 106, 96, 0.15), transparent 13rem),
-    radial-gradient(circle at 92% 100%, rgba(184, 135, 92, 0.09), transparent 20rem),
-    linear-gradient(145deg, rgba(255, 253, 249, 0.98), rgba(244, 249, 246, 0.96)) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    0 18px 42px rgba(48, 40, 30, 0.055) !important;
-  text-align: left !important;
-}
-
-.manager-layout--tables .tm-empty--setup::before {
-  position: absolute;
-  inset: -25% auto auto -9%;
-  z-index: -1;
-  width: 250px;
-  aspect-ratio: 1;
-  border: 1px solid rgba(31, 106, 96, 0.11);
-  border-radius: 50%;
-  content: "";
-  box-shadow:
-    0 0 0 34px rgba(31, 106, 96, 0.035),
-    0 0 0 68px rgba(31, 106, 96, 0.022);
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__icon {
-  grid-area: visual;
-  align-self: center;
-  display: grid !important;
-  place-items: center !important;
-  width: clamp(96px, 8vw, 124px) !important;
-  height: clamp(96px, 8vw, 124px) !important;
-  margin: 0 !important;
-  border: 1px solid rgba(31, 106, 96, 0.18);
-  border-radius: 32px !important;
-  background:
-    radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.96), transparent 42%),
-    linear-gradient(145deg, #edf7f3, #dcefe9) !important;
-  color: #17554d;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 20px 36px rgba(31, 106, 96, 0.14);
-  font-size: clamp(2.4rem, 4vw, 3.4rem) !important;
-  transform: rotate(-2deg);
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__eyebrow {
-  grid-area: eyebrow;
-  display: inline-flex !important;
-  align-items: center;
-  width: auto !important;
-  height: auto !important;
-  margin: 0 !important;
-  padding: 5px 9px !important;
-  border: 1px solid rgba(31, 106, 96, 0.16);
-  border-radius: 8px !important;
-  background: rgba(220, 239, 233, 0.72) !important;
-  color: #17554d !important;
-  font-size: 0.68rem !important;
-  font-weight: 850 !important;
-  letter-spacing: 0.075em;
-  line-height: 1.1;
-  text-transform: uppercase;
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__title {
-  grid-area: title;
-  max-width: 36rem;
-  margin: 2px 0 0;
-  color: #24323b;
-  font-size: clamp(1.35rem, 2.1vw, 1.9rem);
-  font-weight: 850;
-  letter-spacing: -0.045em;
-  line-height: 1.08;
-  text-wrap: balance;
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__message {
-  grid-area: message;
-  max-width: 42rem !important;
-  margin: 2px 0 0 !important;
-  color: #667085 !important;
-  font-size: 0.92rem !important;
-  font-weight: 560 !important;
-  line-height: 1.58;
-  text-wrap: pretty;
-}
-
-.manager-layout--tables .tm-empty__steps {
-  grid-area: steps;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%;
-  margin: 18px 0 4px;
-  padding: 0;
-  gap: 10px;
-  list-style: none;
-}
-
-.manager-layout--tables .tm-empty__steps li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  min-width: 0;
-  padding: 13px;
-  border: 1px solid rgba(222, 214, 203, 0.82);
-  border-radius: 15px;
-  background: rgba(255, 253, 249, 0.78);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
-}
-
-.manager-layout--tables .tm-empty__step-number {
-  display: grid !important;
-  place-items: center !important;
-  width: 30px !important;
-  height: 30px !important;
-  padding: 0 !important;
-  border: 1px solid rgba(31, 106, 96, 0.16);
-  border-radius: 10px !important;
-  background: #edf5f1 !important;
-  color: #17554d !important;
-  font-size: 0.72rem !important;
-  font-weight: 900 !important;
-  font-variant-numeric: tabular-nums;
-}
-
-.manager-layout--tables .tm-empty__steps li div {
-  min-width: 0;
-}
-
-.manager-layout--tables .tm-empty__steps strong {
-  display: block;
-  margin-bottom: 3px;
-  color: #24323b;
-  font-size: 0.84rem;
-  line-height: 1.25;
-}
-
-.manager-layout--tables .tm-empty__steps small {
-  display: block;
-  color: #667085;
-  font-size: 0.73rem;
-  line-height: 1.45;
-  text-wrap: pretty;
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__action {
-  grid-area: action;
-  min-width: min(100%, 210px);
-  min-height: 42px;
-  margin-top: 8px;
-  padding-inline: 18px;
-  border-color: #17554d !important;
-  border-radius: 12px !important;
-  background: linear-gradient(180deg, #1f6a60, #17554d) !important;
-  color: #fffdf8 !important;
-  box-shadow: 0 12px 26px rgba(31, 106, 96, 0.18);
-  font-weight: 820;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background-color 0.18s ease;
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 32px rgba(31, 106, 96, 0.22);
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__action:active {
-  transform: translateY(0);
-}
-
-.manager-layout--tables .tm-empty--setup > .tm-empty__action:focus-visible,
-.manager-layout--tables .tm-first-floor-action:focus-visible {
-  outline: 3px solid rgba(31, 106, 96, 0.28) !important;
+.manager-layout--tables .tm-empty > .btn:focus-visible {
+  outline: 3px solid rgba(31, 106, 96, 0.25);
   outline-offset: 3px;
 }
 
-.manager-layout--tables .tm-first-floor-action {
-  border-color: #17554d !important;
-  background: linear-gradient(180deg, #1f6a60, #17554d) !important;
-  color: #fffdf8 !important;
-}
-
-@media (max-width: 760px) {
-  .manager-layout--tables .tm-empty.tm-empty--setup {
-    grid-template-columns: 84px minmax(0, 1fr);
-    grid-template-areas:
-      "visual eyebrow"
-      "visual title"
-      "message message"
-      "steps steps"
-      "action action";
-    gap: 8px 16px !important;
-    min-height: 0 !important;
-    padding: 24px 20px 26px !important;
+@media (max-width: 560px) {
+  .manager-layout--tables .tm-empty:not(.tm-empty--error) {
+    min-height: 230px !important;
+    padding: 28px 18px !important;
+    border-radius: 18px !important;
   }
 
-  .manager-layout--tables .tm-empty--setup > .tm-empty__icon {
-    width: 76px !important;
-    height: 76px !important;
-    border-radius: 24px !important;
-    font-size: 2rem !important;
-  }
-
-  .manager-layout--tables .tm-empty--setup > .tm-empty__message {
-    margin-top: 8px !important;
-  }
-
-  .manager-layout--tables .tm-empty__steps {
-    grid-template-columns: 1fr;
-    margin-top: 14px;
-  }
-
-  .manager-layout--tables .tm-empty--setup > .tm-empty__action {
+  .manager-layout--tables .tm-empty > .btn {
     width: 100%;
-  }
-}
-
-@media (max-width: 430px) {
-  .manager-layout--tables .tm-empty.tm-empty--setup {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "visual"
-      "eyebrow"
-      "title"
-      "message"
-      "steps"
-      "action";
-    justify-items: stretch !important;
-    text-align: left !important;
-  }
-
-  .manager-layout--tables .tm-empty--setup > .tm-empty__icon {
-    justify-self: start;
-  }
-
-  .manager-layout--tables .tm-empty--setup > .tm-empty__eyebrow {
-    justify-self: start;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .manager-layout--tables .tm-empty--setup > .tm-empty__action,
-  .manager-layout--tables .tm-container--no-floors .tm-add-floor-btn {
-    transition: none !important;
   }
 }
