@@ -1,0 +1,26 @@
+{
+  "id": "loopback-auth-refresh-fix",
+  "name": "loopback-auth-refresh-fix",
+  "title": "Fix local auth refresh across loopback hosts",
+  "description": "Keep local GraphQL and refresh requests on the browser hostname when localhost and 127.0.0.1 differ, so the HttpOnly refresh cookie remains available.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "shared-auth-api-url",
+  "priority": "P1",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/lib/apiBaseUrl.ts",
+    "src/lib/apiBaseUrl.test.ts",
+    "src/lib/authRefresh.js",
+    "src/apollo/client.js",
+    "src/hooks/useOvertimeManagement.js",
+    "cohan-restaurant-backend/src/security/authTokens.js",
+    "cohan-restaurant-backend/src/server/createServer.js",
+    "cohan-restaurant-backend/src/services/overtime/overtimeRequest.service.js"
+  ]
+}
