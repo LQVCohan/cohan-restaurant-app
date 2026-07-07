@@ -22,7 +22,6 @@ import "./styles/TableCameraPreviewRepair.css";
 import "./styles/Table3DMainModalRepair.css";
 import "./components/common/AiChatbotWidgetInlineSuggestions.css";
 import "./components/Customer/Combos/CombosModalViewportFix.scss";
-import "./styles/AiChatbotKnowledgeCompactList.scss";
 import "./styles/AiChatbotFeedbackControls.css";
 import "./utils/staffPerformanceGlobalFormat.js";
 
