@@ -1,9 +1,21 @@
 import React from "react";
-import { Clock, Info, MapPin, Phone, ShieldCheck, Sparkles } from "lucide-react";
+import { gql, useQuery } from "@apollo/client";
+import { ChefHat, Clock, Info, MapPin, Phone, ShieldCheck, Sparkles } from "lucide-react";
 import { getOpeningStatusLabel } from "@/utils/restaurantStatus";
 import "./RestaurantInfo.scss";
 
 const MAPS_BASE_URL = ["https:", "//maps.google.com/?q="].join("");
+
+const GET_PUBLIC_RESTAURANT_PROFILE = gql`
+  query GetPublicRestaurantProfile($id: ID!) {
+    publicRestaurant(id: $id) {
+      id
+      openingHours
+      amenities
+      notesOnAmenities
+    }
+  }
+`;
 
 const formatAddress = (address) => {
   if (!address) return "";
@@ -19,14 +31,46 @@ const getDirectionsUrl = (address, addressText) => {
   return `${MAPS_BASE_URL}${encodeURIComponent(addressText)}`;
 };
 
+const parseCustomerInfo = (value) => {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
 const RestaurantInfo = ({ restaurant, isPreviewMode = false }) => {
+  const { data: profileData } = useQuery(GET_PUBLIC_RESTAURANT_PROFILE, {
+    variables: { id: restaurant?.id },
+    skip: !restaurant?.id || isPreviewMode,
+    fetchPolicy: "cache-first",
+  });
+  const profileDetails = profileData?.publicRestaurant || {};
   const description = restaurant?.description?.trim();
-  const amenities = Array.isArray(restaurant?.amenities) ? restaurant.amenities.filter(Boolean) : [];
-  const openingText = restaurant?.openingStatusReason || restaurant?.openingHours || "";
+  const sourceAmenities = restaurant?.amenities ?? profileDetails.amenities;
+  const amenities = Array.isArray(sourceAmenities) ? sourceAmenities.filter(Boolean) : [];
+  const openingText =
+    restaurant?.openingStatusReason || restaurant?.openingHours || profileDetails.openingHours || "";
   const openingStatus = restaurant?.openingStatus;
   const phone = restaurant?.phone?.trim();
   const addressText = formatAddress(restaurant?.address);
   const directionsUrl = getDirectionsUrl(restaurant?.address, addressText);
+  const customerInfo = parseCustomerInfo(
+    restaurant?.notesOnAmenities ?? profileDetails.notesOnAmenities,
+  );
+  const chefName = String(customerInfo.chef || restaurant?.chef || "").trim();
+  const chefTitle = String(
+    customerInfo.chefTitle || restaurant?.chefTitle || "Bếp trưởng điều hành",
+  ).trim();
+  const chefBio = String(customerInfo.chefBio || restaurant?.chefBio || "").trim();
+  const chefSummary =
+    chefBio ||
+    `Dẫn dắt phong cách ${restaurant?.cuisineType || restaurant?.cuisine || "ẩm thực"} tại ${
+      restaurant?.name || "nhà hàng"
+    }.`;
   const tableSpaceUrl = restaurant?.id && !isPreviewMode
     ? `/restaurant/${encodeURIComponent(restaurant.id)}/layout?view=space`
     : "";
@@ -40,6 +84,28 @@ const RestaurantInfo = ({ restaurant, isPreviewMode = false }) => {
         </div>
         <p className={description ? "" : "placeholder-box"}>{description || "Nhà hàng đang cập nhật phần giới thiệu."}</p>
       </section>
+
+      {chefName && (
+        <section className="info-card info-card--chef" aria-labelledby="restaurant-brand-chef-title">
+          <div className="title-row">
+            <span className="title-icon"><ChefHat size={16} /></span>
+            <div>
+              <span className="chef-eyebrow">Gương mặt thương hiệu</span>
+              <h4 id="restaurant-brand-chef-title">Bếp trưởng thương hiệu</h4>
+            </div>
+          </div>
+          <div className="chef-profile">
+            <div className="chef-monogram" aria-hidden="true">
+              {chefName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <strong>{chefName}</strong>
+              <span>{chefTitle || "Bếp trưởng điều hành"}</span>
+              <p>{chefSummary}</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="info-card">
         <div className="title-row">
