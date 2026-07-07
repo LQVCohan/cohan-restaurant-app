@@ -55,22 +55,26 @@ const buildSummary = ({ conversation, guestId, reason, latestUserMessage, messag
 };
 
 const findRecipients = async (restaurant) => {
-  const membershipScope = restaurant.brandId
-    ? {
-        brandId: restaurant.brandId,
-        status: "active",
-        $or: [{ role: { $in: ["owner", "admin"] } }, { restaurantIds: restaurant._id }],
-      }
-    : { status: "active", restaurantIds: restaurant._id };
-  const membershipIds = await BrandMembership.distinct("userId", membershipScope);
-  const directIds = [...membershipIds, restaurant.managerId].filter(Boolean);
-  const scope = [
-    { restaurantForStaff: restaurant._id },
-    { refRestaurants: restaurant._id },
-    ...(directIds.length ? [{ _id: { $in: directIds } }] : []),
-  ];
+  if (!restaurant?.brandId) return [];
 
-  const users = await User.find({ status: "active", deletedAt: null, $or: scope })
+  const membershipIds = await BrandMembership.distinct("userId", {
+    brandId: restaurant.brandId,
+    status: "active",
+    $or: [
+      { role: { $in: ["owner", "admin"] } },
+      {
+        role: { $in: ["manager", "staff"] },
+        restaurantIds: restaurant._id,
+      },
+    ],
+  });
+  if (!membershipIds.length) return [];
+
+  const users = await User.find({
+    _id: { $in: membershipIds },
+    status: "active",
+    deletedAt: null,
+  })
     .select("_id userType role")
     .populate({
       path: "role",
@@ -81,8 +85,8 @@ const findRecipients = async (restaurant) => {
     })
     .lean();
 
-  const checked = await Promise.all(users.map(async (user) =>
-    (await hasPermission(user, PERMISSIONS.AI_CHATBOT_HANDOFF)) ? user : null));
+  const checked = await Promise.all(users.map(async (candidate) =>
+    (await hasPermission(candidate, PERMISSIONS.AI_CHATBOT_HANDOFF)) ? candidate : null));
   return checked.filter(Boolean);
 };
 
@@ -112,7 +116,7 @@ export async function requestRestaurantChatbotHandoff({ input, user, io, clientI
   }
 
   const restaurant = await Restaurant.findById(conversation.restaurantId)
-    .select("aiChatbotSettings brandId managerId")
+    .select("aiChatbotSettings brandId")
     .lean();
   if (!restaurant) return fail(conversationId, "Không thể xác định nhà hàng để chuyển hỗ trợ.");
 
