@@ -56,11 +56,13 @@ import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
+import { installTableTransferMergeEnhancement } from "./utils/installTableTransferMergeEnhancement";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 installRestaurantHoursEnhancement();
+installTableTransferMergeEnhancement();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
