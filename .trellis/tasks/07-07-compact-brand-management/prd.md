@@ -2,63 +2,62 @@
 
 ## Current behavior
 
-The chain-management page has compact filters and searchable account selection. The remaining ownership gap is more than a missing button: `Brand.ownerId` and the `owner` membership must change together, while the previous owner must receive a valid manager scope. Using the generic member mutation could otherwise create two owners or leave `Brand.ownerId` pointing to the old owner.
+The chain-management page already supports searchable account selection, adding an admin / manager / staff member, temporarily disabling or reactivating a membership, and an atomic owner-transfer flow. The remaining gap is the existing-member workflow: an owner or administrator cannot edit a non-owner member's role or restaurant scope from the page after the member has been added.
+
+The backend contract already supports this through `updateBrandMember`. Adding another mutation would duplicate validation for restaurant ownership, manager uniqueness, and role scope. The smallest root fix is to expose that existing contract in the member area while keeping ownership changes isolated in `transferBrandOwnership`.
 
 ## End-to-end flow reviewed
 
 1. `Brand.ownerId` stores the current owner reference used by Brand resolvers.
-2. `BrandMembership` is the permission source for owner/admin/manager/staff scope; managers require exactly one restaurant.
-3. `restaurantScope.service` grants owner/admin brand-wide access and manager access only to assigned restaurants.
-4. `brand.graphql` exposes general member mutations but previously had no ownership-transfer contract.
-5. The Brand resolver protected ordinary membership writes but did not atomically synchronize both owner records.
+2. `BrandMembership` is the permission source for owner / admin / manager / staff scope. Managers require exactly one restaurant; staff require at least one.
+3. `restaurantScope.service` grants owner/admin brand-wide access and manager/staff access only to assigned restaurants.
+4. `brand.graphql` already exposes `addBrandMember`, `updateBrandMember`, `removeBrandMember`, and `transferBrandOwnership`.
+5. The Brand resolver validates restaurant membership, prevents two active managers from sharing a restaurant, and blocks generic mutations from changing an owner.
 6. `useBrandManagement` exposes the current account's selected-brand membership role.
-7. `BrandManagement` renders the member workflow and can redirect the previous owner to the assigned branch after transfer.
-
-The root fix is a dedicated transaction-backed ownership mutation. It promotes one active manager/admin member, demotes the current owner to manager, assigns exactly one branch, updates `Brand.ownerId`, and blocks owner changes through generic member mutations.
+7. `BrandManagement` renders add-member and status actions, then delegates owner transfer to the compact member-access component.
 
 ## Scope
 
-- Keep the existing collapsible member filters and searchable add-member picker.
-- Add `TransferBrandOwnershipInput`, payload, and `transferBrandOwnership` mutation.
-- Allow only the current active Brand owner to execute the transfer.
-- Require the new owner to be a different, active manager or administrator member of the same Brand whose account can access the manager portal.
-- Require exactly one Brand restaurant for the previous owner's manager scope.
-- Reject a selected restaurant when another manager would remain assigned to it.
-- In one MongoDB transaction:
-  - promote the selected membership to `owner` with chain-wide scope;
-  - demote the current owner membership to `manager` with one restaurant;
-  - update `Brand.ownerId` to the selected user.
-- Block adding, promoting, demoting, deactivating, or removing an owner through generic membership mutations.
-- Show a compact owner-only transfer disclosure in the member area.
-- Require an explicit confirmation checkbox and redirect the previous owner to the assigned branch dashboard after success.
-- Reuse the current React, Apollo, SCSS, GraphQL, and manager navigation patterns; add no dependency.
+- Keep the existing member filters and searchable add-member picker.
+- Keep the dedicated atomic ownership-transfer mutation and owner-only confirmation flow.
+- Add an existing-member access disclosure for the selected Brand.
+- Allow active Brand owners and administrators to select a non-owner membership and change it to:
+  - `admin`, with chain-wide scope and no restaurant IDs;
+  - `manager`, with exactly one restaurant;
+  - `staff`, with one or more restaurants.
+- Pre-fill the selected member's current role and restaurant scope.
+- Disable manager restaurant choices already assigned to another active manager, while allowing the selected manager to keep their current restaurant.
+- Submit role and restaurant scope through the existing `updateBrandMember` mutation, then refresh the member list.
+- Continue using membership `inactive` / `active` status as the existing revoke / restore operation. Do not add a second UI action backed by `removeBrandMember`, because it performs the same soft-disable behavior.
+- Never allow the generic access editor to change the owner membership; ownership remains in the dedicated transfer flow.
+- Reuse the existing React, Apollo and manager visual patterns; add no dependency.
 
 ## Acceptance criteria
 
-- Non-owners do not see the ownership-transfer control.
-- Only the current active owner can call `transferBrandOwnership`.
-- The target must be an active manager/admin member with an active manager/admin account and cannot be the current owner.
-- The previous owner must be assigned exactly one restaurant after transfer.
-- A branch already occupied by an unrelated active manager cannot be selected.
-- A manager target may vacate their current branch by becoming owner, allowing the previous owner to take that branch.
-- After success, exactly one membership is `owner`, the previous owner is `manager`, and `Brand.ownerId` matches the new owner.
-- All three writes commit or roll back together.
-- Generic member mutations direct ownership changes to the dedicated transfer flow.
-- The UI displays the consequences, requires explicit confirmation, sends the correct three IDs, selects the previous owner's branch, and navigates to the dashboard.
-- Existing member search, filters, add-member behavior, manager uniqueness, and responsive layout remain intact.
+- A Brand owner or administrator sees the existing-member access control; manager and staff memberships do not.
+- Owner memberships are absent from the editable-member selector.
+- Selecting a member preloads their current role and restaurant IDs.
+- Saving an administrator sends `role: "admin"` and `restaurantIds: []`.
+- Saving a manager requires exactly one Brand restaurant and sends that single ID.
+- Saving staff requires at least one Brand restaurant and sends all selected IDs.
+- A restaurant assigned to another active manager cannot be selected for a manager update.
+- Backend validation remains the source of truth and errors are shown inline.
+- The member list refreshes after a successful update and a success message is shown.
+- Existing add-member, status revoke / restore, filters, manager uniqueness, ownership transfer, and responsive layout remain intact.
+- Only the current active owner can execute `transferBrandOwnership`; the three ownership writes still commit or roll back together.
 
 ## Out of scope
 
-- Creating a new account during transfer; add the account as a member first.
-- Multi-owner Brands or co-owner voting/approval.
-- Email invitations, OTP confirmation, delayed transfer, or transfer cancellation windows.
-- Fuzzy/phonetic search, pagination, or external search services.
-- Rebuilding shared manager layout components.
+- Changing the global `User.role`, `userType`, or account portal from this Brand-scoped screen.
+- Creating a new account from the access editor; the searchable add-member flow remains responsible for membership creation.
+- Hard-deleting memberships or adding a second revoke mutation.
+- Multi-owner Brands, invitations, OTP confirmation, delayed transfer, or transfer cancellation windows.
+- Rebuilding the shared manager layout or adding a UI library.
 
 ## Validation plan
 
-- Run the focused ownership resolver test for successful atomic transfer, non-owner rejection, and invalid target account role.
-- Run the ownership-transfer component test for owner-only visibility, confirmation, mutation variables, branch selection, and navigation.
-- Run the existing BrandManagement component suite and member-candidate resolver suite.
-- Run GraphQL schema validation and the frontend production build.
+- Run the focused ownership resolver tests.
+- Run the member-access component tests for owner/admin visibility, existing role preload, admin/manager/staff mutation variables, manager conflict handling, and ownership transfer.
+- Run the existing `BrandManagement` component suite to protect add-member, filtering, and status actions.
+- Run GraphQL validation and the frontend production build.
 - Review the authenticated owner and admin screens at desktop, 390x844, and 430x932 when a browser environment is available.
