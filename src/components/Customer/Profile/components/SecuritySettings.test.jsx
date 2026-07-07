@@ -4,10 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/AuthContext";
 import SecuritySettings from "./SecuritySettings";
 
-const deleteAccountMock = vi.fn();
-const genericMutationMock = vi.fn();
-const showNotificationMock = vi.fn();
-const refetchMock = vi.fn();
+const {
+  deleteAccountMock,
+  genericMutationMock,
+  showNotificationMock,
+  refetchMock,
+} = vi.hoisted(() => ({
+  deleteAccountMock: vi.fn(),
+  genericMutationMock: vi.fn(),
+  showNotificationMock: vi.fn(),
+  refetchMock: vi.fn(),
+}));
 
 vi.mock("@apollo/client", () => ({
   gql: (strings, ...values) =>
