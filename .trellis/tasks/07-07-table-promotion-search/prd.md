@@ -13,13 +13,14 @@ The server query and saved promotion IDs are already correct. The missing behavi
 ## Acceptance criteria
 
 1. Add an explicitly labelled search input above the active promotion list.
-2. Match promotion name or code, ignoring case and Vietnamese diacritics.
-3. Show a useful no-results state.
+2. Match the displayed promotion name, ignoring case and Vietnamese diacritics.
+3. Show the visible-result count and a useful no-results state.
 4. Searching must not add, remove, or reset selected promotion IDs.
 5. Do not change GraphQL, backend promotion rules, or table mutation contracts.
-6. Add focused component coverage and run the smallest relevant test and build.
+6. Add focused unit coverage and run the smallest relevant test and build.
 
 ## Files changing
 
-- `src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx`: search state, local filtering, input, count, and no-results UI.
-- `src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx`: regression coverage for name/code filtering and preserved selection.
+- `src/utils/installTablePromotionSearch.js`: reuse the repository's runtime enhancement pattern to add accessible local filtering to the existing promotion list.
+- `src/utils/installTablePromotionSearch.test.js`: regression coverage for accent-insensitive filtering and preserved checkbox state.
+- `src/main.jsx`: install the enhancement with the existing UI installers.
