@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { installAttendanceWordingTuning } from "./AttendanceWordingTuning";
 
 const OBSERVER_KEY = "__cohanAttendanceWordingObserver";
 const STYLE_ID = "cohan-attendance-wording-tuning";
+const originalRequestAnimationFrame = window.requestAnimationFrame;
 
 describe("installAttendanceWordingTuning", () => {
   beforeEach(() => {
@@ -21,7 +22,11 @@ describe("installAttendanceWordingTuning", () => {
     delete window[OBSERVER_KEY];
     document.body.innerHTML = "";
     document.getElementById(STYLE_ID)?.remove();
-    vi.restoreAllMocks();
+    if (originalRequestAnimationFrame) {
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+    } else {
+      delete window.requestAnimationFrame;
+    }
   });
 
   it("replaces mixed English-Vietnamese attendance copy without removing icons", async () => {
