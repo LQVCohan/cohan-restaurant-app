@@ -1,5 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { sanitizeUserForClient } from "../../src/security/sanitizeUserForClient.js";
+
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(),
+}));
 
 vi.mock("../../models/index.js", async (importOriginal) => {
   const actual = await importOriginal();
@@ -11,6 +15,10 @@ vi.mock("../../models/index.js", async (importOriginal) => {
     },
   };
 });
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 
 describe("sanitizeUserForClient", () => {
   it("preserves emailVerified true/false and safe profile fields", () => {
@@ -96,6 +104,11 @@ import {
 } from "../../src/security/userDtos.js";
 
 describe("user DTO sanitizers", () => {
+  beforeEach(() => {
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+  });
+
   const sensitiveUser = {
     _id: "u-sensitive",
     fullName: "Sensitive User",
@@ -238,7 +251,7 @@ describe("user DTO sanitizers", () => {
     ).rejects.toThrow("Staff not found");
   });
 
-  it("allows a manager with staff.read to read staff in the manager restaurant", async () => {
+  it("allows a manager with staff.read to read staff in the BrandMembership restaurant", async () => {
     const out = await sanitizeStaffPrivateProfile(
       { _id: "staff-a", fullName: "Staff A", restaurantForStaff: "restaurant-a", baseSalary: 100 },
       { user: { id: "manager-a", roleName: "manager" } },
@@ -254,8 +267,7 @@ describe("user DTO sanitizers", () => {
     );
     expect(out.baseSalary).toBe(100);
 
-    const { Restaurant } = await import("../../models/index.js");
-    Restaurant.exists.mockResolvedValueOnce(false);
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
 
     await expect(
       sanitizeStaffPrivateProfile(
@@ -264,15 +276,19 @@ describe("user DTO sanitizers", () => {
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
-
 });
 
 describe("staff private profile authorization", () => {
+  beforeEach(() => {
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
+  });
+
   it("requires staff.read permission after restaurant access", async () => {
     await expect(
       sanitizeStaffPrivateProfile(
         { _id: "staff-1", fullName: "Staff", restaurantForStaff: "restaurant-1", baseSalary: 100 },
-        { user: { id: "customer-1", roleName: "customer", restaurantForStaff: "restaurant-1" } },
+        { user: { id: "customer-1", roleName: "customer" } },
       ),
     ).rejects.toThrow("FORBIDDEN");
   });
