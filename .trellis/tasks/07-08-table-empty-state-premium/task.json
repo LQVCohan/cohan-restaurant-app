@@ -3,7 +3,7 @@
   "name": "table-empty-state-premium",
   "title": "Upgrade empty table-management setup state",
   "description": "Replace the sparse and visually broken no-floor state with a compact sage/cream setup flow while preserving existing table and floor behavior.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "ui",
   "scope": "manager-table-empty-state",
   "package": null,
@@ -11,20 +11,20 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "4647e513282d247fb7165e48cbf185b875c9efbd",
   "pr_url": null,
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
-    "src/components/Dashboard_Manager/Table/TableManagement.scss",
-    "src/styles/TableManagerSageUX.css",
-    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
+    "src/main.jsx",
+    "src/styles/TableEmptyStatePremium.css",
+    "src/utils/installTableEmptyStateEnhancement.js",
+    "src/utils/installTableEmptyStateEnhancement.test.js"
   ],
-  "notes": "The data flow is already correct. The broken CTA is caused by broad .tm-empty span selectors styling Button.btn__text as the empty-state icon. The no-floor page also exposes filters and add-table actions before a floor exists."
+  "notes": "The backend floor/table flow was already correct. The final CSS layer repairs the legacy .tm-empty span collision with Button.btn__text and adds a responsive sage/cream onboarding layout. The installer reuses the existing add-floor action, hides unusable filters, skips loading/error states, and restores normal UI when floors appear. Focused tests and build were not executed in the connected environment; GitHub reported no workflow run for the final code commit."
 }
