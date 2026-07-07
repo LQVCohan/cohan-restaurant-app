@@ -188,6 +188,12 @@ const savedRestaurantWithOutsideHours = {
   },
 };
 
+const savedRestaurantWithHours = {
+  ...restaurant,
+  openingHours: "18:00",
+  closingHours: "02:00",
+};
+
 const pausedRestaurant = {
   ...restaurant,
   operationalStatus: "paused",
@@ -357,6 +363,76 @@ describe("RestaurantInfoManagement", () => {
     ).toHaveDisplayValue("Bữa trưa");
     expect(screen.getByText("Xem trước trên ứng dụng")).toBeInTheDocument();
     expect(screen.queryByText("Live Preview")).not.toBeInTheDocument();
+  });
+
+  it("uses native 24-hour controls and explains overnight hours", async () => {
+    queryResults.restaurantDetail.data = {
+      restaurant: {
+        ...restaurant,
+        openingHours: "9:00",
+        closingHours: "02:00",
+      },
+    };
+
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    expect(screen.getByLabelText("Giờ mở cửa")).toHaveAttribute("type", "time");
+    expect(screen.getByLabelText("Giờ mở cửa")).toHaveValue("09:00");
+    expect(screen.getByLabelText("Giờ đóng cửa")).toHaveValue("02:00");
+    expect(screen.getByText(/đóng cửa vào ngày hôm sau/i)).toBeInTheDocument();
+  });
+
+  it("blocks incomplete operating hours before saving", async () => {
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.change(screen.getByLabelText("Giờ mở cửa"), {
+      target: { value: "08:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    expect(updateRestaurantMock).not.toHaveBeenCalled();
+    expect(message.error).toHaveBeenCalledWith(
+      "Vui lòng chọn đầy đủ cả giờ mở cửa và giờ đóng cửa",
+    );
+  });
+
+  it("saves an overnight operating window in normalized HH:mm format", async () => {
+    updateRestaurantMock.mockResolvedValueOnce({
+      data: { updateRestaurant: savedRestaurantWithHours },
+    });
+    refetchRestaurantDetailMock.mockResolvedValueOnce({
+      data: { restaurant: savedRestaurantWithHours },
+    });
+
+    render(<RestaurantInfoManagement />);
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    await openLocationTab();
+    fireEvent.change(screen.getByLabelText("Giờ mở cửa"), {
+      target: { value: "18:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Giờ đóng cửa"), {
+      target: { value: "02:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(updateRestaurantMock).toHaveBeenCalledTimes(1));
+    expect(updateRestaurantMock.mock.calls[0][0].variables.input).toEqual(
+      expect.objectContaining({
+        openingHours: "18:00",
+        closingHours: "02:00",
+      }),
+    );
   });
 
   it("preserves other capabilities when the manager disables remote orders", async () => {

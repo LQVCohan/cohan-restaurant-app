@@ -212,3 +212,74 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Native operating-hours editor */
+.manager-layout .restaurant-management-container .operating-hours-card.ant-card {
+  margin-top: 1rem;
+  border-color: var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(249, 252, 250, 0.99), rgba(229, 240, 235, 0.88)) !important;
+  box-shadow: 0 14px 30px rgba(48, 72, 61, 0.09) !important;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-card .ant-card-head {
+  min-height: 50px;
+  border-bottom-color: var(--manager-border, rgba(83, 108, 97, 0.22));
+}
+
+.manager-layout .restaurant-management-container .operating-hours-card .ant-card-head-title {
+  color: var(--manager-text, #24312c);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-card__format,
+.manager-layout .restaurant-management-container .operating-hours-card__intro {
+  color: var(--manager-muted, #607069) !important;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-card__intro {
+  max-width: 64ch;
+  margin-bottom: 0.9rem;
+  line-height: 1.55;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-grid input[type="time"] {
+  min-height: 50px;
+  color-scheme: light;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-grid .ant-form-item-extra {
+  min-height: auto;
+  padding-top: 0.3rem;
+  color: var(--manager-muted, #607069);
+  font-size: 0.75rem;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-summary.ant-alert {
+  margin: 0.15rem 0 1rem;
+  border-radius: 12px;
+}
+
+.manager-layout .restaurant-management-container .operating-hours-notes.ant-form-item {
+  margin-bottom: 0;
+}
+
+.manager-layout .restaurant-management-container .restaurant-capacity-grid {
+  margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .manager-layout .restaurant-management-container .operating-hours-card__format {
+    display: none;
+  }
+
+  .manager-layout .restaurant-management-container .operating-hours-grid input[type="time"] {
+    min-height: 48px;
+  }
+}

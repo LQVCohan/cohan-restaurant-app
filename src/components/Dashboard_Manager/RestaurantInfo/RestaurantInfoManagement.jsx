@@ -72,6 +72,15 @@ const getOrderAvailabilityMessage = (restaurant, form) => {
     return { type: "warning", message: "Nhà hàng đang tắt nhận đơn online." };
   }
   if (restaurant?.canOrder === true) {
+    if (
+      restaurant?.openingStatus === "closed" &&
+      form.orderPolicy?.allowWhenClosed === true
+    ) {
+      return {
+        type: "success",
+        message: "Nhà hàng đang ngoài giờ phục vụ nhưng vẫn nhận đơn online.",
+      };
+    }
     return { type: "success", message: "Khách hàng hiện có thể đặt món." };
   }
   if (
@@ -417,6 +426,67 @@ const getCoordinateValidationError = (latValue, lngValue) => {
   return "";
 };
 
+const TIME_VALUE_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+const normalizeTimeValue = (value) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+
+  const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!match) return text;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return text;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+};
+
+const getHoursValidationError = (openingValue, closingValue) => {
+  const openingHours = normalizeTimeValue(openingValue);
+  const closingHours = normalizeTimeValue(closingValue);
+
+  if (!openingHours && !closingHours) return "";
+  if (!openingHours || !closingHours) {
+    return "Vui lòng chọn đầy đủ cả giờ mở cửa và giờ đóng cửa";
+  }
+  if (!TIME_VALUE_PATTERN.test(openingHours)) {
+    return "Giờ mở cửa phải theo định dạng 24 giờ HH:mm";
+  }
+  if (!TIME_VALUE_PATTERN.test(closingHours)) {
+    return "Giờ đóng cửa phải theo định dạng 24 giờ HH:mm";
+  }
+  return "";
+};
+
+const getHoursSummary = (openingValue, closingValue) => {
+  const openingHours = normalizeTimeValue(openingValue);
+  const closingHours = normalizeTimeValue(closingValue);
+
+  if (!openingHours || !closingHours) {
+    return { type: "info", message: "Chưa thiết lập giờ phục vụ mặc định." };
+  }
+  if (!TIME_VALUE_PATTERN.test(openingHours) || !TIME_VALUE_PATTERN.test(closingHours)) {
+    return { type: "warning", message: "Giờ phục vụ chưa đúng định dạng 24 giờ HH:mm." };
+  }
+  if (openingHours === closingHours) {
+    return {
+      type: "info",
+      message: "Giờ mở và đóng trùng nhau: hệ thống xem là mở cửa 24 giờ.",
+    };
+  }
+  if (closingHours < openingHours) {
+    return {
+      type: "warning",
+      message: `Ca phục vụ ${openingHours}–${closingHours}, đóng cửa vào ngày hôm sau.`,
+    };
+  }
+  return {
+    type: "success",
+    message: `Giờ phục vụ mặc định ${openingHours}–${closingHours}.`,
+  };
+};
+
 const getGeolocationErrorMessage = (error) => {
   switch (error?.code) {
     case 1:
@@ -602,6 +672,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     restaurantDetailData?.restaurant,
     restaurantForm,
   );
+  const operatingHoursSummary = getHoursSummary(
+    restaurantForm.openingHours,
+    restaurantForm.closingHours,
+  );
 
   useEffect(() => {
     const r = restaurantDetailData?.restaurant;
@@ -614,8 +688,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       phone: r.phone || "",
       email: r.email || "",
       description: r.description || "",
-      openingHours: r.openingHours || "",
-      closingHours: r.closingHours || "",
+      openingHours: normalizeTimeValue(r.openingHours),
+      closingHours: normalizeTimeValue(r.closingHours),
       notesOnHours: r.notesOnHours || "",
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
@@ -797,6 +871,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     ) {
       return "Website phải bắt đầu bằng http:// hoặc https://";
     }
+    const hoursError = getHoursValidationError(
+      restaurantForm.openingHours,
+      restaurantForm.closingHours,
+    );
+    if (hoursError) return hoursError;
     const coordinateError = getCoordinateValidationError(
       restaurantForm.lat,
       restaurantForm.lng,
@@ -1038,8 +1117,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             phone: restaurantForm.phone || null,
             email: restaurantForm.email || null,
             description: normalizedCustomerInfo.story || null,
-            openingHours: restaurantForm.openingHours || null,
-            closingHours: restaurantForm.closingHours || null,
+            openingHours: normalizeTimeValue(restaurantForm.openingHours) || null,
+            closingHours: normalizeTimeValue(restaurantForm.closingHours) || null,
             notesOnHours: restaurantForm.notesOnHours || null,
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
@@ -1109,8 +1188,16 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               normalizedCustomerInfo.story || "",
               latestRestaurant.description || "",
             ],
-            ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
-            ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
+            [
+              "openingHours",
+              normalizeTimeValue(restaurantForm.openingHours),
+              normalizeTimeValue(latestRestaurant.openingHours),
+            ],
+            [
+              "closingHours",
+              normalizeTimeValue(restaurantForm.closingHours),
+              normalizeTimeValue(latestRestaurant.closingHours),
+            ],
             ["notesOnHours", restaurantForm.notesOnHours || "", latestRestaurant.notesOnHours || ""],
             ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
             ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
@@ -1679,78 +1766,124 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Row>
                   </Card>
 
-                  <div style={{ marginTop: 20 }}>
-                    <Row gutter={24}>
-                      <Col span={8}>
-                        <Form.Item label="Giờ mở cửa">
+                  <Card
+                    className="profile-section-card operating-hours-card"
+                    size="small"
+                    title={
+                      <Space size={8}>
+                        <ClockCircleOutlined />
+                        <span>Giờ phục vụ mặc định</span>
+                      </Space>
+                    }
+                    extra={
+                      <Text type="secondary" className="operating-hours-card__format">
+                        Định dạng 24 giờ
+                      </Text>
+                    }
+                  >
+                    <Paragraph
+                      id="operating-hours-guidance"
+                      className="operating-hours-card__intro"
+                    >
+                      Khung giờ này áp dụng hằng ngày khi nhà hàng chưa thiết lập lịch riêng theo từng thứ.
+                    </Paragraph>
+
+                    <Row gutter={[16, 0]} className="operating-hours-grid">
+                      <Col xs={24} md={12}>
+                        <Form.Item label="Giờ mở cửa" extra="Ví dụ: 08:00">
                           <Input
-                            prefix={<ClockCircleOutlined />}
-                            value={restaurantForm.openingHours}
+                            aria-label="Giờ mở cửa"
+                            aria-describedby="operating-hours-guidance"
+                            type="time"
+                            step={60}
+                            autoComplete="off"
+                            value={normalizeTimeValue(restaurantForm.openingHours)}
                             onChange={(e) =>
-                              setRestaurantForm((p) => ({
-                                ...p,
+                              setRestaurantForm((previous) => ({
+                                ...previous,
                                 openingHours: e.target.value,
                               }))
                             }
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={8}>
-                        <Form.Item label="Giờ đóng cửa">
+                      <Col xs={24} md={12}>
+                        <Form.Item label="Giờ đóng cửa" extra="Có thể chọn giờ của ngày hôm sau">
                           <Input
-                            prefix={<ClockCircleOutlined />}
-                            value={restaurantForm.closingHours}
+                            aria-label="Giờ đóng cửa"
+                            aria-describedby="operating-hours-guidance"
+                            type="time"
+                            step={60}
+                            autoComplete="off"
+                            value={normalizeTimeValue(restaurantForm.closingHours)}
                             onChange={(e) =>
-                              setRestaurantForm((p) => ({
-                                ...p,
+                              setRestaurantForm((previous) => ({
+                                ...previous,
                                 closingHours: e.target.value,
                               }))
                             }
                           />
                         </Form.Item>
                       </Col>
-                      <Col span={8}>
-                        <Form.Item label="Mức giá tham khảo">
-                          <Input
-                            prefix="₫"
-                            value={restaurantForm.priceRange}
-                            onChange={(e) =>
-                              setRestaurantForm((p) => ({
-                                ...p,
-                                priceRange: e.target.value,
-                              }))
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={8}>
-                        <Form.Item label="Sức chứa tối đa">
-                          <Input
-                            value={restaurantForm.seatingCapacity}
-                            onChange={(e) =>
-                              setRestaurantForm((p) => ({
-                                ...p,
-                                seatingCapacity: e.target.value,
-                              }))
-                            }
-                          />
-                        </Form.Item>
-                      </Col>
                     </Row>
-                    <Form.Item label="Ghi chú giờ hoạt động">
+
+                    <Alert
+                      className="operating-hours-summary"
+                      type={operatingHoursSummary.type}
+                      showIcon
+                      message={operatingHoursSummary.message}
+                    />
+
+                    <Form.Item
+                      className="operating-hours-notes"
+                      label="Ghi chú giờ hoạt động"
+                    >
                       <TextArea
                         rows={2}
                         value={restaurantForm.notesOnHours}
                         onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
+                          setRestaurantForm((previous) => ({
+                            ...previous,
                             notesOnHours: e.target.value,
                           }))
                         }
                         placeholder="Ví dụ: nghỉ thứ Hai; ngày lễ áp dụng giờ phục vụ riêng"
                       />
                     </Form.Item>
-                  </div>
+                  </Card>
+
+                  <Row gutter={[16, 0]} className="restaurant-capacity-grid">
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Mức giá tham khảo">
+                        <Input
+                          prefix="₫"
+                          value={restaurantForm.priceRange}
+                          onChange={(e) =>
+                            setRestaurantForm((previous) => ({
+                              ...previous,
+                              priceRange: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Sức chứa tối đa">
+                        <Input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={restaurantForm.seatingCapacity}
+                          onChange={(e) =>
+                            setRestaurantForm((previous) => ({
+                              ...previous,
+                              seatingCapacity: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                 </>
               ),
             },
