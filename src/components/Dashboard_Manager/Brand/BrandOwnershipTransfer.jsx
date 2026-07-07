@@ -28,7 +28,6 @@ const TRANSFER_BRAND_OWNERSHIP = gql`
 const ROLE_LABELS = {
   admin: "Quản trị chuỗi",
   manager: "Quản lý chi nhánh",
-  staff: "Nhân viên chi nhánh",
 };
 
 const getMemberLabel = (member) => {
@@ -66,7 +65,7 @@ function BrandOwnershipTransferForm({
         .filter(
           (member) =>
             member.status === "active" &&
-            member.role !== "owner" &&
+            ["admin", "manager"].includes(member.role) &&
             member.userId,
         )
         .sort((left, right) =>
@@ -216,7 +215,10 @@ function BrandOwnershipTransferForm({
         ) : (
           <div className="brand-inline-empty brand-inline-empty--members">
             <span aria-hidden="true">◎</span>
-            <p>Hãy thêm một thành viên đang hoạt động trước khi chuyển quyền.</p>
+            <p>
+              Hãy thêm một quản lý hoặc quản trị viên đang hoạt động trước khi
+              chuyển quyền.
+            </p>
           </div>
         )}
 
