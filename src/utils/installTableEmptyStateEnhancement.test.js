@@ -4,101 +4,101 @@ import {
   __testables,
 } from "./installTableEmptyStateEnhancement";
 
-const renderTablePage = ({ withFloor = false } = {}) => {
+const renderLegacyBrokenState = () => {
   document.body.innerHTML = `
     <div class="manager-layout--tables">
-      <div class="tm-container">
+      <div class="tm-container tm-container--no-floors">
         <section class="management-page-header">
-          <button type="button" class="mph-btn mph-btn--primary">＋<span>Thêm bàn</span></button>
+          <button type="button" class="mph-btn mph-btn--primary tm-first-floor-action">
+            ＋<span data-table-empty-original-text="Thêm bàn">Tạo tầng đầu tiên</span>
+          </button>
         </section>
-        <div class="tm-layout">
-          <aside class="tm-sidebar">
-            <nav class="tm-floor-list">
-              <button type="button" class="tm-floor-item">Tất cả tầng</button>
-              ${withFloor ? '<button type="button" class="tm-floor-item">Tầng 1</button>' : ""}
-              <button type="button" class="tm-add-floor-btn">+ Thêm tầng</button>
-            </nav>
-            <section class="tm-filter-box">Bộ lọc bàn</section>
-          </aside>
-          <section class="tm-grid-area">
-            <div class="tm-empty">
-              <span aria-hidden="true">🪑</span>
-              <p>Chưa có tầng để gán bàn.</p>
-              <button type="button" class="btn btn--primary">
-                <span class="btn__text">Thêm tầng</span>
-              </button>
-            </div>
-          </section>
-        </div>
+        <aside class="tm-sidebar">
+          <section class="tm-setup-note">Nội dung chèn cũ</section>
+        </aside>
+        <section class="tm-grid-area">
+          <div class="tm-empty tm-empty--setup" role="status" aria-live="polite">
+            <span class="tm-empty__icon" aria-hidden="true">🪑</span>
+            <span class="tm-empty__eyebrow">Thiết lập khu vực phục vụ</span>
+            <h3 class="tm-empty__title">Bắt đầu từ cấu trúc tầng</h3>
+            <p
+              class="tm-empty__message"
+              data-table-empty-original-text="Chưa có tầng để gán bàn."
+            >Nội dung đã bị thay</p>
+            <ol class="tm-empty__steps"><li>Bước chèn cũ</li></ol>
+            <button class="btn tm-empty__action">
+              <span class="btn__text" data-table-empty-original-text="Thêm tầng">Tạo tầng đầu tiên</span>
+            </button>
+          </div>
+          <div class="tm-table-grid">
+            <article class="tm-table-card"><strong>A1</strong></article>
+            <article class="tm-table-card"><strong>A2</strong></article>
+          </div>
+        </section>
       </div>
     </div>
   `;
 };
 
-const cleanupInstaller = () => {
-  window[__testables.OBSERVER_KEY]?.disconnect?.();
+const clearWindowHooks = () => {
   delete window[__testables.OBSERVER_KEY];
-  const handler = window[__testables.CLICK_HANDLER_KEY];
-  if (handler) document.removeEventListener("click", handler, true);
   delete window[__testables.CLICK_HANDLER_KEY];
 };
 
 describe("installTableEmptyStateEnhancement", () => {
   beforeEach(() => {
-    cleanupInstaller();
+    clearWindowHooks();
     document.body.innerHTML = "";
   });
 
   afterEach(() => {
-    cleanupInstaller();
+    clearWindowHooks();
     document.body.innerHTML = "";
   });
 
-  it("builds a semantic setup state when the restaurant has no floors", () => {
-    renderTablePage();
-
-    const container = __testables.prepareTableEmptyState();
-
-    expect(container).toHaveClass(__testables.NO_FLOORS_CLASS);
-    expect(document.querySelector(".tm-empty")).toHaveClass(
-      __testables.SETUP_CLASS,
-    );
-    expect(document.querySelector(".tm-empty__title")).toHaveTextContent(
-      "Bắt đầu từ cấu trúc tầng",
-    );
-    expect(document.querySelectorAll(".tm-empty__steps li")).toHaveLength(3);
-    expect(document.querySelector(".tm-empty__action .btn__text")).toHaveTextContent(
-      "Tạo tầng đầu tiên",
-    );
-    expect(document.querySelector(".tm-setup-note")).toBeInTheDocument();
-    expect(document.querySelector(".tm-first-floor-action span")).toHaveTextContent(
-      "Tạo tầng đầu tiên",
-    );
-  });
-
-  it("routes the header primary action to the existing add-floor button", () => {
-    renderTablePage();
-    const addFloorHandler = vi.fn();
-    document
-      .querySelector(".tm-add-floor-btn")
-      .addEventListener("click", addFloorHandler);
+  it("removes legacy injected onboarding nodes without touching table cards", () => {
+    renderLegacyBrokenState();
 
     installTableEmptyStateEnhancement();
-    document.querySelector(".tm-first-floor-action").click();
 
-    expect(addFloorHandler).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll(".tm-table-card")).toHaveLength(2);
+    expect(document.body).toHaveTextContent("A1");
+    expect(document.body).toHaveTextContent("A2");
+    expect(document.querySelector(".tm-setup-note")).not.toBeInTheDocument();
+    expect(document.querySelector(".tm-empty__eyebrow")).not.toBeInTheDocument();
+    expect(document.querySelector(".tm-empty__title")).not.toBeInTheDocument();
+    expect(document.querySelector(".tm-empty__steps")).not.toBeInTheDocument();
+    expect(document.querySelector(".tm-container")).not.toHaveClass(
+      "tm-container--no-floors",
+    );
+    expect(document.querySelector(".tm-empty")).not.toHaveClass(
+      "tm-empty--setup",
+    );
+    expect(document.querySelector(".tm-empty__message")).toHaveTextContent(
+      "Chưa có tầng để gán bàn.",
+    );
+    expect(document.querySelector(".tm-empty__action .btn__text")).toHaveTextContent(
+      "Thêm tầng",
+    );
+    expect(document.querySelector(".mph-btn--primary span")).toHaveTextContent(
+      "Thêm bàn",
+    );
   });
 
-  it("keeps the normal table state unchanged when a floor exists", () => {
-    renderTablePage({ withFloor: true });
+  it("disconnects stale HMR hooks and does not install a new observer", () => {
+    const disconnect = vi.fn();
+    const staleHandler = vi.fn();
+    window[__testables.OBSERVER_KEY] = { disconnect };
+    window[__testables.CLICK_HANDLER_KEY] = staleHandler;
+    const removeListener = vi.spyOn(document, "removeEventListener");
 
-    const container = __testables.prepareTableEmptyState();
+    installTableEmptyStateEnhancement();
 
-    expect(container).not.toHaveClass(__testables.NO_FLOORS_CLASS);
-    expect(document.querySelector(".tm-empty__steps")).not.toBeInTheDocument();
-    expect(document.querySelector(".tm-setup-note")).not.toBeInTheDocument();
-    expect(
-      document.querySelector(".management-page-header .mph-btn--primary span"),
-    ).toHaveTextContent("Thêm bàn");
+    expect(disconnect).toHaveBeenCalledTimes(1);
+    expect(removeListener).toHaveBeenCalledWith("click", staleHandler, true);
+    expect(window[__testables.OBSERVER_KEY]).toBeUndefined();
+    expect(window[__testables.CLICK_HANDLER_KEY]).toBeUndefined();
+
+    removeListener.mockRestore();
   });
 });
