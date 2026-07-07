@@ -1,179 +1,252 @@
-/* Compact, page-scoped layout for manager#brands. */
-.manager-layout .brand-management {
-  padding-bottom: 1rem;
+/* Compact page-scoped overrides for manager#brands. */
+.manager-layout.manager-layout--brands .brand-management {
+  padding: 0.6rem 0.75rem 1rem;
 }
 
-/* The shared page header already shows chain, branch, member, role and status context. */
-.manager-layout .brand-management .brand-identity-panel {
+.manager-layout.manager-layout--brands .brand-management > .management-page-header {
+  margin-bottom: 0.6rem;
+}
+
+/* The shared header already exposes chain, branch, member, role and status context. */
+.manager-layout.manager-layout--brands .brand-identity-panel {
   display: none;
 }
 
-.manager-layout .brand-management .brand-workspace {
-  gap: 0.7rem;
-  margin-bottom: 0.7rem;
-}
-
-.manager-layout .brand-management .brand-panel {
-  padding: clamp(0.85rem, 1.5vw, 1.05rem);
-  border-radius: 18px;
-}
-
-.manager-layout .brand-management .brand-panel__eyebrow {
-  display: none;
-}
-
-.manager-layout .brand-management .brand-panel__header {
+.manager-layout.manager-layout--brands .brand-workspace {
+  gap: 0.65rem;
   margin-bottom: 0.65rem;
 }
 
-.manager-layout .brand-management .brand-panel__header h3 {
+.manager-layout.manager-layout--brands .brand-panel {
+  padding: 0.82rem;
+  border-radius: 17px;
+}
+
+.manager-layout.manager-layout--brands .brand-panel__eyebrow {
+  display: none;
+}
+
+.manager-layout.manager-layout--brands .brand-panel__header {
+  margin-bottom: 0.55rem;
+}
+
+.manager-layout.manager-layout--brands .brand-panel__header h3 {
   margin-top: 0;
 }
 
-.manager-layout .brand-management .brand-panel__header p {
+.manager-layout.manager-layout--brands .brand-panel__header p {
   line-height: 1.35;
 }
 
-.manager-layout .brand-management .brand-form-grid {
-  gap: 0.65rem;
+.manager-layout.manager-layout--brands .brand-form-grid {
+  gap: 0.55rem 0.65rem;
 }
 
-.manager-layout .brand-management .brand-panel__footer,
-.manager-layout .brand-management .brand-create-row {
-  margin-top: 0.7rem;
-  padding-top: 0.7rem;
+.manager-layout.manager-layout--brands .brand-field {
+  gap: 0.25rem;
 }
 
-.manager-layout .brand-management .brand-members-panel .brand-panel__header {
-  align-items: center;
-}
-
-.manager-layout .brand-management .brand-member-search {
-  min-width: min(100%, 280px);
-}
-
-.manager-layout .brand-management .brand-member-search input {
+.manager-layout.manager-layout--brands .brand-field input,
+.manager-layout.manager-layout--brands .brand-field select,
+.manager-layout.manager-layout--brands .brand-member-search input,
+.manager-layout.manager-layout--brands .brand-button {
   min-height: 38px;
+  padding-block: 0.52rem;
 }
 
-.manager-layout .brand-management .brand-member-create {
-  margin-bottom: 0.65rem;
-  padding: 0.7rem;
-  border-radius: 13px;
+.manager-layout.manager-layout--brands .brand-panel__footer,
+.manager-layout.manager-layout--brands .brand-create-row {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
 }
 
-.manager-layout .brand-management .brand-member-list {
+.manager-layout.manager-layout--brands .brand-branch-list {
+  max-height: 248px;
   gap: 0.4rem;
 }
 
-.manager-layout .brand-management .brand-member-card {
-  gap: 0.65rem;
-  padding: 0.58rem 0.68rem;
+.manager-layout.manager-layout--brands .brand-branch-card {
+  gap: 0.55rem;
+  padding: 0.5rem 0.58rem;
   border-radius: 12px;
 }
 
-.manager-layout .brand-management .brand-member-card__avatar {
-  width: 38px;
-  height: 38px;
+.manager-layout.manager-layout--brands .brand-branch-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.manager-layout.manager-layout--brands .brand-members-panel .brand-panel__header {
+  align-items: center;
+}
+
+.manager-layout.manager-layout--brands .brand-member-search {
+  min-width: min(100%, 270px);
+}
+
+.manager-layout.manager-layout--brands .brand-member-create {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.35fr)
+    minmax(170px, 0.68fr)
+    minmax(220px, 0.88fr)
+    auto;
+  align-items: end;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
+  padding: 0.62rem;
+  border-radius: 12px;
+}
+
+.manager-layout.manager-layout--brands .brand-member-create__grid {
+  display: contents;
+}
+
+.manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.manager-layout.manager-layout--brands .brand-member-create__button {
+  grid-column: 4;
+  grid-row: 1;
+  min-width: 128px;
+}
+
+.manager-layout.manager-layout--brands .brand-scope-control,
+.manager-layout.manager-layout--brands .brand-scope-note {
+  grid-column: 3;
+  grid-row: 1;
+  margin-top: 0;
+}
+
+.manager-layout.manager-layout--brands .brand-scope-note {
+  min-height: 38px;
+  padding: 0.5rem 0.6rem;
+}
+
+.manager-layout.manager-layout--brands .brand-scope-note > span,
+.manager-layout.manager-layout--brands .brand-member-create__grid
+  > .brand-field:first-child
+  > small:not(.brand-field__error) {
+  display: none;
+}
+
+.manager-layout.manager-layout--brands .brand-scope-fieldset {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-top: 0;
+}
+
+.manager-layout.manager-layout--brands .brand-member-create > .brand-alert {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.manager-layout.manager-layout--brands .brand-member-list {
+  gap: 0.35rem;
+}
+
+.manager-layout.manager-layout--brands .brand-member-card {
+  gap: 0.58rem;
+  padding: 0.5rem 0.6rem;
   border-radius: 11px;
 }
 
-.manager-layout .brand-management .brand-member-card__identity,
-.manager-layout .brand-management .brand-member-card__meta,
-.manager-layout .brand-management .brand-member-card__status {
-  gap: 0.15rem;
+.manager-layout.manager-layout--brands .brand-member-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
 }
 
-.manager-layout .brand-management .brand-member-card .brand-status {
-  min-height: 24px;
-  padding: 0.32rem 0.5rem;
+.manager-layout.manager-layout--brands .brand-member-card__identity,
+.manager-layout.manager-layout--brands .brand-member-card__meta,
+.manager-layout.manager-layout--brands .brand-member-card__status {
+  gap: 0.12rem;
 }
 
-.manager-layout .brand-management .brand-member-card .brand-link-button {
-  padding-block: 0.25rem;
+.manager-layout.manager-layout--brands .brand-member-card .brand-status {
+  min-height: 23px;
+  padding: 0.3rem 0.48rem;
 }
 
-@media (min-width: 821px) {
-  .manager-layout .brand-management .brand-member-create {
-    display: grid;
-    grid-template-columns:
-      minmax(0, 1.25fr)
-      minmax(170px, 0.65fr)
-      minmax(220px, 0.85fr)
-      auto;
-    align-items: end;
-    gap: 0.6rem;
+.manager-layout.manager-layout--brands .brand-member-card .brand-link-button {
+  padding-block: 0.22rem;
+}
+
+@media (max-width: 760px) {
+  .manager-layout.manager-layout--brands .brand-member-create {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .manager-layout .brand-management .brand-member-create__grid {
-    display: contents;
+  .manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:first-child {
+    grid-column: 1;
+    grid-row: 1;
   }
 
-  .manager-layout .brand-management .brand-member-create__grid > .brand-field:first-child {
+  .manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .manager-layout.manager-layout--brands .brand-scope-control,
+  .manager-layout.manager-layout--brands .brand-scope-note,
+  .manager-layout.manager-layout--brands .brand-scope-fieldset {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-create__button {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .manager-layout.manager-layout--brands .brand-management {
+    padding-inline: 0.45rem;
+  }
+
+  .manager-layout.manager-layout--brands .brand-panel {
+    padding: 0.72rem;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-create {
+    grid-template-columns: 1fr;
+    padding: 0.55rem;
+  }
+
+  .manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:first-child,
+  .manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:nth-child(2),
+  .manager-layout.manager-layout--brands .brand-scope-control,
+  .manager-layout.manager-layout--brands .brand-scope-note,
+  .manager-layout.manager-layout--brands .brand-scope-fieldset,
+  .manager-layout.manager-layout--brands .brand-member-create__button {
     grid-column: 1;
   }
 
-  .manager-layout .brand-management .brand-member-create__grid > .brand-field:nth-child(2) {
-    grid-column: 2;
+  .manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:first-child {
+    grid-row: 1;
   }
 
-  .manager-layout .brand-management .brand-member-create__button {
-    grid-column: 4;
-    min-width: 132px;
+  .manager-layout.manager-layout--brands .brand-member-create__grid > .brand-field:nth-child(2) {
+    grid-row: 2;
   }
 
-  .manager-layout .brand-management .brand-scope-control,
-  .manager-layout .brand-management .brand-scope-note {
-    grid-column: 3;
-    margin-top: 0;
+  .manager-layout.manager-layout--brands .brand-scope-control,
+  .manager-layout.manager-layout--brands .brand-scope-note,
+  .manager-layout.manager-layout--brands .brand-scope-fieldset {
+    grid-row: 3;
   }
 
-  .manager-layout .brand-management .brand-scope-note {
-    align-self: end;
-    min-height: 38px;
-    padding: 0.55rem 0.65rem;
-  }
-
-  .manager-layout .brand-management .brand-scope-note > span {
-    display: none;
-  }
-
-  .manager-layout .brand-management .brand-scope-fieldset,
-  .manager-layout .brand-management .brand-member-create > .brand-alert {
-    grid-column: 1 / -1;
-    margin-top: 0;
-  }
-
-  .manager-layout .brand-management .brand-member-create:has(.brand-scope-fieldset)
-    .brand-member-create__button {
-    grid-column: 3 / 5;
-    width: 100%;
-  }
-
-  .manager-layout .brand-management .brand-member-create__grid
-    > .brand-field:first-child
-    > small:not(.brand-field__error) {
-    display: none;
-  }
-
-  .manager-layout .brand-management .brand-member-create .brand-field input,
-  .manager-layout .brand-management .brand-member-create .brand-field select,
-  .manager-layout .brand-management .brand-member-create .brand-button {
-    min-height: 38px;
-    padding-block: 0.55rem;
-  }
-}
-
-@media (max-width: 680px) {
-  .manager-layout .brand-management .brand-panel {
-    padding: 0.8rem;
-  }
-
-  .manager-layout .brand-management .brand-panel__header {
-    margin-bottom: 0.55rem;
-  }
-
-  .manager-layout .brand-management .brand-member-create {
-    padding: 0.65rem;
+  .manager-layout.manager-layout--brands .brand-member-create__button {
+    grid-row: 4;
   }
 }
