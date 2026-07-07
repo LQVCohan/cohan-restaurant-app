@@ -17,17 +17,28 @@ const hasStoredText = (element, key) =>
   Boolean(element?.dataset) &&
   Object.prototype.hasOwnProperty.call(element.dataset, key);
 
+const getEnhancedTextKey = (key) => `${key}Enhanced`;
+
 const restoreText = (element, key) => {
   if (!hasStoredText(element, key)) return;
-  element.textContent = element.dataset[key];
+  const enhancedKey = getEnhancedTextKey(key);
+  if (
+    !hasStoredText(element, enhancedKey) ||
+    element.textContent === element.dataset[enhancedKey]
+  ) {
+    element.textContent = element.dataset[key];
+  }
   delete element.dataset[key];
+  delete element.dataset[enhancedKey];
 };
 
 const setEnhancedText = (element, key, value) => {
   if (!element) return;
+  const enhancedKey = getEnhancedTextKey(key);
   if (!hasStoredText(element, key)) {
     element.dataset[key] = element.textContent || "";
   }
+  element.dataset[enhancedKey] = value;
   if (element.textContent !== value) element.textContent = value;
 };
 
@@ -184,6 +195,15 @@ const prepareTableEmptyState = () => {
     ".manager-layout--tables .tm-container",
   );
   if (!container) return null;
+
+  const dataUnavailable = container.querySelector(
+    ".tm-grid-area > .tm-empty--error, .tm-grid-area .tm-table-card--skeleton",
+  );
+  if (dataUnavailable) {
+    container.classList.remove(NO_FLOORS_CLASS);
+    restoreEmptyState(container);
+    return container;
+  }
 
   const noFloors = getActualFloorCount(container) === 0;
   container.classList.toggle(NO_FLOORS_CLASS, noFloors);
