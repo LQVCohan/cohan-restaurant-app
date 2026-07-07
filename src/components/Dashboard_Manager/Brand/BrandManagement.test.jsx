@@ -155,7 +155,7 @@ beforeEach(() => {
 });
 
 describe("BrandManagement", () => {
-  it("renders concise production wording, metrics, branches and member scopes", () => {
+  it("renders concise production wording, metrics, branches and member filters", () => {
     render(<BrandManagement />);
 
     expect(
@@ -165,6 +165,7 @@ describe("BrandManagement", () => {
     expect(screen.getByText("Chi nhánh: 2")).toBeInTheDocument();
     expect(screen.getByText("Thành viên: 1")).toBeInTheDocument();
     expect(screen.getByText("Thông tin doanh nghiệp")).toBeInTheDocument();
+    expect(screen.getByText("Tìm và lọc thành viên")).toBeInTheDocument();
     expect(screen.getAllByText("Cohan Quận 1").length).toBeGreaterThan(0);
     expect(screen.getByText("Quản lý: Nguyễn Minh An")).toBeInTheDocument();
     expect(screen.getAllByText("Quản trị chuỗi").length).toBeGreaterThan(0);
@@ -224,7 +225,7 @@ describe("BrandManagement", () => {
   it("requires one available branch for a manager before adding the member", async () => {
     render(<BrandManagement />);
 
-    fireEvent.change(screen.getByLabelText("Mã tài khoản"), {
+    fireEvent.change(screen.getByLabelText("Mã tài khoản cần thêm"), {
       target: { value: "u-new-manager" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
@@ -234,7 +235,7 @@ describe("BrandManagement", () => {
     ).toBeInTheDocument();
     expect(addMemberMock).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Chi nhánh"), {
+    fireEvent.change(screen.getByLabelText("Chi nhánh phụ trách"), {
       target: { value: "r2" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
@@ -249,12 +250,14 @@ describe("BrandManagement", () => {
     expect(refetchMembersMock).toHaveBeenCalledTimes(1);
   });
 
-  it("filters members by name or account ID and changes member status", async () => {
+  it("searches by employee name or account ID and filters by role and branch", async () => {
     render(<BrandManagement />);
 
     const searchInput = screen.getByLabelText(
-      "Tìm thành viên theo tên hoặc mã tài khoản",
+      "Tìm tài khoản theo tên nhân viên hoặc mã tài khoản",
     );
+    const roleFilter = screen.getByLabelText("Lọc theo vai trò");
+    const branchFilter = screen.getByLabelText("Lọc theo chi nhánh");
 
     fireEvent.change(searchInput, { target: { value: "Nguyễn Minh An" } });
     expect(screen.getByText("Nguyễn Minh An")).toBeInTheDocument();
@@ -264,6 +267,17 @@ describe("BrandManagement", () => {
     expect(screen.getByText("Trần Hoài Nam")).toBeInTheDocument();
     expect(screen.queryByText("Nguyễn Minh An")).not.toBeInTheDocument();
 
+    fireEvent.change(searchInput, { target: { value: "" } });
+    fireEvent.change(roleFilter, { target: { value: "manager" } });
+    expect(screen.getByText("Nguyễn Minh An")).toBeInTheDocument();
+    expect(screen.queryByText("Trần Hoài Nam")).not.toBeInTheDocument();
+
+    fireEvent.change(roleFilter, { target: { value: "all" } });
+    fireEvent.change(branchFilter, { target: { value: "r2" } });
+    expect(screen.queryByText("Nguyễn Minh An")).not.toBeInTheDocument();
+    expect(screen.getByText("Trần Hoài Nam")).toBeInTheDocument();
+
+    fireEvent.change(branchFilter, { target: { value: "all" } });
     fireEvent.change(searchInput, { target: { value: "u-manager" } });
     const memberCard = screen.getByText("Nguyễn Minh An").closest("article");
     fireEvent.click(within(memberCard).getByRole("button", { name: "Tạm ngưng" }));
