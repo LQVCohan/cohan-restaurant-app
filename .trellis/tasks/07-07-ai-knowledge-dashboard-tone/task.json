@@ -3,7 +3,7 @@
   "name": "ai-knowledge-dashboard-tone",
   "title": "Align AI knowledge page with manager dashboard tone",
   "description": "Use the shared manager dashboard palette, surfaces, borders, shadows, focus states, and semantic colors on the AI chatbot knowledge page.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-ai-chatbot-knowledge",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "8ba11453ea7cfeba93ae62d45de3b72b5e0bbbd3",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -23,7 +23,8 @@
   "relatedFiles": [
     "src/components/Dashboard_Manager/Dashboard/Dashboard.scss",
     "src/layouts/ManagerUnifiedBackground.css",
-    "src/components/Dashboard_Manager/Customer/AiManagerUiPolish.css"
+    "src/components/Dashboard_Manager/Customer/AiChatbotKnowledgeManagerTheme.css",
+    "src/index.css"
   ],
-  "notes": "Visual-only change. Reuse shared --manager-* tokens; no data, GraphQL, permissions, or runtime behavior changes."
+  "notes": "Visual-only change. Reused shared --manager-* tokens and preserved semantic states, focus visibility, and reduced-motion behavior. Static import and selector review completed. No local build, browser screenshot comparison, or automated tests were available; GitHub reported no status checks for the final code commit."
 }
