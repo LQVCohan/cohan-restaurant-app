@@ -258,26 +258,16 @@ export default function BrandManagement() {
     const keyword = memberSearch.trim().toLowerCase();
     if (!keyword) return members;
 
-    return members.filter((currentMember) => {
-      const roleLabel = getChainRoleLabel(currentMember) || "";
-      const scopeLabel = getChainScopeLabel(
-        currentMember,
-        restaurants,
-        selectedBrand?.name,
-      );
-      const statusLabel = MEMBER_STATUS_LABELS[currentMember.status] || "";
-      return [
+    return members.filter((currentMember) =>
+      [
         currentMember.user?.fullName,
-        currentMember.user?.email,
         currentMember.userId,
-        roleLabel,
-        scopeLabel,
-        statusLabel,
+        currentMember.user?.id,
       ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(keyword));
-    });
-  }, [memberSearch, members, restaurants, selectedBrand?.name]);
+        .some((value) => String(value).toLowerCase().includes(keyword)),
+    );
+  }, [memberSearch, members]);
 
   const validateBrand = () => {
     const nextErrors = {};
@@ -456,25 +446,25 @@ export default function BrandManagement() {
         density="compact"
         showTimeWidget={false}
         eyebrow="QUẢN TRỊ CHUỖI"
-        title="Quản lý chuỗi nhà hàng"
-        subtitle="Cập nhật thông tin chuỗi, tổ chức chi nhánh và phân phạm vi cho từng thành viên."
+        title="Quản lý chuỗi"
+        subtitle="Quản lý thông tin, chi nhánh và thành viên."
         icon="🏢"
         stats={[
           {
             id: "chains",
-            label: "Chuỗi đang quản lý",
+            label: "Chuỗi",
             value: brands.length,
             icon: "◫",
           },
           {
             id: "branches",
-            label: "Tổng chi nhánh",
+            label: "Chi nhánh",
             value: totalBranchCount,
             icon: "⌂",
           },
           {
             id: "members",
-            label: "Thành viên hoạt động",
+            label: "Thành viên",
             value: activeMemberCount,
             icon: "◎",
           },
@@ -504,8 +494,8 @@ export default function BrandManagement() {
             loading: refreshing,
           },
         ]}
-        footerLeft={selectedRoleLabel ? `Quyền hiện tại: ${selectedRoleLabel}` : null}
-        footerRight={`Trạng thái chuỗi: ${selectedStatusLabel}`}
+        footerLeft={selectedRoleLabel ? `Vai trò: ${selectedRoleLabel}` : null}
+        footerRight={`Trạng thái: ${selectedStatusLabel}`}
       />
 
       {error && (
@@ -574,7 +564,7 @@ export default function BrandManagement() {
                 <div>
                   <span className="brand-panel__eyebrow">HỒ SƠ CHUỖI</span>
                   <h3>Thông tin doanh nghiệp</h3>
-                  <p>Dữ liệu dùng chung cho toàn bộ chi nhánh trong chuỗi.</p>
+                  <p>Áp dụng cho toàn chuỗi.</p>
                 </div>
                 <span className={`brand-status brand-status--${selectedBrand.status}`}>
                   {selectedStatusLabel}
@@ -672,7 +662,7 @@ export default function BrandManagement() {
                 <div>
                   <span className="brand-panel__eyebrow">MẠNG LƯỚI VẬN HÀNH</span>
                   <h3 id="branches-title">Chi nhánh</h3>
-                  <p>Chọn chi nhánh để chuyển nhanh phạm vi quản lý trên dashboard.</p>
+                  <p>Chọn để mở dashboard chi nhánh.</p>
                 </div>
                 <span className="brand-count-badge">{restaurants.length}</span>
               </div>
@@ -760,16 +750,16 @@ export default function BrandManagement() {
               <div>
                 <span className="brand-panel__eyebrow">PHÂN QUYỀN THEO PHẠM VI</span>
                 <h3 id="members-title">Thành viên trong chuỗi</h3>
-                <p>Gán vai trò và giới hạn đúng chi nhánh mà từng người phụ trách.</p>
+                <p>Phân quyền theo chi nhánh.</p>
               </div>
               <label className="brand-member-search">
                 <span aria-hidden="true">⌕</span>
                 <input
                   type="search"
-                  aria-label="Tìm thành viên trong chuỗi"
+                  aria-label="Tìm thành viên theo tên hoặc mã tài khoản"
                   value={memberSearch}
                   onChange={(event) => setMemberSearch(event.target.value)}
-                  placeholder="Tìm theo tên, email hoặc vai trò"
+                  placeholder="Tên hoặc mã tài khoản"
                 />
               </label>
             </div>
@@ -793,9 +783,9 @@ export default function BrandManagement() {
                 </label>
 
                 <label className="brand-field">
-                  <span>Vai trò trong chuỗi</span>
+                  <span>Vai trò</span>
                   <select
-                    aria-label="Vai trò trong chuỗi"
+                    aria-label="Vai trò"
                     value={member.role}
                     onChange={(event) => {
                       setMember((current) => ({
@@ -833,9 +823,9 @@ export default function BrandManagement() {
 
               {member.role === "manager" && (
                 <label className="brand-field brand-scope-control">
-                  <span>Chi nhánh phụ trách</span>
+                  <span>Chi nhánh</span>
                   <select
-                    aria-label="Chi nhánh phụ trách"
+                    aria-label="Chi nhánh"
                     value={member.restaurantIds[0] || ""}
                     onChange={(event) => {
                       setMember((current) => ({
@@ -967,7 +957,7 @@ export default function BrandManagement() {
                   <span aria-hidden="true">◎</span>
                   <p>
                     {members.length
-                      ? "Không có thành viên phù hợp với từ khóa tìm kiếm."
+                      ? "Không tìm thấy thành viên."
                       : "Chuỗi này chưa có thành viên nào ngoài tài khoản chủ sở hữu."}
                   </p>
                 </div>
