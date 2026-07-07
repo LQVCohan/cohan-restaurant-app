@@ -2,13 +2,17 @@
 
 ## Current behavior
 
-The table detail modal renders a text field and a **Ghép bàn** button. The searchable picker is attached later by `installTableTransferMergeEnhancement`, which stores readiness on the containing group and binds a capture-phase listener to the button element that exists at that moment.
+The React table-detail modal still renders a manual merge-code field and a **Ghép bàn** button. Earlier fixes tried to attach a searchable picker afterward through a `MutationObserver`, a capture listener bound to the current button element, and a replayed click.
 
-The screenshot after the first fix still showed the original `Ví dụ: A2, A3` placeholder and **Ghép bàn** label. This proves the rendered button was not enhanced, so clicking it reached the React merge handler with an empty `mergeCodes` value and returned without opening a picker.
+The user screenshots continued to show the original manual-entry UI. This meant the picker action was not visible and the rendered React button could still reach `handleMerge` with an empty value.
+
+The detail modal was also constrained by several later style layers to roughly 1010px, leaving long forms and the 360-degree section visually cramped on desktop.
 
 ## Root cause
 
-The picker depends on a listener bound to one transient React DOM button. The group-level `mergePickerReady` flag can survive while React replaces or rerenders the actual button, and asynchronous observer timing can also leave the first rendered button unbound. A pointer/focus fallback still relied on that same per-element binding and therefore did not correct the unstable ownership boundary.
+The picker did not have a stable, visible interaction owned at the document boundary. Its behavior depended on one transient React button and could conflict with stale observer/listener instances retained by Vite HMR. Replaying the same button click also made the flow difficult to reason about.
+
+The modal width issue came from final table-workflow SCSS overrides loaded after the component's inline defaults.
 
 ## End-to-end flow
 
@@ -16,52 +20,56 @@ The picker depends on a listener bound to one transient React DOM button. The gr
 2. `MergeTablesInput` accepts the restaurant, selected table IDs, and anchor table.
 3. The `mergeTables` resolver validates restaurant permission, same-floor membership, anchor membership, and conflicting groups before updating tables and writing an audit event.
 4. `useTableManagement` sends the mutation and synchronizes Apollo cache `joinGroupId` values.
-5. `TableManagement` passes restaurant tables and mutation actions to `TableActionsLiteModal`.
-6. `TableActionsLiteModal` owns the original merge action.
-7. The existing enhancement supplies the searchable same-floor picker and converts selected codes back into the React input.
-8. `installTableMergePickerTrigger` now owns the stable document-level trigger, rebinds a replaced React button when needed, and lets the existing picker and merge mutation continue unchanged.
+5. `TableManagement` passes the current restaurant tables and mutation actions to `TableActionsLiteModal`.
+6. `TableActionsLiteModal.handleMerge` parses the selected codes and invokes the existing mutation.
+7. `installTableMergePickerTrigger` now adds a visible **Chọn bàn từ danh sách** control, loads the latest table list directly through Apollo, and writes selected same-floor codes into the existing React field.
+8. The user explicitly presses **Ghép bàn đã chọn** to execute the unchanged React mutation path.
 
 ## Scope
 
-- Reuse the existing searchable picker, styles, same-floor filtering, grouped-table restrictions, and GraphQL mutation.
-- Display the picker action explicitly as **Chọn bàn**.
-- Use one delegated capture listener at the document boundary so the first click works even when React replaced the original button.
-- Rebind only when the current button has not been prepared.
-- Remove the previous pointer/focus listener patch from `main.jsx`.
-- Keep installation safe across Vite HMR by disconnecting/replacing the trigger observer and click handler.
+- Add a visible **Chọn bàn từ danh sách** button directly below the merge selection field.
+- Make the field read-only so table selection follows one clear path.
+- Search candidates by table code, status, capacity, and type.
+- Limit candidates to the current floor and exclude the current table.
+- Show tables already belonging to another group as disabled.
+- Preserve selected codes when reopening the picker.
+- Keep Escape, focus trapping, focus return, visible focus, mobile bottom-sheet behavior, and reduced-motion support.
+- Disconnect stale observer and click-handler keys left by previous HMR versions.
+- Widen the table-detail modal to `min(1240px, 96vw)` on desktop while retaining responsive limits.
 
 ## Files changed
 
-- `src/utils/installTableMergePickerTrigger.js`: stable trigger, button preparation, HMR cleanup, and explicit **Chọn bàn** label.
-- `src/utils/installTableMergePickerTrigger.test.js`: focused first-click regression test.
-- `src/main.jsx`: install the reliable trigger and remove the failed global interaction patch.
-- `.trellis/tasks/07-08-fix-table-merge-picker/task.json`: task state and result.
-- `.trellis/tasks/07-08-fix-table-merge-picker/prd.md`: corrected root cause and validation record.
+- `src/utils/installTableMergePickerTrigger.js`: explicit picker control, direct Apollo loading, search/filter/selection, stable delegated click handling, and legacy HMR cleanup.
+- `src/components/Dashboard_Manager/Table/TableManagementMergePickerFix.css`: wider detail modal and complete responsive picker presentation.
+- `src/main.jsx`: load the final modal/picker CSS after earlier theme overrides.
+- `src/utils/installTableMergePickerTrigger.test.js`: regression coverage for visible control, same-floor filtering, search, disabled grouped tables, selection, and empty native-button fallback.
+- Task artifacts in this directory.
 
 ## Acceptance criteria
 
-- The table detail modal shows **Chọn bàn** instead of relying on manual code entry.
-- The first click opens the existing searchable table picker.
-- Confirming selected tables still reaches the original React `handleMerge` and GraphQL mutation.
-- Keyboard-generated clicks follow the same delegated path.
-- React rerenders and Vite HMR do not leave a stale unbound merge button.
-- Same-floor filtering, grouped-table disabling, search, permissions, validation, audit logging, and Apollo synchronization remain unchanged.
-- No dependency, schema, resolver, service, or styling-library change is introduced.
+- The detail modal is visibly wider on desktop and remains within the viewport.
+- The merge section always displays **Chọn bàn từ danh sách**.
+- Clicking that control opens a searchable modal on the first attempt.
+- Clicking an empty native **Ghép bàn** action also opens the picker instead of silently returning.
+- Only same-floor tables are selectable; the current table is excluded.
+- Tables in another merge group are visible but disabled.
+- Confirming selection fills the existing merge field and changes the action to **Ghép bàn đã chọn**.
+- Executing the final merge still reaches the existing `handleMerge`, Apollo mutation, resolver validation, permissions, cache update, and audit log.
+- No schema, resolver, service, permission, dependency, or business-rule change is introduced.
 
 ## Out of scope
 
-- Rewriting the picker as a new React component.
 - Changing merge/split business rules or allowing cross-floor merges.
 - Changing the POS table action modal.
-- Redesigning unrelated sections of the table detail modal.
+- Rewriting the full table-detail form as a new component.
 
 ## Validation plan
 
 - Focused test: `vitest run src/utils/installTableMergePickerTrigger.test.js`.
-- Existing picker regression: `vitest run src/utils/installTableTransferMergeEnhancement.test.js`.
+- Existing table-detail test: `vitest run src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx`.
 - Repository checks when a runnable workspace or CI is available: `npm run check:conflicts` and `npm run build`.
-- Review the final diff for duplicate listeners, HMR cleanup, and unintended schema/resolver changes.
+- Desktop and narrow-screen browser verification of modal width, keyboard focus, search, selection, and final merge action.
 
 ## Validation result
 
-The focused regression test was added, but no local test, build, or GitHub Actions workflow was available in the connected environment. The final code was re-fetched and reviewed for syntax, listener cleanup, replay/bypass behavior, and unchanged backend contracts.
+Focused regression tests were updated in the repository. The connected environment did not provide a runnable checkout, so Vitest, build, browser smoke testing, and screenshot comparison were not executed here. The final files were re-fetched for import order, selector scope, stale-listener cleanup, direct Apollo flow, and unchanged backend contracts.
