@@ -1,5 +1,6 @@
 name: temp-run-restaurant-hours-fix
 
+# Temporary trigger; removed before merge.
 on:
   pull_request:
     branches:
