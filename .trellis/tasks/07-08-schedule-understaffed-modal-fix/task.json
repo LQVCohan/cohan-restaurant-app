@@ -1,0 +1,43 @@
+{
+  "id": "schedule-understaffed-modal-fix",
+  "name": "schedule-understaffed-modal-fix",
+  "title": "Fix schedule staffing status and add-shift modal",
+  "description": "Remove the stale empty-week notice, align shift coverage with resolvable assignments and scheduling policy, and improve the add-shift modal without changing the backend contract.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-schedule",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/utils/scheduleManagerAdminPolish.js",
+    "src/components/Dashboard_Manager/Schedule/ScheduleManagement.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/ShiftDetailModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AddShiftModal.test.jsx"
+  ],
+  "notes": "Planning complete. Root causes and validation plan are recorded in prd.md.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "web-design-guidelines",
+      "wcag-ui-audit",
+      "react-ui-performance"
+    ]
+  }
+}
