@@ -7,17 +7,25 @@ import {
 const renderHoursForm = () => {
   document.body.innerHTML = `
     <div class="restaurant-management-container">
-      <div class="ant-row">
+      <div class="ant-row restaurant-fields-row">
         <div class="ant-col">
           <div class="ant-form-item">
-            <div class="ant-form-item-label"><label>Giờ mở cửa</label></div>
-            <span class="ant-input-affix-wrapper"><input value="" /></span>
+            <div class="ant-row ant-form-item-row">
+              <div class="ant-form-item-label"><label>Giờ mở cửa</label></div>
+              <div class="ant-form-item-control">
+                <span class="ant-input-affix-wrapper"><input value="" /></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="ant-col">
           <div class="ant-form-item">
-            <div class="ant-form-item-label"><label>Giờ đóng cửa</label></div>
-            <span class="ant-input-affix-wrapper"><input value="" /></span>
+            <div class="ant-row ant-form-item-row">
+              <div class="ant-form-item-label"><label>Giờ đóng cửa</label></div>
+              <div class="ant-form-item-control">
+                <span class="ant-input-affix-wrapper"><input value="" /></span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -49,6 +57,9 @@ describe("restaurant hours enhancement", () => {
     );
     const [openingInput, closingInput] = document.querySelectorAll("input");
 
+    expect(document.querySelector(".restaurant-fields-row")).toHaveClass(
+      "restaurant-hours-grid",
+    );
     expect(openingSelect).not.toBeNull();
     expect(closingSelect).not.toBeNull();
     expect(buildRestaurantTimeOptions()).toContain("08:00");
