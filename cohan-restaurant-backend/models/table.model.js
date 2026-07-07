@@ -87,6 +87,15 @@ const TableSchema = BaseSchemaModel({
 
   isJoinable: { type: Boolean, default: false },
   joinGroupId: { type: String },
+  // Bàn ghép mới giữ danh sách bàn vật lý; bàn vật lý trỏ về bàn ghép để tạm ẩn.
+  mergedFromTableIds: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
+  ],
+  mergedIntoTableId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Table",
+    default: null,
+  },
   deposit: { type: Number, default: 1 },
 
   viewLock: {
@@ -102,6 +111,7 @@ TableSchema.index({ restaurantId: 1, floorId: 1, code: 1 }, { unique: true });
 // Truy vấn nhanh theo status/capacity/type
 TableSchema.index({ restaurantId: 1, status: 1, capacity: 1 });
 TableSchema.index({ restaurantId: 1, type: 1 });
+TableSchema.index({ restaurantId: 1, mergedIntoTableId: 1 });
 TableSchema.index({ "viewLock.expiresAt": 1 });
 
 export default mongoose.model("Table", TableSchema);
