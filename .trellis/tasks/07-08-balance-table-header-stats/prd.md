@@ -19,16 +19,20 @@ The table-management header stretches four independent KPI cards across the avai
 ## Scope
 
 - Keep all four existing statistics and calculations.
-- Replace mixed emoji with consistent lightweight glyphs plus tone classes.
+- Replace the mixed visible emoji treatment with consistent lightweight CSS glyphs and status dots.
 - Turn the four oversized cards into a compact grouped KPI strip with subtle dividers.
-- Keep number typography tabular and preserve readable labels.
+- Align each label and value on one row and keep numeric typography tabular.
 - Preserve the existing two-column mobile fallback.
 
-## Files to change
+## Files changed
 
-- `src/components/Dashboard_Manager/Table/TableManagement.jsx`
-- `src/components/Dashboard_Manager/Table/TableManagementScorePolish.scss`
+- `src/components/Dashboard_Manager/Table/TableManagementHeaderStatsPolish.scss`: table-page-only KPI layout and icon treatment.
+- `src/main.jsx`: load the override after the existing table-management polish layers.
 - Task artifacts in this directory.
+
+## Deliberate minimalism
+
+The existing JSX, shared `ManagementPageHeader`, GraphQL query, resolver, and calculations remain unchanged. The issue is presentational, so a scoped final SCSS layer is the smallest safe fix and avoids affecting other manager pages that reuse the shared header.
 
 ## Out of scope
 
@@ -36,6 +40,6 @@ The table-management header stretches four independent KPI cards across the avai
 
 ## Validation
 
-- Review the final JSX and SCSS diff.
-- Run the focused table-management component test and production build when a runnable workspace or CI is available.
-- Compare desktop and narrow-screen screenshots when browser execution is available.
+- Re-fetched and reviewed the final SCSS and import order.
+- Confirmed the selector is scoped under `.tm-container` and cannot alter unrelated manager headers.
+- A focused component test, production build, and browser screenshot comparison could not be run in the connected environment.
