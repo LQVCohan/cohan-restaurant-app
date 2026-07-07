@@ -375,23 +375,6 @@ async function scopedRestaurants(_, { brandId, limit = 20, cursor, restaurantFil
   return buildRestaurantConnection(baseFilter, { limit, cursor });
 }
 
-/** Deprecated legacy alias. New clients must use scopedRestaurants. System admin legacy lookups may still use Restaurant.managerId until migration completes. */
-async function restaurantsByManager(_, { managerId, brandId, limit = 20, cursor, restaurantFilter } = {}, ctx) {
-  if (!ctx?.user) throw unauthenticated("Unauthorized");
-  if (!mongoose.isValidObjectId(managerId)) throw badInput("Invalid managerId");
-  if (brandId && !mongoose.isValidObjectId(brandId)) throw badInput("Invalid brandId");
-
-  const requestedBrandFilter = brandId ? { brandId: new mongoose.Types.ObjectId(brandId) } : {};
-  if (isSystemAdmin(ctx.user)) {
-    const legacyManagerFilter = { managerId: new mongoose.Types.ObjectId(managerId) };
-    return buildRestaurantConnection(combineFilters(buildFilter(restaurantFilter), legacyManagerFilter, requestedBrandFilter), { limit, cursor });
-  }
-
-  const uid = String(ctx.user.id || ctx.user._id || "");
-  if (uid !== String(managerId)) return buildRestaurantConnection({ _id: { $in: [] } }, { limit, cursor });
-  return scopedRestaurants(_, { brandId, limit, cursor, restaurantFilter }, ctx);
-}
-
 /** Các nhà hàng tham chiếu theo user.refRestaurants */
 async function refRestaurants(_, { userId }) {
   if (!mongoose.isValidObjectId(userId)) {
@@ -535,7 +518,6 @@ export const RestaurantQuery = {
   restaurantsTop,
   restaurantsNearby,
   scopedRestaurants,
-  restaurantsByManager,
   refRestaurants,
   restaurantsByCategoryTimeSlot,
   restaurantCategoryIndexes,
