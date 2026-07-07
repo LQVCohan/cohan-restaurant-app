@@ -2,49 +2,173 @@ const STYLE_ID = "cohan-attendance-wording-tuning";
 const OBSERVER_KEY = "__cohanAttendanceWordingObserver";
 const MONGO_ID_PATTERN = /^[a-f0-9]{24}$/i;
 
-const WORDING_REPLACEMENTS = new Map([
-  ["Đang xử lý bất thường từ lịch làm việc", "Đang xem dữ liệu chấm công từ lịch làm việc"],
-  ["Lọc bảng công", "Xem bảng công"],
-  ["Tạo yêu cầu chỉnh công", "Tạo chỉnh công"],
-  ["Xem yêu cầu chỉnh công", "Yêu cầu đang chờ"],
+// Long, context-specific phrases come first; generic English terms are last.
+const TEXT_REPLACEMENTS = [
+  [
+    "Theo dõi công thực tế, xử lý chỉnh công có kiểm soát và đối chiếu trước kỳ lương.",
+    "Theo dõi giờ làm thực tế, xử lý điều chỉnh và kiểm tra dữ liệu trước khi tính lương.",
+  ],
+  [
+    "Dùng cho thao tác tại quầy quản lý ca. Trường hợp sai giờ, quên thẻ hoặc máy lỗi thì tạo yêu cầu chỉnh công để duyệt sau.",
+    "Ghi nhận giờ vào ca hoặc tan ca tại quầy quản lý. Nếu giờ công chưa đúng, hãy tạo yêu cầu điều chỉnh để duyệt.",
+  ],
+  [
+    "So sánh ca dự kiến với giờ vào/ra thực tế trong ngày đã chọn.",
+    "So sánh ca đã xếp với giờ vào và giờ ra thực tế trong ngày.",
+  ],
+  [
+    "Yêu cầu này cần được duyệt trước khi ảnh hưởng đến dữ liệu công.",
+    "Yêu cầu phải được duyệt trước khi cập nhật bảng công.",
+  ],
+  [
+    "Kiểm tra lại giờ vào/ra trước khi gửi yêu cầu chỉnh công.",
+    "Kiểm tra giờ vào và giờ ra trước khi gửi yêu cầu.",
+  ],
+  [
+    "Sau khi duyệt, yêu cầu có thể ảnh hưởng đến dữ liệu công thực tế.",
+    "Sau khi duyệt, hệ thống sẽ cập nhật dữ liệu chấm công.",
+  ],
+  [
+    "Yêu cầu sẽ không được áp dụng. Vui lòng nhập lý do từ chối rõ ràng.",
+    "Yêu cầu sẽ không được áp dụng. Hãy nêu rõ lý do từ chối.",
+  ],
+  [
+    "Yêu cầu này sẽ bị hủy và không còn khả dụng để duyệt.",
+    "Yêu cầu sẽ bị hủy và không thể tiếp tục duyệt.",
+  ],
+  [
+    "Chưa tìm thấy bản ghi chấm công khớp nhân viên này trong ngày đã chọn.",
+    "Chưa có bản ghi chấm công phù hợp trong ngày đã chọn.",
+  ],
+  [
+    "Có thể nhân viên chưa check-in hoặc bộ lọc nhà hàng/ngày chưa đúng.",
+    "Kiểm tra lại ngày, nhân viên hoặc nhà hàng trước khi tạo chỉnh công.",
+  ],
+  [
+    "Có nhiều bản ghi khớp. Hãy chọn dòng cụ thể trong bảng công.",
+    "Có nhiều dòng phù hợp. Hãy chọn đúng dòng trong bảng chấm công.",
+  ],
+  [
+    "Có nhiều bản ghi khớp, chọn dòng bên dưới để tạo chỉnh công.",
+    "Có nhiều dòng phù hợp. Hãy chọn đúng dòng để tạo chỉnh công.",
+  ],
+  [
+    "Đang hiển thị ngữ cảnh chung theo ngày/nhà hàng từ lịch làm việc.",
+    "Đang lọc theo ngày hoặc nhà hàng được chuyển từ lịch làm.",
+  ],
+  [
+    "Timesheet có overtime trong ngày",
+    "Số ca có phát sinh tăng ca trong ngày",
+  ],
+  [
+    "Admin, Manager hoặc HR xử lý",
+    "Quản trị viên, quản lý hoặc nhân sự xử lý",
+  ],
+  [
+    "Dựa trên planned end và check-out thực tế",
+    "Tính từ giờ kết thúc ca đến giờ ra thực tế",
+  ],
+  [
+    "Payroll chỉ dùng số phút đã duyệt",
+    "Bảng lương chỉ tính thời gian đã duyệt",
+  ],
+  [
+    "Bản ghi tăng ca này đã được review trước đó. Vui lòng tải lại danh sách.",
+    "Bản ghi tăng ca đã được xử lý. Vui lòng tải lại danh sách.",
+  ],
+  [
+    "Số phút duyệt không được vượt quá overtime thực tế.",
+    "Thời gian duyệt không được vượt quá thời gian tăng ca thực tế.",
+  ],
+  ["Đang xử lý bất thường từ lịch làm việc", "Đang xem dữ liệu từ lịch làm"],
+  ["Lọc bảng công", "Xem bảng chấm công"],
+  ["Tạo yêu cầu chỉnh công", "Tạo yêu cầu chỉnh công"],
+  ["Xem yêu cầu chỉnh công", "Xem yêu cầu chỉnh công"],
   ["Xoá bộ lọc từ lịch", "Bỏ lọc từ lịch"],
   ["Tổng nhân sự (ca/ngày)", "Nhân sự trong ngày"],
   ["Đang/đã đi làm", "Có mặt"],
-  ["Đi muộn / Về sớm", "Muộn / về sớm"],
-  ["Chờ duyệt chỉnh công", "Chờ duyệt"],
+  ["Đi muộn / Về sớm", "Đi muộn hoặc về sớm"],
+  ["Chờ duyệt chỉnh công", "Yêu cầu chỉnh công"],
   ["Ghi nhận vào ca / tan ca", "Chấm công nhanh"],
-  ["Lý do / ghi chú ca trực:", "Ghi chú ca:"],
+  ["Chọn nhân viên đang có mặt tại ca...", "Chọn nhân viên..."],
+  ["Chọn nhân viên:", "Nhân viên"],
+  ["Lý do / ghi chú ca trực:", "Ghi chú ca"],
+  ["Đã lưu chấm công VÀO CA thành công.", "Đã ghi nhận giờ vào ca."],
+  ["Đã lưu chấm công TAN CA thành công.", "Đã ghi nhận giờ tan ca."],
+  ["Lưu chấm công thất bại:", "Không thể lưu chấm công:"],
+  ["Bảng công", "Bảng chấm công"],
+  ["Đối chiếu lịch & công thực tế", "Đối chiếu lịch làm và chấm công"],
+  ["Điểm cần rà soát nhanh", "Trường hợp cần kiểm tra"],
+  ["Ca dự kiến:", "Theo lịch:"],
+  ["Lọc để xem", "Xem bản ghi"],
+  ["Đúng lịch", "Đúng giờ"],
   ["No-show / Vắng lịch", "Vắng ca"],
+  ["Vắng lịch", "Vắng ca"],
   ["Thiếu check-out", "Quên tan ca"],
+  ["Đang trong ca", "Đang làm việc"],
+  ["Đang làm", "Đang làm việc"],
+  ["Muộn & về sớm", "Đi muộn và về sớm"],
+  ["Vào ca ngoài lịch", "Đang làm ngoài lịch"],
+  ["Hoàn tất ngoài lịch", "Đã làm ngoài lịch"],
+  ["Ngoài lịch", "Làm ngoài lịch"],
+  ["Quên check-in", "Thiếu giờ vào"],
+  ["Quên check-out", "Thiếu giờ ra"],
+  ["Sai giờ check-in", "Sai giờ vào"],
+  ["Sai giờ check-out", "Sai giờ ra"],
+  ["Sai cả check-in/out", "Sai cả giờ vào và giờ ra"],
+  ["Giờ hiện tại", "Dữ liệu hiện tại"],
+  ["Giờ đề xuất", "Dữ liệu đề nghị"],
+  ["Check-in hiện tại", "Giờ vào hiện tại"],
+  ["Check-out hiện tại", "Giờ ra hiện tại"],
+  ["Giờ thực tế đề xuất", "Giờ đề nghị"],
+  ["Check-in đề xuất", "Giờ vào đề nghị"],
+  ["Check-out đề xuất", "Giờ ra đề nghị"],
+  ["Người review", "Người duyệt"],
+  ["Review lúc", "Duyệt lúc"],
+  ["Ghi chú review", "Ghi chú duyệt"],
+  ["Ghi chú bằng chứng", "Ghi chú minh chứng"],
+  ["Link bằng chứng, mỗi dòng một link", "Liên kết minh chứng, mỗi dòng một liên kết"],
+  ["Link bằng chứng", "Liên kết minh chứng"],
+  ["Lý do & bằng chứng", "Lý do và minh chứng"],
+  ["Từ chối / Hủy", "Từ chối hoặc đã hủy"],
+  ["Overtime thực tế", "Thời gian tăng ca"],
+  ["Tăng ca phát sinh từ bảng công", "Tăng ca ghi nhận từ bảng chấm công"],
+  ["Số phút được duyệt", "Thời gian được duyệt"],
+  ["Số phút", "Thời lượng"],
+  ["Được duyệt", "Đã duyệt"],
   ["scheduled_absent", "Vắng ca"],
-  ["unscheduled_checkin", "Vào ca ngoài lịch"],
-]);
+  ["unscheduled_checkin", "Làm ngoài lịch"],
+  ["Timesheet", "Bảng công"],
+  ["timesheet", "bảng công"],
+  ["Overtime", "Tăng ca"],
+  ["overtime", "tăng ca"],
+  ["Payroll", "Bảng lương"],
+  ["payroll", "bảng lương"],
+  ["Check-in", "Giờ vào"],
+  ["Check-out", "Giờ ra"],
+  ["check-in", "giờ vào"],
+  ["check-out", "giờ ra"],
+  ["review", "duyệt"],
+  ["VÀO CA", "Vào ca"],
+  ["TAN CA", "Tan ca"],
+];
 
-const HINT_REPLACEMENTS = [
-  {
-    test: "Chưa tìm thấy bản ghi chấm công khớp nhân viên này trong ngày đã chọn.",
-    text: "Chưa có bản ghi chấm công phù hợp trong ngày đã chọn.",
-  },
-  {
-    test: "Có thể nhân viên chưa check-in hoặc bộ lọc nhà hàng/ngày chưa đúng.",
-    text: "Kiểm tra lại ngày, nhân viên hoặc nhà hàng trước khi tạo chỉnh công.",
-  },
-  {
-    test: "Có nhiều bản ghi khớp. Hãy chọn dòng cụ thể trong bảng công.",
-    text: "Có nhiều dòng phù hợp. Hãy chọn đúng dòng trong bảng công bên dưới.",
-  },
-  {
-    test: "Có nhiều bản ghi khớp, chọn dòng bên dưới để tạo chỉnh công.",
-    text: "Có nhiều dòng phù hợp. Hãy chọn đúng dòng trong bảng công bên dưới.",
-  },
-  {
-    test: "Chưa có bản ghi chấm công để tạo chỉnh công.",
-    text: "Chưa có dữ liệu chấm công để tạo chỉnh công.",
-  },
-  {
-    test: "Đang hiển thị ngữ cảnh chung theo ngày/nhà hàng từ lịch làm việc.",
-    text: "Đang lọc theo ngày hoặc nhà hàng được chuyển từ lịch làm việc.",
-  },
+const ATTRIBUTE_REPLACEMENTS = [
+  ["VD: Quên thẻ, đổi ca, máy vân tay lỗi...", "Ví dụ: quên thẻ, đổi ca, máy chấm công lỗi..."],
+  ["🔍 Tìm nhân viên / lý do...", "Tìm nhân viên hoặc lý do..."],
+  ["🔍 Tìm nhân viên...", "Tìm nhân viên..."],
+  [
+    "VD: Nhân viên quên check-out, quản lý đã xác nhận qua camera...",
+    "Ví dụ: nhân viên quên tan ca, quản lý đã đối chiếu camera...",
+  ],
+  [
+    "VD: Camera khu vực bếp, xác nhận từ trưởng ca...",
+    "Ví dụ: camera khu vực bếp hoặc xác nhận của trưởng ca...",
+  ],
+  [
+    "Ghi chú xác nhận hoặc bối cảnh review...",
+    "Ghi chú xác nhận hoặc nội dung đã đối chiếu...",
+  ],
 ];
 
 const CSS = `
@@ -127,19 +251,6 @@ const CSS = `
   padding: 7px 12px !important;
   box-shadow: none !important;
 }
-.attendance-readiness-focus-banner .focus-actions .staff-secondary-btn:hover:not(:disabled) {
-  background: #e5f6f1 !important;
-  border-color: rgba(15, 118, 110, 0.34) !important;
-}
-.attendance-readiness-focus-banner .focus-actions .staff-secondary-btn:disabled {
-  opacity: 0.48 !important;
-  cursor: not-allowed !important;
-}
-.attendance-readiness-focus-banner .focus-pending-badge {
-  background: #fff7ed !important;
-  border-color: #fed7aa !important;
-  color: #9a5b16 !important;
-}
 .attendance-management-page .page-subtitle,
 .attendance-management-page .quick-header .text p,
 .attendance-management-page .inline-state,
@@ -151,6 +262,12 @@ const CSS = `
 
 const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
+const applyReplacements = (value, replacements = TEXT_REPLACEMENTS) =>
+  replacements.reduce((result, [current, next]) => {
+    if (!result.includes(current)) return result;
+    return result.split(current).join(next);
+  }, String(value ?? ""));
+
 const toDisplayDate = (value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const [year, month, day] = value.split("-");
@@ -160,9 +277,7 @@ const toDisplayDate = (value) => {
 const isTechnicalId = (value) => MONGO_ID_PATTERN.test(String(value || "").trim());
 
 const setText = (element, value) => {
-  if (element && element.textContent !== value) {
-    element.textContent = value;
-  }
+  if (element && element.textContent !== value) element.textContent = value;
 };
 
 const injectStyle = () => {
@@ -173,15 +288,30 @@ const injectStyle = () => {
   document.head.appendChild(style);
 };
 
-const patchPlainWording = (root) => {
-  WORDING_REPLACEMENTS.forEach((next, current) => {
-    root.querySelectorAll("button, span, label, h2, h3, h4, p, th, td, option").forEach((element) => {
-      const text = normalize(element.textContent);
-      if (text === current) {
-        setText(element, next);
-      }
-    });
+const patchTextNodes = (root) => {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+
+  nodes.forEach((node) => {
+    const next = applyReplacements(node.nodeValue);
+    if (next !== node.nodeValue) node.nodeValue = next;
   });
+};
+
+const patchAttributes = (root) => {
+  root
+    .querySelectorAll("[placeholder], [title], [aria-label]")
+    .forEach((element) => {
+      ["placeholder", "title", "aria-label"].forEach((attribute) => {
+        if (!element.hasAttribute(attribute)) return;
+        const current = element.getAttribute(attribute) || "";
+        const next = applyReplacements(
+          applyReplacements(current, ATTRIBUTE_REPLACEMENTS),
+        );
+        if (current !== next) element.setAttribute(attribute, next);
+      });
+    });
 };
 
 const patchFocusMeta = (banner) => {
@@ -201,19 +331,15 @@ const patchFocusMeta = (banner) => {
       const value = text.replace("Nhân viên:", "").trim();
       if (!value || value === "--" || isTechnicalId(value)) {
         item.remove();
-        return;
       }
-      setText(item, `Nhân viên: ${value}`);
       return;
     }
 
     if (text.startsWith("Nhà hàng:")) {
       const value = text.replace("Nhà hàng:", "").trim();
       if (!value || isTechnicalId(value)) {
-        setText(item, "Nhà hàng: Đang áp dụng theo chi nhánh đã chọn");
-        return;
+        setText(item, "Nhà hàng: Theo chi nhánh đang chọn");
       }
-      setText(item, `Nhà hàng: ${value}`);
       return;
     }
 
@@ -227,16 +353,10 @@ const patchFocusHints = (banner) => {
   const seen = new Set();
   banner.querySelectorAll(".focus-hint").forEach((hint) => {
     const text = normalize(hint.textContent);
-    const replacement = HINT_REPLACEMENTS.find((item) => text === item.test);
-    if (replacement) {
-      setText(hint, replacement.text);
-    }
-
-    const finalText = normalize(hint.textContent);
-    if (seen.has(finalText)) {
+    if (seen.has(text)) {
       hint.remove();
     } else {
-      seen.add(finalText);
+      seen.add(text);
     }
   });
 };
@@ -244,24 +364,18 @@ const patchFocusHints = (banner) => {
 const patchFocusBanner = (root) => {
   root.querySelectorAll(".attendance-readiness-focus-banner").forEach((banner) => {
     const title = banner.querySelector("strong");
-    setText(title, "Đang xem dữ liệu chấm công từ lịch làm việc");
+    setText(title, "Đang xem dữ liệu từ lịch làm");
 
     if (!banner.querySelector(".focus-summary-copy")) {
       const summary = document.createElement("p");
       summary.className = "focus-summary-copy";
       summary.textContent =
-        "Khu vực này chỉ xuất hiện khi bạn mở Chấm công từ Lịch làm. Hệ thống tự lọc theo ngày, nhân viên hoặc nhà hàng để bạn kiểm tra nhanh ca cần xử lý.";
+        "Hệ thống đã lọc theo ngày, nhân viên hoặc nhà hàng để bạn kiểm tra ca cần xử lý.";
       title?.insertAdjacentElement("afterend", summary);
     }
 
     patchFocusMeta(banner);
     patchFocusHints(banner);
-
-    banner.querySelectorAll(".focus-actions .staff-secondary-btn").forEach((button) => {
-      const text = normalize(button.textContent);
-      const next = WORDING_REPLACEMENTS.get(text);
-      if (next) setText(button, next);
-    });
   });
 };
 
@@ -269,8 +383,14 @@ const patchAttendancePage = () => {
   const root = document.querySelector(".attendance-management-page");
   if (!root) return;
 
-  patchPlainWording(root);
+  patchTextNodes(root);
+  patchAttributes(root);
   patchFocusBanner(root);
+};
+
+const schedulePatch = () => {
+  const run = window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
+  run(patchAttendancePage);
 };
 
 export const installAttendanceWordingTuning = () => {
@@ -280,9 +400,7 @@ export const installAttendanceWordingTuning = () => {
   patchAttendancePage();
 
   if (window[OBSERVER_KEY]) return;
-  const observer = new MutationObserver(() => {
-    window.requestAnimationFrame(patchAttendancePage);
-  });
+  const observer = new MutationObserver(schedulePatch);
   observer.observe(document.body, {
     childList: true,
     subtree: true,
