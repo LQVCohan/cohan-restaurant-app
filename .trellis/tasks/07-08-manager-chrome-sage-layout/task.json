@@ -1,0 +1,19 @@
+{
+  "id": "07-08-manager-chrome-sage-layout",
+  "title": "Đồng bộ màu và layout header/sidebar quản lý",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/Styles/HeaderShellFix.scss",
+    "src/components/Dashboard_Manager/Styles/SidebarShellFix.scss"
+  ],
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npm run build",
+      "browser smoke at desktop, 430x932 and 390x844"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
