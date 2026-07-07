@@ -1,0 +1,23 @@
+{
+  "id": "defense-handover-seed",
+  "name": "defense-handover-seed",
+  "title": "Prepare defense handover seed",
+  "description": "Create one local demo seed command and handover documentation for the graduation defense.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "demo-seed-and-handover-docs",
+  "package": "cohan-restaurant-backend",
+  "priority": "P1",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "defense-handover-seed",
+  "base_branch": "main",
+  "relatedFiles": [
+    "cohan-restaurant-backend/scripts/seedDefenseDemo.js",
+    "cohan-restaurant-backend/tests/scripts/seed-defense-demo.test.js",
+    "cohan-restaurant-backend/package.json",
+    "package.json",
+    "handover/README.md",
+    "handover/Account.md"
+  ]
+}
