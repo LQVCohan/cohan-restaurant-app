@@ -4,7 +4,6 @@ enum SearchEntityType {
   CHEF
   OWNER
   LOCATION
-  CHEF
 }
 
 type RestaurantSearchSuggestion {
@@ -86,7 +85,6 @@ type SearchResult {
   menuItem: MenuItem
   chef: ChefSearchProfile
   owner: User
-  chef: User
 
   categoryName: String
   servingLabel: String
