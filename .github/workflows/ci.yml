@@ -115,3 +115,49 @@ jobs:
 
       - name: Build
         run: npm run build --if-present
+
+  patch-restaurant-hours:
+    name: patch restaurant hours
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 1244
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/restaurant-hours-controls
+          fetch-depth: 0
+
+      - name: Apply and push the component patch
+        run: |
+          if grep -q 'const getHoursValidationError' src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx; then
+            echo "Restaurant hours patch already applied"
+            exit 0
+          fi
+
+          git fetch origin main
+          git show origin/main:.github/workflows/temp-patch-restaurant-hours-pr.yml > /tmp/patch-workflow.yml
+          python - <<'PY'
+          from pathlib import Path
+          lines = Path('/tmp/patch-workflow.yml').read_text(encoding='utf-8').splitlines()
+          start = next(i for i, line in enumerate(lines) if "python - <<'PY'" in line)
+          end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == 'PY')
+          script = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in lines[start + 1:end]
+          ) + '\n'
+          Path('/tmp/restaurant-hours-patch.py').write_text(script, encoding='utf-8')
+          PY
+          python /tmp/restaurant-hours-patch.py
+
+          git diff --check
+          grep -q 'type="time"' src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx
+          grep -q 'getHoursValidationError' src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx \
+            src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx \
+            src/styles/RestaurantProfileHoursResponsiveFix.css
+          git commit -m "fix: upgrade restaurant opening hours controls"
+          git push origin HEAD:fix/restaurant-hours-controls
