@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const modelMocks = vi.hoisted(() => ({
   Staff: { find: vi.fn(), findById: vi.fn() },
   Timesheet: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn() },
@@ -9,6 +12,10 @@ const modelMocks = vi.hoisted(() => ({
   Role: {}, PayrollSetting: {}, PayrollAdjustment: {}, EmployeeCodeCounter: {}, Notification: {},
 }));
 vi.mock('../../models/index.js', () => modelMocks);
+vi.mock('../../src/services/auth/restaurantScope.service.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock('../../src/services/attendance/attendanceCorrectionWorkflow.service.js', () => ({ getAttendanceCorrectionRequest: vi.fn(), listAttendanceCorrectionRequests: vi.fn() }));
 vi.mock('../../src/services/overtime/overtimeRequest.service.js', () => ({ getOvertimeRequest: vi.fn(), listOvertimeRequests: vi.fn() }));
 
@@ -18,10 +25,10 @@ import Mutation from '../../graphql/resolvers/staff/mutation.js';
 describe('off-schedule workflow visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.PayrollPeriod.findOne.mockReturnValue({ sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(null) });
     modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
-
 
   it("keeps existing attendance/performance query resolvers registered", () => {
     expect(Query.attendanceCorrectionRequests).toBeTypeOf("function");
