@@ -1,0 +1,32 @@
+{
+  "id": "fix-table-merge-picker",
+  "name": "fix-table-merge-picker",
+  "title": "Fix table merge picker opening",
+  "description": "Ensure the existing table merge picker enhancer is attached before the merge action click so managers can select same-floor tables instead of seeing a dead button.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "table-management-ui",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/main.jsx",
+    "src/utils/installTableTransferMergeEnhancement.js",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
+    "src/hooks/useTableManagement.js",
+    "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/table/mutation.js"
+  ],
+  "notes": "The data contract and mutation path are already valid. The fix stays at the existing UI enhancer installation boundary and adds no dependency."
+}
