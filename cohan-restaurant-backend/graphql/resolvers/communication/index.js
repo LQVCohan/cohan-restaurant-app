@@ -5,7 +5,6 @@ import {
   ChatThread,
   Notification,
   Restaurant,
-  User,
 } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
@@ -13,6 +12,10 @@ import {
   hasAnyPermission,
   hasPermission,
 } from "../../../src/services/auth/authorization.service.js";
+import {
+  getScopedRestaurantFilter,
+  isSystemAdmin,
+} from "../../../src/services/auth/restaurantScope.service.js";
 import { emitAiChatbotStaffReplyIfLinked } from "../../../src/services/ai/restaurantChatbotRealtime.service.js";
 import { setNotificationSocketServer } from "../../../src/services/notification/notificationWorkflow.service.js";
 
@@ -45,26 +48,24 @@ const ensureAuth = (ctx) => {
   }
 };
 
+async function loadRestaurantBrandId(restaurantId) {
+  if (!restaurantId) return null;
+  const restaurant = await Restaurant.findById(restaurantId).select("brandId").lean();
+  return restaurant?.brandId || null;
+}
+
 async function activeManagerIdsForRestaurant(restaurantId) {
-  if (!restaurantId) return [];
+  const brandId = await loadRestaurantBrandId(restaurantId);
+  if (!brandId) return [];
+
   const memberships = await BrandMembership.find({
+    brandId,
     role: "manager",
     status: "active",
     restaurantIds: restaurantId,
   }).select("userId").lean();
-  const membershipManagerIds = [...new Set(memberships.map((membership) => String(membership.userId)).filter(Boolean))];
-  if (membershipManagerIds.length) return membershipManagerIds;
-
-  // Temporary legacy fallback until Restaurant.managerId values are migrated to BrandMembership.
-  const restaurant = await Restaurant.findById(restaurantId).select("managerId").lean();
-  return restaurant?.managerId ? [String(restaurant.managerId)] : [];
+  return [...new Set(memberships.map((membership) => String(membership.userId)).filter(Boolean))];
 }
-
-const getUserRestaurantIds = (user) => {
-  const ids = [user?.restaurantForStaff, user?.restaurantId];
-  if (Array.isArray(user?.restaurantIds)) ids.push(...user.restaurantIds);
-  return [...new Set(ids.map((id) => String(id || "")).filter(Boolean))];
-};
 
 const canAccessThread = async (thread, user, ctx, restaurantScopeChecked = false) => {
   const uid = String(user?.id || "");
@@ -83,45 +84,58 @@ const canAccessThread = async (thread, user, ctx, restaurantScopeChecked = false
     }
   }
 
-  if (["admin"].includes(roleSlug(user))) return true;
+  if (isSystemAdmin(user)) return true;
   if ((thread.participants || []).some((p) => String(p) === uid)) return true;
 
   const myRole = roleSlug(user);
   if (thread.targetRole && myRole && myRole === String(thread.targetRole).toLowerCase()) {
-    const myRestaurantIds = getUserRestaurantIds(user);
-    return !thread.restaurantId || myRestaurantIds.includes(String(thread.restaurantId));
+    if (!thread.restaurantId) return true;
+    if (restaurantScopeChecked) return true;
+    try {
+      await requireRestaurantAccess(ctx, thread.restaurantId);
+      return true;
+    } catch {
+      return false;
+    }
   }
   return false;
 };
 
 const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
-  const role = String(thread?.targetRole || "").toUpperCase();
-  if (!role || !thread?.restaurantId) return [];
+  const targetRole = String(thread?.targetRole || "").toLowerCase();
+  if (!targetRole || !thread?.restaurantId) return [];
 
-  const roleMap = {
-    management: ["MANAGER", "ADMIN"],
-    manager: ["MANAGER", "ADMIN"],
-    kitchen: ["STAFF"],
-    cashier: ["STAFF"],
-    staff: ["STAFF"],
-    support: ["STAFF", "MANAGER", "ADMIN"],
+  const brandId = await loadRestaurantBrandId(thread.restaurantId);
+  if (!brandId) return [];
+
+  const membershipBranches = {
+    management: [
+      { role: { $in: ["owner", "admin"] } },
+      { role: "manager", restaurantIds: thread.restaurantId },
+    ],
+    manager: [
+      { role: { $in: ["owner", "admin"] } },
+      { role: "manager", restaurantIds: thread.restaurantId },
+    ],
+    kitchen: [{ role: "staff", restaurantIds: thread.restaurantId }],
+    cashier: [{ role: "staff", restaurantIds: thread.restaurantId }],
+    staff: [{ role: "staff", restaurantIds: thread.restaurantId }],
+    support: [
+      { role: { $in: ["owner", "admin"] } },
+      { role: { $in: ["manager", "staff"] }, restaurantIds: thread.restaurantId },
+    ],
   };
+  const branches = membershipBranches[targetRole];
+  if (!branches) return [];
 
-  const userTypes = roleMap[role.toLowerCase()] || [role];
+  const memberships = await BrandMembership.find({
+    brandId,
+    status: "active",
+    $or: branches,
+  }).select("userId").lean();
 
-  const users = await User.find({
-    userType: { $in: userTypes },
-    restaurantForStaff: thread.restaurantId,
-  })
-    .select("_id")
-    .lean();
-
-  const recipientIds = users.map((u) => String(u._id));
-  if (["management", "manager", "support"].includes(String(thread.targetRole || "").toLowerCase())) {
-    recipientIds.push(...await activeManagerIdsForRestaurant(thread.restaurantId));
-  }
-
-  return [...new Set(recipientIds)].filter((id) => id !== String(senderId));
+  return [...new Set(memberships.map((membership) => String(membership.userId)).filter(Boolean))]
+    .filter((id) => id !== String(senderId));
 };
 
 const toThreadOutput = (thread, userId) => {
@@ -167,9 +181,11 @@ const buildNotificationCondition = async (ctx, { restaurantId, unreadOnly = fals
 
   if (!isCustomer) {
     const roleCondition = cond.$or[1];
-    if (rid) roleCondition.restaurantId = rid;
-    else if (!userRole.includes("admin")) {
-      const scopedIds = getUserRestaurantIds(user).map(toId).filter(Boolean);
+    if (rid) {
+      roleCondition.restaurantId = rid;
+    } else if (!isSystemAdmin(user)) {
+      const scopedFilter = await getScopedRestaurantFilter(user);
+      const scopedIds = await Restaurant.distinct("_id", scopedFilter);
       roleCondition.restaurantId = { $in: scopedIds };
     }
   }
