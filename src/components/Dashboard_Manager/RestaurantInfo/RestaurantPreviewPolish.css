@@ -87,11 +87,11 @@
   content: "Bản xem trước di động · cập nhật theo dữ liệu đang nhập";
   position: relative;
   z-index: 1;
-  margin-top: 12px;
-  color: var(--ri-qc-muted);
-  font-size: 0.7rem;
-  font-weight: 680;
-  line-height: 1.4;
+  margin-top: 14px;
+  color: #56665f;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1.45;
   text-align: center;
   text-wrap: balance;
 }
@@ -99,15 +99,15 @@
 .manager-layout .restaurant-management-container .desktop-preview-card {
   position: relative;
   z-index: 1;
-  width: min(100%, 330px) !important;
+  width: min(100%, 322px) !important;
   margin-inline: auto;
-  padding: 16px 8px 17px !important;
-  border: 1px solid rgba(255, 255, 255, 0.45) !important;
-  border-radius: 34px !important;
-  background: linear-gradient(155deg, #2b3a33 0%, #121a16 100%) !important;
+  padding: 11px 6px 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.42) !important;
+  border-radius: 31px !important;
+  background: linear-gradient(155deg, #33443d 0%, #1b2621 100%) !important;
   box-shadow:
-    0 30px 64px rgba(34, 56, 47, 0.28),
-    inset 0 1px rgba(255, 255, 255, 0.22) !important;
+    0 24px 48px rgba(34, 56, 47, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.18) !important;
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card::before {
@@ -115,14 +115,14 @@
   display: block !important;
   position: absolute;
   z-index: 3;
-  top: 6px;
+  top: 7px;
   left: 50%;
-  width: 58px !important;
-  height: 5px !important;
+  width: 52px !important;
+  height: 4px !important;
   margin: 0 !important;
   border-radius: 999px;
-  background: #0a0f0c;
-  box-shadow: 0 1px rgba(255, 255, 255, 0.12);
+  background: #121915;
+  opacity: 0.88;
   transform: translateX(-50%);
 }
 
@@ -130,27 +130,27 @@
   content: "";
   position: absolute;
   z-index: 3;
-  bottom: 6px;
+  bottom: 7px;
   left: 50%;
-  width: 68px;
-  height: 4px;
+  width: 54px;
+  height: 3px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.58);
   transform: translateX(-50%);
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
   display: block;
-  height: min(580px, calc(100dvh - 205px)) !important;
-  min-height: 520px !important;
-  border-radius: 24px !important;
+  height: min(592px, calc(100dvh - 205px)) !important;
+  min-height: 532px !important;
+  border-radius: 22px !important;
   background: #fff !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card .empty-preview {
-  min-height: 520px;
-  border-radius: 24px;
+  min-height: 532px;
+  border-radius: 22px;
   background: linear-gradient(180deg, #f8fbf9, #edf4f0);
 }
 
@@ -161,11 +161,11 @@
   }
 
   .manager-layout .restaurant-management-container .desktop-preview-card {
-    width: min(100%, 350px) !important;
+    width: min(100%, 340px) !important;
   }
 
   .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
-    height: 560px !important;
+    height: 570px !important;
     min-height: 0 !important;
   }
 }
