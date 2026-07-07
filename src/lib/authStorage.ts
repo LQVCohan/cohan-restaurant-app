@@ -5,6 +5,11 @@ let accessToken: string | null = null;
 export const SESSION_ACCESS_TOKEN_KEY = "foodhub_access_token";
 
 const LEGACY_KEYS = ["auth_token", "auth_user", "auth_remember", "token", "auth_remember_until"];
+const MANAGER_WORKSPACE_KEYS = [
+  "manager.currentPage",
+  "manager.selectedBrandId",
+  "manager.selectedRestaurantId",
+];
 
 function getSessionStorage(): Storage | null {
   if (typeof window === "undefined") return null;
@@ -41,8 +46,14 @@ export function clearLegacyAuthStorage() {
   storages.forEach((storage) => LEGACY_KEYS.forEach((key) => storage.removeItem(key)));
 }
 
+export function clearManagerWorkspaceStorage() {
+  const storage = getLocalStorage();
+  MANAGER_WORKSPACE_KEYS.forEach((key) => storage?.removeItem(key));
+}
+
 export function clearAuth() {
   accessToken = null;
   getSessionStorage()?.removeItem(SESSION_ACCESS_TOKEN_KEY);
   clearLegacyAuthStorage();
+  clearManagerWorkspaceStorage();
 }
