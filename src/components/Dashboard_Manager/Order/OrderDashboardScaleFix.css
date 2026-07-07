@@ -12,6 +12,9 @@
   max-width: 1360px !important;
   min-width: 0;
   margin: 0 auto !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 .manager-layout.manager-layout--orders
@@ -145,6 +148,9 @@
   .om-content {
   overflow: visible !important;
   padding: 0 0 24px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 .manager-layout.manager-layout--orders
