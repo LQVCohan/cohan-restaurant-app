@@ -302,3 +302,50 @@
     justify-self: end;
   }
 }
+
+/* Keep route loading and other manager fallback states on the same sage canvas. */
+.manager-layout .manager-page-shell__body > .manager-page-shell__empty {
+  min-height: clamp(18rem, 58vh, 36rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0;
+  padding: clamp(2rem, 6vw, 4rem) 1rem;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--manager-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.manager-layout .manager-page-shell__body > .manager-page-shell__empty::before {
+  content: "";
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 3.25rem;
+  border: 1px solid var(--manager-border);
+  border-radius: 1rem;
+  background:
+    linear-gradient(var(--manager-accent), var(--manager-accent)) 0.84rem 0.84rem / 1.58rem 0.28rem no-repeat,
+    linear-gradient(var(--manager-primary), var(--manager-primary)) 0.84rem 1.47rem / 1.16rem 0.28rem no-repeat,
+    linear-gradient(rgba(83, 108, 97, 0.48), rgba(83, 108, 97, 0.48)) 0.84rem 2.1rem / 0.78rem 0.28rem no-repeat,
+    rgba(249, 252, 250, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 12px 28px rgba(48, 72, 61, 0.1);
+}
+
+@media (max-width: 768px) {
+  .manager-layout .manager-page-shell__body > .manager-page-shell__empty {
+    min-height: 46vh;
+    padding-block: 2rem;
+  }
+}
