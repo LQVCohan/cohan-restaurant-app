@@ -57,6 +57,7 @@ const STAFF_SCENARIOS = [
   ["staff.chef.demo@cohan.local", "full_time", "morning", 7, 8],
   ["staff.cook.demo@cohan.local", "full_time", "morning", 7, 8],
   ["staff.fulltime.demo@cohan.local", "full_time", "morning", 7, 8],
+  ["staff.server.demo@cohan.local", "full_time", "morning", 7, 8],
   ["staff.storekeeper.demo@cohan.local", "full_time", "morning", 7, 8],
   ["staff.supervisor.demo@cohan.local", "full_time", "evening", 15, 8],
   ["staff.cashier.demo@cohan.local", "part_time", "afternoon", 11, 4],
