@@ -6,7 +6,7 @@ const DEFAULT_EMBEDDING_MODEL = "bge-m3";
 const DEFAULT_TIMEOUT_MS = 30000;
 
 const enabledValues = new Set(["1", "true", "yes", "on"]);
-const supportedProviders = new Set(["ollama", "openai-compatible", "openai"]);
+const supportedProviders = new Set(["ollama"]);
 
 const cleanPath = (path, fallback) => {
   const value = String(path || fallback || "").trim();

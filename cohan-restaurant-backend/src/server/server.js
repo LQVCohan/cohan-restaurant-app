@@ -8,6 +8,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const backendRoot = path.resolve(__dirname, "../..");
 const defaultUploadDir = path.join(backendRoot, "uploads");
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+
+const applyAiProviderPolicy = () => {
+  // Cohan uses Gemini as the hosted model and Ollama as the only local fallback.
+  // Ignore any legacy OpenAI secret that may still exist in a developer machine's .env.
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_MODEL;
+  process.env.AI_PROVIDER = "gemini";
+  process.env.AI_FALLBACK_PROVIDER = "local";
+  process.env.GEMINI_MODEL = DEFAULT_GEMINI_MODEL;
+  process.env.AI_CHATBOT_MODEL = DEFAULT_GEMINI_MODEL;
+};
 
 const startServer = async () => {
   try {
@@ -22,6 +34,8 @@ const startServer = async () => {
         `✉️ SMTP env: user=${process.env.SMTP_USER ? "set" : "missing"}, pass=${process.env.SMTP_PASS ? "set" : "missing"}, host=${process.env.SMTP_HOST || "gmail-service"}, port=${process.env.SMTP_PORT || "default"}`,
       );
     }
+
+    applyAiProviderPolicy();
 
     // Keep local uploads in one stable directory regardless of whether the
     // backend is started from the repository root or from its own package.

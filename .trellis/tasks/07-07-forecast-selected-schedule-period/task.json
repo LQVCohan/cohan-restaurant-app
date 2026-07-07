@@ -1,0 +1,30 @@
+{
+  "id": "forecast-selected-schedule-period",
+  "name": "forecast-selected-schedule-period",
+  "title": "Forecast the selected scheduling period",
+  "description": "Anchor demand forecasts to the schedule period selected by the manager instead of always starting from the current date.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "analytics-scheduling",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/forecast-selected-schedule-period",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/ai/demandForecast.service.js",
+    "cohan-restaurant-backend/src/services/ai/staffSchedulingAssistant.service.js",
+    "cohan-restaurant-backend/tests/analytics/demand-forecast-selected-period.test.js",
+    "cohan-restaurant-backend/tests/analytics/staff-scheduling-selected-period.test.js"
+  ],
+  "notes": "Keep the GraphQL and frontend contracts unchanged. Fix the shared forecast anchor and pass the selected period through the scheduling assistant."
+}

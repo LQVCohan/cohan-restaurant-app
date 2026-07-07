@@ -1,11 +1,7 @@
 import process from "process";
 import { MenuItem, Order, Recipe, Reservation, StockItem } from "../../../models/index.js";
-import { generateGeminiJson } from "./geminiClient.service.js";
+import { DEFAULT_GEMINI_MODEL, generateGeminiJson } from "./geminiClient.service.js";
 import { callLocalChatProvider, getLocalAiConfig } from "./localAiProvider.service.js";
-
-const DEFAULT_OPENAI_MODEL = process.env.AI_MODEL || process.env.OPENAI_MODEL || "gpt-5";
-const DEFAULT_GEMINI_MODEL = process.env.AI_CHATBOT_MODEL || process.env.GEMINI_MODEL || "gemini-1.5-flash";
-const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 const ACTIVE_ORDER_STATUSES = new Set([
   "pending",
@@ -75,7 +71,6 @@ const toDate = (value) => {
   const date = value ? new Date(value) : null;
   return date && Number.isFinite(date.getTime()) ? date : null;
 };
-
 
 const createZeroHours = () => Array.from({ length: 24 }, () => 0);
 
@@ -256,21 +251,20 @@ const safeJsonParse = (raw) => {
 const normalizeAiProvider = (value) => String(value || "").trim().toLowerCase();
 
 const getAiProviderOrder = () => {
-  const primary = normalizeAiProvider(process.env.AI_PROVIDER || "local");
+  const primary = normalizeAiProvider(process.env.AI_PROVIDER || "gemini");
   const fallback = normalizeAiProvider(process.env.AI_FALLBACK_PROVIDER || "local");
   const localConfig = getLocalAiConfig();
   const order = [];
 
   const push = (provider) => {
     const key = provider === "ollama" ? "local" : provider;
-    if (["local", "gemini", "openai"].includes(key) && !order.includes(key)) order.push(key);
+    if (["local", "gemini"].includes(key) && !order.includes(key)) order.push(key);
   };
 
   push(primary);
   push(fallback);
-  if (localConfig.enabled) push("local");
   push("gemini");
-  push("openai");
+  if (localConfig.enabled) push("local");
 
   return order;
 };
@@ -290,43 +284,22 @@ const buildAiSummaryPrompt = ({ forecast, timezone }) => [
   })}`,
 ].join("\n");
 
-async function callOpenAiJson({ prompt }) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const res = await fetch(OPENAI_ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: DEFAULT_OPENAI_MODEL,
-      temperature: 0.2,
-      max_tokens: 260,
-      messages: [
-        { role: "system", content: "Bạn trả lời tiếng Việt, JSON hợp lệ." },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-
-  if (!res.ok) return null;
-  const data = await res.json();
-  const parsed = safeJsonParse(data?.choices?.[0]?.message?.content?.trim());
-  return parsed ? { payload: parsed, provider: "openai", model: DEFAULT_OPENAI_MODEL } : null;
-}
-
 async function callGeminiJson({ prompt }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
-  const model = DEFAULT_GEMINI_MODEL;
+  const model =
+    process.env.DEMAND_FORECAST_AI_MODEL ||
+    process.env.AI_CHATBOT_MODEL ||
+    process.env.GEMINI_MODEL ||
+    DEFAULT_GEMINI_MODEL;
   const payload = await generateGeminiJson({
     apiKey,
     model,
     systemInstruction: "Bạn trả lời tiếng Việt, JSON hợp lệ. Không markdown.",
     prompt,
-    timeoutMs: 12000,
+    timeoutMs: Number(process.env.DEMAND_FORECAST_AI_TIMEOUT_MS || 12000),
+    temperature: 0.2,
+    maxOutputTokens: 600,
   });
   return payload ? { payload, provider: "gemini", model } : null;
 }
@@ -355,9 +328,7 @@ async function tryAiSummary({ forecast, timezone }) {
       const result =
         provider === "local"
           ? await callLocalAiJson({ prompt })
-          : provider === "gemini"
-            ? await callGeminiJson({ prompt })
-            : await callOpenAiJson({ prompt });
+          : await callGeminiJson({ prompt });
 
       if (result?.payload?.summary) {
         return {
@@ -387,9 +358,11 @@ export function computeDemandForecastFromData({
   stockItems = [],
   horizonDays = 2,
   timezone = "Asia/Ho_Chi_Minh",
+  forecastStart = null,
 }) {
   const safeHorizon = clamp(parseNumber(horizonDays, 2), 1, 7);
   const now = new Date();
+  const forecastAnchor = toDate(forecastStart) || now;
 
   const history = aggregateOrderHistory(orders, timezone);
   const reservationUplift = buildReservationUplift(reservations, timezone);
@@ -421,7 +394,7 @@ export function computeDemandForecastFromData({
   const dayForecastMap = new Map();
 
   for (let dayOffset = 0; dayOffset < safeHorizon; dayOffset += 1) {
-    const dayDate = new Date(now);
+    const dayDate = new Date(forecastAnchor);
     dayDate.setDate(dayDate.getDate() + dayOffset);
     dayDate.setMinutes(0, 0, 0);
     const dayKey = toIsoDay(dayDate, timezone);
@@ -502,7 +475,7 @@ export function computeDemandForecastFromData({
     confidence: d.confidence,
   }));
 
-  const todayKey = toIsoDay(now, timezone);
+  const todayKey = toIsoDay(forecastAnchor, timezone);
   const weekAgo = new Date(now);
   weekAgo.setDate(weekAgo.getDate() - 7);
   const monthAgo = new Date(now);
@@ -623,7 +596,7 @@ export function computeDemandForecastFromData({
       forecastFallbackUsed: totalOrders < 20,
       lowDataFallbackUsed: totalOrders < 20,
       aiEnhanced: false,
-      generatedAt: new Date().toISOString(),
+      generatedAt: now.toISOString(),
       granularity: "hourly",
       timezone,
       sampleOrders: totalOrders,
@@ -639,12 +612,14 @@ export async function buildDemandForecast({
   timezone = "Asia/Ho_Chi_Minh",
   horizonDays = 2,
   historyDays = 35,
+  forecastStart = null,
 }) {
   const now = new Date();
+  const forecastAnchor = toDate(forecastStart) || now;
   const historyStart = new Date(now);
   historyStart.setDate(historyStart.getDate() - clamp(parseNumber(historyDays, 35), 14, 90));
 
-  const futureEnd = new Date(now);
+  const futureEnd = new Date(forecastAnchor);
   futureEnd.setDate(futureEnd.getDate() + clamp(parseNumber(horizonDays, 2), 1, 7));
 
   const [orders, reservations, recipes, stockItems] = await Promise.all([
@@ -657,7 +632,7 @@ export async function buildDemandForecast({
       .lean(),
     Reservation.find({
       restaurantId,
-      timeTo: { $gte: now, $lte: futureEnd },
+      timeTo: { $gte: forecastAnchor, $lte: futureEnd },
     })
       .select({ timeTo: 1, partySize: 1, status: 1 })
       .lean(),
@@ -676,6 +651,7 @@ export async function buildDemandForecast({
     stockItems,
     horizonDays,
     timezone,
+    forecastStart: forecastAnchor,
   });
 
   const ai = await tryAiSummary({ forecast, timezone });
