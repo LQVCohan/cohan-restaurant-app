@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
+import { isAdminRole } from "../utils/frontendRoleAccess";
 
 export const MY_BRANDS_QUERY = gql`
   query MyBrands {
@@ -49,6 +50,19 @@ const normalizeRestaurant = (restaurant) => ({
   brandId: restaurant?.brandId ? String(restaurant.brandId) : "",
 });
 
+const getScopedBrandRestaurants = (brand, systemAdmin) => {
+  const restaurants = (brand?.restaurants || [])
+    .map(normalizeRestaurant)
+    .filter((restaurant) => restaurant.id);
+  if (systemAdmin || ["owner", "admin"].includes(brand?.membershipRole)) {
+    return restaurants;
+  }
+  if (!["manager", "staff"].includes(brand?.membershipRole)) return [];
+
+  const allowedIds = new Set((brand?.restaurantIds || []).map(String));
+  return restaurants.filter((restaurant) => allowedIds.has(restaurant.id));
+};
+
 export default function useBrandManagement(
   additionalRestaurants = EMPTY_RESTAURANTS,
   { skip = false } = {},
@@ -59,6 +73,7 @@ export default function useBrandManagement(
     restaurantsLoading = false,
   } = useContext(AuthContext) || {};
   const userId = String(user?.id || user?._id || "");
+  const systemAdmin = isAdminRole(user);
   const shouldSkip = skip || !userId;
   const { data, loading, error, refetch } = useQuery(MY_BRANDS_QUERY, {
     fetchPolicy: "cache-and-network",
@@ -109,18 +124,25 @@ export default function useBrandManagement(
   }, [authRestaurants, brandRestaurantIds]);
 
   const selectedBrand = useMemo(() => brands.find((b) => String(b.id) === selectedBrandId) || null, [brands, selectedBrandId]);
-  const restaurantsInSelectedBrand = useMemo(() => (selectedBrand?.restaurants || []).map(normalizeRestaurant), [selectedBrand]);
+  const restaurantsInSelectedBrand = useMemo(
+    () => getScopedBrandRestaurants(selectedBrand, systemAdmin),
+    [selectedBrand, systemAdmin],
+  );
+  const scopedBrandRestaurants = useMemo(
+    () => brands.flatMap((brand) => getScopedBrandRestaurants(brand, systemAdmin)),
+    [brands, systemAdmin],
+  );
 
   const allManageableRestaurants = useMemo(() => {
     const seen = new Set();
-    return [...brands.flatMap((brand) => brand.restaurants || []), ...legacyRestaurants]
+    return [...scopedBrandRestaurants, ...legacyRestaurants]
       .map(normalizeRestaurant)
       .filter((restaurant) => {
         if (!restaurant.id || seen.has(restaurant.id)) return false;
         seen.add(restaurant.id);
         return true;
       });
-  }, [brands, legacyRestaurants]);
+  }, [legacyRestaurants, scopedBrandRestaurants]);
 
   const activeRestaurantOptions = useMemo(
     () => selectedBrandId ? restaurantsInSelectedBrand : legacyRestaurants.length ? legacyRestaurants : allManageableRestaurants,
