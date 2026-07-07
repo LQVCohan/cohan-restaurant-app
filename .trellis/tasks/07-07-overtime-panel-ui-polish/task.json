@@ -1,0 +1,22 @@
+{
+  "id": "overtime-panel-ui-polish",
+  "name": "overtime-panel-ui-polish",
+  "title": "Polish manager overtime interface",
+  "description": "Load and complete the existing overtime visual layer so summary cards, creation form, tables, and error states are clear and responsive.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff-attendance-overtime-ui",
+  "priority": "P2",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/Attendance.scss",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss",
+    "src/main.jsx"
+  ]
+}
