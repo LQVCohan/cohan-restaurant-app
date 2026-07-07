@@ -279,21 +279,14 @@ function BrandMembershipAccessForm({
   );
 }
 
-function BrandOwnershipTransferForm({
-  selectedBrand,
-  members,
-  restaurants,
-  assignedManagerByRestaurant,
-  setSelectedRestaurantId,
-}) {
+function BrandOwnershipTransferForm({ selectedBrand, members }) {
   const [newOwnerUserId, setNewOwnerUserId] = useState("");
-  const [previousOwnerRestaurantId, setPreviousOwnerRestaurantId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [formError, setFormError] = useState("");
   const [transferOwnership, { loading }] = useMutation(
     TRANSFER_BRAND_OWNERSHIP,
     {
-      refetchQueries: [MY_BRANDS_QUERY],
+      refetchQueries: [MY_BRANDS_QUERY, "BrandMembers"],
       awaitRefetchQueries: true,
     },
   );
@@ -318,10 +311,6 @@ function BrandOwnershipTransferForm({
       setFormError("Chọn thành viên sẽ nhận quyền chủ chuỗi.");
       return;
     }
-    if (!previousOwnerRestaurantId) {
-      setFormError("Chọn chi nhánh bạn sẽ quản lý sau khi chuyển quyền.");
-      return;
-    }
     if (!confirmed) {
       setFormError("Xác nhận việc chuyển quyền trước khi tiếp tục.");
       return;
@@ -334,11 +323,9 @@ function BrandOwnershipTransferForm({
           input: {
             brandId: selectedBrand.id,
             newOwnerUserId,
-            previousOwnerRestaurantId,
           },
         },
       });
-      setSelectedRestaurantId?.(previousOwnerRestaurantId);
       message.success("Đã chuyển quyền chủ chuỗi");
       window.dispatchEvent(
         new CustomEvent("manager:navigate", {
@@ -351,23 +338,23 @@ function BrandOwnershipTransferForm({
   };
 
   return (
-    <details className="brand-member-filter-panel brand-membership-actions">
+    <details className="brand-member-filter-panel brand-membership-actions brand-membership-actions--transfer">
       <summary className="brand-member-filter-panel__heading">
         <strong>Chuyển quyền chủ chuỗi</strong>
         <span>Chỉ chủ hiện tại</span>
       </summary>
       <div className="brand-member-filter-panel__body">
-        <div className="brand-alert brand-alert--warning" role="note">
+        <div className="brand-membership-actions__transfer-note" role="note">
           <strong>Sau khi chuyển quyền</strong>
           <span>
             Thành viên được chọn trở thành chủ duy nhất. Tài khoản của bạn chuyển
-            xuống quản lý của một chi nhánh.
+            thành quản trị chuỗi và vẫn có quyền quản lý toàn bộ chi nhánh.
           </span>
         </div>
 
         {eligibleMembers.length ? (
           <>
-            <div className="brand-membership-actions__grid">
+            <div className="brand-membership-actions__transfer-grid">
               <label className="brand-field">
                 <span>Thành viên nhận quyền</span>
                 <select
@@ -375,7 +362,6 @@ function BrandOwnershipTransferForm({
                   value={newOwnerUserId}
                   onChange={(event) => {
                     setNewOwnerUserId(event.target.value);
-                    setPreviousOwnerRestaurantId("");
                     setConfirmed(false);
                     setFormError("");
                   }}
@@ -389,38 +375,6 @@ function BrandOwnershipTransferForm({
                 </select>
               </label>
 
-              <label className="brand-field">
-                <span>Chi nhánh bạn sẽ quản lý</span>
-                <select
-                  aria-label="Chi nhánh của chủ cũ sau khi chuyển quyền"
-                  value={previousOwnerRestaurantId}
-                  onChange={(event) => {
-                    setPreviousOwnerRestaurantId(event.target.value);
-                    setFormError("");
-                  }}
-                >
-                  <option value="">Chọn một chi nhánh</option>
-                  {restaurants.map((restaurant) => {
-                    const manager = assignedManagerByRestaurant?.get(
-                      String(restaurant.id),
-                    );
-                    const managerWillBecomeOwner =
-                      String(manager?.userId || "") === String(newOwnerUserId);
-                    const unavailable = Boolean(manager) && !managerWillBecomeOwner;
-                    return (
-                      <option
-                        key={restaurant.id}
-                        value={restaurant.id}
-                        disabled={unavailable}
-                      >
-                        {restaurant.name}
-                        {unavailable ? " — đã có quản lý" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-
               <button
                 type="button"
                 className="brand-button brand-button--primary"
@@ -431,25 +385,19 @@ function BrandOwnershipTransferForm({
               </button>
             </div>
 
-            <fieldset className="brand-scope-fieldset">
-              <legend>Xác nhận thay đổi quyền</legend>
-              <div className="brand-scope-options">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={confirmed}
-                    onChange={(event) => {
-                      setConfirmed(event.target.checked);
-                      setFormError("");
-                    }}
-                  />
-                  <span>
-                    Tôi hiểu mình sẽ không còn là chủ chuỗi và chỉ quản lý chi
-                    nhánh đã chọn.
-                  </span>
-                </label>
-              </div>
-            </fieldset>
+            <label className="brand-membership-actions__confirmation">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => {
+                  setConfirmed(event.target.checked);
+                  setFormError("");
+                }}
+              />
+              <span>
+                Tôi hiểu mình sẽ không còn là chủ chuỗi và sẽ chuyển thành quản trị chuỗi.
+              </span>
+            </label>
           </>
         ) : (
           <div className="brand-inline-empty brand-inline-empty--members">
@@ -476,7 +424,6 @@ export default function BrandOwnershipTransfer({
   members = [],
   restaurants = [],
   assignedManagerByRestaurant,
-  setSelectedRestaurantId,
 }) {
   const currentRole = String(
     selectedBrand?.membership?.role || selectedBrand?.membershipRole || "",
@@ -495,9 +442,6 @@ export default function BrandOwnershipTransfer({
         <BrandOwnershipTransferForm
           selectedBrand={selectedBrand}
           members={members}
-          restaurants={restaurants}
-          assignedManagerByRestaurant={assignedManagerByRestaurant}
-          setSelectedRestaurantId={setSelectedRestaurantId}
         />
       )}
     </div>
