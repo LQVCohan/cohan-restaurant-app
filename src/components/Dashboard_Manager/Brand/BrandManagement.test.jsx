@@ -90,6 +90,17 @@ const members = [
   },
 ];
 
+const memberCandidates = [
+  {
+    id: "u-new-manager",
+    fullName: "Lê Thu Lan",
+    username: "thu.lan",
+    email: "lan@cohan.vn",
+    userType: "STAFF",
+    status: "active",
+  },
+];
+
 const setSelectedBrandIdMock = vi.fn();
 const setSelectedRestaurantIdMock = vi.fn();
 const refetchBrandsMock = vi.fn();
@@ -129,11 +140,25 @@ beforeEach(() => {
     error: null,
   });
 
-  useQuery.mockReturnValue({
-    data: { brandMembers: members },
-    loading: false,
-    error: null,
-    refetch: refetchMembersMock,
+  useQuery.mockImplementation((operation) => {
+    const source = operationSource(operation);
+    if (source.includes("query BrandMemberCandidates")) {
+      return {
+        data: { brandMemberCandidates: memberCandidates },
+        loading: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+    }
+    if (source.includes("query BrandMembers")) {
+      return {
+        data: { brandMembers: members },
+        loading: false,
+        error: null,
+        refetch: refetchMembersMock,
+      };
+    }
+    throw new Error(`Unexpected query in BrandManagement test: ${source}`);
   });
 
   useMutation.mockImplementation((operation) => {
@@ -166,11 +191,26 @@ describe("BrandManagement", () => {
     expect(screen.getByText("Thành viên: 1")).toBeInTheDocument();
     expect(screen.getByText("Thông tin doanh nghiệp")).toBeInTheDocument();
     expect(screen.getByText("Tìm và lọc thành viên")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản")).toBeInTheDocument();
     expect(screen.getAllByText("Cohan Quận 1").length).toBeGreaterThan(0);
     expect(screen.getByText("Quản lý: Nguyễn Minh An")).toBeInTheDocument();
     expect(screen.getAllByText("Quản trị chuỗi").length).toBeGreaterThan(0);
     expect(screen.getByText("Toàn bộ chuỗi Cohan Group")).toBeInTheDocument();
     expect(screen.queryByText(/Thành viên Brand/i)).not.toBeInTheDocument();
+  });
+
+  it("collapses and reopens the existing-member filters", async () => {
+    render(<BrandManagement />);
+
+    const summary = screen.getByText("Tìm và lọc thành viên").closest("summary");
+    const details = summary.closest("details");
+    expect(details.open).toBe(true);
+
+    fireEvent.click(summary);
+    await waitFor(() => expect(details.open).toBe(false));
+
+    fireEvent.click(summary);
+    await waitFor(() => expect(details.open).toBe(true));
   });
 
   it("saves required fields and clears empty optional business fields", async () => {
@@ -222,14 +262,22 @@ describe("BrandManagement", () => {
     expect(refetchBrandsMock).not.toHaveBeenCalled();
   });
 
-  it("requires one available branch for a manager before adding the member", async () => {
+  it("searches, selects and adds a manager without entering a raw account ID", async () => {
     render(<BrandManagement />);
 
-    fireEvent.change(screen.getByLabelText("Mã tài khoản cần thêm"), {
-      target: { value: "u-new-manager" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
+    expect(screen.getByText("Chọn tài khoản cần thêm.")).toBeInTheDocument();
 
+    fireEvent.change(
+      screen.getByLabelText("Tìm người cần thêm theo tên, email hoặc mã tài khoản"),
+      { target: { value: "Lê Thu Lan" } },
+    );
+
+    const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+    await waitFor(() => expect(accountSelect).not.toBeDisabled());
+    fireEvent.change(accountSelect, { target: { value: "u-new-manager" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Thêm thành viên" }));
     expect(
       screen.getByText("Quản lý chi nhánh phải phụ trách đúng một chi nhánh."),
     ).toBeInTheDocument();
@@ -248,6 +296,23 @@ describe("BrandManagement", () => {
       restaurantIds: ["r2"],
     });
     expect(refetchMembersMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a stale selected account when the candidate search changes", async () => {
+    render(<BrandManagement />);
+
+    const candidateSearch = screen.getByLabelText(
+      "Tìm người cần thêm theo tên, email hoặc mã tài khoản",
+    );
+    const accountSelect = screen.getByLabelText("Chọn tài khoản cần thêm");
+
+    fireEvent.change(candidateSearch, { target: { value: "Lê Thu Lan" } });
+    await waitFor(() => expect(accountSelect).not.toBeDisabled());
+    fireEvent.change(accountSelect, { target: { value: "u-new-manager" } });
+    expect(accountSelect).toHaveValue("u-new-manager");
+
+    fireEvent.change(candidateSearch, { target: { value: "Người khác" } });
+    expect(accountSelect).toHaveValue("");
   });
 
   it("searches by employee name or account ID and filters by role and branch", async () => {
