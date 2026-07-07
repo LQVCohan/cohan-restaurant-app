@@ -1,10 +1,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Brand, BrandMembership, User } from "../../../models/index.js";
-import {
-  ensureBrandRestaurants,
-  getUserId,
-} from "../../../src/services/auth/restaurantScope.service.js";
+import { getUserId } from "../../../src/services/auth/restaurantScope.service.js";
 
 const bad = (message) => new GraphQLError(message, {
   extensions: { code: "BAD_USER_INPUT" },
@@ -46,19 +43,6 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
         throw forbidden("Chỉ chủ chuỗi hiện tại mới có thể chuyển quyền sở hữu.");
       }
 
-      let managerRestaurantIds;
-      try {
-        managerRestaurantIds = await ensureBrandRestaurants(
-          input.brandId,
-          [input.previousOwnerRestaurantId],
-        );
-      } catch (error) {
-        throw bad(error.message);
-      }
-      if (managerRestaurantIds.length !== 1) {
-        throw bad("Chủ cũ phải được gán đúng một chi nhánh để làm quản lý.");
-      }
-
       const newOwnerMembership = await BrandMembership.findOne({
         brandId,
         userId: newOwnerUserId,
@@ -82,17 +66,6 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
         throw bad("Người nhận quyền phải có tài khoản quản lý hoặc quản trị viên đang hoạt động.");
       }
 
-      const conflictingManager = await BrandMembership.findOne({
-        brandId,
-        role: "manager",
-        status: "active",
-        restaurantIds: managerRestaurantIds[0],
-        _id: { $nin: [currentOwnerMembership._id, newOwnerMembership._id] },
-      }).session(session).select("_id").lean();
-      if (conflictingManager) {
-        throw bad("Chi nhánh này đã có quản lý. Vui lòng chọn chi nhánh khác.");
-      }
-
       const brand = await Brand.findById(brandId).session(session);
       if (!brand) throw bad("Brand not found");
 
@@ -102,8 +75,8 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
       newOwnerMembership.updatedBy = currentOwnerUserId;
       await newOwnerMembership.save({ session });
 
-      currentOwnerMembership.role = "manager";
-      currentOwnerMembership.restaurantIds = managerRestaurantIds;
+      currentOwnerMembership.role = "admin";
+      currentOwnerMembership.restaurantIds = [];
       currentOwnerMembership.status = "active";
       currentOwnerMembership.updatedBy = currentOwnerUserId;
       await currentOwnerMembership.save({ session });
