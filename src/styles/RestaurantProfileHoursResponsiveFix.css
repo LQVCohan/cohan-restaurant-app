@@ -49,38 +49,24 @@
   grid-column: span 2;
 }
 
-.restaurant-management-container .restaurant-hours-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 1.25rem;
-  padding: 0.95rem 1rem 0;
-  border: 1px solid rgba(83, 108, 97, 0.24);
-  border-bottom: 0;
-  border-radius: 14px 14px 0 0;
-  background: linear-gradient(135deg, rgba(249, 252, 250, 0.98), rgba(229, 240, 235, 0.78));
-}
-
-.restaurant-management-container .restaurant-hours-heading strong {
-  color: #1f332b;
-  font-size: 0.98rem;
-}
-
-.restaurant-management-container .restaurant-hours-heading span {
-  color: #5f7069;
-  font-size: 0.8rem;
-}
-
 .restaurant-management-container .restaurant-hours-grid {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 0.85rem;
-  margin-inline: 0 !important;
-  padding: 0.85rem 1rem 1rem;
+  margin: 1.25rem 0 0 !important;
+  padding: 1rem;
   border: 1px solid rgba(83, 108, 97, 0.24);
-  border-top: 0;
-  border-radius: 0 0 14px 14px;
+  border-radius: 14px;
   background: linear-gradient(135deg, rgba(249, 252, 250, 0.98), rgba(229, 240, 235, 0.78));
+}
+
+.restaurant-management-container .restaurant-hours-grid::before {
+  content: attr(data-hours-title) " — " attr(data-hours-help);
+  grid-column: 1 / -1;
+  margin-bottom: 0.3rem;
+  color: #42564d;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .restaurant-management-container .restaurant-hours-grid > .ant-col {
@@ -90,42 +76,53 @@
 }
 
 .restaurant-management-container .restaurant-hours-grid > .ant-col:nth-child(1),
-.restaurant-management-container .restaurant-hours-grid > .ant-col:nth-child(2) {
-  grid-column: span 1;
-}
-
+.restaurant-management-container .restaurant-hours-grid > .ant-col:nth-child(2),
 .restaurant-management-container .restaurant-hours-grid > .ant-col:nth-child(3),
 .restaurant-management-container .restaurant-hours-grid > .ant-col:nth-child(4) {
   grid-column: span 1;
 }
 
-.restaurant-management-container .restaurant-hours-grid .ant-form-item:has(.restaurant-hours-time-input) {
+.restaurant-management-container .restaurant-hours-field {
   margin-bottom: 0.85rem;
 }
 
-.restaurant-management-container .restaurant-hours-grid .ant-form-item:has(.restaurant-hours-time-input) .ant-form-item-label label {
+.restaurant-management-container .restaurant-hours-field .ant-form-item-label label {
   font-size: 0.88rem !important;
   font-weight: 700 !important;
 }
 
-.restaurant-management-container .restaurant-hours-grid .ant-input-affix-wrapper:has(.restaurant-hours-time-input) {
+.restaurant-management-container .restaurant-hours-source {
+  display: none !important;
+}
+
+.restaurant-management-container .restaurant-hours-select {
+  width: 100%;
   min-height: 50px;
-  border-color: rgba(83, 108, 97, 0.34) !important;
-  border-radius: 12px !important;
-  background: #fff !important;
-  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.08) !important;
-}
-
-.restaurant-management-container .restaurant-hours-grid .ant-input-affix-wrapper:has(.restaurant-hours-time-input):hover,
-.restaurant-management-container .restaurant-hours-grid .ant-input-affix-wrapper-focused:has(.restaurant-hours-time-input) {
-  border-color: #2f7d68 !important;
-}
-
-.restaurant-management-container .restaurant-hours-time-input {
-  min-width: 0;
-  font-size: 1rem !important;
+  padding: 0 2.6rem 0 0.9rem;
+  border: 1px solid rgba(83, 108, 97, 0.34);
+  border-radius: 12px;
+  background: #fff;
+  color: #24312c;
+  font: inherit;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.025em;
+  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.08);
+  cursor: pointer;
+}
+
+.restaurant-management-container .restaurant-hours-select:hover {
+  border-color: #2f7d68;
+}
+
+.restaurant-management-container .restaurant-hours-select:focus-visible {
+  border-color: #2f7d68;
+  outline: 3px solid rgba(47, 125, 104, 0.18);
+  outline-offset: 1px;
+}
+
+.restaurant-management-container .restaurant-hours-select option {
+  color: #24312c;
+  background: #fff;
 }
 
 .restaurant-management-container .restaurant-hours-error {
@@ -169,12 +166,16 @@
     grid-column: 1;
   }
 
-  .restaurant-management-container .restaurant-hours-heading,
   .restaurant-management-container .restaurant-hours-grid {
-    padding-inline: 0.8rem;
+    padding: 0.8rem;
   }
 
-  .restaurant-management-container .restaurant-hours-grid .ant-input-affix-wrapper:has(.restaurant-hours-time-input) {
+  .restaurant-management-container .restaurant-hours-grid::before {
+    content: attr(data-hours-title) "\A" attr(data-hours-help);
+    white-space: pre-line;
+  }
+
+  .restaurant-management-container .restaurant-hours-select {
     min-height: 48px;
   }
 }
