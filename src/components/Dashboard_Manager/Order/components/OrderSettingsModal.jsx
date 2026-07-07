@@ -30,16 +30,20 @@ const DEFAULT_TIME_COLORS = {
 };
 
 const COLOR_LABELS = {
-  ok: "Mới / ổn",
+  ok: "Đúng tiến độ",
   warn: "Cảnh báo",
-  danger: "Nguy hiểm",
+  danger: "Cần ưu tiên",
   critical: "Khẩn cấp",
 };
 
 const CHIP_SIZE_OPTIONS = [
-  { value: "s", label: "Nhỏ", description: "Hiển thị được nhiều món" },
-  { value: "m", label: "Vừa", description: "Cân bằng, dùng mặc định" },
-  { value: "l", label: "Lớn", description: "Dễ đọc từ xa" },
+  { value: "s", label: "Nhỏ", description: "Ưu tiên hiển thị nhiều món" },
+  {
+    value: "m",
+    label: "Vừa",
+    description: "Cân bằng số lượng và độ rõ",
+  },
+  { value: "l", label: "Lớn", description: "Dễ đọc khi đứng xa màn hình" },
 ];
 
 const COLOR_PRESETS = [
@@ -72,7 +76,8 @@ const COLOR_PRESETS = [
   },
 ];
 
-const isHexColor = (value) => /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
+const isHexColor = (value) =>
+  /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
 
 const normalizeChipSize = (value) =>
   CHIP_SIZE_OPTIONS.some((option) => option.value === value) ? value : "m";
@@ -133,15 +138,15 @@ const MockOrderCard = ({ chipSize, colors, timeSettings }) => {
   }, [demoMinutes, timeSettings]);
 
   return (
-    <div className="mockCard" aria-label="Xem trước thẻ chế biến">
+    <div className="mockCard" aria-label="Bản xem trước thẻ món">
       <div className="mockCard__header" style={{ borderColor: currentColor }}>
-        <span className="mockCard__id">#0123</span>
+        <span className="mockCard__id">Đơn #0123</span>
         <div
           className="mockCard__timer"
           style={{ backgroundColor: currentColor, color: "#fff" }}
         >
           {statusIcon}
-          <span>{demoMinutes}p</span>
+          <span>{demoMinutes} phút</span>
         </div>
       </div>
       <div className={`mockCard__body size-${chipSize}`}>
@@ -155,7 +160,9 @@ const MockOrderCard = ({ chipSize, colors, timeSettings }) => {
         </div>
         <div className="mockItem note">Ghi chú: Ít cay, không hành</div>
       </div>
-      <div className="mockCard__hint">Màu tự đổi theo ngưỡng thời gian đã chọn</div>
+      <div className="mockCard__hint">
+        Màu thẻ thay đổi theo thời gian chờ
+      </div>
     </div>
   );
 };
@@ -309,7 +316,7 @@ const OrderSettingsModal = ({
       title={
         <span className="osm-modal-title">
           <Settings2 size={18} aria-hidden="true" />
-          <span>Cài đặt màn hình chế biến</span>
+          <span>Cài đặt màn hình Bếp và Quầy bar</span>
         </span>
       }
       size="xl"
@@ -317,9 +324,10 @@ const OrderSettingsModal = ({
       <div className="osm-scope-note" role="note">
         <MonitorCog size={20} aria-hidden="true" />
         <div>
-          <strong>Áp dụng cho màn hình Bếp và Quầy bar</strong>
+          <strong>Áp dụng trên trình duyệt hiện tại</strong>
           <span>
-            Cài đặt được lưu trên trình duyệt hiện tại và có hiệu lực sau khi bấm Lưu thay đổi.
+            Cài đặt dùng chung cho màn hình Bếp và Quầy bar. Thay đổi có hiệu lực
+            sau khi chọn Lưu cài đặt.
           </span>
         </div>
       </div>
@@ -330,17 +338,22 @@ const OrderSettingsModal = ({
             <div className="osm-section__header">
               <Clock className="icon" size={20} aria-hidden="true" />
               <div>
-                <h4 id="osm-time-title">Ngưỡng đổi màu theo thời gian</h4>
+                <h4 id="osm-time-title">Thời gian chờ và mức cảnh báo</h4>
                 <p>
-                  Mốc sau phải lớn hơn mốc trước. Hệ thống tự điều chỉnh khi lưu nếu cần.
+                  Đặt số phút để thẻ món đổi màu, giúp nhân viên nhận biết món cần
+                  ưu tiên. Mỗi mốc phải lớn hơn mốc trước.
                 </p>
               </div>
             </div>
 
             <div className="osm-time-inputs">
               {[
-                { key: "warn", label: "Cảnh báo", tone: "warn" },
-                { key: "danger", label: "Nguy hiểm", tone: "danger" },
+                {
+                  key: "warn",
+                  label: "Bắt đầu cảnh báo",
+                  tone: "warn",
+                },
+                { key: "danger", label: "Cần ưu tiên", tone: "danger" },
                 { key: "critical", label: "Khẩn cấp", tone: "critical" },
               ].map((item) => (
                 <div className="input-group" key={item.key}>
@@ -368,8 +381,10 @@ const OrderSettingsModal = ({
             <div className="osm-section__header">
               <Palette className="icon" size={20} aria-hidden="true" />
               <div>
-                <h4 id="osm-color-title">Màu cảnh báo</h4>
-                <p>Chọn bộ màu phù hợp với ánh sáng tại khu vực chế biến.</p>
+                <h4 id="osm-color-title">Màu nhận biết theo mức độ</h4>
+                <p>
+                  Chọn màu dễ phân biệt trong điều kiện ánh sáng tại khu chế biến.
+                </p>
               </div>
             </div>
 
@@ -394,8 +409,12 @@ const OrderSettingsModal = ({
             </div>
 
             <div className="osm-presets">
-              <span>Mẫu nhanh</span>
-              <div className="preset-badges" role="group" aria-label="Bộ màu mẫu">
+              <span>Bộ màu có sẵn</span>
+              <div
+                className="preset-badges"
+                role="group"
+                aria-label="Chọn bộ màu hiển thị"
+              >
                 {COLOR_PRESETS.map((preset) => {
                   const active = activePresetName === preset.name;
                   return (
@@ -423,8 +442,11 @@ const OrderSettingsModal = ({
             <div className="osm-section__header">
               <Layout className="icon" size={20} aria-hidden="true" />
               <div>
-                <h4 id="osm-size-title">Cỡ hiển thị món</h4>
-                <p>Thay đổi kích thước dòng món trên thẻ Bếp và Quầy bar.</p>
+                <h4 id="osm-size-title">Kích thước hiển thị món</h4>
+                <p>
+                  Điều chỉnh cỡ chữ và khoảng cách trong thẻ món theo vị trí đặt
+                  màn hình.
+                </p>
               </div>
             </div>
 
@@ -453,9 +475,9 @@ const OrderSettingsModal = ({
           </section>
         </div>
 
-        <aside className="osm-preview" aria-label="Xem trước cấu hình">
+        <aside className="osm-preview" aria-label="Xem trước cài đặt">
           <div className="osm-preview__sticky">
-            <h3 className="preview-title">Xem trước thẻ chế biến</h3>
+            <h3 className="preview-title">Xem trước</h3>
             <div className="preview-container">
               <MockOrderCard
                 chipSize={normalizedLocalChip}
@@ -470,7 +492,7 @@ const OrderSettingsModal = ({
                 onClick={handleResetDefaults}
               >
                 <RotateCcw size={14} aria-hidden="true" />
-                Khôi phục mặc định
+                Đặt lại mặc định
               </button>
             </div>
           </div>
@@ -491,7 +513,7 @@ const OrderSettingsModal = ({
           onClick={handleSave}
           disabled={!isDirty}
         >
-          Lưu thay đổi
+          Lưu cài đặt
         </button>
       </Modal.Footer>
     </Modal>
