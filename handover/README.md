@@ -1,38 +1,55 @@
 # COHAN — Hướng dẫn bàn giao và chạy lại project
 
-Tài liệu này dùng để cài lại project từ mã nguồn, tạo dữ liệu mẫu và xuất một file MongoDB để bàn giao offline.
+Tài liệu này hướng dẫn cài và chạy COHAN từ **source code + file database MongoDB đã chứa sample data**. Người chấm không cần chạy seed để sử dụng bộ dữ liệu bàn giao.
 
 ## 1. Thành phần bàn giao
 
-| Thành phần | Vị trí / cách tạo |
+| Thành phần | Vị trí |
 | --- | --- |
-| Code frontend + backend | Toàn bộ repository `cohan-restaurant-app` |
-| Cấu trúc cơ sở dữ liệu | Mongoose models trong `cohan-restaurant-backend/models/` |
-| Sample data | Tạo lại bằng `npm run seed:defense` |
-| File database offline | Đặt trong [`handover/database/`](database/) |
-| Hướng dẫn cài/chạy | File này |
-| Tài khoản thử nghiệm | [`Account.md`](Account.md) |
+| Source code frontend + backend | Toàn bộ repository `cohan-restaurant-app` |
+| Database có sample data | `handover/database/cohan-defense.archive.gz` |
+| Hướng dẫn cài và chạy | File này |
+| Tài khoản kiểm thử | [`Account.md`](Account.md) |
+| Hướng dẫn xuất/khôi phục database | [`database/README.md`](database/README.md) |
 
-Không đưa file `.env`, khóa API thật hoặc dữ liệu cá nhân vào bộ bàn giao.
+Sample data đã nằm trong file database, gồm doanh nghiệp, nhà hàng, tài khoản và dữ liệu phục vụ kiểm thử. Không cần nộp thêm file sample data riêng.
+
+> Không đưa file `.env`, URI Atlas, mật khẩu Atlas, token hoặc khóa dịch vụ thật vào bộ bàn giao.
 
 ## 2. Yêu cầu môi trường
 
-- Node.js tương thích với dependencies của project; khuyến nghị Node.js 20 LTS trở lên.
+- Node.js 20 LTS trở lên.
 - npm.
-- MongoDB chạy local hoặc một MongoDB development/staging riêng.
-- MongoDB Database Tools nếu cần tạo file `mongodump` để bàn giao.
+- MongoDB Community Server chạy local.
+- MongoDB Database Tools (`mongorestore`).
 
-## 3. Cài project từ đầu
+Kiểm tra công cụ:
+
+```powershell
+node --version
+npm --version
+mongorestore --version
+```
+
+## 3. Cài dependencies và tạo cấu hình local
 
 Tại thư mục gốc repository:
 
-```bash
+```powershell
 npm install
 npm install --prefix cohan-restaurant-backend
 npm run env:local
 ```
 
-`npm run env:local` chỉ tạo file `.env` khi file chưa tồn tại. Cấu hình local mặc định:
+`npm run env:local` chỉ tạo `.env` khi file chưa tồn tại. Backend local phải kết nối database đã restore:
+
+```env
+NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB
+MONGO_DB=RestaurantDB
+```
+
+Cấu hình mặc định:
 
 ```text
 Frontend: http://localhost:5173
@@ -40,23 +57,25 @@ GraphQL:  http://localhost:4000/graphql
 MongoDB:  mongodb://127.0.0.1:27017/RestaurantDB
 ```
 
-## 4. Tạo Database và Sample Data
+## 4. Khôi phục database có sample data
 
-Bảo đảm MongoDB đang chạy, sau đó thực hiện:
+Đặt file tại:
 
-```bash
-npm run seed:defense
+```text
+handover/database/cohan-defense.archive.gz
 ```
 
-Lệnh seed chuẩn bị permission, role, nhà hàng demo, nhân viên, lịch làm, chấm công, thực đơn, nguyên liệu, kho, coupon, khách hàng, đơn hàng và các tài khoản thử nghiệm.
+Sau đó làm theo [`handover/database/README.md`](database/README.md). Luồng chuẩn là:
 
-Để tạo lại phần dữ liệu demo được các seed hỗ trợ:
-
-```bash
-npm run seed:defense -- --reset
+```text
+File backup từ Atlas
+        ↓ mongorestore
+MongoDB local: RestaurantDB
+        ↓
+Chạy backend và frontend
 ```
 
-Seed bị chặn trong môi trường production-like. Chỉ chạy trên database local hoặc staging đã xác định đúng.
+Không chạy `npm run seed:defense` sau khi restore vì file database đã có sẵn sample data.
 
 ## 5. Chạy project
 
@@ -64,13 +83,13 @@ Mở hai terminal tại thư mục gốc.
 
 **Terminal 1 — Backend**
 
-```bash
+```powershell
 npm run dev --prefix cohan-restaurant-backend
 ```
 
 **Terminal 2 — Frontend**
 
-```bash
+```powershell
 npm run dev
 ```
 
@@ -83,35 +102,45 @@ http://localhost:4000/metrics
 http://localhost:5173
 ```
 
-Đăng nhập bằng các tài khoản trong [`Account.md`](Account.md).
+Đăng nhập bằng tài khoản trong [`Account.md`](Account.md).
 
-## 6. Tạo file Database để đưa vào dự án
+## 6. Tài khoản kiểm thử nhanh
 
-Thư mục `handover/database/` đã được chuẩn bị sẵn. Sau khi seed thành công, tạo file database theo hướng dẫn tại:
+| Vai trò | Tài khoản | Mật khẩu |
+| --- | --- | --- |
+| Admin | `admin.demo@cohan.local` | `Demo@123456` |
+| Business Owner | `business.owner.demo@cohan.local` | `Demo@123456` |
+| Manager | `manager.demo@cohan.local` | `Demo@123456` |
+| Customer/User | `customer.demo@cohan.local` | `Demo@123456` |
 
-- [`handover/database/README.md`](database/README.md)
+Danh sách đầy đủ và phạm vi từng tài khoản nằm trong [`Account.md`](Account.md).
 
-File đề xuất:
+## 7. Seed dành cho developer — không bắt buộc khi chấm
 
-```text
-handover/database/cohan-defense.archive.gz
+Script seed được giữ trong source code để phát triển hoặc tái tạo dữ liệu trên database thử nghiệm. Nó không phải bước cài đặt bắt buộc của bộ bàn giao.
+
+Chỉ chạy trên database có thể xóa bỏ hoàn toàn:
+
+```powershell
+npm run seed:defense -- --reset
 ```
 
-File archive được giữ trong thư mục dự án để đóng gói bàn giao offline, nhưng mặc định không được commit lên GitHub.
+Không chạy seed trên database đã restore để chấm và không chạy trên production.
 
-## 7. Kiểm tra trước khi bàn giao
+## 8. Kiểm tra trước khi đóng gói
 
-```bash
-npm run test --prefix cohan-restaurant-backend -- tests/scripts/seed-defense-demo.test.js
+- `handover/database/cohan-defense.archive.gz` tồn tại và có dung lượng lớn hơn 0 byte.
+- Restore thành công vào một MongoDB local sạch.
+- Backend kết nối đúng `RestaurantDB`.
+- Frontend và backend khởi động không lỗi.
+- Đăng nhập thử thành công ít nhất bằng Admin và Customer/User trong `Account.md`.
+- Không có `.env`, URI Atlas, token hoặc khóa dịch vụ thật trong source code hay file ZIP.
+
+Các lệnh kiểm tra source code:
+
+```powershell
 npm run check:conflicts
 npm run check:graphql
 npm run build
 npm run build --prefix cohan-restaurant-backend
 ```
-
-Trước khi đóng gói, kiểm tra thêm:
-
-- Manager, Customer và Staff đều đăng nhập được.
-- Database archive đã được tạo và có dung lượng lớn hơn 0 byte.
-- Không có `.env`, token hoặc khóa dịch vụ trong thư mục bàn giao.
-- `Account.md` đi cùng code và file database offline.

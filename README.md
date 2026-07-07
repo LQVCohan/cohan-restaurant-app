@@ -2,6 +2,17 @@
 
 Cohan Restaurant App là hệ thống quản trị nhà hàng full-stack phục vụ các luồng: menu, đặt bàn/đặt món, POS/order, coupon/promotion, review, AI chatbot, RBAC, scheduling/attendance/payroll/performance và vận hành production-like.
 
+## Bộ bàn giao khóa luận
+
+Người chấm nên bắt đầu tại:
+
+- Hướng dẫn cài, restore database và chạy project: [`handover/README.md`](handover/README.md)
+- Tài khoản Admin/User và các vai trò kiểm thử: [`handover/Account.md`](handover/Account.md)
+- Hướng dẫn xuất Atlas và restore về MongoDB local: [`handover/database/README.md`](handover/database/README.md)
+- File database có sample data sẽ được đặt tại `handover/database/cohan-defense.archive.gz`
+
+Bộ bàn giao sử dụng **source code + database backup đã chứa sample data**. Khi file database đã được cung cấp, người chấm không cần chạy seed để sử dụng dữ liệu mẫu.
+
 ## Quick start (local development)
 
 ### 1) Tạo env local

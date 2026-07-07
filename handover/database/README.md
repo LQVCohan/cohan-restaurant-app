@@ -1,69 +1,119 @@
-# Tạo file MongoDB để bàn giao COHAN
+# COHAN — Xuất database Atlas và khôi phục về local
 
-Thư mục này dành cho file database được xuất từ MongoDB sau khi đã chạy seed. File đề xuất:
+Thư mục này dành cho file database bàn giao:
 
 ```text
 cohan-defense.archive.gz
 ```
 
-## 1. Chuẩn bị
+File archive chứa database và sample data. Người nhận restore file này vào MongoDB local; không cần quyền truy cập Atlas và không cần chạy seed.
 
-Cài **MongoDB Database Tools** và bảo đảm lệnh sau chạy được trong PowerShell:
+## 1. Chuẩn bị MongoDB Database Tools
+
+Kiểm tra trong PowerShell:
 
 ```powershell
 mongodump --version
 mongorestore --version
 ```
 
-Nếu Windows báo không nhận lệnh, thêm thư mục `bin` của MongoDB Database Tools vào biến môi trường `PATH`, sau đó mở lại PowerShell.
+Nếu Windows không nhận lệnh, thêm thư mục `bin` của MongoDB Database Tools vào `PATH`, sau đó mở PowerShell mới.
 
-## 2. Tạo dữ liệu mẫu
+## 2. Xuất database từ Atlas
 
-Tại thư mục gốc của project:
+Không ghi URI Atlas thật vào README, source code hoặc lịch sử Git. Lưu URI thật vào biến môi trường PowerShell trên máy cá nhân:
 
 ```powershell
-npm run seed:defense -- --reset
+$env:COHAN_ATLAS_URI="<URI Atlas của bạn>"
 ```
 
-Chỉ tiếp tục khi lệnh seed kết thúc thành công.
-
-## 3. Xuất database vào folder đã chuẩn bị
-
-Chạy tại thư mục gốc project:
+Ví dụ database nguồn là `RestaurantDB_DefenseTest`:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path ".\handover\database" | Out-Null
 
 mongodump `
-  --uri="mongodb://127.0.0.1:27017/RestaurantDB" `
+  --uri="$env:COHAN_ATLAS_URI" `
+  --db="RestaurantDB_DefenseTest" `
   --archive=".\handover\database\cohan-defense.archive.gz" `
   --gzip
 ```
 
-Kiểm tra file vừa tạo:
+Xóa biến khỏi terminal sau khi dump:
+
+```powershell
+Remove-Item Env:COHAN_ATLAS_URI
+```
+
+Kiểm tra file:
 
 ```powershell
 Get-Item ".\handover\database\cohan-defense.archive.gz" |
   Select-Object FullName, Length, LastWriteTime
 ```
 
-Nếu `MONGO_URI` hoặc `MONGO_DB` trong `cohan-restaurant-backend/.env` khác cấu hình trên, thay URI và tên database trong lệnh `mongodump` cho đúng.
+Chỉ bàn giao khi file tồn tại và `Length` lớn hơn `0`.
 
-## 4. Khôi phục database trên máy khác
+## 3. Khôi phục vào MongoDB local
 
-Cài MongoDB và MongoDB Database Tools, đặt file archive đúng vị trí, sau đó chạy tại thư mục gốc project:
+Bảo đảm MongoDB local đang chạy. Nếu database trong archive đã tên là `RestaurantDB`:
 
 ```powershell
 mongorestore `
-  --uri="mongodb://127.0.0.1:27017/RestaurantDB" `
+  --uri="mongodb://127.0.0.1:27017" `
   --archive=".\handover\database\cohan-defense.archive.gz" `
   --gzip `
   --drop
 ```
 
-`--drop` xóa collection đích trước khi khôi phục. Chỉ sử dụng với database local hoặc staging đã xác định đúng.
+Nếu database nguồn là `RestaurantDB_DefenseTest` và muốn đổi thành `RestaurantDB` ở local:
 
-## 5. Cấu trúc folder bàn giao
+```powershell
+mongorestore `
+  --uri="mongodb://127.0.0.1:27017" `
+  --archive=".\handover\database\cohan-defense.archive.gz" `
+  --gzip `
+  --drop `
+  --nsFrom="RestaurantDB_DefenseTest.*" `
+  --nsTo="RestaurantDB.*"
+```
+
+`--drop` xóa các collection đích trước khi khôi phục. Chỉ dùng với MongoDB local hoặc database thử nghiệm đã xác định đúng.
+
+## 4. Cấu hình backend sau khi restore
+
+Trong `cohan-restaurant-backend/.env`:
+
+```env
+NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB
+MONGO_DB=RestaurantDB
+```
+
+Khởi động backend:
+
+```powershell
+npm run dev --prefix cohan-restaurant-backend
+```
+
+Kiểm tra:
+
+```text
+http://localhost:4000/health/live
+http://localhost:4000/health/ready
+```
+
+Sau đó khởi động frontend và đăng nhập bằng tài khoản trong `../Account.md`.
+
+## 5. Kiểm tra trước khi bàn giao
+
+- Restore thử archive vào một MongoDB local sạch.
+- Backend kết nối đúng database `RestaurantDB`.
+- Admin và Customer/User đăng nhập thành công.
+- Quan hệ Business, Restaurant và tài khoản vẫn hiển thị đúng.
+- File archive không chứa `.env`, URI Atlas hoặc thông tin truy cập Atlas.
+
+## 6. Cấu trúc thư mục
 
 ```text
 cohan-restaurant-app/
@@ -78,4 +128,4 @@ cohan-restaurant-app/
 └─ package.json
 ```
 
-File archive được `.gitignore` để tránh vô tình đẩy dữ liệu và file dung lượng lớn lên GitHub. File vẫn nằm trong project local và có thể được đưa vào file ZIP bàn giao offline.
+File archive chưa được tạo trong repository ở bước cập nhật tài liệu này. Hãy thêm đúng tên file sau khi đã dump và restore thử thành công.
