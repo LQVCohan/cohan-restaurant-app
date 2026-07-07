@@ -2,10 +2,10 @@
   "id": "compact-brand-management",
   "name": "compact-brand-management",
   "title": "Compact restaurant chain management layout",
-  "description": "Reduce duplicated summary content and vertical space on the manager chain-management page without changing Brand or BrandMembership behavior.",
+  "description": "Improve member filtering and account selection, then add an atomic owner-transfer flow that keeps Brand.ownerId and BrandMembership roles synchronized.",
   "status": "in_progress",
-  "dev_type": "frontend",
-  "scope": "manager-brand-management-ui",
+  "dev_type": "fullstack",
+  "scope": "manager-brand-management",
   "package": null,
   "priority": "P1",
   "creator": "LQVCohan",
@@ -22,13 +22,16 @@
   "parent": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
-    "src/components/Dashboard_Manager/Brand/BrandManagement.css",
-    "src/components/Dashboard_Manager/Brand/BrandManagementCompact.css",
-    "src/layouts/ManagerLayout.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandOwnershipTransfer.test.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagementCompact.scss",
     "src/hooks/useBrandManagement.js",
+    "cohan-restaurant-backend/models/brand.model.js",
     "cohan-restaurant-backend/models/brandMembership.model.js",
     "cohan-restaurant-backend/graphql/schema/brand.graphql",
-    "cohan-restaurant-backend/graphql/resolvers/brand/index.js"
+    "cohan-restaurant-backend/graphql/resolvers/brand/index.js",
+    "cohan-restaurant-backend/graphql/resolvers/brand/transferBrandOwnership.js",
+    "cohan-restaurant-backend/tests/resolvers/brand-ownership-transfer.test.js"
   ],
-  "notes": "Page-scoped CSS compaction only. Preserve all GraphQL operations, scope rules, validation, permissions, and mutation behavior."
+  "notes": "Ownership changes use one dedicated transaction: promote the target, demote the current owner to one restaurant manager, and update Brand.ownerId. Generic member mutations cannot change owner roles."
 }
