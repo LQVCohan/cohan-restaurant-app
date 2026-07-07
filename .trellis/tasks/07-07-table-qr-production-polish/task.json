@@ -2,10 +2,10 @@
   "id": "table-qr-production-polish",
   "name": "table-qr-production-polish",
   "title": "Polish table QR management for production",
-  "description": "Reduce header and guidance footprint, standardize Vietnamese wording, and improve responsive usability on the manager table-QR page without changing QR generation behavior.",
+  "description": "Compact the manager table-QR page and ensure table QR staff/payment requests reach existing manager realtime handlers with the correct table context.",
   "status": "in_progress",
   "dev_type": "frontend",
-  "scope": "manager-table-qr-ui",
+  "scope": "manager-table-qr-ui-and-realtime",
   "package": null,
   "priority": "P1",
   "creator": "LQVCohan",
@@ -24,11 +24,14 @@
     "cohan-restaurant-backend/models/table.model.js",
     "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
     "cohan-restaurant-backend/graphql/resolvers/table/tableAccessQr.js",
+    "cohan-restaurant-backend/graphql/resolvers/payment/publicTablePaymentMutation.js",
+    "src/components/Customer/TableCurrentSession/TableCurrentSessionPage.jsx",
     "src/components/Dashboard_Manager/Table/TableQrManagementPage.jsx",
     "src/components/Dashboard_Manager/Table/TableQrManagementPage.scss",
-    "src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.jsx",
-    "src/components/Dashboard_Manager/shared/ManagementPageHeader/ManagementPageHeader.scss",
-    "src/layouts/ManagerLayout.jsx"
+    "src/components/Dashboard_Manager/Order/OrderManagement.jsx",
+    "src/components/Dashboard_Manager/Dashboard/Dashboard.jsx",
+    "src/hooks/useSocketOrder.js",
+    "src/hooks/useSocketOrder.test.js"
   ],
-  "notes": "Page-scoped composition and copy changes only. Preserve QR token generation, expiry, restaurant scoping, permissions, audit logs, GraphQL operations, and mutation behavior."
+  "notes": "Preserve QR token generation, expiry, restaurant/table validation, permissions, audit logs, GraphQL operations, and existing tracking event behavior. Realtime compatibility belongs in the shared socket hook, not page-specific duplication."
 }
