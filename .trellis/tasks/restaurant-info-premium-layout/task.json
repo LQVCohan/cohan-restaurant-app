@@ -1,0 +1,22 @@
+{
+  "id": "restaurant-info-premium-layout",
+  "title": "Nâng cấp bố cục thông tin nhà hàng",
+  "status": "in_progress",
+  "type": "frontend-redesign",
+  "scope": [
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagementPolish.css",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.test.jsx"
+  ],
+  "flow": "restaurant.model.js -> restaurant.graphql -> restaurant query/mutation resolvers and scope guards -> Apollo operations in RestaurantInfoManagement.jsx -> form controls and save action -> component tests",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "targeted Vitest for RestaurantInfoManagement.test.jsx",
+      "npm run build",
+      "browser smoke at desktop, 430x932 and 390x844"
+    ],
+    "completed": [],
+    "notRun": []
+  }
+}
