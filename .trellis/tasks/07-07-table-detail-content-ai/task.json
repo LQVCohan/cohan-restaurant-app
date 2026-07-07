@@ -1,0 +1,24 @@
+{
+  "id": "table-detail-content-ai",
+  "name": "table-detail-content-ai",
+  "title": "Simplify table detail modal and repair promotion/AI data",
+  "description": "Remove internal table coordinates and technical metadata, improve Vietnamese copy, scope promotion data to the active restaurant, and make table assistant requests authenticated and data-driven.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-table-detail-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/table-detail-content-ai",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/hooks/usePromotions.js",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx",
+    "cohan-restaurant-backend/tests/server/ai-table-endpoints-auth.test.js"
+  ]
+}
