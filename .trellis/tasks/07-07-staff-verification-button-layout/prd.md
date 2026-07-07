@@ -6,11 +6,11 @@ The resend verification button shares a narrow flex row with the channel selecto
 
 ## Flow
 
-`StaffManagement.jsx` provides `onResendVerification` -> `EmployeeDashboard.jsx` forwards it -> `EmployeeDetail.jsx` renders the selector and button -> `EmployeeDetail.scss` controls the row layout.
+`StaffManagement.jsx` provides `onResendVerification` -> `EmployeeDashboard.jsx` forwards it -> `EmployeeDetail.jsx` renders the selector and button -> staff workspace polish applies the final scoped layout.
 
 ## File changing
 
-- `src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.scss`: balance only the verification action row.
+- `src/components/Dashboard_Manager/Staff/components/Header/StaffHeaderContextPolish.scss`: add one page-scoped verification-row override at the final active style boundary.
 
 ## Acceptance criteria
 
