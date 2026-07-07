@@ -53,9 +53,11 @@ import "./styles/TableManagerMobileActionFix.css";
 import "./styles/RestaurantProfileHoursResponsiveFix.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
+import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
 
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
+installRestaurantHoursEnhancement();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
