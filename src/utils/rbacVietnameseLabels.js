@@ -186,6 +186,7 @@ export const RBAC_ROLE_LABELS = Object.freeze({
   kitchen_helper: "Phụ bếp",
   manager: "Quản lý nhà hàng",
   server: "Nhân viên phục vụ",
+  shipper: "Nhân viên giao hàng",
   staff: "Nhân viên",
   storekeeper: "Thủ kho",
   supervisor: "Giám sát",
@@ -202,6 +203,8 @@ const STATIC_TEXT_REPLACEMENTS = Object.freeze({
   "Danh mục quyền hạn": "Danh mục quyền theo nghiệp vụ",
   "Các quyền được gom theo nghiệp vụ để quản lý phạm vi truy cập rõ ràng hơn.":
     "Toàn bộ quyền có thể gán được nhóm theo nghiệp vụ để dễ tìm và tránh cấp nhầm.",
+  "Chưa có quyền hạn.": "Chưa có quyền.",
+  "Chưa có quyền hạn để hiển thị.": "Chưa có quyền để hiển thị.",
   "Quyền đang áp dụng": "Quyền thực tế",
   "Chi tiết quyền của vai trò": "Quyền của vai trò",
   "Hiển thị quyền được kế thừa, quyền gán riêng và kết quả cuối cùng.":
@@ -218,6 +221,23 @@ const STATIC_TEXT_REPLACEMENTS = Object.freeze({
   "Chọn những thao tác nhân viên được phép thực hiện.":
     "Chọn các quyền cần cấp trực tiếp cho vai trò này.",
   "Cấp quyền nhân viên": "Phân quyền theo vai trò",
+  "Gán vai trò cho nhân viên": "Cập nhật vai trò nhân viên",
+  "Chọn nhà hàng, nhân viên và vai trò phù hợp để cập nhật quyền truy cập.":
+    "Chọn nhân viên và vai trò mới trong phạm vi nhà hàng đang quản lý.",
+  "Hệ thống sẽ kiểm tra quyền trước khi lưu thay đổi.":
+    "Hệ thống sẽ kiểm tra quyền và phạm vi nhà hàng trước khi lưu.",
+  "Tóm tắt thay đổi": "Xem trước thay đổi",
+  "Sẵn sàng cập nhật": "Sẵn sàng lưu thay đổi",
+  "Hoàn tất 3 bước để xem trước thay đổi.":
+    "Chọn đủ nhà hàng, nhân viên và vai trò để xem trước thay đổi.",
+  "Kiểm tra lại thông tin trước khi gán vai trò.":
+    "Kiểm tra vai trò hiện tại và vai trò mới trước khi lưu.",
+  "Quyền truy cập được xác thực lại trước khi áp dụng.":
+    "Hệ thống kiểm tra lại quyền và phạm vi nhà hàng trước khi cập nhật.",
+  "Đang tải...": "Đang tải…",
+  "Đang tải nhà hàng...": "Đang tải nhà hàng…",
+  "Đang lưu...": "Đang lưu…",
+  "Đang gán vai trò...": "Đang cập nhật…",
 });
 
 const normalize = (value) => String(value || "").trim().toLowerCase();
@@ -305,11 +325,25 @@ function applyStaticCopy(page) {
   return changes;
 }
 
+function applyRoleInParentheses(element) {
+  const current = element?.textContent?.trim() || "";
+  const match = current.match(/^(.*)\s+\(([^()]+)\)$/);
+  if (!match) return 0;
+  const translatedRole = getRbacRoleLabel(match[2]);
+  if (!translatedRole || translatedRole === match[2]) return 0;
+  return setElementText(element, `${match[1]} (${translatedRole})`);
+}
+
 export function applyRbacVietnameseLabels(root = document) {
   const page = root?.matches?.(".rbac-page") ? root : root?.querySelector?.(".rbac-page");
   if (!page) return 0;
 
   let changes = applyStaticCopy(page);
+
+  page.querySelectorAll(".rbac-count-pill").forEach((element) => {
+    const current = element.textContent?.trim() || "";
+    if (current.includes("quyền hạn")) changes += setElementText(element, current.replace("quyền hạn", "quyền"));
+  });
 
   page.querySelectorAll(".rbac-permission-group__title h4, .rbac-permission-checklist fieldset legend")
     .forEach((element) => {
@@ -341,6 +375,26 @@ export function applyRbacVietnameseLabels(root = document) {
     const mapped = getRbacRoleLabel(element.textContent);
     if (mapped !== element.textContent?.trim()) changes += setElementText(element, mapped);
   });
+
+  const inheritedRole = page.querySelector(".rbac-selected-role > span");
+  if (inheritedRole) {
+    const current = inheritedRole.textContent?.trim() || "";
+    const match = current.match(/^(Nhóm kế thừa|Kế thừa từ):\s*(.+)$/i);
+    if (match) changes += setElementText(inheritedRole, `Kế thừa từ: ${getRbacRoleLabel(match[2])}`);
+  }
+
+  page.querySelectorAll(".rbac-form--assignment label:nth-child(2) option")
+    .forEach((element) => {
+      changes += applyRoleInParentheses(element);
+    });
+
+  const historyMetric = page.querySelector(".rbac-premium-metric:nth-child(3) strong");
+  if (historyMetric?.textContent?.trim() === "Bật") changes += setElementText(historyMetric, "Đang ghi");
+  if (historyMetric?.textContent?.trim() === "Ẩn") changes += setElementText(historyMetric, "Không xem");
+
+  const tabs = page.querySelectorAll(".rbac-tabs button");
+  if (tabs[1]) changes += setElementText(tabs[1], "Cập nhật vai trò");
+  if (tabs[2]) changes += setElementText(tabs[2], "Quản lý vai trò");
 
   return changes;
 }
