@@ -79,7 +79,7 @@ vi.mock("../../../hooks/useAvatarUploadLocal", () => ({
 }));
 
 vi.mock("../shared/ManagementPageHeader", () => ({
-  default: ({ primaryAction, selectedRestaurant }) => (
+  default: ({ primaryAction, selectedRestaurant, footerRight }) => (
     <header>
       <span data-testid="selected-restaurant">{selectedRestaurant}</span>
       <button
@@ -89,6 +89,7 @@ vi.mock("../shared/ManagementPageHeader", () => ({
       >
         {primaryAction.label}
       </button>
+      <span>{footerRight}</span>
     </header>
   ),
 }));
@@ -131,8 +132,11 @@ const restaurant = {
   priceRange: "",
   businessStatus: "active",
   operationalStatus: "normal",
+  openingStatus: "closed",
+  openingStatusReason: "Đã hết giờ phục vụ",
+  canOrder: false,
   capabilities: initialCapabilities,
-  orderPolicy: { allowWhenClosed: false, minAdvanceMinutes: 0 },
+  orderPolicy: { allowWhenClosed: false, minAdvanceMinutes: 30, maxFutureDays: 7 },
   amenities: [],
   notesOnAmenities: JSON.stringify(customerInfo),
   avgRating: 0,
@@ -172,6 +176,15 @@ const savedRestaurant = {
   capabilities: {
     ...initialCapabilities,
     acceptsOrders: false,
+  },
+};
+
+const savedRestaurantWithOutsideHours = {
+  ...restaurant,
+  canOrder: true,
+  orderPolicy: {
+    ...restaurant.orderPolicy,
+    allowWhenClosed: true,
   },
 };
 
@@ -274,6 +287,7 @@ beforeEach(() => {
   vi.spyOn(message, "warning").mockImplementation(() => {});
   vi.spyOn(message, "error").mockImplementation(() => {});
 
+  queryResults.restaurantDetail.data = { restaurant };
   refetchRestaurantDetailMock.mockResolvedValue({
     data: { restaurant: savedRestaurant },
   });
@@ -371,6 +385,102 @@ describe("RestaurantInfoManagement", () => {
       acceptsOrders: false,
     });
     expect(refetchRestaurantDetailMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reflects queried order policy on the outside-hours switch", async () => {
+    queryResults.restaurantDetail.data = {
+      restaurant: {
+        ...restaurant,
+        orderPolicy: { ...restaurant.orderPolicy, allowWhenClosed: true },
+      },
+    };
+
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    expect(
+      screen.getByRole("switch", { name: "Nhận đơn ngoài giờ mở cửa" }),
+    ).toBeChecked();
+  });
+
+  it("sends full order policy and preserves extra policy fields when outside-hours orders are enabled", async () => {
+    updateRestaurantMock.mockResolvedValueOnce({
+      data: { updateRestaurant: savedRestaurantWithOutsideHours },
+    });
+    refetchRestaurantDetailMock.mockResolvedValueOnce({
+      data: { restaurant: savedRestaurantWithOutsideHours },
+    });
+
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Nhận đơn ngoài giờ mở cửa" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(updateRestaurantMock).toHaveBeenCalledTimes(1));
+
+    expect(updateRestaurantMock.mock.calls[0][0].variables.input.orderPolicy).toEqual({
+      allowWhenClosed: true,
+      minAdvanceMinutes: 30,
+      maxFutureDays: 7,
+    });
+  });
+
+  it("disables outside-hours orders when remote orders are disabled", async () => {
+    queryResults.restaurantDetail.data = {
+      restaurant: {
+        ...restaurant,
+        capabilities: { ...initialCapabilities, acceptsOrders: false },
+      },
+    };
+
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    expect(
+      screen.getByRole("switch", { name: "Nhận đơn ngoài giờ mở cửa" }),
+    ).toBeDisabled();
+  });
+
+  it("keeps the form dirty and warns when refetch returns a different outside-hours policy", async () => {
+    updateRestaurantMock.mockResolvedValueOnce({
+      data: { updateRestaurant: savedRestaurantWithOutsideHours },
+    });
+    refetchRestaurantDetailMock.mockResolvedValueOnce({
+      data: { restaurant },
+    });
+
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Nhận đơn ngoài giờ mở cửa" }),
+    );
+    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(message.warning).toHaveBeenCalledWith(
+      "Đã gửi yêu cầu lưu nhưng dữ liệu trả về chưa đồng bộ. Vui lòng tải lại trang hoặc kiểm tra lại API.",
+    ));
+    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+    expect(message.success).not.toHaveBeenCalledWith(
+      "Cập nhật thông tin nhà hàng thành công",
+    );
   });
 
   it("saves paused operational status without sending legacy status", async () => {

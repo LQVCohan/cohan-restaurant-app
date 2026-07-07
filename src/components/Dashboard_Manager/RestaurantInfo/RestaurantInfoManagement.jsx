@@ -56,11 +56,42 @@ const DEFAULT_RESTAURANT_CAPABILITIES = {
   acceptsDelivery: false,
   acceptsPickup: false,
 };
+const DEFAULT_ORDER_POLICY = {
+  allowWhenClosed: false,
+  minAdvanceMinutes: 0,
+};
 const OPERATIONAL_STATUS_LABELS = {
   normal: "Đang vận hành",
   paused: "Tạm dừng vận hành",
   maintenance: "Đang bảo trì",
   holiday: "Nghỉ lễ",
+};
+
+const getOrderAvailabilityMessage = (restaurant, form) => {
+  if (form.capabilities?.acceptsOrders === false) {
+    return { type: "warning", message: "Nhà hàng đang tắt nhận đơn online." };
+  }
+  if (restaurant?.canOrder === true) {
+    return { type: "success", message: "Khách hàng hiện có thể đặt món." };
+  }
+  if (
+    restaurant?.openingStatus === "closed" &&
+    form.orderPolicy?.allowWhenClosed !== true
+  ) {
+    return {
+      type: "warning",
+      message: "Nhà hàng đang ngoài giờ mở cửa. Bật nhận đơn ngoài giờ nếu vẫn muốn nhận đơn.",
+    };
+  }
+  const fallback = {
+    paused: "Nhà hàng đang tạm dừng vận hành.",
+    maintenance: "Nhà hàng đang bảo trì.",
+    holiday: "Nhà hàng đang nghỉ lễ.",
+  };
+  return {
+    type: "warning",
+    message: restaurant?.openingStatusReason || fallback[restaurant?.openingStatus] || "Nhà hàng hiện chưa thể nhận đơn.",
+  };
 };
 
 // --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES (KHÔNG THAY ĐỔI) ---
@@ -165,6 +196,9 @@ const GET_RESTAURANT_DETAIL = gql`
       priceRange
       businessStatus
       operationalStatus
+      openingStatus
+      openingStatusReason
+      canOrder
       capabilities
       orderPolicy
       amenities
@@ -232,6 +266,9 @@ const UPDATE_RESTAURANT = gql`
       priceRange
       businessStatus
       operationalStatus
+      openingStatus
+      openingStatusReason
+      canOrder
       capabilities
       orderPolicy
       amenities
@@ -427,6 +464,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     priceRange: "",
     operationalStatus: "normal",
     capabilities: DEFAULT_RESTAURANT_CAPABILITIES,
+    orderPolicy: DEFAULT_ORDER_POLICY,
     avgRating: 0,
     amenities: {
       wifi: false,
@@ -560,6 +598,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
+  const orderAvailability = getOrderAvailabilityMessage(
+    restaurantDetailData?.restaurant,
+    restaurantForm,
+  );
 
   useEffect(() => {
     const r = restaurantDetailData?.restaurant;
@@ -581,6 +623,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       capabilities: {
         ...DEFAULT_RESTAURANT_CAPABILITIES,
         ...(r.capabilities || {}),
+      },
+      orderPolicy: {
+        ...DEFAULT_ORDER_POLICY,
+        ...(r.orderPolicy || {}),
       },
       avgRating: r.avgRating || 0,
       seatingCapacity: Number(r.seatingCapacity || 0),
@@ -971,6 +1017,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       ...DEFAULT_RESTAURANT_CAPABILITIES,
       ...(restaurantForm.capabilities || {}),
     };
+    const orderPolicy = {
+      ...DEFAULT_ORDER_POLICY,
+      ...(restaurantForm.orderPolicy || {}),
+    };
 
     const amenityList = [
       restaurantForm.amenities?.wifi ? "wifi" : null,
@@ -995,6 +1045,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             priceRange: restaurantForm.priceRange || null,
             operationalStatus: restaurantForm.operationalStatus || "normal",
             capabilities,
+            orderPolicy,
             avatar: restaurantForm.avatar || null,
             coverImage: restaurantForm.coverImage || null,
             seatingCapacity: parseOptionalNumber(restaurantForm.seatingCapacity) ?? 0,
@@ -1074,6 +1125,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               String(
                 latestRestaurant.capabilities?.acceptsOrders ??
                   DEFAULT_RESTAURANT_CAPABILITIES.acceptsOrders,
+              ),
+            ],
+            [
+              "orderPolicy.allowWhenClosed",
+              String(orderPolicy.allowWhenClosed),
+              String(
+                latestRestaurant.orderPolicy?.allowWhenClosed ??
+                  DEFAULT_ORDER_POLICY.allowWhenClosed,
               ),
             ],
             ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
@@ -1324,7 +1383,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Col>
                     <Col span={6}>
                       <Form.Item label="Nhận đơn từ xa">
-                        <Space direction="vertical" size={2}>
+                        <Space direction="vertical" size={8}>
                           <Switch
                             aria-label="Nhận đơn từ xa"
                             checked={restaurantForm.capabilities?.acceptsOrders !== false}
@@ -1342,10 +1401,38 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                             }
                           />
                           <Text type="secondary">Cho phép khách đặt món mang đi hoặc giao tận nơi.</Text>
+                          <Switch
+                            aria-label="Nhận đơn ngoài giờ mở cửa"
+                            checked={restaurantForm.orderPolicy?.allowWhenClosed === true}
+                            checkedChildren="Bật"
+                            unCheckedChildren="Tắt"
+                            disabled={restaurantForm.capabilities?.acceptsOrders === false}
+                            onChange={(checked) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                orderPolicy: {
+                                  ...DEFAULT_ORDER_POLICY,
+                                  ...(p.orderPolicy || {}),
+                                  allowWhenClosed: checked,
+                                },
+                              }))
+                            }
+                          />
+                          <Text>Nhận đơn ngoài giờ mở cửa</Text>
+                          <Text type="secondary">
+                            Cho phép khách đặt món khi nhà hàng đang ngoài giờ phục vụ. Nhà hàng vẫn phải ở trạng thái đang vận hành và công khai.
+                          </Text>
                         </Space>
                       </Form.Item>
                     </Col>
                   </Row>
+
+                  <Alert
+                    className="payment-info-alert"
+                    type={orderAvailability.type}
+                    showIcon
+                    message={orderAvailability.message}
+                  />
 
                   <Row gutter={24}>
                     <Col span={8}>
