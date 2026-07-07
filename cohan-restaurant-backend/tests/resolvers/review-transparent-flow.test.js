@@ -96,10 +96,10 @@ beforeEach(async () => {
   mocks.analyzeReviewText.mockReturnValue({ sentiment: "negative", topicTags: ["slow_service"] });
   mocks.calculateReviewReliability.mockReturnValue({ reliabilityScore: 95, reliabilityLevel: "high", reliabilitySignals: ["verified_experience", "source:order"] });
   mocks.Review.findOne.mockReturnValue(leanResult(null));
-  mocks.Restaurant.findById.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn(async () => ({ managerId: "manager1", name: "Cohan" })) })) });
+  mocks.Restaurant.findById.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn(async () => ({ brandId: "brand1", name: "Cohan" })) })) });
   mocks.BrandMembership.find.mockReturnValue(membershipFindResult([{ userId: "manager1", brandId: "brand1", role: "manager", status: "active", restaurantIds: ["restaurant1"] }]));
   mocks.Notification.create.mockResolvedValue({ _id: "notification1" });
-} );
+});
 
 describe("transparent review flow", () => {
   it("creates customer review as published immediately and keeps hardening metadata", async () => {
@@ -119,7 +119,7 @@ describe("transparent review flow", () => {
     }));
     expect(mocks.logReviewEvent).toHaveBeenCalledWith(expect.objectContaining({ verb: "review.create" }));
     expect(mocks.logReviewEvent).toHaveBeenCalledWith(expect.objectContaining({ verb: "review.notification.negative" }));
-    expect(mocks.BrandMembership.find).toHaveBeenCalledWith({ role: "manager", status: "active", restaurantIds: "restaurant1" });
+    expect(mocks.BrandMembership.find).toHaveBeenCalledWith({ brandId: "brand1", role: "manager", status: "active", restaurantIds: "restaurant1" });
     expect(mocks.Notification.create).toHaveBeenCalled();
   });
 
@@ -183,7 +183,6 @@ describe("transparent review flow", () => {
     expect(mocks.Review.findByIdAndUpdate).toHaveBeenCalledWith("review1", expect.objectContaining({ reportsCount: 1, status: "reported" }), { new: true });
     expect(mocks.logReviewEvent).toHaveBeenCalledWith(expect.objectContaining({ verb: "review.report.create" }));
   });
-
 
   it("blocks updateReview bypasses for manager/admin and keeps owner public reviews immutable", async () => {
     mocks.Review.findById.mockResolvedValue({

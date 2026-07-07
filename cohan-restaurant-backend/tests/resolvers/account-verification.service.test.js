@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const { store, mailerSendMail, eventLogCreate } = vi.hoisted(() => ({
   store: new Map(),
   mailerSendMail: vi.fn(),
@@ -42,6 +45,10 @@ class MockUser {
 }
 
 vi.mock("../../models/index.js", () => ({ User: MockUser, Restaurant: { exists: vi.fn() } }));
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../lib/mailer.js", () => ({
   mailer: { sendMail: mailerSendMail },
   buildVerifyMail: (args) => ({ to: args.to, subject: "verify", text: args.link, html: args.link }),
@@ -56,6 +63,7 @@ describe("accountVerification.service", () => {
     store.clear();
     mailerSendMail.mockReset();
     eventLogCreate.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockClear();
     const { Restaurant } = await import("../../models/index.js");
     Restaurant.exists.mockReset();
     Restaurant.exists.mockResolvedValue(true);
@@ -225,6 +233,10 @@ describe("emailVerification resend scope", () => {
       { user: { id: "manager-1", roleName: "manager" } },
       { _id: "staff-1", userType: "STAFF", restaurantForStaff: "restaurant-b" },
     )).resolves.toBe(true);
+    expect(restaurantScopeMocks.canAccessRestaurant).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "manager-1" }),
+      "restaurant-b",
+    );
   });
 
   it("does not use customer history as privileged scope", async () => {

@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const emitOrderEventMock = vi.hoisted(() => vi.fn());
 const findOneChainFactory = (value) => {
   const chain = {
@@ -42,6 +45,10 @@ const modelMocks = vi.hoisted(() => ({
 
 vi.mock("../../graphql/resolvers/order/helper/emitOrderEvent.js", () => ({ emitOrderEvent: emitOrderEventMock }));
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../utils/generateInvoiceNumber.ts", () => ({ generateInvoiceNumber: vi.fn().mockResolvedValue("INV-001") }));
 vi.mock("../../src/services/payment/paymentSession.service.js", () => ({ createReservationPayment: vi.fn() }));
 vi.mock("mongoose", () => {
@@ -72,6 +79,7 @@ describe("payment request + confirm guards", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.Order.find.mockReset();
     modelMocks.Order.findOne.mockReset();
     modelMocks.Order.updateMany.mockReset();
@@ -90,7 +98,7 @@ describe("payment request + confirm guards", () => {
     await OrderMutation.requestPaymentForOrder(
       null,
       { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } },
-      { user: { id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } },
+      AUTH_CONTEXT,
     );
 
     expect(order.payment.status).toBe("payment_requested");
@@ -107,7 +115,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.find.mockResolvedValue([order]);
 
     await expect(
-      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, { user: { id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } }),
+      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, AUTH_CONTEXT),
     ).rejects.toThrow("Không thể yêu cầu thanh toán khi còn món chưa phục vụ xong.");
     expect(order.save).not.toHaveBeenCalled();
   });
@@ -118,7 +126,7 @@ describe("payment request + confirm guards", () => {
     modelMocks.Order.find.mockResolvedValue([order]);
 
     await expect(
-      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, { user: { id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } }),
+      OrderMutation.requestPaymentForOrder(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"] } }, AUTH_CONTEXT),
     ).rejects.toThrow("Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
     expect(order.save).not.toHaveBeenCalled();
   });
@@ -292,7 +300,7 @@ describe("payment request + confirm guards", () => {
 
     modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([paidOrder]) }).mockResolvedValueOnce([paidOrder]);
 
-    await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"], method: "cash", note: "test" } }, { user: { id: "65f000000000000000000777", _id: "65f000000000000000000777", roleName: "manager", restaurantId: "65f000000000000000000099" } });
+    await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000001"], method: "cash", note: "test" } }, AUTH_CONTEXT);
 
     expect(modelMocks.Order.updateMany).toHaveBeenCalled();
     const payload = modelMocks.Order.updateMany.mock.calls.at(-1)[1];
@@ -348,7 +356,6 @@ describe("payment request + confirm guards", () => {
       expect(out?.invoice).toBeTruthy();
     },
   );
-
 
   it.each([
     ["delivery", "failed"],

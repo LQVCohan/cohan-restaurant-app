@@ -1,0 +1,34 @@
+{
+  "id": "restaurant-chatbot-gemini-tests",
+  "name": "restaurant-chatbot-gemini-tests",
+  "title": "Align restaurant chatbot tests with Gemini provider policy",
+  "description": "Update stale chatbot tests that still assert the removed OpenAI request shape while runtime routes through the Gemini wrapper.",
+  "status": "completed",
+  "dev_type": "backend",
+  "scope": "restaurant-chatbot-tests",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": "2026-07-07",
+  "branch": "fix/restaurant-brand-membership-guards",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "bb4cbe82c9d97ea29b2832bbf896279263f070ac",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1223",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js",
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotCore.service.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.persistence.service.test.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.phase26-cache.service.test.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.service.test.js"
+  ],
+  "notes": "Production code remains Gemini-only. Updated the three stale tests to assert the Gemini request contract and the core implementation file. Final GitHub Actions run 28850836519 passed backend lint, full backend tests, Menu RBAC, backend build, frontend lint/tests/build, and Playwright smoke tests.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}

@@ -53,35 +53,30 @@ describe("RestaurantQuery management scope", () => {
 
   it("does not return management restaurant detail for anonymous users", async () => {
     const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
-    await expect(RestaurantQuery.restaurant(null, { id: "665f665f665f665f665f6611" }, {})).resolves.toBeNull();
+    await expect(
+      RestaurantQuery.restaurant(null, { id: "665f665f665f665f665f6611" }, {}),
+    ).resolves.toBeNull();
   });
 
   it("keeps publicRestaurant available for published restaurants", async () => {
     const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
-    await expect(RestaurantQuery.publicRestaurant(null, { id: "665f665f665f665f665f6611" })).resolves.toEqual(state.publicDoc);
+    await expect(
+      RestaurantQuery.publicRestaurant(null, { id: "665f665f665f665f665f6611" }),
+    ).resolves.toEqual(state.publicDoc);
   });
 
   it("scopedRestaurants uses the central scoped restaurant filter", async () => {
     const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
-    await RestaurantQuery.scopedRestaurants(null, { limit: 20 }, { user: { id: "admin-1", roleName: "admin" } });
+    await RestaurantQuery.scopedRestaurants(
+      null,
+      { limit: 20 },
+      { user: { id: "admin-1", roleName: "admin" } },
+    );
     expect(state.findFilter).toEqual({});
   });
 
-  it("restaurantsByManager keeps system-admin legacy managerId lookup", async () => {
+  it("does not export the legacy restaurantsByManager query", async () => {
     const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
-    await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "admin-1", roleName: "admin" } });
-    expect(String(state.findFilter.managerId)).toBe("665f665f665f665f665f6611");
-  });
-
-  it("restaurantsByManager uses scoped access for the current non-admin user", async () => {
-    const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
-    await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "665f665f665f665f665f6611", roleName: "manager" } });
-    expect(String(state.findFilter.$or[0].managerId)).toBe("665f665f665f665f665f6611");
-  });
-
-  it("restaurantsByManager returns empty scope for other non-admin users", async () => {
-    const { RestaurantQuery } = await import("../../graphql/resolvers/restaurant/query.js");
-    await RestaurantQuery.restaurantsByManager(null, { managerId: "665f665f665f665f665f6611", limit: 20 }, { user: { id: "665f665f665f665f665f6622", roleName: "manager" } });
-    expect(state.findFilter).toEqual({ _id: { $in: [] } });
+    expect(RestaurantQuery).not.toHaveProperty("restaurantsByManager");
   });
 });

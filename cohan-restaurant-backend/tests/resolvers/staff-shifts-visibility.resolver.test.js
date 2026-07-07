@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const modelMocks = vi.hoisted(() => ({
   Staff: {}, Shift: { find: vi.fn() }, Timesheet: {}, LeaveRequest: {}, LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {}, Restaurant: { exists: vi.fn() }, PayrollPeriod: {}, PayrollItem: {},
   SchedulePublication: { find: vi.fn() }, EventLog: {}, ShiftAcknowledgement: {}, ScheduleAcknowledgement: {},
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({ listStaffPerformanceSnapshots: vi.fn() }));
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({ getSchedulingPolicy: vi.fn() }));
 vi.mock("../../src/services/scheduling/shiftAssignmentValidation.service.js", () => ({ validateShiftAssignment: vi.fn() }));
@@ -23,6 +30,7 @@ vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Type
 describe("staffShifts publication visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.SchedulePublication.find.mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
     modelMocks.Shift.find.mockReturnValue({ sort: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), populate: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) });
@@ -35,7 +43,7 @@ describe("staffShifts publication visibility", () => {
       lean: vi.fn().mockResolvedValue([{ periodStart: new Date("2026-05-05T00:00:00.000Z"), periodEnd: new Date("2026-05-11T23:59:59.999Z") }]),
     });
 
-    await query.staffShifts(null, { restaurantId: "r1", employeeId: "e1", startDate: "2026-05-04", endDate: "2026-05-10" }, { user: { id: "e1", roles: ["staff"], restaurantForStaff: "r1" } });
+    await query.staffShifts(null, { restaurantId: "r1", employeeId: "e1", startDate: "2026-05-04", endDate: "2026-05-10" }, { user: { id: "e1", roles: ["staff"] } });
 
     expect(modelMocks.SchedulePublication.find).toHaveBeenCalled();
     expect(modelMocks.Shift.find).toHaveBeenCalledWith(expect.objectContaining({

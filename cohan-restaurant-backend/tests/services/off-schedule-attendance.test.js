@@ -7,6 +7,9 @@ const MANAGER_ID = "507f1f77bcf86cd799439014";
 const ACCOUNTANT_ID = "507f1f77bcf86cd799439015";
 const TIMESHEET_ID = "507f1f77bcf86cd799439016";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(),
+}));
 const modelMocks = vi.hoisted(() => ({
   Staff: { find: vi.fn(), findById: vi.fn() },
   Timesheet: { find: vi.fn(), findById: vi.fn() },
@@ -15,6 +18,10 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 
 function findChain(rows = []) {
   return {
@@ -32,16 +39,15 @@ function unlockedPayroll() {
   });
 }
 
-function ctx(id, userType, restaurantId = RESTAURANT_ID) {
-  const normalizedRole = String(userType || "").toUpperCase();
-  if (normalizedRole === "ADMIN") return { user: { id, userType } };
-  if (normalizedRole === "MANAGER") return { user: { id, userType } };
-  return { user: { id, userType, restaurantForStaff: restaurantId } };
+function ctx(id, userType) {
+  return { user: { id, userType } };
 }
 
 describe("off-schedule attendance service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     unlockedPayroll();
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.Staff.find.mockReturnValue(
@@ -89,13 +95,14 @@ describe("off-schedule attendance service", () => {
     );
 
     await listOffScheduleAttendances({ filter: { restaurantId: RESTAURANT_ID }, ctx: ctx(MANAGER_ID, "MANAGER") });
-    await listOffScheduleAttendances({ filter: { restaurantId: RESTAURANT_ID }, ctx: { user: { id: MANAGER_ID, userType: "ADMIN" } } });
+    await listOffScheduleAttendances({ filter: { restaurantId: RESTAURANT_ID }, ctx: ctx(MANAGER_ID, "ADMIN") });
     await listOffScheduleAttendances({ filter: { restaurantId: RESTAURANT_ID }, ctx: ctx(MANAGER_ID, "HR") });
 
     expect(modelMocks.Timesheet.find).toHaveBeenCalledTimes(3);
   });
 
   it("rejects users outside the restaurant scope", async () => {
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
     const { listOffScheduleAttendances } = await import(
       "../../src/services/attendance/offScheduleAttendance.service.js"
     );
@@ -103,7 +110,7 @@ describe("off-schedule attendance service", () => {
     await expect(
       listOffScheduleAttendances({
         filter: { restaurantId: RESTAURANT_ID },
-        ctx: ctx(STAFF_ID, "STAFF", "507f1f77bcf86cd799439099"),
+        ctx: ctx(STAFF_ID, "STAFF"),
       }),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
@@ -190,7 +197,6 @@ describe("off-schedule attendance service", () => {
     expect(record.offScheduleReviewNote).toBe("not authorized");
     expect(save).toHaveBeenCalled();
   });
-
 
   it("does not reject an already rejected off-schedule attendance", async () => {
     const save = vi.fn();

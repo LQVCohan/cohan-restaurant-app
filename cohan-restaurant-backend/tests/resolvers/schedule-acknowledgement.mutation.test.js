@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(),
+}));
 const modelMocks = vi.hoisted(() => ({
   Staff: {}, Shift: { exists: vi.fn() }, Timesheet: {}, LeaveRequest: {}, LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {},
   Restaurant: { exists: vi.fn() }, PayrollPeriod: {}, PayrollItem: {},
@@ -8,6 +11,10 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({ upsertStaffPerformanceReview: vi.fn(), recalculateStaffPerformanceSnapshots: vi.fn() }));
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({ updateSchedulingPolicy: vi.fn(), startSchedulingOperations: vi.fn() }));
 vi.mock("../../src/services/scheduling/shiftAssignmentValidation.service.js", () => ({ validateShiftAssignment: vi.fn() }));
@@ -25,7 +32,8 @@ vi.mock("mongoose", () => ({ default: { isValidObjectId: vi.fn(() => true), Type
 describe("schedule acknowledgement mutation resolver", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    modelMocks.Restaurant.exists.mockResolvedValue(null);
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.SchedulePublication.findOne.mockResolvedValue({
       _id: "pub-1",
       restaurantId: "rest-1",
@@ -38,41 +46,43 @@ describe("schedule acknowledgement mutation resolver", () => {
     modelMocks.ScheduleAcknowledgement.findOneAndUpdate.mockResolvedValue({ _id: "ack-1", status: "acknowledged" });
   });
 
-  it("allows staff with restaurantForStaff to acknowledge weekly schedule", async () => {
+  it("allows staff in BrandMembership scope to acknowledge weekly schedule", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    const user = { id: "staff-1", roles: ["staff"] };
 
     const result = await mutation.acknowledgeMySchedule(
       null,
       { restaurantId: "rest-1", periodStart: "2026-05-01T00:00:00.000Z", periodEnd: "2026-05-07T23:59:59.999Z" },
-      { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-1" } },
+      { user },
     );
 
     expect(result).toEqual({ _id: "ack-1", status: "acknowledged" });
-    expect(modelMocks.ScheduleAcknowledgement.findOneAndUpdate).toHaveBeenCalled();
+    expect(restaurantScopeMocks.canAccessRestaurant).toHaveBeenCalledWith(user, "rest-1");
   });
 
-  it("blocks staff with no matching restaurant when acknowledging", async () => {
+  it("blocks staff outside BrandMembership restaurant scope", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
 
     await expect(
       mutation.acknowledgeMySchedule(
         null,
         { restaurantId: "rest-1", periodStart: "2026-05-01T00:00:00.000Z", periodEnd: "2026-05-07T23:59:59.999Z" },
-        { user: { id: "staff-1", roles: ["staff"], restaurantForStaff: "rest-2" } },
+        { user: { id: "staff-1", roles: ["staff"] } },
       ),
     ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 
-  it("allows manager access through existing restaurant access rule", async () => {
+  it("allows manager in BrandMembership restaurant scope", async () => {
     const mutation = (await import("../../graphql/resolvers/staff/mutation.js")).default;
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
+    const user = { id: "manager-1", roles: ["MANAGER"] };
 
     await mutation.acknowledgeMySchedule(
       null,
       { restaurantId: "rest-1", periodStart: "2026-05-01T00:00:00.000Z", periodEnd: "2026-05-07T23:59:59.999Z" },
-      { user: { id: "manager-1", roles: ["MANAGER"] } },
+      { user },
     );
 
-    expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({ _id: "rest-1", managerId: "manager-1" });
+    expect(restaurantScopeMocks.canAccessRestaurant).toHaveBeenCalledWith(user, "rest-1");
   });
 });

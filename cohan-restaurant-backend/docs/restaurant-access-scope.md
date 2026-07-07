@@ -1,19 +1,20 @@
 # Restaurant access scope
 
-`refRestaurants` is **not** an authorization source.
+`BrandMembership` is the only runtime authorization source for restaurant management scope.
 
-## User restaurant fields
+## Non-authorization fields
 
-- `refRestaurants` tracks restaurants a customer has recently accessed. It is used for customer context/history only and must not grant manager or staff access.
-- Do not rely on `user.restaurantId` for manager accounts. Manager users do not carry a restaurant ownership list on the user document.
-- Staff-style scoped users may use explicit staff scope fields such as `restaurantForStaff` or assigned `restaurantIds` where those fields are intentionally populated.
+- `refRestaurants` tracks restaurants a customer recently accessed. It is customer context/history only.
+- Legacy user fields such as `restaurantId`, `restaurantForStaff`, `restaurantIds`, and `restaurants` must not grant restaurant access.
+- `Restaurant.managerId` is not part of the runtime model, GraphQL contract, guards, notification routing, or AI handoff flow.
 
-## Manager restaurant ownership
+## BrandMembership scope
 
-Manager access to a restaurant is resolved from the restaurant record itself:
+- System admins can access all restaurants.
+- Active Brand `owner` and `admin` memberships can access every restaurant whose `brandId` matches the membership.
+- Active Brand `manager` and `staff` memberships can access only restaurants listed in `membership.restaurantIds` **and** currently belonging to the same membership Brand.
+- A stale restaurant ID from another Brand must never grant access.
 
-- restaurant `_id` must match the requested restaurant;
-- Brand-scoped manager access must come from `BrandMembership.role = "manager"` and `BrandMembership.restaurantIds`.
-- restaurant `managerId` is legacy/cache fallback only for users without active BrandMembership.
+All restaurant query and mutation guards must flow through `getScopedRestaurantFilter`, `canAccessRestaurant`, `canManageBrand`, or `isBrandOwner`. Manager assignment and membership changes belong to the BrandMembership operations, not restaurant mutations.
 
-In code, manager scope should flow through `requireRestaurantAccess` / `canAccessRestaurant`. That service checks BrandMembership first and only falls back to `Restaurant.managerId` for legacy users with no active BrandMembership. Do not add `refRestaurants` or customer browsing history as a shortcut for manager authorization.
+The one-time `migrate-restaurant-manager-to-brand-membership.js` script remains available only to convert and clean existing database records before rollout.

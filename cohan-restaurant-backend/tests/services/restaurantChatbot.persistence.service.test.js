@@ -79,8 +79,6 @@ vi.mock("../../models/index.js", () => {
     AiChatbotSafetyRule: { find: noopQuery },
     AiChatbotKnowledgeItem: { find: noopQuery },
   };
-
-
 });
 
 import { handleRestaurantChatbotMessage } from "../../src/services/ai/restaurantChatbot.service.js";
@@ -90,6 +88,7 @@ describe("restaurantChatbot persistence", () => {
     conversationStore.length = 0;
     messageStore.length = 0;
     __resetAiChatbotRateLimitStoreForTests();
+    delete process.env.GEMINI_API_KEY;
     delete process.env.OPENAI_API_KEY;
   });
 
@@ -111,20 +110,22 @@ describe("restaurantChatbot persistence", () => {
     expect(second.conversationId).not.toBe(first.conversationId);
   });
 
-  it("does not duplicate current user message in OpenAI prompt history", async () => {
-    delete process.env.OPENAI_API_KEY;
+  it("does not duplicate current user message in Gemini prompt history", async () => {
+    delete process.env.GEMINI_API_KEY;
     const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
 
-    process.env.OPENAI_API_KEY = "test_key";
+    process.env.GEMINI_API_KEY = "test";
     const fetchMock = vi.fn(async (_url, options) => {
       const body = JSON.parse(options.body);
-      const userMessages = body.messages.filter((m) => m.role === "user").map((m) => m.content);
+      const userMessages = body.contents
+        .filter((item) => item.role === "user")
+        .map((item) => item.parts[0].text);
       expect(userMessages).toEqual(["Lịch sử cũ", "Tin nhắn mới"]);
       expect(userMessages.filter((message) => message === "Tin nhắn mới")).toHaveLength(1);
       return {
         ok: true,
         json: async () => ({
-          choices: [{ message: { content: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }) } }],
+          candidates: [{ content: { parts: [{ text: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }) }] } }],
         }),
       };
     });
@@ -139,7 +140,6 @@ describe("restaurantChatbot persistence", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
-
 
   it("rate limits askAiChatbot over limit and avoids persistence side effects", async () => {
     const guestId = "guest_rl";
@@ -172,5 +172,4 @@ describe("restaurantChatbot persistence", () => {
       handleRestaurantChatbotMessage({ message: "allowed-other-restaurant", guestId, restaurantId: "507f1f77bcf86cd7994390bb", clientIp: "2.2.2.2" })
     ).resolves.toHaveProperty("answer");
   });
-
 });

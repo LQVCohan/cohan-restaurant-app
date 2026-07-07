@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const modelMocks = vi.hoisted(() => ({
   updateManyMock: vi.fn(),
   findByIdMock: vi.fn(),
@@ -26,6 +29,10 @@ modelMocks.ShiftAcknowledgement.findById = modelMocks.findByIdMock;
 modelMocks.ShiftAcknowledgement.findOne = vi.fn();
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../lib/mailer.js", () => ({ mailer: { sendMail: vi.fn() } }));
 vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () => ({
   recalculateStaffPerformanceSnapshots: vi.fn(),
@@ -85,6 +92,7 @@ vi.mock("mongoose", () => ({
 describe("shift acknowledgement mutation resolvers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.updateManyMock.mockResolvedValue({ modifiedCount: 1 });
     modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.SchedulePublication.findById.mockReturnValue({

@@ -1,0 +1,43 @@
+{
+  "id": "restaurant-brand-membership-guards",
+  "name": "restaurant-brand-membership-guards",
+  "title": "Remove legacy restaurant managerId authorization",
+  "description": "Make BrandMembership the only runtime source for restaurant access and mutation scope, remove legacy managerId GraphQL/runtime contracts, and close cross-brand guard gaps.",
+  "status": "completed",
+  "dev_type": "backend",
+  "scope": "restaurant-brand-membership-authorization",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": "2026-07-07",
+  "branch": "fix/restaurant-brand-membership-guards",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": "0b217a827dc02bcac2ff485c1d316655d238d31a",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1223",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/restaurant.graphql",
+    "cohan-restaurant-backend/models/restaurant.model.js",
+    "cohan-restaurant-backend/src/services/auth/restaurantScope.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/types.js",
+    "src/hooks/useRestaurant.js",
+    "cohan-restaurant-backend/docs/restaurant-access-scope.md",
+    "cohan-restaurant-backend/tests/services/restaurantScope.service.test.js",
+    "cohan-restaurant-backend/tests/services/authorization.service.test.js",
+    "cohan-restaurant-backend/tests/resolvers/availability.resolver.test.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-query-scope.test.js",
+    "cohan-restaurant-backend/tests/resolvers/review-transparent-flow.test.js"
+  ],
+  "notes": "Runtime authorization no longer reads Restaurant.managerId or legacy restaurant fields on User. Full backend diagnostics passed 251/254 test files and 1827/1830 tests. The three remaining failures are pre-existing AI chatbot tests in unchanged files. The migration script remains available for one-time database cleanup.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}

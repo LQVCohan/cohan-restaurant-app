@@ -1,3 +1,7 @@
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(),
+}));
+
 const modelMocks = vi.hoisted(() => ({
   AvailabilityRegistrationWindow: {
     create: vi.fn(),
@@ -18,6 +22,10 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({
   getSchedulingPolicy: vi.fn().mockResolvedValue({
     availabilityRegistrationPolicy: {
@@ -33,6 +41,8 @@ vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({
 describe("availability resolver", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockReset();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     modelMocks.Restaurant.exists.mockResolvedValue(true);
   });
 
@@ -42,8 +52,6 @@ describe("availability resolver", () => {
     const res = await mutation.createAvailabilityWindow(null, { input: { restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), openAt: new Date(), closeAt: new Date() } }, { user: { id: "u1", roles: ["manager"], restaurantId: "r1" } });
     expect(res._id).toBe("w1");
   });
-
-
 
   it("defaults and overrides lateChangeRequiresApproval on createAvailabilityWindow", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
@@ -246,24 +254,24 @@ describe("availability resolver", () => {
     expect(modelMocks.StaffAvailabilitySubmission.updateMany).toHaveBeenCalledTimes(1);
   });
 
-  it("allows manager without user.restaurantId when restaurant.managerId matches", async () => {
+  it("allows manager when BrandMembership grants restaurant access", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    modelMocks.Restaurant.exists.mockResolvedValue(true);
     modelMocks.AvailabilityRegistrationWindow.create.mockResolvedValue({ _id: "w2", status: "draft" });
 
+    const user = { id: "m2", roles: ["manager"] };
     const res = await mutation.createAvailabilityWindow(
       null,
       { input: { restaurantId: "r2", periodStart: new Date(), periodEnd: new Date(), openAt: new Date(), closeAt: new Date() } },
-      { user: { id: "m2", roles: ["manager"] } },
+      { user },
     );
 
     expect(res._id).toBe("w2");
-    expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({ _id: "r2", managerId: "m2" });
+    expect(restaurantScopeMocks.canAccessRestaurant).toHaveBeenCalledWith(user, "r2");
   });
 
-  it("blocks manager without user.restaurantId when restaurant.managerId does not match", async () => {
+  it("blocks manager when BrandMembership denies restaurant access", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    modelMocks.Restaurant.exists.mockResolvedValue(null);
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
 
     await expect(
       mutation.createAvailabilityWindow(
@@ -276,7 +284,7 @@ describe("availability resolver", () => {
 
   it("blocks manager outside restaurant scope for open close and cancel", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    modelMocks.Restaurant.exists.mockResolvedValue(null);
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(false);
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r2" });
 
     const ctx = { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } };
@@ -349,6 +357,7 @@ describe("availability resolver", () => {
 
   it("blocks user outside restaurant scope", async () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r2" });
 
     await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roleName: "staff", restaurantForStaff: "r1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
@@ -375,6 +384,7 @@ describe("availability resolver", () => {
 
   it("blocks HR and accountant outside restaurant scope from list", async () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValueOnce(false);
     await expect(
       query.staffAvailabilitySubmissions(
         null,
@@ -390,7 +400,6 @@ describe("availability resolver", () => {
       ),
     ).rejects.toThrow("FORBIDDEN");
   });
-
 
   it("writes pending slots for closed late-change submit without overwriting official slots", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
@@ -425,5 +434,4 @@ describe("availability resolver", () => {
     expect(set.slots).toBeUndefined();
     expect(set.pendingSlots).toEqual([]);
   });
-
 });

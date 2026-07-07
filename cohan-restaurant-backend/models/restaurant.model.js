@@ -161,21 +161,12 @@ const restaurantSchema = BaseSchemaModel({
   paymentSettings: { type: paymentSettingsSchema, default: () => ({}) },
   defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
   manualUsdToVndRate: { type: Number, default: 26000, min: 1 },
-
-  // Legacy/cache fallback only. Brand-scoped manager assignment is sourced from
-  // BrandMembership.role = "manager" + BrandMembership.restaurantIds.
-  managerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: false,
-  },
   brandId: { type: mongoose.Schema.Types.ObjectId, ref: "Brand", index: true },
 });
 
 restaurantSchema.index({ status: 1, avgRating: -1 });
 restaurantSchema.index({ businessStatus: 1, publicationStatus: 1, operationalStatus: 1 });
 restaurantSchema.index({ reviewCount: -1 });
-restaurantSchema.index({ managerId: 1 });
 restaurantSchema.index({ brandId: 1, createdAt: -1 });
 restaurantSchema.index({ "address.city": 1, "address.district": 1 });
 restaurantSchema.index({ "address.ward": 1, "address.postalCode": 1 });
