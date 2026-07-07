@@ -1,0 +1,36 @@
+name: search-validation
+
+on:
+  push:
+    branches:
+      - codex/global-search-catalog-chefs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix cohan-restaurant-backend ci
+      - name: Backend search tests
+        run: npm --prefix cohan-restaurant-backend test -- tests/resolvers/search-public-safety.test.js --reporter=verbose
+      - name: Frontend search tests
+        run: npx vitest run src/components/Customer/Homepage_Client/MobileHome.test.jsx src/pages/SearchPage.test.jsx --reporter=verbose
+      - name: GraphQL contract
+        run: npm run check:graphql
+      - name: Build
+        run: npm run build
