@@ -164,6 +164,19 @@ const ShiftDetailModal = ({
 
     return Array.from(new Set([...currentIds, ...pendingIds]));
   }, [shiftStaffIds, pendingAddStaffIds]);
+  const assignedStaff = useMemo(() => {
+    const staffById = new Map(
+      (staffList || []).map((person) => [String(person.id), person]),
+    );
+
+    return effectiveShiftStaffIds
+      .map((staffId) => staffById.get(String(staffId)))
+      .filter(Boolean);
+  }, [effectiveShiftStaffIds, staffList]);
+  const unresolvedAssignedStaffCount = Math.max(
+    0,
+    effectiveShiftStaffIds.length - assignedStaff.length,
+  );
 
   const hasPendingAdds = pendingAddStaffIds.length > 0;
   const hasNoteChanged = noteDraft !== (shift?.notes || "");
@@ -344,11 +357,19 @@ const ShiftDetailModal = ({
 
   const currentShiftType =
     shiftConfig[shift.shiftType] || shiftTypes[shift.shiftType];
+  const requiredStaffCount = Math.max(shiftRequiredRoleKeys.length, 1);
   const missingCount = Math.max(
     0,
-    shiftEssentialJobs.length - effectiveShiftStaffIds.length,
+    requiredStaffCount - assignedStaff.length,
   );
-  const isComplete = missingCount === 0;
+  const isComplete =
+    missingCount === 0 && unresolvedAssignedStaffCount === 0;
+  const coverageStatusLabel =
+    missingCount > 0
+      ? `Thiếu ${missingCount} người`
+      : unresolvedAssignedStaffCount > 0
+        ? `Cần kiểm tra ${unresolvedAssignedStaffCount} phân công`
+        : "Đủ nhân sự";
   const getBatchSaveErrorText = (result) => {
     if (result?.errorText) return result.errorText;
 
@@ -769,6 +790,7 @@ const ShiftDetailModal = ({
             type="button"
             className="header-close-btn"
             onClick={requestCloseModal}
+            aria-label="Đóng chi tiết ca làm việc"
           >
             <X size={18} />
           </button>
@@ -798,22 +820,21 @@ const ShiftDetailModal = ({
                   </span>
                   <span>
                     <Users size={14} />
-                    {shiftStaffIds.length} nhân sự
+                    {assignedStaff.length} nhân sự
                   </span>
                 </div>
               </div>
 
               <div
                 className={`status-badge ${isComplete ? "complete" : "missing"}`}
+                role="status"
               >
                 {isComplete ? (
                   <CheckCircle size={16} />
                 ) : (
                   <AlertTriangle size={16} />
                 )}
-                <span>
-                  {isComplete ? "Đủ nhân sự" : `Thiếu ${missingCount} người`}
-                </span>
+                <span>{coverageStatusLabel}</span>
               </div>
             </div>
 
@@ -850,19 +871,16 @@ const ShiftDetailModal = ({
 
           <div className="section-block">
             <div className="section-header">
-              <h4>Nhân viên trong ca ({effectiveShiftStaffIds.length})</h4>
+              <h4>Nhân viên trong ca ({assignedStaff.length})</h4>
             </div>
 
             <div className="assigned-list">
-              {effectiveShiftStaffIds.length > 0 ? (
-                effectiveShiftStaffIds.map((staffId) => {
-                  const person = staffList.find(
-                    (staff) => staff.id === staffId,
-                  );
-                  if (!person) return null;
+              {assignedStaff.length > 0 ? (
+                assignedStaff.map((person) => {
+                  const staffId = String(person.id);
                   const isPendingAdd = pendingAddStaffIds
                     .map((item) => String(item))
-                    .includes(String(staffId));
+                    .includes(staffId);
                   return (
                     <div key={staffId} className="staff-row assigned">
                       <div className="info">
@@ -886,6 +904,7 @@ const ShiftDetailModal = ({
                           className="btn-icon remove"
                           onClick={() => handleRemovePendingStaff(staffId)}
                           title="Bỏ khỏi danh sách chờ lưu"
+                          aria-label={`Bỏ ${person.name} khỏi danh sách chờ lưu`}
                         >
                           <X size={18} />
                         </button>
@@ -896,6 +915,7 @@ const ShiftDetailModal = ({
                           className="btn-icon remove"
                           onClick={() => openRemoveConfirm(person)}
                           title="Xóa khỏi ca"
+                          aria-label={`Xóa ${person.name} khỏi ca`}
                         >
                           <UserMinus size={18} />
                         </button>
@@ -907,6 +927,13 @@ const ShiftDetailModal = ({
                 <div className="empty-placeholder">Chưa có nhân viên nào</div>
               )}
             </div>
+            {unresolvedAssignedStaffCount > 0 ? (
+              <div className="empty-placeholder" role="alert">
+                Có {unresolvedAssignedStaffCount} phân công không còn hồ sơ nhân
+                viên hợp lệ trong phạm vi nhà hàng. Các phân công này không được
+                tính là nhân sự của ca.
+              </div>
+            ) : null}
           </div>
 
           <div className="section-block">
@@ -948,21 +975,26 @@ const ShiftDetailModal = ({
                   <Search size={16} />
                   <input
                     placeholder="Tìm tên, mã NV, vị trí..."
+                    aria-label="Tìm nhân viên để thêm vào ca"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
                   {search ? (
-                    <X
-                      size={14}
+                    <button
+                      type="button"
                       className="clear-icon"
                       onClick={() => setSearch("")}
-                    />
+                      aria-label="Xóa từ khóa tìm kiếm"
+                    >
+                      <X size={14} />
+                    </button>
                   ) : null}
                 </div>
                 <select
                   value={jobFilter}
                   onChange={(event) => setJobFilter(event.target.value)}
                   className="job-select"
+                  aria-label="Lọc theo vị trí"
                 >
                   <option value="">Tất cả vị trí</option>
                   {jobOptions.map((job) => (
@@ -984,6 +1016,7 @@ const ShiftDetailModal = ({
                       className={
                         candidateRoleFilter === item.value ? "active" : ""
                       }
+                      aria-pressed={candidateRoleFilter === item.value}
                       onClick={() => setCandidateRoleFilter(item.value)}
                     >
                       {item.label}
@@ -1033,6 +1066,7 @@ const ShiftDetailModal = ({
                                 isSavingChanges
                               : isSavingChanges
                           }
+                          aria-label={`Thêm ${person.name} vào ca`}
                           title={
                             isSchedulePublished
                               ? isAddingStaff ||
@@ -1300,7 +1334,7 @@ const ShiftDetailModal = ({
                     <strong>
                       {shift.startTime} - {shift.endTime}
                     </strong>{" "}
-                    đang có <strong>{shiftStaffIds.length}</strong> nhân viên.
+                    đang có <strong>{assignedStaff.length}</strong> nhân viên.
                   </p>
 
                   <label>
@@ -1569,13 +1603,17 @@ const ShiftDetailModal = ({
                 >
                   {getSaveChangesLabel()}
                 </button>
-                <button className="btn-delete" onClick={openDeleteGroupConfirm}>
+                <button
+                  type="button"
+                  className="btn-delete"
+                  onClick={openDeleteGroupConfirm}
+                >
                   <Trash2 size={16} />
                   Xóa ca
                 </button>
               </>
             ) : null}
-            <button className="btn-close" onClick={requestCloseModal}>
+            <button type="button" className="btn-close" onClick={requestCloseModal}>
               Đóng
             </button>
           </div>
