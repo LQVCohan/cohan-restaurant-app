@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { useApolloClient, useQuery } from "@apollo/client/react";
 import { isRestaurantScopedRole } from "@/utils/frontendRoleAccess";
 import {
   readStorageValue,
@@ -220,6 +220,7 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
 
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
+  const apolloClient = useApolloClient();
 
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -558,8 +559,9 @@ export const AuthProvider = ({ children }) => {
     setSessionWarning("");
     clearAuth();
     clearPersistedCart();
+    apolloClient.clearStore().catch(() => {});
     navigate("/login", { replace: true });
-  }, [navigate]);
+  }, [apolloClient, navigate]);
 
   const value = useMemo(
     () => ({
