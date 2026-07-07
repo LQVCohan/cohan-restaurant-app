@@ -1,38 +1,36 @@
-/* NewOrderModal owns its shell. Keep the global order-modal theme from
-   reintroducing the old sage header after this component's styles load. */
+/* Ant Design Select portal styles for NewOrderModal. */
+
 .new-order-modal-shell.modal-container {
-  border-color: rgba(117, 82, 45, 0.18) !important;
-  background: #fffaf3 !important;
+  border-color: rgba(128, 109, 83, 0.18) !important;
+  background: #fffdf9 !important;
   box-shadow:
-    0 30px 80px rgba(42, 33, 25, 0.28),
-    inset 0 1px rgba(255, 255, 255, 0.78) !important;
+    0 30px 80px rgba(36, 48, 63, 0.26),
+    inset 0 1px rgba(255, 255, 255, 0.82) !important;
 }
 
 .new-order-modal-shell .modal-header {
-  border-bottom-color: rgba(117, 82, 45, 0.18) !important;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 250, 243, 0.98),
-    rgba(247, 240, 230, 0.95)
-  ) !important;
+  border-bottom-color: rgba(128, 109, 83, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 106, 96, 0.08), transparent 16rem),
+    rgba(255, 253, 249, 0.96) !important;
 }
 
 .new-order-modal-shell .modal-header h2,
 .new-order-modal-shell .modal-header h3 {
-  color: #4d3522 !important;
+  color: #24303f !important;
   letter-spacing: -0.022em !important;
 }
 
 .new-order-modal-shell .modal-close {
-  color: #7c4f2a !important;
-  background: rgba(255, 250, 243, 0.92) !important;
-  border-color: rgba(117, 82, 45, 0.18) !important;
+  color: #17554d !important;
+  background: #f2faf7 !important;
+  border-color: rgba(31, 106, 96, 0.18) !important;
 }
 
 .new-order-modal-shell .modal-close:hover {
-  color: #4d3522 !important;
-  background: #fff2df !important;
-  border-color: rgba(184, 147, 101, 0.58) !important;
+  color: #fff !important;
+  background: #1f6a60 !important;
+  border-color: #1f6a60 !important;
 }
 
 .new-order-modal-shell {
@@ -41,32 +39,26 @@
 
     .form-group__icon {
       z-index: 2;
-      color: rgba(122, 102, 82, 0.82);
+      color: rgba(102, 112, 133, 0.88);
     }
   }
 
   .new-order-search-select {
     width: 100%;
-    min-height: 42px;
-    font-family:
-      Inter,
-      "Segoe UI",
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      sans-serif;
+    min-height: 40px;
+    font-family: "Geist", "Outfit", Inter, system-ui, sans-serif;
 
     &.ant-select-single {
-      height: 42px;
+      height: 40px;
     }
 
     .ant-select-selector {
-      min-height: 42px !important;
+      min-height: 40px !important;
       padding: 0 2.35rem !important;
-      border: 1px solid rgba(117, 82, 45, 0.2) !important;
+      border: 1px solid #ded6cb !important;
       border-radius: 12px !important;
-      color: #4d3522 !important;
-      background: #fffaf3 !important;
+      color: #3c4650 !important;
+      background: rgba(255, 253, 249, 0.94) !important;
       box-shadow: none !important;
       transition:
         border-color 0.2s ease,
@@ -79,17 +71,17 @@
       display: flex;
       align-items: center;
       min-width: 0;
-      height: 40px;
+      height: 38px;
       padding-inline-end: 0 !important;
-      color: #4d3522;
-      font-size: 0.86rem;
-      font-weight: 750;
-      line-height: 40px !important;
+      color: #3c4650;
+      font-size: 0.84rem;
+      font-weight: 700;
+      line-height: 38px !important;
     }
 
     .ant-select-selection-placeholder {
-      color: rgba(122, 102, 82, 0.72);
-      font-weight: 650;
+      color: rgba(102, 112, 133, 0.7);
+      font-weight: 620;
     }
 
     .ant-select-selection-search {
@@ -98,15 +90,15 @@
     }
 
     .ant-select-selection-search-input {
-      height: 40px !important;
-      color: #4d3522 !important;
+      height: 38px !important;
+      color: #24303f !important;
       font: inherit !important;
     }
 
     .ant-select-arrow,
     .ant-select-clear {
       right: 0.75rem;
-      color: #7c4f2a;
+      color: #1f6a60;
     }
 
     .ant-select-clear {
@@ -114,23 +106,23 @@
       height: 20px;
       margin-top: -10px;
       border-radius: 7px;
-      background: #fffaf3;
+      background: #fffdf9;
     }
 
     &:not(.ant-select-disabled):hover .ant-select-selector {
-      border-color: rgba(184, 147, 101, 0.58) !important;
-      background: #fff6ea !important;
+      border-color: rgba(31, 106, 96, 0.26) !important;
+      background: #f2faf7 !important;
     }
 
     &.ant-select-focused .ant-select-selector {
-      border-color: #b89365 !important;
-      background: #fffaf3 !important;
-      box-shadow: 0 0 0 4px rgba(184, 147, 101, 0.18) !important;
+      border-color: rgba(31, 106, 96, 0.4) !important;
+      background: #fffdf9 !important;
+      box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.13) !important;
     }
 
     &.ant-select-disabled .ant-select-selector {
-      color: rgba(122, 102, 82, 0.72) !important;
-      background: #f0e7da !important;
+      color: rgba(102, 112, 133, 0.7) !important;
+      background: #efede8 !important;
       cursor: not-allowed !important;
     }
   }
@@ -139,44 +131,44 @@
 .new-order-search-select__popup {
   padding: 6px !important;
   overflow: hidden;
-  border: 1px solid rgba(117, 82, 45, 0.2) !important;
-  border-radius: 14px !important;
-  background: #fffaf3 !important;
+  border: 1px solid rgba(128, 109, 83, 0.18) !important;
+  border-radius: 13px !important;
+  background: #fffdf9 !important;
   box-shadow:
-    0 18px 42px rgba(75, 50, 27, 0.16),
-    0 4px 12px rgba(75, 50, 27, 0.08) !important;
+    0 18px 42px rgba(36, 48, 63, 0.14),
+    0 4px 12px rgba(42, 36, 27, 0.06) !important;
 
   .ant-select-item {
     min-height: 38px;
     padding: 8px 10px !important;
     border-radius: 9px !important;
-    color: #4d3522;
-    font-size: 0.84rem;
-    font-weight: 700;
+    color: #3c4650;
+    font-size: 0.83rem;
+    font-weight: 680;
   }
 
   .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-    color: #4d3522 !important;
-    background: #fff2df !important;
+    color: #17554d !important;
+    background: #f2faf7 !important;
   }
 
   .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    color: #fffaf3 !important;
-    background: #7c4f2a !important;
-    font-weight: 850;
+    color: #fff !important;
+    background: #1f6a60 !important;
+    font-weight: 800;
   }
 
   .ant-select-item-option-selected .ant-select-item-option-state {
-    color: #fffaf3 !important;
+    color: #fff !important;
   }
 
   .ant-select-item-empty,
   .ant-empty-description {
-    color: #7a6652 !important;
+    color: #667085 !important;
   }
 
   .rc-virtual-list-scrollbar-thumb {
-    background: rgba(124, 79, 42, 0.3) !important;
+    background: rgba(31, 106, 96, 0.28) !important;
   }
 }
 
@@ -187,21 +179,13 @@
     min-height: 44px;
   }
 
-  .new-order-modal-shell
-    .new-order-search-select
-    .ant-select-selector {
+  .new-order-modal-shell .new-order-search-select .ant-select-selector {
     min-height: 44px !important;
   }
 
-  .new-order-modal-shell
-    .new-order-search-select
-    .ant-select-selection-item,
-  .new-order-modal-shell
-    .new-order-search-select
-    .ant-select-selection-placeholder,
-  .new-order-modal-shell
-    .new-order-search-select
-    .ant-select-selection-search-input {
+  .new-order-modal-shell .new-order-search-select .ant-select-selection-item,
+  .new-order-modal-shell .new-order-search-select .ant-select-selection-placeholder,
+  .new-order-modal-shell .new-order-search-select .ant-select-selection-search-input {
     height: 42px !important;
     line-height: 42px !important;
   }
