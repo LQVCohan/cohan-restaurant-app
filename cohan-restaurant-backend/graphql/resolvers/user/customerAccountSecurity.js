@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { RefreshToken, User } from "../../../models/index.js";
 import { clearRefreshCookie, hashRefreshToken } from "../../../src/security/authTokens.js";
+import { requireRole } from "../../../utils/authz.js";
 
 const requireUserId = (ctx) => {
   const userId = ctx?.user?.id || ctx?.user?._id;
@@ -69,6 +70,8 @@ export default {
 
     deleteMyAccount: async (_, { currentPassword, confirmText }, ctx) => {
       const userId = requireUserId(ctx);
+      requireRole(ctx?.user, ["customer"]);
+
       const normalizedConfirm = String(confirmText || "").trim().toUpperCase();
       if (!["XOA TAI KHOAN", "XÓA TÀI KHOẢN"].includes(normalizedConfirm)) {
         throw new GraphQLError("Invalid confirmation text", { extensions: { code: "BAD_USER_INPUT" } });
