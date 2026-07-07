@@ -3,7 +3,7 @@
   "name": "new-order-order-theme-sync",
   "title": "Sync new order modal with Order Management UI",
   "description": "Replace the customer/sage visual override in the manager new-order modal with the existing Order Management cream, brown and gold operational design system.",
-  "status": "in_progress",
+  "status": "in_review",
   "dev_type": "frontend",
   "scope": "manager-new-order-modal",
   "priority": "P1",
@@ -13,13 +13,12 @@
   "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "b97113706974e33f6b51c1b1cbf7261e59e1d80b",
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
-    "src/components/Dashboard_Manager/Order/components/NewOrderModal.scss",
     "src/components/Dashboard_Manager/Order/components/NewOrderModalPolish.scss",
     "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss"
   ],
+  "notes": "The modal now uses the same cream, brown, gold, border, focus and primary-action treatment as OrderManagement.scss. Header and menu cards were made denser, controls now match the 42px/12px order toolbar rhythm, and the cart panel follows the same brown operational accent. Responsive and reduced-motion states remain. No order data or workflow code changed. The Ant Design popupClassName warning is separate from this style-only patch and remains to be migrated in NewOrderModal.jsx. Component tests, build and browser screenshots were not run because the connector environment has no executable repository checkout.",
   "meta": {
     "skills": [
       "ponytail",
