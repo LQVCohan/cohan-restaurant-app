@@ -36,6 +36,78 @@ $shadow: 0 18px 44px rgba(91, 48, 17, 0.08);
     border-radius: 30px;
   }
 
+  .profile-management-shortcut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+    padding: 18px 20px;
+    border: 1px solid rgba(255, 102, 0, 0.22);
+    border-radius: 22px;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(255, 138, 61, 0.14), transparent 16rem),
+      rgba(255, 253, 248, 0.96);
+    box-shadow: 0 14px 34px rgba(91, 48, 17, 0.07);
+
+    > div {
+      min-width: 0;
+    }
+
+    span,
+    strong,
+    p {
+      display: block;
+    }
+
+    span {
+      margin-bottom: 4px;
+      color: $primary;
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    strong {
+      color: $text-main;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    p {
+      margin: 4px 0 0;
+      color: $text-sub;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    button {
+      flex: 0 0 auto;
+      min-height: 44px;
+      padding: 10px 17px;
+      border: 1px solid rgba(255, 102, 0, 0.24);
+      border-radius: 14px;
+      background: linear-gradient(135deg, $primary, #e65c00);
+      color: #fff;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(255, 102, 0, 0.18);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 28px rgba(255, 102, 0, 0.24);
+      }
+
+      &:active {
+        transform: translateY(0) scale(0.98);
+      }
+    }
+  }
+
   .profile-content > .content-card > .wallet-panel {
     display: none;
   }
@@ -143,5 +215,15 @@ button,
 @media (max-width: 640px) {
   .profile-page {
     padding: 72px 12px 48px;
+
+    .profile-management-shortcut {
+      align-items: stretch;
+      flex-direction: column;
+      padding: 16px;
+
+      button {
+        width: 100%;
+      }
+    }
   }
 }
