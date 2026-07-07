@@ -1,6 +1,7 @@
 name: temp-run-restaurant-hours-fix
 
 # Temporary trigger; removed before merge.
+# Trigger the base CI patch job.
 on:
   pull_request:
     branches:
