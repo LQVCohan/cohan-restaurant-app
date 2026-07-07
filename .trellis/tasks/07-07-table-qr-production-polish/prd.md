@@ -2,52 +2,51 @@
 
 ## Current behavior
 
-The manager table-QR page uses the shared compact header with three full statistic cards. A second full-width flow card then repeats contextual information as four pills, a public base URL, and a bulk action. At the reported desktop width, these two surfaces consume a large amount of above-the-fold space before the first table QR card.
+The manager table-QR page used a large statistic header and a second full-width usage-flow card, consuming substantial above-the-fold space. Its copy also mixed Vietnamese with implementation-facing terms such as “order”, “public”, “link”, and “copy”.
 
-The copy also mixes Vietnamese with implementation-facing terms such as “order”, “public”, “link”, and “copy”. Status and action labels are understandable but not consistently phrased for a production-facing management screen.
+The QR-to-table data path is correct: the signed token, route, stored token, restaurant, table ID, and table code are cross-checked. However, realtime delivery has two callback naming conventions. QR requests emit `TABLE_CUSTOMER_REQUEST_CREATED` and `TABLE_PAYMENT_REQUESTED`, which `useSocketOrder` routes only to `onTableCustomerRequestCreated` and `onTablePaymentRequested`. `OrderManagement` already listens to the equivalent legacy callbacks `onCustomerStaffCallRequested` and `onCustomerPaymentRequested`, so its specialized toast does not run for QR requests even though the request is stored against the correct table.
 
 ## End-to-end flow reviewed
 
 1. `Table` stores the access token, public URL, QR data URL, generated time, and expiry time.
 2. `floor_table.graphql` exposes `tableQrAccessList`, `generateTableAccessQr`, and `revokeTableAccessQr`.
-3. `tableAccessQr.js` validates IDs and base URLs, enforces restaurant permissions, signs the table token, generates QR data, persists timestamps, and writes audit events.
-4. `TableQrManagementPage` queries the table list, calls generate/revoke mutations, derives ready/expired/missing states, and exposes open/copy/print actions.
-5. `ManagerLayout` mounts the page at `manager#table-qr` for users with `table.read` access.
+3. `tableAccessQr.js` loads the table by ID, signs restaurant ID/table ID/table code, builds the matching route, persists the token, and writes an audit event.
+4. `TableCurrentSessionPage` reads restaurant ID/table ID/token from the QR route and sends them for session reads, staff calls, and payment requests.
+5. `publicTableSessionQuery.js` and `publicTablePaymentMutation.js` verify the signed values, the stored token, the current table code, and the active table session before reading or writing requests.
+6. `publicTablePaymentMutation.js` emits restaurant events containing the verified `tableId` and `tableCode`.
+7. `useSocketOrder` dispatches those events to manager-page callbacks.
+8. `OrderManagement` shows staff/payment notifications, while `Dashboard` refreshes its support queue.
 
-The data contract, authorization, expiry calculation, audit logging, and mutation behavior are correct. The root cause is page composition and page-scoped styling, so no backend or GraphQL change is required.
+The QR mapping and backend request ownership are correct. The realtime notification root cause is the missing compatibility routing between the two callback names in the shared socket hook.
 
 ## Scope
 
-- Remove the large header statistic cards from this page and replace them with a compact inline summary.
-- Keep total, active, expired, and missing QR counts visible without a second card grid.
-- Collapse the usage guide into a native disclosure so it is available without permanently occupying space.
-- Rewrite mixed or implementation-facing copy into clear Vietnamese management wording.
-- Improve card action hierarchy, focus states, touch targets, long-URL handling, loading/empty/error status semantics, and narrow-screen layout.
-- Reuse the existing manager palette, React component, SCSS stack, and GraphQL operations.
+- Keep the compact table-QR layout, inline summary, disclosure guide, and production Vietnamese wording.
+- Route QR staff-call events to `onTableCustomerRequestCreated`, falling back to `onCustomerStaffCallRequested` when the explicit table callback is absent.
+- Route QR payment events to `onTablePaymentRequested`, falling back to `onCustomerPaymentRequested` when the explicit table callback is absent.
+- Call only one handler per event so pages that already use the new callbacks do not receive duplicates.
+- Preserve existing customer-tracking event routing and all backend QR validation.
 
 ## Acceptance criteria
 
-- The first row of table QR cards appears materially higher on the reported desktop viewport.
-- Total tables, active QR codes, expired QR codes, and tables needing a QR remain visible at a glance.
-- The usage guide is available on demand and does not occupy a permanent multi-pill row.
-- Page title, description, statuses, notifications, metadata, and action labels use consistent user-facing Vietnamese.
-- Generate, regenerate, open, copy, print, refresh, bulk generation, and revoke actions continue to work unchanged.
-- QR images have explicit dimensions and useful alternative text.
-- Error/loading/empty states and copied feedback remain understandable to assistive technology.
-- Buttons have visible hover, active, and keyboard focus states; reduced-motion users do not receive unnecessary transitions.
-- At 1180px, 760px, 430px, 390x844, and 430x932, the page has no horizontal overflow and actions remain usable.
-- No schema, resolver, permission, token, audit-log, restaurant-scope, or realtime behavior changes.
+- QR links remain bound to the signed restaurant ID, table ID, and current table code.
+- A QR staff call reaches the manager handler with the verified `tableCode`.
+- A QR payment request reaches the manager handler with the verified `tableCode`.
+- `OrderManagement` can keep its existing legacy callbacks and receives both QR request types.
+- `Dashboard` continues using the explicit table callbacks without duplicate calls.
+- Existing `CUSTOMER_PAYMENT_REQUESTED` and `CUSTOMER_STAFF_CALL_REQUESTED` routing remains unchanged.
+- No schema, resolver, permission, token, audit-log, restaurant-scope, or request-persistence changes.
 
 ## Out of scope
 
 - Changing QR token lifetime or signing rules.
-- Adding bulk GraphQL mutations, pagination, search, filters, or new dependencies.
-- Rebuilding `ManagementPageHeader` for every manager page.
-- Changing the public table experience or print template layout beyond wording.
+- Renaming backend event types.
+- Adding a new realtime abstraction or dependency.
+- Changing the public table experience beyond the existing production copy.
 
 ## Validation plan
 
+- Run `vitest run src/hooks/useSocketOrder.test.js`.
 - Run `npm run check:conflicts`.
-- Run `npm run check:graphql` because the component contains inline GraphQL operations.
-- Run the frontend production build with `npm run build`.
-- Review the authenticated page at desktop and 390x844 / 430x932 when a browser environment is available.
+- Run the frontend production build with `npm run build` when the repository runtime is available.
+- Manually scan one QR and verify staff-call/payment notifications show the scanned table code.
