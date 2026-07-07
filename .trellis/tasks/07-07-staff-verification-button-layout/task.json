@@ -1,0 +1,20 @@
+{
+  "id": "staff-verification-button-layout",
+  "name": "staff-verification-button-layout",
+  "title": "Balance staff verification button",
+  "description": "Keep the resend verification action aligned and readable inside the staff detail panel.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-staff-detail-ui",
+  "priority": "P2",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.jsx",
+    "src/components/Dashboard_Manager/Staff/components/EmployeeDetail/EmployeeDetail.scss"
+  ]
+}
