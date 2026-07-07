@@ -92,10 +92,10 @@ export default function useSocketOrder(restaurantId, handlers = {}, options = {}
 
       switch (evt.type) {
         case "TABLE_CUSTOMER_REQUEST_CREATED":
-          h.onTableCustomerRequestCreated?.(evt);
+          (h.onTableCustomerRequestCreated || h.onCustomerStaffCallRequested)?.(evt);
           break;
         case "TABLE_PAYMENT_REQUESTED":
-          h.onTablePaymentRequested?.(evt);
+          (h.onTablePaymentRequested || h.onCustomerPaymentRequested)?.(evt);
           break;
         case "ORDER_CREATED":
           h.onCreated?.(evt.order);
