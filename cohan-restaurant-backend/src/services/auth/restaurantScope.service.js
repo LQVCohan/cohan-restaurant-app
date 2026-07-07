@@ -51,18 +51,38 @@ export async function getScopedRestaurantFilter(user) {
   return ors.length ? { $or: ors } : emptyFilter();
 }
 
+const includesId = (values, target) =>
+  (values || []).some((value) => String(value) === String(target));
+
 export async function canAccessRestaurant(user, restaurantId) {
   if (!user || !restaurantId) return false;
   if (isSystemAdmin(user)) return true;
 
   const rid = toObjectId(restaurantId);
-  if (!rid || typeof Restaurant?.exists !== "function") return false;
-
+  if (!rid) return false;
   const scopedFilter = await getScopedRestaurantFilter(user);
-  return Boolean(
-    await Restaurant.exists({
-      $and: [{ _id: rid }, scopedFilter],
-    }),
+
+  if (typeof Restaurant?.exists === "function") {
+    return Boolean(
+      await Restaurant.exists({
+        $and: [{ _id: rid }, scopedFilter],
+      }),
+    );
+  }
+
+  if (typeof Restaurant?.findById !== "function") return false;
+  const query = Restaurant.findById(rid);
+  const restaurant = typeof query?.select === "function"
+    ? await query.select("_id brandId").lean()
+    : await query;
+  if (!restaurant) return false;
+  if (scopedFilter._id?.$in) {
+    return includesId(scopedFilter._id.$in, restaurant._id);
+  }
+  return (scopedFilter.$or || []).some(
+    (clause) =>
+      String(clause.brandId) === String(restaurant.brandId) &&
+      (!clause._id?.$in || includesId(clause._id.$in, restaurant._id)),
   );
 }
 
