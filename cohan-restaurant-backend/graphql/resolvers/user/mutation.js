@@ -1159,7 +1159,7 @@ export const UserMutation = {
       });
     }
 
-    const targetRestaurantIds = (customer.refRestaurants || []).map((id) =>
+    const targetRestaurantIds = (customer.customerRestaurants || []).map((id) =>
       String(id || ""),
     );
     if (!targetRestaurantIds.includes(String(rid))) {
@@ -1259,7 +1259,7 @@ export const UserMutation = {
 
     const target = await Customer.findById(id).lean({ virtuals: true });
     if (!target) throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
-    const hasRestaurant = Array.isArray(target.refRestaurants) && target.refRestaurants.some((rid) => String(rid) === String(restaurantId));
+    const hasRestaurant = Array.isArray(target.customerRestaurants) && target.customerRestaurants.some((rid) => String(rid) === String(restaurantId));
     if (!hasRestaurant) throw new GraphQLError("Customer not in restaurant scope", { extensions: { code: "FORBIDDEN" } });
     const saved = await Customer.findByIdAndUpdate(id, { loyaltyPoints: lp, customerType: ct }, { new: true })
       .populate("role")

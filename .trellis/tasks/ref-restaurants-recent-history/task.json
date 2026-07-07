@@ -27,6 +27,14 @@
     "src/hooks/useRestaurant.js",
     "src/components/Customer/HelpPage/HelpPage.support-context.test.jsx",
     "src/components/Customer/RestaurantDetail/RestaurantDetail.record-recent.test.jsx",
-    "cohan-restaurant-backend/src/services/ai/restaurantChatbotResolveHandoff.service.js"
+    "cohan-restaurant-backend/src/services/ai/restaurantChatbotResolveHandoff.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/search/query.js",
+    "cohan-restaurant-backend/graphql/schema/search.graphql",
+    "cohan-restaurant-backend/graphql/resolvers/communication/index.js",
+    "cohan-restaurant-backend/src/services/communication/chatRecipientScope.service.js",
+    "cohan-restaurant-backend/tests/resolvers/search-public-safety.test.js",
+    "cohan-restaurant-backend/tests/resolvers/communication-public-support.test.js",
+    "cohan-restaurant-backend/tests/resolvers/communication-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/admin-sensitive-user-access.test.js"
   ]
 }

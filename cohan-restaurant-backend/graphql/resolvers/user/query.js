@@ -430,7 +430,7 @@ export const UserQuery = {
 
     const staff = await User.findById(toObjectId(userId))
       .populate({ path: "role", select: "name slug department permissions" })
-      .populate({ path: "refRestaurants", select: "name" })
+      .populate({ path: "customerRestaurants", select: "name" })
       .lean();
 
     if (!staff || staff.deletedAt || String(staff.userType || "").toUpperCase() !== "STAFF") {

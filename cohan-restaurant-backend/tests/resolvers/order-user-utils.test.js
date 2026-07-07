@@ -245,4 +245,25 @@ describe("order userUtils identity helpers", () => {
     expect(customerDoc.customerRestaurants.map(String)).toEqual([restaurantId]);
     expect(customerDoc.save).toHaveBeenCalledWith({ session });
   });
+
+  it("ensureUserForOrder does not return invalid selected user id", async () => {
+    modelMocks.Customer.findOne.mockReturnValueOnce(makeQuery(null));
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    await expect(ensureUserForOrder("staff-1", null, { restaurantId: "507f1f77bcf86cd799439013" }))
+      .rejects.toThrow("Không tìm thấy tài khoản khách hàng.");
+  });
+
+  it("ensureUserForOrder returns null for invalid selected user in snapshot-only flow", async () => {
+    modelMocks.Customer.findOne.mockReturnValueOnce(makeQuery(null));
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    await expect(ensureUserForOrder("missing-user", null, { snapshotOnly: true }))
+      .resolves.toBeNull();
+  });
+
 });

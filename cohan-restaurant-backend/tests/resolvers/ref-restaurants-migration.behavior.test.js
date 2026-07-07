@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { buildCustomerMigrationUpdate } from "../../scripts/migration/normalizeRefRestaurantsRecentHistory.js";
+import { describe, expect, it, vi } from "vitest";
+import { assertApplyDatabaseName, buildCustomerMigrationUpdate } from "../../scripts/migration/normalizeRefRestaurantsRecentHistory.js";
 
 const ids = Array.from({ length: 16 }, (_, index) => `507f1f77bcf86cd7994390${String(index).padStart(2, "0")}`);
 const existing = new Set(ids.slice(0, 15));
@@ -37,6 +37,17 @@ describe("normalizeRefRestaurantsRecentHistory migration helpers", () => {
     expect(update.nextRefs).toEqual([ids[3], ids[1]]);
     expect(stats.rebuiltRecent).toBe(1);
   });
+  it("requires explicit MONGO_DB for apply mode", () => {
+    expect(() => assertApplyDatabaseName({ apply: true, dbName: "" })).toThrow("MONGO_DB is required when using --apply");
+    expect(() => assertApplyDatabaseName({ apply: true, dbName: "cohan_test" })).not.toThrow();
+  });
+
+  it("does not count missing legacy refs twice when merging membership fallback", () => {
+    const stats = { removedDuplicate: 0, removedMissing: 0, removedArchived: 0, rebuiltRecent: 0, fallbackRecent: 0 };
+    buildCustomerMigrationUpdate({ _id: ids[0], refRestaurants: [ids[15]], customerRestaurants: [], archivedRestaurants: [] }, existing, new Map(), stats);
+    expect(stats.removedMissing).toBe(1);
+  });
+
 });
 
 import mongoose from "mongoose";

@@ -13,6 +13,10 @@ import { Customer, Order, Reservation, Restaurant, User } from "../../models/ind
 dotenv.config();
 const applyMode = process.argv.includes("--apply");
 const dryRun = !applyMode || process.argv.includes("--dry-run");
+
+export function assertApplyDatabaseName({ apply = applyMode, dbName = process.env.MONGO_DB?.trim() } = {}) {
+  if (apply && !dbName) throw new Error("MONGO_DB is required when using --apply");
+}
 const LIMIT = 12;
 const toId = (value) => String(value?._id || value || "");
 const isValidId = (id) => mongoose.isValidObjectId(String(id));
@@ -36,6 +40,22 @@ export function normalizeIdList(raw = [], existingRestaurants = new Set(), stats
   return out;
 }
 
+
+export function mergeCleanIdLists(primary = [], fallback = [], stats = null) {
+  const out = [];
+  const seen = new Set();
+  for (const id of [...primary, ...fallback]) {
+    const key = String(id);
+    if (seen.has(key)) {
+      if (stats) stats.removedDuplicate += 1;
+      continue;
+    }
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
 export function buildCustomerMigrationUpdate(customer, existingRestaurants, transactionMap, stats = null) {
   const localStats = stats || { removedDuplicate: 0, removedMissing: 0, removedArchived: 0, rebuiltRecent: 0, fallbackRecent: 0 };
   const rawRefs = (customer.refRestaurants || []).map(toId);
@@ -43,7 +63,8 @@ export function buildCustomerMigrationUpdate(customer, existingRestaurants, tran
   const archived = new Set((customer.archivedRestaurants || []).map((item) => toId(item.restaurantId)).filter(Boolean));
 
   const cleanLegacyRefs = normalizeIdList(rawRefs, existingRestaurants, localStats);
-  const mergedMembership = normalizeIdList([...rawMembership, ...rawRefs], existingRestaurants, localStats).filter((id) => {
+  const cleanMembership = normalizeIdList(rawMembership, existingRestaurants, localStats);
+  const mergedMembership = mergeCleanIdLists(cleanMembership, cleanLegacyRefs, localStats).filter((id) => {
     const archivedOut = archived.has(id);
     if (archivedOut) localStats.removedArchived += 1;
     return !archivedOut;
@@ -87,6 +108,7 @@ async function buildTransactionMap(customerIds) {
 async function run() {
   if (!process.env.MONGO_URI) throw new Error("Missing MONGO_URI");
   const dbName = process.env.MONGO_DB?.trim();
+  assertApplyDatabaseName({ apply: applyMode, dbName });
   await mongoose.connect(process.env.MONGO_URI, dbName ? { dbName } : {});
   const connectedDb = mongoose.connection?.db?.databaseName || mongoose.connection?.name;
   if (dbName && connectedDb !== dbName) throw new Error(`Connected to wrong database. Expected ${dbName}, got ${connectedDb}`);

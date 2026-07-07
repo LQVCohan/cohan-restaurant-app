@@ -346,26 +346,26 @@ describe("sendRestaurantChatbotGuestMessage", () => {
 
 });
 
-describe("resolveRecipientIdsByRole", () => {
+describe("resolveChatRecipientIdsByRole", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   it("routes direct staff by restaurantForStaff and excludes other restaurants", async () => {
-    const { resolveRecipientIdsByRole } = await import("../../src/services/ai/restaurantChatbotGuestReplies.service.js");
+    const { resolveChatRecipientIdsByRole } = await import("../../src/services/communication/chatRecipientScope.service.js");
     vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "staff-r1" }]) }) });
-    const ids = await resolveRecipientIdsByRole({ thread: { targetRole: "staff", restaurantId: "r1" }, senderId: "guest:g1" });
+    const ids = await resolveChatRecipientIdsByRole({ targetRole: "staff", restaurantId: "r1", senderId: "guest:g1" });
     expect(User.find).toHaveBeenCalledWith(expect.objectContaining({ userType: "STAFF", restaurantForStaff: "r1", status: "active", deletedAt: null }));
     expect(ids).toEqual(["staff-r1"]);
   });
 
   it("routes management handoff through active BrandMembership", async () => {
-    const { resolveRecipientIdsByRole } = await import("../../src/services/ai/restaurantChatbotGuestReplies.service.js");
+    const { resolveChatRecipientIdsByRole } = await import("../../src/services/communication/chatRecipientScope.service.js");
     vi.spyOn(Restaurant, "findById").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ _id: "r1", brandId: "b1" }) }) });
     vi.spyOn(BrandMembership, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ userId: "manager-1" }, { userId: "owner-1" }]) }) });
     vi.spyOn(User, "find").mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue([{ _id: "manager-1" }, { _id: "owner-1" }]) }) });
 
-    const ids = await resolveRecipientIdsByRole({ thread: { targetRole: "management", restaurantId: "r1" }, senderId: "guest:g1" });
+    const ids = await resolveChatRecipientIdsByRole({ targetRole: "management", restaurantId: "r1", senderId: "guest:g1" });
 
     expect(BrandMembership.find).toHaveBeenCalledWith(expect.objectContaining({
       brandId: "b1",

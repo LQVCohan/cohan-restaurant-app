@@ -1094,7 +1094,7 @@ export const OrderMutation = {
           restaurantId: rid,
           tableId: toId(tableInfo.tableId),
           tableCode: tableInfo.tableCode,
-          userId: resolvedCustomerUserId || userId,
+          userId: resolvedCustomerUserId || undefined,
           customerSnapshot: effectiveCustomer,
           session,
         });
@@ -1105,7 +1105,7 @@ export const OrderMutation = {
         const sessionUserId =
           parentSession?.userId ||
           resolvedCustomerUserId ||
-          (await ensureUserForOrder(userId, sessionCustomer, { session, restaurantId: rid }));
+          (await ensureUserForOrder(userId, sessionCustomer, { session, restaurantId: rid, snapshotOnly: true }));
 
         if (sessionUserId && !parentSession?.userId) {
           await Order.updateOne(
@@ -1293,7 +1293,7 @@ export const OrderMutation = {
         // ✅ hydrate: modifiers + ingredientsSnapshot + pricing
         finalUserId = identity?.conflict
           ? null
-          : await ensureUserForOrder(userId, compactCustomer, { session, restaurantId: rid });
+          : await ensureUserForOrder(userId, compactCustomer, { session, restaurantId: rid, snapshotOnly: customerIdentityMode === "snapshot_only" });
         await hydrateOrderItems({
           restaurantId,
           items: normalizedItems,

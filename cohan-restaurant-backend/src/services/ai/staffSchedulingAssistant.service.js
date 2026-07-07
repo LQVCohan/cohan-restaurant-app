@@ -300,8 +300,6 @@ export async function buildStaffSchedulingAssistant({
         positionTitle: 1,
         baseSalary: 1,
         restaurantForStaff: 1,
-        restaurantForStaff: 1,
-        refRestaurants: 1,
       })
       .lean(),
     Shift.find({

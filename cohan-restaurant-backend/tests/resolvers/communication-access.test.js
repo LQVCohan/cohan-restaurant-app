@@ -228,12 +228,14 @@ describe("communication resolver restaurant access hardening", () => {
     await resolver.Mutation.openChatThread(null, { input: { restaurantId: "valid-r1", channel: "support" } }, ctx);
 
     expect(modelMocks.Restaurant.findById).toHaveBeenCalled();
-    expect(modelMocks.BrandMembership.find).toHaveBeenCalledWith({
+    expect(modelMocks.BrandMembership.find).toHaveBeenCalledWith(expect.objectContaining({
       brandId: "valid-b1",
-      role: "manager",
       status: "active",
-      restaurantIds: expect.anything(),
-    });
+      $or: expect.arrayContaining([
+        { role: { $in: ["owner", "admin"] } },
+        { role: "manager", restaurantIds: expect.anything() },
+      ]),
+    }));
     expect(modelMocks.ChatThread.create).toHaveBeenCalledWith(
       expect.objectContaining({
         participants: expect.arrayContaining([

@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
-import { AiChatConversation, BrandMembership, ChatThread, Notification, Restaurant, User } from "../../../models/index.js";
+import { AiChatConversation, ChatThread, Notification } from "../../../models/index.js";
 import { normalizeGuestId, buildGuestSafeStaffReplyPayload } from "./restaurantChatbotRealtime.service.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
+import { resolveChatRecipientIdsByRole } from "../communication/chatRecipientScope.service.js";
 
 const HANDOFF_MARKER = "[AI HANDOFF]";
 
@@ -157,47 +158,6 @@ const toObjectId = (value) => {
 
 const preview = (text, max = 140) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
 
-export const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
-  const role = String(thread?.targetRole || "").toLowerCase();
-  if (!role || !thread?.restaurantId) return [];
-
-  const directStaffRoles = new Set(["kitchen", "cashier", "staff", "support"]);
-  const managementRoles = new Set(["management", "manager", "support"]);
-  const recipientIds = new Set();
-
-  if (directStaffRoles.has(role)) {
-    const users = await User.find({
-      userType: "STAFF",
-      status: "active",
-      deletedAt: null,
-      restaurantForStaff: thread.restaurantId,
-    }).select("_id").lean();
-    users.forEach((u) => recipientIds.add(String(u._id)));
-  }
-
-  if (managementRoles.has(role)) {
-    const restaurant = await Restaurant.findById(thread.restaurantId).select("brandId").lean();
-    if (restaurant?.brandId) {
-      const memberships = await BrandMembership.find({
-        brandId: restaurant.brandId,
-        status: "active",
-        $or: [
-          { role: { $in: ["owner", "admin"] } },
-          { role: "manager", restaurantIds: thread.restaurantId },
-        ],
-      }).select("userId").lean();
-      const users = await User.find({
-        _id: { $in: memberships.map((item) => item.userId) },
-        status: "active",
-        deletedAt: null,
-      }).select("_id").lean();
-      users.forEach((u) => recipientIds.add(String(u._id)));
-    }
-  }
-
-  return [...recipientIds].filter((id) => id !== String(senderId));
-};
-
 export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
@@ -235,7 +195,7 @@ export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } 
   thread.lastMessagePreview = preview(content, 140);
 
   const directRecipientIds = (thread.participants || []).map((id) => String(id));
-  const roleRecipientIds = await resolveRecipientIdsByRole({ thread, senderId: `guest:${normalizedGuestId}` });
+  const roleRecipientIds = await resolveChatRecipientIdsByRole({ restaurantId: thread.restaurantId, targetRole: thread.targetRole, senderId: `guest:${normalizedGuestId}` });
   const recipientIds = [...new Set([...directRecipientIds, ...roleRecipientIds])];
 
   thread.unreadBy = recipientIds.map((id) => toObjectId(id)).filter(Boolean);

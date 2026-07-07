@@ -103,15 +103,18 @@ export async function resolveOrCreateGuestCustomerForOrder({
 
 export async function ensureUserForOrder(userId, customer, options = {}) {
   if (userId) {
-    if (options?.restaurantId) {
-      const query = Customer.findOne({ _id: userId, userType: "CUSTOMER", deletedAt: null });
-      if (options?.session) query.session(options.session);
-      const customerDoc = await query;
-      if (customerDoc && applyCustomerRestaurantTouch(customerDoc, options.restaurantId)) {
-        await customerDoc.save(options?.session ? { session: options.session } : undefined);
-      }
+    const query = Customer.findOne({ _id: userId, userType: "CUSTOMER", deletedAt: null });
+    if (options?.session) query.session(options.session);
+    const customerDoc = await query;
+    if (!customerDoc) {
+      if (options?.snapshotOnly) return null;
+      throw new Error("Không tìm thấy tài khoản khách hàng.");
     }
-    return userId;
+
+    if (options?.restaurantId && applyCustomerRestaurantTouch(customerDoc, options.restaurantId)) {
+      await customerDoc.save(options?.session ? { session: options.session } : undefined);
+    }
+    return customerDoc._id;
   }
 
   const identity = await resolveOrCreateGuestCustomerForOrder({
