@@ -1,11 +1,12 @@
 // src/components/Customer/Profile/components/SecuritySettings.jsx
 import React, { useContext, useState } from "react";
 import { useMutation, useQuery, gql } from "@apollo/client";
-import Modal from "../../../common/Modal"; // Đảm bảo đường dẫn đúng
+import Modal from "../../../common/Modal";
 import ToggleSwitch from "../../../common/ToggleSwitch/ToggleSwitch";
 import { getCustomerActionErrorMessage } from "@/utils/customerFlowErrorMessages";
 import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "@/hooks/useNotification";
+import { isCustomerRole } from "@/utils/frontendRoleAccess";
 import "./SecuritySettings.scss";
 
 const CHANGE_PASSWORD = gql`
@@ -47,6 +48,9 @@ const DELETE_MY_ACCOUNT = gql`
   }
 `;
 
+const DELETE_CONFIRMATIONS = new Set(["XOA TAI KHOAN", "XÓA TÀI KHOẢN"]);
+const EMPTY_DELETE_FORM = { currentPassword: "", confirmText: "" };
+
 const formatDate = (value) => value ? new Date(value).toLocaleString("vi-VN") : "Không xác định";
 const deviceIcon = (userAgent = "") => /mobile|iphone|android/i.test(userAgent) ? "📱" : "💻";
 const deviceName = (userAgent) => userAgent || "Thiết bị không xác định";
@@ -59,8 +63,8 @@ const SecuritySettings = () => {
     confirm: "",
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirmText: "" });
-  const { logout } = useContext(AuthContext) || {};
+  const [deleteForm, setDeleteForm] = useState(EMPTY_DELETE_FORM);
+  const { user, logout } = useContext(AuthContext) || {};
   const { showNotification } = useNotification();
   const [changePassword, { loading }] = useMutation(CHANGE_PASSWORD);
   const { data, loading: sessionsLoading, refetch } = useQuery(MY_LOGIN_SESSIONS, { variables: { limit: 20 } });
@@ -68,6 +72,15 @@ const SecuritySettings = () => {
   const [revokeSession, { loading: revokingSession }] = useMutation(REVOKE_SESSION);
   const [deleteMyAccount, { loading: deletingAccount }] = useMutation(DELETE_MY_ACCOUNT);
   const sessions = data?.myLoginSessions || [];
+  const canDeleteAccount = isCustomerRole(user);
+  const deleteConfirmationValid = DELETE_CONFIRMATIONS.has(
+    deleteForm.confirmText.trim().toUpperCase(),
+  );
+
+  const closeDeleteModal = () => {
+    setDeleteOpen(false);
+    setDeleteForm(EMPTY_DELETE_FORM);
+  };
 
   const submitPassword = async () => {
     if (pwdForm.next !== pwdForm.confirm) {
@@ -113,9 +126,14 @@ const SecuritySettings = () => {
   };
 
   const submitDeleteAccount = async () => {
+    if (!canDeleteAccount || !deleteConfirmationValid) {
+      showNotification("Hãy nhập đúng XOA TAI KHOAN để xác nhận.", "warning");
+      return;
+    }
+
     try {
       await deleteMyAccount({ variables: deleteForm });
-      setDeleteOpen(false);
+      closeDeleteModal();
       logout?.();
     } catch (err) {
       showNotification(getCustomerActionErrorMessage(err, "Không thể xóa tài khoản."), "error");
@@ -124,7 +142,6 @@ const SecuritySettings = () => {
 
   return (
     <div className="security-settings fade-in">
-      {/* 1. PASSWORD & 2FA */}
       <section className="settings-card">
         <div className="card-header">
           <h3>Đăng nhập & Bảo mật</h3>
@@ -158,7 +175,6 @@ const SecuritySettings = () => {
         </div>
       </section>
 
-      {/* 2. ACTIVE SESSIONS (MỚI) */}
       <section className="settings-card">
         <div className="card-header">
           <h3>Thiết bị đăng nhập</h3>
@@ -203,7 +219,6 @@ const SecuritySettings = () => {
         </div>
       </section>
 
-      {/* 3. CONNECTED ACCOUNTS */}
       <section className="settings-card">
         <div className="card-header">
           <h3>Liên kết tài khoản</h3>
@@ -227,23 +242,23 @@ const SecuritySettings = () => {
         </div>
       </section>
 
-      {/* 4. DANGER ZONE */}
-      <section className="settings-card danger-zone">
-        <div className="card-header">
-          <h3 className="text-danger">Khu vực nguy hiểm</h3>
-        </div>
-        <div className="setting-row no-border">
-          <div className="setting-info">
-            <span className="label">Xóa tài khoản</span>
-            <span className="desc">
-              Tài khoản sẽ bị vô hiệu hóa và giữ trong 30 ngày trước khi xử lý tiếp.
-            </span>
+      {canDeleteAccount ? (
+        <section className="settings-card danger-zone">
+          <div className="card-header">
+            <h3 className="text-danger">Khu vực nguy hiểm</h3>
           </div>
-          <button type="button" className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
-        </div>
-      </section>
+          <div className="setting-row no-border">
+            <div className="setting-info">
+              <span className="label">Xóa tài khoản</span>
+              <span className="desc">
+                Tài khoản sẽ bị vô hiệu hóa trong 30 ngày và mọi phiên đăng nhập sẽ bị thu hồi.
+              </span>
+            </div>
+            <button type="button" className="btn-danger" onClick={() => setDeleteOpen(true)}>Xóa tài khoản</button>
+          </div>
+        </section>
+      ) : null}
 
-      {/* MODAL */}
       <Modal
         isOpen={changePwdOpen}
         onClose={() => setChangePwdOpen(false)}
@@ -311,40 +326,52 @@ const SecuritySettings = () => {
         </div>
       </Modal>
 
-      <Modal
-        isOpen={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        title="Xóa tài khoản"
-      >
-        <div className="pwd-form-content danger-confirm">
-          <p>Tài khoản sẽ bị vô hiệu hóa và giữ trong thùng rác 30 ngày. Nhập <strong>XOA TAI KHOAN</strong> để xác nhận.</p>
-          <div className="form-field">
-            <label htmlFor="delete-account-current-password">Mật khẩu hiện tại</label>
-            <input
-              id="delete-account-current-password"
-              type="password"
-              autoComplete="current-password"
-              value={deleteForm.currentPassword}
-              onChange={(e) => setDeleteForm((f) => ({ ...f, currentPassword: e.target.value }))}
-            />
+      {canDeleteAccount ? (
+        <Modal
+          isOpen={deleteOpen}
+          onClose={closeDeleteModal}
+          title="Xóa tài khoản"
+        >
+          <div className="pwd-form-content danger-confirm">
+            <p>
+              Tài khoản sẽ bị vô hiệu hóa và giữ trong thùng rác 30 ngày. Nhập{" "}
+              <strong>XOA TAI KHOAN</strong> để xác nhận.
+            </p>
+            <div className="form-field">
+              <label htmlFor="delete-account-current-password">
+                Mật khẩu hiện tại (nếu tài khoản có mật khẩu)
+              </label>
+              <input
+                id="delete-account-current-password"
+                type="password"
+                autoComplete="current-password"
+                value={deleteForm.currentPassword}
+                onChange={(e) => setDeleteForm((f) => ({ ...f, currentPassword: e.target.value }))}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="delete-account-confirm-text">Nhập XOA TAI KHOAN</label>
+              <input
+                id="delete-account-confirm-text"
+                autoComplete="off"
+                value={deleteForm.confirmText}
+                onChange={(e) => setDeleteForm((f) => ({ ...f, confirmText: e.target.value }))}
+              />
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn-cancel" onClick={closeDeleteModal}>Hủy</button>
+              <button
+                type="button"
+                className="btn-confirm btn-confirm-danger"
+                onClick={submitDeleteAccount}
+                disabled={deletingAccount || !deleteConfirmationValid}
+              >
+                {deletingAccount ? "Đang xử lý..." : "Xóa tài khoản"}
+              </button>
+            </div>
           </div>
-          <div className="form-field">
-            <label htmlFor="delete-account-confirm-text">Nhập XOA TAI KHOAN</label>
-            <input
-              id="delete-account-confirm-text"
-              autoComplete="off"
-              value={deleteForm.confirmText}
-              onChange={(e) => setDeleteForm((f) => ({ ...f, confirmText: e.target.value }))}
-            />
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={() => setDeleteOpen(false)}>Hủy</button>
-            <button type="button" className="btn-confirm btn-confirm-danger" onClick={submitDeleteAccount} disabled={deletingAccount}>
-              {deletingAccount ? "Đang xử lý..." : "Xóa tài khoản"}
-            </button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
+      ) : null}
     </div>
   );
 };
