@@ -10,9 +10,9 @@ import {
   ensureBrandRestaurants,
   getScopedRestaurantFilter,
   getUserId,
-  isBrandOwner,
   isSystemAdmin,
 } from "../../../src/services/auth/restaurantScope.service.js";
+import transferBrandOwnership from "./transferBrandOwnership.js";
 
 const bad = (message) => new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 const forbidden = (message = "Forbidden") => new GraphQLError(message, { extensions: { code: "FORBIDDEN" } });
@@ -56,13 +56,6 @@ async function ensureSingleActiveManager({ brandId, role, restaurantIds, status 
     ...(excludeId ? { _id: { $ne: oid(excludeId) } } : {}),
   }).select("_id").lean();
   if (existing) throw bad("Nhà hàng này đã có quản lý. Vui lòng đổi quản lý hiện tại trước.");
-}
-
-async function assertCanWriteMembership(actor, membership, nextRole) {
-  if (isSystemAdmin(actor) || await isBrandOwner(actor, membership.brandId)) return;
-  if (membership.role === "owner" || nextRole === "owner") {
-    throw forbidden("Only brand owner can change owner membership");
-  }
 }
 
 async function ownerRole() {
@@ -312,7 +305,7 @@ const Mutation = {
 
   addBrandMember: async (_, { input }, ctx) => {
     if (!ctx?.user || !await canManageBrand(ctx.user, input.brandId)) throw forbidden();
-    if (input.role === "owner") throw forbidden("Use the owner transfer flow to assign Brand ownership");
+    if (input.role === "owner") throw forbidden("Use transferBrandOwnership to assign Brand ownership");
     if (!await User.exists({ _id: oid(input.userId) })) throw bad("User not found");
 
     const restaurants = await ensureMembershipInput(input);
@@ -344,18 +337,8 @@ const Mutation = {
     const membership = await BrandMembership.findById(input.id);
     if (!membership) throw bad("Membership not found");
     if (!ctx?.user || !await canManageBrand(ctx.user, membership.brandId)) throw forbidden();
-
-    await assertCanWriteMembership(ctx.user, membership, input.role);
-    if (
-      membership.role === "owner" &&
-      ((input.role && input.role !== "owner") || input.status === "inactive") &&
-      await BrandMembership.countDocuments({
-        brandId: membership.brandId,
-        role: "owner",
-        status: "active",
-      }) <= 1
-    ) {
-      throw bad("Cannot remove the last owner");
+    if (membership.role === "owner" || input.role === "owner") {
+      throw forbidden("Use transferBrandOwnership to change Brand ownership");
     }
 
     const nextRole = input.role || membership.role;
@@ -387,21 +370,14 @@ const Mutation = {
     return membership.toObject();
   },
 
+  transferBrandOwnership,
+
   removeBrandMember: async (_, { id }, ctx) => {
     const membership = await BrandMembership.findById(id);
     if (!membership) throw bad("Membership not found");
     if (!ctx?.user || !await canManageBrand(ctx.user, membership.brandId)) throw forbidden();
-
-    await assertCanWriteMembership(ctx.user, membership);
-    if (
-      membership.role === "owner" &&
-      await BrandMembership.countDocuments({
-        brandId: membership.brandId,
-        role: "owner",
-        status: "active",
-      }) <= 1
-    ) {
-      throw bad("Cannot remove the last owner");
+    if (membership.role === "owner") {
+      throw forbidden("Use transferBrandOwnership to change Brand ownership");
     }
 
     membership.status = "inactive";
