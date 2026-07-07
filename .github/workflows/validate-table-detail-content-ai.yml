@@ -1,0 +1,42 @@
+name: Validate table detail content changes
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  focused-validation:
+    if: github.head_ref == 'fix/table-detail-content-ai'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cohan-restaurant-backend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm --prefix cohan-restaurant-backend ci
+
+      - name: Check GraphQL operations
+        run: npm run check:graphql
+
+      - name: Test table detail modal
+        run: npx vitest run src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx
+
+      - name: Test table assistant endpoints
+        run: npm --prefix cohan-restaurant-backend test -- tests/server/ai-table-endpoints-auth.test.js
+
+      - name: Build frontend
+        run: npm run build
