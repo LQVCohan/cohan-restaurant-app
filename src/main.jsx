@@ -59,12 +59,14 @@ import "./components/Dashboard_Manager/RestaurantInfo/RestaurantPreviewPolish.cs
 import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementCanvasSync.css";
 import "./components/Dashboard_Manager/Table/TableManagementMergePickerFix.css";
+import "./components/Dashboard_Manager/Table/TableCustomerProfilesEnhancement.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
 import { installRestaurantInfoMapEnhancement } from "./utils/installRestaurantInfoMapEnhancement";
 import { installTablePromotionSearch } from "./utils/installTablePromotionSearch";
 import { installTableMergePickerTrigger } from "./utils/installTableMergePickerTrigger";
+import { installMergedTableCustomerProfiles } from "./utils/installMergedTableCustomerProfiles";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
 installRbacVietnameseLabels();
@@ -73,6 +75,7 @@ installRestaurantHoursEnhancement();
 installRestaurantInfoMapEnhancement();
 installTablePromotionSearch();
 installTableMergePickerTrigger();
+installMergedTableCustomerProfiles();
 installAttendanceWordingTuning();
 
 createRoot(document.getElementById("root")).render(
