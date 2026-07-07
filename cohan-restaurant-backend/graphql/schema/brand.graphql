@@ -107,6 +107,18 @@ input UpdateBrandMemberInput {
   status: String
 }
 
+input TransferBrandOwnershipInput {
+  brandId: ID!
+  newOwnerUserId: ID!
+  previousOwnerRestaurantId: ID!
+}
+
+type TransferBrandOwnershipPayload {
+  brand: Brand!
+  previousOwnerMembership: BrandMembership!
+  newOwnerMembership: BrandMembership!
+}
+
 input RegisterBusinessOwnerInput {
   fullName: String!
   email: String!
@@ -147,5 +159,6 @@ extend type Mutation {
   archiveBrand(id: ID!): Boolean!
   addBrandMember(input: AddBrandMemberInput!): BrandMembership!
   updateBrandMember(input: UpdateBrandMemberInput!): BrandMembership!
+  transferBrandOwnership(input: TransferBrandOwnershipInput!): TransferBrandOwnershipPayload!
   removeBrandMember(id: ID!): Boolean!
 }
