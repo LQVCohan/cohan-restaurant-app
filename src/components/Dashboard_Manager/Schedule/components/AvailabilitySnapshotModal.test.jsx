@@ -70,9 +70,28 @@ describe("AvailabilitySnapshotModal", () => {
   it("renders only when open, no hook-order crash", () => {
     const { rerender } = render(<AvailabilitySnapshotModal isOpen={false} onClose={() => {}} weekStart={weekStart} weekEnd={weekEnd} availabilityWindows={windows} shiftTemplates={shifts} staffList={[]} availabilitySubmissions={[]} />);
     rerender(<AvailabilitySnapshotModal isOpen onClose={() => {}} weekStart={weekStart} weekEnd={weekEnd} availabilityWindows={windows} shiftTemplates={shifts} staffList={[]} availabilitySubmissions={[]} />);
-    expect(screen.getByText("Availability đã chốt")).toBeInTheDocument();
+    expect(screen.getByText("Lịch rảnh đã đăng ký")).toBeInTheDocument();
   });
 
+
+  it("shows the staff matrix when no finalized availability window exists", () => {
+    renderModal({
+      availabilityWindows: [],
+      staffList: [
+        {
+          id: "f1",
+          fullName: "Nhân viên toàn thời gian",
+          employeeCode: "FT01",
+          employmentType: "full_time",
+          workingDays: ["MON"],
+        },
+      ],
+    });
+
+    expect(screen.getByText("Tuần này chưa có kỳ đăng ký đã chốt.")).toBeInTheDocument();
+    expect(screen.getByText("Nhân viên toàn thời gian")).toBeInTheDocument();
+    expect(screen.getAllByTitle("Theo workingDays").length).toBeGreaterThan(0);
+  });
 
   it("matches availability window by date key even with different periodEnd timestamp/timezone", () => {
     render(

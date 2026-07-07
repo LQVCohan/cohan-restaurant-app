@@ -322,16 +322,16 @@ const AvailabilitySnapshotModalContent = (props) => {
   };
 
   return (
-    <div className="availability-snapshot-modal-overlay" role="dialog" aria-modal="true">
+    <div className="availability-snapshot-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="availability-snapshot-title">
       <div className="availability-snapshot-modal">
         <header className="availability-snapshot-header">
           <div>
-            <span className="eyebrow">Availability matrix</span>
-            <h3>Availability đã chốt</h3>
+            <span className="eyebrow">LỊCH RẢNH NHÂN VIÊN</span>
+            <h3 id="availability-snapshot-title">Lịch rảnh đã đăng ký</h3>
             <p>
               Tuần {format(new Date(weekStart), "dd/MM/yyyy")} -{" "}
-              {format(new Date(weekEnd), "dd/MM/yyyy")}. Dữ liệu này là nguồn
-              chính thức dùng để xếp lịch.
+              {format(new Date(weekEnd), "dd/MM/yyyy")}. Kiểm tra dữ liệu trước
+              khi xếp và công bố lịch làm việc.
             </p>
           </div>
           <button type="button" className="btn-close-snapshot" onClick={onClose}>
@@ -365,7 +365,7 @@ const AvailabilitySnapshotModalContent = (props) => {
             onChange={(e) => setSearch(e.target.value)}
           />
           <select value={employmentType} onChange={(e) => setEmploymentType(e.target.value)}>
-            <option value="all">Tất cả loại HĐ</option>
+            <option value="all">Tất cả loại hợp đồng</option>
             {employmentOptions.map((o) => (
               <option key={o} value={o}>
                 {o}
@@ -373,7 +373,7 @@ const AvailabilitySnapshotModalContent = (props) => {
             ))}
           </select>
           <select value={roleDepartment} onChange={(e) => setRoleDepartment(e.target.value)}>
-            <option value="all">Tất cả role/phòng</option>
+            <option value="all">Tất cả vai trò / phòng ban</option>
             {roleDepartmentOptions.map((o) => (
               <option key={o} value={o}>
                 {o}
@@ -394,7 +394,7 @@ const AvailabilitySnapshotModalContent = (props) => {
               checked={onlyMissing}
               onChange={(e) => setOnlyMissing(e.target.checked)}
             />
-            Chỉ thiếu availability
+            Chỉ hiện nhân viên thiếu đăng ký
           </label>
         </section>
 
@@ -407,18 +407,22 @@ const AvailabilitySnapshotModalContent = (props) => {
         </div>
 
         {!hasWindow ? (
-          <div className="availability-empty-state">
-            Chưa có kỳ availability đã chốt cho tuần này.
+          <div className="availability-window-note" role="status">
+            <strong>Tuần này chưa có kỳ đăng ký đã chốt.</strong>
+            <span>
+              Bảng dưới vẫn hiển thị lịch làm cố định của nhân viên toàn thời gian
+              và đánh dấu các trường hợp chưa đăng ký.
+            </span>
           </div>
         ) : null}
         {error ? (
           <div className="availability-error-state">
-            Không thể tải availability đã chốt: {error.message || String(error)}
+            Không thể tải lịch rảnh đã đăng ký: {error.message || String(error)}
           </div>
         ) : null}
         {loading ? <div className="availability-loading-state">Đang tải...</div> : null}
 
-        {hasWindow ? (
+        {!loading && !error && (rows.length > 0 || hasWindow) ? (
           <div className="availability-table-shell">
             <table className="availability-snapshot-table">
               <thead>
@@ -448,6 +452,16 @@ const AvailabilitySnapshotModalContent = (props) => {
                 </tr>
               </thead>
               <tbody>
+                {!filteredRows.length ? (
+                  <tr>
+                    <td
+                      className="availability-filter-empty"
+                      colSpan={1 + days.length * shiftTypes.length}
+                    >
+                      Không có nhân viên phù hợp với bộ lọc hiện tại.
+                    </td>
+                  </tr>
+                ) : null}
                 {filteredRows.map(
                   ({ person, cellMap, hasLateChangePending, pendingSlotsCount }) => (
                     <tr key={person.id}>
