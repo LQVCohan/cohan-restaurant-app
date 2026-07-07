@@ -1,0 +1,28 @@
+{
+  "id": "schedule-availability-modal-polish",
+  "name": "schedule-availability-modal-polish",
+  "title": "Fix availability matrix modal and schedule action emphasis",
+  "description": "Keep the registered-availability matrix usable when no matching window exists, remove the black-screen/clipped-modal effect, and add restrained sage emphasis to important schedule actions.",
+  "status": "planning",
+  "dev_type": "frontend",
+  "scope": "manager-schedule-availability-ui",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/schedule-availability-modal-polish",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx",
+    "src/styles/schedule-manager-sage-upgrade.css"
+  ],
+  "notes": "Flow traced through availability schema/resolver, ScheduleManagement queries and modal props. Backend data contract and permissions are already correct; root causes are the modal's hasWindow rendering gate, dark/clipping CSS, and higher-specificity neutral button overrides.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
+  }
+}
