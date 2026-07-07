@@ -4,6 +4,7 @@ import { AuthContext } from "../../../../../context/AuthContext";
 import NotifyModal from "../../../NotifyModal/NotifyModal";
 import { useNotification } from "../../../../../hooks/useNotification";
 import "./FloorMap.scss";
+import "./FloorMapElements.css";
 
 const TABLE_STATUS_LABELS = {
   available: "trống",
@@ -13,6 +14,53 @@ const TABLE_STATUS_LABELS = {
   payment_pending: "đang chờ thanh toán",
   offline: "không hoạt động",
 };
+
+const LAYOUT_DEFAULT_LABELS = {
+  wall: "Tường",
+  "half-wall": "Vách thấp",
+  door: "Cửa",
+  "door-double": "Cửa đôi",
+  window: "Cửa sổ",
+  corridor: "Hành lang",
+  pillar: "Cột",
+  stairs: "Cầu thang",
+  bar: "Quầy bar",
+  cashier: "Thu ngân",
+  kitchen: "Bếp",
+  buffet: "Buffet",
+  wc: "WC",
+  "staff-corridor": "Lối nhân viên",
+  sofa: "Sofa",
+  plant: "Cây xanh",
+  rug: "Thảm",
+  symbol: "Ký hiệu",
+};
+
+const FUNCTIONAL_LAYOUT_TYPES = new Set([
+  "bar",
+  "cashier",
+  "kitchen",
+  "buffet",
+  "wc",
+  "pillar",
+  "stairs",
+  "sofa",
+]);
+
+const EDGE_LAYOUT_TYPES = new Set([
+  "door",
+  "door-double",
+  "corridor",
+  "staff-corridor",
+]);
+
+const SILENT_LAYOUT_TYPES = new Set([
+  "wall",
+  "half-wall",
+  "window",
+  "plant",
+  "rug",
+]);
 
 const MIN_MAP_SCALE = 0.1;
 const MAX_MAP_SCALE = 3;
@@ -52,6 +100,11 @@ const getMapContentBounds = (tables, layout) => {
     }),
     { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
   );
+};
+
+const getLayoutLabel = (item) => {
+  const type = String(item?.type || "").trim();
+  return String(item?.label || LAYOUT_DEFAULT_LABELS[type] || type || "Thành phần sơ đồ").trim();
 };
 
 const FloorMap = ({
@@ -237,25 +290,47 @@ const FloorMap = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [visualTable]);
 
-  const renderLayoutItem = (item) => (
-    <div
-      key={item.id}
-      className={`layout-node ${item.type}`}
-      style={{
-        left: item.x,
-        top: item.y,
-        width: item.w,
-        height: item.h,
-        transform: `rotate(${item.rotation || 0}deg)`,
-      }}
-    >
-      {item.label && !item.type.includes("table") && item.w > 40 && (
-        <span className="layout-label">{item.label}</span>
-      )}
-      {item.type === "plant" && <div className="plant-leaf-effect" />}
-      {item.type === "window" && <div className="window-glare" />}
-    </div>
-  );
+  const renderLayoutItem = (item) => {
+    const type = String(item?.type || "unknown");
+    const label = getLayoutLabel(item);
+    const isFunctional = FUNCTIONAL_LAYOUT_TYPES.has(type);
+    const isEdge = EDGE_LAYOUT_TYPES.has(type);
+    const isSymbol = type === "symbol";
+    const showFallbackLabel =
+      !isFunctional &&
+      !isEdge &&
+      !isSymbol &&
+      !SILENT_LAYOUT_TYPES.has(type) &&
+      !type.includes("table");
+
+    return (
+      <div
+        key={item.id}
+        className={`layout-node ${type}`}
+        role="img"
+        aria-label={label}
+        style={{
+          left: item.x,
+          top: item.y,
+          width: item.w,
+          height: item.h,
+          transform: `rotate(${item.rotation || 0}deg)`,
+        }}
+      >
+        {isFunctional && <span className="layout-feature-label">{label}</span>}
+        {isEdge && <span className="layout-edge-label">{label}</span>}
+        {isSymbol && (
+          <>
+            <span className="layout-symbol-icon" aria-hidden="true">{item.icon || "★"}</span>
+            <span className="layout-symbol-label">{label}</span>
+          </>
+        )}
+        {showFallbackLabel && <span className="layout-fallback-label">{label}</span>}
+        {type === "plant" && <div className="plant-leaf-effect" />}
+        {type === "window" && <div className="window-glare" />}
+      </div>
+    );
+  };
 
   return (
     <div className={`floor-map-viz ${theme}`}>
@@ -333,6 +408,7 @@ const FloorMap = ({
                     >
                       <span className="table-label">{tableLabel}</span>
                       <span className="table-status-copy">{statusLabel}</span>
+                      <span className="table-capacity" aria-hidden="true">{capacity} chỗ</span>
                       {table.status === "payment_pending" && <span className="status-badge dollar">₫</span>}
                       {table.status === "cleaning" && <span className="status-badge clean">Dọn</span>}
                       {(table.status === "occupied" || table.status === "reserved") && (
@@ -350,8 +426,6 @@ const FloorMap = ({
                         <Eye size={14} aria-hidden="true" />
                       </button>
                     )}
-
-                    <span className="capacity-pill" aria-hidden="true">{capacity} chỗ</span>
                   </div>
                 );
               })}
