@@ -310,6 +310,17 @@ const UPDATE_RESTAURANT = gql`
   }
 `;
 
+const REWRITE_RESTAURANT_PROFILE = gql`
+  mutation RewriteRestaurantProfile($input: RewriteRestaurantProfileInput!) {
+    rewriteRestaurantProfileDescription(input: $input) {
+      text
+      provider
+      usedGemini
+      reason
+    }
+  }
+`;
+
 const GET_STAFF_LIST = gql`
   query StaffListForChefPicker($restaurantId: ID, $search: String) {
     staffList(restaurantId: $restaurantId, search: $search) {
@@ -754,6 +765,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
   const [updateRestaurant, { loading: savingRestaurant }] =
     useMutation(UPDATE_RESTAURANT);
+  const [rewriteRestaurantProfile, { loading: rewritingProfile }] =
+    useMutation(REWRITE_RESTAURANT_PROFILE);
 
   // --- HANDLERS ---
 
@@ -805,25 +818,43 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     return null;
   };
 
-  const generateAIDescription = () => {
-    const name = restaurantForm.name || "Nhà hàng";
-    const cuisine = restaurantForm.cuisineType || "ẩm thực phong phú";
-    const story =
-      restaurantForm.customerInfo?.story || "hành trình ẩm thực đầy cảm hứng";
-    const chef = restaurantForm.customerInfo?.chef
-      ? `Dưới bàn tay dẫn dắt của ${restaurantForm.customerInfo.chef},`
-      : "";
-    const description = `${name} là điểm hẹn ${cuisine}, nơi thực khách không chỉ thưởng thức món ngon mà còn cảm nhận được ${story}. ${chef} mỗi chi tiết trong trải nghiệm đều được nâng niu để tạo nên dấu ấn tinh tế, sang trọng và đáng nhớ.`;
-    setRestaurantForm((prev) => ({
-      ...prev,
-      description,
-      customerInfo: {
-        ...prev.customerInfo,
-        story: description,
-      },
-    }));
-    setIsDirty(true);
-    message.success("A.I đã tạo mô tả văn hoa mỹ từ");
+  const generateAIDescription = async () => {
+    if (!selectedRestaurantId || rewritingProfile) return;
+
+    try {
+      const { data } = await rewriteRestaurantProfile({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            restaurantName: restaurantForm.name || undefined,
+            cuisineType: restaurantForm.cuisineType || undefined,
+            currentText: restaurantForm.customerInfo?.story || undefined,
+            chefName: restaurantForm.customerInfo?.chef || undefined,
+          },
+        },
+      });
+      const result = data?.rewriteRestaurantProfileDescription;
+      const description = result?.text?.trim();
+      if (!description) throw new Error("AI rewrite returned empty text");
+
+      setRestaurantForm((prev) => ({
+        ...prev,
+        description,
+        customerInfo: {
+          ...prev.customerInfo,
+          story: description,
+        },
+      }));
+      setIsDirty(true);
+
+      if (result.usedGemini) {
+        message.success("Đã viết lại mô tả bằng AI");
+      } else {
+        message.warning("AI chưa khả dụng, đã dùng bản mô tả dự phòng");
+      }
+    } catch {
+      message.error("Không thể viết lại mô tả. Vui lòng thử lại");
+    }
   };
 
   const fillCurrentLocation = () => {
@@ -1491,6 +1522,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         size="small"
                         className="ai-btn"
                         onClick={generateAIDescription}
+                        loading={rewritingProfile}
+                        disabled={!selectedRestaurantId || rewritingProfile}
                       >
                         ✨ Viết lại bằng AI
                       </Button>

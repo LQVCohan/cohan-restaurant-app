@@ -8,6 +8,7 @@ const useQueryMock = vi.fn();
 const useMutationMock = vi.fn();
 const updateRestaurantMock = vi.fn();
 const updateIndexMock = vi.fn();
+const rewriteRestaurantProfileMock = vi.fn();
 const refetchRestaurantDetailMock = vi.fn();
 const refetchIndexesMock = vi.fn();
 const refetchCategoriesMock = vi.fn();
@@ -300,6 +301,16 @@ beforeEach(() => {
   updateIndexMock.mockResolvedValue({
     data: { updateRestaurantCategoryIndex: { id: "idx1" } },
   });
+  rewriteRestaurantProfileMock.mockResolvedValue({
+    data: {
+      rewriteRestaurantProfileDescription: {
+        text: "COHAN mang đến không gian ẩm thực hiện đại, gần gũi và được chăm chút trong từng trải nghiệm. Đội ngũ nhà hàng phục vụ chỉn chu để mỗi bữa ăn đều thoải mái và đáng nhớ.",
+        provider: "gemini",
+        usedGemini: true,
+        reason: "model:gemini-test",
+      },
+    },
+  });
 
   useQueryMock.mockImplementation((operation) => {
     const source = operationSource(operation);
@@ -335,6 +346,9 @@ beforeEach(() => {
     if (source.includes("mutation UpdateRestaurantInfo")) {
       return [updateRestaurantMock, { loading: false }];
     }
+    if (source.includes("mutation RewriteRestaurantProfile")) {
+      return [rewriteRestaurantProfileMock, { loading: false }];
+    }
     return [updateIndexMock, { loading: false }];
   });
 });
@@ -357,6 +371,39 @@ describe("RestaurantInfoManagement", () => {
     ).toHaveDisplayValue("Bữa trưa");
     expect(screen.getByText("Xem trước trên ứng dụng")).toBeInTheDocument();
     expect(screen.queryByText("Live Preview")).not.toBeInTheDocument();
+  });
+
+  it("uses the backend AI rewrite mutation and updates the description", async () => {
+    render(<RestaurantInfoManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-restaurant")).toHaveTextContent("r1");
+    });
+
+    const storyInput = screen.getByPlaceholderText(
+      "Viết ngắn gọn về phong cách, món nổi bật và trải nghiệm tại nhà hàng",
+    );
+    fireEvent.change(storyInput, { target: { value: "Không gian ấm cúng" } });
+    fireEvent.click(screen.getByRole("button", { name: /Viết lại bằng AI/i }));
+
+    await waitFor(() => expect(rewriteRestaurantProfileMock).toHaveBeenCalledTimes(1));
+    expect(rewriteRestaurantProfileMock).toHaveBeenCalledWith({
+      variables: {
+        input: {
+          restaurantId: "r1",
+          restaurantName: "COHAN",
+          cuisineType: undefined,
+          currentText: "Không gian ấm cúng",
+          chefName: undefined,
+        },
+      },
+    });
+    await waitFor(() => {
+      expect(storyInput).toHaveValue(
+        "COHAN mang đến không gian ẩm thực hiện đại, gần gũi và được chăm chút trong từng trải nghiệm. Đội ngũ nhà hàng phục vụ chỉn chu để mỗi bữa ăn đều thoải mái và đáng nhớ.",
+      );
+    });
+    expect(message.success).toHaveBeenCalledWith("Đã viết lại mô tả bằng AI");
   });
 
   it("preserves other capabilities when the manager disables remote orders", async () => {
