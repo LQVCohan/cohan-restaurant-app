@@ -24,22 +24,24 @@ const leafletState = vi.hoisted(() => {
     }),
     setLatLng: vi.fn(),
   };
+  const markerIcon = { kind: "restaurant-location-marker" };
 
   return {
     map,
     marker,
+    markerIcon,
     mapHandlers,
     markerHandlers,
     mapFactory: vi.fn(() => map),
     markerFactory: vi.fn(() => marker),
+    divIconFactory: vi.fn(() => markerIcon),
     tileAddTo: vi.fn(),
-    mergeOptions: vi.fn(),
   };
 });
 
 vi.mock("leaflet", () => ({
   default: {
-    Icon: { Default: { mergeOptions: leafletState.mergeOptions } },
+    divIcon: leafletState.divIconFactory,
     map: leafletState.mapFactory,
     marker: leafletState.markerFactory,
     tileLayer: vi.fn(() => ({ addTo: leafletState.tileAddTo })),
@@ -91,7 +93,7 @@ describe("restaurant information location map enhancement", () => {
     renderCoordinateFields();
   });
 
-  it("renders the stored point and writes map clicks back to controlled inputs", () => {
+  it("renders the stored point with the custom marker and writes map clicks back to controlled inputs", () => {
     expect(enhanceRestaurantInfoMap()).toBe(true);
 
     const card = document.querySelector(".restaurant-location-map-card");
@@ -101,7 +103,7 @@ describe("restaurant information location map enhancement", () => {
     expect(leafletState.mapFactory).toHaveBeenCalledTimes(1);
     expect(leafletState.markerFactory).toHaveBeenCalledWith(
       [10.895109, 106.833394],
-      { draggable: true },
+      { draggable: true, icon: leafletState.markerIcon },
     );
 
     leafletState.mapHandlers.click({

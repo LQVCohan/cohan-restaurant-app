@@ -1,0 +1,33 @@
+{
+  "id": "07-08-restaurant-chef-map-polish",
+  "title": "Sửa marker định vị và hoàn thiện bếp trưởng thương hiệu",
+  "status": "implemented_unverified",
+  "type": "frontend-fix",
+  "scope": [
+    "src/utils/installRestaurantInfoMapEnhancement.js",
+    "src/utils/restaurantInfoMapEnhancement.js",
+    "src/components/Dashboard_Manager/RestaurantInfo/RestaurantChefMapPolish.css",
+    "src/components/Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo.jsx",
+    "src/components/Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo.scss"
+  ],
+  "flow": "Restaurant.address.lat/lng + notesOnAmenities -> publicRestaurant resolver -> manager map/chef editor -> public RestaurantInfo query -> customer chef card",
+  "validation": {
+    "planned": [
+      "npm run check:conflicts",
+      "npx vitest run src/utils/installRestaurantInfoMapEnhancement.test.js",
+      "npm run build",
+      "browser smoke manager profile and public restaurant detail"
+    ],
+    "completed": [
+      "reviewed schema, publicRestaurant resolver, manager query/mutation and public UI flow",
+      "preserved existing restaurant scope and permission checks",
+      "kept backward compatibility with the existing chef string in notesOnAmenities"
+    ],
+    "notRun": [
+      "npm run check:conflicts",
+      "targeted Vitest",
+      "npm run build",
+      "authenticated browser smoke test"
+    ]
+  }
+}
