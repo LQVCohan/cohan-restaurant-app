@@ -119,6 +119,12 @@ const TOGGLE_RESTAURANT_FAVORITE = gql`
   }
 `;
 
+const RECORD_RECENT_RESTAURANT = gql`
+  mutation RecordRecentRestaurantForDetail($restaurantId: ID!) {
+    recordRecentRestaurant(restaurantId: $restaurantId)
+  }
+`;
+
 const RestaurantDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -148,6 +154,10 @@ const RestaurantDetail = () => {
       onCompleted: () => refetchRestaurantFavorites?.(),
     },
   );
+  const [recordRecentRestaurant] = useMutation(RECORD_RECENT_RESTAURANT);
+  const recordedRestaurantIdRef = React.useRef(null);
+  const recordingRestaurantIdRef = React.useRef(null);
+  const isCustomer = String(user?.userType || user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase() === "customer";
 
   const [activeTab, setActiveTab] = useState("info");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -201,6 +211,24 @@ const RestaurantDetail = () => {
     window.addEventListener("message", onPreviewMessage);
     return () => window.removeEventListener("message", onPreviewMessage);
   }, [isPreviewMode]);
+
+  useEffect(() => {
+    const loadedRestaurantId = restaurantData?.publicRestaurant?.id;
+    if (isPreviewMode || !isAuthenticated || !isCustomer || !user?.id || !loadedRestaurantId) return;
+    if (recordedRestaurantIdRef.current === loadedRestaurantId) return;
+    if (recordingRestaurantIdRef.current === loadedRestaurantId) return;
+    recordingRestaurantIdRef.current = loadedRestaurantId;
+    recordRecentRestaurant({ variables: { restaurantId: loadedRestaurantId } })
+      .then(() => {
+        recordedRestaurantIdRef.current = loadedRestaurantId;
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn("Không thể ghi nhận nhà hàng đã xem gần đây.", err);
+      })
+      .finally(() => {
+        if (recordingRestaurantIdRef.current === loadedRestaurantId) recordingRestaurantIdRef.current = null;
+      });
+  }, [id, isAuthenticated, isCustomer, isPreviewMode, recordRecentRestaurant, restaurantData?.publicRestaurant?.id, user?.id]);
 
   const restaurant = restaurantData?.publicRestaurant;
 

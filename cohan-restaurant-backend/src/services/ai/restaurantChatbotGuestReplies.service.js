@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
-import { AiChatConversation, ChatThread, Notification, User } from "../../../models/index.js";
+import { AiChatConversation, ChatThread, Notification } from "../../../models/index.js";
 import { normalizeGuestId, buildGuestSafeStaffReplyPayload } from "./restaurantChatbotRealtime.service.js";
 import { AI_CHATBOT_RATE_LIMIT_POLICIES, consumeAiChatbotRateLimit } from "./restaurantChatbotRateLimit.service.js";
+import { resolveChatRecipientIdsByRole } from "../communication/chatRecipientScope.service.js";
 
 const HANDOFF_MARKER = "[AI HANDOFF]";
 
@@ -157,28 +158,6 @@ const toObjectId = (value) => {
 
 const preview = (text, max = 140) => String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
 
-const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
-  const role = String(thread?.targetRole || "").toLowerCase();
-  if (!role || !thread?.restaurantId) return [];
-
-  const roleMap = {
-    management: ["MANAGER", "ADMIN"],
-    manager: ["MANAGER", "ADMIN"],
-    kitchen: ["STAFF"],
-    cashier: ["STAFF"],
-    staff: ["STAFF"],
-    support: ["STAFF", "MANAGER", "ADMIN"],
-  };
-
-  const userTypes = roleMap[role] || [String(thread.targetRole || "").toUpperCase()];
-  const users = await User.find({
-    userType: { $in: userTypes },
-    $or: [{ restaurantForStaff: thread.restaurantId }, { refRestaurants: thread.restaurantId }],
-  }).select("_id").lean();
-
-  return users.map((u) => String(u._id)).filter((id) => id !== String(senderId));
-};
-
 export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } = {}) {
   const conversationId = String(input?.conversationId || "").trim();
   const normalizedGuestId = normalizeGuestId(input?.guestId);
@@ -216,7 +195,7 @@ export async function sendRestaurantChatbotGuestMessage({ input, io, clientIp } 
   thread.lastMessagePreview = preview(content, 140);
 
   const directRecipientIds = (thread.participants || []).map((id) => String(id));
-  const roleRecipientIds = await resolveRecipientIdsByRole({ thread, senderId: `guest:${normalizedGuestId}` });
+  const roleRecipientIds = await resolveChatRecipientIdsByRole({ restaurantId: thread.restaurantId, targetRole: thread.targetRole, senderId: `guest:${normalizedGuestId}` });
   const recipientIds = [...new Set([...directRecipientIds, ...roleRecipientIds])];
 
   thread.unreadBy = recipientIds.map((id) => toObjectId(id)).filter(Boolean);

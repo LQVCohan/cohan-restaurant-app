@@ -54,7 +54,6 @@ const getId = (value) => {
 const resolveStaffRestaurantId = (user) =>
   getId(user?.restaurantForStaff) ||
   getId(user?.restaurantId) ||
-  getId(user?.refRestaurants?.[0]) ||
   null;
 
 const resolveType = (value) => {

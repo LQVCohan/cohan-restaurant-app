@@ -72,7 +72,7 @@ describe("staffList restaurant filter", () => {
     vi.clearAllMocks();
   });
 
-  it("filters by restaurantForStaff and refRestaurants when filtering by restaurant", async () => {
+  it("filters by restaurantForStaff when filtering by restaurant", async () => {
     const findChain = createFindChain();
     modelMocks.Staff.find.mockReturnValue(findChain);
 
@@ -86,9 +86,7 @@ describe("staffList restaurant filter", () => {
         {
           $or: [
             { restaurantForStaff: { __oid: "restaurant-1" } },
-            { refRestaurants: { __oid: "restaurant-1" } },
             { restaurantForStaff: "restaurant-1" },
-            { refRestaurants: "restaurant-1" },
           ],
         },
       ],
@@ -114,9 +112,7 @@ describe("staffList restaurant filter", () => {
     expect(filter.$and[0]).toEqual({
       $or: [
         { restaurantForStaff: { __oid: "restaurant-1" } },
-        { refRestaurants: { __oid: "restaurant-1" } },
         { restaurantForStaff: "restaurant-1" },
-        { refRestaurants: "restaurant-1" },
       ],
     });
     expect(filter.$and[1].$or).toEqual(

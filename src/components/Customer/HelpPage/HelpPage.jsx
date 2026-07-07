@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import useCommunication from "@/hooks/useCommunication";
 import "./HelpPage.scss";
 import "./HelpPageA11yPolish.scss";
@@ -58,15 +58,23 @@ const HelpPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [threadId, setThreadId] = useState(null);
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [inputMsg, setInputMsg] = useState("");
   const [supportNotice, setSupportNotice] = useState("");
   const messagesEndRef = useRef(null);
 
-  const { user } = useContext(AuthContext) || {};
-  const restaurantId = useMemo(
-    () => user?.refRestaurants?.[0] || user?.restaurantForStaff || null,
-    [user]
-  );
+  const { user, refRestaurant = [], restaurants = [] } = useContext(AuthContext) || {};
+  const restaurantId = useMemo(() => {
+    const routeRestaurant =
+      searchParams.get("restaurantId") ||
+      location.state?.restaurantId ||
+      location.state?.restaurant?.id ||
+      location.state?.restaurant?._id ||
+      null;
+    if (routeRestaurant) return routeRestaurant;
+    const recent = refRestaurant[0]?.id || refRestaurant[0]?._id || restaurants[0]?.id || restaurants[0]?._id || null;
+    return recent || null;
+  }, [location.state, refRestaurant, restaurants, searchParams]);
 
   const {
     thread,
@@ -132,7 +140,7 @@ const HelpPage = () => {
     setIsChatOpen(true);
     setSupportNotice("");
     const id = await ensureSupportThread();
-    if (!id) setSupportNotice("Bạn cần đăng nhập hoặc có ngữ cảnh nhà hàng để chat hỗ trợ.");
+    if (!id) setSupportNotice("Vui lòng chọn một nhà hàng trước khi bắt đầu trò chuyện hỗ trợ.");
   };
 
   const handleSendMessage = async (e) => {
@@ -142,7 +150,7 @@ const HelpPage = () => {
     setSupportNotice("");
     const id = await ensureSupportThread();
     if (!id) {
-      setSupportNotice("Bạn cần đăng nhập hoặc có ngữ cảnh nhà hàng để chat hỗ trợ.");
+      setSupportNotice("Vui lòng chọn một nhà hàng trước khi bắt đầu trò chuyện hỗ trợ.");
       return;
     }
 

@@ -120,7 +120,7 @@ describe("order userUtils identity helpers", () => {
         },
       })
     ).rejects.toThrow(
-      "Contact information matches multiple customer profiles. Please contact support.",
+      "Thông tin liên hệ khớp với nhiều hồ sơ khách hàng. Vui lòng liên hệ bộ phận hỗ trợ.",
     );
   });
 
@@ -178,7 +178,7 @@ describe("order userUtils identity helpers", () => {
 
     const out = await resolveOrCreateGuestCustomerForOrder({
       customer: { fullName: "Guest Updated", email: "guest@example.com" },
-      restaurantId: "rest-1",
+      restaurantId: "507f1f77bcf86cd799439011",
     });
     expect(out.mode).toBe("matched_guest");
     expect(guest.save).toHaveBeenCalledTimes(1);
@@ -196,11 +196,11 @@ describe("order userUtils identity helpers", () => {
 
     await resolveOrCreateGuestCustomerForOrder({
       customer: { email: "new-guest@example.com" },
-      restaurantId: "rest-xyz",
+      restaurantId: "507f1f77bcf86cd799439012",
     });
 
     expect(modelMocks.Customer.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ refRestaurants: ["rest-xyz"] })],
+      [expect.objectContaining({ refRestaurants: ["507f1f77bcf86cd799439012"] })],
       undefined,
     );
   });
@@ -214,10 +214,56 @@ describe("order userUtils identity helpers", () => {
       "../../graphql/resolvers/order/helper/userUtils.js"
     );
 
-    await ensureUserForOrder(null, { email: "ensure@example.com" }, { restaurantId: "rest-r1" });
+    await ensureUserForOrder(null, { email: "ensure@example.com" }, { restaurantId: "507f1f77bcf86cd799439013" });
     expect(modelMocks.Customer.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ refRestaurants: ["rest-r1"] })],
+      [expect.objectContaining({ refRestaurants: ["507f1f77bcf86cd799439013"] })],
       undefined,
     );
   });
+
+  it("ensureUserForOrder updates authenticated customer recent and membership in session", async () => {
+    const restaurantId = "507f1f77bcf86cd799439011";
+    const session = { id: "session-1" };
+    const customerDoc = {
+      _id: "user-1",
+      isGuest: false,
+      refRestaurants: [],
+      customerRestaurants: [],
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+    const query = makeQuery(customerDoc);
+    modelMocks.Customer.findOne.mockReturnValueOnce(query);
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    const out = await ensureUserForOrder("user-1", null, { session, restaurantId });
+
+    expect(out).toBe("user-1");
+    expect(query.session).toHaveBeenCalledWith(session);
+    expect(customerDoc.refRestaurants.map(String)).toEqual([restaurantId]);
+    expect(customerDoc.customerRestaurants.map(String)).toEqual([restaurantId]);
+    expect(customerDoc.save).toHaveBeenCalledWith({ session });
+  });
+
+  it("ensureUserForOrder does not return invalid selected user id", async () => {
+    modelMocks.Customer.findOne.mockReturnValueOnce(makeQuery(null));
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    await expect(ensureUserForOrder("staff-1", null, { restaurantId: "507f1f77bcf86cd799439013" }))
+      .rejects.toThrow("Không tìm thấy tài khoản khách hàng.");
+  });
+
+  it("ensureUserForOrder returns null for invalid selected user in snapshot-only flow", async () => {
+    modelMocks.Customer.findOne.mockReturnValueOnce(makeQuery(null));
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    await expect(ensureUserForOrder("missing-user", null, { snapshotOnly: true }))
+      .resolves.toBeNull();
+  });
+
 });

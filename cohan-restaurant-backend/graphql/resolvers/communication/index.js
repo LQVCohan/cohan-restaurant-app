@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import {
-  BrandMembership,
   ChatThread,
   Notification,
   Restaurant,
 } from "../../../models/index.js";
 import { requireRestaurantAccess } from "../../guards.js";
+import { buildPublicRestaurantFilter } from "../restaurant/publicRestaurantAccess.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import {
   hasAnyPermission,
@@ -18,6 +18,7 @@ import {
 } from "../../../src/services/auth/restaurantScope.service.js";
 import { emitAiChatbotStaffReplyIfLinked } from "../../../src/services/ai/restaurantChatbotRealtime.service.js";
 import { setNotificationSocketServer } from "../../../src/services/notification/notificationWorkflow.service.js";
+import { resolveChatRecipientIdsByRole } from "../../../src/services/communication/chatRecipientScope.service.js";
 
 const HANDOFF_VIEW_PERMISSIONS = [
   PERMISSIONS.AI_CHATBOT_HANDOFF,
@@ -47,25 +48,6 @@ const ensureAuth = (ctx) => {
     throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHORIZED" } });
   }
 };
-
-async function loadRestaurantBrandId(restaurantId) {
-  if (!restaurantId) return null;
-  const restaurant = await Restaurant.findById(restaurantId).select("brandId").lean();
-  return restaurant?.brandId || null;
-}
-
-async function activeManagerIdsForRestaurant(restaurantId) {
-  const brandId = await loadRestaurantBrandId(restaurantId);
-  if (!brandId) return [];
-
-  const memberships = await BrandMembership.find({
-    brandId,
-    role: "manager",
-    status: "active",
-    restaurantIds: restaurantId,
-  }).select("userId").lean();
-  return [...new Set(memberships.map((membership) => String(membership.userId)).filter(Boolean))];
-}
 
 const canAccessThread = async (thread, user, ctx, restaurantScopeChecked = false) => {
   const uid = String(user?.id || "");
@@ -101,43 +83,6 @@ const canAccessThread = async (thread, user, ctx, restaurantScopeChecked = false
   return false;
 };
 
-const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
-  const targetRole = String(thread?.targetRole || "").toLowerCase();
-  if (!targetRole || !thread?.restaurantId) return [];
-
-  const brandId = await loadRestaurantBrandId(thread.restaurantId);
-  if (!brandId) return [];
-
-  const membershipBranches = {
-    management: [
-      { role: { $in: ["owner", "admin"] } },
-      { role: "manager", restaurantIds: thread.restaurantId },
-    ],
-    manager: [
-      { role: { $in: ["owner", "admin"] } },
-      { role: "manager", restaurantIds: thread.restaurantId },
-    ],
-    kitchen: [{ role: "staff", restaurantIds: thread.restaurantId }],
-    cashier: [{ role: "staff", restaurantIds: thread.restaurantId }],
-    staff: [{ role: "staff", restaurantIds: thread.restaurantId }],
-    support: [
-      { role: { $in: ["owner", "admin"] } },
-      { role: { $in: ["manager", "staff"] }, restaurantIds: thread.restaurantId },
-    ],
-  };
-  const branches = membershipBranches[targetRole];
-  if (!branches) return [];
-
-  const memberships = await BrandMembership.find({
-    brandId,
-    status: "active",
-    $or: branches,
-  }).select("userId").lean();
-
-  return [...new Set(memberships.map((membership) => String(membership.userId)).filter(Boolean))]
-    .filter((id) => id !== String(senderId));
-};
-
 const toThreadOutput = (thread, userId) => {
   const uid = String(userId || "");
   return {
@@ -159,8 +104,12 @@ async function requireRestaurantScopeIfProvided(ctx, restaurantId, { allowCustom
 
   const isCustomer = roleSlug(ctx?.user) === "customer" || String(ctx?.user?.userType || "").toUpperCase() === "CUSTOMER";
   if (allowCustomerPublic && isCustomer) {
-    const exists = await Restaurant.exists({ _id: rid });
-    if (!exists) throw badInput("Invalid restaurantId");
+    const exists = await Restaurant.exists(buildPublicRestaurantFilter({ _id: rid }));
+    if (!exists) {
+      throw new GraphQLError("Không tìm thấy nhà hàng hoặc nhà hàng hiện không hoạt động.", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
     return rid;
   }
 
@@ -283,7 +232,7 @@ const Mutation = {
     let uniqueParticipantIds = [...new Set(participantIds.map((id) => String(id)))].map(toId);
 
     if (!input?.participantIds?.length && input?.channel === "support") {
-      const managerIds = await activeManagerIdsForRestaurant(rid);
+      const managerIds = await resolveChatRecipientIdsByRole({ restaurantId: rid, targetRole: "manager", senderId: user.id });
       if (managerIds.length) {
         uniqueParticipantIds = [...new Set([...uniqueParticipantIds.map(String), ...managerIds])].map(toId);
       }
@@ -368,7 +317,7 @@ const Mutation = {
     const directRecipientIds = (thread.participants || [])
       .map((id) => String(id))
       .filter((id) => id !== senderId);
-    const roleRecipientIds = await resolveRecipientIdsByRole({ thread, senderId });
+    const roleRecipientIds = await resolveChatRecipientIdsByRole({ restaurantId: thread.restaurantId, targetRole: thread.targetRole, senderId });
     const recipientIds = [...new Set([...directRecipientIds, ...roleRecipientIds])];
 
     thread.unreadBy = recipientIds.map((id) => toId(id)).filter(Boolean);

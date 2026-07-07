@@ -166,7 +166,7 @@ async function buildAuthPayloadForVerifiedUser(userId, ctx = null) {
 async function writeVerificationAudit({ ctx, user, verb, status, channels, reason, result, error }) {
   await logEvent({
     ctx,
-    restaurantId: user?.restaurantForStaff || user?.refRestaurants?.[0] || null,
+    restaurantId: user?.restaurantForStaff || null,
     actorUserId: actorId(null, ctx),
     verb,
     object: { kind: "User", id: user?._id || user?.id },

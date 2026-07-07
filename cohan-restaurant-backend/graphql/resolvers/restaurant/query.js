@@ -1,7 +1,8 @@
 // src/resolvers/restaurant.query.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
+import { Restaurant, Customer, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
+import { buildPublicRestaurantFilter, loadPublicRestaurantsByRecentIds } from "./publicRestaurantAccess.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
 import { canAccessRestaurant, getScopedRestaurantFilter, isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
@@ -14,7 +15,7 @@ function badInput(message) {
 function notFound(message = "Resource not found") {
   return new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
 }
-function unauthenticated(message = "Unauthorized") {
+function unauthenticated(message = "Bạn cần đăng nhập để thực hiện thao tác này.") {
   return new GraphQLError(message, { extensions: { code: "UNAUTHENTICATED" } });
 }
 
@@ -142,19 +143,6 @@ function combineFilters(...filters) {
   if (parts.length === 0) return {};
   if (parts.length === 1) return parts[0];
   return { $and: parts };
-}
-
-function buildPublicRestaurantFilter() {
-  return {
-    $or: [
-      { businessStatus: "active", publicationStatus: "published" },
-      {
-        businessStatus: { $exists: false },
-        publicationStatus: { $exists: false },
-        status: "active",
-      },
-    ],
-  };
 }
 
 function applyPublicAvailabilityFilters(docs, filter) {
@@ -375,24 +363,21 @@ async function scopedRestaurants(_, { brandId, limit = 20, cursor, restaurantFil
   return buildRestaurantConnection(baseFilter, { limit, cursor });
 }
 
-/** Các nhà hàng tham chiếu theo user.refRestaurants */
-async function refRestaurants(_, { userId }) {
-  if (!mongoose.isValidObjectId(userId)) {
-    throw badInput("Invalid userId");
-  }
-
-  const user = await User.findById(userId).select("refRestaurants").lean();
-  if (!user) throw notFound("User not found");
-
-  const ref = Array.isArray(user.refRestaurants) ? user.refRestaurants : [];
+async function loadRecentRestaurantsForCustomer(userId, limit = 12) {
+  const customer = await Customer.findOne({ _id: userId, userType: "CUSTOMER", deletedAt: null })
+    .select("refRestaurants")
+    .lean();
+  if (!customer) throw notFound("Không tìm thấy tài khoản khách hàng.");
+  const ref = Array.isArray(customer.refRestaurants) ? customer.refRestaurants : [];
   if (ref.length === 0) return [];
 
-  const ids = [...new Set(ref.map((x) => (mongoose.isValidObjectId(x) ? String(x) : null)).filter(Boolean))]
-    .map((item) => new mongoose.Types.ObjectId(item));
+  return loadPublicRestaurantsByRecentIds(ref, clampLimit(limit, 1, 12));
+}
 
-  if (ids.length === 0) return [];
-
-  return Restaurant.find({ _id: { $in: ids } }).sort({ _id: 1 }).lean();
+async function myRecentRestaurants(_, { limit = 6 } = {}, ctx) {
+  if (!ctx?.user?.id && !ctx?.user?._id) throw unauthenticated();
+  const userId = ctx.user.id || ctx.user._id;
+  return loadRecentRestaurantsForCustomer(userId, limit);
 }
 
 async function refreshRestaurantCategoryIndexes(_, { timeSlot }) {
@@ -518,7 +503,7 @@ export const RestaurantQuery = {
   restaurantsTop,
   restaurantsNearby,
   scopedRestaurants,
-  refRestaurants,
+  myRecentRestaurants,
   restaurantsByCategoryTimeSlot,
   restaurantCategoryIndexes,
   refreshRestaurantCategoryIndexes,
@@ -530,7 +515,7 @@ export const RestaurantQuery = {
 
 async function publicRestaurants(_, { limit = 20, cursor, filter }) {
   const lim = clampLimit(limit, 1, 100);
-  const baseFilter = { ...buildFilter(filter), businessStatus: "active", publicationStatus: "published" };
+  const baseFilter = combineFilters(buildFilter(filter), buildPublicRestaurantFilter());
   const runtimeFilterEnabled = filter && (
     filter.openNow === true
     || !!filter.openingStatus
@@ -620,19 +605,17 @@ async function publicRestaurants(_, { limit = 20, cursor, filter }) {
 
 async function publicRestaurant(_, { id }) {
   if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
-  return Restaurant.findOne({ _id: id, businessStatus: "active", publicationStatus: "published" }).lean();
+  return Restaurant.findOne(buildPublicRestaurantFilter({ _id: id })).lean();
 }
 async function similarRestaurants(_, { restaurantId, limit = 6 }) {
-  const root = await Restaurant.findOne({ _id: restaurantId, businessStatus: "active", publicationStatus: "published" }).lean();
+  const root = await Restaurant.findOne(buildPublicRestaurantFilter({ _id: restaurantId })).lean();
   if (!root) return [];
   const lim = clampLimit(limit, 1, 20);
 
-  const sameCuisine = await Restaurant.find({
+  const sameCuisine = await Restaurant.find(buildPublicRestaurantFilter({
     _id: { $ne: root._id },
-    businessStatus: "active",
-    publicationStatus: "published",
     cuisineType: root.cuisineType,
-  }).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim).lean();
+  })).sort({ avgRating: -1, reviewCount: -1, _id: -1 }).limit(lim).lean();
 
   if (sameCuisine.length >= lim) return sameCuisine;
 
@@ -644,14 +627,10 @@ async function similarRestaurants(_, { restaurantId, limit = 6 }) {
     fallbackOrConditions.push({ "address.city": root.address.city });
   }
 
-  const fallbackFilter = {
-    _id: { $ne: root._id, $nin: sameCuisine.map((r) => r._id) },
-    businessStatus: "active",
-    publicationStatus: "published",
-  };
-  if (fallbackOrConditions.length > 0) {
-    fallbackFilter.$or = fallbackOrConditions;
-  }
+  const fallbackFilter = combineFilters(
+    buildPublicRestaurantFilter({ _id: { $ne: root._id, $nin: sameCuisine.map((r) => r._id) } }),
+    fallbackOrConditions.length > 0 ? { $or: fallbackOrConditions } : {},
+  );
 
   const fallback = await Restaurant.find(fallbackFilter)
     .sort({ avgRating: -1, reviewCount: -1, _id: -1 })

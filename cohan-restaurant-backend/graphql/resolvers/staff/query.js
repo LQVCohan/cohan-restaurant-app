@@ -461,9 +461,8 @@ export default {
       const rid = toObjectId(restaurantId);
       const restaurantScopeFilter = {
         $or: [
-          ...(rid ? [{ restaurantForStaff: rid }, { refRestaurants: rid }] : []),
+          ...(rid ? [{ restaurantForStaff: rid }] : []),
           { restaurantForStaff: restaurantId },
-          { refRestaurants: restaurantId },
         ],
       };
       filter.$and = [...(filter.$and || []), restaurantScopeFilter];

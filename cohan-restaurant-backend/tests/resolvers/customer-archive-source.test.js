@@ -10,7 +10,9 @@ const source = fs.readFileSync(
 
 describe("restaurant-scoped customer archive", () => {
   it("moves restaurant membership without changing account status", () => {
-    expect(source).toContain("$pull: { refRestaurants: rid }");
+    expect(source).toContain("$pull: { customerRestaurants: rid }");
+    expect(source).not.toContain("$pull: { refRestaurants: rid }");
+    expect(source).not.toContain("$addToSet: { refRestaurants: rid }");
     expect(source).toContain("archivedRestaurants");
     expect(source).not.toContain("status: \"inactive\"");
   });

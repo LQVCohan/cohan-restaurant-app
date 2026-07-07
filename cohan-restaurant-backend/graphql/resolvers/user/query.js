@@ -76,7 +76,7 @@ function buildCustomerQueryCondition({
   customerRank = null,
 }) {
   const activeCond = { deletedAt: null };
-  const restaurantScopeCond = { refRestaurants: { $in: [toObjectId(restaurantId)] } };
+  const restaurantScopeCond = { customerRestaurants: { $in: [toObjectId(restaurantId)] } };
   const searchCond = buildSearchCond(search);
   const customerRoleClause = customerRoleId ? { role: customerRoleId } : null;
   const guestClause = { isGuest: true };
@@ -252,7 +252,7 @@ export const UserQuery = {
 
       const restaurantScopeCond = scopedRestaurantId
         ? {
-            refRestaurants: {
+            customerRestaurants: {
               $in: [toObjectId(scopedRestaurantId)],
             },
           }
@@ -430,7 +430,7 @@ export const UserQuery = {
 
     const staff = await User.findById(toObjectId(userId))
       .populate({ path: "role", select: "name slug department permissions" })
-      .populate({ path: "refRestaurants", select: "name" })
+      .populate({ path: "customerRestaurants", select: "name" })
       .lean();
 
     if (!staff || staff.deletedAt || String(staff.userType || "").toUpperCase() !== "STAFF") {
@@ -702,7 +702,7 @@ export const UserQuery = {
     }
 
     const scopedCustomers = await Customer.find({
-      refRestaurants: { $in: [rid] },
+      customerRestaurants: { $in: [rid] },
     }).lean();
     const membershipDays =
       scopedCustomers.reduce(

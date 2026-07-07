@@ -217,7 +217,7 @@ extend type Query {
     restaurantFilter: RestaurantFilter
   ): RestaurantConnection!
 
-  refRestaurants(userId: ID!): [Restaurant!]!
+  myRecentRestaurants(limit: Int = 6): [Restaurant!]!
 
   restaurantsByCategoryTimeSlot(
     categoryId: ID!
@@ -333,6 +333,7 @@ extend type Mutation {
   rewriteRestaurantProfileDescription(
     input: RewriteRestaurantProfileInput!
   ): RestaurantProfileRewriteResult!
+  recordRecentRestaurant(restaurantId: ID!): Boolean!
 }
 
 type Category {
