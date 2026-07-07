@@ -59,6 +59,7 @@ import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanel
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
+import { installRestaurantInfoMapEnhancement } from "./utils/installRestaurantInfoMapEnhancement";
 import { installTablePromotionSearch } from "./utils/installTablePromotionSearch";
 import { installTableMergePickerTrigger } from "./utils/installTableMergePickerTrigger";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
@@ -66,6 +67,7 @@ import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/S
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 installRestaurantHoursEnhancement();
+installRestaurantInfoMapEnhancement();
 installTablePromotionSearch();
 installTableMergePickerTrigger();
 installAttendanceWordingTuning();
