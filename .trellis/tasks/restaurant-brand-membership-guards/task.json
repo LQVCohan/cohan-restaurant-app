@@ -1,0 +1,40 @@
+{
+  "id": "restaurant-brand-membership-guards",
+  "name": "restaurant-brand-membership-guards",
+  "title": "Remove legacy restaurant managerId authorization",
+  "description": "Make BrandMembership the only runtime source for restaurant access and mutation scope, remove legacy managerId GraphQL/runtime contracts, and close cross-brand guard gaps.",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "restaurant-brand-membership-authorization",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/restaurant-brand-membership-guards",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/schema/restaurant.graphql",
+    "cohan-restaurant-backend/models/restaurant.model.js",
+    "cohan-restaurant-backend/src/services/auth/restaurantScope.service.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/types.js",
+    "src/hooks/useRestaurant.js",
+    "cohan-restaurant-backend/docs/restaurant-access-scope.md",
+    "cohan-restaurant-backend/tests/services/restaurantScope.service.test.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-mutation-access.test.js",
+    "cohan-restaurant-backend/tests/resolvers/restaurant-query-scope.test.js"
+  ],
+  "notes": "Runtime authorization must not read Restaurant.managerId or legacy restaurant fields on User. The migration script remains available for one-time database cleanup.",
+  "meta": {
+    "skills": ["ponytail"]
+  }
+}
