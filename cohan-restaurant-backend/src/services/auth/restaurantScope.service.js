@@ -51,33 +51,18 @@ export async function getScopedRestaurantFilter(user) {
   return ors.length ? { $or: ors } : emptyFilter();
 }
 
-async function loadRestaurantForScope(restaurantId) {
-  if (!mongoose.isValidObjectId(restaurantId) || typeof Restaurant?.findById !== "function") return null;
-  const query = Restaurant.findById(restaurantId);
-  return typeof query?.select === "function"
-    ? query.select("_id brandId").lean()
-    : query;
-}
-
 export async function canAccessRestaurant(user, restaurantId) {
   if (!user || !restaurantId) return false;
   if (isSystemAdmin(user)) return true;
 
-  const [memberships, restaurant] = await Promise.all([
-    getUserBrandMemberships(user),
-    loadRestaurantForScope(restaurantId),
-  ]);
-  if (!restaurant?.brandId) return false;
+  const rid = toObjectId(restaurantId);
+  if (!rid || typeof Restaurant?.exists !== "function") return false;
 
-  const matching = memberships.filter(
-    (membership) => String(membership.brandId) === String(restaurant.brandId),
-  );
-
-  if (matching.some((membership) => ["owner", "admin"].includes(membership.role))) return true;
-  return matching.some(
-    (membership) =>
-      ["manager", "staff"].includes(membership.role) &&
-      (membership.restaurantIds || []).some((id) => String(id) === String(restaurant._id)),
+  const scopedFilter = await getScopedRestaurantFilter(user);
+  return Boolean(
+    await Restaurant.exists({
+      $and: [{ _id: rid }, scopedFilter],
+    }),
   );
 }
 
@@ -127,10 +112,8 @@ export async function isActiveBrandOperator(candidateUserId, brandId) {
 export async function ensureBrandRestaurants(brandId, restaurantIds = []) {
   const ids = [...new Set((restaurantIds || []).filter(Boolean).map(String))];
   if (!ids.length) return [];
-
   const objectIds = ids.map(toObjectId);
   if (objectIds.some((id) => !id) || !toObjectId(brandId)) throw new Error("Invalid ID");
-
   const count = await Restaurant.countDocuments({
     _id: { $in: objectIds },
     brandId: toObjectId(brandId),
