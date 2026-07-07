@@ -176,20 +176,165 @@ body:has(.table-3d-modal__title-row) .table-3d-quick-guide > div strong {
 }
 
 @media (max-width: 860px) {
-  body:has(.table-3d-modal__title-row) .table-3d-modal__layout {
-    grid-template-columns: 1fr !important;
+  /* A single scrolling column prevents the viewer, catalog and footer from overlapping. */
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) {
+    align-items: stretch !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 
-  body:has(.table-3d-modal__title-row) .table-3d-modal__sidebar {
-    order: 2 !important;
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
 
-  body:has(.table-3d-modal__title-row) .table-3d-modal__viewer-wrap {
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal > .modal-body {
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__header {
+    position: relative !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    min-height: 58px !important;
+    padding: calc(8px + env(safe-area-inset-top)) 10px 8px !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__title-row {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__title-row h3 {
+    max-width: none !important;
+    font-size: 0.98rem !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__heading > p,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__title-row > .table-3d-ar-status,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__header-actions > .btn:first-of-type {
+    display: none !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__header-actions .btn {
+    min-height: 44px !important;
+    border-radius: 14px !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.7rem !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 8px 8px calc(12px + env(safe-area-inset-bottom)) !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__viewer-wrap,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__sidebar {
+    flex: 0 0 auto !important;
     order: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    border-radius: 18px !important;
   }
 
-  .table-3d-readiness > summary::after {
-    display: none;
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__viewer-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.6rem !important;
+    padding: 0.65rem !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__sidebar {
+    order: 2 !important;
+    padding: 0.75rem !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-stage,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-viewer,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .viewer-placeholder {
+    width: 100% !important;
+    height: clamp(230px, 34dvh, 310px) !important;
+    min-height: 230px !important;
+    max-height: 310px !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-toolbar__group,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-readiness__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-toolbar button,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-position-controls > summary {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-quick-guide {
+    display: none !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__footer {
+    position: static !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0.65rem !important;
+    border: 1px solid rgba(222, 214, 203, 0.82) !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__footer > *,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-position-action,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-position-action > button {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-apply-button {
+    grid-column: 1 / -1 !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__sidebar > select,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__filters,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__filters input,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__filters select {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__models {
+    display: flex !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0.45rem !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .model-item {
+    flex: 0 0 min(78vw, 280px) !important;
+    width: min(78vw, 280px) !important;
+    min-width: 0 !important;
+    max-width: 280px !important;
   }
 }
 
@@ -200,5 +345,21 @@ body:has(.table-3d-modal__title-row) .table-3d-quick-guide > div strong {
 
   .table-3d-modal__footer--clear-actions > button {
     width: 100% !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__filters,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-modal__footer {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-apply-button {
+    grid-column: 1 !important;
+  }
+
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-stage,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .table-3d-viewer,
+  .modal-overlay.modal-open:has(.table-3d-modal__title-row) .viewer-placeholder {
+    height: min(31dvh, 270px) !important;
+    min-height: 210px !important;
   }
 }
