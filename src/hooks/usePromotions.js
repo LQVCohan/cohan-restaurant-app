@@ -298,7 +298,11 @@ export const __testables = {
   resolvePromotionStatus,
 };
 
-export const usePromotions = () => {
+export const usePromotions = ({
+  restaurantId: restaurantIdOverride = "",
+  activeOnly = false,
+  showErrorBanner = true,
+} = {}) => {
   const { restaurants } = useContext(AuthContext);
   const restaurantOptions = useMemo(
     () =>
@@ -308,6 +312,7 @@ export const usePromotions = () => {
     [restaurants],
   );
   const defaultRestaurantId = restaurantOptions[0]?.id || "";
+  const scopedRestaurantId = String(restaurantIdOverride || "").trim();
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
@@ -315,7 +320,7 @@ export const usePromotions = () => {
   });
 
   useEffect(() => {
-    if (!restaurantOptions.length) return;
+    if (scopedRestaurantId || !restaurantOptions.length) return;
 
     const hasSelectedRestaurant = restaurantOptions.some(
       (restaurant) => String(restaurant.id) === String(filters.restaurant || ""),
@@ -327,14 +332,15 @@ export const usePromotions = () => {
         restaurant: String(restaurantOptions[0].id),
       }));
     }
-  }, [restaurantOptions, filters.restaurant]);
+  }, [restaurantOptions, filters.restaurant, scopedRestaurantId]);
 
-  const selectedRestaurantId = filters.restaurant || defaultRestaurantId;
+  const selectedRestaurantId =
+    scopedRestaurantId || filters.restaurant || defaultRestaurantId;
 
   const { data, loading, error, refetch } = useQuery(Q_PROMOTIONS, {
     variables: {
       restaurantId: selectedRestaurantId,
-      activeOnly: false,
+      activeOnly,
       limit: 500,
       offset: 0,
     },
@@ -342,7 +348,10 @@ export const usePromotions = () => {
     fetchPolicy: "network-only",
   });
 
-  useEffect(() => mountPromotionErrorBanner({ error, refetch }), [error, refetch]);
+  useEffect(
+    () => (showErrorBanner ? mountPromotionErrorBanner({ error, refetch }) : undefined),
+    [error, refetch, showErrorBanner],
+  );
 
   const { data: formData } = useQuery(Q_PROMOTION_FORM_DATA, {
     variables: { restaurantId: selectedRestaurantId },
