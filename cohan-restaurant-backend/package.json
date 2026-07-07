@@ -10,6 +10,7 @@
     "test:serial": "vitest run --testTimeout=30000 --maxWorkers=1",
     "test:menu-rbac": "vitest run tests/server/auth-user-resolver.test.js tests/resolvers/menu-permission.test.js tests/resolvers/menu-audit-log-permission.test.js",
     "seed:admin": "node scripts/seed-admin.js",
+    "seed:defense": "node scripts/seedDefenseDemo.js",
     "import:restaurant-data": "node scripts/import-restaurant-data.js",
     "test:db": "node scripts/test-db.js",
     "seed:demo:stock": "node scripts/seed-demo-ingredient-stock.js",
