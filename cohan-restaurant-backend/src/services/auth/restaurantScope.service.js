@@ -12,7 +12,10 @@ const idString = (value) => String(value?._id || value?.id || value || "");
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
 
 export const getUserId = (user) => idString(user);
-export const isSystemAdmin = (user) => String(user?.userType || "").toUpperCase() === "ADMIN" || roleName(user) === "admin";
+export const isSystemAdmin = (user) => {
+  const currentRole = roleName(user);
+  return currentRole ? currentRole === "admin" : String(user?.userType || "").toUpperCase() === "ADMIN";
+};
 
 export const getUserBrandMemberships = async (user) => {
   const uid = toObjectId(getUserId(user));
