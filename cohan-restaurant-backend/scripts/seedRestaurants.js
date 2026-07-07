@@ -1,17 +1,15 @@
 // scripts/seedRestaurantsViaGQL.js
 // Node 18+ (có sẵn fetch). Nếu Node < 18, cài thêm: npm i node-fetch và import('node-fetch').
 
-import crypto from "crypto";
 import process from "process";
+
 // ====== ENV CONFIG ======
 const GRAPHQL_ENDPOINT =
   process.env.GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
-const AUTH_TOKEN = process.env.AUTH_TOKEN || ""; // Bearer token nếu server yêu cầu auth
-// MANAGER_IDS: "656d1f...a,656d1f...b,656d1f...c"
-const MANAGER_IDS = (process.env.MANAGER_IDS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+const AUTH_TOKEN = process.env.AUTH_TOKEN || "";
+// Nên cung cấp BRAND_ID để nhà hàng được tạo đúng BrandMembership scope.
+// System Admin vẫn có thể để trống khi cần tạo dữ liệu chưa gắn Brand.
+const BRAND_ID = String(process.env.BRAND_ID || "").trim();
 
 // ====== GQL MUTATION ======
 const CREATE_RESTAURANT_MUTATION = `
@@ -19,7 +17,7 @@ const CREATE_RESTAURANT_MUTATION = `
     createRestaurant(input: $input) {
       id
       name
-      manager { id fullName }
+      brandId
       avgRating
       status
     }
@@ -28,11 +26,6 @@ const CREATE_RESTAURANT_MUTATION = `
 
 // ====== UTIL ======
 const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-const randomObjectId = () => {
-  // Tạo chuỗi 24 hex giống ObjectId để test nhanh
-  return crypto.randomBytes(12).toString("hex");
-};
 
 const cities = ["TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng"];
 const districtsHCM = [
@@ -68,18 +61,7 @@ const namePrefixes = [
   "Fusion",
 ];
 
-// Tạo mảng 10 managerId (xoay vòng từ ENV nếu có, nếu không -> random)
-const buildManagerIds = (count = 10) => {
-  if (MANAGER_IDS.length > 0) {
-    return Array.from(
-      { length: count },
-      (_, i) => MANAGER_IDS[i % MANAGER_IDS.length]
-    );
-  }
-  return Array.from({ length: count }, () => randomObjectId());
-};
-
-const buildRestaurantInput = (i, managerId) => {
+const buildRestaurantInput = (i) => {
   const city = randomFrom(cities);
   const district =
     city === "TP. Hồ Chí Minh" ? randomFrom(districtsHCM) : "Trung tâm";
@@ -118,7 +100,7 @@ const buildRestaurantInput = (i, managerId) => {
     notesOnAmenities: "Một số tiện ích chỉ áp dụng tại chi nhánh trung tâm.",
     cuisineType: randomFrom(cuisines),
     status: "active",
-    managerId, // ⬅️ bắt buộc theo schema của bạn
+    ...(BRAND_ID ? { brandId: BRAND_ID } : {}),
   };
 };
 
@@ -127,7 +109,7 @@ async function callGraphQL(query, variables) {
     "Content-Type": "application/json",
   };
   if (AUTH_TOKEN) {
-    headers["Authorization"] = `Bearer ${AUTH_TOKEN}`;
+    headers.Authorization = `Bearer ${AUTH_TOKEN}`;
   }
 
   const res = await fetch(GRAPHQL_ENDPOINT, {
@@ -148,15 +130,15 @@ async function callGraphQL(query, variables) {
 async function main() {
   try {
     console.log("➡️  Endpoint:", GRAPHQL_ENDPOINT);
-    const managerIds = buildManagerIds(10);
+    console.log("🏷️  Brand:", BRAND_ID || "System Admin / unassigned");
 
     const created = [];
     for (let i = 0; i < 10; i++) {
-      const input = buildRestaurantInput(i, managerIds[i]);
+      const input = buildRestaurantInput(i);
       const data = await callGraphQL(CREATE_RESTAURANT_MUTATION, { input });
       created.push(data.createRestaurant);
       console.log(
-        `✅ Created: ${data.createRestaurant.name} (id=${data.createRestaurant.id}) manager=${managerIds[i]}`
+        `✅ Created: ${data.createRestaurant.name} (id=${data.createRestaurant.id}) brand=${data.createRestaurant.brandId || "none"}`,
       );
     }
 
