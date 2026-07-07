@@ -156,6 +156,7 @@ const RestaurantDetail = () => {
   );
   const [recordRecentRestaurant] = useMutation(RECORD_RECENT_RESTAURANT);
   const recordedRestaurantIdRef = React.useRef(null);
+  const isCustomer = String(user?.userType || user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase() === "customer";
 
   const [activeTab, setActiveTab] = useState("info");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -211,11 +212,17 @@ const RestaurantDetail = () => {
   }, [isPreviewMode]);
 
   useEffect(() => {
-    if (isPreviewMode || !isAuthenticated || !user?.id || !id) return;
+    const loadedRestaurantId = restaurantData?.publicRestaurant?.id;
+    if (isPreviewMode || !isAuthenticated || !isCustomer || !user?.id || !loadedRestaurantId) return;
     if (recordedRestaurantIdRef.current === id) return;
-    recordedRestaurantIdRef.current = id;
-    recordRecentRestaurant({ variables: { restaurantId: id } }).catch(() => {});
-  }, [id, isAuthenticated, isPreviewMode, recordRecentRestaurant, user?.id]);
+    recordRecentRestaurant({ variables: { restaurantId: loadedRestaurantId } })
+      .then(() => {
+        recordedRestaurantIdRef.current = loadedRestaurantId;
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn("Không thể ghi nhận nhà hàng đã xem gần đây.", err);
+      });
+  }, [id, isAuthenticated, isCustomer, isPreviewMode, recordRecentRestaurant, restaurantData?.publicRestaurant?.id, user?.id]);
 
   const restaurant = restaurantData?.publicRestaurant;
 

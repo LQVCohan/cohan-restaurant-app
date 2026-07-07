@@ -1,7 +1,7 @@
 // src/resolvers/restaurant.query.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Restaurant, User, Customer, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
+import { Restaurant, Customer, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 import { resolveRoadDistances } from "../../../src/services/distance/roadDistance.service.js";
 import { canAccessRestaurant, getScopedRestaurantFilter, isSystemAdmin } from "../../../src/services/auth/restaurantScope.service.js";
@@ -14,7 +14,7 @@ function badInput(message) {
 function notFound(message = "Resource not found") {
   return new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
 }
-function unauthenticated(message = "Unauthorized") {
+function unauthenticated(message = "Bạn cần đăng nhập để thực hiện thao tác này.") {
   return new GraphQLError(message, { extensions: { code: "UNAUTHENTICATED" } });
 }
 
@@ -375,48 +375,29 @@ async function scopedRestaurants(_, { brandId, limit = 20, cursor, restaurantFil
   return buildRestaurantConnection(baseFilter, { limit, cursor });
 }
 
-/** Các nhà hàng tham chiếu theo user.refRestaurants */
-async function refRestaurants(_, { userId }, ctx) {
-  if (!ctx?.user?.id && !ctx?.user?._id) throw unauthenticated("Unauthorized");
-  if (String(ctx.user.id || ctx.user._id) !== String(userId)) {
-    throw new GraphQLError("Forbidden", { extensions: { code: "FORBIDDEN" } });
-  }
-  if (!mongoose.isValidObjectId(userId)) {
-    throw badInput("Invalid userId");
-  }
-
-  const user = await User.findById(userId).select("refRestaurants").lean();
-  if (!user) throw notFound("User not found");
-
-  const ref = Array.isArray(user.refRestaurants) ? user.refRestaurants : [];
-  if (ref.length === 0) return [];
-
-  const ids = [...new Set(ref.map((x) => (mongoose.isValidObjectId(x) ? String(x) : null)).filter(Boolean))]
-    .map((item) => new mongoose.Types.ObjectId(item));
-
-  if (ids.length === 0) return [];
-
-  const restaurants = await Restaurant.find({ _id: { $in: ids } }).lean();
-  const byId = new Map(restaurants.map((item) => [String(item._id), item]));
-  return ids.map((id) => byId.get(String(id))).filter(Boolean);
-}
-
-async function myRecentRestaurants(_, { limit = 6 } = {}, ctx) {
-  if (!ctx?.user?.id && !ctx?.user?._id) throw unauthenticated("Unauthorized");
-  const safeLimit = clampLimit(limit, 1, 12);
-  const userId = ctx.user.id || ctx.user._id;
+async function loadRecentRestaurantsForCustomer(userId, limit = 12) {
   const customer = await Customer.findOne({ _id: userId, userType: "CUSTOMER", deletedAt: null })
     .select("refRestaurants")
     .lean();
-  if (!customer?.refRestaurants?.length) return [];
-  const ids = [...new Set(customer.refRestaurants.map(String).filter(mongoose.isValidObjectId))].slice(0, 12);
+  if (!customer) throw notFound("Không tìm thấy tài khoản khách hàng.");
+  const ref = Array.isArray(customer.refRestaurants) ? customer.refRestaurants : [];
+  if (ref.length === 0) return [];
+
+  const ids = [...new Set(ref.map((x) => (mongoose.isValidObjectId(x) ? String(x) : null)).filter(Boolean))].slice(0, 12);
+  if (ids.length === 0) return [];
   const restaurants = await Restaurant.find({
     _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
     businessStatus: "active",
     publicationStatus: "published",
   }).lean();
   const byId = new Map(restaurants.map((item) => [String(item._id), item]));
-  return ids.map((id) => byId.get(id)).filter(Boolean).slice(0, safeLimit);
+  return ids.map((id) => byId.get(id)).filter(Boolean).slice(0, clampLimit(limit, 1, 12));
+}
+
+async function myRecentRestaurants(_, { limit = 6 } = {}, ctx) {
+  if (!ctx?.user?.id && !ctx?.user?._id) throw unauthenticated();
+  const userId = ctx.user.id || ctx.user._id;
+  return loadRecentRestaurantsForCustomer(userId, limit);
 }
 
 async function refreshRestaurantCategoryIndexes(_, { timeSlot }) {
@@ -542,7 +523,6 @@ export const RestaurantQuery = {
   restaurantsTop,
   restaurantsNearby,
   scopedRestaurants,
-  refRestaurants,
   myRecentRestaurants,
   restaurantsByCategoryTimeSlot,
   restaurantCategoryIndexes,

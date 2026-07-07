@@ -43,6 +43,35 @@ describe("customerIdentity shared service", () => {
     expect(next).toHaveLength(12);
   });
 
+  it("dedupes all existing recent ids, drops invalid ids, and does not mutate input", async () => {
+    const { normalizeRecentRestaurantIds } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    const a = "507f1f77bcf86cd799439011";
+    const b = "507f1f77bcf86cd799439012";
+    const c = "507f1f77bcf86cd799439013";
+    const input = [a, a, "bad-id", b];
+    const next = normalizeRecentRestaurantIds(input, c);
+    expect(next).toEqual([c, a, b]);
+    expect(input).toEqual([a, a, "bad-id", b]);
+  });
+
+  it("moves revisited restaurant to the front", async () => {
+    const { normalizeRecentRestaurantIds } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    const a = "507f1f77bcf86cd799439011";
+    const b = "507f1f77bcf86cd799439012";
+    const c = "507f1f77bcf86cd799439013";
+    expect(normalizeRecentRestaurantIds([a, b, c], b)).toEqual([b, a, c]);
+  });
+
+  it("applies recent and membership independently without saving", async () => {
+    const { applyCustomerRestaurantTouch } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    const r1 = "507f1f77bcf86cd799439011";
+    const customer = { refRestaurants: [], customerRestaurants: [], save: vi.fn() };
+    expect(applyCustomerRestaurantTouch(customer, r1, { touchRecentOnMatch: true, addCustomerRestaurant: false })).toBe(true);
+    expect(customer.refRestaurants.map(String)).toEqual([r1]);
+    expect(customer.customerRestaurants).toEqual([]);
+    expect(customer.save).not.toHaveBeenCalled();
+  });
+
   it("matches guest and updates ttl/lastSeen", async () => {
     const guest = { _id: "g1", isGuest: true, save: vi.fn().mockResolvedValue(undefined) };
     modelMocks.Customer.findOne
@@ -53,6 +82,39 @@ describe("customerIdentity shared service", () => {
     const out = await resolveCustomerIdentityByContact({ email: "g@x.com", phone: "0901", customerName: "G" });
     expect(out.mode).toBe("matched_guest");
     expect(guest.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("registered customer supports membership-only and saves once", async () => {
+    const r1 = "507f1f77bcf86cd799439011";
+    const registered = { _id: "u1", isGuest: false, refRestaurants: [r1], customerRestaurants: [], save: vi.fn().mockResolvedValue(undefined) };
+    modelMocks.Customer.findOne
+      .mockReturnValueOnce(makeQuery(registered))
+      .mockReturnValueOnce(makeQuery(null));
+
+    const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    await resolveCustomerIdentityByContact({
+      email: "u@x.com",
+      restaurantId: r1,
+      touchRecentOnMatch: false,
+      addCustomerRestaurant: true,
+    });
+    expect(registered.refRestaurants.map(String)).toEqual([r1]);
+    expect(registered.customerRestaurants.map(String)).toEqual([r1]);
+    expect(registered.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("selected user uses session and saves membership when recent is unchanged", async () => {
+    const r1 = "507f1f77bcf86cd799439011";
+    const session = { id: "s1" };
+    const selected = { _id: "u1", isGuest: false, refRestaurants: [r1], customerRestaurants: [], save: vi.fn().mockResolvedValue(undefined) };
+    const query = makeQuery(selected);
+    modelMocks.Customer.findOne.mockReturnValueOnce(query);
+    const { resolveCustomerIdentityByContact } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    const out = await resolveCustomerIdentityByContact({ selectedUserId: "u1", restaurantId: r1, session });
+    expect(out.mode).toBe("selected");
+    expect(query.session).toHaveBeenCalledWith(session);
+    expect(selected.save).toHaveBeenCalledWith({ session });
+    expect(selected.customerRestaurants.map(String)).toEqual([r1]);
   });
 
   it("does not mutate or save guest when touchGuestOnMatch=false", async () => {

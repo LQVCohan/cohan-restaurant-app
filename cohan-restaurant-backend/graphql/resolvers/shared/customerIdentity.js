@@ -42,29 +42,60 @@ export const RECENT_RESTAURANT_LIMIT = 12;
 export function normalizeRecentRestaurantIds(refRestaurants = [], restaurantId) {
   if (!mongoose.isValidObjectId(restaurantId)) return null;
   const latest = String(restaurantId);
-  return [
-    latest,
-    ...refRestaurants.map(String).filter((id) => mongoose.isValidObjectId(id) && id !== latest),
-  ].slice(0, RECENT_RESTAURANT_LIMIT);
+  const seen = new Set([latest]);
+  const rest = [];
+  for (const value of refRestaurants || []) {
+    const id = String(value);
+    if (!mongoose.isValidObjectId(id) || seen.has(id)) continue;
+    seen.add(id);
+    rest.push(id);
+  }
+  return [latest, ...rest].slice(0, RECENT_RESTAURANT_LIMIT);
 }
 
-export async function touchRecentRestaurant(customer, restaurantId, { session = null } = {}) {
+export function applyRecentRestaurant(customer, restaurantId) {
   if (!customer || !mongoose.isValidObjectId(restaurantId)) return false;
   const next = normalizeRecentRestaurantIds(customer.refRestaurants || [], restaurantId);
   if (!next) return false;
-  const current = (customer.refRestaurants || []).map(String).slice(0, RECENT_RESTAURANT_LIMIT);
+  const current = (customer.refRestaurants || []).map(String);
   if (current.length === next.length && current.every((id, index) => id === next[index])) return false;
   customer.refRestaurants = next.map((id) => new mongoose.Types.ObjectId(id));
-  await customer.save(session ? { session } : undefined);
   return true;
 }
 
 export function ensureCustomerRestaurant(customer, restaurantId) {
-  if (!restaurantId || !customer) return false;
+  if (!mongoose.isValidObjectId(restaurantId) || !customer) return false;
   const id = String(restaurantId);
-  const refs = Array.isArray(customer.customerRestaurants) ? customer.customerRestaurants.map(String) : [];
-  if (refs.includes(id)) return false;
-  customer.customerRestaurants = [...refs, id];
+  const refs = [];
+  const seen = new Set();
+  for (const value of customer.customerRestaurants || []) {
+    const current = String(value);
+    if (!mongoose.isValidObjectId(current) || seen.has(current)) continue;
+    seen.add(current);
+    refs.push(current);
+  }
+  if (!seen.has(id)) {
+    refs.push(id);
+    seen.add(id);
+  }
+  const current = (customer.customerRestaurants || []).map(String);
+  if (current.length === refs.length && current.every((item, index) => item === refs[index])) return false;
+  customer.customerRestaurants = refs.map((item) => new mongoose.Types.ObjectId(item));
+  return true;
+}
+
+export function applyCustomerRestaurantTouch(customer, restaurantId, {
+  touchRecentOnMatch = true,
+  addCustomerRestaurant = true,
+} = {}) {
+  const recentChanged = touchRecentOnMatch ? applyRecentRestaurant(customer, restaurantId) : false;
+  const membershipChanged = addCustomerRestaurant ? ensureCustomerRestaurant(customer, restaurantId) : false;
+  return recentChanged || membershipChanged;
+}
+
+export async function touchRecentRestaurant(customer, restaurantId, { session = null } = {}) {
+  if (!applyRecentRestaurant(customer, restaurantId)) return false;
+  await customer.save(session ? { session } : undefined);
   return true;
 }
 
@@ -91,18 +122,17 @@ export async function resolveCustomerIdentityByContact({
   addCustomerRestaurant = true,
 }) {
   if (selectedUserId) {
-    if (restaurantId && (touchRecentOnMatch || addCustomerRestaurant)) {
-      const selected = await Customer.findById(selectedUserId);
-      if (selected) {
-        if (addCustomerRestaurant) ensureCustomerRestaurant(selected, restaurantId);
-        if (touchRecentOnMatch) {
-          await touchRecentRestaurant(selected, restaurantId, { session });
-        } else if (addCustomerRestaurant) {
-          await selected.save(session ? { session } : undefined);
-        }
-      }
+    const query = Customer.findOne({ _id: selectedUserId, userType: "CUSTOMER", deletedAt: null });
+    if (session) query.session(session);
+    const selected = await query;
+    if (!selected) return { userId: null, isGuestCustomer: false, mode: "none" };
+    if (
+      restaurantId &&
+      applyCustomerRestaurantTouch(selected, restaurantId, { touchRecentOnMatch, addCustomerRestaurant })
+    ) {
+      await selected.save(session ? { session } : undefined);
     }
-    return { userId: selectedUserId, isGuestCustomer: false, mode: "selected" };
+    return { user: selected, userId: selected._id, isGuestCustomer: !!selected.isGuest, mode: "selected" };
   }
 
   const { byEmail, byPhone } = await findCustomerByContact({ email, phone, session });
@@ -120,10 +150,11 @@ export async function resolveCustomerIdentityByContact({
 
   const matchedRegistered = [byEmail, byPhone].find((u) => u && !u.isGuest);
   if (matchedRegistered) {
-    if (touchRecentOnMatch && restaurantId) {
-      const changedRelation = addCustomerRestaurant && ensureCustomerRestaurant(matchedRegistered, restaurantId);
-      if (changedRelation) await matchedRegistered.save(session ? { session } : undefined);
-      await touchRecentRestaurant(matchedRegistered, restaurantId, { session });
+    if (
+      restaurantId &&
+      applyCustomerRestaurantTouch(matchedRegistered, restaurantId, { touchRecentOnMatch, addCustomerRestaurant })
+    ) {
+      await matchedRegistered.save(session ? { session } : undefined);
     }
     return {
       user: matchedRegistered,
@@ -144,9 +175,10 @@ export async function resolveCustomerIdentityByContact({
       if (customerName) matchedGuest.fullName = customerName;
       if (fillGuestProfile && !matchedGuest.email && email) matchedGuest.email = email;
       if (fillGuestProfile && !matchedGuest.phone && phone) matchedGuest.phone = phone;
-      if (addCustomerRestaurant) ensureCustomerRestaurant(matchedGuest, restaurantId);
+      if (restaurantId) {
+        applyCustomerRestaurantTouch(matchedGuest, restaurantId, { touchRecentOnMatch, addCustomerRestaurant });
+      }
       await matchedGuest.save(session ? { session } : undefined);
-      if (touchRecentOnMatch && restaurantId) await touchRecentRestaurant(matchedGuest, restaurantId, { session });
     }
 
     return {

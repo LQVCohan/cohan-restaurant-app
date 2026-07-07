@@ -4,7 +4,7 @@ import {
   Reservation,
   Restaurant,
   Table,
-  User,
+  Customer,
   PaymentTransaction,
   EventLog,
 } from "../../../models/index.js";
@@ -19,6 +19,7 @@ import {
 import {
   BASIC_EMAIL_REGEX,
   BASIC_PHONE_REGEX,
+  applyCustomerRestaurantTouch,
   compactCustomerContact,
   normalizeCustomerEmail,
   normalizeCustomerPhone,
@@ -226,9 +227,16 @@ function computeDeposit({ baseDeposit, linkedMenuSubtotal, menuDepositPercent })
 async function resolveReservationUser(input, ctx, session = null) {
   const authUserId = ctx?.user?.id;
   if (mongoose.isValidObjectId(authUserId)) {
-    const currentUser = await User.findById(authUserId, null, session ? { session } : undefined);
+    const currentUser = await Customer.findOne(
+      { _id: authUserId, userType: "CUSTOMER", deletedAt: null },
+      null,
+      session ? { session } : undefined,
+    );
     if (!currentUser) {
-      throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+      throw new GraphQLError("Không tìm thấy tài khoản khách hàng.", { extensions: { code: "NOT_FOUND" } });
+    }
+    if (applyCustomerRestaurantTouch(currentUser, input.restaurantId)) {
+      await currentUser.save(session ? { session } : undefined);
     }
 
     return {
@@ -296,12 +304,13 @@ export const ReservationMutation = {
     try {
       let created = null;
       await session.withTransaction(async () => {
+        const restaurant = await getRestaurantOrThrow(input.restaurantId, session);
+        assertRestaurantCanReserve(computeRestaurantAvailability(restaurant));
+
         const resolvedIdentity = await resolveReservationUser(input, ctx, session);
         const user = resolvedIdentity.user;
         const userId = String(resolvedIdentity.userId);
 
-        const restaurant = await getRestaurantOrThrow(input.restaurantId, session);
-        assertRestaurantCanReserve(computeRestaurantAvailability(restaurant));
         const table = await getTableOrThrow(input.tableId, input.restaurantId, session);
 
         if (["offline", "occupied", "cleaning"].includes(table.status)) {

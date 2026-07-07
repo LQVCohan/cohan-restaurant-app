@@ -152,7 +152,7 @@ describe("user/customer restaurant access guards", () => {
     expect(modelMocks.Customer.countDocuments).toHaveBeenCalledWith({
       $and: expect.arrayContaining([
         { deletedAt: null },
-        expect.objectContaining({ refRestaurants: expect.any(Object) }),
+        expect.objectContaining({ customerRestaurants: expect.any(Object) }),
       ]),
     });
   });
@@ -396,8 +396,8 @@ describe("user/customer restaurant access guards", () => {
     expect(countCond).toEqual(findCond);
     const andClauses = countCond?.$and || [];
     const restaurantClause = andClauses.find((x) =>
-      Array.isArray(x?.refRestaurants?.$in) &&
-      x.refRestaurants.$in.some((id) => String(id?._mockObjectId || id) === "valid-r1"),
+      Array.isArray(x?.customerRestaurants?.$in) &&
+      x.customerRestaurants.$in.some((id) => String(id?._mockObjectId || id) === "valid-r1"),
     );
     expect(restaurantClause).toBeTruthy();
     const kindClause = andClauses.find((x) =>

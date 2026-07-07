@@ -129,9 +129,9 @@ const GET_SCOPED_RESTAURANTS = gql`
   ${RESTAURANT_FIELDS}
 `;
 
-const GET_REF_RESTAURANTS = gql`
-  query RefRestaurants($userId: ID!) {
-    refRestaurants(userId: $userId) {
+const GET_RECENT_RESTAURANTS = gql`
+  query MyRecentRestaurantsForRestaurantHook($limit: Int = 12) {
+    myRecentRestaurants(limit: $limit) {
       ...RestaurantFields
     }
   }
@@ -230,7 +230,7 @@ export const useRestaurant = (restaurantId) => {
   const [
     runRefRestaurants,
     { data: refData, loading: refLoading, error: refErr },
-  ] = useLazyQuery(GET_REF_RESTAURANTS, { fetchPolicy: "cache-first" });
+  ] = useLazyQuery(GET_RECENT_RESTAURANTS, { fetchPolicy: "cache-first" });
 
   /* ------- Mutations ------- */
   const [mutCreate, { loading: creating }] = useMutation(CREATE_RESTAURANT);
@@ -358,10 +358,10 @@ export const useRestaurant = (restaurantId) => {
     [listScopedRestaurants, normalizeRestaurant]
   );
 
-  // 6) refRestaurants theo user
-  const listRefRestaurants = async (userId) => {
-    const { data } = await runRefRestaurants({ variables: { userId } });
-    return (data?.refRestaurants || []).map(normalizeRestaurant);
+  // 6) recent restaurants for current customer
+  const listRefRestaurants = async (_userId, limit = 12) => {
+    const { data } = await runRefRestaurants({ variables: { limit } });
+    return (data?.myRecentRestaurants || []).map(normalizeRestaurant);
   };
 
   /* ========== Public API (Mutations) ========== */

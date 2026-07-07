@@ -1,7 +1,8 @@
 // graphql/resolvers/order/helper/userUtils.js
 import mongoose from "mongoose";
-import { Table } from "../../../../models/index.js";
+import { Customer, Table } from "../../../../models/index.js";
 import {
+  applyCustomerRestaurantTouch,
   compactCustomerContact,
   normalizeCustomerEmail,
   normalizeCustomerPhone,
@@ -57,7 +58,19 @@ export async function resolveOrCreateGuestCustomerForOrder({
   restaurantId = null,
 }) {
   if (selectedUserId) {
-    return { userId: selectedUserId, mode: "selected", isGuestCustomer: false };
+    const out = await resolveCustomerIdentityByContact({
+      selectedUserId,
+      createIfMissing: false,
+      session,
+      restaurantId,
+      touchRecentOnMatch: true,
+      addCustomerRestaurant: true,
+    });
+    return {
+      userId: out?.userId || null,
+      mode: out?.mode || "none",
+      isGuestCustomer: !!out?.isGuestCustomer,
+    };
   }
 
   const compact = compactCustomerInput(customer);
@@ -89,7 +102,17 @@ export async function resolveOrCreateGuestCustomerForOrder({
 }
 
 export async function ensureUserForOrder(userId, customer, options = {}) {
-  if (userId) return userId;
+  if (userId) {
+    if (options?.restaurantId) {
+      const query = Customer.findOne({ _id: userId, userType: "CUSTOMER", deletedAt: null });
+      if (options?.session) query.session(options.session);
+      const customerDoc = await query;
+      if (customerDoc && applyCustomerRestaurantTouch(customerDoc, options.restaurantId)) {
+        await customerDoc.save(options?.session ? { session: options.session } : undefined);
+      }
+    }
+    return userId;
+  }
 
   const identity = await resolveOrCreateGuestCustomerForOrder({
     customer,

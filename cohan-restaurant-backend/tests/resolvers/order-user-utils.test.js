@@ -220,4 +220,29 @@ describe("order userUtils identity helpers", () => {
       undefined,
     );
   });
+
+  it("ensureUserForOrder updates authenticated customer recent and membership in session", async () => {
+    const restaurantId = "507f1f77bcf86cd799439011";
+    const session = { id: "session-1" };
+    const customerDoc = {
+      _id: "user-1",
+      isGuest: false,
+      refRestaurants: [],
+      customerRestaurants: [],
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+    const query = makeQuery(customerDoc);
+    modelMocks.Customer.findOne.mockReturnValueOnce(query);
+    const { ensureUserForOrder } = await import(
+      "../../graphql/resolvers/order/helper/userUtils.js"
+    );
+
+    const out = await ensureUserForOrder("user-1", null, { session, restaurantId });
+
+    expect(out).toBe("user-1");
+    expect(query.session).toHaveBeenCalledWith(session);
+    expect(customerDoc.refRestaurants.map(String)).toEqual([restaurantId]);
+    expect(customerDoc.customerRestaurants.map(String)).toEqual([restaurantId]);
+    expect(customerDoc.save).toHaveBeenCalledWith({ session });
+  });
 });

@@ -50,7 +50,7 @@ const archivedCustomers = async (_, { restaurantId, limit = 100 }, ctx) => {
     Customer.countDocuments(cond),
     Customer.find(cond)
       .populate({ path: "role", select: "name slug" })
-      .populate({ path: "refRestaurants", select: "name" })
+      .populate({ path: "customerRestaurants", select: "name" })
       .sort({ "archivedRestaurants.archivedAt": -1, _id: -1 })
       .limit(safeLimit)
       .lean(),

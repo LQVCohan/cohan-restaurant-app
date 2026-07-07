@@ -38,7 +38,7 @@ function emitNotificationCreated(notification, io = notificationIo) {
   });
 }
 
-async function reviewerIds(restaurantId) {
+export async function reviewerIds(restaurantId) {
   if (!restaurantId) return [];
   const restaurant = await Restaurant.findById(restaurantId).select("brandId").lean();
   if (!restaurant?.brandId) return [];
@@ -51,7 +51,12 @@ async function reviewerIds(restaurantId) {
     ],
   }).select("userId").lean();
   const candidateIds = uniq(memberships.map((item) => item.userId));
-  const users = await User.find({ _id: { $in: candidateIds }, userType: { $in: REVIEWER_TYPES } }).select("_id").lean();
+  const users = await User.find({
+    $or: [
+      { _id: { $in: candidateIds }, userType: { $in: REVIEWER_TYPES } },
+      { userType: "ADMIN", deletedAt: null },
+    ],
+  }).select("_id").lean();
   return uniq(users.map((u) => u._id));
 }
 

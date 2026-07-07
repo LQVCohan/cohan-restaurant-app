@@ -30,10 +30,9 @@ const AUTH_ERROR_CODES = new Set([
 ]);
 const isRestaurantScopedAccessRole = (roleName) => isRestaurantScopedRole(roleName);
 
-// GraphQL query để lấy danh sách nhà hàng của người quản lý
-const GET_USER_REFRESTAURANTS = gql`
-  query GetRestaurants($userId: ID!) {
-    refRestaurants(userId: $userId) {
+const GET_RECENT_RESTAURANTS = gql`
+  query AuthRecentRestaurants($limit: Int = 12) {
+    myRecentRestaurants(limit: $limit) {
       id
       name
       description
@@ -477,12 +476,12 @@ export const AuthProvider = ({ children }) => {
     }
   }, [roleName]);
 
-  const { error: recentRestaurantsError } = useQuery(GET_USER_REFRESTAURANTS, {
-    variables: { userId: user?.id },
+  const { error: recentRestaurantsError } = useQuery(GET_RECENT_RESTAURANTS, {
+    variables: { limit: 12 },
     skip: !user?.id || roleName !== "customer",
     onCompleted: (data) => {
       if (roleName !== "customer") return;
-      const recentRestaurants = data?.refRestaurants || [];
+      const recentRestaurants = data?.myRecentRestaurants || [];
       setRefRestaurant(recentRestaurants);
       setRestaurants(recentRestaurants);
     },

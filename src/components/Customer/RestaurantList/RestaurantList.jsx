@@ -55,7 +55,7 @@ const GET_RESTAURANTS = gql`
   }
 `;
 
-const GET_REF_RESTAURANTS = gql`
+const GET_RECENT_RESTAURANTS = gql`
   query MyRecentRestaurantsForCustomerList($limit: Int = 6) {
     myRecentRestaurants(limit: $limit) {
       id
@@ -86,7 +86,7 @@ const RestaurantList = ({ restaurantFilter }) => {
   // Filter States
   const [quickFilter, setQuickFilter] = useState(null); // Filter từ Hero
 
-  const { data: refRestaurantData } = useQuery(GET_REF_RESTAURANTS, {
+  const { data: refRestaurantData } = useQuery(GET_RECENT_RESTAURANTS, {
     variables: { limit: 6 },
     skip: !isAuthenticated || !user?.id,
     fetchPolicy: "cache-and-network",
@@ -318,10 +318,10 @@ const RestaurantList = ({ restaurantFilter }) => {
               <section className="recent-restaurants-strip" aria-label="Nhà hàng gần đây">
                 <div className="recent-restaurants-strip__head">
                   <div>
-                    <span>Gợi ý nhanh</span>
-                    <h3>Nhà hàng gần đây của bạn</h3>
+                    <span>Đã xem gần đây</span>
+                    <h3>Quay lại nhà hàng bạn vừa xem</h3>
                   </div>
-                  <p>Lấy từ lịch sử nhà hàng bạn đã xem gần đây.</p>
+                  <p>Mở lại nhanh mà không cần tìm kiếm lại.</p>
                 </div>
                 <div className="recent-restaurants-strip__list">
                   {recentRestaurants.map((restaurant) => (
@@ -332,7 +332,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                       onClick={() => navigate(`/restaurant/${restaurant.id}`)}
                     >
                       <span>{restaurant.name}</span>
-                      <small>{restaurant.address?.district || restaurant.address?.city || restaurant.cuisineType || "Gần đây"}</small>
+                      <small>{restaurant.address?.district || restaurant.address?.city || restaurant.cuisineType || "Đã xem gần đây"}</small>
                     </button>
                   ))}
                 </div>
@@ -367,7 +367,6 @@ const RestaurantList = ({ restaurantFilter }) => {
                         restaurant={restaurant}
                         variant={currentView}
                         isFavorited={favorites.has(restaurant.id)}
-                        isRecent={restaurant.isRecentRestaurant}
                         onToggleFavorite={handleFavoriteAction}
                         onMakeReservation={handleMakeReservation}
                         onViewDetails={(id) => navigate(`/restaurant/${id}`)}

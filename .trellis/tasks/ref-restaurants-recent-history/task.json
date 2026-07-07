@@ -1,1 +1,23 @@
-{"id":"ref-restaurants-recent-history","title":"Normalize refRestaurants as recent customer history","status":"in_progress","dev_type":"fullstack","scope":"customer-restaurant-history","base_branch":"main","relatedFiles":[]}
+{
+  "id": "ref-restaurants-recent-history",
+  "title": "Normalize refRestaurants as recent customer history",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "customer-restaurant-history",
+  "base_branch": "main",
+  "branch": "codex/chuan-hoa-refrestaurants-cho-khach-hang",
+  "relatedFiles": [
+    "cohan-restaurant-backend/models/user.model.js",
+    "cohan-restaurant-backend/models/customer.model.js",
+    "cohan-restaurant-backend/graphql/resolvers/shared/customerIdentity.js",
+    "cohan-restaurant-backend/graphql/resolvers/order/helper/userUtils.js",
+    "cohan-restaurant-backend/graphql/resolvers/reservation/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/query.js",
+    "cohan-restaurant-backend/graphql/resolvers/restaurant/mutation.js",
+    "cohan-restaurant-backend/graphql/resolvers/user/customerArchive.js",
+    "cohan-restaurant-backend/src/services/notification/notificationWorkflow.service.js",
+    "cohan-restaurant-backend/scripts/migration/normalizeRefRestaurantsRecentHistory.js",
+    "src/components/Customer/RestaurantList/RestaurantList.jsx",
+    "src/components/Customer/RestaurantDetail/RestaurantDetail.jsx"
+  ]
+}
