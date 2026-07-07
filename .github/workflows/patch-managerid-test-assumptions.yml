@@ -1,0 +1,197 @@
+name: patch-managerid-test-assumptions
+
+on:
+  push:
+    branches: [fix/restaurant-brand-membership-guards]
+    paths:
+      - .github/workflows/patch-managerid-test-assumptions.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/restaurant-brand-membership-guards
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Replace managerId-based test assumptions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          ROOT = Path("cohan-restaurant-backend/tests")
+
+          def replace(path, old, new, expected=None):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if expected is not None and count != expected:
+                  raise SystemExit(f"{path}: expected {expected} matches, found {count}")
+              if count == 0:
+                  raise SystemExit(f"{path}: replacement target not found")
+              p.write_text(text.replace(old, new))
+
+          # Attendance exception manual mutation: manager now carries explicit scope.
+          replace(
+              ROOT / "jobs/attendance-exception-job.test.js",
+              '? { id: actorId, userType: role }\n            : { id: actorId, userType: role, restaurantForStaff: restaurantId },',
+              '? { id: actorId, userType: role, restaurantForStaff: restaurantId }\n            : { id: actorId, userType: role, restaurantForStaff: restaurantId },',
+              expected=2,
+          )
+
+          # Account verification manager context.
+          replace(
+              ROOT / "resolvers/account-verification.service.test.js",
+              '{ user: { id: "manager-a", roleName: "manager" } },\n      "user-a",',
+              '{ user: { id: "manager-a", roleName: "manager", restaurantForStaff: "restaurant-b" } },\n      "user-a",',
+              expected=1,
+          )
+
+          # Availability guard: explicit assignment replaces Restaurant.managerId ownership.
+          replace(
+              ROOT / "resolvers/availability.resolver.test.js",
+              'it("allows manager without user.restaurantId when restaurant.managerId matches", async () => {\n      modelMocks.Restaurant.exists.mockResolvedValue(true);',
+              'it("allows manager with an explicit restaurant assignment", async () => {',
+              expected=1,
+          )
+          replace(
+              ROOT / "resolvers/availability.resolver.test.js",
+              '{ user: { id: "manager-1", roleName: "manager" } },\n      );\n\n      expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({\n        _id: restaurantId,\n        managerId: "manager-1",\n      });',
+              '{ user: { id: "manager-1", roleName: "manager", restaurantId } },\n      );',
+              expected=1,
+          )
+          replace(
+              ROOT / "resolvers/availability.resolver.test.js",
+              'it("blocks manager when restaurant.managerId does not match", async () => {\n      modelMocks.Restaurant.exists.mockResolvedValue(false);',
+              'it("blocks manager without BrandMembership or explicit restaurant scope", async () => {',
+              expected=1,
+          )
+
+          # Off-schedule resolver allowed manager cases.
+          replace(
+              ROOT / "resolvers/offschedule-workflow.resolver.test.js",
+              'query.offScheduleAttendances(null, { filter: { restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager" } });',
+              'query.offScheduleAttendances(null, { filter: { restaurantId: "restaurant-1" } }, { user: { id: "manager-1", roleName: "manager", restaurantForStaff: "restaurant-1" } });',
+              expected=1,
+          )
+          replace(
+              ROOT / "resolvers/offschedule-workflow.resolver.test.js",
+              'mutation.approveOffScheduleAttendance(null, { timesheetId: "ts-1", note: "ok" }, { user: { id: "manager-1", roleName: "manager" } });',
+              'mutation.approveOffScheduleAttendance(null, { timesheetId: "ts-1", note: "ok" }, { user: { id: "manager-1", roleName: "manager", restaurantForStaff: "restaurant-1" } });',
+              expected=1,
+          )
+
+          # Payment review tests share one authenticated manager context.
+          replace(
+              ROOT / "resolvers/order-payment-request-review.test.js",
+              'roleName: "manager",\n    },',
+              'roleName: "manager",\n      restaurantId: "65f000000000000000000099",\n    },',
+              expected=1,
+          )
+
+          # Review notification routing now loads Brand and BrandMembership.
+          replace(
+              ROOT / "resolvers/review-transparent-flow.test.js",
+              'lean: vi.fn().mockResolvedValue({ managerId: "manager-1", name: "Cohan" }),',
+              'lean: vi.fn().mockResolvedValue({ brandId: "brand-1", name: "Cohan" }),',
+              expected=1,
+          )
+          replace(
+              ROOT / "resolvers/review-transparent-flow.test.js",
+              'expect(mocks.Restaurant.findById().select).toHaveBeenCalledWith("managerId name");',
+              'expect(mocks.Restaurant.findById().select).toHaveBeenCalledWith("name brandId");',
+              expected=1,
+          )
+
+          # Schedule acknowledgement manager uses explicit assignment.
+          replace(
+              ROOT / "resolvers/schedule-acknowledgement.mutation.test.js",
+              'it("allows manager that owns the restaurant without user.restaurantId", async () => {',
+              'it("allows manager with an explicit restaurant assignment", async () => {',
+              expected=1,
+          )
+          replace(
+              ROOT / "resolvers/schedule-acknowledgement.mutation.test.js",
+              '{ user: { id: "manager-1", roles: ["MANAGER"] } },\n    );\n\n    expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({',
+              '{ user: { id: "manager-1", roles: ["MANAGER"], restaurantId: "r1" } },\n    );\n\n    expect(modelMocks.Restaurant.exists).not.toHaveBeenCalledWith({',
+              expected=1,
+          )
+
+          # Shift acknowledgement review contexts.
+          replace(
+              ROOT / "resolvers/shift-acknowledgement.mutation.test.js",
+              '{ user: { id: "mgr-1", roles: ["manager"] } },',
+              '{ user: { id: "mgr-1", roles: ["manager"], restaurantId: "r1" } },',
+              expected=3,
+          )
+
+          # Schedule summary explicit manager assignment.
+          replace(
+              ROOT / "resolvers/shift-acknowledgement.query.test.js",
+              'it("allows manager-owned restaurant access for scheduleAcknowledgementSummary without user.restaurantId", async () => {',
+              'it("allows explicitly assigned manager access for scheduleAcknowledgementSummary", async () => {',
+              expected=1,
+          )
+          replace(
+              ROOT / "resolvers/shift-acknowledgement.query.test.js",
+              '{ user: { id: "manager-1", roles: ["MANAGER"] } },\n    );\n\n    expect(result).toEqual({',
+              '{ user: { id: "manager-1", roles: ["MANAGER"], restaurantIds: ["rest-1"] } },\n    );\n\n    expect(result).toEqual({',
+              expected=1,
+          )
+
+          # Staff shifts manager query.
+          replace(
+              ROOT / "resolvers/staff-shifts-visibility.resolver.test.js",
+              '{ user: { id: "m1", roles: ["manager"] } });',
+              '{ user: { id: "m1", roles: ["manager"], restaurantId: "r1" } });',
+              expected=1,
+          )
+
+          # Staff profile manager contexts use explicit scope; target mismatch still denies.
+          replace(
+              ROOT / "resolvers/user-sanitization.test.js",
+              '{ user: { id: "manager-a", roleName: "manager" } },',
+              '{ user: { id: "manager-a", roleName: "manager", restaurantForStaff: "restaurant-a" } },',
+              expected=4,
+          )
+
+          # Authorization service no longer checks Restaurant.managerId.
+          replace(
+              ROOT / "services/authorization.service.test.js",
+              'it("allows manager to manage staff inside a restaurant they own", async () => {\n    modelMocks.Restaurant.exists.mockResolvedValue(true);\n    const ctx = { user: { id: "manager-1", roleName: "manager" } };',
+              'it("allows manager to manage staff inside an explicitly assigned restaurant", async () => {\n    const ctx = { user: { id: "manager-1", roleName: "manager", restaurantForStaff: RESTAURANT_ID } };',
+              expected=1,
+          )
+
+          # Shared off-schedule test context.
+          replace(
+              ROOT / "services/off-schedule-attendance.test.js",
+              'if (normalizedRole === "MANAGER") return { user: { id, userType } };',
+              'if (normalizedRole === "MANAGER") return { user: { id, userType, restaurantForStaff: restaurantId } };',
+              expected=1,
+          )
+
+          # Staff-role assignment actors use explicit scope.
+          replace(
+              ROOT / "services/staffRoleAssignment.service.test.js",
+              'actor: { id: "manager-1", roleName: "manager" },',
+              'actor: { id: "manager-1", roleName: "manager", restaurantForStaff: "restaurant-1" },',
+              expected=6,
+          )
+          PY
+      - name: Commit test updates
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cohan-restaurant-backend/tests
+          git diff --cached --check
+          git commit -m "test(auth): replace managerId ownership assumptions"
+          git push origin HEAD:fix/restaurant-brand-membership-guards
