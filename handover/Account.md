@@ -1,10 +1,10 @@
 # COHAN — Tài khoản kiểm thử
 
-> Chỉ sử dụng cho MongoDB local/staging và buổi phản biện. Không dùng các tài khoản này trên production.
+> Chỉ sử dụng cho MongoDB local, staging hoặc môi trường demo. Không dùng các tài khoản này trên production.
 
 ## Đăng nhập nhanh
 
-Các tài khoản trong database bàn giao sử dụng cùng mật khẩu demo. Giá trị mặc định development được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js` và được ghi trong `handover/README.md`.
+Các tài khoản trong database mẫu sử dụng cùng mật khẩu demo. Giá trị mặc định development được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js` và được ghi trong `handover/README.md`.
 
 Có thể nhập email hoặc username tại màn hình đăng nhập.
 
@@ -18,7 +18,7 @@ Có thể nhập email hoặc username tại màn hình đăng nhập.
 | Nhân viên | Staff/Server Thủ Đức | `staff.server.demo@cohan.local` | `staff.server.demo` |
 | Nhân viên | Staff/Server Quận 1 | `staff.branch2.demo@cohan.local` | `staff.branch2.demo` |
 
-Tối thiểu để kiểm tra yêu cầu **Admin + User**:
+Tài khoản tối thiểu để kiểm tra hai nhóm quyền chính:
 
 ```text
 Admin: admin.demo@cohan.local
@@ -42,12 +42,12 @@ Password: xem handover/README.md
 | `staff.server.demo@cohan.local` | Nhân viên chi nhánh Thủ Đức |
 | `staff.branch2.demo@cohan.local` | Nhân viên chi nhánh Quận 1 |
 
-## Xác nhận trước khi gửi database
+## Kiểm tra database mẫu
 
-Mật khẩu trong file database phải khớp với giá trị trong `handover/README.md`. Trước khi đóng gói, restore database vào local và đăng nhập thử bằng:
+Mật khẩu trong file database phải khớp với giá trị trong `handover/README.md`. Sau khi restore, nên đăng nhập thử bằng:
 
 1. `admin.demo@cohan.local`.
 2. `customer.demo@cohan.local`.
 3. `manager.demo@cohan.local`.
 
-Nếu thay đổi `DEMO_PASSWORD`, phải cập nhật tài liệu bàn giao và tạo lại database archive để password hash đồng nhất.
+Nếu thay đổi `DEMO_PASSWORD`, cần cập nhật tài liệu và tạo lại database archive để password hash đồng nhất.
