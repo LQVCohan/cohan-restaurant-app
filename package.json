@@ -91,7 +91,7 @@
     "@vitest/coverage-v8": "^4.1.8",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.25.0",
-    "eslint-plugin-react-hooks": "^6.0.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "jsdom": "^26.1.0",
