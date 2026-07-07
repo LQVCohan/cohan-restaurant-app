@@ -3,7 +3,7 @@
   "name": "staff-brand-membership-sync",
   "title": "Synchronize new staff with BrandMembership",
   "description": "Ensure the existing createStaff flow creates an active BrandMembership staff scope for the selected restaurant Brand without changing the frontend contract.",
-  "status": "in_progress",
+  "status": "in_review",
   "dev_type": "backend",
   "scope": "staff-brand-membership-create-flow",
   "package": null,
@@ -16,7 +16,7 @@
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1272",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -28,7 +28,7 @@
     "src/components/Dashboard_Manager/Staff/components/modals/EmployeeFormModal/EmployeeFormModal.jsx",
     "cohan-restaurant-backend/tests/models/staff-brand-membership-sync.test.js"
   ],
-  "notes": "Frontend already sends restaurantForStaff through CreateStaff. The fix belongs at the Staff creation boundary so every new staff record receives the required BrandMembership scope.",
+  "notes": "Frontend already sends restaurantForStaff through CreateStaff. The Staff creation boundary now creates the required BrandMembership and rolls back the new Staff record if synchronization fails. node --check passed for the changed model and focused test file; Vitest and build were not available in this connector session.",
   "meta": {
     "skills": ["ponytail"]
   }
