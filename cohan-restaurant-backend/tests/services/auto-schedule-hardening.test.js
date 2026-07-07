@@ -347,7 +347,7 @@ describe("auto schedule backend hardening", () => {
     );
   });
 
-  it("apply is blocked when preview has unresolved roles unless partial apply is explicit", async () => {
+  it("apply rejects unresolved roles even when the client requests partial apply", async () => {
     const { buildAutoScheduleCreateInputs } =
       await import("../../src/services/scheduling/autoSchedule.service.js");
     const input = {
@@ -364,12 +364,14 @@ describe("auto schedule backend hardening", () => {
       "Không thể áp dụng auto schedule vì vẫn còn ca/vai trò chưa được xếp đủ.",
     );
 
-    const partialInputs = await buildAutoScheduleCreateInputs({
-      ...input,
-      allowPartialApply: true,
-    });
-    expect(partialInputs).toHaveLength(1);
-    expect(partialInputs[0].employeeId).toBe("cook1");
+    await expect(
+      buildAutoScheduleCreateInputs({
+        ...input,
+        allowPartialApply: true,
+      }),
+    ).rejects.toThrow(
+      "Không thể áp dụng auto schedule vì vẫn còn ca/vai trò chưa được xếp đủ.",
+    );
   });
 
   it("apply preserves valid override fields in generated create shift rows", async () => {
