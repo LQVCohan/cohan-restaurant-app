@@ -11,6 +11,7 @@ import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 const RESTAURANT_ID =
   process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
 const WEEK_TAG_PATTERN = /demo-staff-performance-weeks-2026-07/;
+const LEGACY_TAG_PATTERN = /demo-shared-roster-hours-2026-07/;
 const EXPECTED_SHIFT_COUNT = 98;
 const OPEN_MINUTES = 7 * 60;
 const CLOSE_MINUTES = 23 * 60;
@@ -77,7 +78,13 @@ async function run() {
   const staffById = new Map(staff.map((item) => [String(item._id), item]));
   const scenarioByEmail = new Map(SCENARIOS.map((item) => [item.email, item]));
 
-  const [shifts, timesheets, policy] = await Promise.all([
+  const [
+    shifts,
+    timesheets,
+    policy,
+    legacyShiftCount,
+    legacyTimesheetCount,
+  ] = await Promise.all([
     Shift.find({
       restaurantId,
       employeeId: { $in: staff.map((item) => item._id) },
@@ -92,10 +99,14 @@ async function run() {
       shiftId: { $ne: null },
     }).lean(),
     SchedulingPolicy.findOne({ restaurantId }).lean(),
+    Shift.countDocuments({ restaurantId, notes: LEGACY_TAG_PATTERN }),
+    Timesheet.countDocuments({ restaurantId, note: LEGACY_TAG_PATTERN }),
   ]);
 
   check(staff.length === SCENARIOS.length, "found the existing seven demo staff");
   check(shifts.length === EXPECTED_SHIFT_COUNT, "reused the existing 98 shifts");
+  check(legacyShiftCount === 0, "removed legacy duplicate shifts if they existed");
+  check(legacyTimesheetCount === 0, "removed legacy duplicate timesheets if they existed");
 
   const shiftsByDate = new Map();
   const employeeDates = new Set();
