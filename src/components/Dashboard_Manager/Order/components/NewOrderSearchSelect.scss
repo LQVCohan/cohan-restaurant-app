@@ -24,7 +24,7 @@
 .new-order-modal-shell .modal-close {
   color: #17554d !important;
   background: #f2faf7 !important;
-  border-color: rgba(31, 106, 96, 0.18) !important;
+  border-color: rgba(31, 106, 96, 0.2) !important;
 }
 
 .new-order-modal-shell .modal-close:hover {
@@ -39,7 +39,9 @@
 
     .form-group__icon {
       z-index: 2;
-      color: rgba(102, 112, 133, 0.88);
+      color: #17554d;
+      opacity: 1;
+      filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.7));
     }
   }
 
@@ -58,7 +60,7 @@
       border: 1px solid #ded6cb !important;
       border-radius: 12px !important;
       color: #3c4650 !important;
-      background: rgba(255, 253, 249, 0.94) !important;
+      background: rgba(255, 253, 249, 0.96) !important;
       box-shadow: none !important;
       transition:
         border-color 0.2s ease,
@@ -80,7 +82,7 @@
     }
 
     .ant-select-selection-placeholder {
-      color: rgba(102, 112, 133, 0.7);
+      color: rgba(102, 112, 133, 0.76);
       font-weight: 620;
     }
 
@@ -98,7 +100,12 @@
     .ant-select-arrow,
     .ant-select-clear {
       right: 0.75rem;
-      color: #1f6a60;
+      color: #17554d;
+      opacity: 1;
+    }
+
+    .ant-select-arrow svg {
+      stroke-width: 2.2;
     }
 
     .ant-select-clear {
@@ -110,12 +117,12 @@
     }
 
     &:not(.ant-select-disabled):hover .ant-select-selector {
-      border-color: rgba(31, 106, 96, 0.26) !important;
+      border-color: rgba(31, 106, 96, 0.3) !important;
       background: #f2faf7 !important;
     }
 
     &.ant-select-focused .ant-select-selector {
-      border-color: rgba(31, 106, 96, 0.4) !important;
+      border-color: rgba(31, 106, 96, 0.48) !important;
       background: #fffdf9 !important;
       box-shadow: 0 0 0 3px rgba(31, 106, 96, 0.13) !important;
     }
