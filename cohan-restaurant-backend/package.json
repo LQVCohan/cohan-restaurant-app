@@ -26,7 +26,7 @@
     "prepare:demo:staff-performance": "node scripts/prepareStaffPerformanceDemoPeriods.js",
     "seed:demo:staff-performance-weeks": "node scripts/seedStaffPerformanceWeekRosterUtc.js",
     "seed:demo:staff-profiles": "node scripts/seedStaffProfileDemoData.js",
-    "seed:demo:shared-roster-hours": "node scripts/seedSharedRosterHoursDemo.js",
+    "apply:demo:shared-roster-hours": "node scripts/applySharedRosterHoursDemo.js",
     "seed:demo:staff-performance": "npm run repair:demo:operator-account-types && npm run prepare:demo:staff-performance && node scripts/seedStaffPerformanceDemoUtc.js && npm run seed:demo:staff-performance-weeks && npm run seed:demo:staff-profiles",
     "verify:demo:staff-performance-weeks": "node scripts/verifyStaffPerformanceWeekRoster.js",
     "verify:demo:staff-profiles": "node scripts/verifyStaffProfileDemoData.js",
