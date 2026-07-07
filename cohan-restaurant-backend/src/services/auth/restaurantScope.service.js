@@ -6,7 +6,15 @@ const BrandMembership = model("BrandMembership");
 const Restaurant = model("Restaurant");
 
 const emptyFilter = () => ({ _id: { $in: [] } });
-const roleName = (user) => String(user?.roleName || user?.role?.slug || user?.role || "").toLowerCase();
+const roleName = (user) => {
+  const role = user?.role;
+  const value =
+    user?.roleName ||
+    role?.slug ||
+    role?.name ||
+    (typeof role === "string" ? role : "");
+  return String(value || "").trim().toLowerCase();
+};
 const toObjectId = (id) => (mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null);
 const idString = (value) => String(value?._id || value?.id || value || "");
 const uniqueIds = (ids) => [...new Map(ids.filter(Boolean).map((id) => [String(id), id])).values()];
