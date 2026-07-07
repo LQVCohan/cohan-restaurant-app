@@ -64,8 +64,11 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
         userId: newOwnerUserId,
         status: "active",
       }).session(session);
-      if (!newOwnerMembership || newOwnerMembership.role === "owner") {
-        throw bad("Người nhận quyền phải là thành viên đang hoạt động của chuỗi.");
+      if (
+        !newOwnerMembership ||
+        !["admin", "manager"].includes(newOwnerMembership.role)
+      ) {
+        throw bad("Người nhận quyền phải là quản lý hoặc quản trị viên đang hoạt động của chuỗi.");
       }
 
       const newOwnerUser = await User.findById(newOwnerUserId)
