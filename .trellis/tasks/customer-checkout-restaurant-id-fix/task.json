@@ -1,0 +1,7 @@
+{
+  "id": "customer-checkout-restaurant-id-fix",
+  "title": "Fix customer checkout item restaurant id payload",
+  "status": "in_progress",
+  "createdAt": "2026-07-07",
+  "scope": "customer add-to-cart to online checkout"
+}

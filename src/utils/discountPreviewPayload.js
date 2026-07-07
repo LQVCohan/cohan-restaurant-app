@@ -83,6 +83,7 @@ export const mapCartItemToOrderItemInput = (
     itemType: isCombo ? "COMBO" : "MENU_ITEM",
     comboId: isCombo ? (item.comboId || comboSnapshot.comboId || item.id) : undefined,
     comboSnapshot: isCombo ? comboSnapshot : undefined,
+    restaurantId: item.restaurantId,
     dishId: isCombo ? firstComboItemId : (item.dishId || item.menuId || item.id),
     menuId: isCombo ? firstComboItemId : (item.menuId || item.dishId || item.id),
     categoryId: item.categoryId || null,
