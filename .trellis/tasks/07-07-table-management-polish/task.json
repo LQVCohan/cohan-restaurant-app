@@ -3,7 +3,7 @@
   "name": "table-management-polish",
   "title": "Polish table cards and repair table workflows",
   "description": "Reduce the visual weight of the per-table 3D/AR action and repair contract, merge, split, and modal synchronization issues.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "manager-table-management",
   "package": null,
@@ -11,12 +11,12 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "fix/table-management-ui-workflows",
   "base_branch": "main",
   "worktree_path": null,
   "commit": "8598ee549526f5d9e5b47ab068d85906cc41b0a5",
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1246",
   "subtasks": [],
   "children": [],
   "parent": null,
@@ -31,5 +31,5 @@
     "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
     "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
   ],
-  "notes": "Root-cause trace completed from Mongoose through GraphQL, Apollo, manager UI actions, and focused tests."
+  "notes": "Focused GraphQL validation, manager table component tests, table resolver tests, frontend build, and the full backend CI job passed. The repository-wide frontend unit stage remains blocked by three pre-existing useDashboard test failures unrelated to these table changes."
 }
