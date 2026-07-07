@@ -41,10 +41,10 @@ const getErrorMessage = (error) =>
   error?.message ||
   "Không thể chuyển quyền chủ chuỗi.";
 
-export default function BrandOwnershipTransfer({
+function BrandOwnershipTransferForm({
   selectedBrand,
-  members = [],
-  restaurants = [],
+  members,
+  restaurants,
   assignedManagerByRestaurant,
   setSelectedRestaurantId,
 }) {
@@ -60,9 +60,6 @@ export default function BrandOwnershipTransfer({
     },
   );
 
-  const isOwner =
-    String(selectedBrand?.membership?.role || selectedBrand?.membershipRole || "") ===
-    "owner";
   const eligibleMembers = useMemo(
     () =>
       members
@@ -77,8 +74,6 @@ export default function BrandOwnershipTransfer({
         ),
     [members],
   );
-
-  if (!isOwner) return null;
 
   const submitTransfer = async () => {
     if (!newOwnerUserId) {
@@ -232,5 +227,28 @@ export default function BrandOwnershipTransfer({
         )}
       </div>
     </details>
+  );
+}
+
+export default function BrandOwnershipTransfer({
+  selectedBrand,
+  members = [],
+  restaurants = [],
+  assignedManagerByRestaurant,
+  setSelectedRestaurantId,
+}) {
+  const isOwner =
+    String(selectedBrand?.membership?.role || selectedBrand?.membershipRole || "") ===
+    "owner";
+  if (!isOwner) return null;
+
+  return (
+    <BrandOwnershipTransferForm
+      selectedBrand={selectedBrand}
+      members={members}
+      restaurants={restaurants}
+      assignedManagerByRestaurant={assignedManagerByRestaurant}
+      setSelectedRestaurantId={setSelectedRestaurantId}
+    />
   );
 }
