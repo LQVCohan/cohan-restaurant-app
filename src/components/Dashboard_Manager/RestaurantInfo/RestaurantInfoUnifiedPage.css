@@ -4,7 +4,6 @@
 .manager-layout .restaurant-management-container {
   --rip-surface: rgba(252, 254, 252, 0.96);
   --rip-surface-soft: rgba(238, 246, 241, 0.9);
-  --rip-surface-strong: #ffffff;
   --rip-ink: var(--manager-text, #24312c);
   --rip-muted: var(--manager-muted, #607069);
   --rip-primary: var(--manager-primary, #536c61);
@@ -35,7 +34,6 @@
   min-width: 0;
 }
 
-/* Header */
 .manager-layout .restaurant-management-container > .management-page-header.density-compact {
   margin: 0;
   border: 1px solid var(--rip-line) !important;
@@ -91,7 +89,6 @@
   outline-offset: 2px;
 }
 
-/* Profile overview */
 .manager-layout .restaurant-management-container .profile-focus-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.55fr);
@@ -259,7 +256,6 @@
   color: var(--rip-accent);
 }
 
-/* Metrics */
 .manager-layout .restaurant-management-container .quick-metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -304,7 +300,6 @@
   letter-spacing: -0.04em;
 }
 
-/* Main workspace */
 .manager-layout .restaurant-management-container > .main-layout.ant-row {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(330px, 0.5fr);
@@ -333,7 +328,6 @@
     var(--rip-surface) !important;
 }
 
-/* Cover/profile area */
 .manager-layout .restaurant-management-container .hero-uploader-section {
   margin-bottom: 52px;
 }
@@ -375,7 +369,6 @@
   text-shadow: 0 2px 12px rgba(19, 34, 28, 0.45);
 }
 
-/* Tabs and forms */
 .manager-layout .restaurant-management-container .modern-form .form-content-padding {
   padding: clamp(18px, 2vw, 28px);
 }
@@ -536,7 +529,6 @@
   outline-offset: 2px;
 }
 
-/* Categories */
 .manager-layout .restaurant-management-container .category-card {
   margin-top: 18px;
 }
@@ -569,7 +561,6 @@
   color: var(--rip-primary-dark);
 }
 
-/* Preview */
 .manager-layout .restaurant-management-container .preview-wrapper {
   position: sticky;
   top: 18px;
@@ -615,7 +606,6 @@
   text-align: center;
 }
 
-/* Responsive */
 @media (max-width: 1180px) {
   .manager-layout .restaurant-management-container .profile-focus-panel {
     grid-template-columns: 1fr;
