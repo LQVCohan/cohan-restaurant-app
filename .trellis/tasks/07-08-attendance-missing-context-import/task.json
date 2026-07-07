@@ -1,7 +1,7 @@
 {
   "id": "07-08-attendance-missing-context-import",
-  "title": "Remove obsolete attendance scope context import",
-  "status": "in_progress",
+  "title": "Stabilize attendance scope module path",
+  "status": "ready_for_review",
   "priority": "high",
   "branch": "fix-attendance-missing-context-import"
 }
