@@ -1,0 +1,776 @@
+/* Final restaurant profile page layer.
+   Keeps the existing Ant Design/manager system and only normalizes layout and presentation. */
+
+.manager-layout .restaurant-management-container {
+  --rip-surface: rgba(252, 254, 252, 0.96);
+  --rip-surface-soft: rgba(238, 246, 241, 0.9);
+  --rip-surface-strong: #ffffff;
+  --rip-ink: var(--manager-text, #24312c);
+  --rip-muted: var(--manager-muted, #607069);
+  --rip-primary: var(--manager-primary, #536c61);
+  --rip-primary-dark: var(--manager-primary-hover, #40584e);
+  --rip-accent: var(--manager-accent, #2f7d68);
+  --rip-accent-soft: var(--manager-accent-soft, #e5f0eb);
+  --rip-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+  --rip-line-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34));
+  --rip-shadow: 0 18px 44px rgba(48, 72, 61, 0.1);
+  --rip-shadow-soft: 0 10px 28px rgba(48, 72, 61, 0.07);
+
+  width: min(100%, 1440px);
+  min-height: 100dvh;
+  display: grid;
+  gap: 16px;
+  margin-inline: auto;
+  padding: clamp(10px, 1.6vw, 20px);
+  overflow-x: clip;
+  color: var(--rip-ink);
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.manager-layout .restaurant-management-container *,
+.manager-layout .restaurant-management-container *::before,
+.manager-layout .restaurant-management-container *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Header */
+.manager-layout .restaurant-management-container > .management-page-header.density-compact {
+  margin: 0;
+  border: 1px solid var(--rip-line) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(47, 125, 104, 0.12), transparent 20rem),
+    linear-gradient(145deg, rgba(253, 255, 254, 0.98), rgba(235, 244, 239, 0.94)) !important;
+  box-shadow: var(--rip-shadow-soft) !important;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-title {
+  color: var(--rip-ink);
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-subtitle {
+  max-width: 58ch;
+  color: var(--rip-muted);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-select,
+.manager-layout .restaurant-management-container > .management-page-header .mph-btn {
+  min-height: 42px;
+  border-color: var(--rip-line) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--rip-ink) !important;
+  font-weight: 720;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-btn--primary {
+  border-color: var(--rip-primary) !important;
+  background: var(--rip-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 22px rgba(48, 72, 61, 0.18);
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-btn:hover:not(:disabled),
+.manager-layout .restaurant-management-container > .management-page-header .mph-select:hover {
+  border-color: var(--rip-line-strong) !important;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-btn--primary:hover:not(:disabled) {
+  background: var(--rip-primary-dark) !important;
+}
+
+.manager-layout .restaurant-management-container > .management-page-header .mph-btn:focus-visible,
+.manager-layout .restaurant-management-container > .management-page-header .mph-select:focus-visible {
+  outline: 3px solid rgba(47, 125, 104, 0.2);
+  outline-offset: 2px;
+}
+
+/* Profile overview */
+.manager-layout .restaurant-management-container .profile-focus-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.55fr);
+  gap: 16px;
+  margin: 0;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__copy,
+.manager-layout .restaurant-management-container .profile-completion-card {
+  min-height: 0;
+  border: 1px solid var(--rip-line);
+  border-radius: 24px;
+  background: var(--rip-surface);
+  box-shadow: var(--rip-shadow-soft);
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__copy {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(22px, 3vw, 34px);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(47, 125, 104, 0.15), transparent 18rem),
+    linear-gradient(145deg, rgba(253, 255, 254, 0.98), rgba(232, 242, 236, 0.94));
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__copy::after {
+  content: "";
+  position: absolute;
+  right: -72px;
+  bottom: -92px;
+  width: 230px;
+  height: 230px;
+  border: 34px solid rgba(83, 108, 97, 0.055);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--rip-line);
+  border-radius: 9px;
+  background: var(--rip-accent-soft);
+  color: var(--rip-primary-dark);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__copy h2 {
+  max-width: 860px;
+  margin: 10px 0 8px;
+  color: var(--rip-ink);
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__copy > p {
+  max-width: 66ch;
+  margin: 0;
+  color: var(--rip-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__facts {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__facts span {
+  min-height: 62px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--rip-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rip-ink);
+  overflow-wrap: anywhere;
+}
+
+.manager-layout .restaurant-management-container .profile-focus-panel__facts strong {
+  display: block;
+  color: var(--rip-muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.025em;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 20px;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--rip-muted);
+  font-size: 0.82rem;
+  font-weight: 720;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card__header strong {
+  color: var(--rip-ink);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card li {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rip-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card li > span {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rip-line);
+  border-radius: 7px;
+  background: var(--rip-surface-soft);
+  color: var(--rip-muted);
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card li.is-done {
+  color: var(--rip-primary-dark);
+  font-weight: 680;
+}
+
+.manager-layout .restaurant-management-container .profile-completion-card li.is-done > span {
+  border-color: rgba(47, 125, 104, 0.28);
+  background: var(--rip-accent-soft);
+  color: var(--rip-accent);
+}
+
+/* Metrics */
+.manager-layout .restaurant-management-container .quick-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.manager-layout .restaurant-management-container .quick-metrics-grid .metric-card {
+  border: 1px solid var(--rip-line) !important;
+  border-radius: 18px !important;
+  background: rgba(252, 254, 252, 0.9) !important;
+  box-shadow: var(--rip-shadow-soft) !important;
+}
+
+.manager-layout .restaurant-management-container .quick-metrics-grid .metric-card .ant-card-body {
+  min-height: 96px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 10px;
+  padding: 16px 18px;
+}
+
+.manager-layout .restaurant-management-container .quick-metrics-grid .metric-card .ant-badge {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-top: 5px;
+}
+
+.manager-layout .restaurant-management-container .quick-metrics-grid .metric-subtitle {
+  color: var(--rip-muted) !important;
+  font-size: 0.73rem;
+  font-weight: 720;
+}
+
+.manager-layout .restaurant-management-container .quick-metrics-grid .metric-value {
+  margin: 3px 0 0 !important;
+  color: var(--rip-ink);
+  font-size: clamp(1.4rem, 2.2vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+/* Main workspace */
+.manager-layout .restaurant-management-container > .main-layout.ant-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(330px, 0.5fr);
+  gap: 18px;
+  margin: 0 !important;
+  align-items: start;
+}
+
+.manager-layout .restaurant-management-container > .main-layout.ant-row > .ant-col {
+  width: auto;
+  max-width: none;
+  padding: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .saas-card {
+  border: 1px solid var(--rip-line) !important;
+  border-radius: 24px !important;
+  background: var(--rip-surface) !important;
+  box-shadow: var(--rip-shadow) !important;
+  overflow: clip;
+}
+
+.manager-layout .restaurant-management-container .edit-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 22rem),
+    var(--rip-surface) !important;
+}
+
+/* Cover/profile area */
+.manager-layout .restaurant-management-container .hero-uploader-section {
+  margin-bottom: 52px;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
+  height: clamp(190px, 22vw, 250px);
+  border-bottom: 1px solid var(--rip-line);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .cover-overlay {
+  background: rgba(32, 49, 42, 0.3);
+  transition: opacity 180ms ease, background-color 180ms ease;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
+  left: 28px;
+  bottom: -46px;
+  gap: 16px;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
+  width: 104px;
+  height: 104px;
+  border: 5px solid rgba(255, 255, 255, 0.96);
+  border-radius: 24px;
+  box-shadow: 0 16px 34px rgba(34, 56, 47, 0.2);
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview {
+  padding-bottom: 40px;
+}
+
+.manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview h4 {
+  max-width: 32ch;
+  color: #fff;
+  font-size: clamp(1.15rem, 2vw, 1.55rem);
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  text-shadow: 0 2px 12px rgba(19, 34, 28, 0.45);
+}
+
+/* Tabs and forms */
+.manager-layout .restaurant-management-container .modern-form .form-content-padding {
+  padding: clamp(18px, 2vw, 28px);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav {
+  margin-bottom: 22px;
+  padding: 4px;
+  border: 1px solid var(--rip-line);
+  border-radius: 14px;
+  background: var(--rip-surface-soft);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav::before {
+  border-bottom: 0;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-nav-list {
+  gap: 4px;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+  min-height: 42px;
+  margin: 0 !important;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--rip-muted);
+  font-size: 0.78rem;
+  font-weight: 720;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab:hover {
+  color: var(--rip-primary-dark);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab-active {
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(48, 72, 61, 0.09);
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--rip-primary-dark) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-tabs .ant-tabs-ink-bar {
+  display: none;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-form-item-label {
+  padding-bottom: 6px;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-form-item-label > label {
+  height: auto;
+  color: var(--rip-ink) !important;
+  font-size: 0.78rem !important;
+  font-weight: 760 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input,
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper,
+.manager-layout .restaurant-management-container .modern-form .ant-select-selector,
+.manager-layout .restaurant-management-container .modern-form .ant-input-number,
+.manager-layout .restaurant-management-container .modern-form textarea {
+  min-height: 44px;
+  border-color: var(--rip-line) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--rip-ink) !important;
+  box-shadow: none !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.manager-layout .restaurant-management-container .modern-form textarea {
+  min-height: 92px;
+  padding-block: 10px;
+  line-height: 1.55;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input:hover,
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper:hover,
+.manager-layout .restaurant-management-container .modern-form .ant-select-selector:hover {
+  border-color: var(--rip-line-strong) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input:focus,
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper-focused,
+.manager-layout .restaurant-management-container .modern-form .ant-select-focused .ant-select-selector,
+.manager-layout .restaurant-management-container .modern-form textarea:focus {
+  border-color: var(--rip-accent) !important;
+  box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.12) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .profile-section-card,
+.manager-layout .restaurant-management-container .modern-form .payment-provider-card {
+  margin-bottom: 18px;
+  border: 1px solid var(--rip-line) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: none !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .profile-section-card .ant-card-head,
+.manager-layout .restaurant-management-container .modern-form .payment-provider-card .ant-card-head {
+  min-height: 46px;
+  padding-inline: 16px;
+  border-bottom-color: var(--rip-line);
+}
+
+.manager-layout .restaurant-management-container .modern-form .profile-section-card .ant-card-head-title,
+.manager-layout .restaurant-management-container .modern-form .payment-provider-card .ant-card-head-title {
+  color: var(--rip-ink);
+  font-size: 0.86rem;
+  font-weight: 820;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-alert {
+  margin-bottom: 18px;
+  border-radius: 14px;
+}
+
+.manager-layout .restaurant-management-container .amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.manager-layout .restaurant-management-container .amenity-card {
+  min-height: 46px;
+  justify-content: center;
+  border: 1px solid var(--rip-line) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--rip-muted);
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.manager-layout .restaurant-management-container .amenity-card:hover {
+  border-color: var(--rip-line-strong) !important;
+  color: var(--rip-primary-dark);
+  transform: translateY(-1px);
+}
+
+.manager-layout .restaurant-management-container .amenity-card.active {
+  border-color: rgba(47, 125, 104, 0.34) !important;
+  background: var(--rip-accent-soft);
+  color: var(--rip-accent);
+}
+
+.manager-layout .restaurant-management-container .amenity-card:focus-visible,
+.manager-layout .restaurant-management-container .ai-btn:focus-visible {
+  outline: 3px solid rgba(47, 125, 104, 0.2);
+  outline-offset: 2px;
+}
+
+/* Categories */
+.manager-layout .restaurant-management-container .category-card {
+  margin-top: 18px;
+}
+
+.manager-layout .restaurant-management-container .category-card .ant-card-head {
+  min-height: 54px;
+  border-bottom-color: var(--rip-line);
+}
+
+.manager-layout .restaurant-management-container .category-card .ant-card-head-title {
+  color: var(--rip-ink);
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.manager-layout .restaurant-management-container .category-card .ant-card-body {
+  padding: 18px;
+}
+
+.manager-layout .restaurant-management-container .category-card .category-chips {
+  margin-top: 14px;
+}
+
+.manager-layout .restaurant-management-container .category-card .ant-tag {
+  margin: 0;
+  padding: 4px 9px;
+  border-color: var(--rip-line);
+  border-radius: 9px;
+  background: var(--rip-surface-soft);
+  color: var(--rip-primary-dark);
+}
+
+/* Preview */
+.manager-layout .restaurant-management-container .preview-wrapper {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.manager-layout .restaurant-management-container .preview-header {
+  margin: 0;
+}
+
+.manager-layout .restaurant-management-container .preview-label {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--rip-line);
+  border-radius: 11px;
+  background: rgba(252, 254, 252, 0.9);
+  color: var(--rip-primary-dark);
+  font-size: 0.78rem;
+  font-weight: 780;
+}
+
+.manager-layout .restaurant-management-container .desktop-preview-card {
+  border: 1px solid var(--rip-line) !important;
+  border-radius: 24px !important;
+  background: #fff !important;
+  box-shadow: 0 22px 48px rgba(35, 58, 48, 0.16) !important;
+}
+
+.manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
+  height: min(760px, calc(100dvh - 130px));
+  min-height: 620px;
+  background: #fff;
+}
+
+.manager-layout .restaurant-management-container .empty-preview {
+  min-height: 420px;
+  padding: 28px;
+  color: var(--rip-muted);
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 1180px) {
+  .manager-layout .restaurant-management-container .profile-focus-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container > .main-layout.ant-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container .preview-wrapper {
+    position: static;
+  }
+
+  .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
+    height: 680px;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-layout .restaurant-management-container {
+    gap: 12px;
+    padding: 8px;
+  }
+
+  .manager-layout .restaurant-management-container > .management-page-header.density-compact {
+    border-radius: 18px !important;
+  }
+
+  .manager-layout .restaurant-management-container > .management-page-header .mph-controls-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .manager-layout .restaurant-management-container .profile-focus-panel__copy,
+  .manager-layout .restaurant-management-container .profile-completion-card,
+  .manager-layout .restaurant-management-container .saas-card {
+    border-radius: 18px !important;
+  }
+
+  .manager-layout .restaurant-management-container .profile-focus-panel__copy {
+    padding: 20px;
+  }
+
+  .manager-layout .restaurant-management-container .profile-focus-panel__facts,
+  .manager-layout .restaurant-management-container .quick-metrics-grid,
+  .manager-layout .restaurant-management-container .amenities-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container .profile-completion-card ul {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-row > .ant-col {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs > .ant-tabs-nav {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-nav-list {
+    width: max-content;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section {
+    margin-bottom: 18px;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .cover-image-area {
+    height: 170px;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .avatar-image-area {
+    position: static;
+    align-items: center;
+    margin-top: 12px;
+    padding-inline: 16px;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .avatar-wrapper {
+    width: 82px;
+    height: 82px;
+    border-radius: 20px;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview {
+    padding-bottom: 0;
+  }
+
+  .manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview h4,
+  .manager-layout .restaurant-management-container .hero-uploader-section .restaurant-title-preview span {
+    color: var(--rip-ink);
+    text-shadow: none;
+  }
+
+  .manager-layout .restaurant-management-container .category-card .ant-row {
+    display: grid;
+    gap: 12px;
+  }
+
+  .manager-layout .restaurant-management-container .category-card .ant-row > .ant-col {
+    width: 100%;
+  }
+
+  .manager-layout .restaurant-management-container .category-card .ant-space {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr);
+  }
+
+  .manager-layout .restaurant-management-container .category-card .ant-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
+    height: 620px;
+  }
+}
+
+@media (max-width: 430px) {
+  .manager-layout .restaurant-management-container .profile-focus-panel__copy h2 {
+    font-size: 1.75rem;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .form-content-padding,
+  .manager-layout .restaurant-management-container .category-card .ant-card-body {
+    padding: 14px;
+  }
+
+  .manager-layout .restaurant-management-container .modern-tabs .ant-tabs-tab {
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+
+  .manager-layout .restaurant-management-container .category-card .ant-space {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
+    height: 560px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .restaurant-management-container *,
+  .manager-layout .restaurant-management-container *::before,
+  .manager-layout .restaurant-management-container *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
