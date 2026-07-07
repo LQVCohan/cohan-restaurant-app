@@ -2,7 +2,7 @@
   "id": "new-order-order-theme-sync",
   "name": "new-order-order-theme-sync",
   "title": "Sync new order modal with Order Management UI",
-  "description": "Replace the customer/sage visual override in the manager new-order modal with the existing Order Management cream, brown and gold operational design system.",
+  "description": "Align the manager new-order modal with the Order Management neutral paper and sage palette without changing its workflow.",
   "status": "in_review",
   "dev_type": "frontend",
   "scope": "manager-new-order-modal",
@@ -13,14 +13,12 @@
   "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": "53ff9dfe248982a13267be18943cb5bd9efc0a83",
+  "commit": "4b789f2c81527c7bcb7a15ce4e2f512133783746",
   "relatedFiles": [
-    "src/layouts/ManagerUnifiedBackground.css",
-    "src/components/Dashboard_Manager/Order/OrderDashboardScaleFix.css",
-    "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss",
-    "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx"
+    "src/components/Dashboard_Manager/Order/components/NewOrderModalPolish.scss",
+    "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss"
   ],
-  "notes": "Removed both imports that loaded the obsolete customer-facing NewOrderModalPromotionTheme, allowing the existing compact Order Management cream/brown/gold modal styles to take effect. Added a narrow local shell boundary so the shared order-modal theme cannot reintroduce the sage header. Replaced deprecated Ant Design Select popupClassName with classNames.popup.root for both table and category selectors. No order data, hook, mutation, draft, permission or backend flow changed. Component tests, build and browser screenshots were not run because the connector environment has no executable repository checkout.",
+  "notes": "Replaced the warm orange/brown modal treatment with the exact neutral paper, ink and sage family already used by OrderPromotionTheme.css. Primary actions, active service tabs, focus rings, menu prices and the cart panel now use sage; backgrounds, cards and skeletons use neutral off-white surfaces. The old 700-line polish layer was reduced to a focused component theme instead of adding another override. Ant Design Select fields and portal dropdowns were updated to the same palette. No JSX, data hooks, mutations, draft behavior, permissions or backend flow changed. Component tests, Sass build and browser screenshots were not run because the connector environment has no executable repository checkout.",
   "meta": {
     "skills": [
       "ponytail",
