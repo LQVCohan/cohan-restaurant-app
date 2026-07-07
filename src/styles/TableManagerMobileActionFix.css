@@ -1,0 +1,135 @@
+/* Narrow fix for table cards on mobile.
+   Keep table action/status modifiers scoped so generic manager tones cannot hide labels. */
+
+@media (max-width: 768px) {
+  .manager-layout--tables .tm-table-card .card-top-right {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .status-badge,
+  .manager-layout--tables .tm-table-card .vr-badge,
+  .manager-layout--tables .tm-table-card .tm-3d-badge,
+  .manager-layout--tables .tm-table-card .tm-guard-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    text-indent: 0 !important;
+    -webkit-text-fill-color: currentColor !important;
+  }
+
+  .manager-layout--tables .tm-table-card .status-badge.success {
+    border-color: rgba(31, 106, 96, 0.24) !important;
+    color: #17554d !important;
+    background: #dcefe9 !important;
+    -webkit-text-fill-color: #17554d !important;
+  }
+
+  .manager-layout--tables .tm-table-card .status-badge.danger {
+    border-color: rgba(154, 65, 61, 0.22) !important;
+    color: #9a413d !important;
+    background: #faece8 !important;
+    -webkit-text-fill-color: #9a413d !important;
+  }
+
+  .manager-layout--tables .tm-table-card .status-badge.warning {
+    border-color: rgba(131, 91, 32, 0.2) !important;
+    color: #835b20 !important;
+    background: #fbf1df !important;
+    -webkit-text-fill-color: #835b20 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .status-badge.primary,
+  .manager-layout--tables .tm-table-card .status-badge.secondary {
+    border-color: rgba(83, 108, 97, 0.2) !important;
+    color: #536c61 !important;
+    background: #edf5f1 !important;
+    -webkit-text-fill-color: #536c61 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 38px !important;
+    height: auto !important;
+    padding: 6px 7px !important;
+    overflow: visible !important;
+    color: #fffdf8 !important;
+    font-size: 0.72rem !important;
+    line-height: 1.2 !important;
+    text-indent: 0 !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+    -webkit-text-fill-color: #fffdf8 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini.primary,
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini.success {
+    border-color: #17554d !important;
+    color: #fffdf8 !important;
+    background: linear-gradient(180deg, #1f6a60, #17554d) !important;
+    -webkit-text-fill-color: #fffdf8 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini.warning {
+    border-color: #9a6a3e !important;
+    color: #fffdf8 !important;
+    background: #9a6a3e !important;
+    -webkit-text-fill-color: #fffdf8 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini.secondary {
+    border-color: rgba(83, 108, 97, 0.25) !important;
+    color: #24303f !important;
+    background: #fffdf8 !important;
+    -webkit-text-fill-color: #24303f !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini:disabled {
+    visibility: visible !important;
+    opacity: 0.64 !important;
+    color: #fffdf8 !important;
+    -webkit-text-fill-color: #fffdf8 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini.secondary:disabled {
+    color: #53605d !important;
+    -webkit-text-fill-color: #53605d !important;
+  }
+}
+
+@media (min-width: 340px) and (max-width: 768px) {
+  .manager-layout--tables .tm-table-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .manager-layout--tables .tm-table-card,
+  .manager-layout--tables .tm-table-card.occupied,
+  .manager-layout--tables .tm-table-card.payment_pending {
+    gap: 6px !important;
+    padding: 9px !important;
+  }
+
+  .manager-layout--tables .tm-table-card .table-no {
+    font-size: 1.05rem !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-body {
+    padding: 6px 7px !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions {
+    gap: 5px !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini {
+    min-height: 36px !important;
+    font-size: 0.68rem !important;
+  }
+}
