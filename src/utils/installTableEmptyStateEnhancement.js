@@ -7,22 +7,28 @@ const HEADER_ACTION_CLASS = "tm-first-floor-action";
 const getDirectChild = (element, predicate) =>
   Array.from(element?.children || []).find(predicate) || null;
 
-const getActualFloorCount = (container) =>
-  Math.max(
-    0,
-    container?.querySelectorAll?.(".tm-floor-list > .tm-floor-item")?.length - 1,
-  );
+const getActualFloorCount = (container) => {
+  const floorItemCount =
+    container?.querySelectorAll?.(".tm-floor-list > .tm-floor-item")?.length ?? 0;
+  return Math.max(0, floorItemCount - 1);
+};
+
+const hasStoredText = (element, key) =>
+  Boolean(element?.dataset) &&
+  Object.prototype.hasOwnProperty.call(element.dataset, key);
 
 const restoreText = (element, key) => {
-  if (!element?.dataset?.[key]) return;
+  if (!hasStoredText(element, key)) return;
   element.textContent = element.dataset[key];
   delete element.dataset[key];
 };
 
 const setEnhancedText = (element, key, value) => {
   if (!element) return;
-  if (!element.dataset[key]) element.dataset[key] = element.textContent || "";
-  element.textContent = value;
+  if (!hasStoredText(element, key)) {
+    element.dataset[key] = element.textContent || "";
+  }
+  if (element.textContent !== value) element.textContent = value;
 };
 
 const restoreEmptyState = (container) => {
@@ -215,7 +221,9 @@ export const installTableEmptyStateEnhancement = () => {
   const schedule = () => {
     if (scheduled) return;
     scheduled = true;
-    const run = window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
+    const run =
+      window.requestAnimationFrame ||
+      ((callback) => window.setTimeout(callback, 0));
     run(() => {
       scheduled = false;
       prepareTableEmptyState();
