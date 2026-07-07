@@ -1,5 +1,6 @@
 @use "../styles/variables.scss" as *;
 @use "../styles/mixins.scss" as *;
+@use "../components/Dashboard_Manager/Brand/BrandManagementCompact.scss";
 
 $manager-sidebar-collapsed: 72px;
 $manager-sidebar-expanded: 304px;
