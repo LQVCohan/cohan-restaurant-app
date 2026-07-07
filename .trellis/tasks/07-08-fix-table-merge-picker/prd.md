@@ -36,6 +36,7 @@ The modal width issue came from final table-workflow SCSS overrides loaded after
 - Keep Escape, focus trapping, focus return, visible focus, mobile bottom-sheet behavior, and reduced-motion support.
 - Disconnect stale observer and click-handler keys left by previous HMR versions.
 - Widen the table-detail modal to `min(1240px, 96vw)` on desktop while retaining responsive limits.
+- Remove the obsolete `installTableTransferMergeEnhancement` implementation and its duplicate test after confirming they have no runtime callers.
 
 ## Files changed
 
@@ -43,6 +44,7 @@ The modal width issue came from final table-workflow SCSS overrides loaded after
 - `src/components/Dashboard_Manager/Table/TableManagementMergePickerFix.css`: wider detail modal and complete responsive picker presentation.
 - `src/main.jsx`: load the final modal/picker CSS after earlier theme overrides.
 - `src/utils/installTableMergePickerTrigger.test.js`: regression coverage for visible control, same-floor filtering, search, disabled grouped tables, selection, and empty native-button fallback.
+- Removed `src/utils/installTableTransferMergeEnhancement.js` and `src/utils/installTableTransferMergeEnhancement.test.js` to keep one picker implementation.
 - Task artifacts in this directory.
 
 ## Acceptance criteria
@@ -72,4 +74,4 @@ The modal width issue came from final table-workflow SCSS overrides loaded after
 
 ## Validation result
 
-Focused regression tests were updated in the repository. The connected environment did not provide a runnable checkout, so Vitest, build, browser smoke testing, and screenshot comparison were not executed here. The final files were re-fetched for import order, selector scope, stale-listener cleanup, direct Apollo flow, and unchanged backend contracts.
+Focused regression tests were updated in the repository. The connected environment did not provide a runnable checkout, so Vitest, build, browser smoke testing, and screenshot comparison were not executed here. The final files were re-fetched for import order, selector scope, stale-listener cleanup, direct Apollo flow, duplicate-code removal, and unchanged backend contracts.
