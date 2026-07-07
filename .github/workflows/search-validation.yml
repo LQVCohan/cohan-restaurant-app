@@ -15,7 +15,7 @@ permissions:
 jobs:
   search:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,8 +27,21 @@ jobs:
             cohan-restaurant-backend/package-lock.json
       - name: Install dependencies
         run: |
-          npm ci
-          npm --prefix cohan-restaurant-backend ci
+          npm ci --silent
+          npm --prefix cohan-restaurant-backend ci --silent
+      - name: Backend full suite diagnosis
+        continue-on-error: true
+        run: |
+          set +e
+          npm --prefix cohan-restaurant-backend test > /tmp/backend-tests.log 2>&1
+          status=$?
+          echo "backend_exit_status=${status}"
+          grep -n -E "FAIL|Failed|Error:|AssertionError|Test Files|Tests " /tmp/backend-tests.log | tail -n 120 || true
+          if [ "${status}" -ne 0 ]; then
+            echo "--- backend test tail ---"
+            tail -n 160 /tmp/backend-tests.log
+          fi
+          exit "${status}"
       - name: Backend search tests
         run: npm --prefix cohan-restaurant-backend test -- tests/resolvers/search-public-safety.test.js --reporter=verbose
       - name: Frontend search tests
