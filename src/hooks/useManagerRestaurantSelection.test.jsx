@@ -24,6 +24,7 @@ describe("useManagerRestaurantSelection", () => {
   beforeEach(() => {
     localStorage.clear();
   });
+
   it("auto chọn nhà hàng đầu tiên sau khi restaurants load async", async () => {
     const { state, Wrapper } = createMutableWrapper({ restaurants: [], restaurantsLoading: true });
     const { result, rerender } = renderHook(() => useManagerRestaurantSelection(), {
@@ -56,6 +57,24 @@ describe("useManagerRestaurantSelection", () => {
     rerender();
 
     await waitFor(() => expect(result.current.selectedRestaurantId).toBe("r3"));
+  });
+
+  it("đồng bộ lựa chọn chi nhánh ngay giữa các hook đang mở", async () => {
+    const { Wrapper } = createMutableWrapper({
+      restaurants: [{ id: "r1", name: "Cohan 1" }, { id: "r2", name: "Cohan 2" }],
+      restaurantsLoading: false,
+    });
+    const first = renderHook(() => useManagerRestaurantSelection(), { wrapper: Wrapper });
+    const second = renderHook(() => useManagerRestaurantSelection(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(first.result.current.selectedRestaurantId).toBe("r1"));
+    await waitFor(() => expect(second.result.current.selectedRestaurantId).toBe("r1"));
+
+    first.result.current.setSelectedRestaurantId("r2");
+
+    await waitFor(() => expect(first.result.current.selectedRestaurantId).toBe("r2"));
+    await waitFor(() => expect(second.result.current.selectedRestaurantId).toBe("r2"));
+    expect(localStorage.getItem("manager.selectedRestaurantId")).toBe("r2");
   });
 
   it("không select khi list rỗng", async () => {
