@@ -44,12 +44,17 @@ describe("review/reviewComment access hardening", () => {
       if (String(ctx?.user?.roleName || "").toLowerCase() === "customer") throw new Error("FORBIDDEN");
       return true;
     });
+    mocks.BrandMembership.find.mockReturnValue({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })) });
     mocks.Review.countDocuments.mockResolvedValue(1);
     mocks.Review.find.mockReturnValue(chain([]));
     mocks.Review.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
     mocks.Review.aggregate.mockResolvedValue([]);
     mocks.Restaurant.exists.mockResolvedValue(true);
-    mocks.Restaurant.findById.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ managerId: null }) }) });
+    mocks.Restaurant.findById.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ name: "Cohan", brandId: "valid-b1" }),
+      }),
+    });
     mocks.Order.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
     mocks.PaymentTransaction.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
     mocks.Reservation.findOne.mockReturnValue({ sort: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(null) }) }) });
@@ -95,28 +100,33 @@ describe("review/reviewComment access hardening", () => {
     expect(mocks.Review.create).toHaveBeenCalledWith(expect.objectContaining({ status: "published", createdBy: "u1" }));
   });
 
-
-  it("negative review notifies BrandMembership manager before legacy managerId", async () => {
+  it("negative review notifies the current BrandMembership manager", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
     mocks.BrandMembership.find.mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([{ userId: "membership-manager" }]) })) });
-    mocks.Restaurant.findById.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ name: "Cohan", managerId: "legacy-manager" }) }) });
     mocks.Review.create.mockResolvedValueOnce({ _id: "valid-rv1", rating: 1, restaurantId: "valid-r1", title: "bad", status: "published" });
 
     await m.createReview(null, { input: { rating: 1, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
 
+    expect(mocks.BrandMembership.find).toHaveBeenCalledWith({
+      brandId: "valid-b1",
+      role: "manager",
+      status: "active",
+      restaurantIds: "valid-r1",
+    });
     expect(mocks.Notification.create).toHaveBeenCalledWith(expect.objectContaining({ toUserId: "membership-manager" }));
-    expect(mocks.Notification.create).not.toHaveBeenCalledWith(expect.objectContaining({ toUserId: "legacy-manager" }));
   });
 
-  it("negative review falls back to legacy managerId before migration", async () => {
+  it("negative review uses a role notification when no manager membership exists", async () => {
     const m = (await import("../../graphql/resolvers/review/mutation.js")).default;
-    mocks.BrandMembership.find.mockReturnValueOnce({ select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })) });
-    mocks.Restaurant.findById.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue({ name: "Cohan", managerId: "legacy-manager" }) }) });
     mocks.Review.create.mockResolvedValueOnce({ _id: "valid-rv1", rating: 1, restaurantId: "valid-r1", title: "bad", status: "published" });
 
     await m.createReview(null, { input: { rating: 1, content: "Nội dung đánh giá hợp lệ", targetType: "restaurant", targetId: "valid-r1", restaurantId: "valid-r1" } }, { user: { id: "u1" } });
 
-    expect(mocks.Notification.create).toHaveBeenCalledWith(expect.objectContaining({ toUserId: "legacy-manager" }));
+    expect(mocks.Notification.create).toHaveBeenCalledWith(expect.objectContaining({
+      toRole: "manager",
+      restaurantId: "valid-r1",
+    }));
+    expect(mocks.Notification.create).not.toHaveBeenCalledWith(expect.objectContaining({ toUserId: "legacy-manager" }));
   });
 
   it("createReview with valid staff sets canonical staffId/staffName", async () => {
