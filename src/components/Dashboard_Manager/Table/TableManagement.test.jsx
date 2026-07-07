@@ -109,7 +109,7 @@ const renderTableManagement = async () => {
   const mod = await import("./TableManagement.jsx");
   const TableManagement = mod.default;
 
-  return render(
+  const renderTree = () => (
     <MemoryRouter>
       <AuthContext.Provider
         value={{
@@ -120,6 +120,11 @@ const renderTableManagement = async () => {
       </AuthContext.Provider>
     </MemoryRouter>
   );
+  const view = render(renderTree());
+  return {
+    ...view,
+    rerenderTableManagement: () => view.rerender(renderTree()),
+  };
 };
 
 const setDefaultData = () => {
@@ -210,6 +215,22 @@ describe("TableManagement operations UI", () => {
     expect(tableActionsModalState.lastTable?.code).toBe("A1");
   });
 
+  it("keeps the open detail modal synchronized after table data refetches", async () => {
+    const { rerenderTableManagement } = await renderTableManagement();
+
+    const tableCard = screen.getByText("A1").closest("article");
+    fireEvent.click(
+      within(tableCard).getByRole("button", { name: /Mở cấu hình bàn A1/i })
+    );
+
+    tableManagementState.tables = tableManagementState.tables.map((item) =>
+      item.code === "A1" ? { ...item, joinGroupId: "group-1" } : item
+    );
+    rerenderTableManagement();
+
+    expect(tableActionsModalState.lastTable?.joinGroupId).toBe("group-1");
+  });
+
   it("opens 3D and AR with the concrete table and floor", async () => {
     await renderTableManagement();
 
@@ -217,6 +238,7 @@ describe("TableManagement operations UI", () => {
     const arButton = within(tableCard).getByRole("button", {
       name: /Mở 3D và AR cho bàn A1/i,
     });
+    expect(arButton).toHaveClass("btn-mini--3d");
     fireEvent.click(arButton);
 
     expect(screen.getByTestId("table-3d-modal")).toBeInTheDocument();

@@ -11,6 +11,12 @@ const F_TABLE_MIN = gql`
     status
     type
     deposit
+    zone
+    promotionIds
+    bookingPerks
+    reservationHoldMinutes
+    minSpend
+    cancelPolicy
     floorId
     floorLevel
     joinGroupId
