@@ -32,16 +32,56 @@ const createWrapper = (getContextValue) =>
     );
   };
 
+const operationName = (document) =>
+  document?.definitions?.find((definition) => definition?.name?.value)?.name?.value;
+
+const latestDashboardQueryOptions = () =>
+  [...useQuery.mock.calls]
+    .reverse()
+    .find(([document]) => operationName(document) === "GetManagerDashboard")?.[1];
+
 describe("useDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockClear();
     refetchMock.mockResolvedValue({ data: {} });
+    localStorage.removeItem("manager.selectedBrandId");
+    localStorage.removeItem("manager.selectedRestaurantId");
     useQuery.mockReturnValue({
       data: null,
       loading: false,
       error: null,
       refetch: refetchMock,
+    });
+  });
+
+  it("waits for the current account scope before querying a restored restaurant id", async () => {
+    localStorage.setItem("manager.selectedRestaurantId", "restaurant-from-old-session");
+    let contextValue = {
+      user: { id: "manager-1", roleName: "manager" },
+      restaurants: [],
+      restaurantsLoading: true,
+    };
+    const { result, rerender } = renderHook(() => useDashboard(), {
+      wrapper: createWrapper(() => contextValue),
+    });
+
+    expect(result.current.selectedRestaurantId).toBe("restaurant-from-old-session");
+    expect(latestDashboardQueryOptions()?.skip).toBe(true);
+
+    contextValue = {
+      ...contextValue,
+      restaurants: [{ id: "restaurant-current", name: "Cohan hiện tại" }],
+      restaurantsLoading: false,
+    };
+    rerender();
+
+    await waitFor(() =>
+      expect(result.current.selectedRestaurantId).toBe("restaurant-current"),
+    );
+    await waitFor(() => expect(latestDashboardQueryOptions()?.skip).toBe(false));
+    expect(latestDashboardQueryOptions()?.variables).toMatchObject({
+      restaurantId: "restaurant-current",
     });
   });
 
