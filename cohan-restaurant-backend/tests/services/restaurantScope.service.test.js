@@ -49,13 +49,6 @@ vi.mock("../../models/index.js", () => ({
   },
   Restaurant: {
     findById: vi.fn((id) => chain(state.restaurants.get(String(id)) || null)),
-    exists: vi.fn(async ({ _id, managerId }) =>
-      [...state.restaurants.values()].some(
-        (restaurant) =>
-          String(restaurant._id) === String(_id) &&
-          String(restaurant.managerId) === String(managerId),
-      ),
-    ),
     countDocuments: vi.fn(async ({ _id, brandId }) => {
       const allowed = new Set((_id?.$in || []).map(String));
       return [...state.restaurants.values()].filter(
@@ -75,9 +68,9 @@ describe("restaurantScope.service", () => {
       [ids.brandB, { _id: ids.brandB, ownerId: ids.otherUser, status: "active" }],
     ]);
     state.restaurants = new Map([
-      [ids.a1, { _id: ids.a1, brandId: ids.brandA, managerId: ids.user }],
-      [ids.a2, { _id: ids.a2, brandId: ids.brandA, managerId: ids.user }],
-      [ids.b1, { _id: ids.b1, brandId: ids.brandB, managerId: ids.otherUser }],
+      [ids.a1, { _id: ids.a1, brandId: ids.brandA }],
+      [ids.a2, { _id: ids.a2, brandId: ids.brandA }],
+      [ids.b1, { _id: ids.b1, brandId: ids.brandB }],
     ]);
   });
 
@@ -107,12 +100,7 @@ describe("restaurantScope.service", () => {
     await expect(isBrandOwner({ id: ids.user }, ids.brandA)).resolves.toBe(false);
   });
 
-  it("returns an empty scoped filter without active BrandMembership or operational scope", async () => {
-    state.brands.set(ids.brandA, {
-      _id: ids.brandA,
-      ownerId: ids.user,
-      status: "active",
-    });
+  it("returns an empty scoped filter without active BrandMembership", async () => {
     const { getScopedRestaurantFilter } = await import("../../src/services/auth/restaurantScope.service.js");
 
     await expect(getScopedRestaurantFilter({ id: ids.user })).resolves.toEqual({
@@ -140,7 +128,7 @@ describe("restaurantScope.service", () => {
   );
 
   it.each(["manager", "staff"])(
-    "limits Brand %s to assigned restaurantIds",
+    "limits Brand %s to assigned restaurantIds in the same Brand",
     async (role) => {
       state.memberships = [
         {
@@ -160,53 +148,49 @@ describe("restaurantScope.service", () => {
 
       const filter = await getScopedRestaurantFilter({ id: ids.user });
       expect(filter.$or).toHaveLength(1);
+      expect(String(filter.$or[0].brandId)).toBe(ids.brandA);
       expect(String(filter.$or[0]._id.$in[0])).toBe(ids.a1);
     },
   );
 
-  it("uses legacy managerId only when no active BrandMembership exists", async () => {
-    const { canAccessRestaurant } = await import("../../src/services/auth/restaurantScope.service.js");
-    const manager = { id: ids.user, roleName: "manager" };
+  it("does not grant access from legacy user restaurant fields", async () => {
+    const {
+      canAccessRestaurant,
+      getScopedRestaurantFilter,
+    } = await import("../../src/services/auth/restaurantScope.service.js");
+    const legacyUser = {
+      id: ids.user,
+      roleName: "manager",
+      restaurantId: ids.a1,
+      restaurantForStaff: ids.a1,
+      restaurantIds: [ids.a1],
+      restaurants: [ids.a1],
+    };
 
-    await expect(canAccessRestaurant(manager, ids.a2)).resolves.toBe(true);
+    await expect(canAccessRestaurant(legacyUser, ids.a1)).resolves.toBe(false);
+    await expect(getScopedRestaurantFilter(legacyUser)).resolves.toEqual({
+      _id: { $in: [] },
+    });
+  });
 
+  it("rejects a stale restaurant assignment from another Brand", async () => {
     state.memberships = [
       {
         brandId: ids.brandA,
         role: "manager",
         status: "active",
-        restaurantIds: [ids.a1],
+        restaurantIds: [ids.b1],
       },
     ];
-    await expect(canAccessRestaurant(manager, ids.a2)).resolves.toBe(false);
-  });
-
-  it("uses explicit staff restaurant scope only when no active BrandMembership exists", async () => {
     const {
       canAccessRestaurant,
       getScopedRestaurantFilter,
     } = await import("../../src/services/auth/restaurantScope.service.js");
-    const staff = {
-      id: ids.user,
-      roleName: "staff",
-      restaurantForStaff: ids.a1,
-    };
 
-    await expect(canAccessRestaurant(staff, ids.a1)).resolves.toBe(true);
-    const legacyFilter = await getScopedRestaurantFilter(staff);
-    expect(legacyFilter.$or).toHaveLength(1);
-    expect(String(legacyFilter.$or[0]._id.$in[0])).toBe(ids.a1);
-
-    state.memberships = [
-      {
-        brandId: ids.brandA,
-        role: "staff",
-        status: "active",
-        restaurantIds: [ids.a2],
-      },
-    ];
-    await expect(canAccessRestaurant(staff, ids.a1)).resolves.toBe(false);
-    await expect(canAccessRestaurant(staff, ids.a2)).resolves.toBe(true);
+    await expect(canAccessRestaurant({ id: ids.user }, ids.b1)).resolves.toBe(false);
+    const filter = await getScopedRestaurantFilter({ id: ids.user });
+    expect(String(filter.$or[0].brandId)).toBe(ids.brandA);
+    expect(String(filter.$or[0]._id.$in[0])).toBe(ids.b1);
   });
 
   it("does not grant customers restaurant access through refRestaurants", async () => {
