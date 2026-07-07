@@ -181,6 +181,8 @@ export default function BrandManagement() {
   const [member, setMember] = useState(emptyMemberForm);
   const [memberFormError, setMemberFormError] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
+  const [memberRoleFilter, setMemberRoleFilter] = useState("all");
+  const [memberRestaurantFilter, setMemberRestaurantFilter] = useState("all");
   const [changingMemberId, setChangingMemberId] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -231,6 +233,8 @@ export default function BrandManagement() {
     setMember(emptyMemberForm);
     setMemberFormError("");
     setMemberSearch("");
+    setMemberRoleFilter("all");
+    setMemberRestaurantFilter("all");
   }, [selectedBrandId]);
 
   const members = memberData?.brandMembers || [];
@@ -256,18 +260,30 @@ export default function BrandManagement() {
 
   const filteredMembers = useMemo(() => {
     const keyword = memberSearch.trim().toLowerCase();
-    if (!keyword) return members;
 
-    return members.filter((currentMember) =>
-      [
-        currentMember.user?.fullName,
-        currentMember.userId,
-        currentMember.user?.id,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(keyword)),
-    );
-  }, [memberSearch, members]);
+    return members.filter((currentMember) => {
+      const role = normalizeChainRole(currentMember);
+      const matchesKeyword =
+        !keyword ||
+        [
+          currentMember.user?.fullName,
+          currentMember.userId,
+          currentMember.user?.id,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword));
+      const matchesRole =
+        memberRoleFilter === "all" || role === memberRoleFilter;
+      const matchesRestaurant =
+        memberRestaurantFilter === "all" ||
+        ["owner", "admin"].includes(role) ||
+        (currentMember.restaurantIds || [])
+          .map(String)
+          .includes(memberRestaurantFilter);
+
+      return matchesKeyword && matchesRole && matchesRestaurant;
+    });
+  }, [memberRestaurantFilter, memberRoleFilter, memberSearch, members]);
 
   const validateBrand = () => {
     const nextErrors = {};
@@ -526,38 +542,6 @@ export default function BrandManagement() {
 
       {selectedBrand && (
         <>
-          <section className="brand-identity-panel" aria-labelledby="selected-chain-title">
-            <div className="brand-identity-panel__logo" aria-hidden={!selectedBrand.logoUrl}>
-              {selectedBrand.logoUrl ? (
-                <img src={selectedBrand.logoUrl} alt={`Logo ${selectedBrand.name}`} />
-              ) : (
-                <span>{getInitials(selectedBrand.name)}</span>
-              )}
-            </div>
-            <div className="brand-identity-panel__copy">
-              <span className="brand-kicker">Chuỗi đang được cấu hình</span>
-              <h2 id="selected-chain-title">{selectedBrand.name}</h2>
-              <p>
-                Quản lý tập trung thông tin doanh nghiệp, chi nhánh và thành viên
-                trong cùng một không gian vận hành.
-              </p>
-            </div>
-            <div className="brand-identity-panel__facts" aria-label="Tóm tắt chuỗi">
-              <span>
-                <strong>{restaurants.length}</strong>
-                Chi nhánh
-              </span>
-              <span>
-                <strong>{activeMemberCount}</strong>
-                Thành viên hoạt động
-              </span>
-              <span>
-                <strong>{selectedBrand.slug}</strong>
-                Định danh
-              </span>
-            </div>
-          </section>
-
           <section className="brand-workspace">
             <form className="brand-panel brand-settings-panel" onSubmit={saveBrand}>
               <div className="brand-panel__header">
@@ -750,24 +734,66 @@ export default function BrandManagement() {
               <div>
                 <span className="brand-panel__eyebrow">PHÂN QUYỀN THEO PHẠM VI</span>
                 <h3 id="members-title">Thành viên trong chuỗi</h3>
-                <p>Phân quyền theo chi nhánh.</p>
+                <p>Tìm thành viên hiện có hoặc thêm tài khoản mới bên dưới.</p>
               </div>
-              <label className="brand-member-search">
-                <span aria-hidden="true">⌕</span>
-                <input
-                  type="search"
-                  aria-label="Tìm thành viên theo tên hoặc mã tài khoản"
-                  value={memberSearch}
-                  onChange={(event) => setMemberSearch(event.target.value)}
-                  placeholder="Tên hoặc mã tài khoản"
-                />
-              </label>
+            </div>
+
+            <div className="brand-member-filter-panel" aria-label="Tìm và lọc thành viên">
+              <div className="brand-member-filter-panel__heading">
+                <strong>Tìm và lọc thành viên</strong>
+                <span>{filteredMembers.length}/{members.length} kết quả</span>
+              </div>
+              <div className="brand-member-filters">
+                <label className="brand-field brand-filter-field brand-filter-field--search">
+                  <span>Tìm tài khoản</span>
+                  <div className="brand-member-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input
+                      type="search"
+                      aria-label="Tìm tài khoản theo tên nhân viên hoặc mã tài khoản"
+                      value={memberSearch}
+                      onChange={(event) => setMemberSearch(event.target.value)}
+                      placeholder="Tên nhân viên hoặc mã tài khoản"
+                    />
+                  </div>
+                </label>
+
+                <label className="brand-field brand-filter-field">
+                  <span>Vai trò</span>
+                  <select
+                    aria-label="Lọc theo vai trò"
+                    value={memberRoleFilter}
+                    onChange={(event) => setMemberRoleFilter(event.target.value)}
+                  >
+                    <option value="all">Tất cả vai trò</option>
+                    {Object.entries(CHAIN_ROLE_LABELS).map(([role, label]) => (
+                      <option key={role} value={role}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="brand-field brand-filter-field">
+                  <span>Chi nhánh</span>
+                  <select
+                    aria-label="Lọc theo chi nhánh"
+                    value={memberRestaurantFilter}
+                    onChange={(event) => setMemberRestaurantFilter(event.target.value)}
+                  >
+                    <option value="all">Tất cả chi nhánh</option>
+                    {restaurants.map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
 
             <div className="brand-member-create">
               <div className="brand-member-create__grid">
                 <label className="brand-field">
-                  <span>Mã tài khoản</span>
+                  <span>Mã tài khoản cần thêm</span>
                   <input
                     value={member.userId}
                     onChange={(event) => {
@@ -777,15 +803,15 @@ export default function BrandManagement() {
                       }));
                       setMemberFormError("");
                     }}
-                    placeholder="Nhập mã tài khoản cần thêm"
+                    placeholder="Nhập mã tài khoản"
                   />
                   <small>Lấy mã tại hồ sơ nhân viên hoặc trang quản lý người dùng.</small>
                 </label>
 
                 <label className="brand-field">
-                  <span>Vai trò</span>
+                  <span>Vai trò trong chuỗi</span>
                   <select
-                    aria-label="Vai trò"
+                    aria-label="Vai trò trong chuỗi"
                     value={member.role}
                     onChange={(event) => {
                       setMember((current) => ({
@@ -823,9 +849,9 @@ export default function BrandManagement() {
 
               {member.role === "manager" && (
                 <label className="brand-field brand-scope-control">
-                  <span>Chi nhánh</span>
+                  <span>Chi nhánh phụ trách</span>
                   <select
-                    aria-label="Chi nhánh"
+                    aria-label="Chi nhánh phụ trách"
                     value={member.restaurantIds[0] || ""}
                     onChange={(event) => {
                       setMember((current) => ({
@@ -957,7 +983,7 @@ export default function BrandManagement() {
                   <span aria-hidden="true">◎</span>
                   <p>
                     {members.length
-                      ? "Không tìm thấy thành viên."
+                      ? "Không có thành viên phù hợp với bộ lọc."
                       : "Chuỗi này chưa có thành viên nào ngoài tài khoản chủ sở hữu."}
                   </p>
                 </div>
