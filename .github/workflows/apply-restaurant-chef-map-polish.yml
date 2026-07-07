@@ -1,0 +1,69 @@
+name: Apply restaurant chef and map polish
+
+on:
+  push:
+    branches:
+      - fix/restaurant-chef-map-polish
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[chef-map-patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/restaurant-chef-map-polish
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Apply focused source changes
+        run: python .trellis/tasks/07-08-restaurant-chef-map-polish/apply.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check conflict markers
+        run: npm run check:conflicts
+
+      - name: Run focused map test
+        run: npx vitest run src/utils/installRestaurantInfoMapEnhancement.test.js
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Finalize task and remove one-shot files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('.trellis/tasks/07-08-restaurant-chef-map-polish/task.json')
+          task = json.loads(path.read_text(encoding='utf-8'))
+          task['status'] = 'implemented'
+          task['validation']['completed'] = [
+              'npm run check:conflicts',
+              'npx vitest run src/utils/installRestaurantInfoMapEnhancement.test.js',
+              'npm run build',
+          ]
+          task['validation']['notRun'] = [
+              'authenticated browser smoke test at desktop, 430x932 and 390x844',
+          ]
+          path.write_text(json.dumps(task, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+          rm .trellis/tasks/07-08-restaurant-chef-map-polish/apply.py
+          rm .github/workflows/apply-restaurant-chef-map-polish.yml
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: polish restaurant chef profile and map marker [chef-map-patch]"
+          git push origin HEAD:fix/restaurant-chef-map-polish
