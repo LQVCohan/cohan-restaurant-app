@@ -1,0 +1,23 @@
+{
+  "id": "table-promotion-search",
+  "name": "table-promotion-search",
+  "title": "Add promotion search to table detail modal",
+  "description": "Add a local, accessible search field for active promotions in the table detail modal.",
+  "status": "in_progress",
+  "dev_type": "enhancement",
+  "scope": "manager-table-detail-modal",
+  "priority": "P2",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/table-promotion-search",
+  "base_branch": "main",
+  "commit": null,
+  "pr_url": null,
+  "relatedFiles": [
+    "src/utils/installTablePromotionSearch.js",
+    "src/utils/installTablePromotionSearch.test.js",
+    "src/main.jsx"
+  ]
+}
