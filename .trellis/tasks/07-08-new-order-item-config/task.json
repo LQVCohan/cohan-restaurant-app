@@ -1,0 +1,33 @@
+{
+  "id": "new-order-item-config",
+  "name": "new-order-item-config",
+  "title": "Add serving and quantity controls to new order modal",
+  "description": "Use the existing servingVariants contract in the manager new-order modal so staff can choose the serving/preparation option and enter kg or portion quantities before adding an item.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-new-order-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "commit": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
+    "src/components/Dashboard_Manager/Order/components/NewOrderModalPolish.scss",
+    "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss",
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.test.jsx"
+  ],
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "react-ui-performance",
+      "wcag-ui-audit"
+    ]
+  }
+}
