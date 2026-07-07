@@ -183,7 +183,7 @@ export async function buildSmartPromotionEngine({
       .lean(),
     Promotion.find({ restaurantId: rid }).select({ name: 1, code: 1, promotionType: 1, scope: 1, discountType: 1, discountValue: 1, minOrderValue: 1, maxDiscount: 1, usageLimit: 1, usageCount: 1, targetAudience: 1, conditions: 1, startAt: 1, endAt: 1, isActive: 1, stacking: 1, level: 1 }).lean(),
     Coupon.find({ restaurantId: rid }).select({ name: 1, code: 1, category: 1, discountType: 1, discountValue: 1, minOrderValue: 1, maxDiscount: 1, maxUsage: 1, used: 1, constraints: 1, publishAt: 1, startAt: 1, endAt: 1, isActive: 1 }).lean(),
-    Customer.find({ refRestaurants: { $in: [rid] } }).select({ customerType: 1, totalOrders: 1, totalSpending: 1 }).lean(),
+    Customer.find({ customerRestaurants: { $in: [rid] } }).select({ customerType: 1, totalOrders: 1, totalSpending: 1 }).lean(),
     StockItem.find({ restaurantId: rid }).select({ onHand: 1, reserved: 1 }).limit(200).lean(),
   ]);
 

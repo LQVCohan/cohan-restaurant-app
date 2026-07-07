@@ -108,9 +108,6 @@ const resolveRestaurantId = ({
   const fromContextRestaurants = getRestaurantId(restaurants?.[0]);
   if (fromContextRestaurants) return fromContextRestaurants;
 
-  const fromRefRestaurants = getRestaurantId(user?.refRestaurants?.[0]);
-  if (fromRefRestaurants) return fromRefRestaurants;
-
   return getRestaurantId(user?.restaurantId) || null;
 };
 

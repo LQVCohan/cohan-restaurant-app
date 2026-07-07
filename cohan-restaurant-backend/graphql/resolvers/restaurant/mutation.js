@@ -1,7 +1,8 @@
 // src/resolvers/restaurant.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Restaurant, RestaurantCategoryIndex } from "../../../models/index.js";
+import { Restaurant, RestaurantCategoryIndex, Customer } from "../../../models/index.js";
+import { touchRecentRestaurant } from "../shared/customerIdentity.js";
 import { PERMISSIONS } from "../../../src/constants/permissions.js";
 import { requirePermission } from "../../../src/services/auth/authorization.service.js";
 import { rewriteRestaurantProfileDescription as rewriteRestaurantProfileDescriptionService } from "../../../src/services/ai/restaurantProfileRewrite.service.js";
@@ -234,10 +235,29 @@ async function rewriteRestaurantProfileDescription(_, { input }, ctx) {
   });
 }
 
+async function recordRecentRestaurant(_, { restaurantId }, ctx) {
+  if (!ctx?.user?.id && !ctx?.user?._id) {
+    throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+  }
+  if (!mongoose.isValidObjectId(restaurantId)) throw badInput("Invalid restaurantId");
+  if (String(ctx.user.userType || "").toUpperCase() !== "CUSTOMER") return false;
+  const restaurant = await Restaurant.exists({
+    _id: restaurantId,
+    businessStatus: "active",
+    publicationStatus: "published",
+  });
+  if (!restaurant) throw notFound("Restaurant not found");
+  const customer = await Customer.findOne({ _id: ctx.user.id || ctx.user._id, userType: "CUSTOMER", deletedAt: null });
+  if (!customer) return false;
+  await touchRecentRestaurant(customer, restaurantId);
+  return true;
+}
+
 export const RestaurantMutation = {
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,
   updateRestaurantCategoryIndex,
   rewriteRestaurantProfileDescription,
+  recordRecentRestaurant,
 };

@@ -76,7 +76,7 @@ function buildCustomerQueryCondition({
   customerRank = null,
 }) {
   const activeCond = { deletedAt: null };
-  const restaurantScopeCond = { refRestaurants: { $in: [toObjectId(restaurantId)] } };
+  const restaurantScopeCond = { customerRestaurants: { $in: [toObjectId(restaurantId)] } };
   const searchCond = buildSearchCond(search);
   const customerRoleClause = customerRoleId ? { role: customerRoleId } : null;
   const guestClause = { isGuest: true };
@@ -252,7 +252,7 @@ export const UserQuery = {
 
       const restaurantScopeCond = scopedRestaurantId
         ? {
-            refRestaurants: {
+            customerRestaurants: {
               $in: [toObjectId(scopedRestaurantId)],
             },
           }
@@ -702,7 +702,7 @@ export const UserQuery = {
     }
 
     const scopedCustomers = await Customer.find({
-      refRestaurants: { $in: [rid] },
+      customerRestaurants: { $in: [rid] },
     }).lean();
     const membershipDays =
       scopedCustomers.reduce(

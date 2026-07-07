@@ -115,7 +115,6 @@ const CustomerModal = ({
     if (restaurantIdProp) return restaurantIdProp;
     return (
       user?.restaurantForStaff ||
-      user?.refRestaurants?.[0] ||
       restaurants?.[0]?.id ||
       null
     );

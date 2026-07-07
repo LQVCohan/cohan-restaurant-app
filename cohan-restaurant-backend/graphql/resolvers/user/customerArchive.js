@@ -30,7 +30,7 @@ const modifiedCountOf = (result) =>
 
 const archivedScope = (restaurantId) => ({
   deletedAt: null,
-  refRestaurants: { $nin: [restaurantId] },
+  customerRestaurants: { $nin: [restaurantId] },
   archivedRestaurants: { $elemMatch: { restaurantId } },
 });
 
@@ -95,9 +95,9 @@ const archiveAllCustomers = async (
   await requireRestaurantAccess(ctx, rid);
 
   const result = await Customer.updateMany(
-    { deletedAt: null, refRestaurants: rid },
+    { deletedAt: null, customerRestaurants: rid },
     {
-      $pull: { refRestaurants: rid },
+      $pull: { customerRestaurants: rid },
       $addToSet: {
         archivedRestaurants: {
           restaurantId: rid,
@@ -125,7 +125,7 @@ const restoreAllArchivedCustomers = async (
   const result = await Customer.updateMany(
     archivedScope(rid),
     {
-      $addToSet: { refRestaurants: rid },
+      $addToSet: { customerRestaurants: rid },
       $pull: { archivedRestaurants: { restaurantId: rid } },
     },
   );

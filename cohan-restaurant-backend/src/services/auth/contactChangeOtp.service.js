@@ -129,7 +129,7 @@ function auditMeta({ user, target, value, status, provider, sent, skipped, error
 async function writeAudit({ ctx, user, verb, target, value, status = "success", delivery = {}, attempts }) {
   await logEvent({
     ctx,
-    restaurantId: user?.restaurantForStaff || user?.refRestaurants?.[0] || null,
+    restaurantId: user?.restaurantForStaff || null,
     actorUserId: actorId(user, ctx),
     verb,
     object: { kind: "User", id: user?._id || user?.id },

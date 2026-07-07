@@ -288,11 +288,7 @@ export async function buildStaffSchedulingAssistant({
     Staff.find({
       userType: "STAFF",
       deletedAt: null,
-      $or: [
-        { restaurantForStaff: rid },
-        { refRestaurants: rid },
-        { restaurantForStaff: rid },
-      ],
+      restaurantForStaff: rid,
       employmentStatus: { $in: [...ACTIVE_EMPLOYMENT] },
     })
       .select({

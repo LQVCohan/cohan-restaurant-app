@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Customer } from "../../../models/index.js";
 
 const GUEST_TTL_DAYS = 30;
@@ -36,12 +37,34 @@ async function findOneByField(field, value, session = null) {
   return q;
 }
 
-function ensureRestaurantRef(customer, restaurantId) {
-  if (!restaurantId || !customer?.isGuest) return false;
+export const RECENT_RESTAURANT_LIMIT = 12;
+
+export function normalizeRecentRestaurantIds(refRestaurants = [], restaurantId) {
+  if (!mongoose.isValidObjectId(restaurantId)) return null;
+  const latest = String(restaurantId);
+  return [
+    latest,
+    ...refRestaurants.map(String).filter((id) => mongoose.isValidObjectId(id) && id !== latest),
+  ].slice(0, RECENT_RESTAURANT_LIMIT);
+}
+
+export async function touchRecentRestaurant(customer, restaurantId, { session = null } = {}) {
+  if (!customer || !mongoose.isValidObjectId(restaurantId)) return false;
+  const next = normalizeRecentRestaurantIds(customer.refRestaurants || [], restaurantId);
+  if (!next) return false;
+  const current = (customer.refRestaurants || []).map(String).slice(0, RECENT_RESTAURANT_LIMIT);
+  if (current.length === next.length && current.every((id, index) => id === next[index])) return false;
+  customer.refRestaurants = next.map((id) => new mongoose.Types.ObjectId(id));
+  await customer.save(session ? { session } : undefined);
+  return true;
+}
+
+export function ensureCustomerRestaurant(customer, restaurantId) {
+  if (!restaurantId || !customer) return false;
   const id = String(restaurantId);
-  const refs = Array.isArray(customer.refRestaurants) ? customer.refRestaurants.map(String) : [];
+  const refs = Array.isArray(customer.customerRestaurants) ? customer.customerRestaurants.map(String) : [];
   if (refs.includes(id)) return false;
-  customer.refRestaurants = [...refs, id];
+  customer.customerRestaurants = [...refs, id];
   return true;
 }
 
@@ -64,8 +87,21 @@ export async function resolveCustomerIdentityByContact({
   guestFallbackName = "Khách",
   fillGuestProfile = true,
   touchGuestOnMatch = true,
+  touchRecentOnMatch = true,
+  addCustomerRestaurant = true,
 }) {
   if (selectedUserId) {
+    if (restaurantId && (touchRecentOnMatch || addCustomerRestaurant)) {
+      const selected = await Customer.findById(selectedUserId);
+      if (selected) {
+        if (addCustomerRestaurant) ensureCustomerRestaurant(selected, restaurantId);
+        if (touchRecentOnMatch) {
+          await touchRecentRestaurant(selected, restaurantId, { session });
+        } else if (addCustomerRestaurant) {
+          await selected.save(session ? { session } : undefined);
+        }
+      }
+    }
     return { userId: selectedUserId, isGuestCustomer: false, mode: "selected" };
   }
 
@@ -84,6 +120,11 @@ export async function resolveCustomerIdentityByContact({
 
   const matchedRegistered = [byEmail, byPhone].find((u) => u && !u.isGuest);
   if (matchedRegistered) {
+    if (touchRecentOnMatch && restaurantId) {
+      const changedRelation = addCustomerRestaurant && ensureCustomerRestaurant(matchedRegistered, restaurantId);
+      if (changedRelation) await matchedRegistered.save(session ? { session } : undefined);
+      await touchRecentRestaurant(matchedRegistered, restaurantId, { session });
+    }
     return {
       user: matchedRegistered,
       userId: matchedRegistered._id,
@@ -103,8 +144,9 @@ export async function resolveCustomerIdentityByContact({
       if (customerName) matchedGuest.fullName = customerName;
       if (fillGuestProfile && !matchedGuest.email && email) matchedGuest.email = email;
       if (fillGuestProfile && !matchedGuest.phone && phone) matchedGuest.phone = phone;
-      ensureRestaurantRef(matchedGuest, restaurantId);
+      if (addCustomerRestaurant) ensureCustomerRestaurant(matchedGuest, restaurantId);
       await matchedGuest.save(session ? { session } : undefined);
+      if (touchRecentOnMatch && restaurantId) await touchRecentRestaurant(matchedGuest, restaurantId, { session });
     }
 
     return {
@@ -136,7 +178,10 @@ export async function resolveCustomerIdentityByContact({
       isGuest: true,
       guestExpiresAt: buildGuestExpiresAt(),
       guestLastSeenAt: now,
-      ...(restaurantId ? { refRestaurants: [restaurantId] } : {}),
+      ...(restaurantId ? {
+        refRestaurants: [restaurantId],
+        ...(addCustomerRestaurant ? { customerRestaurants: [restaurantId] } : {}),
+      } : {}),
     }],
     session ? { session } : undefined,
   ).then((rows) => rows[0]);

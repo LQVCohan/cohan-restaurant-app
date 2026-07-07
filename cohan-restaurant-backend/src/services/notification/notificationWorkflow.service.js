@@ -1,4 +1,4 @@
-import { Notification, User } from "../../../models/index.js";
+import { BrandMembership, Notification, Restaurant, User } from "../../../models/index.js";
 
 const REVIEWER_TYPES = ["MANAGER", "ADMIN", "HR"];
 const STAFF_ATTENDANCE_REVIEW_SOURCES = new Set(["attendance_correction", "overtime_request"]);
@@ -40,7 +40,18 @@ function emitNotificationCreated(notification, io = notificationIo) {
 
 async function reviewerIds(restaurantId) {
   if (!restaurantId) return [];
-  const users = await User.find({ userType: { $in: REVIEWER_TYPES }, $or: [{ restaurantForStaff: restaurantId }, { refRestaurants: restaurantId }] }).select("_id").lean();
+  const restaurant = await Restaurant.findById(restaurantId).select("brandId").lean();
+  if (!restaurant?.brandId) return [];
+  const memberships = await BrandMembership.find({
+    brandId: restaurant.brandId,
+    status: "active",
+    $or: [
+      { role: { $in: ["owner", "admin"] } },
+      { role: { $in: ["manager", "staff"] }, restaurantIds: restaurant._id },
+    ],
+  }).select("userId").lean();
+  const candidateIds = uniq(memberships.map((item) => item.userId));
+  const users = await User.find({ _id: { $in: candidateIds }, userType: { $in: REVIEWER_TYPES } }).select("_id").lean();
   return uniq(users.map((u) => u._id));
 }
 

@@ -259,10 +259,7 @@ export async function listStaffPerformanceSummaries(input, actor) {
     }),
     Staff.find({
       ...employeeFilter,
-      $or: [
-        { restaurantForStaff: restaurantId },
-        { refRestaurants: restaurantId },
-      ],
+      restaurantForStaff: restaurantId,
       employmentStatus: "working",
       status: "active",
       deletedAt: null,

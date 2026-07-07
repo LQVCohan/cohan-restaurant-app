@@ -52,6 +52,10 @@ const customerSchema = new mongoose.Schema(
     guestExpiresAt: { type: Date },
     guestLastSeenAt: { type: Date },
     registeredAt: { type: Date },
+    customerRestaurants: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
+      default: [],
+    },
     archivedRestaurants: {
       type: [archivedRestaurantSchema],
       default: [],
@@ -74,6 +78,7 @@ customerSchema.index(
   { expireAfterSeconds: 0, partialFilterExpression: { isGuest: true } },
 );
 customerSchema.index({ "archivedRestaurants.restaurantId": 1 });
+customerSchema.index({ customerRestaurants: 1 });
 
 export const Customer =
   mongoose.models.Customer ||

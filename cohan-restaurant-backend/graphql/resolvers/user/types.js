@@ -16,7 +16,10 @@ export default {
 
     refRestaurants: (parent) => {
       if (!parent.refRestaurants?.length) return [];
-      return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean();
+      return Restaurant.find({ _id: { $in: parent.refRestaurants } }).lean().then((rows) => {
+        const byId = new Map(rows.map((row) => [String(row._id), row]));
+        return parent.refRestaurants.map((id) => byId.get(String(id))).filter(Boolean);
+      });
     },
     createdBy: (parent) => {
       if (!parent.createdBy) return null;

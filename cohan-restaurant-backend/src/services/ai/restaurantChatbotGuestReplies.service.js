@@ -173,7 +173,7 @@ const resolveRecipientIdsByRole = async ({ thread, senderId }) => {
   const userTypes = roleMap[role] || [String(thread.targetRole || "").toUpperCase()];
   const users = await User.find({
     userType: { $in: userTypes },
-    $or: [{ restaurantForStaff: thread.restaurantId }, { refRestaurants: thread.restaurantId }],
+    restaurantForStaff: thread.restaurantId,
   }).select("_id").lean();
 
   return users.map((u) => String(u._id)).filter((id) => id !== String(senderId));

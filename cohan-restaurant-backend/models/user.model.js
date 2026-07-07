@@ -143,9 +143,8 @@ const userSchema = BaseSchemaModel(
 
     role: { type: mongoose.Schema.Types.ObjectId, ref: "Role" },
 
-    refRestaurants: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" },
-    ],
+    // CUSTOMER only: recent restaurant history, newest first. Never use for auth/scope.
+    refRestaurants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
 
     // Nhà hàng chính nhân viên được phân công (lưu dạng restaurant ID)
     restaurantForStaff: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", default: null },

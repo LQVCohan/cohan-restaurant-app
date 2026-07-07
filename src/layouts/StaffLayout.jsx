@@ -66,8 +66,7 @@ const getRestaurantId = (value) => {
 
 const resolveStaffRestaurantId = (user) =>
   getRestaurantId(user?.restaurantForStaff) ||
-  getRestaurantId(user?.restaurantId) ||
-  getRestaurantId(user?.refRestaurants?.[0]);
+  getRestaurantId(user?.restaurantId);
 
 const isActivePath = (location, target) => {
   return location.pathname === target || (target !== "/staff/dashboard" && location.pathname.startsWith(target + "/"));

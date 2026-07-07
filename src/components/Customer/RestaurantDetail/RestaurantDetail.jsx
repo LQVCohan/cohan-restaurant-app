@@ -119,6 +119,12 @@ const TOGGLE_RESTAURANT_FAVORITE = gql`
   }
 `;
 
+const RECORD_RECENT_RESTAURANT = gql`
+  mutation RecordRecentRestaurantForDetail($restaurantId: ID!) {
+    recordRecentRestaurant(restaurantId: $restaurantId)
+  }
+`;
+
 const RestaurantDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -148,6 +154,8 @@ const RestaurantDetail = () => {
       onCompleted: () => refetchRestaurantFavorites?.(),
     },
   );
+  const [recordRecentRestaurant] = useMutation(RECORD_RECENT_RESTAURANT);
+  const recordedRestaurantIdRef = React.useRef(null);
 
   const [activeTab, setActiveTab] = useState("info");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -201,6 +209,13 @@ const RestaurantDetail = () => {
     window.addEventListener("message", onPreviewMessage);
     return () => window.removeEventListener("message", onPreviewMessage);
   }, [isPreviewMode]);
+
+  useEffect(() => {
+    if (isPreviewMode || !isAuthenticated || !user?.id || !id) return;
+    if (recordedRestaurantIdRef.current === id) return;
+    recordedRestaurantIdRef.current = id;
+    recordRecentRestaurant({ variables: { restaurantId: id } }).catch(() => {});
+  }, [id, isAuthenticated, isPreviewMode, recordRecentRestaurant, user?.id]);
 
   const restaurant = restaurantData?.publicRestaurant;
 

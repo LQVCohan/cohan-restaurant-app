@@ -326,7 +326,7 @@ async function fullSearch(query, filter, limit, offset, ctx) {
       if (phoneDigits.length >= 6) {
         or.push({ phone: { $regex: phoneDigits, $options: "i" } });
       }
-      return User.find({ userType: { $in: ["MANAGER", "ADMIN"] }, $or: or }, { fullName: 1, phone: 1, email: 1, refRestaurants: 1 })
+      return User.find({ userType: { $in: ["MANAGER", "ADMIN"] }, $or: or }, { fullName: 1, phone: 1, email: 1 })
         .limit(limit).skip(offset).lean();
     })() : [],
     types.has("LOCATION") ? findLocationSuggestions(trimmed, limit) : [],
@@ -335,7 +335,7 @@ async function fullSearch(query, filter, limit, offset, ctx) {
   const items = [];
   restaurants.forEach((r) => items.push({ type: "RESTAURANT", score: r.avgRating || 0, restaurant: { id: r._id.toString(), name: r.name, coverImage: r.coverImage || null, avatar: r.avatar || null, avgRating: r.avgRating ?? 0, cuisineType: r.cuisineType || null, address: r.address || null } }));
   menuItems.forEach((m) => items.push({ type: "MENU_ITEM", score: 1, timeSlot: m.menu?.timeSlot || null, menuItem: { id: m._id.toString(), name: m.name, basePrice: m.basePrice ?? 0, thumbImage: m.thumbImage || null, restaurant: m.restaurant ? { id: m.restaurant._id.toString(), name: m.restaurant.name, address: m.restaurant.address || null } : null } }));
-  owners.forEach((o) => items.push({ type: "OWNER", score: (Array.isArray(o.refRestaurants) ? o.refRestaurants.length : 0) + 1, owner: { id: o._id.toString(), fullName: o.fullName || null, phone: o.phone || null, email: o.email || null } }));
+  owners.forEach((o) => items.push({ type: "OWNER", score: 1, owner: { id: o._id.toString(), fullName: o.fullName || null, phone: o.phone || null, email: o.email || null } }));
   locations.forEach((l) => items.push({ type: "LOCATION", score: 1, locationLabel: l.label, locationCity: l.city, locationDistrict: l.district }));
 
   items.sort((a, b) => (b.score || 0) - (a.score || 0));

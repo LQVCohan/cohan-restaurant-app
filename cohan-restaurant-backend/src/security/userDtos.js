@@ -192,7 +192,7 @@ export function staffBelongsToRestaurant(staffUser, restaurantId) {
 export function resolveStaffPrivateProfileScope(staffUser, requestedRestaurantId = null) {
   const requested = stringId(requestedRestaurantId);
   if (requested) return requested;
-  return stringId(staffUser?.restaurantForStaff) || stringId(staffUser?.refRestaurants?.[0]) || null;
+  return stringId(staffUser?.restaurantForStaff) || null;
 }
 
 export async function assertCanReadStaffPrivateProfile({ ctx, staffUser, restaurantId }) {

@@ -64,7 +64,7 @@ const HelpPage = () => {
 
   const { user } = useContext(AuthContext) || {};
   const restaurantId = useMemo(
-    () => user?.refRestaurants?.[0] || user?.restaurantForStaff || null,
+    () => user?.restaurantForStaff || null,
     [user]
   );
 

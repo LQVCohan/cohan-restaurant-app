@@ -210,9 +210,7 @@ const managerDashboard = async (_, { restaurantId, range = "week" }, ctx) => {
     getDashboardRanges(range, now);
   const currentDateFilter = { $gte: currentStart, $lte: currentEnd };
   const previousDateFilter = { $gte: previousStart, $lte: previousEnd };
-  const staffRestaurantFilter = {
-    $or: [{ restaurantForStaff: rid }, { refRestaurants: rid }],
-  };
+  const staffRestaurantFilter = { restaurantForStaff: rid };
 
   const [
     currentOrders,

@@ -43,7 +43,7 @@ export const CustomerNotificationProvider = ({ children }) => {
   const { user, isAuthenticated } = useContext(AuthContext) || {};
   const roleName = String(user?.roleName || user?.role?.slug || user?.role?.name || "").toLowerCase();
   const isCustomer = roleName === "customer";
-  const restaurantId = isCustomer ? null : user?.refRestaurants?.[0] || null;
+  const restaurantId = isCustomer ? null : user?.restaurantForStaff || null;
   const notificationsEnabled = Boolean(isAuthenticated && (user?.id || user?._id));
   const [archiveNotification] = useMutation(ARCHIVE_NOTIFICATION);
 

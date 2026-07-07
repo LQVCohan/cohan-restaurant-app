@@ -56,31 +56,20 @@ const GET_RESTAURANTS = gql`
 `;
 
 const GET_REF_RESTAURANTS = gql`
-  query RefRestaurantsForCustomerList($userId: ID!, $limit: Int = 12) {
-    ordersByUser(userId: $userId, limit: $limit) {
-      edges {
-        node {
-          id
-          restaurantId
-          createdAt
-        }
-      }
-    }
-    myReservations(limit: $limit) {
+  query MyRecentRestaurantsForCustomerList($limit: Int = 6) {
+    myRecentRestaurants(limit: $limit) {
       id
-      restaurantId
-      createdAt
-      timeTo
+      name
+      cuisineType
+      address {
+        district
+        city
+      }
     }
   }
 `;
 
 const LIMIT = 24;
-
-const getRecentTimestamp = (value) => {
-  const parsed = value ? Date.parse(value) : NaN;
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 
 const RestaurantList = ({ restaurantFilter }) => {
   // Nhận filter từ props (nếu có từ Router)
@@ -98,56 +87,18 @@ const RestaurantList = ({ restaurantFilter }) => {
   const [quickFilter, setQuickFilter] = useState(null); // Filter từ Hero
 
   const { data: refRestaurantData } = useQuery(GET_REF_RESTAURANTS, {
-    variables: { userId: user?.id, limit: 12 },
+    variables: { limit: 6 },
     skip: !isAuthenticated || !user?.id,
     fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
   });
 
-  const refRestaurantMap = useMemo(() => {
-    const entries = [];
-    (refRestaurantData?.ordersByUser?.edges || []).forEach((edge) => {
-      const node = edge?.node;
-      if (!node?.restaurantId) return;
-      entries.push({
-        restaurantId: String(node.restaurantId),
-        at: getRecentTimestamp(node.createdAt),
-        source: "order",
-      });
-    });
-    (refRestaurantData?.myReservations || []).forEach((reservation) => {
-      if (!reservation?.restaurantId) return;
-      entries.push({
-        restaurantId: String(reservation.restaurantId),
-        at: getRecentTimestamp(reservation.createdAt || reservation.timeTo),
-        source: "reservation",
-      });
-    });
-
-    const latestByRestaurant = new Map();
-    entries.forEach((entry) => {
-      const previous = latestByRestaurant.get(entry.restaurantId);
-      if (!previous || entry.at > previous.at) latestByRestaurant.set(entry.restaurantId, entry);
-    });
-
-    return new Map(
-      Array.from(latestByRestaurant.values())
-        .sort((a, b) => b.at - a.at)
-        .map((entry, index) => [
-          entry.restaurantId,
-          {
-            rank: index,
-            source: entry.source,
-            at: entry.at,
-          },
-        ]),
-    );
-  }, [refRestaurantData]);
+  const recentRestaurants = refRestaurantData?.myRecentRestaurants || [];
 
   // --- MAPPING DATA FOR HOOK ---
   const source = useMemo(() => {
     return accumulated
       .map((node, index) => {
-        const refMeta = refRestaurantMap.get(String(node.id));
         return {
           id: node.id,
           name: node.name,
@@ -162,19 +113,10 @@ const RestaurantList = ({ restaurantFilter }) => {
           canReserve: node.canReserve,
           canOrder: node.canOrder,
           reviewCount: node.reviewCount,
-          recentRank: refMeta?.rank ?? null,
-          recentSource: refMeta?.source ?? null,
-          isRecentRestaurant: !!refMeta,
           originalIndex: index,
         };
       })
-      .sort((a, b) => {
-        const ar = Number.isFinite(Number(a.recentRank)) ? Number(a.recentRank) : Number.POSITIVE_INFINITY;
-        const br = Number.isFinite(Number(b.recentRank)) ? Number(b.recentRank) : Number.POSITIVE_INFINITY;
-        if (ar !== br) return ar - br;
-        return (a.originalIndex || 0) - (b.originalIndex || 0);
-      });
-  }, [accumulated, refRestaurantMap]);
+  }, [accumulated]);
 
   // Hook xử lý lọc client-side (nếu cần) & quản lý state filter
   const {
@@ -190,11 +132,6 @@ const RestaurantList = ({ restaurantFilter }) => {
     handleClearFilters,
     handleToggleFavorite,
   } = useRestaurants(source, { itemsPerPage: 10000 });
-
-  const recentRestaurants = useMemo(
-    () => currentRestaurants.filter((restaurant) => restaurant.isRecentRestaurant).slice(0, 6),
-    [currentRestaurants],
-  );
 
   // --- CONVERT FILTER TO GRAPHQL ---
   const gqlFilters = useMemo(() => {
@@ -377,14 +314,14 @@ const RestaurantList = ({ restaurantFilter }) => {
               </div>
             </div>
 
-            {recentRestaurants.length > 0 && sortBy === "relevance" && (
+            {isAuthenticated && recentRestaurants.length > 0 && sortBy === "relevance" && (
               <section className="recent-restaurants-strip" aria-label="Nhà hàng gần đây">
                 <div className="recent-restaurants-strip__head">
                   <div>
                     <span>Gợi ý nhanh</span>
                     <h3>Nhà hàng gần đây của bạn</h3>
                   </div>
-                  <p>Lấy từ lịch sử đặt món / đặt bàn, được ưu tiên trước danh sách còn lại.</p>
+                  <p>Lấy từ lịch sử nhà hàng bạn đã xem gần đây.</p>
                 </div>
                 <div className="recent-restaurants-strip__list">
                   {recentRestaurants.map((restaurant) => (
@@ -395,7 +332,7 @@ const RestaurantList = ({ restaurantFilter }) => {
                       onClick={() => navigate(`/restaurant/${restaurant.id}`)}
                     >
                       <span>{restaurant.name}</span>
-                      <small>{restaurant.recentSource === "reservation" ? "Đã đặt bàn" : "Đã đặt món"}</small>
+                      <small>{restaurant.address?.district || restaurant.address?.city || restaurant.cuisineType || "Gần đây"}</small>
                     </button>
                   ))}
                 </div>

@@ -34,6 +34,15 @@ describe("customerIdentity shared service", () => {
     expect(svc.normalizeCustomerPhone("84901234567")).toBe("0901234567");
   });
 
+  it("normalizes recent restaurants newest first, unique, max 12", async () => {
+    const { normalizeRecentRestaurantIds } = await import("../../graphql/resolvers/shared/customerIdentity.js");
+    const ids = Array.from({ length: 13 }, (_, index) => `507f1f77bcf86cd7994390${String(index).padStart(2, "0")}`);
+    const next = normalizeRecentRestaurantIds(ids, ids[5]);
+    expect(next[0]).toBe(ids[5]);
+    expect(new Set(next).size).toBe(12);
+    expect(next).toHaveLength(12);
+  });
+
   it("matches guest and updates ttl/lastSeen", async () => {
     const guest = { _id: "g1", isGuest: true, save: vi.fn().mockResolvedValue(undefined) };
     modelMocks.Customer.findOne

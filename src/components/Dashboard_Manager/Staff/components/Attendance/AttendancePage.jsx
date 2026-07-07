@@ -603,8 +603,7 @@ const AttendancePage = () => {
     window.history.replaceState(null, "", nextUrl);
   }, []);
 
-  const userRestaurantId =
-    user?.restaurantForStaff || user?.refRestaurants?.[0]?.id || null;
+  const userRestaurantId = user?.restaurantForStaff || null;
 
   const {
     employees,
