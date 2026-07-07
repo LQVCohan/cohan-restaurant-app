@@ -1,5 +1,38 @@
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+export function normalizeLocalDevGraphqlUrl(
+  configuredUrl: string,
+  browserHostname: string,
+  isDev = import.meta.env.DEV,
+) {
+  if (!isDev || !browserHostname || configuredUrl.startsWith("/")) {
+    return configuredUrl;
+  }
+
+  try {
+    const apiUrl = new URL(configuredUrl);
+    const hasLoopbackMismatch =
+      LOOPBACK_HOSTS.has(apiUrl.hostname) &&
+      LOOPBACK_HOSTS.has(browserHostname) &&
+      apiUrl.hostname !== browserHostname;
+
+    if (hasLoopbackMismatch) {
+      return `${apiUrl.pathname}${apiUrl.search}${apiUrl.hash}` || "/graphql";
+    }
+  } catch {
+    // Keep the configured value when it is not an absolute URL.
+  }
+
+  return configuredUrl;
+}
+
 export function getGraphqlUrl() {
-  return import.meta.env.VITE_API_URL || "http://localhost:4000/graphql";
+  const configuredUrl =
+    import.meta.env.VITE_API_URL || "http://localhost:4000/graphql";
+  const browserHostname =
+    typeof window !== "undefined" ? window.location.hostname : "";
+
+  return normalizeLocalDevGraphqlUrl(configuredUrl, browserHostname);
 }
 
 const stripGraphqlSuffix = (value: string) =>
