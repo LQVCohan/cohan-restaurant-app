@@ -1,0 +1,44 @@
+.brand-membership-actions-stack {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+.brand-membership-actions {
+  margin: 0;
+}
+
+.brand-membership-actions__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr) auto;
+  align-items: end;
+  gap: 0.7rem;
+}
+
+.brand-membership-actions__hint {
+  margin: 0.75rem 0 0;
+  color: var(--bm-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 820px) {
+  .brand-membership-actions__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .brand-membership-actions__grid > .brand-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .brand-membership-actions__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-membership-actions__grid > .brand-button {
+    grid-column: auto;
+  }
+}
