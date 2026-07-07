@@ -371,7 +371,7 @@ export default {
       _id: { $in: tableIds },
       restaurantId,
     })
-      .select({ _id: 1, restaurantId: 1, code: 1, floorId: 1 })
+      .select({ _id: 1, restaurantId: 1, code: 1, floorId: 1, joinGroupId: 1 })
       .lean();
 
     if (tables.length !== tableIds.length) {
@@ -380,6 +380,17 @@ export default {
     const floorIds = new Set(tables.map((item) => String(item.floorId || "")));
     if (floorIds.size !== 1) {
       throw new GraphQLError("Cannot merge tables from different floors");
+    }
+    if (!tableIds.some((id) => String(id) === String(anchorId))) {
+      throw new GraphQLError("anchorId must belong to tableIds");
+    }
+    const conflictingGroup = tables.find(
+      (item) => item.joinGroupId && String(item.joinGroupId) !== String(joinGroupId || "")
+    );
+    if (conflictingGroup) {
+      throw new GraphQLError(
+        `Bàn ${conflictingGroup.code || "đã chọn"} đang thuộc nhóm khác. Vui lòng tách bàn trước khi gộp lại.`
+      );
     }
 
     // Tạo joinGroupId nếu chưa truyền
@@ -431,27 +442,34 @@ export default {
     }
     await requireRestaurantPermission(ctx, restaurantId, PERMISSIONS.TABLE_WRITE);
 
-    // Xác định tập bàn sẽ tách
-    let toUnmergeFilter = { restaurantId, joinGroupId };
-    if (mode === "PARTIAL") {
-      toUnmergeFilter._id = { $in: tableIds };
-    }
-
-    const affected = await Table.updateMany(toUnmergeFilter, {
-      $set: { isJoinable: false },
-      $unset: { joinGroupId: "" },
-    });
-
-    // Lấy lại id các bàn đã tách (để trả về)
-    const unmerged = await Table.find({
-      restaurantId,
-      ...(mode === "PARTIAL" ? { _id: { $in: tableIds } } : {}), // ALL: tất cả bàn của group cũ đã clear
-      // Sau khi tách, joinGroupId đã null -> dựa vào ids ở PARTIAL
-    })
+    const groupedTables = await Table.find({ restaurantId, joinGroupId })
       .select({ _id: 1 })
       .lean();
+    const groupTableIds = groupedTables.map((item) => item._id.toString());
+    const requestedIds = new Set((tableIds || []).map(String));
+    const requestedGroupTableIds =
+      mode === "PARTIAL"
+        ? groupTableIds.filter((id) => requestedIds.has(id))
+        : groupTableIds;
+    const remainingCount = groupTableIds.length - requestedGroupTableIds.length;
+    const unmergedTableIds =
+      mode === "PARTIAL" && remainingCount === 1
+        ? groupTableIds
+        : requestedGroupTableIds;
 
-    const unmergedTableIds = unmerged.map((x) => x._id.toString());
+    const affected = unmergedTableIds.length
+      ? await Table.updateMany(
+          {
+            restaurantId,
+            joinGroupId,
+            _id: { $in: unmergedTableIds },
+          },
+          {
+            $set: { isJoinable: false },
+            $unset: { joinGroupId: "" },
+          }
+        )
+      : { modifiedCount: 0 };
 
     // log
     await logEvent({
