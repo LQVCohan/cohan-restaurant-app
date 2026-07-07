@@ -525,9 +525,8 @@ describe("restaurantChatbot universal assistant safety", () => {
   });
 
   it("provider receives safe user/page/navigation context", async () => {
-    process.env.AI_PROVIDER = "openai";
-    process.env.OPENAI_API_KEY = "openai-key";
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ answer: "ok", intent: "navigation", confidence: 0.9, quickReplies: [], actions: [], sources: [] }) } }] }) }));
+    process.env.GEMINI_API_KEY = "test";
+    const fetchMock = mockGeminiFetch({ answer: "ok", intent: "navigation", confidence: 0.9, quickReplies: [], actions: [], sources: [] });
     vi.stubGlobal("fetch", fetchMock);
     const context = {
       intent: "navigation",
@@ -537,7 +536,7 @@ describe("restaurantChatbot universal assistant safety", () => {
     };
     await callAiProvider({ message: "đơn hàng ở đâu", context, history: [] });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    const system = body.messages[0].content;
+    const system = body.systemInstruction.parts[0].text;
     expect(system).toContain("AI App Assistant for Cohan Restaurant App");
     expect(system).not.toContain("AI Menu Assistant");
     expect(system).toContain("userSafeProfile");
