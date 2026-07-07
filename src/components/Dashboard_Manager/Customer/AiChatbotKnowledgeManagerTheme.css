@@ -1,0 +1,263 @@
+/* Bind the AI knowledge screen to the shared manager dashboard design tokens. */
+.manager-layout .ai-admin-page--knowledge {
+  --ai-bg: var(--manager-bg-mid, #e8f1ec) !important;
+  --ai-page-bg: var(--manager-bg-base, #eef5f1) !important;
+  --ai-surface: var(--manager-surface, rgba(249, 252, 250, 0.94)) !important;
+  --ai-surface-glass: var(--manager-surface, rgba(249, 252, 250, 0.94)) !important;
+  --ai-surface-strong: var(--manager-surface, rgba(249, 252, 250, 0.98)) !important;
+  --ai-surface-soft: var(--manager-surface-soft, rgba(241, 247, 243, 0.94)) !important;
+  --ai-border: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  --ai-border-strong: var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
+  --ai-text: var(--manager-text, #24312c) !important;
+  --ai-muted: var(--manager-muted, #607069) !important;
+  --ai-subtle: var(--manager-muted, #607069) !important;
+  --ai-accent: var(--manager-primary, #536c61) !important;
+  --ai-accent-hover: var(--manager-primary-hover, #40584e) !important;
+  --ai-accent-soft: var(--manager-accent-soft, #e5f0eb) !important;
+  --ai-warm: var(--manager-primary, #536c61) !important;
+  --ai-success: var(--manager-success, #2f7d68) !important;
+  --ai-success-bg: var(--manager-success-soft, #e5f3ed) !important;
+  --ai-warning: var(--manager-warning, #a66a18) !important;
+  --ai-warning-bg: var(--manager-warning-soft, #fff3da) !important;
+  --ai-danger: var(--manager-danger, #b54747) !important;
+  --ai-danger-bg: var(--manager-danger-soft, #fae9e7) !important;
+  --ai-shadow-sm: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09)) !important;
+  --ai-shadow-md: var(--manager-shadow-strong, 0 22px 48px rgba(48, 72, 61, 0.13)) !important;
+
+  color: var(--manager-text, #24312c) !important;
+  background: transparent !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-hero,
+    .ai-admin-panel,
+    .ai-admin-metrics article,
+    .ai-admin-tabs,
+    .ai-admin-card,
+    .ai-admin-guide-card,
+    .ai-admin-collapsible,
+    .ai-admin-import-export,
+    .ai-admin-empty,
+    .ai-admin-skeleton
+  ) {
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--manager-surface, rgba(249, 252, 250, 0.98)),
+    var(--manager-surface-soft, rgba(241, 247, 243, 0.94))
+  ) !important;
+  box-shadow:
+    var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09)),
+    inset 0 1px rgba(255, 255, 255, 0.82) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-hero,
+    .ai-admin-panel__header,
+    .ai-admin-guide-card
+  ) {
+  background:
+    radial-gradient(
+      circle at 0 0,
+      var(--manager-bg-sage-glow, rgba(83, 108, 97, 0.13)),
+      transparent 20rem
+    ),
+    linear-gradient(
+      135deg,
+      var(--manager-surface, rgba(249, 252, 250, 0.99)),
+      var(--manager-accent-soft, rgba(229, 240, 235, 0.94))
+    ) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(h2, h3, h4, strong) {
+  color: var(--manager-text, #24312c) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    p,
+    small,
+    .ai-admin-help
+  ) {
+  color: var(--manager-muted, #607069) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-eyebrow,
+    .ai-admin-collapsible summary
+  ) {
+  color: var(--manager-accent, #2f7d68) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-tabs {
+  background: var(--manager-surface, rgba(249, 252, 250, 0.94)) !important;
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-tabs button {
+  color: var(--manager-muted, #607069) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-tabs button:hover:not(:disabled) {
+  color: var(--manager-text, #24312c) !important;
+  background: var(--manager-accent-soft, #e5f0eb) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-tabs button.is-active {
+  color: #fff !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-primary, #536c61),
+    var(--manager-primary-hover, #40584e)
+  ) !important;
+  box-shadow: 0 10px 22px rgba(64, 88, 78, 0.2) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-actions,
+    .ai-admin-panel,
+    .ai-admin-card,
+    .ai-admin-import-export
+  ) button:not(.ai-admin-button--secondary):not(.ai-admin-button--danger) {
+  color: #fff !important;
+  border-color: var(--manager-primary, #536c61) !important;
+  background: linear-gradient(
+    135deg,
+    var(--manager-primary, #536c61),
+    var(--manager-primary-hover, #40584e)
+  ) !important;
+  box-shadow: 0 10px 22px rgba(64, 88, 78, 0.18) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-actions,
+    .ai-admin-panel,
+    .ai-admin-card
+  ) .ai-admin-button--secondary {
+  color: var(--manager-primary, #536c61) !important;
+  border: 1px solid var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
+  background: var(--manager-accent-soft, #e5f0eb) !important;
+  box-shadow: none !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-actions,
+    .ai-admin-panel,
+    .ai-admin-card
+  ) .ai-admin-button--danger {
+  color: var(--manager-danger, #b54747) !important;
+  border: 1px solid rgba(181, 71, 71, 0.22) !important;
+  background: var(--manager-danger-soft, #fae9e7) !important;
+  box-shadow: none !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-field input,
+    .ai-admin-field select,
+    .ai-admin-field textarea,
+    .ai-admin-import-export textarea
+  ) {
+  color: var(--manager-text, #24312c) !important;
+  border-color: var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
+  background: var(--manager-surface, rgba(249, 252, 250, 0.96)) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-field input,
+    .ai-admin-field select,
+    .ai-admin-field textarea,
+    .ai-admin-import-export textarea
+  ):focus-visible {
+  outline: none !important;
+  border-color: var(--manager-primary, #536c61) !important;
+  box-shadow: 0 0 0 3px rgba(83, 108, 97, 0.2) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    button,
+    summary,
+    input,
+    select,
+    textarea
+  ):focus-visible {
+  outline: 3px solid rgba(83, 108, 97, 0.28) !important;
+  outline-offset: 2px !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-card:hover {
+  border-color: var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
+  box-shadow: var(--manager-shadow, 0 16px 36px rgba(48, 72, 61, 0.09)) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-card__meta span,
+    .ai-admin-tag,
+    .ai-admin-tag--muted,
+    .ai-admin-selection,
+    .ai-admin-guide-card::after,
+    .ai-admin-result-summary span
+  ) {
+  color: var(--manager-primary, #536c61) !important;
+  border-color: var(--manager-border, rgba(83, 108, 97, 0.22)) !important;
+  background: var(--manager-accent-soft, #e5f0eb) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-status.is-on,
+    .ai-admin-chip--success
+  ) {
+  color: var(--manager-success, #2f7d68) !important;
+  background: var(--manager-success-soft, #e5f3ed) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-status.is-waiting,
+    .ai-admin-chip--warning
+  ) {
+  color: var(--manager-warning, #a66a18) !important;
+  background: var(--manager-warning-soft, #fff3da) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-chip--danger {
+  color: var(--manager-danger, #b54747) !important;
+  background: var(--manager-danger-soft, #fae9e7) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge :is(
+    .ai-admin-status.is-off,
+    .ai-admin-chip--muted
+  ) {
+  color: var(--manager-muted, #607069) !important;
+  background: var(--manager-surface-muted, rgba(232, 241, 236, 0.88)) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-empty__icon {
+  color: var(--manager-primary, #536c61) !important;
+  background: var(--manager-accent-soft, #e5f0eb) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-metrics article::after {
+  background: linear-gradient(
+    90deg,
+    var(--manager-primary, #536c61),
+    transparent
+  ) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(1)::after {
+  background: linear-gradient(90deg, var(--manager-success, #2f7d68), transparent) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(2)::after {
+  background: linear-gradient(90deg, var(--manager-warning, #a66a18), transparent) !important;
+}
+
+.manager-layout .ai-admin-page--knowledge .ai-admin-metrics article:nth-child(3)::after {
+  background: linear-gradient(90deg, var(--manager-danger, #b54747), transparent) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .ai-admin-page--knowledge :is(button, .ai-admin-card) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
