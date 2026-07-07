@@ -19,7 +19,6 @@ vi.mock("@/hooks/useBrandManagement", () => ({
 
 const updateMemberMock = vi.fn();
 const transferOwnershipMock = vi.fn();
-const setSelectedRestaurantIdMock = vi.fn();
 
 const ownerBrand = {
   id: "brand-1",
@@ -79,8 +78,8 @@ beforeEach(() => {
         brand: { id: "brand-1", ownerId: "manager-1" },
         previousOwnerMembership: {
           id: "membership-owner",
-          role: "manager",
-          restaurantIds: ["restaurant-1"],
+          role: "admin",
+          restaurantIds: [],
         },
         newOwnerMembership: {
           id: "membership-manager",
@@ -108,7 +107,6 @@ const renderActions = (selectedBrand = ownerBrand) =>
       assignedManagerByRestaurant={new Map([
         ["restaurant-1", members[1]],
       ])}
-      setSelectedRestaurantId={setSelectedRestaurantIdMock}
     />,
   );
 
@@ -159,22 +157,19 @@ describe("Brand membership actions", () => {
     expect(message.success).toHaveBeenCalledWith("Đã cập nhật quyền thành viên");
   });
 
-  it("transfers ownership and assigns the previous owner to one branch", async () => {
+  it("transfers ownership without requiring a branch", async () => {
     const navigateHandler = vi.fn();
     window.addEventListener("manager:navigate", navigateHandler);
     renderActions();
     fireEvent.click(screen.getByText("Chuyển quyền chủ chuỗi"));
 
+    expect(screen.queryByLabelText("Chi nhánh của chủ cũ sau khi chuyển quyền")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Thành viên nhận quyền chủ chuỗi"), {
       target: { value: "manager-1" },
     });
-    fireEvent.change(
-      screen.getByLabelText("Chi nhánh của chủ cũ sau khi chuyển quyền"),
-      { target: { value: "restaurant-1" } },
-    );
     fireEvent.click(
       screen.getByRole("checkbox", {
-        name: /Tôi hiểu mình sẽ không còn là chủ chuỗi/i,
+        name: /chuyển thành quản trị chuỗi/i,
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Xác nhận chuyển quyền" }));
@@ -183,9 +178,7 @@ describe("Brand membership actions", () => {
     expect(transferOwnershipMock.mock.calls[0][0].variables.input).toEqual({
       brandId: "brand-1",
       newOwnerUserId: "manager-1",
-      previousOwnerRestaurantId: "restaurant-1",
     });
-    expect(setSelectedRestaurantIdMock).toHaveBeenCalledWith("restaurant-1");
     expect(message.success).toHaveBeenCalledWith("Đã chuyển quyền chủ chuỗi");
     expect(navigateHandler).toHaveBeenCalledWith(
       expect.objectContaining({
