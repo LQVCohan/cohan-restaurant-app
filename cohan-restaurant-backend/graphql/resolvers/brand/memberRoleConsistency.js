@@ -98,15 +98,14 @@ export function guardBrandMemberRoleMutations(mutations = {}) {
         return mutations.updateBrandMember(root, { input }, ctx, info);
       }
 
-      const changesStatus = Boolean(
-        input.status && input.status !== membership.status,
-      );
-      if (changesStatus && membership.role === "owner") {
+      const suspendsMembership =
+        input.status === "inactive" && membership.status !== "inactive";
+      if (suspendsMembership && membership.role === "owner") {
         throw forbidden(
           "Không thể tạm ngưng Chủ chuỗi. Hãy chuyển quyền sở hữu trước nếu cần thay đổi tài khoản chủ.",
         );
       }
-      if (changesStatus && sameId(membership.userId, getUserId(ctx.user))) {
+      if (suspendsMembership && sameId(membership.userId, getUserId(ctx.user))) {
         throw forbidden(
           "Bạn không thể tự tạm ngưng quyền của mình. Hãy nhờ Chủ chuỗi hoặc một Quản trị chuỗi khác thực hiện.",
         );
