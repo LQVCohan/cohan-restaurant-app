@@ -3,7 +3,7 @@
   "name": "merged-table-customer-profiles",
   "title": "Preserve and display customer profiles on merged tables",
   "description": "Keep customer records attached to their source tables, expose a grouped query for merged tables, and display every customer profile without overwriting one another.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "bugfix",
   "scope": "table-customer-merge-flow",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": null,
+  "completedAt": "2026-07-08",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "8c0aba5f92b931ab70451781004f6bab33eb0e07",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -24,11 +24,12 @@
     "cohan-restaurant-backend/graphql/schema/tableCustomer.graphql",
     "cohan-restaurant-backend/graphql/resolvers/table/tableCustomer.js",
     "cohan-restaurant-backend/graphql/resolvers/table/mergeTables.js",
-    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.jsx",
-    "src/components/Dashboard_Manager/POS/components/modals/TableActionsModal.module.scss",
-    "src/components/Staff/StaffOrdering.jsx",
+    "src/utils/installMergedTableCustomerProfiles.js",
+    "src/components/Dashboard_Manager/Table/TableCustomerProfilesEnhancement.css",
+    "src/main.jsx",
     "cohan-restaurant-backend/tests/resolvers/table-customer-group.test.js",
-    "cohan-restaurant-backend/tests/resolvers/table-merge-composite.test.js"
+    "cohan-restaurant-backend/tests/resolvers/table-merge-composite.test.js",
+    "src/utils/installMergedTableCustomerProfiles.test.js"
   ],
-  "notes": "A merged table is a new Table record while customer rows remain attached to hidden source tables. The current singular tableCustomer query therefore returns null for the merged table. The fix adds a grouped, source-aware query and keeps the existing singular contract for compatibility. Active orders and reservations remain protected from merge; occupied tables without an active order/reservation may merge and produce an occupied composite."
+  "notes": "Customer rows remain on physical source tables. tableCustomerGroup returns every source profile, aggregate party size, and empty source slots. The manager table-detail modal displays selectable cards and saves edits to the selected source ID/code. Legacy singular clients receive the first populated source profile. Composite status becomes occupied when source customer data exists, while active orders and reservations still block merge. Focused tests were added but were not executed because the connected environment could not clone the repository or run CI."
 }
