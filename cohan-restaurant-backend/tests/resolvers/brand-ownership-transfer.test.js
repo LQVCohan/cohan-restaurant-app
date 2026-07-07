@@ -12,6 +12,9 @@ const modelMocks = vi.hoisted(() => ({
   BrandMembership: {
     findOne: vi.fn(),
   },
+  User: {
+    findById: vi.fn(),
+  },
 }));
 
 const scopeMocks = vi.hoisted(() => ({
@@ -91,11 +94,23 @@ const conflictQuery = (value) => ({
   }),
 });
 
+const userQuery = (value) => ({
+  populate: vi.fn().mockReturnValue({
+    session: vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue(value),
+    }),
+  }),
+});
+
 describe("transferBrandOwnership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     session.withTransaction.mockImplementation(async (work) => work());
     scopeMocks.ensureBrandRestaurants.mockResolvedValue([{ toString: () => "restaurant-2" }]);
+    modelMocks.User.findById.mockReturnValue(userQuery({
+      status: "active",
+      role: { slug: "manager" },
+    }));
   });
 
   it("atomically promotes the target, demotes the current owner and updates Brand.ownerId", async () => {
@@ -164,7 +179,40 @@ describe("transferBrandOwnership", () => {
       ),
     ).rejects.toMatchObject({ extensions: { code: "FORBIDDEN" } });
 
+    expect(modelMocks.User.findById).not.toHaveBeenCalled();
     expect(modelMocks.Brand.findById).not.toHaveBeenCalled();
     expect(session.endSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a target account that cannot access the manager portal", async () => {
+    const currentOwner = ownerDoc();
+    const newOwner = targetDoc();
+    modelMocks.BrandMembership.findOne.mockImplementation((filter) =>
+      filter.role === "owner" ? resolvedQuery(currentOwner) : resolvedQuery(newOwner),
+    );
+    modelMocks.User.findById.mockReturnValue(userQuery({
+      status: "active",
+      role: { slug: "staff" },
+    }));
+
+    const transferBrandOwnership = (
+      await import("../../graphql/resolvers/brand/transferBrandOwnership.js")
+    ).default;
+
+    await expect(
+      transferBrandOwnership(
+        null,
+        {
+          input: {
+            brandId: "brand-1",
+            newOwnerUserId: "target-1",
+            previousOwnerRestaurantId: "restaurant-2",
+          },
+        },
+        { user: { id: "owner-1" } },
+      ),
+    ).rejects.toMatchObject({ extensions: { code: "BAD_USER_INPUT" } });
+
+    expect(modelMocks.Brand.findById).not.toHaveBeenCalled();
   });
 });
