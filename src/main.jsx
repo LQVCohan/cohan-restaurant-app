@@ -50,6 +50,7 @@ import "./styles/ManagerDarkModeFinal.scss";
 import "./styles/MobileAuthTableExperience.css";
 import "./styles/ManagerMobileRefinement.css";
 import "./styles/TableManagerMobileActionFix.css";
+import "./styles/RestaurantProfileHoursResponsiveFix.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 

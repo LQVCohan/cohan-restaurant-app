@@ -1,0 +1,214 @@
+/* Restaurant profile layout repair.
+   Scoped to the manager restaurant profile and loaded after existing polish layers. */
+
+.manager-layout .restaurant-management-container {
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.manager-layout .restaurant-management-container .modern-form,
+.manager-layout .restaurant-management-container .modern-form .ant-tabs,
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-content-holder,
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-content,
+.manager-layout .restaurant-management-container .modern-form .ant-tabs-tabpane {
+  min-width: 0;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-form-item-label label {
+  color: var(--manager-text, #24312c) !important;
+  font-size: 0.82rem !important;
+  line-height: 1.35;
+}
+
+/* Address fields: keep the desktop grid balanced instead of leaving an empty column. */
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0 0.75rem;
+  margin-inline: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col {
+  min-width: 0;
+  max-width: none;
+  padding-inline: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(1),
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(2) {
+  grid-column: span 6;
+}
+
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(3),
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(4),
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(5) {
+  grid-column: span 4;
+}
+
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(6),
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(7) {
+  grid-column: span 4;
+}
+
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(8),
+.manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(9) {
+  grid-column: span 2;
+}
+
+/* Opening and closing hours: make the two time controls the primary action area. */
+.manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 0.85rem;
+  margin-inline: 0 !important;
+  padding: 0.95rem;
+  border: 1px solid var(--manager-border, rgba(83, 108, 97, 0.22));
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(249, 252, 250, 0.98),
+    rgba(229, 240, 235, 0.78)
+  );
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) > .ant-col {
+  min-width: 0;
+  max-width: none;
+  padding-inline: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) > .ant-col:nth-child(1),
+.manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) > .ant-col:nth-child(2) {
+  grid-column: span 1;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) > .ant-col:nth-child(3),
+.manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) > .ant-col:nth-child(4) {
+  grid-column: span 1;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-form-item:has(.anticon-clock-circle) {
+  margin-bottom: 0.85rem;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-form-item:has(.anticon-clock-circle) .ant-form-item-label label {
+  font-size: 0.88rem !important;
+  font-weight: 780 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper:has(.anticon-clock-circle) {
+  min-height: 50px;
+  border-color: var(--manager-border-strong, rgba(83, 108, 97, 0.34)) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.08) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper:has(.anticon-clock-circle):hover,
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper-focused:has(.anticon-clock-circle) {
+  border-color: var(--manager-accent, #2f7d68) !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper:has(.anticon-clock-circle) .anticon-clock-circle {
+  color: var(--manager-accent, #2f7d68);
+  font-size: 1rem;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper:has(.anticon-clock-circle) input {
+  min-width: 0;
+  font-size: 0.98rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.025em;
+}
+
+/* Keep the order switches readable instead of squeezing them into a narrow column. */
+.manager-layout .restaurant-management-container .modern-form .ant-row:has([aria-label="Nhận đơn từ xa"]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+  gap: 0 1rem;
+  margin-inline: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-row:has([aria-label="Nhận đơn từ xa"]) > .ant-col {
+  min-width: 0;
+  max-width: none;
+  padding-inline: 0 !important;
+}
+
+.manager-layout .restaurant-management-container .modern-form .ant-row:has([aria-label="Nhận đơn từ xa"]) > .ant-col:last-child {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+@media (max-width: 900px) {
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(n) {
+    grid-column: span 1;
+  }
+
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(1),
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-row:has([aria-label="Nhận đơn từ xa"]) {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-row:has([aria-label="Nhận đơn từ xa"]) > .ant-col:last-child {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .manager-layout .restaurant-management-container {
+    padding-inline: 0.65rem !important;
+  }
+
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-extra {
+    max-width: 55%;
+  }
+
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-extra .ant-btn {
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row,
+  .manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .manager-layout .restaurant-management-container .address-section-card .ant-card-body > .ant-row > .ant-col:nth-child(n),
+  .manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) > .ant-col:nth-child(n) {
+    grid-column: 1;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-row:has(.anticon-clock-circle) {
+    padding: 0.8rem;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-input-affix-wrapper:has(.anticon-clock-circle) {
+    min-height: 48px;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-tabs-nav {
+    padding-inline: 0.5rem;
+  }
+
+  .manager-layout .restaurant-management-container .modern-form .ant-tabs-tab {
+    min-height: 44px;
+    padding-inline: 0.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manager-layout .restaurant-management-container * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
