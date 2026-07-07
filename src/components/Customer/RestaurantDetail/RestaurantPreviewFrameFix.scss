@@ -118,8 +118,128 @@
   .res-info-card .info-text .res-meta .dot,
   .res-info-card .action-group,
   .rd-tabs,
-  .rd-container {
+  .sidebar-content {
     display: none !important;
+  }
+
+  .rd-container,
+  .rd-container.container {
+    display: block !important;
+    padding: 10px 10px 78px !important;
+  }
+
+  .main-content {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  .restaurant-info-premium {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .restaurant-info-premium .info-card {
+    display: none !important;
+    min-height: 0 !important;
+    padding: 10px 11px !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .restaurant-info-premium .info-card--intro,
+  .restaurant-info-premium .info-card--chef,
+  .restaurant-info-premium .info-card--contact,
+  .restaurant-info-premium .info-card--intro + .info-card:not(.info-card--chef),
+  .restaurant-info-premium .info-card--chef + .info-card {
+    display: block !important;
+    grid-column: 1 !important;
+  }
+
+  .restaurant-info-premium .title-row {
+    gap: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .restaurant-info-premium .title-icon {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .restaurant-info-premium .title-icon svg,
+  .restaurant-info-premium .contact-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .restaurant-info-premium h3,
+  .restaurant-info-premium h4 {
+    font-size: 0.78rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .restaurant-info-premium p {
+    font-size: 0.69rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .restaurant-info-premium .info-card--intro p,
+  .restaurant-info-premium .chef-profile p {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .restaurant-info-premium .placeholder-box {
+    margin-top: 5px !important;
+    padding: 7px 8px !important;
+    border-radius: 9px !important;
+    font-size: 0.66rem !important;
+  }
+
+  .restaurant-info-premium .status-chip {
+    margin-bottom: 4px !important;
+    padding: 3px 7px !important;
+    font-size: 0.62rem !important;
+  }
+
+  .restaurant-info-premium .chef-profile {
+    grid-template-columns: 32px minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .restaurant-info-premium .chef-monogram {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .restaurant-info-premium .chef-profile strong {
+    font-size: 0.76rem !important;
+  }
+
+  .restaurant-info-premium .chef-profile span,
+  .restaurant-info-premium .chef-eyebrow {
+    font-size: 0.61rem !important;
+  }
+
+  .restaurant-info-premium .contact-row {
+    gap: 7px !important;
+    margin-top: 5px !important;
+  }
+
+  .restaurant-info-premium .contact-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .restaurant-info-premium .direction-link {
+    margin-top: 7px !important;
+    padding: 4px 8px !important;
+    font-size: 0.64rem !important;
   }
 
   .mobile-action-bar {
