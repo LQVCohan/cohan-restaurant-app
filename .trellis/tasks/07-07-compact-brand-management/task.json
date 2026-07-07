@@ -31,7 +31,8 @@
     "cohan-restaurant-backend/graphql/schema/brand.graphql",
     "cohan-restaurant-backend/graphql/resolvers/brand/index.js",
     "cohan-restaurant-backend/graphql/resolvers/brand/transferBrandOwnership.js",
-    "cohan-restaurant-backend/tests/resolvers/brand-ownership-transfer.test.js"
+    "cohan-restaurant-backend/tests/resolvers/brand-ownership-transfer.test.js",
+    "cohan-restaurant-backend/tests/resolvers/brand-owner-mutation-guards.test.js"
   ],
-  "notes": "Ownership changes use one dedicated transaction: promote the target, demote the current owner to one restaurant manager, and update Brand.ownerId. Generic member mutations cannot change owner roles."
+  "notes": "Ownership changes use one dedicated transaction: promote the target, demote the current owner to one restaurant manager, and update Brand.ownerId. Generic member mutations cannot add, demote, deactivate, or remove an owner."
 }
