@@ -57,6 +57,15 @@ type BrandMembership {
   updatedAt: DateTime
 }
 
+type BrandMemberCandidate {
+  id: ID!
+  fullName: String
+  username: String
+  email: String
+  userType: String
+  status: String
+}
+
 input CreateBrandInput {
   name: String!
   slug: String
@@ -127,6 +136,7 @@ extend type Query {
   brand(id: ID!): Brand
   brands(limit: Int = 50, cursor: ID, status: String, search: String): [Brand!]!
   brandMembers(brandId: ID!): [BrandMembership!]!
+  brandMemberCandidates(brandId: ID!, search: String!, limit: Int = 20): [BrandMemberCandidate!]!
   myBrandMemberships: [BrandMembership!]!
 }
 
