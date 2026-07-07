@@ -1,0 +1,15 @@
+{
+  "id": "brand-branch-select-dashboard",
+  "title": "Open the scoped dashboard from a branch card",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-brand-branch-selection",
+  "priority": "P1",
+  "createdAt": "2026-07-07",
+  "branch": "fix/brand-branch-select-dashboard-v2",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Brand/BrandManagement.jsx",
+    "src/components/Dashboard_Manager/Brand/BrandManagement.test.jsx"
+  ]
+}

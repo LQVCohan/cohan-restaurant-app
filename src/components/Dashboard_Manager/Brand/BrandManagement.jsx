@@ -441,6 +441,20 @@ export default function BrandManagement() {
     }
   };
 
+  const openBranchDashboard = (restaurantId) => {
+    const nextRestaurantId = String(restaurantId);
+    setSelectedRestaurantId(nextRestaurantId);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("manager:navigate", {
+        detail: {
+          page: "dashboard",
+          query: { restaurantId: nextRestaurantId },
+          source: "brand-management",
+        },
+      }));
+    }
+  };
+
   const selectedRoleLabel = selectedBrand
     ? getChainRoleLabel(
       selectedBrand.membership?.role || selectedBrand.membershipRole,
@@ -703,9 +717,9 @@ export default function BrandManagement() {
                         <button
                           type="button"
                           className="brand-link-button"
-                          onClick={() => setSelectedRestaurantId(String(restaurant.id))}
+                          onClick={() => openBranchDashboard(restaurant.id)}
                         >
-                          Chọn
+                          Mở dashboard
                         </button>
                       </article>
                     );

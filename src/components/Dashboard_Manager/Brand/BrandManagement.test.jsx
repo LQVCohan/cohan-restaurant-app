@@ -220,6 +220,29 @@ describe("BrandManagement", () => {
     expect(refetchBrandsMock).not.toHaveBeenCalled();
   });
 
+  it("opens the dashboard with the selected branch scope", () => {
+    const onNavigate = vi.fn();
+    window.addEventListener("manager:navigate", onNavigate);
+
+    try {
+      render(<BrandManagement />);
+      const branchCard = screen.getByText("Cohan Thủ Đức").closest("article");
+      fireEvent.click(
+        within(branchCard).getByRole("button", { name: "Mở dashboard" }),
+      );
+
+      expect(setSelectedRestaurantIdMock).toHaveBeenCalledWith("r2");
+      expect(onNavigate).toHaveBeenCalledTimes(1);
+      expect(onNavigate.mock.calls[0][0].detail).toEqual({
+        page: "dashboard",
+        query: { restaurantId: "r2" },
+        source: "brand-management",
+      });
+    } finally {
+      window.removeEventListener("manager:navigate", onNavigate);
+    }
+  });
+
   it("requires one available branch for a manager before adding the member", async () => {
     render(<BrandManagement />);
 
