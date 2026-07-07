@@ -154,5 +154,5 @@ describe("restaurant chatbot Phase 26 settings and knowledge cache", () => {
 });
 
 function readUserSpecificSource() {
-  return readFileSync(new URL("../../src/services/ai/restaurantChatbot.service.js", import.meta.url), "utf8");
+  return readFileSync(new URL("../../src/services/ai/restaurantChatbotCore.service.js", import.meta.url), "utf8");
 }
