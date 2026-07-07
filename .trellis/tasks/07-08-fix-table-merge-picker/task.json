@@ -2,8 +2,8 @@
   "id": "fix-table-merge-picker",
   "name": "fix-table-merge-picker",
   "title": "Fix table merge picker opening",
-  "description": "Ensure the existing table merge picker enhancer is attached before the merge action click so managers can select same-floor tables instead of seeing a dead button.",
-  "status": "completed",
+  "description": "Wire the existing searchable table picker directly to the React table action button so managers can select same-floor tables reliably.",
+  "status": "in_progress",
   "dev_type": "bugfix",
   "scope": "table-management-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": "2026-07-08",
+  "completedAt": null,
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "48e4c5886c3564a7a1206103f4e6ec04c8d9c6f6",
+  "commit": null,
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -24,9 +24,10 @@
     "src/main.jsx",
     "src/utils/installTableTransferMergeEnhancement.js",
     "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx",
     "src/hooks/useTableManagement.js",
     "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
     "cohan-restaurant-backend/graphql/resolvers/table/mutation.js"
   ],
-  "notes": "Fixed at the existing UI enhancer installation boundary without changing the GraphQL contract, resolver, permissions, audit logging, dependencies, or picker design. No local tests/build or CI workflow ran in the available environment."
+  "notes": "The observer-based fallback did not reliably enhance the rendered portal. The corrected fix reuses the existing picker but invokes it from the owning React component; schema, resolver, permissions, audit logging, and mutation contracts remain unchanged."
 }
