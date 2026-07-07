@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Select as SearchSelect } from "antd";
 import {
   Bookmark,
   ChefHat,
@@ -29,6 +30,7 @@ import useModalDraft from "../../../../hooks/useModalDraft";
 
 import "./NewOrderModal.scss";
 import "./NewOrderModalPolish.scss";
+import "./NewOrderSearchSelect.scss";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("vi-VN", {
@@ -37,6 +39,79 @@ const formatCurrency = (value) =>
   }).format(Number(value || 0));
 
 const MENU_SKELETON_COUNT = 8;
+const ALL_CATEGORY_ID = "__all__";
+const OTHER_CATEGORY_ID = "__other__";
+
+const normalizeSearchText = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const filterSearchOption = (input, option) =>
+  normalizeSearchText(option?.label).includes(normalizeSearchText(input));
+
+export const buildNewOrderCategoryOptions = (
+  menus = [],
+  items = [],
+  selectedTimeSlot = null,
+) => {
+  const matchingMenus = (menus || []).filter(
+    (menu) => !selectedTimeSlot || menu?.timeSlot === selectedTimeSlot,
+  );
+  const sourceMenus = matchingMenus.length ? matchingMenus : menus || [];
+  const categoriesById = new Map();
+
+  sourceMenus.forEach((menu) => {
+    (menu?.categoryMenu || []).forEach((category) => {
+      const id = String(category?.id || "").trim();
+      if (!id || category?.isActive === false || categoriesById.has(id)) return;
+      categoriesById.set(id, String(category?.name || "Danh mục khác").trim());
+    });
+  });
+
+  const knownCategoryIds = new Set(categoriesById.keys());
+  const unknownCategoryIds = new Set();
+  let includeUncategorized = false;
+
+  (items || []).forEach((item) => {
+    const categoryId = String(item?.categoryId || "").trim();
+    if (!categoryId) {
+      includeUncategorized = true;
+      return;
+    }
+    if (!knownCategoryIds.has(categoryId)) unknownCategoryIds.add(categoryId);
+  });
+
+  const categoryOptions = Array.from(categoriesById.entries())
+    .map(([id, name]) => ({ id, name, categoryIds: [id] }))
+    .sort((left, right) => left.name.localeCompare(right.name, "vi"));
+
+  if (unknownCategoryIds.size || includeUncategorized) {
+    const existingOther = categoryOptions.find(
+      (category) => normalizeSearchText(category.name) === "khac",
+    );
+
+    if (existingOther) {
+      existingOther.categoryIds.push(...unknownCategoryIds);
+      existingOther.includeUncategorized = includeUncategorized;
+    } else {
+      categoryOptions.push({
+        id: OTHER_CATEGORY_ID,
+        name: "Khác",
+        categoryIds: [...unknownCategoryIds],
+        includeUncategorized,
+      });
+    }
+  }
+
+  return [
+    { id: ALL_CATEGORY_ID, name: "Tất cả danh mục", categoryIds: [] },
+    ...categoryOptions,
+  ];
+};
 
 const MenuSkeleton = () => (
   <div className="menu-skeleton-grid" aria-label="Đang tải thực đơn">
@@ -302,12 +377,33 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
 
   const availableTables = useMemo(
     () =>
-      (tables || []).filter(
-        (table) =>
-          table?.status === "available" &&
-          (activeLevel === null || table?.floorLevel === activeLevel),
-      ),
+      (tables || [])
+        .filter(
+          (table) =>
+            table?.status === "available" &&
+            (activeLevel === null || table?.floorLevel === activeLevel),
+        )
+        .sort(
+          (left, right) =>
+            Number(left?.floorLevel || 0) - Number(right?.floorLevel || 0) ||
+            String(left?.code || "").localeCompare(
+              String(right?.code || ""),
+              "vi",
+              { numeric: true },
+            ),
+        ),
     [tables, activeLevel],
+  );
+
+  const tableSelectOptions = useMemo(
+    () =>
+      availableTables.map((table) => ({
+        value: table.code,
+        label: `${table.code}${
+          table.floorLevel != null ? ` (Tầng ${table.floorLevel})` : ""
+        }`,
+      })),
+    [availableTables],
   );
 
   const sessions = useMemo(() => {
@@ -330,38 +426,69 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     }
   }, [sessions, selectedTimeSlot, setSelectedTimeSlot]);
 
-  const categoryOptions = useMemo(() => {
-    const categories = new Map();
-    (itemsWithPrice || []).forEach((item) => {
-      const categoryId = item?.categoryId || "other";
-      if (!categories.has(categoryId)) {
-        categories.set(categoryId, item?.category?.name || "Khác");
-      }
-    });
+  const categoryOptions = useMemo(
+    () =>
+      buildNewOrderCategoryOptions(
+        menus,
+        itemsWithPrice,
+        selectedTimeSlot,
+      ),
+    [itemsWithPrice, menus, selectedTimeSlot],
+  );
 
-    return [
-      { id: "", name: "Tất cả danh mục" },
-      ...Array.from(categories.entries()).map(([id, name]) => ({ id, name })),
-    ];
-  }, [itemsWithPrice]);
+  const categorySelectOptions = useMemo(
+    () =>
+      categoryOptions.map((category) => ({
+        value: category.id,
+        label: category.name,
+      })),
+    [categoryOptions],
+  );
+
+  const selectedCategoryOption = categoryOptions.find(
+    (category) => category.id === selectedCategoryId,
+  );
+
+  const categoryNameById = useMemo(() => {
+    const names = new Map();
+    categoryOptions.forEach((category) => {
+      category.categoryIds.forEach((categoryId) => {
+        names.set(categoryId, category.name);
+      });
+    });
+    return names;
+  }, [categoryOptions]);
 
   const filteredDishes = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(query);
     return (itemsWithPrice || []).filter((dish) => {
-      if (
-        selectedCategoryId &&
-        (dish?.categoryId || "other") !== selectedCategoryId
-      ) {
-        return false;
+      const dishCategoryId = String(dish?.categoryId || "").trim();
+
+      if (selectedCategoryId) {
+        const matchesCategory =
+          selectedCategoryOption?.categoryIds.includes(dishCategoryId) ||
+          (selectedCategoryOption?.includeUncategorized && !dishCategoryId);
+        if (!matchesCategory) return false;
       }
+
       if (!normalizedQuery) return true;
-      return [dish?.name, dish?.searchKeywords, dish?.category?.name]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedQuery);
+      return normalizeSearchText(
+        [
+          dish?.name,
+          dish?.searchKeywords,
+          categoryNameById.get(dishCategoryId),
+        ]
+          .filter(Boolean)
+          .join(" "),
+      ).includes(normalizedQuery);
     });
-  }, [itemsWithPrice, query, selectedCategoryId]);
+  }, [
+    categoryNameById,
+    itemsWithPrice,
+    query,
+    selectedCategoryId,
+    selectedCategoryOption,
+  ]);
 
   const selectedSessionLabel =
     sessions.find((session) => session.value === selectedTimeSlot)?.label ||
@@ -372,8 +499,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
       : (floors || []).find((floor) => Number(floor?.level) === Number(activeLevel))
           ?.name || `Tầng ${activeLevel}`;
   const activeCategoryLabel =
-    categoryOptions.find((category) => category.id === selectedCategoryId)?.name ||
-    "Tất cả danh mục";
+    selectedCategoryOption?.name || "Tất cả danh mục";
   const cartQuantity = currentOrder.reduce(
     (sum, item) => sum + Number(item?.quantity || 0),
     0,
@@ -385,11 +511,14 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     setSelectedCategoryId("");
   };
 
-  const handleTableChange = (event) => {
-    const tableCode = event.target.value;
+  const handleTableChange = (tableCode) => {
     setCurrentTable(
       (tables || []).find((table) => table.code === tableCode) || null,
     );
+  };
+
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategoryId(categoryId === ALL_CATEGORY_ID ? "" : categoryId);
   };
 
   const handleSaveOrder = async () => {
@@ -442,7 +571,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   <span className="new-order-modal__eyebrow">
                     <ReceiptText size={14} /> Gọi món tại bàn
                   </span>
-                  <h3>Tạo order nhanh, kiểm soát món rõ ràng</h3>
+                  <h3>Tạo đơn nhanh, kiểm soát món rõ ràng</h3>
                   <p>
                     Chọn tầng, bàn và ca phục vụ. Mỗi món được thêm vào giỏ để
                     kiểm tra lại số lượng trước khi lưu đơn.
@@ -492,49 +621,49 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   <ChevronDown size={16} className="form-group__chevron" />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group form-group--searchable">
                   <label className="sr-only" htmlFor="new-order-table">
-                    Chọn bàn
+                    Tìm và chọn bàn
                   </label>
                   <Bookmark size={16} className="form-group__icon" />
-                  <select
+                  <SearchSelect
                     id="new-order-table"
-                    value={currentTable?.code || ""}
+                    className="new-order-search-select"
+                    value={currentTable?.code || undefined}
                     onChange={handleTableChange}
-                    className="form-group__select"
+                    options={tableSelectOptions}
+                    placeholder={tablesLoading ? "Đang tải bàn..." : "Tìm và chọn bàn"}
+                    showSearch
+                    allowClear
+                    optionFilterProp="label"
+                    filterOption={filterSearchOption}
+                    notFoundContent="Không tìm thấy bàn phù hợp"
                     disabled={tablesLoading}
-                  >
-                    <option value="">Chọn bàn</option>
-                    {availableTables.map((table) => (
-                      <option key={table.id} value={table.code}>
-                        {table.code}
-                        {table.floorLevel ? ` (Tầng ${table.floorLevel})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="form-group__chevron" />
+                    suffixIcon={<ChevronDown size={16} aria-hidden="true" />}
+                    popupClassName="new-order-search-select__popup"
+                    aria-label="Tìm và chọn bàn"
+                  />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group form-group--searchable">
                   <label className="sr-only" htmlFor="new-order-category">
-                    Lọc theo danh mục
+                    Tìm và lọc theo danh mục
                   </label>
                   <ChefHat size={16} className="form-group__icon" />
-                  <select
+                  <SearchSelect
                     id="new-order-category"
-                    value={selectedCategoryId}
-                    onChange={(event) =>
-                      setSelectedCategoryId(event.target.value)
-                    }
-                    className="form-group__select"
-                  >
-                    {categoryOptions.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="form-group__chevron" />
+                    className="new-order-search-select"
+                    value={selectedCategoryId || ALL_CATEGORY_ID}
+                    onChange={handleCategoryChange}
+                    options={categorySelectOptions}
+                    showSearch
+                    optionFilterProp="label"
+                    filterOption={filterSearchOption}
+                    notFoundContent="Không tìm thấy danh mục"
+                    suffixIcon={<ChevronDown size={16} aria-hidden="true" />}
+                    popupClassName="new-order-search-select__popup"
+                    aria-label="Tìm và lọc theo danh mục"
+                  />
                 </div>
 
                 <button
@@ -570,7 +699,10 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                     <button
                       type="button"
                       key={session.value}
-                      onClick={() => setSelectedTimeSlot(session.value)}
+                      onClick={() => {
+                        setSelectedTimeSlot(session.value);
+                        setSelectedCategoryId("");
+                      }}
                       className={`session-tab ${
                         selectedTimeSlot === session.value
                           ? "session-tab--active"
