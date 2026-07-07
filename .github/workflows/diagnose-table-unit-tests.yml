@@ -1,4 +1,4 @@
-name: Diagnose table unit tests
+name: Validate table management changes
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  validate-table:
     if: github.event.pull_request.number == 1246
     runs-on: ubuntu-latest
     steps:
@@ -27,22 +27,17 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Install backend schema dependencies
+      - name: Install backend dependencies
         run: npm --prefix cohan-restaurant-backend ci
 
-      - name: Capture unit test output
-        shell: bash
-        run: |
-          set +e
-          npm run test:unit -- --reporter=verbose > unit-tests.log 2>&1
-          status=$?
-          set -e
-          tail -n 500 unit-tests.log > unit-tests-tail.log
-          echo "exit_status=${status}" >> unit-tests-tail.log
+      - name: Check GraphQL contract
+        run: npm run check:graphql
 
-      - name: Upload diagnostic log
-        uses: actions/upload-artifact@v4
-        with:
-          name: table-unit-test-log
-          path: unit-tests-tail.log
-          retention-days: 1
+      - name: Run manager table component tests
+        run: npx vitest run src/components/Dashboard_Manager/Table/TableManagement.test.jsx
+
+      - name: Run table resolver tests
+        run: npm --prefix cohan-restaurant-backend test -- tests/resolvers/table-restaurant-access.test.js
+
+      - name: Build frontend
+        run: npm run build
