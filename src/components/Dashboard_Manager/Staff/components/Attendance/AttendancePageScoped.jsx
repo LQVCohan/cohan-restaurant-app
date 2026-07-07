@@ -38,11 +38,11 @@ const AttendancePageScoped = ({ restaurantId, ...props }) => {
   const auth = useContext(AuthContext);
   const normalizedRestaurantId = useMemo(() => normalizeRestaurantId(restaurantId), [restaurantId]);
   const scopedAuth = useMemo(() => {
-    if (!normalizedRestaurantId || !auth?.user) return auth;
+    if (!normalizedRestaurantId) return auth;
     return {
-      ...auth,
+      ...(auth || {}),
       user: {
-        ...auth.user,
+        ...(auth?.user || {}),
         restaurantForStaff: normalizedRestaurantId,
       },
     };
@@ -55,7 +55,7 @@ const AttendancePageScoped = ({ restaurantId, ...props }) => {
     setReadyKey(targetKey);
   }, [normalizedRestaurantId, targetKey]);
 
-  if (readyKey !== targetKey) return null;
+  if (!normalizedRestaurantId || readyKey !== targetKey) return null;
 
   return (
     <AuthContext.Provider value={scopedAuth}>
