@@ -112,6 +112,12 @@ type Table {
   floorLevel: Int
   deposit: Int
   tags: [String!]
+  zone: String
+  promotionIds: [ID!]
+  bookingPerks: [String!]
+  reservationHoldMinutes: Int
+  minSpend: Float
+  cancelPolicy: String
   isJoinable: Boolean
   joinGroupId: String
   createdAt: DateTime
@@ -153,6 +159,12 @@ input UpdateTableInput {
   visualConfig: JSON
   status: TableStatus
   tags: [String!]
+  zone: String
+  promotionIds: [ID!]
+  bookingPerks: [String!]
+  reservationHoldMinutes: Int
+  minSpend: Float
+  cancelPolicy: String
   isJoinable: Boolean
   joinGroupId: String
 }

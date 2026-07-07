@@ -78,6 +78,12 @@ const TableSchema = BaseSchemaModel({
   floorLevel: { type: Number, default: 1 },
 
   tags: { type: [String], default: [] },
+  zone: { type: String, trim: true },
+  promotionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Promotion" }],
+  bookingPerks: { type: [String], default: [] },
+  reservationHoldMinutes: { type: Number, min: 0 },
+  minSpend: { type: Number, min: 0 },
+  cancelPolicy: { type: String, trim: true },
 
   isJoinable: { type: Boolean, default: false },
   joinGroupId: { type: String },
