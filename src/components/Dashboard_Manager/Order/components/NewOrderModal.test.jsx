@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildNewOrderCategoryOptions } from "./NewOrderModal";
+import {
+  buildNewOrderCategoryOptions,
+  getDefaultNewOrderServingVariant,
+  getNewOrderDefaultQuantity,
+  getNewOrderUnitPrice,
+  normalizeNewOrderQuantity,
+} from "./NewOrderModal";
 
 describe("buildNewOrderCategoryOptions", () => {
   it("uses dish category names and keeps only one fallback category", () => {
@@ -54,5 +60,54 @@ describe("buildNewOrderCategoryOptions", () => {
       "Tất cả danh mục",
       "Khác",
     ]);
+  });
+});
+
+describe("new order serving configuration", () => {
+  const variants = [
+    {
+      key: "portion",
+      name: "Theo phần",
+      mode: "PORTION",
+      sellQty: 1,
+      sellUnit: "portion",
+      price: 60000,
+      isDefault: true,
+    },
+    {
+      key: "weight-100g",
+      name: "Theo cân",
+      mode: "BY_WEIGHT",
+      sellQty: 100,
+      sellUnit: "g",
+      price: 20000,
+    },
+  ];
+
+  it("prefers the configured default serving key", () => {
+    expect(
+      getDefaultNewOrderServingVariant({
+        defaultServingKey: "weight-100g",
+        servingVariants: variants,
+      })?.key,
+    ).toBe("weight-100g");
+  });
+
+  it("falls back to the variant marked as default", () => {
+    expect(
+      getDefaultNewOrderServingVariant({ servingVariants: variants })?.key,
+    ).toBe("portion");
+  });
+
+  it("normalizes decimal kg and integer portion quantities", () => {
+    expect(normalizeNewOrderQuantity("0,74", "kg")).toBe(0.7);
+    expect(normalizeNewOrderQuantity(0, "kg")).toBe(0.1);
+    expect(normalizeNewOrderQuantity(2.6, "portion")).toBe(3);
+    expect(normalizeNewOrderQuantity(0, "portion")).toBe(1);
+  });
+
+  it("derives kg defaults and a per-kg display price from gram variants", () => {
+    expect(getNewOrderDefaultQuantity(variants[1])).toBe(0.1);
+    expect(getNewOrderUnitPrice(variants[1])).toBe(200000);
   });
 });
