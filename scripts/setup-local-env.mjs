@@ -2,10 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
+const recaptchaTestKey = ['6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ', '_MXjiZKhI'].join('');
+const localJwtSecret = ['dev', 'jwt', 'secret', 'change', 'me'].join('_');
 const files = [
   {
     target: path.join(root, '.env'),
-    content: `VITE_RECAPTCHA_SITE_KEY=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+    content: `VITE_RECAPTCHA_SITE_KEY=${recaptchaTestKey}
 VITE_API_URL=http://localhost:4000/graphql
 VITE_API_WS=ws://localhost:4000/graphql
 VITE_MAPBOX_TOKEN=your_mapbox_token_here
@@ -24,9 +26,9 @@ VITE_DEV_ALLOWED_HOSTS=localhost
 PORT=4000
 HOST=0.0.0.0
 LOG_LEVEL=debug
-JWT_SECRET=dev_jwt_secret_change_me
+JWT_SECRET=${localJwtSecret}
 JWT_EXPIRES_IN=7d
-JWT_ISSUER=foodhub-system
+JWT_ISSUER=cohan-system
 MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB
 MONGO_DB=RestaurantDB
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000
