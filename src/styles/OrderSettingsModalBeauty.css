@@ -1,51 +1,104 @@
-/* Premium polish for the Order Settings modal.
-   Visual-only layer: no business logic changes. */
+/* Final order settings polish.
+   Keeps the modal on the same sage/cream system as the manager order page and
+   makes the saved chip-size setting affect real fullscreen KDS item rows. */
 
 .modal-container:has(.osm-layout) {
-  width: min(94vw, 1060px) !important;
-  border-radius: 22px !important;
+  width: min(94vw, 1020px) !important;
+  max-height: min(92dvh, 900px) !important;
   overflow: hidden !important;
+  border: 1px solid rgba(83, 108, 97, 0.18) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(83, 108, 97, 0.1), transparent 24rem),
+    linear-gradient(180deg, rgba(249, 252, 250, 0.99), rgba(239, 246, 242, 0.98)) !important;
+  box-shadow:
+    0 28px 70px rgba(36, 48, 63, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.88) !important;
 }
 
 .modal-container:has(.osm-layout) .modal-header {
-  min-height: 62px !important;
+  min-height: 64px !important;
   padding: 16px 22px !important;
+  border-bottom: 1px solid rgba(83, 108, 97, 0.14) !important;
   background:
-    radial-gradient(circle at 0% 0%, rgba(15, 111, 102, 0.12), transparent 18rem),
-    linear-gradient(90deg, rgba(237, 247, 244, 0.96), rgba(255, 247, 235, 0.9)) !important;
+    radial-gradient(circle at 0% 0%, rgba(47, 125, 104, 0.13), transparent 20rem),
+    linear-gradient(90deg, rgba(238, 247, 242, 0.97), rgba(250, 247, 239, 0.92)) !important;
 }
 
-.modal-container:has(.osm-layout) .modal-header h2,
-.modal-container:has(.osm-layout) .modal-header h3 {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.55rem !important;
-  font-size: 1rem !important;
-  font-weight: 850 !important;
+.modal-container:has(.osm-layout) .modal-header h2 {
   color: #24303f !important;
+  font-size: 1.02rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.osm-modal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.osm-modal-title svg {
+  color: #2f7d68;
 }
 
 .modal-container:has(.osm-layout) .modal-body {
+  overflow: auto !important;
   padding: 0 !important;
   background:
-    radial-gradient(circle at 18% 0%, rgba(168, 133, 95, 0.11), transparent 28rem),
-    linear-gradient(180deg, #fffdf8 0%, #f8f2e8 100%) !important;
+    radial-gradient(circle at 100% 0%, rgba(47, 125, 104, 0.07), transparent 28rem),
+    linear-gradient(180deg, #f8fbf9 0%, #edf4f0 100%) !important;
 }
 
 .modal-container:has(.osm-layout) .modal-footer {
-  padding: 16px 22px !important;
-  border-top: 1px solid rgba(116, 88, 54, 0.14) !important;
+  padding: 14px 22px !important;
+  border-top: 1px solid rgba(83, 108, 97, 0.14) !important;
+  background: rgba(249, 252, 250, 0.96) !important;
+  box-shadow: 0 -12px 32px rgba(36, 48, 63, 0.06) !important;
+}
+
+.osm-scope-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 1rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(47, 125, 104, 0.16);
+  border-radius: 14px;
+  color: #375148;
   background:
-    linear-gradient(90deg, rgba(255, 253, 248, 0.92), rgba(248, 242, 231, 0.96)) !important;
-  box-shadow: 0 -14px 34px rgba(74, 55, 34, 0.06) !important;
+    linear-gradient(90deg, rgba(225, 241, 233, 0.96), rgba(247, 250, 248, 0.9));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.84);
+}
+
+.osm-scope-note > svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: #2f7d68;
+}
+
+.osm-scope-note div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.osm-scope-note strong {
+  color: #24463d;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.osm-scope-note span {
+  color: #62756d;
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .osm-layout {
   grid-template-columns: minmax(0, 1fr) 300px !important;
-  gap: 1rem !important;
+  gap: 0 !important;
   padding: 0 !important;
-  background:
-    linear-gradient(90deg, rgba(255, 253, 248, 0.92), rgba(255, 253, 248, 0.68) 68%, rgba(245, 237, 224, 0.88) 68%) !important;
+  background: transparent !important;
 }
 
 .osm-form {
@@ -55,329 +108,446 @@
 
 .osm-section {
   position: relative !important;
-  padding: 1.05rem !important;
-  border: 1px solid rgba(116, 88, 54, 0.15) !important;
+  padding: 1rem !important;
+  border: 1px solid rgba(83, 108, 97, 0.15) !important;
   border-radius: 16px !important;
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(250, 246, 239, 0.88)) !important;
+    linear-gradient(180deg, rgba(252, 254, 253, 0.97), rgba(244, 249, 246, 0.92)) !important;
   box-shadow:
-    0 16px 34px rgba(74, 55, 34, 0.075),
+    0 14px 34px rgba(36, 48, 63, 0.075),
     inset 0 1px rgba(255, 255, 255, 0.9) !important;
-}
-
-.osm-section::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(circle at 100% 0%, rgba(15, 111, 102, 0.045), transparent 11rem);
-  pointer-events: none;
 }
 
 .osm-section__header {
   align-items: flex-start !important;
-  gap: 0.75rem !important;
-  margin-bottom: 0.95rem !important;
+  gap: 0.72rem !important;
+  margin-bottom: 0.92rem !important;
 }
 
 .osm-section__header .icon {
   width: 18px !important;
   height: 18px !important;
-  padding: 0.55rem !important;
-  border: 1px solid rgba(15, 93, 86, 0.12) !important;
-  border-radius: 12px !important;
-  color: #0f6f66 !important;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.85), transparent 2rem),
-    linear-gradient(135deg, #dff4ef 0%, #f5ead9 100%) !important;
-  box-shadow: 0 9px 18px rgba(15, 93, 86, 0.08) !important;
+  padding: 0.52rem !important;
+  border: 1px solid rgba(47, 125, 104, 0.13) !important;
+  border-radius: 11px !important;
+  color: #2f7d68 !important;
+  background: linear-gradient(135deg, #e2f1ea 0%, #f4eee2 100%) !important;
+  box-shadow: 0 8px 18px rgba(47, 125, 104, 0.08) !important;
 }
 
 .osm-section__header h4 {
-  margin-bottom: 0.18rem !important;
+  margin: 0 0 0.16rem !important;
   color: #24303f !important;
-  font-size: 0.96rem !important;
-  font-weight: 850 !important;
-  letter-spacing: -0.02em !important;
+  font-size: 0.94rem !important;
+  font-weight: 820 !important;
+  letter-spacing: -0.018em !important;
 }
 
 .osm-section__header p {
-  color: #687384 !important;
-  font-size: 0.78rem !important;
+  margin: 0 !important;
+  color: #687a72 !important;
+  font-size: 0.76rem !important;
   line-height: 1.45 !important;
+  text-wrap: pretty;
 }
 
-.osm-time-inputs {
+.osm-time-inputs,
+.osm-colors-grid {
   gap: 0.72rem !important;
 }
 
 .osm-time-inputs .input-group label,
 .osm-colors-grid .color-picker-item label {
   margin-bottom: 0.38rem !important;
-  color: #596579 !important;
+  color: #596b64 !important;
   font-size: 0.72rem !important;
-  font-weight: 780 !important;
-  letter-spacing: 0.045em !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.025em !important;
+  text-transform: none !important;
 }
 
 .osm-time-inputs .input-wrapper,
 .osm-colors-grid .color-input-wrapper {
-  min-height: 2.55rem !important;
-  border: 1px solid rgba(116, 88, 54, 0.16) !important;
+  min-height: 2.65rem !important;
+  border: 1px solid rgba(83, 108, 97, 0.18) !important;
   border-radius: 12px !important;
-  background: rgba(255, 253, 248, 0.82) !important;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.84) !important;
+  background: rgba(252, 254, 253, 0.88) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.86) !important;
 }
 
 .osm-time-inputs .input-wrapper input {
   color: #24303f !important;
-  font-size: 0.98rem !important;
+  font-size: 0.96rem !important;
   font-weight: 760 !important;
 }
 
 .osm-time-inputs .input-wrapper span {
-  color: #7990a3 !important;
-  font-weight: 720 !important;
+  color: #788b83 !important;
+  font-weight: 700 !important;
 }
 
 .osm-time-inputs .input-wrapper:focus-within,
 .osm-colors-grid .color-input-wrapper:focus-within {
-  border-color: rgba(15, 93, 86, 0.38) !important;
+  border-color: rgba(47, 125, 104, 0.42) !important;
   box-shadow:
-    0 0 0 4px rgba(15, 93, 86, 0.12),
-    inset 0 1px rgba(255, 255, 255, 0.84) !important;
+    0 0 0 4px rgba(47, 125, 104, 0.12),
+    inset 0 1px rgba(255, 255, 255, 0.86) !important;
 }
 
 .osm-colors-grid {
-  gap: 0.82rem !important;
   margin-bottom: 0.85rem !important;
 }
 
 .osm-colors-grid .color-input-wrapper {
-  gap: 0.65rem !important;
-  padding: 0.28rem 0.75rem 0.28rem 0.28rem !important;
+  gap: 0.62rem !important;
+  padding: 0.28rem 0.7rem 0.28rem 0.28rem !important;
 }
 
 .osm-colors-grid input[type="color"] {
   width: 34px !important;
   height: 34px !important;
   border-radius: 10px !important;
-  box-shadow: 0 8px 16px rgba(36, 48, 63, 0.08) !important;
+  box-shadow: 0 7px 15px rgba(36, 48, 63, 0.08) !important;
 }
 
 .osm-colors-grid .hex-code {
-  color: #536071 !important;
-  font-size: 0.78rem !important;
-  font-weight: 760 !important;
-  letter-spacing: 0.015em !important;
+  color: #52655d !important;
+  font-size: 0.77rem !important;
+  font-weight: 740 !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .osm-presets {
-  padding-top: 0.8rem !important;
-  border-top: 1px dashed rgba(116, 88, 54, 0.16) !important;
+  align-items: flex-start !important;
+  padding-top: 0.82rem !important;
+  border-top: 1px dashed rgba(83, 108, 97, 0.18) !important;
 }
 
 .osm-presets > span {
-  color: #687384 !important;
-  font-weight: 750 !important;
+  padding-top: 0.42rem;
+  color: #687a72 !important;
+  font-size: 0.75rem !important;
+  font-weight: 760 !important;
 }
 
 .osm-presets .preset-btn {
-  min-height: 2rem !important;
-  padding: 0.35rem 0.72rem !important;
-  border: 1px solid rgba(116, 88, 54, 0.15) !important;
-  border-radius: 999px !important;
-  color: #435064 !important;
-  background: rgba(255, 253, 248, 0.78) !important;
-  font-weight: 720 !important;
+  min-height: 2.1rem !important;
+  padding: 0.36rem 0.7rem !important;
+  border: 1px solid rgba(83, 108, 97, 0.16) !important;
+  border-radius: 10px !important;
+  color: #43564f !important;
+  background: rgba(249, 252, 250, 0.86) !important;
+  font-weight: 700 !important;
 }
 
-.osm-presets .preset-btn:hover {
-  transform: translateY(-1px) !important;
-  border-color: rgba(15, 93, 86, 0.32) !important;
-  color: #0f5d56 !important;
-  background: #edf7f4 !important;
+.osm-presets .preset-btn:hover,
+.osm-presets .preset-btn.active,
+.osm-presets .preset-btn[aria-pressed="true"] {
+  transform: translateY(-1px);
+  border-color: rgba(47, 125, 104, 0.34) !important;
+  color: #275f50 !important;
+  background: #e7f3ed !important;
 }
 
 .osm-chip-options {
-  gap: 0.68rem !important;
+  gap: 0.62rem !important;
 }
 
 .osm-chip-options .chip-radio {
-  min-height: 2.85rem !important;
-  padding: 0.72rem 0.85rem !important;
-  border: 1px solid rgba(116, 88, 54, 0.16) !important;
+  min-height: 3rem !important;
+  padding: 0.7rem 0.82rem !important;
+  border: 1px solid rgba(83, 108, 97, 0.16) !important;
   border-radius: 12px !important;
-  color: #435064 !important;
-  background: rgba(255, 253, 248, 0.78) !important;
+  color: #43564f !important;
+  background: rgba(249, 252, 250, 0.82) !important;
+}
+
+.osm-chip-options .chip-radio > span {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.osm-chip-options .chip-radio strong {
+  color: inherit;
+  font-size: 0.82rem;
+}
+
+.osm-chip-options .chip-radio small {
+  color: #71837b;
+  font-size: 0.72rem;
+  font-weight: 500;
 }
 
 .osm-chip-options .chip-radio:hover {
-  border-color: rgba(15, 93, 86, 0.28) !important;
-  background: rgba(237, 247, 244, 0.62) !important;
+  border-color: rgba(47, 125, 104, 0.3) !important;
+  background: rgba(231, 243, 237, 0.66) !important;
 }
 
 .osm-chip-options .chip-radio.active {
-  border-color: rgba(15, 111, 102, 0.38) !important;
-  color: #0f5d56 !important;
-  background:
-    linear-gradient(90deg, rgba(223, 244, 239, 0.96), rgba(237, 247, 244, 0.7)) !important;
+  border-color: rgba(47, 125, 104, 0.42) !important;
+  color: #275f50 !important;
+  background: linear-gradient(90deg, #e2f1ea 0%, rgba(244, 249, 246, 0.88) 100%) !important;
   box-shadow:
-    0 0 0 4px rgba(15, 93, 86, 0.08),
+    0 0 0 4px rgba(47, 125, 104, 0.08),
     inset 0 1px rgba(255, 255, 255, 0.9) !important;
 }
 
 .osm-chip-options .chip-radio input {
-  accent-color: #0f6f66 !important;
+  accent-color: #2f7d68 !important;
 }
 
 .osm-preview {
   padding: 1rem 1rem 1rem 0 !important;
+  border-left: 1px solid rgba(83, 108, 97, 0.1);
   background:
-    radial-gradient(circle at 50% 0%, rgba(15, 93, 86, 0.08), transparent 18rem),
-    linear-gradient(180deg, rgba(250, 246, 239, 0.68), rgba(244, 236, 224, 0.78)) !important;
+    radial-gradient(circle at 50% 0%, rgba(47, 125, 104, 0.1), transparent 18rem),
+    linear-gradient(180deg, rgba(235, 244, 239, 0.75), rgba(241, 247, 243, 0.48)) !important;
 }
 
 .osm-preview__sticky {
   top: 16px !important;
   padding: 1rem !important;
-  border: 1px solid rgba(116, 88, 54, 0.15) !important;
+  border: 1px solid rgba(83, 108, 97, 0.16) !important;
   border-radius: 18px !important;
-  background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(250, 246, 239, 0.78)) !important;
+  background: rgba(249, 252, 250, 0.92) !important;
   box-shadow:
-    0 18px 38px rgba(74, 55, 34, 0.09),
-    inset 0 1px rgba(255, 255, 255, 0.86) !important;
+    0 18px 38px rgba(36, 48, 63, 0.09),
+    inset 0 1px rgba(255, 255, 255, 0.88) !important;
 }
 
 .osm-preview .preview-title {
   margin-bottom: 0.9rem !important;
-  color: #7a6d5e !important;
+  color: #61756c !important;
   font-size: 0.72rem !important;
-  font-weight: 850 !important;
-  letter-spacing: 0.08em !important;
+  font-weight: 820 !important;
+  letter-spacing: 0.07em !important;
 }
 
 .osm-preview .preview-container {
-  margin-bottom: 0.85rem !important;
+  margin-bottom: 0.82rem !important;
 }
 
 .mockCard {
   max-width: 255px !important;
-  border: 1px solid rgba(116, 88, 54, 0.16) !important;
-  border-radius: 14px !important;
-  background: #fffdf8 !important;
+  border: 1px solid rgba(83, 108, 97, 0.18) !important;
+  border-radius: 15px !important;
+  background: #fbfdfc !important;
   box-shadow: 0 18px 36px rgba(36, 48, 63, 0.12) !important;
 }
 
 .mockCard__header {
   padding: 0.78rem 0.85rem !important;
-  background: linear-gradient(90deg, rgba(237, 247, 244, 0.86), rgba(255, 253, 248, 0.82)) !important;
+  background: linear-gradient(90deg, #e7f3ed, #f9fcfa) !important;
 }
 
 .mockCard__id {
-  font-size: 1rem !important;
   color: #24303f !important;
+  font-size: 1rem !important;
 }
 
 .mockCard__timer {
   min-height: 1.8rem !important;
-  padding-inline: 0.65rem !important;
+  padding-inline: 0.62rem !important;
   border-radius: 9px !important;
-  box-shadow: 0 8px 16px rgba(15, 93, 86, 0.16) !important;
+  box-shadow: 0 8px 16px rgba(36, 48, 63, 0.12) !important;
 }
 
 .mockCard__body {
-  background: #fffdf8 !important;
+  background: #fbfdfc !important;
 }
 
-.mockItem {
+.mockCard .mockItem {
   border-radius: 9px !important;
-  background: rgba(237, 247, 244, 0.55) !important;
+  background: rgba(231, 243, 237, 0.62) !important;
 }
 
-.mockItem .qty,
-.qty {
-  color: #0f5d56 !important;
-  background: #dff2ec !important;
+.mockCard .mockItem .qty {
+  color: #275f50 !important;
+  background: #d9ece3 !important;
 }
 
-.mockItem.note {
-  color: #8b4b1f !important;
+.mockCard .mockItem.note {
+  color: #7a4a15 !important;
   background: #fff0d1 !important;
-  border-color: #e9bd74 !important;
 }
 
 .mockCard__hint {
-  color: #7a8797 !important;
-  background: rgba(243, 234, 220, 0.42) !important;
+  color: #71837b !important;
+  background: rgba(228, 238, 233, 0.55) !important;
 }
 
 .osm-preview__actions .btn-reset {
-  min-height: 2.2rem !important;
+  min-height: 2.25rem !important;
   padding-inline: 0.85rem !important;
-  border: 1px solid rgba(116, 88, 54, 0.15) !important;
-  border-radius: 999px !important;
-  color: #536071 !important;
-  background: rgba(255, 253, 248, 0.72) !important;
+  border: 1px solid rgba(83, 108, 97, 0.16) !important;
+  border-radius: 10px !important;
+  color: #52655d !important;
+  background: rgba(249, 252, 250, 0.84) !important;
 }
 
 .osm-preview__actions .btn-reset:hover {
-  color: #0f5d56 !important;
-  background: #edf7f4 !important;
+  color: #275f50 !important;
+  background: #e7f3ed !important;
 }
 
-.modal-container:has(.osm-layout) .btn,
-.modal-container:has(.osm-layout) .btn--secondary,
-.modal-container:has(.osm-layout) .btn--primary {
-  min-height: 2.55rem !important;
-  padding: 0 1.12rem !important;
-  border-radius: 12px !important;
-  font-weight: 820 !important;
+.modal-container:has(.osm-layout) .btn {
+  min-height: 2.6rem !important;
+  padding: 0 1.1rem !important;
+  border-radius: 11px !important;
+  font-weight: 800 !important;
 }
 
 .modal-container:has(.osm-layout) .btn--secondary {
-  color: #526071 !important;
-  background: rgba(245, 247, 249, 0.92) !important;
-  border: 1px solid rgba(116, 88, 54, 0.12) !important;
+  color: #52655d !important;
+  background: rgba(244, 248, 246, 0.94) !important;
+  border: 1px solid rgba(83, 108, 97, 0.14) !important;
 }
 
 .modal-container:has(.osm-layout) .btn--secondary:hover {
   color: #24303f !important;
-  background: #fffdf8 !important;
+  background: #fbfdfc !important;
 }
 
 .modal-container:has(.osm-layout) .btn--primary {
-  color: #fffdf8 !important;
-  background:
-    linear-gradient(135deg, #ffefe0 0%, #ffd7bc 100%) !important;
-  border: 1px solid rgba(213, 137, 53, 0.18) !important;
-  color: #c05621 !important;
-  box-shadow: 0 12px 24px rgba(213, 137, 53, 0.12) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #2f7d68 0%, #1f6654 100%) !important;
+  border: 1px solid rgba(31, 102, 84, 0.72) !important;
+  box-shadow: 0 12px 24px rgba(47, 125, 104, 0.22) !important;
 }
 
-.modal-container:has(.osm-layout) .btn--primary:hover {
+.modal-container:has(.osm-layout) .btn--primary:hover:not(:disabled) {
   transform: translateY(-1px) !important;
-  box-shadow: 0 16px 30px rgba(213, 137, 53, 0.18) !important;
+  box-shadow: 0 16px 30px rgba(47, 125, 104, 0.28) !important;
+}
+
+.modal-container:has(.osm-layout) .btn--primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  box-shadow: none !important;
 }
 
 .modal-container:has(.osm-layout) button:focus-visible,
 .modal-container:has(.osm-layout) input:focus-visible {
-  outline: 3px solid rgba(15, 93, 86, 0.22) !important;
+  outline: 3px solid rgba(47, 125, 104, 0.24) !important;
   outline-offset: 3px !important;
+}
+
+/* Saved chip-size setting: real fullscreen KDS cards, not only the preview. */
+:root[data-order-chip-size="s"] .om-container--focus .om-grid {
+  grid-template-columns: repeat(auto-fit, minmax(350px, 440px)) !important;
+}
+
+:root[data-order-chip-size="s"] .om-container--focus .oc-card.mode-focus {
+  min-height: 430px !important;
+}
+
+:root[data-order-chip-size="s"] .om-container--focus .oc-item-row {
+  padding: 8px !important;
+}
+
+:root[data-order-chip-size="s"] .om-container--focus .item-name {
+  font-size: 0.84rem !important;
+}
+
+:root[data-order-chip-size="s"] .om-container--focus .item-meta,
+:root[data-order-chip-size="s"] .om-container--focus .qty-badge {
+  font-size: 0.72rem !important;
+}
+
+:root[data-order-chip-size="l"] .om-container--focus .om-grid {
+  grid-template-columns: repeat(auto-fit, minmax(480px, 590px)) !important;
+}
+
+:root[data-order-chip-size="l"] .om-container--focus .oc-card.mode-focus {
+  min-height: 530px !important;
+}
+
+:root[data-order-chip-size="l"] .om-container--focus .oc-item-row {
+  padding: 15px !important;
+}
+
+:root[data-order-chip-size="l"] .om-container--focus .item-name {
+  font-size: 1.08rem !important;
+  line-height: 1.35 !important;
+}
+
+:root[data-order-chip-size="l"] .om-container--focus .item-meta {
+  font-size: 0.86rem !important;
+}
+
+:root[data-order-chip-size="l"] .om-container--focus .qty-badge {
+  min-width: 34px !important;
+  min-height: 34px !important;
+  font-size: 0.94rem !important;
 }
 
 @media (max-width: 900px) {
   .osm-layout {
     grid-template-columns: 1fr !important;
-    background: linear-gradient(180deg, #fffdf8, #f8f2e8) !important;
   }
 
   .osm-preview {
     padding: 0 1rem 1rem !important;
+    border-left: 0;
   }
 
   .osm-preview__sticky {
     position: static !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .modal-container:has(.osm-layout) {
+    width: 96vw !important;
+    max-height: 94dvh !important;
+    border-radius: 18px !important;
+  }
+
+  .modal-container:has(.osm-layout) .modal-header,
+  .modal-container:has(.osm-layout) .modal-footer {
+    padding-inline: 14px !important;
+  }
+
+  .osm-scope-note {
+    margin-inline: 0.75rem;
+  }
+
+  .osm-form,
+  .osm-preview {
+    padding-inline: 0.75rem !important;
+  }
+
+  .osm-time-inputs,
+  .osm-colors-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .osm-presets {
+    flex-direction: column;
+  }
+
+  .osm-presets > span {
+    padding-top: 0;
+  }
+
+  .modal-container:has(.osm-layout) .modal-footer {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  :root[data-order-chip-size="l"] .om-container--focus .om-grid,
+  :root[data-order-chip-size="s"] .om-container--focus .om-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-container:has(.osm-layout) *,
+  .modal-container:has(.osm-layout) *::before,
+  .modal-container:has(.osm-layout) *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
