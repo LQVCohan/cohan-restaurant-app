@@ -1,0 +1,25 @@
+{
+  "id": "table-detail-content-ai",
+  "name": "table-detail-content-ai",
+  "title": "Simplify table detail modal and repair promotion/AI data",
+  "description": "Remove internal table coordinates and technical metadata, improve Vietnamese copy, scope promotion data to the active restaurant, and make table assistant requests authenticated and data-driven.",
+  "status": "completed",
+  "dev_type": "bugfix",
+  "scope": "manager-table-detail-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": "2026-07-07",
+  "branch": "fix/table-detail-content-ai-clean",
+  "base_branch": "main",
+  "commit": "b21788de0b34d4afac5787e95bdb9b1a6f1b112d",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1253",
+  "relatedFiles": [
+    "src/hooks/usePromotions.js",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
+    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx",
+    "cohan-restaurant-backend/tests/server/ai-table-endpoints-auth.test.js"
+  ],
+  "notes": "GraphQL validation, the focused modal test, the authorized AI endpoint test, frontend build, and the full backend CI job passed. The repository-wide frontend unit stage remains blocked by existing unrelated failures before changed component/build steps."
+}
