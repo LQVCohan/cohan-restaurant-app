@@ -150,6 +150,22 @@ describe("OrderManagement kitchen display", () => {
     expect(document.body.style.overflow).toBe("hidden");
   });
 
+  it("switches from the kitchen queue to the bar queue", () => {
+    renderOrderManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: /chế độ bếp/i }));
+    const barButton = screen.getByRole("button", {
+      name: /quầy bar, 0 món cần xử lý/i,
+    });
+
+    fireEvent.click(barButton);
+
+    expect(
+      screen.getByRole("heading", { name: /màn hình quầy bar/i }),
+    ).toBeInTheDocument();
+    expect(barButton).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("exits focus mode with Escape and restores body overflow", () => {
     renderOrderManagement();
 
