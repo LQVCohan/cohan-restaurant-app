@@ -1,0 +1,40 @@
+{
+  "id": "manager-kds-bar-mode",
+  "name": "manager-kds-bar-mode",
+  "title": "Add bar mode to manager kitchen display",
+  "description": "Use the existing preparation-station contract to add kitchen, bar, and combined views to the manager fullscreen dispatch screen and make its visual surface consistent.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-order-kds",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "prep-station-routing",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/OrderManagement.jsx",
+    "src/components/Dashboard_Manager/Order/OrderKitchenModeFix.css",
+    "src/components/Dashboard_Manager/Order/OrderManagement.test.jsx"
+  ],
+  "notes": "Backend station persistence, resolver enrichment, restaurant scoping, item-status mutation, permissions, audit and realtime behavior are already correct and remain unchanged.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "taste-ui-redesign",
+      "redesign-existing-projects",
+      "react-ui-performance",
+      "wcag-ui-audit",
+      "web-design-guidelines"
+    ]
+  }
+}
