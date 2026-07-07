@@ -14,14 +14,14 @@ The chain-management page has compact filters and searchable account selection. 
 6. `useBrandManagement` exposes the current account's selected-brand membership role.
 7. `BrandManagement` renders the member workflow and can redirect the previous owner to the assigned branch after transfer.
 
-The root fix is a dedicated transaction-backed ownership mutation. It promotes one active existing member, demotes the current owner to manager, assigns exactly one branch, updates `Brand.ownerId`, and blocks owner changes through generic member mutations.
+The root fix is a dedicated transaction-backed ownership mutation. It promotes one active manager/admin member, demotes the current owner to manager, assigns exactly one branch, updates `Brand.ownerId`, and blocks owner changes through generic member mutations.
 
 ## Scope
 
 - Keep the existing collapsible member filters and searchable add-member picker.
 - Add `TransferBrandOwnershipInput`, payload, and `transferBrandOwnership` mutation.
 - Allow only the current active Brand owner to execute the transfer.
-- Require the new owner to be a different, active existing member of the same Brand.
+- Require the new owner to be a different, active manager or administrator member of the same Brand whose account can access the manager portal.
 - Require exactly one Brand restaurant for the previous owner's manager scope.
 - Reject a selected restaurant when another manager would remain assigned to it.
 - In one MongoDB transaction:
@@ -37,7 +37,7 @@ The root fix is a dedicated transaction-backed ownership mutation. It promotes o
 
 - Non-owners do not see the ownership-transfer control.
 - Only the current active owner can call `transferBrandOwnership`.
-- The target must be an active existing member and cannot be the current owner.
+- The target must be an active manager/admin member with an active manager/admin account and cannot be the current owner.
 - The previous owner must be assigned exactly one restaurant after transfer.
 - A branch already occupied by an unrelated active manager cannot be selected.
 - A manager target may vacate their current branch by becoming owner, allowing the previous owner to take that branch.
@@ -57,7 +57,7 @@ The root fix is a dedicated transaction-backed ownership mutation. It promotes o
 
 ## Validation plan
 
-- Run the focused ownership resolver test for successful atomic transfer and non-owner rejection.
+- Run the focused ownership resolver test for successful atomic transfer, non-owner rejection, and invalid target account role.
 - Run the ownership-transfer component test for owner-only visibility, confirmation, mutation variables, branch selection, and navigation.
 - Run the existing BrandManagement component suite and member-candidate resolver suite.
 - Run GraphQL schema validation and the frontend production build.
