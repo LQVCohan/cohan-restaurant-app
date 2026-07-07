@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const restaurantScopeMocks = vi.hoisted(() => ({
+  canAccessRestaurant: vi.fn(async () => true),
+}));
 const serviceMocks = vi.hoisted(() => ({
   detectAttendanceExceptionsForRange: vi.fn(),
 }));
@@ -27,6 +30,10 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/auth/restaurantScope.service.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  canAccessRestaurant: restaurantScopeMocks.canAccessRestaurant,
+}));
 vi.mock("../../src/services/attendance/attendanceExceptionDetection.service.js", () => ({
   DEFAULT_MISSED_CHECKOUT_GRACE_MINUTES: 30,
   DEFAULT_NO_SHOW_GRACE_MINUTES: 15,
@@ -139,6 +146,7 @@ async function loadMutation() {
 describe("attendance exception detection job", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    restaurantScopeMocks.canAccessRestaurant.mockResolvedValue(true);
     serviceMocks.detectAttendanceExceptionsForRange.mockResolvedValue({
       scannedShifts: 1,
       noShowCreated: 1,
@@ -251,13 +259,13 @@ describe("attendance exception detection job", () => {
         },
       },
       {
-      user:
-        role === "ADMIN"
-          ? { id: actorId, userType: role }
-          : role === "MANAGER"
+        user:
+          role === "ADMIN"
             ? { id: actorId, userType: role }
-            : { id: actorId, userType: role, restaurantForStaff: restaurantId },
-    },
+            : role === "MANAGER"
+              ? { id: actorId, userType: role }
+              : { id: actorId, userType: role, restaurantForStaff: restaurantId },
+      },
     );
 
     expect(result.noShowCreated).toBe(1);
@@ -277,13 +285,13 @@ describe("attendance exception detection job", () => {
           },
         },
         {
-      user:
-        role === "ADMIN"
-          ? { id: actorId, userType: role }
-          : role === "MANAGER"
-            ? { id: actorId, userType: role }
-            : { id: actorId, userType: role, restaurantForStaff: restaurantId },
-    },
+          user:
+            role === "ADMIN"
+              ? { id: actorId, userType: role }
+              : role === "MANAGER"
+                ? { id: actorId, userType: role }
+                : { id: actorId, userType: role, restaurantForStaff: restaurantId },
+        },
       ),
     ).rejects.toThrow("FORBIDDEN");
   });
