@@ -1,0 +1,1 @@
+{"id":"chatbot-core-test-boundary","title":"Restore chatbot core test boundary","status":"in_progress","dev_type":"bugfix","scope":"ai-chatbot","priority":"P1","createdAt":"2026-07-07","branch":"fix/chatbot-core-test-boundary","base_branch":"main","relatedFiles":["cohan-restaurant-backend/src/services/ai/restaurantChatbot.service.js"]}
