@@ -2,7 +2,7 @@
   "id": "attendance-initial-scope-fix",
   "name": "attendance-initial-scope-fix",
   "title": "Fix initial attendance restaurant scope",
-  "description": "Forward the selected restaurant into AttendancePage so the first manager query is scoped and does not hit the admin-only unscoped staffList path.",
+  "description": "Provide the selected manager restaurant through the existing AuthContext fallback before AttendancePage mounts, preventing its first query from using the admin-only unscoped staffList path.",
   "status": "in_progress",
   "dev_type": "frontend",
   "scope": "manager-staff-attendance-data",
@@ -11,13 +11,13 @@
   "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "83b77e90d29ea9d9b4034748c1f436fe437ca7da",
   "pr_url": null,
   "relatedFiles": [
     "src/components/Dashboard_Manager/Staff/StaffManagement.jsx",
     "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePageScoped.jsx",
+    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePageScoped.test.jsx",
     "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.jsx",
-    "src/components/Dashboard_Manager/Staff/components/Attendance/AttendancePage.test.jsx",
     "src/hooks/useAttendanceManagement.js",
     "cohan-restaurant-backend/graphql/resolvers/staff/query.js"
   ]
