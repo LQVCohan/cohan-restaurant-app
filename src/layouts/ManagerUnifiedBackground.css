@@ -77,3 +77,228 @@
 .manager-layout .manager-layout__content {
   isolation: isolate;
 }
+
+/* Keep the manager chrome on the same sage system as the page content. */
+.manager-layout__header {
+  --manager-header-accent: var(--manager-accent);
+  --manager-header-ink: var(--manager-text);
+  --manager-header-muted: var(--manager-muted);
+  --manager-header-border: var(--manager-border-strong);
+}
+
+.manager-layout__header > .header {
+  border-bottom-color: var(--manager-border);
+  background:
+    radial-gradient(circle at 20% -120%, rgba(47, 125, 104, 0.16), transparent 22rem),
+    linear-gradient(90deg, rgba(249, 252, 250, 0.98), rgba(241, 247, 243, 0.97));
+  box-shadow: 0 8px 24px rgba(48, 72, 61, 0.08);
+}
+
+.manager-layout__header > .header .header__content {
+  grid-template-columns: minmax(15rem, 19rem) minmax(24rem, 1fr) max-content;
+  gap: clamp(0.75rem, 1.4vw, 1.25rem);
+  width: min(calc(100% - 3rem), 1500px);
+}
+
+.manager-layout__header .header__scope {
+  width: 100%;
+  max-width: 19rem;
+}
+
+.manager-layout__header .header__center {
+  justify-self: stretch;
+}
+
+.manager-layout__header .header__center .search-box,
+.manager-layout__header .header__scope .manager-scope-selector {
+  border-color: var(--manager-border-strong);
+  background: var(--manager-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 4px 12px rgba(48, 72, 61, 0.05);
+}
+
+.manager-layout__header .header__center .search-box:hover,
+.manager-layout__header .header__center .search-box:focus-within {
+  border-color: rgba(47, 125, 104, 0.48);
+  background: rgba(252, 254, 253, 0.98);
+}
+
+.manager-layout__header .header__center .search-box:focus-within {
+  box-shadow:
+    0 0 0 3px rgba(47, 125, 104, 0.1),
+    0 8px 18px rgba(48, 72, 61, 0.07);
+}
+
+.manager-layout__header .header__scope .manager-scope-selector label + label::before {
+  background: var(--manager-border);
+}
+
+.manager-layout__header .header__scope .manager-scope-selector span,
+.manager-layout__header .current-status,
+.manager-layout__header .header__center .search-input::placeholder {
+  color: var(--manager-muted);
+}
+
+.manager-layout__header .header__scope .manager-scope-selector strong,
+.manager-layout__header .header__scope .manager-scope-selector select,
+.manager-layout__header .current-time,
+.manager-layout__header .user-name,
+.manager-layout__header .header__center .search-input {
+  color: var(--manager-text);
+}
+
+.manager-layout__header .notification-btn,
+.manager-layout__header .user-menu-btn {
+  color: var(--manager-muted);
+}
+
+.manager-layout__header .notification-btn:hover,
+.manager-layout__header .user-menu-btn:hover,
+.manager-layout__header .notification-btn--active,
+.manager-layout__header .user-menu-btn--active {
+  border-color: var(--manager-border);
+  color: var(--manager-primary-hover);
+  background: var(--manager-surface);
+}
+
+.manager-layout .sidebar {
+  color: var(--manager-text);
+  border-right-color: var(--manager-border);
+  background:
+    radial-gradient(circle at 10% -8%, rgba(47, 125, 104, 0.14), transparent 24rem),
+    radial-gradient(circle at 92% 6%, rgba(83, 108, 97, 0.1), transparent 22rem),
+    linear-gradient(180deg, rgba(249, 252, 250, 0.99), rgba(238, 245, 241, 0.98));
+  box-shadow: 14px 0 34px rgba(48, 72, 61, 0.1);
+}
+
+.manager-layout .sidebar::before {
+  background-image:
+    linear-gradient(var(--manager-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--manager-grid-line) 1px, transparent 1px);
+}
+
+.manager-layout .sidebar-header,
+.manager-layout .sidebar-footer {
+  border-color: var(--manager-border);
+  background: rgba(241, 247, 243, 0.9);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.manager-layout .nav-section-title,
+.manager-layout .nav-item,
+.manager-layout .user-status-small,
+.manager-layout .sidebar-version {
+  color: var(--manager-muted);
+}
+
+.manager-layout .nav-icon,
+.manager-layout .sidebar-user,
+.manager-layout .sidebar-rail-toggle {
+  border-color: var(--manager-border);
+  color: var(--manager-primary);
+  background: var(--manager-surface);
+  box-shadow: 0 8px 18px rgba(48, 72, 61, 0.08);
+}
+
+.manager-layout .nav-item:hover,
+.manager-layout .nav-item.active {
+  border-color: var(--manager-border-strong);
+  color: var(--manager-text);
+  background: linear-gradient(135deg, rgba(249, 252, 250, 0.98), var(--manager-accent-soft));
+  box-shadow:
+    0 10px 22px rgba(48, 72, 61, 0.1),
+    inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+.manager-layout .nav-item:hover .nav-icon,
+.manager-layout .nav-item.active .nav-icon {
+  border-color: var(--manager-border-strong);
+  color: var(--manager-primary-hover);
+  background: rgba(229, 240, 235, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(47, 125, 104, 0.12);
+}
+
+.manager-layout .sidebar-rail-toggle:hover {
+  border-color: var(--manager-border-strong);
+  color: var(--manager-accent);
+  background: rgba(252, 254, 253, 0.98);
+  box-shadow:
+    0 10px 22px rgba(48, 72, 61, 0.12),
+    0 0 0 3px rgba(47, 125, 104, 0.07);
+}
+
+.manager-layout .sidebar-rail-toggle:focus-visible,
+.manager-layout .manager-sidebar-brand:focus-visible {
+  outline-color: rgba(47, 125, 104, 0.24);
+}
+
+.manager-layout .status-dot-small {
+  background: var(--manager-success);
+  box-shadow: 0 0 0 4px rgba(47, 125, 104, 0.12);
+}
+
+@media (max-width: 1320px) {
+  .manager-layout__header > .header .header__content {
+    grid-template-columns: minmax(14rem, 17rem) minmax(18rem, 1fr) max-content;
+    width: calc(100% - 1.5rem);
+    max-width: 1500px;
+  }
+
+  .manager-layout__header .header__scope {
+    max-width: 17rem;
+  }
+}
+
+@media (max-width: 1080px) {
+  .manager-layout__header > .header .header__content {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .manager-layout__header .header__scope {
+    display: none;
+  }
+
+  .manager-layout__header .header__center {
+    grid-column: 1;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
+  }
+
+  .manager-layout__header .header__right {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .manager-layout__header .user-info {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-layout__header > .header .header__content {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: calc(100% - 1.5rem);
+    gap: 0.5rem;
+  }
+
+  .manager-layout__header .header__left {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .manager-layout__header .header__left .page-info,
+  .manager-layout__header .header__center {
+    display: none;
+  }
+
+  .manager-layout__header .header__right {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+}
