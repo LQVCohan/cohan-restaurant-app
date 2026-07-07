@@ -13,6 +13,7 @@ import { assertDemoScriptAllowed, safeDbInfo } from "./lib/scriptSafety.js";
 const RESTAURANT_ID =
   process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
 const WEEK_TAG_PATTERN = /demo-staff-performance-weeks-2026-07/;
+const LEGACY_TAG_PATTERN = /demo-shared-roster-hours-2026-07/;
 
 const SCENARIOS = [
   ["staff.server.demo@cohan.local", "morning", 7, 8],
@@ -113,6 +114,27 @@ async function loadContext() {
   };
 }
 
+async function removeLegacyDuplicateRoster(restaurantId) {
+  const shiftIds = await Shift.find({
+    restaurantId,
+    notes: LEGACY_TAG_PATTERN,
+  }).distinct("_id");
+
+  const timesheetResult = await Timesheet.deleteMany({
+    restaurantId,
+    $or: [
+      { shiftId: { $in: shiftIds } },
+      { note: LEGACY_TAG_PATTERN },
+    ],
+  });
+  const shiftResult = await Shift.deleteMany({ _id: { $in: shiftIds } });
+
+  return {
+    shifts: shiftResult.deletedCount || 0,
+    timesheets: timesheetResult.deletedCount || 0,
+  };
+}
+
 async function updatePolicy(restaurantId) {
   const policy =
     (await SchedulingPolicy.findOne({ restaurantId })) ||
@@ -208,8 +230,8 @@ async function updateExistingRoster(context) {
         $set: {
           originalCheckInAt: actualCheckInAt,
           originalCheckOutAt: actualCheckOutAt,
-          requestedCheckInAt: actualCheckInAt,
-          requestedCheckOutAt: actualCheckOutAt,
+          requestedCheckInAt: actualCheckInAt || startTime,
+          requestedCheckOutAt: actualCheckOutAt || endTime,
           originalWorkedMinutes: workedMinutes,
           requestedWorkedMinutes: workedMinutes,
         },
@@ -251,10 +273,11 @@ async function main() {
   });
 
   const context = await loadContext();
+  const removed = await removeLegacyDuplicateRoster(context.restaurantId);
   await updatePolicy(context.restaurantId);
   const result = await updateExistingRoster(context);
   console.log(
-    `Shared roster hours applied in place: restaurant=${RESTAURANT_ID}, shifts=${result.shifts}, timesheets=${result.timesheets}`,
+    `Shared roster hours applied in place: restaurant=${RESTAURANT_ID}, shifts=${result.shifts}, timesheets=${result.timesheets}, removedLegacyShifts=${removed.shifts}, removedLegacyTimesheets=${removed.timesheets}`,
   );
 }
 
