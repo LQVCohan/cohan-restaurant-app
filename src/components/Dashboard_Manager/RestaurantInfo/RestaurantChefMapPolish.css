@@ -1,0 +1,199 @@
+.manager-layout .restaurant-management-container {
+  --ri-chef-accent: var(--manager-accent, #2f7d68);
+  --ri-chef-accent-soft: var(--manager-accent-soft, #e5f0eb);
+  --ri-chef-ink: var(--manager-text, #24312c);
+  --ri-chef-muted: var(--manager-muted, #607069);
+  --ri-chef-line: var(--manager-border, rgba(83, 108, 97, 0.22));
+}
+
+/* Keep the existing data flow, but present the brand-chef control as a real profile block. */
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"]) {
+  margin-top: 2px;
+  padding: 18px;
+  border: 1px solid var(--ri-chef-line);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(47, 125, 104, 0.11), transparent 17rem),
+    rgba(255, 255, 255, 0.84);
+  box-shadow: 0 10px 24px rgba(48, 72, 61, 0.07);
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  > .ant-row
+  > .ant-form-item-label {
+  padding-bottom: 10px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  > .ant-row
+  > .ant-form-item-label
+  label {
+  color: var(--ri-chef-ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  .ant-form-item-control-input-content::before {
+  content: "Gương mặt dẫn dắt gian bếp";
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ri-chef-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  .ant-form-item-control-input-content::after {
+  content: "Trang khách hàng sẽ hiển thị tên, chức danh Bếp trưởng điều hành và phong cách ẩm thực của nhà hàng.";
+  display: block;
+  margin-top: 9px;
+  color: var(--ri-chef-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  .ant-space-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  .ant-space-compact
+  .ant-input {
+  min-height: 42px;
+  border-radius: 12px !important;
+  background: #fff;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  .ant-space-compact
+  .ant-btn {
+  min-height: 42px;
+  padding-inline: 16px;
+  border: 1px solid rgba(47, 125, 104, 0.34);
+  border-radius: 12px !important;
+  background: var(--ri-chef-accent-soft);
+  color: var(--ri-chef-accent);
+  font-weight: 750;
+  box-shadow: none;
+}
+
+.manager-layout .restaurant-management-container
+  .modern-form
+  .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+  .ant-space-compact
+  .ant-btn:hover {
+  border-color: var(--ri-chef-accent);
+  background: #d9ebe3;
+  color: #245f50;
+}
+
+/* Make the current-location action read as a deliberate map control. */
+.manager-layout .restaurant-management-container
+  .address-section-card
+  .ant-card-extra
+  .ant-btn-link {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(47, 125, 104, 0.24);
+  border-radius: 10px;
+  background: #f2f8f5;
+  color: var(--ri-chef-accent);
+  font-weight: 720;
+}
+
+.manager-layout .restaurant-management-container
+  .address-section-card
+  .ant-card-extra
+  .ant-btn-link
+  .anticon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--ri-chef-accent-soft);
+}
+
+/* Asset-independent Leaflet marker: no broken default PNG icon. */
+.manager-layout .restaurant-management-container
+  .restaurant-location-marker.leaflet-div-icon {
+  border: 0;
+  background: transparent;
+}
+
+.manager-layout .restaurant-management-container .restaurant-location-marker__pin {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 34px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: var(--ri-chef-accent);
+  box-shadow: 0 10px 20px rgba(27, 74, 62, 0.34);
+  transform: rotate(-45deg);
+}
+
+.manager-layout .restaurant-management-container
+  .restaurant-location-marker__pin
+  > span {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  inset: 50% auto auto 50%;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 640px) {
+  .manager-layout .restaurant-management-container
+    .modern-form
+    .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+    .ant-space-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-layout .restaurant-management-container
+    .modern-form
+    .ant-form-item:has(input[placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"])
+    .ant-space-compact
+    .ant-btn {
+    width: 100%;
+  }
+
+  .manager-layout .restaurant-management-container
+    .address-section-card
+    .ant-card-head-wrapper {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .manager-layout .restaurant-management-container
+    .address-section-card
+    .ant-card-extra {
+    margin-inline-start: 0;
+  }
+}
