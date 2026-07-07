@@ -81,8 +81,15 @@ const CartSchema = BaseSchemaModel({
   },
 });
 
-// Một user chỉ có 1 cart active
-CartSchema.index({ userId: 1, status: 1 });
+// Một user chỉ có 1 cart active; các cart lịch sử vẫn được giữ lại.
+CartSchema.index(
+  { userId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "active" },
+    name: "uniq_active_cart_per_user",
+  },
+);
 
 // Tổng số lượng
 CartSchema.virtual("totalQuantity").get(function () {

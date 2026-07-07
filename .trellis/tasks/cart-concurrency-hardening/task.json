@@ -1,0 +1,18 @@
+{
+  "id": "cart-concurrency-hardening",
+  "title": "Harden concurrent cart reservations",
+  "status": "ready_for_review",
+  "branch": "fix-cart-concurrency-conflicts",
+  "createdAt": "2026-07-07",
+  "scope": [
+    "cohan-restaurant-backend/models/cart.model.js",
+    "cohan-restaurant-backend/graphql/resolvers/cart/mutation.js",
+    "cohan-restaurant-backend/tests/resolvers/cart-concurrency.test.js"
+  ],
+  "validation": [
+    "npx vitest run tests/resolvers/cart-concurrency.test.js tests/resolvers/cart-access.test.js",
+    "npm run build",
+    "GitHub Actions CI"
+  ],
+  "databaseMigrationRun": false
+}
