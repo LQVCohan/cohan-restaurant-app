@@ -30,6 +30,51 @@ function outOfStockError(message) {
   return new GraphQLError(message, { extensions: { code: "OUT_OF_STOCK" } });
 }
 
+function cartConflictError() {
+  return new GraphQLError(
+    "Giỏ hàng vừa được cập nhật từ một yêu cầu khác. Vui lòng thử lại.",
+    { extensions: { code: "CART_CONFLICT_RETRY" } },
+  );
+}
+
+function cartStateUnknownError() {
+  return new GraphQLError(
+    "Chưa xác định được kết quả cập nhật giỏ hàng. Vui lòng tải lại giỏ trước khi thao tác tiếp.",
+    { extensions: { code: "CART_STATE_UNKNOWN" } },
+  );
+}
+
+function isInsufficientStockReservationError(error) {
+  const message = String(error?.message || "");
+  return (
+    error?.code === "INSUFFICIENT_STOCK" ||
+    message === "Insufficient" ||
+    message.startsWith("Insufficient available stock to reserve ingredient ")
+  );
+}
+
+function isRetryableCartConflict(error) {
+  const labels = Array.isArray(error?.errorLabels) ? error.errorLabels : [];
+  return (
+    Number(error?.code) === 11000 ||
+    Number(error?.code) === 112 ||
+    error?.codeName === "WriteConflict" ||
+    labels.includes("TransientTransactionError")
+  );
+}
+
+function rethrowCartTransactionError(error) {
+  if (error?.extensions?.code) throw error;
+  const labels = Array.isArray(error?.errorLabels) ? error.errorLabels : [];
+  if (labels.includes("UnknownTransactionCommitResult")) {
+    throw cartStateUnknownError();
+  }
+  if (isRetryableCartConflict(error)) {
+    throw cartConflictError();
+  }
+  throw error;
+}
+
 function requireAuthUser(ctx) {
   const uid = ctx?.user?.id;
   if (!uid || !mongoose.isValidObjectId(uid)) throw unauthenticated();
@@ -142,7 +187,6 @@ function assertNotBlocked(cart) {
     throw new GraphQLError(`Bạn đang bị tạm chặn đặt món đến ${blockedUntil.toISOString()}`);
   }
 }
-
 
 function normalizeCartItemNote(value) {
   return String(value || "").trim();
@@ -364,7 +408,8 @@ export const CartMutation = {
             lines: reserveLines,
             session,
           });
-        } catch (e) {
+        } catch (error) {
+          if (!isInsufficientStockReservationError(error)) throw error;
           await publishOutOfStock(ctx, {
             restaurantId,
             menuItemId,
@@ -437,6 +482,8 @@ export const CartMutation = {
           holdExpiresAt: holdExpiresAt.toISOString(),
         };
       });
+    } catch (error) {
+      rethrowCartTransactionError(error);
     } finally {
       await session.endSession();
     }
@@ -444,7 +491,6 @@ export const CartMutation = {
     emitInventoryEvent(ctx, eventPayload);
     return after;
   },
-
 
   async addComboToCart(_, { comboId, quantity = 1 }, ctx) {
     const uid = requireAuthUser(ctx);
@@ -491,6 +537,8 @@ export const CartMutation = {
         await cart.save({ session });
         after = cart.toObject({ virtuals: true });
       });
+    } catch (error) {
+      rethrowCartTransactionError(error);
     } finally {
       await session.endSession();
     }
@@ -541,7 +589,8 @@ export const CartMutation = {
               lines: [{ menuItemId: it.menuItemId, quantity: delta, servingKey }],
               session,
             });
-          } catch (e) {
+          } catch (error) {
+            if (!isInsufficientStockReservationError(error)) throw error;
             await publishOutOfStock(ctx, {
               restaurantId,
               menuItemId: it.menuItemId,
@@ -597,6 +646,8 @@ export const CartMutation = {
           };
         }
       });
+    } catch (error) {
+      rethrowCartTransactionError(error);
     } finally {
       await session.endSession();
     }
