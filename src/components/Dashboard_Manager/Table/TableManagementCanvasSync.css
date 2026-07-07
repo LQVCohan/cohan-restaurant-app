@@ -1,0 +1,7 @@
+.manager-layout--tables .tm-container,
+html body.manager-dark-mode
+  .manager-layout.manager-layout.manager-layout--tables
+  .manager-layout__content
+  .tm-container {
+  background: transparent !important;
+}
