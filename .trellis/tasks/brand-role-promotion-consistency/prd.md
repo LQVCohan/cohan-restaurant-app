@@ -8,10 +8,12 @@ The current data model has three related but different values:
 2. `User.userType` is a discriminator/legacy account type and must not override a populated current role for authorization.
 3. `BrandMembership.role` plus `restaurantIds` controls authority inside one Brand.
 
-Treating these values as one role causes two common failures:
+Treating these values as one role causes several failures:
 
 - an account is changed from System Admin to Manager while its BrandMembership remains `admin`, so it still correctly receives Brand-wide access even though the operator expected one branch;
-- a BrandMembership is changed to `manager` while the account remains System Admin or operational staff, so the account is either impossible to scope or cannot enter the manager portal.
+- a BrandMembership is changed to `manager` while the account remains System Admin or operational staff, so the account is either impossible to scope or cannot enter the manager portal;
+- a Brand administrator can suspend their own membership, immediately lose access, and leave the Brand page in a Forbidden state;
+- the manager workspace can restore `#brands` and the previous Brand/restaurant selection after logout, briefly rendering a page the newly signed-in branch manager cannot use.
 
 ## Invariants
 
@@ -21,7 +23,12 @@ Treating these values as one role causes two common failures:
 - Brand `manager` must have exactly one restaurant ID.
 - Brand `staff` must have at least one restaurant ID.
 - The frontend restaurant selector must derive its options from the active BrandMembership, even when Apollo still holds a broader cached `Brand.restaurants` list.
-- An incompatible membership may always be deactivated so legacy data can be repaired.
+- An incompatible membership may always be deactivated by another authorized Brand administrator so legacy data can be repaired.
+- A Brand member must not suspend their own active membership through the administrative status mutation.
+- The active owner must never be suspended; ownership must be transferred first.
+- The Brand-management page is available only to System Admin or a user with an active Brand `owner` / `admin` membership.
+- When restored navigation points to a page no longer allowed, the manager shell must replace the hash, stored page, and rendered content with a valid fallback immediately after access data resolves.
+- Logout must clear the persisted manager page, selected Brand, and selected restaurant so one account's workspace is never restored for another account.
 
 ## Compatibility matrix
 
@@ -58,7 +65,8 @@ This transition crosses both system and Brand authority. The final atomic workfl
 
 - keep account role `manager`;
 - set BrandMembership role to `manager`;
-- require exactly one available restaurant.
+- require exactly one available restaurant;
+- after the change or the next login, a stale `#brands` route must redirect to `#dashboard` without rendering Brand-management data.
 
 ### Manager to staff
 
@@ -77,6 +85,14 @@ Ownership remains a dedicated transaction:
 - both keep Brand-wide scope;
 - account role remains a manager-capable role.
 
+### Membership suspension
+
+- an authorized owner/admin may suspend another non-owner membership;
+- a user cannot suspend their own active membership through this administrative action;
+- an owner cannot be suspended;
+- an inactive legacy membership can still be restored when the account-role compatibility rules are satisfied;
+- a future explicit `Leave Brand` workflow may allow voluntary departure with replacement and confirmation rules, but it is separate from administrative suspension.
+
 ## Multi-Brand rule
 
 Never rewrite all memberships from one global role change. One account can hold different roles in different Brands. Each membership transition must identify one membership/Brand explicitly.
@@ -87,8 +103,10 @@ A global role may only be demoted out of `manager` when the account has no remai
 
 - Current populated role takes precedence over stale `userType` for System Admin detection.
 - Brand member add/update mutations reject incompatible account-role and membership-role combinations.
-- Deactivation remains available for incompatible legacy memberships.
+- Self-suspension and owner suspension are rejected before the membership status is written.
 - Frontend restaurant options are intersected with membership `restaurantIds` for Brand managers and staff.
+- Manager navigation removes `brands` after Brand access resolves when the user has no Brand-wide membership, then replaces stale hash and stored page with Dashboard.
+- Authentication cleanup clears the persisted manager page, selected Brand, and selected restaurant on logout/session invalidation.
 - System Admin and Brand owner/admin retain their intended broad scope.
 
 ## Follow-up implementation
