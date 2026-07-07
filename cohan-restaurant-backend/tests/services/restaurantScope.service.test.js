@@ -100,7 +100,7 @@ describe("restaurantScope.service", () => {
     await expect(isBrandOwner({ id: ids.user }, ids.brandA)).resolves.toBe(false);
   });
 
-  it("returns an empty scoped filter without membership or explicit scope", async () => {
+  it("returns an empty scoped filter without active BrandMembership", async () => {
     const { getScopedRestaurantFilter } = await import("../../src/services/auth/restaurantScope.service.js");
 
     await expect(getScopedRestaurantFilter({ id: ids.user })).resolves.toEqual({
@@ -153,7 +153,7 @@ describe("restaurantScope.service", () => {
     },
   );
 
-  it("allows explicit operational scope before BrandMembership migration", async () => {
+  it("does not grant access from legacy user restaurant fields", async () => {
     const {
       canAccessRestaurant,
       getScopedRestaurantFilter,
@@ -167,37 +167,10 @@ describe("restaurantScope.service", () => {
       restaurants: [ids.a1],
     };
 
-    await expect(canAccessRestaurant(legacyUser, ids.a1)).resolves.toBe(true);
-    const filter = await getScopedRestaurantFilter(legacyUser);
-    expect(filter.$or).toHaveLength(1);
-    expect(String(filter.$or[0]._id.$in[0])).toBe(ids.a1);
-  });
-
-  it("does not widen active BrandMembership with explicit user scope", async () => {
-    state.memberships = [
-      {
-        brandId: ids.brandA,
-        role: "manager",
-        status: "active",
-        restaurantIds: [ids.a1],
-      },
-    ];
-    const user = {
-      id: ids.user,
-      roleName: "manager",
-      restaurantId: ids.b1,
-      restaurantForStaff: ids.b1,
-    };
-    const {
-      canAccessRestaurant,
-      getScopedRestaurantFilter,
-    } = await import("../../src/services/auth/restaurantScope.service.js");
-
-    await expect(canAccessRestaurant(user, ids.a1)).resolves.toBe(true);
-    await expect(canAccessRestaurant(user, ids.b1)).resolves.toBe(false);
-    const filter = await getScopedRestaurantFilter(user);
-    expect(filter.$or).toHaveLength(1);
-    expect(String(filter.$or[0].brandId)).toBe(ids.brandA);
+    await expect(canAccessRestaurant(legacyUser, ids.a1)).resolves.toBe(false);
+    await expect(getScopedRestaurantFilter(legacyUser)).resolves.toEqual({
+      _id: { $in: [] },
+    });
   });
 
   it("rejects a stale restaurant assignment from another Brand", async () => {
