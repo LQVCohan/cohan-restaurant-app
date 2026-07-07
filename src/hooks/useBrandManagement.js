@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 
@@ -81,8 +81,20 @@ export default function useBrandManagement(
     }),
     [data?.myBrands, membershipByBrandId],
   );
-  const [selectedBrandId, setSelectedBrandId] = useState(() => storageGet("manager.selectedBrandId"));
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState(() => storageGet("manager.selectedRestaurantId"));
+  const [selectedBrandId, setSelectedBrandIdState] = useState(() => storageGet("manager.selectedBrandId"));
+  const [selectedRestaurantId, setSelectedRestaurantIdState] = useState(() => storageGet("manager.selectedRestaurantId"));
+
+  const setSelectedBrandId = useCallback((value) => {
+    const nextValue = String(value || "");
+    setSelectedBrandIdState(nextValue);
+    storageSet("manager.selectedBrandId", nextValue);
+  }, []);
+
+  const setSelectedRestaurantId = useCallback((value) => {
+    const nextValue = String(value || "");
+    setSelectedRestaurantIdState(nextValue);
+    storageSet("manager.selectedRestaurantId", nextValue);
+  }, []);
 
   const brandRestaurantIds = useMemo(() => new Set(brands.flatMap((brand) => (brand.restaurants || []).map(getId)).filter(Boolean)), [brands]);
   const authRestaurants = useMemo(() => [...(restaurants || []), ...(additionalRestaurants || [])].map(normalizeRestaurant).filter((r) => r.id), [additionalRestaurants, restaurants]);
@@ -121,7 +133,7 @@ export default function useBrandManagement(
     const nextBrandId = availableBrandIds.includes(selectedBrandId)
       ? selectedBrandId
       : availableBrandIds[0] || "";
-    if (nextBrandId !== selectedBrandId) setSelectedBrandId(nextBrandId);
+    if (nextBrandId !== selectedBrandId) setSelectedBrandIdState(nextBrandId);
   }, [brands, loading, selectedBrandId, shouldSkip]);
 
   useEffect(() => storageSet("manager.selectedBrandId", selectedBrandId), [selectedBrandId]);
@@ -131,8 +143,8 @@ export default function useBrandManagement(
     const syncSelection = (event) => {
       const key = event?.detail?.key;
       const value = event?.detail?.value || "";
-      if (key === "manager.selectedBrandId") setSelectedBrandId(value);
-      if (key === "manager.selectedRestaurantId") setSelectedRestaurantId(value);
+      if (key === "manager.selectedBrandId") setSelectedBrandIdState(value);
+      if (key === "manager.selectedRestaurantId") setSelectedRestaurantIdState(value);
     };
     if (typeof window === "undefined") return undefined;
     window.addEventListener("manager:scope-selection", syncSelection);
@@ -140,7 +152,7 @@ export default function useBrandManagement(
   }, []);
 
   useEffect(() => {
-    setSelectedRestaurantId((currentId) => {
+    setSelectedRestaurantIdState((currentId) => {
       if (!activeRestaurantOptions.length) return "";
       if (currentId && activeRestaurantOptions.some((restaurant) => restaurant.id === currentId)) return currentId;
       return activeRestaurantOptions.length === 1 || !currentId ? activeRestaurantOptions[0].id : "";
