@@ -32,19 +32,6 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
     throw bad("Người nhận quyền phải là một tài khoản khác.");
   }
 
-  let managerRestaurantIds;
-  try {
-    managerRestaurantIds = await ensureBrandRestaurants(
-      input.brandId,
-      [input.previousOwnerRestaurantId],
-    );
-  } catch (error) {
-    throw bad(error.message);
-  }
-  if (managerRestaurantIds.length !== 1) {
-    throw bad("Chủ cũ phải được gán đúng một chi nhánh để làm quản lý.");
-  }
-
   const session = await mongoose.startSession();
   let result;
   try {
@@ -57,6 +44,19 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
       }).session(session);
       if (!currentOwnerMembership) {
         throw forbidden("Chỉ chủ chuỗi hiện tại mới có thể chuyển quyền sở hữu.");
+      }
+
+      let managerRestaurantIds;
+      try {
+        managerRestaurantIds = await ensureBrandRestaurants(
+          input.brandId,
+          [input.previousOwnerRestaurantId],
+        );
+      } catch (error) {
+        throw bad(error.message);
+      }
+      if (managerRestaurantIds.length !== 1) {
+        throw bad("Chủ cũ phải được gán đúng một chi nhánh để làm quản lý.");
       }
 
       const newOwnerMembership = await BrandMembership.findOne({
