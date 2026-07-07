@@ -1,57 +1,62 @@
+.manager-layout .restaurant-management-container .preview-stage {
+  padding-inline: 12px;
+}
+
 .manager-layout .restaurant-management-container .preview-stage::after {
-  margin-top: 14px;
-  color: #56665f;
+  margin-top: 15px;
+  max-width: 18rem;
+  color: #4f6259;
   font-size: 0.76rem;
   font-weight: 720;
   line-height: 1.45;
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card {
-  width: min(100%, 322px) !important;
-  padding: 11px 6px 14px !important;
-  border-color: rgba(255, 255, 255, 0.42) !important;
-  border-radius: 31px !important;
-  background: linear-gradient(155deg, #33443d 0%, #1b2621 100%) !important;
-  box-shadow:
-    0 24px 48px rgba(34, 56, 47, 0.2),
-    inset 0 1px rgba(255, 255, 255, 0.18) !important;
+  width: 90% !important;
+  max-width: 296px !important;
+  padding: 6px 4px 9px !important;
+  border: 1px solid rgba(77, 101, 90, 0.55) !important;
+  border-radius: 25px !important;
+  background: linear-gradient(155deg, #52665d 0%, #33443c 100%) !important;
+  box-shadow: 0 16px 32px rgba(34, 56, 47, 0.16) !important;
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card::before {
-  top: 7px;
-  width: 52px !important;
-  height: 4px !important;
-  background: #121915;
+  top: 3px;
+  width: 38px !important;
+  height: 3px !important;
+  background: rgba(12, 21, 17, 0.66);
   box-shadow: none;
-  opacity: 0.88;
+  opacity: 0.82;
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card::after {
-  bottom: 7px;
-  width: 54px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.58);
+  bottom: 3px;
+  width: 38px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
-  height: min(592px, calc(100dvh - 205px)) !important;
-  min-height: 532px !important;
-  border-radius: 22px !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  height: min(580px, calc(100dvh - 210px)) !important;
+  min-height: 520px !important;
+  border-radius: 19px !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .manager-layout .restaurant-management-container .desktop-preview-card .empty-preview {
-  min-height: 532px;
-  border-radius: 22px;
+  min-height: 520px;
+  border-radius: 19px;
 }
 
 @media (max-width: 768px) {
   .manager-layout .restaurant-management-container .desktop-preview-card {
-    width: min(100%, 340px) !important;
+    width: 92% !important;
+    max-width: 306px !important;
   }
 
   .manager-layout .restaurant-management-container .desktop-preview-card .desktop-iframe {
-    height: 570px !important;
+    height: 556px !important;
     min-height: 0 !important;
   }
 }
