@@ -57,6 +57,7 @@ import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoUnifiedPage.
 import "./components/Dashboard_Manager/RestaurantInfo/RestaurantInfoPremiumLayout.css";
 import "./components/Dashboard_Manager/Staff/components/Attendance/OvertimePanelPolicyPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementCanvasSync.css";
+import "./components/Dashboard_Manager/Table/TableManagementMergePickerFix.css";
 import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
