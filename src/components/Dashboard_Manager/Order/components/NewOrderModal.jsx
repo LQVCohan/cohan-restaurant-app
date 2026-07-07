@@ -635,7 +635,9 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                     notFoundContent="Không tìm thấy bàn phù hợp"
                     disabled={tablesLoading}
                     suffixIcon={<ChevronDown size={16} aria-hidden="true" />}
-                    popupClassName="new-order-search-select__popup"
+                    classNames={{
+                      popup: { root: "new-order-search-select__popup" },
+                    }}
                     aria-label="Tìm và chọn bàn"
                   />
                 </div>
@@ -656,7 +658,9 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                     filterOption={filterSearchOption}
                     notFoundContent="Không tìm thấy danh mục"
                     suffixIcon={<ChevronDown size={16} aria-hidden="true" />}
-                    popupClassName="new-order-search-select__popup"
+                    classNames={{
+                      popup: { root: "new-order-search-select__popup" },
+                    }}
                     aria-label="Tìm và lọc theo danh mục"
                   />
                 </div>
