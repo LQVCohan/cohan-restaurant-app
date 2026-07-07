@@ -14,21 +14,8 @@ const RESTAURANT_ID =
   process.env.DEMO_RESTAURANT_ID?.trim() || "69ce9e2e8d8d711f12e251b1";
 const WEEK_TAG_PATTERN = /demo-staff-performance-weeks-2026-07/;
 const LEGACY_TAG_PATTERN = /demo-shared-roster-hours-2026-07/;
-
-const SCENARIOS = [
-  ["staff.server.demo@cohan.local", "morning", 7, 8],
-  ["staff.chef.demo@cohan.local", "morning", 7, 8],
-  ["staff.supervisor.demo@cohan.local", "evening", 15, 8],
-  ["staff.cashier.demo@cohan.local", "afternoon", 11, 4],
-  ["staff.kitchenhelper.demo@cohan.local", "afternoon", 11, 4],
-  ["staff.exception.demo@cohan.local", "afternoon", 11, 4],
-  ["staff.parttime.demo@cohan.local", "rotating", 19, 4],
-].map(([email, shiftType, startHour, shiftHours]) => ({
-  email,
-  shiftType,
-  startHour,
-  shiftHours,
-}));
+const ROSTER_START = "2026-06-29";
+const ROSTER_END_EXCLUSIVE = "2026-07-13";
 
 const SHIFT_TEMPLATES = [
   {
@@ -70,6 +57,11 @@ const hcmDate = (value) =>
     .toISOString()
     .slice(0, 10);
 
+const hcmMinutes = (value) => {
+  const shifted = new Date(new Date(value).getTime() + 7 * 60 * 60 * 1000);
+  return shifted.getUTCHours() * 60 + shifted.getUTCMinutes();
+};
+
 const hcmTime = (ymd, hour, minute = 0) => {
   const [year, month, day] = ymd.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day, hour - 7, minute));
@@ -78,39 +70,86 @@ const hcmTime = (ymd, hour, minute = 0) => {
 const durationMinutes = (startTime, endTime) =>
   Math.max(1, Math.round((new Date(endTime) - new Date(startTime)) / 60000));
 
+function buildShiftPlan(shift, staff) {
+  const employmentType = staff.employmentType || "full_time";
+  if (!["full_time", "part_time"].includes(employmentType)) return null;
+
+  const evening =
+    ["evening", "rotating"].includes(shift.shiftType) ||
+    hcmMinutes(shift.startTime) >= 15 * 60;
+
+  if (employmentType === "full_time") {
+    return {
+      shiftType: evening ? "evening" : "morning",
+      startHour: evening ? 15 : 7,
+      shiftHours: 8,
+    };
+  }
+
+  return {
+    shiftType: evening ? "rotating" : "afternoon",
+    startHour: evening ? 19 : 11,
+    shiftHours: 4,
+  };
+}
+
+async function findExistingRoster(restaurantId) {
+  const tagged = await Shift.find({
+    restaurantId,
+    notes: WEEK_TAG_PATTERN,
+  }).lean();
+  if (tagged.length) return { shifts: tagged, source: "tagged" };
+
+  const shifts = await Shift.find({
+    restaurantId,
+    startTime: {
+      $gte: hcmTime(ROSTER_START, 0),
+      $lt: hcmTime(ROSTER_END_EXCLUSIVE, 0),
+    },
+  }).lean();
+  if (!shifts.length) {
+    throw new Error(
+      `DEMO_WEEK_ROSTER_NOT_FOUND: restaurant=${RESTAURANT_ID}, range=${ROSTER_START}..${ROSTER_END_EXCLUSIVE}`,
+    );
+  }
+  return { shifts, source: "date-range" };
+}
+
 async function loadContext() {
   if (!mongoose.isValidObjectId(RESTAURANT_ID)) {
     throw new Error("DEMO_RESTAURANT_ID_INVALID");
   }
 
   const restaurantId = new mongoose.Types.ObjectId(RESTAURANT_ID);
+  const roster = await findExistingRoster(restaurantId);
+  const employeeIds = [...new Set(roster.shifts.map((shift) => String(shift.employeeId)))];
   const staff = await Staff.find({
-    restaurantForStaff: restaurantId,
-    email: { $in: SCENARIOS.map((item) => item.email) },
+    _id: { $in: employeeIds },
     userType: "STAFF",
     deletedAt: null,
   })
-    .select("_id email employmentType")
+    .select("_id email fullName employmentType")
     .lean();
-  const staffByEmail = new Map(staff.map((item) => [item.email, item]));
-  const missing = SCENARIOS.filter((item) => !staffByEmail.has(item.email));
-  if (missing.length) {
+  const staffById = new Map(staff.map((item) => [String(item._id), item]));
+  const missingIds = employeeIds.filter((id) => !staffById.has(id));
+  if (missingIds.length) {
+    throw new Error(`DEMO_ROSTER_STAFF_MISSING: ${missingIds.join(", ")}`);
+  }
+
+  const selectedTypes = new Set(
+    staff.map((item) => item.employmentType || "full_time"),
+  );
+  if (!selectedTypes.has("full_time") || !selectedTypes.has("part_time")) {
     throw new Error(
-      `DEMO_STAFF_ACCOUNTS_MISSING: ${missing.map((item) => item.email).join(", ")}`,
+      `DEMO_ROSTER_EMPLOYMENT_TYPES_MISSING: full_time=${selectedTypes.has("full_time")}, part_time=${selectedTypes.has("part_time")}`,
     );
   }
 
-  const scenarioByStaffId = new Map(
-    SCENARIOS.map((scenario) => [
-      String(staffByEmail.get(scenario.email)._id),
-      scenario,
-    ]),
-  );
-
   return {
     restaurantId,
-    staff,
-    scenarioByStaffId,
+    shifts: roster.shifts,
+    rosterSource: roster.source,
+    staffById,
   };
 }
 
@@ -152,38 +191,34 @@ async function updatePolicy(restaurantId) {
 }
 
 async function updateExistingRoster(context) {
-  const shifts = await Shift.find({
-    restaurantId: context.restaurantId,
-    employeeId: { $in: context.staff.map((item) => item._id) },
-    notes: WEEK_TAG_PATTERN,
-  }).lean();
-
-  if (!shifts.length) {
-    throw new Error(
-      "DEMO_WEEK_ROSTER_NOT_FOUND: run the existing staff-performance week seed first",
-    );
-  }
-
+  let updatedShifts = 0;
   let updatedTimesheets = 0;
-  for (const shift of shifts) {
-    const scenario = context.scenarioByStaffId.get(String(shift.employeeId));
-    if (!scenario) continue;
+  let skippedUnsupported = 0;
+
+  for (const shift of context.shifts) {
+    const staff = context.staffById.get(String(shift.employeeId));
+    const plan = buildShiftPlan(shift, staff);
+    if (!plan) {
+      skippedUnsupported += 1;
+      continue;
+    }
 
     const ymd = hcmDate(shift.startTime);
-    const startTime = hcmTime(ymd, scenario.startHour);
-    const endTime = hcmTime(ymd, scenario.startHour + scenario.shiftHours);
-    const plannedMinutes = scenario.shiftHours * 60;
+    const startTime = hcmTime(ymd, plan.startHour);
+    const endTime = hcmTime(ymd, plan.startHour + plan.shiftHours);
+    const plannedMinutes = plan.shiftHours * 60;
 
     await Shift.updateOne(
       { _id: shift._id },
       {
         $set: {
-          shiftType: scenario.shiftType,
+          shiftType: plan.shiftType,
           startTime,
           endTime,
         },
       },
     );
+    updatedShifts += 1;
 
     const timesheet = await Timesheet.findOne({ shiftId: shift._id }).lean();
     if (!timesheet) continue;
@@ -262,7 +297,7 @@ async function updateExistingRoster(context) {
     }
   }
 
-  return { shifts: shifts.length, timesheets: updatedTimesheets };
+  return { updatedShifts, updatedTimesheets, skippedUnsupported };
 }
 
 async function main() {
@@ -277,7 +312,7 @@ async function main() {
   await updatePolicy(context.restaurantId);
   const result = await updateExistingRoster(context);
   console.log(
-    `Shared roster hours applied in place: restaurant=${RESTAURANT_ID}, shifts=${result.shifts}, timesheets=${result.timesheets}, removedLegacyShifts=${removed.shifts}, removedLegacyTimesheets=${removed.timesheets}`,
+    `Shared roster hours applied in place: restaurant=${RESTAURANT_ID}, source=${context.rosterSource}, shifts=${result.updatedShifts}, timesheets=${result.updatedTimesheets}, skippedUnsupported=${result.skippedUnsupported}, removedLegacyShifts=${removed.shifts}, removedLegacyTimesheets=${removed.timesheets}`,
   );
 }
 
