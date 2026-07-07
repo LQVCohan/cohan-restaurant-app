@@ -1,12 +1,18 @@
-import { User, Table, Category, Review, Brand } from "../../../models/index.js";
+import { User, Table, Category, Review, Brand, BrandMembership } from "../../../models/index.js";
 import { computeRestaurantAvailability } from "../../../src/services/restaurantAvailability.service.js";
 
 export default {
   Restaurant: {
     id: (p) => p.id ?? String(p._id),
-    manager: (parent) => {
-      if (!parent.managerId) return null;
-      return User.findById(parent.managerId).lean();
+    manager: async (parent) => {
+      const restaurantId = parent.id || parent._id;
+      if (!restaurantId || typeof BrandMembership?.findOne !== "function") return null;
+      const membership = await BrandMembership.findOne({
+        status: "active",
+        role: "manager",
+        restaurantIds: restaurantId,
+      }).select("userId").lean();
+      return membership?.userId ? User.findById(membership.userId).lean() : null;
     },
     brandId: (parent) => parent.brandId ? String(parent.brandId) : null,
     brand: (parent) => parent.brandId ? Brand.findById(parent.brandId).lean() : null,
