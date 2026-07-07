@@ -1,3 +1,5 @@
+import { getRbacRoleLabel } from "./rbacVietnameseLabels";
+
 export const RBAC_AUDIT_ACTION_LABELS = Object.freeze({
   ROLE_CREATED: "Tạo vai trò",
   ROLE_UPDATED: "Cập nhật vai trò",
@@ -6,16 +8,16 @@ export const RBAC_AUDIT_ACTION_LABELS = Object.freeze({
   PARENT_ROLE_CREATED: "Tạo nhóm vai trò",
   PARENT_ROLE_UPDATED: "Cập nhật nhóm vai trò",
   PARENT_ROLE_DELETED: "Xóa nhóm vai trò",
-  STAFF_ROLE_ASSIGNED: "Gán vai trò nhân viên",
-  PERMISSION_CREATED: "Tạo quyền hạn",
-  PERMISSION_UPDATED: "Cập nhật quyền hạn",
-  PERMISSION_DEACTIVATED: "Vô hiệu hóa quyền hạn",
+  STAFF_ROLE_ASSIGNED: "Cập nhật vai trò nhân viên",
+  PERMISSION_CREATED: "Tạo quyền",
+  PERMISSION_UPDATED: "Cập nhật quyền",
+  PERMISSION_DEACTIVATED: "Ngừng áp dụng quyền",
 });
 
 export const RBAC_AUDIT_TARGET_LABELS = Object.freeze({
   Role: "Vai trò",
   ParentRole: "Nhóm vai trò",
-  Permission: "Quyền hạn",
+  Permission: "Quyền",
   User: "Nhân viên",
 });
 
@@ -25,7 +27,10 @@ const valueLabel = (value, fallback = "Không có") => {
   return value.name || value.slug || value.code || value.id || value._id || fallback;
 };
 
-const roleLabel = (role) => valueLabel(role, "Chưa có vai trò");
+const roleLabel = (role) => {
+  if (!role) return "Chưa có vai trò";
+  return getRbacRoleLabel(role);
+};
 
 const permissionsChanged = (before = {}, after = {}) => {
   const beforePermissions = before.permissions || before.permissionIds || [];
@@ -48,12 +53,10 @@ export function formatAuditChange(log = {}) {
   const metadata = log.metadata || {};
   const changes = [];
 
-  if (metadata.assignedRoleSlug) {
-    changes.push(`Gán vai trò: ${metadata.assignedRoleSlug}`);
-  }
-
   if (before.role || after.role) {
     changes.push(`Vai trò: ${roleLabel(before.role)} → ${roleLabel(after.role)}`);
+  } else if (metadata.assignedRoleSlug) {
+    changes.push(`Vai trò được gán: ${getRbacRoleLabel(metadata.assignedRoleSlug)}`);
   }
 
   if (before.name !== undefined || after.name !== undefined) {
@@ -65,12 +68,12 @@ export function formatAuditChange(log = {}) {
   if (before.slug !== undefined || after.slug !== undefined) {
     const beforeSlug = valueLabel(before.slug, "Trống");
     const afterSlug = valueLabel(after.slug, "Trống");
-    if (beforeSlug !== afterSlug) changes.push(`Mã: ${beforeSlug} → ${afterSlug}`);
+    if (beforeSlug !== afterSlug) changes.push(`Mã vai trò: ${beforeSlug} → ${afterSlug}`);
   }
 
   if (before.isActive !== undefined || after.isActive !== undefined) {
     if (before.isActive !== after.isActive) {
-      changes.push(`Trạng thái: ${before.isActive ? "Đang hoạt động" : "Không hoạt động"} → ${after.isActive ? "Đang hoạt động" : "Không hoạt động"}`);
+      changes.push(`Trạng thái: ${before.isActive ? "Đang hoạt động" : "Ngừng hoạt động"} → ${after.isActive ? "Đang hoạt động" : "Ngừng hoạt động"}`);
     }
   }
 
@@ -79,7 +82,7 @@ export function formatAuditChange(log = {}) {
   }
 
   if (!changes.length && log.targetName) return `Đối tượng: ${log.targetName}`;
-  if (!changes.length) return "Không có chi tiết thay đổi tóm tắt.";
+  if (!changes.length) return "Không có thông tin thay đổi.";
   return changes.join("; ");
 }
 
