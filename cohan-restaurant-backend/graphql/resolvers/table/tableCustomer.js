@@ -41,6 +41,20 @@ function buildTableLookup(restaurantId, tableId, tableCode) {
   throw badInput("tableId hoặc tableCode là bắt buộc");
 }
 
+function buildCustomerLookup(restaurantId, tableId, tableCode) {
+  const tid = toObjectIdOrNull(tableId);
+  const code = tableCode ? String(tableCode) : null;
+  if (tid && code) {
+    return {
+      restaurantId,
+      $or: [{ tableId: tid }, { tableCode: code }],
+    };
+  }
+  if (tid) return { restaurantId, tableId: tid };
+  if (code) return { restaurantId, tableCode: code };
+  throw badInput("tableId hoặc tableCode là bắt buộc");
+}
+
 /* ============================ Queries ============================ */
 
 /**
@@ -54,19 +68,10 @@ async function tableCustomer(
 ) {
   await assertCanWriteRestaurant(user, restaurantId);
 
-  if (!tableId && !tableCode) {
-    throw badInput("tableId hoặc tableCode là bắt buộc");
-  }
-
   const rid = toObjectIdOrNull(restaurantId);
-  const tid = toObjectIdOrNull(tableId);
-
-  const cond =
-    tid != null
-      ? { restaurantId: rid, tableId: tid }
-      : { restaurantId: rid, tableCode: String(tableCode) };
-
-  const doc = await TableCustomer.findOne(cond).lean();
+  const doc = await TableCustomer.findOne(
+    buildCustomerLookup(rid, tableId, tableCode),
+  ).lean();
   if (doc) return serializeCustomer(doc);
 
   try {
@@ -204,24 +209,18 @@ async function upsertTableCustomer(_, { input }, _ctx) {
 
   await assertCanWriteRestaurant(_ctx?.user, restaurantId);
 
-  if (!tableId && !tableCode) {
-    throw badInput("tableId hoặc tableCode là bắt buộc");
-  }
-
   const rid = toObjectIdOrNull(restaurantId);
   const tid = toObjectIdOrNull(tableId);
+  const code = tableCode ? String(tableCode) : null;
+  const cond = buildCustomerLookup(rid, tableId, tableCode);
 
-  // Điều kiện unique: ưu tiên tableId > tableCode
-  const cond =
-    tid != null
-      ? { restaurantId: rid, tableId: tid }
-      : { restaurantId: rid, tableCode: String(tableCode) };
-
+  // Tìm theo cả id và code để nâng cấp bản ghi cũ chỉ lưu tableCode,
+  // tránh tạo hồ sơ trùng khi chỉnh khách trong bàn ghép.
   const update = {
     $set: {
       restaurantId: rid,
       ...(tid != null ? { tableId: tid } : {}),
-      ...(tableCode ? { tableCode: String(tableCode) } : {}),
+      ...(code ? { tableCode: code } : {}),
 
       customerName: customerName ?? null,
       customerPhone: customerPhone ?? null,
@@ -255,19 +254,10 @@ async function deleteTableCustomer(
   { user },
 ) {
   await assertCanWriteRestaurant(user, restaurantId);
-  if (!tableId && !tableCode) {
-    throw badInput("tableId hoặc tableCode là bắt buộc");
-  }
-
   const rid = toObjectIdOrNull(restaurantId);
-  const tid = toObjectIdOrNull(tableId);
-
-  const cond =
-    tid != null
-      ? { restaurantId: rid, tableId: tid }
-      : { restaurantId: rid, tableCode: String(tableCode) };
-
-  const res = await TableCustomer.deleteOne(cond);
+  const res = await TableCustomer.deleteOne(
+    buildCustomerLookup(rid, tableId, tableCode),
+  );
   return res?.deletedCount > 0;
 }
 
