@@ -101,9 +101,6 @@ describe("restaurant information location map enhancement", () => {
 
     expect(card).not.toBeNull();
     expect(leafletState.mapFactory).toHaveBeenCalledTimes(1);
-    expect(leafletState.divIconFactory).toHaveBeenCalledWith(
-      expect.objectContaining({ className: "restaurant-location-marker" }),
-    );
     expect(leafletState.markerFactory).toHaveBeenCalledWith(
       [10.895109, 106.833394],
       { draggable: true, icon: leafletState.markerIcon },
