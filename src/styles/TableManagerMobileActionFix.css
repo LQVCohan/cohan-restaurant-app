@@ -1,9 +1,36 @@
-/* Narrow fix for table cards on mobile.
-   Keep table action/status modifiers scoped so generic manager tones cannot hide labels. */
+/* Mobile table card repair.
+   Keep the phone layout single-column and scope table modifiers away from global tones. */
 
 @media (max-width: 768px) {
+  .manager-layout--tables .tm-container,
+  .manager-layout--tables .tm-layout,
+  .manager-layout--tables .tm-grid-area,
+  .manager-layout--tables .tm-table-grid,
+  .manager-layout--tables .tm-table-card {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .manager-layout--tables .tm-table-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-top,
+  .manager-layout--tables .tm-table-card .card-body,
+  .manager-layout--tables .tm-table-card .card-actions {
+    min-width: 0 !important;
+  }
+
+  .manager-layout--tables .tm-table-card .card-top {
+    flex-wrap: wrap !important;
+  }
+
   .manager-layout--tables .tm-table-card .card-top-right {
     display: inline-flex !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     visibility: visible !important;
     opacity: 1 !important;
   }
@@ -15,9 +42,12 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    max-width: 100% !important;
     visibility: visible !important;
     opacity: 1 !important;
+    overflow: hidden !important;
     text-indent: 0 !important;
+    text-overflow: ellipsis !important;
     -webkit-text-fill-color: currentColor !important;
   }
 
@@ -50,23 +80,36 @@
     -webkit-text-fill-color: #536c61 !important;
   }
 
+  .manager-layout--tables .tm-table-card .card-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
   .manager-layout--tables .tm-table-card .card-actions > .btn-mini {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 7px 8px !important;
     visibility: visible !important;
     opacity: 1 !important;
-    min-height: 38px !important;
-    height: auto !important;
-    padding: 6px 7px !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     color: #fffdf8 !important;
-    font-size: 0.72rem !important;
+    font-size: 0.74rem !important;
     line-height: 1.2 !important;
     text-indent: 0 !important;
     white-space: nowrap !important;
-    text-overflow: clip !important;
+    text-overflow: ellipsis !important;
     -webkit-text-fill-color: #fffdf8 !important;
+    touch-action: manipulation;
+  }
+
+  .manager-layout--tables .tm-table-card .card-actions > .btn-mini:nth-child(n + 3) {
+    grid-column: 1 / -1 !important;
   }
 
   .manager-layout--tables .tm-table-card .card-actions > .btn-mini.primary,
@@ -92,44 +135,12 @@
   }
 
   .manager-layout--tables .tm-table-card .card-actions > .btn-mini:disabled {
+    border-color: #d8cbbb !important;
+    color: #6d6256 !important;
+    background: #eee7dc !important;
+    opacity: 1 !important;
+    filter: none !important;
     visibility: visible !important;
-    opacity: 0.64 !important;
-    color: #fffdf8 !important;
-    -webkit-text-fill-color: #fffdf8 !important;
-  }
-
-  .manager-layout--tables .tm-table-card .card-actions > .btn-mini.secondary:disabled {
-    color: #53605d !important;
-    -webkit-text-fill-color: #53605d !important;
-  }
-}
-
-@media (min-width: 340px) and (max-width: 768px) {
-  .manager-layout--tables .tm-table-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  .manager-layout--tables .tm-table-card,
-  .manager-layout--tables .tm-table-card.occupied,
-  .manager-layout--tables .tm-table-card.payment_pending {
-    gap: 6px !important;
-    padding: 9px !important;
-  }
-
-  .manager-layout--tables .tm-table-card .table-no {
-    font-size: 1.05rem !important;
-  }
-
-  .manager-layout--tables .tm-table-card .card-body {
-    padding: 6px 7px !important;
-  }
-
-  .manager-layout--tables .tm-table-card .card-actions {
-    gap: 5px !important;
-  }
-
-  .manager-layout--tables .tm-table-card .card-actions > .btn-mini {
-    min-height: 36px !important;
-    font-size: 0.68rem !important;
+    -webkit-text-fill-color: #6d6256 !important;
   }
 }
