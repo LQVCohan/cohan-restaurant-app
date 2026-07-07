@@ -1,0 +1,29 @@
+{
+  "id": "joined-table-cross-floor-move",
+  "name": "joined-table-cross-floor-move",
+  "title": "Block cross-floor moves for joined tables",
+  "description": "Enforce the existing UI rule at the GraphQL resolver boundary so direct API calls cannot split a joined table group across floors.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "table-management",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/joined-table-cross-floor-move",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/graphql/resolvers/table/moveTable.js",
+    "cohan-restaurant-backend/graphql/resolvers/table/index.js",
+    "cohan-restaurant-backend/tests/resolvers/table-move-joined-group.test.js"
+  ],
+  "notes": "Schema, Apollo mutation, hook, and UI remain unchanged."
+}
