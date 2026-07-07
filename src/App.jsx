@@ -28,7 +28,12 @@ import AppErrorBoundary from "./components/common/AppErrorBoundary";
 
 function ScopedAiChatbotWidget() {
   const location = useLocation();
-  if (location.pathname.startsWith("/manager")) return null;
+  if (
+    location.pathname.startsWith("/manager") ||
+    location.pathname.startsWith("/preview/")
+  ) {
+    return null;
+  }
   return <AiChatbotWidget />;
 }
 
