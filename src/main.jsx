@@ -38,6 +38,7 @@ import "./styles/OrderSettingsModalBeauty.css";
 import "./components/Dashboard_Manager/Table/TableManagementPolish.scss";
 import "./components/Dashboard_Manager/Table/TableManagementFinalQC.scss";
 import "./components/Dashboard_Manager/Table/TableManagementScorePolish.scss";
+import "./components/Dashboard_Manager/Table/TableManagementHeaderStatsPolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalPremium.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowFinalPolish.scss";
 import "./components/Dashboard_Manager/Table/TableWorkflowModalOverlapFix.scss";
