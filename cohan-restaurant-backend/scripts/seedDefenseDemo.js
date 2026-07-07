@@ -207,6 +207,8 @@ async function main() {
   const reset = process.argv.includes("--reset");
   const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/RestaurantDB";
   const dbName = process.env.MONGO_DB || "RestaurantDB";
+  process.env.MONGO_URI ||= mongoUri;
+  process.env.MONGO_DB ||= dbName;
 
   console.log("Preparing COHAN defense dataset:", safeDbInfo());
   await mongoose.connect(mongoUri, { dbName });
