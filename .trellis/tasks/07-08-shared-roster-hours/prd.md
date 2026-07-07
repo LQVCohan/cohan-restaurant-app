@@ -10,42 +10,44 @@ Demo operating time: `07:00` to `23:00` in Asia/Ho_Chi_Minh.
 
 - Full-time shift: 8 hours.
 - Part-time shift: 4 hours.
-- The demo contains one completed week for attendance and one scheduled week for calendar testing.
+- Reuse the existing previous-week and current-week demo roster.
 
 ## Root cause
 
 - Planned hours already come from `Shift.startTime` and `Shift.endTime`; actual hours already come from `Timesheet.hours`. A new persisted hours field would duplicate data.
 - Backend overlap validation searches by `employeeId`, so it correctly blocks overlap only for the same employee.
 - Frontend template validation rejected every overlapping time window, even when different employees should work at the same time.
-- The existing performance demo remains separate. A focused roster seed covers the missing employment-hour case without changing its performance data.
+- Creating another roster seed would duplicate the staff, shifts, and attendance data that already exist for `2026-06-29` through `2026-07-12`.
 
 ## Traced flow
 
-1. Models: `Staff`, `Shift`, `Timesheet`, `SchedulingPolicy`.
+1. Models: `Staff`, `Shift`, `Timesheet`, `AttendanceCorrectionRequest`, `OvertimeRequest`, `SchedulingPolicy`.
 2. Service: `shiftAssignmentValidation.service.js` calculates planned hours from start/end and checks overlap per employee.
 3. GraphQL: staff shift mutations validate before creating or updating assignments.
 4. Frontend: `ShiftRulesModal` calls `validateShiftRules` before saving templates.
-5. Demo scripts create policy templates, shifts, historical attendance, and verification output.
+5. Existing demo flow: `seedStaffPerformanceWeekRoster.js` owns the seven employees, 98 shifts, attendance, corrections, overtime, publications, and performance snapshots for the two-week period.
 
 ## Implemented files
 
 - `src/components/Dashboard_Manager/Schedule/utils/scheduleHelpers.js`: allow overlapping template windows while retaining valid-time checks.
 - `src/components/Dashboard_Manager/Schedule/utils/scheduleHelpers.test.js`: test overlapping templates and invalid values.
-- `cohan-restaurant-backend/scripts/seedSharedRosterHoursDemo.js`: seed fourteen employees, 8-hour full-time shifts, 4-hour part-time shifts, and overlapping coverage inside 07:00-23:00.
-- `cohan-restaurant-backend/scripts/verifySharedRosterHoursDemo.js`: verify duration, operating boundaries, attendance hours, policy values, mixed-employment overlap, and no same-employee overlap.
-- `cohan-restaurant-backend/package.json`: add focused seed and verify commands to the staff demo workflow.
+- `cohan-restaurant-backend/scripts/applySharedRosterHoursDemo.js`: update the existing tagged roster in place; do not create staff, shifts, or timesheets.
+- `cohan-restaurant-backend/scripts/verifySharedRosterHoursDemo.js`: verify the existing seven employees and 98 shifts after the update.
+- `cohan-restaurant-backend/package.json`: expose an apply command and a verify command.
 
-The demo uses a distinct template key for each time window, so concurrent groups stay separate without changing the calendar component.
+The updater changes only records carrying the existing staff-performance week tag. Manually created or unrelated restaurant data is not deleted or replaced.
 
 ## Validation
 
 - Run focused frontend tests for schedule helpers.
-- Run `npm run seed:demo:shared-roster-hours` and `npm run verify:demo:shared-roster-hours` in an allowed demo database.
+- Run `npm run apply:demo:shared-roster-hours` against the existing demo data.
+- Run `npm run verify:demo:shared-roster-hours`.
 - Run pull-request CI.
 
 ## Non-goals
 
+- Do not run the staff-profile seed again.
+- Do not create another two-week roster.
 - Do not weaken same-employee overlap protection.
 - Do not add a redundant `hours` field to `Shift`.
-- Do not rewrite the existing performance, correction, or overtime demo.
 - Do not redesign the automatic scheduler.
