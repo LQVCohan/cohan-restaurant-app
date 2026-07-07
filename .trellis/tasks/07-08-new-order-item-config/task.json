@@ -3,7 +3,7 @@
   "name": "new-order-item-config",
   "title": "Add serving and quantity controls to new order modal",
   "description": "Use the existing servingVariants contract in the manager new-order modal so staff can choose the serving/preparation option and enter kg or portion quantities before adding an item.",
-  "status": "in_progress",
+  "status": "in_review",
   "dev_type": "frontend",
   "scope": "manager-new-order-modal",
   "priority": "P1",
@@ -13,13 +13,14 @@
   "completedAt": null,
   "branch": "main",
   "base_branch": "main",
-  "commit": null,
+  "commit": "de1a88bc2171f9b9cbfcce2ca2a22de9f3b7b179",
   "relatedFiles": [
     "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
     "src/components/Dashboard_Manager/Order/components/NewOrderModalPolish.scss",
     "src/components/Dashboard_Manager/Order/components/NewOrderSearchSelect.scss",
     "src/components/Dashboard_Manager/Order/components/NewOrderModal.test.jsx"
   ],
+  "notes": "NewOrderModal now consumes the existing servingVariants contract instead of the unused preparationMethods field. Clicking a dish opens a serving and quantity panel, selecting the configured default variant first. BY_WEIGHT variants are entered in kg with 0.1 steps and gram-priced variants are normalized to a per-kg display price; PORTION variants use positive integers. The existing addToOrder and backend hydration flow remains unchanged. Cart controls now respect the item unit, modal drafts preserve serving identifiers, thumbImage is used, and icon contrast was increased. Local TypeScript JSX parsing and standalone helper smoke assertions passed. Vitest, Sass build and browser smoke were not run because the connector environment has no executable repository checkout.",
   "meta": {
     "skills": [
       "ponytail",
