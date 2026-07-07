@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../../../components/common/Modal", () => {
   const MockModal = ({ isOpen, title, children }) =>
     isOpen ? (
-      <div role="dialog" aria-label="Cài đặt màn hình chế biến">
+      <div role="dialog" aria-label="Cài đặt màn hình Bếp và Quầy bar">
         <h2>{title}</h2>
         {children}
       </div>
@@ -74,10 +74,10 @@ describe("OrderSettingsModal", () => {
   it("normalizes thresholds and applies saved display settings", () => {
     const { props } = renderSettings();
 
-    fireEvent.change(screen.getByLabelText("Cảnh báo (phút)"), {
+    fireEvent.change(screen.getByLabelText("Bắt đầu cảnh báo (phút)"), {
       target: { value: "12" },
     });
-    fireEvent.change(screen.getByLabelText("Nguy hiểm (phút)"), {
+    fireEvent.change(screen.getByLabelText("Cần ưu tiên (phút)"), {
       target: { value: "8" },
     });
     fireEvent.change(screen.getByLabelText("Khẩn cấp (phút)"), {
@@ -88,7 +88,7 @@ describe("OrderSettingsModal", () => {
       target: { value: "#123456" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu cài đặt" }));
 
     expect(props.onSaveTimeSettings).toHaveBeenCalledWith({
       warn: 12,
