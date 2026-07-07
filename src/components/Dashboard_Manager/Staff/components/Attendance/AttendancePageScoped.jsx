@@ -1,5 +1,5 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { AuthContext } from "@/context/AuthContext";
+import React, { useEffect, useMemo, useState } from "react";
+import { AttendanceScopeContext } from "@/context/AttendanceScopeContext";
 import AttendancePage from "./AttendancePage";
 
 const normalizeRestaurantId = (value) => {
@@ -35,18 +35,7 @@ const syncAttendanceRestaurantQuery = (restaurantId) => {
 };
 
 const AttendancePageScoped = ({ restaurantId, ...props }) => {
-  const auth = useContext(AuthContext);
   const normalizedRestaurantId = useMemo(() => normalizeRestaurantId(restaurantId), [restaurantId]);
-  const scopedAuth = useMemo(() => {
-    if (!normalizedRestaurantId) return auth;
-    return {
-      ...(auth || {}),
-      user: {
-        ...(auth?.user || {}),
-        restaurantForStaff: normalizedRestaurantId,
-      },
-    };
-  }, [auth, normalizedRestaurantId]);
   const [readyKey, setReadyKey] = useState("");
   const targetKey = normalizedRestaurantId || "attendance-unscoped";
 
@@ -58,9 +47,9 @@ const AttendancePageScoped = ({ restaurantId, ...props }) => {
   if (!normalizedRestaurantId || readyKey !== targetKey) return null;
 
   return (
-    <AuthContext.Provider value={scopedAuth}>
+    <AttendanceScopeContext.Provider value={normalizedRestaurantId}>
       <AttendancePage key={targetKey} {...props} />
-    </AuthContext.Provider>
+    </AttendanceScopeContext.Provider>
   );
 };
 
