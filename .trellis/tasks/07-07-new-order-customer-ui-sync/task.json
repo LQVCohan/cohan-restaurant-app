@@ -1,0 +1,33 @@
+{
+  "id": "new-order-customer-ui-sync",
+  "name": "new-order-customer-ui-sync",
+  "title": "Sync new order modal with customer manager UI",
+  "description": "Align the manager new-order modal with the established Customer Management warm-neutral and sage visual system without changing the order workflow.",
+  "status": "in_progress",
+  "dev_type": "frontend",
+  "scope": "manager-new-order-modal",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
+    "src/components/Dashboard_Manager/Order/NewOrderModalPromotionTheme.css",
+    "src/components/Dashboard_Manager/Customer/CustomerManagement.scss",
+    "src/components/Dashboard_Manager/Customer/CustomerManagerScale.scss"
+  ],
+  "notes": "UI-only change. CreateOrderForTable schema/resolver, useOrderManagement.saveOrder, restaurant scope, validation, draft restore and realtime side effects remain unchanged.",
+  "meta": {
+    "skills": [
+      "ponytail",
+      "frontend-design",
+      "redesign-existing-projects",
+      "taste-ui-redesign",
+      "react-ui-performance",
+      "wcag-ui-audit"
+    ]
+  }
+}
