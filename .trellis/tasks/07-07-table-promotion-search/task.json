@@ -16,7 +16,8 @@
   "commit": null,
   "pr_url": null,
   "relatedFiles": [
-    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
-    "src/components/Dashboard_Manager/Table/TableActionsLiteModal.test.jsx"
+    "src/utils/installTablePromotionSearch.js",
+    "src/utils/installTablePromotionSearch.test.js",
+    "src/main.jsx"
   ]
 }
