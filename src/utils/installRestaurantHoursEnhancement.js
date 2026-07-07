@@ -11,6 +11,9 @@ const findFieldByLabel = (root, text) => {
   return { item, input: item?.querySelector("input") || null };
 };
 
+const getFieldGridRow = (field) =>
+  field.item?.closest(".ant-col")?.closest(".ant-row") || null;
+
 const getHoursContext = () => {
   if (!HOURS_ROUTE_RE.test(window.location.pathname)) return null;
 
@@ -21,8 +24,8 @@ const getHoursContext = () => {
   const closing = findFieldByLabel(root, "Giờ đóng cửa");
   if (!opening.input || !closing.input) return null;
 
-  const row = opening.input.closest(".ant-row");
-  if (!row || row !== closing.input.closest(".ant-row")) return null;
+  const row = getFieldGridRow(opening);
+  if (!row || row !== getFieldGridRow(closing)) return null;
 
   return { root, row, opening, closing };
 };
