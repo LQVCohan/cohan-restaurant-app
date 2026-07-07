@@ -1,0 +1,28 @@
+{
+  "id": "chatbot-gemini-history-test",
+  "name": "chatbot-gemini-history-test",
+  "title": "Align chatbot tests with Gemini core split",
+  "description": "Update stale tests to follow the Gemini request contract and the new wrapper/core module boundary without weakening existing coverage.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "backend-tests",
+  "package": "cohan-restaurant-backend",
+  "priority": "P0",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": null,
+  "branch": "fix/chatbot-gemini-history-test",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1228",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.persistence.service.test.js",
+    "cohan-restaurant-backend/tests/services/restaurantChatbot.phase26-cache.service.test.js"
+  ],
+  "notes": "Runtime Gemini provider policy and cache behavior remain unchanged; only stale test boundaries are corrected."
+}

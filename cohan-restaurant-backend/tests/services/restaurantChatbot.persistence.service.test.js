@@ -91,6 +91,7 @@ describe("restaurantChatbot persistence", () => {
     messageStore.length = 0;
     __resetAiChatbotRateLimitStoreForTests();
     delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
   });
 
   it("creates conversation and stores user/assistant messages for guest", async () => {
@@ -111,20 +112,27 @@ describe("restaurantChatbot persistence", () => {
     expect(second.conversationId).not.toBe(first.conversationId);
   });
 
-  it("does not duplicate current user message in OpenAI prompt history", async () => {
-    delete process.env.OPENAI_API_KEY;
+  it("does not duplicate current user message in Gemini prompt history", async () => {
     const first = await handleRestaurantChatbotMessage({ message: "Lịch sử cũ", guestId: "guest_hist" });
 
-    process.env.OPENAI_API_KEY = "test_key";
+    process.env.GEMINI_API_KEY = "test_key";
     const fetchMock = vi.fn(async (_url, options) => {
       const body = JSON.parse(options.body);
-      const userMessages = body.messages.filter((m) => m.role === "user").map((m) => m.content);
+      const userMessages = body.contents
+        .filter((item) => item.role === "user")
+        .map((item) => item.parts.map((part) => part.text).join("\n"));
       expect(userMessages).toEqual(["Lịch sử cũ", "Tin nhắn mới"]);
       expect(userMessages.filter((message) => message === "Tin nhắn mới")).toHaveLength(1);
       return {
         ok: true,
         json: async () => ({
-          choices: [{ message: { content: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }) } }],
+          candidates: [{
+            content: {
+              parts: [{
+                text: JSON.stringify({ answer: "OK", intent: "general", confidence: 0.8, quickReplies: [], actions: [], sources: [] }),
+              }],
+            },
+          }],
         }),
       };
     });
