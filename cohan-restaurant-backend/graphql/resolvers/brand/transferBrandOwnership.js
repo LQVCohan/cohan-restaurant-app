@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Brand, BrandMembership } from "../../../models/index.js";
+import { Brand, BrandMembership, User } from "../../../models/index.js";
 import {
   ensureBrandRestaurants,
   getUserId,
@@ -19,6 +19,8 @@ const oid = (id) => {
   if (!mongoose.isValidObjectId(id)) throw bad("Invalid ID");
   return new mongoose.Types.ObjectId(id);
 };
+const userRole = (user) =>
+  String(user?.role?.slug || user?.role?.name || "").trim().toLowerCase();
 
 export default async function transferBrandOwnership(_, { input }, ctx) {
   if (!ctx?.user) throw auth();
@@ -64,6 +66,17 @@ export default async function transferBrandOwnership(_, { input }, ctx) {
       }).session(session);
       if (!newOwnerMembership || newOwnerMembership.role === "owner") {
         throw bad("Người nhận quyền phải là thành viên đang hoạt động của chuỗi.");
+      }
+
+      const newOwnerUser = await User.findById(newOwnerUserId)
+        .populate("role")
+        .session(session)
+        .lean();
+      if (
+        newOwnerUser?.status !== "active" ||
+        !["manager", "admin"].includes(userRole(newOwnerUser))
+      ) {
+        throw bad("Người nhận quyền phải có tài khoản quản lý hoặc quản trị viên đang hoạt động.");
       }
 
       const conflictingManager = await BrandMembership.findOne({
