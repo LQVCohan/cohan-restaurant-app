@@ -69,6 +69,34 @@ describe("FloorMap", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("Nhắc bàn B2");
   });
 
+  it("automatically fits the table and layout data, then restores that view after panning", () => {
+    const widthSpy = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+    const heightSpy = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
+
+    try {
+      const { container } = renderMap({
+        layout: [{ id: "wall-1", type: "wall", x: 100, y: 80, w: 600, h: 400 }],
+        tables: [{ ...availableTable, position: { ...availableTable.position, x: 640, y: 420 } }],
+      });
+      const viewport = container.querySelector(".viewport");
+      const canvas = container.querySelector(".map-transform-layer");
+      const fittedTransform = canvas.style.transform;
+
+      expect(fittedTransform).not.toBe("translate(0px, 0px) scale(1)");
+      expect(container.querySelector(".zoom-output")).toHaveTextContent("110%");
+
+      fireEvent.pointerDown(viewport, { pointerId: 1, button: 0, clientX: 10, clientY: 20 });
+      fireEvent.pointerMove(viewport, { pointerId: 1, clientX: 54, clientY: 72 });
+      expect(canvas.style.transform).not.toBe(fittedTransform);
+
+      fireEvent.click(screen.getByRole("button", { name: /Căn lại sơ đồ theo dữ liệu bàn/i }));
+      expect(canvas.style.transform).toBe(fittedTransform);
+    } finally {
+      widthSpy.mockRestore();
+      heightSpy.mockRestore();
+    }
+  });
+
   it("moves the map with pointer events", () => {
     const { container } = renderMap();
     const viewport = container.querySelector(".viewport");

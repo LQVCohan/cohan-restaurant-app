@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Eye, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { AuthContext } from "../../../../../context/AuthContext";
 import NotifyModal from "../../../NotifyModal/NotifyModal";
@@ -12,6 +12,46 @@ const TABLE_STATUS_LABELS = {
   cleaning: "đang chuẩn bị",
   payment_pending: "đang chờ thanh toán",
   offline: "không hoạt động",
+};
+
+const MIN_MAP_SCALE = 0.1;
+const MAX_MAP_SCALE = 3;
+const MAX_AUTO_FIT_SCALE = 1.4;
+const MAP_FIT_PADDING = 40;
+const CONTENT_PADDING = 24;
+
+const getMapContentBounds = (tables, layout) => {
+  const rects = [
+    ...layout.map((item) => ({
+      x: Number(item?.x),
+      y: Number(item?.y),
+      w: Number(item?.w),
+      h: Number(item?.h),
+    })),
+    ...tables.map((table) => {
+      const position = table?.position || {};
+      return {
+        x: Number(position.x ?? 0),
+        y: Number(position.y ?? 0),
+        w: Math.max(56, Number(position.w || 68)),
+        h: Math.max(56, Number(position.h || 68)),
+      };
+    }),
+  ].filter(({ x, y, w, h }) =>
+    [x, y, w, h].every(Number.isFinite) && w > 0 && h > 0,
+  );
+
+  if (!rects.length) return null;
+
+  return rects.reduce(
+    (bounds, rect) => ({
+      minX: Math.min(bounds.minX, rect.x),
+      minY: Math.min(bounds.minY, rect.y),
+      maxX: Math.max(bounds.maxX, rect.x + rect.w),
+      maxY: Math.max(bounds.maxY, rect.y + rect.h),
+    }),
+    { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+  );
 };
 
 const FloorMap = ({
@@ -31,12 +71,70 @@ const FloorMap = ({
   const { showNotification } = useNotification();
   const hasLayout = Array.isArray(layout) && layout.length > 0;
 
+  const viewportRef = useRef(null);
+  const fittedTransformRef = useRef({ x: 0, y: 0, scale: 1 });
   const isPanning = useRef(false);
   const activePointerId = useRef(null);
   const startPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
   const visualTriggerRef = useRef(null);
   const previewCloseRef = useRef(null);
+
+  const fitMapToContent = useCallback(() => {
+    const viewport = viewportRef.current;
+    const bounds = getMapContentBounds(tables, layout);
+    const viewportWidth = viewport?.clientWidth || 0;
+    const viewportHeight = viewport?.clientHeight || 0;
+
+    if (!viewportWidth || !viewportHeight || !bounds) {
+      fittedTransformRef.current = { x: 0, y: 0, scale: 1 };
+      setTransform(fittedTransformRef.current);
+      return;
+    }
+
+    const minX = bounds.minX - CONTENT_PADDING;
+    const minY = bounds.minY - CONTENT_PADDING;
+    const maxX = bounds.maxX + CONTENT_PADDING;
+    const maxY = bounds.maxY + CONTENT_PADDING;
+    const contentWidth = Math.max(maxX - minX, 1);
+    const contentHeight = Math.max(maxY - minY, 1);
+    const availableWidth = Math.max(viewportWidth - MAP_FIT_PADDING * 2, 1);
+    const availableHeight = Math.max(viewportHeight - MAP_FIT_PADDING * 2, 1);
+    const scale = Number(
+      Math.min(
+        Math.max(
+          Math.min(availableWidth / contentWidth, availableHeight / contentHeight),
+          MIN_MAP_SCALE,
+        ),
+        MAX_AUTO_FIT_SCALE,
+      ).toFixed(2),
+    );
+    const contentCenterX = (minX + maxX) / 2;
+    const contentCenterY = (minY + maxY) / 2;
+    const fittedTransform = {
+      x: Number((scale * (viewportWidth / 2 - contentCenterX)).toFixed(2)),
+      y: Number((scale * (viewportHeight / 2 - contentCenterY)).toFixed(2)),
+      scale,
+    };
+
+    fittedTransformRef.current = fittedTransform;
+    setTransform(fittedTransform);
+  }, [layout, tables]);
+
+  useLayoutEffect(() => {
+    fitMapToContent();
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+
+    if (typeof ResizeObserver !== "undefined") {
+      const resizeObserver = new ResizeObserver(fitMapToContent);
+      resizeObserver.observe(viewport);
+      return () => resizeObserver.disconnect();
+    }
+
+    window.addEventListener("resize", fitMapToContent);
+    return () => window.removeEventListener("resize", fitMapToContent);
+  }, [fitMapToContent]);
 
   const hasVisualPreview = (table) =>
     Boolean(
@@ -104,11 +202,14 @@ const FloorMap = ({
   const handleZoom = (delta) => {
     setTransform((previous) => ({
       ...previous,
-      scale: Math.min(Math.max(0.5, Number((previous.scale + delta).toFixed(2))), 3),
+      scale: Math.min(
+        Math.max(MIN_MAP_SCALE, Number((previous.scale + delta).toFixed(2))),
+        MAX_MAP_SCALE,
+      ),
     }));
   };
 
-  const handleResetView = () => setTransform({ x: 0, y: 0, scale: 1 });
+  const handleResetView = () => setTransform(fittedTransformRef.current);
 
   const handleRegisterNotify = (_contact, table) => {
     showNotification(`Đã đăng ký nhắc nhở cho bàn ${table.label}.`, "success");
@@ -159,6 +260,7 @@ const FloorMap = ({
   return (
     <div className={`floor-map-viz ${theme}`}>
       <div
+        ref={viewportRef}
         className={`viewport ${cursorState}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -267,7 +369,7 @@ const FloorMap = ({
           <Minus size={19} aria-hidden="true" />
         </button>
         <span className="divider" aria-hidden="true" />
-        <button type="button" onClick={handleResetView} aria-label="Đặt lại vị trí và mức thu phóng" aria-controls="floor-map-canvas">
+        <button type="button" onClick={handleResetView} aria-label="Căn lại sơ đồ theo dữ liệu bàn" aria-controls="floor-map-canvas">
           <RotateCcw size={17} aria-hidden="true" />
         </button>
       </div>
