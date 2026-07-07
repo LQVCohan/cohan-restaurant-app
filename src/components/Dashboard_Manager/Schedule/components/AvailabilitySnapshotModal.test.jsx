@@ -64,15 +64,33 @@ describe("AvailabilitySnapshotModal", () => {
 
   it("query error is displayed", () => {
     renderModal({ error: new Error("boom") });
-    expect(screen.getByText(/Không thể tải availability đã chốt: boom/i)).toBeInTheDocument();
+    expect(screen.getByText(/Không thể tải lịch rảnh đã đăng ký: boom/i)).toBeInTheDocument();
   });
 
   it("renders only when open, no hook-order crash", () => {
     const { rerender } = render(<AvailabilitySnapshotModal isOpen={false} onClose={() => {}} weekStart={weekStart} weekEnd={weekEnd} availabilityWindows={windows} shiftTemplates={shifts} staffList={[]} availabilitySubmissions={[]} />);
     rerender(<AvailabilitySnapshotModal isOpen onClose={() => {}} weekStart={weekStart} weekEnd={weekEnd} availabilityWindows={windows} shiftTemplates={shifts} staffList={[]} availabilitySubmissions={[]} />);
-    expect(screen.getByText("Availability đã chốt")).toBeInTheDocument();
+    expect(screen.getByText("Lịch rảnh đã đăng ký")).toBeInTheDocument();
   });
 
+  it("shows the staff matrix when no finalized availability window exists", () => {
+    renderModal({
+      availabilityWindows: [],
+      staffList: [
+        {
+          id: "f1",
+          fullName: "Nhân viên toàn thời gian",
+          employeeCode: "FT01",
+          employmentType: "full_time",
+          workingDays: ["MON"],
+        },
+      ],
+    });
+
+    expect(screen.getByText("Tuần này chưa có kỳ đăng ký đã chốt.")).toBeInTheDocument();
+    expect(screen.getByText("Nhân viên toàn thời gian")).toBeInTheDocument();
+    expect(screen.getAllByTitle("Theo workingDays").length).toBeGreaterThan(0);
+  });
 
   it("matches availability window by date key even with different periodEnd timestamp/timezone", () => {
     render(
@@ -95,13 +113,13 @@ describe("AvailabilitySnapshotModal", () => {
     );
 
     expect(
-      screen.queryByText("Chưa có kỳ availability đã chốt cho tuần này."),
+      screen.queryByText("Tuần này chưa có kỳ đăng ký đã chốt."),
     ).not.toBeInTheDocument();
   });
 
   it("renders filter controls", () => {
     renderModal();
     expect(screen.getByPlaceholderText(/Tìm tên hoặc mã nhân viên/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Chỉ thiếu availability/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Chỉ hiện nhân viên thiếu đăng ký/i)).toBeInTheDocument();
   });
 });

@@ -1,0 +1,28 @@
+{
+  "id": "schedule-availability-modal-polish",
+  "name": "schedule-availability-modal-polish",
+  "title": "Fix availability matrix modal and schedule action emphasis",
+  "description": "Keep the registered-availability matrix usable when no matching window exists, remove the black-screen/clipped-modal effect, and add restrained sage emphasis to important schedule actions.",
+  "status": "completed",
+  "dev_type": "frontend",
+  "scope": "manager-schedule-availability-ui",
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-07",
+  "completedAt": "2026-07-07",
+  "branch": "fix/schedule-availability-modal-polish",
+  "base_branch": "main",
+  "commit": "7c7fac4c2de84c042ecb7fdb17b8c411ba208d28",
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1216",
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.jsx",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.scss",
+    "src/components/Dashboard_Manager/Schedule/components/AvailabilitySnapshotModal.test.jsx",
+    "src/styles/schedule-manager-sage-upgrade.css"
+  ],
+  "notes": "Flow traced through availability schema/resolver, ScheduleManagement queries and modal props. Backend data contract and permissions were already correct. The page-scoped fix removes the hasWindow rendering gate, makes the modal lighter and scrollable, adds no-window and filtered-empty states, and restores visual hierarchy for important schedule actions. GitHub Actions run 28838066665 passed frontend/backend lint, tests, build, changed component tests, and Playwright smoke tests. Authenticated desktop/mobile visual review remains manual.",
+  "meta": {
+    "skills": ["ponytail", "frontend-design", "taste-ui-redesign", "redesign-existing-projects"]
+  }
+}

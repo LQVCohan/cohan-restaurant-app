@@ -372,3 +372,48 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Schedule action emphasis: important controls remain distinct after legacy overrides. */
+.manager-page-shell--schedules .schedule-container.schedule-container .header-actions .primary-action {
+  border-color: var(--schedule-primary) !important;
+  background: var(--schedule-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 9px 20px rgba(61, 87, 75, 0.18) !important;
+}
+
+.manager-page-shell--schedules .schedule-container.schedule-container .header-actions .primary-action:hover:not(:disabled) {
+  border-color: var(--schedule-primary-hover) !important;
+  background: var(--schedule-primary-hover) !important;
+}
+
+.manager-page-shell--schedules .schedule-container.schedule-container .header-actions .secondary-action:not(.schedule-header-auto-action-duplicate) {
+  border-color: rgba(79, 108, 94, 0.28) !important;
+  background: #e8f0ec !important;
+  color: var(--schedule-primary-hover) !important;
+}
+
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-availability-snapshot.schedule-toolbar-utility-action {
+  border-color: rgba(47, 125, 104, 0.3) !important;
+  background: #e5f2ec !important;
+  color: #2f6f5e !important;
+  box-shadow: 0 7px 16px rgba(47, 125, 104, 0.1) !important;
+}
+
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-availability-snapshot.schedule-toolbar-utility-action:hover:not(:disabled) {
+  border-color: rgba(47, 125, 104, 0.45) !important;
+  background: #d8ebe2 !important;
+}
+
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-auto-schedule.schedule-toolbar-assist-action {
+  border-color: #3f7563 !important;
+  background: #3f7563 !important;
+  color: #ffffff !important;
+  box-shadow: 0 9px 20px rgba(47, 101, 82, 0.17) !important;
+}
+
+.manager-page-shell--schedules .schedule-container.schedule-container .toolbar-group--actions .btn-auto-schedule.schedule-toolbar-assist-action:hover:not(:disabled) {
+  border-color: #315f50 !important;
+  background: #315f50 !important;
+  color: #ffffff !important;
+}
