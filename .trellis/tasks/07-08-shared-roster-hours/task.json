@@ -1,0 +1,13 @@
+{
+  "id": "07-08-shared-roster-hours",
+  "title": "Shared full-time and part-time roster hours",
+  "status": "in_progress",
+  "priority": "high",
+  "scope": [
+    "Allow overlapping schedule templates for different employees",
+    "Keep same-employee overlap validation in the backend",
+    "Seed 8-hour full-time and 4-hour part-time shifts for restaurant 69ce9e2e8d8d711f12e251b1",
+    "Verify planned hours and mixed-employment overlap in one roster"
+  ],
+  "branch": "cohan-schedule-hours"
+}
