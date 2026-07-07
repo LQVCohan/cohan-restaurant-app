@@ -49,6 +49,26 @@ const normalizeRestaurant = (restaurant) => ({
   brandId: restaurant?.brandId ? String(restaurant.brandId) : "",
 });
 
+export const openManagerDashboardForRestaurant = (restaurantId) => {
+  const normalizedRestaurantId = String(restaurantId || "");
+  if (
+    !normalizedRestaurantId ||
+    typeof window === "undefined" ||
+    window.location.hash !== "#brands"
+  ) {
+    return false;
+  }
+
+  window.dispatchEvent(new CustomEvent("manager:navigate", {
+    detail: {
+      page: "dashboard",
+      query: { restaurantId: normalizedRestaurantId },
+      source: "brand-management",
+    },
+  }));
+  return true;
+};
+
 export default function useBrandManagement(
   additionalRestaurants = EMPTY_RESTAURANTS,
   { skip = false } = {},
@@ -105,19 +125,8 @@ export default function useBrandManagement(
     const nextRestaurantId = typeof nextValue === "function"
       ? ""
       : String(nextValue || "");
-    const shouldOpenDashboard =
-      typeof window !== "undefined" &&
-      window.location.hash === "#brands" &&
-      restaurantsInSelectedBrand.some((restaurant) => restaurant.id === nextRestaurantId);
-
-    if (shouldOpenDashboard) {
-      window.dispatchEvent(new CustomEvent("manager:navigate", {
-        detail: {
-          page: "dashboard",
-          query: { restaurantId: nextRestaurantId },
-          source: "brand-management",
-        },
-      }));
+    if (restaurantsInSelectedBrand.some((restaurant) => restaurant.id === nextRestaurantId)) {
+      openManagerDashboardForRestaurant(nextRestaurantId);
     }
   }, [restaurantsInSelectedBrand]);
 
