@@ -3,7 +3,7 @@
   "name": "new-order-customer-ui-sync",
   "title": "Sync new order modal with customer manager UI",
   "description": "Align the manager new-order modal with the established Customer Management warm-neutral and sage visual system without changing the order workflow.",
-  "status": "in_progress",
+  "status": "in_review",
   "dev_type": "frontend",
   "scope": "manager-new-order-modal",
   "priority": "P1",
@@ -13,13 +13,14 @@
   "completedAt": null,
   "branch": "main",
   "base_branch": "main",
+  "commit": "535b444d8f0a9254e10da9628b55f35a95ace0e2",
   "relatedFiles": [
     "src/components/Dashboard_Manager/Order/components/NewOrderModal.jsx",
     "src/components/Dashboard_Manager/Order/NewOrderModalPromotionTheme.css",
     "src/components/Dashboard_Manager/Customer/CustomerManagement.scss",
     "src/components/Dashboard_Manager/Customer/CustomerManagerScale.scss"
   ],
-  "notes": "UI-only change. CreateOrderForTable schema/resolver, useOrderManagement.saveOrder, restaurant scope, validation, draft restore and realtime side effects remain unchanged.",
+  "notes": "Implemented the visual sync in the final scoped CSS override only. The modal now reuses the Customer Management warm-neutral, sage and charcoal system across shell, controls, summary metrics, menu cards, states and cart drawer. CreateOrderForTable schema/resolver, useOrderManagement.saveOrder, restaurant scope, validation, draft restore and realtime side effects remain unchanged. Tests, build and browser screenshots were not run in the connector environment.",
   "meta": {
     "skills": [
       "ponytail",

@@ -1,76 +1,82 @@
-# COHAN — Hướng dẫn bàn giao và chạy lại project
+# COHAN — Hướng dẫn cài đặt và chạy project
 
-Tài liệu này dùng để cài lại project từ mã nguồn, tạo dữ liệu mẫu và xuất một file MongoDB để bàn giao offline.
+Tài liệu này dành cho bất kỳ ai muốn tải source code, khôi phục database mẫu và chạy COHAN trên máy local. Khi đã có file database chứa sample data, không cần chạy seed.
 
-## 1. Thành phần bàn giao
+## 1. Thành phần cần có
 
-| Thành phần | Vị trí / cách tạo |
+| Thành phần | Vị trí |
 | --- | --- |
-| Code frontend + backend | Toàn bộ repository `cohan-restaurant-app` |
-| Cấu trúc cơ sở dữ liệu | Mongoose models trong `cohan-restaurant-backend/models/` |
-| Sample data | Tạo lại bằng `npm run seed:defense` |
-| File database offline | Đặt trong [`handover/database/`](database/) |
-| Hướng dẫn cài/chạy | File này |
-| Tài khoản thử nghiệm | [`Account.md`](Account.md) |
+| Source code frontend + backend | Toàn bộ repository `cohan-restaurant-app` |
+| Database có sample data | `handover/database/cohan-defense.archive.gz` |
+| Tài khoản kiểm thử | [`Account.md`](Account.md) |
+| Hướng dẫn xuất/khôi phục database | [`database/README.md`](database/README.md) |
 
-Không đưa file `.env`, khóa API thật hoặc dữ liệu cá nhân vào bộ bàn giao.
+Sample data đã nằm trong file database, gồm doanh nghiệp, nhà hàng, tài khoản và dữ liệu phục vụ kiểm thử. Không cần thêm file sample data riêng.
 
 ## 2. Yêu cầu môi trường
 
-- Node.js tương thích với dependencies của project; khuyến nghị Node.js 20 LTS trở lên.
+- Node.js 20 LTS trở lên.
 - npm.
-- MongoDB chạy local hoặc một MongoDB development/staging riêng.
-- MongoDB Database Tools nếu cần tạo file `mongodump` để bàn giao.
+- MongoDB Community Server chạy local.
+- MongoDB Database Tools (`mongorestore`).
 
-## 3. Cài project từ đầu
+```powershell
+node --version
+npm --version
+mongorestore --version
+```
+
+## 3. Cài dependencies và tạo cấu hình local
 
 Tại thư mục gốc repository:
 
-```bash
+```powershell
 npm install
 npm install --prefix cohan-restaurant-backend
 npm run env:local
 ```
 
-`npm run env:local` chỉ tạo file `.env` khi file chưa tồn tại. Cấu hình local mặc định:
+Backend local phải kết nối database đã restore:
+
+```env
+NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/RestaurantDB
+MONGO_DB=RestaurantDB
+```
+
+## 4. Khôi phục database mẫu
+
+Đặt file tại:
 
 ```text
-Frontend: http://localhost:5173
-GraphQL:  http://localhost:4000/graphql
-MongoDB:  mongodb://127.0.0.1:27017/RestaurantDB
+handover/database/cohan-defense.archive.gz
 ```
 
-## 4. Tạo Database và Sample Data
+Sau đó làm theo [`handover/database/README.md`](database/README.md):
 
-Bảo đảm MongoDB đang chạy, sau đó thực hiện:
-
-```bash
-npm run seed:defense
+```text
+File backup từ Atlas
+        ↓ mongorestore
+MongoDB local: RestaurantDB
+        ↓
+Chạy backend và frontend
 ```
 
-Lệnh seed chuẩn bị permission, role, nhà hàng demo, nhân viên, lịch làm, chấm công, thực đơn, nguyên liệu, kho, coupon, khách hàng, đơn hàng và các tài khoản thử nghiệm.
-
-Để tạo lại phần dữ liệu demo được các seed hỗ trợ:
-
-```bash
-npm run seed:defense -- --reset
-```
-
-Seed bị chặn trong môi trường production-like. Chỉ chạy trên database local hoặc staging đã xác định đúng.
+Không chạy `npm run seed:defense` sau khi restore nếu muốn giữ nguyên dữ liệu mẫu trong file database.
 
 ## 5. Chạy project
 
 Mở hai terminal tại thư mục gốc.
 
-**Terminal 1 — Backend**
+**Backend**
 
-```bash
+```powershell
 npm run dev --prefix cohan-restaurant-backend
 ```
 
-**Terminal 2 — Frontend**
+**Frontend**
 
-```bash
+```powershell
 npm run dev
 ```
 
@@ -83,35 +89,29 @@ http://localhost:4000/metrics
 http://localhost:5173
 ```
 
-Đăng nhập bằng các tài khoản trong [`Account.md`](Account.md).
+Đăng nhập bằng tài khoản trong [`Account.md`](Account.md).
 
-## 6. Tạo file Database để đưa vào dự án
+## 6. Seed dành cho developer
 
-Thư mục `handover/database/` đã được chuẩn bị sẵn. Sau khi seed thành công, tạo file database theo hướng dẫn tại:
+Seed chỉ dùng để tái tạo dữ liệu trên database thử nghiệm và không bắt buộc khi đã restore database mẫu.
 
-- [`handover/database/README.md`](database/README.md)
-
-File đề xuất:
-
-```text
-handover/database/cohan-defense.archive.gz
+```powershell
+npm run seed:defense -- --reset
 ```
 
-File archive được giữ trong thư mục dự án để đóng gói bàn giao offline, nhưng mặc định không được commit lên GitHub.
+Không chạy seed trên production hoặc trên database chứa dữ liệu cần giữ lại.
 
-## 7. Kiểm tra trước khi bàn giao
+## 7. Kiểm tra sau khi cài đặt
 
-```bash
-npm run test --prefix cohan-restaurant-backend -- tests/scripts/seed-defense-demo.test.js
+- File database tồn tại và có dung lượng lớn hơn 0 byte.
+- Restore thành công vào MongoDB local sạch.
+- Backend kết nối đúng `RestaurantDB`.
+- Frontend và backend khởi động không lỗi.
+- Đăng nhập thành công bằng tài khoản trong `Account.md`.
+
+```powershell
 npm run check:conflicts
 npm run check:graphql
 npm run build
 npm run build --prefix cohan-restaurant-backend
 ```
-
-Trước khi đóng gói, kiểm tra thêm:
-
-- Manager, Customer và Staff đều đăng nhập được.
-- Database archive đã được tạo và có dung lượng lớn hơn 0 byte.
-- Không có `.env`, token hoặc khóa dịch vụ trong thư mục bàn giao.
-- `Account.md` đi cùng code và file database offline.

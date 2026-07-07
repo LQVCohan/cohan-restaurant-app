@@ -11,10 +11,10 @@
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
   "completedAt": null,
-  "branch": "fix/table-promotion-search",
+  "branch": "fix/table-promotion-search-clean",
   "base_branch": "main",
   "commit": null,
-  "pr_url": null,
+  "pr_url": "https://github.com/LQVCohan/cohan-restaurant-app/pull/1256",
   "relatedFiles": [
     "src/utils/installTablePromotionSearch.js",
     "src/utils/installTablePromotionSearch.test.js",
