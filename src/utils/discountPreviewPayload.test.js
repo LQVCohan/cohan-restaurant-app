@@ -134,12 +134,14 @@ describe("checkout/order payload safety", () => {
         id: "dish-1",
         name: "Phở bò",
         price: 70000,
+        restaurantId: "restaurant-1",
         backendCartId: "cart-1",
         backendCartItemId: "cart-item-1",
       },
       { includeCartHoldRef: true },
     );
 
+    expect(item.restaurantId).toBe("restaurant-1");
     expect(item.cartId).toBe("cart-1");
     expect(item.cartItemId).toBe("cart-item-1");
   });
