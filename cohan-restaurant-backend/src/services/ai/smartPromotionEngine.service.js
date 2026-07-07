@@ -2,9 +2,7 @@ import process from "process";
 import mongoose from "mongoose";
 import { Coupon, Customer, Order, Promotion, StockItem } from "../../../models/index.js";
 import { buildDemandForecast } from "./demandForecast.service.js";
-
-const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-5";
-const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+import { DEFAULT_GEMINI_MODEL, generateGeminiJson } from "./geminiClient.service.js";
 
 const ACTIVE_ORDER_STATUSES = new Set([
   "pending",
@@ -20,14 +18,6 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const toNum = (value, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-};
-const safeJsonParse = (raw) => {
-  if (!raw || typeof raw !== "string") return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
 };
 
 function scoreExistingPromotion(promo, campaign, nowDate) {
@@ -121,9 +111,14 @@ function isActiveNow(row, nowDate) {
 }
 
 async function tryAiEnhanceCampaigns({ summary, campaigns, timezone }) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { aiEnhanced: false, campaigns: null };
 
+  const model =
+    process.env.SMART_PROMOTION_AI_MODEL ||
+    process.env.AI_CHATBOT_MODEL ||
+    process.env.GEMINI_MODEL ||
+    DEFAULT_GEMINI_MODEL;
   const prompt = [
     "Bạn là chuyên gia growth/promotion cho nhà hàng.",
     "Hãy cải thiện title/reason/guardrails của campaigns, KHÔNG đổi KPI số học.",
@@ -133,26 +128,15 @@ async function tryAiEnhanceCampaigns({ summary, campaigns, timezone }) {
   ].join("\n");
 
   try {
-    const res = await fetch(OPENAI_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        temperature: 0.2,
-        max_tokens: 350,
-        messages: [
-          { role: "system", content: "Trả về JSON hợp lệ." },
-          { role: "user", content: prompt },
-        ],
-      }),
+    const parsed = await generateGeminiJson({
+      apiKey,
+      model,
+      systemInstruction: "Bạn trả lời tiếng Việt và chỉ trả JSON hợp lệ.",
+      prompt,
+      temperature: 0.2,
+      maxOutputTokens: 700,
+      timeoutMs: Number(process.env.SMART_PROMOTION_AI_TIMEOUT_MS || 12000),
     });
-    if (!res.ok) return { aiEnhanced: false, campaigns: null };
-    const payload = await res.json();
-    const text = payload?.choices?.[0]?.message?.content?.trim();
-    const parsed = safeJsonParse(text);
     if (!Array.isArray(parsed?.campaigns)) return { aiEnhanced: false, campaigns: null };
     return { aiEnhanced: true, campaigns: parsed.campaigns };
   } catch {
