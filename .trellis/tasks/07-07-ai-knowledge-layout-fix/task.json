@@ -3,7 +3,7 @@
   "name": "ai-knowledge-layout-fix",
   "title": "Fix AI knowledge manager layout",
   "description": "Remove two overlapping global CSS patches that compress the knowledge list, create nested scrolling, and duplicate guide wording on the AI chatbot knowledge page.",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": "frontend",
   "scope": "manager-ai-chatbot-knowledge",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-07",
-  "completedAt": null,
+  "completedAt": "2026-07-07",
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
+  "commit": "ff91750e752f5cbc2e5267dfbf425365cedc0aab",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -28,5 +28,5 @@
     "src/components/Dashboard_Manager/Customer/AiChatbotKnowledgePage.jsx",
     "src/components/Dashboard_Manager/Customer/AiChatbotAdmin.scss"
   ],
-  "notes": "UI-only root-cause cleanup. No schema, resolver, Apollo operation, permissions, or business behavior changes."
+  "notes": "UI-only root-cause cleanup. Static verification found no remaining imports of the removed styles. No schema, resolver, Apollo operation, permissions, or business behavior changed. CI had no status checks yet; local build and browser verification were not available."
 }
