@@ -16,6 +16,14 @@ vi.mock("../../../../components/common/Modal", () => {
       </div>
     ) : null;
 
+  MockModal.Body = ({ children, className = "" }) => (
+    <div
+      className={`modal-body ${className}`}
+      data-testid="order-settings-scroll-body"
+    >
+      {children}
+    </div>
+  );
   MockModal.Footer = ({ children }) => <footer>{children}</footer>;
 
   return { default: MockModal };
@@ -71,6 +79,16 @@ afterEach(() => {
 });
 
 describe("OrderSettingsModal", () => {
+  it("renders settings inside the common modal scroll body", () => {
+    renderSettings();
+
+    const scrollBody = screen.getByTestId("order-settings-scroll-body");
+    expect(scrollBody).toHaveClass("modal-body", "osm-scroll-body");
+    expect(
+      screen.getByRole("button", { name: "Lưu cài đặt" }).closest("footer"),
+    ).not.toBe(scrollBody);
+  });
+
   it("normalizes thresholds and applies saved display settings", () => {
     const { props } = renderSettings();
 
