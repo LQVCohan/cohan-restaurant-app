@@ -1,0 +1,513 @@
+/* Final clarity layer for the customer seating map and the manager floor-plan workspace. */
+
+/* ================= CUSTOMER SEATING MAP ================= */
+.table-booking-premium {
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+/* Floor name and availability already exist above the canvas. Remove duplicate overlays. */
+.table-booking-premium .map-context-strip,
+.table-booking-premium .floor-name-watermark {
+  display: none !important;
+}
+
+/* Reserve a real toolbar row so controls and legend no longer cover tables or decor. */
+.table-booking-premium .floor-map-viz .viewport {
+  position: absolute !important;
+  inset: 0 0 60px !important;
+  width: auto !important;
+  height: auto !important;
+  border-bottom: 1px solid rgba(91, 68, 52, 0.13);
+}
+
+.table-booking-premium .floor-map-viz .map-controls-premium {
+  top: auto !important;
+  right: 14px !important;
+  bottom: 9px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  padding: 4px !important;
+  border-radius: 12px !important;
+  background: #fffdf8 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.table-booking-premium .floor-map-viz .map-controls-premium button {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.table-booking-premium .floor-map-viz .map-controls-premium .divider {
+  width: 1px !important;
+  height: 22px !important;
+  margin: 0 3px !important;
+}
+
+.table-booking-premium .floor-map-viz .map-controls-premium .zoom-output {
+  min-width: 38px !important;
+  font-size: 0.66rem !important;
+  color: #5f5147 !important;
+}
+
+.table-booking-premium .legend-pill {
+  left: 14px !important;
+  bottom: 9px !important;
+  max-width: calc(100% - 190px) !important;
+  min-height: 42px;
+  overflow-x: auto;
+  padding: 8px 12px !important;
+  background: #fffdf8 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  scrollbar-width: thin;
+}
+
+.table-booking-premium .legend-pill .l-item {
+  font-size: 0.72rem !important;
+}
+
+/* Improve labels that were nearly invisible on the pale floor surface. */
+.table-booking-premium .floor-map-viz .layout-node:not(.wall):not(.half-wall):not(.window):not(.door) .layout-label {
+  max-width: calc(100% - 8px) !important;
+  padding: 4px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(91, 68, 52, 0.14);
+  border-radius: 999px;
+  color: #58483d !important;
+  background: rgba(255, 253, 248, 0.9);
+  box-shadow: 0 4px 10px rgba(68, 46, 31, 0.07);
+  font-size: 0.7rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.07em !important;
+  opacity: 1 !important;
+}
+
+.table-booking-premium .floor-map-viz .table-status-copy {
+  color: currentColor !important;
+  font-size: 0.54rem !important;
+  font-weight: 900 !important;
+  opacity: 0.94 !important;
+}
+
+.table-booking-premium .floor-map-viz .capacity-pill {
+  bottom: -10px !important;
+}
+
+.table-booking-premium .floor-context > p {
+  color: #64574d !important;
+  font-size: 0.76rem !important;
+  line-height: 1.5 !important;
+}
+
+.table-booking-premium .floor-scroll-container button,
+.table-booking-premium .floor-selector button {
+  font-size: 0.8rem !important;
+}
+
+@media (max-width: 620px) {
+  .table-booking-premium .floor-map-viz .viewport {
+    inset: 0 0 104px !important;
+  }
+
+  .table-booking-premium .legend-pill {
+    right: 10px !important;
+    left: 10px !important;
+    bottom: 53px !important;
+    max-width: none !important;
+    min-height: 42px;
+  }
+
+  .table-booking-premium .floor-map-viz .map-controls-premium {
+    right: 10px !important;
+    bottom: 7px !important;
+    left: 10px !important;
+  }
+}
+
+/* ================= MANAGER FLOOR-PLAN DESIGNER ================= */
+.fp-layout {
+  --fp-bg: #eee7df;
+  --fp-paper: #fffdf9;
+  --fp-paper-soft: #f8f1e9;
+  --fp-line: rgba(91, 68, 52, 0.18);
+  --fp-line-strong: rgba(91, 68, 52, 0.3);
+  --fp-ink: #2d2621;
+  --fp-muted: #6f6258;
+  --fp-accent: #d9652f;
+  --fp-accent-dark: #9f3f1d;
+  --fp-accent-soft: #fbe9df;
+  --fp-green: #38705b;
+  --fp-shadow: 0 18px 42px rgba(68, 46, 31, 0.13);
+
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 620px;
+  color: var(--fp-ink) !important;
+  background: var(--fp-bg) !important;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* The old 56px row clipped actions. Let the toolbar form a responsive grid. */
+.fp-layout .fp-header {
+  height: auto !important;
+  min-height: 68px !important;
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(0, auto) !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 10px 16px !important;
+  border-bottom: 1px solid var(--fp-line) !important;
+  background: rgba(255, 253, 249, 0.97) !important;
+  box-shadow: 0 7px 22px rgba(68, 46, 31, 0.08) !important;
+}
+
+.fp-layout .fp-header .left-sect,
+.fp-layout .fp-header .file-info,
+.fp-layout .fp-header .right-sect {
+  min-width: 0;
+}
+
+.fp-layout .fp-header .file-info .title {
+  color: var(--fp-ink) !important;
+  font-size: 0.94rem !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.02em;
+}
+
+.fp-layout .fp-header .file-info select {
+  max-width: 220px;
+  color: var(--fp-muted) !important;
+  text-overflow: ellipsis;
+}
+
+.fp-layout .fp-header .btn-icon,
+.fp-layout .fp-header .center-tools,
+.fp-layout .fp-header .zoom-pill,
+.fp-layout .fp-header .btn-secondary,
+.fp-layout .fp-header .btn-primary {
+  border-color: var(--fp-line) !important;
+}
+
+.fp-layout .fp-header .btn-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--fp-line) !important;
+  border-radius: 11px;
+  color: var(--fp-ink) !important;
+  background: var(--fp-paper) !important;
+}
+
+.fp-layout .fp-header .center-tools,
+.fp-layout .fp-header .zoom-pill {
+  background: var(--fp-paper-soft) !important;
+}
+
+.fp-layout .fp-header .center-tools .tool-toggle.active {
+  color: var(--fp-accent-dark) !important;
+  background: var(--fp-paper) !important;
+}
+
+.fp-layout .fp-header .right-sect {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.fp-layout .fp-header .right-sect .btn-secondary,
+.fp-layout .fp-header .right-sect .btn-primary {
+  min-height: 38px;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+  white-space: nowrap;
+}
+
+.fp-layout .fp-header .right-sect .btn-secondary {
+  color: var(--fp-ink) !important;
+  background: var(--fp-paper) !important;
+}
+
+.fp-layout .fp-header .right-sect .btn-primary {
+  color: #fff !important;
+  background: var(--fp-accent) !important;
+}
+
+.fp-layout .fp-header button:focus-visible,
+.fp-layout .fp-palette button:focus-visible,
+.fp-layout .fp-properties button:focus-visible,
+.fp-layout .fp-properties input:focus-visible,
+.fp-layout .fp-properties select:focus-visible {
+  outline: 3px solid rgba(217, 101, 47, 0.28) !important;
+  outline-offset: 2px !important;
+}
+
+.fp-layout .fp-body {
+  background: var(--fp-bg) !important;
+}
+
+.fp-layout .fp-canvas-viewport {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(217, 101, 47, 0.06), transparent 24rem),
+    var(--fp-bg) !important;
+}
+
+.fp-layout .fp-canvas-world .dot-grid {
+  background-image: radial-gradient(rgba(91, 68, 52, 0.24) 1px, transparent 1px) !important;
+}
+
+.fp-layout .fp-palette {
+  top: 14px !important;
+  bottom: 14px !important;
+  left: 14px !important;
+  width: 248px !important;
+  gap: 14px !important;
+  padding: 14px 12px !important;
+  border: 1px solid var(--fp-line) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 253, 249, 0.98) !important;
+  box-shadow: var(--fp-shadow) !important;
+  backdrop-filter: none !important;
+  scrollbar-color: rgba(159, 63, 29, 0.34) transparent;
+}
+
+.fp-layout .fp-palette.collapsed {
+  width: 52px !important;
+  height: 52px !important;
+  padding: 0 !important;
+}
+
+.fp-layout .fp-palette .palette-header {
+  color: var(--fp-ink) !important;
+  font-size: 0.86rem !important;
+  border-color: var(--fp-line) !important;
+}
+
+.fp-layout .fp-palette .group-label {
+  min-height: 34px;
+  color: #5e5046 !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.07em;
+}
+
+.fp-layout .fp-palette .tool-btn {
+  min-height: 38px;
+  border: 1px solid rgba(91, 68, 52, 0.11) !important;
+  color: var(--fp-ink) !important;
+  background: var(--fp-paper) !important;
+}
+
+.fp-layout .fp-palette .tool-btn:hover {
+  border-color: rgba(217, 101, 47, 0.34) !important;
+  background: var(--fp-accent-soft) !important;
+}
+
+.fp-layout .fp-palette .tool-btn .palette-label {
+  color: #4d423a !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+}
+
+/* Inspector gets its own scroll area instead of being cut off by the viewport. */
+.fp-layout .fp-properties {
+  top: 14px !important;
+  right: 14px !important;
+  bottom: 14px !important;
+  width: 296px !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 14px !important;
+  border: 1px solid var(--fp-line) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 253, 249, 0.99) !important;
+  box-shadow: var(--fp-shadow) !important;
+  scrollbar-color: rgba(159, 63, 29, 0.34) transparent;
+}
+
+.fp-layout .fp-properties .inspector-head {
+  position: sticky;
+  top: -14px;
+  z-index: 3;
+  margin: -14px -14px 10px;
+  padding: 14px 14px 11px !important;
+  border-color: var(--fp-line) !important;
+  background: rgba(255, 253, 249, 0.98);
+}
+
+.fp-layout .fp-properties .inspector-head .badge.real {
+  color: #245342 !important;
+  background: #e7f1ec !important;
+}
+
+.fp-layout .fp-properties .inspector-head .badge.decor {
+  color: #58483d !important;
+  background: #eee5dc !important;
+}
+
+.fp-layout .fp-properties .input-group label,
+.fp-layout .fp-properties .nudge-group label {
+  color: var(--fp-muted) !important;
+  font-size: 0.74rem !important;
+}
+
+.fp-layout .fp-properties input,
+.fp-layout .fp-properties select {
+  min-height: 36px;
+  border-color: var(--fp-line) !important;
+  color: var(--fp-ink) !important;
+  background: var(--fp-paper) !important;
+}
+
+/* The inspector, minimap and reset control previously shared the same right edge. */
+.fp-layout .fp-properties ~ .fp-controls,
+.fp-layout .fp-properties ~ .fp-minimap {
+  right: 326px !important;
+}
+
+.fp-layout .fp-controls button,
+.fp-layout .fp-minimap {
+  border-color: var(--fp-line) !important;
+  background: var(--fp-paper) !important;
+  box-shadow: var(--fp-shadow) !important;
+}
+
+.fp-layout .fp-minimap .minimap-title {
+  color: var(--fp-muted) !important;
+  font-size: 0.74rem !important;
+}
+
+.fp-layout .fp-minimap .minimap-canvas {
+  border: 1px solid var(--fp-line);
+  background: var(--fp-paper-soft) !important;
+}
+
+.fp-layout .fp-item .decor-label {
+  bottom: -21px !important;
+  padding: 3px 6px;
+  border: 1px solid rgba(91, 68, 52, 0.13);
+  border-radius: 999px;
+  color: #58483d !important;
+  background: rgba(255, 253, 249, 0.92);
+  font-size: 0.66rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  box-shadow: 0 3px 8px rgba(68, 46, 31, 0.07);
+}
+
+.fp-layout .fp-item.selected {
+  outline-color: var(--fp-accent) !important;
+  box-shadow: 0 0 0 5px rgba(217, 101, 47, 0.18) !important;
+}
+
+.fp-layout .fp-item .selection-ring {
+  border-color: rgba(217, 101, 47, 0.85) !important;
+}
+
+.fp-layout .fp-item .corner {
+  background: var(--fp-accent) !important;
+}
+
+.fp-layout .fp-item.wall {
+  border-color: #50473f !important;
+  background: #50473f !important;
+}
+
+.fp-layout .fp-item.table,
+.fp-layout .fp-item.table-rect-2,
+.fp-layout .fp-item.table-rect-4 {
+  border-color: var(--fp-green) !important;
+  color: #245342 !important;
+  background: #e7f1ec !important;
+  box-shadow: 0 6px 14px rgba(36, 83, 66, 0.14) !important;
+}
+
+@media (max-width: 1280px) {
+  .fp-layout .fp-header {
+    grid-template-columns: minmax(220px, 1fr) auto !important;
+  }
+
+  .fp-layout .fp-header .right-sect {
+    grid-column: 1 / -1;
+    width: 100%;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    padding-top: 9px;
+    border-top: 1px solid var(--fp-line);
+    scrollbar-width: thin;
+  }
+
+  .fp-layout .fp-header .right-sect > * {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 1100px) {
+  .fp-layout .fp-minimap {
+    display: none !important;
+  }
+
+  .fp-layout .fp-palette {
+    width: 220px !important;
+  }
+
+  .fp-layout .fp-properties ~ .fp-controls {
+    right: 326px !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .fp-layout {
+    min-height: 540px;
+  }
+
+  .fp-layout .fp-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 9px !important;
+    padding: 9px 10px !important;
+  }
+
+  .fp-layout .fp-header .file-info .title {
+    font-size: 0.82rem !important;
+  }
+
+  .fp-layout .fp-header .file-info select {
+    max-width: 150px;
+    font-size: 0.78rem !important;
+  }
+
+  .fp-layout .fp-palette {
+    width: 204px !important;
+  }
+
+  .fp-layout .fp-properties {
+    right: 10px !important;
+    bottom: 10px !important;
+    width: min(280px, calc(100% - 20px)) !important;
+  }
+
+  .fp-layout .fp-body:has(.fp-properties) .fp-palette {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-110%);
+  }
+
+  .fp-layout .fp-properties ~ .fp-controls {
+    right: auto !important;
+    left: 10px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-layout *,
+  .table-booking-premium * {
+    scroll-behavior: auto !important;
+  }
+}

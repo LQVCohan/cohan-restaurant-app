@@ -26,6 +26,7 @@
 @import "./components/Customer/FavoritePage/FavoriteFoodBuilder.product.css";
 @import "./components/Customer/HelpPage/HelpPage.product.css";
 @import "./components/Login.product.css";
+@import "./styles/TableLayoutClarity.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
