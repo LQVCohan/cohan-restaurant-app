@@ -59,29 +59,15 @@ import { applyChatThreadToolbarStyle } from "./utils/chatThreadToolbarStyle";
 import { installRbacVietnameseLabels } from "./utils/rbacVietnameseLabels";
 import { installRestaurantHoursEnhancement } from "./utils/installRestaurantHoursEnhancement";
 import { installTablePromotionSearch } from "./utils/installTablePromotionSearch";
-import {
-  __testables as tableTransferMergeEnhancement,
-  installTableTransferMergeEnhancement,
-} from "./utils/installTableTransferMergeEnhancement";
+import { installTableMergePickerTrigger } from "./utils/installTableMergePickerTrigger";
 import { installAttendanceWordingTuning } from "./components/Dashboard_Manager/Staff/components/Attendance/AttendanceWordingTuning";
 
 installRbacVietnameseLabels();
 applyChatThreadToolbarStyle();
 installRestaurantHoursEnhancement();
 installTablePromotionSearch();
-installTableTransferMergeEnhancement();
+installTableMergePickerTrigger();
 installAttendanceWordingTuning();
-
-const TABLE_MERGE_INTERACTION_GUARD = "__cohanTableMergeInteractionGuard";
-if (!window[TABLE_MERGE_INTERACTION_GUARD]) {
-  window[TABLE_MERGE_INTERACTION_GUARD] = true;
-  const enhanceTableModalBeforeInteraction = (event) => {
-    const modal = event.target?.closest?.(".talite-modal");
-    if (modal) tableTransferMergeEnhancement.enhanceTableModal(modal);
-  };
-  document.addEventListener("pointerdown", enhanceTableModalBeforeInteraction, true);
-  document.addEventListener("focusin", enhanceTableModalBeforeInteraction, true);
-}
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
