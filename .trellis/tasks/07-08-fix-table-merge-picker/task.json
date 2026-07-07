@@ -2,8 +2,8 @@
   "id": "fix-table-merge-picker",
   "name": "fix-table-merge-picker",
   "title": "Fix table merge picker opening",
-  "description": "Use a stable delegated trigger for the existing searchable table picker so the current React button always opens same-floor table selection.",
-  "status": "completed",
+  "description": "Expose a visible searchable same-floor table picker and widen the table detail modal without changing merge business rules.",
+  "status": "in_progress",
   "dev_type": "bugfix",
   "scope": "table-management-ui",
   "package": null,
@@ -11,11 +11,11 @@
   "creator": "LQVCohan",
   "assignee": "LQVCohan",
   "createdAt": "2026-07-08",
-  "completedAt": "2026-07-08",
+  "completedAt": null,
   "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": "44d664d0ae3913778ce1640e56c034b1ae32034a",
+  "commit": null,
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -24,11 +24,11 @@
     "src/main.jsx",
     "src/utils/installTableMergePickerTrigger.js",
     "src/utils/installTableMergePickerTrigger.test.js",
-    "src/utils/installTableTransferMergeEnhancement.js",
+    "src/components/Dashboard_Manager/Table/TableManagementMergePickerFix.css",
     "src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx",
     "src/hooks/useTableManagement.js",
     "cohan-restaurant-backend/graphql/schema/floor_table.graphql",
     "cohan-restaurant-backend/graphql/resolvers/table/mutation.js"
   ],
-  "notes": "The failed pointer/focus patch was removed. The final fix reuses the existing picker and mutation, labels the action Chọn bàn, rebinds replaced React buttons, and delegates the first click from a stable document boundary. No schema, resolver, permission, audit-log, dependency, or business-rule change. A focused regression test was added; no local test/build or CI workflow ran in the connected environment."
+  "notes": "The previous implementation still depended on per-element DOM listeners and replaying a React button click. The corrective fix keeps one stable delegated handler, inserts an explicit picker button, loads the same-floor list directly, and leaves the GraphQL contract and merge validation unchanged."
 }
