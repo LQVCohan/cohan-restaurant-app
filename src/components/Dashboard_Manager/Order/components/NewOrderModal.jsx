@@ -25,6 +25,7 @@ import useOrderManagement from "../../../../hooks/useOrderManagement";
 import useFloorManagement from "../../../../hooks/useFloorManagement";
 import useTableManagement from "../../../../hooks/useTableManagement";
 import useMenuManagement from "../../../../hooks/useMenuManagement";
+import { useCategoryManagement } from "../../../../hooks/useCategoryManagement";
 import { useNotification } from "@/hooks/useNotification";
 import useModalDraft from "../../../../hooks/useModalDraft";
 
@@ -54,29 +55,22 @@ const filterSearchOption = (input, option) =>
   normalizeSearchText(option?.label).includes(normalizeSearchText(input));
 
 export const buildNewOrderCategoryOptions = (
-  menus = [],
+  categories = [],
   items = [],
-  selectedTimeSlot = null,
 ) => {
-  const matchingMenus = (menus || []).filter(
-    (menu) => !selectedTimeSlot || menu?.timeSlot === selectedTimeSlot,
-  );
-  const sourceMenus = matchingMenus.length ? matchingMenus : menus || [];
   const categoriesById = new Map();
 
-  sourceMenus.forEach((menu) => {
-    (menu?.categoryMenu || []).forEach((category) => {
-      const id = String(category?.id || "").trim();
-      if (!id || category?.isActive === false || categoriesById.has(id)) return;
-      categoriesById.set(id, String(category?.name || "Danh mục khác").trim());
-    });
+  (Array.isArray(categories) ? categories : []).forEach((category) => {
+    const id = String(category?.id || "").trim();
+    if (!id || category?.isActive === false || categoriesById.has(id)) return;
+    categoriesById.set(id, String(category?.name || "Danh mục khác").trim());
   });
 
   const knownCategoryIds = new Set(categoriesById.keys());
   const unknownCategoryIds = new Set();
   let includeUncategorized = false;
 
-  (items || []).forEach((item) => {
+  (Array.isArray(items) ? items : []).forEach((item) => {
     const categoryId = String(item?.categoryId || "").trim();
     if (!categoryId) {
       includeUncategorized = true;
@@ -297,6 +291,12 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     selectedTimeSlot,
     setSelectedTimeSlot,
   } = useMenuManagement({ restaurantId });
+  const { categories } = useCategoryManagement({
+    restaurantId,
+    timeSlot: selectedTimeSlot,
+    loadTopCategories: false,
+    loadCategoryMenus: false,
+  });
 
   const hasDirtyForm =
     Boolean(currentTable) ||
@@ -427,13 +427,8 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   }, [sessions, selectedTimeSlot, setSelectedTimeSlot]);
 
   const categoryOptions = useMemo(
-    () =>
-      buildNewOrderCategoryOptions(
-        menus,
-        itemsWithPrice,
-        selectedTimeSlot,
-      ),
-    [itemsWithPrice, menus, selectedTimeSlot],
+    () => buildNewOrderCategoryOptions(categories, itemsWithPrice),
+    [categories, itemsWithPrice],
   );
 
   const categorySelectOptions = useMemo(
