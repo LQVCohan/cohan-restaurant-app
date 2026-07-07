@@ -1,5 +1,6 @@
 import tableQueries from "./query.js";
 import tableMutations from "./mutation.js";
+import moveTable from "./moveTable.js";
 import { CustomerPublicTableMutation } from "./publicCustomer.js";
 import TableAccessQrMutation, { TableAccessQrQuery } from "./tableAccessQr.js";
 
@@ -14,6 +15,7 @@ export default {
   },
   Mutation: {
     ...tableMutations,
+    moveTable,
     ...TableAccessQrMutation,
 
     ...TableCustomerMutation, // ✅ thêm
