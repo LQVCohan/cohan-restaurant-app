@@ -1,0 +1,390 @@
+.cohan-table-customer-profiles {
+  margin-top: 12px;
+}
+
+.cohan-table-customer-profiles__shell {
+  display: grid;
+  gap: 14px;
+  padding: 15px;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  border-radius: 16px;
+  color: #29372f;
+  background:
+    radial-gradient(circle at top right, rgba(111, 143, 128, 0.1), transparent 34%),
+    rgba(255, 253, 248, 0.94);
+  box-shadow: 0 8px 24px rgba(48, 68, 58, 0.06);
+}
+
+.cohan-table-customer-profiles__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.cohan-table-customer-profiles__heading-wrap {
+  min-width: 0;
+}
+
+.cohan-table-customer-profiles__heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #263b32;
+  font-size: 0.94rem;
+}
+
+.cohan-table-customer-profiles__heading strong {
+  font-weight: 850;
+  letter-spacing: -0.015em;
+}
+
+.cohan-table-customer-profiles__icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(83, 108, 97, 0.2);
+  border-radius: 9px;
+  background: #edf5f1;
+  font-size: 0.86rem;
+}
+
+.cohan-table-customer-profiles__description {
+  max-width: 620px;
+  margin: 5px 0 0 37px;
+  color: #6b7771;
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+
+.cohan-table-customer-profiles__summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.cohan-table-customer-profiles__summary span,
+.cohan-table-customer-profiles__summary strong {
+  padding: 5px 8px;
+  border: 1px solid rgba(83, 108, 97, 0.17);
+  border-radius: 8px;
+  color: #5e6d65;
+  background: rgba(244, 248, 246, 0.9);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cohan-table-customer-profiles__summary strong {
+  color: #315748;
+  border-color: rgba(83, 108, 97, 0.28);
+  background: #e7f1ec;
+}
+
+.cohan-table-customer-profiles__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 9px;
+}
+
+.cohan-table-customer-profiles__card {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 11px 12px;
+  border: 1px solid rgba(86, 72, 58, 0.15);
+  border-radius: 13px;
+  color: #34443c;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 5px 15px rgba(47, 63, 55, 0.035);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.cohan-table-customer-profiles__card:hover {
+  border-color: rgba(83, 108, 97, 0.38);
+  background: #f3f8f5;
+  transform: translateY(-1px);
+}
+
+.cohan-table-customer-profiles__card.is-selected {
+  border-color: rgba(65, 101, 85, 0.65);
+  background: #eaf3ee;
+  box-shadow:
+    inset 0 0 0 1px rgba(65, 101, 85, 0.12),
+    0 7px 18px rgba(47, 79, 64, 0.09);
+}
+
+.cohan-table-customer-profiles__card.is-empty:not(.is-selected) {
+  border-style: dashed;
+  color: #68766f;
+  background: rgba(250, 249, 245, 0.86);
+}
+
+.cohan-table-customer-profiles__card-top,
+.cohan-table-customer-profiles__card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.cohan-table-customer-profiles__table-code {
+  color: #2d493d;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.cohan-table-customer-profiles__profile-state {
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: #527064;
+  background: #edf4f0;
+  font-size: 0.61rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.cohan-table-customer-profiles__card.is-empty
+  .cohan-table-customer-profiles__profile-state {
+  color: #807569;
+  background: #f3efe8;
+}
+
+.cohan-table-customer-profiles__customer-name,
+.cohan-table-customer-profiles__customer-contact {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cohan-table-customer-profiles__customer-name {
+  color: #26372f;
+  font-size: 0.87rem;
+  font-weight: 800;
+}
+
+.cohan-table-customer-profiles__customer-contact {
+  color: #6a7770;
+  font-size: 0.68rem;
+}
+
+.cohan-table-customer-profiles__party-size,
+.cohan-table-customer-profiles__edit-label {
+  color: #5c6c64;
+  font-size: 0.65rem;
+}
+
+.cohan-table-customer-profiles__party-size {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.cohan-table-customer-profiles__edit-label {
+  color: #48695a;
+}
+
+.cohan-table-customer-profiles__editor {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid rgba(83, 108, 97, 0.16);
+  border-radius: 13px;
+  background: rgba(245, 248, 246, 0.86);
+}
+
+.cohan-table-customer-profiles__editor-header strong {
+  display: block;
+  color: #293c33;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.cohan-table-customer-profiles__editor-header p {
+  margin: 3px 0 0;
+  color: #6b7771;
+  font-size: 0.67rem;
+  line-height: 1.42;
+}
+
+.cohan-table-customer-profiles__editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.cohan-table-customer-profiles__field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.cohan-table-customer-profiles__field > span {
+  color: #53635b;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.cohan-table-customer-profiles__field input,
+.cohan-table-customer-profiles__field textarea {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid rgba(83, 108, 97, 0.22);
+  border-radius: 9px;
+  color: #2c3d35;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.cohan-table-customer-profiles__field textarea {
+  min-height: 58px;
+  resize: vertical;
+  line-height: 1.42;
+}
+
+.cohan-table-customer-profiles__field input:focus,
+.cohan-table-customer-profiles__field textarea:focus {
+  border-color: rgba(65, 101, 85, 0.7);
+  box-shadow: 0 0 0 3px rgba(65, 101, 85, 0.12);
+}
+
+.cohan-table-customer-profiles__field--wide {
+  grid-column: 1 / -1;
+}
+
+.cohan-table-customer-profiles__actions {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cohan-table-customer-profiles__feedback {
+  color: #69766f;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.cohan-table-customer-profiles__feedback.is-error {
+  color: #a24642;
+}
+
+.cohan-table-customer-profiles__feedback.is-success {
+  color: #39705a;
+}
+
+.cohan-table-customer-profiles__save {
+  min-height: 35px;
+  padding: 8px 12px;
+  border: 1px solid #486158;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(145deg, #657f73, #466056);
+  box-shadow: 0 6px 14px rgba(55, 82, 70, 0.17);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cohan-table-customer-profiles__save:hover:not(:disabled) {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.cohan-table-customer-profiles__save:disabled {
+  opacity: 0.58;
+  cursor: wait;
+  box-shadow: none;
+}
+
+.cohan-table-customer-profiles__card:focus-visible,
+.cohan-table-customer-profiles__save:focus-visible {
+  outline: 3px solid rgba(65, 101, 85, 0.2);
+  outline-offset: 2px;
+}
+
+.cohan-table-customer-profiles__state {
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border: 1px dashed rgba(83, 108, 97, 0.23);
+  border-radius: 12px;
+  color: #68766f;
+  background: rgba(247, 248, 245, 0.82);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.cohan-table-customer-profiles__state.is-error {
+  color: #984441;
+  border-color: rgba(165, 69, 69, 0.24);
+  background: #fff3f1;
+}
+
+@media (max-width: 760px) {
+  .cohan-table-customer-profiles__header {
+    display: grid;
+  }
+
+  .cohan-table-customer-profiles__summary {
+    justify-content: flex-start;
+    margin-left: 37px;
+  }
+}
+
+@media (max-width: 560px) {
+  .cohan-table-customer-profiles__shell {
+    padding: 12px;
+  }
+
+  .cohan-table-customer-profiles__description,
+  .cohan-table-customer-profiles__summary {
+    margin-left: 0;
+  }
+
+  .cohan-table-customer-profiles__cards,
+  .cohan-table-customer-profiles__editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cohan-table-customer-profiles__field--wide {
+    grid-column: auto;
+  }
+
+  .cohan-table-customer-profiles__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cohan-table-customer-profiles__save {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cohan-table-customer-profiles__card,
+  .cohan-table-customer-profiles__save {
+    transition: none !important;
+  }
+}
