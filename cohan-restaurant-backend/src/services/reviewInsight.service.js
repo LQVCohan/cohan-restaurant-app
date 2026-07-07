@@ -1,10 +1,9 @@
-import { generateGeminiJson } from "./ai/geminiClient.service.js";
+import { DEFAULT_GEMINI_MODEL, generateGeminiJson } from "./ai/geminiClient.service.js";
 
 const POSITIVE_WORDS = ["ngon", "tốt", "nhanh", "sạch", "thân thiện", "hài lòng", "tuyệt", "đẹp"];
 const NEGATIVE_WORDS = ["chậm", "lạnh", "tệ", "bẩn", "đắt", "ồn", "khó chịu", "thất vọng"];
 const MAX_REVIEWS_FOR_AI = 80;
 const MAX_REVIEW_CONTENT_CHARS = 500;
-const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
 
 const pickTags = (reviews, words) => {
   const counts = new Map();
@@ -48,11 +47,12 @@ export function validateReviewInsightShape(value) {
 }
 
 export function resolveGeminiReviewInsightModel(env = process.env) {
-  const explicit = String(env.REVIEW_AI_INSIGHT_MODEL || "").trim();
-  if (explicit && !/^gpt-/i.test(explicit)) return explicit;
-  const chatbotModel = String(env.AI_CHATBOT_MODEL || env.AI_MODEL || "").trim();
-  if (chatbotModel && !/^gpt-/i.test(chatbotModel)) return chatbotModel;
-  return DEFAULT_GEMINI_MODEL;
+  return String(
+    env.REVIEW_AI_INSIGHT_MODEL ||
+      env.AI_CHATBOT_MODEL ||
+      env.GEMINI_MODEL ||
+      DEFAULT_GEMINI_MODEL,
+  ).trim() || DEFAULT_GEMINI_MODEL;
 }
 
 export function createReviewInsightProviderFromEnv(env = process.env, { fetchImpl = globalThis.fetch } = {}) {
