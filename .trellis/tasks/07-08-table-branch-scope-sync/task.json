@@ -1,0 +1,28 @@
+{
+  "id": "table-branch-scope-sync",
+  "name": "table-branch-scope-sync",
+  "title": "Synchronize table management with selected branch",
+  "description": "Make the table management page use the shared manager restaurant selection so changing the header branch reloads that branch's floors and tables.",
+  "status": "in_progress",
+  "dev_type": "bugfix",
+  "scope": "manager-table-restaurant-selection",
+  "package": null,
+  "priority": "P1",
+  "creator": "LQVCohan",
+  "assignee": "LQVCohan",
+  "createdAt": "2026-07-08",
+  "completedAt": null,
+  "branch": "main",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "src/components/Dashboard_Manager/Table/TableManagement.jsx",
+    "src/components/Dashboard_Manager/Table/TableManagement.test.jsx"
+  ],
+  "notes": "The backend tables query is already restaurant-scoped. TableManagement owns a separate local restaurant state initialized from AuthContext[0], so it ignores the shared ManagerLayout branch selection. Reuse useManagerRestaurantSelection and reset branch-specific UI state on selection changes."
+}
