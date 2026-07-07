@@ -4,7 +4,9 @@
 
 ## Đăng nhập nhanh
 
-Các tài khoản trong database bàn giao sử dụng cùng mật khẩu demo. Giá trị mặc định development được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js` và có thể được thay bằng biến `DEMO_PASSWORD`.
+**Mật khẩu chung của bộ dữ liệu bàn giao:** `Demo@123456`
+
+Giá trị mặc định development này được khai báo tại `DEFAULT_DEMO_PASSWORD` trong `cohan-restaurant-backend/scripts/lib/scriptSafety.js` và có thể được thay bằng biến `DEMO_PASSWORD` khi tạo lại dữ liệu.
 
 Có thể nhập email hoặc username tại màn hình đăng nhập.
 
@@ -23,7 +25,7 @@ Tối thiểu để kiểm tra yêu cầu **Admin + User**:
 ```text
 Admin: admin.demo@cohan.local
 User:  customer.demo@cohan.local
-Password: DEFAULT_DEMO_PASSWORD trong scripts/lib/scriptSafety.js
+Password chung: Demo@123456
 ```
 
 ## Business và phạm vi truy cập
@@ -44,10 +46,10 @@ Password: DEFAULT_DEMO_PASSWORD trong scripts/lib/scriptSafety.js
 
 ## Xác nhận trước khi gửi database
 
-Mật khẩu trong file database phải khớp với giá trị được ghi trong source code hoặc `DEMO_PASSWORD` tại thời điểm tạo dữ liệu. Trước khi đóng gói, restore database vào local và đăng nhập thử bằng:
+Mật khẩu trong file database phải khớp với tài liệu này. Trước khi đóng gói, restore database vào local và đăng nhập thử bằng:
 
 1. `admin.demo@cohan.local`.
 2. `customer.demo@cohan.local`.
 3. `manager.demo@cohan.local`.
 
-Nếu thay đổi `DEMO_PASSWORD`, phải cập nhật tài liệu bàn giao và tạo lại database archive để password hash đồng nhất.
+Nếu thay đổi `DEMO_PASSWORD`, phải cập nhật file này và tạo lại database archive để password hash đồng nhất.
