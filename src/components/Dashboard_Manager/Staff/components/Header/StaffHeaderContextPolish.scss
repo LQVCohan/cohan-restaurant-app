@@ -122,6 +122,36 @@
   }
 }
 
+.staff-page-container .employee-detail-card .verification-action-row {
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.staff-page-container .employee-detail-card .verification-action-row > select {
+  flex: 1 1 120px;
+  min-width: 110px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.staff-page-container .employee-detail-card .verification-action-row > .btn {
+  flex: 0 0 154px;
+  min-width: 154px;
+  min-height: 40px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.staff-page-container .employee-detail-card .verification-action-row > .btn svg {
+  flex: 0 0 auto;
+}
+
 .staff-page-container .attendance-readiness-focus-banner {
   display: none !important;
 }
